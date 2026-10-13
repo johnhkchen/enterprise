@@ -11,7 +11,8 @@ Monorepo: our mods, the pack definition, and design docs.
 - `core/`: the core mod (`mod_id=enterprise`, package `dev.b28.enterprise`). NeoForge ModDevGradle.
 - `pack/`: packwiz pack definition, the source of truth for which mods ship.
 - `scripts/prism_sync.py`: mirrors `pack/` plus the built core jar into the Prism instance "Enterprise (dev)".
-- `dev/testbench/`: datapack synced into the instance's `testing` world: time warps, tick-rate controls, and a one-command test market (`/function testbench:help`). Headless: `just rcon "execute positioned 0 -60 0 run function testbench:market/build"`, desk lands at 7 -60 7.
+- `dev/testbench/`: datapack synced into the instance's `testing` world. On load it builds a standing test market near spawn if missing (desk at 27 -60 27, 18 shulkers, Blaze Banker, selling trades switched on once villagers settle) and shows a welcome panel on every join. `/function testbench:help` has the rest (market build/clear anywhere, time warps). Headless servers build the same fixture; spawn chunks don't tick without a player, so `forceload add 19 19 35 35` to run it.
+- `dev/experiments/`: measurement scripts that drive the headless server over RCON (`merchant_ramp.py`).
 
 ## Commands (`just`)
 - `just build`: build the core jar.

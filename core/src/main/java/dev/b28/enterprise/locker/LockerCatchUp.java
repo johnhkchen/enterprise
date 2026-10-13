@@ -1,20 +1,24 @@
 package dev.b28.enterprise.locker;
 
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
+import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /**
- * Lockers keep trading while their village is unloaded: when a villager with a locker loads back in, it replays the
- * restocks it missed (two a day), each running the usual locker trade. Computed on touch, not ticked.
+ * Lockers keep trading while their village isn't running: when a villager with a locker loads back in (a player came
+ * by, or a {@link Rounds round} loaded it), or a round finds it loaded but idle, it replays the restocks it missed,
+ * two a day. The replay is spread over
+ * ticks within a budget and waits while the server is busy.
  */
 public final class LockerCatchUp {
     /** Days of missed restocks a villager replays at most. */
@@ -23,9 +27,25 @@ public final class LockerCatchUp {
     /** Wait this long after loading, so the Merchant's desk and chests nearby have loaded too. */
     private static final long DELAY_TICKS = 40;
 
-    private record Pending(ResourceKey<Level> dimension, UUID villager, long due) {}
+    /** Restocks replayed per server tick, across all villagers. */
+    private static final int RESTOCKS_PER_TICK = 8;
 
-    private static final List<Pending> PENDING = new ArrayList<>();
+    private static final class Job {
+        final ResourceKey<Level> dimension;
+        final UUID villager;
+        final long due;
+        int remaining = -1; // counted when the job starts
+        long settledUntil; // the villager's restock clock once the replay is done
+
+        Job(ResourceKey<Level> dimension, UUID villager, long due) {
+            this.dimension = dimension;
+            this.villager = villager;
+            this.due = due;
+        }
+    }
+
+    // One job per villager, in the order they were queued.
+    private static final Map<UUID, Job> JOBS = new LinkedHashMap<>();
 
     private LockerCatchUp() {}
 
@@ -33,39 +53,82 @@ public final class LockerCatchUp {
         if (event.loadedFromDisk()
                 && event.getLevel() instanceof ServerLevel level
                 && event.getEntity() instanceof Villager villager) {
-            PENDING.add(new Pending(level.dimension(), villager.getUUID(), level.getGameTime() + DELAY_TICKS));
+            enqueue(level, villager);
         }
     }
 
+    /** Queues catch-up for the villagers already loaded within {@code radius} of {@code pos}, ticking or not. */
+    public static void enqueueNear(ServerLevel level, BlockPos pos, int radius) {
+        level.getEntitiesOfClass(Villager.class, new AABB(pos).inflate(radius)).forEach(v -> enqueue(level, v));
+    }
+
+    private static void enqueue(ServerLevel level, Villager villager) {
+        JOBS.putIfAbsent(villager.getUUID(),
+                new Job(level.dimension(), villager.getUUID(), level.getGameTime() + DELAY_TICKS));
+    }
+
     public static void onServerTick(ServerTickEvent.Post event) {
-        if (PENDING.isEmpty()) {
+        MinecraftServer server = event.getServer();
+        if (JOBS.isEmpty() || !Rounds.hasHeadroom(server)) {
             return;
         }
-        MinecraftServer server = event.getServer();
-        for (Iterator<Pending> it = PENDING.iterator(); it.hasNext(); ) {
-            Pending pending = it.next();
-            ServerLevel level = server.getLevel(pending.dimension());
+        int budget = RESTOCKS_PER_TICK;
+        for (Iterator<Job> it = JOBS.values().iterator(); it.hasNext() && budget > 0; ) {
+            Job job = it.next();
+            ServerLevel level = server.getLevel(job.dimension);
             if (level == null) {
                 it.remove();
-            } else if (level.getGameTime() >= pending.due()) {
+                continue;
+            }
+            if (level.getGameTime() < job.due) {
+                continue;
+            }
+            if (!(level.getEntity(job.villager) instanceof Villager villager)) {
+                it.remove(); // unloaded again, or gone; it will catch up next time it loads
+                continue;
+            }
+            if (job.remaining < 0) {
+                job.remaining = LockerTrading.hasLocker(villager) ? missedRestocks(villager) : 0;
+                job.settledUntil = settledUntil(villager);
+            }
+            while (job.remaining > 0 && budget > 0) {
+                villager.restock();
+                job.remaining--;
+                budget--;
+            }
+            if (job.remaining == 0) {
+                villager.lastRestockGameTime = job.settledUntil;
                 it.remove();
-                if (level.getEntity(pending.villager()) instanceof Villager villager) {
-                    catchUp(villager);
-                }
             }
         }
     }
 
-    /** Replays the restocks this villager missed, if it has a locker. Returns restocks replayed. */
+    /** Replays every restock this villager missed at once, if it has a locker. Returns restocks replayed. */
     public static int catchUp(Villager villager) {
         if (!LockerTrading.hasLocker(villager)) {
             return 0;
         }
         int restocks = missedRestocks(villager);
+        long settled = settledUntil(villager);
         for (int i = 0; i < restocks; i++) {
             villager.restock();
         }
+        villager.lastRestockGameTime = settled;
         return restocks;
+    }
+
+    /**
+     * The restock clock after replaying the whole days owed: advanced by exactly those days, not set to now, so the
+     * part-day left over counts toward the next catch-up instead of being dropped.
+     */
+    private static long settledUntil(Villager villager) {
+        long last = villager.lastRestockGameTime;
+        long now = villager.level().getGameTime();
+        if (last == 0) {
+            return 0;
+        }
+        long days = (now - last) / 24000L;
+        return days > MAX_DAYS ? now : last + days * 24000L;
     }
 
     /** Two restocks per whole day since the last one, up to {@link #MAX_DAYS} days. Never restocked: none owed. */

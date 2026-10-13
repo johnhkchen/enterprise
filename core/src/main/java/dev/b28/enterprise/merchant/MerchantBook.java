@@ -24,6 +24,8 @@ public final class MerchantBook extends SavedData {
 
     // desk -> workstation -> enabled trade keys
     private final Map<GlobalPos, Map<BlockPos, Set<String>>> enabled = new HashMap<>();
+    // desk -> game time of its last round (see Rounds)
+    private final Map<GlobalPos, Long> lastRound = new HashMap<>();
 
     public static MerchantBook get(MinecraftServer server) {
         return server.overworld()
@@ -37,6 +39,25 @@ public final class MerchantBook extends SavedData {
 
     public Set<String> enabledTrades(GlobalPos desk, BlockPos workstation) {
         return enabled.getOrDefault(desk, Map.of()).getOrDefault(workstation, Set.of());
+    }
+
+    /** Every desk with at least one trade switched on: the markets the ledger keeps running. */
+    public Set<GlobalPos> desks() {
+        return Set.copyOf(enabled.keySet());
+    }
+
+    /** Workstations with trades switched on for this desk. */
+    public Set<BlockPos> workstations(GlobalPos desk) {
+        return Set.copyOf(enabled.getOrDefault(desk, Map.of()).keySet());
+    }
+
+    public long lastRound(GlobalPos desk) {
+        return lastRound.getOrDefault(desk, 0L);
+    }
+
+    public void setLastRound(GlobalPos desk, long gameTime) {
+        lastRound.put(desk, gameTime);
+        setDirty();
     }
 
     public void setEnabled(GlobalPos desk, BlockPos workstation, String tradeKey, boolean on) {
@@ -70,6 +91,7 @@ public final class MerchantBook extends SavedData {
                 lockerList.add(lockerTag);
             });
             deskTag.put("lockers", lockerList);
+            deskTag.putLong("lastRound", lastRound.getOrDefault(desk, 0L));
             desks.add(deskTag);
         });
         tag.put("desks", desks);
@@ -81,6 +103,9 @@ public final class MerchantBook extends SavedData {
         for (Tag deskEntry : tag.getList("desks", Tag.TAG_COMPOUND)) {
             CompoundTag deskTag = (CompoundTag) deskEntry;
             GlobalPos.CODEC.parse(NbtOps.INSTANCE, deskTag.get("desk")).ifSuccess(desk -> {
+                if (deskTag.getLong("lastRound") > 0) {
+                    book.lastRound.put(desk, deskTag.getLong("lastRound"));
+                }
                 for (Tag lockerEntry : deskTag.getList("lockers", Tag.TAG_COMPOUND)) {
                     CompoundTag lockerTag = (CompoundTag) lockerEntry;
                     BlockPos workstation = BlockPos.of(lockerTag.getLong("workstation"));

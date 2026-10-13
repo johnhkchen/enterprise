@@ -1,6 +1,7 @@
 package dev.b28.enterprise.money;
 
 import dev.b28.enterprise.merchant.MerchantStock;
+import dev.ithundxr.createnumismatics.Numismatics;
 import dev.ithundxr.createnumismatics.content.backend.BankAccount;
 import dev.ithundxr.createnumismatics.content.backend.Coin;
 import dev.ithundxr.createnumismatics.content.bank.blaze_banker.BlazeBankerBlockEntity;
@@ -64,12 +65,14 @@ public final class MoneyChanger {
         return new Settlement(surplus, spurs, false);
     }
 
-    /** The bank account of a Blaze Banker touching the desk, if it has one. */
+    /** The bank account of a Blaze Banker touching the desk. Opens one for a Banker placed without an owner. */
     public static Optional<BankAccount> bankAt(ServerLevel level, BlockPos desk) {
         for (Direction dir : Direction.values()) {
             if (level.getBlockEntity(desk.relative(dir)) instanceof BlazeBankerBlockEntity banker
-                    && banker.hasAccount()) {
-                return Optional.ofNullable(banker.getAccount());
+                    && banker.getAccountId() != null) {
+                return Optional.of(banker.hasAccount()
+                        ? banker.getAccount()
+                        : Numismatics.BANK.getOrCreateAccount(banker.getAccountId(), BankAccount.Type.BLAZE_BANKER));
             }
         }
         return Optional.empty();

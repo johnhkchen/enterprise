@@ -271,10 +271,13 @@ public final class LockerTradingTests {
                     market.givePaperTrade(0);
                     market.enable(PAPER_TRADE);
                     Villager librarian = market.librarian();
-                    librarian.lastRestockGameTime = helper.getLevel().getGameTime() - 3 * 24000L - 1;
+                    long lastRestock = helper.getLevel().getGameTime() - 3 * 24000L - 100;
+                    librarian.lastRestockGameTime = lastRestock;
 
                     int replayed = dev.b28.enterprise.locker.LockerCatchUp.catchUp(librarian);
                     helper.assertTrue(replayed == 6, "3 missed days replay 6 restocks, replayed " + replayed);
+                    helper.assertTrue(librarian.lastRestockGameTime == lastRestock + 3 * 24000L,
+                            "the clock moves by the 3 days replayed, keeping the 100 leftover ticks");
                     // Restocks alternate: trade 16, inflated (skip), trade 16, skip, trade 16, skip.
                     int emeralds = dev.b28.enterprise.merchant.MerchantStock.at(helper.getLevel(), helper.absolutePos(DESK))
                             .count(new ItemCost(Items.EMERALD, 1));

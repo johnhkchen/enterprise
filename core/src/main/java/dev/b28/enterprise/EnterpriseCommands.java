@@ -38,6 +38,10 @@ final class EnterpriseCommands {
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .executes(EnterpriseCommands::stock)))
                 .then(Commands.literal("mint").executes(EnterpriseCommands::mint))
+                .then(Commands.literal("autoswitch")
+                        .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                .then(Commands.literal("selling").executes(context -> autoswitch(context, false)))
+                                .then(Commands.literal("all").executes(context -> autoswitch(context, true)))))
                 .then(Commands.literal("switch")
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .then(Commands.argument("workstation", BlockPosArgument.blockPos())
@@ -108,6 +112,34 @@ final class EnterpriseCommands {
                 .formatted(Mint.DEFAULT_FACTION, mint.rate(Mint.DEFAULT_FACTION, now),
                         mint.pressure(Mint.DEFAULT_FACTION, now))), false);
         return 1;
+    }
+
+    /**
+     * Switches on, for every locker in reach of a desk (managed or waiting) that has nothing switched on yet, the
+     * trades that earn emeralds, or every trade. Lockers someone has already set up are left alone. For test worlds
+     * and servers setting up a market.
+     */
+    private static int autoswitch(CommandContext<CommandSourceStack> context, boolean all) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        ServerLevel level = source.getLevel();
+        BlockPos desk = BlockPosArgument.getLoadedBlockPos(context, "desk");
+        GlobalPos deskPos = GlobalPos.of(level.dimension(), desk);
+        MerchantBook book = MerchantBook.get(source.getServer());
+        int switched = 0;
+        for (MerchantView.LockerView locker : MerchantView.build(level, desk, Integer.MAX_VALUE).lockers()) {
+            if (!book.enabledTrades(deskPos, locker.workstation()).isEmpty()) {
+                continue;
+            }
+            for (MerchantView.TradeView trade : locker.trades()) {
+                if (!trade.enabled() && (all || trade.key().endsWith(">minecraft:emerald"))) {
+                    book.setEnabled(deskPos, locker.workstation(), trade.key(), true);
+                    switched++;
+                }
+            }
+        }
+        int count = switched;
+        source.sendSuccess(() -> Component.literal("Switched on %d trade(s)".formatted(count)), true);
+        return switched;
     }
 
     /** Switches one locker trade on or off without the screen (for servers and tests). */
