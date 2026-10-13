@@ -139,8 +139,9 @@ public final class LockerTrading {
             Enterprise.LOGGER.debug("Locker trades: {} at {} by a level {} villager", made,
                     workstation.toShortString(), villager.getVillagerData().getLevel());
         } else {
-            Enterprise.LOGGER.debug("Locker at {}: no trades made ({} of {} switched-on offers fairly priced)",
-                    workstation.toShortString(), offers.size(), enabled.size());
+            long offered = villager.getOffers().stream().filter(o -> enabled.contains(TradeKeys.of(o))).count();
+            Enterprise.LOGGER.debug("Locker at {}: no trades made ({} switched on, {} offered by this villager, {} "
+                    + "fairly priced)", workstation.toShortString(), enabled.size(), offered, offers.size());
         }
         return made;
     }

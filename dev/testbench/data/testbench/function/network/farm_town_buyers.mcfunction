@@ -1,0 +1,2 @@
+# Every farmer within 40 blocks buys carrots, 22 to the emerald, 16 a restock. Run once villagers have settled.
+execute as @e[type=minecraft:villager,distance=..40] if data entity @s VillagerData{profession:"minecraft:farmer"} run data merge entity @s {Offers:{Recipes:[{buy:{id:"minecraft:carrot",count:22},sell:{id:"minecraft:emerald",count:1},maxUses:16,xp:2,priceMultiplier:0.05f,rewardExp:1b}]}}

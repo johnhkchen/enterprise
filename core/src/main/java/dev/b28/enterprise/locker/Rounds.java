@@ -54,7 +54,9 @@ public final class Rounds {
             return;
         }
         MerchantBook book = MerchantBook.get(server);
-        book.desks().stream()
+        Set<GlobalPos> desks = new LinkedHashSet<>(book.desks());
+        desks.addAll(dev.b28.enterprise.territory.Territory.get(server).farmDesks()); // farms run without trades
+        desks.stream()
                 .filter(desk -> {
                     ServerLevel level = server.getLevel(desk.dimension());
                     return level != null && !level.isPositionEntityTicking(desk.pos());

@@ -3,7 +3,9 @@ package dev.b28.enterprise.territory;
 import dev.b28.enterprise.hex.Hex;
 import dev.b28.enterprise.merchant.Merchant;
 import dev.b28.enterprise.merchant.MerchantStock;
+import dev.b28.enterprise.money.Mint;
 import dev.b28.enterprise.money.MoneyChanger;
+import dev.ithundxr.createnumismatics.content.coins.CoinItem;
 import dev.b28.enterprise.settlement.Census;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -27,6 +29,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.trading.ItemCost;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 
@@ -51,6 +55,29 @@ public final class Territory extends SavedData {
     /** Items a worked plot yields per in-game day. */
     public static final double YIELD_PER_PLOT_PER_DAY = 0.5;
 
+    /** A farmer's wage is this share of the value of what it grows. */
+    public static final double LABOR_SHARE = 0.5;
+
+    /** Days of wages the Merchant keeps in emeralds rather than selling them to the mint. */
+    public static final double WAGE_FLOAT_DAYS = 3;
+
+    /**
+     * Local buying price of each crop, in items per emerald: what a villager pays for it in vanilla (farmers buy
+     * wheat, carrots, potatoes, beetroot, pumpkins and melons; clerics buy nether wart). Crops nobody buys are
+     * valued by what they become.
+     */
+    public static final Map<String, Double> ITEMS_PER_EMERALD = Map.ofEntries(
+            Map.entry("minecraft:wheat", 20.0),
+            Map.entry("minecraft:carrot", 22.0),
+            Map.entry("minecraft:potato", 26.0),
+            Map.entry("minecraft:beetroot", 15.0),
+            Map.entry("minecraft:pumpkin", 6.0),
+            Map.entry("minecraft:melon", 4.0),
+            Map.entry("minecraft:nether_wart", 22.0),
+            Map.entry("minecraft:sugar_cane", 24.0), // as paper, 24 to the emerald
+            Map.entry("minecraft:cocoa_beans", 20.0),
+            Map.entry("minecraft:sweet_berries", 32.0));
+
     /** At most this many days of produce accrue between visits. */
     private static final double MAX_DAYS = 60;
 
@@ -64,6 +91,10 @@ public final class Territory extends SavedData {
         Map<String, Double> pending = new HashMap<>(); // produce owed, fractions carried
         long lastHarvest = -1;
         long tollsOwed;
+        double wageOwed; // emeralds owed to the farmers, fractions carried
+        double wagesPaid; // emeralds' worth paid, in all
+        double wagesUnpaid; // emeralds' worth that couldn't be paid: those days' produce was lost
+        long harvested; // items delivered to the Merchant's chest, in all
     }
 
     private final Map<Place, GlobalPos> owners = new HashMap<>();
@@ -103,8 +134,45 @@ public final class Territory extends SavedData {
         return holding(bell).map(h -> Map.copyOf(h.perDay)).orElse(Map.of());
     }
 
+    /** The farmers' wages per day, in emeralds: {@link #LABOR_SHARE} of the value of what they grow. */
+    public double wagePerDay(GlobalPos bell) {
+        return holding(bell).map(h -> wagePerDay(h.perDay)).orElse(0.0);
+    }
+
+    static double wagePerDay(Map<String, Double> perDay) {
+        double value = 0;
+        for (Map.Entry<String, Double> crop : perDay.entrySet()) {
+            value += crop.getValue() / ITEMS_PER_EMERALD.getOrDefault(crop.getKey(), 32.0);
+        }
+        return value * LABOR_SHARE;
+    }
+
+    public double wagesPaid(GlobalPos bell) {
+        return holding(bell).map(h -> h.wagesPaid).orElse(0.0);
+    }
+
+    public long harvested(GlobalPos bell) {
+        return holding(bell).map(h -> h.harvested).orElse(0L);
+    }
+
+    public double wagesUnpaid(GlobalPos bell) {
+        return holding(bell).map(h -> h.wagesUnpaid).orElse(0.0);
+    }
+
+    /** Emeralds the settlement's Merchant keeps back for wages. */
+    public int wageFloat(GlobalPos desk) {
+        return bellOf(desk).map(bell -> (int) Math.ceil(wagePerDay(bell) * WAGE_FLOAT_DAYS)).orElse(0);
+    }
+
     public long tollsOwed(GlobalPos bell) {
         return holding(bell).map(h -> h.tollsOwed).orElse(0L);
+    }
+
+    /** Desks of settlements with farms: markets the ledger keeps running even with no trades switched on. */
+    public java.util.Set<GlobalPos> farmDesks() {
+        java.util.Set<GlobalPos> desks = new java.util.LinkedHashSet<>();
+        holdings.values().stream().filter(h -> h.desk != null && !h.perDay.isEmpty()).forEach(h -> desks.add(h.desk));
+        return desks;
     }
 
     /** The settlement whose Merchant works at this desk. */
@@ -146,7 +214,12 @@ public final class Territory extends SavedData {
             holding.culture += census.value() * days;
             grow(bell, home);
         }
-        accrue(holding, level.getGameTime());
+        if (holding.desk != null && level.isLoaded(holding.desk.pos())) {
+            // Settle produce and wages under the old plan before re-planning.
+            touch(level, holding.desk.pos(), MerchantStock.at(level, holding.desk.pos()));
+        } else {
+            accrue(holding, level.getGameTime());
+        }
         holding.perDay = plan(level, bellPos.getY(), hexes(bell), farmers);
         setDirty();
     }
@@ -250,13 +323,51 @@ public final class Territory extends SavedData {
         return plots.values().stream().mapToInt(Integer::intValue).sum();
     }
 
-    /** Adds produce for the time since the last harvest to what the settlement is owed. */
+    /** Adds produce, and the farmers' wages for it, for the time since the last harvest. */
     private static void accrue(Holding holding, long now) {
         if (holding.lastHarvest >= 0) {
             double days = Math.min(MAX_DAYS, (now - holding.lastHarvest) / 24000.0);
             holding.perDay.forEach((item, rate) -> holding.pending.merge(item, rate * days, Double::sum));
+            holding.wageOwed += wagePerDay(holding.perDay) * days;
         }
         holding.lastHarvest = now;
+    }
+
+    /**
+     * Pays the farmers the whole emeralds owed: emeralds from the Merchant's chest first, then its coins at the
+     * region's rate, then the settlement's Blaze Banker. Returns the share of the wage paid (1 when nothing whole is
+     * owed yet). Unpaid wages are forgiven: the farmers didn't work, and that part of the harvest is lost.
+     */
+    private double payWages(ServerLevel level, BlockPos desk, MerchantStock stock, Holding holding, long now) {
+        int whole = (int) Math.floor(holding.wageOwed);
+        if (whole <= 0) {
+            return 1.0;
+        }
+        ItemCost emerald = new ItemCost(Items.EMERALD, 1);
+        int emeralds = Math.min(whole, stock.count(emerald));
+        stock.take(emerald, emeralds);
+        double paid = emeralds;
+        int short1 = whole - emeralds;
+        if (short1 > 0) {
+            double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now);
+            int spursOwed = (int) Math.ceil(short1 * rate);
+            List<ItemStack> coins = stock.removeLoose(stack -> stack.getItem() instanceof CoinItem);
+            int held = MoneyChanger.value(coins);
+            int fromChest = Math.min(held, spursOwed);
+            MoneyChanger.coins(held - fromChest).forEach(stock::insert); // the change goes back
+            int stillOwed = spursOwed - fromChest;
+            int fromBank = 0;
+            var bank = MoneyChanger.bankAt(level, desk);
+            if (stillOwed > 0 && bank.isPresent()) {
+                fromBank = Math.min(stillOwed, bank.get().getBalance());
+                bank.get().setBalance(bank.get().getBalance() - fromBank);
+            }
+            paid += Math.min(short1, (fromChest + fromBank) / rate);
+        }
+        holding.wageOwed -= whole;
+        holding.wagesPaid += paid;
+        holding.wagesUnpaid += whole - paid;
+        return paid / whole;
     }
 
     /** The market at {@code desk} was touched: hand over the produce and tolls owed to its settlement. */
@@ -273,6 +384,10 @@ public final class Territory extends SavedData {
         }
         Holding holding = holdings.get(bell.get());
         accrue(holding, now);
+        double paidShare = payWages(level, desk, stock, holding, now);
+        if (paidShare < 1) {
+            holding.pending.replaceAll((item, owed) -> owed * paidShare); // unpaid days' harvest is lost
+        }
         for (Map.Entry<String, Double> owed : holding.pending.entrySet()) {
             int whole = (int) Math.floor(owed.getValue());
             if (whole <= 0) {
@@ -290,6 +405,7 @@ public final class Territory extends SavedData {
                 }
             }
             owed.setValue(owed.getValue() - (whole - left));
+            holding.harvested += whole - left;
         }
         if (holding.tollsOwed > 0) {
             var bank = MoneyChanger.bankAt(level, desk);
@@ -341,6 +457,10 @@ public final class Territory extends SavedData {
             entry.putDouble("culture", holding.culture);
             entry.putLong("lastHarvest", holding.lastHarvest);
             entry.putLong("tollsOwed", holding.tollsOwed);
+            entry.putDouble("wageOwed", holding.wageOwed);
+            entry.putDouble("wagesPaid", holding.wagesPaid);
+            entry.putDouble("wagesUnpaid", holding.wagesUnpaid);
+            entry.putLong("harvested", holding.harvested);
             entry.put("perDay", doubles(holding.perDay));
             entry.put("pending", doubles(holding.pending));
             settlements.add(entry);
@@ -392,6 +512,10 @@ public final class Territory extends SavedData {
                 holding.culture = entry.getDouble("culture");
                 holding.lastHarvest = entry.getLong("lastHarvest");
                 holding.tollsOwed = entry.getLong("tollsOwed");
+                holding.wageOwed = entry.getDouble("wageOwed");
+                holding.wagesPaid = entry.getDouble("wagesPaid");
+                holding.wagesUnpaid = entry.getDouble("wagesUnpaid");
+                holding.harvested = entry.getLong("harvested");
                 holding.perDay = readDoubles(entry.getCompound("perDay"));
                 holding.pending = readDoubles(entry.getCompound("pending"));
                 territory.holdings.put(bell, holding);

@@ -15,6 +15,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.trading.ItemCost;
 import net.minecraft.world.level.block.Blocks;
@@ -91,8 +92,10 @@ public final class TerritoryTests {
         helper.assertTrue(plots >= 18, "the field counts (most of) its 20 wheat plots, counted " + plots);
         var plan = new Territory().plan(helper.getLevel(), helper.absolutePos(BELL).getY(), List.of(hex), List.of(1));
         double wheat = plan.getOrDefault("minecraft:wheat", 0.0);
-        helper.assertTrue(wheat == plots * Territory.YIELD_PER_PLOT_PER_DAY,
-                "half a wheat per plot per day: " + plots * Territory.YIELD_PER_PLOT_PER_DAY + ", got " + wheat);
+        // Other tests' fields can share this hex; one level-1 farmer works at most 32 plots of it.
+        int worked = Math.min(plots, Territory.PLOTS_PER_FARMER_LEVEL);
+        helper.assertTrue(wheat == worked * Territory.YIELD_PER_PLOT_PER_DAY,
+                "half a wheat per worked plot per day: " + worked * Territory.YIELD_PER_PLOT_PER_DAY + ", got " + wheat);
         helper.assertTrue(new Territory().plan(helper.getLevel(), helper.absolutePos(BELL).getY(), List.of(hex), List.of())
                 .isEmpty(), "no farmers, no produce");
         helper.succeed();
@@ -117,6 +120,75 @@ public final class TerritoryTests {
         helper.assertTrue(wheat == (int) Math.floor(perDay * 2), "two days of wheat: " + perDay * 2 + ", got " + wheat);
         helper.assertTrue(MoneyChanger.value(stock.looseStacks()) == 100, "the 100-spur toll landed as coins");
         helper.assertTrue(territory.tollsOwed(bell) == 0, "and is no longer owed");
+        helper.succeed();
+    }
+
+    /** A wheat farm with a level-1 farmer, its Merchant's desk and chest; returns the farm's settlement. */
+    private static GlobalPos farm(GameTestHelper helper, Territory territory) {
+        helper.setBlock(new BlockPos(5, 2, 5), Merchant.DESK.get());
+        helper.setBlock(new BlockPos(6, 2, 5), Blocks.CHEST);
+        wheatField(helper);
+        territory.afterCensus(helper.getLevel(), helper.absolutePos(BELL), FIVE_FREE, 1, List.of(1));
+        return GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(BELL));
+    }
+
+    private static MerchantStock farmStock(GameTestHelper helper) {
+        return MerchantStock.at(helper.getLevel(), helper.absolutePos(new BlockPos(5, 2, 5)));
+    }
+
+    @GameTest(template = "floor")
+    public static void farmersEarnHalfWhatTheyGrow(GameTestHelper helper) {
+        Territory territory = new Territory();
+        GlobalPos bell = farm(helper, territory);
+        double wheat = territory.farmPlan(bell).get("minecraft:wheat");
+        double expected = wheat / 20 * Territory.LABOR_SHARE; // wheat sells 20 to the emerald
+        helper.assertTrue(Math.abs(territory.wagePerDay(bell) - expected) < 1e-9,
+                "wage " + territory.wagePerDay(bell) + " is half the value of " + wheat + " wheat a day");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void paidFarmersDeliverTheWholeHarvest(GameTestHelper helper) {
+        Territory territory = new Territory();
+        GlobalPos bell = farm(helper, territory);
+        farmStock(helper).insert(new ItemStack(Items.EMERALD, 10));
+        long t = helper.getLevel().getGameTime();
+        double perDay = territory.farmPlan(bell).get("minecraft:wheat");
+        int owed = (int) Math.floor(territory.wagePerDay(bell) * 10);
+
+        territory.touch(helper.getLevel(), helper.absolutePos(new BlockPos(5, 2, 5)), farmStock(helper), t + 10 * 24000);
+        helper.assertTrue(farmStock(helper).count(new ItemCost(Items.EMERALD, 1)) == 10 - owed,
+                "ten days of wages (" + owed + " emeralds) paid from the chest");
+        helper.assertTrue(farmStock(helper).count(new ItemCost(Items.WHEAT, 1)) == (int) Math.floor(perDay * 10),
+                "and the whole ten days' harvest delivered");
+        helper.assertTrue(territory.wagesUnpaid(bell) == 0, "nothing unpaid");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void unpaidFarmersDontWork(GameTestHelper helper) {
+        Territory territory = new Territory();
+        GlobalPos bell = farm(helper, territory);
+        long t = helper.getLevel().getGameTime();
+        territory.touch(helper.getLevel(), helper.absolutePos(new BlockPos(5, 2, 5)), farmStock(helper), t + 10 * 24000);
+        helper.assertTrue(farmStock(helper).count(new ItemCost(Items.WHEAT, 1)) == 0, "no pay, no harvest");
+        helper.assertTrue(territory.wagesUnpaid(bell) >= 1, "the unpaid wage is recorded");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void farmersTakeCoinsAtTheRegionsRate(GameTestHelper helper) {
+        Territory territory = new Territory();
+        GlobalPos bell = farm(helper, territory);
+        MoneyChanger.coins(200).forEach(farmStock(helper)::insert);
+        long t = helper.getLevel().getGameTime();
+        double perDay = territory.farmPlan(bell).get("minecraft:wheat");
+
+        territory.touch(helper.getLevel(), helper.absolutePos(new BlockPos(5, 2, 5)), farmStock(helper), t + 10 * 24000);
+        int left = MoneyChanger.value(farmStock(helper).looseStacks());
+        helper.assertTrue(left < 200 && left > 0, "wages came out of the coins, with change: " + left + " spurs left");
+        helper.assertTrue(farmStock(helper).count(new ItemCost(Items.WHEAT, 1)) == (int) Math.floor(perDay * 10),
+                "paid in coins, the farmers delivered the whole harvest");
         helper.succeed();
     }
 

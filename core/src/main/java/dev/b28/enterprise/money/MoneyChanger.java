@@ -67,14 +67,18 @@ public final class MoneyChanger {
         return new Settlement(surplus, spurs, false);
     }
 
-    /** The working reserve: {@link #EMERALD_RESERVE} if a switched-on trade costs emeralds, otherwise none. */
+    /**
+     * The working reserve: {@link #EMERALD_RESERVE} if a switched-on trade costs emeralds, plus a few days of the
+     * settlement's farm wages.
+     */
     public static int reserve(ServerLevel level, BlockPos desk) {
         MerchantBook book = MerchantBook.get(level.getServer());
         GlobalPos at = GlobalPos.of(level.dimension(), desk);
         boolean spendsEmeralds = book.workstations(at).stream()
                 .flatMap(workstation -> book.enabledTrades(at, workstation).stream())
                 .anyMatch(key -> key.startsWith("minecraft:emerald+") || key.contains("+minecraft:emerald>"));
-        return spendsEmeralds ? EMERALD_RESERVE : 0;
+        int wages = dev.b28.enterprise.territory.Territory.get(level.getServer()).wageFloat(at);
+        return (spendsEmeralds ? EMERALD_RESERVE : 0) + wages;
     }
 
     /** The bank account of a Blaze Banker touching the desk. Opens one for a Banker placed without an owner. */
