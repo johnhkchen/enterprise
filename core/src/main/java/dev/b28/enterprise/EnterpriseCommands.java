@@ -181,6 +181,9 @@ final class EnterpriseCommands {
         }
         source.sendSuccess(() -> Component.literal("  toll %.0f%% (yesterday's toll income %.0f spurs)".formatted(
                 territory.tollRate(bell) * 100, Math.max(0, territory.tollIncomeYesterday(bell)))), false);
+        source.sendSuccess(() -> Component.literal(("  garrison %d guard(s), %.0f%% of its land held, collects %.1f%%; "
+                + "traffic %.0f spurs a day; %d deserted").formatted(territory.guards(bell), territory.coverage(bell) * 100,
+                territory.effectiveToll(bell) * 100, territory.trafficPerDay(bell), territory.deserted(bell))), false);
         if (territory.tollsOwed(bell) > 0) {
             source.sendSuccess(() -> Component.literal("  tolls owed: %d spurs".formatted(territory.tollsOwed(bell))), false);
         }

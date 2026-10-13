@@ -83,6 +83,10 @@ public final class Territory extends SavedData {
     /** A town judges its toll over this many days: caravans pass every few days, so one day says little. */
     public static final long TOLL_REVIEW_TICKS = 3 * 24000L;
 
+    /** A guard's daily food (points of nutrition) and pay (emeralds). */
+    public static final double GUARD_FOOD_PER_DAY = 6;
+    public static final double GUARD_PAY_PER_DAY = 0.5;
+
     /** At most this many days of produce accrue between visits. */
     private static final double MAX_DAYS = 60;
 
@@ -110,6 +114,13 @@ public final class Territory extends SavedData {
         double tollIncomeToday;
         double tollIncomeYesterday = -1; // none yet
         long lastTollReview = -1;
+        int guards;
+        double guardUpkeepOwed; // emeralds owed to the guards, fractions carried
+        double guardFoodOwed; // food points owed, fractions carried
+        long lastGuardUpkeep = -1;
+        double trafficSince; // coins carried across this land since the last review, in spurs
+        double trafficPerDay; // averaged
+        int deserted; // guards lost to hunger or no pay, in all
     }
 
     private final Map<Place, GlobalPos> owners = new HashMap<>();
@@ -427,7 +438,8 @@ public final class Territory extends SavedData {
             return;
         }
         Holding holding = holdings.get(bell.get());
-        reviewTolls(bell.get(), now);
+        upkeepGuards(level, desk, stock, holding, now); // pay the guards who served, then review the garrison
+        reviewTolls(bell.get(), now, Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now));
         long since = holding.lastHarvest;
         accrue(holding, now);
         double owedBefore = holding.wageOwed;
@@ -487,9 +499,116 @@ public final class Territory extends SavedData {
         setDirty();
     }
 
-    /** The toll this town charges caravans crossing its land, as a share of the coins they carry. */
+    /** The toll this town has set, as a share of the coins caravans carry. */
     public double tollRate(GlobalPos bell) {
         return holding(bell).map(h -> h.tollRate).orElse(DEFAULT_TOLL_RATE);
+    }
+
+    /**
+     * The toll a caravan actually pays crossing this town's land: its rate times the share of its hexes guarded. With
+     * no guards it collects nothing.
+     */
+    public double effectiveToll(GlobalPos bell) {
+        return tollRate(bell) * coverage(bell);
+    }
+
+    /** Share of the town's hexes held by a guard. */
+    public double coverage(GlobalPos bell) {
+        int hexes = hexes(bell).size();
+        return hexes == 0 ? 0 : Math.min(1, (double) guards(bell) / hexes);
+    }
+
+    public int guards(GlobalPos bell) {
+        return holding(bell).map(h -> h.guards).orElse(0);
+    }
+
+    public void setGuards(GlobalPos bell, int guards) {
+        holdings.computeIfAbsent(bell, b -> new Holding()).guards = Math.max(0, guards);
+        setDirty();
+    }
+
+    public int deserted(GlobalPos bell) {
+        return holding(bell).map(h -> h.deserted).orElse(0);
+    }
+
+    public double trafficPerDay(GlobalPos bell) {
+        return holding(bell).map(h -> h.trafficPerDay).orElse(0.0);
+    }
+
+    /** A caravan carrying {@code spurs} crossed this town's land (whatever toll it paid). */
+    public void recordTraffic(GlobalPos bell, int spurs) {
+        holdings.computeIfAbsent(bell, b -> new Holding()).trafficSince += spurs;
+        setDirty();
+    }
+
+    /** One guard's daily cost, in spurs: its pay plus its food at bread prices. */
+    public static double guardCostPerDay(double rate) {
+        return (GUARD_PAY_PER_DAY + GUARD_FOOD_PER_DAY / 30.0) * rate;
+    }
+
+    /**
+     * Hire or let go one guard: hire if the toll the next guard would unlock (a hex's share of the toll on the traffic
+     * crossing this land) beats a guard's daily cost; let one go if the last guard brings in less than it costs.
+     */
+    public void reviewGarrison(GlobalPos bell, double days, double rate) {
+        Holding holding = holdings.computeIfAbsent(bell, b -> new Holding());
+        if (days > 0) {
+            holding.trafficPerDay = holding.trafficSince / days;
+            holding.trafficSince = 0;
+        }
+        int hexes = Math.max(1, hexes(bell).size());
+        double perGuard = holding.trafficPerDay * holding.tollRate / hexes; // toll one more guarded hex brings in
+        double cost = guardCostPerDay(rate);
+        if (holding.guards < hexes && perGuard > cost) {
+            holding.guards++;
+        } else if (holding.guards > 0 && perGuard < cost) {
+            holding.guards--;
+        }
+        setDirty();
+    }
+
+    /**
+     * The guards' food and pay since the last upkeep, from the town's warehouse: food first, then pay from its
+     * money. Guards who go unfed or unpaid desert, in proportion to what was missing.
+     */
+    private void upkeepGuards(ServerLevel level, BlockPos desk, MerchantStock stock, Holding holding, long now) {
+        if (holding.lastGuardUpkeep < 0 || holding.guards == 0) {
+            holding.lastGuardUpkeep = now;
+            return;
+        }
+        double days = Math.min(MAX_DAYS, (now - holding.lastGuardUpkeep) / 24000.0);
+        holding.lastGuardUpkeep = now;
+        holding.guardFoodOwed += holding.guards * GUARD_FOOD_PER_DAY * days;
+        holding.guardUpkeepOwed += holding.guards * GUARD_PAY_PER_DAY * days;
+        int food = (int) Math.floor(holding.guardFoodOwed);
+        int pay = (int) Math.floor(holding.guardUpkeepOwed);
+        if (food <= 0 && pay <= 0) {
+            return;
+        }
+        double fed = 1;
+        if (food > 0) {
+            int eaten = stock.eat(food).entrySet().stream().mapToInt(e -> e.getValue() * nutritionOf(e.getKey())).sum();
+            fed = Math.min(1, (double) eaten / food);
+            holding.guardFoodOwed -= food;
+        }
+        double paid = 1;
+        if (pay > 0) {
+            Mint mint = Mint.get(level.getServer());
+            double rate = mint.rate(Mint.DEFAULT_FACTION, now);
+            paid = Math.min(1, Treasury.withdraw(level, desk, stock, pay, mint, now).value(rate) / pay);
+            holding.guardUpkeepOwed -= pay;
+        }
+        double kept = Math.min(fed, paid);
+        if (kept < 1) {
+            int stay = (int) Math.floor(holding.guards * kept);
+            holding.deserted += holding.guards - stay;
+            holding.guards = stay;
+        }
+    }
+
+    private static int nutritionOf(Item item) {
+        var food = item.getDefaultInstance().get(net.minecraft.core.component.DataComponents.FOOD);
+        return food == null ? 0 : food.nutrition();
     }
 
     public void setTollRate(GlobalPos bell, double rate) {
@@ -508,6 +627,11 @@ public final class Territory extends SavedData {
      * running lowers its toll to draw traffic.
      */
     public void reviewTolls(GlobalPos bell, long now) {
+        reviewTolls(bell, now, 16);
+    }
+
+    /** As {@link #reviewTolls(GlobalPos, long)}, also reviewing the garrison at the mint's {@code rate}. */
+    public void reviewTolls(GlobalPos bell, long now, double rate) {
         Holding holding = holdings.computeIfAbsent(bell, b -> new Holding());
         if (holding.lastTollReview < 0) {
             holding.lastTollReview = now;
@@ -516,6 +640,7 @@ public final class Territory extends SavedData {
         if (now - holding.lastTollReview < TOLL_REVIEW_TICKS) {
             return;
         }
+        reviewGarrison(bell, (now - holding.lastTollReview) / 24000.0, rate);
         double income = holding.tollIncomeToday;
         if (income == 0 && holding.tollIncomeYesterday <= 0) {
             holding.tollDirection = -1;
@@ -574,6 +699,13 @@ public final class Territory extends SavedData {
             entry.putDouble("tollIncomeToday", holding.tollIncomeToday);
             entry.putDouble("tollIncomeYesterday", holding.tollIncomeYesterday);
             entry.putLong("lastTollReview", holding.lastTollReview);
+            entry.putInt("guards", holding.guards);
+            entry.putDouble("guardUpkeepOwed", holding.guardUpkeepOwed);
+            entry.putDouble("guardFoodOwed", holding.guardFoodOwed);
+            entry.putLong("lastGuardUpkeep", holding.lastGuardUpkeep);
+            entry.putDouble("trafficSince", holding.trafficSince);
+            entry.putDouble("trafficPerDay", holding.trafficPerDay);
+            entry.putInt("deserted", holding.deserted);
             entry.put("perDay", doubles(holding.perDay));
             entry.put("pending", doubles(holding.pending));
             settlements.add(entry);
@@ -643,6 +775,13 @@ public final class Territory extends SavedData {
                     holding.tollIncomeYesterday = entry.getDouble("tollIncomeYesterday");
                     holding.lastTollReview = entry.getLong("lastTollReview");
                 }
+                holding.guards = entry.getInt("guards");
+                holding.guardUpkeepOwed = entry.getDouble("guardUpkeepOwed");
+                holding.guardFoodOwed = entry.getDouble("guardFoodOwed");
+                holding.lastGuardUpkeep = entry.contains("lastGuardUpkeep") ? entry.getLong("lastGuardUpkeep") : -1;
+                holding.trafficSince = entry.getDouble("trafficSince");
+                holding.trafficPerDay = entry.getDouble("trafficPerDay");
+                holding.deserted = entry.getInt("deserted");
                 holding.perDay = readDoubles(entry.getCompound("perDay"));
                 holding.pending = readDoubles(entry.getCompound("pending"));
                 territory.holdings.put(bell, holding);

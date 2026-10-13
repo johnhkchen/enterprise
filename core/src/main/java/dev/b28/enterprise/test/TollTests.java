@@ -35,6 +35,7 @@ public final class TollTests {
             }
         }
         territory.setTollRate(town, toll);
+        territory.setGuards(town, 19); // fully garrisoned: the whole toll is collected
         return town;
     }
 
@@ -67,6 +68,35 @@ public final class TollTests {
         townAcrossTheRoad(helper, territory, 0.01); // 10 spurs a crossing, less than any detour
         List<Hex> path = plan(helper, territory);
         helper.assertTrue(path.size() == START.distance(GOAL) + 1, "straight through: " + path.size() + " hexes");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void anUnguardedTownCollectsNothing(GameTestHelper helper) {
+        Territory territory = new Territory();
+        GlobalPos town = townAcrossTheRoad(helper, territory, 0.25);
+        territory.setGuards(town, 0);
+        helper.assertTrue(territory.effectiveToll(town) == 0, "no guards, no toll");
+        List<Hex> path = plan(helper, territory);
+        helper.assertTrue(path.size() == START.distance(GOAL) + 1, "so caravans go straight through");
+        territory.setGuards(town, 10);
+        helper.assertTrue(Math.abs(territory.effectiveToll(town) - 0.25 * 10 / 19.0) < 1e-9,
+                "10 guards on 19 hexes collect that share of the toll: " + territory.effectiveToll(town));
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void townsHireGuardsWhereTrafficPays(GameTestHelper helper) {
+        Territory territory = new Territory();
+        GlobalPos town = townAcrossTheRoad(helper, territory, 0.05);
+        territory.setGuards(town, 0);
+        double guardCost = Territory.guardCostPerDay(16); // spurs a day
+        // Traffic worth 19 hexes x a guard's cost / 5%, a day: each guard's hex pays for itself 1.5 times over.
+        territory.recordTraffic(town, (int) Math.ceil(1.5 * 19 * guardCost / 0.05 * 3));
+        territory.reviewGarrison(town, 3, 16);
+        helper.assertTrue(territory.guards(town) == 1, "busy road: a guard is hired");
+        territory.reviewGarrison(town, 3, 16); // three quiet days
+        helper.assertTrue(territory.guards(town) == 0, "quiet road: the guard is let go");
         helper.succeed();
     }
 

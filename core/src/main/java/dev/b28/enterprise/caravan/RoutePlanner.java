@@ -72,7 +72,7 @@ public final class RoutePlanner {
         if (there.isEmpty() || there.equals(here) || ends.contains(there.get())) {
             return 0;
         }
-        return territory.tollRate(there.get()) * value;
+        return territory.effectiveToll(there.get()) * value;
     }
 
     private static List<Hex> walkBack(Map<Hex, Hex> cameFrom, Hex goal) {

@@ -228,6 +228,39 @@ public final class TerritoryTests {
     }
 
     @GameTest(template = "floor")
+    public static void fedAndPaidGuardsStay(GameTestHelper helper) {
+        Territory territory = new Territory();
+        GlobalPos bell = farm(helper, territory);
+        territory.setGuards(bell, 2);
+        farmStock(helper).insert(new ItemStack(Items.BREAD, 64));
+        farmStock(helper).insert(new ItemStack(Items.EMERALD, 64));
+        BlockPos desk = helper.absolutePos(new BlockPos(5, 2, 5));
+        long t = helper.getLevel().getGameTime();
+        territory.touch(helper.getLevel(), desk, farmStock(helper), t); // starts the upkeep clock
+        territory.touch(helper.getLevel(), desk, farmStock(helper), t + 5 * 24000L);
+        helper.assertTrue(territory.deserted(bell) == 0, "fed and paid, nobody deserts");
+        // 2 guards x 6 food x 5 days = 60 food points, 12 bread.
+        helper.assertTrue(farmStock(helper).count(new ItemCost(Items.BREAD, 1)) == 64 - 12,
+                "they ate 12 bread, " + (64 - farmStock(helper).count(new ItemCost(Items.BREAD, 1))) + " eaten");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void unfedGuardsDesert(GameTestHelper helper) {
+        Territory territory = new Territory();
+        GlobalPos bell = farm(helper, territory);
+        territory.setGuards(bell, 4);
+        farmStock(helper).insert(new ItemStack(Items.EMERALD, 64)); // paid, but no food
+        BlockPos desk = helper.absolutePos(new BlockPos(5, 2, 5));
+        long t = helper.getLevel().getGameTime();
+        territory.touch(helper.getLevel(), desk, farmStock(helper), t);
+        territory.touch(helper.getLevel(), desk, farmStock(helper), t + 3 * 24000L);
+        helper.assertTrue(territory.guards(bell) < 4 && territory.deserted(bell) > 0,
+                "hungry guards desert: " + territory.guards(bell) + " left");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void caravansPayTollsOnlyToLandTheyCross(GameTestHelper helper) {
         var dimension = helper.getLevel().dimension();
         CaravanLedger ledger = new CaravanLedger();
@@ -241,6 +274,8 @@ public final class TerritoryTests {
         territory.claim(first, Hex.at(new BlockPos(380, 64, 0))); // two hexes, one toll
         territory.claim(second, Hex.at(new BlockPos(700, 64, 0)));
         territory.claim(GlobalPos.of(dimension, new BlockPos(500, 64, 900)), Hex.at(new BlockPos(500, 64, 900)));
+        territory.setGuards(first, 2); // every hex they hold is guarded: the full 5% is collected
+        territory.setGuards(second, 1);
 
         int paid = Caravans.payTolls(territory, route, 1000);
         helper.assertTrue(paid == 50 + 47, "5% to the first (50), then 5% of the rest to the second (47); paid " + paid);

@@ -269,7 +269,8 @@ public final class Caravans {
         }
         int paid = 0;
         for (GlobalPos owner : crossed) {
-            int toll = (int) Math.floor((spurs - paid) * territory.tollRate(owner));
+            territory.recordTraffic(owner, spurs - paid);
+            int toll = (int) Math.floor((spurs - paid) * territory.effectiveToll(owner));
             if (toll > 0) {
                 territory.oweToll(owner, toll);
                 paid += toll;
