@@ -90,6 +90,16 @@ public final class Territory extends SavedData {
     /** At most this many days of produce accrue between visits. */
     private static final double MAX_DAYS = 60;
 
+    /**
+     * Mood: each kind of comfort fully supplied adds 1. A town wants more as it grows: every this many villagers takes
+     * 1 away. Each villager without a bed takes {@link #CROWDING_MOOD} away, and wages wholly unpaid
+     * {@link #UNPAID_MOOD}. Mood closes half its gap to that every {@link #MOOD_HALF_LIFE_DAYS} days.
+     */
+    public static final double VILLAGERS_PER_WANT = 8;
+    public static final double CROWDING_MOOD = 0.5;
+    public static final double UNPAID_MOOD = 2;
+    private static final double MOOD_HALF_LIFE_DAYS = 3;
+
     /** A hex in a dimension. */
     public record Place(ResourceKey<Level> dimension, Hex hex) {}
 
@@ -121,6 +131,13 @@ public final class Territory extends SavedData {
         double trafficSince; // coins carried across this land since the last review, in spurs
         double trafficPerDay; // averaged
         int deserted; // guards lost to hunger or no pay, in all
+        int villagers; // at the last census
+        int beds;
+        double mood;
+        Map<String, Double> comfortOwed = new HashMap<>(); // by kind, emeralds' worth; below 0: a big item's credit
+        Map<String, Double> comfortMet = new LinkedHashMap<>(); // by kind, share of the ration met at the last touch
+        long lastComforts = -1;
+        double paidShare = 1; // of the wages due at the last touch
     }
 
     private final Map<Place, GlobalPos> owners = new HashMap<>();
@@ -266,10 +283,12 @@ public final class Territory extends SavedData {
         GlobalPos bell = GlobalPos.of(level.dimension(), bellPos);
         Holding holding = holdings.computeIfAbsent(bell, b -> new Holding());
         holding.desk = nearestDesk(level, bellPos).map(desk -> GlobalPos.of(level.dimension(), desk)).orElse(null);
+        holding.villagers = census.villagers();
+        holding.beds = census.beds();
         Hex home = Hex.at(bellPos);
         claim(bell, home);
         if (owner(level.dimension(), home).filter(bell::equals).isPresent()) {
-            holding.culture += census.value() * days;
+            holding.culture += census.value() * days * cultureFactor(holding.mood);
             grow(bell, home);
         }
         if (holding.desk != null && level.isLoaded(holding.desk.pos())) {
@@ -388,7 +407,8 @@ public final class Territory extends SavedData {
     private static void accrue(Holding holding, long now) {
         if (holding.lastHarvest >= 0) {
             double days = Math.min(MAX_DAYS, (now - holding.lastHarvest) / 24000.0);
-            holding.perDay.forEach((item, rate) -> holding.pending.merge(item, rate * days, Double::sum));
+            double worked = days * yieldFactor(holding.mood); // content farmers work harder
+            holding.perDay.forEach((item, rate) -> holding.pending.merge(item, rate * worked, Double::sum));
             holding.wageOwed += wagePerDay(holding) * days;
             if (days > 0) {
                 double weight = 1 - Math.pow(0.5, days / SALES_HALF_LIFE_DAYS);
@@ -470,6 +490,8 @@ public final class Territory extends SavedData {
             owed.setValue(owed.getValue() - (whole - left));
             holding.harvested += whole - left;
         }
+        holding.paidShare = paidShare;
+        enjoyComforts(stock, holding, now);
         double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now);
         int bankSpurs = MoneyChanger.bankAt(level, desk).map(b -> b.getBalance()).orElse(0);
         holding.treasury = stock.count(new ItemCost(Items.EMERALD, 1))
@@ -497,6 +519,88 @@ public final class Territory extends SavedData {
         holding.tollsOwed += spurs;
         holding.tollIncomeToday += spurs;
         setDirty();
+    }
+
+    /**
+     * The town's villagers use their daily ration of each kind of comfort from the warehouse, for the days since the
+     * last touch; rations that can't be met are gone without, not owed. Then the mood moves toward what that,
+     * the town's size, its beds and its wages make it.
+     */
+    private void enjoyComforts(MerchantStock stock, Holding holding, long now) {
+        if (holding.lastComforts < 0) {
+            holding.lastComforts = now;
+            return;
+        }
+        double days = Math.min(MAX_DAYS, (now - holding.lastComforts) / 24000.0);
+        if (days <= 0) {
+            return;
+        }
+        holding.lastComforts = now;
+        for (var kind : Comforts.kinds()) {
+            String name = Comforts.name(kind);
+            double due = holding.villagers * Comforts.RATION_EMERALDS * days;
+            double owed = holding.comfortOwed.getOrDefault(name, 0.0) + due;
+            if (owed > 0) {
+                owed -= Comforts.use(stock, kind, owed);
+            }
+            holding.comfortMet.put(name, due <= 0 ? 0 : Math.max(0, Math.min(1, 1 - Math.max(0, owed) / due)));
+            holding.comfortOwed.put(name, Math.min(0, owed));
+        }
+        holding.mood += (moodTarget(holding) - holding.mood) * (1 - Math.pow(0.5, days / MOOD_HALF_LIFE_DAYS));
+    }
+
+    /** Where the town's mood is heading: comforts met, less its size, villagers without beds and unpaid wages. */
+    private static double moodTarget(Holding holding) {
+        double comforts = holding.comfortMet.values().stream().mapToDouble(Double::doubleValue).sum();
+        return comforts
+                - holding.villagers / VILLAGERS_PER_WANT
+                - CROWDING_MOOD * Math.max(0, holding.villagers - holding.beds)
+                - UNPAID_MOOD * (1 - holding.paidShare);
+    }
+
+    /** How the town feels: above 0 content, below 0 unhappy. */
+    public double mood(GlobalPos bell) {
+        return holding(bell).map(h -> h.mood).orElse(0.0);
+    }
+
+    public void setMood(GlobalPos bell, double mood) {
+        holdings.computeIfAbsent(bell, b -> new Holding()).mood = mood;
+        setDirty();
+    }
+
+    /** Share of each kind's ration met at the last touch, by kind. */
+    public Map<String, Double> comfortsMet(GlobalPos bell) {
+        return holding(bell).map(h -> Map.copyOf(h.comfortMet)).orElse(Map.of());
+    }
+
+    /** Farm output for a mood: a tenth more per point, between half and one and a half. */
+    public static double yieldFactor(double mood) {
+        return Math.max(0.5, Math.min(1.5, 1 + 0.1 * mood));
+    }
+
+    /** Culture for a mood: a quarter more per point, between a quarter and double. */
+    public static double cultureFactor(double mood) {
+        return Math.max(0.25, Math.min(2, 1 + 0.25 * mood));
+    }
+
+    public int villagers(GlobalPos bell) {
+        return holding(bell).map(h -> h.villagers).orElse(0);
+    }
+
+    public int beds(GlobalPos bell) {
+        return holding(bell).map(h -> h.beds).orElse(0);
+    }
+
+    /** What the warehouse at {@code desk} aims to hold of each kind of comfort, in emeralds' worth. */
+    public double comfortPar(GlobalPos desk) {
+        return bellOf(desk).map(bell -> holdings.get(bell).villagers * Comforts.RATION_EMERALDS * Comforts.PAR_DAYS)
+                .orElse(0.0);
+    }
+
+    /** Money the town keeps back before buying comforts: its wage float and three days of guards' pay, in emeralds. */
+    public double reserve(GlobalPos desk) {
+        return wageFloat(desk) + bellOf(desk).map(bell -> holdings.get(bell).posts.size() * GUARD_PAY_PER_DAY * 3)
+                .orElse(0.0);
     }
 
     /** The toll this town has set, as a share of the coins caravans carry. It's collected only at its posts. */
@@ -741,6 +845,13 @@ public final class Territory extends SavedData {
             entry.putDouble("trafficSince", holding.trafficSince);
             entry.putDouble("trafficPerDay", holding.trafficPerDay);
             entry.putInt("deserted", holding.deserted);
+            entry.putInt("villagers", holding.villagers);
+            entry.putInt("beds", holding.beds);
+            entry.putDouble("mood", holding.mood);
+            entry.put("comfortOwed", doubles(holding.comfortOwed));
+            entry.put("comfortMet", doubles(holding.comfortMet));
+            entry.putLong("lastComforts", holding.lastComforts);
+            entry.putDouble("paidShare", holding.paidShare);
             entry.put("perDay", doubles(holding.perDay));
             entry.put("pending", doubles(holding.pending));
             settlements.add(entry);
@@ -831,6 +942,13 @@ public final class Territory extends SavedData {
                 holding.trafficSince = entry.getDouble("trafficSince");
                 holding.trafficPerDay = entry.getDouble("trafficPerDay");
                 holding.deserted = entry.getInt("deserted");
+                holding.villagers = entry.getInt("villagers");
+                holding.beds = entry.getInt("beds");
+                holding.mood = entry.getDouble("mood");
+                holding.comfortOwed = new HashMap<>(readDoubles(entry.getCompound("comfortOwed")));
+                holding.comfortMet = readDoubles(entry.getCompound("comfortMet"));
+                holding.lastComforts = entry.contains("lastComforts") ? entry.getLong("lastComforts") : -1;
+                holding.paidShare = entry.contains("paidShare") ? entry.getDouble("paidShare") : 1;
                 holding.perDay = readDoubles(entry.getCompound("perDay"));
                 holding.pending = readDoubles(entry.getCompound("pending"));
                 territory.holdings.put(bell, holding);

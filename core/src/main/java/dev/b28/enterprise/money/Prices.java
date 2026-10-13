@@ -11,7 +11,7 @@ import net.minecraft.world.item.Item;
 public final class Prices {
     private static final double DEFAULT = 32;
 
-    private static final Map<String, Double> ITEMS_PER_EMERALD = Map.ofEntries(
+    private static final Map<String, Double> ITEMS_PER_EMERALD = new java.util.HashMap<>(Map.ofEntries(
             // Crops villagers buy (farmers; clerics buy nether wart)
             Map.entry("minecraft:wheat", 20.0),
             Map.entry("minecraft:carrot", 22.0),
@@ -44,7 +44,27 @@ public final class Prices {
             Map.entry("minecraft:cookie", 18.0),
             Map.entry("minecraft:cooked_porkchop", 5.0),
             Map.entry("minecraft:cooked_chicken", 8.0),
-            Map.entry("minecraft:baked_potato", 8.0));
+            Map.entry("minecraft:baked_potato", 8.0),
+            // Comforts (what villagers sell them for, or near it)
+            Map.entry("minecraft:cake", 1.0),
+            Map.entry("minecraft:pumpkin_pie", 4.0),
+            Map.entry("minecraft:honey_bottle", 3.0),
+            Map.entry("minecraft:leather_helmet", 0.2),
+            Map.entry("minecraft:leather_chestplate", 1 / 7.0),
+            Map.entry("minecraft:leather_leggings", 1 / 3.0),
+            Map.entry("minecraft:leather_boots", 0.25),
+            Map.entry("minecraft:painting", 0.5),
+            Map.entry("minecraft:flower_pot", 4.0),
+            Map.entry("minecraft:lantern", 1.0),
+            Map.entry("minecraft:candle", 3.0)));
+
+    static {
+        // Every colour of carpet and candle: carpets 4 to the emerald (shepherds), dyed candles as plain ones.
+        for (net.minecraft.world.item.DyeColor color : net.minecraft.world.item.DyeColor.values()) {
+            ITEMS_PER_EMERALD.put("minecraft:" + color.getName() + "_carpet", 4.0);
+            ITEMS_PER_EMERALD.put("minecraft:" + color.getName() + "_candle", 3.0);
+        }
+    }
 
     private Prices() {}
 

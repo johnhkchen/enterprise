@@ -120,6 +120,39 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void townsBuyComfortsUpToTheirPar(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192);
+        // The destination is a town of five: it wants 4 days of treats, 5 x 0.1 x 4 = 2 emeralds' worth (36 cookies).
+        net.territory().afterCensus(helper.getLevel(), helper.absolutePos(new BlockPos(6, 2, 4)),
+                new dev.b28.enterprise.settlement.Census(5, 5, 5, 5, 0), 1, java.util.List.of());
+        net.hub().insert(new ItemStack(Items.COOKIE, 64));
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        int aboard = net.ledger().caravan(net.route().id()).orElseThrow().cargo().stream()
+                .filter(stack -> stack.is(Items.COOKIE)).mapToInt(ItemStack::getCount).sum();
+        helper.assertTrue(aboard == 54, "the caravan takes half again what the town wants: " + aboard);
+        net.poll(t + 80);
+        helper.assertTrue(net.dest().count(new ItemCost(Items.COOKIE, 1)) == 36,
+                "the town buys 36 cookies: " + net.dest().count(new ItemCost(Items.COOKIE, 1)));
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aTownShortOfClothesBuysAPairOfBoots(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192);
+        net.territory().afterCensus(helper.getLevel(), helper.absolutePos(new BlockPos(6, 2, 4)),
+                new dev.b28.enterprise.settlement.Census(5, 5, 5, 5, 0), 1, java.util.List.of());
+        for (int i = 0; i < 3; i++) {
+            net.hub().insert(new ItemStack(Items.LEATHER_BOOTS)); // 4 emeralds each: more than the 2-emerald par
+        }
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        net.poll(t + 80);
+        helper.assertTrue(net.dest().count(new ItemCost(Items.LEATHER_BOOTS, 1)) == 1, "one pair bought");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void caravansBuyATownsSurplusForTheTripHome(GameTestHelper helper) {
         Network net = network(helper, 2, 5, 192);
         // Another town on the hub's routes buys carrots: the travelling Merchant has somewhere to sell them.

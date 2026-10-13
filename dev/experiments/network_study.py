@@ -10,7 +10,9 @@ bridges, so the roads to S2 and S3 cross T's land or go far around.
 
 Each day it writes one row per town and one per route to the CSV (ledger reads only; nothing is loaded).
 
-    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river]
+With --comforts, the hub also stocks a shulker of comforts (treats, clothing, furnishings) for towns to buy.
+
+    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river] [--comforts]
 """
 
 import csv
@@ -103,6 +105,8 @@ def build_river():
 def setup():
     hub_desk = f"{HUB[0] + 2} -60 {HUB[1] + 2}"
     rcon(f"forceload add {area(HUB, 6)}", f"execute positioned {HUB[0]} -60 {HUB[1]} run function testbench:network/hub")
+    if "--comforts" in sys.argv:
+        rcon(f"execute positioned {HUB[0]} -60 {HUB[1]} run function testbench:network/comforts")
     for corner in TOWNS.values():
         rcon(f"forceload add {area(corner, 27)}",
              f"execute positioned {corner[0]} -60 {corner[1]} run function testbench:network/settlement")
@@ -168,6 +172,7 @@ def main():
                 "farm_share_pct": number(r"\((\d+)% of the harvest", t),
                 "harvested": number(r"(\d+) items harvested", t),
                 "trades": trades[name],
+                "mood": number(r"mood ([+-][\d.]+)", t),
             })
         routes = rcon("enterprise routes")
         for line in routes.splitlines():
@@ -184,7 +189,8 @@ def main():
                 })
         towns = [r for r in rows if r["day"] == day and r["kind"] == "town"]
         print(f"day {day:>2}: " + " | ".join(
-            f"{r['name']} {r['treasury']:.0f}em {int(r['guards'])}g {r['toll_pct']:.1f}% {r['trades']}t" for r in towns)
+            f"{r['name']} {r['treasury']:.0f}em {r['mood']:+.1f} {int(r['guards'])}g {r['toll_pct']:.0f}% {r['trades']}t"
+            for r in towns)
             + f" | mint {rate:.1f}")
         sys.stdout.flush()
     fields = sorted({key for row in rows for key in row}, key=lambda k: (k not in ("day", "kind", "name"), k))

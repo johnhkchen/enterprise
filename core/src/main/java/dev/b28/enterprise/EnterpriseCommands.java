@@ -185,6 +185,15 @@ final class EnterpriseCommands {
             source.sendSuccess(() -> Component.literal("  treasury %.1f emeralds at the market's last touch"
                     .formatted(territory.treasury(bell))), false);
         }
+        double mood = territory.mood(bell);
+        String met = territory.comfortsMet(bell).entrySet().stream().sorted(Map.Entry.comparingByKey())
+                .map(e -> "%s %.0f%%".formatted(e.getKey(), e.getValue() * 100))
+                .collect(java.util.stream.Collectors.joining(", "));
+        source.sendSuccess(() -> Component.literal(("  mood %+.2f (%s): %d villagers, %d beds; comforts met: %s; "
+                + "farms x%.2f, culture x%.2f").formatted(mood, mood >= 0.5 ? "content" : mood > -0.5 ? "so-so" : "unhappy",
+                territory.villagers(bell), territory.beds(bell), met.isEmpty() ? "none yet" : met,
+                dev.b28.enterprise.territory.Territory.yieldFactor(mood),
+                dev.b28.enterprise.territory.Territory.cultureFactor(mood))), false);
         source.sendSuccess(() -> Component.literal("  toll %.1f%% at its posts (%.0f spurs collected last review)".formatted(
                 territory.tollRate(bell) * 100, Math.max(0, territory.tollIncomeYesterday(bell)))), false);
         source.sendSuccess(() -> Component.literal(("  %d guard(s) posted at %s; traffic %.0f spurs a day; %d deserted")

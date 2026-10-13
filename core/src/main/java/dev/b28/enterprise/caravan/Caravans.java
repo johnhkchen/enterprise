@@ -3,6 +3,7 @@ package dev.b28.enterprise.caravan;
 import dev.b28.enterprise.Enterprise;
 import dev.b28.enterprise.hex.Hex;
 import dev.b28.enterprise.territory.Chokepoints;
+import dev.b28.enterprise.territory.Comforts;
 import dev.b28.enterprise.territory.Terrain;
 import dev.b28.enterprise.territory.Territory;
 import dev.b28.enterprise.locker.Lockers;
@@ -74,6 +75,9 @@ public final class Caravans {
      */
     public static final double PURSE_PER_FOOD_POINT = 1.5 / 30;
 
+
+    /** A caravan carries this much of what a town wants of a comfort: it may have used more since its stocktake. */
+    public static final double COMFORT_MARGIN = 1.5;
 
     /** At most one departure per route per in-game day. */
     public static final long DEPARTURE_INTERVAL = 24000;
@@ -165,7 +169,8 @@ public final class Caravans {
             ledger.setDirty();
             return false;
         }
-        List<ItemStack> cargo = pickCargo(stock, wantedAt(server, route.to));
+        List<ItemStack> cargo = pickComforts(stock, comfortWants(server, territory, route.to));
+        cargo.addAll(pickCargo(stock, wantedAt(server, route.to), CARGO_SLOTS - cargo.size()));
         Warehouse.get(server).recordStocktake(route.from, stock.totals()); // for buying decisions while away
         if (cargo.isEmpty() && !hasBusinessAt(server, ledger, route, now)) {
             route.status = "nothing to sell there and nothing wanted from there";
@@ -217,12 +222,13 @@ public final class Caravans {
                     .map(m -> m.getVillagerData().getLevel())
                     .orElse(Warehouse.get(server).level(route.to));
             Warehouse.get(server).recordLevel(route.to, residentLevel);
-            int earned = sell(server, level, route.to, stock, caravan, residentLevel, mint, rate, now, route);
+            int earned = sell(server, level, route.to, stock, caravan, residentLevel, mint, rate, now, route, territory);
             caravan.spurs += earned;
             route.salesSpurs += earned;
             int keepForFood = (int) Math.ceil(food * PURSE_PER_FOOD_POINT * rate);
             buySurplus(server, ledger, level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
         }
+        Warehouse.get(server).recordStocktake(route.to, stock.totals()); // what the next caravan should bring
         Map<Item, Integer> meal = stock.eat(food);
         if (meal.isEmpty()) {
             caravan.leg = Caravan.Leg.WAITING_FOR_FOOD;
@@ -405,6 +411,52 @@ public final class Caravans {
                 ends(territory, route), perHex(rate), terrain(server, route), route.expectedValue(), Set.of());
     }
 
+    /**
+     * What the destination wants of each kind of comfort, in emeralds' worth: its par less what it held at its last
+     * stocktake (none taken yet: the whole par).
+     */
+    static Map<String, Double> comfortWants(MinecraftServer server, Territory territory, GlobalPos desk) {
+        Warehouse warehouse = Warehouse.get(server);
+        double par = territory.comfortPar(desk);
+        Map<String, Double> wants = new LinkedHashMap<>();
+        for (var kind : Comforts.kinds()) {
+            double held = 0;
+            for (var holder : BuiltInRegistries.ITEM.getTagOrEmpty(kind)) {
+                held += warehouse.onHand(desk, holder.value()) * Prices.emeraldsEach(holder.value());
+            }
+            if (par - held > 0) {
+                wants.put(Comforts.name(kind), par - held);
+            }
+        }
+        return wants;
+    }
+
+    /** Comforts from the hub's stock for what the destination wants, a little over, cheapest goods first. */
+    static List<ItemStack> pickComforts(MerchantStock stock, Map<String, Double> wants) {
+        List<ItemStack> cargo = new ArrayList<>();
+        for (Map.Entry<String, Double> want : wants.entrySet()) {
+            var kind = Comforts.kind(want.getKey()).orElseThrow();
+            double worth = 0;
+            List<Item> goods = stock.totals().keySet().stream()
+                    .map(id -> BuiltInRegistries.ITEM.get(ResourceLocation.parse(id)))
+                    .filter(item -> item.builtInRegistryHolder().is(kind))
+                    .sorted(Comparator.comparingDouble(Prices::emeraldsEach))
+                    .toList();
+            for (Item item : goods) {
+                double each = Prices.emeraldsEach(item);
+                int count = (int) Math.ceil((want.getValue() * COMFORT_MARGIN - worth) / each);
+                if (count <= 0) {
+                    break;
+                }
+                for (ItemStack piece : stock.take(new ItemCost(item, 1), count)) {
+                    worth += piece.getCount() * each;
+                    cargo.add(piece);
+                }
+            }
+        }
+        return cargo;
+    }
+
     /** Items the destination's switched-on trades take, read from the trade keys ("costA+costB>result"). */
     static Set<Item> wantedAt(MinecraftServer server, GlobalPos desk) {
         MerchantBook book = MerchantBook.get(server);
@@ -425,13 +477,13 @@ public final class Caravans {
         return items;
     }
 
-    /** Up to {@link #CARGO_SLOTS} stacks, shared across the wanted items, each up to {@link #WANT_PER_ITEM}. */
-    static List<ItemStack> pickCargo(MerchantStock stock, Set<Item> wanted) {
+    /** Up to {@code slots} stacks, shared across the wanted items, each up to {@link #WANT_PER_ITEM}. */
+    static List<ItemStack> pickCargo(MerchantStock stock, Set<Item> wanted, int slots) {
         List<ItemStack> cargo = new ArrayList<>();
-        if (wanted.isEmpty()) {
+        if (wanted.isEmpty() || slots <= 0) {
             return cargo;
         }
-        int perItem = Math.min(WANT_PER_ITEM, CARGO_SLOTS / wanted.size() * 64);
+        int perItem = Math.min(WANT_PER_ITEM, slots / wanted.size() * 64);
         for (Item item : wanted) {
             for (ItemStack piece : stock.take(new ItemCost(item, 1), perItem)) {
                 cargo.add(piece);
@@ -446,7 +498,7 @@ public final class Caravans {
      * isn't sold rides home.
      */
     private static int sell(MinecraftServer server, ServerLevel level, GlobalPos desk, MerchantStock stock,
-            Caravan caravan, int residentLevel, Mint mint, double rate, long now, Route route) {
+            Caravan caravan, int residentLevel, Mint mint, double rate, long now, Route route, Territory territory) {
         Warehouse warehouse = Warehouse.get(server);
         Set<Item> wanted = wantedAt(server, desk);
         int earned = 0;
@@ -454,12 +506,21 @@ public final class Caravans {
             ItemStack stack = it.next();
             Item item = stack.getItem();
             int onHand = stock.count(new ItemCost(item, 1));
-            int par = Math.min(warehouse.par(desk, item, wanted.contains(item), now),
-                    roomFor(stock, wanted.size(), item));
+            double value = Prices.emeraldsEach(item);
+            var comfort = Comforts.kindOf(item);
+            int par;
+            double money = Treasury.available(level, desk.pos(), stock, rate);
+            if (comfort.isPresent()) {
+                // Comforts: up to the kind's par in worth, paid from money the town doesn't need for wages and guards.
+                double held = Comforts.onHand(stock).getOrDefault(Comforts.name(comfort.get()), 0.0);
+                // Whole items: a town short of a kind buys one even if it costs more than the gap (a pair of boots).
+                par = onHand + (int) Math.max(0, Math.ceil((territory.comfortPar(desk) - held) / value));
+                money -= territory.reserve(desk);
+            } else {
+                par = Math.min(warehouse.par(desk, item, wanted.contains(item), now), roomFor(stock, wanted.size(), item));
+            }
             int quantity = Math.min(stack.getCount(), par - onHand);
             double each = -1;
-            double value = Prices.emeraldsEach(item);
-            double money = Treasury.available(level, desk.pos(), stock, rate);
             for (int pass = 0; pass < 2 && quantity > 0; pass++) {
                 // Price at the middle of the batch: the resident's shortage shrinks as the shelf fills.
                 double midShortage = Bargain.shortage(onHand + quantity / 2, par);

@@ -122,6 +122,14 @@ Decisions made after the brief (`docs/brief.md`). Where this file and the brief 
 - **A Merchant with few slots manages lockers with trades switched on first**, then the nearest.
 - **Measured** (`caravan_network.py`, two runs): with five settlements left unloaded for 8 days, every farm produced 16 carrots a day, territories grew to 3-4 hexes, the hub banked 3,580-3,975 spurs, and the route crossing the toll town paid it 27-31 spurs.
 
+## Mood and comforts (built 2026-10-14)
+
+- **Comforts are what towns spend spare money on.** A kind of comfort is an item tag under `enterprise:comforts/`: to start, treats (cookies, cake, pumpkin pie, honey), clothing (leather armour), furnishings (carpets, candles, paintings, flower pots, lanterns) and reading (books). A pack adds a kind (tea, cigarettes, another mod's finished clothes) by adding a tag.
+- **Villagers use them up.** Each villager uses a tenth of an emerald's worth of each kind a day from the town's warehouse, at local prices, cheapest goods first and whole items only (a cake covers several days). A ration that can't be met is gone without, not owed.
+- **Mood is Civilization's happiness.** Each kind fully supplied adds 1. Every 8 villagers take 1 away (bigger towns want more), each villager without a bed takes 0.5, and wholly unpaid wages take 2. Mood closes half its gap to that every 3 days. A content town's farms yield a tenth more per point of mood (between half and one and a half times) and it gathers a quarter more culture per point (between a quarter and double), so it grows its territory faster. `/enterprise territory <bell>` shows mood, what's met and the effects.
+- **Towns buy comforts by caravan.** A town aims to hold 4 days of each kind (villagers x 0.1 x 4 emeralds' worth), buying whole items, at least one when short. It pays only from money beyond its wage float and 3 days of guards' pay. A caravan loads comforts from the hub for what the town wanted at its last stocktake (taken at each caravan visit), half again over, before it fills the rest of its cargo.
+- **Measured** (`network_study.py --comforts`, 20 days, the hub stocking one shulker of comforts and its books): the three supplied towns reached mood +3.3 (all four kinds met; farms x1.33, culture x1.83). The two towns without a route sank to -0.6. Town money stopped climbing: S1 peaked at 125 emeralds on day 10, when the hub ran out of trade goods, and fell to 96 by day 20 while it kept buying comforts.
+
 ## Travel cost between hexes (2026-10-13)
 
 Travel cost must react to real building. A long wall, a tunnel, a bridge or a wide canal should each change routes and costs.
