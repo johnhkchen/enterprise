@@ -624,7 +624,7 @@ public final class Territory extends SavedData {
     /**
      * Every {@link #TOLL_REVIEW_TICKS}, a town moves its toll a step the way that raised its income: if the last
      * period's tolls fell short of the one before, it reverses direction. A town with no toll income in two periods
-     * running lowers its toll to draw traffic.
+     * running lowers its toll to draw traffic. An unguarded town (which collects nothing) leaves its rate alone.
      */
     public void reviewTolls(GlobalPos bell, long now) {
         reviewTolls(bell, now, 16);
@@ -642,6 +642,13 @@ public final class Territory extends SavedData {
         }
         reviewGarrison(bell, (now - holding.lastTollReview) / 24000.0, rate);
         double income = holding.tollIncomeToday;
+        if (holding.guards == 0 && income == 0) {
+            // Unguarded, it collects nothing whatever the rate: no lesson in that. Keep the rate for when it hires.
+            holding.tollIncomeToday = 0;
+            holding.lastTollReview = now;
+            setDirty();
+            return;
+        }
         if (income == 0 && holding.tollIncomeYesterday <= 0) {
             holding.tollDirection = -1;
         } else if (holding.tollIncomeYesterday >= 0 && income < holding.tollIncomeYesterday) {

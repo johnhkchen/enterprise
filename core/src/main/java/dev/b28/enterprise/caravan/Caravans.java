@@ -155,11 +155,16 @@ public final class Caravans {
             ledger.setDirty();
             return false;
         }
+        List<ItemStack> cargo = pickCargo(stock, wantedAt(server, route.to));
+        Warehouse.get(server).recordStocktake(route.from, stock.totals()); // for buying decisions while away
+        if (cargo.isEmpty() && !hasBusinessAt(server, ledger, route, now)) {
+            route.status = "nothing to sell there and nothing wanted from there";
+            ledger.setDirty();
+            return false; // no empty trips: the road food would be wasted
+        }
         stock.eat(food); // the hub's own food: already paid for
         Treasury.Withdrawal taken = Treasury.withdraw(level, route.from.pos(), stock, purse, mint, now);
         int spurs = taken.spurs() + mint.sell(Mint.DEFAULT_FACTION, taken.emeralds(), now);
-        List<ItemStack> cargo = pickCargo(stock, wantedAt(server, route.to));
-        Warehouse.get(server).recordStocktake(route.from, stock.totals()); // for buying decisions while away
         ledger.put(new Caravan(
                 route.id, Caravan.Leg.OUTBOUND, now + travelTicks(route.distance()), cargo, spurs, merchantLevel));
         route.lastDeparture = now;
@@ -379,6 +384,14 @@ public final class Caravans {
             }
         }
         return earned;
+    }
+
+    /** Whether a caravan with no cargo would still do business: the network wants goods this town can spare. */
+    static boolean hasBusinessAt(MinecraftServer server, CaravanLedger ledger, Route route, long now) {
+        Map<Item, Integer> wants = networkWants(server, ledger, route,
+                new Caravan(route.id, Caravan.Leg.OUTBOUND, now, new java.util.ArrayList<>(), 0, 1), now);
+        Warehouse warehouse = Warehouse.get(server);
+        return wants.keySet().stream().anyMatch(item -> warehouse.onHand(route.to, item) > 0);
     }
 
     /**

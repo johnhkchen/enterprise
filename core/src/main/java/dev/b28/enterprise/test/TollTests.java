@@ -119,14 +119,28 @@ public final class TollTests {
     }
 
     @GameTest(template = "floor")
-    public static void aTownWithNoTrafficLowersItsToll(GameTestHelper helper) {
+    public static void aGuardedTownWithNoTrafficLowersItsToll(GameTestHelper helper) {
         Territory territory = new Territory();
-        GlobalPos town = GlobalPos.of(helper.getLevel().dimension(), new BlockPos(998_000, 64, 999_000));
+        GlobalPos town = townAcrossTheRoad(helper, territory, Territory.DEFAULT_TOLL_RATE);
         long t = 1_000_000;
         territory.reviewTolls(town, t);
         territory.reviewTolls(town, t + Territory.TOLL_REVIEW_TICKS);
+        territory.setGuards(town, 19); // the review let a guard go for lack of traffic; keep it guarded
         territory.reviewTolls(town, t + 2 * Territory.TOLL_REVIEW_TICKS);
         helper.assertTrue(territory.tollRate(town) < Territory.DEFAULT_TOLL_RATE, "lowered: " + territory.tollRate(town));
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void anUnguardedTownKeepsItsToll(GameTestHelper helper) {
+        Territory territory = new Territory();
+        GlobalPos town = GlobalPos.of(helper.getLevel().dimension(), new BlockPos(998_000, 64, 999_000));
+        long t = 1_000_000;
+        for (int i = 0; i <= 4; i++) {
+            territory.reviewTolls(town, t + i * Territory.TOLL_REVIEW_TICKS);
+        }
+        helper.assertTrue(territory.tollRate(town) == Territory.DEFAULT_TOLL_RATE,
+                "collecting nothing teaches nothing: " + territory.tollRate(town));
         helper.succeed();
     }
 }
