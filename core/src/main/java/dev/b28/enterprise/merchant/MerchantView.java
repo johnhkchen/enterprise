@@ -1,6 +1,9 @@
 package dev.b28.enterprise.merchant;
 
 import dev.b28.enterprise.locker.Lockers;
+import dev.b28.enterprise.money.Mint;
+import dev.b28.enterprise.money.MoneyChanger;
+import dev.ithundxr.createnumismatics.content.backend.BankAccount;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
@@ -14,12 +17,19 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.ItemStack;
 
-/** What the Merchant screen shows: the lockers a Merchant manages and each one's trades. Sent to the client once. */
-public record MerchantView(BlockPos desk, int limit, List<LockerView> lockers) {
+/**
+ * What the Merchant screen shows: the lockers a Merchant manages and each one's trades, the emerald rate, and the
+ * settlement bank's balance ({@link #NO_BANK} without a Blaze Banker). Sent to the client once.
+ */
+public record MerchantView(BlockPos desk, int limit, List<LockerView> lockers, double rate, int bankSpurs) {
+    public static final int NO_BANK = -1;
+
     public static final StreamCodec<RegistryFriendlyByteBuf, MerchantView> STREAM_CODEC = StreamCodec.composite(
             BlockPos.STREAM_CODEC, MerchantView::desk,
             ByteBufCodecs.VAR_INT, MerchantView::limit,
             LockerView.STREAM_CODEC.apply(ByteBufCodecs.list()), MerchantView::lockers,
+            ByteBufCodecs.DOUBLE, MerchantView::rate,
+            ByteBufCodecs.VAR_INT, MerchantView::bankSpurs,
             MerchantView::new);
 
     public record LockerView(BlockPos workstation, Component worker, List<TradeView> trades) {
@@ -69,6 +79,8 @@ public record MerchantView(BlockPos desk, int limit, List<LockerView> lockers) {
                     return new LockerView(locker.workstation(), label, trades);
                 })
                 .toList();
-        return new MerchantView(desk, limit, lockers);
+        double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, level.getGameTime());
+        int bankSpurs = MoneyChanger.bankAt(level, desk).map(BankAccount::getBalance).orElse(NO_BANK);
+        return new MerchantView(desk, limit, lockers, rate, bankSpurs);
     }
 }

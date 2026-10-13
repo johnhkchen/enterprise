@@ -1,6 +1,7 @@
 package dev.b28.enterprise;
 
 import com.mojang.logging.LogUtils;
+import dev.b28.enterprise.locker.LockerCatchUp;
 import dev.b28.enterprise.merchant.Merchant;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
@@ -16,6 +17,8 @@ public final class Enterprise {
     public Enterprise(IEventBus modBus) {
         Merchant.register(modBus);
         NeoForge.EVENT_BUS.addListener(EnterpriseCommands::register);
+        NeoForge.EVENT_BUS.addListener(LockerCatchUp::onJoin);
+        NeoForge.EVENT_BUS.addListener(LockerCatchUp::onServerTick);
     }
 
     public static ResourceLocation id(String path) {

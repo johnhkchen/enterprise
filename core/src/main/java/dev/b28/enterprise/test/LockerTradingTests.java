@@ -254,6 +254,48 @@ public final class LockerTradingTests {
     }
 
     @GameTest(template = "floor", timeoutTicks = 400)
+    public static void unloadedDaysAreReplayedOnLoad(GameTestHelper helper) {
+        BlockPos stockChest = new BlockPos(4, 2, 3); // touches the desk
+        Market market = market(helper, true);
+        helper.setBlock(stockChest, Blocks.CHEST);
+        NonNullList<ItemStack> paper = NonNullList.withSize(27, ItemStack.EMPTY);
+        for (int i = 0; i < 27; i++) {
+            paper.set(i, new ItemStack(Items.PAPER, 64));
+        }
+        ItemStack box = new ItemStack(Items.SHULKER_BOX);
+        box.set(DataComponents.CONTAINER, ItemContainerContents.fromItems(paper));
+        Lockers.inventory(helper.getLevel(), List.of(helper.absolutePos(stockChest))).insertItem(0, box, false);
+
+        helper.startSequence().thenWaitUntil(() -> helper.assertTrue(market.ready(), "waiting for job sites"))
+                .thenExecute(() -> {
+                    market.givePaperTrade(0);
+                    market.enable(PAPER_TRADE);
+                    Villager librarian = market.librarian();
+                    librarian.lastRestockGameTime = helper.getLevel().getGameTime() - 3 * 24000L - 1;
+
+                    int replayed = dev.b28.enterprise.locker.LockerCatchUp.catchUp(librarian);
+                    helper.assertTrue(replayed == 6, "3 missed days replay 6 restocks, replayed " + replayed);
+                    // Restocks alternate: trade 16, inflated (skip), trade 16, skip, trade 16, skip.
+                    int emeralds = dev.b28.enterprise.merchant.MerchantStock.at(helper.getLevel(), helper.absolutePos(DESK))
+                            .count(new ItemCost(Items.EMERALD, 1));
+                    helper.assertTrue(emeralds == 48, "48 emeralds back in stock, found " + emeralds);
+                })
+                .thenSucceed();
+    }
+
+    @GameTest(template = "floor", timeoutTicks = 400)
+    public static void neverRestockedOwesNothing(GameTestHelper helper) {
+        Market market = market(helper, false);
+        helper.startSequence().thenWaitUntil(() -> helper.assertTrue(market.ready(), "waiting for job sites"))
+                .thenExecute(() -> {
+                    market.librarian().lastRestockGameTime = 0;
+                    helper.assertTrue(dev.b28.enterprise.locker.LockerCatchUp.missedRestocks(market.librarian()) == 0,
+                            "a villager that never restocked owes nothing");
+                })
+                .thenSucceed();
+    }
+
+    @GameTest(template = "floor", timeoutTicks = 400)
     public static void villagerWithLockerAsksToRestock(GameTestHelper helper) {
         Market market = market(helper, false);
         helper.startSequence().thenWaitUntil(() -> helper.assertTrue(market.ready(), "waiting for job sites"))

@@ -45,7 +45,9 @@ Decisions made after the brief (`docs/brief.md`). Where this file and the brief 
 - **XP:** each locker trade gives XP to both the villager and the Merchant.
 - **Locked-up villagers get lockers too.** Confinement affects settlement value, not lockers.
 - **Trades run while unloaded.** One pure settlement function takes (contents snapshot, cached trades, elapsed time) and returns the new state. First it runs on load, replaying what was missed. Later the ledger runs the same function while the village is unloaded, and the result is written back when the village loads.
-- **No catch-up time cap.** The locker's size, trade uses per restock, and the inflated-price rule already bound what accumulates.
+- **Catch-up on load (built 2026-10-14):** when a villager with a locker loads back in, it waits 2 seconds for the Merchant's desk and chests nearby to load, then replays the restocks it missed, two per whole day, through the normal locker trade (supply, trade, collect, sell). Measured: a market unloaded for 3 days replayed exactly the 48 trades it makes in 3 loaded days.
+- **Catch-up cap: 60 days** of missed restocks, as a guard on load time. The locker's size, trade uses per restock and the inflated-price rule already bound what accumulates well before that.
+- **Still to come:** the ledger running the same settlement while the village stays unloaded, so remote views (a bank terminal elsewhere) see coins before anyone visits.
 - **Write-back safety:** a snapshot records the locker's contents at unload. If the chest doesn't match the snapshot on load (rollback, hand edit), the ledger's result is discarded and a fresh snapshot is taken. No duplication either way.
 
 ## Merchant (2026-10-13)

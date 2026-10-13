@@ -1,6 +1,7 @@
 package dev.b28.enterprise.client;
 
 import dev.b28.enterprise.merchant.MerchantMenu;
+import dev.b28.enterprise.merchant.MerchantView;
 import dev.b28.enterprise.merchant.MerchantView.LockerView;
 import dev.b28.enterprise.merchant.MerchantView.TradeView;
 import dev.b28.enterprise.merchant.ToggleTradePayload;
@@ -21,11 +22,11 @@ import net.neoforged.neoforge.network.PacketDistributor;
 /** Lockers on the left; the selected locker's trades on the right, each with an On/Off switch. */
 public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> {
     private static final int LIST_X = 8;
-    private static final int LIST_Y = 20;
+    private static final int LIST_Y = 32;
     private static final int LIST_W = 96;
     private static final int LIST_ROW = 16;
     private static final int TRADES_X = 112;
-    private static final int TRADES_Y = 34;
+    private static final int TRADES_Y = 46;
     private static final int TRADE_ROW = 20;
     private static final int TRADE_ROWS = 7;
     private static final int SWITCH_X = 222;
@@ -38,7 +39,7 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
     public MerchantScreen(MerchantMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
         imageWidth = 276;
-        imageHeight = 190;
+        imageHeight = 202;
         for (LockerView locker : menu.view().lockers()) {
             Set<String> on = new HashSet<>();
             locker.trades().stream().filter(TradeView::enabled).forEach(trade -> on.add(trade.key()));
@@ -112,6 +113,14 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
         Component count = Component.translatable(
                 "screen.enterprise.merchant.lockers", lockers().size(), menu.view().limit());
         graphics.drawString(font, count, imageWidth - 8 - font.width(count), 7, TEXT, false);
+
+        Component rate = Component.translatable(
+                "screen.enterprise.merchant.rate", String.format("%.1f", menu.view().rate()));
+        Component bank = menu.view().bankSpurs() == MerchantView.NO_BANK
+                ? Component.translatable("screen.enterprise.merchant.no_bank")
+                : Component.translatable("screen.enterprise.merchant.bank", String.format("%,d", menu.view().bankSpurs()));
+        graphics.drawString(font, rate, 8, 19, TEXT, false);
+        graphics.drawString(font, bank, imageWidth - 8 - font.width(bank), 19, TEXT, false);
     }
 
     @Override

@@ -5,6 +5,9 @@
   "screen.enterprise.merchant.no_lockers": "No lockers in reach. Put a chest or barrel against a villager's workstation within 48 blocks.",
   "screen.enterprise.merchant.no_trades": "This villager hasn't offered any trades yet. Trade with them once to see their list.",
   "screen.enterprise.merchant.unclaimed": "No one works here",
+  "screen.enterprise.merchant.rate": "%s spurs per emerald",
+  "screen.enterprise.merchant.bank": "Bank: %s spurs",
+  "screen.enterprise.merchant.no_bank": "No Blaze Banker",
   "screen.enterprise.merchant.on": "On",
   "screen.enterprise.merchant.off": "Off",
   "message.enterprise.merchant.no_desk": "This Merchant has lost its desk."
