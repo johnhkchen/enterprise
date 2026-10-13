@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
+import net.minecraft.core.NonNullList;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntityType;
@@ -19,6 +21,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.trading.ItemCost;
 import net.minecraft.world.item.trading.MerchantOffer;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.trading.MerchantOffers;
 import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.gametest.GameTestHolder;
@@ -97,13 +100,25 @@ public final class LockerTradingTests {
         helper.setBlock(CHEST, Blocks.CHEST);
         Villager librarian = helper.spawn(EntityType.VILLAGER, new BlockPos(1, 2, 2));
         librarian.setVillagerData(librarian.getVillagerData().setProfession(VillagerProfession.LIBRARIAN));
+        claim(helper, librarian, LECTERN);
         Optional<Villager> merchant = Optional.empty();
         if (withMerchant) {
             Villager m = helper.spawn(EntityType.VILLAGER, new BlockPos(4, 2, 4));
             m.setVillagerData(m.getVillagerData().setProfession(Merchant.PROFESSION.get()));
+            claim(helper, m, DESK);
             merchant = Optional.of(m);
         }
         return new Market(helper, librarian, merchant);
+    }
+
+    /**
+     * Gives the villager this job site at once. Waiting for a natural claim is flaky: tests run side by side, and a
+     * villager may claim a neighbouring test's workstation.
+     */
+    static void claim(GameTestHelper helper, Villager villager, BlockPos site) {
+        BlockPos pos = helper.absolutePos(site);
+        helper.getLevel().getPoiManager().take(type -> true, (type, at) -> at.equals(pos), pos, 1);
+        villager.getBrain().setMemory(MemoryModuleType.JOB_SITE, GlobalPos.of(helper.getLevel().dimension(), pos));
     }
 
     @GameTest(template = "floor", timeoutTicks = 400)
@@ -179,6 +194,51 @@ public final class LockerTradingTests {
                     market.librarian().restock();
                     // Reputation 110 x 0.05 = 5 off: 19 paper per emerald, so 3 trades from 64.
                     market.assertLocker(7, 3);
+                })
+                .thenSucceed();
+    }
+
+    @GameTest(template = "floor", timeoutTicks = 400)
+    public static void merchantFillsLockerFromShulkerAndCollects(GameTestHelper helper) {
+        BlockPos stockChest = new BlockPos(4, 2, 3); // touches the desk
+        Market market = market(helper, true);
+        helper.setBlock(stockChest, Blocks.CHEST);
+        NonNullList<ItemStack> boxContents = NonNullList.withSize(27, ItemStack.EMPTY);
+        boxContents.set(0, new ItemStack(Items.PAPER, 64));
+        boxContents.set(1, new ItemStack(Items.PAPER, 64));
+        ItemStack box = new ItemStack(Items.SHULKER_BOX);
+        box.set(DataComponents.CONTAINER, ItemContainerContents.fromItems(boxContents));
+        IItemHandler stock = Lockers.inventory(helper.getLevel(), List.of(helper.absolutePos(stockChest)));
+        stock.insertItem(0, box, false);
+
+        helper.startSequence().thenWaitUntil(() -> helper.assertTrue(market.ready(), "waiting for job sites"))
+                .thenExecute(() -> {
+                    market.givePaperTrade(0);
+                    market.enable(PAPER_TRADE);
+                    market.librarian().restock();
+
+                    // 128 paper moved into the locker: 5 trades use 120, 8 stay behind; emeralds go to stock.
+                    market.assertLocker(8, 0);
+                    ItemStack emeralds = stock.getStackInSlot(1);
+                    helper.assertTrue(emeralds.is(Items.EMERALD) && emeralds.getCount() == 5,
+                            "5 emeralds back in the Merchant's chest, found " + emeralds);
+                    ItemContainerContents left = stock.getStackInSlot(0).get(DataComponents.CONTAINER);
+                    helper.assertTrue(left != null && left.nonEmptyItems().iterator().hasNext() == false,
+                            "the shulker box is empty");
+                })
+                .thenSucceed();
+    }
+
+    @GameTest(template = "floor", timeoutTicks = 400)
+    public static void lockerRestocksDoNotSinkDemand(GameTestHelper helper) {
+        Market market = market(helper, false);
+        helper.startSequence().thenWaitUntil(() -> helper.assertTrue(market.ready(), "waiting for job sites"))
+                .thenExecute(() -> {
+                    MerchantOffer offer = market.givePaperTrade(10);
+                    market.librarian().restock(); // unused: vanilla would take demand to 10 - 16 = -6
+                    helper.assertTrue(offer.getDemand() == 0, "cools to zero, found " + offer.getDemand());
+                    market.librarian().restock();
+                    helper.assertTrue(offer.getDemand() == 0, "stays at zero, found " + offer.getDemand());
                 })
                 .thenSucceed();
     }

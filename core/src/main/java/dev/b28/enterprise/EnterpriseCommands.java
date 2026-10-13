@@ -9,6 +9,7 @@ import dev.b28.enterprise.locker.Locker;
 import dev.b28.enterprise.locker.Lockers;
 import dev.b28.enterprise.merchant.Merchant;
 import dev.b28.enterprise.merchant.MerchantBook;
+import dev.b28.enterprise.merchant.MerchantStock;
 import dev.b28.enterprise.merchant.MerchantView;
 import java.util.List;
 import net.minecraft.commands.CommandSourceStack;
@@ -32,6 +33,9 @@ final class EnterpriseCommands {
                 .then(Commands.literal("lockers")
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .executes(EnterpriseCommands::lockers)))
+                .then(Commands.literal("stock")
+                        .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                .executes(EnterpriseCommands::stock)))
                 .then(Commands.literal("switch")
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .then(Commands.argument("workstation", BlockPosArgument.blockPos())
@@ -58,25 +62,39 @@ final class EnterpriseCommands {
 
         int limit = Merchant.lockerLimit(merchant.getVillagerData().getLevel());
         List<BlockPos> stock = Lockers.touchingContainers(level, desk);
-        List<Locker> lockers = Lockers.near(level, desk, Lockers.MERCHANT_RANGE, limit);
-        MerchantView view = MerchantView.build(level, desk, limit);
-        source.sendSuccess(() -> Component.literal("Merchant's Desk at %s: %d stock container(s), %d/%d locker(s)"
-                .formatted(desk.toShortString(), stock.size(), lockers.size(), limit)), false);
-        for (Locker locker : lockers) {
+        // Every locker in reach, including those beyond this Merchant's level limit (marked as waiting).
+        List<Locker> lockers = Lockers.near(level, desk, Lockers.MERCHANT_RANGE, Integer.MAX_VALUE);
+        MerchantView view = MerchantView.build(level, desk, Integer.MAX_VALUE);
+        int managed = Math.min(limit, lockers.size());
+        source.sendSuccess(() -> Component.literal("Merchant's Desk at %s: %d stock container(s), %d/%d locker(s), %d waiting"
+                .formatted(desk.toShortString(), stock.size(), managed, limit, lockers.size() - managed)), false);
+        for (int i = 0; i < lockers.size(); i++) {
+            Locker locker = lockers.get(i);
+            String status = i < limit ? "" : " (waiting for a higher Merchant level)";
             String job = locker.type().unwrapKey().map(key -> key.location().getPath()).orElse("?");
             String worker = Merchant.workingAt(level, locker.workstation(), Lockers.MERCHANT_RANGE)
                     .map(villager -> villager.getName().getString())
                     .orElse("unclaimed");
             int slots = Lockers.inventory(level, locker.containers()).getSlots();
-            source.sendSuccess(() -> Component.literal("  %s at %s, %s, %d slots"
-                    .formatted(job, locker.workstation().toShortString(), worker, slots)), false);
+            source.sendSuccess(() -> Component.literal("  %s at %s, %s, %d slots%s"
+                    .formatted(job, locker.workstation().toShortString(), worker, slots, status)), false);
             view.lockers().stream()
                     .filter(entry -> entry.workstation().equals(locker.workstation()))
                     .flatMap(entry -> entry.trades().stream())
                     .forEach(trade -> source.sendSuccess(() -> Component.literal("    [%s] %s"
                             .formatted(trade.enabled() ? "on" : "off", trade.key())), false));
         }
-        return lockers.size();
+        return managed;
+    }
+
+    /** Totals of everything in a Merchant's stock, shulker contents included. */
+    private static int stock(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        BlockPos desk = BlockPosArgument.getLoadedBlockPos(context, "desk");
+        var totals = MerchantStock.at(source.getLevel(), desk).totals();
+        source.sendSuccess(() -> Component.literal("Stock at %s: %d kinds".formatted(desk.toShortString(), totals.size())), false);
+        totals.forEach((item, count) -> source.sendSuccess(() -> Component.literal("  %s %d".formatted(item, count)), false));
+        return totals.size();
     }
 
     /** Switches one locker trade on or off without the screen (for servers and tests). */

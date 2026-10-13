@@ -1,9 +1,12 @@
 package dev.b28.enterprise.locker;
 
+import dev.b28.enterprise.Enterprise;
 import dev.b28.enterprise.merchant.Merchant;
 import dev.b28.enterprise.merchant.MerchantBook;
+import dev.b28.enterprise.merchant.MerchantStock;
 import dev.b28.enterprise.merchant.TradeKeys;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
@@ -17,6 +20,7 @@ import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.trading.ItemCost;
 import net.minecraft.world.item.trading.MerchantOffer;
+import net.minecraft.world.item.trading.MerchantOffers;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemHandlerHelper;
 
@@ -38,6 +42,27 @@ public final class LockerTrading {
         return villager.level() instanceof ServerLevel level
                 && !Merchant.isMerchant(villager)
                 && jobSite(villager, level).map(site -> !Lockers.touchingContainers(level, site).isEmpty()).orElse(false);
+    }
+
+    /**
+     * Each offer's demand if no offer has been used since the last restock, else null. Vanilla only restocks a
+     * villager whose trades were used; any other restock is one a locker asked for.
+     */
+    public static int[] demandIfUnused(MerchantOffers offers) {
+        return offers.stream().anyMatch(offer -> offer.getUses() > 0)
+                ? null
+                : offers.stream().mapToInt(MerchantOffer::getDemand).toArray();
+    }
+
+    /**
+     * After a restock only a locker asked for: demand may cool to zero but not below, and demand that was already
+     * negative stays put. Otherwise idle trades would sink without limit and never inflate for players again.
+     */
+    public static void floorCooling(MerchantOffers offers, int[] before) {
+        for (int i = 0; i < offers.size() && i < before.length; i++) {
+            MerchantOffer offer = offers.get(i);
+            offer.demand = Math.max(offer.getDemand(), Math.min(before[i], 0));
+        }
     }
 
     public static void afterRestock(Villager villager) {
@@ -64,7 +89,10 @@ public final class LockerTrading {
                 .findFirst();
     }
 
-    /** Runs every enabled, fairly priced trade until it runs out of uses, inputs or room. Returns trades made. */
+    /**
+     * The Merchant fills the locker from its stock, the villager runs every enabled, fairly priced trade until it
+     * runs out of uses, inputs or room, and the Merchant carries the results back to stock. Returns trades made.
+     */
     public static int trade(ServerLevel level, Villager villager, BlockPos workstation, Manager manager) {
         Set<String> enabled = MerchantBook.get(level.getServer())
                 .enabledTrades(GlobalPos.of(level.dimension(), manager.desk()), workstation);
@@ -72,13 +100,19 @@ public final class LockerTrading {
             return 0;
         }
         IItemHandler locker = Lockers.inventory(level, Lockers.touchingContainers(level, workstation));
+        MerchantStock stock = MerchantStock.at(level, manager.desk());
         int reputation = merchantReputation(manager.merchant().getVillagerData().getLevel());
+        // Best deal first: the fewest inputs per item received.
+        List<MerchantOffer> offers = villager.getOffers().stream()
+                .filter(offer -> enabled.contains(TradeKeys.of(offer)) && !isInflated(offer))
+                .sorted(Comparator.comparingDouble(offer -> (double) price(offer, reputation) / offer.getResult().getCount()))
+                .toList();
         int made = 0;
-        for (MerchantOffer offer : villager.getOffers()) {
-            if (!enabled.contains(TradeKeys.of(offer)) || isInflated(offer)) {
-                continue;
-            }
+        for (MerchantOffer offer : offers) {
             int priceA = price(offer, reputation);
+            int uses = offer.getMaxUses() - offer.getUses();
+            supply(stock, locker, offer.getItemCostA(), priceA * uses);
+            offer.getItemCostB().ifPresent(costB -> supply(stock, locker, costB, costB.count() * uses));
             while (!offer.isOutOfStock() && tradeOnce(locker, offer, priceA)) {
                 offer.increaseUses();
                 rewardTradeXp(villager, offer.getXp());
@@ -86,7 +120,43 @@ public final class LockerTrading {
                 made++;
             }
         }
+        for (MerchantOffer offer : offers) {
+            collect(locker, stock, offer.getResult());
+        }
+        if (made > 0) {
+            Enterprise.LOGGER.debug("Locker trades: {} at {} by a level {} villager", made,
+                    workstation.toShortString(), villager.getVillagerData().getLevel());
+        }
         return made;
+    }
+
+    /** Tops the locker up to {@code wanted} items matching {@code cost}, from the Merchant's stock. */
+    private static void supply(MerchantStock stock, IItemHandler locker, ItemCost cost, int wanted) {
+        int missing = wanted - count(locker, cost);
+        if (missing <= 0) {
+            return;
+        }
+        for (ItemStack piece : stock.take(cost, missing)) {
+            ItemStack rest = ItemHandlerHelper.insertItemStacked(locker, piece, false);
+            if (!rest.isEmpty()) {
+                stock.insert(rest); // the locker is full: what didn't fit goes back
+            }
+        }
+    }
+
+    /** Moves every item like {@code result} from the locker to the Merchant's stock, as far as stock has room. */
+    private static void collect(IItemHandler locker, MerchantStock stock, ItemStack result) {
+        for (int slot = 0; slot < locker.getSlots(); slot++) {
+            ItemStack stack = locker.getStackInSlot(slot);
+            if (!ItemStack.isSameItemSameComponents(stack, result)) {
+                continue;
+            }
+            ItemStack rest = stock.insert(locker.extractItem(slot, stack.getCount(), false));
+            if (!rest.isEmpty()) {
+                locker.insertItem(slot, rest, false);
+                return;
+            }
+        }
     }
 
     /** Demand has pushed the price above its base. Lockers wait for it to cool off. */

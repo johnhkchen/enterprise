@@ -48,8 +48,8 @@ public final class MerchantScreenTests {
         helper.setBlock(new BlockPos(0, 2, 1), Blocks.CHEST);
         Villager librarian = helper.spawn(EntityType.VILLAGER, new BlockPos(1, 2, 2));
         librarian.setVillagerData(librarian.getVillagerData().setProfession(VillagerProfession.LIBRARIAN));
+        LockerTradingTests.claim(helper, librarian, LECTERN);
 
-        // Wait for the librarian to claim the lectern, then build the screen's view.
         helper.succeedWhen(() -> {
             MerchantView view = MerchantView.build(helper.getLevel(), helper.absolutePos(DESK), 2, RANGE);
             List<MerchantView.LockerView> lockers = view.lockers();
