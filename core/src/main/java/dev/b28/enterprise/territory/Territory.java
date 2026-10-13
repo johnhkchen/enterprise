@@ -138,6 +138,10 @@ public final class Territory extends SavedData {
         Map<String, Double> comfortMet = new LinkedHashMap<>(); // by kind, share of the ration met at the last touch
         long lastComforts = -1;
         double paidShare = 1; // of the wages due at the last touch
+        double homeProgress; // toward the next home, 1 when due
+        double birthProgress; // toward the next child
+        int homesBuilt;
+        int born;
     }
 
     private final Map<Place, GlobalPos> owners = new HashMap<>();
@@ -293,7 +297,9 @@ public final class Territory extends SavedData {
         }
         if (holding.desk != null && level.isLoaded(holding.desk.pos())) {
             // Settle produce and wages under the old plan before re-planning.
-            touch(level, holding.desk.pos(), MerchantStock.at(level, holding.desk.pos()));
+            MerchantStock stock = MerchantStock.at(level, holding.desk.pos());
+            touch(level, holding.desk.pos(), stock);
+            grow(level, bellPos, holding, census, days, stock);
         } else {
             accrue(holding, level.getGameTime());
         }
@@ -556,6 +562,55 @@ public final class Territory extends SavedData {
                 - holding.villagers / VILLAGERS_PER_WANT
                 - CROWDING_MOOD * Math.max(0, holding.villagers - holding.beds)
                 - UNPAID_MOOD * (1 - holding.paidShare);
+    }
+
+    /**
+     * A content town counted while loaded: with every bed taken it works toward a home, with a bed free toward a child
+     * (see {@link Growth}), for the days since its last census. Each is paid for when due, if the warehouse can: a home
+     * from money beyond the town's reserve, a child from that and food beyond the caravans' par.
+     */
+    private void grow(ServerLevel level, BlockPos bell, Holding holding, Census census, double days, MerchantStock stock) {
+        days = Math.min(MAX_DAYS, Math.max(0, days));
+        BlockPos desk = holding.desk.pos();
+        Mint mint = Mint.get(level.getServer());
+        long now = level.getGameTime();
+        double rate = mint.rate(Mint.DEFAULT_FACTION, now);
+        if (holding.mood >= Growth.HOME_MOOD && census.villagers() >= census.beds()) {
+            holding.homeProgress = Math.min(1, holding.homeProgress + days / Growth.DAYS_PER_HOME);
+        }
+        if (holding.homeProgress >= 1
+                && Treasury.available(level, desk, stock, rate) - reserve(holding.desk) >= Growth.HOME_EMERALDS) {
+            Optional<BlockPos> site = Growth.homeSite(level, bell);
+            if (site.isPresent()) {
+                Growth.buildHome(level, site.get());
+                Treasury.withdraw(level, desk, stock, Growth.HOME_EMERALDS, mint, now);
+                holding.homeProgress = 0;
+                holding.homesBuilt++;
+                dev.b28.enterprise.Enterprise.LOGGER.debug("Settlement at {} built a home at {}",
+                        bell.toShortString(), site.get().toShortString());
+            }
+        }
+        if (holding.mood >= Growth.BIRTH_MOOD && census.beds() > census.villagers()) {
+            holding.birthProgress = Math.min(1, holding.birthProgress + days / Growth.DAYS_PER_BIRTH);
+        }
+        if (holding.birthProgress >= 1
+                && stock.foodNutrition() >= dev.b28.enterprise.merchant.Warehouse.FOOD_PAR_POINTS + Growth.BIRTH_FOOD_POINTS
+                && Treasury.available(level, desk, stock, rate) - reserve(holding.desk) >= Growth.BIRTH_EMERALDS) {
+            stock.eat(Growth.BIRTH_FOOD_POINTS);
+            Treasury.withdraw(level, desk, stock, Growth.BIRTH_EMERALDS, mint, now);
+            Growth.bear(level, bell);
+            holding.birthProgress = 0;
+            holding.born++;
+            dev.b28.enterprise.Enterprise.LOGGER.debug("Settlement at {} had a child", bell.toShortString());
+        }
+    }
+
+    public int homesBuilt(GlobalPos bell) {
+        return holding(bell).map(h -> h.homesBuilt).orElse(0);
+    }
+
+    public int born(GlobalPos bell) {
+        return holding(bell).map(h -> h.born).orElse(0);
     }
 
     /** How the town feels: above 0 content, below 0 unhappy. */
@@ -852,6 +907,10 @@ public final class Territory extends SavedData {
             entry.put("comfortMet", doubles(holding.comfortMet));
             entry.putLong("lastComforts", holding.lastComforts);
             entry.putDouble("paidShare", holding.paidShare);
+            entry.putDouble("homeProgress", holding.homeProgress);
+            entry.putDouble("birthProgress", holding.birthProgress);
+            entry.putInt("homesBuilt", holding.homesBuilt);
+            entry.putInt("born", holding.born);
             entry.put("perDay", doubles(holding.perDay));
             entry.put("pending", doubles(holding.pending));
             settlements.add(entry);
@@ -949,6 +1008,10 @@ public final class Territory extends SavedData {
                 holding.comfortMet = readDoubles(entry.getCompound("comfortMet"));
                 holding.lastComforts = entry.contains("lastComforts") ? entry.getLong("lastComforts") : -1;
                 holding.paidShare = entry.contains("paidShare") ? entry.getDouble("paidShare") : 1;
+                holding.homeProgress = entry.getDouble("homeProgress");
+                holding.birthProgress = entry.getDouble("birthProgress");
+                holding.homesBuilt = entry.getInt("homesBuilt");
+                holding.born = entry.getInt("born");
                 holding.perDay = readDoubles(entry.getCompound("perDay"));
                 holding.pending = readDoubles(entry.getCompound("pending"));
                 territory.holdings.put(bell, holding);

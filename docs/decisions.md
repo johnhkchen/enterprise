@@ -130,6 +130,14 @@ Decisions made after the brief (`docs/brief.md`). Where this file and the brief 
 - **Towns buy comforts by caravan.** A town aims to hold 4 days of each kind (villagers x 0.1 x 4 emeralds' worth), buying whole items, at least one when short. It pays only from money beyond its wage float and 3 days of guards' pay. A caravan loads comforts from the hub for what the town wanted at its last stocktake (taken at each caravan visit), half again over, before it fills the rest of its cargo.
 - **Measured** (`network_study.py --comforts`, 20 days, the hub stocking one shulker of comforts and its books): the three supplied towns reached mood +3.3 (all four kinds met; farms x1.33, culture x1.83). The two towns without a route sank to -0.6. Town money stopped climbing: S1 peaked at 125 emeralds on day 10, when the hub ran out of trade goods, and fell to 96 by day 20 while it kept buying comforts.
 
+## Homes and children (built 2026-10-14)
+
+- **Content towns grow.** When a town is counted while loaded, it works toward a home if every bed is taken and its mood is at least 0.5, and toward a child if a bed is free and its mood is at least 1: about one of each every 4 days. The ledger keeps the progress between counts.
+- **A home is a real cottage**, 8 emeralds from money beyond the town's reserve: 5 x 5, cobblestone floor, plank walls with log corners, a south door, two windows, a slab roof, a bed and a lantern. It goes on the nearest flat, open, dry ground 8 to 32 blocks from the bell (inside the census's 48), with a block of clearance and never on a field.
+- **A child costs 36 food points and 3 emeralds** (food beyond the caravans' par, money beyond the reserve) and is born as a baby villager by the bell. Babies only age while their chunk ticks, so a child loaded back in is aged by the time it was away.
+- **Mood caps growth.** Every 8 villagers take 1 from mood and a child needs mood 1, so a town supplied with all four kinds of comfort stops growing around 24 villagers. A pack that adds kinds of comfort lets towns grow bigger.
+- **Measured** (`network_study.py --comforts`, 20 days): the three supplied towns built 1-2 cottages each and had 1-2 children, growing from 5 villagers to 6-7; the first child had grown up by day 20.
+
 ## Travel cost between hexes (2026-10-13)
 
 Travel cost must react to real building. A long wall, a tunnel, a bridge or a wide canal should each change routes and costs.

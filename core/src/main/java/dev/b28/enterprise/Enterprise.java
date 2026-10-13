@@ -22,6 +22,7 @@ public final class Enterprise {
         Merchant.register(modBus);
         NeoForge.EVENT_BUS.addListener(EnterpriseCommands::register);
         NeoForge.EVENT_BUS.addListener(LockerCatchUp::onJoin);
+        NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.territory.Growth::onJoin);
         NeoForge.EVENT_BUS.addListener(LockerCatchUp::onServerTick);
         NeoForge.EVENT_BUS.addListener(Rounds::onServerTick);
         NeoForge.EVENT_BUS.addListener(CensusTaker::onServerTick);

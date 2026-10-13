@@ -194,6 +194,8 @@ final class EnterpriseCommands {
                 territory.villagers(bell), territory.beds(bell), met.isEmpty() ? "none yet" : met,
                 dev.b28.enterprise.territory.Territory.yieldFactor(mood),
                 dev.b28.enterprise.territory.Territory.cultureFactor(mood))), false);
+        source.sendSuccess(() -> Component.literal("  %d home(s) built, %d child(ren) born".formatted(
+                territory.homesBuilt(bell), territory.born(bell))), false);
         source.sendSuccess(() -> Component.literal("  toll %.1f%% at its posts (%.0f spurs collected last review)".formatted(
                 territory.tollRate(bell) * 100, Math.max(0, territory.tollIncomeYesterday(bell)))), false);
         source.sendSuccess(() -> Component.literal(("  %d guard(s) posted at %s; traffic %.0f spurs a day; %d deserted")
