@@ -21,6 +21,7 @@ import dev.b28.enterprise.settlement.Census;
 import dev.b28.enterprise.settlement.CensusTaker;
 import dev.b28.enterprise.settlement.Settlements;
 import java.util.List;
+import java.util.Map;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
@@ -153,8 +154,13 @@ final class EnterpriseCommands {
                 .owner(source.getLevel().dimension(), hex)
                 .map(bell -> "held by the settlement at " + bell.pos().toShortString())
                 .orElse("unclaimed");
-        source.sendSuccess(() -> Component.literal("Hex %s, centre %.0f %.0f, %s".formatted(
-                hex, hex.centerX(), hex.centerZ(), owner)), false);
+        var terrain = dev.b28.enterprise.territory.Terrain.get(source.getServer());
+        double water = terrain.waterShare(source.getLevel(), hex);
+        double factor = terrain.crossingFactor(source.getLevel(), hex);
+        source.sendSuccess(() -> Component.literal("Hex %s, centre %.0f %.0f, %s; %.0f%% water, %s".formatted(
+                hex, hex.centerX(), hex.centerZ(), owner, water * 100,
+                Double.isInfinite(factor) ? "no way across for caravans" : "%.1fx the road food to cross".formatted(factor))),
+                false);
         return 1;
     }
 
@@ -179,15 +185,25 @@ final class EnterpriseCommands {
             source.sendSuccess(() -> Component.literal("  treasury %.1f emeralds at the market's last touch"
                     .formatted(territory.treasury(bell))), false);
         }
-        source.sendSuccess(() -> Component.literal("  toll %.0f%% (yesterday's toll income %.0f spurs)".formatted(
+        source.sendSuccess(() -> Component.literal("  toll %.1f%% at its posts (%.0f spurs collected last review)".formatted(
                 territory.tollRate(bell) * 100, Math.max(0, territory.tollIncomeYesterday(bell)))), false);
-        source.sendSuccess(() -> Component.literal(("  garrison %d guard(s), %.0f%% of its land held, collects %.1f%%; "
-                + "traffic %.0f spurs a day; %d deserted").formatted(territory.guards(bell), territory.coverage(bell) * 100,
-                territory.effectiveToll(bell) * 100, territory.trafficPerDay(bell), territory.deserted(bell))), false);
+        source.sendSuccess(() -> Component.literal(("  %d guard(s) posted at %s; traffic %.0f spurs a day; %d deserted")
+                .formatted(territory.guards(bell), territory.posts(bell), territory.trafficPerDay(bell),
+                        territory.deserted(bell))), false);
+        territory.crossings(bell).forEach((route, crossing) -> source.sendSuccess(() -> Component.literal(
+                "  route %d: %.1f trips a day carrying %.0f spurs; going around posts at %s".formatted(route,
+                        crossing.tripsPerDay(), crossing.value(), describeOptions(crossing.options()))), false));
         if (territory.tollsOwed(bell) > 0) {
             source.sendSuccess(() -> Component.literal("  tolls owed: %d spurs".formatted(territory.tollsOwed(bell))), false);
         }
         return hexes.size();
+    }
+
+    private static String describeOptions(List<dev.b28.enterprise.territory.Chokepoints.Option> options) {
+        return options.stream()
+                .map(o -> o.posts().get(o.posts().size() - 1) + (o.posts().size() > 1 ? " too" : "") + ": "
+                        + (Double.isInfinite(o.detour()) ? "no way" : "%.0f spurs".formatted(o.detour())))
+                .collect(java.util.stream.Collectors.joining("; "));
     }
 
     /** A caravan route from a hub Merchant's Desk to a settlement's Merchant's Desk, if food allows the distance. */

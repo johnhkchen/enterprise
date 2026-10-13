@@ -6,6 +6,7 @@ import dev.b28.enterprise.locker.LockerCatchUp;
 import dev.b28.enterprise.locker.Rounds;
 import dev.b28.enterprise.merchant.Merchant;
 import dev.b28.enterprise.settlement.CensusTaker;
+import dev.b28.enterprise.territory.Terrain;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
@@ -25,6 +26,8 @@ public final class Enterprise {
         NeoForge.EVENT_BUS.addListener(Rounds::onServerTick);
         NeoForge.EVENT_BUS.addListener(CensusTaker::onServerTick);
         NeoForge.EVENT_BUS.addListener(Caravans::onServerTick);
+        NeoForge.EVENT_BUS.addListener(net.neoforged.neoforge.event.level.ChunkEvent.Load.class, Terrain::onChunk);
+        NeoForge.EVENT_BUS.addListener(net.neoforged.neoforge.event.level.ChunkEvent.Unload.class, Terrain::onChunk);
     }
 
     public static ResourceLocation id(String path) {

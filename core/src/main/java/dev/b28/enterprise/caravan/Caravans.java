@@ -2,6 +2,8 @@ package dev.b28.enterprise.caravan;
 
 import dev.b28.enterprise.Enterprise;
 import dev.b28.enterprise.hex.Hex;
+import dev.b28.enterprise.territory.Chokepoints;
+import dev.b28.enterprise.territory.Terrain;
 import dev.b28.enterprise.territory.Territory;
 import dev.b28.enterprise.locker.Lockers;
 import dev.b28.enterprise.locker.Rounds;
@@ -18,10 +20,12 @@ import dev.ithundxr.createnumismatics.content.coins.CoinItem;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.ToDoubleFunction;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -137,7 +141,13 @@ public final class Caravans {
         territory.touch(level, route.from.pos(), stock);
         Mint mint = Mint.get(server);
         double rate = mint.rate(Mint.DEFAULT_FACTION, now);
-        route.path = plan(territory, route, rate);
+        RoutePlanner.Plan plan = plan(server, territory, route, rate);
+        if (!plan.found()) {
+            route.status = "no way there by land";
+            ledger.setDirty();
+            return false;
+        }
+        route.path = plan.path();
         if (!inRange(route.distance())) {
             route.status = "the cheapest path is too long for one leg's food";
             ledger.setDirty();
@@ -243,7 +253,8 @@ public final class Caravans {
         }
         MerchantStock stock = MerchantStock.at(level, route.from.pos());
         territory.touch(level, route.from.pos(), stock);
-        int tolls = payTolls(territory, route, caravan.spurs);
+        double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, level.getGameTime());
+        int tolls = payTolls(territory, route, caravan.spurs, perHex(rate), terrain(server, route));
         caravan.spurs -= tolls;
         route.tollsPaid += tolls;
         for (Iterator<ItemStack> it = caravan.cargo.iterator(); it.hasNext(); ) {
@@ -261,27 +272,105 @@ public final class Caravans {
         Enterprise.LOGGER.debug("Caravan {} home with {} spurs", route.id, caravan.spurs);
     }
 
-    /**
-     * Each other settlement whose land the route's path crosses takes its own toll rate of the coins carried, one after
-     * another. The two ends' own settlements charge nothing. Returns the spurs paid in all.
-     */
+    /** As {@link #payTolls(Territory, Route, int, double, ToDoubleFunction)} on open ground at 16 spurs an emerald. */
     public static int payTolls(Territory territory, Route route, int spurs) {
+        return payTolls(territory, route, spurs, perHex(16), RoutePlanner.FLAT);
+    }
+
+    /**
+     * Each other settlement whose land the route's path crosses sees the caravan go by, and what going around each of
+     * its hexes would have cost it; those with a toll post on the path take their toll rate of the coins carried, one
+     * after another. The two ends' own settlements charge nothing. Returns the spurs paid in all.
+     */
+    public static int payTolls(
+            Territory territory, Route route, int spurs, double perHex, ToDoubleFunction<Hex> terrain) {
         var dimension = route.from.dimension();
         Set<GlobalPos> ends = ends(territory, route);
-        Set<GlobalPos> crossed = new LinkedHashSet<>();
+        Map<GlobalPos, List<Hex>> crossed = new LinkedHashMap<>();
         for (Hex hex : route.path()) {
-            territory.owner(dimension, hex).filter(owner -> !ends.contains(owner)).ifPresent(crossed::add);
+            territory.owner(dimension, hex).filter(owner -> !ends.contains(owner))
+                    .ifPresent(owner -> crossed.computeIfAbsent(owner, o -> new ArrayList<>()).add(hex));
         }
         int paid = 0;
-        for (GlobalPos owner : crossed) {
-            territory.recordTraffic(owner, spurs - paid);
-            int toll = (int) Math.floor((spurs - paid) * territory.effectiveToll(owner));
+        for (Map.Entry<GlobalPos, List<Hex>> town : crossed.entrySet()) {
+            GlobalPos owner = town.getKey();
+            int carried = spurs - paid;
+            territory.recordTraffic(owner, carried);
+            territory.observeCrossing(owner, route.id, carried, postOptions(territory, route, owner, ends, perHex, terrain));
+            boolean posted = town.getValue().stream()
+                    .anyMatch(hex -> territory.postOwner(dimension, hex).filter(owner::equals).isPresent());
+            int toll = posted ? (int) Math.floor(carried * territory.tollRate(owner)) : 0;
             if (toll > 0) {
                 territory.oweToll(owner, toll);
                 paid += toll;
             }
         }
         return paid;
+    }
+
+    /**
+     * What guarding the town's land would do to a caravan on this route. The town tries a guard on each hex of its land
+     * on the caravan's cheapest path and keeps the one that makes going around dearest (on a tie: the narrowest, with
+     * the most impassable neighbours, then the nearest its home); then does the same on the cheapest path avoiding the
+     * posts so far, and so on, until the path keeps off its land, there is no way at all, or
+     * {@link Chokepoints#MAX_POSTS_PER_ROUTE} posts. Costs are with the town charging nothing, in spurs.
+     */
+    static List<Chokepoints.Option> postOptions(Territory territory, Route route, GlobalPos town, Set<GlobalPos> ends,
+            double perHex, ToDoubleFunction<Hex> terrain) {
+        var dimension = route.from.dimension();
+        Hex start = Hex.at(route.from.pos());
+        Hex goal = Hex.at(route.to.pos());
+        Hex home = Hex.at(town.pos());
+        Set<GlobalPos> free = new LinkedHashSet<>(ends);
+        free.add(town);
+        double value = route.expectedValue();
+        RoutePlanner.Plan through = RoutePlanner.plan(territory, dimension, start, goal, free, perHex, terrain, value, Set.of());
+        List<Chokepoints.Option> options = new ArrayList<>();
+        Set<Hex> posts = new LinkedHashSet<>();
+        RoutePlanner.Plan path = through;
+        while (path.found() && posts.size() < Chokepoints.MAX_POSTS_PER_ROUTE) {
+            List<Hex> landOnPath = path.path().stream()
+                    .filter(hex -> !hex.equals(start) && !hex.equals(goal))
+                    .filter(hex -> territory.owner(dimension, hex).filter(town::equals).isPresent())
+                    .toList();
+            if (landOnPath.isEmpty()) {
+                break; // this path keeps off the town's land
+            }
+            Hex pick = null;
+            RoutePlanner.Plan picked = null;
+            for (Hex hex : landOnPath) {
+                Set<Hex> trial = new LinkedHashSet<>(posts);
+                trial.add(hex);
+                RoutePlanner.Plan around = RoutePlanner.plan(territory, dimension, start, goal, free, perHex, terrain, value, trial);
+                if (pick == null || better(around, hex, picked, pick, home, terrain)) {
+                    pick = hex;
+                    picked = around;
+                }
+            }
+            posts.add(pick);
+            path = picked;
+            options.add(new Chokepoints.Option(List.copyOf(posts),
+                    path.found() ? Math.max(0, path.cost() - through.cost()) : Double.POSITIVE_INFINITY));
+        }
+        return options;
+    }
+
+    /** Is posting {@code hex} (leaving {@code around}) better for the town than posting {@code than}? */
+    private static boolean better(RoutePlanner.Plan around, Hex hex, RoutePlanner.Plan aroundThan, Hex than, Hex home,
+            ToDoubleFunction<Hex> terrain) {
+        if (Math.abs(around.cost() - aroundThan.cost()) > 1e-6) {
+            return around.cost() > aroundThan.cost();
+        }
+        int narrow = impassableNeighbours(hex, terrain);
+        int narrowThan = impassableNeighbours(than, terrain);
+        if (narrow != narrowThan) {
+            return narrow > narrowThan;
+        }
+        return hex.distance(home) < than.distance(home);
+    }
+
+    private static int impassableNeighbours(Hex hex, ToDoubleFunction<Hex> terrain) {
+        return (int) hex.neighbors().stream().filter(n -> Double.isInfinite(terrain.applyAsDouble(n))).count();
     }
 
     /** The towns at either end of a route: they charge their own caravans no toll. */
@@ -292,14 +381,28 @@ public final class Caravans {
         return ends;
     }
 
+    /** Road food both ways across a hex of open ground, at bread prices, in spurs. */
+    public static double perHex(double rate) {
+        return 2 * (Hex.ACROSS / BLOCKS_PER_FOOD) * (1 / 30.0) * rate;
+    }
+
+    /** How hard each hex on the route's side of the world is to cross ({@link Terrain}). */
+    static ToDoubleFunction<Hex> terrain(MinecraftServer server, Route route) {
+        ServerLevel level = server.getLevel(route.from.dimension());
+        if (level == null) {
+            return RoutePlanner.FLAT;
+        }
+        Terrain terrain = Terrain.get(server);
+        return hex -> terrain.crossingFactor(level, hex);
+    }
+
     /**
-     * The cheapest hex path for the next caravan: a hex costs its road food both ways (at bread prices), and each
-     * town's land costs its toll on what caravans on this route usually carry home.
+     * The cheapest hex path for the next caravan: a hex costs its road food both ways (at bread prices) times how hard
+     * it is to cross, and each town's toll post costs its toll on what caravans on this route usually carry home.
      */
-    public static List<Hex> plan(Territory territory, Route route, double rate) {
-        double perHex = 2 * (Hex.ACROSS / BLOCKS_PER_FOOD) * (1 / 30.0) * rate;
+    public static RoutePlanner.Plan plan(MinecraftServer server, Territory territory, Route route, double rate) {
         return RoutePlanner.plan(territory, route.from.dimension(), Hex.at(route.from.pos()), Hex.at(route.to.pos()),
-                ends(territory, route), perHex, route.expectedValue());
+                ends(territory, route), perHex(rate), terrain(server, route), route.expectedValue(), Set.of());
     }
 
     /** Items the destination's switched-on trades take, read from the trade keys ("costA+costB>result"). */

@@ -110,11 +110,11 @@ public final class Territory extends SavedData {
         double valuePerDay; // the harvest's value, averaged
         double treasury; // the market's money at its last touch, in emeralds (chest emeralds, coins, Banker)
         double tollRate = DEFAULT_TOLL_RATE;
-        int tollDirection = 1; // which way the last change went
-        double tollIncomeToday;
-        double tollIncomeYesterday = -1; // none yet
+        double tollIncomeToday; // since the last review
+        double tollIncomeYesterday = -1; // over the last period reviewed; none yet
         long lastTollReview = -1;
-        int guards;
+        java.util.Set<Hex> posts = new java.util.LinkedHashSet<>(); // hexes with a guard: the town's toll posts
+        Map<Integer, Chokepoints.Crossing> crossings = new LinkedHashMap<>(); // by caravan route id
         double guardUpkeepOwed; // emeralds owed to the guards, fractions carried
         double guardFoodOwed; // food points owed, fractions carried
         long lastGuardUpkeep = -1;
@@ -499,32 +499,38 @@ public final class Territory extends SavedData {
         setDirty();
     }
 
-    /** The toll this town has set, as a share of the coins caravans carry. */
+    /** The toll this town has set, as a share of the coins caravans carry. It's collected only at its posts. */
     public double tollRate(GlobalPos bell) {
         return holding(bell).map(h -> h.tollRate).orElse(DEFAULT_TOLL_RATE);
     }
 
-    /**
-     * The toll a caravan actually pays crossing this town's land: its rate times the share of its hexes guarded. With
-     * no guards it collects nothing.
-     */
-    public double effectiveToll(GlobalPos bell) {
-        return tollRate(bell) * coverage(bell);
+    public void setTollRate(GlobalPos bell, double rate) {
+        holdings.computeIfAbsent(bell, b -> new Holding()).tollRate = Math.max(0, Math.min(MAX_TOLL_RATE, rate));
+        setDirty();
     }
 
-    /** Share of the town's hexes held by a guard. */
-    public double coverage(GlobalPos bell) {
-        int hexes = hexes(bell).size();
-        return hexes == 0 ? 0 : Math.min(1, (double) guards(bell) / hexes);
+    /** The town with a toll post (a guarded hex) here, if any. */
+    public Optional<GlobalPos> postOwner(ResourceKey<Level> dimension, Hex hex) {
+        return owner(dimension, hex).filter(bell -> holdings.containsKey(bell) && holdings.get(bell).posts.contains(hex));
+    }
+
+    /** The town's toll posts: one guard each. */
+    public java.util.Set<Hex> posts(GlobalPos bell) {
+        return holding(bell).map(h -> java.util.Set.copyOf(h.posts)).orElse(java.util.Set.of());
+    }
+
+    public void setPosts(GlobalPos bell, java.util.Collection<Hex> posts) {
+        holdings.computeIfAbsent(bell, b -> new Holding()).posts = new java.util.LinkedHashSet<>(posts);
+        setDirty();
     }
 
     public int guards(GlobalPos bell) {
-        return holding(bell).map(h -> h.guards).orElse(0);
+        return holding(bell).map(h -> h.posts.size()).orElse(0);
     }
 
+    /** Posts guards on the first {@code guards} of the town's hexes. */
     public void setGuards(GlobalPos bell, int guards) {
-        holdings.computeIfAbsent(bell, b -> new Holding()).guards = Math.max(0, guards);
-        setDirty();
+        setPosts(bell, hexes(bell).subList(0, Math.max(0, Math.min(guards, hexes(bell).size()))));
     }
 
     public int deserted(GlobalPos bell) {
@@ -541,45 +547,46 @@ public final class Territory extends SavedData {
         setDirty();
     }
 
+    /**
+     * A caravan on route {@code route} carrying {@code spurs} crossed this town's land; {@code options} is what going
+     * around ever larger sets of posts on its land would have cost it.
+     */
+    public void observeCrossing(GlobalPos bell, int route, int spurs, List<Chokepoints.Option> options) {
+        Chokepoints.Crossing crossing = holdings.computeIfAbsent(bell, b -> new Holding())
+                .crossings.computeIfAbsent(route, r -> new Chokepoints.Crossing());
+        crossing.value = crossing.value == 0 ? spurs : (crossing.value + spurs) / 2;
+        crossing.tripsSince++;
+        crossing.options.clear();
+        crossing.options.addAll(options);
+        setDirty();
+    }
+
+    /** What the town has seen of the routes crossing its land, by route id. */
+    public Map<Integer, Chokepoints.Crossing> crossings(GlobalPos bell) {
+        return holding(bell).map(h -> Map.copyOf(h.crossings)).orElse(Map.of());
+    }
+
     /** One guard's daily cost, in spurs: its pay plus its food at bread prices. */
     public static double guardCostPerDay(double rate) {
         return (GUARD_PAY_PER_DAY + GUARD_FOOD_PER_DAY / 30.0) * rate;
     }
 
-    /**
-     * Hire or let go one guard: hire if the toll the next guard would unlock (a hex's share of the toll on the traffic
-     * crossing this land) beats a guard's daily cost; let one go if the last guard brings in less than it costs.
-     */
-    public void reviewGarrison(GlobalPos bell, double days, double rate) {
-        Holding holding = holdings.computeIfAbsent(bell, b -> new Holding());
-        if (days > 0) {
-            holding.trafficPerDay = holding.trafficSince / days;
-            holding.trafficSince = 0;
-        }
-        int hexes = Math.max(1, hexes(bell).size());
-        double perGuard = holding.trafficPerDay * holding.tollRate / hexes; // toll one more guarded hex brings in
-        double cost = guardCostPerDay(rate);
-        if (holding.guards < hexes && perGuard > cost) {
-            holding.guards++;
-        } else if (holding.guards > 0 && perGuard < cost) {
-            holding.guards--;
-        }
-        setDirty();
-    }
+    /** Routes not seen for this many reviews are forgotten. */
+    private static final int FORGET_AFTER_REVIEWS = 4;
 
     /**
      * The guards' food and pay since the last upkeep, from the town's warehouse: food first, then pay from its
      * money. Guards who go unfed or unpaid desert, in proportion to what was missing.
      */
     private void upkeepGuards(ServerLevel level, BlockPos desk, MerchantStock stock, Holding holding, long now) {
-        if (holding.lastGuardUpkeep < 0 || holding.guards == 0) {
+        if (holding.lastGuardUpkeep < 0 || holding.posts.isEmpty()) {
             holding.lastGuardUpkeep = now;
             return;
         }
         double days = Math.min(MAX_DAYS, (now - holding.lastGuardUpkeep) / 24000.0);
         holding.lastGuardUpkeep = now;
-        holding.guardFoodOwed += holding.guards * GUARD_FOOD_PER_DAY * days;
-        holding.guardUpkeepOwed += holding.guards * GUARD_PAY_PER_DAY * days;
+        holding.guardFoodOwed += holding.posts.size() * GUARD_FOOD_PER_DAY * days;
+        holding.guardUpkeepOwed += holding.posts.size() * GUARD_PAY_PER_DAY * days;
         int food = (int) Math.floor(holding.guardFoodOwed);
         int pay = (int) Math.floor(holding.guardUpkeepOwed);
         if (food <= 0 && pay <= 0) {
@@ -600,9 +607,10 @@ public final class Territory extends SavedData {
         }
         double kept = Math.min(fed, paid);
         if (kept < 1) {
-            int stay = (int) Math.floor(holding.guards * kept);
-            holding.deserted += holding.guards - stay;
-            holding.guards = stay;
+            int stay = (int) Math.floor(holding.posts.size() * kept);
+            holding.deserted += holding.posts.size() - stay;
+            // The guards posted first stay longest.
+            holding.posts = new java.util.LinkedHashSet<>(new ArrayList<>(holding.posts).subList(0, stay));
         }
     }
 
@@ -611,26 +619,22 @@ public final class Territory extends SavedData {
         return food == null ? 0 : food.nutrition();
     }
 
-    public void setTollRate(GlobalPos bell, double rate) {
-        holdings.computeIfAbsent(bell, b -> new Holding()).tollRate = Math.max(0, Math.min(MAX_TOLL_RATE, rate));
-        setDirty();
-    }
-
     /** Toll income over the last full period reviewed (-1 before the first). */
     public double tollIncomeYesterday(GlobalPos bell) {
         return holding(bell).map(h -> h.tollIncomeYesterday).orElse(-1.0);
     }
 
-    /**
-     * Every {@link #TOLL_REVIEW_TICKS}, a town moves its toll a step the way that raised its income: if the last
-     * period's tolls fell short of the one before, it reverses direction. A town with no toll income in two periods
-     * running lowers its toll to draw traffic. An unguarded town (which collects nothing) leaves its rate alone.
-     */
+    /** As {@link #reviewTolls(GlobalPos, long, double)} at the base rate of 16 spurs to the emerald. */
     public void reviewTolls(GlobalPos bell, long now) {
         reviewTolls(bell, now, 16);
     }
 
-    /** As {@link #reviewTolls(GlobalPos, long)}, also reviewing the garrison at the mint's {@code rate}. */
+    /**
+     * Every {@link #TOLL_REVIEW_TICKS} a town looks at the caravans that crossed its land and what going around each of
+     * its hexes would have cost them ({@link Chokepoints}), then settles its toll and the hexes to guard: it lets go
+     * guards on posts it no longer wants at once and hires one guard a review for a new post. With no post worth a
+     * guard it keeps its toll for later.
+     */
     public void reviewTolls(GlobalPos bell, long now, double rate) {
         Holding holding = holdings.computeIfAbsent(bell, b -> new Holding());
         if (holding.lastTollReview < 0) {
@@ -640,22 +644,28 @@ public final class Territory extends SavedData {
         if (now - holding.lastTollReview < TOLL_REVIEW_TICKS) {
             return;
         }
-        reviewGarrison(bell, (now - holding.lastTollReview) / 24000.0, rate);
-        double income = holding.tollIncomeToday;
-        if (holding.guards == 0 && income == 0) {
-            // Unguarded, it collects nothing whatever the rate: no lesson in that. Keep the rate for when it hires.
-            holding.tollIncomeToday = 0;
-            holding.lastTollReview = now;
-            setDirty();
-            return;
+        double days = (now - holding.lastTollReview) / 24000.0;
+        holding.trafficPerDay = holding.trafficSince / days;
+        holding.trafficSince = 0;
+        for (var it = holding.crossings.values().iterator(); it.hasNext(); ) {
+            Chokepoints.Crossing crossing = it.next();
+            crossing.tripsPerDay = crossing.tripsSince / days;
+            crossing.quietReviews = crossing.tripsSince > 0 ? 0 : crossing.quietReviews + 1;
+            crossing.tripsSince = 0;
+            if (crossing.quietReviews >= FORGET_AFTER_REVIEWS) {
+                it.remove();
+            }
         }
-        if (income == 0 && holding.tollIncomeYesterday <= 0) {
-            holding.tollDirection = -1;
-        } else if (holding.tollIncomeYesterday >= 0 && income < holding.tollIncomeYesterday) {
-            holding.tollDirection = -holding.tollDirection;
+        Chokepoints.Plan plan = Chokepoints.bestPlan(holding.crossings.values(), guardCostPerDay(rate));
+        holding.posts.retainAll(plan.posts());
+        plan.posts().stream()
+                .filter(hex -> !holding.posts.contains(hex))
+                .findFirst()
+                .ifPresent(holding.posts::add);
+        if (!plan.posts().isEmpty()) {
+            holding.tollRate = plan.rate();
         }
-        holding.tollRate = Math.max(0, Math.min(MAX_TOLL_RATE, holding.tollRate + holding.tollDirection * TOLL_STEP));
-        holding.tollIncomeYesterday = income;
+        holding.tollIncomeYesterday = holding.tollIncomeToday;
         holding.tollIncomeToday = 0;
         holding.lastTollReview = now;
         setDirty();
@@ -702,11 +712,29 @@ public final class Territory extends SavedData {
             entry.putDouble("valuePerDay", holding.valuePerDay);
             entry.putDouble("treasury", holding.treasury);
             entry.putDouble("tollRate", holding.tollRate);
-            entry.putInt("tollDirection", holding.tollDirection);
             entry.putDouble("tollIncomeToday", holding.tollIncomeToday);
             entry.putDouble("tollIncomeYesterday", holding.tollIncomeYesterday);
             entry.putLong("lastTollReview", holding.lastTollReview);
-            entry.putInt("guards", holding.guards);
+            entry.putIntArray("posts", hexArray(holding.posts));
+            ListTag crossings = new ListTag();
+            holding.crossings.forEach((route, crossing) -> {
+                CompoundTag c = new CompoundTag();
+                c.putInt("route", route);
+                c.putDouble("value", crossing.value);
+                c.putDouble("tripsSince", crossing.tripsSince);
+                c.putDouble("tripsPerDay", crossing.tripsPerDay);
+                c.putInt("quietReviews", crossing.quietReviews);
+                ListTag options = new ListTag();
+                for (Chokepoints.Option option : crossing.options) {
+                    CompoundTag o = new CompoundTag();
+                    o.putIntArray("posts", hexArray(option.posts()));
+                    o.putDouble("detour", Double.isInfinite(option.detour()) ? -1 : option.detour()); // -1: no way
+                    options.add(o);
+                }
+                c.put("options", options);
+                crossings.add(c);
+            });
+            entry.put("crossings", crossings);
             entry.putDouble("guardUpkeepOwed", holding.guardUpkeepOwed);
             entry.putDouble("guardFoodOwed", holding.guardFoodOwed);
             entry.putLong("lastGuardUpkeep", holding.lastGuardUpkeep);
@@ -777,12 +805,26 @@ public final class Territory extends SavedData {
                 holding.treasury = entry.getDouble("treasury");
                 if (entry.contains("tollRate")) {
                     holding.tollRate = entry.getDouble("tollRate");
-                    holding.tollDirection = entry.getInt("tollDirection");
                     holding.tollIncomeToday = entry.getDouble("tollIncomeToday");
                     holding.tollIncomeYesterday = entry.getDouble("tollIncomeYesterday");
                     holding.lastTollReview = entry.getLong("lastTollReview");
                 }
-                holding.guards = entry.getInt("guards");
+                holding.posts = new java.util.LinkedHashSet<>(readHexes(entry.getIntArray("posts")));
+                for (Tag ct : entry.getList("crossings", Tag.TAG_COMPOUND)) {
+                    CompoundTag c = (CompoundTag) ct;
+                    Chokepoints.Crossing crossing = new Chokepoints.Crossing();
+                    crossing.value = c.getDouble("value");
+                    crossing.tripsSince = c.getDouble("tripsSince");
+                    crossing.tripsPerDay = c.getDouble("tripsPerDay");
+                    crossing.quietReviews = c.getInt("quietReviews");
+                    for (Tag ot : c.getList("options", Tag.TAG_COMPOUND)) {
+                        CompoundTag o = (CompoundTag) ot;
+                        double detour = o.getDouble("detour");
+                        crossing.options.add(new Chokepoints.Option(readHexes(o.getIntArray("posts")),
+                                detour < 0 ? Double.POSITIVE_INFINITY : detour));
+                    }
+                    holding.crossings.put(c.getInt("route"), crossing);
+                }
                 holding.guardUpkeepOwed = entry.getDouble("guardUpkeepOwed");
                 holding.guardFoodOwed = entry.getDouble("guardFoodOwed");
                 holding.lastGuardUpkeep = entry.contains("lastGuardUpkeep") ? entry.getLong("lastGuardUpkeep") : -1;
@@ -795,6 +837,24 @@ public final class Territory extends SavedData {
             });
         }
         return territory;
+    }
+
+    private static int[] hexArray(java.util.Collection<Hex> hexes) {
+        int[] values = new int[hexes.size() * 2];
+        int i = 0;
+        for (Hex hex : hexes) {
+            values[i++] = hex.q();
+            values[i++] = hex.r();
+        }
+        return values;
+    }
+
+    private static List<Hex> readHexes(int[] values) {
+        List<Hex> hexes = new ArrayList<>();
+        for (int i = 0; i + 1 < values.length; i += 2) {
+            hexes.add(new Hex(values[i], values[i + 1]));
+        }
+        return hexes;
     }
 
     private static CompoundTag doubles(Map<String, Double> values) {

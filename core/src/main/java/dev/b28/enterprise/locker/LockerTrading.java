@@ -97,7 +97,14 @@ public final class LockerTrading {
             var merchant = Merchant.workingAt(level, desk, Lockers.MERCHANT_RANGE);
             why.append("desk ").append(desk.toShortString()).append(": ");
             if (merchant.isEmpty()) {
-                why.append("no Merchant loaded there; ");
+                why.append("no Merchant loaded there");
+                level.getEntitiesOfClass(Villager.class, new net.minecraft.world.phys.AABB(desk).inflate(Lockers.MERCHANT_RANGE),
+                                Merchant::isMerchant)
+                        .forEach(m -> why.append(" (a Merchant at ").append(m.blockPosition().toShortString())
+                                .append(" works at ").append(m.getBrain().getMemory(
+                                        net.minecraft.world.entity.ai.memory.MemoryModuleType.JOB_SITE)
+                                        .map(site -> site.pos().toShortString()).orElse("nowhere")).append(")"));
+                why.append("; ");
             } else {
                 int limit = Merchant.lockerLimit(merchant.get().getVillagerData().getLevel());
                 boolean managed = Lockers.near(level, desk, Lockers.MERCHANT_RANGE, limit).stream()
