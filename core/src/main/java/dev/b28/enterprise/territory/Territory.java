@@ -465,7 +465,13 @@ public final class Territory extends SavedData {
         }
         Holding holding = holdings.get(bell.get());
         upkeepGuards(level, desk, stock, holding, now); // pay the guards who served, then review the garrison
+        long lastReview = holding.lastTollReview;
         reviewTolls(bell.get(), now, Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now));
+        Works works = Works.get(level.getServer());
+        works.work(level, desk, stock, bell.get(), hexes(bell.get()).size(), now); // masons' wages and progress
+        if (holding.lastTollReview != lastReview && lastReview >= 0) {
+            works.consider(level, desk, stock, bell.get(), this, now); // with the tolls: is a bridge worth building?
+        }
         long since = holding.lastHarvest;
         accrue(holding, now);
         double owedBefore = holding.wageOwed;

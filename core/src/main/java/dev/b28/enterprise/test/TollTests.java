@@ -208,6 +208,52 @@ public final class TollTests {
         helper.succeed();
     }
 
+    @GameTest(template = "floor")
+    public static void aBridgeIsWorthMostWhereNothingCrosses(GameTestHelper helper) {
+        Territory territory = new Territory();
+        GlobalPos town = townAcrossTheRoad(helper, territory, Territory.DEFAULT_TOLL_RATE);
+        Route route = route(helper);
+        ToDoubleFunction<Hex> noBridge = hex -> hex.q() == 6 ? Double.POSITIVE_INFINITY : 1;
+        var value = Caravans.bridgeValue(List.of(route), territory, town, BRIDGE, 16, noBridge);
+        // No way at all: the bridge saves the whole trip; the town may ask the most, 25% of the 300 spurs expected.
+        helper.assertTrue(Math.abs(value.tollsPerDay() - 75) < 1e-6, "75 spurs a day: " + value.tollsPerDay());
+        helper.assertTrue(value.from() != null && value.from().q() == 5 && value.to().q() == 7,
+                "the deck runs across the river: " + value.from() + " to " + value.to());
+        var dry = Caravans.bridgeValue(List.of(route), territory, town, new Hex(6, 1), 16, RoutePlanner.FLAT);
+        helper.assertTrue(dry.tollsPerDay() == 0, "a bridge on dry land is worth nothing: " + dry.tollsPerDay());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aSecondBridgeBesideTheFirstIsWorthLittle(GameTestHelper helper) {
+        Territory territory = new Territory();
+        GlobalPos town = townAcrossTheRoad(helper, territory, Territory.MAX_TOLL_RATE);
+        territory.setPosts(town, List.of(BRIDGE)); // the first bridge, posted at 25%
+        Route route = route(helper);
+        // The river is bridged at (6, 0) already; (6, 1) is still water.
+        ToDoubleFunction<Hex> oneBridge = hex -> hex.q() == 6 && !hex.equals(BRIDGE) ? Double.POSITIVE_INFINITY : 1;
+        var second = Caravans.bridgeValue(List.of(route), territory, town, new Hex(6, 1), 16, oneBridge);
+        helper.assertTrue(second.tollsPerDay() == 0,
+                "dodging its own post gains the town nothing: " + second.tollsPerDay());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aBridgedHexIsOpenGround(GameTestHelper helper) {
+        var works = new dev.b28.enterprise.territory.Works();
+        var dimension = helper.getLevel().dimension();
+        GlobalPos town = GlobalPos.of(dimension, new BlockPos(999_000, 64, 999_000));
+        var bridge = works.start(town, dimension, BRIDGE, new Hex(5, 0), new Hex(7, 0));
+        helper.assertFalse(works.bridged(dimension, BRIDGE), "not until it's finished");
+        works.finish(bridge);
+        helper.assertTrue(works.bridged(dimension, BRIDGE), "finished: caravans cross");
+        var deck = dev.b28.enterprise.territory.Works.deck(BRIDGE, new Hex(5, 0), new Hex(7, 0));
+        long railings = deck.stream().filter(c -> c[2] == 1).count();
+        helper.assertTrue(deck.size() > 400 && deck.size() < 520 && railings > 150,
+                "about 92 blocks of deck, 3 wide with railings: " + deck.size() + " columns, " + railings + " railing");
+        helper.succeed();
+    }
+
     @GameTest(template = "floor", skyAccess = true) // no barrier ceiling over the arena: the survey reads the surface
     public static void surveysSeeWater(GameTestHelper helper) {
         // Find a survey column inside the arena and flood its floor.

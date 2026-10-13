@@ -5,6 +5,7 @@ import dev.b28.enterprise.hex.Hex;
 import dev.b28.enterprise.territory.Chokepoints;
 import dev.b28.enterprise.territory.Comforts;
 import dev.b28.enterprise.territory.Terrain;
+import dev.b28.enterprise.territory.Works;
 import dev.b28.enterprise.territory.Territory;
 import dev.b28.enterprise.locker.Lockers;
 import dev.b28.enterprise.locker.Rounds;
@@ -392,14 +393,73 @@ public final class Caravans {
         return 2 * (Hex.ACROSS / BLOCKS_PER_FOOD) * (1 / 30.0) * rate;
     }
 
-    /** How hard each hex on the route's side of the world is to cross ({@link Terrain}). */
+    /** How hard each hex on the route's side of the world is to cross ({@link Terrain}); a bridged hex is open ground. */
     static ToDoubleFunction<Hex> terrain(MinecraftServer server, Route route) {
-        ServerLevel level = server.getLevel(route.from.dimension());
+        return terrain(server, route.from.dimension());
+    }
+
+    public static ToDoubleFunction<Hex> terrain(MinecraftServer server, net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension) {
+        ServerLevel level = server.getLevel(dimension);
         if (level == null) {
             return RoutePlanner.FLAT;
         }
         Terrain terrain = Terrain.get(server);
-        return hex -> terrain.crossingFactor(level, hex);
+        Works works = Works.get(server);
+        return hex -> works.bridged(dimension, hex) ? 1 : terrain.crossingFactor(level, hex);
+    }
+
+    /**
+     * What a bridge on {@code hex} would bring its town a day: on each route it would carry (not the town's own), the
+     * toll the town could ask there, the lesser of the most it may ask and 80% of what the bridge saves over the
+     * cheapest way without it, the town's own tolls left out (a route with no way at all would save its whole trade),
+     * one trip a day. A second bridge beside the first is worth only the shorter way it opens. Also the neighbours the busiest route would cross
+     * between, for the deck.
+     */
+    public record BridgeValue(Hex hex, double tollsPerDay, Hex from, Hex to) {}
+
+    public static BridgeValue bridgeValue(MinecraftServer server, Territory territory, GlobalPos town, Hex hex, double rate) {
+        return bridgeValue(CaravanLedger.get(server).routes(), territory, town, hex, rate, terrain(server, town.dimension()));
+    }
+
+    /** As {@link #bridgeValue(MinecraftServer, Territory, GlobalPos, Hex, double)}, over these routes and terrain. */
+    public static BridgeValue bridgeValue(java.util.Collection<Route> routes, Territory territory, GlobalPos town, Hex hex,
+            double rate, ToDoubleFunction<Hex> now) {
+        double tolls = 0;
+        double best = 0;
+        Hex from = null;
+        Hex to = null;
+        for (Route route : routes) {
+            var dimension = route.from.dimension();
+            Set<GlobalPos> ends = ends(territory, route);
+            if (!dimension.equals(town.dimension()) || ends.contains(town)) {
+                continue;
+            }
+            Hex start = Hex.at(route.from.pos());
+            Hex goal = Hex.at(route.to.pos());
+            if (hex.equals(start) || hex.equals(goal)) {
+                continue;
+            }
+            ToDoubleFunction<Hex> bridged = h -> h.equals(hex) ? 1 : now.applyAsDouble(h);
+            double value = route.expectedValue();
+            // The town's own posts count for nothing: a bridge that lets caravans dodge its other posts gains it nothing.
+            Set<GlobalPos> free = new LinkedHashSet<>(ends);
+            free.add(town);
+            RoutePlanner.Plan without = RoutePlanner.plan(territory, dimension, start, goal, free, perHex(rate), now, value, Set.of());
+            RoutePlanner.Plan with = RoutePlanner.plan(territory, dimension, start, goal, free, perHex(rate), bridged, value, Set.of());
+            int at = with.path().indexOf(hex);
+            if (at <= 0 || at >= with.path().size() - 1) {
+                continue; // the bridge wouldn't be on this route's way
+            }
+            double saves = without.found() ? without.cost() - with.cost() : value;
+            double toll = Math.min(Territory.MAX_TOLL_RATE * value, Chokepoints.DETOUR_SHARE * saves);
+            tolls += Math.max(0, toll);
+            if (toll > best) {
+                best = toll;
+                from = with.path().get(at - 1);
+                to = with.path().get(at + 1);
+            }
+        }
+        return new BridgeValue(hex, tolls, from, to);
     }
 
     /**

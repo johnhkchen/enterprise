@@ -92,6 +92,30 @@ public final class GrowthTests {
     }
 
     @GameTest(template = "floor")
+    public static void masonsBuildABridgeForWages(GameTestHelper helper) {
+        Territory territory = new Territory();
+        GlobalPos bell = town(helper, territory, new Census(3, 3, 3, 3, 0), 0);
+        var works = new dev.b28.enterprise.territory.Works();
+        var hex = new dev.b28.enterprise.hex.Hex(5000, 5000);
+        var bridge = works.start(bell, helper.getLevel().dimension(), hex, new dev.b28.enterprise.hex.Hex(4999, 5000),
+                new dev.b28.enterprise.hex.Hex(5001, 5000));
+        MerchantStock stock = MerchantStock.at(helper.getLevel(), helper.absolutePos(DESK));
+        stock.insert(new ItemStack(Items.EMERALD, 54)); // 64 with the town's 10
+        long t = helper.getLevel().getGameTime();
+        BlockPos desk = helper.absolutePos(DESK);
+        works.work(helper.getLevel(), desk, stock, bell, 4, t); // starts the clock
+        works.work(helper.getLevel(), desk, stock, bell, 4, t + 3 * 24000L);
+        // 4 hexes of stone a day (64 blocks) for 2 masons at 32 a day: 192 blocks in 3 days, 6 emeralds of wages.
+        helper.assertTrue(Math.abs(bridge.progress() * dev.b28.enterprise.territory.Works.deck(hex,
+                        new dev.b28.enterprise.hex.Hex(4999, 5000), new dev.b28.enterprise.hex.Hex(5001, 5000)).size() - 192) < 1,
+                "192 blocks laid: " + bridge.progress());
+        helper.assertTrue(stock.count(new ItemCost(Items.EMERALD, 1)) == 58, "6 emeralds of wages paid");
+        works.work(helper.getLevel(), desk, stock, bell, 4, t + 10 * 24000L);
+        helper.assertTrue(bridge.done() && works.bridged(helper.getLevel().dimension(), hex), "finished within 10 days");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void childrenGrowUpWhileAway(GameTestHelper helper) {
         Villager child = Growth.bear(helper.getLevel(), helper.absolutePos(BELL));
         long now = helper.getLevel().getGameTime();

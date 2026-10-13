@@ -27,6 +27,7 @@ public final class Enterprise {
         NeoForge.EVENT_BUS.addListener(Rounds::onServerTick);
         NeoForge.EVENT_BUS.addListener(CensusTaker::onServerTick);
         NeoForge.EVENT_BUS.addListener(Caravans::onServerTick);
+        NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.territory.Works::onServerTick);
         NeoForge.EVENT_BUS.addListener(net.neoforged.neoforge.event.level.ChunkEvent.Load.class, Terrain::onChunk);
         NeoForge.EVENT_BUS.addListener(net.neoforged.neoforge.event.level.ChunkEvent.Unload.class, Terrain::onChunk);
     }

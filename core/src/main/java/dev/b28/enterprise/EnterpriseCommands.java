@@ -156,10 +156,12 @@ final class EnterpriseCommands {
                 .orElse("unclaimed");
         var terrain = dev.b28.enterprise.territory.Terrain.get(source.getServer());
         double water = terrain.waterShare(source.getLevel(), hex);
-        double factor = terrain.crossingFactor(source.getLevel(), hex);
+        boolean bridged = dev.b28.enterprise.territory.Works.get(source.getServer()).bridged(source.getLevel().dimension(), hex);
+        double factor = bridged ? 1 : terrain.crossingFactor(source.getLevel(), hex);
         source.sendSuccess(() -> Component.literal("Hex %s, centre %.0f %.0f, %s; %.0f%% water, %s".formatted(
                 hex, hex.centerX(), hex.centerZ(), owner, water * 100,
-                Double.isInfinite(factor) ? "no way across for caravans" : "%.1fx the road food to cross".formatted(factor))),
+                Double.isInfinite(factor) ? "no way across for caravans"
+                        : (bridged ? "bridged, " : "") + "%.1fx the road food to cross".formatted(factor))),
                 false);
         return 1;
     }
@@ -181,10 +183,8 @@ final class EnterpriseCommands {
                     territory.wagePerDay(bell), territory.laborShare(bell) * 100, territory.cropSalesPerDay(bell),
                     territory.wagesPaid(bell), territory.wagesUnpaid(bell), territory.harvested(bell))), false);
         }
-        if (territory.wagePerDay(bell) > 0) {
-            source.sendSuccess(() -> Component.literal("  treasury %.1f emeralds at the market's last touch"
-                    .formatted(territory.treasury(bell))), false);
-        }
+        source.sendSuccess(() -> Component.literal("  treasury %.1f emeralds at the market's last touch"
+                .formatted(territory.treasury(bell))), false);
         double mood = territory.mood(bell);
         String met = territory.comfortsMet(bell).entrySet().stream().sorted(Map.Entry.comparingByKey())
                 .map(e -> "%s %.0f%%".formatted(e.getKey(), e.getValue() * 100))
@@ -194,6 +194,10 @@ final class EnterpriseCommands {
                 territory.villagers(bell), territory.beds(bell), met.isEmpty() ? "none yet" : met,
                 dev.b28.enterprise.territory.Territory.yieldFactor(mood),
                 dev.b28.enterprise.territory.Territory.cultureFactor(mood))), false);
+        dev.b28.enterprise.territory.Works.get(source.getServer()).bridgesOf(bell).forEach(b -> source.sendSuccess(
+                () -> Component.literal("  bridge on %s: %s, %.0f emeralds of masons' wages paid".formatted(b.hex(),
+                        b.placed() ? "open, deck laid" : b.done() ? "open, deck to be laid" : "%.0f%% built".formatted(
+                                b.progress() * 100), b.wagesPaid())), false));
         source.sendSuccess(() -> Component.literal("  %d home(s) built, %d child(ren) born".formatted(
                 territory.homesBuilt(bell), territory.born(bell))), false);
         source.sendSuccess(() -> Component.literal("  toll %.1f%% at its posts (%.0f spurs collected last review)".formatted(

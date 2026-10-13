@@ -6,13 +6,14 @@ Drives the headless dev server over RCON (`just server-setup`, then `just server
 toll town T on the S3 route), then tick-warps day by day. With --inject DAY, a spring (a node whose warehouse refills
 every day with 9 shulkers of goods) opens near S1 that day and sends caravans to S1, S2 and S3. With --river, a river
 runs east-west through T's row of hexes before anything is built: 31 hexes flooded, the two by T left dry as its
-bridges, so the roads to S2 and S3 cross T's land or go far around.
+bridges, so the roads to S2 and S3 cross T's land or go far around. With --river-bridge, the river runs through the row
+south of T instead, with no dry crossing at all: S3 can't be reached until a town bridges it.
 
 Each day it writes one row per town and one per route to the CSV (ledger reads only; nothing is loaded).
 
 With --comforts, the hub also stocks a shulker of comforts (treats, clothing, furnishings) for towns to buy.
 
-    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river] [--comforts]
+    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts]
 """
 
 import csv
@@ -82,23 +83,29 @@ def hex_centre(q, r):
     return HEX_SIZE * math.sqrt(3) * (q + r / 2), HEX_SIZE * 1.5 * r
 
 
-def build_river():
-    """Floods the surface layer of each river hex in strips that stay inside the hex (pointy-top), one hex at a time."""
+def overlaps_town(x0, z0, x1, z1):
+    return any(x0 <= c[0] + 29 and x1 >= c[0] - 2 and z0 <= c[1] + 29 and z1 >= c[1] - 2 for c in TOWNS.values())
+
+
+def build_river(row, bridges):
+    """Floods the surface layer of each river hex in strips that stay inside the hex (pointy-top), one hex at a time.
+    Strips that would run under a town are left dry."""
     strips = [(0, 22, 39), (23, 30, 26), (31, 38, 12)]  # |dz| from, to, half-width
     for q in RIVER_Q:
-        if q in BRIDGES:
+        if q in bridges:
             continue
-        cx, cz = (round(v) for v in hex_centre(q, RIVER_ROW))
+        cx, cz = (round(v) for v in hex_centre(q, row))
         rcon(f"forceload add {cx - 40} {cz - 40} {cx + 40} {cz + 40}")
         sprint(20)
         for low, high, half in strips:
             for sign in (1, -1) if low else (1,):
                 z0, z1 = (cz - high, cz + high) if not low else sorted((cz + sign * low, cz + sign * high))
-                rcon(f"fill {cx - half} -61 {z0} {cx + half} -61 {z1} water replace grass_block")
+                if not overlaps_town(cx - half, z0, cx + half, z1):
+                    rcon(f"fill {cx - half} -61 {z0} {cx + half} -61 {z1} water replace grass_block")
         rcon(f"forceload remove {cx - 40} {cz - 40} {cx + 40} {cz + 40}")
     sprint(400)  # let the chunks unload: each is surveyed as it goes
     for q in (RIVER_Q.start, 0, 6, 7, 8, 9):
-        x, z = hex_centre(q, RIVER_ROW)
+        x, z = hex_centre(q, row)
         print(rcon(f"enterprise hex {round(x)} -60 {round(z)}").strip())
 
 
@@ -146,7 +153,9 @@ def main():
     out = Path(sys.argv[2])
     inject = int(sys.argv[sys.argv.index("--inject") + 1]) if "--inject" in sys.argv else None
     if "--river" in sys.argv:
-        build_river()
+        build_river(RIVER_ROW, BRIDGES)
+    elif "--river-bridge" in sys.argv:
+        build_river(RIVER_ROW + 1, set())
     setup()
     rows = []
     for day in range(1, days + 1):
