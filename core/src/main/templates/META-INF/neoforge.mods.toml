@@ -11,6 +11,9 @@ description='''
 Grow it, make it, haul it, sell it. Towns trade through lockers, merchants and caravans.
 '''
 
+[[mixins]]
+config="enterprise.mixins.json"
+
 [[dependencies.${mod_id}]]
     modId="neoforge"
     type="required"

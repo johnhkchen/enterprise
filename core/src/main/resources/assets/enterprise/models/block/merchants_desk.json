@@ -1,12 +1,24 @@
 {
-  "parent": "minecraft:block/cube",
+  "parent": "minecraft:block/block",
   "textures": {
-    "particle": "minecraft:block/dark_oak_planks",
-    "up": "minecraft:block/cartography_table_top",
-    "down": "minecraft:block/dark_oak_planks",
-    "north": "minecraft:block/cartography_table_side3",
-    "south": "minecraft:block/cartography_table_side3",
-    "east": "minecraft:block/cartography_table_side1",
-    "west": "minecraft:block/cartography_table_side1"
-  }
+    "particle": "minecraft:block/cartography_table_side3",
+    "top": "minecraft:block/cartography_table_top",
+    "bottom": "minecraft:block/dark_oak_planks",
+    "front": "minecraft:block/cartography_table_side3",
+    "side": "minecraft:block/cartography_table_side1"
+  },
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "down":  { "texture": "#bottom", "cullface": "down",  "tintindex": 0 },
+        "up":    { "texture": "#top",    "cullface": "up",    "tintindex": 0 },
+        "north": { "texture": "#front",  "cullface": "north", "tintindex": 0 },
+        "south": { "texture": "#front",  "cullface": "south", "tintindex": 0 },
+        "west":  { "texture": "#side",   "cullface": "west",  "tintindex": 0 },
+        "east":  { "texture": "#side",   "cullface": "east",  "tintindex": 0 }
+      }
+    }
+  ]
 }
