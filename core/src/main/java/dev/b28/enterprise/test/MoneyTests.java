@@ -79,6 +79,17 @@ public final class MoneyTests {
     }
 
     @GameTest(template = "floor")
+    public static void sellingOnlyMerchantsKeepNoReserve(GameTestHelper helper) {
+        helper.setBlock(DESK, Merchant.DESK.get());
+        helper.setBlock(STOCK, Blocks.CHEST);
+        MerchantStock stock = MerchantStock.at(helper.getLevel(), helper.absolutePos(DESK));
+        stock.insert(new ItemStack(Items.EMERALD, 10));
+        var result = MoneyChanger.settle(helper.getLevel(), helper.absolutePos(DESK), stock, new Mint(), FACTION);
+        helper.assertTrue(result.emeralds() == 10, "with no trades that cost emeralds, all 10 are sold");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void reserveIsNotSold(GameTestHelper helper) {
         MerchantStock stock = stockWith(helper, 50);
         var result = MoneyChanger.settle(helper.getLevel(), helper.absolutePos(DESK), stock, new Mint(), FACTION);
@@ -129,6 +140,10 @@ public final class MoneyTests {
 
     private static MerchantStock stockWith(GameTestHelper helper, int emeralds) {
         helper.setBlock(DESK, Merchant.DESK.get());
+        // A switched-on trade that costs emeralds, so the Merchant keeps its 64-emerald reserve.
+        dev.b28.enterprise.merchant.MerchantBook.get(helper.getLevel().getServer()).setEnabled(
+                net.minecraft.core.GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(DESK)),
+                helper.absolutePos(new BlockPos(1, 2, 1)), "minecraft:emerald+>minecraft:bookshelf", true);
         helper.setBlock(STOCK, Blocks.CHEST);
         MerchantStock stock = MerchantStock.at(helper.getLevel(), helper.absolutePos(DESK));
         for (int left = emeralds; left > 0; left -= 64) {

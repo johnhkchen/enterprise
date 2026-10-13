@@ -1,6 +1,7 @@
 package dev.b28.enterprise;
 
 import com.mojang.logging.LogUtils;
+import dev.b28.enterprise.caravan.Caravans;
 import dev.b28.enterprise.locker.LockerCatchUp;
 import dev.b28.enterprise.locker.Rounds;
 import dev.b28.enterprise.merchant.Merchant;
@@ -23,6 +24,7 @@ public final class Enterprise {
         NeoForge.EVENT_BUS.addListener(LockerCatchUp::onServerTick);
         NeoForge.EVENT_BUS.addListener(Rounds::onServerTick);
         NeoForge.EVENT_BUS.addListener(CensusTaker::onServerTick);
+        NeoForge.EVENT_BUS.addListener(Caravans::onServerTick);
     }
 
     public static ResourceLocation id(String path) {

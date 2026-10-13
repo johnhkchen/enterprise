@@ -63,6 +63,11 @@ public final class LockerTradingTests {
             return offer;
         }
 
+        /** Also switches on a trade that costs emeralds, so the Merchant keeps them rather than selling them. */
+        void keepEmeralds() {
+            enable("minecraft:emerald+>minecraft:bookshelf");
+        }
+
         void enable(String key) {
             GlobalPos desk = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(DESK));
             MerchantBook.get(helper.getLevel().getServer()).setEnabled(desk, helper.absolutePos(LECTERN), key, true);
@@ -217,6 +222,7 @@ public final class LockerTradingTests {
                 .thenExecute(() -> {
                     market.givePaperTrade(0);
                     market.enable(PAPER_TRADE);
+                    market.keepEmeralds();
                     market.librarian().restock();
 
                     // 128 paper moved into the locker: 5 trades use 120, 8 stay behind; emeralds go to stock.
@@ -270,6 +276,7 @@ public final class LockerTradingTests {
                 .thenExecute(() -> {
                     market.givePaperTrade(0);
                     market.enable(PAPER_TRADE);
+                    market.keepEmeralds();
                     Villager librarian = market.librarian();
                     long lastRestock = helper.getLevel().getGameTime() - 3 * 24000L - 100;
                     librarian.lastRestockGameTime = lastRestock;
@@ -294,6 +301,9 @@ public final class LockerTradingTests {
                     market.librarian().lastRestockGameTime = 0;
                     helper.assertTrue(dev.b28.enterprise.locker.LockerCatchUp.missedRestocks(market.librarian()) == 0,
                             "a villager that never restocked owes nothing");
+                    dev.b28.enterprise.locker.LockerCatchUp.catchUp(market.librarian());
+                    helper.assertTrue(market.librarian().lastRestockGameTime == helper.getLevel().getGameTime(),
+                            "but with a locker, its restock clock starts now, so later days count");
                 })
                 .thenSucceed();
     }

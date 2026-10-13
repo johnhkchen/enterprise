@@ -88,7 +88,11 @@ public final class LockerCatchUp {
                 continue;
             }
             if (job.remaining < 0) {
-                job.remaining = LockerTrading.hasLocker(villager) ? missedRestocks(villager) : 0;
+                boolean locker = LockerTrading.hasLocker(villager);
+                if (locker) {
+                    startClock(villager);
+                }
+                job.remaining = locker ? missedRestocks(villager) : 0;
                 job.settledUntil = settledUntil(villager);
             }
             while (job.remaining > 0 && budget > 0) {
@@ -108,6 +112,7 @@ public final class LockerCatchUp {
         if (!LockerTrading.hasLocker(villager)) {
             return 0;
         }
+        startClock(villager);
         int restocks = missedRestocks(villager);
         long settled = settledUntil(villager);
         for (int i = 0; i < restocks; i++) {
@@ -129,6 +134,16 @@ public final class LockerCatchUp {
         }
         long days = (now - last) / 24000L;
         return days > MAX_DAYS ? now : last + days * 24000L;
+    }
+
+    /**
+     * A villager with a locker that has never restocked starts its restock clock now, so time from here on counts.
+     * Otherwise a village set up and left alone before its villagers' first restock would never trade.
+     */
+    private static void startClock(Villager villager) {
+        if (villager.lastRestockGameTime == 0) {
+            villager.lastRestockGameTime = villager.level().getGameTime();
+        }
     }
 
     /** Two restocks per whole day since the last one, up to {@link #MAX_DAYS} days. Never restocked: none owed. */

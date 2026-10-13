@@ -96,6 +96,10 @@ Decisions made after the brief (`docs/brief.md`). Where this file and the brief 
 - **A garrison on a hex lets its owner levy tolls**, given the right kind of unit. Garrisons make blockades and sieges possible, and chokepoints worth fighting over.
 - **Garrison units:** a militia of villagers, where each profession gives its own boost (like caravan squads), plus a new raider-style unit for settlements (knights and soldiers), the village's answer to pillagers. Players' role in garrisons is decided later.
 
+## Hex grid (built 2026-10-14)
+
+- Pointy-top axial hexes, 80 blocks across the flats (centre to corner 46.2). `Hex.at(pos)`, distance, neighbours, and the straight line of hexes between two points. A route reports its length in hexes; tolls, detection and encounters will be per hex. `/enterprise hex` shows the hex you stand in.
+
 ## Travel cost between hexes (2026-10-13)
 
 Travel cost must react to real building. A long wall, a tunnel, a bridge or a wide canal should each change routes and costs.
@@ -109,6 +113,16 @@ Travel cost must react to real building. A long wall, a tunnel, a bridge or a wi
 
 ## Caravans (2026-10-13)
 
+**Built so far (2026-10-14): caravans as ledger records, no entities yet.**
+- **A route runs from a hub Merchant's desk to a settlement's Merchant's desk** (`/enterprise route add <from> <to>`). One caravan per route; at most one departure per route per in-game day; the hub's Merchant must be at its desk.
+- **Outbound:** the hub loads up to 27 stacks of what the destination's switched-on trades take, from its stock and shulkers. **At the destination** it tops each item up to 10 stacks, collects the coins in the destination Merchant's chest, and the rest of the cargo rides home. **Home:** coins go into the hub's Blaze Banker (or its chest), leftover cargo back to stock.
+- **Speed:** 1,200 blocks per in-game day. Arrivals load the desk's chunks on a short self-expiring ticket if nobody is there.
+- **Food limits travel.** A caravan eats 1 food point (nutrition) per 10 blocks and carries at most 320 (a stack of bread), so a leg is at most 3,200 blocks; longer routes need a settlement in between as a waystation. **Each settlement's Merchant's chest is its food supplier:** a caravan eats the outbound leg's food at the hub and the return leg's at the destination. No food: it doesn't leave, or it waits at the destination.
+- **Measured** (`dev/experiments/caravan_network.py`): a hub with 18 shulkers of goods supplying settlements 300, 600 and 1,200 blocks away, all unloaded, delivered 8,874 items and brought 2,532 spurs home in 8 days, eating 2,408 food. A 4,000-block route was refused.
+- **Working reserve refined:** a Merchant keeps 64 emeralds only if one of its switched-on trades costs emeralds; a selling-only settlement converts every emerald, so caravans have coins to collect.
+- **Still to come:** encounters (spawning caravans near players, raiding), stealth and detection, tolls per hex, routes chained through waystations, surveying.
+
+**Planned:
 - **A caravan is a cloud, not a position.** A route has traffic, and no one's location is simulated.
 - When a player is in a route's corridor, an encounter roll runs, per hex:
   `chance = traffic × hex detection × (1 − merchant stealth)`.

@@ -10,6 +10,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.trading.ItemCost;
@@ -145,6 +146,67 @@ public final class MerchantStock {
             }
         }
         return true;
+    }
+
+    /** Food points (nutrition) in the stock, loose and in shulker boxes. */
+    public int foodNutrition() {
+        int total = 0;
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            ItemStack stack = handler.getStackInSlot(slot);
+            if (isShulkerBox(stack)) {
+                for (ItemStack inner : contents(stack)) {
+                    total += nutrition(inner) * inner.getCount();
+                }
+            } else {
+                total += nutrition(stack) * stack.getCount();
+            }
+        }
+        return total;
+    }
+
+    /**
+     * Eats at least {@code points} of nutrition from the stock, whole items at a time, loose food first. Returns the
+     * points eaten; eats nothing and returns 0 if the stock holds too little.
+     */
+    public int eat(int points) {
+        if (points <= 0) {
+            return 0;
+        }
+        if (foodNutrition() < points) {
+            return 0;
+        }
+        int eaten = 0;
+        for (int slot = 0; slot < handler.getSlots() && eaten < points; slot++) {
+            ItemStack stack = handler.getStackInSlot(slot);
+            int each = nutrition(stack);
+            if (each > 0) {
+                int items = Math.min(stack.getCount(), (points - eaten + each - 1) / each);
+                handler.extractItem(slot, items, false);
+                eaten += items * each;
+            }
+        }
+        for (int slot = 0; slot < handler.getSlots() && eaten < points; slot++) {
+            ItemStack box = handler.getStackInSlot(slot);
+            if (!isShulkerBox(box)) {
+                continue;
+            }
+            NonNullList<ItemStack> inner = contents(box);
+            for (ItemStack food : inner) {
+                int each = nutrition(food);
+                if (each > 0 && eaten < points) {
+                    int items = Math.min(food.getCount(), (points - eaten + each - 1) / each);
+                    food.shrink(items);
+                    eaten += items * each;
+                }
+            }
+            handler.setStackInSlot(slot, withContents(box, inner));
+        }
+        return eaten;
+    }
+
+    private static int nutrition(ItemStack stack) {
+        FoodProperties food = stack.get(DataComponents.FOOD);
+        return food == null ? 0 : food.nutrition();
     }
 
     /** Removes and returns every loose stack matching {@code filter} (shulker contents are left alone). */

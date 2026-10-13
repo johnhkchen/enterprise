@@ -2,9 +2,14 @@ package dev.b28.enterprise;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import dev.b28.enterprise.caravan.CaravanLedger;
+import dev.b28.enterprise.caravan.Caravans;
+import dev.b28.enterprise.caravan.Route;
+import dev.b28.enterprise.hex.Hex;
 import dev.b28.enterprise.locker.Locker;
 import dev.b28.enterprise.locker.Lockers;
 import dev.b28.enterprise.merchant.Merchant;
@@ -45,6 +50,19 @@ final class EnterpriseCommands {
                         .then(Commands.argument("bell", BlockPosArgument.blockPos())
                                 .executes(EnterpriseCommands::census)))
                 .then(Commands.literal("settlements").executes(EnterpriseCommands::settlements))
+                .then(Commands.literal("hex")
+                        .executes(context -> hex(context, BlockPos.containing(context.getSource().getPosition())))
+                        .then(Commands.argument("pos", BlockPosArgument.blockPos())
+                                .executes(context -> hex(context, BlockPosArgument.getBlockPos(context, "pos")))))
+                .then(Commands.literal("route")
+                        .then(Commands.literal("add")
+                                .then(Commands.argument("from", BlockPosArgument.blockPos())
+                                        .then(Commands.argument("to", BlockPosArgument.blockPos())
+                                                .executes(EnterpriseCommands::addRoute))))
+                        .then(Commands.literal("remove")
+                                .then(Commands.argument("id", IntegerArgumentType.integer(1))
+                                        .executes(EnterpriseCommands::removeRoute))))
+                .then(Commands.literal("routes").executes(EnterpriseCommands::routes))
                 .then(Commands.literal("autoswitch")
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .then(Commands.literal("selling").executes(context -> autoswitch(context, false)))
@@ -106,8 +124,71 @@ final class EnterpriseCommands {
         BlockPos desk = BlockPosArgument.getLoadedBlockPos(context, "desk");
         var totals = MerchantStock.at(source.getLevel(), desk).totals();
         source.sendSuccess(() -> Component.literal("Stock at %s: %d kinds".formatted(desk.toShortString(), totals.size())), false);
+        dev.b28.enterprise.money.MoneyChanger.bankAt(source.getLevel(), desk).ifPresent(bank -> source.sendSuccess(
+                () -> Component.literal("  Blaze Banker: %d spurs".formatted(bank.getBalance())), false));
         totals.forEach((item, count) -> source.sendSuccess(() -> Component.literal("  %s %d".formatted(item, count)), false));
         return totals.size();
+    }
+
+    private static int hex(CommandContext<CommandSourceStack> context, BlockPos pos) {
+        Hex hex = Hex.at(pos);
+        context.getSource().sendSuccess(() -> Component.literal("Hex %s, centre %.0f %.0f".formatted(
+                hex, hex.centerX(), hex.centerZ())), false);
+        return 1;
+    }
+
+    /** A caravan route from a hub Merchant's Desk to a settlement's Merchant's Desk, if food allows the distance. */
+    private static int addRoute(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        ServerLevel level = source.getLevel();
+        BlockPos from = BlockPosArgument.getBlockPos(context, "from");
+        BlockPos to = BlockPosArgument.getBlockPos(context, "to");
+        for (BlockPos desk : List.of(from, to)) {
+            if (level.isLoaded(desk) && !level.getBlockState(desk).is(Merchant.DESK.get())) {
+                source.sendFailure(Component.literal("No Merchant's Desk at " + desk.toShortString()));
+                return 0;
+            }
+        }
+        double dx = from.getX() - to.getX();
+        double dz = from.getZ() - to.getZ();
+        int distance = (int) Math.ceil(Math.sqrt(dx * dx + dz * dz));
+        if (!Caravans.inRange(distance)) {
+            source.sendFailure(Component.literal(("Too far: %d blocks needs %d food each way, and a caravan carries at "
+                    + "most %d. Add a settlement in between as a waystation.").formatted(
+                    distance, Caravans.foodNeeded(distance), Caravans.FOOD_CAPACITY)));
+            return 0;
+        }
+        Route route = CaravanLedger.get(source.getServer()).addRoute(
+                GlobalPos.of(level.dimension(), from), GlobalPos.of(level.dimension(), to));
+        source.sendSuccess(() -> Component.literal(("Route %d: %d blocks over %d hexes, %.2f days each way, "
+                + "%d food each way").formatted(route.id(), distance, route.hexes(),
+                Caravans.travelTicks(distance) / 24000.0, Caravans.foodNeeded(distance))), true);
+        return route.id();
+    }
+
+    private static int removeRoute(CommandContext<CommandSourceStack> context) {
+        int id = IntegerArgumentType.getInteger(context, "id");
+        boolean removed = CaravanLedger.get(context.getSource().getServer()).removeRoute(id);
+        context.getSource().sendSuccess(() -> Component.literal(removed ? "Removed route " + id : "No route " + id), true);
+        return removed ? 1 : 0;
+    }
+
+    /** Every route with its totals and where its caravan is. */
+    private static int routes(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        CaravanLedger ledger = CaravanLedger.get(source.getServer());
+        source.sendSuccess(() -> Component.literal("%d route(s)".formatted(ledger.routes().size())), false);
+        for (Route route : ledger.routes()) {
+            String caravan = ledger.caravan(route.id())
+                    .map(c -> " | caravan %s, %d items, %d spurs".formatted(
+                            c.leg().name().toLowerCase().replace('_', ' '), c.items(), c.spurs()))
+                    .orElse("");
+            source.sendSuccess(() -> Component.literal(("  #%d %s -> %s: %d blocks, %d trips, %d items delivered, "
+                    + "%d spurs collected, %d food eaten, %s%s").formatted(route.id(), route.from().pos().toShortString(),
+                    route.to().pos().toShortString(), route.distance(), route.trips(), route.itemsDelivered(),
+                    route.spursCollected(), route.foodEaten(), route.status(), caravan)), false);
+        }
+        return ledger.routes().size();
     }
 
     /** Takes a census around a bell right now and prints it. */
