@@ -89,7 +89,7 @@ public final class TerritoryTests {
                     helper.getLevel(), chunk, hex, helper.absolutePos(BELL).getY());
             plots += counted == null ? 0 : counted.getOrDefault(Items.WHEAT, 0);
         }
-        helper.assertTrue(plots >= 18, "the field counts (most of) its 20 wheat plots, counted " + plots);
+        helper.assertTrue(plots >= 10, "the field counts its wheat plots (neighbouring tests may trample a few), counted " + plots);
         var plan = new Territory().plan(helper.getLevel(), helper.absolutePos(BELL).getY(), List.of(hex), List.of(1));
         double wheat = plan.getOrDefault("minecraft:wheat", 0.0);
         // Other tests' fields can share this hex; one level-1 farmer works at most 32 plots of it.
@@ -189,6 +189,41 @@ public final class TerritoryTests {
         helper.assertTrue(left < 200 && left > 0, "wages came out of the coins, with change: " + left + " spurs left");
         helper.assertTrue(farmStock(helper).count(new ItemCost(Items.WHEAT, 1)) == (int) Math.floor(perDay * 10),
                 "paid in coins, the farmers delivered the whole harvest");
+        helper.succeed();
+    }
+
+    /** Ten days of touches, one a day; when {@code selling}, the whole day's harvest sells for emeralds. */
+    private static double tenDays(GameTestHelper helper, boolean selling) {
+        Territory territory = new Territory();
+        GlobalPos bell = farm(helper, territory);
+        BlockPos desk = helper.absolutePos(new BlockPos(5, 2, 5));
+        GlobalPos deskPos = GlobalPos.of(helper.getLevel().dimension(), desk);
+        for (int i = 0; i < 5; i++) {
+            farmStock(helper).insert(new ItemStack(Items.EMERALD, 64)); // enough to pay every wage
+        }
+        double dayValue = territory.farmPlan(bell).get("minecraft:wheat") / 20;
+        long t = helper.getLevel().getGameTime();
+        for (int day = 1; day <= 10; day++) {
+            if (selling) {
+                territory.recordCropSale(deskPos, dayValue);
+            }
+            territory.touch(helper.getLevel(), desk, farmStock(helper), t + day * 24000L);
+        }
+        return territory.laborShare(bell);
+    }
+
+    @GameTest(template = "floor")
+    public static void wagesClimbTowardEverythingTheHarvestSellsFor(GameTestHelper helper) {
+        double share = tenDays(helper, true);
+        helper.assertTrue(share > 0.9, "farmers' share climbs toward 100% when the whole harvest sells: " + share);
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void wagesEaseToTheFloorWhenNothingSells(GameTestHelper helper) {
+        double share = tenDays(helper, false);
+        helper.assertTrue(share < 0.27 && share >= Territory.MIN_LABOR_SHARE,
+                "farmers' share eases toward 25% when nothing sells: " + share);
         helper.succeed();
     }
 

@@ -21,8 +21,8 @@ Monorepo: our mods, the pack definition, and design docs.
 - `just add <modrinth-slug>`: add a mod to the pack.
 - `just gametest`: run the in-game tests headless (`core/src/main/java/dev/b28/enterprise/test/`).
 - Headless dev server: `just server-setup` (flat world, testbench, wipes `core/run/world`), then `just server` in the
-  background, then `just rcon "<command>" ...` to drive it. It listens on localhost only: game 25566, RCON 25576.
-  Ports 25565/25575 belong to another local server, so don't use them.
+  background, then `just rcon "<command>" ...` to drive it. It listens on localhost only: game 25599, RCON 25598.
+  Other local servers use 25565/25575 (claude_plays_mc_create) and 25566/25576 (redshelf): never point RCON at those.
 
 ## Game test gotchas
 - Mock server players (`makeMockServerPlayerInLevel`) break on Numismatics' login packets; make logic take positions or plain `makeMockPlayer`.

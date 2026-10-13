@@ -5,8 +5,9 @@ Drives the headless dev server over RCON (`just server-setup`, then `just server
 farmers on a 480-plot carrot field, about 256 carrots and 5.8 emeralds of wages a day, 32 emeralds of capital):
   A: one buyer: the farmer at the town's composter locker buys carrots (22 to the emerald, 16 a restock), switched on;
   B: nobody buys.
-Both are left unloaded (rounds settle them) and logged daily: harvest delivered, wages paid and unpaid, and the town's
-money (emeralds plus coins, in emeralds at the current rate).
+Both are left unloaded (rounds settle them) and the days are tick-warped back to back; each day's line is read from
+the ledger (harvest delivered, wages paid and unpaid, the farmers' share, and the town's money as of its last touch),
+so nothing is loaded between days.
 
     python3 dev/experiments/farm_wages.py [days] [A|B]
 """
@@ -67,14 +68,16 @@ def main():
     print(rcon(f"enterprise census {BELL}").strip().splitlines()[-1])
     rcon(f"forceload remove {AREA}")
     print(f"\nScenario {scenario}: " + ("one villager buys carrots" if scenario == "A" else "nobody buys") + "\n")
-    print("day | harvested | wages paid | unpaid | money (emeralds) | carrots in stock")
+    print("day | harvested | wages paid | unpaid | farmers' share | money (emeralds)")
     for day in range(1, days + 1):
         sprint(24000)
         report = rcon(f"enterprise territory {BELL}")
         wages = re.search(r"([\d.]+) paid, ([\d.]+) unpaid.*?(\d+) items harvested", report)
         paid, unpaid, harvested = (float(wages.group(1)), float(wages.group(2)), int(wages.group(3))) if wages else (0, 0, 0)
-        held, carrots = money()
-        print(f"{day:>3} | {harvested:>9} | {paid:>10.1f} | {unpaid:>6.1f} | {held:>16.1f} | {carrots:>16}")
+        share = re.search(r"\((\d+)% of the harvest", report)
+        treasury = re.search(r"treasury ([\d.]+) emeralds", report)
+        print(f"{day:>3} | {harvested:>9} | {paid:>10.1f} | {unpaid:>6.1f} | {share.group(1) if share else '-':>13}% "
+              f"| {float(treasury.group(1)) if treasury else 0:>16.1f}")
         sys.stdout.flush()
 
 

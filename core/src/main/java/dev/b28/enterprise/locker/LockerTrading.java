@@ -119,8 +119,13 @@ public final class LockerTrading {
                 .sorted(Comparator.comparingDouble(offer -> (double) price(offer, reputation) / offer.getResult().getCount()))
                 .toList();
         int made = 0;
+        var territory = dev.b28.enterprise.territory.Territory.get(level.getServer());
+        GlobalPos deskPos = GlobalPos.of(level.dimension(), manager.desk());
         for (MerchantOffer offer : offers) {
             int priceA = price(offer, reputation);
+            boolean sellsCrop = offer.getResult().is(net.minecraft.world.item.Items.EMERALD)
+                    && dev.b28.enterprise.territory.Territory.isCrop(
+                            net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(offer.getBaseCostA().getItem()).toString());
             int uses = offer.getMaxUses() - offer.getUses();
             supply(stock, locker, offer.getItemCostA(), priceA * uses);
             offer.getItemCostB().ifPresent(costB -> supply(stock, locker, costB, costB.count() * uses));
@@ -128,6 +133,9 @@ public final class LockerTrading {
                 offer.increaseUses();
                 boolean levelledUp = rewardTradeXp(villager, offer.getXp());
                 rewardMerchantXp(manager.merchant(), levelledUp);
+                if (sellsCrop) {
+                    territory.recordCropSale(deskPos, offer.getResult().getCount());
+                }
                 made++;
             }
         }

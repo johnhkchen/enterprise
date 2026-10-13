@@ -34,11 +34,14 @@ add slug:
 refresh:
     cd pack && packwiz refresh
 
-# Configure the headless dev server: flat world, localhost only (game 25566, RCON 25576), testbench installed (wipes core/run/world)
+# Configure the headless dev server: flat world, localhost only (game 25599, RCON 25598), testbench installed (wipes core/run/world)
 server-setup:
+    # Wait for any previous dev server to finish saving (it holds the world's session lock until then), or its world
+    # bleeds into the new one. Not the RCON port: other apps on this machine may hold it.
+    while lsof core/run/world/session.lock >/dev/null 2>&1; do sleep 1; done
     mkdir -p core/run
     echo "eula=true" > core/run/eula.txt
-    printf '%s\n' 'level-type=minecraft\:flat' 'enable-rcon=true' 'rcon.password=dev' 'rcon.port=25576' 'online-mode=false' 'spawn-protection=0' 'difficulty=peaceful' 'server-ip=127.0.0.1' 'server-port=25566' > core/run/server.properties
+    printf '%s\n' 'level-type=minecraft\:flat' 'enable-rcon=true' 'rcon.password=dev' 'rcon.port=25598' 'online-mode=false' 'spawn-protection=0' 'difficulty=peaceful' 'server-ip=127.0.0.1' 'server-port=25599' > core/run/server.properties
     rm -rf core/run/world
     mkdir -p core/run/world/datapacks
     cp -R dev/testbench core/run/world/datapacks/enterprise-testbench

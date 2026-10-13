@@ -72,6 +72,14 @@ public final class CensusTaker {
 
     private static Job current;
 
+    /** Bells a round has just loaded: counted next, ahead of the polling schedule. */
+    private static final java.util.Deque<Bell> requested = new ArrayDeque<>();
+
+    /** Counts this bell next (a round has loaded it), if it's due. */
+    public static void request(ServerLevel level, BlockPos bell) {
+        requested.add(new Bell(level, bell));
+    }
+
     private CensusTaker() {}
 
     public static void onServerTick(ServerTickEvent.Post event) {
@@ -82,6 +90,15 @@ public final class CensusTaker {
         if (current != null) {
             work(server, current, PATHS_PER_TICK);
             return;
+        }
+        while (!requested.isEmpty()) {
+            Bell bell = requested.poll();
+            var last = Settlements.get(server).census(GlobalPos.of(bell.level().dimension(), bell.pos()));
+            long now = bell.level().getGameTime();
+            if (last.isEmpty() || now - last.get().gameTime() >= INTERVAL_TICKS) {
+                current = start(bell.level(), bell.pos(), RADIUS);
+                return;
+            }
         }
         if (server.overworld().getGameTime() % CHECK_EVERY_TICKS == 0) {
             nextDueBell(server).ifPresent(bell -> current = start(bell.level(), bell.pos(), RADIUS));

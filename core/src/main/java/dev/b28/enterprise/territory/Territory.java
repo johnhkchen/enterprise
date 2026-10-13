@@ -55,8 +55,20 @@ public final class Territory extends SavedData {
     /** Items a worked plot yields per in-game day. */
     public static final double YIELD_PER_PLOT_PER_DAY = 0.5;
 
-    /** A farmer's wage is this share of the value of what it grows. */
+    /** The farmers' starting share of the value of what they grow. */
     public static final double LABOR_SHARE = 0.5;
+
+    /**
+     * The share floats between these: toward the fraction of the harvest that actually sells for emeralds. A farm
+     * whose produce all sells ends up paying its whole sale value in wages (passive farming pays for itself, not for
+     * you); one whose produce doesn't sell pays the floor, so its harvest is cheap material, never free.
+     */
+    public static final double MIN_LABOR_SHARE = 0.25;
+    public static final double MAX_LABOR_SHARE = 1.0;
+
+    /** Days for the share to close half the gap to its target, and for crop sales to be averaged over. */
+    private static final double SHARE_HALF_LIFE_DAYS = 2;
+    private static final double SALES_HALF_LIFE_DAYS = 3;
 
     /** Days of wages the Merchant keeps in emeralds rather than selling them to the mint. */
     public static final double WAGE_FLOAT_DAYS = 3;
@@ -95,6 +107,11 @@ public final class Territory extends SavedData {
         double wagesPaid; // emeralds' worth paid, in all
         double wagesUnpaid; // emeralds' worth that couldn't be paid: those days' produce was lost
         long harvested; // items delivered to the Merchant's chest, in all
+        double laborShare = LABOR_SHARE;
+        double salesSince; // emeralds from selling crops since the last accrual
+        double salesPerDay; // averaged
+        double valuePerDay; // the harvest's value, averaged
+        double treasury; // the market's money at its last touch, in emeralds (chest emeralds, coins, Banker)
     }
 
     private final Map<Place, GlobalPos> owners = new HashMap<>();
@@ -136,15 +153,46 @@ public final class Territory extends SavedData {
 
     /** The farmers' wages per day, in emeralds: {@link #LABOR_SHARE} of the value of what they grow. */
     public double wagePerDay(GlobalPos bell) {
-        return holding(bell).map(h -> wagePerDay(h.perDay)).orElse(0.0);
+        return holding(bell).map(Territory::wagePerDay).orElse(0.0);
     }
 
-    static double wagePerDay(Map<String, Double> perDay) {
+    private static double wagePerDay(Holding holding) {
+        return valuePerDay(holding.perDay) * holding.laborShare;
+    }
+
+    /** What a day's harvest sells for at local buying prices, in emeralds. */
+    static double valuePerDay(Map<String, Double> perDay) {
         double value = 0;
         for (Map.Entry<String, Double> crop : perDay.entrySet()) {
             value += crop.getValue() / ITEMS_PER_EMERALD.getOrDefault(crop.getKey(), 32.0);
         }
-        return value * LABOR_SHARE;
+        return value;
+    }
+
+    public double laborShare(GlobalPos bell) {
+        return holding(bell).map(h -> h.laborShare).orElse(LABOR_SHARE);
+    }
+
+    /** The settlement market's money at its last touch, in emeralds at the rate then. */
+    public double treasury(GlobalPos bell) {
+        return holding(bell).map(h -> h.treasury).orElse(0.0);
+    }
+
+    public double cropSalesPerDay(GlobalPos bell) {
+        return holding(bell).map(h -> h.salesPerDay).orElse(0.0);
+    }
+
+    /** Is this item a crop farmers grow? (Locker trades selling one count as farm sales.) */
+    public static boolean isCrop(String itemId) {
+        return ITEMS_PER_EMERALD.containsKey(itemId);
+    }
+
+    /** A locker at the settlement's market sold crops for {@code emeralds}. */
+    public void recordCropSale(GlobalPos desk, double emeralds) {
+        bellOf(desk).ifPresent(bell -> {
+            holdings.get(bell).salesSince += emeralds;
+            setDirty();
+        });
     }
 
     public double wagesPaid(GlobalPos bell) {
@@ -323,12 +371,27 @@ public final class Territory extends SavedData {
         return plots.values().stream().mapToInt(Integer::intValue).sum();
     }
 
-    /** Adds produce, and the farmers' wages for it, for the time since the last harvest. */
+    /**
+     * Adds produce, and the farmers' wages for it, for the time since the last harvest; then moves the farmers'
+     * share toward the fraction of the harvest that sold.
+     */
     private static void accrue(Holding holding, long now) {
         if (holding.lastHarvest >= 0) {
             double days = Math.min(MAX_DAYS, (now - holding.lastHarvest) / 24000.0);
             holding.perDay.forEach((item, rate) -> holding.pending.merge(item, rate * days, Double::sum));
-            holding.wageOwed += wagePerDay(holding.perDay) * days;
+            holding.wageOwed += wagePerDay(holding) * days;
+            if (days > 0) {
+                double weight = 1 - Math.pow(0.5, days / SALES_HALF_LIFE_DAYS);
+                holding.salesPerDay += (holding.salesSince / days - holding.salesPerDay) * weight;
+                holding.valuePerDay += (valuePerDay(holding.perDay) - holding.valuePerDay) * weight;
+                holding.salesSince = 0;
+                if (holding.valuePerDay > 0) {
+                    double target = Math.max(MIN_LABOR_SHARE,
+                            Math.min(MAX_LABOR_SHARE, holding.salesPerDay / holding.valuePerDay));
+                    holding.laborShare += (target - holding.laborShare)
+                            * (1 - Math.pow(0.5, days / SHARE_HALF_LIFE_DAYS));
+                }
+            }
         }
         holding.lastHarvest = now;
     }
@@ -383,8 +446,11 @@ public final class Territory extends SavedData {
             return;
         }
         Holding holding = holdings.get(bell.get());
+        long since = holding.lastHarvest;
         accrue(holding, now);
+        double owedBefore = holding.wageOwed;
         double paidShare = payWages(level, desk, stock, holding, now);
+        long harvestedBefore = holding.harvested;
         if (paidShare < 1) {
             holding.pending.replaceAll((item, owed) -> owed * paidShare); // unpaid days' harvest is lost
         }
@@ -407,6 +473,14 @@ public final class Territory extends SavedData {
             owed.setValue(owed.getValue() - (whole - left));
             holding.harvested += whole - left;
         }
+        double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now);
+        int bankSpurs = MoneyChanger.bankAt(level, desk).map(b -> b.getBalance()).orElse(0);
+        holding.treasury = stock.count(new ItemCost(Items.EMERALD, 1))
+                + (MoneyChanger.value(stock.looseStacks()) + bankSpurs) / rate;
+        dev.b28.enterprise.Enterprise.LOGGER.debug(
+                "Farm touch at {}: {} days since last, wages owed {}, paid share {}, delivered {}",
+                desk.toShortString(), since < 0 ? "first" : String.format("%.2f", (now - since) / 24000.0),
+                String.format("%.2f", owedBefore), String.format("%.2f", paidShare), holding.harvested - harvestedBefore);
         if (holding.tollsOwed > 0) {
             var bank = MoneyChanger.bankAt(level, desk);
             if (bank.isPresent()) {
@@ -461,6 +535,11 @@ public final class Territory extends SavedData {
             entry.putDouble("wagesPaid", holding.wagesPaid);
             entry.putDouble("wagesUnpaid", holding.wagesUnpaid);
             entry.putLong("harvested", holding.harvested);
+            entry.putDouble("laborShare", holding.laborShare);
+            entry.putDouble("salesSince", holding.salesSince);
+            entry.putDouble("salesPerDay", holding.salesPerDay);
+            entry.putDouble("valuePerDay", holding.valuePerDay);
+            entry.putDouble("treasury", holding.treasury);
             entry.put("perDay", doubles(holding.perDay));
             entry.put("pending", doubles(holding.pending));
             settlements.add(entry);
@@ -516,6 +595,13 @@ public final class Territory extends SavedData {
                 holding.wagesPaid = entry.getDouble("wagesPaid");
                 holding.wagesUnpaid = entry.getDouble("wagesUnpaid");
                 holding.harvested = entry.getLong("harvested");
+                if (entry.contains("laborShare")) {
+                    holding.laborShare = entry.getDouble("laborShare");
+                }
+                holding.salesSince = entry.getDouble("salesSince");
+                holding.salesPerDay = entry.getDouble("salesPerDay");
+                holding.valuePerDay = entry.getDouble("valuePerDay");
+                holding.treasury = entry.getDouble("treasury");
                 holding.perDay = readDoubles(entry.getCompound("perDay"));
                 holding.pending = readDoubles(entry.getCompound("pending"));
                 territory.holdings.put(bell, holding);

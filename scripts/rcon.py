@@ -3,7 +3,7 @@
 
     python3 scripts/rcon.py "time set day" "enterprise lockers 7 -60 7"
 
-The dev server (just server) enables RCON on localhost:25576 with password "dev";
+The dev server (just server) enables RCON on localhost:25598 with password "dev";
 see core/run/server.properties, written by `just server-setup`.
 """
 
@@ -11,7 +11,7 @@ import socket
 import struct
 import sys
 
-HOST, PORT, PASSWORD = "127.0.0.1", 25576, "dev"
+HOST, PORT, PASSWORD = "127.0.0.1", 25598, "dev"
 
 
 def packet(sock: socket.socket, request_id: int, kind: int, body: str) -> None:

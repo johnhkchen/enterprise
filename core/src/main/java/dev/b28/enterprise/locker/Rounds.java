@@ -27,8 +27,11 @@ public final class Rounds {
     /** A desk is due a round when it hasn't had one for a day. */
     public static final long INTERVAL_TICKS = 24000;
 
-    /** How long a round keeps the footprint loaded; catch-up starts 2 seconds after the villagers load. */
-    private static final int ROUND_TICKS = 300;
+    /** Ticks a round holds the footprint after its villagers have loaded, for catch-up and the census to run. */
+    private static final int WORK_TICKS = 200;
+
+    /** A round that can't load its footprint in this much real time gives up (loading is real time, not ticks). */
+    private static final long LOAD_TIMEOUT_NANOS = 30_000_000_000L;
 
     /** No rounds or catch-up while the average tick takes longer than this. */
     private static final long TICK_BUDGET_NANOS = 30_000_000L;
@@ -36,10 +39,27 @@ public final class Rounds {
     /** At most this many chunks per round. */
     private static final int MAX_CHUNKS = 25;
 
+    // No timeout: a round holds its chunks until it has done its work. A tick-based timeout fails under /tick sprint,
+    // where 300 ticks pass in milliseconds while chunks take real time to load.
     private static final TicketType<ChunkPos> ROUND =
-            TicketType.create("enterprise_round", Comparator.comparingLong(ChunkPos::toLong), ROUND_TICKS);
+            TicketType.create("enterprise_round", Comparator.comparingLong(ChunkPos::toLong));
 
-    private static long busyUntil;
+    /** The round in progress: loading its footprint, then working once its villagers are in. */
+    private static final class Visit {
+        final ServerLevel level;
+        final GlobalPos desk;
+        final Set<ChunkPos> chunks;
+        final long startedNanos = System.nanoTime();
+        long workUntil = -1; // set once everything has loaded
+
+        Visit(ServerLevel level, GlobalPos desk, Set<ChunkPos> chunks) {
+            this.level = level;
+            this.desk = desk;
+            this.chunks = chunks;
+        }
+    }
+
+    private static Visit visit;
 
     private Rounds() {}
 
@@ -50,7 +70,11 @@ public final class Rounds {
     public static void onServerTick(ServerTickEvent.Post event) {
         MinecraftServer server = event.getServer();
         long now = server.overworld().getGameTime();
-        if (now % CHECK_EVERY_TICKS != 0 || now < busyUntil || !hasHeadroom(server)) {
+        if (visit != null) {
+            continueVisit(visit, now);
+            return;
+        }
+        if (now % CHECK_EVERY_TICKS != 0 || !hasHeadroom(server)) {
             return;
         }
         MerchantBook book = MerchantBook.get(server);
@@ -70,11 +94,38 @@ public final class Rounds {
         ServerLevel level = server.getLevel(desk.dimension());
         Set<ChunkPos> chunks = footprint(server, desk, book.workstations(desk));
         chunks.forEach(chunk -> level.getChunkSource().addRegionTicket(ROUND, chunk, 0, chunk));
-        LockerCatchUp.enqueueNear(level, desk.pos(), Lockers.MERCHANT_RANGE); // villagers already loaded but idle
         book.setLastRound(desk, now);
-        busyUntil = now + ROUND_TICKS;
+        visit = new Visit(level, desk, chunks);
         Enterprise.LOGGER.debug("Round: visiting the Merchant's Desk at {} ({} chunks)",
                 desk.pos().toShortString(), chunks.size());
+    }
+
+    /**
+     * Once the footprint and its villagers have loaded: catch-up for villagers there (including any that were loaded
+     * but idle) and a census of the settlement; then hold for {@link #WORK_TICKS} and release the chunks.
+     */
+    private static void continueVisit(Visit current, long now) {
+        if (current.workUntil < 0) {
+            boolean loaded = current.chunks.stream().allMatch(chunk ->
+                    current.level.getChunkSource().hasChunk(chunk.x, chunk.z)
+                            && current.level.areEntitiesLoaded(chunk.toLong()));
+            if (loaded) {
+                LockerCatchUp.enqueueNear(current.level, current.desk.pos(), Lockers.MERCHANT_RANGE);
+                dev.b28.enterprise.territory.Territory.get(current.level.getServer()).bellOf(current.desk)
+                        .ifPresent(bell -> dev.b28.enterprise.settlement.CensusTaker.request(current.level, bell.pos()));
+                current.workUntil = now + WORK_TICKS;
+            } else if (System.nanoTime() - current.startedNanos > LOAD_TIMEOUT_NANOS) {
+                Enterprise.LOGGER.debug("Round: gave up loading {}", current.desk.pos().toShortString());
+                release(current);
+            }
+        } else if (now >= current.workUntil) {
+            release(current);
+        }
+    }
+
+    private static void release(Visit current) {
+        current.chunks.forEach(chunk -> current.level.getChunkSource().removeRegionTicket(ROUND, chunk, 0, chunk));
+        visit = null;
     }
 
     /**

@@ -157,9 +157,14 @@ final class EnterpriseCommands {
         territory.farmPlan(bell).forEach((item, perDay) -> source.sendSuccess(
                 () -> Component.literal("  farms %s: %.1f a day".formatted(item, perDay)), false));
         if (territory.wagePerDay(bell) > 0) {
-            source.sendSuccess(() -> Component.literal(("  farm wages %.2f emeralds a day; %.1f paid, %.1f unpaid (harvest "
-                    + "lost); %d items harvested").formatted(territory.wagePerDay(bell), territory.wagesPaid(bell),
-                    territory.wagesUnpaid(bell), territory.harvested(bell))), false);
+            source.sendSuccess(() -> Component.literal(("  farm wages %.2f emeralds a day (%.0f%% of the harvest's value; crops "
+                    + "sell %.2f a day); %.1f paid, %.1f unpaid (harvest lost); %d items harvested").formatted(
+                    territory.wagePerDay(bell), territory.laborShare(bell) * 100, territory.cropSalesPerDay(bell),
+                    territory.wagesPaid(bell), territory.wagesUnpaid(bell), territory.harvested(bell))), false);
+        }
+        if (territory.wagePerDay(bell) > 0) {
+            source.sendSuccess(() -> Component.literal("  treasury %.1f emeralds at the market's last touch"
+                    .formatted(territory.treasury(bell))), false);
         }
         if (territory.tollsOwed(bell) > 0) {
             source.sendSuccess(() -> Component.literal("  tolls owed: %d spurs".formatted(territory.tollsOwed(bell))), false);
