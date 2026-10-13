@@ -33,3 +33,16 @@ add slug:
 # Refresh the pack index after hand-editing pack/
 refresh:
     cd pack && packwiz refresh
+
+# Configure the headless dev server: flat world, localhost only (game 25566, RCON 25576), testbench installed (wipes core/run/world)
+server-setup:
+    mkdir -p core/run
+    echo "eula=true" > core/run/eula.txt
+    printf '%s\n' 'level-type=minecraft\:flat' 'enable-rcon=true' 'rcon.password=dev' 'rcon.port=25576' 'online-mode=false' 'spawn-protection=0' 'difficulty=peaceful' 'server-ip=127.0.0.1' 'server-port=25566' > core/run/server.properties
+    rm -rf core/run/world
+    mkdir -p core/run/world/datapacks
+    cp -R dev/testbench core/run/world/datapacks/enterprise-testbench
+
+# Send commands to the running dev server, e.g. `just rcon "time set day"`
+rcon +commands:
+    python3 scripts/rcon.py {{commands}}

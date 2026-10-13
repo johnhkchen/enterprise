@@ -11,13 +11,22 @@ Monorepo: our mods, the pack definition, and design docs.
 - `core/`: the core mod (`mod_id=enterprise`, package `dev.b28.enterprise`). NeoForge ModDevGradle.
 - `pack/`: packwiz pack definition, the source of truth for which mods ship.
 - `scripts/prism_sync.py`: mirrors `pack/` plus the built core jar into the Prism instance "Enterprise (dev)".
-- `dev/testbench/`: datapack synced into the instance's `testing` world: time warps, tick-rate controls, and a one-command test market (`/function testbench:help`).
+- `dev/testbench/`: datapack synced into the instance's `testing` world: time warps, tick-rate controls, and a one-command test market (`/function testbench:help`). Headless: `just rcon "execute positioned 0 -60 0 run function testbench:market/build"`, desk lands at 7 -60 7.
 
 ## Commands (`just`)
 - `just build`: build the core jar.
 - `just run`: dev client with only the core mod.
 - `just prism`: build, then sync the Prism instance with the full pack. Launching from Prism re-copies the latest jar.
 - `just add <modrinth-slug>`: add a mod to the pack.
+- `just gametest`: run the in-game tests headless (`core/src/main/java/dev/b28/enterprise/test/`).
+- Headless dev server: `just server-setup` (flat world, testbench, wipes `core/run/world`), then `just server` in the
+  background, then `just rcon "<command>" ...` to drive it. It listens on localhost only: game 25566, RCON 25576.
+  Ports 25565/25575 belong to another local server, so don't use them.
+
+## Game test gotchas
+- Test coordinates start at the structure block, one below the arena: the `floor` template's floor is y=1.
+- Tests run side by side: keep world searches inside the 7x7 arena (range 4 from the centre).
+- `helper.relativePos` doesn't invert `absolutePos` for rotated tests: compare positions in world space.
 
 ## Toolchain
 - Gradle runs on the repo's mise Java (23); Gradle's foojay resolver downloads JDK 21 for compiling.
