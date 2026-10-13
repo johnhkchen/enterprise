@@ -122,7 +122,7 @@ Travel cost must react to real building. A long wall, a tunnel, a bridge or a wi
 - **Working reserve refined:** a Merchant keeps 64 emeralds only if one of its switched-on trades costs emeralds; a selling-only settlement converts every emerald, so caravans have coins to collect.
 - **Still to come:** encounters (spawning caravans near players, raiding), stealth and detection, tolls per hex, routes chained through waystations, surveying.
 
-**Planned:
+**Planned:**
 - **A caravan is a cloud, not a position.** A route has traffic, and no one's location is simulated.
 - When a player is in a route's corridor, an encounter roll runs, per hex:
   `chance = traffic × hex detection × (1 − merchant stealth)`.
