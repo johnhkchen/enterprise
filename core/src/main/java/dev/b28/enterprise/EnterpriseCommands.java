@@ -183,8 +183,8 @@ final class EnterpriseCommands {
                     territory.wagePerDay(bell), territory.laborShare(bell) * 100, territory.cropSalesPerDay(bell),
                     territory.wagesPaid(bell), territory.wagesUnpaid(bell), territory.harvested(bell))), false);
         }
-        source.sendSuccess(() -> Component.literal("  treasury %.1f emeralds at the market's last touch"
-                .formatted(territory.treasury(bell))), false);
+        source.sendSuccess(() -> Component.literal("  treasury %.1f emeralds at the market's last touch, %.1f kept back"
+                .formatted(territory.treasury(bell), territory.desk(bell).map(territory::reserve).orElse(0.0))), false);
         double mood = territory.mood(bell);
         String met = territory.comfortsMet(bell).entrySet().stream().sorted(Map.Entry.comparingByKey())
                 .map(e -> "%s %.0f%%".formatted(e.getKey(), e.getValue() * 100))

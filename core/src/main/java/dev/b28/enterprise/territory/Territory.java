@@ -143,6 +143,7 @@ public final class Territory extends SavedData {
         int homesBuilt;
         int born;
         double walled; // share of its wall standing, from the works ledger at the last touch
+        double tradingCapital; // emeralds to stock its shelves, from the warehouse at the last touch
     }
 
     private final Map<Place, GlobalPos> owners = new HashMap<>();
@@ -253,6 +254,11 @@ public final class Territory extends SavedData {
         java.util.Set<GlobalPos> desks = new java.util.LinkedHashSet<>();
         holdings.values().stream().filter(h -> h.desk != null && !h.perDay.isEmpty()).forEach(h -> desks.add(h.desk));
         return desks;
+    }
+
+    /** The desk of the settlement's Merchant, if it has one. */
+    public Optional<GlobalPos> desk(GlobalPos bell) {
+        return holding(bell).map(h -> h.desk);
     }
 
     /** The settlement whose Merchant works at this desk. */
@@ -469,6 +475,7 @@ public final class Territory extends SavedData {
         upkeepGuards(level, desk, stock, holding, now); // pay the guards who served, then review the garrison
         long lastReview = holding.lastTollReview;
         reviewTolls(bell.get(), now, Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now));
+        holding.tradingCapital = dev.b28.enterprise.merchant.Warehouse.get(level.getServer()).tradingCapital(at, now);
         Works works = Works.get(level.getServer());
         works.work(level, desk, stock, bell.get(), hexes(bell.get()).size(), now); // masons' wages and progress
         holding.walled = works.walled(bell.get());
@@ -662,10 +669,14 @@ public final class Territory extends SavedData {
                 .orElse(0.0);
     }
 
-    /** Money the town keeps back before buying comforts: its wage float and three days of guards' pay, in emeralds. */
+    /**
+     * Money the town keeps back before spending on comforts, homes, children or works, in emeralds: its wage float,
+     * three days of guards' pay, and its trading capital (two days of what its lockers sell, on average). A town that spent its
+     * trading capital couldn't buy the goods that earn its money, and would stay poor.
+     */
     public double reserve(GlobalPos desk) {
-        return wageFloat(desk) + bellOf(desk).map(bell -> holdings.get(bell).posts.size() * GUARD_PAY_PER_DAY * 3)
-                .orElse(0.0);
+        return wageFloat(desk) + bellOf(desk).map(bell -> holdings.get(bell).posts.size() * GUARD_PAY_PER_DAY * 3
+                + holdings.get(bell).tradingCapital).orElse(0.0);
     }
 
     /** The toll this town has set, as a share of the coins caravans carry. It's collected only at its posts. */

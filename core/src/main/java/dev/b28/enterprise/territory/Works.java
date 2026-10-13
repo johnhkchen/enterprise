@@ -314,9 +314,11 @@ public final class Works extends SavedData {
             }
             double wages = deck(hex, value.from(), value.to()).size() / perDay * MASONS * MASON_PAY_PER_DAY;
             double payback = wages / net;
-            if (payback < bestPayback
-                    && Treasury.available(level, desk, stock, rate) - territory.reserve(GlobalPos.of(level.dimension(), desk))
-                            >= wages / 2) {
+            double spare = Treasury.available(level, desk, stock, rate) - territory.reserve(GlobalPos.of(level.dimension(), desk));
+            Enterprise.LOGGER.debug("Settlement at {}: a bridge on {} would cost {} emeralds, repaid in {} days; {} to spare",
+                    owner.pos().toShortString(), hex, String.format("%.1f", wages), String.format("%.1f", payback),
+                    String.format("%.1f", spare));
+            if (payback < bestPayback && spare >= wages / 2) {
                 best = value;
                 bestPayback = payback;
             }

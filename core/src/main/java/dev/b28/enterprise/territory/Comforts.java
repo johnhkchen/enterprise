@@ -51,6 +51,12 @@ public final class Comforts {
         return Optional.of(TagKey.create(Registries.ITEM, Enterprise.id(PREFIX + name)));
     }
 
+    /** Is this a comfort? Reads the item's own tags, so it's cheap enough for every slot of a warehouse. */
+    public static boolean isComfort(ItemStack stack) {
+        return stack.getTags().anyMatch(tag -> tag.location().getNamespace().equals(Enterprise.MOD_ID)
+                && tag.location().getPath().startsWith(PREFIX));
+    }
+
     /** The kind of comfort this item is, if any. */
     public static Optional<TagKey<Item>> kindOf(Item item) {
         return kinds().stream().filter(kind -> item.builtInRegistryHolder().is(kind)).findFirst();

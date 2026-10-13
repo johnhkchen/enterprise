@@ -52,6 +52,19 @@ public final class MoodTests {
     }
 
     @GameTest(template = "floor")
+    public static void treatsAreNotRoadFood(GameTestHelper helper) {
+        Territory territory = new Territory();
+        town(helper, territory);
+        stock(helper).insert(new ItemStack(Items.COOKIE, 64));
+        stock(helper).insert(new ItemStack(Items.PUMPKIN_PIE, 16));
+        helper.assertTrue(stock(helper).foodNutrition() == 0, "no road food here: " + stock(helper).foodNutrition());
+        helper.assertTrue(stock(helper).eat(10).isEmpty(), "caravans can't eat the treats");
+        stock(helper).insert(new ItemStack(Items.BREAD, 4));
+        helper.assertTrue(stock(helper).foodNutrition() == 20, "bread they can");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void villagersUseTheirRations(GameTestHelper helper) {
         Territory territory = new Territory();
         GlobalPos bell = town(helper, territory);

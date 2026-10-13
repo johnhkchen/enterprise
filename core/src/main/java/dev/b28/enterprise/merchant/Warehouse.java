@@ -41,6 +41,7 @@ public final class Warehouse extends SavedData {
     private final Map<GlobalPos, Integer> levels = new HashMap<>();
     // desk -> item -> count, as of the market's last stocktake (a hub takes one when a caravan leaves)
     private final Map<GlobalPos, Map<String, Integer>> stocktake = new HashMap<>();
+    private final Map<GlobalPos, Long> stocktakeTime = new HashMap<>();
 
     public static Warehouse get(MinecraftServer server) {
         return server.overworld()
@@ -83,6 +84,20 @@ public final class Warehouse extends SavedData {
                 .sum();
     }
 
+    /**
+     * What it costs to stock the town's shelves: {@link #PAR_DAYS} days of what its lockers actually sell (averaged), at
+     * local value, in emeralds. The town's trading capital: spend it on anything else and it can't buy the goods that
+     * earn its money. What its lockers could sell but don't (nothing comes to sell) ties up nothing.
+     */
+    public double tradingCapital(GlobalPos desk, long now) {
+        double emeralds = 0;
+        for (Map.Entry<String, Use> item : uses.getOrDefault(desk, Map.of()).entrySet()) {
+            settle(item.getValue(), now);
+            emeralds += item.getValue().perDay * PAR_DAYS / dev.b28.enterprise.money.Prices.itemsPerEmerald(item.getKey());
+        }
+        return emeralds;
+    }
+
     /** How many of {@code item} the warehouse aims to hold. {@code wanted}: a switched-on trade takes it. */
     public int par(GlobalPos desk, Item item, boolean wanted, long now) {
         int days = (int) Math.ceil(capacity(desk, item) * PAR_DAYS);
@@ -91,8 +106,19 @@ public final class Warehouse extends SavedData {
 
     /** Records what the market holds now, for decisions made while it's unloaded. */
     public void recordStocktake(GlobalPos desk, Map<String, Integer> totals) {
+        recordStocktake(desk, totals, -1);
+    }
+
+    /** As {@link #recordStocktake(GlobalPos, Map)}, taken at game time {@code now}. */
+    public void recordStocktake(GlobalPos desk, Map<String, Integer> totals, long now) {
         stocktake.put(desk, new HashMap<>(totals));
+        stocktakeTime.put(desk, now);
         setDirty();
+    }
+
+    /** When the market's last stocktake was taken, or -1 if never (or not known). */
+    public long stocktakeTime(GlobalPos desk) {
+        return stocktakeTime.getOrDefault(desk, -1L);
     }
 
     /** How many of {@code item} the market held at its last stocktake. */
@@ -164,6 +190,7 @@ public final class Warehouse extends SavedData {
             CompoundTag items = new CompoundTag();
             totals.forEach(items::putInt);
             entry.put("items", items);
+            entry.putLong("time", stocktakeTime.getOrDefault(desk, -1L));
             takes.add(entry);
         });
         tag.put("stocktake", takes);
@@ -212,6 +239,7 @@ public final class Warehouse extends SavedData {
                 CompoundTag items = entry.getCompound("items");
                 items.getAllKeys().forEach(id -> totals.put(id, items.getInt(id)));
                 warehouse.stocktake.put(desk, totals);
+                warehouse.stocktakeTime.put(desk, entry.contains("time") ? entry.getLong("time") : -1L);
             });
         }
         return warehouse;

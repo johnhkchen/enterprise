@@ -11,7 +11,8 @@ south of T instead, with no dry crossing at all: S3 can't be reached until a tow
 
 Each day it writes one row per town and one per route to the CSV (ledger reads only; nothing is loaded).
 
-With --comforts, the hub also stocks a shulker of comforts (treats, clothing, furnishings) for towns to buy.
+With --comforts, the hub also stocks a shulker of comforts (treats, clothing, furnishings) for towns to buy, and the
+spring, once open, refills a shulker of comforts and a stack of books every day.
 
     python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts]
 """
@@ -138,14 +139,20 @@ def open_spring():
     for name in ["S1", "S2", "S3"]:
         print(f"route spring -> {name}: "
               + rcon(f"enterprise route add {spring_desk} {desk(TOWNS[name])}").strip().splitlines()[-1])
+    if "--comforts" in sys.argv:
+        rcon(f"execute positioned {SPRING[0]} -60 {SPRING[1]} run function testbench:network/comforts",
+             f"item replace block {SPRING[0] + 1} -60 {SPRING[1] + 2} container.10 with minecraft:book 64")
     rcon(f"forceload remove {area(SPRING, 6)}")
 
 
 def refill_spring():
     rcon(f"forceload add {area(SPRING, 6)}")
     sprint(20)
-    rcon(f"execute positioned {SPRING[0]} -60 {SPRING[1]} run function testbench:network/spring_refill",
-         f"forceload remove {area(SPRING, 6)}")
+    rcon(f"execute positioned {SPRING[0]} -60 {SPRING[1]} run function testbench:network/spring_refill")
+    if "--comforts" in sys.argv:  # a workshop's daily output of comforts too, books for reading
+        rcon(f"execute positioned {SPRING[0]} -60 {SPRING[1]} run function testbench:network/comforts",
+             f"item replace block {SPRING[0] + 1} -60 {SPRING[1] + 2} container.10 with minecraft:book 64")
+    rcon(f"forceload remove {area(SPRING, 6)}")
 
 
 def main():
@@ -182,6 +189,13 @@ def main():
                 "harvested": number(r"(\d+) items harvested", t),
                 "trades": trades[name],
                 "mood": number(r"mood ([+-][\d.]+)", t),
+                "villagers": number(r"\): (\d+) villagers", t),
+                "beds": number(r"villagers, (\d+) beds", t),
+                "homes": number(r"(\d+) home\(s\) built", t),
+                "born": number(r"(\d+) child\(ren\) born", t),
+                "wall_pct": number(r"wall (\d+)% built", t),
+                "bridges": len(re.findall(r"bridge on", t)),
+                "culture": number(r"culture ([\d.]+) of", t),
             })
         routes = rcon("enterprise routes")
         for line in routes.splitlines():
@@ -198,7 +212,8 @@ def main():
                 })
         towns = [r for r in rows if r["day"] == day and r["kind"] == "town"]
         print(f"day {day:>2}: " + " | ".join(
-            f"{r['name']} {r['treasury']:.0f}em {r['mood']:+.1f} {int(r['guards'])}g {r['toll_pct']:.0f}% {r['trades']}t"
+            f"{r['name']} {r['treasury']:.0f}em {r['mood']:+.1f} {int(r['villagers'])}v {int(r['hexes'])}h "
+            f"{int(r['guards'])}g {r['toll_pct']:.0f}% {r['trades']}t"
             for r in towns)
             + f" | mint {rate:.1f}")
         sys.stdout.flush()

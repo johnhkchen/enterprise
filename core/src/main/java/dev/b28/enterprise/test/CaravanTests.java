@@ -138,6 +138,45 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void caravansAllowForComfortsUsedSinceTheStocktake(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192);
+        var territory = net.territory();
+        territory.afterCensus(helper.getLevel(), helper.absolutePos(new BlockPos(6, 2, 4)),
+                new dev.b28.enterprise.settlement.Census(5, 5, 5, 5, 0), 1, java.util.List.of());
+        var dest = net.route().to();
+        long t = helper.getLevel().getGameTime();
+        // At the last visit the town was full: 36 cookies, its whole 2-emerald par of treats.
+        dev.b28.enterprise.merchant.Warehouse.get(helper.getLevel().getServer())
+                .recordStocktake(dest, java.util.Map.of("minecraft:cookie", 36), t);
+        var now = Caravans.comfortWantsForTest(helper.getLevel().getServer(), territory, dest, t);
+        helper.assertTrue(!now.containsKey("treats"), "just after: it wants no treats " + now);
+        var later = Caravans.comfortWantsForTest(helper.getLevel().getServer(), territory, dest, t + 2 * 24000L);
+        // Two days on, 5 villagers have eaten 1 emerald's worth: it wants that back.
+        helper.assertTrue(Math.abs(later.getOrDefault("treats", 0.0) - 1.0) < 1e-6, "two days on: " + later);
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void townsKeepTheirTradingCapital(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192); // the town holds 192 spurs, 12 emeralds
+        net.territory().afterCensus(helper.getLevel(), helper.absolutePos(new BlockPos(6, 2, 4)),
+                new dev.b28.enterprise.settlement.Census(5, 5, 5, 5, 0), 1, java.util.List.of());
+        // Its lockers sell 240 paper a day: two days' stock is 480 paper, 20 emeralds, more than it has.
+        long start = helper.getLevel().getGameTime();
+        var warehouse = dev.b28.enterprise.merchant.Warehouse.get(helper.getLevel().getServer());
+        for (int day = 0; day <= 30; day++) {
+            warehouse.recordUse(net.route().to(), Items.PAPER, 240, start + day * 24000L);
+        }
+        long t = start + 30 * 24000L + 100; // a month of trade later
+        net.hub().insert(new ItemStack(Items.COOKIE, 64));
+        net.poll(t);
+        net.poll(t + 80);
+        helper.assertTrue(net.dest().count(new ItemCost(Items.COOKIE, 1)) == 0, "no cookies: the money is for paper");
+        helper.assertTrue(net.dest().count(PAPER) > 0, "and it bought paper");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aTownShortOfClothesBuysAPairOfBoots(GameTestHelper helper) {
         Network net = network(helper, 2, 5, 192);
         net.territory().afterCensus(helper.getLevel(), helper.absolutePos(new BlockPos(6, 2, 4)),

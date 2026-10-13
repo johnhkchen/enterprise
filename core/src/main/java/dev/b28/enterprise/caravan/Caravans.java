@@ -170,7 +170,8 @@ public final class Caravans {
             ledger.setDirty();
             return false;
         }
-        List<ItemStack> cargo = pickComforts(stock, comfortWants(server, territory, route.to));
+        List<ItemStack> cargo = pickComforts(stock,
+                comfortWants(server, territory, route.to, now + travelTicks(route.distance())));
         cargo.addAll(pickCargo(stock, wantedAt(server, route.to), CARGO_SLOTS - cargo.size()));
         Warehouse.get(server).recordStocktake(route.from, stock.totals()); // for buying decisions while away
         if (cargo.isEmpty() && !hasBusinessAt(server, ledger, route, now)) {
@@ -229,7 +230,7 @@ public final class Caravans {
             int keepForFood = (int) Math.ceil(food * PURSE_PER_FOOD_POINT * rate);
             buySurplus(server, ledger, level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
         }
-        Warehouse.get(server).recordStocktake(route.to, stock.totals()); // what the next caravan should bring
+        Warehouse.get(server).recordStocktake(route.to, stock.totals(), now); // what the next caravan should bring
         Map<Item, Integer> meal = stock.eat(food);
         if (meal.isEmpty()) {
             caravan.leg = Caravan.Leg.WAITING_FOR_FOOD;
@@ -472,23 +473,34 @@ public final class Caravans {
     }
 
     /**
-     * What the destination wants of each kind of comfort, in emeralds' worth: its par less what it held at its last
-     * stocktake (none taken yet: the whole par).
+     * What the destination will want of each kind of comfort when a caravan leaving now arrives (at {@code arrival}),
+     * in emeralds' worth: its par less what it held at its last stocktake, less what its villagers will have used
+     * since (none taken yet: the whole par). The stocktake is taken just after a caravan sells, when the shelves are
+     * fullest; without the using up, every other caravan would bring nothing.
      */
-    static Map<String, Double> comfortWants(MinecraftServer server, Territory territory, GlobalPos desk) {
+    static Map<String, Double> comfortWants(MinecraftServer server, Territory territory, GlobalPos desk, long arrival) {
         Warehouse warehouse = Warehouse.get(server);
         double par = territory.comfortPar(desk);
+        long taken = warehouse.stocktakeTime(desk);
+        double days = taken < 0 ? 0 : Math.max(0, (arrival - taken) / 24000.0);
+        double used = territory.villagers(territory.bellOf(desk).orElse(desk)) * Comforts.RATION_EMERALDS * days;
         Map<String, Double> wants = new LinkedHashMap<>();
         for (var kind : Comforts.kinds()) {
             double held = 0;
             for (var holder : BuiltInRegistries.ITEM.getTagOrEmpty(kind)) {
                 held += warehouse.onHand(desk, holder.value()) * Prices.emeraldsEach(holder.value());
             }
+            held = Math.max(0, held - used);
             if (par - held > 0) {
                 wants.put(Comforts.name(kind), par - held);
             }
         }
         return wants;
+    }
+
+    public static Map<String, Double> comfortWantsForTest(MinecraftServer server, Territory territory, GlobalPos desk,
+            long arrival) {
+        return comfortWants(server, territory, desk, arrival);
     }
 
     /** Comforts from the hub's stock for what the destination wants, a little over, cheapest goods first. */
