@@ -106,6 +106,27 @@ public final class MoneyTests {
         helper.succeed();
     }
 
+    @GameTest(template = "floor")
+    public static void firstPlayerToOpenTheBankerOwnsTheEarnings(GameTestHelper helper) {
+        MerchantStock stock = stockWith(helper, 164);
+        helper.setBlock(BANKER, BuiltInRegistries.BLOCK.get(ResourceLocation.fromNamespaceAndPath("numismatics", "blaze_banker")));
+        BlazeBankerBlockEntity banker = (BlazeBankerBlockEntity) helper.getBlockEntity(BANKER);
+        var result = MoneyChanger.settle(helper.getLevel(), helper.absolutePos(DESK), stock, new Mint(), FACTION);
+        helper.assertTrue(result.deposited(), "an unowned Banker still takes the deposit");
+
+        // Using a Blaze Banker claims it for the player if it has no owner, then checks trust (BlazeBankerBlock.use).
+        // Mock players can't receive Numismatics' menu packets, so the claim is called directly. The trust check
+        // itself can't be tested here: in a dev environment Numismatics trusts only players wearing golden boots.
+        var owner = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+        helper.assertTrue(banker.ensureOwned(owner), "the first player to use the Banker claims it");
+        helper.assertTrue(banker.getAccount() != null && banker.getAccount().getBalance() >= result.spurs(),
+                "the Merchant's earnings are in that Banker's account");
+
+        var stranger = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+        helper.assertFalse(banker.ensureOwned(stranger), "a second player can't claim it");
+        helper.succeed();
+    }
+
     private static MerchantStock stockWith(GameTestHelper helper, int emeralds) {
         helper.setBlock(DESK, Merchant.DESK.get());
         helper.setBlock(STOCK, Blocks.CHEST);
