@@ -80,7 +80,32 @@ public final class LockerTrading {
         }
         jobSite(villager, level).ifPresent(workstation -> findManager(level, workstation, Lockers.MERCHANT_RANGE)
                 .ifPresentOrElse(manager -> trade(level, villager, workstation, manager),
-                        () -> Enterprise.LOGGER.debug("Locker at {}: no Merchant manages it", workstation.toShortString())));
+                        () -> Enterprise.LOGGER.debug("Locker at {}: no Merchant manages it ({})",
+                                workstation.toShortString(), whyUnmanaged(level, workstation))));
+    }
+
+    /** For the debug log: desks in reach, whether a Merchant works each, and whether it manages this locker. */
+    private static String whyUnmanaged(ServerLevel level, BlockPos workstation) {
+        PoiManager pois = level.getPoiManager();
+        List<BlockPos> desks = pois.getInRange(type -> type.is(Merchant.DESK_POI.getKey()), workstation,
+                Lockers.MERCHANT_RANGE, PoiManager.Occupancy.ANY).map(PoiRecord::getPos).toList();
+        if (desks.isEmpty()) {
+            return "no desk in reach";
+        }
+        StringBuilder why = new StringBuilder();
+        for (BlockPos desk : desks) {
+            var merchant = Merchant.workingAt(level, desk, Lockers.MERCHANT_RANGE);
+            why.append("desk ").append(desk.toShortString()).append(": ");
+            if (merchant.isEmpty()) {
+                why.append("no Merchant loaded there; ");
+            } else {
+                int limit = Merchant.lockerLimit(merchant.get().getVillagerData().getLevel());
+                boolean managed = Lockers.near(level, desk, Lockers.MERCHANT_RANGE, limit).stream()
+                        .anyMatch(locker -> locker.workstation().equals(workstation));
+                why.append(managed ? "manages it?! " : "beyond its " + limit + "-locker limit; ");
+            }
+        }
+        return why.toString().trim();
     }
 
     /** The nearest Merchant whose managed lockers include this workstation. */

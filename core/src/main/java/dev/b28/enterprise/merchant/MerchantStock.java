@@ -39,6 +39,38 @@ public final class MerchantStock {
         return new MerchantStock((CombinedInvWrapper) Lockers.inventory(level, Lockers.touchingContainers(level, desk)));
     }
 
+    /** Slots every warehouse keeps free for locker results and coins: deliveries and harvests stop short of them. */
+    public static final int FREE_SLOTS = 5;
+
+    /** Empty loose slots. */
+    public int freeSlots() {
+        int free = 0;
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            if (handler.getStackInSlot(slot).isEmpty()) {
+                free++;
+            }
+        }
+        return free;
+    }
+
+    /** Whether {@code stack} can go in without dipping into the slots kept free (merging into a stack is fine). */
+    public boolean hasRoomFor(ItemStack stack) {
+        int merge = 0;
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            ItemStack held = handler.getStackInSlot(slot);
+            if (ItemStack.isSameItemSameComponents(held, stack)) {
+                merge += held.getMaxStackSize() - held.getCount();
+            }
+        }
+        int newStacks = (int) Math.ceil(Math.max(0, stack.getCount() - merge) / (double) stack.getMaxStackSize());
+        return freeSlots() - newStacks >= FREE_SLOTS;
+    }
+
+    /** Loose slots in the warehouse's chests. */
+    public int slots() {
+        return handler.getSlots();
+    }
+
     public boolean isEmpty() {
         return handler.getSlots() == 0;
     }

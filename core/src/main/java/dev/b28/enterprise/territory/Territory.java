@@ -75,6 +75,14 @@ public final class Territory extends SavedData {
     /** Days of wages the Merchant keeps in emeralds rather than selling them to the mint. */
     public static final double WAGE_FLOAT_DAYS = 3;
 
+    /** Every town starts tolling caravans that cross its land at this rate, then sets its own. */
+    public static final double DEFAULT_TOLL_RATE = 0.05;
+    public static final double MAX_TOLL_RATE = 0.25;
+    public static final double TOLL_STEP = 0.01;
+
+    /** A town judges its toll over this many days: caravans pass every few days, so one day says little. */
+    public static final long TOLL_REVIEW_TICKS = 3 * 24000L;
+
     /** At most this many days of produce accrue between visits. */
     private static final double MAX_DAYS = 60;
 
@@ -97,6 +105,11 @@ public final class Territory extends SavedData {
         double salesPerDay; // averaged
         double valuePerDay; // the harvest's value, averaged
         double treasury; // the market's money at its last touch, in emeralds (chest emeralds, coins, Banker)
+        double tollRate = DEFAULT_TOLL_RATE;
+        int tollDirection = 1; // which way the last change went
+        double tollIncomeToday;
+        double tollIncomeYesterday = -1; // none yet
+        long lastTollReview = -1;
     }
 
     private final Map<Place, GlobalPos> owners = new HashMap<>();
@@ -414,6 +427,7 @@ public final class Territory extends SavedData {
             return;
         }
         Holding holding = holdings.get(bell.get());
+        reviewTolls(bell.get(), now);
         long since = holding.lastHarvest;
         accrue(holding, now);
         double owedBefore = holding.wageOwed;
@@ -431,6 +445,9 @@ public final class Territory extends SavedData {
             int left = whole;
             while (left > 0) {
                 ItemStack stack = new ItemStack(item, Math.min(left, item.getDefaultMaxStackSize()));
+                if (!stock.hasRoomFor(stack)) {
+                    break; // the warehouse keeps room for locker results and coins: the rest stays owed
+                }
                 int put = stack.getCount();
                 ItemStack rest = stock.insert(stack);
                 left -= put - rest.getCount();
@@ -464,7 +481,51 @@ public final class Territory extends SavedData {
 
     /** A caravan crossing this settlement's land paid it a toll; it arrives at the next touch. */
     public void oweToll(GlobalPos bell, int spurs) {
-        holdings.computeIfAbsent(bell, b -> new Holding()).tollsOwed += spurs;
+        Holding holding = holdings.computeIfAbsent(bell, b -> new Holding());
+        holding.tollsOwed += spurs;
+        holding.tollIncomeToday += spurs;
+        setDirty();
+    }
+
+    /** The toll this town charges caravans crossing its land, as a share of the coins they carry. */
+    public double tollRate(GlobalPos bell) {
+        return holding(bell).map(h -> h.tollRate).orElse(DEFAULT_TOLL_RATE);
+    }
+
+    public void setTollRate(GlobalPos bell, double rate) {
+        holdings.computeIfAbsent(bell, b -> new Holding()).tollRate = Math.max(0, Math.min(MAX_TOLL_RATE, rate));
+        setDirty();
+    }
+
+    /** Toll income over the last full period reviewed (-1 before the first). */
+    public double tollIncomeYesterday(GlobalPos bell) {
+        return holding(bell).map(h -> h.tollIncomeYesterday).orElse(-1.0);
+    }
+
+    /**
+     * Every {@link #TOLL_REVIEW_TICKS}, a town moves its toll a step the way that raised its income: if the last
+     * period's tolls fell short of the one before, it reverses direction. A town with no toll income in two periods
+     * running lowers its toll to draw traffic.
+     */
+    public void reviewTolls(GlobalPos bell, long now) {
+        Holding holding = holdings.computeIfAbsent(bell, b -> new Holding());
+        if (holding.lastTollReview < 0) {
+            holding.lastTollReview = now;
+            return;
+        }
+        if (now - holding.lastTollReview < TOLL_REVIEW_TICKS) {
+            return;
+        }
+        double income = holding.tollIncomeToday;
+        if (income == 0 && holding.tollIncomeYesterday <= 0) {
+            holding.tollDirection = -1;
+        } else if (holding.tollIncomeYesterday >= 0 && income < holding.tollIncomeYesterday) {
+            holding.tollDirection = -holding.tollDirection;
+        }
+        holding.tollRate = Math.max(0, Math.min(MAX_TOLL_RATE, holding.tollRate + holding.tollDirection * TOLL_STEP));
+        holding.tollIncomeYesterday = income;
+        holding.tollIncomeToday = 0;
+        holding.lastTollReview = now;
         setDirty();
     }
 
@@ -508,6 +569,11 @@ public final class Territory extends SavedData {
             entry.putDouble("salesPerDay", holding.salesPerDay);
             entry.putDouble("valuePerDay", holding.valuePerDay);
             entry.putDouble("treasury", holding.treasury);
+            entry.putDouble("tollRate", holding.tollRate);
+            entry.putInt("tollDirection", holding.tollDirection);
+            entry.putDouble("tollIncomeToday", holding.tollIncomeToday);
+            entry.putDouble("tollIncomeYesterday", holding.tollIncomeYesterday);
+            entry.putLong("lastTollReview", holding.lastTollReview);
             entry.put("perDay", doubles(holding.perDay));
             entry.put("pending", doubles(holding.pending));
             settlements.add(entry);
@@ -570,6 +636,13 @@ public final class Territory extends SavedData {
                 holding.salesPerDay = entry.getDouble("salesPerDay");
                 holding.valuePerDay = entry.getDouble("valuePerDay");
                 holding.treasury = entry.getDouble("treasury");
+                if (entry.contains("tollRate")) {
+                    holding.tollRate = entry.getDouble("tollRate");
+                    holding.tollDirection = entry.getInt("tollDirection");
+                    holding.tollIncomeToday = entry.getDouble("tollIncomeToday");
+                    holding.tollIncomeYesterday = entry.getDouble("tollIncomeYesterday");
+                    holding.lastTollReview = entry.getLong("lastTollReview");
+                }
                 holding.perDay = readDoubles(entry.getCompound("perDay"));
                 holding.pending = readDoubles(entry.getCompound("pending"));
                 territory.holdings.put(bell, holding);

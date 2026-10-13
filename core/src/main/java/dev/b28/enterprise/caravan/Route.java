@@ -1,6 +1,7 @@
 package dev.b28.enterprise.caravan;
 
 import dev.b28.enterprise.hex.Hex;
+import java.util.List;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
@@ -21,6 +22,7 @@ public final class Route {
     long itemsBought;
     long purchaseSpurs;
     String status = "new";
+    List<Hex> path = List.of(); // the planned hex path, from the last departure
 
     Route(int id, GlobalPos from, GlobalPos to) {
         this.id = id;
@@ -84,15 +86,35 @@ public final class Route {
     }
 
     /** Straight-line blocks between the desks, across the ground. */
-    public int distance() {
+    public int straightDistance() {
         double dx = from.pos().getX() - to.pos().getX();
         double dz = from.pos().getZ() - to.pos().getZ();
         return (int) Math.ceil(Math.sqrt(dx * dx + dz * dz));
     }
 
+    /**
+     * Blocks travelled: the straight distance, plus a hex's width for each hex the planned path adds over the
+     * straight line of hexes (a detour). Counting hex steps alone would overcharge short routes across hex edges.
+     */
+    public int distance() {
+        int straightHexes = Hex.line(Hex.at(from.pos()), Hex.at(to.pos())).size();
+        int extra = Math.max(0, path.size() - straightHexes);
+        return straightDistance() + (int) Math.round(extra * Hex.ACROSS);
+    }
+
+    /** The hex path caravans take: the planned one, or the straight line before any planning. */
+    public List<Hex> path() {
+        return path.isEmpty() ? Hex.line(Hex.at(from.pos()), Hex.at(to.pos())) : path;
+    }
+
     /** Hexes the route passes through, both ends included. */
     public int hexes() {
-        return Hex.line(Hex.at(from.pos()), Hex.at(to.pos())).size();
+        return path().size();
+    }
+
+    /** Coins a caravan on this route has carried home per trip, on average (a guess before the first trip). */
+    public double expectedValue() {
+        return trips == 0 ? 300 : (double) spursCollected / trips;
     }
 
     CompoundTag save() {
@@ -111,6 +133,12 @@ public final class Route {
         tag.putLong("itemsBought", itemsBought);
         tag.putLong("purchaseSpurs", purchaseSpurs);
         tag.putString("status", status);
+        int[] hexes = new int[path.size() * 2];
+        for (int i = 0; i < path.size(); i++) {
+            hexes[2 * i] = path.get(i).q();
+            hexes[2 * i + 1] = path.get(i).r();
+        }
+        tag.putIntArray("path", hexes);
         return tag;
     }
 
@@ -129,6 +157,12 @@ public final class Route {
         route.itemsBought = tag.getLong("itemsBought");
         route.purchaseSpurs = tag.getLong("purchaseSpurs");
         route.status = tag.getString("status");
+        int[] hexes = tag.getIntArray("path");
+        List<Hex> path = new java.util.ArrayList<>();
+        for (int i = 0; i + 1 < hexes.length; i += 2) {
+            path.add(new Hex(hexes[i], hexes[i + 1]));
+        }
+        route.path = path;
         return route;
     }
 }

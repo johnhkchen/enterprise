@@ -58,6 +58,9 @@ public final class Caravans {
     /** A caravan tops a destination up to this many of each item its trades use: ten stacks, a few days' trading. */
     public static final int WANT_PER_ITEM = 640;
 
+    /** Share of a warehouse's slots its wanted goods may fill; the rest stays free for results, coins and food. */
+    public static final double STOCK_SHARE = 0.6;
+
     /** The most a travelling Merchant pays for a town's surplus: this share of its local value (it resells it). */
     public static final double RESALE_CEILING = 0.75;
 
@@ -67,8 +70,6 @@ public final class Caravans {
      */
     public static final double PURSE_PER_FOOD_POINT = 1.5 / 30;
 
-    /** Share of the coins a caravan carries that each other settlement whose land it crosses takes as a toll. */
-    public static final double TOLL_RATE = 0.05;
 
     /** At most one departure per route per in-game day. */
     public static final long DEPARTURE_INTERVAL = 24000;
@@ -134,9 +135,15 @@ public final class Caravans {
         Warehouse.get(server).recordLevel(route.from, merchantLevel);
         MerchantStock stock = MerchantStock.at(level, route.from.pos());
         territory.touch(level, route.from.pos(), stock);
-        int food = foodNeeded(route.distance());
         Mint mint = Mint.get(server);
         double rate = mint.rate(Mint.DEFAULT_FACTION, now);
+        route.path = plan(territory, route, rate);
+        if (!inRange(route.distance())) {
+            route.status = "the cheapest path is too long for one leg's food";
+            ledger.setDirty();
+            return false;
+        }
+        int food = foodNeeded(route.distance());
         double purse = food * PURSE_PER_FOOD_POINT;
         if (stock.foodNutrition() < food) {
             route.status = "waiting for food at the hub";
@@ -250,27 +257,43 @@ public final class Caravans {
     }
 
     /**
-     * Each other settlement whose land the route crosses takes {@link #TOLL_RATE} of the coins carried, one after
+     * Each other settlement whose land the route's path crosses takes its own toll rate of the coins carried, one after
      * another. The two ends' own settlements charge nothing. Returns the spurs paid in all.
      */
     public static int payTolls(Territory territory, Route route, int spurs) {
         var dimension = route.from.dimension();
-        Set<GlobalPos> ends = new LinkedHashSet<>();
-        territory.bellOf(route.from).ifPresent(ends::add);
-        territory.bellOf(route.to).ifPresent(ends::add);
+        Set<GlobalPos> ends = ends(territory, route);
         Set<GlobalPos> crossed = new LinkedHashSet<>();
-        for (Hex hex : Hex.line(Hex.at(route.from.pos()), Hex.at(route.to.pos()))) {
+        for (Hex hex : route.path()) {
             territory.owner(dimension, hex).filter(owner -> !ends.contains(owner)).ifPresent(crossed::add);
         }
         int paid = 0;
         for (GlobalPos owner : crossed) {
-            int toll = (int) Math.floor((spurs - paid) * TOLL_RATE);
+            int toll = (int) Math.floor((spurs - paid) * territory.tollRate(owner));
             if (toll > 0) {
                 territory.oweToll(owner, toll);
                 paid += toll;
             }
         }
         return paid;
+    }
+
+    /** The towns at either end of a route: they charge their own caravans no toll. */
+    static Set<GlobalPos> ends(Territory territory, Route route) {
+        Set<GlobalPos> ends = new LinkedHashSet<>();
+        territory.bellOf(route.from).ifPresent(ends::add);
+        territory.bellOf(route.to).ifPresent(ends::add);
+        return ends;
+    }
+
+    /**
+     * The cheapest hex path for the next caravan: a hex costs its road food both ways (at bread prices), and each
+     * town's land costs its toll on what caravans on this route usually carry home.
+     */
+    public static List<Hex> plan(Territory territory, Route route, double rate) {
+        double perHex = 2 * (Hex.ACROSS / BLOCKS_PER_FOOD) * (1 / 30.0) * rate;
+        return RoutePlanner.plan(territory, route.from.dimension(), Hex.at(route.from.pos()), Hex.at(route.to.pos()),
+                ends(territory, route), perHex, route.expectedValue());
     }
 
     /** Items the destination's switched-on trades take, read from the trade keys ("costA+costB>result"). */
@@ -322,7 +345,8 @@ public final class Caravans {
             ItemStack stack = it.next();
             Item item = stack.getItem();
             int onHand = stock.count(new ItemCost(item, 1));
-            int par = warehouse.par(desk, item, wanted.contains(item), now);
+            int par = Math.min(warehouse.par(desk, item, wanted.contains(item), now),
+                    roomFor(stock, wanted.size(), item));
             int quantity = Math.min(stack.getCount(), par - onHand);
             double each = -1;
             double value = Prices.emeraldsEach(item);
@@ -332,6 +356,12 @@ public final class Caravans {
                 double midShortage = Bargain.shortage(onHand + quantity / 2, par);
                 each = Bargain.price(value, midShortage, caravan.merchantLevel, residentLevel);
                 quantity = each <= 0 ? 0 : Math.min(quantity, (int) Math.floor(money / each));
+            }
+            if (quantity <= 0) {
+                continue;
+            }
+            while (quantity > 0 && !stock.hasRoomFor(stack.copyWithCount(quantity))) {
+                quantity -= Math.min(quantity, item.getDefaultMaxStackSize()); // keep the warehouse's free slots
             }
             if (quantity <= 0) {
                 continue;
@@ -368,6 +398,14 @@ public final class Caravans {
                 - caravan.cargo.stream().filter(stack -> stack.is(item)).mapToInt(ItemStack::getCount).sum());
         wants.values().removeIf(want -> want <= 0);
         return wants;
+    }
+
+    /**
+     * The most of one good the warehouse can hold and still trade: wanted goods share {@link #STOCK_SHARE} of its
+     * slots, leaving the rest for locker results, coins and food.
+     */
+    static int roomFor(MerchantStock stock, int wantedGoods, Item item) {
+        return (int) (stock.slots() * STOCK_SHARE / Math.max(1, wantedGoods)) * item.getDefaultMaxStackSize();
     }
 
     /**

@@ -66,6 +66,19 @@ final class EnterpriseCommands {
                 .then(Commands.literal("territory")
                         .then(Commands.argument("bell", BlockPosArgument.blockPos())
                                 .executes(EnterpriseCommands::territory)))
+                .then(Commands.literal("toll")
+                        .then(Commands.argument("bell", BlockPosArgument.blockPos())
+                                .then(Commands.argument("percent", com.mojang.brigadier.arguments.DoubleArgumentType.doubleArg(0, 25))
+                                        .executes(context -> {
+                                            GlobalPos bell = GlobalPos.of(context.getSource().getLevel().dimension(),
+                                                    BlockPosArgument.getBlockPos(context, "bell"));
+                                            double percent = com.mojang.brigadier.arguments.DoubleArgumentType.getDouble(context, "percent");
+                                            dev.b28.enterprise.territory.Territory.get(context.getSource().getServer())
+                                                    .setTollRate(bell, percent / 100);
+                                            context.getSource().sendSuccess(() -> Component.literal(
+                                                    "Toll set to %.0f%%".formatted(percent)), true);
+                                            return 1;
+                                        }))))
                 .then(Commands.literal("autoswitch")
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .then(Commands.literal("selling").executes(context -> autoswitch(context, false)))
@@ -166,6 +179,8 @@ final class EnterpriseCommands {
             source.sendSuccess(() -> Component.literal("  treasury %.1f emeralds at the market's last touch"
                     .formatted(territory.treasury(bell))), false);
         }
+        source.sendSuccess(() -> Component.literal("  toll %.0f%% (yesterday's toll income %.0f spurs)".formatted(
+                territory.tollRate(bell) * 100, Math.max(0, territory.tollIncomeYesterday(bell)))), false);
         if (territory.tollsOwed(bell) > 0) {
             source.sendSuccess(() -> Component.literal("  tolls owed: %d spurs".formatted(territory.tollsOwed(bell))), false);
         }

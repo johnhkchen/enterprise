@@ -86,6 +86,12 @@ def main():
     for day in range(1, days + 1):
         sprint(24000)
         print(f"-- day {day}: settlement trades so far {trades_by_settlement()}")
+        toll = re.search(r"toll (\d+)% \(yesterday's toll income (\d+) spurs\)",
+                         rcon(f"enterprise territory {bell_of(TOLL_TOWN[1])}"))
+        route3 = re.search(r"#3 [^:]*: (\d+) blocks.*?(\d+) tolls paid", rcon("enterprise routes"))
+        if toll and route3:
+            print(f"   toll town charges {toll.group(1)}% (yesterday {toll.group(2)} spurs); "
+                  f"S3 route {route3.group(1)} blocks, {route3.group(2)} tolls paid so far")
         for line in rcon("enterprise routes").splitlines():
             if line.strip().startswith("#"):
                 print("  " + re.sub(r"\s+", " ", line.strip()))
