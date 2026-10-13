@@ -32,6 +32,13 @@ public final class LockerTrading {
      */
     private static final int[] MERCHANT_REPUTATION = {0, 30, 55, 80, 110};
 
+    /**
+     * Merchant XP needed for Apprentice, Journeyman, Expert and Master: the points a player has at levels 5, 10, 15
+     * and 20. A player who trades five villagers up to Master ends near level 20, so a Master Merchant has done the
+     * same amount of trading.
+     */
+    private static final int[] MERCHANT_LEVEL_XP = {55, 160, 315, 550};
+
     private LockerTrading() {}
 
     /** The Merchant at {@code desk} manages this locker. */
@@ -115,8 +122,8 @@ public final class LockerTrading {
             offer.getItemCostB().ifPresent(costB -> supply(stock, locker, costB, costB.count() * uses));
             while (!offer.isOutOfStock() && tradeOnce(locker, offer, priceA)) {
                 offer.increaseUses();
-                rewardTradeXp(villager, offer.getXp());
-                rewardTradeXp(manager.merchant(), offer.getXp());
+                boolean levelledUp = rewardTradeXp(villager, offer.getXp());
+                rewardMerchantXp(manager.merchant(), levelledUp);
                 made++;
             }
         }
@@ -210,13 +217,35 @@ public final class LockerTrading {
         }
     }
 
-    /** Vanilla's trade XP, minus the XP orbs: level-ups land a couple of seconds later, as after a player trade. */
-    private static void rewardTradeXp(Villager villager, int xp) {
+    /**
+     * Vanilla's trade XP, minus the XP orbs: level-ups land a couple of seconds later, as after a player trade.
+     * Returns true if this trade earned the villager its next level.
+     */
+    private static boolean rewardTradeXp(Villager villager, int xp) {
         villager.setVillagerXp(villager.getVillagerXp() + xp);
-        if (villager.shouldIncreaseLevel()) {
+        if (villager.shouldIncreaseLevel() && !villager.increaseProfessionLevelOnUpdate) {
             villager.updateMerchantTimer = 40;
             villager.increaseProfessionLevelOnUpdate = true;
+            return true;
         }
+        return false;
+    }
+
+    /** The XP a player would have picked up from this trade: 3 to 6, plus 5 when the villager levels up. */
+    private static void rewardMerchantXp(Villager merchant, boolean villagerLevelledUp) {
+        int xp = 3 + merchant.getRandom().nextInt(4) + (villagerLevelledUp ? 5 : 0);
+        merchant.setVillagerXp(merchant.getVillagerXp() + xp);
+        int level = merchant.getVillagerData().getLevel();
+        if (level < 5 && merchant.getVillagerXp() >= merchantXpForNextLevel(level)
+                && !merchant.increaseProfessionLevelOnUpdate) {
+            merchant.updateMerchantTimer = 40;
+            merchant.increaseProfessionLevelOnUpdate = true;
+        }
+    }
+
+    /** Total Merchant XP needed to leave {@code level} (1 = Novice); 0 past Expert. */
+    public static int merchantXpForNextLevel(int level) {
+        return level >= 1 && level <= 4 ? MERCHANT_LEVEL_XP[level - 1] : 0;
     }
 
     private static Optional<BlockPos> jobSite(Villager villager, ServerLevel level) {

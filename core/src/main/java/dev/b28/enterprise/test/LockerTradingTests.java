@@ -134,7 +134,9 @@ public final class LockerTradingTests {
                     market.assertLocker(16, 2);
                     helper.assertTrue(offer.getUses() == 2, "two trades used, found " + offer.getUses());
                     helper.assertTrue(market.librarian().getVillagerXp() == 4, "librarian earns trade XP");
-                    helper.assertTrue(market.merchant().orElseThrow().getVillagerXp() == 4, "Merchant earns trade XP");
+                    int merchantXp = market.merchant().orElseThrow().getVillagerXp();
+                    helper.assertTrue(merchantXp >= 6 && merchantXp <= 12,
+                            "Merchant earns 3 to 6 XP per trade, like a player; found " + merchantXp);
                 })
                 .thenSucceed();
     }
@@ -241,6 +243,14 @@ public final class LockerTradingTests {
                     helper.assertTrue(offer.getDemand() == 0, "stays at zero, found " + offer.getDemand());
                 })
                 .thenSucceed();
+    }
+
+    @GameTest(template = "floor")
+    public static void merchantLevelsMatchPlayerLevels(GameTestHelper helper) {
+        helper.assertTrue(dev.b28.enterprise.locker.LockerTrading.merchantXpForNextLevel(1) == 55, "Apprentice at 55");
+        helper.assertTrue(dev.b28.enterprise.locker.LockerTrading.merchantXpForNextLevel(4) == 550, "Master at 550");
+        helper.assertTrue(dev.b28.enterprise.locker.LockerTrading.merchantXpForNextLevel(5) == 0, "nothing past Master");
+        helper.succeed();
     }
 
     @GameTest(template = "floor", timeoutTicks = 400)

@@ -57,6 +57,7 @@ Decisions made after the brief (`docs/brief.md`). Where this file and the brief 
 - **Reach:** until settlements exist, it manages lockers within 48 blocks of its desk. Its level sets how many, from 2 at Novice to 10 at Master.
 - **It manages the town's lockers.** It fills them best deal first; a higher level manages more lockers. Its screen lists the lockers it manages and which trades each may run.
 - It gains XP from every locker trade it manages, and its level drives the locker discount.
+- **Merchant XP mirrors a trading player's (2026-10-14).** Each locker trade gives the Merchant what a player would pick up: 3 to 6 XP, plus 5 when the villager levels up. It levels at the points a player has at levels 5, 10, 15 and 20 (55, 160, 315, 550). Mastering five villagers by hand takes a player to about level 20, so a Master Merchant has done that much trading.
 - **Right-clicking a Merchant opens its screen** (it has no trades of its own): its lockers, and per locker the villager's trades as on/off switches. Every trade starts off; the player opts in.
 - **A trade is identified by its items** (cost A, cost B, result), not its position in the list, so a choice survives level-ups and price changes. Two trades with the same items (two enchanted books) share one switch for now.
 
