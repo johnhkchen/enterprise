@@ -1,6 +1,8 @@
 package dev.b28.enterprise.caravan;
 
 import dev.b28.enterprise.Enterprise;
+import dev.b28.enterprise.hex.Hex;
+import dev.b28.enterprise.territory.Territory;
 import dev.b28.enterprise.locker.Lockers;
 import dev.b28.enterprise.locker.Rounds;
 import dev.b28.enterprise.merchant.Merchant;
@@ -50,6 +52,9 @@ public final class Caravans {
     /** A caravan tops a destination up to this many of each item its trades use: ten stacks, a few days' trading. */
     public static final int WANT_PER_ITEM = 640;
 
+    /** Share of the coins a caravan carries that each other settlement whose land it crosses takes as a toll. */
+    public static final double TOLL_RATE = 0.05;
+
     /** At most one departure per route per in-game day. */
     public static final long DEPARTURE_INTERVAL = 24000;
 
@@ -76,26 +81,27 @@ public final class Caravans {
         MinecraftServer server = event.getServer();
         long now = server.overworld().getGameTime();
         if (now % POLL_TICKS == 0 && Rounds.hasHeadroom(server)) {
-            poll(server, CaravanLedger.get(server), now);
+            poll(server, CaravanLedger.get(server), Territory.get(server), now);
         }
     }
 
     /** One pass over every route: dispatch, arrive, return. */
-    public static void poll(MinecraftServer server, CaravanLedger ledger, long now) {
+    public static void poll(MinecraftServer server, CaravanLedger ledger, Territory territory, long now) {
         for (Route route : List.copyOf(ledger.routes())) {
             var caravan = ledger.caravan(route.id);
             if (caravan.isEmpty()) {
                 if (now - route.lastDeparture >= DEPARTURE_INTERVAL) {
-                    dispatch(server, ledger, route, now);
+                    dispatch(server, ledger, territory, route, now);
                 }
             } else if (now >= caravan.get().arrives) {
-                arrive(server, ledger, route, caravan.get(), now);
+                arrive(server, ledger, territory, route, caravan.get(), now);
             }
         }
     }
 
     /** The hub sends a caravan if its Merchant is there and the leg's food is in its stock. Returns true if sent. */
-    public static boolean dispatch(MinecraftServer server, CaravanLedger ledger, Route route, long now) {
+    public static boolean dispatch(
+            MinecraftServer server, CaravanLedger ledger, Territory territory, Route route, long now) {
         ServerLevel level = server.getLevel(route.from.dimension());
         if (level == null || !ensureLoaded(level, route.from.pos())) {
             return false;
@@ -106,6 +112,7 @@ public final class Caravans {
             return false;
         }
         MerchantStock stock = MerchantStock.at(level, route.from.pos());
+        territory.touch(level, route.from.pos(), stock);
         int food = foodNeeded(route.distance());
         if (stock.eat(food) == 0) {
             route.status = "waiting for food at the hub";
@@ -124,21 +131,23 @@ public final class Caravans {
     }
 
     /** Arrival at either end; waits a poll if that end isn't loaded yet. */
-    public static void arrive(MinecraftServer server, CaravanLedger ledger, Route route, Caravan caravan, long now) {
+    public static void arrive(
+            MinecraftServer server, CaravanLedger ledger, Territory territory, Route route, Caravan caravan, long now) {
         if (caravan.leg == Caravan.Leg.RETURNING) {
-            arriveHome(server, ledger, route, caravan);
+            arriveHome(server, ledger, territory, route, caravan);
         } else {
-            arriveAtDestination(server, ledger, route, caravan, now);
+            arriveAtDestination(server, ledger, territory, route, caravan, now);
         }
     }
 
-    private static void arriveAtDestination(
-            MinecraftServer server, CaravanLedger ledger, Route route, Caravan caravan, long now) {
+    private static void arriveAtDestination(MinecraftServer server, CaravanLedger ledger, Territory territory,
+            Route route, Caravan caravan, long now) {
         ServerLevel level = server.getLevel(route.to.dimension());
         if (level == null || !ensureLoaded(level, route.to.pos())) {
             return;
         }
         MerchantStock stock = MerchantStock.at(level, route.to.pos());
+        territory.touch(level, route.to.pos(), stock);
         if (caravan.leg == Caravan.Leg.OUTBOUND) {
             route.itemsDelivered += deliver(caravan, stock);
             List<ItemStack> coins = stock.removeLoose(stack -> stack.getItem() instanceof CoinItem);
@@ -158,12 +167,17 @@ public final class Caravans {
         ledger.setDirty();
     }
 
-    private static void arriveHome(MinecraftServer server, CaravanLedger ledger, Route route, Caravan caravan) {
+    private static void arriveHome(
+            MinecraftServer server, CaravanLedger ledger, Territory territory, Route route, Caravan caravan) {
         ServerLevel level = server.getLevel(route.from.dimension());
         if (level == null || !ensureLoaded(level, route.from.pos())) {
             return;
         }
         MerchantStock stock = MerchantStock.at(level, route.from.pos());
+        territory.touch(level, route.from.pos(), stock);
+        int tolls = payTolls(territory, route, caravan.spurs);
+        caravan.spurs -= tolls;
+        route.tollsPaid += tolls;
         for (Iterator<ItemStack> it = caravan.cargo.iterator(); it.hasNext(); ) {
             ItemStack rest = stock.insert(it.next());
             if (rest.isEmpty()) {
@@ -182,6 +196,30 @@ public final class Caravans {
         ledger.remove(route.id);
         ledger.setDirty();
         Enterprise.LOGGER.debug("Caravan {} home with {} spurs", route.id, caravan.spurs);
+    }
+
+    /**
+     * Each other settlement whose land the route crosses takes {@link #TOLL_RATE} of the coins carried, one after
+     * another. The two ends' own settlements charge nothing. Returns the spurs paid in all.
+     */
+    public static int payTolls(Territory territory, Route route, int spurs) {
+        var dimension = route.from.dimension();
+        Set<GlobalPos> ends = new LinkedHashSet<>();
+        territory.bellOf(route.from).ifPresent(ends::add);
+        territory.bellOf(route.to).ifPresent(ends::add);
+        Set<GlobalPos> crossed = new LinkedHashSet<>();
+        for (Hex hex : Hex.line(Hex.at(route.from.pos()), Hex.at(route.to.pos()))) {
+            territory.owner(dimension, hex).filter(owner -> !ends.contains(owner)).ifPresent(crossed::add);
+        }
+        int paid = 0;
+        for (GlobalPos owner : crossed) {
+            int toll = (int) Math.floor((spurs - paid) * TOLL_RATE);
+            if (toll > 0) {
+                territory.oweToll(owner, toll);
+                paid += toll;
+            }
+        }
+        return paid;
     }
 
     /** Items the destination's switched-on trades take, read from the trade keys ("costA+costB>result"). */

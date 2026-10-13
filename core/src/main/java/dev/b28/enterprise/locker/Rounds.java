@@ -66,7 +66,7 @@ public final class Rounds {
 
     private static void visit(MinecraftServer server, MerchantBook book, GlobalPos desk, long now) {
         ServerLevel level = server.getLevel(desk.dimension());
-        Set<ChunkPos> chunks = footprint(desk.pos(), book.workstations(desk));
+        Set<ChunkPos> chunks = footprint(server, desk, book.workstations(desk));
         chunks.forEach(chunk -> level.getChunkSource().addRegionTicket(ROUND, chunk, 0, chunk));
         LockerCatchUp.enqueueNear(level, desk.pos(), Lockers.MERCHANT_RANGE); // villagers already loaded but idle
         book.setLastRound(desk, now);
@@ -75,19 +75,30 @@ public final class Rounds {
                 desk.pos().toShortString(), chunks.size());
     }
 
-    /** Chunks holding the desk, its locker workstations, and anything touching them, nearest the desk first. */
-    public static Set<ChunkPos> footprint(BlockPos desk, Collection<BlockPos> workstations) {
+    /**
+     * What a round loads, most important first, at most {@link #MAX_CHUNKS}: the market around the desk and the
+     * settlement around its bell (where the Merchant and villagers spend their time), the locker workstations, and
+     * the chunks of the settlement's known fields, so its census reads them fresh.
+     */
+    static Set<ChunkPos> footprint(MinecraftServer server, GlobalPos desk, Collection<BlockPos> workstations) {
         Set<ChunkPos> chunks = new LinkedHashSet<>();
-        addAround(chunks, desk);
+        addAround(chunks, desk.pos(), MARKET_REACH);
+        var territory = dev.b28.enterprise.territory.Territory.get(server);
+        var bell = territory.bellOf(desk);
+        bell.ifPresent(b -> addAround(chunks, b.pos(), MARKET_REACH));
         workstations.stream()
-                .sorted(Comparator.comparingDouble(pos -> pos.distSqr(desk)))
-                .forEach(pos -> addAround(chunks, pos));
+                .sorted(Comparator.comparingDouble(pos -> pos.distSqr(desk.pos())))
+                .forEach(pos -> addAround(chunks, pos, 1));
+        bell.ifPresent(b -> territory.fieldChunks(b).forEach(chunk -> chunks.add(new ChunkPos(chunk))));
         return chunks.stream().limit(MAX_CHUNKS).collect(LinkedHashSet::new, Set::add, Set::addAll);
     }
 
-    private static void addAround(Set<ChunkPos> chunks, BlockPos pos) {
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
+    /** Blocks around the desk and bell a round loads: a market and its pen. */
+    private static final int MARKET_REACH = 16;
+
+    private static void addAround(Set<ChunkPos> chunks, BlockPos pos, int reach) {
+        for (int dx = -reach; dx <= reach; dx += Math.max(1, reach)) {
+            for (int dz = -reach; dz <= reach; dz += Math.max(1, reach)) {
                 chunks.add(new ChunkPos(pos.offset(dx, 0, dz)));
             }
         }

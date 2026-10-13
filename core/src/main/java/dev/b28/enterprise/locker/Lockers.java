@@ -2,11 +2,14 @@ package dev.b28.enterprise.locker;
 
 import dev.b28.enterprise.Enterprise;
 import dev.b28.enterprise.merchant.Merchant;
+import dev.b28.enterprise.merchant.MerchantBook;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.PoiTypeTags;
@@ -52,17 +55,20 @@ public final class Lockers {
 
     /**
      * Lockers a Merchant at {@code desk} can manage: job sites within {@code range} with a container touching them,
-     * nearest first, at most {@code limit}. Merchant's Desks are never lockers.
+     * at most {@code limit}. Lockers with trades switched on come first, then the nearest; otherwise a Merchant with
+     * few slots could spend them on lockers it has nothing to do with. Merchant's Desks are never lockers.
      */
     public static List<Locker> near(ServerLevel level, BlockPos desk, int range, int limit) {
         PoiManager pois = level.getPoiManager();
         pois.ensureLoadedAndValid(level, desk, range);
+        Set<BlockPos> switchedOn = MerchantBook.get(level.getServer()).workstations(GlobalPos.of(level.dimension(), desk));
         return pois.getInRange(
                         type -> type.is(PoiTypeTags.ACQUIRABLE_JOB_SITE) && !type.is(Merchant.DESK_POI.getKey()),
                         desk,
                         range,
                         PoiManager.Occupancy.ANY)
-                .sorted(Comparator.comparingDouble((PoiRecord poi) -> poi.getPos().distSqr(desk))
+                .sorted(Comparator.comparing((PoiRecord poi) -> !switchedOn.contains(poi.getPos()))
+                        .thenComparingDouble(poi -> poi.getPos().distSqr(desk))
                         .thenComparing(PoiRecord::getPos))
                 .map(poi -> new Locker(poi.getPos(), poi.getPoiType(), touchingContainers(level, poi.getPos())))
                 .filter(locker -> !locker.containers().isEmpty())

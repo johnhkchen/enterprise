@@ -78,7 +78,8 @@ public final class LockerTrading {
             return;
         }
         jobSite(villager, level).ifPresent(workstation -> findManager(level, workstation, Lockers.MERCHANT_RANGE)
-                .ifPresent(manager -> trade(level, villager, workstation, manager)));
+                .ifPresentOrElse(manager -> trade(level, villager, workstation, manager),
+                        () -> Enterprise.LOGGER.debug("Locker at {}: no Merchant manages it", workstation.toShortString())));
     }
 
     /** The nearest Merchant whose managed lockers include this workstation. */
@@ -105,10 +106,12 @@ public final class LockerTrading {
         Set<String> enabled = MerchantBook.get(level.getServer())
                 .enabledTrades(GlobalPos.of(level.dimension(), manager.desk()), workstation);
         if (enabled.isEmpty()) {
+            Enterprise.LOGGER.debug("Locker at {}: no trades switched on", workstation.toShortString());
             return 0;
         }
         IItemHandler locker = Lockers.inventory(level, Lockers.touchingContainers(level, workstation));
         MerchantStock stock = MerchantStock.at(level, manager.desk());
+        dev.b28.enterprise.territory.Territory.get(level.getServer()).touch(level, manager.desk(), stock);
         int reputation = merchantReputation(manager.merchant().getVillagerData().getLevel());
         // Best deal first: the fewest inputs per item received.
         List<MerchantOffer> offers = villager.getOffers().stream()
@@ -135,6 +138,9 @@ public final class LockerTrading {
         if (made > 0) {
             Enterprise.LOGGER.debug("Locker trades: {} at {} by a level {} villager", made,
                     workstation.toShortString(), villager.getVillagerData().getLevel());
+        } else {
+            Enterprise.LOGGER.debug("Locker at {}: no trades made ({} of {} switched-on offers fairly priced)",
+                    workstation.toShortString(), offers.size(), enabled.size());
         }
         return made;
     }

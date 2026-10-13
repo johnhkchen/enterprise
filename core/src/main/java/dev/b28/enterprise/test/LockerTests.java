@@ -106,6 +106,27 @@ public final class LockerTests {
     }
 
     @GameTest(template = "floor")
+    public static void limitPrefersLockersWithTradesSwitchedOn(GameTestHelper helper) {
+        helper.setBlock(DESK, Merchant.DESK.get());
+        helper.setBlock(new BlockPos(2, 2, 3), Blocks.LECTERN);          // nearest, nothing switched on
+        helper.setBlock(new BlockPos(1, 2, 3), Blocks.CHEST);
+        helper.setBlock(new BlockPos(3, 2, 1), Blocks.COMPOSTER);        // next, nothing switched on
+        helper.setBlock(new BlockPos(3, 2, 0), Blocks.CHEST);
+        helper.setBlock(new BlockPos(5, 2, 5), Blocks.FLETCHING_TABLE);  // farthest, a trade switched on
+        helper.setBlock(new BlockPos(6, 2, 5), Blocks.CHEST);
+        dev.b28.enterprise.merchant.MerchantBook.get(helper.getLevel().getServer()).setEnabled(
+                net.minecraft.core.GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(DESK)),
+                helper.absolutePos(new BlockPos(5, 2, 5)), "minecraft:stick+>minecraft:emerald", true);
+
+        List<BlockPos> sites = Lockers.near(helper.getLevel(), helper.absolutePos(DESK), RANGE, 2).stream()
+                .map(Locker::workstation)
+                .toList();
+        helper.assertTrue(sites.equals(List.of(helper.absolutePos(new BlockPos(5, 2, 5)), helper.absolutePos(new BlockPos(2, 2, 3)))),
+                "the locker with a trade on comes first, then the nearest; kept " + sites);
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void lockerLimitGrowsWithLevel(GameTestHelper helper) {
         helper.assertTrue(Merchant.lockerLimit(1) == 2, "Novice manages 2");
         helper.assertTrue(Merchant.lockerLimit(5) == 10, "Master manages 10");

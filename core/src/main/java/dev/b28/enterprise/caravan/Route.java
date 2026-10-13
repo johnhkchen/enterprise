@@ -15,6 +15,7 @@ public final class Route {
     long spursCollected;
     long foodEaten;
     long itemsDelivered;
+    long tollsPaid;
     String status = "new";
 
     Route(int id, GlobalPos from, GlobalPos to) {
@@ -51,6 +52,10 @@ public final class Route {
         return itemsDelivered;
     }
 
+    public long tollsPaid() {
+        return tollsPaid;
+    }
+
     public String status() {
         return status;
     }
@@ -77,6 +82,7 @@ public final class Route {
         tag.putLong("spursCollected", spursCollected);
         tag.putLong("foodEaten", foodEaten);
         tag.putLong("itemsDelivered", itemsDelivered);
+        tag.putLong("tollsPaid", tollsPaid);
         tag.putString("status", status);
         return tag;
     }
@@ -90,6 +96,7 @@ public final class Route {
         route.spursCollected = tag.getLong("spursCollected");
         route.foodEaten = tag.getLong("foodEaten");
         route.itemsDelivered = tag.getLong("itemsDelivered");
+        route.tollsPaid = tag.getLong("tollsPaid");
         route.status = tag.getString("status");
         return route;
     }

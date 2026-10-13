@@ -21,6 +21,8 @@ LOG = REPO / "core" / "run" / "logs" / "debug.log"
 HUB = (1000, 1000)
 # Market corner, so the desk sits at +7 +7; distances are desk to desk from the hub desk at +2 +2.
 SETTLEMENTS = {"S1 (300)": (1295, 995), "S2 (600)": (995, 1595), "S3 (1200)": (1844, 1844), "S4 (4000)": (4995, 995)}
+# A settlement on the line from the hub to S3: S3's caravans cross its land and pay it tolls. No route of its own.
+TOLL_TOWN = ("T (toll town)", (1393, 1396))
 
 
 def rcon(*commands):
@@ -42,6 +44,10 @@ def desk_of(corner):
     return f"{corner[0] + 7} -60 {corner[1] + 7}"
 
 
+def bell_of(corner):
+    return f"{corner[0] + 7} -60 {corner[1] + 4}"
+
+
 def area(corner, size):
     return f"{corner[0] - 1} {corner[1] - 1} {corner[0] + size} {corner[1] + size}"
 
@@ -60,18 +66,22 @@ def main():
     days = int(sys.argv[1]) if len(sys.argv) > 1 else 6
     hub_desk = f"{HUB[0] + 2} -60 {HUB[1] + 2}"
     rcon(f"forceload add {area(HUB, 6)}", f"execute positioned {HUB[0]} -60 {HUB[1]} run function testbench:network/hub")
-    for corner in SETTLEMENTS.values():
-        rcon(f"forceload add {area(corner, 16)}",
+    towns = {**SETTLEMENTS, TOLL_TOWN[0]: TOLL_TOWN[1]}
+    for corner in towns.values():
+        rcon(f"forceload add {area(corner, 27)}",
              f"execute positioned {corner[0]} -60 {corner[1]} run function testbench:network/settlement")
     rcon("time set 1000")
     sprint(300)  # villagers claim their workstations while everything is loaded
-    for name, corner in SETTLEMENTS.items():
+    for name, corner in towns.items():
         rcon(f"enterprise autoswitch {desk_of(corner)} selling")
+    sprint(600)  # villagers claim beds and the bell
+    for name, corner in towns.items():
+        print(f"{name}: " + rcon(f"enterprise census {bell_of(corner)}").strip().splitlines()[-1])
     for name, corner in SETTLEMENTS.items():
         reply = rcon(f"enterprise route add {hub_desk} {desk_of(corner)}").strip().splitlines()[-1]
         print(f"{name}: {reply}")
-    for corner in [HUB, *SETTLEMENTS.values()]:
-        rcon(f"forceload remove {area(corner, 16)}")
+    for corner in [HUB, *towns.values()]:
+        rcon(f"forceload remove {area(corner, 27)}")
     print("\nEverything unloaded; no players. Day by day:\n")
     for day in range(1, days + 1):
         sprint(24000)
@@ -79,6 +89,10 @@ def main():
         for line in rcon("enterprise routes").splitlines():
             if line.strip().startswith("#"):
                 print("  " + re.sub(r"\s+", " ", line.strip()))
+    print("\nTerritory at the end:")
+    for name, corner in towns.items():
+        lines = rcon(f"enterprise territory {bell_of(corner)}").strip().splitlines()[1:]
+        print(f"  {name}: " + " | ".join(l.strip() for l in lines if "hexes [" not in l))
     rcon(f"forceload add {area(HUB, 6)}")
     sprint(40)
     print("\nHub stock at the end:")

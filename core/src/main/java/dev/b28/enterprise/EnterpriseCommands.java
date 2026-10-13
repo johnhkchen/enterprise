@@ -63,6 +63,9 @@ final class EnterpriseCommands {
                                 .then(Commands.argument("id", IntegerArgumentType.integer(1))
                                         .executes(EnterpriseCommands::removeRoute))))
                 .then(Commands.literal("routes").executes(EnterpriseCommands::routes))
+                .then(Commands.literal("territory")
+                        .then(Commands.argument("bell", BlockPosArgument.blockPos())
+                                .executes(EnterpriseCommands::territory)))
                 .then(Commands.literal("autoswitch")
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .then(Commands.literal("selling").executes(context -> autoswitch(context, false)))
@@ -131,10 +134,32 @@ final class EnterpriseCommands {
     }
 
     private static int hex(CommandContext<CommandSourceStack> context, BlockPos pos) {
+        CommandSourceStack source = context.getSource();
         Hex hex = Hex.at(pos);
-        context.getSource().sendSuccess(() -> Component.literal("Hex %s, centre %.0f %.0f".formatted(
-                hex, hex.centerX(), hex.centerZ())), false);
+        String owner = dev.b28.enterprise.territory.Territory.get(source.getServer())
+                .owner(source.getLevel().dimension(), hex)
+                .map(bell -> "held by the settlement at " + bell.pos().toShortString())
+                .orElse("unclaimed");
+        source.sendSuccess(() -> Component.literal("Hex %s, centre %.0f %.0f, %s".formatted(
+                hex, hex.centerX(), hex.centerZ(), owner)), false);
         return 1;
+    }
+
+    /** A settlement's hexes, culture, farm plan and tolls owed. */
+    private static int territory(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        GlobalPos bell = GlobalPos.of(source.getLevel().dimension(), BlockPosArgument.getBlockPos(context, "bell"));
+        var territory = dev.b28.enterprise.territory.Territory.get(source.getServer());
+        var hexes = territory.hexes(bell);
+        source.sendSuccess(() -> Component.literal("Settlement at %s holds %d hex(es), culture %.1f of %.1f for the next"
+                .formatted(bell.pos().toShortString(), hexes.size(), territory.culture(bell), territory.nextHexCost(bell))), false);
+        source.sendSuccess(() -> Component.literal("  hexes " + hexes), false);
+        territory.farmPlan(bell).forEach((item, perDay) -> source.sendSuccess(
+                () -> Component.literal("  farms %s: %.1f a day".formatted(item, perDay)), false));
+        if (territory.tollsOwed(bell) > 0) {
+            source.sendSuccess(() -> Component.literal("  tolls owed: %d spurs".formatted(territory.tollsOwed(bell))), false);
+        }
+        return hexes.size();
     }
 
     /** A caravan route from a hub Merchant's Desk to a settlement's Merchant's Desk, if food allows the distance. */
@@ -184,9 +209,10 @@ final class EnterpriseCommands {
                             c.leg().name().toLowerCase().replace('_', ' '), c.items(), c.spurs()))
                     .orElse("");
             source.sendSuccess(() -> Component.literal(("  #%d %s -> %s: %d blocks, %d trips, %d items delivered, "
-                    + "%d spurs collected, %d food eaten, %s%s").formatted(route.id(), route.from().pos().toShortString(),
-                    route.to().pos().toShortString(), route.distance(), route.trips(), route.itemsDelivered(),
-                    route.spursCollected(), route.foodEaten(), route.status(), caravan)), false);
+                    + "%d spurs collected, %d tolls paid, %d food eaten, %s%s").formatted(route.id(),
+                    route.from().pos().toShortString(), route.to().pos().toShortString(), route.distance(), route.trips(),
+                    route.itemsDelivered(), route.spursCollected(), route.tollsPaid(), route.foodEaten(), route.status(),
+                    caravan)), false);
         }
         return ledger.routes().size();
     }

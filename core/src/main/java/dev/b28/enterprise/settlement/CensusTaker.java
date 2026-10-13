@@ -12,6 +12,8 @@ import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
+import net.minecraft.core.SectionPos;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -20,6 +22,8 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.entity.ai.village.poi.PoiTypes;
 import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.entity.npc.VillagerProfession;
+import dev.b28.enterprise.territory.Territory;
 import net.minecraft.world.level.PathNavigationRegion;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.level.pathfinder.PathFinder;
@@ -54,6 +58,7 @@ public final class CensusTaker {
         final int workstations;
         int counted;
         int free;
+        final List<Integer> farmers = new ArrayList<>(); // levels of the farmers counted
 
         Job(ServerLevel level, BlockPos bell, int radius, List<UUID> villagers, int beds, int workstations) {
             this.level = level;
@@ -101,6 +106,14 @@ public final class CensusTaker {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             lookouts.add(new Bell(player.serverLevel(), player.blockPosition()));
         }
+        // Known settlements whose bell a round has loaded are counted too, once their villagers have loaded:
+        // entities load a moment after their chunk, and counting before then finds an empty village.
+        for (GlobalPos known : Settlements.get(server).all().keySet()) {
+            ServerLevel level = server.getLevel(known.dimension());
+            if (level != null && level.isLoaded(known.pos()) && entitiesLoadedAround(level, known.pos())) {
+                lookouts.add(new Bell(level, known.pos()));
+            }
+        }
         return nextDueBell(server, lookouts);
     }
 
@@ -136,6 +149,21 @@ public final class CensusTaker {
         return Optional.ofNullable(due);
     }
 
+    /** Entities loaded in the chunks a round loads around the bell: the bell's block and its neighbours. */
+    private static boolean entitiesLoadedAround(ServerLevel level, BlockPos pos) {
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                BlockPos around = pos.offset(dx, 0, dz);
+                long chunk = ChunkPos.asLong(
+                        SectionPos.blockToSectionCoord(around.getX()), SectionPos.blockToSectionCoord(around.getZ()));
+                if (!level.areEntitiesLoaded(chunk)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     private static Job start(ServerLevel level, BlockPos bell, int radius) {
         PoiManager pois = level.getPoiManager();
         pois.ensureLoadedAndValid(level, bell, radius);
@@ -153,6 +181,9 @@ public final class CensusTaker {
         while (budget > 0 && !job.villagers.isEmpty()) {
             if (job.level.getEntity(job.villagers.poll()) instanceof Villager villager) {
                 job.counted++;
+                if (villager.getVillagerData().getProfession() == VillagerProfession.FARMER) {
+                    job.farmers.add(villager.getVillagerData().getLevel());
+                }
                 if (isFree(villager, job.bell)) {
                     job.free++;
                 }
@@ -168,15 +199,38 @@ public final class CensusTaker {
     private static Census finish(MinecraftServer server, Job job) {
         Census result = new Census(job.counted, job.free, job.beds, job.workstations, job.level.getGameTime());
         GlobalPos bell = GlobalPos.of(job.level.dimension(), job.bell);
+        Settlements settlements = Settlements.get(server);
+        if (incomplete(settlements.census(bell), result)) {
+            Enterprise.LOGGER.debug("Census at {} looks incomplete ({} villagers); not recorded, will retry",
+                    job.bell.toShortString(), result.villagers());
+            return result;
+        }
+        // Culture for the days since the last census; a first census counts as one day.
+        double days = settlements.census(bell)
+                .map(last -> Math.max(0, result.gameTime() - last.gameTime()) / 24000.0)
+                .orElse(1.0);
         if (result.isSettlement() || job.counted > 0) {
-            Settlements.get(server).record(bell, result);
+            settlements.record(bell, result);
         } else {
-            Settlements.get(server).forget(bell);
+            settlements.forget(bell);
+        }
+        if (result.isSettlement()) {
+            Territory.get(server).afterCensus(job.level, job.bell, result, days, job.farmers);
         }
         Enterprise.LOGGER.debug("Census at {}: {} villagers ({} free), {} beds, {} workstations, value {}",
                 job.bell.toShortString(), result.villagers(), result.free(), result.beds(), result.workstations(),
                 result.value());
         return result;
+    }
+
+    /**
+     * Fewer than half the villagers of a census from the last 3 days: probably villagers still loading in the
+     * market's other chunks. A real collapse is recorded once the last good census is 3 days old.
+     */
+    static boolean incomplete(Optional<Census> previous, Census result) {
+        return previous.isPresent()
+                && result.villagers() < previous.get().villagers() / 2.0
+                && result.gameTime() - previous.get().gameTime() < 3 * 24000L;
     }
 
     /** Can this villager walk to its own bed, its workstation (if it has one) and the bell? */

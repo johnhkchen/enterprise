@@ -32,7 +32,8 @@ public final class CaravanTests {
     private static final BlockPos DEST_CHEST = new BlockPos(6, 2, 3);
     private static final ItemCost PAPER = new ItemCost(Items.PAPER, 1);
 
-    private record Network(GameTestHelper helper, CaravanLedger ledger, Route route) {
+    private record Network(GameTestHelper helper, CaravanLedger ledger, Route route,
+            dev.b28.enterprise.territory.Territory territory) {
         MerchantStock hub() {
             return MerchantStock.at(helper.getLevel(), helper.absolutePos(HUB));
         }
@@ -42,7 +43,8 @@ public final class CaravanTests {
         }
 
         void poll(long at) {
-            Caravans.poll(helper.getLevel().getServer(), ledger, at);
+            // Its own territory: other tests' censuses claim real hexes, and their tolls would leak in.
+            Caravans.poll(helper.getLevel().getServer(), ledger, territory, at);
         }
     }
 
@@ -62,7 +64,7 @@ public final class CaravanTests {
         MerchantBook.get(helper.getLevel().getServer()).setEnabled(
                 dest, helper.absolutePos(new BlockPos(5, 2, 6)), "minecraft:paper+>minecraft:emerald", true);
         CaravanLedger ledger = new CaravanLedger();
-        Network network = new Network(helper, ledger, ledger.addRoute(hub, dest));
+        Network network = new Network(helper, ledger, ledger.addRoute(hub, dest), new dev.b28.enterprise.territory.Territory());
         network.hub().insert(new ItemStack(Items.PAPER, 64));
         network.hub().insert(new ItemStack(Items.PAPER, 64));
         if (hubBread > 0) {

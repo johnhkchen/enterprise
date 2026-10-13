@@ -100,6 +100,17 @@ Decisions made after the brief (`docs/brief.md`). Where this file and the brief 
 
 - Pointy-top axial hexes, 80 blocks across the flats (centre to corner 46.2). `Hex.at(pos)`, distance, neighbours, and the straight line of hexes between two points. A route reports its length in hexes; tolls, detection and encounters will be per hex. `/enterprise hex` shows the hex you stand in.
 
+## Territory, farms and tolls (built 2026-10-14)
+
+- **Territory grows by culture, Civilization-style.** A settlement claims its bell's hex at its first census. Each census adds culture: settlement value times days since the last census. When culture covers the next hex (5 x hexes held), the border grows into the unclaimed neighbouring hex nearest the bell, out to two rings (19 hexes). A held hex stays with its owner. `/enterprise territory <bell>`; `/enterprise hex` shows a hex's owner.
+- **Farmers work hexes.** At each census, the settlement's farmers are assigned its hexes, most-planted first; a farmer tends 32 plots per level. The crops actually growing set the produce: half an item per plot per day (wheat, carrots, potatoes, beetroot, pumpkins and melons from stems, sugar cane, cocoa, berries, nether wart). Real farms are only counted, never harvested. Produce accrues on the ledger (up to 60 days) and lands in the settlement Merchant's chest whenever the market is touched: a locker session, a caravan stop, a census. A farming waystation feeds caravans and supplies trade goods.
+- **Fields are tracked per chunk.** Each hex remembers, chunk by chunk, the crops last counted there. A census recounts the chunks that are loaded and keeps the last count for the rest; nothing reads as zero just for being unloaded. Rounds load a settlement's known field chunks, so its census reads them fresh.
+- **Tolls are a cut of coins in transit.** A caravan bringing coins home pays 5% of what it carries to each other settlement whose territory its route crosses (once per settlement, one after another); the route's own two settlements charge nothing. The toll lands in the owner's Blaze Banker or Merchant's chest at its next touch.
+- **Rounds load the market, not just the desk:** chunks within 16 blocks of the desk and of the bell (where the Merchant and villagers spend their time), the locker workstations, and the settlement's field chunks, at most 25. A round that loaded only the desk's chunk missed a Merchant standing in the next chunk, and its lockers went unmanaged that day.
+- **Censuses guard against half-loaded villages:** a round-loaded settlement is counted only once entities have loaded around its bell, and a census finding under half the villagers of one from the last 3 days is treated as incomplete and retried.
+- **A Merchant with few slots manages lockers with trades switched on first**, then the nearest.
+- **Measured** (`caravan_network.py`, two runs): with five settlements left unloaded for 8 days, every farm produced 16 carrots a day, territories grew to 3-4 hexes, the hub banked 3,580-3,975 spurs, and the route crossing the toll town paid it 27-31 spurs.
+
 ## Travel cost between hexes (2026-10-13)
 
 Travel cost must react to real building. A long wall, a tunnel, a bridge or a wide canal should each change routes and costs.
