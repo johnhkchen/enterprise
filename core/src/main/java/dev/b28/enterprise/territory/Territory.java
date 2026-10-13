@@ -5,6 +5,8 @@ import dev.b28.enterprise.merchant.Merchant;
 import dev.b28.enterprise.merchant.MerchantStock;
 import dev.b28.enterprise.money.Mint;
 import dev.b28.enterprise.money.MoneyChanger;
+import dev.b28.enterprise.money.Prices;
+import dev.b28.enterprise.money.Treasury;
 import dev.ithundxr.createnumismatics.content.coins.CoinItem;
 import dev.b28.enterprise.settlement.Census;
 import java.util.ArrayList;
@@ -72,23 +74,6 @@ public final class Territory extends SavedData {
 
     /** Days of wages the Merchant keeps in emeralds rather than selling them to the mint. */
     public static final double WAGE_FLOAT_DAYS = 3;
-
-    /**
-     * Local buying price of each crop, in items per emerald: what a villager pays for it in vanilla (farmers buy
-     * wheat, carrots, potatoes, beetroot, pumpkins and melons; clerics buy nether wart). Crops nobody buys are
-     * valued by what they become.
-     */
-    public static final Map<String, Double> ITEMS_PER_EMERALD = Map.ofEntries(
-            Map.entry("minecraft:wheat", 20.0),
-            Map.entry("minecraft:carrot", 22.0),
-            Map.entry("minecraft:potato", 26.0),
-            Map.entry("minecraft:beetroot", 15.0),
-            Map.entry("minecraft:pumpkin", 6.0),
-            Map.entry("minecraft:melon", 4.0),
-            Map.entry("minecraft:nether_wart", 22.0),
-            Map.entry("minecraft:sugar_cane", 24.0), // as paper, 24 to the emerald
-            Map.entry("minecraft:cocoa_beans", 20.0),
-            Map.entry("minecraft:sweet_berries", 32.0));
 
     /** At most this many days of produce accrue between visits. */
     private static final double MAX_DAYS = 60;
@@ -164,7 +149,7 @@ public final class Territory extends SavedData {
     static double valuePerDay(Map<String, Double> perDay) {
         double value = 0;
         for (Map.Entry<String, Double> crop : perDay.entrySet()) {
-            value += crop.getValue() / ITEMS_PER_EMERALD.getOrDefault(crop.getKey(), 32.0);
+            value += crop.getValue() / Prices.itemsPerEmerald(crop.getKey());
         }
         return value;
     }
@@ -184,7 +169,8 @@ public final class Territory extends SavedData {
 
     /** Is this item a crop farmers grow? (Locker trades selling one count as farm sales.) */
     public static boolean isCrop(String itemId) {
-        return ITEMS_PER_EMERALD.containsKey(itemId);
+        return Crops.YIELDS.values().stream()
+                .anyMatch(item -> BuiltInRegistries.ITEM.getKey(item).toString().equals(itemId));
     }
 
     /** A locker at the settlement's market sold crops for {@code emeralds}. */
@@ -406,27 +392,9 @@ public final class Territory extends SavedData {
         if (whole <= 0) {
             return 1.0;
         }
-        ItemCost emerald = new ItemCost(Items.EMERALD, 1);
-        int emeralds = Math.min(whole, stock.count(emerald));
-        stock.take(emerald, emeralds);
-        double paid = emeralds;
-        int short1 = whole - emeralds;
-        if (short1 > 0) {
-            double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now);
-            int spursOwed = (int) Math.ceil(short1 * rate);
-            List<ItemStack> coins = stock.removeLoose(stack -> stack.getItem() instanceof CoinItem);
-            int held = MoneyChanger.value(coins);
-            int fromChest = Math.min(held, spursOwed);
-            MoneyChanger.coins(held - fromChest).forEach(stock::insert); // the change goes back
-            int stillOwed = spursOwed - fromChest;
-            int fromBank = 0;
-            var bank = MoneyChanger.bankAt(level, desk);
-            if (stillOwed > 0 && bank.isPresent()) {
-                fromBank = Math.min(stillOwed, bank.get().getBalance());
-                bank.get().setBalance(bank.get().getBalance() - fromBank);
-            }
-            paid += Math.min(short1, (fromChest + fromBank) / rate);
-        }
+        Mint mint = Mint.get(level.getServer());
+        double rate = mint.rate(Mint.DEFAULT_FACTION, now);
+        double paid = Math.min(whole, Treasury.withdraw(level, desk, stock, whole, mint, now).value(rate));
         holding.wageOwed -= whole;
         holding.wagesPaid += paid;
         holding.wagesUnpaid += whole - paid;

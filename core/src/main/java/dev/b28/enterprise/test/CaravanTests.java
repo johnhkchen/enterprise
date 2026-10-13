@@ -49,6 +49,11 @@ public final class CaravanTests {
     }
 
     private static Network network(GameTestHelper helper, int hubBread) {
+        return network(helper, hubBread, 5, 192);
+    }
+
+    /** A hub with paper, bread and {@code hubEmeralds}; a destination holding {@code destSpurs} in coins and bread. */
+    private static Network network(GameTestHelper helper, int hubBread, int hubEmeralds, int destSpurs) {
         helper.setBlock(HUB, Merchant.DESK.get());
         helper.setBlock(HUB_CHEST, Blocks.CHEST);
         helper.setBlock(DEST, Merchant.DESK.get());
@@ -70,35 +75,65 @@ public final class CaravanTests {
         if (hubBread > 0) {
             network.hub().insert(new ItemStack(Items.BREAD, hubBread));
         }
-        MoneyChanger.coins(192).forEach(network.dest()::insert); // the destination Merchant's earnings
+        if (hubEmeralds > 0) {
+            network.hub().insert(new ItemStack(Items.EMERALD, hubEmeralds)); // funds the caravan's purse
+        }
+        MoneyChanger.coins(destSpurs).forEach(network.dest()::insert); // the destination Merchant's money
         network.dest().insert(new ItemStack(Items.BREAD, 2));
         return network;
     }
 
     @GameTest(template = "floor")
-    public static void caravanDeliversGoodsAndBringsCoinsHome(GameTestHelper helper) {
+    public static void caravanSellsItsCargoAndBuysItsFood(GameTestHelper helper) {
         Network net = network(helper, 2);
         long t = helper.getLevel().getGameTime();
 
         net.poll(t);
         Caravan out = net.ledger().caravan(net.route().id()).orElseThrow();
         helper.assertTrue(out.leg() == Caravan.Leg.OUTBOUND && out.items() == 128, "leaves with the 128 paper");
-        helper.assertTrue(net.hub().count(PAPER) == 0, "the paper left the hub");
-        helper.assertTrue(net.hub().foodNutrition() == 5, "the leg's food was eaten: one bread of two left");
+        helper.assertTrue(out.spurs() > 0, "and a purse for the road");
+        helper.assertTrue(net.hub().count(PAPER) == 0 && net.hub().foodNutrition() == 5, "paper gone, one bread eaten");
+        int purse = out.spurs();
 
-        net.poll(t + 79);
-        helper.assertTrue(net.dest().count(PAPER) == 0, "not there yet at 79 ticks");
+        int destMoney = MoneyChanger.value(net.dest().looseStacks());
         net.poll(t + 80);
-        helper.assertTrue(net.dest().count(PAPER) == 128, "delivers the paper on arrival");
-        helper.assertTrue(MoneyChanger.value(net.dest().looseStacks()) == 0, "collects the destination's coins");
+        helper.assertTrue(net.dest().count(PAPER) == 128, "the destination bought the paper");
         Caravan back = net.ledger().caravan(net.route().id()).orElseThrow();
-        helper.assertTrue(back.leg() == Caravan.Leg.RETURNING && back.spurs() == 192, "heads home with 192 spurs");
+        helper.assertTrue(back.leg() == Caravan.Leg.RETURNING, "heads home");
+        int destSpent = destMoney - MoneyChanger.value(net.dest().looseStacks());
+        // It paid 128 / 24 x 0.75 = 4 emeralds for the paper and was paid back for a bread of road food.
+        helper.assertTrue(net.route().salesSpurs() > 0 && net.route().foodSpurs() > 0, "a sale and a food purchase");
+        helper.assertTrue(destSpent == net.route().salesSpurs() - net.route().foodSpurs(),
+                "the destination's money moved by sales less food: " + destSpent);
+        helper.assertTrue(back.spurs() == purse + net.route().salesSpurs() - net.route().foodSpurs(),
+                "the caravan carries its purse plus sales less food");
 
+        int carried = back.spurs();
+        int hubBefore = MoneyChanger.value(net.hub().looseStacks()); // includes change from funding the purse
         net.poll(t + 160);
         helper.assertTrue(net.ledger().caravan(net.route().id()).isEmpty(), "the caravan is home");
-        helper.assertTrue(MoneyChanger.value(net.hub().looseStacks()) == 192, "the hub has the 192 spurs in coins");
-        helper.assertTrue(net.route().trips() == 1 && net.route().itemsDelivered() == 128
-                && net.route().spursCollected() == 192 && net.route().foodEaten() == 2, "the route's totals add up");
+        helper.assertTrue(MoneyChanger.value(net.hub().looseStacks()) - hubBefore == carried, "the hub banks what it carried");
+        helper.assertTrue(net.route().trips() == 1 && net.route().itemsDelivered() == 128, "one trip, 128 sold");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aDestinationThatCantPayGetsNothing(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 0);
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        net.poll(t + 80);
+        helper.assertTrue(net.dest().count(PAPER) == 0, "no money, no paper");
+        helper.assertTrue(net.ledger().caravan(net.route().id()).orElseThrow().items() == 128, "the cargo rides home");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aHubThatCantFundThePurseStaysHome(GameTestHelper helper) {
+        Network net = network(helper, 2, 0, 192);
+        net.poll(helper.getLevel().getGameTime());
+        helper.assertTrue(net.ledger().caravan(net.route().id()).isEmpty(), "no purse, no caravan");
+        helper.assertTrue(net.route().status().contains("fund"), "the route says the hub can't fund it");
         helper.succeed();
     }
 

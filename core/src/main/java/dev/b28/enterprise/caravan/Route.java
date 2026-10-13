@@ -16,6 +16,8 @@ public final class Route {
     long foodEaten;
     long itemsDelivered;
     long tollsPaid;
+    long salesSpurs;
+    long foodSpurs;
     String status = "new";
 
     Route(int id, GlobalPos from, GlobalPos to) {
@@ -56,6 +58,16 @@ public final class Route {
         return tollsPaid;
     }
 
+    /** Spurs the destination paid for cargo, in all. */
+    public long salesSpurs() {
+        return salesSpurs;
+    }
+
+    /** Spurs paid to the destination for road food, in all. */
+    public long foodSpurs() {
+        return foodSpurs;
+    }
+
     public String status() {
         return status;
     }
@@ -83,6 +95,8 @@ public final class Route {
         tag.putLong("foodEaten", foodEaten);
         tag.putLong("itemsDelivered", itemsDelivered);
         tag.putLong("tollsPaid", tollsPaid);
+        tag.putLong("salesSpurs", salesSpurs);
+        tag.putLong("foodSpurs", foodSpurs);
         tag.putString("status", status);
         return tag;
     }
@@ -97,6 +111,8 @@ public final class Route {
         route.foodEaten = tag.getLong("foodEaten");
         route.itemsDelivered = tag.getLong("itemsDelivered");
         route.tollsPaid = tag.getLong("tollsPaid");
+        route.salesSpurs = tag.getLong("salesSpurs");
+        route.foodSpurs = tag.getLong("foodSpurs");
         route.status = tag.getString("status");
         return route;
     }

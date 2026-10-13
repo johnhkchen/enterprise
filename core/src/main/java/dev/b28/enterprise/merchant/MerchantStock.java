@@ -10,6 +10,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
@@ -165,27 +166,26 @@ public final class MerchantStock {
     }
 
     /**
-     * Eats at least {@code points} of nutrition from the stock, whole items at a time, loose food first. Returns the
-     * points eaten; eats nothing and returns 0 if the stock holds too little.
+     * Eats at least {@code points} of nutrition from the stock, whole items at a time, loose food first. Returns what
+     * was eaten, item by item; eats nothing and returns an empty map if the stock holds too little.
      */
-    public int eat(int points) {
-        if (points <= 0) {
-            return 0;
+    public Map<Item, Integer> eat(int points) {
+        Map<Item, Integer> eaten = new java.util.LinkedHashMap<>();
+        if (points <= 0 || foodNutrition() < points) {
+            return eaten;
         }
-        if (foodNutrition() < points) {
-            return 0;
-        }
-        int eaten = 0;
-        for (int slot = 0; slot < handler.getSlots() && eaten < points; slot++) {
+        int got = 0;
+        for (int slot = 0; slot < handler.getSlots() && got < points; slot++) {
             ItemStack stack = handler.getStackInSlot(slot);
             int each = nutrition(stack);
             if (each > 0) {
-                int items = Math.min(stack.getCount(), (points - eaten + each - 1) / each);
+                int items = Math.min(stack.getCount(), (points - got + each - 1) / each);
+                eaten.merge(stack.getItem(), items, Integer::sum);
                 handler.extractItem(slot, items, false);
-                eaten += items * each;
+                got += items * each;
             }
         }
-        for (int slot = 0; slot < handler.getSlots() && eaten < points; slot++) {
+        for (int slot = 0; slot < handler.getSlots() && got < points; slot++) {
             ItemStack box = handler.getStackInSlot(slot);
             if (!isShulkerBox(box)) {
                 continue;
@@ -193,10 +193,11 @@ public final class MerchantStock {
             NonNullList<ItemStack> inner = contents(box);
             for (ItemStack food : inner) {
                 int each = nutrition(food);
-                if (each > 0 && eaten < points) {
-                    int items = Math.min(food.getCount(), (points - eaten + each - 1) / each);
+                if (each > 0 && got < points) {
+                    int items = Math.min(food.getCount(), (points - got + each - 1) / each);
+                    eaten.merge(food.getItem(), items, Integer::sum);
                     food.shrink(items);
-                    eaten += items * each;
+                    got += items * each;
                 }
             }
             handler.setStackInSlot(slot, withContents(box, inner));

@@ -10,3 +10,5 @@ item replace block ~8 ~ ~7 container.0 with minecraft:shulker_box[minecraft:cont
 # A 9x9 carrot field outside the pen for the farmer to work: carrots are food, so the settlement feeds caravans.
 fill ~18 ~-1 ~0 ~26 ~-1 ~8 minecraft:farmland
 fill ~18 ~ ~0 ~26 ~ ~8 minecraft:carrots[age=7]
+# 64 emeralds of starting capital: caravans sell goods, they don't give them away.
+item replace block ~8 ~ ~7 container.1 with minecraft:emerald 64

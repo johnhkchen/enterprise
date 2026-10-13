@@ -7,6 +7,6 @@ fill ~0 ~ ~18 ~23 ~ ~37 minecraft:carrots[age=7]
 summon minecraft:villager ~4.5 ~ ~8.5 {PersistenceRequired:1b,Tags:["testbench"],CustomName:'"Field hand"',VillagerData:{profession:"minecraft:farmer",level:5,type:"minecraft:plains"},Xp:250}
 summon minecraft:villager ~5.5 ~ ~8.5 {PersistenceRequired:1b,Tags:["testbench"],CustomName:'"Field hand"',VillagerData:{profession:"minecraft:farmer",level:5,type:"minecraft:plains"},Xp:250}
 summon minecraft:villager ~6.5 ~ ~8.5 {PersistenceRequired:1b,Tags:["testbench"],CustomName:'"Field hand"',VillagerData:{profession:"minecraft:farmer",level:5,type:"minecraft:plains"},Xp:250}
-item replace block ~8 ~ ~7 container.1 with minecraft:emerald 32
+item replace block ~8 ~ ~7 container.2 with minecraft:emerald 32
 # Run once villagers have settled (the field hands compete for the composter, and a farmer re-hired after
 # losing its job rolls new trades): every farmer in town buys carrots, 22 to the emerald, 16 a restock.
