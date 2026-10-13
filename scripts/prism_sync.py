@@ -3,10 +3,11 @@
 
 The pack in pack/ (packwiz) is the source of truth for which mods ship. This script
 mirrors it into a Prism instance and drops in the locally built core jar, so the
-instance always plays the current pack plus the current build.
+instance always plays the current pack plus the current build. The testbench datapack
+(dev/testbench) is copied into the instance's "testing" world.
 
-    python3 scripts/prism_sync.py            # full sync: instance files, pack mods, core jar
-    python3 scripts/prism_sync.py --jar-only # just copy the latest core jar (Prism pre-launch)
+    python3 scripts/prism_sync.py             # full sync: instance files, pack mods, core jar, testbench
+    python3 scripts/prism_sync.py --prelaunch # core jar and testbench only (Prism pre-launch hook)
 """
 
 import argparse
@@ -28,11 +29,13 @@ MODS = GAME / "mods"
 # Pack-managed jars from the last sync, so jars dropped from the pack get removed.
 MANIFEST = MODS / ".enterprise-managed.json"
 CORE_PREFIX = "enterprise-"
+TESTBENCH = REPO / "dev" / "testbench"
+TEST_WORLD = GAME / "saves" / "testing"
 HASH_FORMATS = {"sha1", "sha256", "sha512"}
 
 
 def load_toml(path: Path) -> dict:
-    # tomllib is Python 3.11+; the --jar-only hook runs under Prism's older system python3.
+    # tomllib is Python 3.11+; the --prelaunch hook runs under Prism's older system python3.
     import tomllib
 
     return tomllib.loads(path.read_text())
@@ -137,16 +140,26 @@ def copy_core_jar() -> None:
     print(f"core jar: {newest.name}")
 
 
+def copy_testbench() -> None:
+    if not TEST_WORLD.exists():
+        return  # Create a world named "testing" in the instance to get the testbench.
+    target = TEST_WORLD / "datapacks" / "enterprise-testbench"
+    shutil.rmtree(target, ignore_errors=True)
+    shutil.copytree(TESTBENCH, target)
+    print("testbench: copied into saves/testing (run /reload if the world is open)")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--jar-only", action="store_true", help="only copy the latest core jar")
+    parser.add_argument("--prelaunch", action="store_true", help="only copy the core jar and testbench")
     args = parser.parse_args()
 
-    if not args.jar_only:
+    if not args.prelaunch:
         pack = load_toml(PACK / "pack.toml")
         write_instance_files(pack)
         sync_pack_mods()
     copy_core_jar()
+    copy_testbench()
 
 
 if __name__ == "__main__":

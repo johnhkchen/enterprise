@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "enterprise:block/merchants_desk" }
+  }
+}

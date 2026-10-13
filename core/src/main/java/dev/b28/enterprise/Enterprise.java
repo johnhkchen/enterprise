@@ -1,6 +1,7 @@
 package dev.b28.enterprise;
 
 import com.mojang.logging.LogUtils;
+import dev.b28.enterprise.merchant.Merchant;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import org.slf4j.Logger;
@@ -11,6 +12,6 @@ public final class Enterprise {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public Enterprise(IEventBus modBus) {
-        LOGGER.info("Enterprise core loaded");
+        Merchant.register(modBus);
     }
 }

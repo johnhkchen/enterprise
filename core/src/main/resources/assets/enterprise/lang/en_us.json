@@ -1,1 +1,4 @@
-{}
+{
+  "block.enterprise.merchants_desk": "Merchant's Desk",
+  "entity.minecraft.villager.enterprise.merchant": "Merchant"
+}

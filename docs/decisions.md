@@ -34,17 +34,29 @@ Decisions made after the brief (`docs/brief.md`). Where this file and the brief 
 - Numismatics coins act as the neutral standard (bullion, or the trade coin everyone accepts).
 - **Coinage is the first graded good.** A coinage is a graded batch of metal: its fineness is its grade. Assaying is inspection, and clipping or debasement is adulteration. The grade, inspection and reputation grammar from the brief starts with money, before any crop.
 
-## Lockers (2026-10-13)
+## Lockers (2026-10-13, revised 2026-10-14)
 
-- A **locker** is a chest, double chest or barrel next to a villager's workstation.
-- When the villager restocks, it runs its trades against the locker: it takes the inputs and puts the outputs back. Vanilla restock timing, villager XP and demand pricing all still apply, so automated trading raises prices and levels the villager.
-- **A locker's contents live in world save data; the block is a window onto them** (the ender chest trick). Trades settle even while the chunk is unloaded. Hoppers and Create funnels work while it is loaded.
+- A **locker** is a vanilla chest, double chest or barrel touching a workstation. Its villager is whoever has claimed that workstation.
+- **Lockers only work when a Merchant manages them.** No Merchant in the village, no locker trading.
+- **Trades run right after the villager restocks** (vanilla: at most twice a day). Each enabled trade runs until its uses run out, the inputs run out, or the locker is full.
+- **Which trades run is set on the Merchant's screen**, per locker.
+- **No trading at inflated prices.** If demand has pushed a trade's price above its base, the locker skips that trade until demand cools off. Automation can't run a price into the ground.
+- **Price:** the standard price, with a discount that grows with the Merchant's level. A top-level Merchant gets close to the discount a cured villager gives.
+- **XP:** each locker trade gives XP to both the villager and the Merchant.
+- **Locked-up villagers get lockers too.** Confinement affects settlement value, not lockers.
+- **Trades run while unloaded.** One pure settlement function takes (contents snapshot, cached trades, elapsed time) and returns the new state. First it runs on load, replaying what was missed. Later the ledger runs the same function while the village is unloaded, and the result is written back when the village loads.
+- **No catch-up time cap.** The locker's size, trade uses per restock, and the inflated-price rule already bound what accumulates.
+- **Write-back safety:** a snapshot records the locker's contents at unload. If the chest doesn't match the snapshot on load (rollback, hand edit), the ledger's result is discarded and a fresh snapshot is taken. No duplication either way.
 
 ## Merchant (2026-10-13)
 
 - New villager profession with its own job-site block.
-- **It is the village's trading desk.** It holds goods and coins (in save data) and is the counterparty for players, villagers and arriving caravans.
-- **It manages the town's lockers.** It fills them best deal first; a higher level manages more lockers.
+- **Its job site is the Merchant's Desk.**
+- **It is the village's trading desk.** It is the counterparty for players, villagers and arriving caravans.
+- **Its stock is the chest(s) touching its desk**, the same rule as lockers, so hoppers and Create work with it. It can reach into shulker boxes kept in those chests.
+- **Reach:** until settlements exist, it manages lockers within 48 blocks of its desk. Its level sets how many, from 2 at Novice to 10 at Master.
+- **It manages the town's lockers.** It fills them best deal first; a higher level manages more lockers. Its screen lists the lockers it manages and which trades each may run.
+- It gains XP from every locker trade it manages, and its level drives the locker discount.
 - **It surveys routes and runs caravans.**
 - Wages are paid in coins.
 

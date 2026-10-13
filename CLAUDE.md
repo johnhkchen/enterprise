@@ -11,6 +11,7 @@ Monorepo: our mods, the pack definition, and design docs.
 - `core/`: the core mod (`mod_id=enterprise`, package `dev.b28.enterprise`). NeoForge ModDevGradle.
 - `pack/`: packwiz pack definition, the source of truth for which mods ship.
 - `scripts/prism_sync.py`: mirrors `pack/` plus the built core jar into the Prism instance "Enterprise (dev)".
+- `dev/testbench/`: datapack synced into the instance's `testing` world: time warps, tick-rate controls, and a one-command test market (`/function testbench:help`).
 
 ## Commands (`just`)
 - `just build`: build the core jar.

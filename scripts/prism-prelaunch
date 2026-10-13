@@ -1,4 +1,4 @@
 #!/bin/sh
-# Prism pre-launch hook: copy the latest core jar into the instance.
+# Prism pre-launch hook: copy the latest core jar and the testbench into the instance.
 # No arguments, so Prism's settings file can't mangle the command line.
-exec python3 "$(dirname "$0")/prism_sync.py" --jar-only
+exec python3 "$(dirname "$0")/prism_sync.py" --prelaunch

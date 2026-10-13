@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "PBP",
+    "WWW",
+    "W W"
+  ],
+  "key": {
+    "P": { "item": "minecraft:paper" },
+    "B": { "item": "minecraft:writable_book" },
+    "W": { "tag": "minecraft:planks" }
+  },
+  "result": { "id": "enterprise:merchants_desk", "count": 1 }
+}
