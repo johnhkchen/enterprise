@@ -57,6 +57,16 @@ Decisions made after the brief (`docs/brief.md`). Where this file and the brief 
 - **Reach:** until settlements exist, it manages lockers within 48 blocks of its desk. Its level sets how many, from 2 at Novice to 10 at Master.
 - **It manages the town's lockers.** It fills them best deal first; a higher level manages more lockers. Its screen lists the lockers it manages and which trades each may run.
 - It gains XP from every locker trade it manages, and its level drives the locker discount.
+- **Right-clicking a Merchant opens its screen** (it has no trades of its own): its lockers, and per locker the villager's trades as on/off switches. Every trade starts off; the player opts in.
+- **A trade is identified by its items** (cost A, cost B, result), not its position in the list, so a choice survives level-ups and price changes. Two trades with the same items (two enchanted books) share one switch for now.
+
+## Merchant money (2026-10-14)
+
+- **First loop:** the player fills the Merchant's stock chest with shulker boxes of raw goods. The Merchant feeds lockers from them, villagers trade, the Merchant collects the emeralds, then converts them to Numismatics coins.
+- **The Merchant converts emeralds at its faction's floating rate.** The rate starts at a base (spurs per emerald), drops as emeralds pour in, and recovers over time toward the base. Computed on touch: a pressure number that decays with elapsed game time. Until factions exist, every Merchant uses one default faction.
+- **A Blaze Banker touching the Merchant's Desk is the settlement's bank account.** Converted coins are deposited into it. Later, wages and purchases are paid out of it.
+- **No Banker: coins land as physical coins in the stock chest.**
+- **Player shops:** Numismatics vendors only trade with a clicking player, so the Merchant deals with them by reading the vendor's mode, price and stock and moving goods and coins itself.
 - **It surveys routes and runs caravans.**
 - Wages are paid in coins.
 
