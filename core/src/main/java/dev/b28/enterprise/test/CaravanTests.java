@@ -97,11 +97,12 @@ public final class CaravanTests {
 
         int destMoney = MoneyChanger.value(net.dest().looseStacks());
         net.poll(t + 80);
-        helper.assertTrue(net.dest().count(PAPER) == 128, "the destination bought the paper");
+        helper.assertTrue(net.dest().count(PAPER) == dev.b28.enterprise.merchant.Warehouse.MIN_PAR,
+                "the destination bought paper up to its par of one stack, bought " + net.dest().count(PAPER));
         Caravan back = net.ledger().caravan(net.route().id()).orElseThrow();
         helper.assertTrue(back.leg() == Caravan.Leg.RETURNING, "heads home");
         int destSpent = destMoney - MoneyChanger.value(net.dest().looseStacks());
-        // It paid 128 / 24 x 0.75 = 4 emeralds for the paper and was paid back for a bread of road food.
+        // It paid the bargained price for 64 paper and was paid back for a bread of road food.
         helper.assertTrue(net.route().salesSpurs() > 0 && net.route().foodSpurs() > 0, "a sale and a food purchase");
         helper.assertTrue(destSpent == net.route().salesSpurs() - net.route().foodSpurs(),
                 "the destination's money moved by sales less food: " + destSpent);
@@ -113,7 +114,49 @@ public final class CaravanTests {
         net.poll(t + 160);
         helper.assertTrue(net.ledger().caravan(net.route().id()).isEmpty(), "the caravan is home");
         helper.assertTrue(MoneyChanger.value(net.hub().looseStacks()) - hubBefore == carried, "the hub banks what it carried");
-        helper.assertTrue(net.route().trips() == 1 && net.route().itemsDelivered() == 128, "one trip, 128 sold");
+        helper.assertTrue(net.route().trips() == 1 && net.route().itemsDelivered() == 64, "one trip, 64 sold");
+        helper.assertTrue(net.hub().count(PAPER) == 64, "the unsold 64 paper came home to the hub's warehouse");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void caravansBuyATownsSurplusForTheTripHome(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192);
+        // Another town on the hub's routes buys carrots: the travelling Merchant has somewhere to sell them.
+        var dimension = helper.getLevel().dimension();
+        GlobalPos elsewhere = GlobalPos.of(dimension, helper.absolutePos(new BlockPos(3, 2, 6)));
+        net.ledger().addRoute(GlobalPos.of(dimension, helper.absolutePos(HUB)), elsewhere);
+        MerchantBook.get(helper.getLevel().getServer()).setEnabled(
+                elsewhere, helper.absolutePos(new BlockPos(3, 2, 0)), "minecraft:carrot+>minecraft:emerald", true);
+        for (int i = 0; i < 4; i++) {
+            net.dest().insert(new ItemStack(Items.CARROT, 64)); // nobody there wants carrots: all surplus past food par
+        }
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        int destMoney = MoneyChanger.value(net.dest().looseStacks());
+        net.poll(t + 80);
+        helper.assertTrue(net.route().itemsBought() > 0, "the caravan bought carrots");
+        int carrotsAboard = net.ledger().caravan(net.route().id()).orElseThrow().cargo().stream()
+                .filter(stack -> stack.is(Items.CARROT)).mapToInt(ItemStack::getCount).sum();
+        helper.assertTrue(carrotsAboard > 0 && carrotsAboard <= net.route().itemsBought(),
+                "carrots ride home (with any other surplus bought): " + carrotsAboard);
+        helper.assertTrue(MoneyChanger.value(net.dest().looseStacks()) > destMoney - net.route().salesSpurs(),
+                "the town was paid for its surplus");
+        helper.assertTrue(net.dest().foodNutrition() >= dev.b28.enterprise.merchant.Warehouse.FOOD_PAR_POINTS,
+                "the town keeps its food par: " + net.dest().foodNutrition());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void caravansDontBuySurplusNobodyWants(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192);
+        for (int i = 0; i < 4; i++) {
+            net.dest().insert(new ItemStack(Items.CARROT, 64));
+        }
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        net.poll(t + 80);
+        helper.assertTrue(net.route().itemsBought() == 0, "no town on the hub's routes wants carrots: none bought");
         helper.succeed();
     }
 
@@ -124,7 +167,8 @@ public final class CaravanTests {
         net.poll(t);
         net.poll(t + 80);
         helper.assertTrue(net.dest().count(PAPER) == 0, "no money, no paper");
-        helper.assertTrue(net.ledger().caravan(net.route().id()).orElseThrow().items() == 128, "the cargo rides home");
+        helper.assertTrue(net.ledger().caravan(net.route().id()).orElseThrow().cargo().stream()
+                .filter(stack -> stack.is(Items.PAPER)).mapToInt(ItemStack::getCount).sum() == 128, "the paper rides home");
         helper.succeed();
     }
 

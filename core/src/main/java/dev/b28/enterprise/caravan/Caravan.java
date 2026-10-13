@@ -20,13 +20,19 @@ public final class Caravan {
     long arrives;
     final List<ItemStack> cargo;
     int spurs;
+    final int merchantLevel; // the travelling Merchant's level, for bargaining
 
-    Caravan(int route, Leg leg, long arrives, List<ItemStack> cargo, int spurs) {
+    Caravan(int route, Leg leg, long arrives, List<ItemStack> cargo, int spurs, int merchantLevel) {
         this.route = route;
         this.leg = leg;
         this.arrives = arrives;
         this.cargo = cargo;
         this.spurs = spurs;
+        this.merchantLevel = merchantLevel;
+    }
+
+    public int merchantLevel() {
+        return merchantLevel;
     }
 
     public Leg leg() {
@@ -55,6 +61,7 @@ public final class Caravan {
         tag.putString("leg", leg.name());
         tag.putLong("arrives", arrives);
         tag.putInt("spurs", spurs);
+        tag.putInt("merchantLevel", merchantLevel);
         ListTag items = new ListTag();
         cargo.stream().filter(stack -> !stack.isEmpty()).forEach(stack -> items.add(stack.save(registries)));
         tag.put("cargo", items);
@@ -67,6 +74,6 @@ public final class Caravan {
             ItemStack.parse(registries, item).ifPresent(cargo::add);
         }
         return new Caravan(tag.getInt("route"), Leg.valueOf(tag.getString("leg")), tag.getLong("arrives"), cargo,
-                tag.getInt("spurs"));
+                tag.getInt("spurs"), Math.max(1, tag.getInt("merchantLevel")));
     }
 }

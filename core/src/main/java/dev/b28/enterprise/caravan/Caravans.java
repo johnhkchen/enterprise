@@ -8,6 +8,8 @@ import dev.b28.enterprise.locker.Rounds;
 import dev.b28.enterprise.merchant.Merchant;
 import dev.b28.enterprise.merchant.MerchantBook;
 import dev.b28.enterprise.merchant.MerchantStock;
+import dev.b28.enterprise.merchant.Warehouse;
+import dev.b28.enterprise.money.Bargain;
 import dev.b28.enterprise.money.Mint;
 import dev.b28.enterprise.money.MoneyChanger;
 import dev.b28.enterprise.money.Prices;
@@ -56,8 +58,8 @@ public final class Caravans {
     /** A caravan tops a destination up to this many of each item its trades use: ten stacks, a few days' trading. */
     public static final int WANT_PER_ITEM = 640;
 
-    /** What a Merchant pays a caravan for its cargo: this share of the goods' local value. */
-    public static final double WHOLESALE = 0.75;
+    /** The most a travelling Merchant pays for a town's surplus: this share of its local value (it resells it). */
+    public static final double RESALE_CEILING = 0.75;
 
     /**
      * Emeralds a caravan takes from the hub per food point of the return leg, to buy that food at the destination:
@@ -122,11 +124,14 @@ public final class Caravans {
         if (level == null || !ensureLoaded(level, route.from.pos())) {
             return false;
         }
-        if (Merchant.workingAt(level, route.from.pos(), Lockers.MERCHANT_RANGE).isEmpty()) {
+        var hubMerchant = Merchant.workingAt(level, route.from.pos(), Lockers.MERCHANT_RANGE);
+        if (hubMerchant.isEmpty()) {
             route.status = "no Merchant at the hub";
             ledger.setDirty();
             return false;
         }
+        int merchantLevel = hubMerchant.get().getVillagerData().getLevel();
+        Warehouse.get(server).recordLevel(route.from, merchantLevel);
         MerchantStock stock = MerchantStock.at(level, route.from.pos());
         territory.touch(level, route.from.pos(), stock);
         int food = foodNeeded(route.distance());
@@ -147,7 +152,9 @@ public final class Caravans {
         Treasury.Withdrawal taken = Treasury.withdraw(level, route.from.pos(), stock, purse, mint, now);
         int spurs = taken.spurs() + mint.sell(Mint.DEFAULT_FACTION, taken.emeralds(), now);
         List<ItemStack> cargo = pickCargo(stock, wantedAt(server, route.to));
-        ledger.put(new Caravan(route.id, Caravan.Leg.OUTBOUND, now + travelTicks(route.distance()), cargo, spurs));
+        Warehouse.get(server).recordStocktake(route.from, stock.totals()); // for buying decisions while away
+        ledger.put(new Caravan(
+                route.id, Caravan.Leg.OUTBOUND, now + travelTicks(route.distance()), cargo, spurs, merchantLevel));
         route.lastDeparture = now;
         route.foodEaten += food;
         route.status = "on the way out";
@@ -168,8 +175,9 @@ public final class Caravans {
     }
 
     /**
-     * At the destination the caravan sells its cargo to the Merchant at wholesale, as far as it wants and can pay
-     * for, then buys the return leg's food there at the local price. Nothing is taken for free.
+     * At the destination the travelling Merchant deals only with the resident Merchant: it sells cargo into the
+     * town's warehouse up to par, buys the town's surplus for the trip home, and buys the return leg's food at the
+     * local price. Prices are bargained between the two Merchants' levels. Nothing is taken for free.
      */
     private static void arriveAtDestination(MinecraftServer server, CaravanLedger ledger, Territory territory,
             Route route, Caravan caravan, long now) {
@@ -181,12 +189,18 @@ public final class Caravans {
         territory.touch(level, route.to.pos(), stock);
         Mint mint = Mint.get(server);
         double rate = mint.rate(Mint.DEFAULT_FACTION, now);
+        int food = foodNeeded(route.distance());
         if (caravan.leg == Caravan.Leg.OUTBOUND) {
-            int earned = sell(level, route.to.pos(), stock, caravan, mint, rate, now, route);
+            int residentLevel = Merchant.workingAt(level, route.to.pos(), Lockers.MERCHANT_RANGE)
+                    .map(m -> m.getVillagerData().getLevel())
+                    .orElse(Warehouse.get(server).level(route.to));
+            Warehouse.get(server).recordLevel(route.to, residentLevel);
+            int earned = sell(server, level, route.to, stock, caravan, residentLevel, mint, rate, now, route);
             caravan.spurs += earned;
             route.salesSpurs += earned;
+            int keepForFood = (int) Math.ceil(food * PURSE_PER_FOOD_POINT * rate);
+            buySurplus(server, ledger, level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
         }
-        int food = foodNeeded(route.distance());
         Map<Item, Integer> meal = stock.eat(food);
         if (meal.isEmpty()) {
             caravan.leg = Caravan.Leg.WAITING_FOR_FOOD;
@@ -295,18 +309,30 @@ public final class Caravans {
     }
 
     /**
-     * Sells cargo to the destination's Merchant at {@link #WHOLESALE} of its local value: of each item, up to what it
-     * wants ({@link #WANT_PER_ITEM} on hand) and can pay for. Returns spurs earned; what isn't sold rides home.
+     * Sells cargo into the resident's warehouse: of each good, only up to its par, at the price the two Merchants
+     * settle (the resident pays more the shorter it is), and only what it can pay for. Returns spurs earned; what
+     * isn't sold rides home.
      */
-    private static int sell(ServerLevel level, BlockPos desk, MerchantStock stock, Caravan caravan, Mint mint,
-            double rate, long now, Route route) {
+    private static int sell(MinecraftServer server, ServerLevel level, GlobalPos desk, MerchantStock stock,
+            Caravan caravan, int residentLevel, Mint mint, double rate, long now, Route route) {
+        Warehouse warehouse = Warehouse.get(server);
+        Set<Item> wanted = wantedAt(server, desk);
         int earned = 0;
         for (Iterator<ItemStack> it = caravan.cargo.iterator(); it.hasNext(); ) {
             ItemStack stack = it.next();
-            double each = Prices.emeraldsEach(stack.getItem()) * WHOLESALE;
-            int room = WANT_PER_ITEM - stock.count(new ItemCost(stack.getItem(), 1));
-            int affordable = (int) Math.floor(Treasury.available(level, desk, stock, rate) / each);
-            int quantity = Math.min(stack.getCount(), Math.min(room, affordable));
+            Item item = stack.getItem();
+            int onHand = stock.count(new ItemCost(item, 1));
+            int par = warehouse.par(desk, item, wanted.contains(item), now);
+            int quantity = Math.min(stack.getCount(), par - onHand);
+            double each = -1;
+            double value = Prices.emeraldsEach(item);
+            double money = Treasury.available(level, desk.pos(), stock, rate);
+            for (int pass = 0; pass < 2 && quantity > 0; pass++) {
+                // Price at the middle of the batch: the resident's shortage shrinks as the shelf fills.
+                double midShortage = Bargain.shortage(onHand + quantity / 2, par);
+                each = Bargain.price(value, midShortage, caravan.merchantLevel, residentLevel);
+                quantity = each <= 0 ? 0 : Math.min(quantity, (int) Math.floor(money / each));
+            }
             if (quantity <= 0) {
                 continue;
             }
@@ -314,7 +340,7 @@ public final class Caravans {
             ItemStack rest = stock.insert(sold);
             int delivered = sold.getCount() - rest.getCount();
             stack.grow(rest.getCount());
-            Treasury.Withdrawal paid = Treasury.withdraw(level, desk, stock, delivered * each, mint, now);
+            Treasury.Withdrawal paid = Treasury.withdraw(level, desk.pos(), stock, delivered * each, mint, now);
             earned += paid.spurs() + mint.sell(Mint.DEFAULT_FACTION, paid.emeralds(), now);
             route.itemsDelivered += delivered;
             if (stack.isEmpty()) {
@@ -322,6 +348,86 @@ public final class Caravans {
             }
         }
         return earned;
+    }
+
+    /**
+     * What the hub's other towns want of each good and the hub doesn't already hold: the sum of their pars, less the
+     * hub's stock at its last stocktake and what's already aboard.
+     */
+    static Map<Item, Integer> networkWants(MinecraftServer server, CaravanLedger ledger, Route route, Caravan caravan, long now) {
+        Warehouse warehouse = Warehouse.get(server);
+        Map<Item, Integer> wants = new java.util.HashMap<>();
+        for (Route other : ledger.routes()) {
+            if (other.from.equals(route.from) && !other.to.equals(route.to)) {
+                for (Item item : wantedAt(server, other.to)) {
+                    wants.merge(item, warehouse.par(other.to, item, true, now), Integer::sum);
+                }
+            }
+        }
+        wants.replaceAll((item, want) -> want - warehouse.onHand(route.from, item)
+                - caravan.cargo.stream().filter(stack -> stack.is(item)).mapToInt(ItemStack::getCount).sum());
+        wants.values().removeIf(want -> want <= 0);
+        return wants;
+    }
+
+    /**
+     * Buys the town's surplus for the trip home, but only goods another town on the hub's routes wants and the hub
+     * lacks ({@link #networkWants}): goods above this warehouse's par (and food beyond what it keeps for caravans),
+     * at the price the two Merchants settle, the travelling Merchant paying at most {@link #RESALE_CEILING} of the
+     * value since it has to resell. Keeps {@code keepForFood} spurs for road food and stays within its cargo space.
+     * Crop sales count toward the town's farmers' share.
+     */
+    private static void buySurplus(MinecraftServer server, CaravanLedger ledger, ServerLevel level, Route route,
+            MerchantStock stock, Caravan caravan, int residentLevel, int keepForFood, Territory territory, Mint mint,
+            double rate, long now) {
+        GlobalPos desk = route.to;
+        Warehouse warehouse = Warehouse.get(server);
+        Set<Item> wanted = wantedAt(server, desk);
+        Map<Item, Integer> networkWants = networkWants(server, ledger, route, caravan, now);
+        int spareFood = stock.foodNutrition() - Warehouse.FOOD_PAR_POINTS;
+        for (Map.Entry<String, Integer> held : stock.totals().entrySet()) {
+            if (caravan.cargo.size() >= CARGO_SLOTS) {
+                return;
+            }
+            Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(held.getKey()));
+            if (item == Items.EMERALD || item instanceof CoinItem || held.getKey().endsWith("shulker_box")) {
+                continue;
+            }
+            int surplus = Math.min(held.getValue() - warehouse.par(desk, item, wanted.contains(item), now),
+                    networkWants.getOrDefault(item, 0));
+            var food = item.getDefaultInstance().get(net.minecraft.core.component.DataComponents.FOOD);
+            if (food != null && food.nutrition() > 0) {
+                surplus = Math.min(surplus, Math.max(0, spareFood) / food.nutrition());
+            }
+            int room = (CARGO_SLOTS - caravan.cargo.size()) * item.getDefaultMaxStackSize();
+            double value = Prices.emeraldsEach(item);
+            double each = Bargain.between(Bargain.sellerFloor(value), value * RESALE_CEILING, residentLevel,
+                    caravan.merchantLevel);
+            int quantity = Math.min(surplus, room);
+            if (each > 0) {
+                quantity = Math.min(quantity, (int) Math.floor((caravan.spurs - keepForFood) / (each * rate)));
+            }
+            if (each <= 0 || quantity <= 0) {
+                continue;
+            }
+            int spurs = (int) Math.ceil(quantity * each * rate);
+            int taken = 0;
+            for (ItemStack piece : stock.take(new ItemCost(item, 1), quantity)) {
+                taken += piece.getCount();
+                caravan.cargo.add(piece);
+            }
+            spurs = (int) Math.ceil(taken * each * rate);
+            caravan.spurs -= spurs;
+            Treasury.deposit(level, desk.pos(), stock, spurs);
+            if (food != null) {
+                spareFood -= taken * food.nutrition();
+            }
+            if (Territory.isCrop(held.getKey())) {
+                territory.recordCropSale(desk, spurs / rate);
+            }
+            route.itemsBought += taken;
+            route.purchaseSpurs += spurs;
+        }
     }
 
     /** True if the desk and the chests touching it are loaded; otherwise asks for them to load and returns false. */

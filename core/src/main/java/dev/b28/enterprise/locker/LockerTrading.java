@@ -8,6 +8,7 @@ import dev.b28.enterprise.merchant.TradeKeys;
 import dev.b28.enterprise.money.MoneyChanger;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
@@ -113,6 +114,16 @@ public final class LockerTrading {
         MerchantStock stock = MerchantStock.at(level, manager.desk());
         dev.b28.enterprise.territory.Territory.get(level.getServer()).touch(level, manager.desk(), stock);
         int reputation = merchantReputation(manager.merchant().getVillagerData().getLevel());
+        // What this locker's switched-on trades can take in a day, for the warehouse's pars.
+        Map<net.minecraft.world.item.Item, Integer> canTake = new java.util.HashMap<>();
+        for (MerchantOffer offer : villager.getOffers()) {
+            if (enabled.contains(TradeKeys.of(offer))) {
+                canTake.merge(offer.getBaseCostA().getItem(), price(offer, reputation) * offer.getMaxUses(), Integer::sum);
+                offer.getItemCostB().ifPresent(b -> canTake.merge(b.item().value(), b.count() * offer.getMaxUses(), Integer::sum));
+            }
+        }
+        dev.b28.enterprise.merchant.Warehouse.get(level.getServer())
+                .recordCapacity(GlobalPos.of(level.dimension(), manager.desk()), workstation.asLong(), canTake);
         // Best deal first: the fewest inputs per item received.
         List<MerchantOffer> offers = villager.getOffers().stream()
                 .filter(offer -> enabled.contains(TradeKeys.of(offer)) && !isInflated(offer))
@@ -121,6 +132,9 @@ public final class LockerTrading {
         int made = 0;
         var territory = dev.b28.enterprise.territory.Territory.get(level.getServer());
         GlobalPos deskPos = GlobalPos.of(level.dimension(), manager.desk());
+        var warehouse = dev.b28.enterprise.merchant.Warehouse.get(level.getServer());
+        warehouse.recordLevel(deskPos, manager.merchant().getVillagerData().getLevel());
+        long now = level.getGameTime();
         for (MerchantOffer offer : offers) {
             int priceA = price(offer, reputation);
             boolean sellsCrop = offer.getResult().is(net.minecraft.world.item.Items.EMERALD)
@@ -136,6 +150,8 @@ public final class LockerTrading {
                 if (sellsCrop) {
                     territory.recordCropSale(deskPos, offer.getResult().getCount());
                 }
+                warehouse.recordUse(deskPos, offer.getBaseCostA().getItem(), priceA, now);
+                offer.getItemCostB().ifPresent(b -> warehouse.recordUse(deskPos, b.item().value(), b.count(), now));
                 made++;
             }
         }

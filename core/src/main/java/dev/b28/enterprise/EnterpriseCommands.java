@@ -219,10 +219,11 @@ final class EnterpriseCommands {
                             c.leg().name().toLowerCase().replace('_', ' '), c.items(), c.spurs()))
                     .orElse("");
             source.sendSuccess(() -> Component.literal(("  #%d %s -> %s: %d blocks, %d trips, %d items sold for %d spurs, "
-                    + "%d spurs on road food, %d tolls paid, %d spurs brought home, %d food eaten, %s%s").formatted(route.id(),
-                    route.from().pos().toShortString(), route.to().pos().toShortString(), route.distance(), route.trips(),
-                    route.itemsDelivered(), route.salesSpurs(), route.foodSpurs(), route.tollsPaid(), route.spursCollected(),
-                    route.foodEaten(), route.status(), caravan)), false);
+                    + "%d bought for %d, %d spurs on road food, %d tolls paid, %d spurs brought home, %d food eaten, %s%s")
+                    .formatted(route.id(), route.from().pos().toShortString(), route.to().pos().toShortString(),
+                    route.distance(), route.trips(), route.itemsDelivered(), route.salesSpurs(), route.itemsBought(),
+                    route.purchaseSpurs(), route.foodSpurs(), route.tollsPaid(), route.spursCollected(), route.foodEaten(),
+                    route.status(), caravan)), false);
         }
         return ledger.routes().size();
     }

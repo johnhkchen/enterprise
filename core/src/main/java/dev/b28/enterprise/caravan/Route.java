@@ -18,6 +18,8 @@ public final class Route {
     long tollsPaid;
     long salesSpurs;
     long foodSpurs;
+    long itemsBought;
+    long purchaseSpurs;
     String status = "new";
 
     Route(int id, GlobalPos from, GlobalPos to) {
@@ -63,6 +65,15 @@ public final class Route {
         return salesSpurs;
     }
 
+    /** Surplus bought from the destination for the trip home, in items and spurs. */
+    public long itemsBought() {
+        return itemsBought;
+    }
+
+    public long purchaseSpurs() {
+        return purchaseSpurs;
+    }
+
     /** Spurs paid to the destination for road food, in all. */
     public long foodSpurs() {
         return foodSpurs;
@@ -97,6 +108,8 @@ public final class Route {
         tag.putLong("tollsPaid", tollsPaid);
         tag.putLong("salesSpurs", salesSpurs);
         tag.putLong("foodSpurs", foodSpurs);
+        tag.putLong("itemsBought", itemsBought);
+        tag.putLong("purchaseSpurs", purchaseSpurs);
         tag.putString("status", status);
         return tag;
     }
@@ -113,6 +126,8 @@ public final class Route {
         route.tollsPaid = tag.getLong("tollsPaid");
         route.salesSpurs = tag.getLong("salesSpurs");
         route.foodSpurs = tag.getLong("foodSpurs");
+        route.itemsBought = tag.getLong("itemsBought");
+        route.purchaseSpurs = tag.getLong("purchaseSpurs");
         route.status = tag.getString("status");
         return route;
     }
