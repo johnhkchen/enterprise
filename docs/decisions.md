@@ -1,0 +1,108 @@
+# Decisions
+
+Decisions made after the brief (`docs/brief.md`). Where this file and the brief disagree, this file wins. Newest changes are dated.
+
+## Name (2026-10-13)
+
+- **The modpack is called Enterprise**, not Staples. The brief still uses the old name.
+- Core mod: `mod_id=enterprise`, package `dev.b28.enterprise`.
+
+## Platform (2026-10-13)
+
+- **Minecraft 1.21.1 on NeoForge, Java 21.** Create, Numismatics and BankSystem all top out at 1.21.1. Create's 26.1 port is in progress with no date, so expect a port later.
+- **Each quality tier is its own item** (`cotton_bale_fine`), not a component on one item. Create recipes then work unchanged, and a build-time generator writes the per-tier recipes.
+- **Content modules are JSON manifests turned into code at build time.** Datapacks cannot register items or blocks, so "adding tea is data, not code" means "write JSON, rebuild", not "drop in a datapack".
+
+## The logistics rule (2026-10-13)
+
+**Nothing crosses distance without a carrier.** Goods, coins and price news all travel. This is why StockMarket is out (its trades are instant across the map), and why banks are per settlement.
+
+## Dependencies and money (2026-10-13)
+
+- **Numismatics is a core dependency** (LGPL-3.0). It is the early-era money: physical coins, vendors, depositors.
+- **StockMarket is dropped.** It has no license file, so it cannot be forked; we write our own exchange from scratch.
+- **BankSystem is not a dependency.** We write our own bank on Numismatics and lift pieces of BankSystem (MIT) with credit where useful.
+- **Ledger / Ledger Databases are not dependencies.** They are Fabric-only grief loggers. Their append-only event log on H2/MySQL/Postgres is a reference for our own ledger storage.
+- **Eras of money:** Numismatics coins first, our bank as an unlock, our futures exchange on top of that.
+
+## Coinage (2026-10-13)
+
+- **Banks are per settlement.** No account is reachable from everywhere. Money moves between towns by courier or by bill of exchange.
+- **Each faction mints its own coinage.** A coin's value is its metal content (a gold/silver standard) times trust in the issuer, so exchange rates differ slightly between factions.
+- **The Merchant is the money changer.** It converts between coinages and keeps the spread.
+- Faction coins are one coin item per denomination with a "mint" component naming the faction. Item variety stays bounded by factions × denominations.
+- Numismatics coins act as the neutral standard (bullion, or the trade coin everyone accepts).
+- **Coinage is the first graded good.** A coinage is a graded batch of metal: its fineness is its grade. Assaying is inspection, and clipping or debasement is adulteration. The grade, inspection and reputation grammar from the brief starts with money, before any crop.
+
+## Lockers (2026-10-13)
+
+- A **locker** is a chest, double chest or barrel next to a villager's workstation.
+- When the villager restocks, it runs its trades against the locker: it takes the inputs and puts the outputs back. Vanilla restock timing, villager XP and demand pricing all still apply, so automated trading raises prices and levels the villager.
+- **A locker's contents live in world save data; the block is a window onto them** (the ender chest trick). Trades settle even while the chunk is unloaded. Hoppers and Create funnels work while it is loaded.
+
+## Merchant (2026-10-13)
+
+- New villager profession with its own job-site block.
+- **It is the village's trading desk.** It holds goods and coins (in save data) and is the counterparty for players, villagers and arriving caravans.
+- **It manages the town's lockers.** It fills them best deal first; a higher level manages more lockers.
+- **It surveys routes and runs caravans.**
+- Wages are paid in coins.
+
+## Settlements (2026-10-13)
+
+- **A settlement is anchored by a bell plus at least N beds and N workstations.**
+- A census reads the villagers, beds (home points), workstations (job points) and the bell (meeting point). The result stays in the ledger.
+- **The census is polled, never constant.** It runs rarely, when the area is loaded, on rounds, or after big block changes. The work is spread across ticks, and path checks run off the main thread on a snapshot.
+- **Free villagers count; prisoners barely do.** A villager is free when it can walk to its own bed, its workstation and the bell. Settlement value counts free villagers fully and confined ones at a small fraction. Goal: a thriving village is worth more than a trading hall with villagers locked in cells. The bell check stops a cell that just has a bed and workstation inside it from counting as free.
+- Farmers produce food. Caravans eat food per day of travel, so villages are the natural resupply stops along a route.
+
+## Territory: a hex grid (2026-10-13)
+
+- **Civilization-style.** A settlement earns hexes with money or culture growth, and its population works them.
+- **The hex is the ledger's unit of place.** Ownership, security, detection and tolls are per hex. A route is a list of hexes.
+- **Size: a hex is about 80% of a naturally generated village's core**, roughly 80 blocks across to start, set in config. A normal village covers its own hex plus up to about 2 rings around it (up to 19 hexes). We'll tune this by experiment.
+- **Working a hex:** in player towns, the real farms, mines and buildings on the hex count. Simulated towns get abstract yields.
+- **Culture comes from villagers of certain professions working a hex that has an improvement**, as in Civilization. Improvements cost money to build, which makes them a money sink.
+- **A garrison on a hex lets its owner levy tolls**, given the right kind of unit. Garrisons make blockades and sieges possible, and chokepoints worth fighting over.
+- **Garrison units:** a militia of villagers, where each profession gives its own boost (like caravan squads), plus a new raider-style unit for settlements (knights and soldiers), the village's answer to pillagers. Players' role in garrisons is decided later.
+
+## Travel cost between hexes (2026-10-13)
+
+Travel cost must react to real building. A long wall, a tunnel, a bridge or a wide canal should each change routes and costs.
+
+- **Two levels, like hierarchical pathfinding (HPA\*).** Inside a hex, a block-level 3D walk grid. Between hexes, a small graph.
+- **Each hex side is split into entrances**, the open stretches of its border. A wall along a border with one gate leaves one entrance.
+- **Per hex, we cache the cost from each entrance to every other**, per mode: on foot, cart, boat. Routes are A\* over the entrances graph, which is small and cheap.
+- **A hex's costs are rebuilt on touch**: marked dirty when its blocks change, and rebuilt on the next round or census, off the main thread on a chunk snapshot.
+- **Modes read different things:** foot needs 2 blocks of headroom and a 1-block step; carts need a road surface and width; boats need water depth and width (which is how a wide canal opens freighter routes).
+- **Light sets cost underground.** Dark caves are slow and dangerous, so natural caves don't count as free tunnels, while a lit, built tunnel is cheap.
+
+## Caravans (2026-10-13)
+
+- **A caravan is a cloud, not a position.** A route has traffic, and no one's location is simulated.
+- When a player is in a route's corridor, an encounter roll runs, per hex:
+  `chance = traffic × hex detection × (1 − merchant stealth)`.
+- A hit spawns a real caravan with real cargo, checked out from its record. The record owns the cargo and the spawned caravan is a view of it, so it can never be duplicated. If the caravan crashes or gets stuck, the record wins.
+- Merchant level adds stealth. Territories can raise a hex's detection. At full detection every caravan must show itself, so a guarded chokepoint enforces its own tolls.
+- Raiding works on multiplayer: kill the caravan, loot the cargo, and the loss goes on the record.
+
+## Build order (2026-10-13)
+
+1. Lockers
+2. Settlements (census, free-villager check)
+3. Hex grid and territory
+4. Route network (settlements as stops, food as travel supply)
+5. Merchant (lockers, stock, counterparty, wages)
+6. Caravans (encounters, stealth vs. detection, tolls)
+7. Coinage and per-settlement banks
+
+The cotton chain, chocolate, the cold chain and the exchange follow later.
+
+## Open questions
+
+- **Hex size tuning.** Measure real generated villages to confirm the starting size.
+- **Improvements in player towns.** Is an improvement a recognized block structure (a farm plot, a mine entrance), something bought, or both?
+- **Toll units.** Which units count as "the right type" to levy tolls?
+- **Debasement.** Can a faction cut the metal in its coin to fund a war, at the cost of its exchange rate?
+- **Guard mods.** Check whether an existing guard-villager mod for 1.21.1 NeoForge could supply the militia, or whether we write our own.
+- **Scope.** Hexes, factions and garrisons push this toward a 4X game. The build order keeps each step playable on its own.
