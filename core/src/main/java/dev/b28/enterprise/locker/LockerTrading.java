@@ -33,11 +33,11 @@ public final class LockerTrading {
     private static final int[] MERCHANT_REPUTATION = {0, 30, 55, 80, 110};
 
     /**
-     * Merchant XP needed for Apprentice, Journeyman, Expert and Master: the points a player has at levels 5, 10, 15
-     * and 20. A player who trades five villagers up to Master ends near level 20, so a Master Merchant has done the
-     * same amount of trading.
+     * Merchant XP needed for Apprentice, Journeyman, Expert and Master: the points a player has at levels 15, 30, 45
+     * and 55. Tuned by dev/experiments/merchant_ramp.py: a pen of four villagers fed 18 shulkers of goods manages all
+     * four by about day 2 and makes its Merchant a Master in about 7 to 9 days (player levels 5 to 20 took about 1).
      */
-    private static final int[] MERCHANT_LEVEL_XP = {55, 160, 315, 550};
+    private static final int[] MERCHANT_LEVEL_XP = {315, 1395, 4020, 6895};
 
     private LockerTrading() {}
 

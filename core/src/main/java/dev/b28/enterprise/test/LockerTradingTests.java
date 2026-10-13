@@ -247,8 +247,8 @@ public final class LockerTradingTests {
 
     @GameTest(template = "floor")
     public static void merchantLevelsMatchPlayerLevels(GameTestHelper helper) {
-        helper.assertTrue(dev.b28.enterprise.locker.LockerTrading.merchantXpForNextLevel(1) == 55, "Apprentice at 55");
-        helper.assertTrue(dev.b28.enterprise.locker.LockerTrading.merchantXpForNextLevel(4) == 550, "Master at 550");
+        helper.assertTrue(dev.b28.enterprise.locker.LockerTrading.merchantXpForNextLevel(1) == 315, "Apprentice at 315");
+        helper.assertTrue(dev.b28.enterprise.locker.LockerTrading.merchantXpForNextLevel(4) == 6895, "Master at 6895");
         helper.assertTrue(dev.b28.enterprise.locker.LockerTrading.merchantXpForNextLevel(5) == 0, "nothing past Master");
         helper.succeed();
     }

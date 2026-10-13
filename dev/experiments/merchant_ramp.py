@@ -7,7 +7,11 @@ switches on every goods-for-emerald trade it can see, then sprints one in-game d
 logs levels, managed lockers, emeralds earned and goods left. New emerald trades that appear as
 villagers level up are switched on each morning.
 
-    python3 dev/experiments/merchant_ramp.py [max_days]
+    python3 dev/experiments/merchant_ramp.py [max_days] [--all]
+
+--all switches on every trade, not just goods-for-emerald ones, so the Merchant also spends the emeralds it
+earns (bookshelves, arrows, ...). Villager trades are rolled at random; without --all, a villager whose novice
+trades all cost emeralds never levels, which starves the Merchant.
 """
 
 import re
@@ -60,6 +64,9 @@ def locker_trades_logged():
     return sum(int(n) for n in re.findall(r"Locker trades: (\d+)", SERVER_LOG.read_text(errors="replace")))
 
 
+ALL_TRADES = "--all" in sys.argv
+
+
 def switch_on_emerald_trades():
     listing = rcon(f"enterprise lockers {DESK}")
     managed = re.search(r"(\d+)/(\d+) locker", listing)
@@ -69,7 +76,7 @@ def switch_on_emerald_trades():
         site = re.match(r"\s+\w+ at (-?\d+), (-?\d+), (-?\d+),", line)
         if site:
             workstation = " ".join(site.groups())
-        trade = re.match(r"\s+\[off\] (\S+>minecraft:emerald)$", line)
+        trade = re.match(r"\s+\[off\] (\S+>minecraft:[a-z_]+)$" if ALL_TRADES else r"\s+\[off\] (\S+>minecraft:emerald)$", line)
         if trade and workstation:
             rcon(f'enterprise switch {DESK} {workstation} "{trade.group(1)}" true')
             switched += 1
@@ -77,7 +84,8 @@ def switch_on_emerald_trades():
 
 
 def main():
-    max_days = int(sys.argv[1]) if len(sys.argv) > 1 else 30
+    numbers = [arg for arg in sys.argv[1:] if arg.isdigit()]
+    max_days = int(numbers[0]) if numbers else 30
     rcon("forceload add 0 0 16 16", "execute positioned 0 -60 0 run function testbench:market/build",
          "time set 1000", "tick sprint 200")
     time.sleep(3)
@@ -89,7 +97,6 @@ def main():
           + " | trades | emeralds | goods left | trades on")
     trades_before = locker_trades_logged()
     idle_days = 0
-    last_emeralds = 0
     for day in range(1, max_days + 1):
         (managed, limit), switched = switch_on_emerald_trades()
         sprint_day()
@@ -102,10 +109,9 @@ def main():
         print(f"{day:>3} | {m_level} ({m_xp:>4})        | {managed}/{limit:<5} | "
               + " | ".join(f"L{lvl} ({xp:>4})" for lvl, xp in workers)
               + f" | {trades_now - trades_before:>6} | {emeralds:>8} | {goods:>10} | +{switched}")
+        idle_days = idle_days + 1 if trades_now == trades_before else 0
         trades_before = trades_now
         sys.stdout.flush()
-        idle_days = idle_days + 1 if emeralds == last_emeralds else 0
-        last_emeralds = emeralds
         if idle_days >= 3:
             print("\nNo trades for 3 days: stopping.")
             break
