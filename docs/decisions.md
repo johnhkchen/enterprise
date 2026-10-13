@@ -141,6 +141,13 @@ Decisions made after the brief (`docs/brief.md`). Where this file and the brief 
 - **Mood caps growth.** Every 8 villagers take 1 from mood and a child needs mood 1, so a town supplied with all four kinds of comfort stops growing around 24 villagers. A pack that adds kinds of comfort lets towns grow bigger.
 - **Measured** (`network_study.py --comforts`, 20 days): the three supplied towns built 1-2 cottages each and had 1-2 children, growing from 5 villagers to 6-7; the first child had grown up by day 20.
 
+## Walls (built 2026-10-14)
+
+- **A wall turns a town's land and its masons' wages into an improvement.** A content town (mood at least 0.5) with nothing that pays better to build (no bridge worth it, see Bridges) and 12 emeralds to spare beyond its reserve starts a wall. Masons build it as they build bridges: two at 1 emerald a day, with stone quarried from the town's land at 16 blocks a day per hex, one project at a time.
+- **It's a real wall:** a ring 40 blocks from the bell (past the homes, inside the census), 3 high, with gates 3 wide at the four points of the compass. It's of what the land offers: a log palisade on grass and dirt (spruce in taiga and snow), sandstone on sand, cobblestone on stone. Where the ground is a field, a path, water or something built, or the air above isn't clear, it leaves a gap, so villagers' paths become gates. It goes up in the world a quarter at a time as the masons lay it, loading its chunks to do so.
+- **A walled town feels safe:** up to +1 mood and 2 culture a day when the wall is whole, in proportion to how much stands. Defence against raids comes with raiding.
+- **Measured** (`network_study.py --comforts`, 25 days): the three content towns each started a wall about day 8 and finished it about day 20 for 24 emeralds of wages, raising all 252 columns on the flat test world. With the wall's culture and good mood their land grew to 10-11 hexes (7-8 without walls). Their money fell to 28-70 emeralds as walls, homes and comforts took it.
+
 ## Travel cost between hexes (2026-10-13)
 
 Travel cost must react to real building. A long wall, a tunnel, a bridge or a wide canal should each change routes and costs.

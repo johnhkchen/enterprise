@@ -198,6 +198,9 @@ final class EnterpriseCommands {
                 () -> Component.literal("  bridge on %s: %s, %.0f emeralds of masons' wages paid".formatted(b.hex(),
                         b.placed() ? "open, deck laid" : b.done() ? "open, deck to be laid" : "%.0f%% built".formatted(
                                 b.progress() * 100), b.wagesPaid())), false));
+        dev.b28.enterprise.territory.Works.get(source.getServer()).wall(bell).ifPresent(w -> source.sendSuccess(
+                () -> Component.literal("  wall %.0f%% built, %d columns raised, %.0f emeralds of masons' wages paid"
+                        .formatted(w.progress() * 100, w.columnsPlaced(), w.wagesPaid())), false));
         source.sendSuccess(() -> Component.literal("  %d home(s) built, %d child(ren) born".formatted(
                 territory.homesBuilt(bell), territory.born(bell))), false);
         source.sendSuccess(() -> Component.literal("  toll %.1f%% at its posts (%.0f spurs collected last review)".formatted(

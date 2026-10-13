@@ -116,6 +116,61 @@ public final class GrowthTests {
     }
 
     @GameTest(template = "floor")
+    public static void aWallRingsTheBellWithFourGates(GameTestHelper helper) {
+        BlockPos centre = new BlockPos(0, 0, 0);
+        var ring = dev.b28.enterprise.territory.Works.ring(centre, dev.b28.enterprise.territory.Works.WALL_RADIUS);
+        helper.assertTrue(ring.size() > 200 && ring.size() < 300, "about 2 pi x 40 columns: " + ring.size());
+        helper.assertTrue(ring.stream().noneMatch(c -> Math.abs(c.getX()) <= 1 || Math.abs(c.getZ()) <= 1),
+                "gates at the four points");
+        helper.assertTrue(ring.stream().allMatch(c -> Math.abs(Math.hypot(c.getX(), c.getZ()) - 40) < 0.75), "on the ring");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor", skyAccess = true)
+    public static void wallsRiseOnGroundAndLeaveFieldsOpen(GameTestHelper helper) {
+        // A ring of radius 3 round the arena's middle, on grass, with farmland under one column.
+        for (int x = 0; x <= 6; x++) {
+            for (int z = 0; z <= 6; z++) {
+                helper.setBlock(new BlockPos(x, 1, z), Blocks.GRASS_BLOCK);
+            }
+        }
+        BlockPos centre = helper.absolutePos(new BlockPos(3, 1, 3));
+        var ring = dev.b28.enterprise.territory.Works.ring(centre, 3);
+        BlockPos field = ring.get(0);
+        helper.getLevel().setBlock(new BlockPos(field.getX(), centre.getY(), field.getZ()), Blocks.FARMLAND.defaultBlockState(), 3);
+        var works = new dev.b28.enterprise.territory.Works();
+        var wall = works.startWall(GlobalPos.of(helper.getLevel().dimension(), centre), 3);
+        dev.b28.enterprise.territory.Works.raiseForTest(helper.getLevel(), wall, ring);
+        int raised = 0;
+        for (BlockPos column : ring) {
+            if (helper.getLevel().getBlockState(new BlockPos(column.getX(), centre.getY() + 3, column.getZ())).is(Blocks.OAK_LOG)) {
+                raised++;
+            }
+        }
+        helper.assertTrue(raised == ring.size() - 1, "every column but the field's, 3 high: " + raised + " of " + ring.size());
+        helper.assertTrue(helper.getLevel().getBlockState(new BlockPos(field.getX(), centre.getY() + 1, field.getZ())).isAir(),
+                "the field is left open");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aWalledTownFeelsSafe(GameTestHelper helper) {
+        Territory territory = new Territory();
+        GlobalPos bell = town(helper, territory, new Census(3, 3, 3, 3, 0), 0);
+        var works = dev.b28.enterprise.territory.Works.get(helper.getLevel().getServer());
+        var wall = works.startWall(bell, dev.b28.enterprise.territory.Works.WALL_RADIUS);
+        works.finish(wall);
+        long t = helper.getLevel().getGameTime();
+        BlockPos desk = helper.absolutePos(DESK);
+        MerchantStock stock = MerchantStock.at(helper.getLevel(), desk);
+        territory.touch(helper.getLevel(), desk, stock, t);
+        territory.touch(helper.getLevel(), desk, stock, t + 30 * 24000L);
+        // No comforts, 3 villagers: -3/8 for size, +1 for the wall.
+        helper.assertTrue(Math.abs(territory.mood(bell) - (1 - 3 / 8.0)) < 0.01, "walled: " + territory.mood(bell));
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void childrenGrowUpWhileAway(GameTestHelper helper) {
         Villager child = Growth.bear(helper.getLevel(), helper.absolutePos(BELL));
         long now = helper.getLevel().getGameTime();

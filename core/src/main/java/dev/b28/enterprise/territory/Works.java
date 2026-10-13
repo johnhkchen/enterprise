@@ -38,8 +38,8 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /**
- * A town's public works: for now, bridges. A bridge carries caravans over a hex too wet to cross, so the town that
- * builds one holds a chokepoint it made itself. Masons build it for wages, laying stone quarried from the town's land:
+ * A town's public works: bridges and walls. A bridge carries caravans over a hex too wet to cross, so the town that
+ * builds one holds a chokepoint it made itself. A wall rings the town; a walled town feels safe and gathers culture. Masons build it for wages, laying stone quarried from the town's land:
  * the bigger the town, the faster the stone comes. The ledger is the bridge; once finished, its deck (a causeway three
  * wide, with railings, of the local stone or wood) is laid in the world the next time its chunks can be loaded.
  */
@@ -64,55 +64,120 @@ public final class Works extends SavedData {
     private static final TicketType<ChunkPos> LAYING =
             TicketType.create("enterprise_bridge", Comparator.comparingLong(ChunkPos::toLong), 200);
 
-    public static final class Bridge {
+    /** Something masons build for a town: wages and stone go in, blocks laid come out. */
+    public abstract static class Project {
         final GlobalPos owner;
         final ResourceKey<Level> dimension;
-        final Hex hex;
-        final Hex from; // the neighbouring hexes the deck runs between
-        final Hex to;
         int blocksNeeded;
         double blocksLaid;
         double wageOwed; // emeralds owed to the masons, fractions carried
         double wagesPaid;
         boolean done;
-        boolean placed;
         long lastWork = -1;
 
-        Bridge(GlobalPos owner, ResourceKey<Level> dimension, Hex hex, Hex from, Hex to) {
+        Project(GlobalPos owner, ResourceKey<Level> dimension) {
             this.owner = owner;
             this.dimension = dimension;
-            this.hex = hex;
-            this.from = from;
-            this.to = to;
-            this.blocksNeeded = deck(hex, from, to).size();
         }
 
         public GlobalPos owner() {
             return owner;
         }
 
-        public Hex hex() {
-            return hex;
-        }
-
         public boolean done() {
             return done;
         }
 
-        public boolean placed() {
-            return placed;
-        }
-
         public double progress() {
-            return Math.min(1, blocksLaid / blocksNeeded);
+            return blocksNeeded == 0 ? 1 : Math.min(1, blocksLaid / blocksNeeded);
         }
 
         public double wagesPaid() {
             return wagesPaid;
         }
+
+        void save(CompoundTag entry) {
+            GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, owner).ifSuccess(t -> entry.put("owner", t));
+            entry.putString("dimension", dimension.location().toString());
+            entry.putDouble("blocksLaid", blocksLaid);
+            entry.putDouble("wageOwed", wageOwed);
+            entry.putDouble("wagesPaid", wagesPaid);
+            entry.putBoolean("done", done);
+            entry.putLong("lastWork", lastWork);
+        }
+
+        void load(CompoundTag entry) {
+            blocksLaid = entry.getDouble("blocksLaid");
+            wageOwed = entry.getDouble("wageOwed");
+            wagesPaid = entry.getDouble("wagesPaid");
+            done = entry.getBoolean("done");
+            lastWork = entry.getLong("lastWork");
+        }
     }
 
+    public static final class Bridge extends Project {
+        final Hex hex;
+        final Hex from; // the neighbouring hexes the deck runs between
+        final Hex to;
+        boolean placed;
+
+        Bridge(GlobalPos owner, ResourceKey<Level> dimension, Hex hex, Hex from, Hex to) {
+            super(owner, dimension);
+            this.hex = hex;
+            this.from = from;
+            this.to = to;
+            this.blocksNeeded = deck(hex, from, to).size();
+        }
+
+        public Hex hex() {
+            return hex;
+        }
+
+        public boolean placed() {
+            return placed;
+        }
+    }
+
+    /**
+     * A town wall: a ring of columns {@link #WALL_RADIUS} blocks round the bell, {@link #WALL_HEIGHT} high, with gates
+     * at the four points of the compass. It goes up in the world a quarter at a time as the masons lay it.
+     */
+    public static final class Wall extends Project {
+        final BlockPos centre;
+        final int radius;
+        int columnsPlaced; // of the ring, in order round from the east
+
+        Wall(GlobalPos owner, ResourceKey<Level> dimension, BlockPos centre, int radius) {
+            super(owner, dimension);
+            this.centre = centre;
+            this.radius = radius;
+            this.blocksNeeded = ring(centre, radius).size() * WALL_HEIGHT;
+        }
+
+        public int columnsPlaced() {
+            return columnsPlaced;
+        }
+
+        /** Columns the masons have laid so far. */
+        int columnsLaid() {
+            return (int) Math.min(ring(centre, radius).size(), Math.floor(blocksLaid / WALL_HEIGHT));
+        }
+    }
+
+    /** Walls ring the bell at this distance: past the homes (up to 32 out), inside the census (48). */
+    public static final int WALL_RADIUS = 40;
+    public static final int WALL_HEIGHT = 3;
+
+    /** A walled town feels safe: this much mood, and this much culture a day, when the wall is whole. */
+    public static final double WALL_MOOD = 1;
+    public static final double WALL_CULTURE_PER_DAY = 2;
+
+    /** A town starts a wall at this mood or better, with at least this many emeralds to spare. */
+    public static final double WALL_MOOD_TO_START = 0.5;
+    public static final double WALL_START_EMERALDS = 12;
+
     private final Map<Territory.Place, Bridge> bridges = new LinkedHashMap<>();
+    private final Map<GlobalPos, Wall> walls = new LinkedHashMap<>();
 
     public static Works get(MinecraftServer server) {
         return server.overworld()
@@ -142,16 +207,53 @@ public final class Works extends SavedData {
         return bridge;
     }
 
-    /** Finishes a bridge at once (for tests and commands). */
-    public void finish(Bridge bridge) {
+    /** Raises a stretch of wall now (for tests). */
+    public static void raiseForTest(ServerLevel level, Wall wall, List<BlockPos> stretch) {
+        raise(level, wall, stretch);
+    }
+
+    /** Finishes a project at once (for tests and commands). */
+    public void finish(Project bridge) {
         bridge.blocksLaid = bridge.blocksNeeded;
         bridge.done = true;
         setDirty();
     }
 
-    /** Masons' wages and stone for the days since the town's last touch; a bridge whose blocks are all laid is done. */
+    /** The town's wall, if it has started one. */
+    public Optional<Wall> wall(GlobalPos owner) {
+        return Optional.ofNullable(walls.get(owner));
+    }
+
+    /** How much of the town's wall stands, 0 to 1. */
+    public double walled(GlobalPos owner) {
+        return wall(owner).map(Project::progress).orElse(0.0);
+    }
+
+    public Wall startWall(GlobalPos owner, int radius) {
+        Wall wall = new Wall(owner, owner.dimension(), owner.pos(), radius);
+        walls.put(owner, wall);
+        setDirty();
+        return wall;
+    }
+
+    /** The town's projects under way or done: bridges, then its wall. */
+    List<Project> projectsOf(GlobalPos owner) {
+        List<Project> projects = new ArrayList<>(bridgesOf(owner));
+        wall(owner).ifPresent(projects::add);
+        return projects;
+    }
+
+    /** Is a project of this town still being built? Masons work on one at a time. */
+    public boolean busy(GlobalPos owner) {
+        return projectsOf(owner).stream().anyMatch(project -> !project.done);
+    }
+
+    /**
+     * Masons' wages and stone for the days since the town's last touch, for its unfinished project (one at a time);
+     * a project whose blocks are all laid is done.
+     */
     public void work(ServerLevel level, BlockPos desk, MerchantStock stock, GlobalPos owner, int hexesHeld, long now) {
-        for (Bridge bridge : bridgesOf(owner)) {
+        for (Project bridge : projectsOf(owner)) {
             if (bridge.done) {
                 continue;
             }
@@ -176,11 +278,13 @@ public final class Works extends SavedData {
             double perDay = Math.min(MASONS * BLOCKS_PER_MASON_DAY, hexesHeld * STONE_PER_HEX_DAY);
             bridge.blocksLaid += perDay * days * paidShare;
             if (bridge.blocksLaid >= bridge.blocksNeeded) {
+                bridge.blocksLaid = bridge.blocksNeeded;
                 bridge.done = true;
-                Enterprise.LOGGER.debug("Bridge on {} finished for the settlement at {}", bridge.hex,
-                        owner.pos().toShortString());
+                Enterprise.LOGGER.debug("{} finished for the settlement at {}",
+                        bridge instanceof Bridge b ? "Bridge on " + b.hex : "Wall", owner.pos().toShortString());
             }
             setDirty();
+            return; // one project at a time
         }
     }
 
@@ -190,7 +294,7 @@ public final class Works extends SavedData {
      */
     public void consider(ServerLevel level, BlockPos desk, MerchantStock stock, GlobalPos owner, Territory territory,
             long now) {
-        if (bridgesOf(owner).stream().anyMatch(b -> !b.done)) {
+        if (busy(owner)) {
             return;
         }
         Terrain terrain = Terrain.get(level.getServer());
@@ -221,6 +325,14 @@ public final class Works extends SavedData {
             start(owner, level.dimension(), best.hex(), best.from(), best.to());
             Enterprise.LOGGER.debug("Settlement at {} starts a bridge on {} (pays back in {} days)",
                     owner.pos().toShortString(), best.hex(), String.format("%.1f", bestPayback));
+            return;
+        }
+        // Nothing that pays: a content town with money to spare walls itself in.
+        if (!walls.containsKey(owner) && territory.mood(owner) >= WALL_MOOD_TO_START
+                && Treasury.available(level, desk, stock, rate) - territory.reserve(GlobalPos.of(level.dimension(), desk))
+                        >= WALL_START_EMERALDS) {
+            startWall(owner, WALL_RADIUS);
+            Enterprise.LOGGER.debug("Settlement at {} starts a wall", owner.pos().toShortString());
         }
     }
 
@@ -255,6 +367,91 @@ public final class Works extends SavedData {
                 works.setDirty();
             }
         }
+        for (Wall wall : works.walls.values()) {
+            List<BlockPos> ring = ring(wall.centre, wall.radius);
+            int laid = wall.columnsLaid();
+            // A quarter at a time, and the last stretch when done.
+            if (laid - wall.columnsPlaced < ring.size() / 4 && !(wall.done && laid > wall.columnsPlaced)) {
+                continue;
+            }
+            ServerLevel level = server.getLevel(wall.dimension);
+            if (level == null) {
+                continue;
+            }
+            List<BlockPos> stretch = ring.subList(wall.columnsPlaced, laid);
+            boolean loaded = true;
+            for (ChunkPos chunk : stretch.stream().map(ChunkPos::new).distinct().toList()) {
+                if (!level.hasChunk(chunk.x, chunk.z)) {
+                    level.getChunkSource().addRegionTicket(LAYING, chunk, 0, chunk);
+                    loaded = false;
+                }
+            }
+            if (loaded) {
+                raise(level, wall, stretch);
+                wall.columnsPlaced = laid;
+                works.setDirty();
+            }
+        }
+    }
+
+    /**
+     * The wall's columns, in order round from the east: every column {@code radius} blocks (rounded) from the centre,
+     * leaving gates three wide at the four points of the compass. Only x and z count.
+     */
+    public static List<BlockPos> ring(BlockPos centre, int radius) {
+        List<BlockPos> columns = new ArrayList<>();
+        for (int dx = -radius - 1; dx <= radius + 1; dx++) {
+            for (int dz = -radius - 1; dz <= radius + 1; dz++) {
+                if (Math.round(Math.hypot(dx, dz)) != radius || Math.abs(dx) <= 1 || Math.abs(dz) <= 1) {
+                    continue; // off the ring, or a gate
+                }
+                columns.add(new BlockPos(centre.getX() + dx, 0, centre.getZ() + dz));
+            }
+        }
+        columns.sort(Comparator.comparingDouble(
+                c -> (Math.atan2(c.getZ() - centre.getZ(), c.getX() - centre.getX()) + 2 * Math.PI) % (2 * Math.PI)));
+        return columns;
+    }
+
+    /**
+     * Raises a stretch of wall {@link #WALL_HEIGHT} high on natural ground, of what the land offers: a log palisade on
+     * grass and in woods, sandstone on sand, cobblestone on stone. Where the ground is a field, a path, water or
+     * something built, or the air above isn't clear, it leaves a gap: villagers' paths become gates.
+     */
+    static void raise(ServerLevel level, Wall wall, List<BlockPos> stretch) {
+        int raised = 0;
+        for (BlockPos column : stretch) {
+            int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, column.getX(), column.getZ()) - 1;
+            BlockPos ground = new BlockPos(column.getX(), top, column.getZ());
+            var under = level.getBlockState(ground);
+            Block material;
+            if (under.is(net.minecraft.tags.BlockTags.SAND)) {
+                material = Blocks.SANDSTONE;
+            } else if (under.is(net.minecraft.tags.BlockTags.BASE_STONE_OVERWORLD) || under.is(Blocks.GRAVEL)) {
+                material = Blocks.COBBLESTONE;
+            } else if (under.is(Blocks.GRASS_BLOCK) || under.is(Blocks.DIRT) || under.is(Blocks.PODZOL)
+                    || under.is(Blocks.COARSE_DIRT) || under.is(Blocks.SNOW_BLOCK) || under.is(Blocks.MUD)) {
+                var biome = level.getBiome(ground);
+                material = biome.is(BiomeTags.IS_TAIGA) || biome.is(net.minecraft.tags.BiomeTags.SPAWNS_SNOW_FOXES)
+                        ? Blocks.SPRUCE_LOG : Blocks.OAK_LOG;
+            } else {
+                continue; // a field, a path, a building: leave a gap
+            }
+            boolean clear = true;
+            for (int up = 1; up <= WALL_HEIGHT; up++) {
+                var above = level.getBlockState(ground.above(up));
+                clear &= above.canBeReplaced() && above.getFluidState().isEmpty();
+            }
+            if (!clear) {
+                continue;
+            }
+            for (int up = 1; up <= WALL_HEIGHT; up++) {
+                level.setBlock(ground.above(up), material.defaultBlockState(), 3);
+            }
+            raised++;
+        }
+        Enterprise.LOGGER.debug("Raised {} of {} columns of wall for the settlement at {}", raised, stretch.size(),
+                wall.owner.pos().toShortString());
     }
 
     /** Puts the deck on every wet column (land is left as it is): deck at the water's surface, railings either side. */
@@ -323,19 +520,22 @@ public final class Works extends SavedData {
         ListTag list = new ListTag();
         for (Bridge bridge : bridges.values()) {
             CompoundTag entry = new CompoundTag();
-            GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, bridge.owner).ifSuccess(t -> entry.put("owner", t));
-            entry.putString("dimension", bridge.dimension.location().toString());
+            bridge.save(entry);
             entry.putIntArray("hexes", new int[] {bridge.hex.q(), bridge.hex.r(), bridge.from.q(), bridge.from.r(),
                     bridge.to.q(), bridge.to.r()});
-            entry.putDouble("blocksLaid", bridge.blocksLaid);
-            entry.putDouble("wageOwed", bridge.wageOwed);
-            entry.putDouble("wagesPaid", bridge.wagesPaid);
-            entry.putBoolean("done", bridge.done);
             entry.putBoolean("placed", bridge.placed);
-            entry.putLong("lastWork", bridge.lastWork);
             list.add(entry);
         }
         tag.put("bridges", list);
+        ListTag wallList = new ListTag();
+        for (Wall wall : walls.values()) {
+            CompoundTag entry = new CompoundTag();
+            wall.save(entry);
+            entry.putInt("radius", wall.radius);
+            entry.putInt("columnsPlaced", wall.columnsPlaced);
+            wallList.add(entry);
+        }
+        tag.put("walls", wallList);
         return tag;
     }
 
@@ -348,13 +548,18 @@ public final class Works extends SavedData {
             int[] h = entry.getIntArray("hexes");
             GlobalPos.CODEC.parse(NbtOps.INSTANCE, entry.get("owner")).ifSuccess(owner -> {
                 Bridge bridge = new Bridge(owner, dimension, new Hex(h[0], h[1]), new Hex(h[2], h[3]), new Hex(h[4], h[5]));
-                bridge.blocksLaid = entry.getDouble("blocksLaid");
-                bridge.wageOwed = entry.getDouble("wageOwed");
-                bridge.wagesPaid = entry.getDouble("wagesPaid");
-                bridge.done = entry.getBoolean("done");
+                bridge.load(entry);
                 bridge.placed = entry.getBoolean("placed");
-                bridge.lastWork = entry.getLong("lastWork");
                 works.bridges.put(new Territory.Place(dimension, bridge.hex), bridge);
+            });
+        }
+        for (Tag t : tag.getList("walls", Tag.TAG_COMPOUND)) {
+            CompoundTag entry = (CompoundTag) t;
+            GlobalPos.CODEC.parse(NbtOps.INSTANCE, entry.get("owner")).ifSuccess(owner -> {
+                Wall wall = new Wall(owner, owner.dimension(), owner.pos(), entry.getInt("radius"));
+                wall.load(entry);
+                wall.columnsPlaced = entry.getInt("columnsPlaced");
+                works.walls.put(owner, wall);
             });
         }
         return works;

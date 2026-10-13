@@ -142,6 +142,7 @@ public final class Territory extends SavedData {
         double birthProgress; // toward the next child
         int homesBuilt;
         int born;
+        double walled; // share of its wall standing, from the works ledger at the last touch
     }
 
     private final Map<Place, GlobalPos> owners = new HashMap<>();
@@ -292,7 +293,8 @@ public final class Territory extends SavedData {
         Hex home = Hex.at(bellPos);
         claim(bell, home);
         if (owner(level.dimension(), home).filter(bell::equals).isPresent()) {
-            holding.culture += census.value() * days * cultureFactor(holding.mood);
+            holding.culture += (census.value() + Works.WALL_CULTURE_PER_DAY * Works.get(level.getServer()).walled(bell))
+                    * days * cultureFactor(holding.mood);
             grow(bell, home);
         }
         if (holding.desk != null && level.isLoaded(holding.desk.pos())) {
@@ -469,6 +471,7 @@ public final class Territory extends SavedData {
         reviewTolls(bell.get(), now, Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now));
         Works works = Works.get(level.getServer());
         works.work(level, desk, stock, bell.get(), hexes(bell.get()).size(), now); // masons' wages and progress
+        holding.walled = works.walled(bell.get());
         if (holding.lastTollReview != lastReview && lastReview >= 0) {
             works.consider(level, desk, stock, bell.get(), this, now); // with the tolls: is a bridge worth building?
         }
@@ -561,10 +564,11 @@ public final class Territory extends SavedData {
         holding.mood += (moodTarget(holding) - holding.mood) * (1 - Math.pow(0.5, days / MOOD_HALF_LIFE_DAYS));
     }
 
-    /** Where the town's mood is heading: comforts met, less its size, villagers without beds and unpaid wages. */
+    /** Where the town's mood is heading: comforts met and its wall, less its size, villagers without beds, unpaid wages. */
     private static double moodTarget(Holding holding) {
         double comforts = holding.comfortMet.values().stream().mapToDouble(Double::doubleValue).sum();
         return comforts
+                + Works.WALL_MOOD * holding.walled
                 - holding.villagers / VILLAGERS_PER_WANT
                 - CROWDING_MOOD * Math.max(0, holding.villagers - holding.beds)
                 - UNPAID_MOOD * (1 - holding.paidShare);
