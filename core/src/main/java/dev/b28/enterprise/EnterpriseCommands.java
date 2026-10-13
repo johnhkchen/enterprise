@@ -12,6 +12,9 @@ import dev.b28.enterprise.merchant.MerchantBook;
 import dev.b28.enterprise.merchant.MerchantStock;
 import dev.b28.enterprise.merchant.MerchantView;
 import dev.b28.enterprise.money.Mint;
+import dev.b28.enterprise.settlement.Census;
+import dev.b28.enterprise.settlement.CensusTaker;
+import dev.b28.enterprise.settlement.Settlements;
 import java.util.List;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -38,6 +41,10 @@ final class EnterpriseCommands {
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .executes(EnterpriseCommands::stock)))
                 .then(Commands.literal("mint").executes(EnterpriseCommands::mint))
+                .then(Commands.literal("census")
+                        .then(Commands.argument("bell", BlockPosArgument.blockPos())
+                                .executes(EnterpriseCommands::census)))
+                .then(Commands.literal("settlements").executes(EnterpriseCommands::settlements))
                 .then(Commands.literal("autoswitch")
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .then(Commands.literal("selling").executes(context -> autoswitch(context, false)))
@@ -101,6 +108,30 @@ final class EnterpriseCommands {
         source.sendSuccess(() -> Component.literal("Stock at %s: %d kinds".formatted(desk.toShortString(), totals.size())), false);
         totals.forEach((item, count) -> source.sendSuccess(() -> Component.literal("  %s %d".formatted(item, count)), false));
         return totals.size();
+    }
+
+    /** Takes a census around a bell right now and prints it. */
+    private static int census(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        BlockPos bell = BlockPosArgument.getLoadedBlockPos(context, "bell");
+        Census result = CensusTaker.countNow(source.getLevel(), bell, CensusTaker.RADIUS);
+        source.sendSuccess(() -> Component.literal(describe(bell, result)), false);
+        return result.isSettlement() ? 1 : 0;
+    }
+
+    /** Every settlement with a census on record. */
+    private static int settlements(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        var all = Settlements.get(source.getServer()).all();
+        source.sendSuccess(() -> Component.literal("%d bell(s) counted".formatted(all.size())), false);
+        all.forEach((bell, result) -> source.sendSuccess(() -> Component.literal("  " + describe(bell.pos(), result)), false));
+        return all.size();
+    }
+
+    private static String describe(BlockPos bell, Census result) {
+        return "%s at %s: %d villagers (%d free), %d beds, %d workstations, value %.1f".formatted(
+                result.isSettlement() ? "Settlement" : "Not a settlement", bell.toShortString(), result.villagers(),
+                result.free(), result.beds(), result.workstations(), result.value());
     }
 
     /** The default faction's emerald rate and selling pressure. */

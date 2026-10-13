@@ -80,10 +80,10 @@ Decisions made after the brief (`docs/brief.md`). Where this file and the brief 
 
 ## Settlements (2026-10-13)
 
-- **A settlement is anchored by a bell plus at least N beds and N workstations.**
+- **A settlement is anchored by a bell plus at least 3 beds and 3 workstations** within 48 blocks (built 2026-10-14). The Merchant's Desk counts as a workstation.
 - A census reads the villagers, beds (home points), workstations (job points) and the bell (meeting point). The result stays in the ledger.
-- **The census is polled, never constant.** It runs rarely, when the area is loaded, on rounds, or after big block changes. The work is spread across ticks, and path checks run off the main thread on a snapshot.
-- **Free villagers count; prisoners barely do.** A villager is free when it can walk to its own bed, its workstation and the bell. Settlement value counts free villagers fully and confined ones at a small fraction. Goal: a thriving village is worth more than a trading hall with villagers locked in cells. The bell check stops a cell that just has a bed and workstation inside it from counting as free.
+- **The census is polled, never constant.** Every 10 seconds, when the server has headroom, the bell within 64 blocks of a player that has gone longest without a census (at most once per in-game day each) is counted, with path checks spread over ticks (two villagers per tick). `/enterprise census <bell>` counts on the spot. Results live in world save data. Still to come: census on rounds, after big block changes, and path checks off the main thread on a snapshot.
+- **Free villagers count; prisoners barely do.** A villager is free when it can walk to its own bed, its workstation (if it has a job) and the bell. Settlement value counts free villagers fully and confined ones at 0.1. The path check uses its own path finder under villager rules (doors open), so a villager that is jumping, sleeping or just spawned is judged the same as one standing still. Goal: a thriving village is worth more than a trading hall with villagers locked in cells. The bell check stops a cell that just has a bed and workstation inside it from counting as free.
 - Farmers produce food. Caravans eat food per day of travel, so villages are the natural resupply stops along a route.
 
 ## Territory: a hex grid (2026-10-13)

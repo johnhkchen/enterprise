@@ -11,7 +11,7 @@ Monorepo: our mods, the pack definition, and design docs.
 - `core/`: the core mod (`mod_id=enterprise`, package `dev.b28.enterprise`). NeoForge ModDevGradle.
 - `pack/`: packwiz pack definition, the source of truth for which mods ship.
 - `scripts/prism_sync.py`: mirrors `pack/` plus the built core jar into the Prism instance "Enterprise (dev)".
-- `dev/testbench/`: datapack synced into the instance's `testing` world. On load it builds a standing test market near spawn if missing (desk at 27 -60 27, 18 shulkers, Blaze Banker, selling trades switched on once villagers settle) and shows a welcome panel on every join. `/function testbench:help` has the rest (market build/clear anywhere, time warps). Headless servers build the same fixture; spawn chunks don't tick without a player, so `forceload add 19 19 35 35` to run it.
+- `dev/testbench/`: datapack synced into the instance's `testing` world. On load it builds a standing test market near spawn if missing (desk at 27 -60 27, bell at 27 -60 24 with a bed per villager so it's a settlement, 18 shulkers, Blaze Banker, selling trades switched on once villagers settle) and shows a welcome panel on every join. `/function testbench:help` has the rest (market build/clear anywhere, time warps). Headless servers build the same fixture; spawn chunks don't tick without a player, so `forceload add 19 19 35 35` to run it.
 - `dev/experiments/`: measurement scripts that drive the headless server over RCON (`merchant_ramp.py`).
 
 ## Commands (`just`)
@@ -25,6 +25,8 @@ Monorepo: our mods, the pack definition, and design docs.
   Ports 25565/25575 belong to another local server, so don't use them.
 
 ## Game test gotchas
+- Mock server players (`makeMockServerPlayerInLevel`) break on Numismatics' login packets; make logic take positions or plain `makeMockPlayer`.
+- In dev environments Numismatics trusts only players wearing golden boots; its real trust rule can't be tested here.
 - Test coordinates start at the structure block, one below the arena: the `floor` template's floor is y=1.
 - Tests run side by side: keep world searches inside the 7x7 arena (range 4 from the centre).
 - `helper.relativePos` doesn't invert `absolutePos` for rotated tests: compare positions in world space.
