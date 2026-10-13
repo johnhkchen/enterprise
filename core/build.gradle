@@ -61,9 +61,34 @@ neoForge {
     }
 }
 
+repositories {
+    maven {
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
+    // Flywheel and Ponder ship inside Create's jar; compiling against Create classes needs them on the classpath.
+    maven {
+        url = 'https://maven.createmod.net'
+        content {
+            includeGroup 'dev.engine-room.flywheel'
+            includeGroup 'net.createmod.ponder'
+        }
+    }
+}
+
 // Present in dev runs only, never published as a dependency.
 configurations {
     runtimeClasspath.extendsFrom localRuntime
+}
+
+dependencies {
+    // Numismatics coins and bank accounts; it runs on Create. Both ship in the pack.
+    compileOnly "maven.modrinth:create:${create_version}"
+    compileOnly "dev.engine-room.flywheel:flywheel-neoforge-1.21.1:${flywheel_version}"
+    compileOnly "net.createmod.ponder:ponder-neoforge:${ponder_version}"
+    compileOnly "maven.modrinth:numismatics:${numismatics_version}"
+    localRuntime "maven.modrinth:create:${create_version}"
+    localRuntime "maven.modrinth:numismatics:${numismatics_version}"
 }
 
 var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {

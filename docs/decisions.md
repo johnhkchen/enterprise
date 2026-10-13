@@ -66,7 +66,9 @@ Decisions made after the brief (`docs/brief.md`). Where this file and the brief 
 - **First loop:** the player fills the Merchant's stock chest with shulker boxes of raw goods. The Merchant feeds lockers from them, villagers trade, the Merchant collects the emeralds, then converts them to Numismatics coins.
 - **The Merchant converts emeralds at its faction's floating rate.** The rate starts at a base (spurs per emerald), drops as emeralds pour in, and recovers over time toward the base. Computed on touch: a pressure number that decays with elapsed game time. Until factions exist, every Merchant uses one default faction.
 - **A Blaze Banker touching the Merchant's Desk is the settlement's bank account.** Converted coins are deposited into it. Later, wages and purchases are paid out of it.
-- **No Banker: coins land as physical coins in the stock chest.**
+- **No Banker: coins land as physical coins in the stock chest.** Each payout re-mints the loose coins already there together with the new ones as the fewest coins, so they stay a handful of stacks. If even that doesn't fit, the Merchant keeps the emeralds for later.
+- **Rate numbers (2026-10-14):** base 16 spurs (one sprocket) per emerald; a full shulker of recent selling (1,728 emeralds) halves the rate; selling pressure halves every 3 in-game days. A batch is priced along the falling curve, not at its opening rate. Measured: a stocked four-villager pen pushes the rate from 16 to about 12 over a week and earns about 17,700 spurs in 10 days.
+- **Working reserve:** the Merchant keeps 64 emeralds unsold for trades that cost emeralds. With every trade switched on, it spends what it earns and sells little.
 - **Player shops:** Numismatics vendors only trade with a clicking player, so the Merchant deals with them by reading the vendor's mode, price and stock and moving goods and coins itself.
 - **It surveys routes and runs caravans.**
 - Wages are paid in coins.

@@ -55,6 +55,20 @@ def villager(name):
     return level, xp
 
 
+COIN_SPURS = {"spur": 1, "bevel": 8, "sprocket": 16, "cog": 64, "crown": 512, "sun": 4096}
+
+
+def coin_spurs():
+    """Value of the Numismatics coins in the Merchant's stock, in spurs."""
+    listing = rcon(f"enterprise stock {DESK}")
+    return sum(COIN_SPURS[coin] * int(n) for coin, n in re.findall(r"numismatics:([a-z]+) (\d+)", listing))
+
+
+def mint_rate():
+    match = re.search(r"([\d.]+) spurs per emerald", rcon("enterprise mint"))
+    return float(match.group(1)) if match else 0.0
+
+
 def stock_counts():
     """Item totals in the Merchant's stock, shulker contents included (one line per item, so no truncation)."""
     return {item: int(count) for item, count in re.findall(r"minecraft:([a-z_]+) (\d+)", rcon(f"enterprise stock {DESK}"))}
@@ -94,7 +108,7 @@ def main():
     goods_start = sum(start.get(g, 0) for g in GOODS)
     print(f"stocked: {goods_start} goods in {len(start)} kinds\n")
     print("day | Merchant lvl (xp) | lockers | " + " | ".join(f"{w[:5]:>9}" for w in WORKERS)
-          + " | trades | emeralds | goods left | trades on")
+          + " | trades | emeralds | coins (spurs) | rate | goods left | trades on")
     trades_before = locker_trades_logged()
     idle_days = 0
     for day in range(1, max_days + 1):
@@ -108,7 +122,8 @@ def main():
         trades_now = locker_trades_logged()
         print(f"{day:>3} | {m_level} ({m_xp:>4})        | {managed}/{limit:<5} | "
               + " | ".join(f"L{lvl} ({xp:>4})" for lvl, xp in workers)
-              + f" | {trades_now - trades_before:>6} | {emeralds:>8} | {goods:>10} | +{switched}")
+              + f" | {trades_now - trades_before:>6} | {emeralds:>8} | {coin_spurs():>13} | {mint_rate():>5.2f}"
+              + f" | {goods:>10} | +{switched}")
         idle_days = idle_days + 1 if trades_now == trades_before else 0
         trades_before = trades_now
         sys.stdout.flush()

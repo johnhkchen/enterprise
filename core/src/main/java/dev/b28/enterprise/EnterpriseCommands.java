@@ -11,6 +11,7 @@ import dev.b28.enterprise.merchant.Merchant;
 import dev.b28.enterprise.merchant.MerchantBook;
 import dev.b28.enterprise.merchant.MerchantStock;
 import dev.b28.enterprise.merchant.MerchantView;
+import dev.b28.enterprise.money.Mint;
 import java.util.List;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -36,6 +37,7 @@ final class EnterpriseCommands {
                 .then(Commands.literal("stock")
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .executes(EnterpriseCommands::stock)))
+                .then(Commands.literal("mint").executes(EnterpriseCommands::mint))
                 .then(Commands.literal("switch")
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .then(Commands.argument("workstation", BlockPosArgument.blockPos())
@@ -95,6 +97,17 @@ final class EnterpriseCommands {
         source.sendSuccess(() -> Component.literal("Stock at %s: %d kinds".formatted(desk.toShortString(), totals.size())), false);
         totals.forEach((item, count) -> source.sendSuccess(() -> Component.literal("  %s %d".formatted(item, count)), false));
         return totals.size();
+    }
+
+    /** The default faction's emerald rate and selling pressure. */
+    private static int mint(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        Mint mint = Mint.get(source.getServer());
+        long now = source.getLevel().getGameTime();
+        source.sendSuccess(() -> Component.literal("%s: %.2f spurs per emerald, selling pressure %.0f emeralds"
+                .formatted(Mint.DEFAULT_FACTION, mint.rate(Mint.DEFAULT_FACTION, now),
+                        mint.pressure(Mint.DEFAULT_FACTION, now))), false);
+        return 1;
     }
 
     /** Switches one locker trade on or off without the screen (for servers and tests). */

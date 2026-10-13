@@ -5,6 +5,7 @@ import dev.b28.enterprise.merchant.Merchant;
 import dev.b28.enterprise.merchant.MerchantBook;
 import dev.b28.enterprise.merchant.MerchantStock;
 import dev.b28.enterprise.merchant.TradeKeys;
+import dev.b28.enterprise.money.MoneyChanger;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -130,6 +131,7 @@ public final class LockerTrading {
         for (MerchantOffer offer : offers) {
             collect(locker, stock, offer.getResult());
         }
+        MoneyChanger.settle(level, manager.desk(), stock);
         if (made > 0) {
             Enterprise.LOGGER.debug("Locker trades: {} at {} by a level {} villager", made,
                     workstation.toShortString(), villager.getVillagerData().getLevel());

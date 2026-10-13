@@ -1,6 +1,8 @@
 package dev.b28.enterprise.merchant;
 
 import dev.b28.enterprise.locker.Lockers;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -15,6 +17,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.ShulkerBoxBlock;
 import net.neoforged.neoforge.items.IItemHandlerModifiable;
 import net.neoforged.neoforge.items.ItemHandlerHelper;
+import net.neoforged.neoforge.items.ItemStackHandler;
 import net.neoforged.neoforge.items.wrapper.CombinedInvWrapper;
 
 /**
@@ -128,6 +131,42 @@ public final class MerchantStock {
             handler.setStackInSlot(slot, withContents(box, inner));
         }
         return rest;
+    }
+
+    /** Whether all of {@code stacks} fit in loose slots, tried on a copy so nothing moves. */
+    public boolean fits(List<ItemStack> stacks) {
+        ItemStackHandler copy = new ItemStackHandler(handler.getSlots());
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            copy.setStackInSlot(slot, handler.getStackInSlot(slot).copy());
+        }
+        for (ItemStack stack : stacks) {
+            if (!ItemHandlerHelper.insertItemStacked(copy, stack.copy(), false).isEmpty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Removes and returns every loose stack matching {@code filter} (shulker contents are left alone). */
+    public List<ItemStack> removeLoose(java.util.function.Predicate<ItemStack> filter) {
+        List<ItemStack> removed = new ArrayList<>();
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            ItemStack stack = handler.getStackInSlot(slot);
+            if (!stack.isEmpty() && filter.test(stack)) {
+                removed.add(stack.copy());
+                handler.setStackInSlot(slot, ItemStack.EMPTY);
+            }
+        }
+        return removed;
+    }
+
+    /** Every loose stack in the stock, for reading (shulker boxes appear as boxes). */
+    public List<ItemStack> looseStacks() {
+        List<ItemStack> stacks = new ArrayList<>();
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            stacks.add(handler.getStackInSlot(slot));
+        }
+        return stacks;
     }
 
     private static boolean isShulkerBox(ItemStack stack) {
