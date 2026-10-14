@@ -182,8 +182,10 @@ public final class Apprentices {
         }
         String key = TradeKeys.of(work.get());
         double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, level.getGameTime());
-        double spare = Treasury.available(level, deskPos, stock, rate) - Territory.get(level.getServer()).reserve(desk);
-        boolean pay = !canBuy && spare >= LockerTrading.price(work.get(), reputation) * work.get().getMaxUses();
+        // As far as it can spare (with what it was paid up front): a lesson at least.
+        double spare = Treasury.available(level, deskPos, stock, rate) - Territory.get(level.getServer()).reserve(desk)
+                + ContractBook.get(level.getServer()).advancesHeld(desk);
+        boolean pay = !canBuy && spare >= LockerTrading.price(work.get(), reputation);
         if (pay && !merchants.isEnabled(desk, workstation, key)) {
             merchants.setEnabled(desk, workstation, key, true);
             merchants.training(desk, workstation, key, true);

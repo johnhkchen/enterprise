@@ -414,8 +414,25 @@ vendoring greys, and the Merchant now does what a shopkeeper would.
     metal counted as in use, run 12 threw out nothing; every town set up cold storage, and S2 gave its hands 4 axes.
   - **The army** was issued iron swords, chestplates, boots and helmets. No diamond gear reached the front in
     run 12: it had no master selling diamond swords by the war.
-  - **Still open:** most training contracts still break (only 1 in 10 finished in run 12). Soldiers went hungry 34
-    of 110 days. Meals are still never hearty: no meat reaches the front.
+  - **Why most training still broke, from run 12's contracts and locker logs:**
+    1. **Cash, not will.** S3's master Weaponsmith had its diamond-sword trade switched on, but a restock's three
+       swords cost about 75 emeralds and S3 had 0 to 4 to spare. Its four diamond-sword contracts broke with none
+       delivered, though each paid 26 emeralds up front: the advance sat in the treasury behind the town's reserve.
+       And they were priced below cost: 19.8 a sword, where a master asks about 26 (the table had 12).
+    2. **Room.** S2's warehouse is one 27-slot chest, and 13 slots were paper: its Librarian takes 384 a day, so two
+       days' par is 768. Cold storage had packed only what was beyond par, so the Merchant still had no room to take
+       in emeralds.
+  - **So:** money paid up front and not yet worked off counts as money the Merchant can spend on its contracts'
+    work. It pays for a lesson as soon as it can afford one, not a whole restock. Diamond gear is priced at what
+    masters ask (sword 22, chestplate 21, leggings 19, axe 18). Short of room, it packs full stacks of anything it
+    holds (one loose stack of each kept to hand), since crates are still stock.
+  - **Run 13:** three masters (S2's Toolsmith and S3's Armorer by day 60, S1's Armorer by day 80), and the first
+    diamond gear at the front: enchanted diamond leggings and boots. Weaponsmiths still stalled, short of room.
+  - **Run 14,** with packing for room: **five masters, one training contract broken.** S2's Toolsmith by day 40, its
+    Weaponsmith by day 60 and its Armorer by day 100; S1's Weaponsmith and S3's Armorer by day 60, mostly in
+    peacetime. **Five enchanted diamond swords** (Sharpness, Fire Aspect) were issued to the army, and diamond boots
+    reached the depot. Trust held between 0.52 and 0.83, and towns threw out under 5 emeralds' worth each.
+  - **Still open:** soldiers went hungry 21 of 45 days, and meals are never hearty: no meat reaches the front.
 
 ## Everything runs on the logistics framework (built 2026-10-14)
 

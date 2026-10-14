@@ -104,23 +104,21 @@ public final class ColdStore {
     }
 
     /**
-     * Packs into crates idle loose goods, and whole stacks of what it uses beyond a stack over its par (a standing
-     * order that brings more paper than its Librarian takes), those that don't stack first; a crate only where it saves
-     * room.
+     * Packs into crates idle loose goods, and full stacks of what it uses beyond one stack kept loose to hand (a crate
+     * is still stock: its villagers' lockers and its caravans reach into it), those that don't stack first; a crate
+     * only where it saves room.
      */
     static void pack(ServerLevel level, GlobalPos desk, MerchantStock stock, Set<Item> using, long now) {
         List<ItemStack> idle = new ArrayList<>(stock.removeLoose(s -> idle(s, using)));
-        Warehouse warehouse = Warehouse.get(level.getServer());
         for (Item item : using) {
             if (!new ItemStack(item).getItem().canFitInsideContainerItems() || item.getDefaultMaxStackSize() < 16) {
                 continue;
             }
-            int loose = stock.looseStacks().stream().filter(s -> s.is(item)).mapToInt(ItemStack::getCount).sum();
-            int beyond = loose - warehouse.par(desk, item, true, now) - item.getDefaultMaxStackSize();
-            int stacks = beyond / item.getDefaultMaxStackSize();
-            if (stacks > 0) {
+            int full = (int) stock.looseStacks().stream().filter(s -> s.is(item) && s.getCount() == s.getMaxStackSize())
+                    .count();
+            if (full > 1) {
                 idle.addAll(stock.take(new net.minecraft.world.item.trading.ItemCost(item, 1),
-                        stacks * item.getDefaultMaxStackSize()));
+                        (full - 1) * item.getDefaultMaxStackSize()));
             }
         }
         if (idle.size() < 2) {

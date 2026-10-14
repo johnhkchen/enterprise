@@ -173,8 +173,10 @@ public final class LockerTrading {
         if (lacking > 0) {
             double rate = dev.b28.enterprise.money.Mint.get(level.getServer())
                     .rate(dev.b28.enterprise.money.Mint.DEFAULT_FACTION, level.getGameTime());
+            // Beyond its reserve, and what it was paid up front for its contracts' work (that's what it's for).
             double spare = dev.b28.enterprise.money.Treasury.available(level, manager.desk(), stock, rate)
-                    - territory0(level).reserve(GlobalPos.of(level.dimension(), manager.desk()));
+                    - territory0(level).reserve(at)
+                    + dev.b28.enterprise.contract.ContractBook.get(level.getServer()).advancesHeld(at);
             int bought = MoneyChanger.buyEmeralds(level, manager.desk(), stock, Math.min(lacking, (int) Math.floor(spare)));
             Enterprise.LOGGER.debug("Locker at {}: {} emeralds lacking, {} to spare, {} bought", workstation.toShortString(),
                     lacking, Math.round(spare), bought);

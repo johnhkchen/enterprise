@@ -338,6 +338,12 @@ public final class ContractBook extends SavedData {
         setDirty();
     }
 
+    /** What this seller holds paid up front and not yet worked off: money its contracts' work may spend. */
+    public double advancesHeld(GlobalPos seller) {
+        return contracts.values().stream().filter(c -> c.inForce() && c.seller.equals(seller))
+                .mapToDouble(c -> Math.max(0, c.advanced - c.recouped)).sum();
+    }
+
     /** Contracts from this seller to this buyer with an advance still to pay. */
     public List<Contract> advancesDue(GlobalPos seller, GlobalPos buyer) {
         return contracts.values().stream().filter(c -> c.seller.equals(seller) && c.buyer.equals(buyer)
