@@ -505,7 +505,8 @@ final class EnterpriseCommands {
         }
         source.sendSuccess(() -> Component.literal("  kit issued: " + army.issued()), false);
         source.sendSuccess(() -> Component.literal("  enchantment levels issued: " + army.enchantLevels()), false);
-        source.sendSuccess(() -> Component.literal("  food eaten: %d points".formatted(army.eaten())), false);
+        source.sendSuccess(() -> Component.literal("  food eaten: %d points, its meals %.0f%% hearty".formatted(army.eaten(),
+                army.heartiness() * 100)), false);
         source.sendSuccess(() -> Component.literal("  gold bought: " + sovereign.received()), false);
         var mint = dev.b28.enterprise.money.Mint.get(server);
         source.sendSuccess(() -> Component.literal("  minted %d spurs; rate now %.2f spurs an emerald".formatted(

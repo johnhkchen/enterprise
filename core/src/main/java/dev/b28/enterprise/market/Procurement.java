@@ -39,7 +39,9 @@ public final class Procurement {
             Map.entry(Items.ENCHANTED_BOOK, Set.of("minecraft:librarian")),
             Map.entry(Items.LAPIS_LAZULI, Set.of("minecraft:cleric")),
             Map.entry(Items.BOOK, Set.of("minecraft:librarian")),
-            Map.entry(Items.BREAD, Set.of("minecraft:farmer")));
+            Map.entry(Items.BREAD, Set.of("minecraft:farmer")),
+            Map.entry(Items.COOKED_PORKCHOP, Set.of("minecraft:butcher")),
+            Map.entry(Items.COOKED_BEEF, Set.of("minecraft:butcher")));
 
     /** The level a villager must reach to sell it: diamond gear is a master smith's (enchanted, for emeralds). */
     public static final Map<Item, Integer> SELLER_LEVEL = Map.of(

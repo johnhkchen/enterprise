@@ -128,6 +128,22 @@ public final class WarTests {
     }
 
     @GameTest(template = "floor")
+    public static void theArmyEatsItsHeartiestFoodFirst(GameTestHelper helper) {
+        helper.setBlock(new BlockPos(3, 2, 3), Merchant.DESK.get());
+        helper.setBlock(new BlockPos(4, 2, 3), Blocks.CHEST);
+        var depot = MerchantStock.at(helper.getLevel(), helper.absolutePos(new BlockPos(3, 2, 3)));
+        depot.insert(new ItemStack(Items.BREAD, 16));
+        depot.insert(new ItemStack(Items.COOKED_BEEF, 1));
+        double[] meal = dev.b28.enterprise.army.Army.messForTest(depot, 8);
+        helper.assertTrue(meal[0] == 8 && depot.count(new net.minecraft.world.item.trading.ItemCost(Items.COOKED_BEEF, 1)) == 0
+                && depot.count(new net.minecraft.world.item.trading.ItemCost(Items.BREAD, 1)) == 16,
+                "a steak before bread: " + meal[0]);
+        helper.assertTrue(dev.b28.enterprise.army.Army.heartiness(meal[1] / meal[0]) > 0, "a hearty meal");
+        helper.assertTrue(dev.b28.enterprise.army.Army.heartiness(1.2) == 0, "bread is plain fare");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void soldiersFallLessInBetterKit(GameTestHelper helper) {
         var theatre = dev.b28.enterprise.army.Army.Theatre.FACTION;
         double bare = dev.b28.enterprise.army.Army.risk(ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY, theatre);

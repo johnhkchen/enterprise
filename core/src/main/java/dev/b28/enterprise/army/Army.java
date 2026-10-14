@@ -62,6 +62,19 @@ public final class Army extends SavedData {
     public static final double HUNGRY_RISK = 1.5;
     public static final double DESERTION = 0.1;
 
+    /**
+     * Good food is good morale: a meal's heartiness is how far its saturation per point of food is above plain bread's
+     * (cooked meat, stew and golden carrots are heartier), from 0 to 1. A hearty army fights a quarter harder, falls
+     * 15% less, and deserts half as readily when short.
+     */
+    public static final double BREAD_SATURATION = 1.2;
+    public static final double HEARTY_STRENGTH = 0.25;
+    public static final double HEARTY_RISK = 0.15;
+
+    public static double heartiness(double saturationPerPoint) {
+        return Math.max(0, Math.min(1, (saturationPerPoint - BREAD_SATURATION) / BREAD_SATURATION));
+    }
+
     /** Arrows an archer shoots a day. */
     public static final int ARROWS_PER_DAY = 8;
 
@@ -116,6 +129,8 @@ public final class Army extends SavedData {
     private final Map<String, Integer> enchantLevels = new java.util.TreeMap<>(); // levels of each enchantment issued
     private Theatre theatre = Theatre.FACTION;
     private long eaten; // food points the army has eaten
+    private double heartySum; // heartiness by soldier-day, summed
+    private long mealDays;
     private long lastDay = -1;
 
     public static Army get(MinecraftServer server) {
@@ -143,6 +158,47 @@ public final class Army extends SavedData {
 
     public long eaten() {
         return eaten;
+    }
+
+    /** How hearty its meals were, on average over soldier-days: 0 plain bread, 1 the best. */
+    public double heartiness() {
+        return mealDays == 0 ? 0 : heartySum / mealDays;
+    }
+
+    /**
+     * Eats {@code points} of food from the depot, the heartiest first (most saturation per point). Returns the points
+     * eaten and the saturation they gave.
+     */
+    static double[] mess(MerchantStock depot, int points) {
+        double[] meal = {0, 0};
+        if (points <= 0) {
+            return meal;
+        }
+        List<Item> foods = depot.totals().keySet().stream()
+                .map(id -> BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse(id)))
+                .filter(item -> nutrition(item) > 0)
+                .sorted(java.util.Comparator.comparingDouble((Item item) -> -saturation(item) / nutrition(item)))
+                .toList();
+        for (Item food : foods) {
+            int left = points - (int) meal[0];
+            if (left <= 0) {
+                break;
+            }
+            int n = (left + nutrition(food) - 1) / nutrition(food);
+            int taken = depot.take(new ItemCost(food, 1), n).stream().mapToInt(ItemStack::getCount).sum();
+            meal[0] += taken * nutrition(food);
+            meal[1] += taken * saturation(food);
+        }
+        return meal;
+    }
+
+    public static double[] messForTest(MerchantStock depot, int points) {
+        return mess(depot, points);
+    }
+
+    private static float saturation(Item item) {
+        var food = item.getDefaultInstance().get(net.minecraft.core.component.DataComponents.FOOD);
+        return food == null ? 0 : food.saturation();
     }
 
     public Map<String, Integer> issued() {
@@ -258,18 +314,22 @@ public final class Army extends SavedData {
         RandomSource random = level.random;
         CaravanLedger ledger = CaravanLedger.get(server);
         for (int day = 0; day < days; day++) {
-            // The day's rations, from the depot: as far as they go, the army is fed.
+            // The day's rations, from the depot, its best food first: as far as they go, the army is fed, and the
+            // heartier the meal, the better it fights and the less it falls or deserts.
             int wanted = soldiers.size() * RATION;
-            int got = wanted == 0 ? 0 : depot.eat(wanted).entrySet().stream()
-                    .mapToInt(e -> e.getValue() * nutrition(e.getKey())).sum();
+            double[] meal = mess(depot, wanted);
+            int got = (int) meal[0];
             eaten += got;
             double fed = wanted == 0 ? 1 : Math.min(1, (double) got / wanted);
+            double hearty = got == 0 ? 0 : heartiness(meal[1] / got);
+            heartySum += hearty * soldiers.size();
+            mealDays += soldiers.size();
             int fedSoldiers = (int) Math.floor(soldiers.size() * fed);
             int index = 0;
             for (var it = soldiers.iterator(); it.hasNext(); index++) {
                 Soldier soldier = it.next();
                 boolean hungry = index >= fedSoldiers;
-                if (hungry && random.nextDouble() < DESERTION) {
+                if (hungry && random.nextDouble() < DESERTION * (1 - 0.5 * hearty)) {
                     // Deserted: it walks home, its kit with it lost to the army.
                     records.computeIfAbsent(soldier.home, h -> new Record()).deserted++;
                     it.remove();
@@ -306,14 +366,15 @@ public final class Army extends SavedData {
                 int edge = weapon.map(g -> level(soldier.weapon, g.item() == Items.BOW ? "minecraft:power"
                         : theatre.weaponEnchant)).orElse(0);
                 double risk = risk(weapon.isPresent() ? soldier.weapon : ItemStack.EMPTY, soldier.armour, soldier.shield,
-                        theatre) * (hungry ? HUNGRY_RISK : 1);
+                        theatre) * (hungry ? HUNGRY_RISK : 1 - HEARTY_RISK * hearty);
                 Record record = records.computeIfAbsent(soldier.home, h -> new Record());
                 record.days++;
                 if (hungry) {
                     record.hungry++;
                 }
                 record.strength += weapon.map(Gear::power).orElse(1) * (1 + 0.1 * edge)
-                        * (armour.map(Gear::power).orElse(0) + 4) / 10.0;
+                        * (armour.map(Gear::power).orElse(0) + 4) / 10.0
+                        * (hungry ? 0.5 : 1 + HEARTY_STRENGTH * hearty);
                 for (var contract : book.of(soldier.home)) {
                     contract.levy().filter(l -> contract.inForce() && contract.buyer().equals(capital))
                             .ifPresent(l -> book.owe(contract, l.payPerDay()));
@@ -411,6 +472,8 @@ public final class Army extends SavedData {
         tag.putString("theatre", theatre.name());
         tag.putLong("lastDay", lastDay);
         tag.putLong("eaten", eaten);
+        tag.putDouble("heartySum", heartySum);
+        tag.putLong("mealDays", mealDays);
         return tag;
     }
 
@@ -454,6 +517,8 @@ public final class Army extends SavedData {
         army.theatre = tag.contains("theatre") ? Theatre.valueOf(tag.getString("theatre")) : Theatre.FACTION;
         army.lastDay = tag.contains("lastDay") ? tag.getLong("lastDay") : -1;
         army.eaten = tag.getLong("eaten");
+        army.heartySum = tag.getDouble("heartySum");
+        army.mealDays = tag.getLong("mealDays");
         return army;
     }
 }

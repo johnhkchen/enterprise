@@ -40,6 +40,8 @@ neoForge {
         }
         gameTestServer {
             type = 'gameTestServer'
+            // Its own folder: the dev server's world (core/run/world) mustn't leak its ledgers into the tests.
+            gameDirectory = project.file('run/gametest')
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
         data {

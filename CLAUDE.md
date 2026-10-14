@@ -25,7 +25,7 @@ Monorepo: our mods, the pack definition, and design docs.
   Other local servers use 25565/25575 (claude_plays_mc_create) and 25566/25576 (redshelf): never point RCON at those.
 
 ## Game test gotchas
-- Stop the dev server first (`just rcon stop`): while it holds `core/run`, `just gametest` crashes at startup yet reports BUILD SUCCESSFUL with no tests run. Look for "All N required tests passed".
+- Game tests run in their own folder, `core/run/gametest`: before, they opened the dev server's `core/run/world` and inherited its ledgers (a war's debased mint failed two market tests). Look for "All N required tests passed"; an unrelated run's leftovers there won't matter.
 - Mock server players (`makeMockServerPlayerInLevel`) break on Numismatics' login packets; make logic take positions or plain `makeMockPlayer`.
 - In dev environments Numismatics trusts only players wearing golden boots; its real trust rule can't be tested here.
 - Test coordinates start at the structure block, one below the arena: the `floor` template's floor is y=1.
