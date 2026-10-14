@@ -842,4 +842,33 @@ public final class CaravanTests {
         helper.assertTrue(iron >= 16, "the next caravan brings the iron for the swords: " + iron);
         helper.succeed();
     }
+
+    @GameTest(template = "floor")
+    public static void aCaravanDeliversToAMarketOffTheMap(GameTestHelper helper) {
+        Network net = network(helper, 8, 5, 192);
+        var server = helper.getLevel().getServer();
+        GlobalPos hub = net.route().from();
+        GlobalPos front = GlobalPos.of(hub.dimension(), hub.pos().offset(64, 0, 0)); // no chest, no villager there
+        java.util.UUID money = java.util.UUID.randomUUID();
+        dev.ithundxr.createnumismatics.Numismatics.BANK.getOrCreateAccount(money,
+                dev.ithundxr.createnumismatics.content.backend.BankAccount.Type.PLAYER).deposit(1000);
+        dev.b28.enterprise.merchant.OffMap.get(server).open(front, "the front", money, false);
+        var lines = MerchantStock.at(helper.getLevel(), front.pos());
+        int before = lines.count(PAPER);
+        lines.insert(new ItemStack(Items.BREAD, 20)); // the wagons' food home
+        var route = net.ledger().addRoute(hub, front);
+        var contract = dev.b28.enterprise.contract.ContractBook.get(server).draft(hub, front,
+                new dev.b28.enterprise.contract.Delivery(Items.PAPER, 32, 0.1), dev.b28.enterprise.contract.Incoterm.DAP,
+                helper.getLevel().getGameTime(), 24000, 1, helper.getLevel().getGameTime(), hub, true);
+        long t = helper.getLevel().getGameTime();
+        for (long at = t; at <= t + 4000; at += 100) {
+            net.poll(at);
+        }
+        helper.assertTrue(contract.delivered() == 32 && lines.count(PAPER) - before == 32,
+                "delivered into its warehouse on the ledger: " + contract.history());
+        helper.assertTrue(dev.ithundxr.createnumismatics.Numismatics.BANK.getAccount(money).getBalance() < 1000,
+                "and paid for from its account");
+        net.ledger().removeRoute(route.id());
+        helper.succeed();
+    }
 }

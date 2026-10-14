@@ -20,6 +20,7 @@ server:
 
 # Run game tests headless
 gametest:
+    rm -rf core/run/gametest/world  # a fresh world each run: saved data (the mint, trust, contracts) would carry over
     ./gradlew :core:runGameTestServer
 
 # Build, then create/update the "Enterprise (dev)" Prism instance with the full pack

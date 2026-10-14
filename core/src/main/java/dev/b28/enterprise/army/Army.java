@@ -29,9 +29,11 @@ import net.minecraft.world.level.saveddata.SavedData;
 
 /**
  * The sovereign's army, on the ledger: the soldiers its levies raised (villagers off the world while they serve), the
- * kit they draw from the capital's warehouse (its depot), what campaigning wears out, who falls, and what each town
- * gave. Each campaign day a soldier draws whatever kit it lacks, the best there is (a weapon: diamond, iron, stone or
- * wooden sword, or a bow with arrows; a chestplate; a shield), eats its ration (an army eats a lot; unfed, a soldier
+ * kit they draw from the front's warehouse (its quartermaster's, supplied from the capital by contract and caravan),
+ * what campaigning wears out, who falls, and what each town gave. Recruits wait at the capital, in its barracks, for a
+ * caravan to the front. Each campaign day a soldier draws whatever kit it lacks, the best there is (a weapon: diamond,
+ * iron, stone or wooden sword, or a bow with arrows; a helmet, chestplate, leggings and boots; a shield), eats its
+ * ration (an army eats a lot; unfed, a soldier
  * runs more risk and may desert), wears its kit, and may fall: less often the better its kit,
  * and its enchantments suited to the enemy. The fallen are gone from their town for good, and it grieves. At peace
  * the rest walk home. Enchantments don't change what kit is; they change how it serves, and the tally counts that.
@@ -83,12 +85,34 @@ public final class Army extends SavedData {
             new Gear(Items.DIAMOND_SWORD, 7, 0.8, 12), new Gear(Items.IRON_SWORD, 6, 1.0, 10),
             new Gear(Items.STONE_SWORD, 5, 1.25, 6), new Gear(Items.WOODEN_SWORD, 4, 1.4, 4),
             new Gear(Items.BOW, 6, 1.1, 10));
-    public static final List<Gear> ARMOUR = List.of(
-            new Gear(Items.DIAMOND_CHESTPLATE, 8, 0.5, 30), new Gear(Items.IRON_CHESTPLATE, 6, 0.8, 20),
-            new Gear(Items.CHAINMAIL_CHESTPLATE, 5, 1.0, 16), new Gear(Items.LEATHER_CHESTPLATE, 3, 1.2, 10));
+    /**
+     * Armour, a piece for each of four places, best first, with its armour points (a full diamond set is 20, iron 15,
+     * chainmail 12, leather 7) and the days it lasts. Protection is the points worn, all pieces together.
+     */
+    public static final List<List<Gear>> ARMOUR = List.of(
+            List.of(new Gear(Items.DIAMOND_HELMET, 3, 1, 30), new Gear(Items.IRON_HELMET, 2, 1, 20),
+                    new Gear(Items.CHAINMAIL_HELMET, 2, 1, 16), new Gear(Items.LEATHER_HELMET, 1, 1, 10)),
+            List.of(new Gear(Items.DIAMOND_CHESTPLATE, 8, 1, 30), new Gear(Items.IRON_CHESTPLATE, 6, 1, 20),
+                    new Gear(Items.CHAINMAIL_CHESTPLATE, 5, 1, 16), new Gear(Items.LEATHER_CHESTPLATE, 3, 1, 10)),
+            List.of(new Gear(Items.DIAMOND_LEGGINGS, 6, 1, 30), new Gear(Items.IRON_LEGGINGS, 5, 1, 20),
+                    new Gear(Items.CHAINMAIL_LEGGINGS, 4, 1, 16), new Gear(Items.LEATHER_LEGGINGS, 2, 1, 10)),
+            List.of(new Gear(Items.DIAMOND_BOOTS, 3, 1, 30), new Gear(Items.IRON_BOOTS, 2, 1, 20),
+                    new Gear(Items.CHAINMAIL_BOOTS, 1, 1, 16), new Gear(Items.LEATHER_BOOTS, 1, 1, 10)));
     public static final Gear SHIELD = new Gear(Items.SHIELD, 0, 0.85, 12);
     public static final double UNARMED_RISK = 2.0;
+    /** Unarmoured, a soldier runs this much more risk; a full diamond set takes it down to 0.5, a full iron one ~0.77. */
     public static final double UNARMOURED_RISK = 1.6;
+    public static final double FULL_SET_POINTS = 20;
+
+    /** The risk factor of wearing so many armour points. */
+    static double armourRisk(int points) {
+        return UNARMOURED_RISK * (1 - (1 - 0.5 / UNARMOURED_RISK) * Math.min(1, points / FULL_SET_POINTS));
+    }
+
+    /** Every piece of armour a soldier can wear, any place. */
+    public static List<Gear> allArmour() {
+        return ARMOUR.stream().flatMap(List::stream).toList();
+    }
 
     /** A piece of kit: its power (attack, or armour points), the risk factor it carries, and the days it lasts. */
     public record Gear(Item item, int power, double risk, int days) {}
@@ -99,10 +123,10 @@ public final class Army extends SavedData {
         GlobalPos home;
         long enlisted;
         ItemStack weapon = ItemStack.EMPTY;
-        ItemStack armour = ItemStack.EMPTY;
+        final ItemStack[] armour = {ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY};
         ItemStack shield = ItemStack.EMPTY;
         double wornWeapon;
-        double wornArmour;
+        final double[] wornArmour = new double[4];
         double wornShield;
         int arrows;
     }
@@ -124,6 +148,8 @@ public final class Army extends SavedData {
     }
 
     private final List<Soldier> soldiers = new ArrayList<>();
+    private final List<CompoundTag> barracks = new ArrayList<>(); // recruits at the capital, waiting for the front
+    private GlobalPos front; // where the war is fought
     private final Map<GlobalPos, Record> records = new LinkedHashMap<>();
     private final Map<String, Integer> issued = new java.util.TreeMap<>(); // kit issued, by item (and if enchanted)
     private final Map<String, Integer> enchantLevels = new java.util.TreeMap<>(); // levels of each enchantment issued
@@ -214,6 +240,34 @@ public final class Army extends SavedData {
         return (int) soldiers.stream().filter(s -> s.home.equals(home)).count();
     }
 
+    public java.util.Optional<GlobalPos> front() {
+        return java.util.Optional.ofNullable(front);
+    }
+
+    public void setFront(GlobalPos at) {
+        front = at;
+        setDirty();
+    }
+
+    /** Recruits waiting at the capital for a caravan to the front. */
+    public int waiting() {
+        return barracks.size();
+    }
+
+    /** A levied recruit arrives at the capital and waits in its barracks (its home on it) for a caravan to the front. */
+    public void muster(CompoundTag recruit) {
+        barracks.add(recruit);
+        setDirty();
+    }
+
+    /** Up to {@code n} waiting recruits board a caravan to the front. */
+    public List<CompoundTag> embark(int n) {
+        List<CompoundTag> going = new ArrayList<>(barracks.subList(0, Math.min(n, barracks.size())));
+        barracks.subList(0, going.size()).clear();
+        setDirty();
+        return going;
+    }
+
     /** A recruit joins: off the world, its town's to count. */
     public void enlist(CompoundTag villager, GlobalPos home, long now) {
         Soldier soldier = new Soldier();
@@ -230,7 +284,9 @@ public final class Army extends SavedData {
         Map<Item, Integer> wants = new LinkedHashMap<>();
         int men = soldiers.size();
         wants.put(Items.IRON_SWORD, men);
-        wants.put(Items.IRON_CHESTPLATE, men);
+        for (List<Gear> place : ARMOUR) {
+            wants.put(place.get(1).item(), men); // an iron set each
+        }
         wants.put(Items.SHIELD, men / 2);
         wants.put(Items.ARROW, men * ARROWS_PER_DAY * 2);
         wants.put(Items.BREAD, men * RATION * 4 / 5); // four days' rations, as bread
@@ -239,14 +295,23 @@ public final class Army extends SavedData {
 
     /** A campaign day's chance of falling, in this kit, against this enemy. */
     public static double risk(ItemStack weapon, ItemStack armour, ItemStack shield, Theatre theatre) {
+        return risk(weapon, List.of(armour), shield, theatre);
+    }
+
+    /** As above, in all the armour it wears: protection from the points of every piece, and their enchantments. */
+    public static double risk(ItemStack weapon, List<ItemStack> armour, ItemStack shield, Theatre theatre) {
         Optional<Gear> w = gear(WEAPONS, weapon);
-        Optional<Gear> a = gear(ARMOUR, armour);
         int edge = w.map(g -> level(weapon, g.item() == Items.BOW ? "minecraft:power" : theatre.weaponEnchant)).orElse(0);
-        int guard = a.map(g -> level(armour, theatre.armourEnchant)).orElse(0);
+        int guard = armour.stream().mapToInt(piece -> level(piece, theatre.armourEnchant)).sum();
         return DEATH_BASE
                 * w.map(Gear::risk).orElse(UNARMED_RISK) * Math.max(0.6, 1 - 0.05 * edge)
-                * a.map(Gear::risk).orElse(UNARMOURED_RISK) * Math.max(0.5, 1 - 0.06 * guard)
+                * armourRisk(points(armour)) * Math.max(0.5, 1 - 0.06 * guard)
                 * (shield.isEmpty() ? 1 : SHIELD.risk());
+    }
+
+    /** Armour points worn. */
+    static int points(List<ItemStack> armour) {
+        return armour.stream().mapToInt(piece -> gear(allArmour(), piece).map(Gear::power).orElse(0)).sum();
     }
 
     private static int nutrition(Item item) {
@@ -333,7 +398,8 @@ public final class Army extends SavedData {
                     // Deserted: it walks home, its kit with it lost to the army.
                     records.computeIfAbsent(soldier.home, h -> new Record()).deserted++;
                     it.remove();
-                    int distance = (int) Math.sqrt(soldier.home.pos().distSqr(capital.pos()));
+                    GlobalPos from = front == null ? capital : front;
+                    int distance = (int) Math.sqrt(soldier.home.pos().distSqr(from.pos()));
                     ledger.walkHome(soldier.home, soldier.villager, now + Caravans.travelTicks(distance));
                     continue;
                 }
@@ -351,9 +417,11 @@ public final class Army extends SavedData {
                         }
                     }
                 }
-                if (soldier.armour.isEmpty()) {
-                    soldier.armour = draw(depot, ARMOUR);
-                    soldier.wornArmour = 0;
+                for (int place = 0; place < ARMOUR.size(); place++) {
+                    if (soldier.armour[place].isEmpty()) {
+                        soldier.armour[place] = draw(depot, ARMOUR.get(place));
+                        soldier.wornArmour[place] = 0;
+                    }
                 }
                 if (soldier.shield.isEmpty() && !soldier.weapon.is(Items.BOW)) {
                     soldier.shield = draw(depot, List.of(SHIELD));
@@ -362,10 +430,10 @@ public final class Army extends SavedData {
                 // How it serves today, and the risk it runs.
                 Optional<Gear> weapon = gear(WEAPONS, soldier.weapon)
                         .filter(g -> g.item() != Items.BOW || soldier.arrows > 0);
-                Optional<Gear> armour = gear(ARMOUR, soldier.armour);
+                List<ItemStack> worn = List.of(soldier.armour);
                 int edge = weapon.map(g -> level(soldier.weapon, g.item() == Items.BOW ? "minecraft:power"
                         : theatre.weaponEnchant)).orElse(0);
-                double risk = risk(weapon.isPresent() ? soldier.weapon : ItemStack.EMPTY, soldier.armour, soldier.shield,
+                double risk = risk(weapon.isPresent() ? soldier.weapon : ItemStack.EMPTY, worn, soldier.shield,
                         theatre) * (hungry ? HUNGRY_RISK : 1 - HEARTY_RISK * hearty);
                 Record record = records.computeIfAbsent(soldier.home, h -> new Record());
                 record.days++;
@@ -373,7 +441,7 @@ public final class Army extends SavedData {
                     record.hungry++;
                 }
                 record.strength += weapon.map(Gear::power).orElse(1) * (1 + 0.1 * edge)
-                        * (armour.map(Gear::power).orElse(0) + 4) / 10.0
+                        * (points(worn) * 0.4 + 4) / 10.0
                         * (hungry ? 0.5 : 1 + HEARTY_STRENGTH * hearty);
                 for (var contract : book.of(soldier.home)) {
                     contract.levy().filter(l -> contract.inForce() && contract.buyer().equals(capital))
@@ -389,10 +457,14 @@ public final class Army extends SavedData {
                         soldier.weapon = ItemStack.EMPTY;
                     }
                 }
-                if (armour.isPresent()) {
-                    soldier.wornArmour += 1.0 / (armour.get().days() * (1 + level(soldier.armour, "minecraft:unbreaking")));
-                    if (soldier.wornArmour >= 1) {
-                        soldier.armour = ItemStack.EMPTY;
+                for (int place = 0; place < ARMOUR.size(); place++) {
+                    ItemStack piece = soldier.armour[place];
+                    Optional<Gear> gear = gear(ARMOUR.get(place), piece);
+                    if (gear.isPresent()) {
+                        soldier.wornArmour[place] += 1.0 / (gear.get().days() * (1 + level(piece, "minecraft:unbreaking")));
+                        if (soldier.wornArmour[place] >= 1) {
+                            soldier.armour[place] = ItemStack.EMPTY;
+                        }
                     }
                 }
                 if (!soldier.shield.isEmpty()) {
@@ -421,11 +493,18 @@ public final class Army extends SavedData {
     public int demobilise(MinecraftServer server, GlobalPos capital, long now) {
         CaravanLedger ledger = CaravanLedger.get(server);
         int home = 0;
+        GlobalPos from = front == null ? capital : front;
         for (Soldier soldier : soldiers) {
-            int distance = (int) Math.sqrt(soldier.home.pos().distSqr(capital.pos()));
+            int distance = (int) Math.sqrt(soldier.home.pos().distSqr(from.pos()));
             ledger.walkHome(soldier.home, soldier.villager, now + Caravans.travelTicks(distance));
             home++;
         }
+        for (CompoundTag recruit : barracks) { // and those still waiting at the capital
+            GlobalPos.CODEC.parse(NbtOps.INSTANCE, recruit.get("enterprise_home")).result().ifPresent(h -> ledger.walkHome(
+                    h, recruit, now + Caravans.travelTicks((int) Math.sqrt(h.pos().distSqr(capital.pos())))));
+            home++;
+        }
+        barracks.clear();
         soldiers.clear();
         lastDay = -1;
         setDirty();
@@ -441,15 +520,27 @@ public final class Army extends SavedData {
             GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, s.home).ifSuccess(t -> entry.put("home", t));
             entry.putLong("enlisted", s.enlisted);
             if (!s.weapon.isEmpty()) entry.put("weapon", s.weapon.save(registries));
-            if (!s.armour.isEmpty()) entry.put("armour", s.armour.save(registries));
+            ListTag set = new ListTag();
+            for (int place = 0; place < 4; place++) {
+                CompoundTag piece = new CompoundTag();
+                if (!s.armour[place].isEmpty()) piece.put("item", s.armour[place].save(registries));
+                piece.putDouble("worn", s.wornArmour[place]);
+                set.add(piece);
+            }
+            entry.put("armourSet", set);
             if (!s.shield.isEmpty()) entry.put("shield", s.shield.save(registries));
             entry.putDouble("wornWeapon", s.wornWeapon);
-            entry.putDouble("wornArmour", s.wornArmour);
             entry.putDouble("wornShield", s.wornShield);
             entry.putInt("arrows", s.arrows);
             list.add(entry);
         }
         tag.put("soldiers", list);
+        ListTag waiting = new ListTag();
+        waiting.addAll(barracks);
+        tag.put("barracks", waiting);
+        if (front != null) {
+            GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, front).ifSuccess(t -> tag.put("front", t));
+        }
         ListTag recs = new ListTag();
         records.forEach((home, r) -> {
             CompoundTag entry = new CompoundTag();
@@ -489,14 +580,21 @@ public final class Army extends SavedData {
             }
             s.enlisted = entry.getLong("enlisted");
             s.weapon = entry.contains("weapon") ? ItemStack.parse(registries, entry.get("weapon")).orElse(ItemStack.EMPTY) : ItemStack.EMPTY;
-            s.armour = entry.contains("armour") ? ItemStack.parse(registries, entry.get("armour")).orElse(ItemStack.EMPTY) : ItemStack.EMPTY;
+            ListTag set = entry.getList("armourSet", Tag.TAG_COMPOUND);
+            for (int place = 0; place < Math.min(4, set.size()); place++) {
+                CompoundTag piece = set.getCompound(place);
+                s.armour[place] = piece.contains("item")
+                        ? ItemStack.parse(registries, piece.get("item")).orElse(ItemStack.EMPTY) : ItemStack.EMPTY;
+                s.wornArmour[place] = piece.getDouble("worn");
+            }
             s.shield = entry.contains("shield") ? ItemStack.parse(registries, entry.get("shield")).orElse(ItemStack.EMPTY) : ItemStack.EMPTY;
             s.wornWeapon = entry.getDouble("wornWeapon");
-            s.wornArmour = entry.getDouble("wornArmour");
             s.wornShield = entry.getDouble("wornShield");
             s.arrows = entry.getInt("arrows");
             army.soldiers.add(s);
         }
+        tag.getList("barracks", Tag.TAG_COMPOUND).forEach(t -> army.barracks.add((CompoundTag) t));
+        army.front = tag.contains("front") ? GlobalPos.CODEC.parse(NbtOps.INSTANCE, tag.get("front")).result().orElse(null) : null;
         for (Tag t : tag.getList("records", Tag.TAG_COMPOUND)) {
             CompoundTag entry = (CompoundTag) t;
             GlobalPos.CODEC.parse(NbtOps.INSTANCE, entry.get("home")).ifSuccess(home -> {

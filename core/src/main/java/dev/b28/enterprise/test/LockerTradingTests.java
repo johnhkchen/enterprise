@@ -147,52 +147,6 @@ public final class LockerTradingTests {
     }
 
     @GameTest(template = "floor", timeoutTicks = 400)
-    public static void aVillagerTheMerchantTrainsHasWhatItLearnsSwitchedOn(GameTestHelper helper) {
-        Market market = market(helper, true);
-        helper.startSequence().thenWaitUntil(() -> helper.assertTrue(market.ready(), "waiting for job sites"))
-                .thenExecute(() -> {
-                    market.givePaperTrade(0); // a trade learned since it was hired: nobody has switched it on
-                    GlobalPos desk = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(DESK));
-                    MerchantBook book = MerchantBook.get(helper.getLevel().getServer());
-                    book.apprentice(desk, helper.absolutePos(LECTERN));
-                    market.stock(Items.PAPER, 64);
-                    market.librarian().restock();
-                    helper.assertTrue(book.isEnabled(desk, helper.absolutePos(LECTERN), PAPER_TRADE), "switched on");
-                    market.assertLocker(16, 2);
-                })
-                .thenSucceed();
-    }
-
-    @GameTest(template = "floor", timeoutTicks = 400)
-    public static void aSmithWithNothingToBuyIsPaidForItsWorkToTrain(GameTestHelper helper) {
-        Market market = market(helper, true);
-        helper.setBlock(DESK.east(), Blocks.CHEST); // the Merchant's stock
-        helper.startSequence().thenWaitUntil(() -> helper.assertTrue(market.ready(), "waiting for job sites"))
-                .thenExecute(() -> {
-                    Villager smith = market.librarian();
-                    smith.setVillagerData(smith.getVillagerData().setProfession(VillagerProfession.WEAPONSMITH));
-                    MerchantOffers offers = new MerchantOffers(); // a Novice who only sells
-                    offers.add(new MerchantOffer(new ItemCost(Items.EMERALD, 1), Optional.empty(),
-                            new ItemStack(Items.IRON_AXE), 0, 12, 1, 0.05F, 0));
-                    smith.setOffers(offers);
-                    GlobalPos desk = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(DESK));
-                    MerchantBook book = MerchantBook.get(helper.getLevel().getServer());
-                    book.apprentice(desk, helper.absolutePos(LECTERN));
-                    var stock = dev.b28.enterprise.merchant.MerchantStock.at(helper.getLevel(), helper.absolutePos(DESK));
-                    stock.insert(new ItemStack(Items.EMERALD, 20));
-                    smith.restock();
-                    String axe = "minecraft:emerald+>minecraft:iron_axe";
-                    helper.assertTrue(book.isTraining(desk, helper.absolutePos(LECTERN), axe), "its work is bought");
-                    helper.assertTrue(smith.getVillagerXp() >= 12, "and it learns: " + smith.getVillagerXp());
-                    helper.assertTrue(stock.count(new ItemCost(Items.IRON_AXE, 1)) == 12, "the axes to the warehouse");
-                    smith.setVillagerData(smith.getVillagerData().setLevel(5));
-                    smith.restock();
-                    helper.assertFalse(book.isEnabled(desk, helper.absolutePos(LECTERN), axe), "a master needs no paying");
-                })
-                .thenSucceed();
-    }
-
-    @GameTest(template = "floor", timeoutTicks = 400)
     public static void aVillagerLevelsUpAtOnceFromLockerTrades(GameTestHelper helper) {
         Market market = market(helper, true);
         helper.startSequence().thenWaitUntil(() -> helper.assertTrue(market.ready(), "waiting for job sites"))
@@ -205,6 +159,49 @@ public final class LockerTradingTests {
                     helper.assertTrue(market.librarian().getVillagerData().getLevel() == 2,
                             "levelled up there and then, not on its own later tick: "
                                     + market.librarian().getVillagerData().getLevel());
+                })
+                .thenSucceed();
+    }
+
+    @GameTest(template = "floor", timeoutTicks = 400)
+    public static void theMerchantTrainsASmithOnlyUnderATrainingContract(GameTestHelper helper) {
+        Market market = market(helper, true);
+        helper.setBlock(DESK.east(), Blocks.CHEST); // the Merchant's stock
+        helper.startSequence().thenWaitUntil(() -> helper.assertTrue(market.ready(), "waiting for job sites"))
+                .thenExecute(() -> {
+                    Villager smith = market.librarian();
+                    smith.setVillagerData(smith.getVillagerData().setProfession(VillagerProfession.WEAPONSMITH));
+                    MerchantOffers offers = new MerchantOffers();
+                    offers.add(new MerchantOffer(new ItemCost(Items.COAL, 15), Optional.empty(),
+                            new ItemStack(Items.EMERALD), 0, 16, 2, 0.05F, 0));
+                    offers.add(new MerchantOffer(new ItemCost(Items.EMERALD, 1), Optional.empty(),
+                            new ItemStack(Items.IRON_AXE), 0, 12, 1, 0.05F, 0));
+                    smith.setOffers(offers);
+                    var server = helper.getLevel().getServer();
+                    GlobalPos desk = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(DESK));
+                    MerchantBook book = MerchantBook.get(server);
+                    var stock = dev.b28.enterprise.merchant.MerchantStock.at(helper.getLevel(), helper.absolutePos(DESK));
+                    stock.insert(new ItemStack(Items.EMERALD, 20));
+                    smith.restock();
+                    String coal = "minecraft:coal+>minecraft:emerald";
+                    String axe = "minecraft:emerald+>minecraft:iron_axe";
+                    helper.assertFalse(book.isEnabled(desk, helper.absolutePos(LECTERN), coal),
+                            "no contract to train it: the Merchant leaves it be");
+                    dev.b28.enterprise.contract.ContractBook.get(server).draft(desk,
+                            GlobalPos.of(helper.getLevel().dimension(), new BlockPos(9_400_000, 64, 9_000_000)),
+                            List.of(new dev.b28.enterprise.contract.Training("minecraft:weaponsmith", 5, 24)),
+                            dev.b28.enterprise.contract.Incoterm.EXW, helper.getLevel().getGameTime() + 240000, 24000, 1,
+                            helper.getLevel().getGameTime(), desk, true);
+                    smith.restock();
+                    helper.assertTrue(book.isTraining(desk, helper.absolutePos(LECTERN), coal),
+                            "under contract: what it learns on goes on");
+                    helper.assertTrue(book.isTraining(desk, helper.absolutePos(LECTERN), axe),
+                            "and with no coal in the warehouse, its work is bought instead");
+                    helper.assertTrue(smith.getVillagerXp() > 0, "it learns");
+                    smith.setVillagerData(smith.getVillagerData().setLevel(5));
+                    smith.restock();
+                    helper.assertFalse(book.isEnabled(desk, helper.absolutePos(LECTERN), coal)
+                            || book.isEnabled(desk, helper.absolutePos(LECTERN), axe), "a master: the training stops");
                 })
                 .thenSucceed();
     }

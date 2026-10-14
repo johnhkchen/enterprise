@@ -47,6 +47,7 @@ public final class Contract {
     int missesCounted; // installments already judged
     double advanced; // emeralds the buyer paid up front (coin or bill)
     double recouped; // of which worked off against deliveries
+    int via; // a contract carrying this one out further on (a tender carried on): this is done when that is
     double refund; // emeralds the seller owes back: an advance not worked off when the contract broke
     final List<String> history = new ArrayList<>(); // the latest settlements, for the record
 
@@ -127,9 +128,20 @@ public final class Contract {
         return terms.stream().filter(Advance.class::isInstance).map(Advance.class::cast).findFirst();
     }
 
-    /** The whole contract's worth at the locked price, without bonuses. */
+    /** The contract's training term, if it has one. */
+    public java.util.Optional<Training> training() {
+        return terms.stream().filter(Training.class::isInstance).map(Training.class::cast).findFirst();
+    }
+
+    /** When it's due: its first installment's day. */
+    public long start() {
+        return start;
+    }
+
+    /** The whole contract's worth at the locked price, without bonuses (for training, its bonus). */
     public double worth() {
-        return delivery().map(d -> d.quantity() * installments * d.unitPrice()).orElse(0.0);
+        return delivery().map(d -> d.quantity() * installments * d.unitPrice())
+                .orElse(training().map(Training::bonus).orElse(0.0));
     }
 
     /** What the buyer has still to pay up front, while the contract stands. */
@@ -242,6 +254,7 @@ public final class Contract {
         tag.putDouble("advanced", advanced);
         tag.putDouble("recouped", recouped);
         tag.putDouble("refund", refund);
+        tag.putInt("via", via);
         ListTag lines = new ListTag();
         history.forEach(line -> lines.add(net.minecraft.nbt.StringTag.valueOf(line)));
         tag.put("history", lines);
@@ -269,6 +282,7 @@ public final class Contract {
         contract.advanced = tag.getDouble("advanced");
         contract.recouped = tag.getDouble("recouped");
         contract.refund = tag.getDouble("refund");
+        contract.via = tag.getInt("via");
         tag.getList("history", Tag.TAG_STRING).forEach(t -> contract.history.add(t.getAsString()));
         return contract;
     }

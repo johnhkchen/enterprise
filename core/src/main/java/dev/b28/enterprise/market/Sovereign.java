@@ -65,6 +65,18 @@ public final class Sovereign extends SavedData {
     public static final double WAR_PREMIUM = 2.5;
     /** It buys gold at three times its worth. */
     public static final double GOLD_PREMIUM = 3;
+    /**
+     * The master smiths the crown wants in its realm, by trade: diamond swords and armour are theirs to sell. Short of
+     * them, it tenders for training on its market: this much a master (a third up front), due in so many days.
+     */
+    public static final Map<String, Integer> MASTERS = Map.of("minecraft:weaponsmith", 2, "minecraft:armorer", 2,
+            "minecraft:toolsmith", 1);
+    public static final double TRAINING_BONUS = 24;
+    public static final long TRAINING_TICKS = 15 * 24000L;
+
+    /** The front lies this far north of the capital: an off-map market, reached by its own road. */
+    public static final int FRONT_DISTANCE = 1500;
+
     /** A soldier is paid this much a day, owed to its town. */
     public static final double SOLDIER_PAY = 0.25;
     /** A town sends its idle hands and this share of the rest, at least one and at most four. */
@@ -79,8 +91,13 @@ public final class Sovereign extends SavedData {
         m.put(Items.DIAMOND_SWORD, 4);
         m.put(Items.IRON_SWORD, 12);
         m.put(Items.STONE_SWORD, 6);
-        m.put(Items.DIAMOND_CHESTPLATE, 4);
-        m.put(Items.IRON_CHESTPLATE, 12);
+        // Armour in whole sets: a helmet, chestplate, leggings and boots.
+        for (Item piece : List.of(Items.DIAMOND_HELMET, Items.DIAMOND_CHESTPLATE, Items.DIAMOND_LEGGINGS, Items.DIAMOND_BOOTS)) {
+            m.put(piece, 4);
+        }
+        for (Item piece : List.of(Items.IRON_HELMET, Items.IRON_CHESTPLATE, Items.IRON_LEGGINGS, Items.IRON_BOOTS)) {
+            m.put(piece, 12);
+        }
         m.put(Items.CHAINMAIL_CHESTPLATE, 6);
         m.put(Items.LEATHER_CHESTPLATE, 6);
         m.put(Items.SHIELD, 12);
@@ -101,7 +118,8 @@ public final class Sovereign extends SavedData {
             if (theatre == Army.Theatre.UNDEAD) {
                 terms.add(new Bonus(Map.of("minecraft:smite", 3), 30));
             }
-        } else if (path.endsWith("_chestplate")) {
+        } else if (path.endsWith("_helmet") || path.endsWith("_chestplate") || path.endsWith("_leggings")
+                || path.endsWith("_boots")) {
             terms.add(new Bonus(Map.of(theatre.armourEnchant, 2), 25));
             terms.add(new Bonus(Map.of("minecraft:unbreaking", 2), 15));
         } else if (item == Items.BOW) {
@@ -124,6 +142,7 @@ public final class Sovereign extends SavedData {
     private final Map<String, Integer> received = new java.util.TreeMap<>(); // gold bought at the shop
     private final Map<Item, Integer> unmet = new LinkedHashMap<>(); // kit no town could be contracted for
     private final Map<Item, Integer> shortfall = new LinkedHashMap<>(); // all it lacks at the capital, as of today
+    private final Map<String, Integer> raised = new LinkedHashMap<>(); // tenders gone untaken, by trade: its price rises
 
     public static Sovereign get(MinecraftServer server) {
         return server.overworld()
@@ -182,7 +201,7 @@ public final class Sovereign extends SavedData {
         }
         lastDay = level.getGameTime() - 24000; // today's revenue is due
         if (!MetalExchange.get(level.getServer()).at(at)) {
-            MetalExchange.get(level.getServer()).open(at);
+            MetalExchange.get(level.getServer()).open(level, at, treasury);
         }
         setDirty();
         Enterprise.LOGGER.info("The sovereign's capital at {}: {} spurs a day, its metal exchange open",
@@ -240,6 +259,7 @@ public final class Sovereign extends SavedData {
         phaseSince = now;
         MinecraftServer server = level.getServer();
         Army.get(server).setTheatre(theatre);
+        openFront(level, now);
         ContractBook book = ContractBook.get(server);
         Territory territory = Territory.get(server);
         var settlements = dev.b28.enterprise.settlement.Settlements.get(server);
@@ -255,7 +275,9 @@ public final class Sovereign extends SavedData {
             var roster = settlements.roster(bell.get()).values();
             long idle = roster.stream().filter(r -> !r.baby() && Labour.idle(r.profession())).count();
             long rest = roster.stream().filter(r -> !r.baby() && !Labour.idle(r.profession())).count();
-            int soldiers = (int) Math.max(1, Math.min(LEVY_MOST, idle + Math.round(rest * LEVY_SHARE)));
+            // A town with a barracks can put more men under arms: as many again as it has beds there.
+            int most = LEVY_MOST + dev.b28.enterprise.merchant.Depots.get(server).barracksBeds(route.to());
+            int soldiers = (int) Math.max(1, Math.min(most, idle + Math.round(rest * LEVY_SHARE)));
             book.draft(route.to(), capital, List.of(new Levy(soldiers, SOLDIER_PAY)), Incoterm.EXW, now, 24000, 1, now,
                     capital, false);
             levies++;
@@ -265,9 +287,36 @@ public final class Sovereign extends SavedData {
         return levies;
     }
 
+    /**
+     * The front: an off-map market with a quartermaster, its money the treasury's, on a road from the capital. What the
+     * army needs reaches it as everything else does: by contract, carried by the capital's caravans.
+     */
+    void openFront(ServerLevel level, long now) {
+        MinecraftServer server = level.getServer();
+        GlobalPos front = front().orElseThrow();
+        dev.b28.enterprise.merchant.OffMap.get(server).open(front, "the front", treasury, false); // keeps all for the army
+        dev.b28.enterprise.merchant.Warehouse.get(server).recordLevel(front, 5); // a quartermaster knows his trade
+        var ledger = dev.b28.enterprise.caravan.CaravanLedger.get(server);
+        if (ledger.route(capital, front).isEmpty()) {
+            ledger.addRoute(capital, front);
+        }
+        dev.b28.enterprise.caravan.Atlas.get(server).learnBoth(capital, front, now);
+        Army.get(server).setFront(front);
+    }
+
+    /** Where the front is, given the capital. */
+    public Optional<GlobalPos> front() {
+        return desk().map(c -> GlobalPos.of(c.dimension(), c.pos().offset(0, 0, -FRONT_DISTANCE)));
+    }
+
     /** Peace: the army walks home, the gold shop comes down, the minting stops. Returns the soldiers sent home. */
     public int peace(ServerLevel level) {
         int home = capital == null ? 0 : Army.get(level.getServer()).demobilise(level.getServer(), capital, level.getGameTime());
+        if (capital != null) { // the road to the front closes once its caravan is home
+            var ledger = dev.b28.enterprise.caravan.CaravanLedger.get(level.getServer());
+            front().flatMap(f -> ledger.route(capital, f)).ifPresent(r -> ledger.removeRoute(r.id()));
+            Army.get(level.getServer()).setFront(null);
+        }
         shops.forEach(pos -> level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3));
         shops.clear();
         mintPerDay = peaceRevenue;
@@ -330,6 +379,7 @@ public final class Sovereign extends SavedData {
         }
         sovereign.lastDay = now;
         sovereign.mint(level, now);
+        sovereign.offerTraining(level, now);
         if (sovereign.phase == Phase.PEACE) {
             sovereign.setDirty();
             return; // the crown's revenue only: nothing to stockpile
@@ -352,10 +402,70 @@ public final class Sovereign extends SavedData {
                 sovereign.unmet.put(target.getKey(), need);
             }
         }
-        if (sovereign.phase == Phase.WAR) {
-            army.campaign(level, depot, sovereign.capital, now);
+        if (sovereign.phase == Phase.WAR && army.front().isPresent()) {
+            // The front's quartermaster: what the army will want there, beyond what it holds, by contract from the
+            // capital (its caravans carry it); and the army campaigns on what it has.
+            GlobalPos front = army.front().get();
+            MerchantStock lines = MerchantStock.at(level, front.pos());
+            for (Map.Entry<Item, Integer> want : army.wants().entrySet()) {
+                int need = want.getValue() - lines.count(new ItemCost(want.getKey(), 1));
+                if (need > 0) {
+                    Broker.source(level, front, territory, want.getKey(), need, now);
+                }
+            }
+            army.campaign(level, lines, sovereign.capital, now);
         }
         sovereign.setDirty();
+    }
+
+    /**
+     * Masters short in the realm (the capital and the towns on its roads), less those being trained under contract or
+     * already tendered: posted as tenders on the capital's board, for the region's Merchants to take or carry on. One
+     * that lapses untaken is posted again for a quarter more: the market finds the price.
+     */
+    void offerTraining(ServerLevel level, long now) {
+        MinecraftServer server = level.getServer();
+        ContractBook book = ContractBook.get(server);
+        Territory territory = Territory.get(server);
+        Tenders tenders = Tenders.get(server);
+        var settlements = dev.b28.enterprise.settlement.Settlements.get(server);
+        for (Tenders.Tender lapsed : tenders.lapse(now)) {
+            if (lapsed.board().equals(capital)) {
+                raised.merge(lapsed.work().profession(), 1, Integer::sum);
+            }
+        }
+        List<GlobalPos> realm = new ArrayList<>();
+        realm.add(capital);
+        for (var route : dev.b28.enterprise.caravan.CaravanLedger.get(server).routes()) {
+            if (route.from().equals(capital) && territory.bellOf(route.to()).isPresent() && !realm.contains(route.to())) {
+                realm.add(route.to());
+            }
+        }
+        double premium = switch (phase) {
+            case PEACE -> 1;
+            case MOBILISING -> MOBILISING_PREMIUM;
+            case WAR -> WAR_PREMIUM;
+        };
+        for (Map.Entry<String, Integer> wanted : MASTERS.entrySet()) {
+            String trade = wanted.getKey();
+            long masters = realm.stream().flatMap(t -> territory.bellOf(t).stream())
+                    .flatMap(bell -> settlements.roster(bell).values().stream())
+                    .filter(r -> r.profession().equals(trade) && r.level() >= 5).count();
+            long training = book.of(capital).stream()
+                    .filter(c -> c.buyer().equals(capital) && (c.state() == dev.b28.enterprise.contract.Contract.State.DRAFTED
+                            || c.inForce()))
+                    .filter(c -> c.training().filter(t -> t.profession().equals(trade)).isPresent()).count();
+            int tendered = tenders.on(capital).stream().filter(t -> t.work().profession().equals(trade))
+                    .mapToInt(Tenders.Tender::open).sum();
+            long short_ = wanted.getValue() - masters - training - tendered;
+            if (short_ > 0) {
+                double bonus = TRAINING_BONUS * premium * Math.pow(1.25, raised.getOrDefault(trade, 0));
+                tenders.post(capital, capital, new dev.b28.enterprise.contract.Training(trade, 5, bonus), (int) short_,
+                        now + TRAINING_TICKS);
+                Exchange.get(server).note(capital, now, "tendered for %d: %s".formatted(short_,
+                        new dev.b28.enterprise.contract.Training(trade, 5, bonus).describe()));
+            }
+        }
     }
 
     /** Days in the current phase. */

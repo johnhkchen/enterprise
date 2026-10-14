@@ -88,6 +88,11 @@ public final class Lockers {
         return new CombinedInvWrapper(handlers.toArray(IItemHandlerModifiable[]::new));
     }
 
+    /** The position a container is known by: a double chest's lower-sorting half. */
+    public static BlockPos canonicalContainer(BlockPos pos, BlockState state) {
+        return canonical(pos, state);
+    }
+
     private static BlockPos canonical(BlockPos pos, BlockState state) {
         if (state.getBlock() instanceof ChestBlock && state.getValue(ChestBlock.TYPE) != ChestType.SINGLE) {
             BlockPos other = pos.relative(ChestBlock.getConnectedDirection(state));

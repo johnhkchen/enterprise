@@ -149,6 +149,7 @@ public final class Rounds {
     static Set<ChunkPos> footprint(MinecraftServer server, GlobalPos desk, Collection<BlockPos> workstations) {
         Set<ChunkPos> chunks = new LinkedHashSet<>();
         addAround(chunks, desk.pos(), MARKET_REACH);
+        dev.b28.enterprise.merchant.Depots.get(server).of(desk).forEach(depot -> chunks.addAll(depot.chunks()));
         var territory = dev.b28.enterprise.territory.Territory.get(server);
         var bell = territory.bellOf(desk);
         bell.ifPresent(b -> addAround(chunks, b.pos(), MARKET_REACH));

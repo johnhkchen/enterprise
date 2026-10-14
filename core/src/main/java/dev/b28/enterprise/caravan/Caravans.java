@@ -222,6 +222,11 @@ public final class Caravans {
         }
         List<net.minecraft.world.entity.npc.Villager> squad = List.copyOf(mustered.subList(0, members));
         int food = foodNeeded(route.distance()) * squad.size();
+        // Where the far end won't or can't feed the squad for the road home (the front sells nothing; a town may be
+        // short), it takes that food along too, if a caravan can carry both legs'.
+        boolean fedThere = dev.b28.enterprise.merchant.OffMap.get(server).sells(route.to)
+                && foodKnownAt(server, level, route.to) >= food;
+        int provisions = !fedThere && 2 * foodNeeded(route.distance()) <= FOOD_CAPACITY ? food : 0;
         // A town sending its own caravan gives it money to bring home the comforts it lacks.
         Map<String, Double> shopping = Commissions.shoppingList(territory, route.from, stock);
         double spare = Math.max(0, Treasury.available(level, route.from.pos(), stock, rate) - territory.reserve(route.from)
@@ -238,7 +243,7 @@ public final class Caravans {
                                 now + travelTicks(route.distance())), // and the bills on it that lie there
                 Math.max(0, spare - shoppingMoney));
         double purse = food * PURSE_PER_FOOD_POINT + shoppingMoney + exWorks;
-        if (stock.foodNutrition() < food) {
+        if (stock.foodNutrition() < food + provisions) {
             route.status = "waiting for food at the hub";
             ledger.setDirty();
             return false;
@@ -264,13 +269,17 @@ public final class Caravans {
         }
         cargo.addAll(pickCargo(stock, wantedThere(server, route.to), slots - Crates.stacks(cargo)));
         Warehouse.get(server).recordStocktake(route.from, stock.totals()); // for buying decisions while away
+        var army = dev.b28.enterprise.army.Army.get(server);
+        boolean toFront = army.front().filter(route.to::equals).isPresent();
         if (cargo.isEmpty() && herd.isEmpty() && exWorks <= 0 && !hasBusinessAt(server, ledger, route, now)
-                && !hasShoppingAt(server, route.to, shopping)) {
+                && !hasShoppingAt(server, route.to, shopping) && !(toFront && army.waiting() > 0)
+                && dev.b28.enterprise.contract.ContractBook.get(server).copiesFor(route.from, route.to).isEmpty()
+                && dev.b28.enterprise.contract.ContractBook.get(server).copiesFor(route.to, route.from).isEmpty()) {
             route.status = "nothing to sell there and nothing wanted from there";
             ledger.setDirty();
             return false; // no empty trips: the road food would be wasted
         }
-        stock.eat(food); // the hub's own food: already paid for
+        stock.eat(food + provisions); // the hub's own food: already paid for
         Treasury.Withdrawal taken = Treasury.withdraw(level, route.from.pos(), stock, purse, mint, now);
         int spurs = taken.spurs() + mint.sell(Mint.DEFAULT_FACTION, taken.emeralds(), now);
         List<CompoundTag> crew = new ArrayList<>();
@@ -289,6 +298,7 @@ public final class Caravans {
             }
         }
         cargo.addAll(dev.b28.enterprise.contract.Bills.takeBillsOn(stock, route.to)); // bills to present there
+        List<CompoundTag> recruits = toFront ? army.embark(Integer.MAX_VALUE) : List.of(); // to the war, with the kit
         Caravan leaving = new Caravan(route.id, Caravan.Leg.OUTBOUND, now + (long) (travelTicks(route.distance()) / pace),
                 cargo, spurs, Squad.haggleLevel(crew));
         leaving.pace = pace;
@@ -304,6 +314,8 @@ public final class Caravans {
         route.fishCaught += catchCount;
         leaving.shopping.putAll(shopping);
         leaving.contracted.putAll(contracted);
+        leaving.recruits.addAll(recruits);
+        leaving.provisions = provisions;
         Atlas.get(server).learnBoth(route.from, route.to, now);
         herd.forEach(animal -> leaving.herd.add(Squad.stow(animal)));
         ledger.put(leaving);
@@ -365,6 +377,15 @@ public final class Caravans {
             if (!empties.isEmpty()) {
                 caravan.cargo.add(empties);
             }
+            // Recruits it brought to the front join the army there.
+            var army = dev.b28.enterprise.army.Army.get(server);
+            if (army.front().filter(route.to::equals).isPresent()) {
+                caravan.recruits.forEach(recruit -> army.enlist(recruit, GlobalPos.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE,
+                        recruit.get("enterprise_home")).result().orElse(route.from), now));
+                caravan.recruits.clear();
+            }
+            // The caravan brings its home's board: the Merchant here reads the tenders on it, and takes what pays.
+            dev.b28.enterprise.market.Tenders.get(server).read(level, route.to, route.from, now);
             settleOwing(server, level, route, stock, caravan, mint, rate, now);
             payAdvances(server, level, route, stock, caravan, mint, rate, now);
             presentBills(server, level, route, stock, caravan, mint, rate, now);
@@ -385,6 +406,16 @@ public final class Caravans {
             int keepForFood = (int) Math.ceil(food * PURSE_PER_FOOD_POINT * rate);
             buyForHome(level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
             buySurplus(server, ledger, level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
+        }
+        if (caravan.provisions >= food) {
+            // It brought its food for the road home.
+            caravan.provisions = 0;
+            route.foodEaten += food;
+            caravan.leg = Caravan.Leg.RETURNING;
+            caravan.arrives = now + (long) (travelTicks(route.distance()) / caravan.pace);
+            route.status = "on the way home";
+            ledger.setDirty();
+            return;
         }
         Map<Item, Integer> meal = stock.eat(food);
         if (meal.isEmpty()) {
@@ -443,6 +474,8 @@ public final class Caravans {
         }
         Treasury.deposit(level, route.from.pos(), stock, caravan.spurs);
         Crates.receive(server, level, route.from, stock, level.getGameTime()); // what it collected, crated
+        // And the destination's board: the Merchant at home reads its tenders.
+        dev.b28.enterprise.market.Tenders.get(server).read(level, route.from, route.to, level.getGameTime());
         // The contracts drafted on the way ride home: now both parties hold a copy.
         var book = dev.b28.enterprise.contract.ContractBook.get(server);
         caravan.drafts.forEach(id -> book.deliverCopy(id, route.from));
@@ -463,10 +496,14 @@ public final class Caravans {
             bell.ifPresent(b -> dev.b28.enterprise.settlement.Settlements.get(server).setAway(b, member.getUUID("UUID"), false));
         }
         caravan.herd.forEach(animal -> Squad.release(level, route.from.pos(), animal));
-        // The levy's recruits join the army here.
-        caravan.recruits.forEach(recruit -> dev.b28.enterprise.army.Army.get(server).enlist(recruit,
-                GlobalPos.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE, recruit.get("enterprise_home")).result()
-                        .orElse(route.to), level.getGameTime()));
+        // The levy's recruits wait here, in the capital's barracks, for a caravan to the front.
+        caravan.recruits.forEach(recruit -> {
+            if (!recruit.contains("enterprise_home")) {
+                GlobalPos.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, route.to)
+                        .ifSuccess(t -> recruit.put("enterprise_home", t));
+            }
+            dev.b28.enterprise.army.Army.get(server).muster(recruit);
+        });
         caravan.recruits.clear();
         route.spursCollected += caravan.spurs;
         route.trips++;
@@ -896,7 +933,7 @@ public final class Caravans {
      */
     private static void buyForHome(ServerLevel level, Route route, MerchantStock stock, Caravan caravan,
             int residentLevel, int keepForFood, Territory territory, Mint mint, double rate, long now) {
-        if (caravan.shopping.isEmpty()) {
+        if (caravan.shopping.isEmpty() || !dev.b28.enterprise.merchant.OffMap.get(level.getServer()).sells(route.to)) {
             return;
         }
         Map<String, Double> theirs = Comforts.onHand(stock);
@@ -1231,10 +1268,13 @@ public final class Caravans {
         return cargo;
     }
 
-    /** Items the destination's switched-on trades take, read from the trade keys ("costA+costB>result"). */
+    /**
+     * Items the destination's work takes: first what it needs to make what it has contracted to sell, then what its
+     * switched-on trades take, read from the trade keys ("costA+costB>result").
+     */
     public static Set<Item> wantedAt(MinecraftServer server, GlobalPos desk) {
         MerchantBook book = MerchantBook.get(server);
-        Set<Item> items = new LinkedHashSet<>();
+        Set<Item> items = new LinkedHashSet<>(Warehouse.get(server).inputs(desk).keySet());
         for (BlockPos workstation : book.workstations(desk)) {
             for (String key : book.enabledTrades(desk, workstation)) {
                 String costs = key.substring(0, key.indexOf('>'));
@@ -1253,9 +1293,7 @@ public final class Caravans {
 
     /** What a caravan should bring a desk: what its lockers trade, and what players' shops there have ordered. */
     static Set<Item> wantedThere(MinecraftServer server, GlobalPos desk) {
-        // What it needs to make what it has contracted to sell first, then what its lockers and players' shops take.
-        Set<Item> items = new LinkedHashSet<>(dev.b28.enterprise.service.Crafts.contractInputs(server, desk).keySet());
-        items.addAll(wantedAt(server, desk));
+        Set<Item> items = new LinkedHashSet<>(wantedAt(server, desk));
         items.addAll(dev.b28.enterprise.market.Exchange.get(server).wanted(desk).keySet());
         return items;
     }
@@ -1292,15 +1330,11 @@ public final class Caravans {
             Map<Item, double[]> tallies) {
         Warehouse warehouse = Warehouse.get(server);
         Set<Item> wanted = wantedAt(server, desk);
-        Map<Item, Integer> inputs = dev.b28.enterprise.service.Crafts.contractInputs(server, desk);
-        var metals = dev.b28.enterprise.market.MetalExchange.get(server);
         int earned = 0;
         for (Iterator<ItemStack> it = caravan.cargo.iterator(); it.hasNext(); ) {
             ItemStack stack = it.next();
             Item item = stack.getItem();
             int onHand = stock.count(new ItemCost(item, 1));
-            // The capital's metal sells at its exchange's posted price.
-            java.util.Optional<Double> ask = metals.ask(server, route.from, item);
             double value = Prices.emeraldsEach(item);
             var comfort = Comforts.kindOf(item);
             int par;
@@ -1318,15 +1352,13 @@ public final class Caravans {
                     // Food: a town short of it (under twice the caravans' par) buys enough to get there.
                     par = Math.max(par, onHand + Math.max(0, 2 * Warehouse.FOOD_PAR_POINTS - stock.foodNutrition()) / nutrition);
                 }
-                // And what it needs to make what it has contracted to sell.
-                par = Math.max(par, inputs.getOrDefault(item, 0));
             }
             int quantity = Math.min(stack.getCount(), par - onHand);
             double each = -1;
             for (int pass = 0; pass < 2 && quantity > 0; pass++) {
                 // Price at the middle of the batch: the resident's shortage shrinks as the shelf fills.
                 double midShortage = Bargain.shortage(onHand + quantity / 2, par);
-                each = ask.isPresent() ? ask.get() : Bargain.price(value, midShortage, caravan.merchantLevel, residentLevel);
+                each = Bargain.price(value, midShortage, caravan.merchantLevel, residentLevel);
                 quantity = each <= 0 ? 0 : Math.min(quantity, (int) Math.floor(money / each));
             }
             if (quantity <= 0) {
@@ -1345,9 +1377,6 @@ public final class Caravans {
             Treasury.Withdrawal paid = Treasury.withdraw(level, desk.pos(), stock, delivered * each, mint, now);
             earned += paid.spurs() + mint.sell(Mint.DEFAULT_FACTION, paid.emeralds(), now);
             route.itemsDelivered += delivered;
-            if (ask.isPresent()) {
-                metals.sold(item, delivered, delivered * each);
-            }
             double[] tally = tallies.computeIfAbsent(item, i -> new double[2]);
             tally[0] += delivered;
             tally[1] += delivered * each;
@@ -1356,6 +1385,26 @@ public final class Caravans {
             }
         }
         return earned;
+    }
+
+    /**
+     * Food points a caravan's home knows the far end holds: an off-map market's ledger, or a town's last stocktake (and
+     * plenty, if it has none yet).
+     */
+    static int foodKnownAt(MinecraftServer server, ServerLevel level, GlobalPos desk) {
+        if (dev.b28.enterprise.merchant.OffMap.get(server).is(desk)) {
+            return MerchantStock.at(level, desk.pos()).foodNutrition();
+        }
+        if (Warehouse.get(server).stocktakeTime(desk) < 0) {
+            return Integer.MAX_VALUE;
+        }
+        int points = 0;
+        for (Map.Entry<String, Integer> held : Warehouse.get(server).stocktake(desk).entrySet()) {
+            var food = BuiltInRegistries.ITEM.get(ResourceLocation.parse(held.getKey())).getDefaultInstance()
+                    .get(net.minecraft.core.component.DataComponents.FOOD);
+            points += food == null ? 0 : food.nutrition() * held.getValue();
+        }
+        return points;
     }
 
     /** Whether a caravan with no cargo would still do business: the network wants goods this town can spare. */
@@ -1383,9 +1432,6 @@ public final class Caravans {
         // And what players' shops at home have ordered: the caravan buys it up on its way.
         dev.b28.enterprise.market.Exchange.get(server).wanted(route.from).forEach((item, count) ->
                 wants.merge(item, count, Integer::sum));
-        // And the metal its exchange aims to hold, less what's at sea.
-        dev.b28.enterprise.market.MetalExchange.get(server).targets(server, route.from).forEach((item, count) ->
-                wants.merge(item, count, Integer::sum));
         wants.replaceAll((item, want) -> want - warehouse.onHand(route.from, item)
                 - caravan.cargo.stream().filter(stack -> stack.is(item)).mapToInt(ItemStack::getCount).sum());
         wants.values().removeIf(want -> want <= 0);
@@ -1411,6 +1457,9 @@ public final class Caravans {
             MerchantStock stock, Caravan caravan, int residentLevel, int keepForFood, Territory territory, Mint mint,
             double rate, long now) {
         GlobalPos desk = route.to;
+        if (!dev.b28.enterprise.merchant.OffMap.get(server).sells(desk)) {
+            return; // the front keeps what it has for the army
+        }
         Warehouse warehouse = Warehouse.get(server);
         Set<Item> wanted = wantedAt(server, desk);
         Map<Item, Integer> networkWants = networkWants(server, ledger, route, caravan, now);
@@ -1432,10 +1481,8 @@ public final class Caravans {
             }
             int room = (caravan.capacity() - Crates.stacks(caravan.cargo)) * item.getDefaultMaxStackSize();
             double value = Prices.emeraldsEach(item);
-            // Metal for the capital's exchange is bought at its bid; anything else is bargained for, to resell.
-            java.util.Optional<Double> bid = dev.b28.enterprise.market.MetalExchange.get(server).bid(server, route.from, item);
-            double each = bid.orElseGet(() -> Bargain.between(Bargain.sellerFloor(value), value * RESALE_CEILING,
-                    residentLevel, caravan.merchantLevel));
+            double each = Bargain.between(Bargain.sellerFloor(value), value * RESALE_CEILING, residentLevel,
+                    caravan.merchantLevel);
             int quantity = Math.min(surplus, room);
             if (each > 0) {
                 quantity = Math.min(quantity, (int) Math.floor((caravan.spurs - keepForFood) / (each * rate)));
@@ -1460,23 +1507,28 @@ public final class Caravans {
             }
             route.itemsBought += taken;
             route.purchaseSpurs += spurs;
-            if (bid.isPresent()) {
-                dev.b28.enterprise.market.MetalExchange.get(server).bought(item, taken, spurs / rate);
-            }
         }
     }
 
     /** True if the desk and the chests touching it are loaded; otherwise asks for them to load and returns false. */
     private static boolean ensureLoaded(ServerLevel level, BlockPos desk) {
+        if (dev.b28.enterprise.merchant.OffMap.get(level.getServer()).is(GlobalPos.of(level.dimension(), desk))) {
+            return true; // off the map: nothing to load
+        }
         boolean loaded = true;
+        List<ChunkPos> chunks = new ArrayList<>();
         for (int dx = -1; dx <= 1; dx++) {
             for (int dz = -1; dz <= 1; dz++) {
-                BlockPos around = desk.offset(dx, 0, dz);
-                if (!level.isLoaded(around)) {
-                    ChunkPos chunk = new ChunkPos(around);
-                    level.getChunkSource().addRegionTicket(CARAVAN, chunk, 0, chunk);
-                    loaded = false;
-                }
+                chunks.add(new ChunkPos(desk.offset(dx, 0, dz)));
+            }
+        }
+        // And the buildings the market keeps its goods in: they're part of its stock.
+        dev.b28.enterprise.merchant.Depots.get(level.getServer()).of(GlobalPos.of(level.dimension(), desk))
+                .forEach(depot -> chunks.addAll(depot.chunks()));
+        for (ChunkPos chunk : chunks) {
+            if (!level.hasChunk(chunk.x, chunk.z)) {
+                level.getChunkSource().addRegionTicket(CARAVAN, chunk, 0, chunk);
+                loaded = false;
             }
         }
         return loaded;

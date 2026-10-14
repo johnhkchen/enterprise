@@ -112,8 +112,9 @@ public final class Broker {
         for (VendorBlockEntity shop : shops) {
             if (Shops.own(shop, desk.pos()) || shop.getFilterItem().isEmpty()
                     || shop.getMode() != VendorBlockEntity.Mode.BUY
-                    || Sovereign.get(server).shops().contains(shop.getBlockPos())) {
-                continue; // the sovereign's own shops buy from players, not from its Merchant
+                    || Sovereign.get(server).shops().contains(shop.getBlockPos())
+                    || MetalExchange.get(server).shops().contains(shop.getBlockPos())) {
+                continue; // the sovereign's and the exchange's own shops buy from players, not from its Merchant
             }
             if (Shops.enchanted(shop.getFilterItem())) {
                 commissioned.add(shop.getBlockPos());
@@ -306,7 +307,10 @@ public final class Broker {
                 }
                 boolean trusted = book.trust(supplier, desk, now) >= dev.b28.enterprise.contract.ContractBook.MIN_TRUST;
                 int held = warehouse.onHand(supplier, item);
-                int spare = (kit ? held / 2 : held) - warehouse.par(supplier, item, false, now); // a town keeps half its kit
+                // A town keeps half its kit for its own hands; an armoury's goods are there to be sent on.
+                boolean keepsHalf = kit && !dev.b28.enterprise.merchant.Depots.get(server)
+                        .has(supplier, dev.b28.enterprise.merchant.Depots.Kind.ARMOURY);
+                int spare = (keepsHalf ? held / 2 : held) - warehouse.par(supplier, item, false, now);
                 var food = item.getDefaultInstance().get(net.minecraft.core.component.DataComponents.FOOD);
                 if (food != null && food.nutrition() > 0) {
                     spare -= 2 * Warehouse.FOOD_PAR_POINTS / food.nutrition(); // and the food its caravans need
@@ -442,8 +446,7 @@ public final class Broker {
             wants.merge(item, count, Integer::sum);
             why.putIfAbsent(item, "the war effort");
         });
-        // The metal exchange's bids stand whoever else has the metal: a buyer for any town that mines.
-        Map<Item, Integer> bids = MetalExchange.get(server).wants(server, desk);
+
         Warehouse warehouse = Warehouse.get(server);
         List<GlobalPos> markets = Atlas.get(server).known(server, desk);
         List<Exchange.Signal> signals = new ArrayList<>();
@@ -454,13 +457,11 @@ public final class Broker {
             boolean supplied = markets.stream().anyMatch(m -> warehouse.onHand(m, item) > 0)
                     || shops.stream().anyMatch(s -> s.getMode() == VendorBlockEntity.Mode.SELL
                             && s.getFilterItem().is(item) && Shops.lots(s) > 0);
-            if (!supplied && !bids.containsKey(item)) {
+            if (!supplied) {
                 int each = (int) Math.ceil(Prices.emeraldsEach(item) * rate * SIGNAL_PREMIUM);
                 signals.add(new Exchange.Signal(item, count, Math.max(1, each), why.get(item)));
             }
         });
-        bids.forEach((item, count) -> MetalExchange.get(server).bid(server, desk, item).ifPresent(bid ->
-                signals.add(new Exchange.Signal(item, count, Math.max(1, (int) Math.ceil(bid * rate)), "the metal exchange"))));
         signals.sort(Comparator.comparingDouble((Exchange.Signal s) -> -(double) s.count() * s.spursEach()));
         return signals;
     }

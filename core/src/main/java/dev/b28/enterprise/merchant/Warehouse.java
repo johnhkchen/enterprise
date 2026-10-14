@@ -42,6 +42,8 @@ public final class Warehouse extends SavedData {
     // desk -> item -> count, as of the market's last stocktake (a hub takes one when a caravan leaves)
     private final Map<GlobalPos, Map<String, Integer>> stocktake = new HashMap<>();
     private final Map<GlobalPos, Long> stocktakeTime = new HashMap<>();
+    // desk -> item -> what it needs to make what it has contracted to sell (worked out afresh as contracts are reviewed)
+    private final Map<GlobalPos, Map<Item, Integer>> inputs = new HashMap<>();
 
     public static Warehouse get(MinecraftServer server) {
         return server.overworld()
@@ -98,10 +100,31 @@ public final class Warehouse extends SavedData {
         return emeralds;
     }
 
-    /** How many of {@code item} the warehouse aims to hold. {@code wanted}: a switched-on trade takes it. */
+    /**
+     * How many of {@code item} the warehouse aims to hold. {@code wanted}: a switched-on trade takes it. And at least what
+     * the town needs to make what it has contracted to sell.
+     */
     public int par(GlobalPos desk, Item item, boolean wanted, long now) {
         int days = (int) Math.ceil(capacity(desk, item) * PAR_DAYS);
-        return wanted ? Math.max(MIN_PAR, days) : days;
+        return Math.max(wanted ? Math.max(MIN_PAR, days) : days, inputs(desk).getOrDefault(item, 0));
+    }
+
+    /** What the town needs of each input to make what it has contracted to sell. */
+    public Map<Item, Integer> inputs(GlobalPos desk) {
+        return inputs.getOrDefault(desk, Map.of());
+    }
+
+    /** Forgets the inputs of towns no longer contracted to sell anything. */
+    public void retainInputs(java.util.Set<GlobalPos> sellers) {
+        inputs.keySet().retainAll(sellers);
+    }
+
+    public void setInputs(GlobalPos desk, Map<Item, Integer> needs) {
+        if (needs.isEmpty()) {
+            inputs.remove(desk);
+        } else {
+            inputs.put(desk, Map.copyOf(needs));
+        }
     }
 
     /** Records what the market holds now, for decisions made while it's unloaded. */
@@ -119,6 +142,11 @@ public final class Warehouse extends SavedData {
     /** When the market's last stocktake was taken, or -1 if never (or not known). */
     public long stocktakeTime(GlobalPos desk) {
         return stocktakeTime.getOrDefault(desk, -1L);
+    }
+
+    /** The market's last stocktake, item id to count. */
+    public Map<String, Integer> stocktake(GlobalPos desk) {
+        return Map.copyOf(stocktake.getOrDefault(desk, Map.of()));
     }
 
     /** How many of {@code item} the market held at its last stocktake. */

@@ -116,6 +116,11 @@ public final class MoneyChanger {
 
     /** The bank account of a Blaze Banker touching the desk. Opens one for a Banker placed without an owner. */
     public static Optional<BankAccount> bankAt(ServerLevel level, BlockPos desk) {
+        var offMap = dev.b28.enterprise.merchant.OffMap.get(level.getServer())
+                .market(net.minecraft.core.GlobalPos.of(level.dimension(), desk));
+        if (offMap.isPresent()) { // a market off the map keeps its money in an account
+            return offMap.get().account().map(Numismatics.BANK::getAccount);
+        }
         for (Direction dir : Direction.values()) {
             if (level.getBlockEntity(desk.relative(dir)) instanceof BlazeBankerBlockEntity banker
                     && banker.getAccountId() != null) {

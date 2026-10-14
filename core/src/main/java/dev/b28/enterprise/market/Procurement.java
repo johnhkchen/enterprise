@@ -33,6 +33,12 @@ public final class Procurement {
             Map.entry(Items.CHAINMAIL_CHESTPLATE, Set.of("minecraft:armorer")),
             Map.entry(Items.DIAMOND_CHESTPLATE, Set.of("minecraft:armorer")),
             Map.entry(Items.LEATHER_CHESTPLATE, Set.of("minecraft:leatherworker")),
+            Map.entry(Items.IRON_HELMET, Set.of("minecraft:armorer")),
+            Map.entry(Items.IRON_LEGGINGS, Set.of("minecraft:armorer")),
+            Map.entry(Items.IRON_BOOTS, Set.of("minecraft:armorer")),
+            Map.entry(Items.DIAMOND_HELMET, Set.of("minecraft:armorer")),
+            Map.entry(Items.DIAMOND_LEGGINGS, Set.of("minecraft:armorer")),
+            Map.entry(Items.DIAMOND_BOOTS, Set.of("minecraft:armorer")),
             Map.entry(Items.SHIELD, Set.of("minecraft:armorer")),
             Map.entry(Items.BOW, Set.of("minecraft:fletcher")),
             Map.entry(Items.ARROW, Set.of("minecraft:fletcher")),
@@ -44,9 +50,11 @@ public final class Procurement {
             Map.entry(Items.COOKED_BEEF, Set.of("minecraft:butcher")));
 
     /** The level a villager must reach to sell it: diamond gear is a master smith's (enchanted, for emeralds). */
-    public static final Map<Item, Integer> SELLER_LEVEL = Map.of(
-            Items.DIAMOND_SWORD, 5, Items.DIAMOND_CHESTPLATE, 5, Items.CHAINMAIL_CHESTPLATE, 2, Items.SHIELD, 3,
-            Items.BOW, 2, Items.ENCHANTED_BOOK, 1);
+    public static final Map<Item, Integer> SELLER_LEVEL = Map.ofEntries(
+            Map.entry(Items.DIAMOND_SWORD, 5), Map.entry(Items.DIAMOND_CHESTPLATE, 5), Map.entry(Items.DIAMOND_HELMET, 5),
+            Map.entry(Items.DIAMOND_LEGGINGS, 4), Map.entry(Items.DIAMOND_BOOTS, 4),
+            Map.entry(Items.CHAINMAIL_CHESTPLATE, 2), Map.entry(Items.SHIELD, 3), Map.entry(Items.BOW, 2),
+            Map.entry(Items.ENCHANTED_BOOK, 1));
 
     public static int sellerLevel(Item item) {
         return SELLER_LEVEL.getOrDefault(item, 1);
@@ -86,6 +94,9 @@ public final class Procurement {
      * (those it switched on). Needs the lockers' villagers loaded. Returns the trades switched on now.
      */
     public static int procure(ServerLevel level, GlobalPos desk, dev.b28.enterprise.merchant.MerchantStock stock) {
+        if (dev.b28.enterprise.merchant.OffMap.get(level.getServer()).is(desk)) {
+            return 0; // no villagers there
+        }
         Map<Item, Integer> wanted = wanted(level, desk, stock);
         MerchantBook book = MerchantBook.get(level.getServer());
         Exchange exchange = Exchange.get(level.getServer());

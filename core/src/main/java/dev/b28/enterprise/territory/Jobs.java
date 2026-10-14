@@ -136,6 +136,17 @@ public final class Jobs {
             Set<VillagerProfession> present) {
         var book = dev.b28.enterprise.contract.ContractBook.get(level.getServer());
         java.util.List<Item> wanted = new java.util.ArrayList<>();
+        // A trade it has contracted to train someone in, and hasn't: an idle hand takes it up.
+        for (var contract : book.trainingFor(desk)) {
+            String profession = contract.training().get().profession();
+            boolean has = present.stream().anyMatch(p -> BuiltInRegistries.VILLAGER_PROFESSION.getKey(p).toString()
+                    .equals(profession));
+            Optional<Trade> trade = TRADES.stream().filter(t -> BuiltInRegistries.VILLAGER_PROFESSION
+                    .getKey(t.profession()).toString().equals(profession)).findFirst();
+            if (!has && trade.isPresent()) {
+                return trade;
+            }
+        }
         for (var contract : book.of(desk)) {
             var delivery = contract.delivery();
             if (delivery.isPresent() && contract.seller().equals(desk) && contract.inForce()
@@ -215,7 +226,6 @@ public final class Jobs {
         villager.getBrain().setMemory(MemoryModuleType.JOB_SITE, GlobalPos.of(level.dimension(), workstation));
         villager.setVillagerData(villager.getVillagerData().setProfession(trade.profession()).setLevel(1));
         MerchantBook book = MerchantBook.get(level.getServer());
-        book.apprentice(desk, workstation); // and as it levels up, what it learns to buy
         villager.getOffers().forEach(offer -> {
             String key = TradeKeys.of(offer);
             if (key.endsWith(">minecraft:emerald")) {

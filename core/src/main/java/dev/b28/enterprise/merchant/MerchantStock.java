@@ -29,21 +29,57 @@ import net.neoforged.neoforge.items.wrapper.CombinedInvWrapper;
 public final class MerchantStock {
     private static final int SHULKER_SLOTS = 27;
 
-    private final IItemHandlerModifiable handler;
+    private final IItemHandlerModifiable handler; // every store, the desk's chests first
+    private final List<Part> parts; // each store: the desk's chests (no kind), and each building with its kind
+
+    /** One store of the stock: the desk's own chests (kind null), or a building's. */
+    private record Part(Depots.Kind kind, IItemHandlerModifiable handler) {
+        boolean general() {
+            return kind == null || kind == Depots.Kind.STOREHOUSE;
+        }
+    }
 
     private MerchantStock(IItemHandlerModifiable handler) {
         this.handler = handler;
+        this.parts = List.of(new Part(null, handler));
+    }
+
+    private MerchantStock(List<Part> parts) {
+        this.parts = List.copyOf(parts);
+        this.handler = parts.size() == 1 ? parts.get(0).handler()
+                : new CombinedInvWrapper(parts.stream().map(Part::handler).toArray(IItemHandlerModifiable[]::new));
     }
 
     public static MerchantStock at(Level level, BlockPos desk) {
-        return new MerchantStock((CombinedInvWrapper) Lockers.inventory(level, Lockers.touchingContainers(level, desk)));
+        if (level instanceof net.minecraft.server.level.ServerLevel server) {
+            OffMap offMap = OffMap.get(server.getServer());
+            var at = net.minecraft.core.GlobalPos.of(level.dimension(), desk);
+            if (offMap.is(at)) {
+                return new MerchantStock(offMap.stock(at)); // a market off the map: its warehouse is on the ledger
+            }
+        }
+        List<Part> parts = new ArrayList<>();
+        parts.add(new Part(null, (CombinedInvWrapper) Lockers.inventory(level, Lockers.touchingContainers(level, desk))));
+        if (level instanceof net.minecraft.server.level.ServerLevel server) {
+            // And the buildings it keeps goods in, every container in each one's floorplan.
+            for (Depots.Depot depot : Depots.get(server.getServer()).of(net.minecraft.core.GlobalPos.of(level.dimension(), desk))) {
+                if (depot.loaded(server)) {
+                    parts.add(new Part(depot.kind(), (CombinedInvWrapper) Lockers.inventory(level, depot.containers(server))));
+                }
+            }
+        }
+        return new MerchantStock(parts);
     }
 
     /** Slots every warehouse keeps free for locker results and coins: deliveries and harvests stop short of them. */
     public static final int FREE_SLOTS = 5;
 
-    /** Empty loose slots. */
+    /** Empty loose slots in the desk's chests and storehouses (not those kept for particular goods). */
     public int freeSlots() {
+        return parts.stream().filter(Part::general).mapToInt(p -> free(p.handler())).sum();
+    }
+
+    private static int free(IItemHandlerModifiable handler) {
         int free = 0;
         for (int slot = 0; slot < handler.getSlots(); slot++) {
             if (handler.getStackInSlot(slot).isEmpty()) {
@@ -56,14 +92,23 @@ public final class MerchantStock {
     /** Whether {@code stack} can go in without dipping into the slots kept free (merging into a stack is fine). */
     public boolean hasRoomFor(ItemStack stack) {
         int merge = 0;
-        for (int slot = 0; slot < handler.getSlots(); slot++) {
-            ItemStack held = handler.getStackInSlot(slot);
-            if (ItemStack.isSameItemSameComponents(held, stack)) {
-                merge += held.getMaxStackSize() - held.getCount();
+        int kept = 0; // free slots in buildings meant for these goods: no need to keep any of those free
+        for (Part part : parts) {
+            if (!part.general() && !part.kind().prefers(stack)) {
+                continue;
+            }
+            for (int slot = 0; slot < part.handler().getSlots(); slot++) {
+                ItemStack held = part.handler().getStackInSlot(slot);
+                if (ItemStack.isSameItemSameComponents(held, stack)) {
+                    merge += held.getMaxStackSize() - held.getCount();
+                }
+            }
+            if (!part.general()) {
+                kept += free(part.handler());
             }
         }
         int newStacks = (int) Math.ceil(Math.max(0, stack.getCount() - merge) / (double) stack.getMaxStackSize());
-        return freeSlots() - newStacks >= FREE_SLOTS;
+        return kept + Math.max(0, freeSlots() - FREE_SLOTS) >= newStacks;
     }
 
     /** Loose slots in the warehouse's chests. */
@@ -158,7 +203,18 @@ public final class MerchantStock {
 
     /** Puts {@code stack} into loose slots first, then into shulker boxes with room. Returns what didn't fit. */
     public ItemStack insert(ItemStack stack) {
-        ItemStack rest = ItemHandlerHelper.insertItemStacked(handler, stack, false);
+        // A building meant for these goods first, then the desk's chests and the storehouses; never one meant for others.
+        ItemStack rest = stack;
+        for (Part part : parts) {
+            if (!part.general() && part.kind().prefers(rest) && !rest.isEmpty()) {
+                rest = ItemHandlerHelper.insertItemStacked(part.handler(), rest, false);
+            }
+        }
+        for (Part part : parts) {
+            if (part.general() && !rest.isEmpty()) {
+                rest = ItemHandlerHelper.insertItemStacked(part.handler(), rest, false);
+            }
+        }
         for (int slot = 0; slot < handler.getSlots() && !rest.isEmpty(); slot++) {
             ItemStack box = handler.getStackInSlot(slot);
             if (!isShulkerBox(box) || !rest.getItem().canFitInsideContainerItems()) {

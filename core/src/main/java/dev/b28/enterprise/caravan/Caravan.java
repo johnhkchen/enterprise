@@ -29,6 +29,7 @@ public final class Caravan {
     final List<net.minecraft.core.GlobalPos> news = new ArrayList<>(); // markets the squad learned of, told at home
     double pace = 1; // saddled: faster
     final List<CompoundTag> recruits = new ArrayList<>(); // soldiers raised by a levy, on their way to the army
+    int provisions; // food points carried for the road home, where the far end can't sell any
 
     Caravan(int route, Leg leg, long arrives, List<ItemStack> cargo, int spurs, int merchantLevel) {
         this.route = route;
@@ -113,6 +114,7 @@ public final class Caravan {
         ListTag raised = new ListTag();
         raised.addAll(recruits);
         tag.put("recruits", raised);
+        tag.putInt("provisions", provisions);
         return tag;
     }
 
@@ -134,6 +136,7 @@ public final class Caravan {
         }
         caravan.pace = tag.contains("pace") ? tag.getDouble("pace") : 1;
         tag.getList("recruits", Tag.TAG_COMPOUND).forEach(t -> caravan.recruits.add((CompoundTag) t));
+        caravan.provisions = tag.getInt("provisions");
         for (Tag market : tag.getList("news", Tag.TAG_COMPOUND)) {
             net.minecraft.core.GlobalPos.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE, market).ifSuccess(caravan.news::add);
         }

@@ -140,6 +140,7 @@ public final class ContractBook extends SavedData {
         String what = contract.delivery().map(d -> d.quantity() + " " + d.describe() + " at %.3f emeralds each"
                         .formatted(d.unitPrice()) + (installments > 1 ? ", %d times every %.1f days".formatted(
                                 installments, every / 24000.0) : ""))
+                .or(() -> contract.training().map(t -> t.describe() + ", by day " + start / 24000))
                 .orElse(contract.levy().map(l -> l.soldiers() + " soldiers at %.2f emeralds a day".formatted(l.payPerDay()))
                         .orElse("?"));
         contract.note("drafted on day %d: %s, %s%s%s".formatted(now / 24000, what, incoterm.name(),
@@ -262,8 +263,21 @@ public final class ContractBook extends SavedData {
      */
     public void review(MinecraftServer server, long now) {
         clock = Math.max(clock, now);
+        if (server != null) {
+            // What each seller needs to make what it has contracted to sell: its warehouse aims to hold it.
+            var warehouse = dev.b28.enterprise.merchant.Warehouse.get(server);
+            java.util.Set<GlobalPos> sellers = new java.util.LinkedHashSet<>();
+            contracts.values().stream().filter(Contract::inForce).forEach(c -> sellers.add(c.seller));
+            warehouse.retainInputs(sellers);
+            sellers.forEach(seller -> warehouse.setInputs(seller,
+                    dev.b28.enterprise.service.Crafts.contractInputs(server, seller)));
+        }
         for (Contract contract : contracts.values()) {
             if (!contract.inForce()) {
+                continue;
+            }
+            if (contract.training().isPresent()) {
+                reviewTraining(server, contract, contract.training().get(), now);
                 continue;
             }
             int judged = contract.dueBy(now - Contract.GRACE_TICKS);
@@ -370,6 +384,69 @@ public final class ContractBook extends SavedData {
             broken(contract);
         }
         setDirty();
+    }
+
+    /** A town has as long again as it was given before a training contract it's late on breaks. */
+    public static final double TRAINING_LATE = 1.0;
+
+    /**
+     * A training contract: done once the seller's census shows a villager of the trade at the level (the bonus, less
+     * what came up front, is owed it, for the buyer's next caravan to carry); not done by its day plus grace, a miss
+     * (lightly, while the two are new to each other), and as long again after that, broken.
+     */
+    private void reviewTraining(MinecraftServer server, Contract contract, Training training, long now) {
+        boolean done = contract.via > 0
+                ? Optional.ofNullable(contracts.get(contract.via)).filter(c -> c.state == Contract.State.COMPLETED).isPresent()
+                : server != null && trained(server, contract.seller, training);
+        if (done) {
+            contract.delivered = 1;
+            double recoup = contract.recoupFrom(training.bonus(), 1);
+            contract.recouped += recoup;
+            contract.paid += recoup;
+            owe(contract, training.bonus() - recoup);
+            kept(contract.seller, contract.buyer, 1, now);
+            contract.state = Contract.State.COMPLETED;
+            contract.note("day %d: trained".formatted(now / 24000));
+            setDirty();
+            return;
+        }
+        long due = contract.start + Contract.GRACE_TICKS;
+        if (now > due && contract.missesCounted == 0) {
+            contract.missesCounted = 1;
+            contract.missed++;
+            missed(contract.seller, contract.buyer, 1, now);
+            contract.note("day %d: not yet trained".formatted(now / 24000));
+            setDirty();
+        }
+        if (now > due + (long) ((contract.start - contract.drafted) * TRAINING_LATE)) {
+            contract.state = Contract.State.BROKEN;
+            contract.note("day %d: broken, still untrained".formatted(now / 24000));
+            broken(contract);
+            setDirty();
+        }
+    }
+
+    /** {@code contract} is carried out by {@code further}: done when it is. */
+    public void via(Contract contract, Contract further) {
+        contract.via = further.id;
+        contract.note("carried out by #%d".formatted(further.id));
+        setDirty();
+    }
+
+    /** Has the seller a villager of the trade at the level, by its last census? */
+    public static boolean trained(MinecraftServer server, GlobalPos seller, Training training) {
+        return dev.b28.enterprise.territory.Territory.get(server).bellOf(seller)
+                .map(bell -> dev.b28.enterprise.settlement.Settlements.get(server).roster(bell).values().stream()
+                        .anyMatch(r -> !r.baby() && r.profession().equals(training.profession())
+                                && r.level() >= training.level()))
+                .orElse(false);
+    }
+
+    /** Training contracts this seller holds in force and knows of: what its Merchant is to train. */
+    public List<Contract> trainingFor(GlobalPos seller) {
+        return contracts.values().stream()
+                .filter(c -> c.inForce() && c.seller.equals(seller) && c.knownBy(seller) && c.training().isPresent())
+                .toList();
     }
 
     /** A broken contract: what was paid up front and not yet worked off is owed back to the buyer. */

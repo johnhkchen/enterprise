@@ -123,7 +123,33 @@ final class EnterpriseCommands {
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .executes(EnterpriseCommands::market)))
                 .then(Commands.literal("metals").executes(EnterpriseCommands::metals))
+                .then(Commands.literal("depot")
+                        .executes(EnterpriseCommands::depots)
+                        .then(Commands.literal("add")
+                                .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                        .then(Commands.argument("kind", com.mojang.brigadier.arguments.StringArgumentType.word())
+                                                .then(Commands.argument("from", BlockPosArgument.blockPos())
+                                                        .then(Commands.argument("to", BlockPosArgument.blockPos())
+                                                                .executes(EnterpriseCommands::addDepot))))))
+                        .then(Commands.literal("remove")
+                                .then(Commands.argument("id", IntegerArgumentType.integer(1)).executes(context -> {
+                                    boolean removed = dev.b28.enterprise.merchant.Depots.get(context.getSource().getServer())
+                                            .remove(IntegerArgumentType.getInteger(context, "id"));
+                                    context.getSource().sendSuccess(() -> Component.literal(removed ? "Removed" : "No such building"),
+                                            true);
+                                    return removed ? 1 : 0;
+                                }))))
                 .then(Commands.literal("trust").executes(EnterpriseCommands::trust))
+                .then(Commands.literal("tenders").executes(context -> {
+                    var source = context.getSource();
+                    var all = dev.b28.enterprise.market.Tenders.get(source.getServer()).all();
+                    long now = source.getLevel().getGameTime();
+                    source.sendSuccess(() -> Component.literal("%d tender(s)".formatted(all.size())), false);
+                    all.forEach(t -> source.sendSuccess(() -> Component.literal("  on %s's board: %d wanted, %s, by day %d"
+                            .formatted(t.board().pos().toShortString(), t.open(), t.work().describe(), t.due() / 24000)),
+                            false));
+                    return all.size();
+                }))
                 .then(Commands.literal("services")
                         .executes(context -> services(context, null))
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
@@ -493,6 +519,53 @@ final class EnterpriseCommands {
         return army.size();
     }
 
+    /** Registers a building (an armoury, barracks or storehouse) as one of a market's stores. */
+    private static int addDepot(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        var source = context.getSource();
+        var kind = dev.b28.enterprise.merchant.Depots.Kind.valueOf(
+                com.mojang.brigadier.arguments.StringArgumentType.getString(context, "kind").toUpperCase(java.util.Locale.ROOT));
+        GlobalPos desk = GlobalPos.of(source.getLevel().dimension(), BlockPosArgument.getBlockPos(context, "desk"));
+        var depot = dev.b28.enterprise.merchant.Depots.get(source.getServer()).add(source.getLevel(), desk, kind,
+                BlockPosArgument.getBlockPos(context, "from"), BlockPosArgument.getBlockPos(context, "to"));
+        int chests = depot.containers(source.getLevel()).size();
+        source.sendSuccess(() -> Component.literal("Building %d: the %s of the market at %s, %d container(s), %d bed(s)"
+                .formatted(depot.id(), kind.label(), desk.pos().toShortString(), chests, depot.beds(source.getLevel()))), true);
+        return depot.id();
+    }
+
+    /** Every market's buildings, what each holds and how full it is. */
+    private static int depots(CommandContext<CommandSourceStack> context) {
+        var source = context.getSource();
+        var all = dev.b28.enterprise.merchant.Depots.get(source.getServer()).all();
+        source.sendSuccess(() -> Component.literal("%d building(s)".formatted(all.size())), false);
+        for (var depot : all) {
+            var level = source.getServer().getLevel(depot.desk().dimension());
+            String what = level == null || !depot.loaded(level) ? "not loaded" : "%d container(s), %d bed(s), %s".formatted(
+                    depot.containers(level).size(), depot.beds(level), contents(level, depot));
+            source.sendSuccess(() -> Component.literal("  #%d %s of %s, %s to %s: %s".formatted(depot.id(),
+                    depot.kind().label(), depot.desk().pos().toShortString(), depot.min().toShortString(),
+                    depot.max().toShortString(), what)), false);
+        }
+        return all.size();
+    }
+
+    private static String contents(ServerLevel level, dev.b28.enterprise.merchant.Depots.Depot depot) {
+        java.util.Map<String, Integer> totals = new java.util.TreeMap<>();
+        for (BlockPos pos : depot.containers(level)) {
+            var handler = level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK, pos, null);
+            if (handler == null) {
+                continue;
+            }
+            for (int i = 0; i < handler.getSlots(); i++) {
+                var stack = handler.getStackInSlot(i);
+                if (!stack.isEmpty()) {
+                    totals.merge(BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath(), stack.getCount(), Integer::sum);
+                }
+            }
+        }
+        return totals.isEmpty() ? "empty" : totals.toString();
+    }
+
     /** The capital's metal exchange: each metal's stock, its prices, and what it has imported, bought and sold. */
     private static int metals(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
@@ -503,20 +576,15 @@ final class EnterpriseCommands {
             return 0;
         }
         GlobalPos desk = exchange.desk().get();
-        double rate = dev.b28.enterprise.money.Mint.get(server).rate(dev.b28.enterprise.money.Mint.DEFAULT_FACTION,
-                source.getLevel().getGameTime());
         var phase = dev.b28.enterprise.market.Sovereign.get(server).phase();
         source.sendSuccess(() -> Component.literal("Metal exchange at %s (%s)".formatted(desk.pos().toShortString(),
                 phase.name().toLowerCase())), false);
         for (var metal : dev.b28.enterprise.market.MetalExchange.METALS) {
-            var book = exchange.book(metal.item());
-            source.sendSuccess(() -> Component.literal(("  %s: holds %d of %d, %d at sea; buys at %.1f spurs, sells at %.1f; "
-                    + "imported %d, bought %d from towns, sold %d to towns").formatted(
+            source.sendSuccess(() -> Component.literal(("  %s: holds %d of %d, %d coming under contract; pays %.2f times "
+                    + "its worth; %d bought from players at the port").formatted(
                     BuiltInRegistries.ITEM.getKey(metal.item()).getPath(), exchange.held(metal.item()),
-                    dev.b28.enterprise.market.MetalExchange.target(metal, phase), exchange.atSea(metal.item()),
-                    exchange.bid(server, desk, metal.item()).orElse(0.0) * rate,
-                    exchange.ask(server, desk, metal.item()).orElse(0.0) * rate, book.imported(), book.bought(),
-                    book.sold())), false);
+                    dev.b28.enterprise.market.MetalExchange.target(metal, phase), exchange.coming(server, metal.item()),
+                    exchange.premium(metal, phase), exchange.fromPlayers(metal.item()))), false);
         }
         return 1;
     }
@@ -567,6 +635,17 @@ final class EnterpriseCommands {
                     upFront.getOrDefault(town, 0.0), desk == null ? 0 : book.trust(town, desk))),
                     false);
         }
+        java.util.Map<String, int[]> training = new java.util.TreeMap<>(); // town: done, open, broken
+        for (var c : book.all()) {
+            if (desk != null && c.buyer().equals(desk) && c.training().isPresent()) {
+                int[] t = training.computeIfAbsent(c.seller().pos().toShortString() + " "
+                        + c.training().get().profession().replace("minecraft:", ""), k -> new int[3]);
+                t[c.state() == dev.b28.enterprise.contract.Contract.State.COMPLETED ? 0
+                        : c.state() == dev.b28.enterprise.contract.Contract.State.BROKEN ? 2 : 1]++;
+            }
+        }
+        training.forEach((who, t) -> source.sendSuccess(() -> Component.literal("  training %s: %d trained, %d under way, %d broken"
+                .formatted(who, t[0], t[1], t[2])), false));
         source.sendSuccess(() -> Component.literal("  kit issued: " + army.issued()), false);
         source.sendSuccess(() -> Component.literal("  enchantment levels issued: " + army.enchantLevels()), false);
         source.sendSuccess(() -> Component.literal("  food eaten: %d points, its meals %.0f%% hearty".formatted(army.eaten(),
@@ -700,7 +779,6 @@ final class EnterpriseCommands {
             if (!book.enabledTrades(deskPos, locker.workstation()).isEmpty()) {
                 continue;
             }
-            book.apprentice(deskPos, locker.workstation()); // its buying trades stay on as it levels up
             for (MerchantView.TradeView trade : locker.trades()) {
                 if (!trade.enabled() && (all || trade.key().endsWith(">minecraft:emerald"))) {
                     book.setEnabled(deskPos, locker.workstation(), trade.key(), true);

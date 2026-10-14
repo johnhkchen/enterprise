@@ -363,6 +363,62 @@ What run 1 of the war lacked: patience with new suppliers, money before producti
     3. The army's meals were still 0% hearty: no meat reached the depot.
     4. The treasury ended with 76,000 spurs unspent, and the spur fell from 16 to 34 an emerald.
 
+## Everything runs on the logistics framework (built 2026-10-14)
+
+No special routes: goods, money, soldiers and work reach where they're needed by contract, caravan and warehouse, as
+everything else does. Only what happens at the ends is special.
+
+- **Markets off the map** (`OffMap`): a place the region trades with that no one builds or visits. It sits at a real
+  position, so roads to it are planned like any other, but its warehouse is kept in save data, its money in a bank
+  account, and its Merchant is never seen. Caravans, contracts, bills and the treasury treat it like any desk.
+  - **The front** opens when war is declared, 1,500 blocks north of the capital, with the treasury's account. Its
+    quartermaster contracts the capital for what the army will want (whole kit sets, arrows, four days' rations),
+    delivered by the capital's caravans. Levied recruits wait at the capital and ride out with those caravans. The army
+    draws, wears out, eats and dies off the front's own stock: the end of the line. The front sells nothing; caravans
+    going there carry their own food home.
+  - **The market across the sea**, 2,400 blocks west, is a source: each day its stock of metal (and bread for
+    travellers) is topped up.
+- **Warehouses** (`Depots`, `/enterprise depot add <desk> <kind> <from> <to>`): a building whose chests, every one in
+  its floorplan, are one store, part of its market's stock. What it's for decides what it holds: an **armoury** takes
+  war goods, a **barracks** war goods and rations, a **storehouse** anything. Goods go to a building meant for them
+  first, then to the desk's chests. A barracks' beds let its town put that many more men under arms. The capital has
+  an armoury, and S2 has been promoted with a barracks.
+- **The metal exchange buys by contract**, nearest holder first: a town with a mine, else the market across the sea,
+  collected by the capital's caravans. It pays up to half again over worth as it runs short, and has buying shops at
+  the port for players. The ships, and the price overrides in caravan buying and selling, are gone.
+- **Training is a contract, and the market distributes it.** A training term ("train a Weaponsmith to level 5 for 24
+  emeralds") is judged by the seller's census and paid when it shows the master, a third up front. The sovereign posts
+  what it wants (2 master Weaponsmiths, 2 Armorers, 1 Toolsmith) as **tenders** on its board. Caravans carry each
+  market's board both ways. A Merchant that reads a tender weighs it for its own town: the price, against a stall for
+  a trade it lacks and coal and iron for each level to go, and whether there's time. It takes the tender if that pays.
+  A Merchant whose town can't do it, but which has roads to towns of its own, carries the tender on, posting it on its
+  own board for 15% less. Its contract with the first buyer is done when its town's is. A tender nobody takes lapses
+  and is posted again for a quarter more.
+- **The Merchant trains only under contract** (`Apprentices`): for each training contract, its pupil is the town's
+  villager of that trade furthest along. The Merchant switches on what the pupil buys, pays for its work while the
+  warehouse has none of what it buys (what's wanted first), and switches all of it off at the level. Jobs takes up a
+  trade a training contract calls for.
+- **Contract inputs are ordinary wants:** what a town needs to make what it has contracted to sell raises its
+  warehouse's par (the stock it aims to keep), so caravans carry and sell it as they would anything it uses.
+- **Armour comes in sets.** A soldier wears a helmet, chestplate, leggings and boots. Protection is the armour points
+  worn: a full iron set is what a chestplate alone gave before, a full diamond set halves the risk. The stockpile and
+  the quartermaster ask for every piece; Armorers sell them.
+- **Game tests start from a fresh world:** `just gametest` wipes it first. Saved data (the mint's debasement, trust)
+  carried over between runs and broke two market tests.
+- **Measured** (120 days; capital named on day 1, mobilising from day 31, war from 61, peace from 101):
+  - **The flows work:** the market across the sea delivered 3,625 metal by contract. The front received 313 pieces
+    of kit and food, and issued 5 iron chestplates and 7 iron swords. War goods gathered in the armoury.
+  - **Towns took the tenders and hired for them:** S1, S2 and S3 took up Armorer, Weaponsmith and Toolsmith stalls,
+    and S1 carried a tender on to S2. **But no smith got past Level 2:** 13 training contracts broke.
+  - **Why** (still to fix):
+    1. S1 took 336 emeralds up front, broke contracts, and paid the advances back. Broke, it can't buy coal, so it
+       can't train, so it breaks more.
+    2. Its Merchant couldn't change coin for emeralds to pay its pupil, with 60 to 89 emeralds to spare; most likely
+       its warehouse is too full to take them.
+    3. Tenders are taken on a rough cost (2 emeralds a level, 2 days a level), not on whether coal and iron will
+       actually reach the town in time.
+  - Soldiers went hungry 34 of 87 days, and 3 deserted: the front's rations ran short between caravans.
+
 ## Travel cost between hexes (2026-10-13)
 
 Travel cost must react to real building. A long wall, a tunnel, a bridge or a wide canal should each change routes and costs.
