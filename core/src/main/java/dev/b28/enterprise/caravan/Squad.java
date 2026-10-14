@@ -27,7 +27,9 @@ import net.minecraft.world.phys.AABB;
  * packs (more cargo), and a Fisherman captains a boat across water, fishing it (a fleet of Fishermen sells fish).
  * A Cleric, a Farmer or a smith goes along when the town there wants their services (a blessing, help with the
  * harvest, smelting, tools, arms), but never leads. Each trade's work at the far end is a service (see {@link dev.b28.enterprise.service.Services}).
- * Babies and untrained villagers stay home, and so does the Merchant who works the town's desk.
+ * Villagers without a trade go as porters, each carrying as much as a Leatherworker's packs, when there's more
+ * cargo than that; they walk home once it's delivered. Babies stay home, and so does the Merchant who works the
+ * town's desk.
  */
 public final class Squad {
     public static final int MAX = 4;
@@ -47,7 +49,11 @@ public final class Squad {
      * {@link dev.b28.enterprise.service.Services#wantedAbroad}), packs for more cargo than a wagon holds, and whether
      * there's water a boat would sail better than the land way (then Fishermen go, and fish).
      */
-    public record Needs(java.util.Set<String> trades, boolean water) {
+    public record Needs(java.util.Set<String> trades, boolean water, int porters) {
+        public Needs(java.util.Set<String> trades, boolean water) {
+            this(trades, water, 0);
+        }
+
         /** The old three: stale books (a Librarian), an unmapped road (a Cartographer), animals to drive (a Shepherd). */
         public Needs(boolean books, boolean mapping, boolean animals) {
             this(of(books, mapping, animals), false);
@@ -67,7 +73,7 @@ public final class Squad {
             return trades;
         }
 
-        public static final Needs ALL = new Needs(java.util.Set.copyOf(TRADES), true);
+        public static final Needs ALL = new Needs(java.util.Set.copyOf(TRADES), true, MAX);
 
         boolean wants(String trade) {
             return trades.contains(trade) || trade.equals(FISHERMAN) && water;
@@ -119,7 +125,7 @@ public final class Squad {
 
     /** Can this villager go with a caravan from {@code desk}? A trained adult of a squad trade, not the desk's Merchant. */
     public static boolean eligible(Villager villager, GlobalPos desk) {
-        if (villager.isBaby() || !TRADES.contains(trade(villager))) {
+        if (villager.isBaby() || !TRADES.contains(trade(villager)) && !porter(trade(villager))) {
             return false;
         }
         return villager.getBrain().getMemory(MemoryModuleType.JOB_SITE).filter(desk::equals).isEmpty();
@@ -143,6 +149,10 @@ public final class Squad {
             }
             candidates.stream().filter(v -> trade(v).equals(trade)).findFirst().ifPresent(squad::add);
         }
+        // Porters for cargo beyond the wagon and the packs, Nitwits first.
+        candidates.stream().filter(v -> porter(trade(v)) && !squad.contains(v))
+                .limit(Math.max(0, Math.min(needs.porters(), Math.min(MAX, extras + 1) - squad.size())))
+                .forEach(squad::add);
         if (needs.water()) {
             // A fishing fleet: on water, every Fisherman to spare goes and fishes, up to a full squad.
             candidates.stream().filter(v -> trade(v).equals(FISHERMAN) && !squad.contains(v))
@@ -185,10 +195,26 @@ public final class Squad {
         return level.getEntitiesOfClass(Villager.class, new AABB(desk.pos()).inflate(reach),
                         villager -> eligible(villager, desk) && connected(villager, desk, community, lockerSites))
                 .stream()
-                .sorted(Comparator.comparingInt((Villager v) -> TRADES.indexOf(trade(v)))
+                .sorted(Comparator.comparingInt((Villager v) -> order(trade(v)))
                         .thenComparing(Comparator.comparingInt((Villager v) -> v.getVillagerData().getLevel()).reversed())
                         .thenComparing(Villager::getStringUUID))
                 .toList();
+    }
+
+    /** A villager without a trade (a Nitwit, or an adult waiting for work) can carry: a porter. */
+    public static boolean porter(String trade) {
+        return dev.b28.enterprise.territory.Labour.idle(trade);
+    }
+
+    /** Does this squad member carry cargo beyond the wagon: a Leatherworker's packs, or a porter's back? */
+    public static boolean carries(String trade) {
+        return trade.equals(LEATHERWORKER) || porter(trade);
+    }
+
+    /** Where a trade comes in the squad's order: {@link #TRADES}, then porters (Nitwits first). */
+    static int order(String trade) {
+        int at = TRADES.indexOf(trade);
+        return at >= 0 ? at : trade.equals(dev.b28.enterprise.territory.Labour.NITWIT) ? TRADES.size() : TRADES.size() + 1;
     }
 
     /** Of these, those who could lead a squad. */

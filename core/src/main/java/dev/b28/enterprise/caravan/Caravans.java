@@ -121,6 +121,15 @@ public final class Caravans {
     /** One pass over every route: dispatch, arrive, return. */
     public static void poll(MinecraftServer server, CaravanLedger ledger, Territory territory, long now) {
         dev.b28.enterprise.contract.ContractBook.get(server).review(now);
+        ledger.walkersHome(now).forEach(walker -> {
+            ServerLevel level = server.getLevel(walker.home().dimension());
+            if (level != null && ensureLoaded(level, walker.home().pos())) {
+                Squad.release(level, walker.home().pos(), walker.villager());
+                territory.bellOf(walker.home()).ifPresent(bell -> dev.b28.enterprise.settlement.Settlements.get(server)
+                        .setAway(bell, walker.villager().getUUID("UUID"), false));
+                ledger.arrived(walker);
+            }
+        });
         for (Route route : List.copyOf(ledger.routes())) {
             var caravan = ledger.caravan(route.id);
             if (caravan.isEmpty()) {
@@ -172,10 +181,14 @@ public final class Caravans {
         home.forEach(v -> skills.merge(Squad.trade(v), v.getVillagerData().getLevel(), Math::max));
         Set<String> wanted = new LinkedHashSet<>(
                 dev.b28.enterprise.service.Services.wantedAbroad(level, territory, route, skills, now));
-        if (wantedStacks(stock, wantedAt(server, route.to)) > CARGO_SLOTS) {
+        int stacks = wantedStacks(stock, wantedAt(server, route.to));
+        int porters = 0;
+        if (stacks > CARGO_SLOTS) {
             wanted.add(Squad.LEATHERWORKER);
+            boolean packs = skills.containsKey(Squad.LEATHERWORKER);
+            porters = (int) Math.ceil((stacks - CARGO_SLOTS - (packs ? Squad.PACK_STACKS : 0)) / (double) Squad.PACK_STACKS);
         }
-        Squad.Needs needs = new Squad.Needs(wanted, water);
+        Squad.Needs needs = new Squad.Needs(wanted, water, Math.max(0, porters));
         int extras = (int) Math.max(0, home.size() - waiting);
         List<net.minecraft.world.entity.npc.Villager> mustered =
                 Squad.muster(level, route.from, Squad.reach(), needs, extras);
@@ -226,7 +239,7 @@ public final class Caravans {
             return false;
         }
         int slots = CARGO_SLOTS + Squad.PACK_STACKS * (int) squad.stream()
-                .filter(v -> Squad.trade(v).equals(Squad.LEATHERWORKER)).count(); // Leatherworkers carry packs
+                .filter(v -> Squad.carries(Squad.trade(v))).count(); // Leatherworkers' packs, porters' backs
         boolean shepherd = squad.stream().anyMatch(v -> Squad.trade(v).equals("minecraft:shepherd"));
         var herd = shepherd ? Squad.herd(level, route.from.pos()) : List.<net.minecraft.world.entity.animal.Animal>of();
         // Goods owed under contracts go first, then comforts, then what the destination's trades want.
@@ -318,6 +331,8 @@ public final class Caravans {
                     caravan.news);
             caravan.spurs += paid;
             route.serviceSpurs += paid;
+            sendPortersHome(ledger, route, caravan, now);
+            food = foodNeeded(route.distance()) * Math.max(1, caravan.crew.size());
             int keepForFood = (int) Math.ceil(food * PURSE_PER_FOOD_POINT * rate);
             buyForHome(level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
             buySurplus(server, ledger, level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
@@ -342,6 +357,21 @@ public final class Caravans {
             route.status = "on the way home";
         }
         ledger.setDirty();
+    }
+
+    /**
+     * The porters have delivered: they walk home on their own (as long as a caravan's leg takes), unless what's left
+     * aboard needs their backs for the trip home.
+     */
+    static void sendPortersHome(CaravanLedger ledger, Route route, Caravan caravan, long now) {
+        List<CompoundTag> porters = caravan.crew.stream().filter(m -> Squad.porter(Squad.trade(m))).toList();
+        if (porters.isEmpty() || caravan.crew.size() == porters.size()
+                || caravan.cargo.size() > caravan.capacity() - Squad.PACK_STACKS * porters.size()) {
+            return;
+        }
+        caravan.crew.removeAll(porters);
+        porters.forEach(porter -> ledger.walkHome(route.from, porter, now + travelTicks(route.distance())));
+        route.portersSent += porters.size();
     }
 
     private static void arriveHome(

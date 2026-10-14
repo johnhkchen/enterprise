@@ -163,6 +163,7 @@ public final class Territory extends SavedData {
         Map<String, Double> kitWear = new LinkedHashMap<>(); // by kit item id, share of one worn since last taken
         long mendedUntil = -1; // a Toolsmith mends its tools until then
         Map<String, Double> kitShare = new LinkedHashMap<>(); // by kit item id, share of its wearers covered
+        int militia; // hands without a trade standing watch at its posts, at the last touch
     }
 
     private final Map<Place, GlobalPos> owners = new HashMap<>();
@@ -372,6 +373,11 @@ public final class Territory extends SavedData {
                     dev.b28.enterprise.Enterprise.LOGGER.debug("Settlement at {} digs a mine at {}",
                             bellPos.toShortString(), corner.toShortString());
                 });
+    }
+
+    /** Its hands without a trade standing watch at its posts, at the last touch. */
+    public int militia(GlobalPos bell) {
+        return holding(bell).map(h -> h.militia).orElse(0);
     }
 
     public Optional<BlockPos> mine(GlobalPos bell) {
@@ -734,7 +740,7 @@ public final class Territory extends SavedData {
             return;
         }
         Holding holding = holdings.get(bell.get());
-        upkeepGuards(level, desk, stock, holding, now); // pay the guards who served, then review the garrison
+        upkeepGuards(level, desk, stock, bell.get(), holding, now); // pay the guards who served, then review the garrison
         long lastReview = holding.lastTollReview;
         reviewTolls(bell.get(), now, Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now));
         holding.tradingCapital = dev.b28.enterprise.merchant.Warehouse.get(level.getServer()).tradingCapital(at, now);
@@ -767,6 +773,9 @@ public final class Territory extends SavedData {
                 holding.pending.merge("minecraft:raw_iron", levels * Mines.RAW_IRON_PER_LEVEL_DAY * days, Double::sum);
                 holding.pending.merge("minecraft:coal", levels * Mines.COAL_PER_LEVEL_DAY * days, Double::sum);
             }
+            Labour.work(level, hexes(bell.get()),
+                    Labour.hands(dev.b28.enterprise.settlement.Settlements.get(level.getServer()).roster(bell.get())),
+                    Math.min(holding.militia, holding.posts.size()), stock, days, holding.pending);
             Smithing.wear(stock, holding.kitWear, days, workers.getOrDefault("minecraft:farmer", 0), miners(holding, workers),
                     holding.posts.size(), holding.mendedUntil >= now);
         }
@@ -1092,15 +1101,20 @@ public final class Territory extends SavedData {
      * The guards' food and pay since the last upkeep, from the town's warehouse: food first, then pay from its
      * money. Guards who go unfed or unpaid desert, in proportion to what was missing.
      */
-    private void upkeepGuards(ServerLevel level, BlockPos desk, MerchantStock stock, Holding holding, long now) {
+    private void upkeepGuards(ServerLevel level, BlockPos desk, MerchantStock stock, GlobalPos bell, Holding holding,
+            long now) {
         if (holding.lastGuardUpkeep < 0 || holding.posts.isEmpty()) {
             holding.lastGuardUpkeep = now;
             return;
         }
         double days = Math.min(MAX_DAYS, (now - holding.lastGuardUpkeep) / 24000.0);
         holding.lastGuardUpkeep = now;
+        // Its hands without a trade stand watch first, as militia: for their food, without pay.
+        holding.militia = Math.min(holding.posts.size(),
+                Labour.hands(dev.b28.enterprise.settlement.Settlements.get(level.getServer())
+                        .roster(bell)).size());
         holding.guardFoodOwed += holding.posts.size() * GUARD_FOOD_PER_DAY * days;
-        holding.guardUpkeepOwed += holding.posts.size() * GUARD_PAY_PER_DAY * days;
+        holding.guardUpkeepOwed += (holding.posts.size() - holding.militia) * GUARD_PAY_PER_DAY * days;
         int food = (int) Math.floor(holding.guardFoodOwed);
         int pay = (int) Math.floor(holding.guardUpkeepOwed);
         if (food <= 0 && pay <= 0) {
@@ -1283,6 +1297,7 @@ public final class Territory extends SavedData {
             entry.put("kitWear", doubles(holding.kitWear));
             entry.putLong("mendedUntil", holding.mendedUntil);
             entry.put("kitShare", doubles(holding.kitShare));
+            entry.putInt("militia", holding.militia);
             if (holding.dock != null) {
                 entry.putLong("dock", holding.dock.asLong());
             }
@@ -1399,6 +1414,7 @@ public final class Territory extends SavedData {
                 holding.kitWear = new LinkedHashMap<>(readDoubles(entry.getCompound("kitWear")));
                 holding.mendedUntil = entry.contains("mendedUntil") ? entry.getLong("mendedUntil") : -1;
                 holding.kitShare = new LinkedHashMap<>(readDoubles(entry.getCompound("kitShare")));
+                holding.militia = entry.getInt("militia");
                 holding.dock = entry.contains("dock") ? BlockPos.of(entry.getLong("dock")) : null;
                 holding.homeProgress = entry.getDouble("homeProgress");
                 holding.birthProgress = entry.getDouble("birthProgress");

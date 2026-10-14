@@ -212,6 +212,16 @@ final class EnterpriseCommands {
         dev.b28.enterprise.territory.Works.get(source.getServer()).wall(bell).ifPresent(w -> source.sendSuccess(
                 () -> Component.literal("  wall %.0f%% built, %d columns raised, %.0f emeralds of masons' wages paid"
                         .formatted(w.progress() * 100, w.columnsPlaced(), w.wagesPaid())), false));
+        var hands = dev.b28.enterprise.territory.Labour.hands(
+                dev.b28.enterprise.settlement.Settlements.get(source.getServer()).roster(bell));
+        if (!hands.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("  hands without a trade: %d (%d standing watch), gathering on %s"
+                    .formatted(hands.size(), territory.militia(bell), territory.hexes(bell).stream()
+                            .limit(Math.max(0, hands.size() - territory.militia(bell)))
+                            .map(hex -> dev.b28.enterprise.territory.Labour.biome(source.getLevel(), hex).unwrapKey()
+                                    .map(k -> k.location().getPath()).orElse("?"))
+                            .collect(java.util.stream.Collectors.joining(", ")))), false);
+        }
         var kit = territory.kitShare(bell);
         if (territory.mine(bell).isPresent() || kit.values().stream().anyMatch(v -> v > 0)) {
             source.sendSuccess(() -> Component.literal("  mine %s; kit: %s%s".formatted(
@@ -373,6 +383,7 @@ final class EnterpriseCommands {
                                     .collect(java.util.stream.Collectors.joining(", ")),
                             c.herd().isEmpty() ? "" : ", driving %d animals".formatted(c.herd().size())))
                     .map(text -> route.fishCaught() > 0 ? text + " | %d fish caught in all".formatted(route.fishCaught()) : text)
+                    .map(text -> route.portersSent() > 0 ? text + " | %d porters walked home".formatted(route.portersSent()) : text)
                     .orElse("");
             source.sendSuccess(() -> Component.literal(("  #%d %s -> %s: %d blocks, %d trips, %d items sold for %d spurs, "
                     + "%d for services, %d bought for %d, %d spurs on road food, %d tolls paid, %d spurs brought home, %d food eaten, %s%s")

@@ -295,6 +295,28 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void aPorterCarriesOutAndWalksHome(GameTestHelper helper) {
+        Network net = network(helper, 70, 5, 192, List.of(VillagerProfession.LIBRARIAN, VillagerProfession.NITWIT));
+        helper.setBlock(HUB.north(), Blocks.CHEST); // a second warehouse chest: room for the paper
+        for (int i = 0; i < 30; i++) {
+            net.hub().insert(new ItemStack(Items.PAPER, 64)); // 32 stacks of paper for a town that buys paper
+        }
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        Caravan out = net.ledger().caravan(net.route().id()).orElseThrow();
+        helper.assertTrue(out.crew().size() == 2 && out.capacity() == 36, "a porter: 36 stacks, " + out.capacity());
+        net.poll(t + 80);
+        helper.assertTrue(out.crew().size() == 1 && net.ledger().walkers().size() == 1,
+                "the load delivered, the porter walks home: " + out.crew().size());
+        net.poll(t + 160);
+        helper.assertTrue(net.ledger().walkers().isEmpty(), "and is home");
+        helper.assertTrue(!helper.getLevel().getEntitiesOfClass(Villager.class,
+                new net.minecraft.world.phys.AABB(helper.absolutePos(HUB)).inflate(8),
+                v -> v.getVillagerData().getProfession() == VillagerProfession.NITWIT).isEmpty(), "by the desk");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aSquadIsNeverMoreThanFour(GameTestHelper helper) {
         Network net = network(helper, 2, 5, 192, List.of(VillagerProfession.CARTOGRAPHER, VillagerProfession.LIBRARIAN,
                 VillagerProfession.SHEPHERD, VillagerProfession.LEATHERWORKER, VillagerProfession.FISHERMAN,
@@ -406,8 +428,11 @@ public final class CaravanTests {
         Villager untrained = helper.spawn(EntityType.VILLAGER, new BlockPos(0, 2, 6));
         var desk = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(HUB));
         helper.assertFalse(dev.b28.enterprise.caravan.Squad.eligible(baby, desk), "no babies on the road");
-        helper.assertFalse(dev.b28.enterprise.caravan.Squad.eligible(untrained, desk), "nor the untrained");
-        helper.assertTrue(dev.b28.enterprise.caravan.Squad.available(helper.getLevel(), desk, 16).isEmpty(),
+        helper.assertTrue(dev.b28.enterprise.caravan.Squad.muster(helper.getLevel(), desk, 16,
+                new dev.b28.enterprise.caravan.Squad.Needs(java.util.Set.of(), false, 2), 3).isEmpty(),
+                "the untrained go only as porters, and never alone");
+        helper.assertTrue(dev.b28.enterprise.caravan.Squad.available(helper.getLevel(), desk, 16).stream()
+                        .noneMatch(v -> v.getVillagerData().getProfession() == Merchant.PROFESSION.get()),
                 "and not the Merchant who works the desk");
         untrained.discard(); // an unemployed adult would go looking for a neighbouring test's workstation
         baby.discard();

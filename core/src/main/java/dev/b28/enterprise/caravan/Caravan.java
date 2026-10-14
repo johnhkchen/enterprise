@@ -37,10 +37,10 @@ public final class Caravan {
         this.merchantLevel = merchantLevel;
     }
 
-    /** Stacks the caravan carries: a wagon's, and more for each Leatherworker's packs. */
+    /** Stacks the caravan carries: a wagon's, and more for each Leatherworker's packs and each porter. */
     public int capacity() {
         return Caravans.CARGO_SLOTS + Squad.PACK_STACKS
-                * (int) crew.stream().filter(m -> Squad.trade(m).equals(Squad.LEATHERWORKER)).count();
+                * (int) crew.stream().filter(m -> Squad.carries(Squad.trade(m))).count();
     }
 
     public List<CompoundTag> crew() {

@@ -3,6 +3,7 @@ package dev.b28.enterprise.caravan;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.HolderLookup;
@@ -32,6 +33,30 @@ public final class CaravanLedger extends SavedData {
         }
     }
     private int nextId = 1;
+
+    /** A squad member walking home on its own (a porter whose load is delivered), there at {@code arrives}. */
+    public record Walker(GlobalPos home, CompoundTag villager, long arrives) {}
+
+    private final List<Walker> walkers = new java.util.ArrayList<>();
+
+    void walkHome(GlobalPos home, CompoundTag villager, long arrives) {
+        walkers.add(new Walker(home, villager, arrives));
+        setDirty();
+    }
+
+    /** Walkers due home by {@code now}. */
+    List<Walker> walkersHome(long now) {
+        return walkers.stream().filter(w -> w.arrives() <= now).toList();
+    }
+
+    void arrived(Walker walker) {
+        walkers.remove(walker);
+        setDirty();
+    }
+
+    public List<Walker> walkers() {
+        return List.copyOf(walkers);
+    }
 
     public static CaravanLedger get(MinecraftServer server) {
         return server.overworld()
@@ -117,6 +142,15 @@ public final class CaravanLedger extends SavedData {
             servedList.add(entry);
         });
         tag.put("served", servedList);
+        ListTag walking = new ListTag();
+        walkers.forEach(w -> {
+            CompoundTag entry = new CompoundTag();
+            GlobalPos.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, w.home()).ifSuccess(t -> entry.put("home", t));
+            entry.put("villager", w.villager());
+            entry.putLong("arrives", w.arrives());
+            walking.add(entry);
+        });
+        tag.put("walkers", walking);
         return tag;
     }
 
@@ -138,6 +172,11 @@ public final class CaravanLedger extends SavedData {
                 served.getList("villagers", Tag.TAG_INT_ARRAY).forEach(t -> ids.add(net.minecraft.nbt.NbtUtils.loadUUID(t)));
                 ledger.served.put(desk, ids);
             });
+        }
+        for (Tag entry : tag.getList("walkers", Tag.TAG_COMPOUND)) {
+            CompoundTag walker = (CompoundTag) entry;
+            GlobalPos.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE, walker.get("home")).ifSuccess(home ->
+                    ledger.walkers.add(new Walker(home, walker.getCompound("villager"), walker.getLong("arrives"))));
         }
         return ledger;
     }
