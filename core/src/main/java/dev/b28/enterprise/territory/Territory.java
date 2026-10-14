@@ -325,6 +325,10 @@ public final class Territory extends SavedData {
             accrue(holding, level.getGameTime());
         }
         holding.perDay = plan(level, bellPos.getY(), hexes(bell), farmers);
+        if (holding.desk != null && level.isLoaded(holding.desk.pos())) {
+            double plotsWorked = holding.perDay.values().stream().mapToDouble(Double::doubleValue).sum() / YIELD_PER_PLOT_PER_DAY;
+            Fields.consider(level, bellPos, holding.desk, MerchantStock.at(level, holding.desk.pos()), this, farmers, plotsWorked);
+        }
         setDirty();
     }
 
@@ -527,6 +531,7 @@ public final class Territory extends SavedData {
             holding.harvested += whole - left;
         }
         holding.paidShare = paidShare;
+        Fields.press(dev.b28.enterprise.merchant.Warehouse.get(level.getServer()), at, stock, now); // cane into paper
         enjoyComforts(stock, holding, now);
         double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now);
         int bankSpurs = MoneyChanger.bankAt(level, desk).map(b -> b.getBalance()).orElse(0);
@@ -602,7 +607,11 @@ public final class Territory extends SavedData {
      */
     private void grow(ServerLevel level, BlockPos bell, Holding holding, Census census, double days, MerchantStock stock) {
         days = Math.min(MAX_DAYS, Math.max(0, days));
-        dev.b28.enterprise.caravan.Commissions.train(level, holding.desk, bell, stock, this); // squads before anything
+        // Squads before anything; then work for whoever is still idle.
+        if (dev.b28.enterprise.caravan.Commissions.train(level, holding.desk, bell, stock, this).isEmpty()
+                && !dev.b28.enterprise.caravan.Commissions.squadShort(level, holding.desk, bell)) {
+            Jobs.employ(level, bell, holding.desk, stock, this);
+        }
         BlockPos desk = holding.desk.pos();
         Mint mint = Mint.get(level.getServer());
         long now = level.getGameTime();

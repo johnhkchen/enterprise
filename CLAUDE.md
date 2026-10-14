@@ -29,6 +29,7 @@ Monorepo: our mods, the pack definition, and design docs.
 - In dev environments Numismatics trusts only players wearing golden boots; its real trust rule can't be tested here.
 - Test coordinates start at the structure block, one below the arena: the `floor` template's floor is y=1.
 - Tests run side by side: keep world searches inside the 7x7 arena (range 4 from the centre).
+- Don't leave unemployed or deskless trained villagers in an arena (discard them): they wander off to claim neighbouring tests' workstations. Don't plant crops outside your arena: farm tests count every crop in their hex.
 - `helper.relativePos` doesn't invert `absolutePos` for rotated tests: compare positions in world space.
 
 ## Toolchain

@@ -52,11 +52,16 @@ public final class Growth {
 
     /** The nearest corner (ground level, lowest x and z) where a cottage fits, if any within reach of the bell. */
     public static Optional<BlockPos> homeSite(ServerLevel level, BlockPos bell) {
+        return site(level, bell, HOME_SIZE, NEAREST);
+    }
+
+    /** The nearest corner where a {@code size} x {@code size} building fits, at least {@code nearest} from the bell. */
+    public static Optional<BlockPos> site(ServerLevel level, BlockPos bell, int size, int nearest) {
         List<BlockPos> corners = new ArrayList<>();
         for (int dx = -FARTHEST; dx <= FARTHEST; dx++) {
             for (int dz = -FARTHEST; dz <= FARTHEST; dz++) {
-                double fromBell = Math.hypot(dx + HOME_SIZE / 2.0, dz + HOME_SIZE / 2.0);
-                if (fromBell >= NEAREST && fromBell <= FARTHEST) {
+                double fromBell = Math.hypot(dx + size / 2.0, dz + size / 2.0);
+                if (fromBell >= nearest && fromBell <= FARTHEST) {
                     corners.add(bell.offset(dx, 0, dz));
                 }
             }
@@ -66,7 +71,7 @@ public final class Growth {
             int ground = surface(level, corner.getX(), corner.getZ());
             if (ground != Integer.MIN_VALUE && Math.abs(ground - bell.getY()) <= 4) {
                 BlockPos site = new BlockPos(corner.getX(), ground, corner.getZ());
-                if (fits(level, site)) {
+                if (fits(level, site, size)) {
                     return Optional.of(site);
                 }
             }
@@ -79,9 +84,14 @@ public final class Growth {
      * corner, solid underfoot (no fields, no water) and open for four blocks up.
      */
     public static boolean fits(ServerLevel level, BlockPos corner) {
+        return fits(level, corner, HOME_SIZE);
+    }
+
+    /** As {@link #fits(ServerLevel, BlockPos)}, for a {@code size} x {@code size} footprint. */
+    public static boolean fits(ServerLevel level, BlockPos corner, int size) {
         int ground = corner.getY();
-        for (int dx = -1; dx <= HOME_SIZE; dx++) {
-            for (int dz = -1; dz <= HOME_SIZE; dz++) {
+        for (int dx = -1; dx <= size; dx++) {
+            for (int dz = -1; dz <= size; dz++) {
                 int x = corner.getX() + dx;
                 int z = corner.getZ() + dz;
                 if (surface(level, x, z) != ground) {

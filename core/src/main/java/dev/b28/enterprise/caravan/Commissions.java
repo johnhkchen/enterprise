@@ -77,6 +77,19 @@ public final class Commissions {
         return Optional.empty();
     }
 
+    /** Does the town's squad still lack members (it has routes of its own, and fewer than it wants)? */
+    public static boolean squadShort(ServerLevel level, GlobalPos desk, BlockPos bell) {
+        var server = level.getServer();
+        long routes = CaravanLedger.get(server).routes().stream().filter(r -> r.from.equals(desk) && !r.stopping).count();
+        if (routes == 0) {
+            return false;
+        }
+        long members = Squad.available(level, desk, Squad.reach()).size()
+                + Settlements.get(server).roster(GlobalPos.of(level.dimension(), bell)).values().stream()
+                        .filter(Settlements.Resident::away).count();
+        return members < Math.min(Squad.MAX, routes + 1);
+    }
+
     /**
      * When counted while loaded: a town with routes of its own trains its squad up to a lead for each route and one
      * spare, at most {@link Squad#MAX}: an unemployed adult near the bell learns the trade the squad lacks (in

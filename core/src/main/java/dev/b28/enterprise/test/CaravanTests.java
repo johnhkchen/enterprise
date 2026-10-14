@@ -163,6 +163,7 @@ public final class CaravanTests {
         helper.assertTrue(trained.isPresent() && trained.get() == pupil, "the unemployed adult is trained");
         helper.assertTrue(pupil.getVillagerData().getProfession() == Merchant.PROFESSION.get() && pupil.getVillagerXp() > 0,
                 "as a Merchant first, and keeps the trade");
+        pupil.discard(); // a trained Merchant without a desk would go looking for a neighbouring test's
         helper.succeed();
     }
 
@@ -257,6 +258,8 @@ public final class CaravanTests {
         helper.assertFalse(dev.b28.enterprise.caravan.Squad.eligible(untrained, desk), "nor the untrained");
         helper.assertTrue(dev.b28.enterprise.caravan.Squad.available(helper.getLevel(), desk, 16).isEmpty(),
                 "and not the Merchant who works the desk");
+        untrained.discard(); // an unemployed adult would go looking for a neighbouring test's workstation
+        baby.discard();
         helper.succeed();
     }
 
