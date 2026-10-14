@@ -65,16 +65,29 @@ public final class Army extends SavedData {
     public static final double DESERTION = 0.1;
 
     /**
-     * Good food is good morale: a meal's heartiness is how far its saturation per point of food is above plain bread's
-     * (cooked meat, stew and golden carrots are heartier), from 0 to 1. A hearty army fights a quarter harder, falls
-     * 15% less, and deserts half as readily when short.
+     * Good food is good morale: a food's heartiness is how far its saturation per point of food is above plain bread's
+     * (golden carrots are the heartiest), from 0 to 1, and meat of any kind (cooked, or in a stew) is at least as hearty
+     * as a pork chop. A meal's is its foods', by points. A hearty army fights a quarter harder, falls 15% less, and
+     * deserts half as readily when short.
      */
     public static final double BREAD_SATURATION = 1.2;
     public static final double HEARTY_STRENGTH = 0.25;
     public static final double HEARTY_RISK = 0.15;
+    /** Meat, any kind the army can be sent: what a sovereign stockpiles for hearty meals. */
+    public static final List<Item> MEATS = List.of(Items.COOKED_PORKCHOP, Items.COOKED_BEEF, Items.COOKED_MUTTON,
+            Items.COOKED_CHICKEN, Items.COOKED_RABBIT, Items.RABBIT_STEW);
+    public static final double MEAT_HEARTINESS = 1.0 / 3;
 
     public static double heartiness(double saturationPerPoint) {
-        return Math.max(0, Math.min(1, (saturationPerPoint - BREAD_SATURATION) / BREAD_SATURATION));
+        double above = saturationPerPoint - BREAD_SATURATION;
+        return above < 1e-4 ? 0 : Math.min(1, above / BREAD_SATURATION); // (a float's rounding is no feast)
+    }
+
+    /** How hearty a food is: by its saturation, and meat at least as hearty as a pork chop. */
+    public static double heartiness(Item food) {
+        int points = nutrition(food);
+        double bySaturation = points == 0 ? 0 : heartiness(saturation(food) / points);
+        return MEATS.contains(food) ? Math.max(MEAT_HEARTINESS, bySaturation) : bySaturation;
     }
 
     /** Arrows an archer shoots a day. */
@@ -199,8 +212,8 @@ public final class Army extends SavedData {
     }
 
     /**
-     * Eats {@code points} of food from the depot, the heartiest first (most saturation per point). Returns the points
-     * eaten and the saturation they gave.
+     * Eats {@code points} of food from the depot, the heartiest first. Returns the points eaten and their heartiness,
+     * summed by point.
      */
     static double[] mess(MerchantStock depot, int points) {
         double[] meal = {0, 0};
@@ -215,7 +228,7 @@ public final class Army extends SavedData {
             int n = (left + nutrition(food) - 1) / nutrition(food);
             int taken = depot.take(new ItemCost(food, 1), n).stream().mapToInt(ItemStack::getCount).sum();
             meal[0] += taken * nutrition(food);
-            meal[1] += taken * saturation(food);
+            meal[1] += taken * nutrition(food) * heartiness(food);
         }
         return meal;
     }
@@ -309,11 +322,12 @@ public final class Army extends SavedData {
 
     /**
      * Days of rations the front keeps on hand, {@code distance} blocks from the capital: what it eats while the next
-     * delivery is drafted and carried (a caravan's round trip, and as long again while one is free to go), and spare.
+     * order goes and its delivery comes (the order rides back with a caravan, one sets out with the goods, and a caravan
+     * may be on the road meanwhile: three round trips), and spare.
      */
     public static int rationDays(int distance) {
         int roundTrip = (int) Math.ceil(2.0 * Caravans.travelTicks(distance) / 24000);
-        return 2 * roundTrip + RATION_SPARE_DAYS;
+        return 3 * roundTrip + RATION_SPARE_DAYS;
     }
 
     /** Food points held in a stock, of every food. */
@@ -323,12 +337,13 @@ public final class Army extends SavedData {
                 .sum();
     }
 
-    /** Food a stock holds, the heartiest first (most saturation per point of food), bread and the like last. */
+    /** Food a stock holds, the heartiest first, bread and the like last. */
     public static List<Item> heartiestFirst(MerchantStock stock) {
         return stock.totals().keySet().stream()
                 .map(id -> BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse(id)))
                 .filter(item -> nutrition(item) > 0)
-                .sorted(java.util.Comparator.comparingDouble((Item item) -> -saturation(item) / nutrition(item)))
+                .sorted(java.util.Comparator.comparingDouble((Item item) -> -heartiness(item))
+                        .thenComparingDouble(item -> -saturation(item) / nutrition(item)))
                 .toList();
     }
 
@@ -425,7 +440,7 @@ public final class Army extends SavedData {
             int got = (int) meal[0];
             eaten += got;
             double fed = wanted == 0 ? 1 : Math.min(1, (double) got / wanted);
-            double hearty = got == 0 ? 0 : heartiness(meal[1] / got);
+            double hearty = got == 0 ? 0 : meal[1] / got;
             heartySum += hearty * soldiers.size();
             mealDays += soldiers.size();
             int fedSoldiers = (int) Math.floor(soldiers.size() * fed);
@@ -482,10 +497,11 @@ public final class Army extends SavedData {
                 record.strength += weapon.map(Gear::power).orElse(1) * (1 + 0.1 * edge)
                         * (points(worn) * 0.4 + 4) / 10.0
                         * (hungry ? 0.5 : 1 + HEARTY_STRENGTH * hearty);
-                for (var contract : book.of(soldier.home)) {
-                    contract.levy().filter(l -> contract.inForce() && contract.buyer().equals(capital))
-                            .ifPresent(l -> book.owe(contract, l.payPerDay()));
-                }
+                // Its pay, under the levy (or hire) it came by: once, though its home has had more than one.
+                book.of(soldier.home).stream()
+                        .filter(c -> c.inForce() && c.buyer().equals(capital) && c.seller().equals(soldier.home)
+                                && c.levy().isPresent())
+                        .findFirst().ifPresent(c -> book.owe(c, c.levy().get().payPerDay()));
                 // Wear: unbreaking makes it last.
                 if (weapon.isPresent()) {
                     if (soldier.weapon.is(Items.BOW)) {

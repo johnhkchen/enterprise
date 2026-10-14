@@ -113,6 +113,25 @@ public final class CaravanLedger extends SavedData {
         return Optional.ofNullable(caravans.get(route));
     }
 
+    /**
+     * When this route's next caravan can set out: once the one on the road is home (outbound, it still has the way
+     * there and back; waiting for food, the way back), and a departure interval after the last.
+     */
+    public long nextDeparture(Route route, long now) {
+        long travel = Caravans.travelTicks(route.distance());
+        long home = caravan(route.id).map(c -> switch (c.leg) {
+            case OUTBOUND -> c.arrives + travel;
+            case WAITING_FOR_FOOD -> Math.max(now, c.arrives) + travel;
+            case RETURNING -> c.arrives;
+        }).orElse(now);
+        return Math.max(Math.max(now, home), route.lastDeparture + Caravans.DEPARTURE_INTERVAL);
+    }
+
+    /** Recruits riding with caravans: to the capital from their towns, or on to the front. */
+    public int recruitsOnTheRoad() {
+        return caravans.values().stream().mapToInt(c -> c.recruits.size()).sum();
+    }
+
     void put(Caravan caravan) {
         caravans.put(caravan.route, caravan);
         setDirty();

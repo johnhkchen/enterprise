@@ -38,6 +38,8 @@ public final class Warehouse extends SavedData {
     private final Map<GlobalPos, Map<String, Use>> uses = new HashMap<>();
     // desk -> workstation -> item -> what that locker's switched-on trades can take in a day
     private final Map<GlobalPos, Map<Long, Map<String, Integer>>> capacity = new HashMap<>();
+    // desk -> workstation -> item -> what that villager sells for emeralds a restock (all its offers, on or off)
+    private final Map<GlobalPos, Map<Long, Map<String, Integer>>> offered = new HashMap<>();
     private final Map<GlobalPos, Integer> levels = new HashMap<>();
     // desk -> item -> count, as of the market's last stocktake (a hub takes one when a caravan leaves)
     private final Map<GlobalPos, Map<String, Integer>> stocktake = new HashMap<>();
@@ -78,6 +80,27 @@ public final class Warehouse extends SavedData {
         perDay.forEach((item, count) -> byId.put(BuiltInRegistries.ITEM.getKey(item).toString(), count));
         capacity.computeIfAbsent(desk, d -> new HashMap<>()).put(workstation, byId);
         setDirty();
+    }
+
+    /** A villager's restock at its locker: what it sells for emeralds, by item, a restock's worth (replaces the last). */
+    public void recordOffered(GlobalPos desk, long workstation, Map<Item, Integer> perRestock) {
+        Map<String, Integer> byId = new HashMap<>();
+        perRestock.forEach((item, count) -> byId.put(BuiltInRegistries.ITEM.getKey(item).toString(), count));
+        offered.computeIfAbsent(desk, d -> new HashMap<>()).put(workstation, byId);
+        setDirty();
+    }
+
+    /**
+     * Do the town's villagers sell {@code item}, as far as its Merchant has seen? Empty if it hasn't seen any of them
+     * restock (only the census to go by).
+     */
+    public java.util.Optional<Boolean> offers(GlobalPos desk, Item item) {
+        var lockers = offered.get(desk);
+        if (lockers == null || lockers.isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        String id = BuiltInRegistries.ITEM.getKey(item).toString();
+        return java.util.Optional.of(lockers.values().stream().anyMatch(byItem -> byItem.getOrDefault(id, 0) > 0));
     }
 
     /** What the town's lockers can take of {@code item} in a day. */
@@ -232,6 +255,17 @@ public final class Warehouse extends SavedData {
             capacities.add(entry);
         }));
         tag.put("capacity", capacities);
+        ListTag offers = new ListTag();
+        offered.forEach((desk, lockers) -> lockers.forEach((workstation, byItem) -> {
+            CompoundTag entry = new CompoundTag();
+            GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, desk).ifSuccess(t -> entry.put("desk", t));
+            entry.putLong("workstation", workstation);
+            CompoundTag items = new CompoundTag();
+            byItem.forEach(items::putInt);
+            entry.put("items", items);
+            offers.add(entry);
+        }));
+        tag.put("offered", offers);
         ListTag takes = new ListTag();
         stocktake.forEach((desk, totals) -> {
             CompoundTag entry = new CompoundTag();
@@ -289,6 +323,15 @@ public final class Warehouse extends SavedData {
                 CompoundTag items = entry.getCompound("perDay");
                 items.getAllKeys().forEach(id -> byItem.put(id, items.getInt(id)));
                 warehouse.capacity.computeIfAbsent(desk, d -> new HashMap<>()).put(entry.getLong("workstation"), byItem);
+            });
+        }
+        for (Tag t : tag.getList("offered", Tag.TAG_COMPOUND)) {
+            CompoundTag entry = (CompoundTag) t;
+            GlobalPos.CODEC.parse(NbtOps.INSTANCE, entry.get("desk")).ifSuccess(desk -> {
+                Map<String, Integer> byItem = new HashMap<>();
+                CompoundTag items = entry.getCompound("items");
+                items.getAllKeys().forEach(id -> byItem.put(id, items.getInt(id)));
+                warehouse.offered.computeIfAbsent(desk, d -> new HashMap<>()).put(entry.getLong("workstation"), byItem);
             });
         }
         for (Tag t : tag.getList("stocktake", Tag.TAG_COMPOUND)) {

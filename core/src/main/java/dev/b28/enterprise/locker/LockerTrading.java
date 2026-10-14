@@ -144,6 +144,15 @@ public final class LockerTrading {
         // The Merchant's training, for the training contracts it holds.
         dev.b28.enterprise.market.Apprentices.review(level, villager, workstation, manager.desk(),
                 merchantReputation(manager.merchant().getVillagerData().getLevel()));
+        // What it sells for emeralds, switched on or not: what the town can be asked to supply.
+        Map<net.minecraft.world.item.Item, Integer> sells = new java.util.HashMap<>();
+        for (MerchantOffer offer : villager.getOffers()) {
+            if (offer.getBaseCostA().is(net.minecraft.world.item.Items.EMERALD)
+                    && !offer.getResult().is(net.minecraft.world.item.Items.EMERALD)) {
+                sells.merge(offer.getResult().getItem(), offer.getResult().getCount() * offer.getMaxUses(), Integer::sum);
+            }
+        }
+        dev.b28.enterprise.merchant.Warehouse.get(level.getServer()).recordOffered(at, workstation.asLong(), sells);
         Set<String> enabled = merchants.enabledTrades(at, workstation);
         if (enabled.isEmpty()) {
             Enterprise.LOGGER.debug("Locker at {}: no trades switched on", workstation.toShortString());
@@ -176,7 +185,8 @@ public final class LockerTrading {
         for (MerchantOffer offer : offers) {
             String key = TradeKeys.of(offer);
             int uses = offer.getMaxUses() - offer.getUses();
-            if (exchange.isProcured(at, workstation, key)) {
+            // (a pupil's lessons aren't capped: the Merchant pays for them as far as it can spare)
+            if (exchange.isProcured(at, workstation, key) && !merchants.isTraining(at, workstation, key)) {
                 int need = soon.getOrDefault(offer.getResult().getItem(), 0);
                 uses = Math.min(uses, (need + offer.getResult().getCount() - 1) / offer.getResult().getCount());
             }

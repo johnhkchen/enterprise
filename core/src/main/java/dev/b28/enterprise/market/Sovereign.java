@@ -65,12 +65,21 @@ public final class Sovereign extends SavedData {
     public static final double WAR_PREMIUM = 2.5;
     /** It buys gold at three times its worth. */
     public static final double GOLD_PREMIUM = 3;
+    /** Villagers of a trade the crown wants in its realm, so many at the level. */
     /**
-     * The master smiths the crown wants in its realm, by trade: diamond swords and armour are theirs to sell. Short of
-     * them, it tenders for training on its market: this much a master (a third up front), due in so many days.
+     * Villagers of a trade the crown wants in its realm, so many at the level; if {@code sells} is given, counted by
+     * the towns whose villagers offer one of those goods (a trade's offers are dealt at random).
      */
-    public static final Map<String, Integer> MASTERS = Map.of("minecraft:weaponsmith", 2, "minecraft:armorer", 2,
-            "minecraft:toolsmith", 1);
+    public record Trained(String trade, int count, int level, List<Item> sells) {}
+
+    /**
+     * The villagers the crown wants in its realm: master smiths (diamond swords and armour are theirs to sell), and
+     * Butchers selling meat for emeralds (hearty food for the army). Short of them, it tenders for
+     * training on its market: this much a master, less for a lower level (a third up front), due in so many days.
+     */
+    public static final List<Trained> TRAINED = List.of(new Trained("minecraft:weaponsmith", 2, 5, List.of()),
+            new Trained("minecraft:armorer", 2, 5, List.of()), new Trained("minecraft:toolsmith", 1, 5, List.of()),
+            new Trained("minecraft:butcher", 2, 2, Army.MEATS));
     public static final double TRAINING_BONUS = 24;
     /** And it buys what the apprentices make on the way, at its worth. */
     public static final double OFFTAKE = 1.0;
@@ -81,6 +90,12 @@ public final class Sovereign extends SavedData {
 
     /** A soldier is paid this much a day, owed to its town. */
     public static final double SOLDIER_PAY = 0.25;
+    /**
+     * Short of its planned army after the levies, the crown hires mercenaries at the market across the sea, by contract
+     * like a levy: four times a levied soldier's pay, owed to that market. Its caravan brings them, so many a contract.
+     */
+    public static final double MERCENARY_PAY = 1.0;
+    public static final int MERCENARIES_MOST = 8;
     /** A town sends its idle hands and this share of the rest, at least one and at most four. */
     public static final double LEVY_SHARE = 0.2;
     public static final int LEVY_MOST = 4;
@@ -90,7 +105,14 @@ public final class Sovereign extends SavedData {
      * a third of it (diamond, from master smiths), and food put by.
      */
     public static final int PLANNED_ARMY = 24;
+    /** Days of food for the planned army the crown puts by while mobilising, against the campaign's first weeks. */
+    public static final int RATION_STORE_DAYS = 20;
     public static final Map<Item, Integer> STOCKPILE = stockpile();
+    /**
+     * Hearty rations put by too (good food is good morale): half the campaign's store, in food points, of any meat the
+     * towns sell (a Butcher's porkchops, chicken or stew).
+     */
+    public static final int MEAT_POINTS = PLANNED_ARMY * Army.RATION * Sovereign.RATION_STORE_DAYS / 2;
 
     private static Map<Item, Integer> stockpile() {
         Map<Item, Integer> m = new LinkedHashMap<>();
@@ -109,9 +131,8 @@ public final class Sovereign extends SavedData {
         m.put(Items.SHIELD, PLANNED_ARMY / 2);
         m.put(Items.BOW, 8);
         m.put(Items.ARROW, 256);
-        m.put(Items.BREAD, 64); // and rations put by,
-        m.put(Items.COOKED_BEEF, 32); // hearty ones too: good food is good morale
-        m.put(Items.COOKED_PORKCHOP, 32);
+        // And rations put by in the run-up: half the campaign's store as bread (meat the other half: MEAT_POINTS).
+        m.put(Items.BREAD, PLANNED_ARMY * Army.RATION * RATION_STORE_DAYS / 2 / 5);
         return m;
     }
 
@@ -295,6 +316,72 @@ public final class Sovereign extends SavedData {
     }
 
     /**
+     * Meat for the stockpile, {@link #MEAT_POINTS} of it, counted in food points: any kind will do. What's held and
+     * already contracted counts; the rest is sourced kind by kind, from whoever sells it. Unmet, it's posted as wanted.
+     */
+    void sourceMeat(ServerLevel level, MerchantStock depot, Territory territory, long now, double premium) {
+        MinecraftServer server = level.getServer();
+        int points = MEAT_POINTS;
+        for (Item meat : Army.MEATS) {
+            points -= (depot.count(new ItemCost(meat, 1)) + Broker.coming(server, capital, meat)) * Army.nutrition(meat);
+        }
+        if (points <= 0) {
+            return;
+        }
+        shortfall.put(Army.MEATS.get(0), (points + 7) / 8);
+        for (Item meat : Army.MEATS) {
+            if (points <= 0) {
+                return;
+            }
+            int coming = Broker.coming(server, capital, meat);
+            int n = (points + Army.nutrition(meat) - 1) / Army.nutrition(meat);
+            Broker.source(level, capital, territory, meat, coming + n, now, premium, List.of());
+            points -= (Broker.coming(server, capital, meat) - coming) * Army.nutrition(meat);
+        }
+        if (points > 0) {
+            unmet.put(Army.MEATS.get(0), (points + 7) / 8); // posted as wanted: a pork chop's worth of points each
+        }
+    }
+
+    /**
+     * At war, short of its planned army (counting soldiers serving, recruits waiting or on the road, and those levied
+     * and not yet raised), the crown hires mercenaries at the market across the sea: one contract open at a time, its
+     * caravan bringing them to the barracks like any levy. Returns the mercenaries contracted.
+     */
+    int hireMercenaries(ServerLevel level, Army army, long now) {
+        MinecraftServer server = level.getServer();
+        Optional<GlobalPos> sea = MetalExchange.get(server).overseas()
+                .filter(far -> dev.b28.enterprise.merchant.OffMap.get(server).is(far));
+        if (sea.isEmpty() || capital == null) {
+            return 0;
+        }
+        ContractBook book = ContractBook.get(server);
+        int coming = 0;
+        boolean hiring = false;
+        for (var contract : book.of(capital)) {
+            if (contract.buyer().equals(capital) && contract.levy().isPresent()
+                    && (contract.inForce() || contract.state() == dev.b28.enterprise.contract.Contract.State.DRAFTED)) {
+                int left = Math.max(0, contract.levy().get().soldiers() - contract.delivered());
+                coming += left;
+                hiring |= left > 0 && contract.seller().equals(sea.get());
+            }
+        }
+        int strength = army.size() + army.waiting() + coming
+                + dev.b28.enterprise.caravan.CaravanLedger.get(server).recruitsOnTheRoad();
+        int short_ = PLANNED_ARMY - strength;
+        if (short_ <= 0 || hiring) {
+            return 0;
+        }
+        int hired = Math.min(short_, MERCENARIES_MOST);
+        book.draft(sea.get(), capital, List.of(new Levy(hired, MERCENARY_PAY)), Incoterm.EXW, now, 24000, 1, now,
+                capital, false);
+        Exchange.get(server).note(capital, now, "hired %d mercenaries across the sea, at %.2f emeralds a day"
+                .formatted(hired, MERCENARY_PAY));
+        setDirty();
+        return hired;
+    }
+
+    /**
      * The front: an off-map market with a quartermaster, its money the treasury's, on a road from the capital. What the
      * army needs reaches it as everything else does: by contract, carried by the capital's caravans.
      */
@@ -309,6 +396,11 @@ public final class Sovereign extends SavedData {
         }
         dev.b28.enterprise.caravan.Atlas.get(server).learnBoth(capital, front, now);
         Army.get(server).setFront(front);
+    }
+
+    /** Is this the crown's own desk: its capital, or its army's front? Its bills are drawn on the treasury. */
+    public boolean isCrown(GlobalPos desk) {
+        return desk.equals(capital) || front().filter(desk::equals).isPresent();
     }
 
     /** Where the front is, given the capital. */
@@ -416,6 +508,10 @@ public final class Sovereign extends SavedData {
                 sovereign.unmet.put(target.getKey(), need);
             }
         }
+        sovereign.sourceMeat(level, depot, territory, now, premium);
+        if (sovereign.phase == Phase.WAR) {
+            sovereign.hireMercenaries(level, army, now);
+        }
         if (sovereign.phase == Phase.WAR && army.front().isPresent()) {
             // The front's quartermaster: what the army will want there, beyond what it holds, by contract from the
             // capital (its caravans carry it); and the army campaigns on what it has.
@@ -429,7 +525,7 @@ public final class Sovereign extends SavedData {
                     // the rest.
                     int points = want.getValue() * Army.nutrition(Items.BREAD) - Army.foodPoints(lines);
                     for (Item food : Army.heartiestFirst(depot)) {
-                        if (points <= 0 || Army.heartiness(Army.saturation(food) / Army.nutrition(food)) < 0.05) {
+                        if (points <= 0 || Army.heartiness(food) < 0.05) {
                             break;
                         }
                         int coming = Broker.coming(server, front, food);
@@ -504,21 +600,25 @@ public final class Sovereign extends SavedData {
             case MOBILISING -> MOBILISING_PREMIUM;
             case WAR -> WAR_PREMIUM;
         };
-        for (Map.Entry<String, Integer> wanted : MASTERS.entrySet()) {
-            String trade = wanted.getKey();
-            long masters = realm.stream().flatMap(t -> territory.bellOf(t).stream())
-                    .flatMap(bell -> settlements.roster(bell).values().stream())
-                    .filter(r -> r.profession().equals(trade) && r.level() >= 5).count();
+        for (Trained wanted : TRAINED) {
+            String trade = wanted.trade();
+            var warehouse = dev.b28.enterprise.merchant.Warehouse.get(server);
+            long masters = !wanted.sells().isEmpty()
+                    ? realm.stream().filter(t -> wanted.sells().stream()
+                            .anyMatch(item -> warehouse.offers(t, item).orElse(false))).count()
+                    : realm.stream().flatMap(t -> territory.bellOf(t).stream())
+                            .flatMap(bell -> settlements.roster(bell).values().stream())
+                            .filter(r -> r.profession().equals(trade) && r.level() >= wanted.level()).count();
             long training = book.of(capital).stream()
                     .filter(c -> c.buyer().equals(capital) && (c.state() == dev.b28.enterprise.contract.Contract.State.DRAFTED
                             || c.inForce()))
                     .filter(c -> c.training().filter(t -> t.profession().equals(trade)).isPresent()).count();
             int tendered = tenders.openFor(capital, trade); // on its board, or carried on by a Merchant
-            long short_ = wanted.getValue() - masters - training - tendered;
+            long short_ = wanted.count() - masters - training - tendered;
             if (short_ > 0) {
-                double bonus = TRAINING_BONUS * premium * Math.pow(1.25, raised.getOrDefault(trade, 0));
+                double bonus = TRAINING_BONUS * wanted.level() / 5 * premium * Math.pow(1.25, raised.getOrDefault(trade, 0));
                 // It takes the apprentices' work too, at its worth: a town needn't fear being left with it.
-                var work = new dev.b28.enterprise.contract.Training(trade, 5, bonus, OFFTAKE);
+                var work = new dev.b28.enterprise.contract.Training(trade, wanted.level(), bonus, OFFTAKE);
                 tenders.post(capital, capital, work, (int) short_, now + TRAINING_TICKS);
                 Exchange.get(server).note(capital, now, "tendered for %d: %s".formatted(short_, work.describe()));
             }

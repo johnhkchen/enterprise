@@ -401,7 +401,30 @@ Soldiers at the front went hungry on 27 of 47 soldier-days (run 18) while the ca
 - **Run 20:** hungry on 13 of 65 soldier-days (20%, from 57%), all in the first days before the first delivery.
 - **No meat reaches the front, because none is made.** No town has a Butcher; the flat world's plains give hunters
   only feathers; and a Butcher smokes meat only while its own town is short of food, never for sale. The capital
-  posts cooked beef as wanted, but no town has idle hands to take it up. Still to do.
+  posts cooked beef as wanted, but no town has idle hands to take it up. Fixed below.
+
+## Mercenaries, meat, and the front's supply (built 2026-10-14)
+
+- **Mercenaries.** Short of its planned army of 24 after the levies, the crown hires mercenaries at the market across
+  the sea by a levy-like contract (1 emerald a day, four times a levied soldier's pay, owed to that market). Its
+  caravan fetches them to the barracks; they ride to the front like any recruit and go back over the sea when done.
+  One hire open at a time, counting contracts still being drafted (else it hired 8 a day). Levy pay is owed once per
+  soldier, whatever contracts its home has.
+- **Meat, any kind.** Any cooked meat or stew is hearty (at least as a pork chop). The crown tenders to train
+  Butchers to level 2 (a Butcher sells porkchop, chicken or stew for emeralds), counts a town as having one only if
+  its villagers actually offer meat (offers are dealt at random; towns now record what each villager sells at its
+  restock), and keeps the realm's only Butcher out of a levy. A pupil's lessons aren't capped by procurement's pacing.
+  The smokehouse also smokes meat its town has contracted to sell. Food is made to order by the stack.
+- **The run-up.** While mobilising the crown puts by 20 days of food for the planned army: half bread, half meat
+  (by food points, any kind).
+- **The front's orders.** Rations cover three caravan round trips plus 2 days (11 days at 1,500 blocks). A delivery to
+  the buyer's is due once the seller's next caravan can be there. The crown's front orders from its capital day by
+  day while earlier orders are on the way, isn't put on trial, and pays by bill on the treasury when short of coin.
+  Standing orders (daily installments) were tried and dropped: a caravan every three days missed them, and three
+  misses break a contract.
+- **Runs:** hungry soldier-days 57% (run 18, 7 soldiers) → 35% (run 25, meat first reaches the front) → 18% (run 27,
+  461 soldier-days, 41 raised). Meat is still thin: Butchers' training varies by seed (run 27: level 1 until war day
+  25), and each town is contracted separately in lots of a stack.
 
 ## Pacing and the crown's bank (built 2026-10-14)
 

@@ -874,6 +874,35 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void aCaravanBringsMercenariesHiredOverTheSea(GameTestHelper helper) {
+        Network net = network(helper, 8, 5, 192);
+        var server = helper.getLevel().getServer();
+        GlobalPos hub = net.route().from();
+        GlobalPos sea = GlobalPos.of(hub.dimension(), hub.pos().offset(-64, 0, 0));
+        java.util.UUID money = java.util.UUID.randomUUID();
+        dev.ithundxr.createnumismatics.Numismatics.BANK.getOrCreateAccount(money,
+                dev.ithundxr.createnumismatics.content.backend.BankAccount.Type.PLAYER);
+        dev.b28.enterprise.merchant.OffMap.get(server).open(sea, "the market across the sea", money, true);
+        MerchantStock.at(helper.getLevel(), sea.pos()).insert(new ItemStack(Items.BREAD, 20)); // the wagons' food home
+        var route = net.ledger().addRoute(hub, sea);
+        long t = helper.getLevel().getGameTime();
+        var hire = dev.b28.enterprise.contract.ContractBook.get(server).draft(sea, hub,
+                List.of(new dev.b28.enterprise.contract.Levy(3, 1.0)), dev.b28.enterprise.contract.Incoterm.EXW, t,
+                24000, 1, t, hub, true);
+        var army = dev.b28.enterprise.army.Army.get(server);
+        int before = army.waiting();
+        for (long at = t; at <= t + 8000; at += 100) {
+            net.poll(at);
+        }
+        helper.assertTrue(hire.delivered() == 3, "three hired: " + hire.history() + " " + route.status() + " "
+                + net.ledger().caravan(route.id()).map(c -> c.toString()).orElse("home"));
+        helper.assertTrue(army.waiting() - before >= 3, "and waiting in the barracks: " + (army.waiting() - before));
+        army.embark(3);
+        net.ledger().removeRoute(route.id());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aCaravanFetchesHomeCratesMadeOutToIt(GameTestHelper helper) {
         Network net = network(helper, 4, 5, 192);
         GlobalPos hub = net.route().from();

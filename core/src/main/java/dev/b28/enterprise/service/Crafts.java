@@ -96,9 +96,10 @@ public final class Crafts {
                 Map.entry(Items.RABBIT, Items.COOKED_RABBIT))) {
             String name = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(meat.getKey()).getPath();
             recipe(new Recipe("enterprise:smoking_" + name, BUTCHER,
-                    "smokes " + name + " in its town's smokehouse while food is short: coal for fuel",
+                    "smokes " + name + " in its town's smokehouse while food is short, or to sell: coal for fuel",
                     "smokes a town's " + name + " while its food is short",
-                    ordered(meat.getKey(), 8, Items.COAL, 1), meat.getValue(), 8, 2, 0.01, Crafts::foodWanted, 5));
+                    ordered(meat.getKey(), 8, Items.COAL, 1), meat.getValue(), 8, 2, 0.01,
+                    visit -> foodWanted(visit) + contracted(visit, meat.getValue()), 5));
         }
         recipe(new Recipe("enterprise:saddles", LEATHERWORKER,
                 "makes saddles of leather and iron: its caravans ride, a third faster",

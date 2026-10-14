@@ -127,6 +127,10 @@ public final class Caravans {
     public static void poll(MinecraftServer server, CaravanLedger ledger, Territory territory, long now) {
         dev.b28.enterprise.contract.ContractBook.get(server).review(server, now);
         ledger.walkersHome(now).forEach(walker -> {
+            if (dev.b28.enterprise.merchant.OffMap.get(server).is(walker.home())) {
+                ledger.arrived(walker); // home off the map (a mercenary over the sea): gone
+                return;
+            }
             ServerLevel level = server.getLevel(walker.home().dimension());
             if (level != null && ensureLoaded(level, walker.home().pos())) {
                 Squad.release(level, walker.home().pos(), walker.villager());
@@ -278,6 +282,7 @@ public final class Caravans {
         boolean toFront = army.front().filter(route.to::equals).isPresent();
         if (cargo.isEmpty() && herd.isEmpty() && exWorks <= 0 && !hasBusinessAt(server, ledger, route, now)
                 && !hasShoppingAt(server, route.to, shopping) && !(toFront && army.waiting() > 0)
+                && !recruitsOwedAt(server, route)
                 && dev.b28.enterprise.contract.ContractBook.get(server).copiesFor(route.from, route.to).isEmpty()
                 && dev.b28.enterprise.contract.ContractBook.get(server).copiesFor(route.to, route.from).isEmpty()) {
             route.status = "nothing to sell there and nothing wanted from there";
@@ -647,8 +652,10 @@ public final class Caravans {
             Treasury.Withdrawal paid = Treasury.withdraw(level, route.to.pos(), stock, owedMoney, mint, now);
             double value = paid.value(rate);
             earned += paid.spurs() + mint.sell(Mint.DEFAULT_FACTION, paid.emeralds(), now);
-            if (value < owedMoney * 0.99 && book.trust(route.from, route.to, now) >= dev.b28.enterprise.contract.ContractBook.MIN_TRUST) {
+            if (value < owedMoney * 0.99 && (book.trust(route.from, route.to, now) >= dev.b28.enterprise.contract.ContractBook.MIN_TRUST
+                    || dev.b28.enterprise.market.Sovereign.get(server).isCrown(route.to))) {
                 // Short of coin, the buyer pays the rest with a bill on its own treasury: it rides home to the seller.
+                // The crown's paper (its capital's, its army's) is good whatever its record.
                 caravan.cargo.add(Crates.documents(dev.b28.enterprise.cargo.Papers.NONE.with(
                         dev.b28.enterprise.contract.Bills.get(server).draw(route.to, route.from, owedMoney - value, now))));
                 value = owedMoney;
@@ -817,6 +824,10 @@ public final class Caravans {
     static void raiseLevy(MinecraftServer server, ServerLevel level, Route route, Territory territory, Caravan caravan,
             long now) {
         var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        if (dev.b28.enterprise.merchant.OffMap.get(server).is(route.to)) {
+            hireMercenaries(server, level, route, caravan, now);
+            return;
+        }
         var bell = territory.bellOf(route.to);
         if (bell.isEmpty()) {
             return;
@@ -832,6 +843,9 @@ public final class Caravans {
             if (wanted <= 0) {
                 continue;
             }
+            java.util.Set<String> needed = new java.util.HashSet<>(
+                    dev.b28.enterprise.market.Apprentices.neededTrades(server, route.to));
+            dev.b28.enterprise.market.Sovereign.TRAINED.forEach(t -> needed.add(t.trade()));
             java.util.Map<String, Long> trades = roster.values().stream().filter(r -> !r.baby() && !r.away())
                     .collect(java.util.stream.Collectors.groupingBy(r -> r.profession(), java.util.stream.Collectors.counting()));
             List<net.minecraft.world.entity.npc.Villager> able = level.getEntitiesOfClass(
@@ -840,10 +854,12 @@ public final class Caravans {
                                     && v.getBrain().getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.JOB_SITE)
                                             .filter(route.to::equals).isEmpty())
                     .stream()
-                    // A levy is no choice: idle hands first, then a trade it has others of, then whoever is least missed.
+                    // A levy is no choice: idle hands first, then a trade it has others of, then whoever is least
+                    // missed; last, the only one of a trade its contracts need or the crown wants trained.
                     .sorted(Comparator.comparingInt((net.minecraft.world.entity.npc.Villager v) ->
                                     dev.b28.enterprise.territory.Labour.idle(Squad.trade(v)) ? 0
-                                            : trades.getOrDefault(Squad.trade(v), 0L) > 1 ? 1 : 2)
+                                            : trades.getOrDefault(Squad.trade(v), 0L) > 1 ? 1
+                                            : needed.contains(Squad.trade(v)) ? 3 : 2)
                             .thenComparingInt(v -> v.getVillagerData().getLevel()))
                     .limit(wanted).toList();
             for (var recruit : able) {
@@ -855,6 +871,37 @@ public final class Caravans {
             }
             if (!able.isEmpty()) {
                 book.settle(contract, able.size(), 0, now);
+            }
+        }
+    }
+
+    /**
+     * Mercenaries hired at an off-map market (one across the sea): as many as its contracts with the caravan's home
+     * still owe, ready to go (the market has them to hire), their home that market: they go back there when they're
+     * done, or desert.
+     */
+    static void hireMercenaries(MinecraftServer server, ServerLevel level, Route route, Caravan caravan, long now) {
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        for (var contract : book.of(route.to)) {
+            var levy = contract.levy();
+            if (levy.isEmpty() || !contract.inForce() || !contract.seller().equals(route.to)
+                    || !contract.buyer().equals(route.from)) {
+                continue;
+            }
+            int wanted = levy.get().soldiers() - contract.delivered();
+            for (int i = 0; i < wanted; i++) {
+                var mercenary = net.minecraft.world.entity.EntityType.VILLAGER.create(level);
+                if (mercenary == null) {
+                    break;
+                }
+                mercenary.setCustomName(net.minecraft.network.chat.Component.literal("Mercenary"));
+                CompoundTag tag = Squad.stow(mercenary);
+                GlobalPos.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, route.to)
+                        .ifSuccess(t -> tag.put("enterprise_home", t));
+                caravan.recruits.add(tag);
+            }
+            if (wanted > 0) {
+                book.settle(contract, wanted, 0, now);
             }
         }
     }
@@ -1503,6 +1550,13 @@ public final class Caravans {
     }
 
     /** Whether a caravan with no cargo would still do business: the network wants goods this town can spare. */
+    /** Does a levy (or a hire) there still owe the caravan's home soldiers, to be fetched? */
+    static boolean recruitsOwedAt(MinecraftServer server, Route route) {
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        return book.of(route.to).stream().anyMatch(c -> c.inForce() && c.seller().equals(route.to)
+                && c.buyer().equals(route.from) && c.levy().filter(l -> l.soldiers() > c.delivered()).isPresent());
+    }
+
     static boolean hasBusinessAt(MinecraftServer server, CaravanLedger ledger, Route route, long now) {
         Map<Item, Integer> wants = networkWants(server, ledger, route,
                 new Caravan(route.id, Caravan.Leg.OUTBOUND, now, new java.util.ArrayList<>(), 0, 1), now);

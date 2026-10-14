@@ -46,15 +46,16 @@ public final class Procurement {
             Map.entry(Items.LAPIS_LAZULI, Set.of("minecraft:cleric")),
             Map.entry(Items.BOOK, Set.of("minecraft:librarian")),
             Map.entry(Items.BREAD, Set.of("minecraft:farmer")),
-            Map.entry(Items.COOKED_PORKCHOP, Set.of("minecraft:butcher")),
-            Map.entry(Items.COOKED_BEEF, Set.of("minecraft:butcher")));
+            Map.entry(Items.COOKED_PORKCHOP, Set.of("minecraft:butcher")), // an Apprentice's, for emeralds
+            Map.entry(Items.COOKED_CHICKEN, Set.of("minecraft:butcher")),
+            Map.entry(Items.RABBIT_STEW, Set.of("minecraft:butcher")));
 
     /** The level a villager must reach to sell it: diamond gear is a master smith's (enchanted, for emeralds). */
     public static final Map<Item, Integer> SELLER_LEVEL = Map.ofEntries(
             Map.entry(Items.DIAMOND_SWORD, 5), Map.entry(Items.DIAMOND_CHESTPLATE, 5), Map.entry(Items.DIAMOND_HELMET, 5),
             Map.entry(Items.DIAMOND_LEGGINGS, 4), Map.entry(Items.DIAMOND_BOOTS, 4),
             Map.entry(Items.CHAINMAIL_CHESTPLATE, 2), Map.entry(Items.SHIELD, 3), Map.entry(Items.BOW, 2),
-            Map.entry(Items.ENCHANTED_BOOK, 1));
+            Map.entry(Items.ENCHANTED_BOOK, 1), Map.entry(Items.COOKED_PORKCHOP, 2), Map.entry(Items.COOKED_CHICKEN, 2));
 
     public static int sellerLevel(Item item) {
         return SELLER_LEVEL.getOrDefault(item, 1);

@@ -152,7 +152,9 @@ public final class WarTests {
         helper.assertTrue(meal[0] == 8 && depot.count(new net.minecraft.world.item.trading.ItemCost(Items.COOKED_BEEF, 1)) == 0
                 && depot.count(new net.minecraft.world.item.trading.ItemCost(Items.BREAD, 1)) == 16,
                 "a steak before bread: " + meal[0]);
-        helper.assertTrue(dev.b28.enterprise.army.Army.heartiness(meal[1] / meal[0]) > 0, "a hearty meal");
+        helper.assertTrue(meal[1] / meal[0] > 0, "a hearty meal");
+        helper.assertTrue(dev.b28.enterprise.army.Army.heartiness(Items.COOKED_CHICKEN) > 0
+                && dev.b28.enterprise.army.Army.heartiness(Items.BREAD) == 0, "any meat is hearty, bread isn't");
         helper.assertTrue(dev.b28.enterprise.army.Army.heartiness(1.2) == 0, "bread is plain fare");
         helper.succeed();
     }

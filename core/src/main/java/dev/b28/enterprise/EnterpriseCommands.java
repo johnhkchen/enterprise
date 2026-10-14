@@ -498,7 +498,9 @@ final class EnterpriseCommands {
             return dev.b28.enterprise.market.Sovereign.STOCKPILE.keySet().stream()
                     .map(i -> BuiltInRegistries.ITEM.getKey(i).getPath() + "=" + stock.count(
                             new net.minecraft.world.item.trading.ItemCost(i, 1)))
-                    .collect(java.util.stream.Collectors.joining(" "));
+                    .collect(java.util.stream.Collectors.joining(" ")) + " meat=" + dev.b28.enterprise.army.Army.MEATS
+                    .stream().mapToInt(i -> stock.count(new net.minecraft.world.item.trading.ItemCost(i, 1))
+                            * dev.b28.enterprise.army.Army.nutrition(i)).sum() + "pts";
         }).orElse("?");
         String line = ("war: %s %.0f days | treasury %d spurs, minted %d | contracts %d, delivered %d | depot %s | "
                 + "army %d serving, %d raised, %d fallen | gold %s | unmet %s | bills %.1f | rate %.2f, debasement %.3f")
@@ -516,7 +518,7 @@ final class EnterpriseCommands {
             var count = new java.util.TreeMap<String, String>();
             settlements.roster(bell).values().forEach(r -> {
                 if (java.util.Set.of("minecraft:weaponsmith", "minecraft:armorer", "minecraft:fletcher",
-                        "minecraft:toolsmith", "minecraft:leatherworker").contains(r.profession())) {
+                        "minecraft:toolsmith", "minecraft:leatherworker", "minecraft:butcher").contains(r.profession())) {
                     count.merge(r.profession().replace("minecraft:", ""), "L" + r.level(), (a, b) -> a + b);
                 }
             });
