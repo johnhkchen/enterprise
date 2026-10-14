@@ -122,6 +122,7 @@ public final class Territory extends SavedData {
         long lastHarvest = -1;
         long tollsOwed;
         double wageOwed; // emeralds owed to the farmers, fractions carried
+        double handTools; // tools given to the hands working its land: they gather more until worn out
         double wagesPaid; // emeralds' worth paid, in all
         double wagesUnpaid; // emeralds' worth that couldn't be paid: those days' produce was lost
         long harvested; // items delivered to the Merchant's chest, in all
@@ -572,6 +573,19 @@ public final class Territory extends SavedData {
         }
     }
 
+    /** A tool given to a hand lasts this many days of work. */
+    public static final double HAND_TOOL_DAYS = 16;
+
+    /** Tools the Merchant gives the hands working the town's land: they gather half again as much while they last. */
+    public void giveTools(GlobalPos bell, int tools) {
+        holdings.computeIfAbsent(bell, b -> new Holding()).handTools += tools;
+        setDirty();
+    }
+
+    public double handTools(GlobalPos bell) {
+        return holding(bell).map(h -> h.handTools).orElse(0.0);
+    }
+
     /** The desk of the settlement's Merchant, if it has one. */
     public Optional<GlobalPos> desk(GlobalPos bell) {
         return holding(bell).map(h -> h.desk);
@@ -831,6 +845,7 @@ public final class Territory extends SavedData {
     /** As {@link #touch(ServerLevel, BlockPos, MerchantStock)}, at game time {@code now}. */
     public void touch(ServerLevel level, BlockPos desk, MerchantStock stock, long now) {
         GlobalPos at = GlobalPos.of(level.dimension(), desk);
+        dev.b28.enterprise.market.ColdStore.tidy(level, at, stock, now); // room first: packed, stored, given, thrown out
         Optional<GlobalPos> bell = bellOf(at);
         if (bell.isEmpty()) {
             return;
@@ -876,9 +891,14 @@ public final class Territory extends SavedData {
                     holding.pending.merge("minecraft:lapis_lazuli", levels * Mines.LAPIS_PER_LEVEL_DAY * days, Double::sum);
                 }
             }
+            // Its hands gather, more with tools to hand (given them from the warehouse), which wear out.
+            List<Double> hands = Labour.hands(dev.b28.enterprise.settlement.Settlements.get(level.getServer()).roster(bell.get()));
+            double tooled = Math.min(hands.size(), holding.handTools);
+            double withTools = hands.isEmpty() ? 0 : tooled / hands.size();
             Labour.work(level, at, hexes(bell.get()),
-                    Labour.hands(dev.b28.enterprise.settlement.Settlements.get(level.getServer()).roster(bell.get())),
+                    hands.stream().map(h -> h * (1 + Smithing.TOOL_BONUS * withTools)).toList(),
                     Math.min(holding.militia, holding.posts.size()), stock, days, holding.pending);
+            holding.handTools = Math.max(0, holding.handTools - tooled * days / HAND_TOOL_DAYS);
             // Its Fletchers hunt: so much game a day per level each, a quarter of it without bows.
             double hunterLevels = levels(level.getServer(), bell.get(), FLETCHER)
                     * (Smithing.SNARES + (1 - Smithing.SNARES) * holding.hunting)
@@ -1363,6 +1383,7 @@ public final class Territory extends SavedData {
             entry.putLong("lastHarvest", holding.lastHarvest);
             entry.putLong("tollsOwed", holding.tollsOwed);
             entry.putDouble("wageOwed", holding.wageOwed);
+            entry.putDouble("handTools", holding.handTools);
             entry.putDouble("wagesPaid", holding.wagesPaid);
             entry.putDouble("wagesUnpaid", holding.wagesUnpaid);
             entry.putLong("harvested", holding.harvested);
@@ -1491,6 +1512,7 @@ public final class Territory extends SavedData {
                 holding.lastHarvest = entry.getLong("lastHarvest");
                 holding.tollsOwed = entry.getLong("tollsOwed");
                 holding.wageOwed = entry.getDouble("wageOwed");
+                holding.handTools = entry.getDouble("handTools");
                 holding.wagesPaid = entry.getDouble("wagesPaid");
                 holding.wagesUnpaid = entry.getDouble("wagesUnpaid");
                 holding.harvested = entry.getLong("harvested");

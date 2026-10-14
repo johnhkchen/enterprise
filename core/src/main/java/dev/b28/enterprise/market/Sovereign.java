@@ -72,6 +72,8 @@ public final class Sovereign extends SavedData {
     public static final Map<String, Integer> MASTERS = Map.of("minecraft:weaponsmith", 2, "minecraft:armorer", 2,
             "minecraft:toolsmith", 1);
     public static final double TRAINING_BONUS = 24;
+    /** And it buys what the apprentices make on the way, at its worth. */
+    public static final double OFFTAKE = 1.0;
     public static final long TRAINING_TICKS = 15 * 24000L;
 
     /** The front lies this far north of the capital: an off-map market, reached by its own road. */
@@ -407,7 +409,28 @@ public final class Sovereign extends SavedData {
             // capital (its caravans carry it); and the army campaigns on what it has.
             GlobalPos front = army.front().get();
             MerchantStock lines = MerchantStock.at(level, front.pos());
+            var warehouse = dev.b28.enterprise.merchant.Warehouse.get(server);
             for (Map.Entry<Item, Integer> want : army.wants().entrySet()) {
+                // A weapon, and a piece of armour for each place, of any kind: the best the capital holds first
+                // (diamond from its master smiths, iron, the apprentices' axes), then what's wanted.
+                List<Army.Gear> kinds = want.getKey() == Items.IRON_SWORD
+                        ? Army.WEAPONS.stream().filter(g -> g.item() != Items.BOW).toList()
+                        : Army.ARMOUR.stream().filter(place -> place.stream().anyMatch(g -> g.item() == want.getKey()))
+                                .findFirst().orElse(List.of());
+                if (!kinds.isEmpty()) {
+                    int need = want.getValue() - kinds.stream().mapToInt(g -> lines.count(new ItemCost(g.item(), 1))).sum();
+                    for (Army.Gear kind : kinds) {
+                        int held = warehouse.onHand(sovereign.capital, kind.item());
+                        if (need > 0 && held > 0 && kind.item() != want.getKey()) {
+                            Broker.source(level, front, territory, kind.item(), Math.min(need, held), now);
+                            need -= Math.min(need, held);
+                        }
+                    }
+                    if (need > 0) {
+                        Broker.source(level, front, territory, want.getKey(), need, now);
+                    }
+                    continue;
+                }
                 int need = want.getValue() - lines.count(new ItemCost(want.getKey(), 1));
                 if (need > 0) {
                     Broker.source(level, front, territory, want.getKey(), need, now);
@@ -455,15 +478,14 @@ public final class Sovereign extends SavedData {
                     .filter(c -> c.buyer().equals(capital) && (c.state() == dev.b28.enterprise.contract.Contract.State.DRAFTED
                             || c.inForce()))
                     .filter(c -> c.training().filter(t -> t.profession().equals(trade)).isPresent()).count();
-            int tendered = tenders.on(capital).stream().filter(t -> t.work().profession().equals(trade))
-                    .mapToInt(Tenders.Tender::open).sum();
+            int tendered = tenders.openFor(capital, trade); // on its board, or carried on by a Merchant
             long short_ = wanted.getValue() - masters - training - tendered;
             if (short_ > 0) {
                 double bonus = TRAINING_BONUS * premium * Math.pow(1.25, raised.getOrDefault(trade, 0));
-                tenders.post(capital, capital, new dev.b28.enterprise.contract.Training(trade, 5, bonus), (int) short_,
-                        now + TRAINING_TICKS);
-                Exchange.get(server).note(capital, now, "tendered for %d: %s".formatted(short_,
-                        new dev.b28.enterprise.contract.Training(trade, 5, bonus).describe()));
+                // It takes the apprentices' work too, at its worth: a town needn't fear being left with it.
+                var work = new dev.b28.enterprise.contract.Training(trade, 5, bonus, OFFTAKE);
+                tenders.post(capital, capital, work, (int) short_, now + TRAINING_TICKS);
+                Exchange.get(server).note(capital, now, "tendered for %d: %s".formatted(short_, work.describe()));
             }
         }
     }

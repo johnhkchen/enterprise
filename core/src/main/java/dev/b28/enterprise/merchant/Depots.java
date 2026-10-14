@@ -34,14 +34,15 @@ public final class Depots extends SavedData {
     private static final String NAME = "enterprise_depots";
 
     public enum Kind {
-        ARMOURY, BARRACKS, STOREHOUSE;
+        ARMOURY, BARRACKS, STOREHOUSE, COLD_STORE;
 
-        /** Is this building meant for these goods? */
+        /** Is this building meant for these goods? A cold store keeps packed crates: goods out of use, nine to a slot. */
         public boolean holds(ItemStack stack) {
             return switch (this) {
                 case STOREHOUSE -> true;
                 case ARMOURY -> warGoods(stack);
                 case BARRACKS -> warGoods(stack) || stack.has(net.minecraft.core.component.DataComponents.FOOD);
+                case COLD_STORE -> dev.b28.enterprise.cargo.Crates.isCrate(stack);
             };
         }
 
@@ -57,7 +58,8 @@ public final class Depots extends SavedData {
 
     public static boolean warGoods(ItemStack stack) {
         var item = stack.getItem();
-        return item instanceof SwordItem || item instanceof ArmorItem || item instanceof ShieldItem
+        return item instanceof SwordItem || item instanceof net.minecraft.world.item.AxeItem || item instanceof ArmorItem
+                || item instanceof ShieldItem
                 || item instanceof BowItem || item instanceof CrossbowItem || item instanceof ArrowItem;
     }
 

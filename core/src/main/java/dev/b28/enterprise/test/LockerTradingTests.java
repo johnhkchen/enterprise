@@ -207,6 +207,38 @@ public final class LockerTradingTests {
     }
 
     @GameTest(template = "floor", timeoutTicks = 400)
+    public static void underAnOfftakeThePupilsWorkIsCratedForTheBuyerWithABill(GameTestHelper helper) {
+        Market market = market(helper, true);
+        helper.setBlock(DESK.east(), Blocks.CHEST); // the Merchant's stock
+        helper.startSequence().thenWaitUntil(() -> helper.assertTrue(market.ready(), "waiting for job sites"))
+                .thenExecute(() -> {
+                    Villager smith = market.librarian();
+                    smith.setVillagerData(smith.getVillagerData().setProfession(VillagerProfession.WEAPONSMITH));
+                    MerchantOffers offers = new MerchantOffers(); // a Novice who only sells
+                    offers.add(new MerchantOffer(new ItemCost(Items.EMERALD, 1), Optional.empty(),
+                            new ItemStack(Items.IRON_AXE), 0, 12, 1, 0.05F, 0));
+                    smith.setOffers(offers);
+                    var server = helper.getLevel().getServer();
+                    GlobalPos desk = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(DESK));
+                    GlobalPos buyer = GlobalPos.of(helper.getLevel().dimension(), new BlockPos(9_700_000, 64, 9_000_000));
+                    var stock = dev.b28.enterprise.merchant.MerchantStock.at(helper.getLevel(), helper.absolutePos(DESK));
+                    stock.insert(new ItemStack(Items.EMERALD, 40));
+                    dev.b28.enterprise.contract.ContractBook.get(server).draft(desk, buyer,
+                            List.of(new dev.b28.enterprise.contract.Training("minecraft:weaponsmith", 5, 24, 1.0)),
+                            dev.b28.enterprise.contract.Incoterm.EXW, helper.getLevel().getGameTime() + 240000, 24000, 1,
+                            helper.getLevel().getGameTime(), desk, true);
+                    smith.restock();
+                    helper.assertTrue(stock.count(new ItemCost(Items.IRON_AXE, 1)) == 0, "no axes left loose to clog it");
+                    long crates = stock.looseStacks().stream()
+                            .filter(s -> dev.b28.enterprise.cargo.Crates.consignedTo(s, buyer)).count();
+                    helper.assertTrue(crates == 2, "twelve axes crated for the buyer: " + crates);
+                    double owed = dev.b28.enterprise.contract.Bills.get(server).owedBy(buyer);
+                    helper.assertTrue(owed >= 12 / 3.0, "and a bill drawn on the buyer for them: " + owed);
+                })
+                .thenSucceed();
+    }
+
+    @GameTest(template = "floor", timeoutTicks = 400)
     public static void switchedOffTradeDoesNotRun(GameTestHelper helper) {
         Market market = market(helper, true);
         helper.startSequence().thenWaitUntil(() -> helper.assertTrue(market.ready(), "waiting for job sites"))

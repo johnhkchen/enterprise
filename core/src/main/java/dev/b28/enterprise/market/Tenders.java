@@ -52,8 +52,9 @@ public final class Tenders extends SavedData {
         int open;
         final long due;
         final int relayFor; // minus the id of the tender this carries on into the board's region, or 0
+        final GlobalPos origin; // who first wanted it: the buyer of the tender this one carries on, at the root
 
-        Tender(int id, GlobalPos board, GlobalPos buyer, Training work, int open, long due, int relayFor) {
+        Tender(int id, GlobalPos board, GlobalPos buyer, Training work, int open, long due, int relayFor, GlobalPos origin) {
             this.id = id;
             this.board = board;
             this.buyer = buyer;
@@ -61,6 +62,11 @@ public final class Tenders extends SavedData {
             this.open = open;
             this.due = due;
             this.relayFor = relayFor;
+            this.origin = origin;
+        }
+
+        public GlobalPos origin() {
+            return origin;
         }
 
         public GlobalPos board() {
@@ -95,10 +101,18 @@ public final class Tenders extends SavedData {
     }
 
     Tender post(GlobalPos board, GlobalPos buyer, Training work, int count, long due, int relayFor) {
-        Tender tender = new Tender(nextId++, board, buyer, work, count, due, relayFor);
+        GlobalPos origin = relayFor < 0 ? tenders.stream().filter(t -> t.id == -relayFor).map(t -> t.origin).findFirst()
+                .orElse(buyer) : buyer;
+        Tender tender = new Tender(nextId++, board, buyer, work, count, due, relayFor, origin);
         tenders.add(tender);
         setDirty();
         return tender;
+    }
+
+    /** Open tenders first wanted by {@code origin}, wherever they're posted now (carried on or not). */
+    public int openFor(GlobalPos origin, String profession) {
+        return tenders.stream().filter(t -> t.origin.equals(origin) && t.work.profession().equals(profession))
+                .mapToInt(t -> t.open).sum();
     }
 
     /** Tenders open on a market's board. */
@@ -140,8 +154,9 @@ public final class Tenders extends SavedData {
 
     /**
      * What this tender is worth to {@code desk}'s own town: its price, less what training would cost (a stall for a
-     * trade it hasn't, coal and iron for each level to go); empty if its town can't do it (no one of the trade and no
-     * idle hands, or not by the day).
+     * trade it hasn't, coal and iron for each level to go); empty if its town can't do it: no one of the trade and no
+     * idle hands, not by the day, no money for it (beyond its reserve, with what's paid up front), or no room in its
+     * warehouse for what the pupil makes and learns on (and no cold store for it).
      */
     public static Optional<Double> worth(ServerLevel level, GlobalPos desk, Tender tender, long now) {
         MinecraftServer server = level.getServer();
@@ -150,7 +165,9 @@ public final class Tenders extends SavedData {
             return Optional.empty();
         }
         var roster = Settlements.get(server).roster(bell.get()).values();
-        int best = roster.stream().filter(r -> !r.baby() && r.profession().equals(tender.work.profession()))
+        // A new one: the best of the trade not yet at the level (a master it has already doesn't count).
+        int best = roster.stream().filter(r -> !r.baby() && r.profession().equals(tender.work.profession())
+                        && r.level() < tender.work.level())
                 .mapToInt(r -> Math.max(1, r.level())).max().orElse(0);
         boolean idle = roster.stream().anyMatch(r -> !r.baby() && r.profession().equals(Labour.NONE));
         if (best == 0 && !idle) {
@@ -162,6 +179,15 @@ public final class Tenders extends SavedData {
             return Optional.empty();
         }
         double cost = (best == 0 ? Jobs.STALL_EMERALDS : 0) + levels * LEVEL_COST;
+        var stock = dev.b28.enterprise.merchant.MerchantStock.at(level, desk.pos());
+        double rate = dev.b28.enterprise.money.Mint.get(server).rate(dev.b28.enterprise.money.Mint.DEFAULT_FACTION, now);
+        double money = dev.b28.enterprise.money.Treasury.available(level, desk.pos(), stock, rate)
+                - Territory.get(server).reserve(desk) + tender.work.bonus() * Broker.MAKER_ADVANCE;
+        boolean room = stock.freeSlots() >= dev.b28.enterprise.merchant.MerchantStock.FREE_SLOTS
+                || dev.b28.enterprise.merchant.Depots.get(server).has(desk, dev.b28.enterprise.merchant.Depots.Kind.COLD_STORE);
+        if (money < cost || !room) {
+            return Optional.empty();
+        }
         return Optional.of(tender.work.bonus() - cost);
     }
 
@@ -179,15 +205,17 @@ public final class Tenders extends SavedData {
                     tender.board.pos().toShortString(), tender.work.describe(), own.get(), contract.id()));
             return true;
         }
-        // Can't (or it isn't worth it) here: carried on, to the towns this market's caravans go to.
+        // Can't (or it isn't worth it) here: carried on, to the towns this market's caravans go to that don't know
+        // the board it's on.
+        var atlas = dev.b28.enterprise.caravan.Atlas.get(server);
         boolean roads = dev.b28.enterprise.caravan.CaravanLedger.get(server).routes().stream()
                 .anyMatch(r -> r.from().equals(desk) && Territory.get(server).bellOf(r.to()).isPresent()
-                        && !r.to().equals(tender.buyer));
+                        && !r.to().equals(tender.buyer) && !atlas.known(server, r.to()).contains(tender.board));
         boolean relaying = tenders.stream().anyMatch(t -> t.board.equals(desk) && t.relayFor == -tender.id);
         if (roads && !relaying && tender.relayFor == 0) {
             tender.open--;
             double price = tender.work.bonus() * (1 - RELAY_MARGIN);
-            post(desk, desk, new Training(tender.work.profession(), tender.work.level(), price), 1,
+            post(desk, desk, new Training(tender.work.profession(), tender.work.level(), price, tender.work.offtake()), 1,
                     tender.due - (long) (SUPPLY_DAYS * 24000), -tender.id);
             Exchange.get(server).note(desk, now, "carried a tender from %s on to its own towns: %s".formatted(
                     tender.board.pos().toShortString(), tender.work.describe()));
@@ -202,7 +230,8 @@ public final class Tenders extends SavedData {
         ContractBook book = ContractBook.get(server);
         tender.open--;
         setDirty();
-        Contract contract = book.draft(seller, tender.buyer, terms(book, seller, tender.buyer, tender.work, now),
+        Training work = tender.work.forSeller(ContractBook.at(server, seller, tender.work.profession(), tender.work.level()));
+        Contract contract = book.draft(seller, tender.buyer, terms(book, seller, tender.buyer, work, now),
                 Incoterm.EXW, tender.due, 24000, 1, now, seller, false);
         if (tender.relayFor < 0) {
             // The tender this one carried on: the carrying Merchant now contracts with the first buyer, done when this is.
@@ -237,6 +266,7 @@ public final class Tenders extends SavedData {
             entry.putInt("open", t.open);
             entry.putLong("due", t.due);
             entry.putInt("relayFor", t.relayFor);
+            GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, t.origin).ifSuccess(x -> entry.put("origin", x));
             list.add(entry);
         }
         tag.put("tenders", list);
@@ -253,7 +283,8 @@ public final class Tenders extends SavedData {
             if (board.isPresent() && buyer.isPresent()) {
                 tenders.tenders.add(new Tender(e.getInt("id"), board.get(), buyer.get(),
                         (Training) Term.load(e.getCompound("work")), e.getInt("open"), e.getLong("due"),
-                        e.getInt("relayFor")));
+                        e.getInt("relayFor"), GlobalPos.CODEC.parse(NbtOps.INSTANCE, e.get("origin")).result()
+                                .orElse(buyer.get())));
             }
         }
         tenders.nextId = Math.max(1, tag.getInt("nextId"));

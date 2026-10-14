@@ -299,7 +299,6 @@ public final class Broker {
         }
         double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
         boolean kit = dev.b28.enterprise.territory.Smithing.KITS.stream().anyMatch(k -> k.item() == item);
-        java.util.Set<String> trades = Procurement.suppliers(item);
         for (boolean holders : List.of(true, false)) {
             for (GlobalPos supplier : markets) {
                 if (covered >= need || !book.open(supplier, desk, plain).isEmpty()) {
@@ -315,11 +314,16 @@ public final class Broker {
                 if (food != null && food.nutrition() > 0) {
                     spare -= 2 * Warehouse.FOOD_PAR_POINTS / food.nutrition(); // and the food its caravans need
                 }
+                // It can make them if a villager of it sells them (at the level), or a trade of it makes them from inputs
+                // it holds or this desk does (and its caravans would bring): no gold without a mine's raw gold.
                 int least = Procurement.sellerLevel(item);
-                boolean makes = territory.bellOf(supplier)
-                        .map(bell -> Services.residents(level, bell).entrySet().stream()
-                                .anyMatch(e -> trades.contains(e.getKey()) && e.getValue() >= least))
-                        .orElse(false);
+                var residents = territory.bellOf(supplier).map(bell -> Services.residents(level, bell)).orElse(Map.of());
+                boolean sells = residents.entrySet().stream().anyMatch(e -> Procurement.SELLERS.getOrDefault(item,
+                        Set.of()).contains(e.getKey()) && e.getValue() >= least);
+                boolean crafts = dev.b28.enterprise.service.Crafts.recipesFor(item).stream()
+                        .anyMatch(r -> residents.containsKey(r.trade()) && r.inputs().keySet().stream()
+                                .allMatch(in -> warehouse.onHand(supplier, in) > 0 || warehouse.onHand(desk, in) > 0));
+                boolean makes = sells || crafts;
                 if (holders ? spare <= 0 : !makes) {
                     continue;
                 }

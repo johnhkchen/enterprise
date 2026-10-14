@@ -426,6 +426,13 @@ public final class ContractBook extends SavedData {
         }
     }
 
+    /** The seller crated its pupil's work for the buyer, and drew a bill on it for so much. */
+    public void noteOfftake(Contract contract, int items, double emeralds, long now) {
+        contract.note("day %d: %d of the pupil's work crated for the buyer, %.2f emeralds drawn".formatted(now / 24000,
+                items, emeralds));
+        setDirty();
+    }
+
     /** {@code contract} is carried out by {@code further}: done when it is. */
     public void via(Contract contract, Contract further) {
         contract.via = further.id;
@@ -433,13 +440,17 @@ public final class ContractBook extends SavedData {
         setDirty();
     }
 
-    /** Has the seller a villager of the trade at the level, by its last census? */
+    /** Has the seller one more villager of the trade at the level than it had when it took this on, by its census? */
     public static boolean trained(MinecraftServer server, GlobalPos seller, Training training) {
+        return at(server, seller, training.profession(), training.level()) > training.already();
+    }
+
+    /** The seller's villagers of a trade at a level or above, by its last census. */
+    public static int at(MinecraftServer server, GlobalPos seller, String profession, int level) {
         return dev.b28.enterprise.territory.Territory.get(server).bellOf(seller)
-                .map(bell -> dev.b28.enterprise.settlement.Settlements.get(server).roster(bell).values().stream()
-                        .anyMatch(r -> !r.baby() && r.profession().equals(training.profession())
-                                && r.level() >= training.level()))
-                .orElse(false);
+                .map(bell -> (int) dev.b28.enterprise.settlement.Settlements.get(server).roster(bell).values().stream()
+                        .filter(r -> !r.baby() && r.profession().equals(profession) && r.level() >= level).count())
+                .orElse(0);
     }
 
     /** Training contracts this seller holds in force and knows of: what its Merchant is to train. */

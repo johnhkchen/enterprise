@@ -55,25 +55,40 @@ public final class Lockers {
 
     /**
      * Lockers a Merchant at {@code desk} can manage: job sites within {@code range} with a container touching them,
-     * at most {@code limit}. Lockers with trades switched on come first, then the nearest; otherwise a Merchant with
-     * few slots could spend them on lockers it has nothing to do with. Merchant's Desks are never lockers.
+     * at most {@code limit}. Lockers of the trades its contracts need come first (a smith it's contracted to train,
+     * a Weaponsmith whose swords it has contracted to sell), then those with trades switched on, then the nearest;
+     * otherwise a Merchant with few slots could spend them on lockers it has nothing to do with, and never get to the
+     * work it's paid for. Merchant's Desks are never lockers.
      */
     public static List<Locker> near(ServerLevel level, BlockPos desk, int range, int limit) {
         PoiManager pois = level.getPoiManager();
         pois.ensureLoadedAndValid(level, desk, range);
-        Set<BlockPos> switchedOn = MerchantBook.get(level.getServer()).workstations(GlobalPos.of(level.dimension(), desk));
+        GlobalPos at = GlobalPos.of(level.dimension(), desk);
+        Set<BlockPos> switchedOn = MerchantBook.get(level.getServer()).workstations(at);
+        Set<String> needed = dev.b28.enterprise.market.Apprentices.neededTrades(level.getServer(), at);
         return pois.getInRange(
                         type -> type.is(PoiTypeTags.ACQUIRABLE_JOB_SITE) && !type.is(Merchant.DESK_POI.getKey()),
                         desk,
                         range,
                         PoiManager.Occupancy.ANY)
-                .sorted(Comparator.comparing((PoiRecord poi) -> !switchedOn.contains(poi.getPos()))
+                .sorted(Comparator.comparing((PoiRecord poi) -> !needed.contains(trade(poi.getPoiType())))
+                        .thenComparing(poi -> !switchedOn.contains(poi.getPos()))
                         .thenComparingDouble(poi -> poi.getPos().distSqr(desk))
                         .thenComparing(PoiRecord::getPos))
                 .map(poi -> new Locker(poi.getPos(), poi.getPoiType(), touchingContainers(level, poi.getPos())))
                 .filter(locker -> !locker.containers().isEmpty())
                 .limit(limit)
                 .toList();
+    }
+
+    /** The trade whose job site this is, by its registered name (empty if none). */
+    static String trade(net.minecraft.core.Holder<net.minecraft.world.entity.ai.village.poi.PoiType> type) {
+        for (var profession : net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION) {
+            if (profession.heldJobSite().test(type)) {
+                return net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession).toString();
+            }
+        }
+        return "";
     }
 
     /** One inventory over all the given containers, in order. Double chests expose both halves. */

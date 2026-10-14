@@ -377,6 +377,15 @@ public final class Caravans {
             if (!empties.isEmpty()) {
                 caravan.cargo.add(empties);
             }
+            // Crates here made out to the caravan's home (bought and paid for, waiting to be fetched) go home with it.
+            List<ItemStack> consigned = stock.removeLoose(s -> Crates.consignedTo(s, route.from));
+            for (ItemStack crate : consigned) {
+                if (Crates.stacks(caravan.cargo) + Crates.stacks(List.of(crate)) <= caravan.capacity()) {
+                    caravan.cargo.add(crate);
+                } else {
+                    stock.insert(crate);
+                }
+            }
             // Recruits it brought to the front join the army there.
             var army = dev.b28.enterprise.army.Army.get(server);
             if (army.front().filter(route.to::equals).isPresent()) {
@@ -1275,6 +1284,15 @@ public final class Caravans {
     public static Set<Item> wantedAt(MinecraftServer server, GlobalPos desk) {
         MerchantBook book = MerchantBook.get(server);
         Set<Item> items = new LinkedHashSet<>(Warehouse.get(server).inputs(desk).keySet());
+        // Axes for the hands working its land, while some lack a tool.
+        Territory territory = Territory.get(server);
+        territory.bellOf(desk).ifPresent(bell -> {
+            int hands = dev.b28.enterprise.territory.Labour.hands(
+                    dev.b28.enterprise.settlement.Settlements.get(server).roster(bell)).size();
+            if (territory.handTools(bell) < hands) {
+                items.add(Items.IRON_AXE);
+            }
+        });
         for (BlockPos workstation : book.workstations(desk)) {
             for (String key : book.enabledTrades(desk, workstation)) {
                 String costs = key.substring(0, key.indexOf('>'));

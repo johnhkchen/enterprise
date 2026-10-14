@@ -646,6 +646,16 @@ final class EnterpriseCommands {
         }
         training.forEach((who, t) -> source.sendSuccess(() -> Component.literal("  training %s: %d trained, %d under way, %d broken"
                 .formatted(who, t[0], t[1], t[2])), false));
+        var warehouse = dev.b28.enterprise.merchant.Warehouse.get(server);
+        var territory = dev.b28.enterprise.territory.Territory.get(server);
+        for (GlobalPos town : towns) {
+            double[] w = warehouse.waste(town);
+            double tools = territory.bellOf(town).map(territory::handTools).orElse(0.0);
+            boolean cold = dev.b28.enterprise.merchant.Depots.get(server).has(town, dev.b28.enterprise.merchant.Depots.Kind.COLD_STORE);
+            source.sendSuccess(() -> Component.literal(("  storekeeping %s: %.0f thrown out (%.1f emeralds), %.0f tools given "
+                    + "away; %.1f tools in its hands' use; %s").formatted(town.pos().toShortString(), w[0], w[1], w[2], tools,
+                    cold ? "cold storage set up" : "no cold storage")), false);
+        }
         source.sendSuccess(() -> Component.literal("  kit issued: " + army.issued()), false);
         source.sendSuccess(() -> Component.literal("  enchantment levels issued: " + army.enchantLevels()), false);
         source.sendSuccess(() -> Component.literal("  food eaten: %d points, its meals %.0f%% hearty".formatted(army.eaten(),

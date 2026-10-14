@@ -133,7 +133,7 @@ public final class Crates {
     }
 
     /** Takes one empty crate from the stock, if it has one. */
-    static boolean takeEmpty(MerchantStock stock) {
+    public static boolean takeEmpty(MerchantStock stock) {
         boolean[] taken = {false};
         List<ItemStack> removed = stock.removeLoose(s -> {
             if (!taken[0] && empty(s)) {

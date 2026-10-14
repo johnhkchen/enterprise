@@ -121,6 +121,8 @@ public final class LogisticsTests {
         var level = helper.getLevel();
         BlockPos desk = new BlockPos(3, 2, 3);
         helper.setBlock(desk, Merchant.DESK.get());
+        helper.setBlock(desk.east(), Blocks.CHEST); // its warehouse, with money
+        MerchantStock.at(level, helper.absolutePos(desk)).insert(new ItemStack(Items.EMERALD, 20));
         BlockPos bell = helper.absolutePos(new BlockPos(3, 2, 5));
         Territory.get(level.getServer()).afterCensus(level, bell, new Census(5, 5, 5, 5, 0), 1, List.of());
         Map<UUID, Settlements.Resident> roster = new java.util.LinkedHashMap<>();
@@ -152,6 +154,11 @@ public final class LogisticsTests {
         book.review(server, t + 2 * 24000L);
         helper.assertTrue(c.state() == Contract.State.COMPLETED && Math.abs(c.owing() - 16) < 1e-9,
                 "a master: done, the rest of the bonus owed: " + c.owing());
+        Contract another = book.draft(town, capital, List.of(new Training("minecraft:weaponsmith", 5, 24)
+                        .forSeller(ContractBook.at(server, town, "minecraft:weaponsmith", 5))),
+                Incoterm.EXW, t + 10 * 24000L, 24000, 1, t, town, true);
+        book.review(server, t + 3 * 24000L);
+        helper.assertTrue(another.inForce(), "a second contract wants a second master, not the one it has");
         helper.succeed();
     }
 
@@ -232,6 +239,91 @@ public final class LogisticsTests {
         exchange.setHeldForTest(Items.IRON_INGOT, 192);
         helper.assertTrue(Math.abs(exchange.premium(iron, dev.b28.enterprise.market.Sovereign.Phase.PEACE) - 1) < 1e-9,
                 "holding its target, its worth");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aStorageCrateHoldsNineStacksInASlotAndTheStockReachesIn(GameTestHelper helper) {
+        var level = helper.getLevel();
+        BlockPos desk = new BlockPos(1, 2, 1);
+        helper.setBlock(desk, Merchant.DESK.get());
+        helper.setBlock(desk.east(), Blocks.CHEST);
+        MerchantStock stock = MerchantStock.at(level, helper.absolutePos(desk));
+        List<ItemStack> axes = new java.util.ArrayList<>();
+        for (int i = 0; i < 9; i++) {
+            axes.add(new ItemStack(Items.IRON_AXE));
+        }
+        stock.insert(dev.b28.enterprise.cargo.Crates.of(axes, dev.b28.enterprise.cargo.Papers.NONE));
+        helper.assertTrue(stock.count(new ItemCost(Items.IRON_AXE, 1)) == 9 && stock.freeSlots() == 26,
+                "nine axes, one slot: " + stock.freeSlots());
+        stock.take(new ItemCost(Items.IRON_AXE, 1), 9);
+        helper.assertTrue(stock.count(new ItemCost(dev.b28.enterprise.cargo.Cargo.CRATE_ITEM.get(), 1)) == 1
+                && dev.b28.enterprise.cargo.Crates.empty(stock.looseStacks().stream()
+                        .filter(dev.b28.enterprise.cargo.Crates::isCrate).findFirst().orElseThrow()),
+                "taken out, an empty crate is left to ship with");
+        var shipment = dev.b28.enterprise.cargo.Crates.of(List.of(new ItemStack(Items.IRON_AXE)),
+                dev.b28.enterprise.cargo.Papers.NONE.with(dev.b28.enterprise.cargo.Papers.billOfLading(1,
+                        far(helper, 9_600_000, 9_000_000), far(helper, 9_600_300, 9_000_000), "1 iron_axe", "EXW", 0, 0)));
+        stock.insert(shipment);
+        helper.assertTrue(stock.count(new ItemCost(Items.IRON_AXE, 1)) == 0, "a crate with a bill of lading is someone's");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void shortOfRoomTheMerchantPacksIdleGoodsIntoColdStorage(GameTestHelper helper) {
+        var level = helper.getLevel();
+        BlockPos desk = new BlockPos(1, 2, 1);
+        helper.setBlock(desk, Merchant.DESK.get());
+        helper.setBlock(desk.east(), Blocks.CHEST);
+        helper.setBlock(new BlockPos(5, 2, 5), Blocks.CHEST); // its cold store, already set up
+        GlobalPos at = GlobalPos.of(level.dimension(), helper.absolutePos(desk));
+        var cold = Depots.get(level.getServer()).add(level, at, Depots.Kind.COLD_STORE,
+                helper.absolutePos(new BlockPos(5, 2, 5)), helper.absolutePos(new BlockPos(5, 2, 5)));
+        MerchantStock stock = MerchantStock.at(level, helper.absolutePos(desk));
+        stock.insert(new ItemStack(Items.EMERALD, 10)); // to pay for crates
+        for (int i = 0; i < 24; i++) {
+            stock.insert(new ItemStack(Items.IRON_AXE)); // a Novice's paid work, a slot each
+        }
+        int before = stock.freeSlots();
+        dev.b28.enterprise.market.ColdStore.tidy(level, at, stock, level.getGameTime());
+        MerchantStock after = MerchantStock.at(level, helper.absolutePos(desk));
+        var coldChest = net.minecraft.world.level.block.entity.ChestBlockEntity.class.cast(
+                level.getBlockEntity(helper.absolutePos(new BlockPos(5, 2, 5))));
+        helper.assertTrue(after.freeSlots() > before + 15, "room again: " + before + " -> " + after.freeSlots());
+        helper.assertTrue(after.count(new ItemCost(Items.IRON_AXE, 1)) == 24, "every axe still there, and still stock");
+        helper.assertTrue(coldChest.countItem(dev.b28.enterprise.cargo.Cargo.CRATE_ITEM.get()) == 3,
+                "in three crates, in cold storage: " + coldChest.countItem(dev.b28.enterprise.cargo.Cargo.CRATE_ITEM.get()));
+        Depots.get(level.getServer()).remove(cold.id());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aMerchantShortOfLockersTendsTheOnesItsContractsNeedFirst(GameTestHelper helper) {
+        var level = helper.getLevel();
+        BlockPos desk = new BlockPos(3, 2, 3);
+        helper.setBlock(desk, Merchant.DESK.get());
+        BlockPos lectern = new BlockPos(2, 2, 3);
+        BlockPos composter = new BlockPos(4, 2, 3);
+        BlockPos grindstone = new BlockPos(6, 2, 6); // the Weaponsmith's, furthest away
+        for (BlockPos site : List.of(lectern, composter, grindstone)) {
+            helper.setBlock(site, site == lectern ? Blocks.LECTERN : site == composter ? Blocks.COMPOSTER : Blocks.GRINDSTONE);
+            helper.setBlock(site.north(), Blocks.CHEST);
+        }
+        GlobalPos at = GlobalPos.of(level.dimension(), helper.absolutePos(desk));
+        var merchants = dev.b28.enterprise.merchant.MerchantBook.get(level.getServer());
+        merchants.setEnabled(at, helper.absolutePos(lectern), "minecraft:paper+>minecraft:emerald", true);
+        merchants.setEnabled(at, helper.absolutePos(composter), "minecraft:wheat+>minecraft:emerald", true);
+        var nearest = dev.b28.enterprise.locker.Lockers.near(level, helper.absolutePos(desk), 16, 2);
+        helper.assertFalse(nearest.stream().anyMatch(l -> l.workstation().equals(helper.absolutePos(grindstone))),
+                "a Novice Merchant's two lockers: the nearest with trades on");
+        ContractBook.get(level.getServer()).draft(at, far(helper, 9_800_000, 9_000_000),
+                List.of(new Training("minecraft:weaponsmith", 5, 24)), Incoterm.EXW, level.getGameTime() + 240000, 24000,
+                1, level.getGameTime(), at, true);
+        var needed = dev.b28.enterprise.locker.Lockers.near(level, helper.absolutePos(desk), 16, 2);
+        helper.assertTrue(needed.stream().anyMatch(l -> l.workstation().equals(helper.absolutePos(grindstone))),
+                "contracted to train a Weaponsmith: its locker comes first");
+        merchants.setEnabled(at, helper.absolutePos(lectern), "minecraft:paper+>minecraft:emerald", false);
+        merchants.setEnabled(at, helper.absolutePos(composter), "minecraft:wheat+>minecraft:emerald", false);
         helper.succeed();
     }
 }

@@ -363,6 +363,60 @@ What run 1 of the war lacked: patience with new suppliers, money before producti
     3. The army's meals were still 0% hearty: no meat reached the depot.
     4. The treasury ended with 76,000 spurs unspent, and the spur fell from 16 to 34 an emerald.
 
+## Inventory waste, cold storage and the apprentices' work (built 2026-10-14)
+
+Training a smith by paying for its work makes things nobody wants: a Novice Weaponsmith's iron axes, one to a slot.
+In the run before this, S1's one-chest warehouse was 25 slots of 27 full (18 of them axes), so its Merchant couldn't
+take in the emeralds to pay for the next lesson, and its Armorer sat at Novice with 0 XP for 70 days. This is
+vendoring greys, and the Merchant now does what a shopkeeper would.
+
+- **Crates are storage.** A packed crate with no papers is part of the warehouse, nine stacks in one slot; the stock
+  reaches into it like a shulker box. A crate with a bill of lading is someone's shipment and stays shut.
+- **Storekeeping** (`ColdStore`), whenever a town is touched:
+  1. hands working its land without a tool get one (an axe first): they gather half again as much, and tools wear
+     out in 16 days. So axes have a use in the populace, and towns whose hands lack tools want them;
+  2. short of room, the Merchant packs goods it isn't using into crates (those that don't stack first), and whole
+     stacks of what it uses beyond a stack over its par (a standing order that brings more paper than its Librarian
+     takes);
+  3. the crates go to **cold storage**, a double chest it sets up by the desk the first time (1 emerald, the
+     cheapest warehouse there is): a store that holds only crates;
+  4. still short, it gives idle tools to its hands;
+  5. last, it throws out greys (goods worth under 0.1 emerald each), least worth first, counted as waste. Anything
+     better is kept, room or no.
+- **The sovereign buys the apprentices' work** (an offtake). Its training tenders carry an offtake: the buyer takes
+  what the town pays its pupil to make, at its worth. Under one, the pupil's paid work is crated at once, made out to
+  the buyer with a bill of lading (title passes), and the town draws a bill of exchange on the buyer for it. The
+  buyer's next caravan pays the bill and takes the crates home. Any caravan now fetches crates made out to its home.
+- **Axes are lesser weapons** (iron axe: power 5, a little more risk than an iron sword). The front's quartermaster
+  counts any weapon toward a weapon each, and any piece of armour toward each place. It contracts for the best the
+  capital holds first: diamond from master smiths, then iron, then the apprentices' axes.
+- **The Merchant trains smarter:**
+  - lockers its contracts need come first in its locker list. A Novice Merchant manages two lockers, and a new
+    smith's stall used to fall outside them, so it never traded at all;
+  - it pays for a pupil's work only if the work has somewhere to go (an offtake, or the town wants it, or there's
+    room to keep a restock's worth);
+  - a training contract is for a new master. It records how many the town already had, so one master can't collect
+    every tender. Before this, S1's single master Weaponsmith "completed" eight;
+  - a Merchant takes a tender only with the money (beyond its reserve, with the advance) and the room (or a cold
+    store) for it. It carries a tender on only to towns that can't already see the original board, and the
+    sovereign counts tenders carried on as its own, so it doesn't post again for them.
+- **Fixes from the analysis:** helmets, leggings, boots and axes were missing from the price table (worth 1/32
+  emerald by default, so towns were contracted for iron helmets at 0.05). A town now counts as able to make goods
+  only if a villager of it sells them, or a trade of it makes them from inputs it, or its buyer, holds. No more gold
+  contracts without a mine.
+- **Measured** (three 120-day runs as the fixes went in; capital named day 1, mobilising 31, war 61, peace 101):
+  - **Masters, at last:** with the Merchant tending contract lockers first, run 10 trained S1's Armorer, Toolsmith
+    and Weaponsmith and S2's Armorer to master. Run 11, after the new-master rule, trained four genuine masters: S2's
+    Toolsmith and Weaponsmith and S1's Armorer by day 40, in peacetime. Diamond swords and chestplates (4 each)
+    reached the capital from day 60. Run 12 trained only one (S3's Weaponsmith, by day 40), with 9 training
+    contracts broken: results swing a lot between runs (which trades villagers roll, when caravans arrive).
+  - **Waste:** run 11 threw out 384 raw iron at S2 and 192 coal at the capital. With greys-only and the exchange's
+    metal counted as in use, run 12 threw out nothing; every town set up cold storage, and S2 gave its hands 4 axes.
+  - **The army** was issued iron swords, chestplates, boots and helmets. No diamond gear reached the front in
+    run 12: it had no master selling diamond swords by the war.
+  - **Still open:** most training contracts still break (only 1 in 10 finished in run 12). Soldiers went hungry 34
+    of 110 days. Meals are still never hearty: no meat reaches the front.
+
 ## Everything runs on the logistics framework (built 2026-10-14)
 
 No special routes: goods, money, soldiers and work reach where they're needed by contract, caravan and warehouse, as

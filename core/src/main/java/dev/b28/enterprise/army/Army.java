@@ -83,8 +83,15 @@ public final class Army extends SavedData {
     /** Weapons, best first: attack power, and how much a soldier carrying one is at risk (none: twice). */
     public static final List<Gear> WEAPONS = List.of(
             new Gear(Items.DIAMOND_SWORD, 7, 0.8, 12), new Gear(Items.IRON_SWORD, 6, 1.0, 10),
-            new Gear(Items.STONE_SWORD, 5, 1.25, 6), new Gear(Items.WOODEN_SWORD, 4, 1.4, 4),
-            new Gear(Items.BOW, 6, 1.1, 10));
+            new Gear(Items.DIAMOND_AXE, 6, 0.95, 12), new Gear(Items.IRON_AXE, 5, 1.15, 10), // axes: lesser weapons
+            new Gear(Items.STONE_SWORD, 5, 1.25, 6), new Gear(Items.STONE_AXE, 4, 1.35, 6),
+            new Gear(Items.WOODEN_SWORD, 4, 1.4, 4), new Gear(Items.BOW, 6, 1.1, 10));
+
+    /** Weapons of any kind held in a stock: what a quartermaster counts toward a weapon each. */
+    public static int weapons(MerchantStock stock) {
+        return WEAPONS.stream().filter(g -> g.item() != Items.BOW)
+                .mapToInt(g -> stock.count(new ItemCost(g.item(), 1))).sum();
+    }
     /**
      * Armour, a piece for each of four places, best first, with its armour points (a full diamond set is 20, iron 15,
      * chainmail 12, leather 7) and the days it lasts. Protection is the points worn, all pieces together.

@@ -42,6 +42,8 @@ public final class Warehouse extends SavedData {
     // desk -> item -> count, as of the market's last stocktake (a hub takes one when a caravan leaves)
     private final Map<GlobalPos, Map<String, Integer>> stocktake = new HashMap<>();
     private final Map<GlobalPos, Long> stocktakeTime = new HashMap<>();
+    // desk -> {items thrown out, their worth in emeralds, tools given to hands}: what storekeeping cost
+    private final Map<GlobalPos, double[]> waste = new HashMap<>();
     // desk -> item -> what it needs to make what it has contracted to sell (worked out afresh as contracts are reviewed)
     private final Map<GlobalPos, Map<Item, Integer>> inputs = new HashMap<>();
 
@@ -107,6 +109,25 @@ public final class Warehouse extends SavedData {
     public int par(GlobalPos desk, Item item, boolean wanted, long now) {
         int days = (int) Math.ceil(capacity(desk, item) * PAR_DAYS);
         return Math.max(wanted ? Math.max(MIN_PAR, days) : days, inputs(desk).getOrDefault(item, 0));
+    }
+
+    /** Goods thrown out for want of room: so many items, worth so much. */
+    public void recordWaste(GlobalPos desk, int items, double emeralds) {
+        double[] w = waste.computeIfAbsent(desk, d -> new double[3]);
+        w[0] += items;
+        w[1] += emeralds;
+        setDirty();
+    }
+
+    /** Tools given to the hands for want of room. */
+    public void recordGiven(GlobalPos desk, int tools) {
+        waste.computeIfAbsent(desk, d -> new double[3])[2] += tools;
+        setDirty();
+    }
+
+    /** {items thrown out, their worth, tools given away} at this market. */
+    public double[] waste(GlobalPos desk) {
+        return waste.getOrDefault(desk, new double[3]).clone();
     }
 
     /** What the town needs of each input to make what it has contracted to sell. */
@@ -231,6 +252,16 @@ public final class Warehouse extends SavedData {
             }
         });
         tag.put("warehouses", list);
+        ListTag wasted = new ListTag();
+        waste.forEach((desk, w) -> {
+            CompoundTag entry = new CompoundTag();
+            GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, desk).ifSuccess(t -> entry.put("desk", t));
+            entry.putDouble("items", w[0]);
+            entry.putDouble("emeralds", w[1]);
+            entry.putDouble("given", w[2]);
+            wasted.add(entry);
+        });
+        tag.put("waste", wasted);
         return tag;
     }
 
@@ -269,6 +300,11 @@ public final class Warehouse extends SavedData {
                 warehouse.stocktake.put(desk, totals);
                 warehouse.stocktakeTime.put(desk, entry.contains("time") ? entry.getLong("time") : -1L);
             });
+        }
+        for (Tag t : tag.getList("waste", Tag.TAG_COMPOUND)) {
+            CompoundTag entry = (CompoundTag) t;
+            GlobalPos.CODEC.parse(NbtOps.INSTANCE, entry.get("desk")).ifSuccess(desk -> warehouse.waste.put(desk,
+                    new double[] {entry.getDouble("items"), entry.getDouble("emeralds"), entry.getDouble("given")}));
         }
         return warehouse;
     }

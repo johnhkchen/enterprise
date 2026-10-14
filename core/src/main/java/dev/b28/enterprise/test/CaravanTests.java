@@ -871,4 +871,25 @@ public final class CaravanTests {
         net.ledger().removeRoute(route.id());
         helper.succeed();
     }
+
+    @GameTest(template = "floor")
+    public static void aCaravanFetchesHomeCratesMadeOutToIt(GameTestHelper helper) {
+        Network net = network(helper, 4, 5, 192);
+        GlobalPos hub = net.route().from();
+        GlobalPos town = net.route().to();
+        var bill = dev.b28.enterprise.cargo.Papers.billOfLading(0, town, hub, "9 iron_axe", "EXW", 0, 0);
+        bill.data().putBoolean("settled", true);
+        List<ItemStack> axes = new java.util.ArrayList<>();
+        for (int i = 0; i < 9; i++) {
+            axes.add(new ItemStack(Items.IRON_AXE));
+        }
+        net.dest().insert(dev.b28.enterprise.cargo.Crates.of(axes, dev.b28.enterprise.cargo.Papers.NONE.with(bill)));
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        net.poll(t + 80);
+        net.poll(t + 160);
+        helper.assertTrue(net.hub().count(new ItemCost(Items.IRON_AXE, 1)) == 9, "home and opened: "
+                + net.hub().count(new ItemCost(Items.IRON_AXE, 1)));
+        helper.succeed();
+    }
 }

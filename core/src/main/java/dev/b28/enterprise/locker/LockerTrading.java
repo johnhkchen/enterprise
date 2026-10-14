@@ -185,6 +185,7 @@ public final class LockerTrading {
         var warehouse = dev.b28.enterprise.merchant.Warehouse.get(level.getServer());
         warehouse.recordLevel(deskPos, manager.merchant().getVillagerData().getLevel());
         long now = level.getGameTime();
+        Map<String, ItemStack> madeBy = new java.util.LinkedHashMap<>(); // trade key -> all it gave, for the Merchant
         for (MerchantOffer offer : offers) {
             int priceA = price(offer, reputation);
             boolean sellsCrop = offer.getResult().is(net.minecraft.world.item.Items.EMERALD)
@@ -203,11 +204,14 @@ public final class LockerTrading {
                 warehouse.recordUse(deskPos, offer.getBaseCostA().getItem(), priceA, now);
                 offer.getItemCostB().ifPresent(b -> warehouse.recordUse(deskPos, b.item().value(), b.count(), now));
                 made++;
+                madeBy.merge(TradeKeys.of(offer), offer.getResult().copy(),
+                        (a, b) -> a.copyWithCount(a.getCount() + b.getCount()));
             }
         }
         for (MerchantOffer offer : offers) {
             collect(locker, stock, offer.getResult());
         }
+        dev.b28.enterprise.market.Apprentices.afterTrade(level, workstation, manager.desk(), madeBy);
         MoneyChanger.settle(level, manager.desk(), stock);
         if (made > 0) {
             Enterprise.LOGGER.debug("Locker trades: {} at {} by a level {} villager", made,

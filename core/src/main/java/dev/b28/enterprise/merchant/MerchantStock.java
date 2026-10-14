@@ -125,7 +125,7 @@ public final class MerchantStock {
         Map<String, Integer> totals = new TreeMap<>();
         for (int slot = 0; slot < handler.getSlots(); slot++) {
             ItemStack stack = handler.getStackInSlot(slot);
-            if (isShulkerBox(stack)) {
+            if (isBox(stack)) {
                 contents(stack).forEach(inner -> add(totals, inner));
             } else {
                 add(totals, stack);
@@ -147,7 +147,7 @@ public final class MerchantStock {
             ItemStack stack = handler.getStackInSlot(slot);
             if (cost.test(stack)) {
                 total += stack.getCount();
-            } else if (isShulkerBox(stack)) {
+            } else if (isBox(stack)) {
                 for (ItemStack inner : contents(stack)) {
                     if (cost.test(inner)) {
                         total += inner.getCount();
@@ -165,7 +165,7 @@ public final class MerchantStock {
             ItemStack stack = handler.getStackInSlot(slot);
             if (cost.test(stack)) {
                 found.add(stack.copy());
-            } else if (isShulkerBox(stack)) {
+            } else if (isBox(stack)) {
                 contents(stack).stream().filter(cost::test).forEach(inner -> found.add(inner.copy()));
             }
         }
@@ -185,7 +185,7 @@ public final class MerchantStock {
         }
         for (int slot = 0; slot < handler.getSlots() && amount > 0; slot++) {
             ItemStack box = handler.getStackInSlot(slot);
-            if (!isShulkerBox(box)) {
+            if (!isBox(box)) {
                 continue;
             }
             NonNullList<ItemStack> inner = contents(box);
@@ -217,7 +217,7 @@ public final class MerchantStock {
         }
         for (int slot = 0; slot < handler.getSlots() && !rest.isEmpty(); slot++) {
             ItemStack box = handler.getStackInSlot(slot);
-            if (!isShulkerBox(box) || !rest.getItem().canFitInsideContainerItems()) {
+            if (!isBox(box) || !rest.getItem().canFitInsideContainerItems()) {
                 continue;
             }
             NonNullList<ItemStack> inner = contents(box);
@@ -256,7 +256,7 @@ public final class MerchantStock {
         int total = 0;
         for (int slot = 0; slot < handler.getSlots(); slot++) {
             ItemStack stack = handler.getStackInSlot(slot);
-            if (isShulkerBox(stack)) {
+            if (isBox(stack)) {
                 for (ItemStack inner : contents(stack)) {
                     total += nutrition(inner) * inner.getCount();
                 }
@@ -289,7 +289,7 @@ public final class MerchantStock {
         }
         for (int slot = 0; slot < handler.getSlots() && got < points; slot++) {
             ItemStack box = handler.getStackInSlot(slot);
-            if (!isShulkerBox(box)) {
+            if (!isBox(box)) {
                 continue;
             }
             NonNullList<ItemStack> inner = contents(box);
@@ -335,17 +335,37 @@ public final class MerchantStock {
         return stacks;
     }
 
-    private static boolean isShulkerBox(ItemStack stack) {
+    /**
+     * A box the stock reaches into: a shulker box, or a storage crate (packed with goods and no papers: a crate with a
+     * bill of lading is a shipment, someone's goods, and stays shut).
+     */
+    private static boolean isBox(ItemStack stack) {
+        if (dev.b28.enterprise.cargo.Crates.isCrate(stack)) {
+            return stack.getCount() == 1 && dev.b28.enterprise.cargo.Crates.papers(stack).documents().isEmpty()
+                    && !dev.b28.enterprise.cargo.Crates.goods(stack).isEmpty();
+        }
         return stack.getItem() instanceof BlockItem item && item.getBlock() instanceof ShulkerBoxBlock;
     }
 
     private static NonNullList<ItemStack> contents(ItemStack box) {
+        if (dev.b28.enterprise.cargo.Crates.isCrate(box)) {
+            NonNullList<ItemStack> items = NonNullList.withSize(dev.b28.enterprise.cargo.Crates.GOODS, ItemStack.EMPTY);
+            List<ItemStack> goods = dev.b28.enterprise.cargo.Crates.goods(box);
+            for (int i = 0; i < goods.size(); i++) {
+                items.set(i, goods.get(i));
+            }
+            return items;
+        }
         NonNullList<ItemStack> items = NonNullList.withSize(SHULKER_SLOTS, ItemStack.EMPTY);
         box.getOrDefault(DataComponents.CONTAINER, ItemContainerContents.EMPTY).copyInto(items);
         return items;
     }
 
     private static ItemStack withContents(ItemStack box, NonNullList<ItemStack> items) {
+        if (dev.b28.enterprise.cargo.Crates.isCrate(box)) { // emptied, a crate is an empty crate again
+            return dev.b28.enterprise.cargo.Crates.of(items.stream().filter(i -> !i.isEmpty()).toList(),
+                    dev.b28.enterprise.cargo.Papers.NONE);
+        }
         ItemStack copy = box.copy();
         copy.set(DataComponents.CONTAINER, ItemContainerContents.fromItems(items));
         return copy;

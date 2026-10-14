@@ -132,6 +132,12 @@ public final class Crafts {
 
     private static final List<Recipe> RECIPES = new java.util.ArrayList<>();
 
+    /** The recipes that make {@code item}. */
+    public static List<Recipe> recipesFor(Item item) {
+        Services.all(); // registered
+        return RECIPES.stream().filter(r -> r.output() == item).toList();
+    }
+
     /** The trades whose recipes make {@code item}. */
     public static java.util.Set<String> makers(Item item) {
         Services.all(); // registered
