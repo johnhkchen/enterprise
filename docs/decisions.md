@@ -447,6 +447,22 @@ The crown buys the way a procurement office would, not town by town.
 - **Next:** caravans swap the crown's bills for coin on the way back (the bank discounts them), and a clearinghouse
   town that aggregates its region's lots for one delivery.
 
+## Caravans don't sit for days at a hungry stop (built 2026-10-14)
+
+S3 (1851,1851) was the end of three routes and ran out of food to sell them for the road home: in run 28 all three
+ended "waiting for food at the destination".
+- A caravan judging whether the far end can feed it counts what caravans already on their way there will buy first;
+  short, it carries its own food home.
+- Stuck anyway, it buys food at the shops round the far end's desk (players' and the town's own), and after half a
+  day sets off home on short rations, at half pace.
+- **Run 29:** 26 trips home on short rations; trips into S3 up (capital 37 → 45, S2 28 → 46); hungry soldier-days 9%
+  of 527, 4 deserters (run 28: 28%, 14).
+- **Bills for coin:** the crown's bank already discounts its bills where its caravans call (45 bought in run 28); the
+  limit is coin: the treasury is at 0 to 1,000 spurs from mobilising day 10, and about 4,300 emeralds of crown bills
+  were dishonoured. War finance is still to do.
+- **Logistics specialists haven't emerged:** the capital's caravans make most trips (4 routes, ~280 trips), towns'
+  own routes carry only their own trade, and no caravan carries goods for a third market for a fee.
+
 ## Pacing and the crown's bank (built 2026-10-14)
 
 Once room stopped blocking them, Merchants were blocked by cash. S2's Merchant tried to buy 405 emeralds' worth of

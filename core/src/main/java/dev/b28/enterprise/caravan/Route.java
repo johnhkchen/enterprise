@@ -20,6 +20,8 @@ public final class Route {
     long salesSpurs;
     long serviceSpurs; // paid for the squad's services at the far end
     int portersSent; // porters who carried a load out and walked home
+    int shortRations; // trips home on short rations, after waiting at the far end for food it couldn't get
+    int foodFromShops; // food points bought at the far end's shops for the road home
     double saddleWear; // share of a saddle worn since one was last used up
     long billSpurs; // paid on bills of exchange presented on this route
     long advanceSpurs; // paid up front under contracts, in coin, on this route
@@ -83,6 +85,14 @@ public final class Route {
 
     public long billSpurs() {
         return billSpurs;
+    }
+
+    public int shortRations() {
+        return shortRations;
+    }
+
+    public int foodFromShops() {
+        return foodFromShops;
     }
 
     public int portersSent() {
@@ -175,6 +185,8 @@ public final class Route {
         tag.putLong("salesSpurs", salesSpurs);
         tag.putLong("serviceSpurs", serviceSpurs);
         tag.putInt("portersSent", portersSent);
+        tag.putInt("shortRations", shortRations);
+        tag.putInt("foodFromShops", foodFromShops);
         tag.putDouble("saddleWear", saddleWear);
         tag.putLong("billSpurs", billSpurs);
         tag.putLong("advanceSpurs", advanceSpurs);
@@ -209,6 +221,8 @@ public final class Route {
         route.salesSpurs = tag.getLong("salesSpurs");
         route.serviceSpurs = tag.getLong("serviceSpurs");
         route.portersSent = tag.getInt("portersSent");
+        route.shortRations = tag.getInt("shortRations");
+        route.foodFromShops = tag.getInt("foodFromShops");
         route.saddleWear = tag.getDouble("saddleWear");
         route.billSpurs = tag.getLong("billSpurs");
         route.advanceSpurs = tag.getLong("advanceSpurs");

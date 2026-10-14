@@ -228,8 +228,9 @@ public final class Caravans {
         int food = foodNeeded(route.distance()) * squad.size();
         // Where the far end won't or can't feed the squad for the road home (the front sells nothing; a town may be
         // short), it takes that food along too, if a caravan can carry both legs'.
+        // (what other caravans on their way there will buy of its food first doesn't count)
         boolean fedThere = dev.b28.enterprise.merchant.OffMap.get(server).sells(route.to)
-                && foodKnownAt(server, level, route.to) >= food;
+                && foodKnownAt(server, level, route.to) - ledger.foodPromisedAt(route.to) >= food;
         int provisions = !fedThere && 2 * foodNeeded(route.distance()) <= FOOD_CAPACITY ? food : 0;
         // A town sending its own caravan gives it money to bring home the comforts it lacks.
         Map<String, Double> shopping = Commissions.shoppingList(territory, route.from, stock);
@@ -444,11 +445,27 @@ public final class Caravans {
             return;
         }
         Map<Item, Integer> meal = stock.eat(food);
+        if (meal.isEmpty() && buyFoodAtShops(level, route, stock, caravan, food, rate) > 0) {
+            meal = stock.eat(food); // bought at the town's shops, eaten from its warehouse like any
+        }
         if (meal.isEmpty()) {
-            caravan.leg = Caravan.Leg.WAITING_FOR_FOOD;
-            caravan.arrives = now; // try again next poll
-            route.status = "waiting for food at the destination";
+            if (caravan.waitingSince < 0) {
+                caravan.waitingSince = now;
+            }
+            if (now - caravan.waitingSince >= MAX_WAIT_TICKS) {
+                // It won't sit there for days: home on short rations, foraging, at half the pace.
+                caravan.waitingSince = -1;
+                caravan.leg = Caravan.Leg.RETURNING;
+                caravan.arrives = now + (long) (travelTicks(route.distance()) / caravan.pace * 2);
+                route.shortRations++;
+                route.status = "on the way home on short rations";
+            } else {
+                caravan.leg = Caravan.Leg.WAITING_FOR_FOOD;
+                caravan.arrives = now; // try again next poll
+                route.status = "waiting for food at the destination";
+            }
         } else {
+            caravan.waitingSince = -1;
             double cost = 0;
             for (Map.Entry<Item, Integer> eaten : meal.entrySet()) {
                 cost += eaten.getValue() * Prices.emeraldsEach(eaten.getKey());
@@ -463,6 +480,37 @@ public final class Caravans {
             route.status = "on the way home";
         }
         ledger.setDirty();
+    }
+
+    /** A caravan waits this long at the far end for food before it sets off home on short rations. */
+    public static final long MAX_WAIT_TICKS = 12000;
+
+    /**
+     * The far end's warehouse can't feed the squad home: the travelling Merchant buys food at the shops round its desk
+     * (players' and the town's own), lot by lot, from its purse, into that warehouse to be eaten. Returns points bought.
+     */
+    static int buyFoodAtShops(ServerLevel level, Route route, MerchantStock stock, Caravan caravan, int food, double rate) {
+        int bought = 0;
+        for (var shop : dev.b28.enterprise.market.Shops.near(level, route.to.pos())) {
+            ItemStack lot = shop.getFilterItem();
+            var kind = lot.get(net.minecraft.core.component.DataComponents.FOOD);
+            if (shop.getMode() != dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity.Mode.SELL
+                    || kind == null || kind.nutrition() <= 0) {
+                continue;
+            }
+            while (bought < food && dev.b28.enterprise.market.Shops.lots(shop) > 0 && caravan.spurs >= shop.getTotalPrice()
+                    && stock.hasRoomFor(lot)) {
+                ItemStack goods = dev.b28.enterprise.market.Shops.buyFrom(shop);
+                if (goods.isEmpty()) {
+                    break;
+                }
+                caravan.spurs -= shop.getTotalPrice();
+                stock.insert(goods);
+                bought += goods.getCount() * kind.nutrition();
+            }
+        }
+        route.foodFromShops += bought;
+        return bought;
     }
 
     /**

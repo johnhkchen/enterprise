@@ -874,6 +874,24 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void aCaravanGoesHomeOnShortRationsRatherThanWaitForDays(GameTestHelper helper) {
+        Network net = network(helper, 8);
+        net.dest().take(new ItemCost(Items.BREAD, 1), 64); // the far end has no food to sell
+        long t = helper.getLevel().getGameTime();
+        for (long at = t; at <= t + 2000; at += 100) {
+            net.poll(at);
+        }
+        var waiting = net.ledger().caravan(net.route().id());
+        helper.assertTrue(waiting.isPresent() && waiting.get().leg() == Caravan.Leg.WAITING_FOR_FOOD,
+                "waits a while: " + net.route().status());
+        for (long at = t + 2000; at <= t + 2000 + Caravans.MAX_WAIT_TICKS + 200; at += 100) {
+            net.poll(at);
+        }
+        helper.assertTrue(net.route().shortRations() == 1, "then goes home hungry: " + net.route().status());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aRequisitionTakesTheBestOfferForTheWholeLot(GameTestHelper helper) {
         Network net = network(helper, 2);
         var server = helper.getLevel().getServer();

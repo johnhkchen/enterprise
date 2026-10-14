@@ -127,6 +127,21 @@ public final class CaravanLedger extends SavedData {
         return Math.max(Math.max(now, home), route.lastDeparture + Caravans.DEPARTURE_INTERVAL);
     }
 
+    /**
+     * Food points caravans on their way to (or waiting at) this market will buy there for the road home: what its
+     * stock must feed before another caravan can count on it.
+     */
+    public int foodPromisedAt(GlobalPos desk) {
+        int promised = 0;
+        for (Caravan c : caravans.values()) {
+            Route route = routes.get(c.route);
+            if (route != null && route.to.equals(desk) && c.leg != Caravan.Leg.RETURNING && c.provisions == 0) {
+                promised += Caravans.foodNeeded(route.distance()) * Math.max(1, c.crew.size());
+            }
+        }
+        return promised;
+    }
+
     /** Recruits riding with caravans: to the capital from their towns, or on to the front. */
     public int recruitsOnTheRoad() {
         return caravans.values().stream().mapToInt(c -> c.recruits.size()).sum();
