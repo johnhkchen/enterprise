@@ -267,8 +267,11 @@ final class EnterpriseCommands {
         source.sendSuccess(() -> Component.literal("%d route(s)".formatted(ledger.routes().size())), false);
         for (Route route : ledger.routes()) {
             String caravan = ledger.caravan(route.id())
-                    .map(c -> " | caravan %s, %d items, %d spurs".formatted(
-                            c.leg().name().toLowerCase().replace('_', ' '), c.items(), c.spurs()))
+                    .map(c -> " | caravan %s, %d items, %d spurs, squad: %s%s".formatted(
+                            c.leg().name().toLowerCase().replace('_', ' '), c.items(), c.spurs(),
+                            c.crew().stream().map(m -> dev.b28.enterprise.caravan.Squad.trade(m).replaceFirst(".*:", ""))
+                                    .collect(java.util.stream.Collectors.joining(", ")),
+                            c.herd().isEmpty() ? "" : ", driving %d animals".formatted(c.herd().size())))
                     .orElse("");
             source.sendSuccess(() -> Component.literal(("  #%d %s -> %s: %d blocks, %d trips, %d items sold for %d spurs, "
                     + "%d bought for %d, %d spurs on road food, %d tolls paid, %d spurs brought home, %d food eaten, %s%s")

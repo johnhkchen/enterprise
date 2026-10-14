@@ -21,6 +21,8 @@ public final class Route {
     long foodSpurs;
     long itemsBought;
     long purchaseSpurs;
+    long animalsSold;
+    long mappedAt = -1; // when a Cartographer last walked it
     String status = "new";
     List<Hex> path = List.of(); // the planned hex path, from the last departure
 
@@ -74,6 +76,11 @@ public final class Route {
 
     public long purchaseSpurs() {
         return purchaseSpurs;
+    }
+
+    /** Animals a Shepherd sold at the destination, in all. */
+    public long animalsSold() {
+        return animalsSold;
     }
 
     /** Spurs paid to the destination for road food, in all. */
@@ -132,6 +139,8 @@ public final class Route {
         tag.putLong("foodSpurs", foodSpurs);
         tag.putLong("itemsBought", itemsBought);
         tag.putLong("purchaseSpurs", purchaseSpurs);
+        tag.putLong("animalsSold", animalsSold);
+        tag.putLong("mappedAt", mappedAt);
         tag.putString("status", status);
         int[] hexes = new int[path.size() * 2];
         for (int i = 0; i < path.size(); i++) {
@@ -156,6 +165,8 @@ public final class Route {
         route.foodSpurs = tag.getLong("foodSpurs");
         route.itemsBought = tag.getLong("itemsBought");
         route.purchaseSpurs = tag.getLong("purchaseSpurs");
+        route.animalsSold = tag.getLong("animalsSold");
+        route.mappedAt = tag.contains("mappedAt") ? tag.getLong("mappedAt") : -1;
         route.status = tag.getString("status");
         int[] hexes = tag.getIntArray("path");
         List<Hex> path = new java.util.ArrayList<>();

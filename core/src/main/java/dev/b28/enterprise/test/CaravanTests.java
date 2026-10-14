@@ -14,7 +14,9 @@ import net.minecraft.core.GlobalPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntityType;
+import java.util.List;
 import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.trading.ItemCost;
@@ -52,8 +54,25 @@ public final class CaravanTests {
         return network(helper, hubBread, 5, 192);
     }
 
-    /** A hub with paper, bread and {@code hubEmeralds}; a destination holding {@code destSpurs} in coins and bread. */
+    /** As below, with a squad of one Librarian at the hub. */
     private static Network network(GameTestHelper helper, int hubBread, int hubEmeralds, int destSpurs) {
+        return network(helper, hubBread, hubEmeralds, destSpurs, List.of(VillagerProfession.LIBRARIAN));
+    }
+
+    /** A trained villager of {@code trade} by the hub, ready to go with a caravan. */
+    private static Villager squadMember(GameTestHelper helper, VillagerProfession trade, BlockPos at) {
+        Villager member = helper.spawn(EntityType.VILLAGER, at);
+        member.setVillagerData(member.getVillagerData().setProfession(trade).setLevel(2));
+        member.setVillagerXp(1); // trained: keeps its trade without a workstation
+        return member;
+    }
+
+    /**
+     * A hub with paper, bread, {@code hubEmeralds} and a squad of {@code squad}; a destination holding
+     * {@code destSpurs} in coins and bread.
+     */
+    private static Network network(GameTestHelper helper, int hubBread, int hubEmeralds, int destSpurs,
+            List<VillagerProfession> squad) {
         helper.setBlock(HUB, Merchant.DESK.get());
         helper.setBlock(HUB_CHEST, Blocks.CHEST);
         helper.setBlock(DEST, Merchant.DESK.get());
@@ -61,6 +80,9 @@ public final class CaravanTests {
         Villager merchant = helper.spawn(EntityType.VILLAGER, new BlockPos(1, 2, 4));
         merchant.setVillagerData(merchant.getVillagerData().setProfession(Merchant.PROFESSION.get()));
         LockerTradingTests.claim(helper, merchant, HUB);
+        for (int i = 0; i < squad.size(); i++) {
+            squadMember(helper, squad.get(i), new BlockPos(0, 2, 5 + i % 2).east(i / 2));
+        }
 
         var dimension = helper.getLevel().dimension();
         GlobalPos hub = GlobalPos.of(dimension, helper.absolutePos(HUB));
@@ -81,6 +103,101 @@ public final class CaravanTests {
         MoneyChanger.coins(destSpurs).forEach(network.dest()::insert); // the destination Merchant's money
         network.dest().insert(new ItemStack(Items.BREAD, 2));
         return network;
+    }
+
+    @GameTest(template = "floor")
+    public static void noSquadNoCaravan(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192, List.of());
+        net.poll(helper.getLevel().getGameTime());
+        helper.assertTrue(net.ledger().caravan(net.route().id()).isEmpty(), "nobody to send, nobody goes");
+        helper.assertTrue(net.route().status().contains("squad"), "the route says so: " + net.route().status());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void theSquadLeavesTheWorldAndComesBack(GameTestHelper helper) {
+        // 70 bread (350 food points): food to spare past the caravans' 320-point par, for a second member.
+        Network net = network(helper, 70, 5, 192, List.of(VillagerProfession.CARTOGRAPHER, VillagerProfession.LIBRARIAN));
+        var squad = helper.getLevel().getEntitiesOfClass(Villager.class,
+                new net.minecraft.world.phys.AABB(helper.absolutePos(HUB)).inflate(8),
+                v -> v.getVillagerData().getProfession() != Merchant.PROFESSION.get());
+        helper.assertTrue(squad.size() == 2, "two to send: " + squad.size());
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        Caravan out = net.ledger().caravan(net.route().id()).orElseThrow();
+        helper.assertTrue(out.crew().size() == 2, "both go: no books on that town yet, its road unmapped");
+        helper.assertTrue(squad.stream().allMatch(v -> helper.getLevel().getEntity(v.getUUID()) == null),
+                "both are off the world while on the road");
+        helper.assertTrue(net.hub().foodNutrition() == 345, "both eat: 2 food points, one bread");
+        net.poll(t + 80);
+        net.poll(t + 160);
+        helper.assertTrue(net.ledger().caravan(net.route().id()).isEmpty(), "home");
+        helper.assertTrue(squad.stream().allMatch(v -> helper.getLevel().getEntity(v.getUUID()) instanceof Villager back
+                        && back.getVillagerData().getProfession() == v.getVillagerData().getProfession()),
+                "both are back, still in their trades");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void extraMembersGoOnlyWhereTheyHelp(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192, List.of(VillagerProfession.CARTOGRAPHER, VillagerProfession.SHEPHERD));
+        var desk = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(HUB));
+        var noNeed = new dev.b28.enterprise.caravan.Squad.Needs(false, false, false);
+        helper.assertTrue(dev.b28.enterprise.caravan.Squad.muster(helper.getLevel(), desk, 16, noNeed, 3).size() == 1,
+                "nothing to map, no animals: the lead goes alone");
+        var animals = new dev.b28.enterprise.caravan.Squad.Needs(false, false, true);
+        var squad = dev.b28.enterprise.caravan.Squad.muster(helper.getLevel(), desk, 16, animals, 3);
+        helper.assertTrue(squad.size() == 2 && dev.b28.enterprise.caravan.Squad.trade(squad.get(1)).equals("minecraft:shepherd"),
+                "animals to drive: the Shepherd comes too");
+        helper.assertTrue(dev.b28.enterprise.caravan.Squad.muster(helper.getLevel(), desk, 16, animals, 0).size() == 1,
+                "unless she's another route's lead");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void babiesAndTheDesksMerchantStayHome(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192, List.of());
+        Villager baby = squadMember(helper, VillagerProfession.CARTOGRAPHER, new BlockPos(0, 2, 5));
+        baby.setAge(-24000);
+        Villager untrained = helper.spawn(EntityType.VILLAGER, new BlockPos(0, 2, 6));
+        var desk = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(HUB));
+        helper.assertFalse(dev.b28.enterprise.caravan.Squad.eligible(baby, desk), "no babies on the road");
+        helper.assertFalse(dev.b28.enterprise.caravan.Squad.eligible(untrained, desk), "nor the untrained");
+        helper.assertTrue(dev.b28.enterprise.caravan.Squad.available(helper.getLevel(), desk, 16).isEmpty(),
+                "and not the Merchant who works the desk");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aShepherdSellsSheepWhereThePastureIsShort(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192, List.of(VillagerProfession.SHEPHERD));
+        net.territory().afterCensus(helper.getLevel(), helper.absolutePos(new BlockPos(6, 2, 4)),
+                new dev.b28.enterprise.settlement.Census(5, 5, 5, 5, 0), 1, List.of());
+        for (int i = 0; i < 3; i++) {
+            helper.spawn(EntityType.SHEEP, new BlockPos(2, 2, 1 + i));
+        }
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        helper.assertTrue(net.ledger().caravan(net.route().id()).orElseThrow().herd().size() == 3, "she drives 3 sheep");
+        net.poll(t + 80);
+        helper.assertTrue(net.route().animalsSold() == 3, "the town buys all three: " + net.route().animalsSold());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aLibrarianBringsBackTheBooks(GameTestHelper helper) {
+        Network net = network(helper, 70, 5, 192, List.of(VillagerProfession.CARTOGRAPHER));
+        var warehouse = dev.b28.enterprise.merchant.Warehouse.get(helper.getLevel().getServer());
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        net.poll(t + 80);
+        helper.assertTrue(warehouse.stocktakeTime(net.route().to()) < 0, "no Librarian: nobody counted their shelves");
+        net.poll(t + 160);
+        Villager librarian = squadMember(helper, VillagerProfession.LIBRARIAN, new BlockPos(0, 2, 5));
+        net.poll(t + 160 + 24000);
+        net.poll(t + 240 + 24000);
+        helper.assertTrue(warehouse.stocktakeTime(net.route().to()) >= 0, "with one, the books come home");
+        helper.succeed();
     }
 
     @GameTest(template = "floor")

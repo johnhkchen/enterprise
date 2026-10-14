@@ -10,5 +10,7 @@ setblock ~2 ~ ~2 enterprise:merchants_desk
 setblock ~3 ~ ~2 minecraft:chest[facing=west]
 setblock ~1 ~ ~2 minecraft:chest[facing=east]
 item replace block ~1 ~ ~2 container.26 with minecraft:emerald 64
-summon minecraft:villager ~3.5 ~ ~3.5 {PersistenceRequired:1b,Tags:["testbench"],CustomName:'"Spring Merchant"',VillagerData:{profession:"enterprise:merchant",level:1,type:"minecraft:plains"}}
+summon minecraft:villager ~3.5 ~ ~3.5 {PersistenceRequired:1b,Tags:["testbench"],CustomName:'"Spring Merchant"',Xp:1,VillagerData:{profession:"enterprise:merchant",level:1,type:"minecraft:plains"}}
 function testbench:network/spring_refill
+# Its caravan squad.
+function testbench:network/squad

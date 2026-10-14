@@ -9,8 +9,8 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * A caravan on a route: a ledger record, not entities. It owns its cargo and the coins it carries; when it shows up
- * in the world later, the entities will be a view of this record.
+ * A caravan on a route: a ledger record, not entities. It owns its cargo, the coins it carries, its squad and any
+ * animals it drives, the last two stowed off the world until they're home (or sold, for animals).
  */
 public final class Caravan {
     public enum Leg { OUTBOUND, WAITING_FOR_FOOD, RETURNING }
@@ -21,6 +21,8 @@ public final class Caravan {
     final List<ItemStack> cargo;
     int spurs;
     final int merchantLevel; // the travelling Merchant's level, for bargaining
+    final List<CompoundTag> crew = new ArrayList<>(); // the squad, stowed off the world while on the road
+    final List<CompoundTag> herd = new ArrayList<>(); // animals a Shepherd drives
 
     Caravan(int route, Leg leg, long arrives, List<ItemStack> cargo, int spurs, int merchantLevel) {
         this.route = route;
@@ -29,6 +31,19 @@ public final class Caravan {
         this.cargo = cargo;
         this.spurs = spurs;
         this.merchantLevel = merchantLevel;
+    }
+
+    /** Stacks the caravan carries, whatever the size of its squad. */
+    public int capacity() {
+        return Caravans.CARGO_SLOTS;
+    }
+
+    public List<CompoundTag> crew() {
+        return List.copyOf(crew);
+    }
+
+    public List<CompoundTag> herd() {
+        return List.copyOf(herd);
     }
 
     public int merchantLevel() {
@@ -65,6 +80,12 @@ public final class Caravan {
         ListTag items = new ListTag();
         cargo.stream().filter(stack -> !stack.isEmpty()).forEach(stack -> items.add(stack.save(registries)));
         tag.put("cargo", items);
+        ListTag members = new ListTag();
+        members.addAll(crew);
+        tag.put("crew", members);
+        ListTag animals = new ListTag();
+        animals.addAll(herd);
+        tag.put("herd", animals);
         return tag;
     }
 
@@ -73,7 +94,10 @@ public final class Caravan {
         for (Tag item : tag.getList("cargo", Tag.TAG_COMPOUND)) {
             ItemStack.parse(registries, item).ifPresent(cargo::add);
         }
-        return new Caravan(tag.getInt("route"), Leg.valueOf(tag.getString("leg")), tag.getLong("arrives"), cargo,
-                tag.getInt("spurs"), Math.max(1, tag.getInt("merchantLevel")));
+        Caravan caravan = new Caravan(tag.getInt("route"), Leg.valueOf(tag.getString("leg")), tag.getLong("arrives"),
+                cargo, tag.getInt("spurs"), Math.max(1, tag.getInt("merchantLevel")));
+        tag.getList("crew", Tag.TAG_COMPOUND).forEach(t -> caravan.crew.add((CompoundTag) t));
+        tag.getList("herd", Tag.TAG_COMPOUND).forEach(t -> caravan.herd.add((CompoundTag) t));
+        return caravan;
     }
 }
