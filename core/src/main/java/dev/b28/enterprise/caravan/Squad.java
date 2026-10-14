@@ -23,7 +23,8 @@ import net.minecraft.world.phys.AABB;
  * back with the caravan. One is enough to drive the wagon; each more goes only when its trade helps this trip, and
  * each eats its own road food, so the town must be able to spare it. A Merchant haggles at its own level (without one
  * the squad haggles as a Novice), a Cartographer maps a route not mapped lately, a Librarian brings back the books
- * when the destination's are stale, and a Shepherd drives animals from the market pen to sell. Babies and untrained
+ * when the destination's are stale, a Shepherd drives animals from the market pen to sell, a Leatherworker carries
+ * packs (more cargo), and a Fisherman captains a boat across water, fishing it (a fleet of Fishermen sells fish). Babies and untrained
  * villagers stay home, and so does the Merchant who works the town's desk.
  */
 public final class Squad {
@@ -39,15 +40,24 @@ public final class Squad {
         return SEARCH;
     }
 
-    /** Which trades this trip has a use for, beyond its lead: stale books, an unmapped road, animals to drive. */
-    public record Needs(boolean books, boolean mapping, boolean animals) {
-        public static final Needs ALL = new Needs(true, true, true);
+    /**
+     * Which trades this trip has a use for, beyond its lead: stale books, an unmapped road, animals to drive, more
+     * cargo than a wagon holds (packs), water a boat would sail better than the land way.
+     */
+    public record Needs(boolean books, boolean mapping, boolean animals, boolean packs, boolean water) {
+        public Needs(boolean books, boolean mapping, boolean animals) {
+            this(books, mapping, animals, false, false);
+        }
+
+        public static final Needs ALL = new Needs(true, true, true, true, true);
 
         boolean wants(String trade) {
             return switch (trade) {
                 case "minecraft:librarian" -> books;
                 case "minecraft:cartographer" -> mapping;
                 case "minecraft:shepherd" -> animals;
+                case LEATHERWORKER -> packs;
+                case FISHERMAN -> water;
                 default -> false;
             };
         }
@@ -58,8 +68,18 @@ public final class Squad {
     public static final int PEN_REACH = 8;
 
     /** The trades a squad is made of, in the order a squad is filled. */
+    public static final String FISHERMAN = "minecraft:fisherman";
+    public static final String LEATHERWORKER = "minecraft:leatherworker";
+
     public static final List<String> TRADES = List.of(
-            "enterprise:merchant", "minecraft:cartographer", "minecraft:librarian", "minecraft:shepherd");
+            "enterprise:merchant", "minecraft:cartographer", "minecraft:librarian", "minecraft:shepherd",
+            LEATHERWORKER, FISHERMAN);
+
+    /** A Leatherworker's packs carry this many more stacks. */
+    public static final int PACK_STACKS = 9;
+
+    /** Cod each Fisherman aboard catches on each water hex the caravan sails. */
+    public static final int FISH_PER_WATER_HEX = 8;
 
     /** What an animal fetches, in emeralds. */
     public static final Map<String, Double> ANIMAL_VALUE = Map.of(
@@ -100,10 +120,17 @@ public final class Squad {
         }
         squad.add(candidates.get(0));
         for (String trade : TRADES) {
-            if (squad.size() > extras || !needs.wants(trade) || squad.stream().anyMatch(v -> trade(v).equals(trade))) {
+            if (squad.size() > extras || squad.size() >= MAX || !needs.wants(trade)
+                    || squad.stream().anyMatch(v -> trade(v).equals(trade))) {
                 continue;
             }
             candidates.stream().filter(v -> trade(v).equals(trade)).findFirst().ifPresent(squad::add);
+        }
+        if (needs.water()) {
+            // A fishing fleet: on water, every Fisherman to spare goes and fishes, up to a full squad.
+            candidates.stream().filter(v -> trade(v).equals(FISHERMAN) && !squad.contains(v))
+                    .limit(Math.max(0, Math.min(MAX, extras + 1) - squad.size()))
+                    .forEach(squad::add);
         }
         return squad;
     }

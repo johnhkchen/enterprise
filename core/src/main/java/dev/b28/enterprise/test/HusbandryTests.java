@@ -39,6 +39,40 @@ public final class HusbandryTests {
     }
 
     @GameTest(template = "floor")
+    public static void leatherworkersKeepCowsForHides(GameTestHelper helper) {
+        Map<String, Double> herd = new HashMap<>();
+        Husbandry.seed(herd, Set.of("minecraft:leatherworker"));
+        helper.assertTrue(herd.get("minecraft:cow") == 2, "a Leatherworker brings 2 cows");
+        MerchantStock stock = warehouse(helper);
+        stock.insert(new ItemStack(Items.WHEAT, 64));
+        herd.put("minecraft:cow", 8.0);
+        Map<String, Double> produce = new HashMap<>();
+        Husbandry.tend(stock, herd, Set.of("minecraft:leatherworker"), 2, produce);
+        helper.assertTrue(produce.getOrDefault("minecraft:leather", 0.0) > 2 && produce.getOrDefault("minecraft:beef", 0.0) > 4,
+                "culled for leather, and beef: " + produce);
+        var boots = dev.b28.enterprise.territory.Workshop.CONVERSIONS.stream()
+                .filter(c -> c.output() == Items.LEATHER_BOOTS).findFirst().orElseThrow();
+        stock.insert(new ItemStack(Items.LEATHER, 9));
+        helper.assertTrue(dev.b28.enterprise.territory.Workshop.runForTest(boots, 2, stock) == 2,
+                "9 leather make 2 pairs of boots (clothing)");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor", skyAccess = true)
+    public static void fishermenBuildADockWhereLandMeetsWater(GameTestHelper helper) {
+        for (int x = 3; x <= 6; x++) {
+            helper.setBlock(new BlockPos(x, 1, 3), Blocks.WATER);
+        }
+        var pier = dev.b28.enterprise.territory.Docks.findShore(helper.getLevel(), helper.absolutePos(new BlockPos(0, 2, 3)));
+        helper.assertTrue(pier.isPresent() && pier.get().start().equals(helper.absolutePos(new BlockPos(3, 1, 3))),
+                "the shore by the bell: " + pier);
+        dev.b28.enterprise.territory.Docks.build(helper.getLevel(), pier.get());
+        helper.assertTrue(helper.getLevel().getBlockState(helper.absolutePos(new BlockPos(6, 1, 3))).is(Blocks.SPRUCE_PLANKS),
+                "a pier four planks out");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aFedFlockGrowsAndIsShorn(GameTestHelper helper) {
         MerchantStock stock = warehouse(helper);
         stock.insert(new ItemStack(Items.WHEAT, 64));

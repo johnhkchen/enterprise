@@ -248,6 +248,31 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void aLeatherworkersPacksCarryMore(GameTestHelper helper) {
+        Network net = network(helper, 70, 5, 192, List.of(VillagerProfession.LIBRARIAN, VillagerProfession.LEATHERWORKER));
+        helper.setBlock(HUB.north(), Blocks.CHEST); // a second warehouse chest: room for the paper
+        for (int i = 0; i < 30; i++) {
+            net.hub().insert(new ItemStack(Items.PAPER, 64)); // 32 stacks of paper for a town that buys paper
+        }
+        net.poll(helper.getLevel().getGameTime());
+        Caravan out = net.ledger().caravan(net.route().id()).orElseThrow();
+        helper.assertTrue(out.crew().size() == 2 && out.capacity() == 36, "with packs: 36 stacks, " + out.capacity());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aSquadIsNeverMoreThanFour(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192, List.of(VillagerProfession.CARTOGRAPHER, VillagerProfession.LIBRARIAN,
+                VillagerProfession.SHEPHERD, VillagerProfession.LEATHERWORKER, VillagerProfession.FISHERMAN,
+                VillagerProfession.FISHERMAN));
+        var desk = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(HUB));
+        var squad = dev.b28.enterprise.caravan.Squad.muster(helper.getLevel(), desk, 16,
+                dev.b28.enterprise.caravan.Squad.Needs.ALL, 9);
+        helper.assertTrue(squad.size() == dev.b28.enterprise.caravan.Squad.MAX, "four at most: " + squad.size());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void babiesAndTheDesksMerchantStayHome(GameTestHelper helper) {
         Network net = network(helper, 2, 5, 192, List.of());
         Villager baby = squadMember(helper, VillagerProfession.CARTOGRAPHER, new BlockPos(0, 2, 5));

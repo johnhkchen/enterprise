@@ -151,6 +151,7 @@ public final class Territory extends SavedData {
         int fieldsPlanted;
         Map<String, Double> herd = new LinkedHashMap<>(); // animals kept, by entity id, fractions carried
         BlockPos pasture; // the pasture's corner, once fenced
+        BlockPos dock; // the pier's first block over water, once built
         long lastTend = -1;
     }
 
@@ -299,6 +300,35 @@ public final class Territory extends SavedData {
     }
 
     /**
+     * When counted while loaded: a town with a Fisherman and no dock builds one where its land meets water (4
+     * emeralds beyond its reserve).
+     */
+    private void buildDock(ServerLevel level, BlockPos bellPos, Holding holding, MerchantStock stock) {
+        GlobalPos bell = GlobalPos.of(level.dimension(), bellPos);
+        if (holding.dock != null || !trades(level.getServer(), bell).contains("minecraft:fisherman")) {
+            return;
+        }
+        double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, level.getGameTime());
+        if (Treasury.available(level, holding.desk.pos(), stock, rate) - reserve(holding.desk) < Fields.FIELD_EMERALDS) {
+            return;
+        }
+        Docks.findShore(level, bellPos)
+                .filter(pier -> owner(level.dimension(), Hex.at(pier.start())).filter(bell::equals).isPresent())
+                .ifPresent(pier -> {
+                    Docks.build(level, pier);
+                    Treasury.withdraw(level, holding.desk.pos(), stock, Fields.FIELD_EMERALDS, Mint.get(level.getServer()),
+                            level.getGameTime());
+                    holding.dock = pier.start();
+                    dev.b28.enterprise.Enterprise.LOGGER.debug("Settlement at {} builds a dock at {}",
+                            bellPos.toShortString(), pier.start().toShortString());
+                });
+    }
+
+    public Optional<BlockPos> dock(GlobalPos bell) {
+        return holding(bell).map(h -> h.dock);
+    }
+
+    /**
      * When counted while loaded: a new Shepherd's or Butcher's animals join the herd; a town with animals and no
      * pasture fences one (9 x 9, in its home hex, 4 emeralds beyond its reserve); and the pasture's animals are set
      * right by the ledger.
@@ -424,6 +454,7 @@ public final class Territory extends SavedData {
             touch(level, holding.desk.pos(), stock);
             grow(level, bellPos, holding, census, days, stock);
             keepHerds(level, bellPos, holding, stock);
+            buildDock(level, bellPos, holding, stock);
         } else {
             accrue(holding, level.getGameTime());
         }
@@ -625,8 +656,15 @@ public final class Territory extends SavedData {
         long since = holding.lastHarvest;
         accrue(holding, now);
         if (holding.lastTend >= 0) {
-            Husbandry.tend(stock, holding.herd, trades(level.getServer(), bell.get()),
-                    Math.min(MAX_DAYS, (now - holding.lastTend) / 24000.0), holding.pending);
+            double days = Math.min(MAX_DAYS, (now - holding.lastTend) / 24000.0);
+            Husbandry.tend(stock, holding.herd, trades(level.getServer(), bell.get()), days, holding.pending);
+            if (holding.dock != null) {
+                // The Fishermen's catch: so many cod a day per level each.
+                double levels = dev.b28.enterprise.settlement.Settlements.get(level.getServer()).roster(bell.get()).values()
+                        .stream().filter(r -> r.profession().equals("minecraft:fisherman") && !r.away() && !r.baby())
+                        .mapToInt(r -> Math.max(1, r.level())).sum();
+                holding.pending.merge("minecraft:cod", levels * Docks.COD_PER_LEVEL_DAY * days, Double::sum);
+            }
         }
         holding.lastTend = now;
         double owedBefore = holding.wageOwed;
@@ -1086,6 +1124,9 @@ public final class Territory extends SavedData {
                 entry.putLong("pasture", holding.pasture.asLong());
             }
             entry.putLong("lastTend", holding.lastTend);
+            if (holding.dock != null) {
+                entry.putLong("dock", holding.dock.asLong());
+            }
             entry.putDouble("homeProgress", holding.homeProgress);
             entry.putDouble("birthProgress", holding.birthProgress);
             entry.putInt("homesBuilt", holding.homesBuilt);
@@ -1192,6 +1233,7 @@ public final class Territory extends SavedData {
                 holding.herd = readDoubles(entry.getCompound("herd"));
                 holding.pasture = entry.contains("pasture") ? BlockPos.of(entry.getLong("pasture")) : null;
                 holding.lastTend = entry.contains("lastTend") ? entry.getLong("lastTend") : -1;
+                holding.dock = entry.contains("dock") ? BlockPos.of(entry.getLong("dock")) : null;
                 holding.homeProgress = entry.getDouble("homeProgress");
                 holding.birthProgress = entry.getDouble("birthProgress");
                 holding.homesBuilt = entry.getInt("homesBuilt");

@@ -239,6 +239,31 @@ public final class TollTests {
     }
 
     @GameTest(template = "floor")
+    public static void aFishermanSailsWhereCaravansCantWalk(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var terrain = Terrain.get(level.getServer());
+        // A river along q = 6 far from any arena, with no bridge: flood every hex of it in the world's terrain ledger.
+        int far = 40_000;
+        Hex start = new Hex(far, 0);
+        Hex goal = new Hex(far + 12, 0);
+        for (int r = -12; r <= 12; r++) {
+            for (long chunk : Terrain.chunksOf(new Hex(far + 6, r))) {
+                terrain.record(level, chunk, Terrain.SAMPLES);
+            }
+        }
+        var dimension = level.dimension();
+        Route route = new CaravanLedger().addRoute(
+                GlobalPos.of(dimension, BlockPos.containing(start.centerX(), 64, start.centerZ())),
+                GlobalPos.of(dimension, BlockPos.containing(goal.centerX(), 64, goal.centerZ())));
+        Territory territory = new Territory();
+        helper.assertFalse(Caravans.plan(level.getServer(), territory, route, 16, false).found(), "no way by land");
+        var byBoat = Caravans.plan(level.getServer(), territory, route, 16, true);
+        helper.assertTrue(byBoat.found() && byBoat.path().stream().anyMatch(h -> h.q() == far + 6),
+                "a Fisherman sails across: " + byBoat.path());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aBridgedHexIsOpenGround(GameTestHelper helper) {
         var works = new dev.b28.enterprise.territory.Works();
         var dimension = helper.getLevel().dimension();

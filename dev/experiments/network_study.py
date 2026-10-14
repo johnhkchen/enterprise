@@ -11,10 +11,13 @@ south of T instead, with no dry crossing at all: S3 can't be reached until a tow
 
 Each day it writes one row per town and one per route to the CSV (ledger reads only; nothing is loaded).
 
+With --fleet, three trained Fishermen and a Leatherworker join the hub's squad: boats across water, fish to sell,
+packs for more cargo.
+
 With --comforts, the hub also stocks a shulker of comforts (treats, clothing, furnishings) for towns to buy, and the
 spring, once open, refills a shulker of comforts and a stack of books every day.
 
-    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts]
+    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts] [--fleet]
 """
 
 import csv
@@ -115,6 +118,10 @@ def setup():
     rcon(f"forceload add {area(HUB, 6)}", f"execute positioned {HUB[0]} -60 {HUB[1]} run function testbench:network/hub")
     if "--comforts" in sys.argv:
         rcon(f"execute positioned {HUB[0]} -60 {HUB[1]} run function testbench:network/comforts")
+    if "--fleet" in sys.argv:
+        for i, trade in enumerate(["fisherman", "fisherman", "fisherman", "leatherworker"]):
+            rcon(f"summon minecraft:villager {HUB[0] + 1 + i % 3}.5 -60 {HUB[1] + 1 + i // 3}.5 {{PersistenceRequired:1b,Xp:1,"
+                 f"VillagerData:{{profession:\"minecraft:{trade}\",level:1,type:\"minecraft:plains\"}}}}")
     for corner in TOWNS.values():
         rcon(f"forceload add {area(corner, 27)}",
              f"execute positioned {corner[0]} -60 {corner[1]} run function testbench:network/settlement")

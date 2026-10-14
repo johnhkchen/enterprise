@@ -65,12 +65,16 @@ public final class Husbandry {
     }
 
     /**
-     * The town's first Shepherd brings 3 sheep, its first Butcher 2 pigs and 2 chickens. Once only: a flock that
+     * The town's first Shepherd brings 3 sheep, its first Leatherworker 2 cows, its first Butcher 2 pigs and 2
+     * chickens. Once only: a flock that
      * starves away isn't given back.
      */
     public static void seed(Map<String, Double> herd, Set<String> trades) {
         if (trades.contains("minecraft:shepherd") && !herd.containsKey("minecraft:sheep")) {
             herd.put("minecraft:sheep", 3.0);
+        }
+        if (trades.contains("minecraft:leatherworker") && !herd.containsKey("minecraft:cow")) {
+            herd.put("minecraft:cow", 2.0);
         }
         if (trades.contains("minecraft:butcher") && !herd.containsKey("minecraft:pig")
                 && !herd.containsKey("minecraft:chicken")) {
@@ -126,7 +130,10 @@ public final class Husbandry {
             if (kind.id().equals("minecraft:sheep") && trades.contains("minecraft:shepherd")) {
                 produce.merge("minecraft:white_wool", count * WOOL_PER_SHEEP_DAY * days, Double::sum);
             }
-            if (trades.contains("minecraft:butcher") && count > BREEDING_STOCK) {
+            // A Butcher culls any herd for meat; a Leatherworker culls cows for their hides (and beef).
+            boolean culls = trades.contains("minecraft:butcher")
+                    || kind.id().equals("minecraft:cow") && trades.contains("minecraft:leatherworker");
+            if (culls && count > BREEDING_STOCK) {
                 double slaughtered = Math.min(count - BREEDING_STOCK, (count - BREEDING_STOCK) * SLAUGHTER_PER_DAY * days);
                 count -= slaughtered;
                 total -= slaughtered;

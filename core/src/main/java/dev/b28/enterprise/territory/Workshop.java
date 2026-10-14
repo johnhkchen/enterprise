@@ -26,7 +26,9 @@ public final class Workshop {
     public static final List<Conversion> CONVERSIONS = List.of(
             new Conversion(Set.of("minecraft:librarian", "minecraft:cartographer"), Items.SUGAR_CANE, 1, Items.PAPER, 1),
             new Conversion(Set.of("minecraft:farmer"), Items.WHEAT, 3, Items.BREAD, 1),
-            new Conversion(Set.of("minecraft:shepherd"), Items.WHITE_WOOL, 2, Items.WHITE_CARPET, 3));
+            new Conversion(Set.of("minecraft:shepherd"), Items.WHITE_WOOL, 2, Items.WHITE_CARPET, 3),
+            new Conversion(Set.of("minecraft:leatherworker"), Items.LEATHER, 4, Items.LEATHER_BOOTS, 1),
+            new Conversion(Set.of("minecraft:fisherman"), Items.COD, 1, Items.COOKED_COD, 1));
 
     private Workshop() {}
 
@@ -49,22 +51,27 @@ public final class Workshop {
                 continue;
             }
             int wanted = conversion.output() == Items.WHITE_CARPET
-                    ? carpetsWanted(Territory.get(level.getServer()), desk, stock)
-                    : wanted(conversion.output(), warehouse, desk, stock, now);
+                    ? comfortWanted(Territory.get(level.getServer()), desk, stock, "furnishings", conversion.output())
+                    : conversion.output() == Items.LEATHER_BOOTS
+                            ? comfortWanted(Territory.get(level.getServer()), desk, stock, "clothing", conversion.output())
+                            : wanted(conversion.output(), warehouse, desk, stock, now);
             made += run(conversion, wanted, stock);
         }
         return made;
     }
 
-    /** Carpets a Shepherd weaves while the town is short of furnishings (a comfort), up to its par. */
-    static int carpetsWanted(Territory territory, GlobalPos desk, MerchantStock stock) {
-        double short_ = territory.comfortPar(desk) - Comforts.onHand(stock).getOrDefault("furnishings", 0.0);
-        return short_ <= 0 ? 0 : (int) Math.ceil(short_ * dev.b28.enterprise.money.Prices.itemsPerEmerald("minecraft:white_carpet"));
+    /**
+     * Comforts a trade makes while the town is short of that kind, up to its par: carpets for furnishings, leather
+     * boots for clothing.
+     */
+    static int comfortWanted(Territory territory, GlobalPos desk, MerchantStock stock, String kind, Item output) {
+        double short_ = territory.comfortPar(desk) - Comforts.onHand(stock).getOrDefault(kind, 0.0);
+        return short_ <= 0 ? 0 : (int) Math.ceil(short_ * dev.b28.enterprise.money.Prices.itemsPerEmerald(output));
     }
 
     /** How many more of {@code output} the town wants: paper up to its par when a locker buys it; bread for food. */
     static int wanted(Item output, Warehouse warehouse, GlobalPos desk, MerchantStock stock, long now) {
-        if (output == Items.BREAD) {
+        if (output == Items.BREAD || output == Items.COOKED_COD) {
             return Math.max(0, (2 * Warehouse.FOOD_PAR_POINTS - stock.foodNutrition()) / 5);
         }
         if (warehouse.capacity(desk, output) == 0) {

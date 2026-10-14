@@ -148,16 +148,27 @@ public final class Caravans {
             return false;
         }
         Warehouse.get(server).recordLevel(route.from, hubMerchant.get().getVillagerData().getLevel());
+        MerchantStock stock = MerchantStock.at(level, route.from.pos());
+        territory.touch(level, route.from.pos(), stock);
+        Mint mint = Mint.get(server);
+        double rate = mint.rate(Mint.DEFAULT_FACTION, now);
+        // By land, and (if a Fisherman could captain it) by boat: is the water way better?
+        List<net.minecraft.world.entity.npc.Villager> home = Squad.available(level, route.from, Squad.reach());
+        RoutePlanner.Plan byLand = plan(server, territory, route, rate, false);
+        boolean captain = home.stream().anyMatch(v -> Squad.trade(v).equals(Squad.FISHERMAN));
+        RoutePlanner.Plan byBoat = captain ? plan(server, territory, route, rate, true) : byLand;
+        boolean water = byBoat.found() && waterHexes(server, route.from.dimension(), byBoat.path()) > 0
+                && (!byLand.found() || byBoat.cost() < byLand.cost());
         // A lead, and the trades this trip has a use for, while every other route waiting here keeps a lead.
-        int available = Squad.available(level, route.from, Squad.reach()).size();
         long waiting = ledger.routes().stream()
                 .filter(r -> r.from.equals(route.from) && ledger.caravan(r.id).isEmpty())
                 .count();
         long booksTaken = Warehouse.get(server).stocktakeTime(route.to);
         Squad.Needs needs = new Squad.Needs(booksTaken < 0 || now - booksTaken > STALE_BOOKS_TICKS,
                 route.mappedAt < 0 || now - route.mappedAt > STALE_MAP_TICKS,
-                !Squad.herd(level, route.from.pos()).isEmpty());
-        int extras = (int) Math.max(0, available - waiting);
+                !Squad.herd(level, route.from.pos()).isEmpty(),
+                wantedStacks(stock, wantedAt(server, route.to)) > CARGO_SLOTS, water);
+        int extras = (int) Math.max(0, home.size() - waiting);
         List<net.minecraft.world.entity.npc.Villager> mustered =
                 Squad.muster(level, route.from, Squad.reach(), needs, extras);
         if (mustered.isEmpty()) {
@@ -165,11 +176,8 @@ public final class Caravans {
             ledger.setDirty();
             return false;
         }
-        MerchantStock stock = MerchantStock.at(level, route.from.pos());
-        territory.touch(level, route.from.pos(), stock);
-        Mint mint = Mint.get(server);
-        double rate = mint.rate(Mint.DEFAULT_FACTION, now);
-        RoutePlanner.Plan plan = plan(server, territory, route, rate);
+        boolean boat = mustered.stream().anyMatch(v -> Squad.trade(v).equals(Squad.FISHERMAN)) && water;
+        RoutePlanner.Plan plan = boat ? byBoat : byLand;
         if (!plan.found()) {
             route.status = "no way there by land";
             ledger.setDirty();
@@ -193,7 +201,8 @@ public final class Caravans {
         double spare = Math.max(0, Treasury.available(level, route.from.pos(), stock, rate) - territory.reserve(route.from)
                 - food * PURSE_PER_FOOD_POINT);
         double shoppingMoney = Math.min(spare, shopping.values().stream().mapToDouble(Double::doubleValue).sum());
-        if (shoppingMoney < 0.5) {
+        // Shopping is worth the trip only if it's worth twice the road food it costs.
+        if (shoppingMoney < Math.max(0.5, 2 * food * PURSE_PER_FOOD_POINT)) {
             shopping = Map.of();
             shoppingMoney = 0;
         }
@@ -208,7 +217,8 @@ public final class Caravans {
             ledger.setDirty();
             return false;
         }
-        int slots = CARGO_SLOTS;
+        int slots = CARGO_SLOTS + Squad.PACK_STACKS * (int) squad.stream()
+                .filter(v -> Squad.trade(v).equals(Squad.LEATHERWORKER)).count(); // Leatherworkers carry packs
         boolean shepherd = squad.stream().anyMatch(v -> Squad.trade(v).equals("minecraft:shepherd"));
         var herd = shepherd ? Squad.herd(level, route.from.pos()) : List.<net.minecraft.world.entity.animal.Animal>of();
         List<ItemStack> cargo = pickComforts(stock,
@@ -235,6 +245,13 @@ public final class Caravans {
         Caravan leaving = new Caravan(route.id, Caravan.Leg.OUTBOUND, now + travelTicks(route.distance()), cargo, spurs,
                 Squad.haggleLevel(crew));
         leaving.crew.addAll(crew);
+        // Fishermen fish the water they cross: a catch for each on each water hex, sold where food is short.
+        long fishermen = crew.stream().filter(m -> Squad.trade(m).equals(Squad.FISHERMAN)).count();
+        int catchCount = (int) (fishermen * waterHexes(server, route.from.dimension(), route.path()) * Squad.FISH_PER_WATER_HEX);
+        for (int left = catchCount; left > 0; left -= 64) {
+            leaving.cargo.add(new ItemStack(Items.COD, Math.min(64, left)));
+        }
+        route.fishCaught += catchCount;
         leaving.shopping.putAll(shopping);
         Atlas.get(server).learnBoth(route.from, route.to, now);
         herd.forEach(animal -> leaving.herd.add(Squad.stow(animal)));
@@ -644,8 +661,39 @@ public final class Caravans {
      * it is to cross, and each town's toll post costs its toll on what caravans on this route usually carry home.
      */
     public static RoutePlanner.Plan plan(MinecraftServer server, Territory territory, Route route, double rate) {
+        return plan(server, territory, route, rate, false);
+    }
+
+    /** As {@link #plan(MinecraftServer, Territory, Route, double)}; {@code boat}: a Fisherman can sail the water. */
+    public static RoutePlanner.Plan plan(MinecraftServer server, Territory territory, Route route, double rate, boolean boat) {
+        ToDoubleFunction<Hex> land = terrain(server, route);
+        ToDoubleFunction<Hex> ground = boat ? hex -> {
+            double hard = land.applyAsDouble(hex);
+            return Double.isInfinite(hard) ? BOAT_FACTOR : hard;
+        } : land;
         return RoutePlanner.plan(territory, route.from.dimension(), Hex.at(route.from.pos()), Hex.at(route.to.pos()),
-                ends(territory, route), perHex(rate), terrain(server, route), route.expectedValue(), Set.of());
+                ends(territory, route), perHex(rate), ground, route.expectedValue(), Set.of());
+    }
+
+    /** Food points of one of this item as rations (0 for comforts and non-food). */
+    static int foodPoints(ItemStack stack) {
+        var food = stack.get(net.minecraft.core.component.DataComponents.FOOD);
+        return food == null || Comforts.isComfort(stack) ? 0 : food.nutrition();
+    }
+
+    /** Sailing a water hex costs this much a hex of open ground: boats are quick. */
+    public static final double BOAT_FACTOR = 0.8;
+
+    /** Hexes on a path a caravan can't walk: water, unless bridged. */
+    static int waterHexes(MinecraftServer server, net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension,
+            List<Hex> path) {
+        ToDoubleFunction<Hex> land = terrain(server, dimension);
+        return (int) path.stream().filter(hex -> Double.isInfinite(land.applyAsDouble(hex))).count();
+    }
+
+    /** Stacks of the goods a destination wants that the stock holds. */
+    static int wantedStacks(MerchantStock stock, Set<Item> wanted) {
+        return wanted.stream().mapToInt(item -> (stock.count(new ItemCost(item, 1)) + 63) / 64).sum();
     }
 
     /**
@@ -766,6 +814,11 @@ public final class Caravans {
                 money -= territory.reserve(desk);
             } else {
                 par = Math.min(warehouse.par(desk, item, wanted.contains(item), now), roomFor(stock, wanted.size(), item));
+                int nutrition = foodPoints(stack);
+                if (nutrition > 0) {
+                    // Food: a town short of it (under twice the caravans' par) buys enough to get there.
+                    par = Math.max(par, onHand + Math.max(0, 2 * Warehouse.FOOD_PAR_POINTS - stock.foodNutrition()) / nutrition);
+                }
             }
             int quantity = Math.min(stack.getCount(), par - onHand);
             double each = -1;

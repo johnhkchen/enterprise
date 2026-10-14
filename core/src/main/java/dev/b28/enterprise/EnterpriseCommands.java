@@ -294,6 +294,7 @@ final class EnterpriseCommands {
                             c.crew().stream().map(m -> dev.b28.enterprise.caravan.Squad.trade(m).replaceFirst(".*:", ""))
                                     .collect(java.util.stream.Collectors.joining(", ")),
                             c.herd().isEmpty() ? "" : ", driving %d animals".formatted(c.herd().size())))
+                    .map(text -> route.fishCaught() > 0 ? text + " | %d fish caught in all".formatted(route.fishCaught()) : text)
                     .orElse("");
             source.sendSuccess(() -> Component.literal(("  #%d %s -> %s: %d blocks, %d trips, %d items sold for %d spurs, "
                     + "%d bought for %d, %d spurs on road food, %d tolls paid, %d spurs brought home, %d food eaten, %s%s")
