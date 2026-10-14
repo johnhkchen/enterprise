@@ -212,6 +212,11 @@ public final class Caravans {
             return false;
         }
         boolean boat = mustered.stream().anyMatch(v -> Squad.trade(v).equals(Squad.FISHERMAN)) && water;
+        if (captain || waterHexes(server, route.from.dimension(), byLand.path()) > 0 || !byLand.found()) {
+            Enterprise.LOGGER.debug("Route {}: by land {} ({} hexes, {}), by boat {} ({} hexes, {}); captain {}, mustered {}",
+                    route.id, byLand.found(), byLand.path().size(), Math.round(byLand.cost()), byBoat.found(),
+                    byBoat.path().size(), Math.round(byBoat.cost()), captain, mustered.stream().map(Squad::trade).toList());
+        }
         RoutePlanner.Plan plan = boat ? byBoat : byLand;
         if (!plan.found()) {
             route.status = "no way there by land";

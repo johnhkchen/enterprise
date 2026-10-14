@@ -147,6 +147,20 @@ def trades_by_town():
     return dict(_trades)
 
 
+def hex_at(x, z):
+    """The hex a block lies in, as the game rounds it (pointy-top, axial)."""
+    q = (math.sqrt(3) / 3 * x - z / 3) / HEX_SIZE
+    r = (2.0 / 3 * z) / HEX_SIZE
+    s = -q - r
+    rq, rr, rs = round(q), round(r), round(s)
+    dq, dr, ds = abs(rq - q), abs(rr - r), abs(rs - s)
+    if dq > dr and dq > ds:
+        rq = -rr - rs
+    elif dr > ds:
+        rr = -rq - rs
+    return rq, rr
+
+
 def hex_centre(q, r):
     return HEX_SIZE * math.sqrt(3) * (q + r / 2), HEX_SIZE * 1.5 * r
 
@@ -198,23 +212,28 @@ def build_ridge():
     t = TOWNS["T"]
     tx, tz = t[0] + 7, t[1] + 7  # T's desk: its hex is the pass, the one way through
     cells = [(q, r) for q in range(-30, 60) for r in range(-10, 60)]
-    pass_hex = min(cells, key=lambda c: math.hypot(hex_centre(*c)[0] - tx, hex_centre(*c)[1] - tz))
+    pass_hex = hex_at(tx + 0.5, tz + 0.5)  # the hex the game puts T's desk in (not merely the nearest centre)
     raised = 0
     for q, r in cells:
         if True:
             cx, cz = (round(v) for v in hex_centre(q, r))
             if abs(cx + cz - RIDGE) > RIDGE_HALF or not 600 <= cx <= 2200 or (q, r) == pass_hex:
                 continue
-            half = 28
-            if overlaps_town(cx - half, cz - half, cx + half, cz + half):
-                # Town land in the hex: a narrow crag off the town still makes the hex a cliff's.
-                half = 6
-                if overlaps_town(cx - half, cz - half, cx + half, cz + half):
-                    continue
-            load_area(cx - 40, cz - 40, cx + 40, cz + 40)
-            # Inside the hex (its inner circle is 40 across the middle), so a slope never spills into the pass.
-            for y in range(-60, -20, 5):
-                rcon(f"fill {cx - half} {y} {cz - half} {cx + half} {y + 4} {cz + half} stone")
+            # Raise exactly the chunks the game counts as this hex's (their middles in it), so no slope spills into
+            # a neighbour (a pass with a cliff at its mouth is no pass); never town land.
+            chunks = [(chx, chz) for chx in range((cx - 60) // 16, (cx + 60) // 16 + 1)
+                      for chz in range((cz - 60) // 16, (cz + 60) // 16 + 1)
+                      if hex_at(chx * 16 + 8.5, chz * 16 + 8.5) == (q, r)
+                      and not overlaps_town(chx * 16, chz * 16, chx * 16 + 15, chz * 16 + 15)]
+            if len(chunks) < 2:
+                continue
+            # One chunk left low (the one farthest out): relief is measured within a hex, and a hex raised end to end
+            # would be a plateau, open going on top. Rugged, it's a mountain.
+            chunks.sort(key=lambda c: math.hypot(c[0] * 16 + 8 - cx, c[1] * 16 + 8 - cz))
+            chunks = chunks[:-1]
+            load_area(cx - 48, cz - 48, cx + 48, cz + 48)
+            for chx, chz in chunks:
+                rcon(f"fill {chx * 16} -60 {chz * 16} {chx * 16 + 15} -21 {chz * 16 + 15} stone")
             rcon(f"enterprise survey {cx - 48} -60 {cz - 48} {cx + 48} -60 {cz + 48}")  # seen now, not at unload
             rcon(f"forceload remove {cx - 40} {cz - 40} {cx + 40} {cz + 40}")
             raised += 1
@@ -222,12 +241,19 @@ def build_ridge():
     cx, cz = (round(v) for v in hex_centre(*pass_hex))
     load_area(cx - 48, cz - 48, cx + 48, cz + 48)
     town = (t[0] - 2, t[1] - 2, t[0] + 29, t[1] + 29)
-    for x in range(cx - 40, cx + 41, 8):
-        for z in range(cz - 40, cz + 41, 8):
-            x1, z1 = min(x + 7, cx + 40), min(z + 7, cz + 40)
-            if not (x <= town[2] and x1 >= town[0] and z <= town[3] and z1 >= town[1]):
-                rcon(f"fill {x} -61 {z} {x1} -61 {z1} water replace grass_block")
-    rcon(f"enterprise survey {cx - 48} -60 {cz - 48} {cx + 48} -60 {cz + 48}")
+    wet_chunks = [(chx, chz) for chx in range((cx - 60) // 16, (cx + 60) // 16 + 1)
+                  for chz in range((cz - 60) // 16, (cz + 60) // 16 + 1)
+                  if hex_at(chx * 16 + 8.5, chz * 16 + 8.5) == pass_hex
+                  and not overlaps_town(chx * 16, chz * 16, chx * 16 + 15, chz * 16 + 15)]
+    for attempt in range(4):  # fills on ground still loading come to nothing: check, and fill again
+        for chx, chz in wet_chunks:  # the hex's own chunks (not its neighbours'), round the town
+            rcon(f"fill {chx * 16} -61 {chz * 16} {chx * 16 + 15} -61 {chz * 16 + 15} water replace grass_block")
+        rcon(f"enterprise survey {cx - 48} -60 {cz - 48} {cx + 48} -60 {cz + 48}")
+        wet = number(r"(\d+)% water", rcon(f"enterprise hex {cx} -60 {cz}"))
+        if wet > 50:
+            break
+        sprint(100)
+    print(f"ravine: {wet:.0f}% water")
     print(rcon(f"enterprise bridge {tx} -60 {tz} {tx} -60 {tz}").strip().splitlines()[-1])
     rcon(f"forceload remove {cx - 48} {cz - 48} {cx + 48} {cz + 48}")
     print(f"ridge: {raised} hexes raised, the pass at T a ravine with one bridge")
@@ -243,9 +269,14 @@ def build_coast():
             if not (440 <= cx <= 950 and 520 <= cz <= 1480):
                 continue
             load_area(cx - 44, cz - 44, cx + 44, cz + 44)
-            for z in range(cz - 44, cz + 45, 22):
-                rcon(f"fill {cx - 44} -61 {z} {min(cx + 44, 950 + 40)} -61 {min(z + 21, cz + 44)} water replace grass_block")
-            rcon(f"enterprise survey {cx - 48} -60 {cz - 48} {cx + 48} -60 {cz + 48}")
+            for attempt in range(4):
+                for z in range(cz - 44, cz + 45, 22):
+                    rcon(f"fill {cx - 44} -61 {z} {min(cx + 44, 950 + 40)} -61 {min(z + 21, cz + 44)} water "
+                         f"replace grass_block")
+                rcon(f"enterprise survey {cx - 48} -60 {cz - 48} {cx + 48} -60 {cz + 48}")
+                if number(r"(\d+)% water", rcon(f"enterprise hex {cx} -60 {cz}")) > 50:
+                    break
+                sprint(100)
             rcon(f"forceload remove {cx - 44} {cz - 44} {cx + 44} {cz + 44}")
             flooded += 1
     rcon(f"forceload add {HUB[0] + 16} {HUB[1] + 10} {HUB[0] + 30} {HUB[1] + 24}")
@@ -263,7 +294,9 @@ def build_coast():
 
 def setup():
     hub_desk = f"{HUB[0] + 2} -60 {HUB[1] + 2}"
-    rcon(f"forceload add {area(HUB, 6)}", f"execute positioned {HUB[0]} -60 {HUB[1]} run function testbench:network/hub")
+    # The capital's town kept loaded (at war its people, Fishermen among them, must be there to sail and serve).
+    rcon(f"forceload add {area(HUB, 31 if '--war' in sys.argv else 6)}",
+         f"execute positioned {HUB[0]} -60 {HUB[1]} run function testbench:network/hub")
     if "--comforts" in sys.argv:
         rcon(f"execute positioned {HUB[0]} -60 {HUB[1]} run function testbench:network/comforts")
     if "--fleet" in sys.argv:

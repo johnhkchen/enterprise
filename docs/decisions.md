@@ -537,6 +537,23 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   of drayage; Haygate forwarded 6 stacks and ended with 150 emeralds (broke in runs 35-36). Haygate posted no guard:
   a second gap beside the town (the study's ridge skirts town land) lets caravans round its hex for 3 spurs.
 
+## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
+
+- **Terrain known when it's made.** Chunks were surveyed only as they loaded or unloaded, so routes were planned through
+  "impassable" ridges on stale ground. `/enterprise survey` records ground at once; the study surveys each build.
+- **Bridges span water.** A bridged hex is open ground only if it's mostly water: towns had bridged mountain cliffs.
+- **By water, a Fisherman leads.** A squad going by boat takes a Fisherman as its lead, its captain.
+- **Guards on credit.** Unpaid guards wait up to 3 days' pay where their posts took tolls, or are planned to.
+- **The study's geography** (`--ridge`): the capital a port, with a sea of 91 hexes west of it and Fishermen in its
+  loaded town; a ridge raised chunk by chunk (only a hex's own chunks, one left low so the hex reads rugged, not a
+  plateau); the pass at T's own hex a ravine (87% water) crossed by one bridge, the town's. Earlier runs built the pass
+  in the hex next door (T's desk is equidistant from two centres), walled its mouth with spilled stone, or left the
+  fills unloaded: each made routes cross or miss the pass.
+- **Run 46:** T (Haygate, between cliffs) became a hub, opened runs to the capital, S3 and S2; the capital wound down
+  its run to S3 ("by Haygate 12.9 a trip, not 24.9"); every road across the ridge now ends at Haygate (8 routes to or
+  from it). Haygate forwarded 22 stacks, bought 13 carts of drayage (651 spurs to its draymen) and took 2,774 spurs of
+  landing fees. Its transit toll (25% and a 100-spur fee) finds nobody passing through: the stop fee won.
+
 ## Names (built 2026-10-14)
 
 Every market has a name, given from the lie of the land once the hexes round it are surveyed, and kept: a first part
