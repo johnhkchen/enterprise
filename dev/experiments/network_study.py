@@ -203,8 +203,6 @@ def build_ridge():
             raised += 1
     sprint(1200)  # let the chunks unload: each is surveyed as it goes
     print(f"ridge: {raised} hexes raised, the pass at T")
-    for x, z in [(1200, RIDGE - 1200), (t[0] + 7, t[1] + 7)]:
-        print(rcon(f"enterprise hex {x} -60 {z}").strip())
 
 
 def setup():
@@ -454,7 +452,12 @@ def main():
         for x, z in [(1200, RIDGE - 1200), (t[0] + 7, t[1] + 7)]:
             print("\n" + rcon(f"enterprise hex {x} -60 {z}").strip())
         print("\n" + rcon("enterprise freight").strip())
-        print("\n" + "\n".join(l for l in rcon("enterprise routes").splitlines() if "Route" in l or "status" in l.lower()))
+        print("\n" + rcon("enterprise name").strip())
+    names = rcon("enterprise name")
+    for label, corner in [("hub", HUB), *TOWNS.items()]:
+        x, z = (HUB[0] + 2, HUB[1] + 2) if label == "hub" else (corner[0] + 7, corner[1] + 7)
+        found = re.search(rf"\n  (\S.*?) at {x}, -60, {z}", names)
+        print(f"{label} is {found.group(1) if found else '?'}")
     if "--metal" in sys.argv:
         for name in ["S1", "T"]:
             t = rcon(f"enterprise territory {bell(TOWNS[name])}")

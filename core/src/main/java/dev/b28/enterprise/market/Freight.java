@@ -86,12 +86,17 @@ public final class Freight extends SavedData {
     public static final long TICKS = 24000;
 
     /**
-     * A carrier's run through a hub: its route, and which way (out from the route's home, or back to it). The carrier
-     * is the route's home; the leg runs from the hub at one end to the market at the other.
+     * A carrier's run from a hub: its route, which way (out from the route's home, or back to it), and the hub it runs
+     * from (one of the route's ends, or a hub it calls at on the way). The carrier is the route's home; the leg runs
+     * from the hub to the end it's bound for.
      */
-    public record Leg(Route route, boolean outbound) {
+    public record Leg(Route route, boolean outbound, GlobalPos at) {
+        public Leg(Route route, boolean outbound) {
+            this(route, outbound, outbound ? route.from() : route.to());
+        }
+
         public GlobalPos from() {
-            return outbound ? route.from() : route.to();
+            return at;
         }
 
         public GlobalPos to() {
@@ -102,9 +107,45 @@ public final class Freight extends SavedData {
             return route.from();
         }
 
-        int key() {
-            return route.id() * 2 + (outbound ? 0 : 1);
+        /** Does the run pass through the hub (calling on its way), rather than start or end there? */
+        public boolean passing() {
+            return !at.equals(route.from()) && !at.equals(route.to());
         }
+
+        int key() {
+            return route.id() * 4 + (outbound ? 0 : 1) + (passing() ? 2 : 0);
+        }
+    }
+
+    /**
+     * The hub a route calls at on its way: a freight hub (not one of its ends) whose land its path crosses, the one
+     * nearest its home. Its index on the path, for how far along the road it lies.
+     */
+    public record Stop(GlobalPos hub, int index) {}
+
+    public static Optional<Stop> stopOn(MinecraftServer server, Route route) {
+        List<dev.b28.enterprise.hex.Hex> path = route.path();
+        if (path.size() < 3) {
+            return Optional.empty();
+        }
+        Stop best = null;
+        for (var depot : Depots.get(server).all()) {
+            GlobalPos hub = depot.desk();
+            if (depot.kind() != Depots.Kind.STOREHOUSE || hub.equals(route.from()) || hub.equals(route.to())
+                    || !hub.dimension().equals(route.from().dimension())) {
+                continue;
+            }
+            var hex = dev.b28.enterprise.hex.Hex.at(hub.pos());
+            for (int i = 1; i < path.size() - 1; i++) {
+                if (path.get(i).distance(hex) <= 1) {
+                    if (best == null || i < best.index()) {
+                        best = new Stop(hub, i);
+                    }
+                    break;
+                }
+            }
+        }
+        return Optional.ofNullable(best);
     }
 
     private final Map<Integer, BlockPos> shops = new HashMap<>(); // leg key -> its freight shop
@@ -127,13 +168,10 @@ public final class Freight extends SavedData {
 
     /** Carriers' runs from the hub to {@code to}: its own caravans', and those of {@code to}'s that call there. */
     public static List<Leg> legs(MinecraftServer server, GlobalPos hub, GlobalPos to) {
-        List<Leg> legs = new ArrayList<>();
-        CaravanLedger.get(server).route(hub, to).ifPresent(r -> legs.add(new Leg(r, true)));
-        CaravanLedger.get(server).route(to, hub).ifPresent(r -> legs.add(new Leg(r, false)));
-        return legs;
+        return legsFrom(server, hub).stream().filter(l -> l.to().equals(to)).toList();
     }
 
-    /** Every carrier's run from the hub. */
+    /** Every carrier's run from the hub: routes from or to it, and both ways of routes that call there on their way. */
     public static List<Leg> legsFrom(MinecraftServer server, GlobalPos hub) {
         List<Leg> legs = new ArrayList<>();
         for (Route r : CaravanLedger.get(server).routes()) {
@@ -141,6 +179,9 @@ public final class Freight extends SavedData {
                 legs.add(new Leg(r, true));
             } else if (r.to().equals(hub)) {
                 legs.add(new Leg(r, false));
+            } else if (stopOn(server, r).filter(s -> s.hub().equals(hub)).isPresent()) {
+                legs.add(new Leg(r, true, hub));
+                legs.add(new Leg(r, false, hub));
             }
         }
         return legs;
@@ -152,7 +193,11 @@ public final class Freight extends SavedData {
      */
     public static Optional<Leg> via(MinecraftServer server, GlobalPos shipper, GlobalPos buyer) {
         for (Route in : CaravanLedger.get(server).routes()) {
+            // A road from the shipper to a hub: the hub at its other end, or one it calls at on its way.
             GlobalPos hub = in.from().equals(shipper) ? in.to() : in.to().equals(shipper) ? in.from() : null;
+            if (hub != null && !isHub(server, hub)) {
+                hub = stopOn(server, in).map(Stop::hub).orElse(null);
+            }
             if (hub != null && isHub(server, hub) && !hub.equals(buyer)) {
                 List<Leg> on = legs(server, hub, buyer);
                 if (!on.isEmpty()) {
@@ -354,8 +399,8 @@ public final class Freight extends SavedData {
             Treasury.withdraw(level, market.pos(), stock, STOREHOUSE_EMERALDS, Mint.get(server), now);
             Exchange.get(server).note(market, now, "a freight hub now: %d routes of others pass through, %d call; "
                     .formatted(passing.size(), calls) + "a storehouse set up at " + a.toShortString());
-            dev.b28.enterprise.Enterprise.LOGGER.info("Market at {} becomes a freight hub: {} routes pass through, {} call",
-                    market.pos().toShortString(), passing.size(), calls);
+            dev.b28.enterprise.Enterprise.LOGGER.info("{} becomes a freight hub: {} routes pass through, {} call",
+                    dev.b28.enterprise.settlement.Names.of(server, market), passing.size(), calls);
         });
     }
 
@@ -528,6 +573,15 @@ public final class Freight extends SavedData {
      */
     public int discountBills(ServerLevel level, GlobalPos hub, GlobalPos shipper, List<ItemStack> papers, int purse,
             long now) {
+        return discountBills(level, hub, hub, shipper, papers, purse, now);
+    }
+
+    /**
+     * As above, the bills endorsed to {@code buyer} (the hub, or a carrier calling there on its way, who sells them to
+     * the hub's forwarder in its turn).
+     */
+    public int discountBills(ServerLevel level, GlobalPos hub, GlobalPos buyer, GlobalPos shipper, List<ItemStack> papers,
+            int purse, long now) {
         MinecraftServer server = level.getServer();
         Bills ledger = Bills.get(server);
         double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
@@ -549,9 +603,11 @@ public final class Freight extends SavedData {
                 }
                 paid += spurs;
                 Treasury.deposit(level, shipper.pos(), MerchantStock.at(level, shipper.pos()), spurs);
-                ledger.endorse(bill, hub);
-                tally(hub)[2] += 1;
-                tally(hub)[3] += bill.emeralds();
+                ledger.endorse(bill, buyer);
+                if (buyer.equals(hub)) {
+                    tally(hub)[2] += 1;
+                    tally(hub)[3] += bill.emeralds();
+                }
             }
         }
         return paid;
@@ -625,6 +681,9 @@ public final class Freight extends SavedData {
     /** When a leg's next run leaves the hub: the hub's own caravan's next departure, or a caller's next arrival. */
     static long nextRun(MinecraftServer server, Leg leg, long now) {
         CaravanLedger ledger = CaravanLedger.get(server);
+        if (leg.passing()) { // about halfway out (or back) from its next departure
+            return ledger.nextDeparture(leg.route(), now) + Caravans.travelTicks(leg.route().distance()) / 2;
+        }
         if (leg.outbound()) {
             return ledger.nextDeparture(leg.route(), now);
         }

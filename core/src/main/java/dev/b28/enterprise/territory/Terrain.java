@@ -102,6 +102,12 @@ public final class Terrain extends SavedData {
         }
     }
 
+    /** Has any of the hex's ground been surveyed (so its relief is known, not guessed flat)? */
+    public boolean surveyed(ServerLevel level, Hex hex) {
+        Map<Long, Integer> surveyed = heights.getOrDefault(level.dimension(), Map.of());
+        return chunksOf(hex).stream().anyMatch(surveyed::containsKey);
+    }
+
     /** The ground's relief in the hex: its highest surveyed surface less its lowest (0 where none is surveyed). */
     public int relief(ServerLevel level, Hex hex) {
         Map<Long, Integer> surveyed = heights.getOrDefault(level.dimension(), Map.of());

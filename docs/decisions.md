@@ -497,7 +497,27 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
 - **Study `--ridge`:** a 40-block stone ridge across the land between the capital's side and S3's, 38 hexes, with
   the pass at T. Both routes to S3 (the capital's, S2's) find their way through the hexes beside T, and T became a hub
   on its own (2 routes passing, 1 calling).
-- **Still to do:** caravans don't call at a hub they pass, so it isn't used yet: a stop on the way (food, freight).
+- **Stops on the way.** A route whose path crosses a hub's land calls there, out and home (its arrival set so far
+  along the road, the rest kept for after). At the stop the caravan buys food for the road home if the far end may
+  not feed it, collects its run's fares, hands the forwarder crates bound for markets the hub serves and sells it its
+  bills, loads crates booked on its run, carries the hub's contract copies on, and reads the hub's board. A run
+  calling at a hub is a carrier from there too: it has freight shops at the hub, both ways. A town such a run calls at
+  hands it goods for markets the hub serves (prepaying the fare to the hub and the forwarding); the carrier buys the
+  town's bills on the buyers and sells them to the forwarder at the hub (endorsed on, each taking a discount).
+- **Run 33 (`--ridge`, war):** the capital's runs to S3 called at T 71 times, S1's 85, S2's 16; trips home on short
+  rations fell to 0 or 1 on those routes; hungry soldier-days 9% of 500. No freight was forwarded: every buyer runs
+  its own caravans straight through the pass, so a transfer at T would only add the margin and drayage. Forwarding
+  pays where a shipper has no road to its buyer, or the hub's legs are cheaper than the direct road; neither holds on
+  this map. Routes that reorganise around hubs by price are the next step.
+
+## Names (built 2026-10-14)
+
+Every market has a name, given from the lie of the land once the hexes round it are surveyed, and kept: a first part
+from its country (Barley, Oak, Pine, Sand, Frost, Fen...) and an ending for what lies about it (-gate between cliffs,
+-fell in the hills, -haven on the coast, -ford or -mere by water, else a farming word: -field, -ton, -stead...).
+Off-map markets keep theirs (the front, the market across the sea). Reports and logs use names; `/enterprise name`
+lists them, and `/enterprise name <desk> <name>` renames one. In the ridge study: the capital Haywick, S1
+Meadowworth, S2 Wheatfell, S3 Hollowwick, T (the pass town) Hayfell.
 
 ## Pacing and the crown's bank (built 2026-10-14)
 

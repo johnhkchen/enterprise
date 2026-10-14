@@ -123,19 +123,45 @@ final class EnterpriseCommands {
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .executes(EnterpriseCommands::market)))
                 .then(Commands.literal("metals").executes(EnterpriseCommands::metals))
+                .then(Commands.literal("name")
+                        .executes(context -> {
+                            var server = context.getSource().getServer();
+                            StringBuilder out = new StringBuilder("Markets:");
+                            for (var desk : dev.b28.enterprise.caravan.Atlas.markets(server)) {
+                                out.append("\n  ").append(dev.b28.enterprise.settlement.Names.of(server, desk))
+                                        .append(" at ").append(desk.pos().toShortString());
+                            }
+                            context.getSource().sendSuccess(() -> Component.literal(out.toString()), false);
+                            return 1;
+                        })
+                        .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                .then(Commands.argument("name", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+                                        .executes(context -> {
+                                            var server = context.getSource().getServer();
+                                            var desk = net.minecraft.core.GlobalPos.of(context.getSource().getLevel().dimension(),
+                                                    BlockPosArgument.getLoadedBlockPos(context, "desk"));
+                                            String name = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "name");
+                                            dev.b28.enterprise.settlement.Names.get(server).rename(desk, name);
+                                            context.getSource().sendSuccess(() -> Component.literal("The market at "
+                                                    + desk.pos().toShortString() + " is " + name + " now"), true);
+                                            return 1;
+                                        }))))
                 .then(Commands.literal("freight").executes(context -> {
                     var server = context.getSource().getServer();
                     var freight = dev.b28.enterprise.market.Freight.get(server);
                     StringBuilder out = new StringBuilder("Freight hubs:");
                     freight.books().forEach((hub, b) -> out.append("\n  %s: %.0f stacks forwarded for %.0f spurs, %.0f spurs of freight bought, %.0f stacks carried on its runs, %.0f bills bought (%.1f emeralds face), %.0f carts of drayage (%.0f spurs of wages)"
-                            .formatted(hub.pos().toShortString(), b[0], b[1], b[5], b[4], b[2], b[3], b[7], b[6])));
-                    for (var r : dev.b28.enterprise.caravan.CaravanLedger.get(server).routes()) {
-                        for (boolean out2 : new boolean[] {true, false}) {
-                            var leg = new dev.b28.enterprise.market.Freight.Leg(r, out2);
+                            .formatted(dev.b28.enterprise.settlement.Names.label(hub), b[0], b[1], b[5], b[4], b[2], b[3], b[7], b[6])));
+                    for (var depot : dev.b28.enterprise.merchant.Depots.get(server).all()) {
+                        if (depot.kind() != dev.b28.enterprise.merchant.Depots.Kind.STOREHOUSE) {
+                            continue;
+                        }
+                        for (var leg : dev.b28.enterprise.market.Freight.legsFrom(server, depot.desk())) {
                             freight.shop(leg).ifPresent(pos -> out.append("\n  shop at %s: %s -> %s, %.3f emeralds a stack"
-                                    .formatted(pos.toShortString(), leg.from().pos().toShortString(),
-                                            leg.to().pos().toShortString(),
-                                            dev.b28.enterprise.market.Freight.stackPrice(r))));
+                                    .formatted(pos.toShortString(), dev.b28.enterprise.settlement.Names.label(leg.from()),
+                                            dev.b28.enterprise.settlement.Names.label(leg.to()),
+                                            dev.b28.enterprise.market.Freight.stackPrice(leg.route()))
+                                    + (leg.passing() ? " (a run calling on its way)" : "")));
                         }
                     }
                     context.getSource().sendSuccess(() -> Component.literal(out.toString()), false);
@@ -166,7 +192,7 @@ final class EnterpriseCommands {
                                     GlobalPos desk = GlobalPos.of(source.getLevel().dimension(),
                                             BlockPosArgument.getBlockPos(context, "desk"));
                                     dev.b28.enterprise.market.Bank.get(source.getServer()).open(desk);
-                                    source.sendSuccess(() -> Component.literal("A bank at " + desk.pos().toShortString()
+                                    source.sendSuccess(() -> Component.literal("A bank at " + dev.b28.enterprise.settlement.Names.label(desk)
                                             + ": its caravans buy bills and lend against contracts"), true);
                                     return 1;
                                 }))))
@@ -176,7 +202,7 @@ final class EnterpriseCommands {
                     long now = source.getLevel().getGameTime();
                     source.sendSuccess(() -> Component.literal("%d tender(s)".formatted(all.size())), false);
                     all.forEach(t -> source.sendSuccess(() -> Component.literal("  on %s's board: %d wanted, %s, by day %d"
-                            .formatted(t.board().pos().toShortString(), t.open(), t.work().describe(), t.due() / 24000)),
+                            .formatted(dev.b28.enterprise.settlement.Names.label(t.board()), t.open(), t.work().describe(), t.due() / 24000)),
                             false));
                     return all.size();
                 }))
@@ -275,7 +301,7 @@ final class EnterpriseCommands {
         Hex hex = Hex.at(pos);
         String owner = dev.b28.enterprise.territory.Territory.get(source.getServer())
                 .owner(source.getLevel().dimension(), hex)
-                .map(bell -> "held by the settlement at " + bell.pos().toShortString())
+                .map(bell -> "held by " + dev.b28.enterprise.settlement.Names.label(bell))
                 .orElse("unclaimed");
         var terrain = dev.b28.enterprise.territory.Terrain.get(source.getServer());
         double water = terrain.waterShare(source.getLevel(), hex);
@@ -296,7 +322,7 @@ final class EnterpriseCommands {
         var territory = dev.b28.enterprise.territory.Territory.get(source.getServer());
         var hexes = territory.hexes(bell);
         source.sendSuccess(() -> Component.literal("Settlement at %s holds %d hex(es), culture %.1f of %.1f for the next"
-                .formatted(bell.pos().toShortString(), hexes.size(), territory.culture(bell), territory.nextHexCost(bell))), false);
+                .formatted(dev.b28.enterprise.settlement.Names.label(bell), hexes.size(), territory.culture(bell), territory.nextHexCost(bell))), false);
         source.sendSuccess(() -> Component.literal("  hexes " + hexes), false);
         territory.farmPlan(bell).forEach((item, perDay) -> source.sendSuccess(
                 () -> Component.literal("  farms %s: %.1f a day".formatted(item, perDay)), false));
@@ -427,10 +453,10 @@ final class EnterpriseCommands {
         for (var contract : list) {
             String buyer = (source.getLevel().getBlockEntity(contract.buyer().pos())
                     instanceof dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity ? "the shop at " : "")
-                    + contract.buyer().pos().toShortString();
+                    + dev.b28.enterprise.settlement.Names.label(contract.buyer());
             source.sendSuccess(() -> Component.literal(("  #%d %s -> %s, %s, %s (copies at %d of 2): %s; %d delivered, "
                     + "%d on the road, %.1f emeralds paid (%.1f up front), %d missed by the seller, %d by the buyer; trust %.2f").formatted(
-                    contract.id(), contract.seller().pos().toShortString(), buyer, contract.state().name().toLowerCase(),
+                    contract.id(), dev.b28.enterprise.settlement.Names.label(contract.seller()), buyer, contract.state().name().toLowerCase(),
                     contract.incoterm().name(),
                     (contract.knownBy(contract.seller()) ? 1 : 0) + (contract.knownBy(contract.buyer()) ? 1 : 0),
                     contract.delivery().map(d -> d.quantity() + " " + d.describe())
@@ -475,12 +501,12 @@ final class EnterpriseCommands {
         var ledger = dev.b28.enterprise.service.ServiceLedger.get(server);
         ledger.tallies(desk).forEach((key, tally) -> source.sendSuccess(() -> Component.literal(
                 "  %s: %s for %s, %d times, %.2f emeralds paid".formatted(key.service().replaceFirst(".*:", ""),
-                        key.from().equals(desk) ? "this town" : key.from().pos().toShortString(),
-                        key.at().equals(desk) ? "this town" : key.at().pos().toShortString(), tally.times(),
+                        key.from().equals(desk) ? "this town" : dev.b28.enterprise.settlement.Names.label(key.from()),
+                        key.at().equals(desk) ? "this town" : dev.b28.enterprise.settlement.Names.label(key.at()), tally.times(),
                         tally.emeralds())), false));
         ledger.recent(desk).stream().limit(8).forEach(e -> source.sendSuccess(() -> Component.literal(
                 "  day %d: %s, %s -> %s%s".formatted(e.time() / 24000, e.key().service().replaceFirst(".*:", ""),
-                        e.key().from().pos().toShortString(), e.key().at().pos().toShortString(),
+                        dev.b28.enterprise.settlement.Names.label(e.key().from()), dev.b28.enterprise.settlement.Names.label(e.key().at()),
                         e.emeralds() > 0 ? ", %.2f emeralds".formatted(e.emeralds()) : "")), false));
         return ledger.tallies(desk).size();
     }
@@ -568,7 +594,7 @@ final class EnterpriseCommands {
                 BlockPosArgument.getBlockPos(context, "from"), BlockPosArgument.getBlockPos(context, "to"));
         int chests = depot.containers(source.getLevel()).size();
         source.sendSuccess(() -> Component.literal("Building %d: the %s of the market at %s, %d container(s), %d bed(s)"
-                .formatted(depot.id(), kind.label(), desk.pos().toShortString(), chests, depot.beds(source.getLevel()))), true);
+                .formatted(depot.id(), kind.label(), dev.b28.enterprise.settlement.Names.label(desk), chests, depot.beds(source.getLevel()))), true);
         return depot.id();
     }
 
@@ -582,7 +608,7 @@ final class EnterpriseCommands {
             String what = level == null || !depot.loaded(level) ? "not loaded" : "%d container(s), %d bed(s), %s".formatted(
                     depot.containers(level).size(), depot.beds(level), contents(level, depot));
             source.sendSuccess(() -> Component.literal("  #%d %s of %s, %s to %s: %s".formatted(depot.id(),
-                    depot.kind().label(), depot.desk().pos().toShortString(), depot.min().toShortString(),
+                    depot.kind().label(), dev.b28.enterprise.settlement.Names.label(depot.desk()), depot.min().toShortString(),
                     depot.max().toShortString(), what)), false);
         }
         return all.size();
@@ -616,7 +642,7 @@ final class EnterpriseCommands {
         }
         GlobalPos desk = exchange.desk().get();
         var phase = dev.b28.enterprise.market.Sovereign.get(server).phase();
-        source.sendSuccess(() -> Component.literal("Metal exchange at %s (%s)".formatted(desk.pos().toShortString(),
+        source.sendSuccess(() -> Component.literal("Metal exchange at %s (%s)".formatted(dev.b28.enterprise.settlement.Names.label(desk),
                 phase.name().toLowerCase())), false);
         for (var metal : dev.b28.enterprise.market.MetalExchange.METALS) {
             source.sendSuccess(() -> Component.literal(("  %s: holds %d of %d, %d coming under contract; pays %.2f times "
@@ -635,11 +661,11 @@ final class EnterpriseCommands {
         for (GlobalPos at : bank.banks()) {
             var b = bank.book(at);
             source.sendSuccess(() -> Component.literal(("Bank at %s: %d bills bought for %.1f emeralds (worth %.1f when due); "
-                    + "%d loans, %.1f lent, %.1f repaid").formatted(at.pos().toShortString(), b.billsBought(), b.billsPaid(),
+                    + "%d loans, %.1f lent, %.1f repaid").formatted(dev.b28.enterprise.settlement.Names.label(at), b.billsBought(), b.billsPaid(),
                     b.billsFace(), b.loansMade(), b.lent(), b.repaid())), false);
         }
         bank.loans().forEach(l -> source.sendSuccess(() -> Component.literal("  %s owes %.1f on contract #%d (lent %.1f)"
-                .formatted(l.borrower().pos().toShortString(), l.owed(), l.contract(), l.principal())), false));
+                .formatted(dev.b28.enterprise.settlement.Names.label(l.borrower()), l.owed(), l.contract(), l.principal())), false));
         return bank.banks().size();
     }
 
@@ -682,7 +708,7 @@ final class EnterpriseCommands {
             var r = army.records().getOrDefault(town, null);
             source.sendSuccess(() -> Component.literal(("  %s: %d raised, %d fallen, %d deserted, %d soldier-days (%d hungry), "
                     + "strength %.0f; %d pieces of kit delivered; %.1f emeralds earned, %.1f of it paid up front; trust %.2f")
-                    .formatted(town.pos().toShortString(),
+                    .formatted(dev.b28.enterprise.settlement.Names.label(town),
                     r == null ? 0 : r.raised(), r == null ? 0 : r.fallen(), r == null ? 0 : r.deserted(),
                     r == null ? 0 : r.days(), r == null ? 0 : r.hungry(),
                     r == null ? 0 : r.strength(), kit.getOrDefault(town, new int[1])[0], paid.getOrDefault(town, 0.0),
@@ -692,7 +718,7 @@ final class EnterpriseCommands {
         java.util.Map<String, int[]> training = new java.util.TreeMap<>(); // town: done, open, broken
         for (var c : book.all()) {
             if (desk != null && c.buyer().equals(desk) && c.training().isPresent()) {
-                int[] t = training.computeIfAbsent(c.seller().pos().toShortString() + " "
+                int[] t = training.computeIfAbsent(dev.b28.enterprise.settlement.Names.label(c.seller()) + " "
                         + c.training().get().profession().replace("minecraft:", ""), k -> new int[3]);
                 t[c.state() == dev.b28.enterprise.contract.Contract.State.COMPLETED ? 0
                         : c.state() == dev.b28.enterprise.contract.Contract.State.BROKEN ? 2 : 1]++;
@@ -707,7 +733,7 @@ final class EnterpriseCommands {
             double tools = territory.bellOf(town).map(territory::handTools).orElse(0.0);
             boolean cold = dev.b28.enterprise.merchant.Depots.get(server).has(town, dev.b28.enterprise.merchant.Depots.Kind.COLD_STORE);
             source.sendSuccess(() -> Component.literal(("  storekeeping %s: %.0f thrown out (%.1f emeralds), %.0f tools given "
-                    + "away; %.1f tools in its hands' use; %s").formatted(town.pos().toShortString(), w[0], w[1], w[2], tools,
+                    + "away; %.1f tools in its hands' use; %s").formatted(dev.b28.enterprise.settlement.Names.label(town), w[0], w[1], w[2], tools,
                     cold ? "cold storage set up" : "no cold storage")), false);
         }
         if (desk != null && dev.b28.enterprise.market.Bank.get(server).is(desk)) {
@@ -743,7 +769,7 @@ final class EnterpriseCommands {
         }
         var tally = exchange.tally(desk);
         source.sendSuccess(() -> Component.literal(("Market at %s: %d lots sold to players' shops for %d spurs, %d bought "
-                + "from them for %d, %d commissions, its own shops took %d").formatted(desk.pos().toShortString(),
+                + "from them for %d, %d commissions, its own shops took %d").formatted(dev.b28.enterprise.settlement.Names.label(desk),
                 tally.lotsSold(), tally.spursFromSales(), tally.lotsBought(), tally.spursOnPurchases(), tally.commissions(),
                 tally.spursFromOwnShops())), false);
         exchange.orders(desk).values().forEach(o -> source.sendSuccess(() -> Component.literal(
@@ -766,9 +792,9 @@ final class EnterpriseCommands {
         GlobalPos desk = GlobalPos.of(source.getLevel().dimension(), BlockPosArgument.getBlockPos(context, "desk"));
         var known = dev.b28.enterprise.caravan.Atlas.get(source.getServer()).known(source.getServer(), desk);
         source.sendSuccess(() -> Component.literal("The desk at %s knows %d market(s)".formatted(
-                desk.pos().toShortString(), known.size())), false);
+                dev.b28.enterprise.settlement.Names.label(desk), known.size())), false);
         known.forEach(other -> source.sendSuccess(() -> Component.literal("  %s, %d blocks".formatted(
-                other.pos().toShortString(), (int) Math.sqrt(other.pos().distSqr(desk.pos())))), false));
+                dev.b28.enterprise.settlement.Names.label(other), (int) Math.sqrt(other.pos().distSqr(desk.pos())))), false));
         return known.size();
     }
 
@@ -789,7 +815,7 @@ final class EnterpriseCommands {
                     .orElse("");
             source.sendSuccess(() -> Component.literal(("  #%d %s -> %s: %d blocks, %d trips, %d items sold for %d spurs, "
                     + "%d for services, %d bought for %d, %d spurs on road food, %d tolls paid, %d spurs brought home, %d food eaten, %s%s")
-                    .formatted(route.id(), route.from().pos().toShortString(), route.to().pos().toShortString(),
+                    .formatted(route.id(), dev.b28.enterprise.settlement.Names.label(route.from()), dev.b28.enterprise.settlement.Names.label(route.to()),
                     route.distance(), route.trips(), route.itemsDelivered(), route.salesSpurs(), route.serviceSpurs(),
                     route.itemsBought(),
                     route.purchaseSpurs(), route.foodSpurs(), route.tollsPaid(), route.spursCollected(), route.foodEaten(),

@@ -148,7 +148,12 @@ public final class Caravans {
                     dispatch(server, ledger, territory, route, now);
                 }
             } else if (now >= caravan.get().arrives) {
-                arrive(server, ledger, territory, route, caravan.get(), now);
+                Caravan c = caravan.get();
+                if (c.stop != null && !c.stopped && c.leg != Caravan.Leg.WAITING_FOR_FOOD) {
+                    callAtStop(server, ledger, territory, route, c, now);
+                } else {
+                    arrive(server, ledger, territory, route, c, now);
+                }
             }
         }
     }
@@ -336,6 +341,7 @@ public final class Caravans {
         leaving.provisions = provisions;
         Atlas.get(server).learnBoth(route.from, route.to, now);
         herd.forEach(animal -> leaving.herd.add(Squad.stow(animal)));
+        setStop(server, route, leaving, now, true, 1);
         ledger.put(leaving);
         route.lastDeparture = now;
         route.foodEaten += food;
@@ -395,7 +401,13 @@ public final class Caravans {
                 atHub(server, level, ledger, route, stock, caravan, now);
             }
             if (dev.b28.enterprise.market.Freight.isHub(server, route.from)) {
-                collectForwarding(server, level, route, stock, caravan, rate, now);
+                collectForwarding(server, level, route, route.from, stock, caravan, rate, now);
+            } else {
+                // A run that calls at a hub on its way home takes this town's goods for markets the hub serves.
+                var stop = dev.b28.enterprise.market.Freight.stopOn(server, route);
+                if (stop.isPresent()) {
+                    collectForwarding(server, level, route, stop.get().hub(), stock, caravan, rate, now);
+                }
             }
             dev.b28.enterprise.market.Procurement.procure(level, route.to, stock);
             ItemStack empties = Crates.spareEmpties(stock); // returnable crates go back
@@ -462,6 +474,7 @@ public final class Caravans {
             route.foodEaten += food;
             caravan.leg = Caravan.Leg.RETURNING;
             caravan.arrives = now + (long) (travelTicks(route.distance()) / caravan.pace);
+            setStop(server, route, caravan, now, false, 1);
             route.status = "on the way home";
             ledger.setDirty();
             return;
@@ -479,6 +492,7 @@ public final class Caravans {
                 caravan.waitingSince = -1;
                 caravan.leg = Caravan.Leg.RETURNING;
                 caravan.arrives = now + (long) (travelTicks(route.distance()) / caravan.pace * 2);
+                setStop(server, route, caravan, now, false, 2);
                 route.shortRations++;
                 route.status = "on the way home on short rations";
             } else {
@@ -499,6 +513,7 @@ public final class Caravans {
             route.foodEaten += food;
             caravan.leg = Caravan.Leg.RETURNING;
             caravan.arrives = now + (long) (travelTicks(route.distance()) / caravan.pace);
+            setStop(server, route, caravan, now, false, 1);
             route.status = "on the way home";
         }
         ledger.setDirty();
@@ -531,34 +546,38 @@ public final class Caravans {
      * its money as far as it can, and selling the forwarder its bills on those markets for coin from the caravan's
      * purse. At home the forwarder carts them in and books them on.
      */
-    static void collectForwarding(MinecraftServer server, ServerLevel level, Route route, MerchantStock stock,
-            Caravan caravan, double rate, long now) {
+    static void collectForwarding(MinecraftServer server, ServerLevel level, Route route, GlobalPos hub,
+            MerchantStock stock, Caravan caravan, double rate, long now) {
         var freight = dev.b28.enterprise.market.Freight.get(server);
+        boolean own = hub.equals(route.from); // the hub's own caravan, or another's that calls there on its way home
+        // The carrier's fare to the hub, and the forwarding on from there (freight, carting, the margin): prepaid.
         double perStack = dev.b28.enterprise.market.Freight.forwardingPrice(route)
                 + dev.b28.enterprise.market.Freight.cartPrice() * 2 / dev.b28.enterprise.market.Freight.CART
-                * (1 + dev.b28.enterprise.market.Freight.FORWARD_MARGIN);
+                * (1 + dev.b28.enterprise.market.Freight.FORWARD_MARGIN)
+                + (own ? 0 : dev.b28.enterprise.market.Freight.stackPrice(route));
         double can = Math.max(0, Treasury.available(level, route.to.pos(), stock, rate)
                 - Territory.get(server).reserve(route.to));
         int room = Math.min(caravan.capacity() - Crates.stacks(caravan.cargo), (int) (can / perStack));
-        List<ItemStack> picked = pickForwarded(server, level, route, route.to, route.from, stock,
+        List<ItemStack> picked = pickForwarded(server, level, route, route.to, hub, stock,
                 now + travelTicks(route.distance()), room, now);
         if (picked.isEmpty()) {
             return;
         }
         List<ItemStack> crates = new ArrayList<>();
         for (ItemStack stack : picked) {
-            if (Crates.isCrate(stack)) {
-                crates.add(freight.forwarding(stack));
-            } else {
-                crates.add(stack); // the bills
-            }
+            // The hub's own caravan takes them into its forwarder's hands now; another's hands them over at the hub.
+            crates.add(own && Crates.isCrate(stack) ? freight.forwarding(stack) : stack);
         }
         int stacks = Crates.stacks(crates.stream().filter(Crates::isCrate).toList());
         Treasury.Withdrawal paid = Treasury.withdraw(level, route.to.pos(), stock, stacks * perStack, Mint.get(server), now);
         int fee = paid.spurs() + Mint.get(server).sell(Mint.DEFAULT_FACTION, paid.emeralds(), now);
         caravan.spurs += fee;
-        freight.forwarded(route.from, stacks, fee);
-        caravan.spurs -= freight.discountBills(level, route.from, route.to, crates, caravan.spurs, now);
+        if (own) {
+            freight.forwarded(route.from, stacks, fee);
+        }
+        // The shipper's bills on the buyers: bought now, from the purse, by the hub's forwarder or by the carrier
+        // (who sells them to the forwarder at the hub).
+        caravan.spurs -= freight.discountBills(level, hub, route.from, route.to, crates, caravan.spurs, now);
         caravan.cargo.addAll(crates);
     }
 
@@ -609,6 +628,89 @@ public final class Caravans {
             book.ship(contract, taken, now);
         }
         return cargo;
+    }
+
+    /**
+     * A leg that passes a hub calls there: the caravan's arrival is set to the hub (so far along the road), and the rest
+     * of the road kept for after. {@code slow}: the leg's pace slowed (short rations).
+     */
+    static void setStop(MinecraftServer server, Route route, Caravan caravan, long now, boolean outbound, double slow) {
+        caravan.stop = null;
+        caravan.stopped = false;
+        var stop = dev.b28.enterprise.market.Freight.stopOn(server, route);
+        if (stop.isEmpty()) {
+            return;
+        }
+        double along = (double) stop.get().index() / (route.path().size() - 1);
+        double share = outbound ? along : 1 - along;
+        long leg = (long) (travelTicks(route.distance()) / caravan.pace * slow);
+        caravan.stop = stop.get().hub();
+        caravan.arrives = now + (long) (leg * share);
+        caravan.remaining = leg - (long) (leg * share);
+    }
+
+    /**
+     * Calling at a hub on the way: the caravan buys food there for the road if its own may fall short, collects what
+     * its run's freight shop at the hub took, hands the forwarder crates bound for markets the hub serves (and sells it
+     * its bills on them), loads crates booked on its run, carries contract copies the hub passes on, reads the hub's
+     * board, and goes on.
+     */
+    static void callAtStop(MinecraftServer server, CaravanLedger ledger, Territory territory, Route route, Caravan caravan,
+            long now) {
+        ServerLevel level = server.getLevel(caravan.stop.dimension());
+        if (level == null || !ensureLoaded(level, caravan.stop.pos())) {
+            return; // waits a poll for the hub to load
+        }
+        GlobalPos hub = caravan.stop;
+        boolean outbound = caravan.leg == Caravan.Leg.OUTBOUND;
+        GlobalPos bound = outbound ? route.to : route.from;
+        MerchantStock stock = MerchantStock.at(level, hub.pos());
+        territory.touch(level, hub.pos(), stock);
+        double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
+        var freight = dev.b28.enterprise.market.Freight.get(server);
+        var leg = new dev.b28.enterprise.market.Freight.Leg(route, outbound, hub);
+        caravan.spurs += freight.collectFares(level, leg);
+        // Food: outbound, for the road home too where the far end may not feed it; it buys here, where it can.
+        if (outbound && caravan.provisions == 0) {
+            int food = foodNeeded(route.distance()) * Math.max(1, caravan.crew.size());
+            if (foodKnownAt(server, level, route.to) - ledger.foodPromisedAt(route.to) < food
+                    && stock.foodNutrition() >= food + Warehouse.FOOD_PAR_POINTS) {
+                Map<Item, Integer> meal = stock.eat(food);
+                double cost = meal.entrySet().stream().mapToDouble(e -> e.getValue() * Prices.emeraldsEach(e.getKey())).sum();
+                int price = Math.min(caravan.spurs, (int) Math.ceil(cost * rate));
+                caravan.spurs -= price;
+                Treasury.deposit(level, hub.pos(), stock, price);
+                caravan.provisions = food;
+            }
+        }
+        // Freight: crates bound for markets the hub serves (not where this caravan goes) are handed to its forwarder.
+        List<ItemStack> elsewhere = new ArrayList<>(caravan.cargo.stream()
+                .filter(s -> Crates.isCrate(s) && Crates.papers(s).consignee().filter(c -> !c.equals(bound)
+                        && !c.equals(route.from) && !c.equals(route.to)).isPresent())
+                .toList());
+        if (!elsewhere.isEmpty()) {
+            caravan.cargo.removeAll(elsewhere);
+            int[] purse = {caravan.spurs};
+            freight.handOver(level, hub, stock, elsewhere, purse);
+            caravan.spurs = purse[0];
+            caravan.cargo.addAll(elsewhere); // what it couldn't hand over rides on
+        }
+        caravan.spurs += freight.discountBills(level, hub, route.from, stock, caravan.cargo, now);
+        freight.forward(level, hub, stock, now);
+        caravan.cargo.addAll(freight.loadBooked(hub, stock, leg, caravan.capacity() - Crates.stacks(caravan.cargo)));
+        // Papers the hub holds for either end ride on; the caravan's for markets the hub serves are left with it.
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        book.copiesFor(hub, bound).forEach(c -> book.deliverCopy(c.id(), bound));
+        book.copiesVia(outbound ? route.from : route.to, hub, party -> !dev.b28.enterprise.market.Freight
+                .legs(server, hub, party).isEmpty()).forEach(c -> book.deliverCopy(c.id(), hub));
+        dev.b28.enterprise.market.Requisitions.get(server).read(level, route.from, hub, now);
+        Atlas.get(server).learnBoth(route.from, hub, now);
+        caravan.stopped = true;
+        caravan.arrives = now + caravan.remaining;
+        route.stops++;
+        route.status = (outbound ? "on the way out" : "on the way home") + ", called at "
+                + dev.b28.enterprise.settlement.Names.of(server, hub);
+        ledger.setDirty();
     }
 
     /** A caravan waits this long at the far end for food before it sets off home on short rations. */

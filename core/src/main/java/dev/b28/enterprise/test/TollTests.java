@@ -374,4 +374,16 @@ public final class TollTests {
         helper.assertTrue(plan.found() && plan.path().contains(pass), "through the pass: " + plan.path());
         helper.succeed();
     }
+
+    @GameTest(template = "floor")
+    public static void marketsGetNamesThatStick(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        var a = net.minecraft.core.GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(new BlockPos(1, 2, 1)));
+        var b = net.minecraft.core.GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(new BlockPos(5, 2, 5)));
+        String first = dev.b28.enterprise.settlement.Names.of(server, a);
+        helper.assertTrue(!first.isBlank() && first.equals(dev.b28.enterprise.settlement.Names.of(server, a)),
+                "a name, kept: " + first);
+        helper.assertFalse(first.equals(dev.b28.enterprise.settlement.Names.of(server, b)), "two markets, two names");
+        helper.succeed();
+    }
 }

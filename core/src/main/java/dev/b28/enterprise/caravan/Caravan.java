@@ -31,6 +31,9 @@ public final class Caravan {
     final List<CompoundTag> recruits = new ArrayList<>(); // soldiers raised by a levy, on their way to the army
     int provisions; // food points carried for the road home, where the far end can't sell any
     long waitingSince = -1; // when it began waiting at the far end for food
+    net.minecraft.core.GlobalPos stop; // the hub it calls at on this leg, if any
+    boolean stopped; // called there already on this leg
+    long remaining; // ticks of road left after the stop
 
     Caravan(int route, Leg leg, long arrives, List<ItemStack> cargo, int spurs, int merchantLevel) {
         this.route = route;
@@ -132,6 +135,12 @@ public final class Caravan {
         tag.put("recruits", raised);
         tag.putInt("provisions", provisions);
         tag.putLong("waitingSince", waitingSince);
+        if (stop != null) {
+            net.minecraft.core.GlobalPos.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, stop)
+                    .ifSuccess(t -> tag.put("stop", t));
+        }
+        tag.putBoolean("stopped", stopped);
+        tag.putLong("remaining", remaining);
         return tag;
     }
 
@@ -155,6 +164,10 @@ public final class Caravan {
         tag.getList("recruits", Tag.TAG_COMPOUND).forEach(t -> caravan.recruits.add((CompoundTag) t));
         caravan.provisions = tag.getInt("provisions");
         caravan.waitingSince = tag.contains("waitingSince") ? tag.getLong("waitingSince") : -1;
+        caravan.stop = net.minecraft.core.GlobalPos.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE, tag.get("stop"))
+                .result().orElse(null);
+        caravan.stopped = tag.getBoolean("stopped");
+        caravan.remaining = tag.getLong("remaining");
         for (Tag market : tag.getList("news", Tag.TAG_COMPOUND)) {
             net.minecraft.core.GlobalPos.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE, market).ifSuccess(caravan.news::add);
         }
