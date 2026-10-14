@@ -313,6 +313,12 @@ public final class LockerTrading {
         return level >= 1 && level <= 4 ? MERCHANT_LEVEL_XP[level - 1] : 0;
     }
 
+    /** Is this locker villager's Merchant loaded and managing its locker? Catch-up waits for it. */
+    public static boolean managed(Villager villager) {
+        return villager.level() instanceof ServerLevel level
+                && jobSite(villager, level).flatMap(site -> findManager(level, site, Lockers.MERCHANT_RANGE)).isPresent();
+    }
+
     private static Optional<BlockPos> jobSite(Villager villager, ServerLevel level) {
         return villager.getBrain()
                 .getMemory(MemoryModuleType.JOB_SITE)

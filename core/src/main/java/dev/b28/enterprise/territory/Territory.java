@@ -261,6 +261,13 @@ public final class Territory extends SavedData {
         return holding(bell).map(h -> h.desk);
     }
 
+    /** Every settlement's Merchant's Desk. */
+    public java.util.Set<GlobalPos> desks() {
+        java.util.Set<GlobalPos> desks = new java.util.LinkedHashSet<>();
+        holdings.values().stream().filter(h -> h.desk != null).forEach(h -> desks.add(h.desk));
+        return desks;
+    }
+
     /** The settlement whose Merchant works at this desk. */
     public Optional<GlobalPos> bellOf(GlobalPos desk) {
         return holdings.entrySet().stream()
@@ -481,6 +488,7 @@ public final class Territory extends SavedData {
         holding.walled = works.walled(bell.get());
         if (holding.lastTollReview != lastReview && lastReview >= 0) {
             works.consider(level, desk, stock, bell.get(), this, now); // with the tolls: is a bridge worth building?
+            dev.b28.enterprise.caravan.Commissions.consider(level, at, stock, bell.get(), this, now); // a caravan of its own?
         }
         long since = holding.lastHarvest;
         accrue(holding, now);
@@ -588,6 +596,7 @@ public final class Territory extends SavedData {
      */
     private void grow(ServerLevel level, BlockPos bell, Holding holding, Census census, double days, MerchantStock stock) {
         days = Math.min(MAX_DAYS, Math.max(0, days));
+        dev.b28.enterprise.caravan.Commissions.train(level, holding.desk, bell, stock, this); // squads before anything
         BlockPos desk = holding.desk.pos();
         Mint mint = Mint.get(level.getServer());
         long now = level.getGameTime();

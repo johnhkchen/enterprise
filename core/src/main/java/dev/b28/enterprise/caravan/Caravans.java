@@ -120,7 +120,9 @@ public final class Caravans {
         for (Route route : List.copyOf(ledger.routes())) {
             var caravan = ledger.caravan(route.id);
             if (caravan.isEmpty()) {
-                if (now - route.lastDeparture >= DEPARTURE_INTERVAL) {
+                if (route.stopping) {
+                    ledger.retire(route);
+                } else if (now - route.lastDeparture >= DEPARTURE_INTERVAL) {
                     dispatch(server, ledger, territory, route, now);
                 }
             } else if (now >= caravan.get().arrives) {
@@ -147,7 +149,7 @@ public final class Caravans {
         }
         Warehouse.get(server).recordLevel(route.from, hubMerchant.get().getVillagerData().getLevel());
         // A lead, and the trades this trip has a use for, while every other route waiting here keeps a lead.
-        int available = Squad.available(level, route.from, Lockers.MERCHANT_RANGE).size();
+        int available = Squad.available(level, route.from, Squad.reach()).size();
         long waiting = ledger.routes().stream()
                 .filter(r -> r.from.equals(route.from) && ledger.caravan(r.id).isEmpty())
                 .count();
@@ -157,7 +159,7 @@ public final class Caravans {
                 !Squad.herd(level, route.from.pos()).isEmpty());
         int extras = (int) Math.max(0, available - waiting);
         List<net.minecraft.world.entity.npc.Villager> mustered =
-                Squad.muster(level, route.from, Lockers.MERCHANT_RANGE, needs, extras);
+                Squad.muster(level, route.from, Squad.reach(), needs, extras);
         if (mustered.isEmpty()) {
             route.status = "no squad at home: train a Merchant, Cartographer, Librarian or Shepherd to send";
             ledger.setDirty();
@@ -186,7 +188,16 @@ public final class Caravans {
         }
         List<net.minecraft.world.entity.npc.Villager> squad = List.copyOf(mustered.subList(0, members));
         int food = foodNeeded(route.distance()) * squad.size();
-        double purse = food * PURSE_PER_FOOD_POINT;
+        // A town sending its own caravan gives it money to bring home the comforts it lacks.
+        Map<String, Double> shopping = Commissions.shoppingList(territory, route.from, stock);
+        double spare = Math.max(0, Treasury.available(level, route.from.pos(), stock, rate) - territory.reserve(route.from)
+                - food * PURSE_PER_FOOD_POINT);
+        double shoppingMoney = Math.min(spare, shopping.values().stream().mapToDouble(Double::doubleValue).sum());
+        if (shoppingMoney < 0.5) {
+            shopping = Map.of();
+            shoppingMoney = 0;
+        }
+        double purse = food * PURSE_PER_FOOD_POINT + shoppingMoney;
         if (stock.foodNutrition() < food) {
             route.status = "waiting for food at the hub";
             ledger.setDirty();
@@ -207,7 +218,8 @@ public final class Caravans {
         }
         cargo.addAll(pickCargo(stock, wantedAt(server, route.to), slots - cargo.size()));
         Warehouse.get(server).recordStocktake(route.from, stock.totals()); // for buying decisions while away
-        if (cargo.isEmpty() && herd.isEmpty() && !hasBusinessAt(server, ledger, route, now)) {
+        if (cargo.isEmpty() && herd.isEmpty() && !hasBusinessAt(server, ledger, route, now)
+                && !hasShoppingAt(server, route.to, shopping)) {
             route.status = "nothing to sell there and nothing wanted from there";
             ledger.setDirty();
             return false; // no empty trips: the road food would be wasted
@@ -218,10 +230,13 @@ public final class Caravans {
         List<CompoundTag> crew = new ArrayList<>();
         territory.bellOf(route.from).ifPresent(bell -> squad.forEach(member ->
                 dev.b28.enterprise.settlement.Settlements.get(server).setAway(bell, member.getUUID(), true)));
+        squad.forEach(member -> ledger.recordService(route.from, member.getUUID()));
         squad.forEach(member -> crew.add(Squad.stow(member)));
         Caravan leaving = new Caravan(route.id, Caravan.Leg.OUTBOUND, now + travelTicks(route.distance()), cargo, spurs,
                 Squad.haggleLevel(crew));
         leaving.crew.addAll(crew);
+        leaving.shopping.putAll(shopping);
+        Atlas.get(server).learnBoth(route.from, route.to, now);
         herd.forEach(animal -> leaving.herd.add(Squad.stow(animal)));
         ledger.put(leaving);
         route.lastDeparture = now;
@@ -270,6 +285,7 @@ public final class Caravans {
             caravan.spurs += earned;
             route.salesSpurs += earned;
             int keepForFood = (int) Math.ceil(food * PURSE_PER_FOOD_POINT * rate);
+            buyForHome(level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
             buySurplus(server, ledger, level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
         }
         if (caravan.leg == Caravan.Leg.OUTBOUND && Squad.has(caravan.crew, "minecraft:cartographer")) {
@@ -320,6 +336,14 @@ public final class Caravans {
             }
         }
         Treasury.deposit(level, route.from.pos(), stock, caravan.spurs);
+        // Towns whose land it crossed heard of both its ends.
+        Atlas atlas = Atlas.get(server);
+        for (Hex hex : route.path()) {
+            territory.owner(route.from.dimension(), hex).flatMap(territory::desk).ifPresent(town -> {
+                atlas.learn(town, route.from, level.getGameTime());
+                atlas.learn(town, route.to, level.getGameTime());
+            });
+        }
         // The squad comes home, with any animals that didn't sell.
         var bell = territory.bellOf(route.from);
         for (CompoundTag member : caravan.crew) {
@@ -333,6 +357,62 @@ public final class Caravans {
         ledger.remove(route.id);
         ledger.setDirty();
         Enterprise.LOGGER.debug("Caravan {} home with {} spurs", route.id, caravan.spurs);
+    }
+
+    /** Does the destination's last known stock have any of the comforts on the shopping list? */
+    static boolean hasShoppingAt(MinecraftServer server, GlobalPos desk, Map<String, Double> shopping) {
+        Warehouse warehouse = Warehouse.get(server);
+        return shopping.keySet().stream().anyMatch(kind -> Comforts.kind(kind)
+                .map(tag -> java.util.stream.StreamSupport.stream(BuiltInRegistries.ITEM.getTagOrEmpty(tag).spliterator(), false)
+                        .anyMatch(holder -> warehouse.onHand(desk, holder.value()) > 0))
+                .orElse(false));
+    }
+
+    /**
+     * The caravan's own town's shopping: comforts the destination holds beyond its own par, cheapest first, up to the
+     * worth on the list, at a price bargained up to their full value (this is for home, not for resale). Keeps
+     * {@code keepForFood} spurs and stays within its cargo space.
+     */
+    private static void buyForHome(ServerLevel level, Route route, MerchantStock stock, Caravan caravan,
+            int residentLevel, int keepForFood, Territory territory, Mint mint, double rate, long now) {
+        if (caravan.shopping.isEmpty()) {
+            return;
+        }
+        Map<String, Double> theirs = Comforts.onHand(stock);
+        double theirPar = territory.comfortPar(route.to);
+        for (Map.Entry<String, Double> want : caravan.shopping.entrySet()) {
+            var kind = Comforts.kind(want.getKey()).orElseThrow();
+            double spareWorth = theirs.getOrDefault(want.getKey(), 0.0) - theirPar;
+            double budget = Math.min(want.getValue(), spareWorth);
+            List<Item> goods = stock.totals().keySet().stream()
+                    .map(id -> BuiltInRegistries.ITEM.get(ResourceLocation.parse(id)))
+                    .filter(item -> item.builtInRegistryHolder().is(kind))
+                    .sorted(Comparator.comparingDouble(Prices::emeraldsEach))
+                    .toList();
+            for (Item item : goods) {
+                if (budget <= 0 || caravan.cargo.size() >= caravan.capacity()) {
+                    break;
+                }
+                double value = Prices.emeraldsEach(item);
+                double each = Bargain.between(Bargain.sellerFloor(value), value, residentLevel, caravan.merchantLevel);
+                int quantity = (int) Math.min(Math.ceil(budget / value), Math.floor((caravan.spurs - keepForFood) / (each * rate)));
+                if (quantity <= 0) {
+                    continue;
+                }
+                int taken = 0;
+                for (ItemStack piece : stock.take(new ItemCost(item, 1), quantity)) {
+                    taken += piece.getCount();
+                    caravan.cargo.add(piece);
+                }
+                int spurs = (int) Math.ceil(taken * each * rate);
+                caravan.spurs -= spurs;
+                Treasury.deposit(level, route.to.pos(), stock, spurs);
+                budget -= taken * value;
+                route.itemsBought += taken;
+                route.purchaseSpurs += spurs;
+            }
+        }
+        caravan.shopping.clear();
     }
 
     /** A town keeps this many grown farm animals per villager in its pasture; below that it buys them from Shepherds. */

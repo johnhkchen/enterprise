@@ -294,6 +294,27 @@ public final class LockerTradingTests {
     }
 
     @GameTest(template = "floor", timeoutTicks = 400)
+    public static void catchUpWaitsForItsMerchant(GameTestHelper helper) {
+        Market market = market(helper, false); // the Merchant is out of sight: its chunk isn't loaded, say
+        long[] lastRestock = new long[1];
+        helper.startSequence().thenWaitUntil(() -> helper.assertTrue(market.ready(), "waiting for job sites"))
+                .thenExecute(() -> {
+                    market.givePaperTrade(0);
+                    market.librarian().setNoAi(true); // like a villager in a chunk loaded only at the edge: not ticking
+                    lastRestock[0] = helper.getLevel().getGameTime() - 3 * 24000L;
+                    market.librarian().lastRestockGameTime = lastRestock[0];
+                    dev.b28.enterprise.locker.LockerCatchUp.enqueueNear(helper.getLevel(), helper.absolutePos(LECTERN), 2);
+                })
+                .thenIdle(45) // past the catch-up's wait for things to load
+                .thenExecute(() -> {
+                    dev.b28.enterprise.locker.LockerCatchUp.runJobs(helper.getLevel().getServer());
+                    helper.assertTrue(market.librarian().lastRestockGameTime == lastRestock[0],
+                            "no Merchant to trade through: the missed days wait, unspent");
+                })
+                .thenSucceed();
+    }
+
+    @GameTest(template = "floor", timeoutTicks = 400)
     public static void neverRestockedOwesNothing(GameTestHelper helper) {
         Market market = market(helper, false);
         helper.startSequence().thenWaitUntil(() -> helper.assertTrue(market.ready(), "waiting for job sites"))

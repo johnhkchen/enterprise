@@ -142,6 +142,8 @@ public final class Merchant {
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
         event.registrar("1").playToServer(
                 ToggleTradePayload.TYPE, ToggleTradePayload.STREAM_CODEC, ToggleTradePayload::handle);
+        event.registrar("1").playToServer(
+                CommissionPayload.TYPE, CommissionPayload.STREAM_CODEC, CommissionPayload::handle);
     }
 
     private static void addToCreativeTabs(BuildCreativeModeTabContentsEvent event) {

@@ -3,7 +3,9 @@ package dev.b28.enterprise.client;
 import dev.b28.enterprise.merchant.MerchantMenu;
 import dev.b28.enterprise.merchant.MerchantView;
 import dev.b28.enterprise.merchant.MerchantView.LockerView;
+import dev.b28.enterprise.merchant.MerchantView.TownView;
 import dev.b28.enterprise.merchant.MerchantView.TradeView;
+import dev.b28.enterprise.merchant.CommissionPayload;
 import dev.b28.enterprise.merchant.ToggleTradePayload;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -19,7 +21,11 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
-/** Lockers on the left; the selected locker's trades on the right, each with an On/Off switch. */
+/**
+ * Two tabs. Lockers: the lockers on the left, the selected locker's trades on the right, each with an On/Off switch.
+ * Caravans: the markets this desk knows on the left, the selected one on the right with a button to send caravans
+ * there or stop, and who is at home to go.
+ */
 public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> {
     private static final int LIST_X = 8;
     private static final int LIST_Y = 32;
@@ -31,9 +37,13 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
     private static final int TRADE_ROWS = 7;
     private static final int SWITCH_X = 222;
     private static final int TEXT = 0x404040;
+    private static final int TAB_W = 64;
 
     private final Map<BlockPos, Set<String>> enabled = new HashMap<>();
+    private final Set<BlockPos> routed = new HashSet<>();
+    private boolean caravansTab;
     private int selected;
+    private int selectedTown;
     private int scroll;
 
     public MerchantScreen(MerchantMenu menu, Inventory inventory, Component title) {
@@ -45,6 +55,7 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
             locker.trades().stream().filter(TradeView::enabled).forEach(trade -> on.add(trade.key()));
             enabled.put(locker.workstation(), on);
         }
+        menu.view().caravans().towns().stream().filter(TownView::routed).forEach(town -> routed.add(town.desk()));
     }
 
     @Override
@@ -61,8 +72,29 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
         return selected < lockers().size() ? lockers().get(selected) : null;
     }
 
+    private List<TownView> towns() {
+        return menu.view().caravans().towns();
+    }
+
     private void rebuildSwitches() {
         clearWidgets();
+        addRenderableWidget(Button.builder(Component.translatable("screen.enterprise.merchant.tab.lockers",
+                                lockers().size(), menu.view().limit()), button -> showCaravans(false))
+                .bounds(leftPos + imageWidth - 8 - 2 * TAB_W - 4, topPos + 3, TAB_W, 14).build()).active = caravansTab;
+        addRenderableWidget(Button.builder(Component.translatable("screen.enterprise.merchant.tab.caravans"),
+                        button -> showCaravans(true))
+                .bounds(leftPos + imageWidth - 8 - TAB_W, topPos + 3, TAB_W, 14).build()).active = !caravansTab;
+        if (caravansTab) {
+            TownView town = selectedTown < towns().size() ? towns().get(selectedTown) : null;
+            if (town != null && (town.inRange() || routed.contains(town.desk()))) {
+                boolean sending = routed.contains(town.desk());
+                addRenderableWidget(Button.builder(Component.translatable(
+                                        sending ? "screen.enterprise.merchant.stop" : "screen.enterprise.merchant.send"),
+                                button -> commission(town, !sending))
+                        .bounds(leftPos + imageWidth - 8 - 96, topPos + imageHeight - 30, 92, 18).build());
+            }
+            return;
+        }
         LockerView locker = current();
         if (locker == null) {
             return;
@@ -76,6 +108,21 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
                     .bounds(leftPos + SWITCH_X, topPos + TRADES_Y + row * TRADE_ROW, 46, 18)
                     .build());
         }
+    }
+
+    private void showCaravans(boolean caravans) {
+        caravansTab = caravans;
+        rebuildSwitches();
+    }
+
+    private void commission(TownView town, boolean send) {
+        if (send) {
+            routed.add(town.desk());
+        } else {
+            routed.remove(town.desk());
+        }
+        PacketDistributor.sendToServer(new CommissionPayload(town.desk(), send));
+        rebuildSwitches();
     }
 
     private void toggle(LockerView locker, TradeView trade) {
@@ -110,9 +157,6 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
         graphics.drawString(font, title, 8, 7, TEXT, false);
-        Component count = Component.translatable(
-                "screen.enterprise.merchant.lockers", lockers().size(), menu.view().limit());
-        graphics.drawString(font, count, imageWidth - 8 - font.width(count), 7, TEXT, false);
 
         Component rate = Component.translatable(
                 "screen.enterprise.merchant.rate", String.format("%.1f", menu.view().rate()));
@@ -126,8 +170,67 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         super.render(graphics, mouseX, mouseY, partialTick);
-        renderLockerList(graphics);
-        renderTrades(graphics, mouseX, mouseY);
+        if (caravansTab) {
+            renderTownList(graphics);
+            renderTown(graphics);
+        } else {
+            renderLockerList(graphics);
+            renderTrades(graphics, mouseX, mouseY);
+        }
+    }
+
+    private void renderTownList(GuiGraphics graphics) {
+        for (int i = 0; i < towns().size() && i < (imageHeight - LIST_Y - 8) / LIST_ROW; i++) {
+            TownView town = towns().get(i);
+            int x = leftPos + LIST_X;
+            int y = topPos + LIST_Y + i * LIST_ROW;
+            if (i == selectedTown) {
+                graphics.fill(x, y, x + LIST_W, y + LIST_ROW, 0xFFC6C6C6);
+            }
+            String label = (routed.contains(town.desk()) ? "» " : "") + town.distance() + " " + town.direction();
+            graphics.drawString(font, label, x + 4, y + 4, i == selectedTown ? TEXT : 0xFFFFFF, i != selectedTown);
+        }
+    }
+
+    private void renderTown(GuiGraphics graphics) {
+        int x = leftPos + TRADES_X;
+        int width = imageWidth - TRADES_X - 12;
+        int y = topPos + LIST_Y + 4;
+        if (towns().isEmpty()) {
+            graphics.drawWordWrap(font, Component.translatable("screen.enterprise.merchant.no_towns"), x, y, width, 0xFFFFFF);
+        } else {
+            TownView town = towns().get(Math.min(selectedTown, towns().size() - 1));
+            Component kind = Component.translatable(
+                    town.settlement() ? "screen.enterprise.merchant.town" : "screen.enterprise.merchant.market");
+            graphics.drawString(font, kind.copy().append(" · ").append(Component.translatable(
+                    "screen.enterprise.merchant.where", town.distance(), town.direction())), x, y, 0xFFFFFF, true);
+            graphics.drawString(font, town.desk().toShortString(), x, y + 12, 0xE0E0E0, false);
+            Component state = !town.inRange() && !routed.contains(town.desk())
+                    ? Component.translatable("screen.enterprise.merchant.too_far")
+                    : routed.contains(town.desk())
+                            ? Component.literal(town.status().isEmpty() ? "…" : capitalised(town.status()))
+                            : Component.translatable("screen.enterprise.merchant.not_sending");
+            graphics.drawWordWrap(font, state, x, y + 28, width, 0xFFFFFF);
+        }
+        List<String> squad = menu.view().caravans().squad();
+        Component home = squad.isEmpty()
+                ? Component.translatable("screen.enterprise.merchant.no_squad")
+                : Component.translatable("screen.enterprise.merchant.squad", squad.stream()
+                        .map(trade -> Component.translatable(professionKey(trade)).getString())
+                        .collect(java.util.stream.Collectors.joining(", ")));
+        graphics.drawWordWrap(font, home, x, topPos + imageHeight - 74, width, 0xFFFFFF);
+    }
+
+    private static String capitalised(String text) {
+        return Character.toUpperCase(text.charAt(0)) + text.substring(1);
+    }
+
+    /** Vanilla's name key for a villager trade: entity.minecraft.villager.librarian, ...villager.enterprise.merchant. */
+    static String professionKey(String trade) {
+        String[] parts = trade.split(":", 2);
+        return parts[0].equals("minecraft")
+                ? "entity.minecraft.villager." + parts[1]
+                : "entity.minecraft.villager." + parts[0] + "." + parts[1];
     }
 
     private void renderLockerList(GuiGraphics graphics) {
@@ -184,6 +287,17 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         int x = leftPos + LIST_X;
         int y = topPos + LIST_Y;
+        if (caravansTab) {
+            if (mouseX >= x && mouseX < x + LIST_W && mouseY >= y) {
+                int row = (int) ((mouseY - y) / LIST_ROW);
+                if (row < towns().size()) {
+                    selectedTown = row;
+                    rebuildSwitches();
+                    return true;
+                }
+            }
+            return super.mouseClicked(mouseX, mouseY, button);
+        }
         if (mouseX >= x && mouseX < x + LIST_W && mouseY >= y) {
             int row = (int) ((mouseY - y) / LIST_ROW);
             if (row < lockers().size()) {

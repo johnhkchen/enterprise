@@ -29,6 +29,16 @@ import net.minecraft.world.phys.AABB;
 public final class Squad {
     public static final int MAX = 4;
 
+    /** How far from its desk a town's squad is looked for: the town. Only its community is mustered. */
+    public static final int SEARCH = 48;
+
+    /** Villagers standing this close to the desk are in its market, and count as its community. */
+    public static final int MARKET = 8;
+
+    public static int reach() {
+        return SEARCH;
+    }
+
     /** Which trades this trip has a use for, beyond its lead: stale books, an unmapped road, animals to drive. */
     public record Needs(boolean books, boolean mapping, boolean animals) {
         public static final Needs ALL = new Needs(true, true, true);
@@ -98,10 +108,38 @@ public final class Squad {
         return squad;
     }
 
-    /** Villagers of the squad trades near the desk who could go, in {@link #TRADES} order, most experienced first. */
+    /**
+     * The desk's community, by villager: the residents of its town, and those who have gone out on its caravans
+     * before. With the workers at the lockers its Merchant manages and anyone in its market, these are the villagers
+     * its Merchant knows, and only they are mustered.
+     */
+    public static java.util.Set<java.util.UUID> community(ServerLevel level, GlobalPos desk) {
+        var server = level.getServer();
+        java.util.Set<java.util.UUID> ids = new java.util.HashSet<>(CaravanLedger.get(server).served(desk));
+        dev.b28.enterprise.territory.Territory.get(server).bellOf(desk).ifPresent(bell ->
+                ids.addAll(dev.b28.enterprise.settlement.Settlements.get(server).roster(bell).keySet()));
+        return ids;
+    }
+
+    /** Is this villager one the desk's Merchant knows: its community, a worker at one of its lockers, or in its market? */
+    public static boolean connected(Villager villager, GlobalPos desk, java.util.Set<java.util.UUID> community,
+            java.util.Set<BlockPos> lockerSites) {
+        return community.contains(villager.getUUID())
+                || villager.getBrain().getMemory(MemoryModuleType.JOB_SITE)
+                        .filter(site -> site.dimension().equals(desk.dimension()) && lockerSites.contains(site.pos()))
+                        .isPresent()
+                || villager.blockPosition().closerThan(desk.pos(), MARKET);
+    }
+
+    /**
+     * Villagers of the squad trades the desk's Merchant knows (see {@link #connected}) within {@code reach}, who could
+     * go, in {@link #TRADES} order, most experienced first.
+     */
     public static List<Villager> available(ServerLevel level, GlobalPos desk, int reach) {
+        var community = community(level, desk);
+        var lockerSites = dev.b28.enterprise.merchant.MerchantBook.get(level.getServer()).workstations(desk);
         return level.getEntitiesOfClass(Villager.class, new AABB(desk.pos()).inflate(reach),
-                        villager -> eligible(villager, desk))
+                        villager -> eligible(villager, desk) && connected(villager, desk, community, lockerSites))
                 .stream()
                 .sorted(Comparator.comparingInt((Villager v) -> TRADES.indexOf(trade(v)))
                         .thenComparing(Comparator.comparingInt((Villager v) -> v.getVillagerData().getLevel()).reversed())

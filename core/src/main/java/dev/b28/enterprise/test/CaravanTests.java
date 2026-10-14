@@ -106,6 +106,83 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void caravansAreCommissionedAtTheDesk(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192);
+        var server = helper.getLevel().getServer();
+        GlobalPos hub = net.route().from();
+        GlobalPos dest = net.route().to();
+        var view = dev.b28.enterprise.merchant.MerchantView.build(helper.getLevel(), hub.pos(), 4);
+        helper.assertTrue(view.caravans().towns().stream().anyMatch(t -> t.desk().equals(dest.pos())),
+                "the desk knows its neighbour by word of mouth");
+        helper.assertTrue(view.caravans().squad().equals(List.of("minecraft:librarian")), "a Librarian at home to send");
+        var ledger = CaravanLedger.get(server);
+        helper.assertTrue(dev.b28.enterprise.merchant.CommissionPayload.commission(server, hub, view, dest.pos(), true)
+                && ledger.route(hub, dest).isPresent(), "Send caravans: a route");
+        helper.assertTrue(dev.b28.enterprise.merchant.CommissionPayload.commission(server, hub, view, dest.pos(), false)
+                && ledger.route(hub, dest).isEmpty(), "Stop caravans: gone");
+        helper.assertFalse(dev.b28.enterprise.merchant.CommissionPayload.commission(server, hub, view,
+                dest.pos().offset(500, 0, 0), true), "only markets the screen showed");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aTownShortOfComfortsCommissionsItsOwnCaravan(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192);
+        var server = helper.getLevel().getServer();
+        var territory = net.territory();
+        BlockPos bell = helper.absolutePos(new BlockPos(6, 2, 4)); // the destination's town
+        territory.afterCensus(helper.getLevel(), bell, new dev.b28.enterprise.settlement.Census(5, 5, 5, 5, 0), 1, List.of());
+        GlobalPos town = net.route().to();
+        GlobalPos hub = net.route().from();
+        long t = helper.getLevel().getGameTime();
+        net.dest().insert(new ItemStack(Items.EMERALD, 30));
+        territory.touch(helper.getLevel(), town.pos(), net.dest(), t);
+        territory.touch(helper.getLevel(), town.pos(), net.dest(), t + 24000); // a day without comforts
+        dev.b28.enterprise.merchant.Warehouse.get(server).recordStocktake(hub, java.util.Map.of("minecraft:cookie", 64), t);
+        dev.b28.enterprise.caravan.Atlas.get(server).learn(town, hub, t); // its caravans have been there
+        var route = dev.b28.enterprise.caravan.Commissions.consider(helper.getLevel(), town, net.dest(),
+                GlobalPos.of(town.dimension(), bell), territory, t + 24000);
+        helper.assertTrue(route.isPresent() && route.get().to().equals(hub),
+                "it sends to the market it knows has treats: " + route.map(r -> r.to().pos().toShortString()));
+        CaravanLedger.get(server).removeRoute(route.get().id());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aTownWithARouteTrainsItsSquad(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192, List.of());
+        var server = helper.getLevel().getServer();
+        BlockPos bell = helper.absolutePos(new BlockPos(0, 2, 1)); // the hub's own town
+        net.territory().afterCensus(helper.getLevel(), bell, new dev.b28.enterprise.settlement.Census(5, 5, 5, 5, 0), 1, List.of());
+        net.hub().insert(new ItemStack(Items.EMERALD, 20));
+        Villager pupil = helper.spawn(EntityType.VILLAGER, new BlockPos(0, 2, 2));
+        var route = CaravanLedger.get(server).addRoute(net.route().from(), net.route().to());
+        var trained = dev.b28.enterprise.caravan.Commissions.train(helper.getLevel(), net.route().from(), bell, net.hub(),
+                net.territory());
+        CaravanLedger.get(server).removeRoute(route.id());
+        helper.assertTrue(trained.isPresent() && trained.get() == pupil, "the unemployed adult is trained");
+        helper.assertTrue(pupil.getVillagerData().getProfession() == Merchant.PROFESSION.get() && pupil.getVillagerXp() > 0,
+                "as a Merchant first, and keeps the trade");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aTownsOwnCaravanShopsForHome(GameTestHelper helper) {
+        Network net = network(helper, 2, 20, 192);
+        BlockPos bell = helper.absolutePos(new BlockPos(0, 2, 1)); // the hub is a town of five, with no comforts
+        net.territory().afterCensus(helper.getLevel(), bell, new dev.b28.enterprise.settlement.Census(5, 5, 5, 5, 0), 1, List.of());
+        net.dest().insert(new ItemStack(Items.COOKIE, 64)); // the market it sends to has treats to spare
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        net.poll(t + 80);
+        net.poll(t + 160);
+        int cookies = net.hub().count(new ItemCost(Items.COOKIE, 1));
+        // Its par of treats is 5 x 0.1 x 4 = 2 emeralds' worth: 36 cookies.
+        helper.assertTrue(cookies == 36, "it brought home its par of treats: " + cookies);
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void noSquadNoCaravan(GameTestHelper helper) {
         Network net = network(helper, 2, 5, 192, List.of());
         net.poll(helper.getLevel().getGameTime());
@@ -151,6 +228,21 @@ public final class CaravanTests {
                 "animals to drive: the Shepherd comes too");
         helper.assertTrue(dev.b28.enterprise.caravan.Squad.muster(helper.getLevel(), desk, 16, animals, 0).size() == 1,
                 "unless she's another route's lead");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void onlyTheDesksCommunityIsMustered(GameTestHelper helper) {
+        Villager cartographer = squadMember(helper, VillagerProfession.CARTOGRAPHER, new BlockPos(3, 2, 3));
+        var dimension = helper.getLevel().dimension();
+        var farDesk = GlobalPos.of(dimension, helper.absolutePos(new BlockPos(3, 2, 3)).offset(30, 0, 0));
+        helper.assertFalse(dev.b28.enterprise.caravan.Squad.connected(cartographer, farDesk, java.util.Set.of(),
+                java.util.Set.of()), "a stranger to that desk's Merchant: not its squad");
+        helper.assertTrue(dev.b28.enterprise.caravan.Squad.connected(cartographer, farDesk,
+                java.util.Set.of(cartographer.getUUID()), java.util.Set.of()), "a resident of its town: yes");
+        helper.assertTrue(dev.b28.enterprise.caravan.Squad.connected(cartographer,
+                GlobalPos.of(dimension, helper.absolutePos(new BlockPos(1, 2, 3))), java.util.Set.of(), java.util.Set.of()),
+                "standing in its market: yes");
         helper.succeed();
     }
 

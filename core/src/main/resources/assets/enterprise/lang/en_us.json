@@ -10,5 +10,17 @@
   "screen.enterprise.merchant.no_bank": "No Blaze Banker",
   "screen.enterprise.merchant.on": "On",
   "screen.enterprise.merchant.off": "Off",
-  "message.enterprise.merchant.no_desk": "This Merchant has lost its desk."
+  "message.enterprise.merchant.no_desk": "This Merchant has lost its desk.",
+  "screen.enterprise.merchant.tab.lockers": "Lockers %s/%s",
+  "screen.enterprise.merchant.tab.caravans": "Caravans",
+  "screen.enterprise.merchant.no_towns": "No other markets known yet. Caravans, the towns they cross and Cartographers bring news of more.",
+  "screen.enterprise.merchant.town": "Town",
+  "screen.enterprise.merchant.market": "Market",
+  "screen.enterprise.merchant.where": "%s blocks %s",
+  "screen.enterprise.merchant.send": "Send caravans",
+  "screen.enterprise.merchant.stop": "Stop caravans",
+  "screen.enterprise.merchant.not_sending": "No caravans go there yet.",
+  "screen.enterprise.merchant.too_far": "Too far: a caravan can't carry the food for the road.",
+  "screen.enterprise.merchant.squad": "At home to send: %s",
+  "screen.enterprise.merchant.no_squad": "No one at home to send. Once it has a route, the town trains Merchants, Cartographers, Librarians and Shepherds for its caravans."
 }

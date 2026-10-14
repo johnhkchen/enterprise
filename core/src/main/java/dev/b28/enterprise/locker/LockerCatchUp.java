@@ -27,13 +27,16 @@ public final class LockerCatchUp {
     /** Wait this long after loading, so the Merchant's desk and chests nearby have loaded too. */
     private static final long DELAY_TICKS = 40;
 
+    /** A villager waiting for its Merchant to load looks again after this long. */
+    private static final long RECHECK_TICKS = 100;
+
     /** Restocks replayed per server tick, across all villagers. */
     private static final int RESTOCKS_PER_TICK = 8;
 
     private static final class Job {
         final ResourceKey<Level> dimension;
         final UUID villager;
-        final long due;
+        long due;
         int remaining = -1; // counted when the job starts
         long settledUntil; // the villager's restock clock once the replay is done
 
@@ -68,7 +71,11 @@ public final class LockerCatchUp {
     }
 
     public static void onServerTick(ServerTickEvent.Post event) {
-        MinecraftServer server = event.getServer();
+        runJobs(event.getServer());
+    }
+
+    /** One tick's worth of replays, within the budget. */
+    public static void runJobs(MinecraftServer server) {
         if (JOBS.isEmpty() || !Rounds.hasHeadroom(server)) {
             return;
         }
@@ -89,6 +96,13 @@ public final class LockerCatchUp {
             }
             if (job.remaining < 0) {
                 boolean locker = LockerTrading.hasLocker(villager);
+                if (locker && !LockerTrading.managed(villager)) {
+                    // Its Merchant isn't loaded (a caravan loaded only the desk's chunk, say): replaying now would
+                    // spend the missed restocks with no one to trade through. Look again later; a round loads the
+                    // whole market.
+                    job.due = level.getGameTime() + RECHECK_TICKS;
+                    continue;
+                }
                 if (locker) {
                     startClock(villager);
                 }

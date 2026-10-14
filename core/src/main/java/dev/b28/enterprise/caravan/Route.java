@@ -23,6 +23,7 @@ public final class Route {
     long purchaseSpurs;
     long animalsSold;
     long mappedAt = -1; // when a Cartographer last walked it
+    boolean stopping; // no more departures; off the books once its caravan is home
     String status = "new";
     List<Hex> path = List.of(); // the planned hex path, from the last departure
 
@@ -141,6 +142,7 @@ public final class Route {
         tag.putLong("purchaseSpurs", purchaseSpurs);
         tag.putLong("animalsSold", animalsSold);
         tag.putLong("mappedAt", mappedAt);
+        tag.putBoolean("stopping", stopping);
         tag.putString("status", status);
         int[] hexes = new int[path.size() * 2];
         for (int i = 0; i < path.size(); i++) {
@@ -167,6 +169,7 @@ public final class Route {
         route.purchaseSpurs = tag.getLong("purchaseSpurs");
         route.animalsSold = tag.getLong("animalsSold");
         route.mappedAt = tag.contains("mappedAt") ? tag.getLong("mappedAt") : -1;
+        route.stopping = tag.getBoolean("stopping");
         route.status = tag.getString("status");
         int[] hexes = tag.getIntArray("path");
         List<Hex> path = new java.util.ArrayList<>();
