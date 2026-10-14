@@ -272,6 +272,98 @@ public final class CaravanTests {
         helper.succeed();
     }
 
+    /**
+     * A month of the destination's lockers selling 64 paper a day, and 8 more stacks of paper at the hub (enough to
+     * promise); returns the time after it.
+     */
+    private static long aMonthOfPaperSales(GameTestHelper helper, Network net) {
+        helper.setBlock(HUB.north(), Blocks.CHEST);
+        for (int i = 0; i < 8; i++) {
+            net.hub().insert(new ItemStack(Items.PAPER, 64));
+        }
+        long start = helper.getLevel().getGameTime();
+        var warehouse = dev.b28.enterprise.merchant.Warehouse.get(helper.getLevel().getServer());
+        for (int day = 0; day <= 30; day++) {
+            warehouse.recordUse(net.route().to(), Items.PAPER, 64, start + day * 24000L);
+        }
+        return start + 30 * 24000L + 100;
+    }
+
+    private static List<dev.b28.enterprise.contract.Contract> contractsBetween(GameTestHelper helper, Network net) {
+        return dev.b28.enterprise.contract.ContractBook.get(helper.getLevel().getServer()).of(net.route().from()).stream()
+                .filter(c -> c.buyer().equals(net.route().to())).toList();
+    }
+
+    @GameTest(template = "floor")
+    public static void aTravellingMerchantDraftsAStandingOrder(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192, List.of(Merchant.PROFESSION.get()));
+        long t = aMonthOfPaperSales(helper, net);
+        net.poll(t);
+        net.poll(t + 80);
+        var drafted = contractsBetween(helper, net);
+        helper.assertTrue(drafted.size() == 1 && drafted.get(0).delivery().orElseThrow().item() == Items.PAPER
+                && drafted.get(0).delivery().get().quantity() == 64, "a standing order for the 64 paper it bought");
+        helper.assertTrue(drafted.get(0).state() == dev.b28.enterprise.contract.Contract.State.DRAFTED
+                && drafted.get(0).knownBy(net.route().to()) && !drafted.get(0).knownBy(net.route().from()),
+                "the town holds its copy; the hub hasn't heard yet");
+        net.poll(t + 160);
+        helper.assertTrue(contractsBetween(helper, net).get(0).inForce(), "the copy rode home: in force");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aTownPromisesOnlyWhatItSells(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192, List.of(Merchant.PROFESSION.get()));
+        long t = helper.getLevel().getGameTime(); // no record of selling paper
+        net.poll(t);
+        net.poll(t + 80);
+        helper.assertTrue(contractsBetween(helper, net).isEmpty(), "it bought paper, but sells none yet: no promise");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void contractedGoodsGoFirstAndSettleAtTheLockedPrice(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192, List.of(Merchant.PROFESSION.get()));
+        net.hub().insert(new ItemStack(Items.PAPER, 64));
+        net.hub().insert(new ItemStack(Items.BREAD, 2));
+        long t = aMonthOfPaperSales(helper, net);
+        net.poll(t);
+        net.poll(t + 80);
+        net.poll(t + 160);
+        var contract = contractsBetween(helper, net).get(0);
+        double price = contract.delivery().orElseThrow().unitPrice();
+        // A day on, the next caravan: the town holds its par of paper already, but the contract delivers anyway.
+        long next = t + 24000;
+        net.poll(next);
+        net.poll(next + 80);
+        helper.assertTrue(contract.delivered() == 64, "64 paper delivered under contract: " + contract.delivered());
+        helper.assertTrue(Math.abs(contract.paid() - 64 * price) < 0.1, "paid at the locked price: " + contract.paid());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void missedInstallmentsCostTrustAndBreakTheContract(GameTestHelper helper) {
+        var book = dev.b28.enterprise.contract.ContractBook.get(helper.getLevel().getServer());
+        var dimension = helper.getLevel().dimension();
+        GlobalPos seller = GlobalPos.of(dimension, helper.absolutePos(new BlockPos(1, 2, 1)));
+        GlobalPos buyer = GlobalPos.of(dimension, helper.absolutePos(new BlockPos(5, 2, 5)));
+        long t = helper.getLevel().getGameTime();
+        var contract = book.draftDelivery(seller, buyer, Items.PAPER, 16, 0.04, t, 24000, 10, t, buyer);
+        book.deliverCopy(contract.id(), seller);
+        helper.assertTrue(contract.inForce(), "both hold a copy: in force");
+        double before = book.trust(seller, buyer);
+        book.review(t + 5 * 24000L);
+        helper.assertTrue(contract.missed() >= 3 && contract.state() == dev.b28.enterprise.contract.Contract.State.BROKEN,
+                "nothing delivered: missed and broken, " + contract.missed());
+        helper.assertTrue(book.trust(seller, buyer) < before, "and trust falls");
+        var registries = helper.getLevel().registryAccess();
+        var reloaded = dev.b28.enterprise.contract.ContractBook.load(book.save(new net.minecraft.nbt.CompoundTag(), registries),
+                registries).contract(contract.id()).orElseThrow();
+        helper.assertTrue(reloaded.delivery().orElseThrow().item() == Items.PAPER && reloaded.missed() == contract.missed()
+                && reloaded.state() == contract.state(), "saved and loaded whole");
+        helper.succeed();
+    }
+
     @GameTest(template = "floor")
     public static void babiesAndTheDesksMerchantStayHome(GameTestHelper helper) {
         Network net = network(helper, 2, 5, 192, List.of());

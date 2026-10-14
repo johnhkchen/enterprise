@@ -64,6 +64,10 @@ final class EnterpriseCommands {
                                 .then(Commands.argument("id", IntegerArgumentType.integer(1))
                                         .executes(EnterpriseCommands::removeRoute))))
                 .then(Commands.literal("routes").executes(EnterpriseCommands::routes))
+                .then(Commands.literal("contracts")
+                        .executes(context -> contracts(context, null))
+                        .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                .executes(context -> contracts(context, BlockPosArgument.getBlockPos(context, "desk")))))
                 .then(Commands.literal("atlas")
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .executes(EnterpriseCommands::atlas)))
@@ -268,6 +272,25 @@ final class EnterpriseCommands {
         boolean removed = CaravanLedger.get(context.getSource().getServer()).removeRoute(id);
         context.getSource().sendSuccess(() -> Component.literal(removed ? "Removed route " + id : "No route " + id), true);
         return removed ? 1 : 0;
+    }
+
+    /** Every contract (or a desk's), with its terms, state and record. */
+    private static int contracts(CommandContext<CommandSourceStack> context, BlockPos desk) {
+        CommandSourceStack source = context.getSource();
+        var book = dev.b28.enterprise.contract.ContractBook.get(source.getServer());
+        var list = desk == null ? book.all() : book.of(GlobalPos.of(source.getLevel().dimension(), desk));
+        source.sendSuccess(() -> Component.literal("%d contract(s)".formatted(list.size())), false);
+        for (var contract : list) {
+            source.sendSuccess(() -> Component.literal(("  #%d %s -> %s, %s (copies at %d of 2 desks): %d delivered, "
+                    + "%.1f emeralds paid, %d missed; trust %.2f").formatted(contract.id(),
+                    contract.seller().pos().toShortString(), contract.buyer().pos().toShortString(),
+                    contract.state().name().toLowerCase(),
+                    (contract.knownBy(contract.seller()) ? 1 : 0) + (contract.knownBy(contract.buyer()) ? 1 : 0),
+                    contract.delivered(), contract.paid(), contract.missed(),
+                    book.trust(contract.seller(), contract.buyer()))), false);
+            contract.history().forEach(line -> source.sendSuccess(() -> Component.literal("    " + line), false));
+        }
+        return list.size();
     }
 
     /** The markets a desk knows, nearest first. */

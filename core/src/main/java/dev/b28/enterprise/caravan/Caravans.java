@@ -117,6 +117,7 @@ public final class Caravans {
 
     /** One pass over every route: dispatch, arrive, return. */
     public static void poll(MinecraftServer server, CaravanLedger ledger, Territory territory, long now) {
+        dev.b28.enterprise.contract.ContractBook.get(server).review(now);
         for (Route route : List.copyOf(ledger.routes())) {
             var caravan = ledger.caravan(route.id);
             if (caravan.isEmpty()) {
@@ -221,8 +222,10 @@ public final class Caravans {
                 .filter(v -> Squad.trade(v).equals(Squad.LEATHERWORKER)).count(); // Leatherworkers carry packs
         boolean shepherd = squad.stream().anyMatch(v -> Squad.trade(v).equals("minecraft:shepherd"));
         var herd = shepherd ? Squad.herd(level, route.from.pos()) : List.<net.minecraft.world.entity.animal.Animal>of();
-        List<ItemStack> cargo = pickComforts(stock,
-                comfortWants(server, territory, route.to, now + travelTicks(route.distance())));
+        // Goods owed under contracts go first, then comforts, then what the destination's trades want.
+        java.util.Map<Integer, Integer> contracted = new LinkedHashMap<>();
+        List<ItemStack> cargo = pickContracted(server, route, stock, now + travelTicks(route.distance()), slots, contracted);
+        cargo.addAll(pickComforts(stock, comfortWants(server, territory, route.to, now + travelTicks(route.distance()))));
         while (cargo.size() > slots) {
             stock.insert(cargo.remove(cargo.size() - 1)); // more comforts than the squad can carry: leave the rest
         }
@@ -253,6 +256,7 @@ public final class Caravans {
         }
         route.fishCaught += catchCount;
         leaving.shopping.putAll(shopping);
+        leaving.contracted.putAll(contracted);
         Atlas.get(server).learnBoth(route.from, route.to, now);
         herd.forEach(animal -> leaving.herd.add(Squad.stow(animal)));
         ledger.put(leaving);
@@ -297,12 +301,15 @@ public final class Caravans {
                     .map(m -> m.getVillagerData().getLevel())
                     .orElse(Warehouse.get(server).level(route.to));
             Warehouse.get(server).recordLevel(route.to, residentLevel);
-            int earned = sell(server, level, route.to, stock, caravan, residentLevel, mint, rate, now, route, territory);
+            int earned = settleContracts(server, level, route, stock, caravan, mint, rate, now);
+            Map<Item, double[]> sold = new LinkedHashMap<>();
+            earned += sell(server, level, route.to, stock, caravan, residentLevel, mint, rate, now, route, territory, sold);
             earned += sellAnimals(level, route, stock, caravan, territory, residentLevel, mint, rate, now);
             caravan.spurs += earned;
             route.salesSpurs += earned;
             int keepForFood = (int) Math.ceil(food * PURSE_PER_FOOD_POINT * rate);
             buyForHome(level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
+            draftContracts(server, route, caravan, sold, now);
             buySurplus(server, ledger, level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
         }
         if (caravan.leg == Caravan.Leg.OUTBOUND && Squad.has(caravan.crew, "minecraft:cartographer")
@@ -359,6 +366,9 @@ public final class Caravans {
             }
         }
         Treasury.deposit(level, route.from.pos(), stock, caravan.spurs);
+        // The contracts drafted on the way ride home: now both parties hold a copy.
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        caravan.drafts.forEach(id -> book.deliverCopy(id, route.from));
         // Towns whose land it crossed heard of both its ends.
         Atlas atlas = Atlas.get(server);
         for (Hex hex : route.path()) {
@@ -380,6 +390,129 @@ public final class Caravans {
         ledger.remove(route.id);
         ledger.setDirty();
         Enterprise.LOGGER.debug("Caravan {} home with {} spurs", route.id, caravan.spurs);
+    }
+
+    /** A standing order runs this many installments, or as many as the seller can cover, but at least the minimum. */
+    public static final int CONTRACT_INSTALLMENTS = 10;
+    public static final int CONTRACT_MIN_INSTALLMENTS = 3;
+
+    /** A good is worth a standing order once a caravan has sold at least this many of it in one visit. */
+    public static final int CONTRACT_MIN_ITEMS = 16;
+
+    /**
+     * Goods owed under contracts in force from this desk to the destination by the time the caravan arrives, taken
+     * from the stock first (within {@code slots}). Records how many ride for each contract.
+     */
+    static List<ItemStack> pickContracted(MinecraftServer server, Route route, MerchantStock stock, long arrival,
+            int slots, Map<Integer, Integer> contracted) {
+        List<ItemStack> cargo = new ArrayList<>();
+        for (var contract : dev.b28.enterprise.contract.ContractBook.get(server).inForce(route.from, route.to)) {
+            var delivery = contract.delivery();
+            int owed = contract.owed(arrival);
+            if (delivery.isEmpty() || owed <= 0) {
+                continue;
+            }
+            int room = (slots - cargo.size()) * delivery.get().item().getDefaultMaxStackSize();
+            int taken = 0;
+            for (ItemStack piece : stock.take(new ItemCost(delivery.get().item(), 1), Math.min(owed, room))) {
+                taken += piece.getCount();
+                cargo.add(piece);
+            }
+            if (taken > 0) {
+                contracted.put(contract.id(), taken);
+            }
+        }
+        return cargo;
+    }
+
+    /**
+     * At the destination, before any other selling: goods carried under contracts are delivered, as far as owed and
+     * as the warehouse has room, and paid for at the locked price, whatever the market says now. Returns spurs earned.
+     */
+    static int settleContracts(MinecraftServer server, ServerLevel level, Route route, MerchantStock stock,
+            Caravan caravan, Mint mint, double rate, long now) {
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        int earned = 0;
+        for (Map.Entry<Integer, Integer> carried : caravan.contracted.entrySet()) {
+            var contract = book.contract(carried.getKey()).orElse(null);
+            if (contract == null || !contract.inForce() || contract.delivery().isEmpty()) {
+                continue;
+            }
+            var delivery = contract.delivery().get();
+            int toDeliver = Math.min(carried.getValue(), contract.owed(now));
+            int delivered = 0;
+            for (Iterator<ItemStack> it = caravan.cargo.iterator(); it.hasNext() && delivered < toDeliver; ) {
+                ItemStack stack = it.next();
+                if (!stack.is(delivery.item())) {
+                    continue;
+                }
+                ItemStack part = stack.split(Math.min(stack.getCount(), toDeliver - delivered));
+                while (!part.isEmpty() && !stock.hasRoomFor(part)) {
+                    // Keep the warehouse's free slots for locker results and coins: deliver less.
+                    int less = Math.min(part.getCount(), part.getMaxStackSize());
+                    stack.grow(less);
+                    part.shrink(less);
+                }
+                ItemStack rest = stock.insert(part);
+                delivered += part.getCount() - rest.getCount();
+                stack.grow(rest.getCount());
+                if (stack.isEmpty()) {
+                    it.remove();
+                }
+                if (!rest.isEmpty()) {
+                    break; // the warehouse is full: the rest rides home
+                }
+            }
+            if (delivered == 0) {
+                continue;
+            }
+            double owedMoney = delivered * delivery.unitPrice();
+            Treasury.Withdrawal paid = Treasury.withdraw(level, route.to.pos(), stock, owedMoney, mint, now);
+            double value = paid.value(rate);
+            earned += paid.spurs() + mint.sell(Mint.DEFAULT_FACTION, paid.emeralds(), now);
+            book.settle(contract, delivered, value, now);
+            if (value < owedMoney * 0.9) {
+                book.adjustTrust(contract.seller(), contract.buyer(), -dev.b28.enterprise.contract.ContractBook.TRUST_PER_MISS / 2);
+            }
+            route.itemsDelivered += delivered;
+        }
+        caravan.contracted.clear();
+        return earned;
+    }
+
+    /**
+     * A travelling Merchant who sold a good well here drafts a standing order with the resident Merchant: the
+     * destination takes, each round trip, what its lockers actually use in one (not more than it bought this visit;
+     * in sixteens), ten times, at this visit's price. The resident won't promise to take more than it sells. Needs a
+     * Merchant in the squad and trust between the two; one contract per good.
+     */
+    static void draftContracts(MinecraftServer server, Route route, Caravan caravan, Map<Item, double[]> sold, long now) {
+        if (!Squad.has(caravan.crew, "enterprise:merchant")) {
+            return;
+        }
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        if (book.trust(route.from, route.to) < dev.b28.enterprise.contract.ContractBook.MIN_TRUST) {
+            return;
+        }
+        long every = Math.max(DEPARTURE_INTERVAL, 2 * travelTicks(route.distance()));
+        Warehouse warehouse = Warehouse.get(server);
+        sold.forEach((item, tally) -> {
+            double used = warehouse.perDay(route.to, item, now) * every / 24000.0;
+            int quantity = (int) Math.min(tally[0], Math.round(used / 16.0) * 16.0) / 16 * 16;
+            if (quantity < CONTRACT_MIN_ITEMS || book.covers(route.from, route.to, item)) {
+                return;
+            }
+            // And the travelling Merchant won't promise more than it can see: what's still aboard, and what its home
+            // warehouse held when it left.
+            int aboard = caravan.cargo.stream().filter(stack -> stack.is(item)).mapToInt(ItemStack::getCount).sum();
+            int installments = Math.min(CONTRACT_INSTALLMENTS, (warehouse.onHand(route.from, item) + aboard) / quantity);
+            if (installments < CONTRACT_MIN_INSTALLMENTS) {
+                return;
+            }
+            var contract = book.draftDelivery(route.from, route.to, item, quantity, tally[1] / tally[0], now + every,
+                    every, installments, now, route.to);
+            caravan.drafts.add(contract.id());
+        });
     }
 
     /** Does the destination's last known stock have any of the comforts on the shopping list? */
@@ -794,7 +927,8 @@ public final class Caravans {
      * isn't sold rides home.
      */
     private static int sell(MinecraftServer server, ServerLevel level, GlobalPos desk, MerchantStock stock,
-            Caravan caravan, int residentLevel, Mint mint, double rate, long now, Route route, Territory territory) {
+            Caravan caravan, int residentLevel, Mint mint, double rate, long now, Route route, Territory territory,
+            Map<Item, double[]> tallies) {
         Warehouse warehouse = Warehouse.get(server);
         Set<Item> wanted = wantedAt(server, desk);
         int earned = 0;
@@ -844,6 +978,9 @@ public final class Caravans {
             Treasury.Withdrawal paid = Treasury.withdraw(level, desk.pos(), stock, delivered * each, mint, now);
             earned += paid.spurs() + mint.sell(Mint.DEFAULT_FACTION, paid.emeralds(), now);
             route.itemsDelivered += delivered;
+            double[] tally = tallies.computeIfAbsent(item, i -> new double[2]);
+            tally[0] += delivered;
+            tally[1] += delivered * each;
             if (stack.isEmpty()) {
                 it.remove();
             }

@@ -24,6 +24,8 @@ public final class Caravan {
     final List<CompoundTag> crew = new ArrayList<>(); // the squad, stowed off the world while on the road
     final List<CompoundTag> herd = new ArrayList<>(); // animals a Shepherd drives
     final java.util.Map<String, Double> shopping = new java.util.LinkedHashMap<>(); // comforts to bring home, by kind
+    final java.util.Map<Integer, Integer> contracted = new java.util.LinkedHashMap<>(); // contract id -> items carried for it
+    final List<Integer> drafts = new ArrayList<>(); // contracts drafted on this trip: their copies ride home
 
     Caravan(int route, Leg leg, long arrives, List<ItemStack> cargo, int spurs, int merchantLevel) {
         this.route = route;
@@ -91,6 +93,10 @@ public final class Caravan {
         CompoundTag list = new CompoundTag();
         shopping.forEach(list::putDouble);
         tag.put("shopping", list);
+        CompoundTag carried = new CompoundTag();
+        contracted.forEach((id, count) -> carried.putInt(Integer.toString(id), count));
+        tag.put("contracted", carried);
+        tag.putIntArray("drafts", drafts.stream().mapToInt(Integer::intValue).toArray());
         return tag;
     }
 
@@ -105,6 +111,11 @@ public final class Caravan {
         tag.getList("herd", Tag.TAG_COMPOUND).forEach(t -> caravan.herd.add((CompoundTag) t));
         CompoundTag list = tag.getCompound("shopping");
         list.getAllKeys().forEach(kind -> caravan.shopping.put(kind, list.getDouble(kind)));
+        CompoundTag carried = tag.getCompound("contracted");
+        carried.getAllKeys().forEach(id -> caravan.contracted.put(Integer.parseInt(id), carried.getInt(id)));
+        for (int id : tag.getIntArray("drafts")) {
+            caravan.drafts.add(id);
+        }
         return caravan;
     }
 }
