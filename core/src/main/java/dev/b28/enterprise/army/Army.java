@@ -207,12 +207,7 @@ public final class Army extends SavedData {
         if (points <= 0) {
             return meal;
         }
-        List<Item> foods = depot.totals().keySet().stream()
-                .map(id -> BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse(id)))
-                .filter(item -> nutrition(item) > 0)
-                .sorted(java.util.Comparator.comparingDouble((Item item) -> -saturation(item) / nutrition(item)))
-                .toList();
-        for (Item food : foods) {
+        for (Item food : heartiestFirst(depot)) {
             int left = points - (int) meal[0];
             if (left <= 0) {
                 break;
@@ -229,7 +224,7 @@ public final class Army extends SavedData {
         return mess(depot, points);
     }
 
-    private static float saturation(Item item) {
+    public static float saturation(Item item) {
         var food = item.getDefaultInstance().get(net.minecraft.core.component.DataComponents.FOOD);
         return food == null ? 0 : food.saturation();
     }
@@ -288,6 +283,14 @@ public final class Army extends SavedData {
 
     /** What kit the army will want on hand: a set for each soldier and half again, and arrows for its archers. */
     public Map<Item, Integer> wants() {
+        return wants(4);
+    }
+
+    /**
+     * As above, with {@code rationDays} of food for each soldier and each recruit waiting to join (counted as bread: the
+     * quartermaster sends heartier food in its place where the capital has it).
+     */
+    public Map<Item, Integer> wants(int rationDays) {
         Map<Item, Integer> wants = new LinkedHashMap<>();
         int men = soldiers.size();
         wants.put(Items.IRON_SWORD, men);
@@ -296,8 +299,37 @@ public final class Army extends SavedData {
         }
         wants.put(Items.SHIELD, men / 2);
         wants.put(Items.ARROW, men * ARROWS_PER_DAY * 2);
-        wants.put(Items.BREAD, men * RATION * 4 / 5); // four days' rations, as bread
+        int mouths = men + barracks.size();
+        wants.put(Items.BREAD, (mouths * RATION * rationDays + nutrition(Items.BREAD) - 1) / nutrition(Items.BREAD));
         return wants;
+    }
+
+    /** Spare days of rations the front keeps beyond the time a delivery takes. */
+    public static final int RATION_SPARE_DAYS = 2;
+
+    /**
+     * Days of rations the front keeps on hand, {@code distance} blocks from the capital: what it eats while the next
+     * delivery is drafted and carried (a caravan's round trip, and as long again while one is free to go), and spare.
+     */
+    public static int rationDays(int distance) {
+        int roundTrip = (int) Math.ceil(2.0 * Caravans.travelTicks(distance) / 24000);
+        return 2 * roundTrip + RATION_SPARE_DAYS;
+    }
+
+    /** Food points held in a stock, of every food. */
+    public static int foodPoints(MerchantStock stock) {
+        return stock.totals().entrySet().stream().mapToInt(e -> e.getValue()
+                * nutrition(BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse(e.getKey()))))
+                .sum();
+    }
+
+    /** Food a stock holds, the heartiest first (most saturation per point of food), bread and the like last. */
+    public static List<Item> heartiestFirst(MerchantStock stock) {
+        return stock.totals().keySet().stream()
+                .map(id -> BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse(id)))
+                .filter(item -> nutrition(item) > 0)
+                .sorted(java.util.Comparator.comparingDouble((Item item) -> -saturation(item) / nutrition(item)))
+                .toList();
     }
 
     /** A campaign day's chance of falling, in this kit, against this enemy. */
@@ -321,7 +353,7 @@ public final class Army extends SavedData {
         return armour.stream().mapToInt(piece -> gear(allArmour(), piece).map(Gear::power).orElse(0)).sum();
     }
 
-    private static int nutrition(Item item) {
+    public static int nutrition(Item item) {
         var food = item.getDefaultInstance().get(net.minecraft.core.component.DataComponents.FOOD);
         return food == null ? 0 : food.nutrition();
     }

@@ -288,12 +288,7 @@ public final class Broker {
         Warehouse warehouse = Warehouse.get(server);
         var ledger = dev.b28.enterprise.caravan.CaravanLedger.get(server);
         List<GlobalPos> markets = Atlas.get(server).known(server, desk);
-        int covered = 0;
-        for (GlobalPos m : markets) {
-            for (var c : book.open(m, desk, plain)) {
-                covered += c.delivery().map(d -> d.quantity() * c.installments() - c.delivered()).orElse(0);
-            }
-        }
+        int covered = coming(server, desk, item);
         if (covered >= need) {
             return true;
         }
@@ -365,6 +360,19 @@ public final class Broker {
             }
         }
         return covered >= need;
+    }
+
+    /** What of an item the desk has under contract from the markets it knows and not yet delivered. */
+    public static int coming(MinecraftServer server, GlobalPos desk, Item item) {
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        var plain = new dev.b28.enterprise.contract.Delivery(item, 1, 0);
+        int coming = 0;
+        for (GlobalPos m : Atlas.get(server).known(server, desk)) {
+            for (var c : book.open(m, desk, plain)) {
+                coming += c.delivery().map(d -> d.quantity() * c.installments() - c.delivered()).orElse(0);
+            }
+        }
+        return coming;
     }
 
     /** What its town and its orders want of an item, beyond what it holds. */

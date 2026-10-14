@@ -361,9 +361,16 @@ public final class Sovereign extends SavedData {
     public Map<Item, Integer> targets(Army army) {
         Map<Item, Integer> targets = new LinkedHashMap<>(STOCKPILE);
         if (phase == Phase.WAR) {
-            army.wants().forEach((item, n) -> targets.merge(item, n, Integer::sum));
+            army.wants(rationDays(army)).forEach((item, n) -> targets.merge(item, n, Integer::sum));
         }
         return targets;
+    }
+
+    /** Days of rations the army keeps at the front: more the further it is from the capital. */
+    int rationDays(Army army) {
+        return army.front().filter(front -> capital != null)
+                .map(front -> Army.rationDays((int) Math.sqrt(front.pos().distSqr(capital.pos()))))
+                .orElse(Army.rationDays(0));
     }
 
     /**
@@ -415,7 +422,30 @@ public final class Sovereign extends SavedData {
             GlobalPos front = army.front().get();
             MerchantStock lines = MerchantStock.at(level, front.pos());
             var warehouse = dev.b28.enterprise.merchant.Warehouse.get(server);
-            for (Map.Entry<Item, Integer> want : army.wants().entrySet()) {
+            for (Map.Entry<Item, Integer> want : army.wants(sovereign.rationDays(army)).entrySet()) {
+                if (want.getKey() == Items.BREAD) {
+                    // Rations, in food points: any food the lines hold counts. Food heartier than bread that the
+                    // capital holds goes first (good food is good morale), counted as it's contracted; bread makes up
+                    // the rest.
+                    int points = want.getValue() * Army.nutrition(Items.BREAD) - Army.foodPoints(lines);
+                    for (Item food : Army.heartiestFirst(depot)) {
+                        if (points <= 0 || Army.heartiness(Army.saturation(food) / Army.nutrition(food)) < 0.05) {
+                            break;
+                        }
+                        int coming = Broker.coming(server, front, food);
+                        int n = Math.min((points + Army.nutrition(food) - 1) / Army.nutrition(food),
+                                coming + warehouse.onHand(sovereign.capital, food));
+                        if (n > 0) {
+                            Broker.source(level, front, territory, food, n, now);
+                            points -= Math.min(n, Broker.coming(server, front, food)) * Army.nutrition(food);
+                        }
+                    }
+                    if (points > 0) {
+                        Broker.source(level, front, territory, Items.BREAD,
+                                (points + Army.nutrition(Items.BREAD) - 1) / Army.nutrition(Items.BREAD), now);
+                    }
+                    continue;
+                }
                 // A weapon, and a piece of armour for each place, of any kind: the best the capital holds first
                 // (diamond from its master smiths, iron, the apprentices' axes), then what's wanted.
                 List<Army.Gear> kinds = want.getKey() == Items.IRON_SWORD

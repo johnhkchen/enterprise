@@ -128,6 +128,20 @@ public final class WarTests {
     }
 
     @GameTest(template = "floor")
+    public static void theFrontKeepsRationsForTheRoad(GameTestHelper helper) {
+        int near = dev.b28.enterprise.army.Army.rationDays(0);
+        int far = dev.b28.enterprise.army.Army.rationDays(1500);
+        helper.assertTrue(far > near && far >= 6, "a far front keeps more days of food: " + near + " vs " + far);
+        var army = new dev.b28.enterprise.army.Army();
+        army.muster(new net.minecraft.nbt.CompoundTag());
+        army.muster(new net.minecraft.nbt.CompoundTag());
+        int bread = army.wants(far).get(Items.BREAD);
+        helper.assertTrue(bread * 5 >= 2 * dev.b28.enterprise.army.Army.RATION * far,
+                "rations for the recruits on their way too: " + bread);
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void theArmyEatsItsHeartiestFoodFirst(GameTestHelper helper) {
         helper.setBlock(new BlockPos(3, 2, 3), Merchant.DESK.get());
         helper.setBlock(new BlockPos(4, 2, 3), Blocks.CHEST);

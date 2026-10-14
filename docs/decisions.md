@@ -389,6 +389,20 @@ locker logs:
   3 broke.
 - **Now the army is the limit:** five to seven soldiers (small towns' levies), and half of them deserted hungry.
 
+## Feeding the front (built 2026-10-14)
+
+Soldiers at the front went hungry on 27 of 47 soldier-days (run 18) while the capital held 10,000 loaves.
+- **Rations were ordered too late, too small.** The quartermaster kept 4 days' bread for the soldiers already there,
+  and a delivery takes 2 to 5 days (drafting, a free caravan, 1,500 blocks of road). It now keeps a caravan's round
+  trip twice over plus 2 spare days (8 days at 1,500 blocks), for the soldiers and the recruits waiting to join.
+- **Heartier food first, counted as contracted.** Food heartier than bread that the capital holds is sent first;
+  bread makes up the rest. Only what's actually under contract counts: a first try counted carrots on the stock sheet
+  that the contract couldn't get, and ordered no bread at all (run 19).
+- **Run 20:** hungry on 13 of 65 soldier-days (20%, from 57%), all in the first days before the first delivery.
+- **No meat reaches the front, because none is made.** No town has a Butcher; the flat world's plains give hunters
+  only feathers; and a Butcher smokes meat only while its own town is short of food, never for sale. The capital
+  posts cooked beef as wanted, but no town has idle hands to take it up. Still to do.
+
 ## Pacing and the crown's bank (built 2026-10-14)
 
 Once room stopped blocking them, Merchants were blocked by cash. S2's Merchant tried to buy 405 emeralds' worth of
