@@ -111,8 +111,9 @@ public final class Broker {
         Set<BlockPos> commissioned = new LinkedHashSet<>();
         for (VendorBlockEntity shop : shops) {
             if (Shops.own(shop, desk.pos()) || shop.getFilterItem().isEmpty()
-                    || shop.getMode() != VendorBlockEntity.Mode.BUY) {
-                continue;
+                    || shop.getMode() != VendorBlockEntity.Mode.BUY
+                    || Sovereign.get(server).shops().contains(shop.getBlockPos())) {
+                continue; // the sovereign's own shops buy from players, not from its Merchant
             }
             if (Shops.enchanted(shop.getFilterItem())) {
                 commissioned.add(shop.getBlockPos());
@@ -177,7 +178,7 @@ public final class Broker {
         double worth = Prices.emeraldsEach(lot.getItem()) * lot.getCount() * rate;
         int lots = Shops.purse(shop).map(p -> price <= 0 ? 0 : p.getBalance() / price).orElse(0);
         if (price < AGENT_FLOOR * worth || lots < 1
-                || book.trust(desk, buyer) < dev.b28.enterprise.contract.ContractBook.MIN_TRUST) {
+                || book.trust(desk, buyer, now) < dev.b28.enterprise.contract.ContractBook.MIN_TRUST) {
             return Optional.empty();
         }
         var contract = book.draft(desk, buyer, delivery, dev.b28.enterprise.contract.Incoterm.EXW, now,
@@ -254,8 +255,13 @@ public final class Broker {
 
     /** A supplier that can make or sell goods, but doesn't hold them, is asked for at most this many at a time. */
     public static final int MAKER_LOT = 16;
-    /** And given this long to make them before the first is due. */
-    public static final long MAKER_LEAD = 2 * 24000L;
+    /** And given this long to make them before the first is due, in this many installments a day apart. */
+    public static final long MAKER_LEAD = 3 * 24000L;
+    public static final int MAKER_INSTALLMENTS = 4;
+    /** Work to make is paid this share up front (an advance), where the two trust each other. */
+    public static final double MAKER_ADVANCE = 1 / 3.0;
+    /** Where they don't, they still deal, on trial terms: this many, in one lot, nothing up front. */
+    public static final int TRIAL_LOT = 4;
 
     /**
      * Contracts suppliers for goods this desk is short of, until what's contracted covers the need: markets it knows
@@ -295,10 +301,10 @@ public final class Broker {
         java.util.Set<String> trades = Procurement.suppliers(item);
         for (boolean holders : List.of(true, false)) {
             for (GlobalPos supplier : markets) {
-                if (covered >= need || !book.open(supplier, desk, plain).isEmpty()
-                        || book.trust(supplier, desk) < dev.b28.enterprise.contract.ContractBook.MIN_TRUST) {
+                if (covered >= need || !book.open(supplier, desk, plain).isEmpty()) {
                     continue;
                 }
+                boolean trusted = book.trust(supplier, desk, now) >= dev.b28.enterprise.contract.ContractBook.MIN_TRUST;
                 int held = warehouse.onHand(supplier, item);
                 int spare = (kit ? held / 2 : held) - warehouse.par(supplier, item, false, now); // a town keeps half its kit
                 var food = item.getDefaultInstance().get(net.minecraft.core.component.DataComponents.FOOD);
@@ -322,20 +328,31 @@ public final class Broker {
                         : dev.b28.enterprise.contract.Incoterm.DAP;
                 var route = collect.orElseGet(bring::get);
                 int quantity = Math.min(need - covered, holders ? spare : MAKER_LOT);
+                if (!trusted) {
+                    quantity = Math.min(quantity, TRIAL_LOT); // a trial lot, to rebuild the record
+                }
+                // Work to make comes in small installments a day apart, the first after a lead: steady deliveries
+                // build trust, and the seller isn't asked for everything at once.
+                int installments = holders || !trusted ? 1 : Math.min(MAKER_INSTALLMENTS, quantity);
+                int each = (quantity + installments - 1) / installments;
                 double exWorks = Prices.emeraldsEach(item) * (1 + SUPPLIER_MARGIN) * premium;
                 double carriage = Caravans.foodNeeded(route.distance()) * 2 * Caravans.PURSE_PER_FOOD_POINT
                         / (Caravans.CARGO_SLOTS * (double) item.getDefaultMaxStackSize());
                 double tolls = Caravans.tollShare(territory, route) * exWorks;
-                var delivery = new dev.b28.enterprise.contract.Delivery(item, quantity,
+                var delivery = new dev.b28.enterprise.contract.Delivery(item, each,
                         incoterm.price(exWorks, carriage, tolls));
                 List<dev.b28.enterprise.contract.Term> terms = new ArrayList<>();
                 terms.add(delivery);
                 terms.addAll(extra);
+                if (!holders && trusted) {
+                    terms.add(new dev.b28.enterprise.contract.Advance(MAKER_ADVANCE)); // money to start the work with
+                }
                 var contract = book.draft(supplier, desk, terms, incoterm, holders ? now : now + MAKER_LEAD,
-                        Caravans.DEPARTURE_INTERVAL, 1, now, desk, false);
-                covered += quantity;
-                Exchange.get(server).note(desk, now, "sourced %d %s from %s, %s, %s (contract #%d)".formatted(quantity,
-                        path(item), supplier.pos().toShortString(), holders ? "from its stock" : "to make", incoterm.name(),
+                        Caravans.DEPARTURE_INTERVAL, installments, now, desk, false);
+                covered += each * installments;
+                Exchange.get(server).note(desk, now, "sourced %d %s from %s, %s, %s (contract #%d)".formatted(
+                        each * installments, path(item), supplier.pos().toShortString(),
+                        holders ? "from its stock" : trusted ? "to make, a third up front" : "on trial", incoterm.name(),
                         contract.id()));
             }
         }
@@ -425,6 +442,8 @@ public final class Broker {
             wants.merge(item, count, Integer::sum);
             why.putIfAbsent(item, "the war effort");
         });
+        // The metal exchange's bids stand whoever else has the metal: a buyer for any town that mines.
+        Map<Item, Integer> bids = MetalExchange.get(server).wants(server, desk);
         Warehouse warehouse = Warehouse.get(server);
         List<GlobalPos> markets = Atlas.get(server).known(server, desk);
         List<Exchange.Signal> signals = new ArrayList<>();
@@ -435,11 +454,13 @@ public final class Broker {
             boolean supplied = markets.stream().anyMatch(m -> warehouse.onHand(m, item) > 0)
                     || shops.stream().anyMatch(s -> s.getMode() == VendorBlockEntity.Mode.SELL
                             && s.getFilterItem().is(item) && Shops.lots(s) > 0);
-            if (!supplied) {
+            if (!supplied && !bids.containsKey(item)) {
                 int each = (int) Math.ceil(Prices.emeraldsEach(item) * rate * SIGNAL_PREMIUM);
                 signals.add(new Exchange.Signal(item, count, Math.max(1, each), why.get(item)));
             }
         });
+        bids.forEach((item, count) -> MetalExchange.get(server).bid(server, desk, item).ifPresent(bid ->
+                signals.add(new Exchange.Signal(item, count, Math.max(1, (int) Math.ceil(bid * rate)), "the metal exchange"))));
         signals.sort(Comparator.comparingDouble((Exchange.Signal s) -> -(double) s.count() * s.spursEach()));
         return signals;
     }

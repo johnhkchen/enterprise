@@ -65,6 +65,12 @@ public final class LockerCatchUp {
         level.getEntitiesOfClass(Villager.class, new AABB(pos).inflate(radius)).forEach(v -> enqueue(level, v));
     }
 
+    /** Queues catch-up for the villagers within {@code radius} of {@code pos} that are loaded but not ticking. */
+    public static void enqueueStranded(ServerLevel level, BlockPos pos, int radius) {
+        level.getEntitiesOfClass(Villager.class, new AABB(pos).inflate(radius),
+                v -> !level.isPositionEntityTicking(v.blockPosition())).forEach(v -> enqueue(level, v));
+    }
+
     private static void enqueue(ServerLevel level, Villager villager) {
         JOBS.putIfAbsent(villager.getUUID(),
                 new Job(level.dimension(), villager.getUUID(), level.getGameTime() + DELAY_TICKS));

@@ -30,8 +30,8 @@ import net.minecraft.world.item.Item;
  * beyond its reserve, into the caravan's purse, and each paid service raises the two towns' trust a little.
  */
 public final class Services {
-    /** Each paid service abroad raises trust between the two towns by this much. */
-    public static final double TRUST_PER_SERVICE = 0.02;
+    /** Each paid service abroad counts this much of a kept installment toward the two towns' trust. */
+    public static final double TRUST_PER_SERVICE = 0.1;
 
     private static final List<Service> ALL = new ArrayList<>();
 
@@ -124,7 +124,7 @@ public final class Services {
                 Treasury.Withdrawal taken = Treasury.withdraw(level, at.pos(), stock, fee, mint, now);
                 paid = taken.value(rate);
                 spurs += taken.spurs() + mint.sell(Mint.DEFAULT_FACTION, taken.emeralds(), now);
-                ContractBook.get(level.getServer()).adjustTrust(from, at, TRUST_PER_SERVICE);
+                ContractBook.get(level.getServer()).kept(from, at, TRUST_PER_SERVICE, now);
             }
             heard.addAll(visit.heard);
             ServiceLedger.get(level.getServer()).record(service.id(), from, at, paid, now);

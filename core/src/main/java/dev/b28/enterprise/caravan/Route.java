@@ -22,6 +22,7 @@ public final class Route {
     int portersSent; // porters who carried a load out and walked home
     double saddleWear; // share of a saddle worn since one was last used up
     long billSpurs; // paid on bills of exchange presented on this route
+    long advanceSpurs; // paid up front under contracts, in coin, on this route
     long foodSpurs;
     long itemsBought;
     long purchaseSpurs;
@@ -74,6 +75,10 @@ public final class Route {
     /** Spurs the destination paid for cargo, in all. */
     public long salesSpurs() {
         return salesSpurs;
+    }
+
+    public long advanceSpurs() {
+        return advanceSpurs;
     }
 
     public long billSpurs() {
@@ -172,6 +177,7 @@ public final class Route {
         tag.putInt("portersSent", portersSent);
         tag.putDouble("saddleWear", saddleWear);
         tag.putLong("billSpurs", billSpurs);
+        tag.putLong("advanceSpurs", advanceSpurs);
         tag.putLong("foodSpurs", foodSpurs);
         tag.putLong("itemsBought", itemsBought);
         tag.putLong("purchaseSpurs", purchaseSpurs);
@@ -205,6 +211,7 @@ public final class Route {
         route.portersSent = tag.getInt("portersSent");
         route.saddleWear = tag.getDouble("saddleWear");
         route.billSpurs = tag.getLong("billSpurs");
+        route.advanceSpurs = tag.getLong("advanceSpurs");
         route.foodSpurs = tag.getLong("foodSpurs");
         route.itemsBought = tag.getLong("itemsBought");
         route.purchaseSpurs = tag.getLong("purchaseSpurs");

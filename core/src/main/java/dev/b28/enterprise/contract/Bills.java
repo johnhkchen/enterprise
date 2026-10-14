@@ -35,6 +35,9 @@ public final class Bills extends SavedData {
     /** Unpaid this long past its day, a bill is dishonoured. */
     public static final long DISHONOUR_TICKS = 4 * 24000L;
 
+    /** A bill paid when presented counts this much of a kept installment toward trust; a dishonoured one, a whole miss. */
+    public static final double HONOURED_WEIGHT = 0.5;
+
     public enum State { OUTSTANDING, PAID, DISHONOURED }
 
     /** A bill: the drawee (who pays), the payee, the sum in emeralds, when drawn and when due. */
@@ -172,12 +175,15 @@ public final class Bills extends SavedData {
                 }
                 if (bill.due <= now && paid + bill.emeralds <= pay) {
                     paid += bill.emeralds;
+                    if (bill.state == State.OUTSTANDING) {
+                        book.kept(bill.drawee, bill.payee, HONOURED_WEIGHT, now); // a promise kept
+                    }
                     paid(bill);
                     continue;
                 }
                 if (bill.state == State.OUTSTANDING && now > bill.due + DISHONOUR_TICKS) {
                     bill.state = State.DISHONOURED;
-                    book.adjustTrust(bill.drawee, bill.payee, -ContractBook.TRUST_PER_MISS);
+                    book.missed(bill.drawee, bill.payee, 1, now);
                     setDirty();
                 }
                 unpaid.add(doc);

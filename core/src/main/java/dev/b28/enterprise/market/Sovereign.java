@@ -49,7 +49,11 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
  * putting idle hands to the trades it calls for, their smiths trading their way up to master (who sell diamond gear).
  * It buys gold through a Numismatics shop by the capital. At war it levies soldiers from each town by contract (paid a
  * day each, owed home), outfits them from the capital's warehouse, and replaces what the campaign wears out. At peace
- * the soldiers walk home and the minting stops.
+ * the soldiers walk home and the minting falls back to the crown's peacetime revenue.
+ *
+ * <p>A capital can be named in peacetime: its port's {@link MetalExchange} imports iron, coal, flint and diamonds and
+ * makes a market in them, paid from the crown's revenue (minted, until taxes stand in for it), so smiths across the
+ * region train and mines open before any war; its own smiths sell to the depot when it stockpiles.
  */
 public final class Sovereign extends SavedData {
     private static final String NAME = "enterprise_sovereign";
@@ -113,11 +117,13 @@ public final class Sovereign extends SavedData {
     private GlobalPos capital;
     private UUID treasury;
     private int mintPerDay;
+    private int peaceRevenue; // spurs a day minted in peacetime
     private long lastDay = -1;
     private long phaseSince = -1;
     private final List<BlockPos> shops = new ArrayList<>();
     private final Map<String, Integer> received = new java.util.TreeMap<>(); // gold bought at the shop
     private final Map<Item, Integer> unmet = new LinkedHashMap<>(); // kit no town could be contracted for
+    private final Map<Item, Integer> shortfall = new LinkedHashMap<>(); // all it lacks at the capital, as of today
 
     public static Sovereign get(MinecraftServer server) {
         return server.overworld()
@@ -147,6 +153,40 @@ public final class Sovereign extends SavedData {
 
     public Map<String, Integer> received() {
         return Map.copyOf(received);
+    }
+
+    /** What it lacks at this desk of its stockpile: its own villagers who sell it are bought from. */
+    public Map<Item, Integer> shortfall(GlobalPos desk) {
+        return desk.equals(capital) ? Map.copyOf(shortfall) : Map.of();
+    }
+
+    public int peaceRevenue() {
+        return peaceRevenue;
+    }
+
+    /**
+     * Names the capital in peacetime: its Blaze Banker becomes the royal treasury (a new account if it has none),
+     * {@code perDay} spurs a day are minted into it (the crown's revenue), and its port's metal exchange opens.
+     */
+    public void establish(ServerLevel level, GlobalPos at, int perDay) {
+        capital = at;
+        peaceRevenue = perDay;
+        treasury = MoneyChanger.bankAt(level, at.pos()).map(account -> account.id).orElseGet(() -> {
+            UUID id = UUID.randomUUID();
+            Numismatics.BANK.getOrCreateAccount(id, BankAccount.Type.PLAYER);
+            return id;
+        });
+        if (phase == Phase.PEACE) {
+            mintPerDay = perDay;
+            phaseSince = level.getGameTime();
+        }
+        lastDay = level.getGameTime() - 24000; // today's revenue is due
+        if (!MetalExchange.get(level.getServer()).at(at)) {
+            MetalExchange.get(level.getServer()).open(at);
+        }
+        setDirty();
+        Enterprise.LOGGER.info("The sovereign's capital at {}: {} spurs a day, its metal exchange open",
+                at.pos().toShortString(), perDay);
     }
 
     /** What the war wants at this desk that no town could be contracted for: posted as wanted. */
@@ -230,10 +270,11 @@ public final class Sovereign extends SavedData {
         int home = capital == null ? 0 : Army.get(level.getServer()).demobilise(level.getServer(), capital, level.getGameTime());
         shops.forEach(pos -> level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3));
         shops.clear();
-        mintPerDay = 0;
+        mintPerDay = peaceRevenue;
         phase = Phase.PEACE;
         phaseSince = level.getGameTime();
         unmet.clear();
+        shortfall.clear();
         setDirty();
         return home;
     }
@@ -277,7 +318,7 @@ public final class Sovereign extends SavedData {
         MinecraftServer server = event.getServer();
         Sovereign sovereign = get(server);
         long now = server.overworld().getGameTime();
-        if (sovereign.phase == Phase.PEACE || sovereign.capital == null) {
+        if (sovereign.capital == null || sovereign.phase == Phase.PEACE && sovereign.mintPerDay <= 0) {
             return;
         }
         ServerLevel level = server.getLevel(sovereign.capital.dimension());
@@ -289,16 +330,22 @@ public final class Sovereign extends SavedData {
         }
         sovereign.lastDay = now;
         sovereign.mint(level, now);
+        if (sovereign.phase == Phase.PEACE) {
+            sovereign.setDirty();
+            return; // the crown's revenue only: nothing to stockpile
+        }
         Army army = Army.get(server);
         MerchantStock depot = MerchantStock.at(level, sovereign.capital.pos());
         double premium = sovereign.phase == Phase.WAR ? WAR_PREMIUM : MOBILISING_PREMIUM;
         Territory territory = Territory.get(server);
         sovereign.unmet.clear();
+        sovereign.shortfall.clear();
         for (Map.Entry<Item, Integer> target : sovereign.targets(army).entrySet()) {
             int need = target.getValue() - depot.count(new ItemCost(target.getKey(), 1));
             if (need <= 0) {
                 continue;
             }
+            sovereign.shortfall.put(target.getKey(), need);
             boolean covered = Broker.source(level, sovereign.capital, territory, target.getKey(), need, now, premium,
                     bonuses(target.getKey(), army.theatre()));
             if (!covered) {
@@ -326,6 +373,7 @@ public final class Sovereign extends SavedData {
             tag.putUUID("treasury", treasury);
         }
         tag.putInt("mintPerDay", mintPerDay);
+        tag.putInt("peaceRevenue", peaceRevenue);
         tag.putLong("lastDay", lastDay);
         tag.putLong("phaseSince", phaseSince);
         tag.putLongArray("shops", shops.stream().mapToLong(BlockPos::asLong).toArray());
@@ -342,6 +390,7 @@ public final class Sovereign extends SavedData {
                 ? GlobalPos.CODEC.parse(NbtOps.INSTANCE, tag.get("capital")).result().orElse(null) : null;
         s.treasury = tag.hasUUID("treasury") ? tag.getUUID("treasury") : null;
         s.mintPerDay = tag.getInt("mintPerDay");
+        s.peaceRevenue = tag.getInt("peaceRevenue");
         s.lastDay = tag.contains("lastDay") ? tag.getLong("lastDay") : -1;
         s.phaseSince = tag.contains("phaseSince") ? tag.getLong("phaseSince") : -1;
         for (long pos : tag.getLongArray("shops")) {

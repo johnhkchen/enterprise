@@ -51,6 +51,7 @@ public final class Prices {
             Map.entry("minecraft:poppy", 16.0),
             Map.entry("minecraft:wheat_seeds", 32.0),
             Map.entry("minecraft:iron_ingot", 4.0),
+            Map.entry("minecraft:diamond", 1.0), // an Expert smith buys one for an emerald
             Map.entry("minecraft:clay_ball", 10.0),
             Map.entry("minecraft:leather", 6.0),
             // Food villagers sell

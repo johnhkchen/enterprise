@@ -68,6 +68,39 @@ public final class MoneyChanger {
     }
 
     /**
+     * The Merchant changes coin for up to {@code emeralds} emeralds at the mint, to pay its villagers in: from coins
+     * in the chest, then the Blaze Banker, as far as they go. Returns the emeralds bought.
+     */
+    public static int buyEmeralds(ServerLevel level, BlockPos desk, MerchantStock stock, int emeralds) {
+        if (emeralds <= 0) {
+            return 0;
+        }
+        Mint mint = Mint.get(level.getServer());
+        long now = level.getGameTime();
+        Optional<BankAccount> bank = bankAt(level, desk);
+        List<ItemStack> held = stock.removeLoose(stack -> stack.getItem() instanceof CoinItem);
+        int coins = value(held);
+        int funds = coins + bank.map(BankAccount::getBalance).orElse(0);
+        int n = emeralds;
+        while (n > 0 && mint.buyCost(Mint.DEFAULT_FACTION, n, now) > funds) {
+            n--;
+        }
+        if (n <= 0 || !stock.hasRoomFor(new ItemStack(Items.EMERALD, n))) {
+            held.forEach(stock::insert);
+            return 0;
+        }
+        int cost = mint.buy(Mint.DEFAULT_FACTION, n, now);
+        int fromCoins = Math.min(coins, cost);
+        coins(coins - fromCoins).forEach(stock::insert); // change goes back
+        int fromBank = cost - fromCoins;
+        bank.ifPresent(account -> account.setBalance(account.getBalance() - fromBank));
+        for (int left = n; left > 0; left -= 64) {
+            stock.insert(new ItemStack(Items.EMERALD, Math.min(64, left)));
+        }
+        return n;
+    }
+
+    /**
      * The working reserve: {@link #EMERALD_RESERVE} if a switched-on trade costs emeralds, plus a few days of the
      * settlement's farm wages.
      */

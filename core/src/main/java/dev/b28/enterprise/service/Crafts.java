@@ -233,6 +233,30 @@ public final class Crafts {
         return visit.abroad() ? items * recipe.feeEach() : 0;
     }
 
+    /**
+     * What a town needs of each input to make what it has contracted to sell (by the first recipe that makes each
+     * good): what the caravans that serve it should bring it.
+     */
+    public static Map<Item, Integer> contractInputs(net.minecraft.server.MinecraftServer server, GlobalPos desk) {
+        Services.all(); // registered
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        java.util.Set<Item> goods = new java.util.LinkedHashSet<>();
+        for (var contract : book.of(desk)) {
+            if (contract.inForce() && contract.seller().equals(desk) && contract.knownBy(desk)) {
+                contract.delivery().filter(d -> !d.toOrder()).ifPresent(d -> goods.add(d.item()));
+            }
+        }
+        Map<Item, Integer> needs = new LinkedHashMap<>();
+        for (Item item : goods) {
+            int owed = book.toDeliver(desk, item);
+            RECIPES.stream().filter(r -> r.output() == item).findFirst().ifPresent(r -> {
+                int batches = (owed + r.out() - 1) / r.out();
+                r.inputs().forEach((input, n) -> needs.merge(input, batches * n, Integer::sum));
+            });
+        }
+        return needs;
+    }
+
     /** What the town has contracted to sell of {@code item} and must still deliver: work for its trades. */
     static int contracted(Visit visit, Item item) {
         int owed = dev.b28.enterprise.contract.ContractBook.get(visit.server()).toDeliver(visit.at(), item);

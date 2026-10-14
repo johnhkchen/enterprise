@@ -30,6 +30,7 @@ public final class Enterprise {
         NeoForge.EVENT_BUS.addListener(Caravans::onServerTick);
         NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.market.Broker::onServerTick);
         NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.market.Sovereign::onServerTick);
+        NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.market.MetalExchange::onServerTick);
         NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.territory.Works::onServerTick);
         NeoForge.EVENT_BUS.addListener(net.neoforged.neoforge.event.level.ChunkEvent.Load.class, Terrain::onChunk);
         NeoForge.EVENT_BUS.addListener(net.neoforged.neoforge.event.level.ChunkEvent.Unload.class, Terrain::onChunk);

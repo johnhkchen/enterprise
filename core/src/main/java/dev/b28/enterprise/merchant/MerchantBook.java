@@ -26,6 +26,10 @@ public final class MerchantBook extends SavedData {
     private final Map<GlobalPos, Map<BlockPos, Set<String>>> enabled = new HashMap<>();
     // desk -> game time of its last round (see Rounds)
     private final Map<GlobalPos, Long> lastRound = new HashMap<>();
+    // desk -> workstations whose villagers the Merchant trains: as each levels up, its new buying trades go on too
+    private final Map<GlobalPos, Set<BlockPos>> apprenticed = new HashMap<>();
+    // desk -> "workstation|trade key" switched on to pay a smith in training for its work
+    private final Map<GlobalPos, Set<String>> training = new HashMap<>();
 
     public static MerchantBook get(MinecraftServer server) {
         return server.overworld()
@@ -58,6 +62,29 @@ public final class MerchantBook extends SavedData {
     public void setLastRound(GlobalPos desk, long gameTime) {
         lastRound.put(desk, gameTime);
         setDirty();
+    }
+
+    /** The Merchant trains the villager at this workstation: its buying trades are switched on as it learns them. */
+    public void apprentice(GlobalPos desk, BlockPos workstation) {
+        if (apprenticed.computeIfAbsent(desk, d -> new HashSet<>()).add(workstation)) {
+            setDirty();
+        }
+    }
+
+    public boolean isApprenticed(GlobalPos desk, BlockPos workstation) {
+        return apprenticed.getOrDefault(desk, Set.of()).contains(workstation);
+    }
+
+    /** A trade switched on (or off) to pay a smith in training for its work. */
+    public void training(GlobalPos desk, BlockPos workstation, String key, boolean on) {
+        Set<String> keys = training.computeIfAbsent(desk, d -> new HashSet<>());
+        if (on ? keys.add(workstation.asLong() + "|" + key) : keys.remove(workstation.asLong() + "|" + key)) {
+            setDirty();
+        }
+    }
+
+    public boolean isTraining(GlobalPos desk, BlockPos workstation, String key) {
+        return training.getOrDefault(desk, Set.of()).contains(workstation.asLong() + "|" + key);
     }
 
     public void setEnabled(GlobalPos desk, BlockPos workstation, String tradeKey, boolean on) {
@@ -95,6 +122,17 @@ public final class MerchantBook extends SavedData {
             desks.add(deskTag);
         });
         tag.put("desks", desks);
+        ListTag trained = new ListTag();
+        apprenticed.forEach((desk, workstations) -> {
+            CompoundTag entry = new CompoundTag();
+            GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, desk).ifSuccess(pos -> entry.put("desk", pos));
+            entry.putLongArray("workstations", workstations.stream().mapToLong(BlockPos::asLong).toArray());
+            ListTag keys = new ListTag();
+            training.getOrDefault(desk, Set.of()).forEach(k -> keys.add(StringTag.valueOf(k)));
+            entry.put("training", keys);
+            trained.add(entry);
+        });
+        tag.put("apprenticed", trained);
         return tag;
     }
 
@@ -116,6 +154,16 @@ public final class MerchantBook extends SavedData {
                                 .add(trade.getAsString());
                     }
                 }
+            });
+        }
+        for (Tag t : tag.getList("apprenticed", Tag.TAG_COMPOUND)) {
+            CompoundTag entry = (CompoundTag) t;
+            GlobalPos.CODEC.parse(NbtOps.INSTANCE, entry.get("desk")).ifSuccess(desk -> {
+                for (long pos : entry.getLongArray("workstations")) {
+                    book.apprenticed.computeIfAbsent(desk, d -> new HashSet<>()).add(BlockPos.of(pos));
+                }
+                entry.getList("training", Tag.TAG_STRING).forEach(k ->
+                        book.training.computeIfAbsent(desk, d -> new HashSet<>()).add(k.getAsString()));
             });
         }
         return book;

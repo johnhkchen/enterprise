@@ -71,6 +71,20 @@ final class EnterpriseCommands {
                                 .executes(context -> contracts(context, BlockPosArgument.getBlockPos(context, "desk")))))
                 .then(Commands.literal("war")
                         .executes(EnterpriseCommands::war)
+                        .then(Commands.literal("capital")
+                                .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                        .then(Commands.argument("spursPerDay", IntegerArgumentType.integer(0))
+                                                .executes(context -> {
+                                                    var source = context.getSource();
+                                                    dev.b28.enterprise.market.Sovereign.get(source.getServer()).establish(
+                                                            source.getLevel(), GlobalPos.of(source.getLevel().dimension(),
+                                                                    BlockPosArgument.getBlockPos(context, "desk")),
+                                                            IntegerArgumentType.getInteger(context, "spursPerDay"));
+                                                    source.sendSuccess(() -> Component.literal(
+                                                            "The capital: its treasury takes the crown's revenue, its port's "
+                                                                    + "metal exchange is open"), true);
+                                                    return 1;
+                                                }))))
                         .then(Commands.literal("mobilise")
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                         .then(Commands.argument("spursPerDay", IntegerArgumentType.integer(0))
@@ -108,6 +122,8 @@ final class EnterpriseCommands {
                 .then(Commands.literal("market")
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .executes(EnterpriseCommands::market)))
+                .then(Commands.literal("metals").executes(EnterpriseCommands::metals))
+                .then(Commands.literal("trust").executes(EnterpriseCommands::trust))
                 .then(Commands.literal("services")
                         .executes(context -> services(context, null))
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
@@ -357,13 +373,14 @@ final class EnterpriseCommands {
                     instanceof dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity ? "the shop at " : "")
                     + contract.buyer().pos().toShortString();
             source.sendSuccess(() -> Component.literal(("  #%d %s -> %s, %s, %s (copies at %d of 2): %s; %d delivered, "
-                    + "%d on the road, %.1f emeralds paid, %d missed by the seller, %d by the buyer; trust %.2f").formatted(
+                    + "%d on the road, %.1f emeralds paid (%.1f up front), %d missed by the seller, %d by the buyer; trust %.2f").formatted(
                     contract.id(), contract.seller().pos().toShortString(), buyer, contract.state().name().toLowerCase(),
                     contract.incoterm().name(),
                     (contract.knownBy(contract.seller()) ? 1 : 0) + (contract.knownBy(contract.buyer()) ? 1 : 0),
                     contract.delivery().map(d -> d.quantity() + " " + d.describe())
                             .orElse(contract.levy().map(l -> "a levy of " + l.soldiers() + " soldiers").orElse("?")),
-                    contract.delivered(), contract.shipped(), contract.paid(), contract.missed(), contract.buyerMissed(),
+                    contract.delivered(), contract.shipped(), contract.paid(), contract.advanced(), contract.missed(),
+                    contract.buyerMissed(),
                     book.trust(contract.seller(), contract.buyer()))), false);
             contract.history().forEach(line -> source.sendSuccess(() -> Component.literal("    " + line), false));
         }
@@ -467,9 +484,52 @@ final class EnterpriseCommands {
             });
             trades.append(" ").append(bell.pos().getX()).append(",").append(bell.pos().getZ()).append(count);
         }
-        String full = line + trades;
+        var metals = dev.b28.enterprise.market.MetalExchange.get(server);
+        String held = metals.desk().isEmpty() ? "" : " | metals " + dev.b28.enterprise.market.MetalExchange.METALS.stream()
+                .map(m -> BuiltInRegistries.ITEM.getKey(m.item()).getPath() + "=" + metals.held(m.item()))
+                .collect(java.util.stream.Collectors.joining(" "));
+        String full = line + held + trades;
         source.sendSuccess(() -> Component.literal(full), false);
         return army.size();
+    }
+
+    /** The capital's metal exchange: each metal's stock, its prices, and what it has imported, bought and sold. */
+    private static int metals(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        var server = source.getServer();
+        var exchange = dev.b28.enterprise.market.MetalExchange.get(server);
+        if (exchange.desk().isEmpty()) {
+            source.sendFailure(Component.literal("No metal exchange: name a capital with /enterprise war capital"));
+            return 0;
+        }
+        GlobalPos desk = exchange.desk().get();
+        double rate = dev.b28.enterprise.money.Mint.get(server).rate(dev.b28.enterprise.money.Mint.DEFAULT_FACTION,
+                source.getLevel().getGameTime());
+        var phase = dev.b28.enterprise.market.Sovereign.get(server).phase();
+        source.sendSuccess(() -> Component.literal("Metal exchange at %s (%s)".formatted(desk.pos().toShortString(),
+                phase.name().toLowerCase())), false);
+        for (var metal : dev.b28.enterprise.market.MetalExchange.METALS) {
+            var book = exchange.book(metal.item());
+            source.sendSuccess(() -> Component.literal(("  %s: holds %d of %d, %d at sea; buys at %.1f spurs, sells at %.1f; "
+                    + "imported %d, bought %d from towns, sold %d to towns").formatted(
+                    BuiltInRegistries.ITEM.getKey(metal.item()).getPath(), exchange.held(metal.item()),
+                    dev.b28.enterprise.market.MetalExchange.target(metal, phase), exchange.atSea(metal.item()),
+                    exchange.bid(server, desk, metal.item()).orElse(0.0) * rate,
+                    exchange.ask(server, desk, metal.item()).orElse(0.0) * rate, book.imported(), book.bought(),
+                    book.sold())), false);
+        }
+        return 1;
+    }
+
+    /** Trust between each pair of parties that have dealt: their record of installments kept and missed. */
+    private static int trust(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        var book = dev.b28.enterprise.contract.ContractBook.get(source.getServer());
+        var records = book.records();
+        source.sendSuccess(() -> Component.literal("%d record(s)".formatted(records.size())), false);
+        records.forEach((pair, r) -> source.sendSuccess(() -> Component.literal("  %s: trust %.2f, %.1f kept, %.1f missed"
+                .formatted(r.parties(), r.trust(), r.kept(), r.missed())), false));
+        return records.size();
     }
 
     /** What went into the war: by town, and in all. */
@@ -484,11 +544,13 @@ final class EnterpriseCommands {
         java.util.Set<GlobalPos> towns = new java.util.LinkedHashSet<>(army.records().keySet());
         java.util.Map<GlobalPos, int[]> kit = new java.util.LinkedHashMap<>();
         java.util.Map<GlobalPos, Double> paid = new java.util.LinkedHashMap<>();
+        java.util.Map<GlobalPos, Double> upFront = new java.util.LinkedHashMap<>();
         for (var c : book.all()) {
             if (desk != null && c.buyer().equals(desk) && c.delivery().isPresent()) {
                 towns.add(c.seller());
                 kit.computeIfAbsent(c.seller(), k -> new int[1])[0] += c.delivered();
                 paid.merge(c.seller(), c.paid(), Double::sum);
+                upFront.merge(c.seller(), c.advanced(), Double::sum);
             }
             if (desk != null && c.buyer().equals(desk) && c.levy().isPresent()) {
                 paid.merge(c.seller(), c.paid() + c.owing(), Double::sum);
@@ -497,10 +559,12 @@ final class EnterpriseCommands {
         for (GlobalPos town : towns) {
             var r = army.records().getOrDefault(town, null);
             source.sendSuccess(() -> Component.literal(("  %s: %d raised, %d fallen, %d deserted, %d soldier-days (%d hungry), "
-                    + "strength %.0f; %d pieces of kit delivered; %.1f emeralds earned").formatted(town.pos().toShortString(),
+                    + "strength %.0f; %d pieces of kit delivered; %.1f emeralds earned, %.1f of it paid up front; trust %.2f")
+                    .formatted(town.pos().toShortString(),
                     r == null ? 0 : r.raised(), r == null ? 0 : r.fallen(), r == null ? 0 : r.deserted(),
                     r == null ? 0 : r.days(), r == null ? 0 : r.hungry(),
-                    r == null ? 0 : r.strength(), kit.getOrDefault(town, new int[1])[0], paid.getOrDefault(town, 0.0))),
+                    r == null ? 0 : r.strength(), kit.getOrDefault(town, new int[1])[0], paid.getOrDefault(town, 0.0),
+                    upFront.getOrDefault(town, 0.0), desk == null ? 0 : book.trust(town, desk))),
                     false);
         }
         source.sendSuccess(() -> Component.literal("  kit issued: " + army.issued()), false);
@@ -636,6 +700,7 @@ final class EnterpriseCommands {
             if (!book.enabledTrades(deskPos, locker.workstation()).isEmpty()) {
                 continue;
             }
+            book.apprentice(deskPos, locker.workstation()); // its buying trades stay on as it levels up
             for (MerchantView.TradeView trade : locker.trades()) {
                 if (!trade.enabled() && (all || trade.key().endsWith(">minecraft:emerald"))) {
                     book.setEnabled(deskPos, locker.workstation(), trade.key(), true);

@@ -128,7 +128,14 @@ public final class Squad {
         if (villager.isBaby() || !TRADES.contains(trade(villager)) && !porter(trade(villager))) {
             return false;
         }
-        return villager.getBrain().getMemory(MemoryModuleType.JOB_SITE).filter(desk::equals).isEmpty();
+        var site = villager.getBrain().getMemory(MemoryModuleType.JOB_SITE);
+        if (site.filter(desk::equals).isPresent()) {
+            return false; // the Merchant who works the desk
+        }
+        // And whoever works a locker: the market's trade goes on through them.
+        return site.filter(at -> at.dimension() == villager.level().dimension()
+                && villager.level() instanceof net.minecraft.server.level.ServerLevel level
+                && !dev.b28.enterprise.locker.Lockers.touchingContainers(level, at.pos()).isEmpty()).isEmpty();
     }
 
     /**

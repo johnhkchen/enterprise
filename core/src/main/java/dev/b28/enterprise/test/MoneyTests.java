@@ -151,4 +151,24 @@ public final class MoneyTests {
         }
         return stock;
     }
+
+    @GameTest(template = "floor")
+    public static void theMerchantChangesCoinForEmeraldsToPayItsVillagers(GameTestHelper helper) {
+        BlockPos desk = new BlockPos(3, 2, 3);
+        helper.setBlock(desk, Merchant.DESK.get());
+        helper.setBlock(desk.east(), Blocks.CHEST);
+        var level = helper.getLevel();
+        MerchantStock stock = MerchantStock.at(level, helper.absolutePos(desk));
+        MoneyChanger.coins(100).forEach(stock::insert);
+        Mint mint = Mint.get(level.getServer());
+        int cost = mint.buyCost(Mint.DEFAULT_FACTION, 2, level.getGameTime());
+        helper.assertTrue(cost > 2 * mint.rate(Mint.DEFAULT_FACTION, level.getGameTime()), "a little over the rate: " + cost);
+        int bought = MoneyChanger.buyEmeralds(level, helper.absolutePos(desk), stock, 2);
+        helper.assertTrue(bought == 2 && stock.count(new ItemCost(Items.EMERALD, 1)) == 2, "two emeralds bought");
+        helper.assertTrue(MoneyChanger.value(stock.looseStacks()) == 100 - cost, "paid in coin, change back: "
+                + MoneyChanger.value(stock.looseStacks()));
+        helper.assertTrue(MoneyChanger.buyEmeralds(level, helper.absolutePos(desk), stock, 50) < 50,
+                "only as far as the coin goes");
+        helper.succeed();
+    }
 }

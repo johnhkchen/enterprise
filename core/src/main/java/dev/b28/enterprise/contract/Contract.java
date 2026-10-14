@@ -45,6 +45,9 @@ public final class Contract {
     double owing; // emeralds the buyer owes the seller for goods delivered without a caravan to pay (a player brought them)
     int shipped; // items on the road to the buyer, counted as delivered where the buyer bears the road
     int missesCounted; // installments already judged
+    double advanced; // emeralds the buyer paid up front (coin or bill)
+    double recouped; // of which worked off against deliveries
+    double refund; // emeralds the seller owes back: an advance not worked off when the contract broke
     final List<String> history = new ArrayList<>(); // the latest settlements, for the record
 
     Contract(int id, GlobalPos seller, GlobalPos buyer, List<Term> terms, long start, long every, int installments,
@@ -105,6 +108,49 @@ public final class Contract {
 
     public int shipped() {
         return shipped;
+    }
+
+    public double advanced() {
+        return advanced;
+    }
+
+    public double recouped() {
+        return recouped;
+    }
+
+    public double refund() {
+        return refund;
+    }
+
+    /** The contract's advance term, if it has one. */
+    public java.util.Optional<Advance> advance() {
+        return terms.stream().filter(Advance.class::isInstance).map(Advance.class::cast).findFirst();
+    }
+
+    /** The whole contract's worth at the locked price, without bonuses. */
+    public double worth() {
+        return delivery().map(d -> d.quantity() * installments * d.unitPrice()).orElse(0.0);
+    }
+
+    /** What the buyer has still to pay up front, while the contract stands. */
+    public double advanceDue() {
+        if (state != State.DRAFTED && state != State.ACTIVE) {
+            return 0;
+        }
+        return advance().map(a -> Math.max(0, a.share() * worth() - advanced)).orElse(0.0);
+    }
+
+    /**
+     * Of a delivery worth {@code price}, what's taken off for the advance already paid: its share of the price, and on
+     * the last delivery whatever is left.
+     */
+    public double recoupFrom(double price, int items) {
+        double left = advanced - recouped;
+        if (left <= 0.001) {
+            return 0;
+        }
+        boolean last = delivery().map(d -> delivered + items >= d.quantity() * installments).orElse(true);
+        return Math.min(price, last ? left : Math.min(left, price * advance().map(Advance::share).orElse(1.0)));
     }
 
     public Incoterm incoterm() {
@@ -193,6 +239,9 @@ public final class Contract {
         tag.putDouble("paid", paid);
         tag.putInt("missed", missed);
         tag.putInt("missesCounted", missesCounted);
+        tag.putDouble("advanced", advanced);
+        tag.putDouble("recouped", recouped);
+        tag.putDouble("refund", refund);
         ListTag lines = new ListTag();
         history.forEach(line -> lines.add(net.minecraft.nbt.StringTag.valueOf(line)));
         tag.put("history", lines);
@@ -217,6 +266,9 @@ public final class Contract {
         contract.paid = tag.getDouble("paid");
         contract.missed = tag.getInt("missed");
         contract.missesCounted = tag.getInt("missesCounted");
+        contract.advanced = tag.getDouble("advanced");
+        contract.recouped = tag.getDouble("recouped");
+        contract.refund = tag.getDouble("refund");
         tag.getList("history", Tag.TAG_STRING).forEach(t -> contract.history.add(t.getAsString()));
         return contract;
     }

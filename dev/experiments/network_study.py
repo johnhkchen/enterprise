@@ -30,9 +30,12 @@ With --master, the hub's Merchant is a master: it brokers with players' shops (N
 and its market (orders, signals, takings) is printed at the end.
 
 With --war M,W,P, a sovereign at the hub (its capital: the Merchant a master, a master Librarian and a Cleric at
-court, the hub a settlement, its chunks kept loaded) mobilises on day M (minting 1,000 spurs a day into the hub's
-Blaze Banker, stockpiling kit through contracts, buying gold at a shop), declares war on a rival faction on day W
-(levying soldiers), and makes peace on day P. Each day's /enterprise war line is logged, and the tally printed.
+court, a Weaponsmith, an Armorer and a Toolsmith in stalls by the desk to train, the hub a settlement, its chunks kept
+loaded) is named on day 1, with 500 spurs a day of peacetime revenue and its port's metal exchange open (iron, coal,
+flint and diamonds by sea; bids and asks for the region). It mobilises on day M (minting 1,000 spurs a day into the
+hub's Blaze Banker, stockpiling kit through contracts, buying gold at a shop), declares war on a rival faction on day
+W (levying soldiers), and makes peace on day P. Each day's /enterprise war line is logged, the exchange's book every
+ten days, and the tally, the exchange and the trust between the parties printed at the end.
 
 With --comforts, the hub also stocks a shulker of comforts (treats, clothing, furnishings) for towns to buy, and the
 spring, once open, refills a shulker of comforts and a stack of books every day.
@@ -60,6 +63,7 @@ HEX_SIZE = 80 / math.sqrt(3)  # centre to corner
 RIVER_ROW = 20  # T's row of hexes
 RIVER_Q = range(-8, 25)
 BRIDGES = {7, 8}  # T's home hex and the one its buildings spill into
+COURT_SMITHS = [("weaponsmith", "grindstone"), ("armorer", "blast_furnace"), ("toolsmith", "smithing_table")]
 
 
 sys.path.insert(0, str(REPO / "scripts"))
@@ -198,6 +202,14 @@ def setup():
         for i, (trade, lvl) in enumerate([("librarian", 5), ("cleric", 3)]):
             rcon(f"summon minecraft:villager {HUB[0] + 2 + 2 * i}.5 -60 {HUB[1] + 15}.5 {{PersistenceRequired:1b,Xp:250,"
                  f"VillagerData:{{profession:\"minecraft:{trade}\",level:{lvl},type:\"minecraft:plains\"}}}}")
+        # The court's smiths, Novices in stalls by the desk (a workstation, a locker chest east of it), with beds.
+        for i, (trade, block) in enumerate(COURT_SMITHS):
+            x, z = HUB[0] + 10 + 3 * i, HUB[1] + 6
+            rcon(f"setblock {x} -60 {z} minecraft:{block}", f"setblock {x + 1} -60 {z} minecraft:chest",
+                 f"setblock {HUB[0] + 8 + 2 * i} -60 {HUB[1] + 18} minecraft:white_bed[facing=north,part=head]",
+                 f"setblock {HUB[0] + 8 + 2 * i} -60 {HUB[1] + 19} minecraft:white_bed[facing=north,part=foot]",
+                 f"summon minecraft:villager {x}.5 -60 {z + 1}.5 {{PersistenceRequired:1b,Xp:1,"
+                 f"VillagerData:{{profession:\"minecraft:{trade}\",level:1,type:\"minecraft:plains\"}}}}")
     if "--master" in sys.argv or "--war" in sys.argv:
         rcon(f"execute as @e[type=villager,x={HUB[0]},y=-61,z={HUB[1]},dx=8,dy=3,dz=8] "
              f"if data entity @s VillagerData{{profession:\"enterprise:merchant\"}} "
@@ -225,11 +237,20 @@ def setup():
     sprint(300)
     for corner in TOWNS.values():
         rcon(f"enterprise autoswitch {desk(corner)} selling")
+    if "--war" in sys.argv:
+        # The capital's Merchant a master again (it manages ten lockers), and its smiths' trades switched on.
+        rcon(f"execute as @e[type=villager,x={HUB[0]},y=-61,z={HUB[1]},dx=8,dy=3,dz=8] "
+             f"if data entity @s VillagerData{{profession:\"enterprise:merchant\"}} "
+             f"run data merge entity @s {{VillagerData:{{level:5}},Xp:7000}}")
+        sprint(100)
+        print("court smiths: " + rcon(f"enterprise autoswitch {hub_desk} selling").strip())
+        print(rcon(f"enterprise lockers {hub_desk}").strip().splitlines()[1])
     sprint(600)
     for corner in TOWNS.values():
         rcon(f"enterprise census {bell(corner)}")
     if "--war" in sys.argv:
         rcon(f"enterprise census {HUB[0] + 4} -60 {HUB[1] + 16}")
+        print(rcon(f"enterprise war capital {hub_desk} 500").strip())
     for name in ROUTED:
         print(f"route hub -> {name}: " + rcon(f"enterprise route add {hub_desk} {desk(TOWNS[name])}").strip().splitlines()[-1])
     for corner in [*([] if "--war" in sys.argv else [HUB]), *TOWNS.values()]:
@@ -336,6 +357,8 @@ def main():
                          "bills": number(r"bills ([\d.]+)", line)})
             if day % 5 == 0 or day in war:
                 print(f"  {line}")
+            if day % 10 == 0:
+                print("  " + rcon("enterprise metals").strip().replace("\n", "\n  "))
             sys.stdout.flush()
         towns = [r for r in rows if r["day"] == day and r["kind"] == "town"]
         print(f"day {day:>2}: " + " | ".join(
@@ -348,10 +371,12 @@ def main():
         print("\n" + rcon("enterprise war tally").strip())
         print("\n" + rcon("enterprise war").strip())
         print("\n" + rcon(f"enterprise market {HUB[0] + 2} -60 {HUB[1] + 2}").strip())
+        print("\n" + rcon("enterprise metals").strip())
+        print("\n" + rcon("enterprise trust").strip())
         print("\n" + rcon("enterprise contracts").strip())
         print("\n" + rcon("enterprise routes").strip())
         for name, corner in TOWNS.items():
-            print(f"\n{name} trades: " + rcon(f"enterprise territory {bell(corner)}").strip().splitlines()[0])
+            print(f"\n{name} trades: " + rcon(f"enterprise territory {bell(corner)}").strip().splitlines()[1])
     if "--metal" in sys.argv:
         for name in ["S1", "T"]:
             t = rcon(f"enterprise territory {bell(TOWNS[name])}")

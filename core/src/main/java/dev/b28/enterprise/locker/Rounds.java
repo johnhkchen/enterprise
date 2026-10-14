@@ -80,6 +80,18 @@ public final class Rounds {
         MerchantBook book = MerchantBook.get(server);
         Set<GlobalPos> desks = new LinkedHashSet<>(book.desks());
         desks.addAll(dev.b28.enterprise.territory.Territory.get(server).farmDesks()); // farms run without trades
+        // A market that is running can still have villagers that aren't: one that wandered past the edge of the
+        // ticking chunks stands frozen there. Once a day they catch up where they stand, trading through their lockers.
+        desks.stream()
+                .filter(desk -> {
+                    ServerLevel level = server.getLevel(desk.dimension());
+                    return level != null && level.isPositionEntityTicking(desk.pos());
+                })
+                .filter(desk -> now - book.lastRound(desk) >= INTERVAL_TICKS)
+                .forEach(desk -> {
+                    book.setLastRound(desk, now);
+                    LockerCatchUp.enqueueStranded(server.getLevel(desk.dimension()), desk.pos(), Lockers.MERCHANT_RANGE);
+                });
         desks.stream()
                 .filter(desk -> {
                     ServerLevel level = server.getLevel(desk.dimension());

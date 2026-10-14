@@ -175,8 +175,9 @@ public final class Jobs {
             java.util.List<String> chain = new java.util.ArrayList<>();
             boolean metal = item == Items.IRON_SWORD || item == Items.IRON_CHESTPLATE || item == Items.SHIELD
                     || item == Items.GOLD_INGOT || item == Items.IRON_INGOT;
-            if (metal && territory.mine(bell).isEmpty()) {
-                chain.add("minecraft:toolsmith");
+            boolean ore = item == Items.COAL || item == Items.RAW_IRON || item == Items.RAW_GOLD;
+            if ((metal || ore) && territory.mine(bell).isEmpty()) {
+                chain.add("minecraft:toolsmith"); // a mine
             }
             if (metal) {
                 chain.add("minecraft:armorer");
@@ -214,6 +215,7 @@ public final class Jobs {
         villager.getBrain().setMemory(MemoryModuleType.JOB_SITE, GlobalPos.of(level.dimension(), workstation));
         villager.setVillagerData(villager.getVillagerData().setProfession(trade.profession()).setLevel(1));
         MerchantBook book = MerchantBook.get(level.getServer());
+        book.apprentice(desk, workstation); // and as it levels up, what it learns to buy
         villager.getOffers().forEach(offer -> {
             String key = TradeKeys.of(offer);
             if (key.endsWith(">minecraft:emerald")) {

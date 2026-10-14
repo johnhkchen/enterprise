@@ -64,6 +64,9 @@ public final class Procurement {
     /** What the desk wants of each good beyond what it holds: its open orders and what it has contracted to deliver. */
     public static Map<Item, Integer> wanted(ServerLevel level, GlobalPos desk, dev.b28.enterprise.merchant.MerchantStock stock) {
         Map<Item, Integer> wanted = new LinkedHashMap<>(Exchange.get(level.getServer()).wanted(desk));
+        // At the capital, what the sovereign's stockpile lacks: its own smiths and farmers sell to the depot.
+        Sovereign.get(level.getServer()).shortfall(desk).forEach((item, n) ->
+                wanted.merge(item, n + stock.count(new ItemCost(item, 1)), Integer::sum)); // (held is taken off below)
         ContractBook book = ContractBook.get(level.getServer());
         for (var contract : book.of(desk)) {
             contract.delivery().filter(d -> contract.seller().equals(desk) && contract.inForce() && !d.toOrder())
@@ -90,7 +93,7 @@ public final class Procurement {
         int limit = Merchant.workingAt(level, desk.pos(), Lockers.MERCHANT_RANGE)
                 .map(m -> Merchant.lockerLimit(m.getVillagerData().getLevel())).orElse(0);
         for (var locker : Lockers.near(level, desk.pos(), Lockers.MERCHANT_RANGE, limit)) {
-            var villager = Merchant.workingAt(level, locker.workstation(), 8);
+            var villager = Merchant.workingAt(level, locker.workstation(), Lockers.MERCHANT_RANGE); // wherever it stands
             if (villager.isEmpty()) {
                 continue;
             }

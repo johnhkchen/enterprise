@@ -328,6 +328,41 @@ A well-funded sovereign shifting the region onto a war economy, through the regi
   - **What's missing:** advances against contracts (money up front to hire, build and train), patience for a supplier ramping up (lead time, a softer first miss), and a way for coin to become people at work. That is the war finance to come: loans, bonds, taxes.
 - **The long runs got 10 times faster** (2 seconds a game day; 90 days in 3 minutes): the study now keeps one RCON connection open, and reads the debug log from where it left off. The tick warp itself was never the slow part.
 
+## Trust, advances and the capital's port (built 2026-10-14)
+
+What run 1 of the war lacked: patience with new suppliers, money before production, and metal to train smiths on.
+
+- **Trust is a track record**, not a meter. Each pair keeps installments kept and missed; trust is `(kept + 2) / (kept + missed + 4)`, a half for strangers.
+  - **Consistency builds it:** each kept installment adds less as the record grows, and one bad week doesn't undo a long record (20 kept, 2 missed: still 0.79).
+  - **Disruptions are forgiven:** a miss's weight halves every 20 days; kept installments every 120.
+  - **New suppliers ramp up gently:** until a pair has kept 3 installments, a miss counts a quarter.
+  - **Part deliveries count in part:** 27 of 30 is 0.9 kept. Only an installment short by half or more counts toward breaking the contract (3 such break it).
+  - **Trust never freezes trade:** below 0.3 the two still deal, on trial terms (a lot of 4, nothing up front), so a record can be rebuilt. A bill paid when presented counts half a kept installment, a dishonoured one a whole miss; a paid service abroad a tenth.
+  - `/enterprise trust` lists every pair's record.
+- **Money before the goods: advances.** A contract to make goods carries an advance term: a third of its worth paid up front, carried by the buyer's caravan with the copy (coin from its purse, the rest a bill of exchange on the buyer). The seller works it off at the same share of each delivery's price. If the contract breaks, what isn't worked off is owed back and collected by the next caravan, as far as the seller can spare.
+- **Work to make comes in small installments:** four, a day apart, after a three-day lead, rather than one lot of 16 due in two days. Steady deliveries build the record.
+- **Inputs follow contracts.** A town contracted to make swords wants the iron for them: caravans carry a contract's inputs first, and the town buys up to what it needs. (With more wanted goods than cargo slots, a caravan used to carry nothing at all; it now carries a stack each, inputs first.)
+- **The capital and its port** (`/enterprise war capital <desk> <spurs a day>`): a capital can be named in peacetime. Its treasury takes a peacetime revenue (minted for now; taxes will replace it), and its port opens a **metal exchange**:
+  - it aims to hold iron, coal and flint (192/192/96) and diamonds (12), twice that while mobilising, three times at war;
+  - ships bring what it lacks, three days at sea, paid from the treasury at 1.5 times worth;
+  - it posts a bid and an ask a tenth either side of a middle price that rises (up to half again) as its stock runs short. The capital's caravans sell its metal to towns at the ask and buy towns' metal (gold too: the war chest) at the bid. Its bids stand as signals, so towns take up mines;
+  - `/enterprise metals` shows its book.
+- **Training smiths.** A villager the Merchant puts to work is its apprentice: as it levels, its new buying trades are switched on too (coal, iron, flint, diamonds). A smith with nothing to buy in the warehouse (a Novice Weaponsmith may buy nothing) has its cheapest work bought instead, while the town can spare it. At master its buying trades go off: its metal is kept for its contracts.
+- **Fixes the runs turned up:**
+  - Villagers in a town loaded only for a round never levelled up. Vanilla waits 40 of the villager's own ticks to apply a level, and a round may not give it those. Locker trades now level a villager at once.
+  - Rounds skipped a market whose desk is loaded, so a villager that had wandered just past the loaded chunks stood frozen and never traded. A loaded market's stranded villagers now catch up once a day where they stand, and Procurement finds a villager anywhere in the market's reach.
+  - Squads no longer take villagers who work a locker: the court's smiths kept leaving on caravans.
+  - The Merchant changes coin for emeralds at the mint (5% over the rate, from money beyond its reserve) to pay its villagers. Caravan purses had drained the capital's emeralds, so it couldn't buy from its own smiths.
+- **Measured** (`network_study.py --comforts --war 31,61,101`, 120 days: the capital named on day 1, mobilising from day 31, war from 61, peace from 101):
+  - **The court's three smiths were masters by day 10**, trained on imported coal, iron, flint and diamonds. S3's Armorer reached master; S1's Level 2.
+  - **251 pieces of kit delivered** (44 arrows in run 1): S2 179 for 833 emeralds, S1 72. The army was issued 3 enchanted diamond chestplates (Fire Protection, Unbreaking), 6 iron chestplates and 2 enchanted iron swords.
+  - **Trust held:** 0.62, 0.42 and 0.81 at the end (0.12 and 0.00 in run 1), with 1,053 emeralds paid up front.
+  - **Still short:**
+    1. No diamond swords: the master Weaponsmith offers them, but none were bought.
+    2. S2 sat on 814 emeralds, money it couldn't turn into more hands; S1 took 267 up front and earned 34.
+    3. The army's meals were still 0% hearty: no meat reached the depot.
+    4. The treasury ended with 76,000 spurs unspent, and the spur fell from 16 to 34 an emerald.
+
 ## Travel cost between hexes (2026-10-13)
 
 Travel cost must react to real building. A long wall, a tunnel, a bridge or a wide canal should each change routes and costs.

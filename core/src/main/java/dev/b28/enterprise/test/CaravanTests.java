@@ -816,4 +816,30 @@ public final class CaravanTests {
         helper.assertTrue(Caravans.travelTicks(1200) == 24000, "1,200 blocks is a day on the road");
         helper.succeed();
     }
+
+    @GameTest(template = "floor")
+    public static void theAdvanceRidesWithTheCopyAndTheInputsFollow(GameTestHelper helper) {
+        Network net = network(helper, 8, 20, 192);
+        var server = helper.getLevel().getServer();
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        GlobalPos hub = net.route().from();
+        GlobalPos town = net.route().to();
+        net.hub().insert(new ItemStack(Items.IRON_INGOT, 64));
+        long t = helper.getLevel().getGameTime();
+        // The hub orders eight iron swords made, two a day from the third day, a third paid up front.
+        var contract = book.draft(town, hub, List.of(new dev.b28.enterprise.contract.Delivery(Items.IRON_SWORD, 2, 1.0),
+                new dev.b28.enterprise.contract.Advance(1 / 3.0)), dev.b28.enterprise.contract.Incoterm.EXW,
+                t + 3 * 24000L, 24000, 4, t, hub, false);
+        net.poll(t);
+        net.poll(t + 80);
+        helper.assertTrue(contract.inForce(), "the caravan brought the copy");
+        helper.assertTrue(Math.abs(contract.advanced() - 8 / 3.0) < 0.01, "and the advance: " + contract.advanced());
+        helper.assertTrue(net.route().advanceSpurs() > 0, "in coin, from its purse: " + net.route().advanceSpurs());
+        net.poll(t + 160);
+        net.poll(t + 24000);
+        net.poll(t + 24080);
+        int iron = net.dest().count(new ItemCost(Items.IRON_INGOT, 1));
+        helper.assertTrue(iron >= 16, "the next caravan brings the iron for the swords: " + iron);
+        helper.succeed();
+    }
 }

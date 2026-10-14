@@ -17,20 +17,72 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.saveddata.SavedData;
 
 /**
- * Every contract, and the trust between each pair of parties. Trust starts at a half; each installment settled in
- * full raises it, each missed one lowers it, and parties below {@link #MIN_TRUST} draft nothing new together. The book
- * is the ledger of record; a party knows of a contract only once a carrier has brought it a copy.
+ * Every contract, and the trust between each pair of parties. Trust is a track record: the installments kept and
+ * missed between the two, weighed as {@code (kept + 2) / (kept + missed + 4)}, so it starts at a half, and each kept
+ * installment raises it less as the record grows, while a long record isn't undone by one bad week. Misses are
+ * forgiven over time (their weight halves every {@link #MISS_HALF_LIFE}); kept installments are remembered longer.
+ * A new supplier still ramping up (fewer than {@link #TEETHING} kept) is judged gently: its misses count a quarter.
+ * An installment delivered in part counts as kept in part. Below {@link #MIN_TRUST} the two still deal, on trial terms
+ * (small lots, nothing paid up front), so a record can always be rebuilt. The book is the ledger of record; a party
+ * knows of a contract only once a carrier has brought it a copy.
  */
 public final class ContractBook extends SavedData {
     private static final String NAME = "enterprise_contracts";
 
     public static final double START_TRUST = 0.5;
     public static final double MIN_TRUST = 0.3;
-    public static final double TRUST_PER_SETTLEMENT = 0.05;
-    public static final double TRUST_PER_MISS = 0.2;
+    /** The record every pair starts with: as if two installments kept and two missed. */
+    public static final double PRIOR = 2;
+    /** A miss's weight halves this often; a kept installment's, this often. */
+    public static final long MISS_HALF_LIFE = 20 * 24000L;
+    public static final long KEPT_HALF_LIFE = 120 * 24000L;
+    /** Until a pair has kept this many installments, a miss counts {@link #TEETHING_WEIGHT}. */
+    public static final double TEETHING = 3;
+    public static final double TEETHING_WEIGHT = 0.25;
+    /** An installment short by at least this share counts toward breaking the contract. */
+    public static final double BREAKING_SHORTFALL = 0.5;
+
+    /** Two parties' record: installments kept and missed (weighted, fading), as of game time {@code touched}. */
+    public static final class Record {
+        GlobalPos a;
+        GlobalPos b;
+        double kept;
+        double missed;
+        long touched;
+
+        /** The two parties, as first recorded (either may be the seller). */
+        public String parties() {
+            return a == null ? "?" : a.pos().toShortString() + " and " + b.pos().toShortString();
+        }
+
+        public double kept() {
+            return kept;
+        }
+
+        public double missed() {
+            return missed;
+        }
+
+        public double trust() {
+            return (kept + PRIOR) / (kept + missed + 2 * PRIOR);
+        }
+
+        /** The record as it stands at {@code now}: misses forgiven, and kept installments a little forgotten. */
+        Record at(long now) {
+            Record r = new Record();
+            r.a = a;
+            r.b = b;
+            double ticks = Math.max(0, now - touched);
+            r.kept = kept * Math.pow(0.5, ticks / KEPT_HALF_LIFE);
+            r.missed = missed * Math.pow(0.5, ticks / MISS_HALF_LIFE);
+            r.touched = Math.max(now, touched);
+            return r;
+        }
+    }
 
     private final Map<Integer, Contract> contracts = new LinkedHashMap<>();
-    private final Map<String, Double> trust = new HashMap<>(); // by pair of parties, either order
+    private final Map<String, Record> records = new HashMap<>(); // by pair of parties, either order
+    private long clock; // the latest game time the book has seen
     private int nextId = 1;
 
     public static ContractBook get(MinecraftServer server) {
@@ -86,10 +138,12 @@ public final class ContractBook extends SavedData {
             contract.state = Contract.State.ACTIVE;
         }
         String what = contract.delivery().map(d -> d.quantity() + " " + d.describe() + " at %.3f emeralds each"
-                        .formatted(d.unitPrice()))
+                        .formatted(d.unitPrice()) + (installments > 1 ? ", %d times every %.1f days".formatted(
+                                installments, every / 24000.0) : ""))
                 .orElse(contract.levy().map(l -> l.soldiers() + " soldiers at %.2f emeralds a day".formatted(l.payPerDay()))
                         .orElse("?"));
-        contract.note("drafted on day %d: %s, %s%s".formatted(now / 24000, what, incoterm.name(),
+        contract.note("drafted on day %d: %s, %s%s%s".formatted(now / 24000, what, incoterm.name(),
+                contract.advance().map(a -> "; " + a.describe()).orElse(""),
                 contract.bonuses().isEmpty() ? "" : "; bonuses " + contract.bonuses().stream().map(Bonus::describe)
                         .collect(java.util.stream.Collectors.joining("; "))));
         contracts.put(contract.id, contract);
@@ -207,6 +261,7 @@ public final class ContractBook extends SavedData {
      * last stocktake (they were set aside, and nobody came for them), else the seller's.
      */
     public void review(MinecraftServer server, long now) {
+        clock = Math.max(clock, now);
         for (Contract contract : contracts.values()) {
             if (!contract.inForce()) {
                 continue;
@@ -215,19 +270,26 @@ public final class ContractBook extends SavedData {
             Optional<Delivery> delivery = contract.delivery();
             int counted = contract.delivered + (contract.incoterm.sellerBearsRoad ? 0 : contract.shipped);
             while (contract.missesCounted < judged && delivery.isPresent()) {
-                int needed = (contract.missesCounted + 1) * delivery.get().quantity();
-                if (counted >= needed) {
-                    adjustTrust(contract.seller, contract.buyer, TRUST_PER_SETTLEMENT);
+                int quantity = delivery.get().quantity();
+                int needed = (contract.missesCounted + 1) * quantity;
+                double short_ = Math.min(1, Math.max(0, (needed - counted) / (double) quantity));
+                if (short_ <= 0) {
+                    kept(contract.seller, contract.buyer, 1, now);
                 } else if (contract.incoterm == Incoterm.EXW && server != null && dev.b28.enterprise.merchant.Warehouse
-                        .get(server).onHand(contract.seller, delivery.get().item()) >= delivery.get().quantity()) {
+                        .get(server).onHand(contract.seller, delivery.get().item()) >= quantity) {
                     contract.buyerMissed++;
-                    adjustTrust(contract.seller, contract.buyer, -TRUST_PER_MISS);
+                    missed(contract.seller, contract.buyer, 1, now);
                     contract.note("day %d: installment %d set aside, not collected".formatted(now / 24000,
                             contract.missesCounted + 1));
                 } else {
-                    contract.missed++;
-                    adjustTrust(contract.seller, contract.buyer, -TRUST_PER_MISS);
-                    contract.note("day %d: installment %d missed".formatted(now / 24000, contract.missesCounted + 1));
+                    // Delivered in part: kept in part. Mostly undelivered, it counts toward breaking the contract.
+                    kept(contract.seller, contract.buyer, 1 - short_, now);
+                    missed(contract.seller, contract.buyer, short_, now);
+                    if (short_ >= BREAKING_SHORTFALL) {
+                        contract.missed++;
+                    }
+                    contract.note("day %d: installment %d %s".formatted(now / 24000, contract.missesCounted + 1,
+                            short_ >= 1 ? "missed" : "%d%% short".formatted(Math.round(short_ * 100))));
                 }
                 contract.missesCounted++;
             }
@@ -236,9 +298,42 @@ public final class ContractBook extends SavedData {
                 contract.note("day %d: broken after %d misses by the %s".formatted(now / 24000,
                         Math.max(contract.missed, contract.buyerMissed),
                         contract.missed >= Contract.MISSES_TO_BREAK ? "seller" : "buyer"));
+                broken(contract);
             }
             setDirty();
         }
+    }
+
+    /** The buyer paid {@code emeralds} up front (coin, or a bill on itself). */
+    public void advanced(Contract contract, double emeralds, long now) {
+        contract.advanced += emeralds;
+        contract.note("day %d: %.2f emeralds paid up front".formatted(now / 24000, emeralds));
+        setDirty();
+    }
+
+    /** Of a delivery's price, {@code emeralds} were taken off to work off the advance. */
+    public void recouped(Contract contract, double emeralds) {
+        contract.recouped += emeralds;
+        setDirty();
+    }
+
+    /** The seller paid back {@code emeralds} of an advance it hadn't worked off. */
+    public void refunded(Contract contract, double emeralds) {
+        contract.refund = Math.max(0, contract.refund - emeralds);
+        contract.note("%.2f emeralds paid back".formatted(emeralds));
+        setDirty();
+    }
+
+    /** Contracts from this seller to this buyer with an advance still to pay. */
+    public List<Contract> advancesDue(GlobalPos seller, GlobalPos buyer) {
+        return contracts.values().stream().filter(c -> c.seller.equals(seller) && c.buyer.equals(buyer)
+                && c.advanceDue() > 0.01).toList();
+    }
+
+    /** Contracts where this seller owes this buyer back an advance. */
+    public List<Contract> refunds(GlobalPos seller, GlobalPos buyer) {
+        return contracts.values().stream().filter(c -> c.seller.equals(seller) && c.buyer.equals(buyer)
+                && c.refund > 0.01).toList();
     }
 
     /** The buyer owes the seller this much more for goods delivered: it's paid when a caravan between them can carry it. */
@@ -267,22 +362,77 @@ public final class ContractBook extends SavedData {
     /** The buyer couldn't pay for goods it was handed (or that were brought): its miss. */
     public void unpaid(Contract contract, long now) {
         contract.buyerMissed++;
-        adjustTrust(contract.seller, contract.buyer, -TRUST_PER_MISS);
+        missed(contract.seller, contract.buyer, 1, now);
         contract.note("day %d: the buyer couldn't pay".formatted(now / 24000));
         if (contract.buyerMissed >= Contract.MISSES_TO_BREAK) {
             contract.state = Contract.State.BROKEN;
             contract.note("day %d: broken after %d misses by the buyer".formatted(now / 24000, contract.buyerMissed));
+            broken(contract);
         }
         setDirty();
     }
 
-    public double trust(GlobalPos a, GlobalPos b) {
-        return trust.getOrDefault(pair(a, b), START_TRUST);
+    /** A broken contract: what was paid up front and not yet worked off is owed back to the buyer. */
+    private void broken(Contract contract) {
+        double unearned = contract.advanced - contract.recouped;
+        if (unearned > 0.01) {
+            contract.refund += unearned;
+            contract.recouped = contract.advanced;
+            contract.note("%.2f emeralds paid up front owed back to the buyer".formatted(unearned));
+        }
     }
 
-    public void adjustTrust(GlobalPos a, GlobalPos b, double delta) {
-        trust.put(pair(a, b), Math.max(0, Math.min(1, trust(a, b) + delta)));
+    /** Trust between two parties now: their record, misses forgiven as far as time allows. */
+    public double trust(GlobalPos a, GlobalPos b) {
+        return trust(a, b, clock);
+    }
+
+    public double trust(GlobalPos a, GlobalPos b, long now) {
+        Record record = records.get(pair(a, b));
+        return record == null ? START_TRUST : record.at(now).trust();
+    }
+
+    /** The two parties' record as it stands now. */
+    public Record record(GlobalPos a, GlobalPos b) {
+        Record record = records.get(pair(a, b));
+        return record == null ? new Record() : record.at(clock);
+    }
+
+    /** Every pair's record as it stands now, by the pair's key. */
+    public Map<String, Record> records() {
+        Map<String, Record> all = new java.util.TreeMap<>();
+        records.forEach((key, record) -> all.put(key, record.at(clock)));
+        return all;
+    }
+
+    /** {@code weight} of an installment (or a service, or a bill) kept between the two. */
+    public void kept(GlobalPos a, GlobalPos b, double weight, long now) {
+        clock = Math.max(clock, now);
+        Record record = records.computeIfAbsent(pair(a, b), k -> fresh(a, b)).at(now);
+        record.kept += weight;
+        records.put(pair(a, b), record);
         setDirty();
+    }
+
+    /** {@code weight} of an installment (or a bill) missed between the two: a quarter while they're new to each other. */
+    public void missed(GlobalPos a, GlobalPos b, double weight, long now) {
+        clock = Math.max(clock, now);
+        Record record = records.computeIfAbsent(pair(a, b), k -> fresh(a, b)).at(now);
+        record.missed += weight * (record.kept < TEETHING ? TEETHING_WEIGHT : 1);
+        records.put(pair(a, b), record);
+        setDirty();
+    }
+
+    private static Record fresh(GlobalPos a, GlobalPos b) {
+        Record record = new Record();
+        record.a = a;
+        record.b = b;
+        return record;
+    }
+
+    /** Is {@code a} still new to {@code b}, ramping up? */
+    public boolean teething(GlobalPos a, GlobalPos b) {
+        return record(a, b).kept < TEETHING;
     }
 
     private static String pair(GlobalPos a, GlobalPos b) {
@@ -296,9 +446,20 @@ public final class ContractBook extends SavedData {
         ListTag list = new ListTag();
         contracts.values().forEach(contract -> list.add(contract.save()));
         tag.put("contracts", list);
-        CompoundTag trustTag = new CompoundTag();
-        trust.forEach(trustTag::putDouble);
-        tag.put("trust", trustTag);
+        CompoundTag recordTag = new CompoundTag();
+        records.forEach((key, record) -> {
+            CompoundTag r = new CompoundTag();
+            r.putDouble("kept", record.kept);
+            r.putDouble("missed", record.missed);
+            r.putLong("touched", record.touched);
+            if (record.a != null) {
+                GlobalPos.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, record.a).ifSuccess(t -> r.put("a", t));
+                GlobalPos.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, record.b).ifSuccess(t -> r.put("b", t));
+            }
+            recordTag.put(key, r);
+        });
+        tag.put("records", recordTag);
+        tag.putLong("clock", clock);
         tag.putInt("nextId", nextId);
         return tag;
     }
@@ -313,8 +474,18 @@ public final class ContractBook extends SavedData {
                 Enterprise.LOGGER.warn("Skipping a contract that can't be read: {}", e.getMessage());
             }
         }
-        CompoundTag trustTag = tag.getCompound("trust");
-        trustTag.getAllKeys().forEach(key -> book.trust.put(key, trustTag.getDouble(key)));
+        CompoundTag recordTag = tag.getCompound("records");
+        recordTag.getAllKeys().forEach(key -> {
+            CompoundTag r = recordTag.getCompound(key);
+            Record record = new Record();
+            record.kept = r.getDouble("kept");
+            record.missed = r.getDouble("missed");
+            record.touched = r.getLong("touched");
+            record.a = GlobalPos.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE, r.get("a")).result().orElse(null);
+            record.b = GlobalPos.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE, r.get("b")).result().orElse(null);
+            book.records.put(key, record);
+        });
+        book.clock = tag.getLong("clock");
         book.nextId = Math.max(1, tag.getInt("nextId"));
         return book;
     }

@@ -136,8 +136,12 @@ public final class LockerTrading {
      * runs out of uses, inputs or room, and the Merchant carries the results back to stock. Returns trades made.
      */
     public static int trade(ServerLevel level, Villager villager, BlockPos workstation, Manager manager) {
-        Set<String> enabled = MerchantBook.get(level.getServer())
-                .enabledTrades(GlobalPos.of(level.dimension(), manager.desk()), workstation);
+        MerchantBook merchants = MerchantBook.get(level.getServer());
+        GlobalPos at = GlobalPos.of(level.dimension(), manager.desk());
+        if (merchants.isApprenticed(at, workstation)) {
+            train(level, villager, workstation, manager, merchants, at);
+        }
+        Set<String> enabled = merchants.enabledTrades(at, workstation);
         if (enabled.isEmpty()) {
             Enterprise.LOGGER.debug("Locker at {}: no trades switched on", workstation.toShortString());
             return 0;
@@ -161,6 +165,18 @@ public final class LockerTrading {
                 .filter(offer -> enabled.contains(TradeKeys.of(offer)) && !isInflated(offer))
                 .sorted(Comparator.comparingDouble(offer -> (double) price(offer, reputation) / offer.getResult().getCount()))
                 .toList();
+        // What these trades will pay out in emeralds: the Merchant changes coin for what the warehouse lacks, from
+        // money beyond the town's reserve.
+        int emeralds = offers.stream().filter(o -> o.getBaseCostA().is(net.minecraft.world.item.Items.EMERALD))
+                .mapToInt(o -> price(o, reputation) * (o.getMaxUses() - o.getUses())).sum();
+        int lacking = emeralds - stock.count(new ItemCost(net.minecraft.world.item.Items.EMERALD, 1));
+        if (lacking > 0) {
+            double rate = dev.b28.enterprise.money.Mint.get(level.getServer())
+                    .rate(dev.b28.enterprise.money.Mint.DEFAULT_FACTION, level.getGameTime());
+            double spare = dev.b28.enterprise.money.Treasury.available(level, manager.desk(), stock, rate)
+                    - territory0(level).reserve(GlobalPos.of(level.dimension(), manager.desk()));
+            MoneyChanger.buyEmeralds(level, manager.desk(), stock, Math.min(lacking, (int) Math.floor(spare)));
+        }
         int made = 0;
         var territory = dev.b28.enterprise.territory.Territory.get(level.getServer());
         GlobalPos deskPos = GlobalPos.of(level.dimension(), manager.desk());
@@ -200,6 +216,62 @@ public final class LockerTrading {
                     + "fairly priced)", workstation.toShortString(), enabled.size(), offered, offers.size());
         }
         return made;
+    }
+
+    private static dev.b28.enterprise.territory.Territory territory0(ServerLevel level) {
+        return dev.b28.enterprise.territory.Territory.get(level.getServer());
+    }
+
+    /** The trades the Merchant trains up to master, paying for their work while they've nothing to buy. */
+    public static final Set<String> SMITHS = Set.of("minecraft:weaponsmith", "minecraft:armorer", "minecraft:toolsmith");
+
+    /**
+     * A villager the Merchant trains: what it has learned to buy since its last level is switched on too. A smith
+     * below master with nothing it buys in the warehouse (a Novice Weaponsmith may buy nothing at all) has its
+     * cheapest work bought instead, paid in the warehouse's emeralds, so it keeps learning; that's switched off again
+     * once it can train on what it buys, or is a master. A master smith's buying trades go off too: it has nothing
+     * left to learn, and the coal and iron are wanted for its contracts.
+     */
+    private static void train(ServerLevel level, Villager villager, BlockPos workstation, Manager manager,
+            MerchantBook merchants, GlobalPos at) {
+        MerchantStock stock = MerchantStock.at(level, manager.desk());
+        int reputation = merchantReputation(manager.merchant().getVillagerData().getLevel());
+        String profession = net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION
+                .getKey(villager.getVillagerData().getProfession()).toString();
+        boolean trained = SMITHS.contains(profession) && villager.getVillagerData().getLevel() >= 5;
+        boolean canBuy = false;
+        MerchantOffer cheapest = null;
+        for (MerchantOffer offer : villager.getOffers()) {
+            String key = TradeKeys.of(offer);
+            if (key.endsWith(">minecraft:emerald")) {
+                // A master smith has learned all it can: its metal is kept for the work it's contracted to do.
+                if (merchants.isEnabled(at, workstation, key) != !trained) {
+                    merchants.setEnabled(at, workstation, key, !trained);
+                }
+                canBuy |= stock.count(offer.getItemCostA()) >= price(offer, reputation);
+            } else if (offer.getBaseCostA().is(net.minecraft.world.item.Items.EMERALD) && offer.getItemCostB().isEmpty()
+                    && (cheapest == null || price(offer, reputation) < price(cheapest, reputation))) {
+                cheapest = offer;
+            }
+        }
+        if (cheapest == null || !SMITHS.contains(profession)) {
+            return;
+        }
+        String key = TradeKeys.of(cheapest);
+        // Paid for while the town can spare a restock's worth beyond its reserve.
+        double rate = dev.b28.enterprise.money.Mint.get(level.getServer())
+                .rate(dev.b28.enterprise.money.Mint.DEFAULT_FACTION, level.getGameTime());
+        double spare = dev.b28.enterprise.money.Treasury.available(level, manager.desk(), stock, rate)
+                - dev.b28.enterprise.territory.Territory.get(level.getServer()).reserve(at);
+        boolean pay = villager.getVillagerData().getLevel() < 5 && !canBuy
+                && spare >= price(cheapest, reputation) * cheapest.getMaxUses();
+        if (pay && !merchants.isEnabled(at, workstation, key)) {
+            merchants.setEnabled(at, workstation, key, true);
+            merchants.training(at, workstation, key, true);
+        } else if (!pay && merchants.isTraining(at, workstation, key)) {
+            merchants.setEnabled(at, workstation, key, false);
+            merchants.training(at, workstation, key, false);
+        }
     }
 
     /** Tops the locker up to {@code wanted} items matching {@code cost}, from the Merchant's stock. */
@@ -283,14 +355,14 @@ public final class LockerTrading {
     }
 
     /**
-     * Vanilla's trade XP, minus the XP orbs: level-ups land a couple of seconds later, as after a player trade.
-     * Returns true if this trade earned the villager its next level.
+     * Vanilla's trade XP, minus the XP orbs. A level earned comes at once, with its new trades: vanilla waits a couple
+     * of seconds of the villager's own ticks, which a town loaded only for a round may never give it. Returns true if
+     * this trade earned the villager its next level.
      */
     private static boolean rewardTradeXp(Villager villager, int xp) {
         villager.setVillagerXp(villager.getVillagerXp() + xp);
-        if (villager.shouldIncreaseLevel() && !villager.increaseProfessionLevelOnUpdate) {
-            villager.updateMerchantTimer = 40;
-            villager.increaseProfessionLevelOnUpdate = true;
+        if (villager.shouldIncreaseLevel()) {
+            villager.increaseMerchantCareer();
             return true;
         }
         return false;

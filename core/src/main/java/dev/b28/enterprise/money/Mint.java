@@ -100,6 +100,25 @@ public final class Mint extends SavedData {
         return spurs;
     }
 
+    /** Buying emeralds back costs this much over the rate. */
+    public static final double BUY_SPREAD = 0.05;
+
+    /** Spurs it would take to buy {@code emeralds} from the faction now. Changes nothing. */
+    public int buyCost(String faction, int emeralds, long now) {
+        return (int) Math.ceil(emeralds * rate(faction, now) * (1 + BUY_SPREAD));
+    }
+
+    /**
+     * Buys {@code emeralds} from the faction (to pay villagers in): returns the spurs it cost. Buying takes back
+     * selling pressure, so the spur fetches less; pressure goes no lower than minus half its scale.
+     */
+    public int buy(String faction, int emeralds, long now) {
+        int spurs = buyCost(faction, emeralds, now);
+        factions.put(faction, new double[] {Math.max(-PRESSURE_SCALE / 2, pressure(faction, now) - emeralds), now});
+        setDirty();
+        return spurs;
+    }
+
     // The integral of base / (1 + p / scale) from p to p + n, rounded down.
     private static int spursFor(double pressure, int emeralds) {
         if (emeralds <= 0) {
