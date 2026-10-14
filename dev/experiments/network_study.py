@@ -17,10 +17,14 @@ packs for more cargo.
 With --services, a trained Cleric and Farmer join the hub's squad: they go along where a town wants a blessing or
 help with its untended fields, and each town's services are printed at the end.
 
+With --metal, the metal chain: a trained Toolsmith in S1 (it digs a mine), a Toolsmith, Armorer and Weaponsmith in T
+(mine, smelter and smiths: tools for its farmers, arms and armour for its guards), and an Armorer and a Toolsmith in
+the hub's squad (they smelt and forge for towns without). Each town's mine, kit and services are printed at the end.
+
 With --comforts, the hub also stocks a shulker of comforts (treats, clothing, furnishings) for towns to buy, and the
 spring, once open, refills a shulker of comforts and a stack of books every day.
 
-    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts] [--fleet] [--services]
+    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts] [--fleet] [--services] [--metal]
 """
 
 import csv
@@ -129,9 +133,19 @@ def setup():
         for i, trade in enumerate(["cleric", "farmer"]):
             rcon(f"summon minecraft:villager {HUB[0] + 2 + i}.5 -60 {HUB[1] + 4}.5 {{PersistenceRequired:1b,Xp:1,"
                  f"VillagerData:{{profession:\"minecraft:{trade}\",level:2,type:\"minecraft:plains\"}}}}")
+    if "--metal" in sys.argv:
+        for i, trade in enumerate(["armorer", "toolsmith"]):
+            rcon(f"summon minecraft:villager {HUB[0] + 4 + i}.5 -60 {HUB[1] + 4}.5 {{PersistenceRequired:1b,Xp:1,"
+                 f"VillagerData:{{profession:\"minecraft:{trade}\",level:2,type:\"minecraft:plains\"}}}}")
     for corner in TOWNS.values():
         rcon(f"forceload add {area(corner, 27)}",
              f"execute positioned {corner[0]} -60 {corner[1]} run function testbench:network/settlement")
+    if "--metal" in sys.argv:
+        for name, trades in [("S1", ["toolsmith"]), ("T", ["toolsmith", "armorer", "weaponsmith"])]:
+            b = [int(v) for v in bell(TOWNS[name]).split()]
+            for i, trade in enumerate(trades):
+                rcon(f"summon minecraft:villager {b[0] + 1 + i}.5 {b[1]} {b[2] + 1}.5 {{PersistenceRequired:1b,Xp:1,"
+                     f"VillagerData:{{profession:\"minecraft:{trade}\",level:2,type:\"minecraft:plains\"}}}}")
     rcon("time set 1000")
     sprint(300)
     for corner in TOWNS.values():
@@ -233,9 +247,14 @@ def main():
             for r in towns)
             + f" | mint {rate:.1f}")
         sys.stdout.flush()
-    if "--services" in sys.argv:
+    if "--metal" in sys.argv:
+        for name in ["S1", "T"]:
+            t = rcon(f"enterprise territory {bell(TOWNS[name])}")
+            print(f"\n{name}: " + "\n".join(l for l in t.splitlines() if re.search(r"mine|farms|toll|guard|treasury", l)))
+    if "--services" in sys.argv or "--metal" in sys.argv:
         for name, corner in TOWNS.items():
-            print(f"\n{name}: " + rcon(f"enterprise services {desk(corner)}").strip())
+            done = [l for l in rcon(f"enterprise services {desk(corner)}").splitlines()[2:] if not l.startswith("  its ")]
+            print(f"\n{name}:\n" + "\n".join(done))
     fields = sorted({key for row in rows for key in row}, key=lambda k: (k not in ("day", "kind", "name"), k))
     with out.open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fields)

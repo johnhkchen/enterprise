@@ -202,6 +202,18 @@ What each trade does for a town: its own, or the one its caravan reaches. Built 
 - **Measured** (`network_study.py --comforts --services`, 20 days, a Cleric and a Farmer added to the hub's squad, against the same run without): the Farmer helped S1 with its harvest 19 days running for 22.8 emeralds, the Cleric blessed S1 and S2 five times each and S3 once (2 emeralds a time), and two map swaps were paid for. On day 20 the served towns were happier (S1 +4.3 against +3.2, S2 +4.5 against +4.1, S3 +4.1 against +3.8); S1 and S3 were richer (70 and 34 emeralds against 20 and 6: the extra harvest sold), S2 poorer (25 against 46: it paid for its blessings). Runs differ by a few emeralds by chance, so read these as directions.
 - **Not yet:** services on the desk screen; a Cleric's shrine, potions and healing; Farmers sowing new fields abroad; Librarians copying enchanted books.
 
+## The metal chain (built 2026-10-14)
+
+Mine, smelter, smiths, and what the iron is for. All of it is services (see Services), so each trade also does its work abroad for a town without that trade, for a fee an item.
+
+- **A Toolsmith digs a mine.** A town with a Toolsmith digs a mine head near its bell (a 3 x 3 cobblestone collar, a laddered shaft, a lantern; 6 emeralds beyond its reserve). Each Toolsmith at home brings up 2 raw iron and half a coal a day per level, half again with pickaxes.
+- **An Armorer smelts:** 8 raw iron and a coal make 8 iron ingots (abroad, 0.02 an ingot, for a town with ore and no Armorer).
+- **Smiths make kit from the iron,** for whoever lacks it: a Toolsmith hoes for the farmers and pickaxes for the miners, a Weaponsmith swords for the guards, an Armorer chestplates for them. Iron a locker wants is kept to its par. Kit wears out: a hoe or pickaxe a worker every 16 days (twice as long while a Toolsmith mends them, at home or for a few days after a visit), a sword every 20, a chestplate every 40.
+- **What kit does:** with hoes for all, farmers tend half again as many plots; with pickaxes, miners bring up half again as much. **Armed guards** let a town ask up to 95% of what going around its posts would cost (from 80%); **armoured guards** let its toll go up to 35% (from 25%). In proportion to the share of guards equipped. Raids will test the same kit later.
+- `/enterprise territory` shows the mine and each kit's share; `network_study.py --metal` sets the chain up.
+- **Measured** (`network_study.py --river --comforts --metal`, 20 days, against the same without): S1's Toolsmith dug a mine, visiting Armorers (the hub's and T's) smelted its ore 9 times, and it forged a hoe and a pickaxe from the iron; S1 brought in 693 items against 403 (ore, and a farmer tending half again as much). T, with the whole chain, armed and armoured both bridge guards, set its toll at 35% and collected 692 spurs of tolls against 458. T's three extra smiths crowded its beds (8 villagers, 5 beds), so its mood was worse: a real cost of taking on trades without homes.
+- **Not yet:** ore depending on the land (stone and hills richer than plains); an escort of armed crew on caravans (with raids); iron tools and armour as goods towns buy from each other.
+
 ## Travel cost between hexes (2026-10-13)
 
 Travel cost must react to real building. A long wall, a tunnel, a bridge or a wide canal should each change routes and costs.

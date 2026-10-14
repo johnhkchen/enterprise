@@ -25,8 +25,8 @@ import net.minecraft.world.phys.AABB;
  * the squad haggles as a Novice), a Cartographer maps a route not mapped lately, a Librarian brings back the books
  * when the destination's are stale, a Shepherd drives animals from the market pen to sell, a Leatherworker carries
  * packs (more cargo), and a Fisherman captains a boat across water, fishing it (a fleet of Fishermen sells fish).
- * A Cleric or a Farmer goes along when the town there wants their services (a blessing, help with the harvest), but
- * never leads. Each trade's work at the far end is a service (see {@link dev.b28.enterprise.service.Services}).
+ * A Cleric, a Farmer or a smith goes along when the town there wants their services (a blessing, help with the
+ * harvest, smelting, tools, arms), but never leads. Each trade's work at the far end is a service (see {@link dev.b28.enterprise.service.Services}).
  * Babies and untrained villagers stay home, and so does the Merchant who works the town's desk.
  */
 public final class Squad {
@@ -89,7 +89,8 @@ public final class Squad {
     /** Every trade that can go with a caravan: the leads, and those who go only when their service is wanted there. */
     public static final List<String> TRADES = List.of(
             "enterprise:merchant", "minecraft:cartographer", "minecraft:librarian", "minecraft:shepherd",
-            LEATHERWORKER, FISHERMAN, "minecraft:cleric", "minecraft:farmer");
+            LEATHERWORKER, FISHERMAN, "minecraft:cleric", "minecraft:farmer", "minecraft:toolsmith", "minecraft:armorer",
+            "minecraft:weaponsmith");
 
     /** A Leatherworker's packs carry this many more stacks. */
     public static final int PACK_STACKS = 9;

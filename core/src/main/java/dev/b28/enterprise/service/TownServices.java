@@ -1,10 +1,9 @@
 package dev.b28.enterprise.service;
 
 import dev.b28.enterprise.caravan.Atlas;
-import dev.b28.enterprise.merchant.Warehouse;
 import dev.b28.enterprise.money.Prices;
+import dev.b28.enterprise.territory.Smithing;
 import dev.b28.enterprise.territory.Territory;
-import dev.b28.enterprise.territory.Workshop;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -12,19 +11,17 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import net.minecraft.core.GlobalPos;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.trading.ItemCost;
 
 /**
  * Services the trades do for towns, their own or others: a Cleric's blessing, a Farmer's help with the harvest, a
- * Cartographer's map swap and charting, a Librarian's bookbinding.
+ * Cartographer's map swap and charting, a Toolsmith's mending; and what trades make ({@link Crafts}).
  */
 public final class TownServices {
     public static final String CLERIC = "minecraft:cleric";
     public static final String FARMER = "minecraft:farmer";
     public static final String CARTOGRAPHER = "minecraft:cartographer";
     public static final String LIBRARIAN = "minecraft:librarian";
+    public static final String TOOLSMITH = "minecraft:toolsmith";
 
     /** A visiting Cleric's blessing costs this much and lasts two days and a day a level; a resident's lasts a day. */
     public static final double BLESSING_EMERALDS = 2;
@@ -41,10 +38,9 @@ public final class TownServices {
     public static final int CHART_RANGE = 800;
     public static final long CHART_TICKS = 10 * 24000L;
 
-    /** Bookbinding: 3 paper and a leather make a book; at most 16 a level each time; a visitor charges for each. */
-    public static final int PAPER_PER_BOOK = 3;
-    public static final int BOOKS_PER_LEVEL = 16;
-    public static final double BINDING_EMERALDS = 0.05;
+    /** A visiting Toolsmith's mending costs this much and lasts four days and a day a level. */
+    public static final double MENDING_EMERALDS = 1;
+    public static final double MENDING_DAYS = 4;
 
     private TownServices() {}
 
@@ -58,9 +54,6 @@ public final class TownServices {
         Services.register(new Service("enterprise:map_swap", CARTOGRAPHER, Service.Where.ABROAD,
                 "swaps maps: each town learns of the markets the other knows",
                 TownServices::swapWanted, TownServices::swapMaps));
-        Services.register(new Service("enterprise:bookbinding_abroad", LIBRARIAN, Service.Where.ABROAD,
-                "binds books for a town short of reading, from its paper and leather",
-                TownServices::bindingWanted, TownServices::bind));
         Services.register(new Service("enterprise:home_blessing", CLERIC, Service.Where.HOME,
                 "blesses its own town: happier while it stays",
                 visit -> visit.bell().filter(bell -> visit.territory().blessedUntil(bell) < visit.now() + 12000).isPresent(),
@@ -68,9 +61,15 @@ public final class TownServices {
         Services.register(new Service("enterprise:charting", CARTOGRAPHER, Service.Where.HOME,
                 "charts the country around: its town learns of markets within " + CHART_RANGE + " blocks",
                 TownServices::chartingWanted, TownServices::chart));
-        Services.register(new Service("enterprise:bookbinding", LIBRARIAN, Service.Where.HOME,
-                "binds books from paper and leather while its town is short of reading",
-                TownServices::bindingWanted, TownServices::bind));
+        Services.register(new Service("enterprise:mending", TOOLSMITH, Service.Where.HOME,
+                "mends its town's tools: they last twice as long",
+                visit -> visit.bell().filter(bell -> visit.territory().mendedUntil(bell) < visit.now() + 12000).isPresent(),
+                TownServices::mend));
+        Services.register(new Service("enterprise:mending_abroad", TOOLSMITH, Service.Where.ABROAD,
+                "mends the tools of a town without a Toolsmith: they last twice as long for a few days, "
+                        + MENDING_EMERALDS + " emerald",
+                TownServices::mendingWanted, TownServices::mend));
+        Crafts.register();
     }
 
     /** Does the town served have a resident of this trade (at home now)? Then it does this for itself. */
@@ -171,56 +170,22 @@ public final class TownServices {
         return 0;
     }
 
-    // A Librarian's bookbinding.
+    // A Toolsmith's mending.
 
-    private static boolean bindingWanted(Visit visit) {
+    private static boolean mendingWanted(Visit visit) {
         Optional<GlobalPos> bell = visit.bell();
-        if (bell.isEmpty() || visit.abroad() && hasOwn(visit, LIBRARIAN)) {
+        if (bell.isEmpty() || hasOwn(visit, TOOLSMITH)
+                || visit.territory().mendedUntil(bell.get()) > visit.now() + 24000) {
             return false;
         }
-        if (visit.planning()) {
-            Warehouse warehouse = Warehouse.get(visit.server());
-            return visit.territory().comfortsMet(bell.get()).getOrDefault("reading", 0.0) < 1
-                    && warehouse.onHand(visit.at(), Items.PAPER) >= PAPER_PER_BOOK
-                    && warehouse.onHand(visit.at(), Items.LEATHER) >= 1;
-        }
-        return booksWanted(visit) > 0 && (!visit.abroad() || visit.budget() >= BINDING_EMERALDS);
+        boolean inUse = visit.territory().kitShare(bell.get()).entrySet().stream()
+                .anyMatch(e -> e.getValue() > 0 && (e.getKey().equals(Smithing.HOE.id()) || e.getKey().equals(Smithing.PICKAXE.id())));
+        return inUse && (visit.planning() || visit.budget() >= MENDING_EMERALDS);
     }
 
-    /** Books the town could use and has the makings of: paper beyond what its lockers want, and leather. */
-    private static int booksWanted(Visit visit) {
-        var stock = visit.stock();
-        int wanted = Workshop.comfortWanted(visit.territory(), visit.at(), stock, "reading", Items.BOOK);
-        Warehouse warehouse = Warehouse.get(visit.server());
-        int paperKept = warehouse.capacity(visit.at(), Items.PAPER) > 0
-                ? warehouse.par(visit.at(), Items.PAPER, true, visit.now()) : 0;
-        int paper = Math.max(0, stock.count(new ItemCost(Items.PAPER, 1)) - paperKept);
-        int leather = stock.count(new ItemCost(Items.LEATHER, 1));
-        return Math.min(Math.min(Math.min(wanted, BOOKS_PER_LEVEL * visit.skill()), Items.BOOK.getDefaultMaxStackSize()),
-                Math.min(paper / PAPER_PER_BOOK, leather));
-    }
-
-    private static double bind(Visit visit) {
-        int books = booksWanted(visit);
-        if (visit.abroad()) {
-            books = Math.min(books, (int) Math.floor(visit.budget() / BINDING_EMERALDS));
-        }
-        if (books <= 0) {
-            return 0;
-        }
-        var stock = visit.stock();
-        int paper = stock.take(new ItemCost(Items.PAPER, 1), books * PAPER_PER_BOOK).stream()
-                .mapToInt(ItemStack::getCount).sum();
-        int leather = stock.take(new ItemCost(Items.LEATHER, 1), books).stream().mapToInt(ItemStack::getCount).sum();
-        int made = Math.min(paper / PAPER_PER_BOOK, leather);
-        if (paper > made * PAPER_PER_BOOK) {
-            stock.insert(new ItemStack(Items.PAPER, paper - made * PAPER_PER_BOOK));
-        }
-        if (leather > made) {
-            stock.insert(new ItemStack(Items.LEATHER, leather - made));
-        }
-        ItemStack rest = stock.insert(new ItemStack(Items.BOOK, made)); // inputs taken: there's room
-        made -= rest.getCount();
-        return visit.abroad() ? made * BINDING_EMERALDS : 0;
+    private static double mend(Visit visit) {
+        double days = visit.abroad() ? MENDING_DAYS + visit.skill() : 1;
+        visit.bell().ifPresent(bell -> visit.territory().mend(bell, visit.now() + (long) (days * 24000)));
+        return visit.abroad() ? MENDING_EMERALDS : 0;
     }
 }

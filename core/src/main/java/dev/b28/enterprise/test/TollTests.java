@@ -182,6 +182,37 @@ public final class TollTests {
     }
 
     @GameTest(template = "floor")
+    public static void armedAndArmouredGuardsAskMore(GameTestHelper helper) {
+        Territory territory = new Territory();
+        GlobalPos town = townAcrossTheRoad(helper, territory, Territory.DEFAULT_TOLL_RATE);
+        territory.setGuards(town, 0);
+        Route route = route(helper);
+        Hex ford = new Hex(6, -6);
+        ToDoubleFunction<Hex> twoCrossings = hex -> hex.q() == 6 && !hex.equals(BRIDGE) && !hex.equals(ford)
+                ? Double.POSITIVE_INFINITY : 1;
+        long t = 1_000_000;
+        territory.reviewTolls(town, t, 16);
+        for (int day = 0; day < 3; day++) {
+            Caravans.payTolls(territory, route, 1000, PER_HEX, twoCrossings);
+        }
+        double detour = territory.crossings(town).get(route.id()).options().get(0).detour();
+        territory.setKitShareForTest(town, dev.b28.enterprise.territory.Smithing.SWORD, 1);
+        territory.reviewTolls(town, t + Territory.TOLL_REVIEW_TICKS, 16);
+        double expected = Math.min(dev.b28.enterprise.territory.Smithing.ARMOURED_TOLL_RATE * 0 + Territory.MAX_TOLL_RATE,
+                0.95 * detour / 1000);
+        helper.assertTrue(Math.abs(territory.tollRate(town) - expected) < 1e-9,
+                "armed guards ask 95% of the detour: " + territory.tollRate(town) + ", expected " + expected);
+        territory.setKitShareForTest(town, dev.b28.enterprise.territory.Smithing.ARMOUR, 1);
+        for (int day = 0; day < 3; day++) {
+            Caravans.payTolls(territory, route, 1000, PER_HEX, RIVER); // the ford washed out: no way around
+        }
+        territory.reviewTolls(town, t + 2 * Territory.TOLL_REVIEW_TICKS, 16);
+        helper.assertTrue(territory.tollRate(town) > Territory.MAX_TOLL_RATE,
+                "armoured guards on the only crossing ask above 25%: " + territory.tollRate(town));
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void twoBridgesTakeTwoPosts(GameTestHelper helper) {
         Territory territory = new Territory();
         GlobalPos town = townAcrossTheRoad(helper, territory, Territory.DEFAULT_TOLL_RATE);

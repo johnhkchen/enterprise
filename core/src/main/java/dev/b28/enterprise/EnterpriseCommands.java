@@ -212,6 +212,15 @@ final class EnterpriseCommands {
         dev.b28.enterprise.territory.Works.get(source.getServer()).wall(bell).ifPresent(w -> source.sendSuccess(
                 () -> Component.literal("  wall %.0f%% built, %d columns raised, %.0f emeralds of masons' wages paid"
                         .formatted(w.progress() * 100, w.columnsPlaced(), w.wagesPaid())), false));
+        var kit = territory.kitShare(bell);
+        if (territory.mine(bell).isPresent() || kit.values().stream().anyMatch(v -> v > 0)) {
+            source.sendSuccess(() -> Component.literal("  mine %s; kit: %s%s".formatted(
+                    territory.mine(bell).map(BlockPos::toShortString).orElse("not dug"),
+                    dev.b28.enterprise.territory.Smithing.KITS.stream().map(k -> "%s for %.0f%%".formatted(
+                            k.id().replace("minecraft:iron_", ""), kit.getOrDefault(k.id(), 0.0) * 100))
+                            .collect(java.util.stream.Collectors.joining(", ")),
+                    territory.mendedUntil(bell) > source.getLevel().getGameTime() ? "; tools mended" : "")), false);
+        }
         var herd = territory.herd(bell);
         if (!herd.isEmpty()) {
             source.sendSuccess(() -> Component.literal("  herd: %s; pasture %s".formatted(

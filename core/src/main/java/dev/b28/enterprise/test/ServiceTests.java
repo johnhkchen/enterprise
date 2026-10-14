@@ -63,7 +63,7 @@ public final class ServiceTests {
         helper.assertTrue(Services.all().stream().allMatch(s -> !s.does().isBlank()), "each service says what it does");
         for (String trade : List.of("enterprise:merchant", "minecraft:cartographer", "minecraft:librarian",
                 "minecraft:shepherd", "minecraft:leatherworker", "minecraft:fisherman", "minecraft:cleric",
-                "minecraft:farmer")) {
+                "minecraft:farmer", "minecraft:toolsmith", "minecraft:armorer", "minecraft:weaponsmith")) {
             helper.assertFalse(Services.of(trade).isEmpty(), trade + " does something");
         }
         helper.succeed();

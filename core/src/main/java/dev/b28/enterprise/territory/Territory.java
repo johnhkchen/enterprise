@@ -159,6 +159,10 @@ public final class Territory extends SavedData {
         long blessedUntil = -1; // a Cleric's blessing lasts until then
         Map<String, Double> idlePerDay = new LinkedHashMap<>(); // what its untended plots would yield, items a day
         int spareFarmPlots; // plots its farmers could tend beyond those planted
+        BlockPos mine; // the mine head's shaft, once dug
+        Map<String, Double> kitWear = new LinkedHashMap<>(); // by kit item id, share of one worn since last taken
+        long mendedUntil = -1; // a Toolsmith mends its tools until then
+        Map<String, Double> kitShare = new LinkedHashMap<>(); // by kit item id, share of its wearers covered
     }
 
     private final Map<Place, GlobalPos> owners = new HashMap<>();
@@ -330,6 +334,74 @@ public final class Territory extends SavedData {
                 });
     }
 
+    public static final String TOOLSMITH = "minecraft:toolsmith";
+
+    /** Grown residents at home, by trade. */
+    public static Map<String, Integer> workers(MinecraftServer server, GlobalPos bell) {
+        Map<String, Integer> count = new LinkedHashMap<>();
+        dev.b28.enterprise.settlement.Settlements.get(server).roster(bell).values().stream()
+                .filter(r -> !r.away() && !r.baby())
+                .forEach(r -> count.merge(r.profession(), 1, Integer::sum));
+        return count;
+    }
+
+    /** Its miners: its Toolsmiths at home, once it has a mine. */
+    private static int miners(Holding holding, Map<String, Integer> workers) {
+        return holding.mine == null ? 0 : workers.getOrDefault(TOOLSMITH, 0);
+    }
+
+    /**
+     * When counted while loaded: a town with a Toolsmith and no mine digs one, a 3 x 3 head on open ground in its land
+     * near the bell, for {@link Mines#MINE_EMERALDS} beyond its reserve.
+     */
+    private void digMine(ServerLevel level, BlockPos bellPos, Holding holding, MerchantStock stock) {
+        GlobalPos bell = GlobalPos.of(level.dimension(), bellPos);
+        if (holding.mine != null || !trades(level.getServer(), bell).contains(TOOLSMITH)) {
+            return;
+        }
+        double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, level.getGameTime());
+        if (Treasury.available(level, holding.desk.pos(), stock, rate) - reserve(holding.desk) < Mines.MINE_EMERALDS) {
+            return;
+        }
+        Mines.site(level, bellPos)
+                .filter(corner -> owner(level.dimension(), Hex.at(corner)).filter(bell::equals).isPresent())
+                .ifPresent(corner -> {
+                    holding.mine = Mines.build(level, corner);
+                    Treasury.withdraw(level, holding.desk.pos(), stock, Mines.MINE_EMERALDS, Mint.get(level.getServer()),
+                            level.getGameTime());
+                    dev.b28.enterprise.Enterprise.LOGGER.debug("Settlement at {} digs a mine at {}",
+                            bellPos.toShortString(), corner.toShortString());
+                });
+    }
+
+    public Optional<BlockPos> mine(GlobalPos bell) {
+        return holding(bell).map(h -> h.mine);
+    }
+
+    public void setMineForTest(GlobalPos bell, BlockPos shaft) {
+        holdings.computeIfAbsent(bell, b -> new Holding()).mine = shaft;
+    }
+
+    /** Share of each kit's wearers it covers, by kit item id, at the last touch. */
+    public Map<String, Double> kitShare(GlobalPos bell) {
+        return holding(bell).map(h -> Map.copyOf(h.kitShare)).orElse(Map.of());
+    }
+
+    public void setKitShareForTest(GlobalPos bell, Smithing.Kit kit, double share) {
+        holdings.computeIfAbsent(bell, b -> new Holding()).kitShare.put(kit.id(), share);
+    }
+
+    /** A Toolsmith mends the town's tools until {@code until}: they wear half as fast. */
+    public void mend(GlobalPos bell, long until) {
+        Holding holding = holdings.computeIfAbsent(bell, b -> new Holding());
+        holding.mendedUntil = Math.max(holding.mendedUntil, until);
+        setDirty();
+    }
+
+    public long mendedUntil(GlobalPos bell) {
+        return holding(bell).map(h -> h.mendedUntil).orElse(-1L);
+    }
+
     public Optional<BlockPos> dock(GlobalPos bell) {
         return holding(bell).map(h -> h.dock);
     }
@@ -461,15 +533,17 @@ public final class Territory extends SavedData {
             grow(level, bellPos, holding, census, days, stock);
             keepHerds(level, bellPos, holding, stock);
             buildDock(level, bellPos, holding, stock);
+            digMine(level, bellPos, holding, stock);
         } else {
             accrue(holding, level.getGameTime());
         }
         holding.idlePerDay = new LinkedHashMap<>();
+        double hands = 1 + Smithing.TOOL_BONUS * holding.kitShare.getOrDefault(Smithing.HOE.id(), 0.0); // hoes help
         holding.perDay = plan(level, bellPos.getY(), hexes(bell), farmers, holding.demand, Husbandry.feedDemand(holding.herd),
-                holding.idlePerDay);
+                holding.idlePerDay, hands);
         double tended = holding.perDay.values().stream().mapToDouble(Double::doubleValue).sum() / YIELD_PER_PLOT_PER_DAY;
         holding.spareFarmPlots = (int) Math.max(0,
-                farmers.stream().mapToInt(l -> PLOTS_PER_FARMER_LEVEL * Math.max(1, l)).sum() - Math.round(tended));
+                hands * farmers.stream().mapToInt(l -> PLOTS_PER_FARMER_LEVEL * Math.max(1, l)).sum() - Math.round(tended));
         if (holding.desk != null && level.isLoaded(holding.desk.pos())) {
             double plotsWorked = holding.perDay.values().stream().mapToDouble(Double::doubleValue).sum() / YIELD_PER_PLOT_PER_DAY;
             Fields.consider(level, bellPos, holding.desk, MerchantStock.at(level, holding.desk.pos()), this, farmers, plotsWorked,
@@ -512,12 +586,15 @@ public final class Territory extends SavedData {
      */
     public Map<String, Double> plan(ServerLevel level, int centerY, List<Hex> hexes, List<Integer> farmers,
             Map<String, Double> demand, Map<String, Double> needs) {
-        return plan(level, centerY, hexes, farmers, demand, needs, new LinkedHashMap<>());
+        return plan(level, centerY, hexes, farmers, demand, needs, new LinkedHashMap<>(), 1);
     }
 
-    /** As {@link #plan(ServerLevel, int, List, List, Map, Map)}; what the plots no one tends would yield goes in {@code idle}. */
+    /**
+     * As {@link #plan(ServerLevel, int, List, List, Map, Map)}; what the plots no one tends would yield goes in
+     * {@code idle}, and each farmer tends {@code hands} times its plots (more with tools).
+     */
     public Map<String, Double> plan(ServerLevel level, int centerY, List<Hex> hexes, List<Integer> farmers,
-            Map<String, Double> demand, Map<String, Double> needs, Map<String, Double> idle) {
+            Map<String, Double> demand, Map<String, Double> needs, Map<String, Double> idle, double hands) {
         Map<String, Double> perDay = new LinkedHashMap<>();
         Map<Item, Integer> plots = new HashMap<>();
         for (Hex hex : hexes) {
@@ -527,7 +604,7 @@ public final class Territory extends SavedData {
         order.sort(Comparator.comparingDouble((Map.Entry<Item, Integer> e) -> -sellsFor(e.getKey(), demand))
                 .thenComparing(Comparator.comparingInt((Map.Entry<Item, Integer> e) -> e.getValue()).reversed())
                 .thenComparing(e -> BuiltInRegistries.ITEM.getKey(e.getKey()).toString()));
-        int capacity = farmers.stream().mapToInt(l -> PLOTS_PER_FARMER_LEVEL * Math.max(1, l)).sum();
+        int capacity = (int) Math.round(hands * farmers.stream().mapToInt(l -> PLOTS_PER_FARMER_LEVEL * Math.max(1, l)).sum());
         // Feed first: as many plots of each feed crop as the herds eat.
         for (Map.Entry<Item, Integer> crop : order) {
             double need = needs.getOrDefault(BuiltInRegistries.ITEM.getKey(crop.getKey()).toString(), 0.0);
@@ -680,6 +757,18 @@ public final class Territory extends SavedData {
                         .mapToInt(r -> Math.max(1, r.level())).sum();
                 holding.pending.merge("minecraft:cod", levels * Docks.COD_PER_LEVEL_DAY * days, Double::sum);
             }
+            Map<String, Integer> workers = workers(level.getServer(), bell.get());
+            if (holding.mine != null) {
+                // The Toolsmiths' ore: so much a day per level each, half again with pickaxes.
+                double levels = dev.b28.enterprise.settlement.Settlements.get(level.getServer()).roster(bell.get()).values()
+                        .stream().filter(r -> r.profession().equals(TOOLSMITH) && !r.away() && !r.baby())
+                        .mapToInt(r -> Math.max(1, r.level())).sum()
+                        * (1 + Smithing.TOOL_BONUS * holding.kitShare.getOrDefault(Smithing.PICKAXE.id(), 0.0));
+                holding.pending.merge("minecraft:raw_iron", levels * Mines.RAW_IRON_PER_LEVEL_DAY * days, Double::sum);
+                holding.pending.merge("minecraft:coal", levels * Mines.COAL_PER_LEVEL_DAY * days, Double::sum);
+            }
+            Smithing.wear(stock, holding.kitWear, days, workers.getOrDefault("minecraft:farmer", 0), miners(holding, workers),
+                    holding.posts.size(), holding.mendedUntil >= now);
         }
         holding.lastTend = now;
         double owedBefore = holding.wageOwed;
@@ -713,6 +802,11 @@ public final class Territory extends SavedData {
         holding.paidShare = paidShare;
         Workshop.convert(level, dev.b28.enterprise.merchant.Warehouse.get(level.getServer()), at, bell.get(), stock, now);
         dev.b28.enterprise.service.Services.home(level, this, at, bell.get(), stock, now); // what its own trades do for it
+        Map<String, Integer> workers = workers(level.getServer(), bell.get());
+        for (Smithing.Kit kit : Smithing.KITS) {
+            holding.kitShare.put(kit.id(), Smithing.share(stock, kit, Smithing.wearers(kit,
+                    workers.getOrDefault("minecraft:farmer", 0), miners(holding, workers), holding.posts.size())));
+        }
         enjoyComforts(stock, holding, now);
         double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now);
         int bankSpurs = MoneyChanger.bankAt(level, desk).map(b -> b.getBalance()).orElse(0);
@@ -1076,7 +1170,12 @@ public final class Territory extends SavedData {
                 it.remove();
             }
         }
-        Chokepoints.Plan plan = Chokepoints.bestPlan(holding.crossings.values(), guardCostPerDay(rate));
+        // Armed guards ask more of the detour, armoured ones may ask a higher toll.
+        double armed = holding.kitShare.getOrDefault(Smithing.SWORD.id(), 0.0);
+        double armoured = holding.kitShare.getOrDefault(Smithing.ARMOUR.id(), 0.0);
+        Chokepoints.Plan plan = Chokepoints.bestPlan(holding.crossings.values(), guardCostPerDay(rate),
+                Chokepoints.DETOUR_SHARE + (Smithing.ARMED_DETOUR_SHARE - Chokepoints.DETOUR_SHARE) * armed,
+                MAX_TOLL_RATE + (Smithing.ARMOURED_TOLL_RATE - MAX_TOLL_RATE) * armoured);
         holding.posts.retainAll(plan.posts());
         plan.posts().stream()
                 .filter(hex -> !holding.posts.contains(hex))
@@ -1178,6 +1277,12 @@ public final class Territory extends SavedData {
             entry.putLong("blessedUntil", holding.blessedUntil);
             entry.put("idlePerDay", doubles(holding.idlePerDay));
             entry.putInt("spareFarmPlots", holding.spareFarmPlots);
+            if (holding.mine != null) {
+                entry.putLong("mine", holding.mine.asLong());
+            }
+            entry.put("kitWear", doubles(holding.kitWear));
+            entry.putLong("mendedUntil", holding.mendedUntil);
+            entry.put("kitShare", doubles(holding.kitShare));
             if (holding.dock != null) {
                 entry.putLong("dock", holding.dock.asLong());
             }
@@ -1290,6 +1395,10 @@ public final class Territory extends SavedData {
                 holding.blessedUntil = entry.contains("blessedUntil") ? entry.getLong("blessedUntil") : -1;
                 holding.idlePerDay = readDoubles(entry.getCompound("idlePerDay"));
                 holding.spareFarmPlots = entry.getInt("spareFarmPlots");
+                holding.mine = entry.contains("mine") ? BlockPos.of(entry.getLong("mine")) : null;
+                holding.kitWear = new LinkedHashMap<>(readDoubles(entry.getCompound("kitWear")));
+                holding.mendedUntil = entry.contains("mendedUntil") ? entry.getLong("mendedUntil") : -1;
+                holding.kitShare = new LinkedHashMap<>(readDoubles(entry.getCompound("kitShare")));
                 holding.dock = entry.contains("dock") ? BlockPos.of(entry.getLong("dock")) : null;
                 holding.homeProgress = entry.getDouble("homeProgress");
                 holding.birthProgress = entry.getDouble("birthProgress");

@@ -36,6 +36,8 @@ public final class Prices {
             Map.entry("minecraft:glass_pane", 11.0),
             Map.entry("minecraft:compass", 1.0),
             Map.entry("minecraft:coal", 15.0),
+            Map.entry("minecraft:raw_iron", 5.0),
+            Map.entry("minecraft:iron_ingot", 4.0),
             Map.entry("minecraft:clay_ball", 10.0),
             Map.entry("minecraft:leather", 6.0),
             // Food villagers sell
@@ -56,7 +58,12 @@ public final class Prices {
             Map.entry("minecraft:painting", 0.5),
             Map.entry("minecraft:flower_pot", 4.0),
             Map.entry("minecraft:lantern", 1.0),
-            Map.entry("minecraft:candle", 3.0)));
+            Map.entry("minecraft:candle", 3.0),
+            // Smiths' goods (what villagers sell them for, or near it)
+            Map.entry("minecraft:iron_hoe", 1.0),
+            Map.entry("minecraft:iron_pickaxe", 2 / 3.0),
+            Map.entry("minecraft:iron_sword", 2 / 3.0),
+            Map.entry("minecraft:iron_chestplate", 1 / 9.0)));
 
     static {
         // Every colour of carpet and candle: carpets 4 to the emerald (shepherds), dyed candles as plain ones.

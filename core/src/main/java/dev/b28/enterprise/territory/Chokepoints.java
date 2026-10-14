@@ -51,14 +51,17 @@ public final class Chokepoints {
             return tripsPerDay;
         }
 
-        /** The most this route would pay at a set of posts, as a share of what it carries. */
-        double bearableRate(Option option) {
-            return value <= 0 ? 0 : Math.min(Territory.MAX_TOLL_RATE, DETOUR_SHARE * option.detour() / value);
+        /**
+         * The most this route would pay at a set of posts, as a share of what it carries: {@code share} of the detour,
+         * at most {@code cap}.
+         */
+        double bearableRate(Option option, double share, double cap) {
+            return value <= 0 ? 0 : Math.min(cap, share * option.detour() / value);
         }
 
         /** The fewest posts that make this route bear {@code rate}, if any. */
-        Option fewestPostsFor(double rate) {
-            return options.stream().filter(o -> bearableRate(o) >= rate - 1e-9).findFirst().orElse(null);
+        Option fewestPostsFor(double rate, double share, double cap) {
+            return options.stream().filter(o -> bearableRate(o, share, cap) >= rate - 1e-9).findFirst().orElse(null);
         }
 
         double incomePerDay(double rate) {
@@ -79,8 +82,16 @@ public final class Chokepoints {
      * posts if none pays.
      */
     public static Plan bestPlan(Collection<Crossing> crossings, double guardCostPerDay) {
+        return bestPlan(crossings, guardCostPerDay, DETOUR_SHARE, Territory.MAX_TOLL_RATE);
+    }
+
+    /**
+     * As {@link #bestPlan(Collection, double)}, asking up to {@code share} of each detour and at most {@code cap}: more,
+     * with guards armed and armoured (see {@link Smithing}).
+     */
+    public static Plan bestPlan(Collection<Crossing> crossings, double guardCostPerDay, double share, double cap) {
         TreeSet<Double> rates = new TreeSet<>();
-        crossings.forEach(c -> c.options.forEach(o -> rates.add(c.bearableRate(o))));
+        crossings.forEach(c -> c.options.forEach(o -> rates.add(c.bearableRate(o, share, cap))));
         List<Crossing> richestFirst = crossings.stream()
                 .sorted(Comparator.comparingDouble((Crossing c) -> c.value * c.tripsPerDay).reversed())
                 .toList();
@@ -93,7 +104,7 @@ public final class Chokepoints {
             Set<Hex> posts = new LinkedHashSet<>();
             double income = 0;
             for (Crossing crossing : richestFirst) {
-                Option option = crossing.fewestPostsFor(rate);
+                Option option = crossing.fewestPostsFor(rate, share, cap);
                 if (option == null) {
                     continue;
                 }
