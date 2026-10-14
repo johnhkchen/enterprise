@@ -23,6 +23,7 @@ public final class Caravan {
     final int merchantLevel; // the travelling Merchant's level, for bargaining
     final List<CompoundTag> crew = new ArrayList<>(); // the squad, stowed off the world while on the road
     final List<CompoundTag> herd = new ArrayList<>(); // animals a Shepherd drives
+    final List<CompoundTag> pack = new ArrayList<>(); // llamas carrying packs, home with it
     final java.util.Map<String, Double> shopping = new java.util.LinkedHashMap<>(); // comforts to bring home, by kind
     final java.util.Map<Integer, Integer> contracted = new java.util.LinkedHashMap<>(); // contract id -> items carried for it
     final List<Integer> drafts = new ArrayList<>(); // contracts drafted on this trip: their copies ride home
@@ -47,7 +48,8 @@ public final class Caravan {
     /** Stacks the caravan carries: a wagon's, and more for each Leatherworker's packs and each porter. */
     public int capacity() {
         return Caravans.CARGO_SLOTS + Squad.PACK_STACKS
-                * (int) crew.stream().filter(m -> Squad.carries(Squad.trade(m))).count();
+                * (int) crew.stream().filter(m -> Squad.carries(Squad.trade(m))).count()
+                + Squad.LLAMA_STACKS * pack.size();
     }
 
     public List<CompoundTag> crew() {
@@ -118,6 +120,9 @@ public final class Caravan {
         ListTag animals = new ListTag();
         animals.addAll(herd);
         tag.put("herd", animals);
+        ListTag llamas = new ListTag();
+        llamas.addAll(pack);
+        tag.put("pack", llamas);
         CompoundTag list = new CompoundTag();
         shopping.forEach(list::putDouble);
         tag.put("shopping", list);
@@ -153,6 +158,7 @@ public final class Caravan {
                 cargo, tag.getInt("spurs"), Math.max(1, tag.getInt("merchantLevel")));
         tag.getList("crew", Tag.TAG_COMPOUND).forEach(t -> caravan.crew.add((CompoundTag) t));
         tag.getList("herd", Tag.TAG_COMPOUND).forEach(t -> caravan.herd.add((CompoundTag) t));
+        tag.getList("pack", Tag.TAG_COMPOUND).forEach(t -> caravan.pack.add((CompoundTag) t));
         CompoundTag list = tag.getCompound("shopping");
         list.getAllKeys().forEach(kind -> caravan.shopping.put(kind, list.getDouble(kind)));
         CompoundTag carried = tag.getCompound("contracted");

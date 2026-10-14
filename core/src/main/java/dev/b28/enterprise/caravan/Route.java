@@ -22,6 +22,8 @@ public final class Route {
     int portersSent; // porters who carried a load out and walked home
     int shortRations; // trips home on short rations, after waiting at the far end for food it couldn't get
     int stops; // calls at a hub on the way
+    int lastCapacity = Caravans.CARGO_SLOTS; // stacks its last caravan could carry
+    int lastCrew = 1; // and the squad that ate on the road
     int foodFromShops; // food points bought at the far end's shops for the road home
     double saddleWear; // share of a saddle worn since one was last used up
     long billSpurs; // paid on bills of exchange presented on this route
@@ -86,6 +88,14 @@ public final class Route {
 
     public long billSpurs() {
         return billSpurs;
+    }
+
+    public int lastCapacity() {
+        return lastCapacity;
+    }
+
+    public int lastCrew() {
+        return lastCrew;
     }
 
     public int stops() {
@@ -192,6 +202,8 @@ public final class Route {
         tag.putInt("portersSent", portersSent);
         tag.putInt("shortRations", shortRations);
         tag.putInt("stops", stops);
+        tag.putInt("lastCapacity", lastCapacity);
+        tag.putInt("lastCrew", lastCrew);
         tag.putInt("foodFromShops", foodFromShops);
         tag.putDouble("saddleWear", saddleWear);
         tag.putLong("billSpurs", billSpurs);
@@ -229,6 +241,8 @@ public final class Route {
         route.portersSent = tag.getInt("portersSent");
         route.shortRations = tag.getInt("shortRations");
         route.stops = tag.getInt("stops");
+        route.lastCapacity = tag.contains("lastCapacity") ? tag.getInt("lastCapacity") : Caravans.CARGO_SLOTS;
+        route.lastCrew = Math.max(1, tag.getInt("lastCrew"));
         route.foodFromShops = tag.getInt("foodFromShops");
         route.saddleWear = tag.getDouble("saddleWear");
         route.billSpurs = tag.getLong("billSpurs");

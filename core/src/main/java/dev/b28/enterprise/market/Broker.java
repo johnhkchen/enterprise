@@ -360,25 +360,40 @@ public final class Broker {
         }
     }
 
-    /** {@link Means} of {@code supplier} for {@code desk}, if there's a road between them. */
+    /**
+     * {@link Means} of {@code supplier} for {@code desk}, if there's a way: a road between them, or a hub between them;
+     * where there are both, the cheaper landed.
+     */
     public static Optional<Means> means(ServerLevel level, GlobalPos desk, GlobalPos supplier, Item item, long now) {
+        Optional<Means> direct = means(level, desk, supplier, item, now, false);
+        Optional<Means> byHub = means(level, desk, supplier, item, now, true);
+        if (direct.isEmpty() || byHub.isEmpty()) {
+            return direct.isPresent() ? direct : byHub;
+        }
+        Territory territory = Territory.get(level.getServer());
+        return landed(territory, item, byHub.get(), 1) < landed(territory, item, direct.get(), 1) ? byHub : direct;
+    }
+
+    private static Optional<Means> means(ServerLevel level, GlobalPos desk, GlobalPos supplier, Item item, long now,
+            boolean viaHub) {
         MinecraftServer server = level.getServer();
         var book = dev.b28.enterprise.contract.ContractBook.get(server);
         Warehouse warehouse = Warehouse.get(server);
         var ledger = dev.b28.enterprise.caravan.CaravanLedger.get(server);
         Territory territory = Territory.get(server);
-        var collect = ledger.route(desk, supplier);
-        var bring = ledger.route(supplier, desk);
-        // No road between them, but the supplier's caravans go to a freight hub with a carrier's run to the desk: its
-        // goods go there and are forwarded, delivered at the desk.
-        Optional<Freight.Leg> onward = collect.isEmpty() && bring.isEmpty()
-                ? Freight.via(server, supplier, desk) : Optional.empty();
+        var collect = viaHub ? Optional.<dev.b28.enterprise.caravan.Route>empty() : ledger.route(desk, supplier);
+        var bring = viaHub ? Optional.<dev.b28.enterprise.caravan.Route>empty() : ledger.route(supplier, desk);
+        // By a freight hub: the supplier's caravans go to it (or its caravans call at the supplier's), and a carrier
+        // runs on from it to the desk: its goods go there and are forwarded, delivered at the desk.
+        Optional<Freight.Leg> onward = viaHub ? Freight.via(server, supplier, desk) : Optional.empty();
         if (collect.isEmpty() && bring.isEmpty() && onward.isEmpty()) {
-            return Optional.empty(); // no road between them: a gap a player could fill
+            return Optional.empty(); // no way between them: a gap a player could fill
         }
         if (onward.isPresent()) {
-            GlobalPos hub = onward.get().from();
-            bring = ledger.route(supplier, hub).or(() -> ledger.route(hub, supplier)); // its caravans, or the hub's
+            bring = Freight.inbound(server, supplier, onward.get().from());
+            if (bring.isEmpty()) {
+                return Optional.empty();
+            }
         }
         boolean kit = dev.b28.enterprise.territory.Smithing.KITS.stream().anyMatch(k -> k.item() == item);
         boolean trusted = book.trust(supplier, desk, now) >= dev.b28.enterprise.contract.ContractBook.MIN_TRUST;
@@ -425,8 +440,8 @@ public final class Broker {
      * {@code premium}), and under Delivered At Place the carriage and the tolls on the way.
      */
     public static double landed(Territory territory, Item item, Means means, double premium) {
-        double forwarding = means.onward().map(l -> Freight.forwardingPrice(l.route())
-                / item.getDefaultMaxStackSize()).orElse(0.0);
+        double forwarding = means.onward().map(l -> Freight.forwardingPrice(l) / item.getDefaultMaxStackSize())
+                .orElse(0.0);
         return landed(territory, item, means.route(), means.incoterm(), premium) + forwarding;
     }
 

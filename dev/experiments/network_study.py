@@ -295,6 +295,22 @@ def setup():
         print(rcon(f"enterprise war capital {hub_desk} 500").strip())
     if "--ridge" in sys.argv:
         build_ridge()
+        # The pass town's carrying trade: Leatherworkers (packs), a Shepherd to lead, idle hands (porters, draymen),
+        # and llamas in a pen by its desk.
+        t = TOWNS["T"]
+        rcon(f"forceload add {area(t, 27)}")
+        sprint(20)
+        for i, (trade, lvl) in enumerate([("leatherworker", 3), ("leatherworker", 3), ("shepherd", 3), ("nitwit", 1),
+                                          ("nitwit", 1), ("nitwit", 1)]):
+            rcon(f"summon minecraft:villager {t[0] + 3 + 2 * i}.5 -60 {t[1] + 20}.5 {{PersistenceRequired:1b,"
+                 f"Xp:{0 if trade == 'nitwit' else 1},VillagerData:{{profession:\"minecraft:{trade}\",level:{lvl},"
+                 f"type:\"minecraft:plains\"}}}}",
+                 f"setblock {t[0] + 3 + 2 * i} -60 {t[1] + 22} minecraft:white_bed[facing=north,part=head]",
+                 f"setblock {t[0] + 3 + 2 * i} -60 {t[1] + 23} minecraft:white_bed[facing=north,part=foot]")
+        for i in range(4):
+            rcon(f"summon minecraft:llama {t[0] + 4 + i}.5 -60 {t[1] + 9}.5 {{PersistenceRequired:1b,NoAI:1b,Tame:1b}}")
+        rcon(f"item replace block {t[0] + 8} -60 {t[1] + 7} container.2 with minecraft:emerald 64")  # a carrying house's capital
+        rcon(f"enterprise census {bell(t)}")
     if "--freight" in sys.argv:
         # S2 a freight hub: a storehouse (two double chests) its carriers and forwarder run; its own caravans to the
         # capital; S3's caravans to S2. The capital no longer runs the long road to S3: S3's goods come through S2.

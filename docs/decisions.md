@@ -510,6 +510,21 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   pays where a shipper has no road to its buyer, or the hub's legs are cheaper than the direct road; neither holds on
   this map. Routes that reorganise around hubs by price are the next step.
 
+## Routes reorganise by price; backhauls; llamas (built 2026-10-14)
+
+- **Reorganising.** Each day a hub opens a run of its own to a far end of an established route that calls there (5
+  trips), one a day; and the owner of a long run calling at a hub, where the hub runs on, compares its run's food with
+  a short run to the hub plus freight for its usual load (carted, with the margin), and winds the long run down when
+  that costs at most three quarters. Shippers choose direct or by a hub by landed price, good by good.
+- **Backhaul pricing.** Space on a run going home sells at a quarter of the price: the caravan goes home anyway.
+- **Space priced by capacity.** A carrier's price a stack is its squad's road food over what its last caravan could
+  carry: packs, porters and llamas make space cheaper. Llamas in a town's pen go with its caravans as pack animals
+  (9 stacks each, at most 4), and come home with them.
+- **Runs 35 and 36 (`--ridge`, T given two Leatherworkers, a Shepherd, three idle hands, four llamas and 64 emeralds):**
+  T's own caravans carried up to 63 stacks and made 88 to 111 trips, but T ended broke both times (its runs were its
+  own shopping, earning nothing from the traffic through its pass), so it never could afford the storehouse: no hub,
+  no forwarding. The pass needs an income: a toll per caravan.
+
 ## Names (built 2026-10-14)
 
 Every market has a name, given from the lie of the land once the hexes round it are surveyed, and kept: a first part

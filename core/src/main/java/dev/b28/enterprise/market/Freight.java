@@ -208,15 +208,46 @@ public final class Freight extends SavedData {
         return Optional.empty();
     }
 
-    /** What a stack of space on a run costs, in emeralds: its food both ways a wagon's stack, and a margin. */
+    /**
+     * How a shipper's goods reach a hub: its own caravans' road there, the hub's road to it, or a road from it that calls
+     * at the hub on its way.
+     */
+    public static Optional<Route> inbound(MinecraftServer server, GlobalPos shipper, GlobalPos hub) {
+        CaravanLedger ledger = CaravanLedger.get(server);
+        return ledger.route(shipper, hub).or(() -> ledger.route(hub, shipper))
+                .or(() -> ledger.routes().stream()
+                        .filter(r -> (r.from().equals(shipper) || r.to().equals(shipper))
+                                && stopOn(server, r).filter(s -> s.hub().equals(hub)).isPresent())
+                        .findFirst());
+    }
+
+    /**
+     * What a stack of space on a run costs, in emeralds: its squad's food both ways over what its caravan carries (more
+     * packs, porters and llamas: cheaper space), and a margin.
+     */
     public static double stackPrice(Route route) {
-        return Caravans.foodNeeded(route.distance()) * 2 * Caravans.PURSE_PER_FOOD_POINT / Caravans.CARGO_SLOTS
-                * (1 + MARGIN);
+        return Caravans.foodNeeded(route.distance()) * 2.0 * route.lastCrew() * Caravans.PURSE_PER_FOOD_POINT
+                / Math.max(1, route.lastCapacity()) * (1 + MARGIN);
+    }
+
+    /**
+     * Space going home is a backhaul: the caravan goes home anyway, so what it carries back costs it next to nothing,
+     * and it sells that space for this share of the price, glad of the margin.
+     */
+    public static final double BACKHAUL_SHARE = 0.25;
+
+    /** What a stack of space on a leg costs: the run's price, a quarter of it for space going home. */
+    public static double legPrice(Leg leg) {
+        return stackPrice(leg.route()) * (leg.outbound() ? 1 : BACKHAUL_SHARE);
     }
 
     /** What a forwarder asks a stack, in emeralds: the freight, and its margin. */
     public static double forwardingPrice(Route route) {
         return stackPrice(route) * (1 + FORWARD_MARGIN);
+    }
+
+    public static double forwardingPrice(Leg leg) {
+        return legPrice(leg) * (1 + FORWARD_MARGIN);
     }
 
     private static CompoundTag legTag(Leg leg) {
@@ -343,8 +374,79 @@ public final class Freight extends SavedData {
             }
             freight.restockDray(level, hub, now);
             freight.forward(level, hub, MerchantStock.at(level, hub.pos()), now);
+            freight.reorganise(level, hub, now);
         }
         freight.setDirty();
+    }
+
+    /** A hub opens a run of its own to a town once a route calling there has made this many trips. */
+    public static final int ESTABLISHED_TRIPS = 5;
+    /** A route owner winds down its long run when going by the hub costs at most this share of it. */
+    public static final double SWITCH_SHARE = 0.75;
+    /** Squad members a run's food is reckoned for. */
+    static final int CREW = 2;
+
+    /** What a run's road food costs a trip, both ways, for a usual squad, in emeralds. */
+    static double runCost(int distance) {
+        return Caravans.foodNeeded(distance) * 2.0 * CREW * Caravans.PURSE_PER_FOOD_POINT;
+    }
+
+    /**
+     * The routes round a hub reorganise by price. The hub opens a run of its own to a far end of an established route
+     * that calls there (one a day, within a leg's food). And the owner of a long run calling at the hub, where the hub
+     * runs on to its far end, compares: its run's food, against a short run to the hub and freight from there (its usual
+     * load, carted, with the forwarder's margin). Cheaper by a quarter, it opens the short run (if it hasn't one) and
+     * winds the long run down.
+     */
+    void reorganise(ServerLevel level, GlobalPos hub, long now) {
+        MinecraftServer server = level.getServer();
+        CaravanLedger ledger = CaravanLedger.get(server);
+        List<Route> calling = ledger.routes().stream()
+                .filter(r -> stopOn(server, r).filter(s -> s.hub().equals(hub)).isPresent()).toList();
+        for (Route r : calling) {
+            for (GlobalPos end : List.of(r.from(), r.to())) {
+                int distance = (int) Math.sqrt(end.pos().distSqr(hub.pos()));
+                if (r.trips() >= ESTABLISHED_TRIPS && ledger.route(hub, end).isEmpty() && ledger.route(end, hub).isEmpty()
+                        && Caravans.inRange(distance)) {
+                    ledger.addRoute(hub, end);
+                    Exchange.get(server).note(hub, now, "opened a run of its own to "
+                            + dev.b28.enterprise.settlement.Names.of(server, end));
+                    dev.b28.enterprise.Enterprise.LOGGER.info("{} opens a run to {}: {}'s route calls there",
+                            dev.b28.enterprise.settlement.Names.of(server, hub),
+                            dev.b28.enterprise.settlement.Names.of(server, end),
+                            dev.b28.enterprise.settlement.Names.of(server, r.from()));
+                    return; // one a day
+                }
+            }
+        }
+        for (Route r : calling) {
+            Optional<Route> onward = ledger.route(hub, r.to());
+            if (onward.isEmpty() || onward.get().trips() < 3 || r.trips() < ESTABLISHED_TRIPS) {
+                continue; // the hub doesn't run there yet (or not reliably)
+            }
+            double perTrip = (double) (r.itemsDelivered() + r.itemsBought()) / Math.max(1, r.trips());
+            int stacks = (int) Math.max(1, Math.ceil(perTrip / 64));
+            int toHub = (int) Math.sqrt(r.from().pos().distSqr(hub.pos()));
+            double direct = runCost(r.distance());
+            double byHub = runCost(toHub) + stacks * (legs(server, hub, r.to()).stream()
+                    .mapToDouble(Freight::forwardingPrice).min().orElse(forwardingPrice(onward.get()))
+                    + cartPrice() * 2 / CART * (1 + FORWARD_MARGIN));
+            if (byHub <= direct * SWITCH_SHARE && Caravans.inRange(toHub)) {
+                if (ledger.route(r.from(), hub).isEmpty()) {
+                    ledger.addRoute(r.from(), hub);
+                }
+                ledger.removeRoute(r.id());
+                String owner = dev.b28.enterprise.settlement.Names.of(server, r.from());
+                Exchange.get(server).note(r.from(), now, "wound down its run to %s: by %s it costs %.1f a trip, not %.1f"
+                        .formatted(dev.b28.enterprise.settlement.Names.of(server, r.to()),
+                                dev.b28.enterprise.settlement.Names.of(server, hub), byHub, direct));
+                dev.b28.enterprise.Enterprise.LOGGER.info("{} winds down its run to {}: by {} {} a trip, not {}", owner,
+                        dev.b28.enterprise.settlement.Names.of(server, r.to()),
+                        dev.b28.enterprise.settlement.Names.of(server, hub), Math.round(byHub * 10) / 10.0,
+                        Math.round(direct * 10) / 10.0);
+                return; // one a day
+            }
+        }
     }
 
     /** Routes of other markets whose way passes through (or beside) this market's hex. */
@@ -370,9 +472,9 @@ public final class Freight extends SavedData {
         }
         long calls = CaravanLedger.get(server).routes().stream()
                 .filter(r -> r.from().equals(market) || r.to().equals(market)).count();
+        // (a market with a Merchant: it may be out leading a caravan of its own)
         if (passing.size() < 2 && passing.size() + calls < HUB_ROUTES
-                || dev.b28.enterprise.merchant.Merchant.workingAt(level, market.pos(),
-                        dev.b28.enterprise.locker.Lockers.MERCHANT_RANGE).isEmpty()) {
+                || dev.b28.enterprise.merchant.Warehouse.get(server).level(market) <= 0) {
             return;
         }
         MerchantStock stock = MerchantStock.at(level, market.pos());
@@ -426,7 +528,7 @@ public final class Freight extends SavedData {
             }
         }
         double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
-        Shops.setPrice(shop, Math.max(1, (int) Math.ceil(stackPrice(leg.route()) * rate)));
+        Shops.setPrice(shop, Math.max(1, (int) Math.ceil(legPrice(leg) * rate)));
         int waiting = stock.looseStacks().stream().mapToInt(s -> booked(s, leg)).sum();
         int forSale = Math.max(0, (int) (Caravans.CARGO_SLOTS * SHARE) - waiting);
         shop.items.clear();
@@ -526,7 +628,7 @@ public final class Freight extends SavedData {
             if (dray.isEmpty() || Shops.lots(dray.get()) < carts) {
                 continue; // no draymen free today: it stays aboard
             }
-            double cheapest = on.stream().mapToDouble(l -> forwardingPrice(l.route())).min().orElse(0);
+            double cheapest = on.stream().mapToDouble(Freight::forwardingPrice).min().orElse(0);
             int drayage = carts * dray.get().getTotalPrice();
             int fee = (int) Math.ceil(stacks * cheapest * rate + drayage * (1 + FORWARD_MARGIN));
             if (purse[0] < fee) {

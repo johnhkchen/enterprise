@@ -100,6 +100,9 @@ public final class Squad {
 
     /** A Leatherworker's packs carry this many more stacks. */
     public static final int PACK_STACKS = 9;
+    /** Llamas from the town's pen go along as pack animals (not for sale): this many stacks each, at most so many. */
+    public static final int LLAMA_STACKS = 9;
+    public static final int LLAMAS = 4;
 
     /** Cod each Fisherman aboard catches on each water hex the caravan sails. */
     public static final int FISH_PER_WATER_HEX = 8;
@@ -280,6 +283,16 @@ public final class Squad {
                                 && ANIMAL_VALUE.containsKey(EntityType.getKey(animal.getType()).toString()))
                 .stream()
                 .limit(HERD)
+                .toList();
+    }
+
+    /** Grown llamas in the pen by the desk, free to carry packs. */
+    public static List<Animal> llamas(ServerLevel level, BlockPos desk) {
+        return level.getEntitiesOfClass(Animal.class, new AABB(desk).inflate(PEN_REACH),
+                        animal -> !animal.isBaby() && !animal.isLeashed()
+                                && animal instanceof net.minecraft.world.entity.animal.horse.Llama)
+                .stream()
+                .limit(LLAMAS)
                 .toList();
     }
 

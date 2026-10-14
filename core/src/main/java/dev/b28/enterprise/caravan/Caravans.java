@@ -266,8 +266,11 @@ public final class Caravans {
             ledger.setDirty();
             return false;
         }
+        // Llamas from the pen carry packs too: the town's own, home with the caravan.
+        var llamas = Squad.llamas(level, route.from.pos());
         int slots = CARGO_SLOTS + Squad.PACK_STACKS * (int) squad.stream()
-                .filter(v -> Squad.carries(Squad.trade(v))).count(); // Leatherworkers' packs, porters' backs
+                .filter(v -> Squad.carries(Squad.trade(v))).count() // Leatherworkers' packs, porters' backs
+                + Squad.LLAMA_STACKS * llamas.size();
         boolean shepherd = squad.stream().anyMatch(v -> Squad.trade(v).equals("minecraft:shepherd"));
         var herd = shepherd ? Squad.herd(level, route.from.pos()) : List.<net.minecraft.world.entity.animal.Animal>of();
         // Goods owed under contracts go first, then comforts, then what the destination's trades want.
@@ -341,6 +344,9 @@ public final class Caravans {
         leaving.provisions = provisions;
         Atlas.get(server).learnBoth(route.from, route.to, now);
         herd.forEach(animal -> leaving.herd.add(Squad.stow(animal)));
+        llamas.forEach(llama -> leaving.pack.add(Squad.stow(llama)));
+        route.lastCapacity = slots;
+        route.lastCrew = Math.max(1, crew.size());
         setStop(server, route, leaving, now, true, 1);
         ledger.put(leaving);
         route.lastDeparture = now;
@@ -551,10 +557,12 @@ public final class Caravans {
         var freight = dev.b28.enterprise.market.Freight.get(server);
         boolean own = hub.equals(route.from); // the hub's own caravan, or another's that calls there on its way home
         // The carrier's fare to the hub, and the forwarding on from there (freight, carting, the margin): prepaid.
-        double perStack = dev.b28.enterprise.market.Freight.forwardingPrice(route)
+        double perStack = dev.b28.enterprise.market.Freight.forwardingPrice(
+                        new dev.b28.enterprise.market.Freight.Leg(route, false)) // home: a backhaul
                 + dev.b28.enterprise.market.Freight.cartPrice() * 2 / dev.b28.enterprise.market.Freight.CART
                 * (1 + dev.b28.enterprise.market.Freight.FORWARD_MARGIN)
-                + (own ? 0 : dev.b28.enterprise.market.Freight.stackPrice(route));
+                + (own ? 0 : dev.b28.enterprise.market.Freight.legPrice(
+                        new dev.b28.enterprise.market.Freight.Leg(route, false))); // its fare to the hub: on its way home
         double can = Math.max(0, Treasury.available(level, route.to.pos(), stock, rate)
                 - Territory.get(server).reserve(route.to));
         int room = Math.min(caravan.capacity() - Crates.stacks(caravan.cargo), (int) (can / perStack));
@@ -805,6 +813,7 @@ public final class Caravans {
             bell.ifPresent(b -> dev.b28.enterprise.settlement.Settlements.get(server).setAway(b, member.getUUID("UUID"), false));
         }
         caravan.herd.forEach(animal -> Squad.release(level, route.from.pos(), animal));
+        caravan.pack.forEach(llama -> Squad.release(level, route.from.pos(), llama));
         // The levy's recruits wait here, in the capital's barracks, for a caravan to the front.
         caravan.recruits.forEach(recruit -> {
             if (!recruit.contains("enterprise_home")) {
