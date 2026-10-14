@@ -102,6 +102,7 @@ public final class Broker {
         }
         MinecraftServer server = level.getServer();
         MerchantStock stock = MerchantStock.at(level, desk.pos());
+        dev.b28.enterprise.cargo.Crates.receive(server, level, desk, stock, now); // crates consigned here
         Exchange exchange = Exchange.get(server);
         double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
         List<VendorBlockEntity> shops = Shops.near(level, desk.pos());
@@ -190,7 +191,10 @@ public final class Broker {
             dev.b28.enterprise.contract.Contract contract, ItemStack goods, double rate, long now) {
         var book = dev.b28.enterprise.contract.ContractBook.get(level.getServer());
         var delivery = contract.delivery().orElseThrow();
-        int price = (int) Math.ceil(delivery.unitPrice() * goods.getCount() * rate);
+        // The locked price, at today's rate, but never more than the shop now asks for that many: the Merchant won't
+        // charge a player above its own posted price.
+        int asked = (int) Math.floor(shop.getTotalPrice() * goods.getCount() / (double) shop.getFilterItem().getCount());
+        int price = Math.min(asked, (int) Math.round(delivery.unitPrice() * goods.getCount() * rate));
         boolean affordable = Shops.purse(shop).map(p -> p.getBalance() >= price).orElse(false);
         int paid = affordable ? Shops.sellTo(shop, goods, price) : -1;
         if (paid < 0) {
@@ -414,6 +418,7 @@ public final class Broker {
         stock.totals().forEach((id, count) -> {
             Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(id));
             if (item == Items.EMERALD || item instanceof CoinItem || id.endsWith("shulker_box")
+                    || item == dev.b28.enterprise.cargo.Cargo.CRATE_ITEM.get() || item == dev.b28.enterprise.cargo.Cargo.DOCUMENTS.get()
                     || item.components().has(DataComponents.FOOD) || ordered.containsKey(item)) {
                 return;
             }

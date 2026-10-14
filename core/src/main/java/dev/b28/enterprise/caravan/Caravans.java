@@ -1,6 +1,7 @@
 package dev.b28.enterprise.caravan;
 
 import dev.b28.enterprise.Enterprise;
+import dev.b28.enterprise.cargo.Crates;
 import dev.b28.enterprise.hex.Hex;
 import dev.b28.enterprise.territory.Chokepoints;
 import dev.b28.enterprise.territory.Comforts;
@@ -251,12 +252,14 @@ public final class Caravans {
         var herd = shepherd ? Squad.herd(level, route.from.pos()) : List.<net.minecraft.world.entity.animal.Animal>of();
         // Goods owed under contracts go first, then comforts, then what the destination's trades want.
         java.util.Map<Integer, Integer> contracted = new LinkedHashMap<>();
-        List<ItemStack> cargo = pickContracted(server, route, stock, now + travelTicks(route.distance()), slots, contracted);
+        Crates.receive(server, level, route.from, stock, now); // crates consigned here, a player brought them
+        List<ItemStack> cargo = pickContracted(server, level, route, stock, now + travelTicks(route.distance()), slots,
+                contracted, now);
         cargo.addAll(pickComforts(stock, comfortWants(server, territory, route.to, now + travelTicks(route.distance()))));
-        while (cargo.size() > slots) {
+        while (Crates.stacks(cargo) > slots) {
             stock.insert(cargo.remove(cargo.size() - 1)); // more comforts than the squad can carry: leave the rest
         }
-        cargo.addAll(pickCargo(stock, wantedThere(server, route.to), slots - cargo.size()));
+        cargo.addAll(pickCargo(stock, wantedThere(server, route.to), slots - Crates.stacks(cargo)));
         Warehouse.get(server).recordStocktake(route.from, stock.totals()); // for buying decisions while away
         if (cargo.isEmpty() && herd.isEmpty() && exWorks <= 0 && !hasBusinessAt(server, ledger, route, now)
                 && !hasShoppingAt(server, route.to, shopping)) {
@@ -344,6 +347,20 @@ public final class Caravans {
             // The caravan carries its home's copies of contracts with this town, and collects what it's owed Ex Works.
             var book = dev.b28.enterprise.contract.ContractBook.get(server);
             book.copiesFor(route.from, route.to).forEach(c -> book.deliverCopy(c.id(), route.to));
+            // The Merchant here opens the crates consigned to it: their papers name the contract, the goods come out.
+            for (java.util.ListIterator<ItemStack> it = caravan.cargo.listIterator(); it.hasNext(); ) {
+                ItemStack stack = it.next();
+                if (Crates.consignedTo(stack, route.to)) {
+                    it.remove();
+                    Crates.open(server, route.to, stock, stack).forEach(it::add);
+                }
+            }
+            Crates.receive(server, level, route.to, stock, now);
+            ItemStack empties = Crates.spareEmpties(stock); // returnable crates go back
+            if (!empties.isEmpty()) {
+                caravan.cargo.add(empties);
+            }
+            settleOwing(server, level, route, stock, caravan, mint, rate, now);
             int earned = settleContracts(server, level, route, stock, caravan, mint, rate, now);
             collectExWorks(server, level, route, stock, caravan, mint, rate, now);
             Map<Item, double[]> sold = new LinkedHashMap<>();
@@ -390,7 +407,7 @@ public final class Caravans {
     static void sendPortersHome(CaravanLedger ledger, Route route, Caravan caravan, long now) {
         List<CompoundTag> porters = caravan.crew.stream().filter(m -> Squad.porter(Squad.trade(m))).toList();
         if (porters.isEmpty() || caravan.crew.size() == porters.size()
-                || caravan.cargo.size() > caravan.capacity() - Squad.PACK_STACKS * porters.size()) {
+                || Crates.stacks(caravan.cargo) > caravan.capacity() - Squad.PACK_STACKS * porters.size()) {
             return;
         }
         caravan.crew.removeAll(porters);
@@ -417,6 +434,7 @@ public final class Caravans {
             }
         }
         Treasury.deposit(level, route.from.pos(), stock, caravan.spurs);
+        Crates.receive(server, level, route.from, stock, level.getGameTime()); // what it collected, crated
         // The contracts drafted on the way ride home: now both parties hold a copy.
         var book = dev.b28.enterprise.contract.ContractBook.get(server);
         caravan.drafts.forEach(id -> book.deliverCopy(id, route.from));
@@ -456,8 +474,8 @@ public final class Caravans {
      * Goods owed under contracts in force from this desk to the destination by the time the caravan arrives, taken
      * from the stock first (within {@code slots}). Records how many ride for each contract.
      */
-    static List<ItemStack> pickContracted(MinecraftServer server, Route route, MerchantStock stock, long arrival,
-            int slots, Map<Integer, Integer> contracted) {
+    static List<ItemStack> pickContracted(MinecraftServer server, ServerLevel level, Route route, MerchantStock stock,
+            long arrival, int slots, Map<Integer, Integer> contracted, long now) {
         List<ItemStack> cargo = new ArrayList<>();
         var book = dev.b28.enterprise.contract.ContractBook.get(server);
         for (var contract : book.inForce(route.from, route.to)) {
@@ -466,13 +484,17 @@ public final class Caravans {
             if (delivery.isEmpty() || owed <= 0 || !contract.incoterm().sellerCarries) {
                 continue; // Ex Works: the buyer's caravan collects it
             }
-            int room = (slots - cargo.size()) * delivery.get().item().getDefaultMaxStackSize();
+            int room = (slots - Crates.stacks(cargo)) * delivery.get().item().getDefaultMaxStackSize();
             int taken = 0;
+            List<ItemStack> goods = new ArrayList<>();
             for (ItemStack piece : stock.take(delivery.get().cost(server.registryAccess()), Math.min(owed, room))) {
                 taken += piece.getCount();
-                cargo.add(piece);
+                goods.add(piece);
             }
             if (taken > 0) {
+                // Crated with its bill of lading and a copy of the contract.
+                cargo.addAll(Crates.pack(level, route.from, stock, goods,
+                        Crates.shipping(contract, route.from, route.to, goods, route.id, now, false), now));
                 contracted.put(contract.id(), taken);
                 book.ship(contract, taken, arrival); // on the road: the buyer's, where it bears the road
             }
@@ -554,20 +576,24 @@ public final class Caravans {
                 continue;
             }
             int owed = contract.owed(now);
-            int room = (caravan.capacity() - caravan.cargo.size()) * delivery.get().item().getDefaultMaxStackSize();
+            int room = (caravan.capacity() - Crates.stacks(caravan.cargo)) * delivery.get().item().getDefaultMaxStackSize();
             int affordable = (int) Math.floor(caravan.spurs / Math.max(1e-9, delivery.get().unitPrice() * rate));
             int quantity = Math.min(owed, Math.min(room, affordable));
             if (quantity <= 0) {
                 continue;
             }
             int taken = 0;
+            List<ItemStack> goods = new ArrayList<>();
             for (ItemStack piece : stock.take(delivery.get().cost(server.registryAccess()), quantity)) {
                 taken += piece.getCount();
-                caravan.cargo.add(piece);
+                goods.add(piece);
             }
             if (taken == 0) {
                 continue;
             }
+            // The seller crates it with its bill of lading, made out to the buyer: delivered here, Ex Works.
+            caravan.cargo.addAll(Crates.pack(level, route.to, stock, goods,
+                    Crates.shipping(contract, route.to, route.from, goods, route.id, now, true), now));
             int spurs = Math.min(caravan.spurs, (int) Math.ceil(taken * delivery.get().unitPrice() * rate));
             caravan.spurs -= spurs;
             Treasury.deposit(level, route.to.pos(), stock, spurs);
@@ -577,9 +603,37 @@ public final class Caravans {
         }
     }
 
+    /**
+     * Money owed between the two ends for goods delivered without a caravan (a player carried the crate): a caravan
+     * from the seller collects it from the buyer and carries it home; one from the buyer carries it to the seller.
+     */
+    static void settleOwing(MinecraftServer server, ServerLevel level, Route route, MerchantStock stock, Caravan caravan,
+            Mint mint, double rate, long now) {
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        for (var contract : book.owing(route.from, route.to)) { // the buyer here pays the caravan's town
+            Treasury.Withdrawal paid = Treasury.withdraw(level, route.to.pos(), stock, contract.owing(), mint, now);
+            double value = paid.value(rate);
+            caravan.spurs += paid.spurs() + mint.sell(Mint.DEFAULT_FACTION, paid.emeralds(), now);
+            if (value > 0) {
+                book.paidOwing(contract, value);
+            }
+        }
+        for (var contract : book.owing(route.to, route.from)) { // the caravan's town pays the seller here
+            int spurs = Math.min(caravan.spurs, (int) Math.ceil(contract.owing() * rate));
+            caravan.spurs -= spurs;
+            Treasury.deposit(level, route.to.pos(), stock, spurs);
+            if (spurs > 0) {
+                book.paidOwing(contract, spurs / rate);
+            }
+        }
+    }
+
     /** What this town's caravan to {@code seller} must carry to pay for what it collects there Ex Works, in emeralds. */
     static double exWorksPurse(MinecraftServer server, Route route, long arrival) {
         double emeralds = 0;
+        for (var contract : dev.b28.enterprise.contract.ContractBook.get(server).owing(route.to, route.from)) {
+            emeralds += contract.owing(); // and what it owes there for goods a player brought
+        }
         for (var contract : dev.b28.enterprise.contract.ContractBook.get(server).inForce(route.to, route.from)) {
             if (!contract.incoterm().sellerCarries && contract.delivery().isPresent()) {
                 emeralds += contract.owed(arrival) * contract.delivery().get().unitPrice();
@@ -654,7 +708,7 @@ public final class Caravans {
                     .sorted(Comparator.comparingDouble(Prices::emeraldsEach))
                     .toList();
             for (Item item : goods) {
-                if (budget <= 0 || caravan.cargo.size() >= caravan.capacity()) {
+                if (budget <= 0 || Crates.stacks(caravan.cargo) >= caravan.capacity()) {
                     break;
                 }
                 double value = Prices.emeraldsEach(item);
@@ -1138,11 +1192,12 @@ public final class Caravans {
         Map<Item, Integer> networkWants = networkWants(server, ledger, route, caravan, now);
         int spareFood = stock.foodNutrition() - Warehouse.FOOD_PAR_POINTS;
         for (Map.Entry<String, Integer> held : stock.totals().entrySet()) {
-            if (caravan.cargo.size() >= caravan.capacity()) {
+            if (Crates.stacks(caravan.cargo) >= caravan.capacity()) {
                 return;
             }
             Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(held.getKey()));
-            if (item == Items.EMERALD || item instanceof CoinItem || held.getKey().endsWith("shulker_box")) {
+            if (item == Items.EMERALD || item instanceof CoinItem || held.getKey().endsWith("shulker_box")
+                    || item == dev.b28.enterprise.cargo.Cargo.CRATE_ITEM.get() || item == dev.b28.enterprise.cargo.Cargo.DOCUMENTS.get()) {
                 continue;
             }
             int surplus = Math.min(held.getValue() - warehouse.par(desk, item, wanted.contains(item), now),
@@ -1151,7 +1206,7 @@ public final class Caravans {
             if (food != null && food.nutrition() > 0) {
                 surplus = Math.min(surplus, Math.max(0, spareFood) / food.nutrition());
             }
-            int room = (caravan.capacity() - caravan.cargo.size()) * item.getDefaultMaxStackSize();
+            int room = (caravan.capacity() - Crates.stacks(caravan.cargo)) * item.getDefaultMaxStackSize();
             double value = Prices.emeraldsEach(item);
             double each = Bargain.between(Bargain.sellerFloor(value), value * RESALE_CEILING, residentLevel,
                     caravan.merchantLevel);

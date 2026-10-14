@@ -23,5 +23,13 @@
   "screen.enterprise.merchant.too_far": "Too far: a caravan can't carry the food for the road.",
   "screen.enterprise.merchant.squad": "At home to send: %s",
   "screen.enterprise.merchant.no_squad": "No one at home to send. Once it has a route, the town trains Merchants, Cartographers, Librarians and Shepherds for its caravans.",
-  "item.enterprise.road_map": "Map of the road to %s, %s"
+  "item.enterprise.road_map": "Map of the road to %s, %s",
+  "block.enterprise.crate": "Crate",
+  "item.enterprise.crate": "Crate",
+  "container.enterprise.crate": "Crate",
+  "container.enterprise.crate.papers": "Papers: the bill of lading and contract",
+  "item.enterprise.crate.empty": "Empty",
+  "item.enterprise.crate.goods": "%s items in %s stacks",
+  "item.enterprise.documents": "Documents",
+  "item.enterprise.documents.blank": "Blank: a merchant fills these in"
 }

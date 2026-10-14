@@ -76,8 +76,9 @@ public final class Caravan {
         return spurs;
     }
 
+    /** Items aboard, crates opened. */
     public int items() {
-        return cargo.stream().mapToInt(ItemStack::getCount).sum();
+        return dev.b28.enterprise.cargo.Crates.contents(cargo).stream().mapToInt(ItemStack::getCount).sum();
     }
 
     CompoundTag save(HolderLookup.Provider registries) {

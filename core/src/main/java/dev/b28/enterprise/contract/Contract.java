@@ -42,6 +42,7 @@ public final class Contract {
     double paid; // emeralds paid so far
     int missed; // the seller's misses: not delivered
     int buyerMissed; // the buyer's misses: not collected (Ex Works) or not paid for
+    double owing; // emeralds the buyer owes the seller for goods delivered without a caravan to pay (a player brought them)
     int shipped; // items on the road to the buyer, counted as delivered where the buyer bears the road
     int missesCounted; // installments already judged
     final List<String> history = new ArrayList<>(); // the latest settlements, for the record
@@ -96,6 +97,10 @@ public final class Contract {
 
     public int buyerMissed() {
         return buyerMissed;
+    }
+
+    public double owing() {
+        return owing;
     }
 
     public int shipped() {
@@ -163,6 +168,7 @@ public final class Contract {
         tag.putString("incoterm", incoterm.name());
         tag.putInt("buyerMissed", buyerMissed);
         tag.putInt("shipped", shipped);
+        tag.putDouble("owing", owing);
         ListTag known = new ListTag();
         knownBy.forEach(desk -> GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, desk).ifSuccess(known::add));
         tag.put("knownBy", known);
@@ -187,6 +193,7 @@ public final class Contract {
         contract.incoterm = tag.contains("incoterm") ? Incoterm.valueOf(tag.getString("incoterm")) : Incoterm.DDP;
         contract.buyerMissed = tag.getInt("buyerMissed");
         contract.shipped = tag.getInt("shipped");
+        contract.owing = tag.getDouble("owing");
         tag.getList("knownBy", Tag.TAG_COMPOUND).forEach(t ->
                 GlobalPos.CODEC.parse(NbtOps.INSTANCE, t).ifSuccess(contract.knownBy::add));
         contract.delivered = tag.getInt("delivered");

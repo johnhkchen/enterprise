@@ -206,6 +206,29 @@ public final class ContractBook extends SavedData {
         }
     }
 
+    /** The buyer owes the seller this much more for goods delivered: it's paid when a caravan between them can carry it. */
+    public void owe(Contract contract, double emeralds) {
+        contract.owing += emeralds;
+        if (emeralds > 0) {
+            contract.note("%.2f emeralds owed to the seller".formatted(emeralds));
+        }
+        setDirty();
+    }
+
+    /** What's owed was paid (carried to the seller). */
+    public void paidOwing(Contract contract, double emeralds) {
+        contract.owing = Math.max(0, contract.owing - emeralds);
+        contract.paid += emeralds;
+        contract.note("%.2f emeralds of what was owed paid".formatted(emeralds));
+        setDirty();
+    }
+
+    /** Contracts where {@code buyer} owes {@code seller} for goods already delivered. */
+    public List<Contract> owing(GlobalPos seller, GlobalPos buyer) {
+        return contracts.values().stream()
+                .filter(c -> c.owing > 0.01 && c.seller.equals(seller) && c.buyer.equals(buyer)).toList();
+    }
+
     /** The buyer couldn't pay for goods it was handed (or that were brought): its miss. */
     public void unpaid(Contract contract, long now) {
         contract.buyerMissed++;

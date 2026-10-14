@@ -379,6 +379,53 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void contractedGoodsShipInCratesWithTheirPapers(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192);
+        var book = dev.b28.enterprise.contract.ContractBook.get(helper.getLevel().getServer());
+        long t = helper.getLevel().getGameTime();
+        var contract = book.draft(net.route().from(), net.route().to(),
+                new dev.b28.enterprise.contract.Delivery(Items.PAPER, 64, 0.05), dev.b28.enterprise.contract.Incoterm.DDP,
+                t, 24000, 1, t, net.route().from(), true);
+        net.poll(t);
+        Caravan out = net.ledger().caravan(net.route().id()).orElseThrow();
+        var crate = out.cargo().stream().filter(dev.b28.enterprise.cargo.Crates::isCrate).findFirst();
+        helper.assertTrue(crate.isPresent(), "the paper rides in a crate");
+        var papers = dev.b28.enterprise.cargo.Crates.papers(crate.get());
+        helper.assertTrue(papers.consignee().filter(net.route().to()::equals).isPresent()
+                        && papers.contract().filter(id -> id == contract.id()).isPresent(),
+                "its bill of lading names the town and the contract: " + papers.describe());
+        net.poll(t + 80);
+        helper.assertTrue(contract.delivered() == 64, "opened and delivered under the contract: " + contract.delivered());
+        helper.assertTrue(net.dest().count(new ItemCost(dev.b28.enterprise.cargo.Cargo.CRATE_ITEM.get(), 1)) >= 1,
+                "the empty crate stays, to ship with");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void whatAPlayerBroughtIsPaidForByTheNextCaravan(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192);
+        var server = helper.getLevel().getServer();
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        long t = helper.getLevel().getGameTime();
+        var contract = book.draft(net.route().from(), net.route().to(),
+                new dev.b28.enterprise.contract.Delivery(Items.FLINT, 16, 0.25), dev.b28.enterprise.contract.Incoterm.DAP,
+                t, 24000, 1, t, net.route().from(), true);
+        // A player carried a crate from the hub and put it in the town's warehouse.
+        var goods = List.of(new ItemStack(Items.FLINT, 16));
+        net.dest().insert(dev.b28.enterprise.cargo.Crates.of(goods, dev.b28.enterprise.cargo.Crates.shipping(contract,
+                net.route().from(), net.route().to(), goods, 0, t, false)));
+        dev.b28.enterprise.cargo.Crates.receive(server, helper.getLevel(), net.route().to(), net.dest(), t);
+        helper.assertTrue(contract.delivered() == 16 && net.dest().count(new ItemCost(Items.FLINT, 1)) == 16,
+                "the Merchant opened it and took delivery");
+        helper.assertTrue(Math.abs(contract.owing() - 4) < 1e-9, "4 emeralds owed to the hub: " + contract.owing());
+        net.poll(t);
+        net.poll(t + 80);
+        helper.assertTrue(contract.owing() < 0.01 && contract.paid() >= 3.9, "the hub's caravan collected it: "
+                + contract.history());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aSquadIsNeverMoreThanFour(GameTestHelper helper) {
         Network net = network(helper, 2, 5, 192, List.of(VillagerProfession.CARTOGRAPHER, VillagerProfession.LIBRARIAN,
                 VillagerProfession.SHEPHERD, VillagerProfession.LEATHERWORKER, VillagerProfession.FISHERMAN,

@@ -28,5 +28,6 @@ public final class EnterpriseClient {
     @SubscribeEvent
     static void registerScreens(RegisterMenuScreensEvent event) {
         event.register(Merchant.MENU.get(), MerchantScreen::new);
+        event.register(dev.b28.enterprise.cargo.Cargo.CRATE_MENU.get(), CrateScreen::new);
     }
 }

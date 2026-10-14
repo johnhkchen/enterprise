@@ -1,3 +1,6 @@
 {
-  "values": ["enterprise:merchants_desk"]
+  "values": [
+    "enterprise:merchants_desk",
+    "enterprise:crate"
+  ]
 }

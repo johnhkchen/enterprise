@@ -267,6 +267,26 @@ A master Merchant (level 5) at a desk deals with the Numismatics vendors (shops)
 - **Verified** in game tests: Ex Works goods collected and paid for by the buyer's caravan, a contract's copy carried to the far end putting it in force, Carriage Paid To goods on the road not a miss where Delivered At Place ones are, uncollected Ex Works goods the buyer's miss, prices by terms, a shop's contract delivering a lot a day and completing, sourcing a supplier Ex Works. Live, on a 10-day network, the spring's and hub's standing orders ran as before (three contracts, none missed).
 - **Next:** contracts drafted by players at the desk (the Contracts tab), so a player can buy Ex Works and carry it themselves; escrow when trust is low; passage agreements with toll towns; contracts as paper to trade.
 
+## Crates and bills of lading (built 2026-10-14)
+
+- **The crate** (`enterprise:crate`) is a wooden box of nine stacks with a tenth slot for one bundle of documents: a common shulker box. It's crafted from 4 planks and 4 sticks (planks at the corners, sticks between, the middle empty). Broken, it keeps its goods and papers. It doesn't go inside another container. A packed crate is one of a kind (stacks to 1); empty ones stack to 16.
+- **Documents** (`enterprise:documents`, from 2 paper and a string) hold papers, each a kind and its particulars, so later eras add kinds freely:
+  - the **bill of lading**: shipper, consignee, goods, contract, terms, route, day issued; the receipt for the goods and the title to them;
+  - a **copy of the contract**;
+  - bills of exchange to come.
+- **Shipments under contracts go in crates with their papers:** a bill of lading and a copy of the contract in each crate.
+  - The shipper uses its own empty crates first, and pays an eighth of an emerald for each new one (conjured for now; later a carpenter's, with nails and wood).
+  - With no crate and no money, goods go loose, without papers.
+  - A crate takes the cargo space of what's in it (at least one stack).
+- **The consignee's Merchant opens crates consigned to it,** whoever brought them:
+  - It takes the contract copy as its own.
+  - It delivers the goods under the contract the bill of lading names.
+  - It keeps a stack of the empty crates for its own shipping, and hands the rest back to the caravan that brought them, as returnable crates.
+- Ex Works goods are crated by the seller, made out to the buyer, and opened when the buyer's caravan is home.
+- **A player can carry a crate:** put it in the consignee's warehouse chest and the Merchant opens it and takes delivery. The payment is owed to the seller until a caravan between the two carries it, whichever way it runs.
+- **Measured live** (`network_study.py --comforts --inject 3`, 8 days): contracted goods shipped in crates and were delivered under their contracts. At first the empty crates filled S1's one-chest warehouse, a slot each: 80 sticks rode back and forth undelivered and that contract broke, and S1 traded 12 times. With empties stacking and returning, S1 traded 44 times and its paper contract delivered every installment.
+- **Not seen:** the crate's screen and textures in a client.
+
 ## Travel cost between hexes (2026-10-13)
 
 Travel cost must react to real building. A long wall, a tunnel, a bridge or a wide canal should each change routes and costs.
