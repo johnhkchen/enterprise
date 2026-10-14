@@ -37,7 +37,7 @@ public final class Rounds {
     private static final long TICK_BUDGET_NANOS = 30_000_000L;
 
     /** At most this many chunks per round. */
-    private static final int MAX_CHUNKS = 25;
+    private static final int MAX_CHUNKS = 36;
 
     // No timeout: a round holds its chunks until it has done its work. A tick-based timeout fails under /tick sprint,
     // where 300 ticks pass in milliseconds while chunks take real time to load.
@@ -130,7 +130,8 @@ public final class Rounds {
 
     /**
      * What a round loads, most important first, at most {@link #MAX_CHUNKS}: the market around the desk and the
-     * settlement around its bell (where the Merchant and villagers spend their time), the locker workstations, and
+     * settlement around its bell (where the Merchant and villagers spend their time), where its residents sleep and
+     * were last seen, the locker workstations, and
      * the chunks of the settlement's known fields, so its census reads them fresh.
      */
     static Set<ChunkPos> footprint(MinecraftServer server, GlobalPos desk, Collection<BlockPos> workstations) {
@@ -139,6 +140,9 @@ public final class Rounds {
         var territory = dev.b28.enterprise.territory.Territory.get(server);
         var bell = territory.bellOf(desk);
         bell.ifPresent(b -> addAround(chunks, b.pos(), MARKET_REACH));
+        // Where its villagers sleep and were last seen: homes reach 32 blocks out, past the market.
+        bell.ifPresent(b -> dev.b28.enterprise.settlement.Settlements.get(server).residentChunks(b)
+                .forEach(chunk -> chunks.add(new ChunkPos(chunk))));
         workstations.stream()
                 .sorted(Comparator.comparingDouble(pos -> pos.distSqr(desk.pos())))
                 .forEach(pos -> addAround(chunks, pos, 1));

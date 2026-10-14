@@ -59,6 +59,7 @@ public final class CensusTaker {
         int counted;
         int free;
         final List<Integer> farmers = new ArrayList<>(); // levels of the farmers counted
+        final java.util.Map<UUID, Settlements.Resident> seen = new java.util.LinkedHashMap<>();
 
         Job(ServerLevel level, BlockPos bell, int radius, List<UUID> villagers, int beds, int workstations) {
             this.level = level;
@@ -188,8 +189,8 @@ public final class CensusTaker {
         int workstations = (int) pois.getInRange(
                 type -> type.is(PoiTypeTags.ACQUIRABLE_JOB_SITE), bell, radius, PoiManager.Occupancy.ANY).count();
         List<UUID> villagers = new ArrayList<>();
-        level.getEntitiesOfClass(Villager.class, new AABB(bell).inflate(radius), villager -> !villager.isBaby()
-                        && villager.blockPosition().closerThan(bell, radius))
+        level.getEntitiesOfClass(Villager.class, new AABB(bell).inflate(radius),
+                        villager -> villager.blockPosition().closerThan(bell, radius))
                 .forEach(villager -> villagers.add(villager.getUUID()));
         return new Job(level, bell, radius, villagers, beds, workstations);
     }
@@ -198,12 +199,20 @@ public final class CensusTaker {
         while (budget > 0 && !job.villagers.isEmpty()) {
             if (job.level.getEntity(job.villagers.poll()) instanceof Villager villager) {
                 job.counted++;
-                if (villager.getVillagerData().getProfession() == VillagerProfession.FARMER) {
+                boolean baby = villager.isBaby();
+                if (!baby && villager.getVillagerData().getProfession() == VillagerProfession.FARMER) {
                     job.farmers.add(villager.getVillagerData().getLevel());
                 }
-                if (isFree(villager, job.bell)) {
+                boolean free = !baby && isFree(villager, job.bell); // a baby is a resident, not yet a worker
+                if (free) {
                     job.free++;
                 }
+                job.seen.put(villager.getUUID(), new Settlements.Resident(villager.getUUID(),
+                        villager.chunkPosition().toLong(),
+                        villager.getBrain().getMemory(MemoryModuleType.HOME).map(GlobalPos::pos),
+                        net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION
+                                .getKey(villager.getVillagerData().getProfession()).toString(),
+                        villager.getVillagerData().getLevel(), free, baby, job.level.getGameTime(), false));
                 budget -= 3;
             }
         }
@@ -213,10 +222,34 @@ public final class CensusTaker {
         }
     }
 
+    /** Residents unseen this long are taken to have left. */
+    private static final long FORGET_AFTER_TICKS = 10 * 24000L;
+
     private static Census finish(MinecraftServer server, Job job) {
-        Census result = new Census(job.counted, job.free, job.beds, job.workstations, job.level.getGameTime());
         GlobalPos bell = GlobalPos.of(job.level.dimension(), job.bell);
         Settlements settlements = Settlements.get(server);
+        // Residents not seen: out with a caravan, or in a chunk that isn't loaded, still count as last seen. One whose
+        // chunk is loaded and isn't there has gone.
+        java.util.Map<UUID, Settlements.Resident> roster = new java.util.LinkedHashMap<>(job.seen);
+        long now = job.level.getGameTime();
+        for (Settlements.Resident resident : settlements.roster(bell).values()) {
+            if (roster.containsKey(resident.id())) {
+                continue;
+            }
+            boolean unseen = resident.away() || !job.level.areEntitiesLoaded(resident.chunk());
+            if (!unseen || now - resident.lastSeen() > FORGET_AFTER_TICKS && !resident.away()) {
+                continue;
+            }
+            roster.put(resident.id(), resident);
+            job.counted++;
+            if (resident.free()) {
+                job.free++;
+            }
+            if (!resident.baby() && !resident.away() && resident.profession().equals("minecraft:farmer")) {
+                job.farmers.add(resident.level());
+            }
+        }
+        Census result = new Census(job.counted, job.free, job.beds, job.workstations, now);
         if (incomplete(settlements.census(bell), result)) {
             Enterprise.LOGGER.debug("Census at {} looks incomplete ({} villagers); not recorded, will retry",
                     job.bell.toShortString(), result.villagers());
@@ -228,6 +261,7 @@ public final class CensusTaker {
                 .orElse(1.0);
         if (result.isSettlement() || job.counted > 0) {
             settlements.record(bell, result);
+            settlements.setRoster(bell, roster);
         } else {
             settlements.forget(bell);
         }
