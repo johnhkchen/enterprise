@@ -256,6 +256,12 @@ public final class Territory extends SavedData {
         return desks;
     }
 
+    /** Links a settlement to its Merchant's desk without a census (for tests). */
+    public void setDeskForTest(GlobalPos bell, GlobalPos desk) {
+        holdings.computeIfAbsent(bell, b -> new Holding()).desk = desk;
+        setDirty();
+    }
+
     /** The desk of the settlement's Merchant, if it has one. */
     public Optional<GlobalPos> desk(GlobalPos bell) {
         return holding(bell).map(h -> h.desk);

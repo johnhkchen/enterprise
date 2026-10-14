@@ -22,5 +22,6 @@
   "screen.enterprise.merchant.not_sending": "No caravans go there yet.",
   "screen.enterprise.merchant.too_far": "Too far: a caravan can't carry the food for the road.",
   "screen.enterprise.merchant.squad": "At home to send: %s",
-  "screen.enterprise.merchant.no_squad": "No one at home to send. Once it has a route, the town trains Merchants, Cartographers, Librarians and Shepherds for its caravans."
+  "screen.enterprise.merchant.no_squad": "No one at home to send. Once it has a route, the town trains Merchants, Cartographers, Librarians and Shepherds for its caravans.",
+  "item.enterprise.road_map": "Map of the road to %s, %s"
 }

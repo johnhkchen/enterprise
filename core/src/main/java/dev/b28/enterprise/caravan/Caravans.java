@@ -288,8 +288,14 @@ public final class Caravans {
             buyForHome(level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
             buySurplus(server, ledger, level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
         }
-        if (caravan.leg == Caravan.Leg.OUTBOUND && Squad.has(caravan.crew, "minecraft:cartographer")) {
-            route.mappedAt = now; // the Cartographer has walked the road (its maps come with the atlas)
+        if (caravan.leg == Caravan.Leg.OUTBOUND && Squad.has(caravan.crew, "minecraft:cartographer")
+                && (route.mappedAt < 0 || now - route.mappedAt > STALE_MAP_TICKS)) {
+            // The Cartographer has walked the road: the towns along it are known at home, and a map rides back.
+            route.mappedAt = now;
+            List<GlobalPos> towns = Cartography.townsAlong(level, territory, route);
+            towns.forEach(town -> Atlas.get(server).learn(route.from, town, now));
+            caravan.cargo.add(Cartography.mapOf(level, route, towns));
+            route.townsMapped = Math.max(route.townsMapped, towns.size());
         }
         if (Squad.has(caravan.crew, "minecraft:librarian")) {
             // A Librarian brings back the books: what the town holds, so the next caravan knows what to bring.

@@ -64,6 +64,9 @@ final class EnterpriseCommands {
                                 .then(Commands.argument("id", IntegerArgumentType.integer(1))
                                         .executes(EnterpriseCommands::removeRoute))))
                 .then(Commands.literal("routes").executes(EnterpriseCommands::routes))
+                .then(Commands.literal("atlas")
+                        .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                .executes(EnterpriseCommands::atlas)))
                 .then(Commands.literal("territory")
                         .then(Commands.argument("bell", BlockPosArgument.blockPos())
                                 .executes(EnterpriseCommands::territory)))
@@ -258,6 +261,18 @@ final class EnterpriseCommands {
         boolean removed = CaravanLedger.get(context.getSource().getServer()).removeRoute(id);
         context.getSource().sendSuccess(() -> Component.literal(removed ? "Removed route " + id : "No route " + id), true);
         return removed ? 1 : 0;
+    }
+
+    /** The markets a desk knows, nearest first. */
+    private static int atlas(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        GlobalPos desk = GlobalPos.of(source.getLevel().dimension(), BlockPosArgument.getBlockPos(context, "desk"));
+        var known = dev.b28.enterprise.caravan.Atlas.get(source.getServer()).known(source.getServer(), desk);
+        source.sendSuccess(() -> Component.literal("The desk at %s knows %d market(s)".formatted(
+                desk.pos().toShortString(), known.size())), false);
+        known.forEach(other -> source.sendSuccess(() -> Component.literal("  %s, %d blocks".formatted(
+                other.pos().toShortString(), (int) Math.sqrt(other.pos().distSqr(desk.pos())))), false));
+        return known.size();
     }
 
     /** Every route with its totals and where its caravan is. */

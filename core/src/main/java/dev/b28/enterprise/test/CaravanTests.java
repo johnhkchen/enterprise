@@ -277,6 +277,29 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void aCartographerBringsHomeAMapAndTheTownsOnTheWay(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192, List.of(VillagerProfession.CARTOGRAPHER));
+        var server = helper.getLevel().getServer();
+        // A settlement a hex off the road, known to the ledgers but not yet to the hub.
+        BlockPos farBell = helper.absolutePos(new BlockPos(3, 2, 3)).offset(0, 0, 80);
+        BlockPos farDesk = farBell.offset(2, 0, 0);
+        dev.b28.enterprise.settlement.Settlements.get(server).record(GlobalPos.of(helper.getLevel().dimension(), farBell),
+                new dev.b28.enterprise.settlement.Census(5, 5, 5, 5, helper.getLevel().getGameTime()));
+        net.territory().setDeskForTest(GlobalPos.of(helper.getLevel().dimension(), farBell),
+                GlobalPos.of(helper.getLevel().dimension(), farDesk));
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        net.poll(t + 80);
+        net.poll(t + 160);
+        helper.assertTrue(net.hub().count(new ItemCost(Items.FILLED_MAP, 1)) == 1, "a map of the road in the warehouse");
+        helper.assertTrue(dev.b28.enterprise.caravan.Atlas.get(server).known(server, net.route().from()).contains(
+                GlobalPos.of(helper.getLevel().dimension(), farDesk)), "and the hub knows the town it saw");
+        helper.assertTrue(net.route().mappedAt() >= 0, "the road is mapped");
+        dev.b28.enterprise.settlement.Settlements.get(server).forget(GlobalPos.of(helper.getLevel().dimension(), farBell));
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aLibrarianBringsBackTheBooks(GameTestHelper helper) {
         Network net = network(helper, 70, 5, 192, List.of(VillagerProfession.CARTOGRAPHER));
         var warehouse = dev.b28.enterprise.merchant.Warehouse.get(helper.getLevel().getServer());

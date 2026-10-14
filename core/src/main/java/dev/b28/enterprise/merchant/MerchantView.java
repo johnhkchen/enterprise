@@ -128,7 +128,8 @@ public record MerchantView(BlockPos desk, int limit, List<LockerView> lockers, d
                     int distance = (int) Math.ceil(Math.sqrt((double) dx * dx + (double) dz * dz));
                     var route = ledger.route(desk, other);
                     return new TownView(other.pos(), distance, direction(dx, dz), territory.bellOf(other).isPresent(),
-                            route.isPresent(), route.map(dev.b28.enterprise.caravan.Route::status).orElse(""));
+                            route.isPresent(), route.map(r -> r.status() + (r.mappedAt() >= 0
+                                    ? "; road mapped, " + r.townsMapped() + " town(s) seen on the way" : "")).orElse(""));
                 })
                 .toList();
         List<String> squad = dev.b28.enterprise.caravan.Squad.available(level, desk, Math.min(range, dev.b28.enterprise.caravan.Squad.reach())).stream()
