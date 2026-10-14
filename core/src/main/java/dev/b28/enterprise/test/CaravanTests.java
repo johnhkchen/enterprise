@@ -785,8 +785,9 @@ public final class CaravanTests {
         net.poll(t);
         net.poll(t + 80);
         helper.assertTrue(net.dest().count(PAPER) == 0, "no money, no paper");
-        helper.assertTrue(net.ledger().caravan(net.route().id()).orElseThrow().cargo().stream()
-                .filter(stack -> stack.is(Items.PAPER)).mapToInt(ItemStack::getCount).sum() == 128, "the paper rides home");
+        helper.assertTrue(dev.b28.enterprise.cargo.Crates.contents(net.ledger().caravan(net.route().id()).orElseThrow().cargo())
+                .stream().filter(stack -> stack.is(Items.PAPER)).mapToInt(ItemStack::getCount).sum() == 128,
+                "the paper rides home, crated");
         helper.succeed();
     }
 
@@ -890,6 +891,26 @@ public final class CaravanTests {
         net.poll(t + 160);
         helper.assertTrue(net.hub().count(new ItemCost(Items.IRON_AXE, 1)) == 9, "home and opened: "
                 + net.hub().count(new ItemCost(Items.IRON_AXE, 1)));
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void goodsForSaleTravelCratedAndAreStoredAsTheyCome(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 640);
+        // The destination's Librarian takes plenty of paper: it wants the whole lot.
+        dev.b28.enterprise.merchant.Warehouse.get(helper.getLevel().getServer()).recordCapacity(net.route().to(),
+                helper.absolutePos(new BlockPos(5, 2, 6)).asLong(), java.util.Map.of(Items.PAPER, 200));
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        var out = net.ledger().caravan(net.route().id()).orElseThrow();
+        helper.assertTrue(out.cargo().stream().anyMatch(s -> dev.b28.enterprise.cargo.Crates.lot(s)
+                        .filter(g -> g.is(Items.PAPER) && g.getCount() == 128).isPresent()),
+                "the paper goes in a crate of its own");
+        net.poll(t + 80);
+        helper.assertTrue(net.dest().count(PAPER) == 128, "sold, all of it: " + net.dest().count(PAPER));
+        helper.assertTrue(net.dest().looseStacks().stream().anyMatch(dev.b28.enterprise.cargo.Crates::isCrate)
+                        && net.dest().looseStacks().stream().noneMatch(s -> s.is(Items.PAPER)),
+                "stored as it came, in its crate: one slot, not two");
         helper.succeed();
     }
 }

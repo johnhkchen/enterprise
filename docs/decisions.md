@@ -433,6 +433,20 @@ vendoring greys, and the Merchant now does what a shopkeeper would.
     peacetime. **Five enchanted diamond swords** (Sharpness, Fire Aspect) were issued to the army, and diamond boots
     reached the depot. Trust held between 0.52 and 0.83, and towns threw out under 5 emeralds' worth each.
   - **Still open:** soldiers went hungry 21 of 45 days, and meals are never hearty: no meat reaches the front.
+- **Goods stay crated from shipper to buyer.** Shipments used to be opened on arrival and poured loose into the
+  warehouse, then packed into crates again once it filled up. Now:
+  - a crate made out to a Merchant goes into store as it comes, its papers filed;
+  - a caravan packs what it carries for sale in crates of one good each (the hub's empties first, else new ones);
+  - a buyer takes a whole crate when it wants the whole lot, and otherwise takes what it wants out, leaving the rest
+    crated aboard;
+  - goods come out of a crate only when used, and the emptied crate stays to ship with.
+  Counts of what's aboard a caravan look inside crates.
+  - **Run 15:** S2's main chest held 6 of 27 slots and its cold store 16 crates, against 24 of 27 slots, half of it
+    paper, in run 13. Five masters again (two training contracts broken); diamond helmets and leggings were issued
+    to soldiers, and 3 diamond swords waited in the depot at the end.
+  - But towns packed for room about as often as in run 14 (36 to 69 times each over 120 days): most of the clutter is
+    what they make and gather themselves. What still blocks a Merchant from paying its smiths is cash, not room: S2's
+    Merchant tried to buy 405 emeralds' worth for its master smiths' diamond-gear trades at once, holding about 17.
 
 ## Everything runs on the logistics framework (built 2026-10-14)
 

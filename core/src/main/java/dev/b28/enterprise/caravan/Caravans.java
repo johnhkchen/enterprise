@@ -267,7 +267,9 @@ public final class Caravans {
         while (Crates.stacks(cargo) > slots) {
             stock.insert(cargo.remove(cargo.size() - 1)); // more comforts than the squad can carry: leave the rest
         }
-        cargo.addAll(pickCargo(stock, wantedThere(server, route.to), slots - Crates.stacks(cargo)));
+        // Goods for sale go packed, a crate to a good: the buyer stores them as they come, nine stacks to a slot.
+        cargo.addAll(lots(level, route.from, stock, pickCargo(stock, wantedThere(server, route.to),
+                slots - Crates.stacks(cargo)), now));
         Warehouse.get(server).recordStocktake(route.from, stock.totals()); // for buying decisions while away
         var army = dev.b28.enterprise.army.Army.get(server);
         boolean toFront = army.front().filter(route.to::equals).isPresent();
@@ -363,14 +365,6 @@ public final class Caravans {
             // The caravan carries its home's copies of contracts with this town, and collects what it's owed Ex Works.
             var book = dev.b28.enterprise.contract.ContractBook.get(server);
             book.copiesFor(route.from, route.to).forEach(c -> book.deliverCopy(c.id(), route.to));
-            // The Merchant here opens the crates consigned to it: their papers name the contract, the goods come out.
-            for (java.util.ListIterator<ItemStack> it = caravan.cargo.listIterator(); it.hasNext(); ) {
-                ItemStack stack = it.next();
-                if (Crates.consignedTo(stack, route.to)) {
-                    it.remove();
-                    Crates.open(server, route.to, stock, stack).forEach(it::add);
-                }
-            }
             Crates.receive(server, level, route.to, stock, now);
             dev.b28.enterprise.market.Procurement.procure(level, route.to, stock);
             ItemStack empties = Crates.spareEmpties(stock); // returnable crates go back
@@ -400,6 +394,14 @@ public final class Caravans {
             presentBills(server, level, route, stock, caravan, mint, rate, now);
             raiseLevy(server, level, route, territory, caravan, now);
             int earned = settleContracts(server, level, route, stock, caravan, mint, rate, now);
+            // Crates made out here that no contract in force took: their papers filed, their goods for sale like any.
+            for (java.util.ListIterator<ItemStack> it = caravan.cargo.listIterator(); it.hasNext(); ) {
+                ItemStack stack = it.next();
+                if (Crates.consignedTo(stack, route.to)) {
+                    it.remove();
+                    Crates.open(server, route.to, stock, stack).forEach(it::add);
+                }
+            }
             collectExWorks(server, level, route, stock, caravan, mint, rate, now);
             Map<Item, double[]> sold = new LinkedHashMap<>();
             earned += sell(server, level, route.to, stock, caravan, residentLevel, mint, rate, now, route, territory, sold);
@@ -579,9 +581,31 @@ public final class Caravans {
             book.arrived(contract, carried.getValue());
             int delivered = 0;
             double worth = 0; // what it's owed, bonuses and all
+            // Its crates first: into store as they are, their papers filed; one with more than is owed is opened.
+            for (java.util.ListIterator<ItemStack> it = caravan.cargo.listIterator(); it.hasNext() && delivered < toDeliver; ) {
+                ItemStack crate = it.next();
+                if (!Crates.consignedTo(crate, route.to)
+                        || Crates.papers(crate).contract().filter(id -> id == contract.id()).isEmpty()) {
+                    continue;
+                }
+                List<ItemStack> goods = Crates.goods(crate);
+                int count = goods.stream().filter(g -> delivery.matches(g, server.registryAccess()))
+                        .mapToInt(ItemStack::getCount).sum();
+                if (count == goods.stream().mapToInt(ItemStack::getCount).sum() && count <= toDeliver - delivered) {
+                    if (!stock.insert(Crates.store(server, route.to, crate)).isEmpty()) {
+                        break; // no room even for a crate: the rest rides home
+                    }
+                    it.remove();
+                    delivered += count;
+                    worth += goods.stream().mapToDouble(g -> contract.priceOf(g) * g.getCount()).sum();
+                } else {
+                    it.remove();
+                    Crates.open(server, route.to, stock, crate).forEach(it::add);
+                }
+            }
             for (Iterator<ItemStack> it = caravan.cargo.iterator(); it.hasNext() && delivered < toDeliver; ) {
                 ItemStack stack = it.next();
-                if (!delivery.matches(stack, server.registryAccess())) {
+                if (Crates.isCrate(stack) || !delivery.matches(stack, server.registryAccess())) {
                     continue;
                 }
                 double each = contract.priceOf(stack);
@@ -915,7 +939,7 @@ public final class Caravans {
             }
             // And the travelling Merchant won't promise more than it can see: what's still aboard, and what its home
             // warehouse held when it left.
-            int aboard = caravan.cargo.stream().filter(stack -> stack.is(item)).mapToInt(ItemStack::getCount).sum();
+            int aboard = Crates.contents(caravan.cargo).stream().filter(stack -> stack.is(item)).mapToInt(ItemStack::getCount).sum();
             int installments = Math.min(CONTRACT_INSTALLMENTS, (warehouse.onHand(route.from, item) + aboard) / quantity);
             if (installments < CONTRACT_MIN_INSTALLMENTS) {
                 return;
@@ -1317,6 +1341,27 @@ public final class Caravans {
     }
 
     /**
+     * Goods packed for sale: each good of two stacks or more in crates of its own (the shipper's empties first, else new
+     * ones it pays for), the rest loose.
+     */
+    static List<ItemStack> lots(ServerLevel level, GlobalPos shipper, MerchantStock stock, List<ItemStack> goods, long now) {
+        Map<String, List<ItemStack>> byGood = new LinkedHashMap<>();
+        for (ItemStack piece : goods) {
+            byGood.computeIfAbsent(BuiltInRegistries.ITEM.getKey(piece.getItem()) + "|" + piece.getComponentsPatch(),
+                    k -> new ArrayList<>()).add(piece);
+        }
+        List<ItemStack> packed = new ArrayList<>();
+        for (List<ItemStack> good : byGood.values()) {
+            if (good.size() >= 2 && good.get(0).getItem().canFitInsideContainerItems()) {
+                packed.addAll(Crates.pack(level, shipper, stock, good, dev.b28.enterprise.cargo.Papers.NONE, now));
+            } else {
+                packed.addAll(good);
+            }
+        }
+        return packed;
+    }
+
+    /**
      * Up to {@code slots} stacks, shared across the wanted items in order, each up to {@link #WANT_PER_ITEM}; with
      * more wanted items than slots, a stack each of the first.
      */
@@ -1349,8 +1394,14 @@ public final class Caravans {
         Warehouse warehouse = Warehouse.get(server);
         Set<Item> wanted = wantedAt(server, desk);
         int earned = 0;
-        for (Iterator<ItemStack> it = caravan.cargo.iterator(); it.hasNext(); ) {
-            ItemStack stack = it.next();
+        for (java.util.ListIterator<ItemStack> it = caravan.cargo.listIterator(); it.hasNext(); ) {
+            ItemStack entry = it.next();
+            // A crate of one good for sale is sold as its goods: whole if wanted whole, kept crated.
+            java.util.Optional<ItemStack> lot = Crates.lot(entry);
+            if (Crates.isCrate(entry) && lot.isEmpty()) {
+                continue; // someone's shipment, or empties
+            }
+            ItemStack stack = lot.orElse(entry);
             Item item = stack.getItem();
             int onHand = stock.count(new ItemCost(item, 1));
             double value = Prices.emeraldsEach(item);
@@ -1382,23 +1433,38 @@ public final class Caravans {
             if (quantity <= 0) {
                 continue;
             }
-            while (quantity > 0 && !stock.hasRoomFor(stack.copyWithCount(quantity))) {
-                quantity -= Math.min(quantity, item.getDefaultMaxStackSize()); // keep the warehouse's free slots
+            int delivered;
+            if (lot.isPresent() && quantity >= stack.getCount() && stock.insert(entry.copy()).isEmpty()) {
+                delivered = stack.getCount(); // the whole crate, into store as it is
+                it.remove();
+            } else {
+                while (quantity > 0 && !stock.hasRoomFor(stack.copyWithCount(quantity))) {
+                    quantity -= Math.min(quantity, item.getDefaultMaxStackSize()); // keep the warehouse's free slots
+                }
+                if (quantity <= 0) {
+                    continue;
+                }
+                if (lot.isPresent()) {
+                    // Part of a crate: what's sold comes out loose, the rest stays crated aboard.
+                    delivered = 0;
+                    for (ItemStack piece : Crates.split(entry, quantity, it)) {
+                        ItemStack rest = stock.insert(piece);
+                        delivered += piece.getCount() - rest.getCount();
+                    }
+                } else {
+                    ItemStack sold = stack.split(quantity);
+                    ItemStack rest = stock.insert(sold);
+                    delivered = sold.getCount() - rest.getCount();
+                    stack.grow(rest.getCount());
+                }
             }
-            if (quantity <= 0) {
-                continue;
-            }
-            ItemStack sold = stack.split(quantity);
-            ItemStack rest = stock.insert(sold);
-            int delivered = sold.getCount() - rest.getCount();
-            stack.grow(rest.getCount());
             Treasury.Withdrawal paid = Treasury.withdraw(level, desk.pos(), stock, delivered * each, mint, now);
             earned += paid.spurs() + mint.sell(Mint.DEFAULT_FACTION, paid.emeralds(), now);
             route.itemsDelivered += delivered;
             double[] tally = tallies.computeIfAbsent(item, i -> new double[2]);
             tally[0] += delivered;
             tally[1] += delivered * each;
-            if (stack.isEmpty()) {
+            if (lot.isEmpty() && stack.isEmpty()) {
                 it.remove();
             }
         }
@@ -1451,7 +1517,7 @@ public final class Caravans {
         dev.b28.enterprise.market.Exchange.get(server).wanted(route.from).forEach((item, count) ->
                 wants.merge(item, count, Integer::sum));
         wants.replaceAll((item, want) -> want - warehouse.onHand(route.from, item)
-                - caravan.cargo.stream().filter(stack -> stack.is(item)).mapToInt(ItemStack::getCount).sum());
+                - Crates.contents(caravan.cargo).stream().filter(stack -> stack.is(item)).mapToInt(ItemStack::getCount).sum());
         wants.values().removeIf(want -> want <= 0);
         return wants;
     }

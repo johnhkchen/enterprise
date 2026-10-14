@@ -94,6 +94,39 @@ public final class Crates {
         return crate;
     }
 
+    /** A crate of one good for sale (no papers): its goods, as one stack's worth to price and sell. */
+    public static java.util.Optional<ItemStack> lot(ItemStack stack) {
+        if (!isCrate(stack) || stack.getCount() != 1 || !papers(stack).documents().isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        List<ItemStack> goods = goods(stack);
+        if (goods.isEmpty() || goods.stream().anyMatch(g -> !ItemStack.isSameItemSameComponents(g, goods.get(0)))) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of(goods.get(0).copyWithCount(goods.stream().mapToInt(ItemStack::getCount).sum()));
+    }
+
+    /**
+     * Takes {@code count} of a crate's goods out, loose; the crate, with what's left (or empty), replaces it where
+     * {@code at} last pointed. Returns the goods taken.
+     */
+    public static List<ItemStack> split(ItemStack crate, int count, java.util.ListIterator<ItemStack> at) {
+        List<ItemStack> taken = new ArrayList<>();
+        List<ItemStack> left = new ArrayList<>();
+        for (ItemStack g : goods(crate)) {
+            int take = Math.min(count, g.getCount());
+            if (take > 0) {
+                taken.add(g.copyWithCount(take));
+                count -= take;
+            }
+            if (g.getCount() > take) {
+                left.add(g.copyWithCount(g.getCount() - take));
+            }
+        }
+        at.set(of(left, papers(crate)));
+        return taken;
+    }
+
     /** Stacks of cargo space a load takes: a crate takes what's in it (at least one), anything else one. */
     public static int stacks(List<ItemStack> load) {
         return load.stream().mapToInt(s -> isCrate(s) ? Math.max(1, goods(s).size()) : 1).sum();
@@ -174,6 +207,17 @@ public final class Crates {
     }
 
     /**
+     * The Merchant takes a crate consigned to it into store as it is: files its papers (a copy of the contract is now
+     * its copy) and keeps the goods in the crate, now plain stock, nine stacks to a slot, opened only as they're used.
+     */
+    public static ItemStack store(MinecraftServer server, GlobalPos desk, ItemStack crate) {
+        ContractBook book = ContractBook.get(server);
+        papers(crate).documents().stream().filter(d -> d.kind().equals(Papers.CONTRACT))
+                .forEach(d -> book.deliverCopy(d.data().getInt("contract"), desk));
+        return of(goods(crate), Papers.NONE);
+    }
+
+    /**
      * The Merchant opens a crate consigned to it: takes its papers (a copy of the contract is now its copy), and
      * returns the goods; the crate, emptied, goes into its stock to ship with later.
      */
@@ -206,23 +250,21 @@ public final class Crates {
 
     /**
      * Crates in the desk's warehouse consigned to it (a player brought them, or they came home on a caravan): the
-     * Merchant opens each, puts the goods in stock, and, if the shipment wasn't already settled, settles it under the
-     * contract its bill of lading names: delivered, with the payment owed the seller until a caravan carries it there.
-     * Returns the crates opened.
+     * Merchant files each one's papers and keeps its goods crated, as stock, and, if the shipment wasn't already
+     * settled, settles it under the contract its bill of lading names: delivered, with the payment owed the seller
+     * until a caravan carries it there. Returns the crates received.
      */
     public static int receive(MinecraftServer server, ServerLevel level, GlobalPos desk, MerchantStock stock, long now) {
         List<ItemStack> crates = stock.removeLoose(s -> consignedTo(s, desk));
         ContractBook book = ContractBook.get(server);
         for (ItemStack crate : crates) {
             Papers papers = papers(crate);
-            List<ItemStack> goods = open(server, desk, stock, crate);
+            List<ItemStack> goods = goods(crate);
             int items = goods.stream().mapToInt(ItemStack::getCount).sum();
-            goods.forEach(g -> {
-                ItemStack rest = stock.insert(g);
-                if (!rest.isEmpty()) {
-                    stock.insert(of(List.of(rest), Papers.NONE)); // no room loose: it stays crated
-                }
-            });
+            ItemStack stored = store(server, desk, crate);
+            if (!stock.insert(stored).isEmpty()) {
+                goods.forEach(stock::insert); // no room for the crate: what fits goes in loose
+            }
             boolean settled = papers.first(Papers.BILL_OF_LADING).map(d -> d.data().getBoolean("settled")).orElse(true);
             papers.contract().flatMap(book::contract).filter(c -> !settled && c.buyer().equals(desk) && c.inForce())
                     .ifPresent(contract -> {
