@@ -242,7 +242,10 @@ public final class Caravans {
                         + dev.b28.enterprise.contract.Bills.get(server).dueAt(route.from, route.to,
                                 now + travelTicks(route.distance())), // and the bills on it that lie there
                 Math.max(0, spare - shoppingMoney));
-        double purse = food * PURSE_PER_FOOD_POINT + shoppingMoney + exWorks;
+        // A bank's caravan carries money for its dealings there too, as far as its market can spare.
+        double bankFloat = dev.b28.enterprise.market.Bank.get(server).is(route.from)
+                ? Math.max(0, Math.min(dev.b28.enterprise.market.Bank.FLOAT, spare - shoppingMoney - exWorks)) : 0;
+        double purse = food * PURSE_PER_FOOD_POINT + shoppingMoney + exWorks + bankFloat;
         if (stock.foodNutrition() < food + provisions) {
             route.status = "waiting for food at the hub";
             ledger.setDirty();
@@ -391,6 +394,8 @@ public final class Caravans {
             dev.b28.enterprise.market.Tenders.get(server).read(level, route.to, route.from, now);
             settleOwing(server, level, route, stock, caravan, mint, rate, now);
             payAdvances(server, level, route, stock, caravan, mint, rate, now);
+            // From a bank's market: it buys the town's bills and lends against its contracts, for coin now.
+            dev.b28.enterprise.market.Bank.deal(server, level, route, stock, caravan, mint, rate, now);
             presentBills(server, level, route, stock, caravan, mint, rate, now);
             raiseLevy(server, level, route, territory, caravan, now);
             int earned = settleContracts(server, level, route, stock, caravan, mint, rate, now);
@@ -695,10 +700,12 @@ public final class Caravans {
             double recoup = contract.recoupFrom(worth, taken); // what was paid up front is worked off
             book.recouped(contract, recoup);
             int cost = (int) Math.ceil((worth - recoup) * rate);
-            int spurs = Math.min(caravan.spurs, cost);
+            // A loan from this caravan's bank on the contract comes out of the payment first.
+            double repaid = dev.b28.enterprise.market.Bank.get(server).repayFrom(route.from, contract, cost / rate);
+            int spurs = Math.min(caravan.spurs, cost - (int) Math.floor(repaid * rate));
             caravan.spurs -= spurs;
             Treasury.deposit(level, route.to.pos(), stock, spurs);
-            double onPaper = (cost - spurs) / rate;
+            double onPaper = (cost - spurs) / rate - repaid;
             if (onPaper > 0.01) {
                 dev.b28.enterprise.contract.Bills.file(stock, dev.b28.enterprise.contract.Bills.get(server)
                         .draw(route.from, route.to, onPaper, now));
@@ -725,6 +732,10 @@ public final class Caravans {
             }
         }
         for (var contract : book.owing(route.to, route.from)) { // the caravan's town pays the seller here
+            double repaid = dev.b28.enterprise.market.Bank.get(server).repayFrom(route.from, contract, contract.owing());
+            if (repaid > 0) {
+                book.paidOwing(contract, repaid); // a loan on it, from this caravan's bank, comes out first
+            }
             int spurs = Math.min(caravan.spurs, (int) Math.ceil(contract.owing() * rate));
             caravan.spurs -= spurs;
             Treasury.deposit(level, route.to.pos(), stock, spurs);

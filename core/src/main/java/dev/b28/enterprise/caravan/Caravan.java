@@ -78,6 +78,21 @@ public final class Caravan {
         return spurs;
     }
 
+    /** Pays {@code amount} spurs out of the purse (its home's business at the far end: a bank's, say). */
+    public void pay(int amount) {
+        spurs -= amount;
+    }
+
+    /** Takes {@code amount} spurs into the purse, to carry home. */
+    public void receive(int amount) {
+        spurs += amount;
+    }
+
+    /** Takes something aboard to carry home: papers its home bought there, say. */
+    public void carry(net.minecraft.world.item.ItemStack stack) {
+        cargo.add(stack);
+    }
+
     /** Items aboard, crates opened. */
     public int items() {
         return dev.b28.enterprise.cargo.Crates.contents(cargo).stream().mapToInt(ItemStack::getCount).sum();

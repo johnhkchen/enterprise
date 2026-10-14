@@ -105,7 +105,7 @@ public final class Exchange extends SavedData {
         setDirty();
     }
 
-    boolean isProcured(GlobalPos desk, BlockPos workstation, String key) {
+    public boolean isProcured(GlobalPos desk, BlockPos workstation, String key) {
         return procured.getOrDefault(desk, java.util.Set.of()).contains(workstation.asLong() + "|" + key);
     }
 

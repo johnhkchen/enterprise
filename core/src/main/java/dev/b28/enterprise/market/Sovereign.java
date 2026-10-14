@@ -205,6 +205,7 @@ public final class Sovereign extends SavedData {
         if (!MetalExchange.get(level.getServer()).at(at)) {
             MetalExchange.get(level.getServer()).open(level, at, treasury);
         }
+        Bank.get(level.getServer()).open(at); // the crown's bank: discounting and lending through its caravans
         setDirty();
         Enterprise.LOGGER.info("The sovereign's capital at {}: {} spurs a day, its metal exchange open",
                 at.pos().toShortString(), perDay);

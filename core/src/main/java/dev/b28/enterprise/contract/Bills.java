@@ -44,7 +44,7 @@ public final class Bills extends SavedData {
     public static final class Bill {
         final int id;
         final GlobalPos drawee;
-        final GlobalPos payee;
+        GlobalPos payee; // whoever holds it now: a bank that bought it, say
         final double emeralds;
         final long drawn;
         final long due;
@@ -130,6 +130,23 @@ public final class Bills extends SavedData {
     void paid(Bill bill) {
         bill.state = State.PAID;
         setDirty();
+    }
+
+    /** The bill is sold on (to a bank): it's paid to {@code holder} now. */
+    public void endorse(Bill bill, GlobalPos holder) {
+        bill.payee = holder;
+        setDirty();
+    }
+
+    /** The drawee buys back its own bill early (a bank at the drawee's market discounted it): it's settled. */
+    public void redeem(Bill bill) {
+        bill.state = State.PAID;
+        setDirty();
+    }
+
+    /** The bills a bundle of documents holds, as ledger entries. */
+    public List<Bill> in(ItemStack bundle) {
+        return ids(bundle).stream().map(bills::get).filter(java.util.Objects::nonNull).toList();
     }
 
     /** The bills a document holds. */

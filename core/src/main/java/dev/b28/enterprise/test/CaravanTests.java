@@ -913,4 +913,56 @@ public final class CaravanTests {
                 "stored as it came, in its crate: one slot, not two");
         helper.succeed();
     }
+
+    @GameTest(template = "floor")
+    public static void aBankBuysATownsBillForCoinNow(GameTestHelper helper) {
+        Network net = network(helper, 2, 40, 0);
+        var server = helper.getLevel().getServer();
+        GlobalPos hub = net.route().from();
+        GlobalPos town = net.route().to();
+        var bank = dev.b28.enterprise.market.Bank.get(server);
+        bank.open(hub);
+        long t = helper.getLevel().getGameTime();
+        var bills = dev.b28.enterprise.contract.Bills.get(server);
+        var paper = bills.draw(hub, town, 10, t); // the hub owes the town ten emeralds, in four days
+        dev.b28.enterprise.contract.Bills.file(net.dest(), paper);
+        int id = paper.data().getInt("bill");
+        net.poll(t);
+        net.poll(t + 80);
+        var bill = bills.bill(id).orElseThrow();
+        bank.close(hub);
+        helper.assertTrue(bill.state() == dev.b28.enterprise.contract.Bills.State.PAID, "the hub's bank bought it back early");
+        int coins = dev.b28.enterprise.money.MoneyChanger.value(net.dest().looseStacks());
+        helper.assertTrue(coins > 0, "and the town has coin now, not in four days: " + coins);
+        helper.assertTrue(bank.book(hub).billsPaid() < 10 * 1.02, "less the discount: " + bank.book(hub).billsPaid());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aBankLendsAgainstAContractAndIsRepaidFromThePayment(GameTestHelper helper) {
+        Network net = network(helper, 8, 40, 0); // a town with no money
+        var server = helper.getLevel().getServer();
+        GlobalPos hub = net.route().from();
+        GlobalPos town = net.route().to();
+        var bank = dev.b28.enterprise.market.Bank.get(server);
+        bank.open(hub);
+        long t = helper.getLevel().getGameTime();
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        // The hub buys 64 books from the town, collected in two days; the town has the paper, and nothing to pay with.
+        var contract = book.draft(town, hub, new dev.b28.enterprise.contract.Delivery(Items.BOOK, 64, 0.5),
+                dev.b28.enterprise.contract.Incoterm.EXW, t + 2 * 24000L, 24000, 1, t, town, true);
+        net.poll(t);
+        net.poll(t + 80);
+        double lent = bank.owedOn(contract.id());
+        helper.assertTrue(lent > 5, "lent against the books to come: " + lent);
+        net.poll(t + 160);
+        net.dest().insert(new ItemStack(Items.BOOK, 64)); // made, with the money
+        net.poll(t + 2 * 24000L);
+        net.poll(t + 2 * 24000L + 80);
+        double owed = bank.owedOn(contract.id());
+        bank.close(hub);
+        helper.assertTrue(contract.delivered() == 64, "collected: " + contract.history());
+        helper.assertTrue(owed < 0.01 && bank.book(hub).repaid() > 5, "the loan came out of the payment: " + owed);
+        helper.succeed();
+    }
 }

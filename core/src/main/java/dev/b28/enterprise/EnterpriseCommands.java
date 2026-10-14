@@ -140,6 +140,18 @@ final class EnterpriseCommands {
                                     return removed ? 1 : 0;
                                 }))))
                 .then(Commands.literal("trust").executes(EnterpriseCommands::trust))
+                .then(Commands.literal("bank")
+                        .executes(EnterpriseCommands::bank)
+                        .then(Commands.literal("open")
+                                .then(Commands.argument("desk", BlockPosArgument.blockPos()).executes(context -> {
+                                    var source = context.getSource();
+                                    GlobalPos desk = GlobalPos.of(source.getLevel().dimension(),
+                                            BlockPosArgument.getBlockPos(context, "desk"));
+                                    dev.b28.enterprise.market.Bank.get(source.getServer()).open(desk);
+                                    source.sendSuccess(() -> Component.literal("A bank at " + desk.pos().toShortString()
+                                            + ": its caravans buy bills and lend against contracts"), true);
+                                    return 1;
+                                }))))
                 .then(Commands.literal("tenders").executes(context -> {
                     var source = context.getSource();
                     var all = dev.b28.enterprise.market.Tenders.get(source.getServer()).all();
@@ -589,6 +601,21 @@ final class EnterpriseCommands {
         return 1;
     }
 
+    /** Each bank: bills it bought, loans it made and what's been repaid, and the loans still owed. */
+    private static int bank(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        var bank = dev.b28.enterprise.market.Bank.get(source.getServer());
+        for (GlobalPos at : bank.banks()) {
+            var b = bank.book(at);
+            source.sendSuccess(() -> Component.literal(("Bank at %s: %d bills bought for %.1f emeralds (worth %.1f when due); "
+                    + "%d loans, %.1f lent, %.1f repaid").formatted(at.pos().toShortString(), b.billsBought(), b.billsPaid(),
+                    b.billsFace(), b.loansMade(), b.lent(), b.repaid())), false);
+        }
+        bank.loans().forEach(l -> source.sendSuccess(() -> Component.literal("  %s owes %.1f on contract #%d (lent %.1f)"
+                .formatted(l.borrower().pos().toShortString(), l.owed(), l.contract(), l.principal())), false));
+        return bank.banks().size();
+    }
+
     /** Trust between each pair of parties that have dealt: their record of installments kept and missed. */
     private static int trust(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
@@ -655,6 +682,12 @@ final class EnterpriseCommands {
             source.sendSuccess(() -> Component.literal(("  storekeeping %s: %.0f thrown out (%.1f emeralds), %.0f tools given "
                     + "away; %.1f tools in its hands' use; %s").formatted(town.pos().toShortString(), w[0], w[1], w[2], tools,
                     cold ? "cold storage set up" : "no cold storage")), false);
+        }
+        if (desk != null && dev.b28.enterprise.market.Bank.get(server).is(desk)) {
+            var b = dev.b28.enterprise.market.Bank.get(server).book(desk);
+            source.sendSuccess(() -> Component.literal(("  the crown's bank: %d bills bought for %.1f (worth %.1f when due); "
+                    + "%d loans, %.1f lent, %.1f repaid").formatted(b.billsBought(), b.billsPaid(), b.billsFace(),
+                    b.loansMade(), b.lent(), b.repaid())), false);
         }
         source.sendSuccess(() -> Component.literal("  kit issued: " + army.issued()), false);
         source.sendSuccess(() -> Component.literal("  enchantment levels issued: " + army.enchantLevels()), false);

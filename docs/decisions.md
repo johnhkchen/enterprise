@@ -363,6 +363,31 @@ What run 1 of the war lacked: patience with new suppliers, money before producti
     3. The army's meals were still 0% hearty: no meat reached the depot.
     4. The treasury ended with 76,000 spurs unspent, and the spur fell from 16 to 34 an emerald.
 
+## Pacing and the crown's bank (built 2026-10-14)
+
+Once room stopped blocking them, Merchants were blocked by cash. S2's Merchant tried to buy 405 emeralds' worth of
+diamond gear from its master smiths at once, holding about 17.
+
+- **Pacing:** a Merchant buys from its villagers for what its contracts want within two days (and its open orders,
+  and the sovereign's shortfall there), not the whole of a long contract at once. A pupil's lessons still run a
+  restock's worth.
+- **Banks** (`Bank`, `/enterprise bank`; the capital opens one when it's named, and `/enterprise bank open <desk>`
+  opens one anywhere, a barracks town say). A bank deals only through its own caravans, from its market's treasury,
+  so money still goes only where a caravan carries it. Where its caravan calls:
+  - **Discounting:** it buys the town's bills not yet due for coin now, less 1% and 1% a day to their due day. A bill
+    drawn on the bank's own market is redeemed early; any other is endorsed to the bank and carried home to present.
+  - **Lending against contracts:** a town with a contract in force and less money than half the goods still to come
+    are worth is lent up to that half (less what it was paid up front and lent already), at 3%, secured on the
+    contract. When the bank's caravan pays for those goods, or pays a training bonus, the loan comes out first. A loan
+    left on a contract that's done or broken is collected from what the town can spare.
+  - A bank's caravan carries up to 48 emeralds more for its dealings.
+  So a bill in hand, or a contract with goods coming, is money today.
+- **Run 16:** the crown's bank bought 51 bills (642 emeralds paid for paper worth 665 when due) and made 33 loans:
+  389 emeralds lent, 396 repaid, 5 still owed at the end. Emerald purchases refused for want of money fell from 446
+  to 38. Five enchanted diamond swords (Sharpness) were issued to the army. Training finished three masters (S1's
+  Weaponsmith by day 40, S2's Armorer by day 60, S1's Armorer by day 80), with 8 training contracts broken against
+  2 in run 15: single runs vary too much to judge a change by one.
+
 ## Inventory waste, cold storage and the apprentices' work (built 2026-10-14)
 
 Training a smith by paying for its work makes things nobody wants: a Novice Weaponsmith's iron axes, one to a slot.

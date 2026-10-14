@@ -165,10 +165,24 @@ public final class LockerTrading {
                 .filter(offer -> enabled.contains(TradeKeys.of(offer)) && !isInflated(offer))
                 .sorted(Comparator.comparingDouble(offer -> (double) price(offer, reputation) / offer.getResult().getCount()))
                 .toList();
+        // How many of each trade to run: what the Merchant buys for its contracts and orders, only what's wanted soon
+        // (a pupil's lessons, a restock's worth); anything else switched on, all it will.
+        Map<String, Integer> runs = new java.util.HashMap<>();
+        Map<net.minecraft.world.item.Item, Integer> soon = dev.b28.enterprise.market.Procurement.soon(level, at, stock);
+        var exchange = dev.b28.enterprise.market.Exchange.get(level.getServer());
+        for (MerchantOffer offer : offers) {
+            String key = TradeKeys.of(offer);
+            int uses = offer.getMaxUses() - offer.getUses();
+            if (exchange.isProcured(at, workstation, key)) {
+                int need = soon.getOrDefault(offer.getResult().getItem(), 0);
+                uses = Math.min(uses, (need + offer.getResult().getCount() - 1) / offer.getResult().getCount());
+            }
+            runs.put(key, uses);
+        }
         // What these trades will pay out in emeralds: the Merchant changes coin for what the warehouse lacks, from
         // money beyond the town's reserve.
         int emeralds = offers.stream().filter(o -> o.getBaseCostA().is(net.minecraft.world.item.Items.EMERALD))
-                .mapToInt(o -> price(o, reputation) * (o.getMaxUses() - o.getUses())).sum();
+                .mapToInt(o -> price(o, reputation) * runs.getOrDefault(TradeKeys.of(o), 0)).sum();
         int lacking = emeralds - stock.count(new ItemCost(net.minecraft.world.item.Items.EMERALD, 1));
         if (lacking > 0) {
             double rate = dev.b28.enterprise.money.Mint.get(level.getServer())
@@ -193,10 +207,11 @@ public final class LockerTrading {
             boolean sellsCrop = offer.getResult().is(net.minecraft.world.item.Items.EMERALD)
                     && dev.b28.enterprise.territory.Territory.isCrop(
                             net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(offer.getBaseCostA().getItem()).toString());
-            int uses = offer.getMaxUses() - offer.getUses();
+            int uses = runs.getOrDefault(TradeKeys.of(offer), 0);
             supply(stock, locker, offer.getItemCostA(), priceA * uses);
             offer.getItemCostB().ifPresent(costB -> supply(stock, locker, costB, costB.count() * uses));
-            while (!offer.isOutOfStock() && tradeOnce(locker, offer, priceA)) {
+            int ran = 0;
+            while (ran++ < uses && !offer.isOutOfStock() && tradeOnce(locker, offer, priceA)) {
                 offer.increaseUses();
                 boolean levelledUp = rewardTradeXp(villager, offer.getXp());
                 rewardMerchantXp(manager.merchant(), levelledUp);

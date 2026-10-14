@@ -326,4 +326,21 @@ public final class LogisticsTests {
         merchants.setEnabled(at, helper.absolutePos(composter), "minecraft:wheat+>minecraft:emerald", false);
         helper.succeed();
     }
+
+    @GameTest(template = "floor")
+    public static void aMerchantBuysForWhatsDueSoonNotTheWholeContract(GameTestHelper helper) {
+        var level = helper.getLevel();
+        BlockPos desk = new BlockPos(3, 2, 3);
+        helper.setBlock(desk, Merchant.DESK.get());
+        helper.setBlock(desk.east(), Blocks.CHEST);
+        GlobalPos at = GlobalPos.of(level.dimension(), helper.absolutePos(desk));
+        long t = level.getGameTime();
+        ContractBook.get(level.getServer()).draft(at, far(helper, 9_900_000, 9_000_000),
+                new dev.b28.enterprise.contract.Delivery(Items.DIAMOND_SWORD, 1, 30), Incoterm.EXW, t, 24000, 10, t, at, true);
+        var stock = MerchantStock.at(level, helper.absolutePos(desk));
+        int soon = dev.b28.enterprise.market.Procurement.soon(level, at, stock).getOrDefault(Items.DIAMOND_SWORD, 0);
+        int all = dev.b28.enterprise.market.Procurement.wanted(level, at, stock).getOrDefault(Items.DIAMOND_SWORD, 0);
+        helper.assertTrue(soon == 3 && all == 10, "three due within two days, of ten in all: " + soon + " of " + all);
+        helper.succeed();
+    }
 }

@@ -89,6 +89,28 @@ public final class Procurement {
         return wanted;
     }
 
+    /** The Merchant buys for what its contracts want this soon, no further ahead. */
+    public static final long PACE_TICKS = 2 * 24000L;
+
+    /**
+     * What the desk wants soon of each good beyond what it holds: its open orders, the sovereign's shortfall here, and
+     * what its contracts in force want delivered within {@link #PACE_TICKS}. What its Merchant buys from its villagers
+     * now, and spends coin on: not the whole of a long contract at once.
+     */
+    public static Map<Item, Integer> soon(ServerLevel level, GlobalPos desk, dev.b28.enterprise.merchant.MerchantStock stock) {
+        Map<Item, Integer> soon = new LinkedHashMap<>(Exchange.get(level.getServer()).wanted(desk));
+        Sovereign.get(level.getServer()).shortfall(desk).forEach((item, n) ->
+                soon.merge(item, n + stock.count(new ItemCost(item, 1)), Integer::sum));
+        long by = level.getGameTime() + PACE_TICKS;
+        for (var contract : ContractBook.get(level.getServer()).of(desk)) {
+            contract.delivery().filter(d -> contract.seller().equals(desk) && contract.inForce() && !d.toOrder())
+                    .ifPresent(d -> soon.merge(d.item(), contract.owed(by), Integer::sum));
+        }
+        soon.replaceAll((item, count) -> Math.max(0, count - stock.count(new ItemCost(item, 1))));
+        soon.values().removeIf(count -> count <= 0);
+        return soon;
+    }
+
     /**
      * Switches the desk's lockers' selling trades on for what's wanted (paid in emeralds), and off again for what isn't
      * (those it switched on). Needs the lockers' villagers loaded. Returns the trades switched on now.
