@@ -191,6 +191,15 @@ final class EnterpriseCommands {
                                                     + desk.pos().toShortString() + " is " + name + " now"), true);
                                             return 1;
                                         }))))
+                .then(Commands.literal("paperwork").executes(context -> {
+                    var server = context.getSource().getServer();
+                    StringBuilder out = new StringBuilder("Paperwork (documents, paper, ink, quills used; scribes paid):");
+                    dev.b28.enterprise.cargo.Paperwork.get(server).books().forEach((desk, b) -> out.append(
+                            "\n  %s: %.0f documents, %.0f paper, %.0f ink, %.0f quills, %.1f emeralds to scribes".formatted(
+                                    dev.b28.enterprise.settlement.Names.label(desk), b[0], b[1], b[2], b[3], b[4])));
+                    context.getSource().sendSuccess(() -> Component.literal(out.toString()), false);
+                    return 1;
+                }))
                 .then(Commands.literal("freight").executes(context -> {
                     var server = context.getSource().getServer();
                     var freight = dev.b28.enterprise.market.Freight.get(server);

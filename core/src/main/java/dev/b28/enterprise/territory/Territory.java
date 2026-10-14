@@ -853,6 +853,7 @@ public final class Territory extends SavedData {
     public void touch(ServerLevel level, BlockPos desk, MerchantStock stock, long now) {
         GlobalPos at = GlobalPos.of(level.dimension(), desk);
         dev.b28.enterprise.market.ColdStore.tidy(level, at, stock, now); // room first: packed, stored, given, thrown out
+        dev.b28.enterprise.cargo.Paperwork.get(level.getServer()).settle(level, at, stock, now); // its papers' stationery
         Optional<GlobalPos> bell = bellOf(at);
         if (bell.isEmpty()) {
             return;

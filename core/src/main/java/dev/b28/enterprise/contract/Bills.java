@@ -96,6 +96,7 @@ public final class Bills extends SavedData {
     /** {@code drawee} draws a bill on itself to pay {@code payee} {@code debt} emeralds: the bill's paper. */
     public Papers.Document draw(GlobalPos drawee, GlobalPos payee, double debt, long now) {
         Bill bill = new Bill(nextId++, drawee, payee, debt * (1 + INTEREST), now, now + TERM_TICKS);
+        dev.b28.enterprise.cargo.Paperwork.drawn(payee, 1); // drawn by its payee
         bills.put(bill.id, bill);
         setDirty();
         CompoundTag tag = new CompoundTag();

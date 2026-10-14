@@ -216,6 +216,9 @@ def main():
         w = 1.2 + 9 * math.sqrt(trips / most)
         colour = tint.get(a, "var(--ink)")
         dash = ' stroke-dasharray="6 5"' if r.get("stopping") else ""
+        if not path:
+            # Never run: no caravan has planned its way yet, so this is only where it's meant to go, not a road.
+            colour, w, dash = "var(--muted)", 1.2, ' stroke-dasharray="1.5 4"'
         label = (f"{names.get(a, a)} → {names.get(b, b)}: {trips} trips, {r.get('itemsDelivered', 0)} items delivered, "
                  f"{r.get('stops', 0)} stops on the way; {r.get('status', '')}")
         line = " ".join(f"{x:.1f},{z:.1f}" for x, z in points)
@@ -291,7 +294,7 @@ for its trips and how it ended the run.</p>
 <span><span class="swatch" style="background:var(--hill)"></span>steep ground</span>
 <span><span class="swatch" style="background:var(--sea)"></span>water</span>
 <span><span class="swatch" style="background:var(--deck)"></span>bridge</span>
-<span>line width: trips made</span><span>dashed: winding down</span><span>ringed: freight hub</span>
+<span>line width: trips made</span><span>dashed: winding down</span><span>dotted: not yet run</span><span>ringed: freight hub</span>
 <span>★ the capital</span><span>square: off the map</span>
 </div></main>"""
     out.write_text(page)

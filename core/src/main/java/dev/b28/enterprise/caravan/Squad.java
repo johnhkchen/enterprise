@@ -217,6 +217,42 @@ public final class Squad {
                 .toList();
     }
 
+    /** What the desk's Merchant pays a hand of its town to sign on as a travelling Merchant, in emeralds. */
+    public static final double SIGNING_EMERALDS = 2;
+
+    /**
+     * A town whose routes have no one to lead them: its Merchant takes on an adult of the town waiting for work (not a
+     * Nitwit, who can't learn a trade) as a travelling Merchant, a Novice who keeps the trade without a desk of its own,
+     * paying it {@link #SIGNING_EMERALDS} from the treasury. At most one lead for each route out of the desk, counting
+     * those out on the road; none while the town can't pay.
+     */
+    public static Optional<Villager> hire(ServerLevel level, GlobalPos desk, dev.b28.enterprise.merchant.MerchantStock stock,
+            int routes, int leadsOut, long now) {
+        List<Villager> home = available(level, desk, reach());
+        if (leads(home).size() + leadsOut >= routes) {
+            return Optional.empty();
+        }
+        Optional<Villager> hand = home.stream()
+                .filter(v -> trade(v).equals(dev.b28.enterprise.territory.Labour.NONE))
+                .findFirst();
+        if (hand.isEmpty()) {
+            return Optional.empty();
+        }
+        var mint = dev.b28.enterprise.money.Mint.get(level.getServer());
+        double rate = mint.rate(dev.b28.enterprise.money.Mint.DEFAULT_FACTION, now);
+        double spare = dev.b28.enterprise.money.Treasury.available(level, desk.pos(), stock, rate)
+                - dev.b28.enterprise.territory.Territory.get(level.getServer()).reserve(desk);
+        if (spare < SIGNING_EMERALDS) {
+            return Optional.empty();
+        }
+        dev.b28.enterprise.money.Treasury.withdraw(level, desk.pos(), stock, SIGNING_EMERALDS, mint, now);
+        Villager v = hand.get();
+        v.setVillagerData(v.getVillagerData()
+                .setProfession(dev.b28.enterprise.merchant.Merchant.PROFESSION.get()).setLevel(1));
+        v.setVillagerXp(1); // keeps the trade without a workstation
+        return hand;
+    }
+
     /** A villager without a trade (a Nitwit, or an adult waiting for work) can carry: a porter. */
     public static boolean porter(String trade) {
         return dev.b28.enterprise.territory.Labour.idle(trade);

@@ -207,7 +207,19 @@ public final class Caravans {
         List<net.minecraft.world.entity.npc.Villager> mustered =
                 Squad.muster(level, route.from, Squad.reach(), needs, extras);
         if (mustered.isEmpty()) {
-            route.status = "no squad at home: train a Merchant, Cartographer, Librarian or Shepherd to send";
+            // No one to lead it: the Merchant takes on a hand of the town waiting for work, if it can pay one.
+            int routes = (int) ledger.routes().stream().filter(r -> r.from.equals(route.from) && !r.stopping).count();
+            int out = (int) ledger.routes().stream()
+                    .filter(r -> r.from.equals(route.from) && ledger.caravan(r.id).isPresent()).count();
+            var hired = Squad.hire(level, route.from, stock, routes, out, now);
+            if (hired.isPresent()) {
+                Enterprise.LOGGER.info("{} takes on a hand as a travelling Merchant, for its run to {}",
+                        dev.b28.enterprise.settlement.Names.label(route.from), dev.b28.enterprise.settlement.Names.label(route.to));
+                mustered = Squad.muster(level, route.from, Squad.reach(), needs, extras);
+            }
+        }
+        if (mustered.isEmpty()) {
+            route.status = "no squad at home: no hand waiting for work to take on as a travelling Merchant, or no money to pay one";
             ledger.setDirty();
             return false;
         }
@@ -341,6 +353,10 @@ public final class Caravans {
                 * (master ? 1.5 : 1)); // a master Fisherman knows the deep water
         for (int left = catchCount; left > 0; left -= 64) {
             leaving.cargo.add(new ItemStack(Items.COD, Math.min(64, left)));
+        }
+        // And squid at sea: ink, for the clerks of the markets inland.
+        for (int left = catchCount / INK_PER_CATCH; left > 0; left -= 64) {
+            leaving.cargo.add(new ItemStack(Items.INK_SAC, Math.min(64, left)));
         }
         route.fishCaught += catchCount;
         leaving.shopping.putAll(shopping);
@@ -479,6 +495,7 @@ public final class Caravans {
             int keepForFood = (int) Math.ceil(food * PURSE_PER_FOOD_POINT * rate);
             buyForHome(level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
             buySurplus(server, ledger, level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
+            buyBackhaul(server, level, route, stock, caravan, keepForFood, territory, rate, now);
         }
         if (caravan.provisions >= food) {
             // It brought its food for the road home.
@@ -1684,6 +1701,10 @@ public final class Caravans {
     public static Set<Item> wantedAt(MinecraftServer server, GlobalPos desk) {
         MerchantBook book = MerchantBook.get(server);
         Set<Item> items = new LinkedHashSet<>(Warehouse.get(server).inputs(desk).keySet());
+        // Stationery, where it draws up papers enough to keep some on hand.
+        if (dev.b28.enterprise.cargo.Paperwork.get(server).busy(desk, server.overworld().getGameTime())) {
+            items.addAll(List.of(Items.PAPER, Items.INK_SAC, Items.FEATHER));
+        }
         // Axes for the hands working its land, while some lack a tool.
         Territory territory = Territory.get(server);
         territory.bellOf(desk).ifPresent(bell -> {
@@ -1920,6 +1941,89 @@ public final class Caravans {
      * value since it has to resell. Keeps {@code keepForFood} spurs for road food and stays within its cargo space.
      * Crop sales count toward the town's farmers' share.
      */
+    /** A Fisherman's catch at sea brings an ink sac (a squid) for every this many fish. */
+    public static final int INK_PER_CATCH = 4;
+
+    /** A glut is held beyond this many times the par (or a stack, where it has no par). */
+    public static final double GLUT = 2;
+    /** An overstocked market sells its glut this much under its worth for each par it holds beyond, at most half. */
+    public static final double GLUT_DISCOUNT = 0.25;
+    public static final double MOST_GLUT_DISCOUNT = 0.5;
+
+    /**
+     * A backhaul: the caravan goes home anyway, so what it carries back costs it nothing more, and any margin is
+     * profit. With the space left after the rest, it buys what this market holds a glut of, at the glut's discount
+     * (the seller would otherwise pay to store it, or throw it out), wherever home has a use for it: an input its
+     * lockers or crafts take, food while its own runs short, a comfort its people are short of. Home sells it on, or
+     * uses it, at its worth.
+     */
+    private static void buyBackhaul(MinecraftServer server, ServerLevel level, Route route, MerchantStock stock,
+            Caravan caravan, int keepForFood, Territory territory, double rate, long now) {
+        GlobalPos desk = route.to;
+        if (!dev.b28.enterprise.merchant.OffMap.get(server).sells(desk)) {
+            return;
+        }
+        Warehouse warehouse = Warehouse.get(server);
+        Set<Item> wantedHere = wantedAt(server, desk);
+        Set<Item> usedAtHome = wantedAt(server, route.from);
+        int homeFood = foodKnownAt(server, level, route.from);
+        Set<String> shortAtHome = territory.bellOf(route.from).map(bell -> territory.comfortsMet(bell).entrySet().stream()
+                .filter(e -> e.getValue() < 1).map(Map.Entry::getKey).collect(java.util.stream.Collectors.toSet()))
+                .orElse(Set.of());
+        int bought = 0;
+        for (Map.Entry<String, Integer> held : stock.totals().entrySet()) {
+            int room = caravan.capacity() - Crates.stacks(caravan.cargo);
+            if (room <= 0) {
+                break;
+            }
+            Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(held.getKey()));
+            if (item == Items.EMERALD || item instanceof CoinItem || held.getKey().endsWith("shulker_box")
+                    || item == dev.b28.enterprise.cargo.Cargo.CRATE_ITEM.get() || item == dev.b28.enterprise.cargo.Cargo.DOCUMENTS.get()) {
+                continue;
+            }
+            var food = item.getDefaultInstance().get(net.minecraft.core.component.DataComponents.FOOD);
+            boolean isFood = food != null && food.nutrition() > 0;
+            ItemStack sample = item.getDefaultInstance();
+            boolean useAtHome = usedAtHome.contains(item)
+                    || isFood && homeFood < 2 * Warehouse.FOOD_PAR_POINTS
+                    || Comforts.isComfort(sample) && Comforts.kindOf(item).map(Comforts::name).filter(shortAtHome::contains)
+                            .isPresent();
+            if (!useAtHome) {
+                continue;
+            }
+            int par = Math.max(item.getDefaultMaxStackSize(), warehouse.par(desk, item, wantedHere.contains(item), now));
+            if (isFood) {
+                par = Math.max(par, 2 * Warehouse.FOOD_PAR_POINTS / food.nutrition()); // the far end's own food, and callers'
+            }
+            int glut = held.getValue() - (int) (GLUT * par);
+            if (glut <= 0) {
+                continue;
+            }
+            double discount = Math.min(MOST_GLUT_DISCOUNT, GLUT_DISCOUNT * ((double) held.getValue() / par - GLUT));
+            double each = Prices.emeraldsEach(item) * (1 - discount);
+            int quantity = Math.min(glut, room * item.getDefaultMaxStackSize());
+            quantity = Math.min(quantity, (int) Math.floor((caravan.spurs - keepForFood) / Math.max(1e-9, each * rate)));
+            if (quantity <= 0) {
+                continue;
+            }
+            int taken = 0;
+            for (ItemStack piece : stock.take(new ItemCost(item, 1), quantity)) {
+                taken += piece.getCount();
+                caravan.cargo.add(piece);
+            }
+            int spurs = (int) Math.ceil(taken * each * rate);
+            caravan.spurs -= spurs;
+            Treasury.deposit(level, desk.pos(), stock, spurs);
+            route.itemsBought += taken;
+            route.purchaseSpurs += spurs;
+            route.backhaulItems += taken;
+            bought += taken;
+        }
+        if (bought > 0) {
+            Enterprise.LOGGER.debug("Caravan {} backhauls {} items from {}", route.id, bought, desk.pos().toShortString());
+        }
+    }
+
     private static void buySurplus(MinecraftServer server, CaravanLedger ledger, ServerLevel level, Route route,
             MerchantStock stock, Caravan caravan, int residentLevel, int keepForFood, Territory territory, Mint mint,
             double rate, long now) {

@@ -12,3 +12,7 @@ fill ~18 ~-1 ~0 ~26 ~-1 ~8 minecraft:farmland
 fill ~18 ~ ~0 ~26 ~ ~8 minecraft:carrots[age=7]
 # 64 emeralds of starting capital: caravans sell goods, they don't give them away.
 item replace block ~8 ~ ~7 container.1 with minecraft:emerald 64
+# A hand waiting for work, with a bed: like any village's spare hands, it gathers, carries, or signs on with a caravan.
+setblock ~1 ~ ~22 minecraft:white_bed[facing=north,part=head]
+setblock ~1 ~ ~23 minecraft:white_bed[facing=north,part=foot]
+summon minecraft:villager ~1.5 ~ ~21.5 {PersistenceRequired:1b,Tags:["testbench"],VillagerData:{profession:"minecraft:none",level:1,type:"minecraft:plains"}}

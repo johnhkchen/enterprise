@@ -193,6 +193,26 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void aTownShortOfCrewTakesOnAHand(GameTestHelper helper) {
+        Network net = network(helper, 2, 8, 192, List.of());
+        Villager hand = helper.spawn(EntityType.VILLAGER, new BlockPos(0, 2, 5)); // an adult waiting for work
+        java.util.UUID id = hand.getUUID();
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        helper.assertTrue(hand.getVillagerData().getProfession() == Merchant.PROFESSION.get() && hand.getVillagerXp() > 0,
+                "the Merchant takes the hand on as a travelling Merchant");
+        helper.assertTrue(net.ledger().caravan(net.route().id()).isPresent(), "who leads the caravan: " + net.route().status());
+        helper.assertTrue(helper.getLevel().getEntity(id) == null, "off the world while on the road");
+        net.poll(t + 80);
+        net.poll(t + 160);
+        helper.assertTrue(helper.getLevel().getEntity(id) instanceof Villager back
+                        && back.getVillagerData().getProfession() == Merchant.PROFESSION.get(),
+                "home again, still a travelling Merchant");
+        helper.getLevel().getEntity(id).discard(); // it would go looking for a neighbouring test's desk
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void theSquadLeavesTheWorldAndComesBack(GameTestHelper helper) {
         // 70 bread (350 food points): food to spare past the caravans' 320-point par, for a second member.
         Network net = network(helper, 70, 5, 192, List.of(VillagerProfession.CARTOGRAPHER, VillagerProfession.LIBRARIAN));
