@@ -185,7 +185,7 @@ public final class Caravans {
         home.forEach(v -> skills.merge(Squad.trade(v), v.getVillagerData().getLevel(), Math::max));
         Set<String> wanted = new LinkedHashSet<>(
                 dev.b28.enterprise.service.Services.wantedAbroad(level, territory, route, skills, now));
-        int stacks = wantedStacks(stock, wantedAt(server, route.to));
+        int stacks = wantedStacks(stock, wantedThere(server, route.to));
         int porters = 0;
         if (stacks > CARGO_SLOTS) {
             wanted.add(Squad.LEATHERWORKER);
@@ -253,7 +253,7 @@ public final class Caravans {
         while (cargo.size() > slots) {
             stock.insert(cargo.remove(cargo.size() - 1)); // more comforts than the squad can carry: leave the rest
         }
-        cargo.addAll(pickCargo(stock, wantedAt(server, route.to), slots - cargo.size()));
+        cargo.addAll(pickCargo(stock, wantedThere(server, route.to), slots - cargo.size()));
         Warehouse.get(server).recordStocktake(route.from, stock.totals()); // for buying decisions while away
         if (cargo.isEmpty() && herd.isEmpty() && !hasBusinessAt(server, ledger, route, now)
                 && !hasShoppingAt(server, route.to, shopping)) {
@@ -897,7 +897,7 @@ public final class Caravans {
     }
 
     /** Items the destination's switched-on trades take, read from the trade keys ("costA+costB>result"). */
-    static Set<Item> wantedAt(MinecraftServer server, GlobalPos desk) {
+    public static Set<Item> wantedAt(MinecraftServer server, GlobalPos desk) {
         MerchantBook book = MerchantBook.get(server);
         Set<Item> items = new LinkedHashSet<>();
         for (BlockPos workstation : book.workstations(desk)) {
@@ -913,6 +913,13 @@ public final class Caravans {
                 }
             }
         }
+        return items;
+    }
+
+    /** What a caravan should bring a desk: what its lockers trade, and what players' shops there have ordered. */
+    static Set<Item> wantedThere(MinecraftServer server, GlobalPos desk) {
+        Set<Item> items = new LinkedHashSet<>(wantedAt(server, desk));
+        items.addAll(dev.b28.enterprise.market.Exchange.get(server).wanted(desk).keySet());
         return items;
     }
 
@@ -1020,6 +1027,9 @@ public final class Caravans {
                 }
             }
         }
+        // And what players' shops at home have ordered: the caravan buys it up on its way.
+        dev.b28.enterprise.market.Exchange.get(server).wanted(route.from).forEach((item, count) ->
+                wants.merge(item, count, Integer::sum));
         wants.replaceAll((item, want) -> want - warehouse.onHand(route.from, item)
                 - caravan.cargo.stream().filter(stack -> stack.is(item)).mapToInt(ItemStack::getCount).sum());
         wants.values().removeIf(want -> want <= 0);

@@ -89,6 +89,10 @@ public final class MasterServices {
         Services.register(new Service("enterprise:flower_beds", TownServices.FARMER, Service.Where.HOME,
                 "as a Master, plants flower beds on the town's square (" + FLOWERS + " flowers): happier still",
                 MasterServices::flowersWanted, MasterServices::plantFlowers));
+        Services.register(Service.passive("enterprise:brokering", "enterprise:merchant", Service.Where.HOME,
+                "as a Master at the desk, deals with players' shops nearby: fills their orders from the region at their "
+                        + "price (enchanted goods to order, with a master Librarian and a Cleric), buys what the town "
+                        + "wants from their stalls, posts what no market it knows has, and sells surplus in its own shop"));
         Services.register(Service.passive("enterprise:hunting_party", Territory.FLETCHER, Service.Where.HOME,
                 "as a Master, leads a hunting party: twice the game"));
         Services.register(Service.passive("enterprise:deep_water", "minecraft:fisherman", Service.Where.ROAD,

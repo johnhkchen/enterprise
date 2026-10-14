@@ -328,6 +328,21 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void aShopsOrderAtTheFarEndRidesOut(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192);
+        net.hub().insert(new ItemStack(Items.APPLE, 64));
+        var exchange = dev.b28.enterprise.market.Exchange.get(helper.getLevel().getServer());
+        exchange.setOrdersForTest(net.route().to(), java.util.Map.of(Items.APPLE,
+                new dev.b28.enterprise.market.Exchange.Order(Items.APPLE, 32, 4, BlockPos.ZERO)));
+        net.poll(helper.getLevel().getGameTime());
+        Caravan out = net.ledger().caravan(net.route().id()).orElseThrow();
+        helper.assertTrue(out.cargo().stream().anyMatch(stack -> stack.is(Items.APPLE)),
+                "a player's shop there ordered apples: the caravan brings some");
+        exchange.setOrdersForTest(net.route().to(), java.util.Map.of());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aSquadIsNeverMoreThanFour(GameTestHelper helper) {
         Network net = network(helper, 2, 5, 192, List.of(VillagerProfession.CARTOGRAPHER, VillagerProfession.LIBRARIAN,
                 VillagerProfession.SHEPHERD, VillagerProfession.LEATHERWORKER, VillagerProfession.FISHERMAN,

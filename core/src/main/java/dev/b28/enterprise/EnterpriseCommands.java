@@ -27,6 +27,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.npc.Villager;
@@ -68,6 +69,9 @@ final class EnterpriseCommands {
                         .executes(context -> contracts(context, null))
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .executes(context -> contracts(context, BlockPosArgument.getBlockPos(context, "desk")))))
+                .then(Commands.literal("market")
+                        .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                .executes(EnterpriseCommands::market)))
                 .then(Commands.literal("services")
                         .executes(context -> services(context, null))
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
@@ -365,6 +369,38 @@ final class EnterpriseCommands {
                         e.key().from().pos().toShortString(), e.key().at().pos().toShortString(),
                         e.emeralds() > 0 ? ", %.2f emeralds".formatted(e.emeralds()) : "")), false));
         return ledger.tallies(desk).size();
+    }
+
+    /** A master Merchant's dealings with the players' shops round its desk. */
+    private static int market(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        GlobalPos desk = GlobalPos.of(source.getLevel().dimension(), BlockPosArgument.getBlockPos(context, "desk"));
+        var exchange = dev.b28.enterprise.market.Exchange.get(source.getServer());
+        if (source.getLevel().isLoaded(desk.pos())) {
+            int shops = dev.b28.enterprise.market.Shops.near(source.getLevel(), desk.pos()).size();
+            boolean master = dev.b28.enterprise.market.Broker.broker(source.getLevel(), desk,
+                    dev.b28.enterprise.territory.Territory.get(source.getServer()), source.getLevel().getGameTime());
+            source.sendSuccess(() -> Component.literal(master ? "Its master Merchant looks over %d shop(s) now".formatted(shops)
+                    : "No master Merchant works this desk: it doesn't deal with players' shops (%d nearby)".formatted(shops)),
+                    false);
+        }
+        var tally = exchange.tally(desk);
+        source.sendSuccess(() -> Component.literal(("Market at %s: %d lots sold to players' shops for %d spurs, %d bought "
+                + "from them for %d, %d commissions, its own shops took %d").formatted(desk.pos().toShortString(),
+                tally.lotsSold(), tally.spursFromSales(), tally.lotsBought(), tally.spursOnPurchases(), tally.commissions(),
+                tally.spursFromOwnShops())), false);
+        exchange.orders(desk).values().forEach(o -> source.sendSuccess(() -> Component.literal(
+                "  ordered: %d %s at %.1f spurs each (shop at %s): the region's caravans bring it".formatted(
+                        o.outstanding(), BuiltInRegistries.ITEM.getKey(o.item()).getPath(), o.spursEach(),
+                        o.shop().toShortString())), false));
+        exchange.jobs(desk).forEach((shop, job) -> source.sendSuccess(() -> Component.literal(
+                "  commission for the shop at %s: %s (%d steps)".formatted(shop.toShortString(), job.step(), job.steps())),
+                false));
+        exchange.signals(desk).forEach(s -> source.sendSuccess(() -> Component.literal(
+                "  wanted, and no market it knows has it: %d %s, paying %d spurs each (for %s)".formatted(s.count(),
+                        BuiltInRegistries.ITEM.getKey(s.item()).getPath(), s.spursEach(), s.why())), false));
+        exchange.recent(desk).stream().limit(8).forEach(line -> source.sendSuccess(() -> Component.literal("  " + line), false));
+        return exchange.orders(desk).size() + exchange.signals(desk).size();
     }
 
     /** The markets a desk knows, nearest first. */

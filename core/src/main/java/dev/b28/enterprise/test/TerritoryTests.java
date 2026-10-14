@@ -128,6 +128,9 @@ public final class TerritoryTests {
         helper.setBlock(new BlockPos(5, 2, 5), Merchant.DESK.get());
         helper.setBlock(new BlockPos(6, 2, 5), Blocks.CHEST);
         wheatField(helper);
+        // The village wants wheat, so its farmer tends the wheat first, whatever a neighbouring test grows in the hex.
+        territory.recordDemand(GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(BELL)),
+                java.util.Map.of("minecraft:wheat", 100.0));
         territory.afterCensus(helper.getLevel(), helper.absolutePos(BELL), FIVE_FREE, 1, List.of(1));
         return GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(BELL));
     }
@@ -141,7 +144,9 @@ public final class TerritoryTests {
         Territory territory = new Territory();
         GlobalPos bell = farm(helper, territory);
         double wheat = territory.farmPlan(bell).get("minecraft:wheat");
-        double expected = wheat / 20 * Territory.LABOR_SHARE; // wheat sells 20 to the emerald
+        double expected = territory.farmPlan(bell).entrySet().stream() // wheat sells 20 to the emerald
+                .mapToDouble(e -> e.getValue() / dev.b28.enterprise.money.Prices.itemsPerEmerald(e.getKey())).sum()
+                * Territory.LABOR_SHARE;
         helper.assertTrue(Math.abs(territory.wagePerDay(bell) - expected) < 1e-9,
                 "wage " + territory.wagePerDay(bell) + " is half the value of " + wheat + " wheat a day");
         helper.succeed();
@@ -201,7 +206,9 @@ public final class TerritoryTests {
         for (int i = 0; i < 5; i++) {
             farmStock(helper).insert(new ItemStack(Items.EMERALD, 64)); // enough to pay every wage
         }
-        double dayValue = territory.farmPlan(bell).get("minecraft:wheat") / 20;
+        // The whole plan's worth a day (a neighbouring test's crops may share the hex and take the farmer).
+        double dayValue = territory.farmPlan(bell).entrySet().stream()
+                .mapToDouble(e -> e.getValue() / dev.b28.enterprise.money.Prices.itemsPerEmerald(e.getKey())).sum();
         long t = helper.getLevel().getGameTime();
         for (int day = 1; day <= 10; day++) {
             if (selling) {

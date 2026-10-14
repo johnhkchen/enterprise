@@ -26,10 +26,13 @@ Fletcher (a temple and a watchtower to build with the Mason; the Fletcher hunts)
 the square), with beds for them; T takes in two Nitwits, who stand watch at its posts as militia (with --river). The
 towns' buildings, hands and services are printed at the end.
 
+With --master, the hub's Merchant is a master: it brokers with players' shops (Numismatics vendors) round its desk,
+and its market (orders, signals, takings) is printed at the end.
+
 With --comforts, the hub also stocks a shulker of comforts (treats, clothing, furnishings) for towns to buy, and the
 spring, once open, refills a shulker of comforts and a stack of books every day.
 
-    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts] [--fleet] [--services] [--metal] [--trades]
+    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts] [--fleet] [--services] [--metal] [--trades] [--master]
 """
 
 import csv
@@ -142,6 +145,10 @@ def setup():
         for i, trade in enumerate(["armorer", "toolsmith"]):
             rcon(f"summon minecraft:villager {HUB[0] + 4 + i}.5 -60 {HUB[1] + 4}.5 {{PersistenceRequired:1b,Xp:1,"
                  f"VillagerData:{{profession:\"minecraft:{trade}\",level:2,type:\"minecraft:plains\"}}}}")
+    if "--master" in sys.argv:
+        rcon(f"execute as @e[type=villager,x={HUB[0]},y=-61,z={HUB[1]},dx=8,dy=3,dz=8] "
+             f"if data entity @s VillagerData{{profession:\"enterprise:merchant\"}} "
+             f"run data merge entity @s {{VillagerData:{{level:5}},Xp:250}}")
     for corner in TOWNS.values():
         rcon(f"forceload add {area(corner, 27)}",
              f"execute positioned {corner[0]} -60 {corner[1]} run function testbench:network/settlement")
@@ -266,6 +273,10 @@ def main():
         for name in ["S1", "T"]:
             t = rcon(f"enterprise territory {bell(TOWNS[name])}")
             print(f"\n{name}: " + "\n".join(l for l in t.splitlines() if re.search(r"mine|farms|toll|guard|treasury", l)))
+    if "--master" in sys.argv:
+        rcon(f"forceload add {area(HUB, 6)}")
+        sprint(1300)
+        print("\nhub market: " + rcon(f"enterprise market {HUB[0] + 2} -60 {HUB[1] + 2}").strip())
     if "--trades" in sys.argv:
         for name in ["S1", "T"]:
             t = rcon(f"enterprise territory {bell(TOWNS[name])}")
