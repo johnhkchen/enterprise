@@ -68,6 +68,10 @@ final class EnterpriseCommands {
                         .executes(context -> contracts(context, null))
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .executes(context -> contracts(context, BlockPosArgument.getBlockPos(context, "desk")))))
+                .then(Commands.literal("services")
+                        .executes(context -> services(context, null))
+                        .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                .executes(context -> services(context, BlockPosArgument.getBlockPos(context, "desk")))))
                 .then(Commands.literal("atlas")
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .executes(EnterpriseCommands::atlas)))
@@ -293,6 +297,48 @@ final class EnterpriseCommands {
         return list.size();
     }
 
+    /**
+     * What each trade does, at home, abroad and on the road; with a desk, only the trades its town has, and what
+     * services it has done or had done, with the latest.
+     */
+    private static int services(CommandContext<CommandSourceStack> context, BlockPos deskPos) {
+        CommandSourceStack source = context.getSource();
+        var all = dev.b28.enterprise.service.Services.all();
+        if (deskPos == null) {
+            all.stream().map(dev.b28.enterprise.service.Service::trade).distinct().forEach(trade -> {
+                source.sendSuccess(() -> Component.literal(trade.replaceFirst(".*:", "")), false);
+                dev.b28.enterprise.service.Services.of(trade).forEach(s -> source.sendSuccess(() -> Component.literal(
+                        "  %s: %s".formatted(s.where().name().toLowerCase(), s.does())), false));
+            });
+            return all.size();
+        }
+        var server = source.getServer();
+        GlobalPos desk = GlobalPos.of(source.getLevel().dimension(), deskPos);
+        var territory = dev.b28.enterprise.territory.Territory.get(server);
+        var trades = territory.bellOf(desk)
+                .map(bell -> dev.b28.enterprise.service.Services.residents(source.getLevel(), bell).keySet())
+                .orElse(java.util.Set.of());
+        source.sendSuccess(() -> Component.literal("Services at %s%s".formatted(deskPos.toShortString(),
+                territory.bellOf(desk).map(bell -> territory.blessedUntil(bell) > source.getLevel().getGameTime()
+                        ? ", blessed for %.1f more days".formatted(
+                                (territory.blessedUntil(bell) - source.getLevel().getGameTime()) / 24000.0) : "")
+                        .orElse(""))), false);
+        all.stream().filter(s -> trades.contains(s.trade())).forEach(s -> source.sendSuccess(() -> Component.literal(
+                "  its %s %s: %s".formatted(s.trade().replaceFirst(".*:", ""), s.where().name().toLowerCase(), s.does())),
+                false));
+        var ledger = dev.b28.enterprise.service.ServiceLedger.get(server);
+        ledger.tallies(desk).forEach((key, tally) -> source.sendSuccess(() -> Component.literal(
+                "  %s: %s for %s, %d times, %.2f emeralds paid".formatted(key.service().replaceFirst(".*:", ""),
+                        key.from().equals(desk) ? "this town" : key.from().pos().toShortString(),
+                        key.at().equals(desk) ? "this town" : key.at().pos().toShortString(), tally.times(),
+                        tally.emeralds())), false));
+        ledger.recent(desk).stream().limit(8).forEach(e -> source.sendSuccess(() -> Component.literal(
+                "  day %d: %s, %s -> %s%s".formatted(e.time() / 24000, e.key().service().replaceFirst(".*:", ""),
+                        e.key().from().pos().toShortString(), e.key().at().pos().toShortString(),
+                        e.emeralds() > 0 ? ", %.2f emeralds".formatted(e.emeralds()) : "")), false));
+        return ledger.tallies(desk).size();
+    }
+
     /** The markets a desk knows, nearest first. */
     private static int atlas(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
@@ -320,9 +366,10 @@ final class EnterpriseCommands {
                     .map(text -> route.fishCaught() > 0 ? text + " | %d fish caught in all".formatted(route.fishCaught()) : text)
                     .orElse("");
             source.sendSuccess(() -> Component.literal(("  #%d %s -> %s: %d blocks, %d trips, %d items sold for %d spurs, "
-                    + "%d bought for %d, %d spurs on road food, %d tolls paid, %d spurs brought home, %d food eaten, %s%s")
+                    + "%d for services, %d bought for %d, %d spurs on road food, %d tolls paid, %d spurs brought home, %d food eaten, %s%s")
                     .formatted(route.id(), route.from().pos().toShortString(), route.to().pos().toShortString(),
-                    route.distance(), route.trips(), route.itemsDelivered(), route.salesSpurs(), route.itemsBought(),
+                    route.distance(), route.trips(), route.itemsDelivered(), route.salesSpurs(), route.serviceSpurs(),
+                    route.itemsBought(),
                     route.purchaseSpurs(), route.foodSpurs(), route.tollsPaid(), route.spursCollected(), route.foodEaten(),
                     route.status(), caravan)), false);
         }

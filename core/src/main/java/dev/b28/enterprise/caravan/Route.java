@@ -18,6 +18,7 @@ public final class Route {
     long itemsDelivered;
     long tollsPaid;
     long salesSpurs;
+    long serviceSpurs; // paid for the squad's services at the far end
     long foodSpurs;
     long itemsBought;
     long purchaseSpurs;
@@ -70,6 +71,10 @@ public final class Route {
     /** Spurs the destination paid for cargo, in all. */
     public long salesSpurs() {
         return salesSpurs;
+    }
+
+    public long serviceSpurs() {
+        return serviceSpurs;
     }
 
     /** Surplus bought from the destination for the trip home, in items and spurs. */
@@ -152,6 +157,7 @@ public final class Route {
         tag.putLong("itemsDelivered", itemsDelivered);
         tag.putLong("tollsPaid", tollsPaid);
         tag.putLong("salesSpurs", salesSpurs);
+        tag.putLong("serviceSpurs", serviceSpurs);
         tag.putLong("foodSpurs", foodSpurs);
         tag.putLong("itemsBought", itemsBought);
         tag.putLong("purchaseSpurs", purchaseSpurs);
@@ -181,6 +187,7 @@ public final class Route {
         route.itemsDelivered = tag.getLong("itemsDelivered");
         route.tollsPaid = tag.getLong("tollsPaid");
         route.salesSpurs = tag.getLong("salesSpurs");
+        route.serviceSpurs = tag.getLong("serviceSpurs");
         route.foodSpurs = tag.getLong("foodSpurs");
         route.itemsBought = tag.getLong("itemsBought");
         route.purchaseSpurs = tag.getLong("purchaseSpurs");

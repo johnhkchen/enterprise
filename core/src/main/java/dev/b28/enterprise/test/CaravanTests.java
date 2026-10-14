@@ -233,6 +233,40 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void aClericGoesAlongButNeverLeads(GameTestHelper helper) {
+        network(helper, 2, 5, 192, List.of(VillagerProfession.CLERIC));
+        var desk = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(HUB));
+        helper.assertTrue(dev.b28.enterprise.caravan.Squad.muster(helper.getLevel(), desk, 16,
+                dev.b28.enterprise.caravan.Squad.Needs.ALL, 3).isEmpty(), "a Cleric alone doesn't drive the wagon");
+        helper.getLevel().getEntitiesOfClass(Villager.class, new net.minecraft.world.phys.AABB(helper.absolutePos(HUB)).inflate(8),
+                v -> v.getVillagerData().getProfession() == VillagerProfession.CLERIC).forEach(Villager::discard);
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aVisitingClericBlessesATownWithoutOne(GameTestHelper helper) {
+        Network net = network(helper, 70, 5, 192, List.of(VillagerProfession.LIBRARIAN, VillagerProfession.CLERIC));
+        BlockPos bellPos = helper.absolutePos(new BlockPos(6, 2, 4)); // the destination's town
+        net.territory().afterCensus(helper.getLevel(), bellPos, new dev.b28.enterprise.settlement.Census(5, 5, 5, 5, 0), 1,
+                List.of());
+        GlobalPos bell = GlobalPos.of(helper.getLevel().dimension(), bellPos);
+        net.dest().insert(new ItemStack(Items.EMERALD, 10)); // enough to pay for a blessing
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        Caravan out = net.ledger().caravan(net.route().id()).orElseThrow();
+        helper.assertTrue(out.crew().stream().anyMatch(m -> dev.b28.enterprise.caravan.Squad.trade(m).equals("minecraft:cleric")),
+                "a town without a Cleric: the Cleric goes too");
+        net.poll(t + 80);
+        helper.assertTrue(net.territory().blessedUntil(bell) > t + 24000, "the town is blessed for days");
+        helper.assertTrue(net.route().serviceSpurs() > 0, "and paid for it: " + net.route().serviceSpurs());
+        net.poll(t + 160);
+        helper.assertTrue(net.ledger().caravan(net.route().id()).isEmpty(), "home");
+        helper.getLevel().getEntitiesOfClass(Villager.class, new net.minecraft.world.phys.AABB(helper.absolutePos(HUB)).inflate(8),
+                v -> v.getVillagerData().getProfession() == VillagerProfession.CLERIC).forEach(Villager::discard);
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void onlyTheDesksCommunityIsMustered(GameTestHelper helper) {
         Villager cartographer = squadMember(helper, VillagerProfession.CARTOGRAPHER, new BlockPos(3, 2, 3));
         var dimension = helper.getLevel().dimension();

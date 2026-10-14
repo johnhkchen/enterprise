@@ -24,8 +24,10 @@ import net.minecraft.world.phys.AABB;
  * each eats its own road food, so the town must be able to spare it. A Merchant haggles at its own level (without one
  * the squad haggles as a Novice), a Cartographer maps a route not mapped lately, a Librarian brings back the books
  * when the destination's are stale, a Shepherd drives animals from the market pen to sell, a Leatherworker carries
- * packs (more cargo), and a Fisherman captains a boat across water, fishing it (a fleet of Fishermen sells fish). Babies and untrained
- * villagers stay home, and so does the Merchant who works the town's desk.
+ * packs (more cargo), and a Fisherman captains a boat across water, fishing it (a fleet of Fishermen sells fish).
+ * A Cleric or a Farmer goes along when the town there wants their services (a blessing, help with the harvest), but
+ * never leads. Each trade's work at the far end is a service (see {@link dev.b28.enterprise.service.Services}).
+ * Babies and untrained villagers stay home, and so does the Merchant who works the town's desk.
  */
 public final class Squad {
     public static final int MAX = 4;
@@ -41,25 +43,34 @@ public final class Squad {
     }
 
     /**
-     * Which trades this trip has a use for, beyond its lead: stale books, an unmapped road, animals to drive, more
-     * cargo than a wagon holds (packs), water a boat would sail better than the land way.
+     * Which trades this trip has a use for, beyond its lead: those whose services the destination wants (see
+     * {@link dev.b28.enterprise.service.Services#wantedAbroad}), packs for more cargo than a wagon holds, and whether
+     * there's water a boat would sail better than the land way (then Fishermen go, and fish).
      */
-    public record Needs(boolean books, boolean mapping, boolean animals, boolean packs, boolean water) {
+    public record Needs(java.util.Set<String> trades, boolean water) {
+        /** The old three: stale books (a Librarian), an unmapped road (a Cartographer), animals to drive (a Shepherd). */
         public Needs(boolean books, boolean mapping, boolean animals) {
-            this(books, mapping, animals, false, false);
+            this(of(books, mapping, animals), false);
         }
 
-        public static final Needs ALL = new Needs(true, true, true, true, true);
+        private static java.util.Set<String> of(boolean books, boolean mapping, boolean animals) {
+            java.util.Set<String> trades = new java.util.LinkedHashSet<>();
+            if (books) {
+                trades.add("minecraft:librarian");
+            }
+            if (mapping) {
+                trades.add("minecraft:cartographer");
+            }
+            if (animals) {
+                trades.add("minecraft:shepherd");
+            }
+            return trades;
+        }
+
+        public static final Needs ALL = new Needs(java.util.Set.copyOf(TRADES), true);
 
         boolean wants(String trade) {
-            return switch (trade) {
-                case "minecraft:librarian" -> books;
-                case "minecraft:cartographer" -> mapping;
-                case "minecraft:shepherd" -> animals;
-                case LEATHERWORKER -> packs;
-                case FISHERMAN -> water;
-                default -> false;
-            };
+            return trades.contains(trade) || trade.equals(FISHERMAN) && water;
         }
     }
 
@@ -67,13 +78,18 @@ public final class Squad {
     public static final int HERD = 8;
     public static final int PEN_REACH = 8;
 
-    /** The trades a squad is made of, in the order a squad is filled. */
     public static final String FISHERMAN = "minecraft:fisherman";
     public static final String LEATHERWORKER = "minecraft:leatherworker";
 
-    public static final List<String> TRADES = List.of(
+    /** The trades that can lead a squad, and that towns train for their caravans. */
+    public static final List<String> LEADS = List.of(
             "enterprise:merchant", "minecraft:cartographer", "minecraft:librarian", "minecraft:shepherd",
             LEATHERWORKER, FISHERMAN);
+
+    /** Every trade that can go with a caravan: the leads, and those who go only when their service is wanted there. */
+    public static final List<String> TRADES = List.of(
+            "enterprise:merchant", "minecraft:cartographer", "minecraft:librarian", "minecraft:shepherd",
+            LEATHERWORKER, FISHERMAN, "minecraft:cleric", "minecraft:farmer");
 
     /** A Leatherworker's packs carry this many more stacks. */
     public static final int PACK_STACKS = 9;
@@ -109,16 +125,16 @@ public final class Squad {
     }
 
     /**
-     * Who would go: a lead (the most experienced Merchant, else the first of the other trades in {@link #TRADES}
+     * Who would go: a lead (the most experienced Merchant, else the first of the other trades in {@link #LEADS}
      * order), then one of each trade this trip {@code needs}, at most {@code extras} more.
      */
     public static List<Villager> muster(ServerLevel level, GlobalPos desk, int reach, Needs needs, int extras) {
         List<Villager> candidates = available(level, desk, reach);
         List<Villager> squad = new ArrayList<>();
-        if (candidates.isEmpty()) {
-            return squad;
+        candidates.stream().filter(v -> LEADS.contains(trade(v))).findFirst().ifPresent(squad::add);
+        if (squad.isEmpty()) {
+            return squad; // a Cleric or a Farmer goes along, but doesn't drive the wagon
         }
-        squad.add(candidates.get(0));
         for (String trade : TRADES) {
             if (squad.size() > extras || squad.size() >= MAX || !needs.wants(trade)
                     || squad.stream().anyMatch(v -> trade(v).equals(trade))) {
@@ -172,6 +188,11 @@ public final class Squad {
                         .thenComparing(Comparator.comparingInt((Villager v) -> v.getVillagerData().getLevel()).reversed())
                         .thenComparing(Villager::getStringUUID))
                 .toList();
+    }
+
+    /** Of these, those who could lead a squad. */
+    public static List<Villager> leads(List<Villager> villagers) {
+        return villagers.stream().filter(v -> LEADS.contains(trade(v))).toList();
     }
 
     /** Takes an entity off the world into a ledger record, to be put back by {@link #release}. */

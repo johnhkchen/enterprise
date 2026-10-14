@@ -84,16 +84,16 @@ public final class Commissions {
         if (routes == 0) {
             return false;
         }
-        long members = Squad.available(level, desk, Squad.reach()).size()
+        long members = Squad.leads(Squad.available(level, desk, Squad.reach())).size()
                 + Settlements.get(server).roster(GlobalPos.of(level.dimension(), bell)).values().stream()
-                        .filter(Settlements.Resident::away).count();
+                        .filter(r -> r.away() && Squad.LEADS.contains(r.profession())).count();
         return members < Math.min(Squad.MAX, routes + 1);
     }
 
     /**
      * When counted while loaded: a town with routes of its own trains its squad up to a lead for each route and one
      * spare, at most {@link Squad#MAX}: an unemployed adult near the bell learns the trade the squad lacks (in
-     * {@link Squad#TRADES} order), for {@link #TRAINING_EMERALDS} from money beyond the town's reserve. Trained, it
+     * {@link Squad#LEADS} order), for {@link #TRAINING_EMERALDS} from money beyond the town's reserve. Trained, it
      * keeps its trade without a workstation.
      */
     public static Optional<Villager> train(ServerLevel level, GlobalPos desk, BlockPos bell, MerchantStock stock,
@@ -103,10 +103,10 @@ public final class Commissions {
         if (routes == 0) {
             return Optional.empty();
         }
-        List<String> trades = new java.util.ArrayList<>(Squad.available(level, desk, Squad.reach()).stream()
+        List<String> trades = new java.util.ArrayList<>(Squad.leads(Squad.available(level, desk, Squad.reach())).stream()
                 .map(Squad::trade).toList());
         Settlements.get(server).roster(GlobalPos.of(level.dimension(), bell)).values().stream()
-                .filter(Settlements.Resident::away).forEach(r -> trades.add(r.profession()));
+                .filter(r -> r.away() && Squad.LEADS.contains(r.profession())).forEach(r -> trades.add(r.profession()));
         if (trades.size() >= Math.min(Squad.MAX, routes + 1)) {
             return Optional.empty();
         }
@@ -123,8 +123,8 @@ public final class Commissions {
         if (pupil.isEmpty()) {
             return Optional.empty();
         }
-        String trade = Squad.TRADES.stream().filter(t -> !trades.contains(t)).findFirst()
-                .orElse(Squad.TRADES.get(trades.size() % Squad.TRADES.size()));
+        String trade = Squad.LEADS.stream().filter(t -> !trades.contains(t)).findFirst()
+                .orElse(Squad.LEADS.get(trades.size() % Squad.LEADS.size()));
         Villager villager = pupil.get();
         villager.setVillagerData(villager.getVillagerData()
                 .setProfession(BuiltInRegistries.VILLAGER_PROFESSION.get(ResourceLocation.parse(trade))).setLevel(1));

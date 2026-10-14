@@ -64,7 +64,7 @@ public final class Workshop {
      * Comforts a trade makes while the town is short of that kind, up to its par: carpets for furnishings, leather
      * boots for clothing.
      */
-    static int comfortWanted(Territory territory, GlobalPos desk, MerchantStock stock, String kind, Item output) {
+    public static int comfortWanted(Territory territory, GlobalPos desk, MerchantStock stock, String kind, Item output) {
         double short_ = territory.comfortPar(desk) - Comforts.onHand(stock).getOrDefault(kind, 0.0);
         return short_ <= 0 ? 0 : (int) Math.ceil(short_ * dev.b28.enterprise.money.Prices.itemsPerEmerald(output));
     }

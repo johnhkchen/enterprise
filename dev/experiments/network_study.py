@@ -14,10 +14,13 @@ Each day it writes one row per town and one per route to the CSV (ledger reads o
 With --fleet, three trained Fishermen and a Leatherworker join the hub's squad: boats across water, fish to sell,
 packs for more cargo.
 
+With --services, a trained Cleric and Farmer join the hub's squad: they go along where a town wants a blessing or
+help with its untended fields, and each town's services are printed at the end.
+
 With --comforts, the hub also stocks a shulker of comforts (treats, clothing, furnishings) for towns to buy, and the
 spring, once open, refills a shulker of comforts and a stack of books every day.
 
-    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts] [--fleet]
+    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts] [--fleet] [--services]
 """
 
 import csv
@@ -122,6 +125,10 @@ def setup():
         for i, trade in enumerate(["fisherman", "fisherman", "fisherman", "leatherworker"]):
             rcon(f"summon minecraft:villager {HUB[0] + 1 + i % 3}.5 -60 {HUB[1] + 1 + i // 3}.5 {{PersistenceRequired:1b,Xp:1,"
                  f"VillagerData:{{profession:\"minecraft:{trade}\",level:1,type:\"minecraft:plains\"}}}}")
+    if "--services" in sys.argv:
+        for i, trade in enumerate(["cleric", "farmer"]):
+            rcon(f"summon minecraft:villager {HUB[0] + 2 + i}.5 -60 {HUB[1] + 4}.5 {{PersistenceRequired:1b,Xp:1,"
+                 f"VillagerData:{{profession:\"minecraft:{trade}\",level:2,type:\"minecraft:plains\"}}}}")
     for corner in TOWNS.values():
         rcon(f"forceload add {area(corner, 27)}",
              f"execute positioned {corner[0]} -60 {corner[1]} run function testbench:network/settlement")
@@ -207,15 +214,17 @@ def main():
         routes = rcon("enterprise routes")
         for line in routes.splitlines():
             m = re.match(r"\s+#(\d+) ([-\d, ]+) -> ([-\d, ]+): (\d+) blocks, (\d+) trips, (\d+) items sold for (\d+) spurs, "
-                         r"(\d+) bought for (\d+), (\d+) spurs on road food, (\d+) tolls paid, (\d+) spurs brought home", line)
+                         r"(\d+) for services, (\d+) bought for (\d+), (\d+) spurs on road food, (\d+) tolls paid, "
+                         r"(\d+) spurs brought home", line)
             if m:
                 origin = "spring" if m.group(2).startswith(str(SPRING[0] + 2)) else "hub"
                 dest = next((n for n, c in TOWNS.items() if m.group(3).startswith(f"{c[0] + 7}, -60, {c[1] + 7}")), "?")
                 rows.append({
                     "day": day, "kind": "route", "name": f"{origin}->{dest}", "mint_rate": rate,
                     "blocks": int(m.group(4)), "trips": int(m.group(5)), "sold_items": int(m.group(6)),
-                    "sales_spurs": int(m.group(7)), "bought_items": int(m.group(8)), "purchase_spurs": int(m.group(9)),
-                    "food_spurs": int(m.group(10)), "tolls": int(m.group(11)), "home_spurs": int(m.group(12)),
+                    "sales_spurs": int(m.group(7)), "service_spurs": int(m.group(8)), "bought_items": int(m.group(9)),
+                    "purchase_spurs": int(m.group(10)), "food_spurs": int(m.group(11)), "tolls": int(m.group(12)),
+                    "home_spurs": int(m.group(13)),
                 })
         towns = [r for r in rows if r["day"] == day and r["kind"] == "town"]
         print(f"day {day:>2}: " + " | ".join(
@@ -224,6 +233,9 @@ def main():
             for r in towns)
             + f" | mint {rate:.1f}")
         sys.stdout.flush()
+    if "--services" in sys.argv:
+        for name, corner in TOWNS.items():
+            print(f"\n{name}: " + rcon(f"enterprise services {desk(corner)}").strip())
     fields = sorted({key for row in rows for key in row}, key=lambda k: (k not in ("day", "kind", "name"), k))
     with out.open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fields)

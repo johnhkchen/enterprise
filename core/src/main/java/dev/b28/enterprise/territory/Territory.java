@@ -98,6 +98,9 @@ public final class Territory extends SavedData {
     public static final double VILLAGERS_PER_WANT = 8;
     public static final double CROWDING_MOOD = 0.5;
     public static final double UNPAID_MOOD = 2;
+
+    /** A Cleric's blessing adds this much to where the mood is heading, while it lasts. */
+    public static final double BLESSING_MOOD = 0.5;
     private static final double MOOD_HALF_LIFE_DAYS = 3;
 
     /** A hex in a dimension. */
@@ -153,6 +156,9 @@ public final class Territory extends SavedData {
         BlockPos pasture; // the pasture's corner, once fenced
         BlockPos dock; // the pier's first block over water, once built
         long lastTend = -1;
+        long blessedUntil = -1; // a Cleric's blessing lasts until then
+        Map<String, Double> idlePerDay = new LinkedHashMap<>(); // what its untended plots would yield, items a day
+        int spareFarmPlots; // plots its farmers could tend beyond those planted
     }
 
     private final Map<Place, GlobalPos> owners = new HashMap<>();
@@ -458,7 +464,12 @@ public final class Territory extends SavedData {
         } else {
             accrue(holding, level.getGameTime());
         }
-        holding.perDay = plan(level, bellPos.getY(), hexes(bell), farmers, holding.demand, Husbandry.feedDemand(holding.herd));
+        holding.idlePerDay = new LinkedHashMap<>();
+        holding.perDay = plan(level, bellPos.getY(), hexes(bell), farmers, holding.demand, Husbandry.feedDemand(holding.herd),
+                holding.idlePerDay);
+        double tended = holding.perDay.values().stream().mapToDouble(Double::doubleValue).sum() / YIELD_PER_PLOT_PER_DAY;
+        holding.spareFarmPlots = (int) Math.max(0,
+                farmers.stream().mapToInt(l -> PLOTS_PER_FARMER_LEVEL * Math.max(1, l)).sum() - Math.round(tended));
         if (holding.desk != null && level.isLoaded(holding.desk.pos())) {
             double plotsWorked = holding.perDay.values().stream().mapToDouble(Double::doubleValue).sum() / YIELD_PER_PLOT_PER_DAY;
             Fields.consider(level, bellPos, holding.desk, MerchantStock.at(level, holding.desk.pos()), this, farmers, plotsWorked,
@@ -501,10 +512,13 @@ public final class Territory extends SavedData {
      */
     public Map<String, Double> plan(ServerLevel level, int centerY, List<Hex> hexes, List<Integer> farmers,
             Map<String, Double> demand, Map<String, Double> needs) {
+        return plan(level, centerY, hexes, farmers, demand, needs, new LinkedHashMap<>());
+    }
+
+    /** As {@link #plan(ServerLevel, int, List, List, Map, Map)}; what the plots no one tends would yield goes in {@code idle}. */
+    public Map<String, Double> plan(ServerLevel level, int centerY, List<Hex> hexes, List<Integer> farmers,
+            Map<String, Double> demand, Map<String, Double> needs, Map<String, Double> idle) {
         Map<String, Double> perDay = new LinkedHashMap<>();
-        if (farmers.isEmpty()) {
-            return perDay;
-        }
         Map<Item, Integer> plots = new HashMap<>();
         for (Hex hex : hexes) {
             cropsIn(level, hex, centerY).forEach((item, count) -> plots.merge(item, count, Integer::sum));
@@ -525,14 +539,15 @@ public final class Territory extends SavedData {
             }
         }
         for (Map.Entry<Item, Integer> crop : order) {
-            if (capacity <= 0) {
-                break;
-            }
             int worked = Math.min(capacity, crop.getValue());
-            if (worked <= 0) {
-                continue; // all its plots went to feed
+            String id = BuiltInRegistries.ITEM.getKey(crop.getKey()).toString();
+            if (crop.getValue() > worked) {
+                idle.merge(id, (crop.getValue() - worked) * YIELD_PER_PLOT_PER_DAY, Double::sum);
             }
-            perDay.merge(BuiltInRegistries.ITEM.getKey(crop.getKey()).toString(), worked * YIELD_PER_PLOT_PER_DAY, Double::sum);
+            if (worked <= 0) {
+                continue; // all its plots went to feed, or no farmer is left to tend it
+            }
+            perDay.merge(id, worked * YIELD_PER_PLOT_PER_DAY, Double::sum);
             capacity -= worked;
         }
         return perDay;
@@ -697,6 +712,7 @@ public final class Territory extends SavedData {
         }
         holding.paidShare = paidShare;
         Workshop.convert(level, dev.b28.enterprise.merchant.Warehouse.get(level.getServer()), at, bell.get(), stock, now);
+        dev.b28.enterprise.service.Services.home(level, this, at, bell.get(), stock, now); // what its own trades do for it
         enjoyComforts(stock, holding, now);
         double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now);
         int bankSpurs = MoneyChanger.bankAt(level, desk).map(b -> b.getBalance()).orElse(0);
@@ -755,11 +771,12 @@ public final class Territory extends SavedData {
         holding.mood += (moodTarget(holding) - holding.mood) * (1 - Math.pow(0.5, days / MOOD_HALF_LIFE_DAYS));
     }
 
-    /** Where the town's mood is heading: comforts met and its wall, less its size, villagers without beds, unpaid wages. */
+    /** Where the town's mood is heading: comforts met, its wall and any blessing, less its size, villagers without beds, unpaid wages. */
     private static double moodTarget(Holding holding) {
         double comforts = holding.comfortMet.values().stream().mapToDouble(Double::doubleValue).sum();
         return comforts
                 + Works.WALL_MOOD * holding.walled
+                + (holding.blessedUntil >= holding.lastComforts ? BLESSING_MOOD : 0)
                 - holding.villagers / VILLAGERS_PER_WANT
                 - CROWDING_MOOD * Math.max(0, holding.villagers - holding.beds)
                 - UNPAID_MOOD * (1 - holding.paidShare);
@@ -822,6 +839,40 @@ public final class Territory extends SavedData {
     /** How the town feels: above 0 content, below 0 unhappy. */
     public double mood(GlobalPos bell) {
         return holding(bell).map(h -> h.mood).orElse(0.0);
+    }
+
+    /** A Cleric blesses the town until {@code until} (or longer, if already blessed longer). */
+    public void bless(GlobalPos bell, long until) {
+        Holding holding = holdings.computeIfAbsent(bell, b -> new Holding());
+        holding.blessedUntil = Math.max(holding.blessedUntil, until);
+        setDirty();
+    }
+
+    public long blessedUntil(GlobalPos bell) {
+        return holding(bell).map(h -> h.blessedUntil).orElse(-1L);
+    }
+
+    /** What the town's untended plots would yield a day, by item id, at its last census. */
+    public Map<String, Double> idlePerDay(GlobalPos bell) {
+        return holding(bell).map(h -> Map.copyOf(h.idlePerDay)).orElse(Map.of());
+    }
+
+    public void setIdleForTest(GlobalPos bell, Map<String, Double> idle, int spare) {
+        Holding holding = holdings.computeIfAbsent(bell, b -> new Holding());
+        holding.idlePerDay = new LinkedHashMap<>(idle);
+        holding.spareFarmPlots = spare;
+    }
+
+    /** Plots the town's farmers could tend beyond those planted, at its last census. */
+    public int spareFarmPlots(GlobalPos bell) {
+        return holding(bell).map(h -> h.spareFarmPlots).orElse(0);
+    }
+
+    /** Produce owed to the town's warehouse (help with the harvest): delivered at its next touch. */
+    public void owe(GlobalPos bell, Map<String, Double> produce) {
+        Holding holding = holdings.computeIfAbsent(bell, b -> new Holding());
+        produce.forEach((item, count) -> holding.pending.merge(item, count, Double::sum));
+        setDirty();
     }
 
     public void setMood(GlobalPos bell, double mood) {
@@ -1124,6 +1175,9 @@ public final class Territory extends SavedData {
                 entry.putLong("pasture", holding.pasture.asLong());
             }
             entry.putLong("lastTend", holding.lastTend);
+            entry.putLong("blessedUntil", holding.blessedUntil);
+            entry.put("idlePerDay", doubles(holding.idlePerDay));
+            entry.putInt("spareFarmPlots", holding.spareFarmPlots);
             if (holding.dock != null) {
                 entry.putLong("dock", holding.dock.asLong());
             }
@@ -1233,6 +1287,9 @@ public final class Territory extends SavedData {
                 holding.herd = readDoubles(entry.getCompound("herd"));
                 holding.pasture = entry.contains("pasture") ? BlockPos.of(entry.getLong("pasture")) : null;
                 holding.lastTend = entry.contains("lastTend") ? entry.getLong("lastTend") : -1;
+                holding.blessedUntil = entry.contains("blessedUntil") ? entry.getLong("blessedUntil") : -1;
+                holding.idlePerDay = readDoubles(entry.getCompound("idlePerDay"));
+                holding.spareFarmPlots = entry.getInt("spareFarmPlots");
                 holding.dock = entry.contains("dock") ? BlockPos.of(entry.getLong("dock")) : null;
                 holding.homeProgress = entry.getDouble("homeProgress");
                 holding.birthProgress = entry.getDouble("birthProgress");
