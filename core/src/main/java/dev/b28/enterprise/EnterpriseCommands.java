@@ -317,12 +317,16 @@ final class EnterpriseCommands {
         var list = desk == null ? book.all() : book.of(GlobalPos.of(source.getLevel().dimension(), desk));
         source.sendSuccess(() -> Component.literal("%d contract(s)".formatted(list.size())), false);
         for (var contract : list) {
-            source.sendSuccess(() -> Component.literal(("  #%d %s -> %s, %s (copies at %d of 2 desks): %d delivered, "
-                    + "%.1f emeralds paid, %d missed; trust %.2f").formatted(contract.id(),
-                    contract.seller().pos().toShortString(), contract.buyer().pos().toShortString(),
-                    contract.state().name().toLowerCase(),
+            String buyer = (source.getLevel().getBlockEntity(contract.buyer().pos())
+                    instanceof dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity ? "the shop at " : "")
+                    + contract.buyer().pos().toShortString();
+            source.sendSuccess(() -> Component.literal(("  #%d %s -> %s, %s, %s (copies at %d of 2): %s; %d delivered, "
+                    + "%d on the road, %.1f emeralds paid, %d missed by the seller, %d by the buyer; trust %.2f").formatted(
+                    contract.id(), contract.seller().pos().toShortString(), buyer, contract.state().name().toLowerCase(),
+                    contract.incoterm().name(),
                     (contract.knownBy(contract.seller()) ? 1 : 0) + (contract.knownBy(contract.buyer()) ? 1 : 0),
-                    contract.delivered(), contract.paid(), contract.missed(),
+                    contract.delivery().map(d -> d.quantity() + " " + d.describe()).orElse("?"),
+                    contract.delivered(), contract.shipped(), contract.paid(), contract.missed(), contract.buyerMissed(),
                     book.trust(contract.seller(), contract.buyer()))), false);
             contract.history().forEach(line -> source.sendSuccess(() -> Component.literal("    " + line), false));
         }

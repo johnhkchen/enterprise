@@ -46,16 +46,64 @@ public final class ContractBook extends SavedData {
      */
     public Contract draftDelivery(GlobalPos seller, GlobalPos buyer, Item item, int quantity, double unitPrice,
             long start, long every, int installments, long now, GlobalPos where) {
-        Contract contract = new Contract(nextId++, seller, buyer, List.of(new Delivery(item, quantity, unitPrice)),
-                start, every, installments, now);
+        return draft(seller, buyer, new Delivery(item, quantity, unitPrice), Incoterm.DDP, start, every, installments,
+                now, where, false);
+    }
+
+    /**
+     * Drafts a contract for {@code delivery} on {@code incoterm}, from {@code start}, every {@code every} ticks,
+     * {@code installments} times, drafted at {@code where} (that party holds the first copy). Drafted in person
+     * ({@code bothPresent}: a player's shop at the seller's own market), both hold copies and it's in force at once.
+     */
+    public Contract draft(GlobalPos seller, GlobalPos buyer, Delivery delivery, Incoterm incoterm, long start, long every,
+            int installments, long now, GlobalPos where, boolean bothPresent) {
+        Contract contract = new Contract(nextId++, seller, buyer, List.of(delivery), start, every, installments, now);
+        contract.incoterm = incoterm;
         contract.knownBy.add(where);
-        contract.note("drafted on day %d: %d %s every %.1f days, %d times, at %.3f emeralds each".formatted(
-                now / 24000, quantity, BuiltInRegistries.ITEM.getKey(item).getPath(), every / 24000.0, installments,
-                unitPrice));
+        if (bothPresent) {
+            contract.knownBy.add(seller);
+            contract.knownBy.add(buyer);
+            contract.state = Contract.State.ACTIVE;
+        }
+        contract.note("drafted on day %d: %d %s every %.1f days, %d times, at %.3f emeralds each, %s".formatted(
+                now / 24000, delivery.quantity(), delivery.describe(), every / 24000.0, installments,
+                delivery.unitPrice(), incoterm.name()));
         contracts.put(contract.id, contract);
         setDirty();
         Enterprise.LOGGER.debug("Contract {} drafted: {}", contract.id, contract.history.get(0));
         return contract;
+    }
+
+    /** Goods for a contract leave on the seller's caravan: where the buyer bears the road, they count as delivered. */
+    public void ship(Contract contract, int items, long now) {
+        contract.shipped += items;
+        contract.note("day %d: %d on the road".formatted(now / 24000, items));
+        setDirty();
+    }
+
+    /** The goods it shipped have arrived (and are settled): they're no longer on the road. */
+    public void arrived(Contract contract, int items) {
+        contract.shipped = Math.max(0, contract.shipped - items);
+        setDirty();
+    }
+
+    /** Contracts in force or drafted between these two for goods like {@code delivery}'s. */
+    public List<Contract> open(GlobalPos seller, GlobalPos buyer, Delivery delivery) {
+        return contracts.values().stream()
+                .filter(c -> c.state == Contract.State.DRAFTED || c.state == Contract.State.ACTIVE)
+                .filter(c -> c.seller.equals(seller) && c.buyer.equals(buyer))
+                .filter(c -> c.delivery().filter(d -> d.item() == delivery.item()
+                        && d.enchantments().equals(delivery.enchantments())).isPresent())
+                .toList();
+    }
+
+    /** Contracts either party of a route knows and the other doesn't: copies for a carrier between them. */
+    public List<Contract> copiesFor(GlobalPos from, GlobalPos to) {
+        return contracts.values().stream()
+                .filter(c -> c.state == Contract.State.DRAFTED || c.state == Contract.State.ACTIVE)
+                .filter(c -> (c.seller.equals(from) && c.buyer.equals(to)) || (c.seller.equals(to) && c.buyer.equals(from)))
+                .filter(c -> c.knownBy(from) && !c.knownBy(to))
+                .toList();
     }
 
     /** A carrier brings {@code desk} its copy; once both parties hold one, the contract is in force. */
@@ -115,16 +163,32 @@ public final class ContractBook extends SavedData {
      * falls), one delivered in full raises trust; three misses break the contract.
      */
     public void review(long now) {
+        review(null, now);
+    }
+
+    /**
+     * As {@link #review(long)}. Goods count as delivered once there, or (where the buyer bears the road) once on the
+     * road. An installment not delivered Ex Works is the buyer's miss if the seller's warehouse held the goods at its
+     * last stocktake (they were set aside, and nobody came for them), else the seller's.
+     */
+    public void review(MinecraftServer server, long now) {
         for (Contract contract : contracts.values()) {
             if (!contract.inForce()) {
                 continue;
             }
             int judged = contract.dueBy(now - Contract.GRACE_TICKS);
             Optional<Delivery> delivery = contract.delivery();
+            int counted = contract.delivered + (contract.incoterm.sellerBearsRoad ? 0 : contract.shipped);
             while (contract.missesCounted < judged && delivery.isPresent()) {
                 int needed = (contract.missesCounted + 1) * delivery.get().quantity();
-                if (contract.delivered >= needed) {
+                if (counted >= needed) {
                     adjustTrust(contract.seller, contract.buyer, TRUST_PER_SETTLEMENT);
+                } else if (contract.incoterm == Incoterm.EXW && server != null && dev.b28.enterprise.merchant.Warehouse
+                        .get(server).onHand(contract.seller, delivery.get().item()) >= delivery.get().quantity()) {
+                    contract.buyerMissed++;
+                    adjustTrust(contract.seller, contract.buyer, -TRUST_PER_MISS);
+                    contract.note("day %d: installment %d set aside, not collected".formatted(now / 24000,
+                            contract.missesCounted + 1));
                 } else {
                     contract.missed++;
                     adjustTrust(contract.seller, contract.buyer, -TRUST_PER_MISS);
@@ -132,12 +196,26 @@ public final class ContractBook extends SavedData {
                 }
                 contract.missesCounted++;
             }
-            if (contract.missed >= Contract.MISSES_TO_BREAK) {
+            if (contract.missed >= Contract.MISSES_TO_BREAK || contract.buyerMissed >= Contract.MISSES_TO_BREAK) {
                 contract.state = Contract.State.BROKEN;
-                contract.note("day %d: broken after %d misses".formatted(now / 24000, contract.missed));
+                contract.note("day %d: broken after %d misses by the %s".formatted(now / 24000,
+                        Math.max(contract.missed, contract.buyerMissed),
+                        contract.missed >= Contract.MISSES_TO_BREAK ? "seller" : "buyer"));
             }
             setDirty();
         }
+    }
+
+    /** The buyer couldn't pay for goods it was handed (or that were brought): its miss. */
+    public void unpaid(Contract contract, long now) {
+        contract.buyerMissed++;
+        adjustTrust(contract.seller, contract.buyer, -TRUST_PER_MISS);
+        contract.note("day %d: the buyer couldn't pay".formatted(now / 24000));
+        if (contract.buyerMissed >= Contract.MISSES_TO_BREAK) {
+            contract.state = Contract.State.BROKEN;
+            contract.note("day %d: broken after %d misses by the buyer".formatted(now / 24000, contract.buyerMissed));
+        }
+        setDirty();
     }
 
     public double trust(GlobalPos a, GlobalPos b) {

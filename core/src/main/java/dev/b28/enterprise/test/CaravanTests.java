@@ -343,6 +343,42 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void exWorksTheBuyersCaravanCollects(GameTestHelper helper) {
+        Network net = network(helper, 2, 20, 192);
+        net.dest().insert(new ItemStack(Items.FLINT, 32));
+        var book = dev.b28.enterprise.contract.ContractBook.get(helper.getLevel().getServer());
+        long t = helper.getLevel().getGameTime();
+        var contract = book.draft(net.route().to(), net.route().from(),
+                new dev.b28.enterprise.contract.Delivery(Items.FLINT, 16, 0.25), dev.b28.enterprise.contract.Incoterm.EXW,
+                t, 24000, 1, t, net.route().to(), true);
+        net.poll(t);
+        net.poll(t + 80);
+        helper.assertTrue(net.dest().count(new ItemCost(Items.FLINT, 1)) == 16, "the hub's caravan took its 16 flint: "
+                + net.route().status() + ", " + net.ledger().caravan(net.route().id()).map(c -> c.spurs() + " spurs")
+                .orElse("no caravan") + ", " + contract.history());
+        net.poll(t + 160);
+        helper.assertTrue(net.hub().count(new ItemCost(Items.FLINT, 1)) == 16, "and brought them home");
+        helper.assertTrue(contract.state() == dev.b28.enterprise.contract.Contract.State.COMPLETED
+                && contract.paid() >= 3.9, "paid for at the locked price: " + contract.paid());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aContractsCopyRidesWithTheCaravan(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192);
+        var book = dev.b28.enterprise.contract.ContractBook.get(helper.getLevel().getServer());
+        long t = helper.getLevel().getGameTime();
+        var contract = book.draft(net.route().from(), net.route().to(),
+                new dev.b28.enterprise.contract.Delivery(Items.PAPER, 16, 0.05), dev.b28.enterprise.contract.Incoterm.DAP,
+                t, 24000, 3, t, net.route().from(), false);
+        helper.assertFalse(contract.inForce(), "drafted at the hub: not yet in force");
+        net.poll(t);
+        net.poll(t + 80);
+        helper.assertTrue(contract.inForce() && contract.knownBy(net.route().to()), "the caravan carried its copy there");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aSquadIsNeverMoreThanFour(GameTestHelper helper) {
         Network net = network(helper, 2, 5, 192, List.of(VillagerProfession.CARTOGRAPHER, VillagerProfession.LIBRARIAN,
                 VillagerProfession.SHEPHERD, VillagerProfession.LEATHERWORKER, VillagerProfession.FISHERMAN,

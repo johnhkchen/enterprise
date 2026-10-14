@@ -92,11 +92,20 @@ public final class MarketTests {
         VendorBlockEntity order = shop(helper, new BlockPos(6, 2, 6), VendorBlockEntity.Mode.BUY,
                 new ItemStack(Items.PAPER, 16), 16);
         BankAccount account = purse(order, 40);
-        helper.assertTrue(Broker.broker(helper.getLevel(), desk, new Territory(), helper.getLevel().getGameTime()),
-                "a master Merchant brokers");
-        helper.assertTrue(held(order, Items.PAPER) == 32, "two lots, all the purse pays for: " + held(order, Items.PAPER));
+        long t = helper.getLevel().getGameTime();
+        helper.assertTrue(Broker.broker(helper.getLevel(), desk, new Territory(), t), "a master Merchant brokers");
+        var book = dev.b28.enterprise.contract.ContractBook.get(helper.getLevel().getServer());
+        var contract = book.of(desk).stream().filter(c -> c.buyer().pos().equals(order.getBlockPos())).findFirst()
+                .orElseThrow();
+        helper.assertTrue(contract.inForce() && contract.installments() == 2
+                        && contract.incoterm() == dev.b28.enterprise.contract.Incoterm.EXW,
+                "a contract with the shop: two installments, all its purse pays for, Ex Works");
+        helper.assertTrue(held(order, Items.PAPER) == 16, "the first lot today: " + held(order, Items.PAPER));
+        Broker.broker(helper.getLevel(), desk, new Territory(), t + 24000);
+        helper.assertTrue(held(order, Items.PAPER) == 32, "the second tomorrow: " + held(order, Items.PAPER));
         helper.assertTrue(account.getBalance() == 8, "paid 32 spurs: " + account.getBalance());
         helper.assertTrue(stock(helper).count(new ItemCost(Items.PAPER, 1)) == 32, "from the warehouse");
+        helper.assertTrue(contract.state() == dev.b28.enterprise.contract.Contract.State.COMPLETED, "done");
         helper.succeed();
     }
 
@@ -128,8 +137,9 @@ public final class MarketTests {
         long t = helper.getLevel().getGameTime();
         Broker.broker(helper.getLevel(), desk, new Territory(), t);
         helper.assertTrue(Shops.lots(stall) == 0, "it buys the stall's two lots for the order");
-        Broker.broker(helper.getLevel(), desk, new Territory(), t + Broker.TICKS);
-        helper.assertTrue(held(order, Items.IRON_INGOT) == 8, "and fills the order: " + held(order, Items.IRON_INGOT));
+        Broker.broker(helper.getLevel(), desk, new Territory(), t + 24000);
+        helper.assertTrue(held(order, Items.IRON_INGOT) == 8, "and fills the order, a lot a day: "
+                + held(order, Items.IRON_INGOT));
         var tally = Exchange.get(helper.getLevel().getServer()).tally(desk);
         helper.assertTrue(tally.spursFromSales() - tally.spursOnPurchases() >= 24, "at a profit: "
                 + tally.spursFromSales() + " in, " + tally.spursOnPurchases() + " out");

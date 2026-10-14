@@ -94,14 +94,18 @@ public final class Shops {
 
     /**
      * Hands a lot ({@code goods}, the filter's count) to a buying vendor and takes its price from the vendor's purse.
-     * Returns the spurs paid, or 0 (and nothing handed over) if it can't pay or hasn't room.
+     * Returns the spurs paid, or -1 (and nothing handed over) if it can't pay or hasn't room.
      */
     public static int sellTo(VendorBlockEntity vendor, ItemStack goods) {
-        int price = vendor.getTotalPrice();
+        return sellTo(vendor, goods, vendor.getTotalPrice());
+    }
+
+    /** As {@link #sellTo(VendorBlockEntity, ItemStack)}, at {@code price} (a contract's locked price) for the lot. */
+    public static int sellTo(VendorBlockEntity vendor, ItemStack goods, int price) {
         Optional<BankAccount> purse = purse(vendor);
-        if (price <= 0 || purse.isEmpty() || roomFor(vendor) < 1 || !vendor.matchesFilterItem(goods)
-                || !purse.get().deduct(price, new ReasonHolder())) {
-            return 0;
+        if (price < 0 || purse.isEmpty() || roomFor(vendor) < 1 || !vendor.matchesFilterItem(goods)
+                || price > 0 && !purse.get().deduct(price, new ReasonHolder())) {
+            return -1;
         }
         ItemStack left = goods.copy();
         for (int i = 0; i < vendor.items.size() && !left.isEmpty(); i++) {

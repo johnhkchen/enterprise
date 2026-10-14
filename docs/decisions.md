@@ -178,7 +178,7 @@ Decisions made after the brief (`docs/brief.md`). Where this file and the brief 
 - **A walled town feels safe:** up to +1 mood and 2 culture a day when the wall is whole, in proportion to how much stands. Defence against raids comes with raiding.
 - **Measured** (`network_study.py --comforts`, 25 days): the three content towns each started a wall about day 8 and finished it about day 20 for 24 emeralds of wages, raising all 252 columns on the flat test world. With the wall's culture and good mood their land grew to 10-11 hexes (7-8 without walls). Their money fell to 28-70 emeralds as walls, homes and comforts took it.
 
-## Contracts (built 2026-10-14: standing orders; the rest planned)
+## Contracts (built 2026-10-14: standing orders, shipping terms, shop contracts, sourcing)
 
 The foundation for contracts and, later, futures. Built to grow:
 
@@ -249,6 +249,23 @@ A master Merchant (level 5) at a desk deals with the Numismatics vendors (shops)
 - `/enterprise market <desk>` has the Merchant look now, then shows its trade with the shops, open orders, commissions and signals. `network_study.py --master` makes the hub's Merchant a master.
 - **Verified:** game tests on real vendor blocks and the Numismatics bank (an order filled, an order it can't fill posted to the region and as a signal, a stall bought from to fill an order at a profit, an Efficiency II pickaxe made from one Efficiency I book by copying, combining and laying on, the town's shop set up and its takings banked, an order riding out with a caravan). Live on the headless server: a vendor placed by the hub's master Merchant was set to sell its compasses within the minute. Not seen: a player using a shop the Merchant runs, through Numismatics' screen.
 - **Not yet:** the desk's screen showing orders and signals; a player drafting a contract at the desk (the Contracts tab); the town's own shop buying signals (Numismatics pays buy orders from a bank card, which a town would need).
+
+## Shipping terms, shop contracts and supply chains (built 2026-10-14)
+
+- **Every contract has shipping terms** (`Incoterm`, after the trade's own; tolls stand for duties):
+  - **EXW, Ex Works:** the buyer collects at the seller's. Its caravans to the seller carry the money and load what's owed, paying the locked price there. An installment the seller had in its warehouse (at its last stocktake) but nobody came for is the buyer's miss.
+  - **CPT, Carriage Paid To:** the seller's caravans carry it, but it's the buyer's once on the road: it counts as delivered when it leaves. The buyer pays the tolls on top.
+  - **DAP, Delivered At Place:** the seller carries it and bears the road: it counts only once it's there. The buyer pays the tolls on top: what the posts on the road will take of the payment going home.
+  - **DDP, Delivered Duty Paid:** the seller carries it, bears the road and pays the tolls. The travelling Merchants' standing orders are DDP, as they always were in effect.
+  - A price is set at the seller's, then carriage is added where the seller carries, and tolls where it pays them. FCA, CIF and CIP wait on rail and on raids (insurance).
+- **Misses are the seller's or the buyer's:** goods not sent or not had are the seller's; goods set aside and not collected, or not paid for, the buyer's. Three by either break the contract, and both cost the pair's trust.
+- **Copies ride with any caravan between the parties,** each way: a contract drafted at one desk is in force once a caravan between the two has carried it to the other. Before, only the drafting caravan carried them.
+- **Goods made to order:** a delivery can name enchantments, and only goods enchanted just so count.
+- **A player's buying shop now gets a real contract** with the master Merchant's desk, drafted in person at the shop (so in force at once), Ex Works (the shop is at the seller's market). It runs as many installments as the shop's purse would pay for, up to 10, one a day (commissions every two). The price is the shop's, locked. Each installment is delivered as it falls due and paid from the shop's card at the locked price; if the card can't pay, that's the buyer's miss. The commissions of the earlier round are worked under these contracts.
+- **Supply chains, back to back:** when a desk can't fill what a contract wants (a player's order, a commission's base tool, lapis or books), its Merchant contracts a supplier: the nearest market it knows that held the goods at its last stocktake, with a road between them. The terms are Ex Works if its own caravans go there (they collect), else Delivered At Place (the supplier's caravans bring it). The price is the worth plus 10%, then carriage and tolls by the terms. A town sells at most half its kit. One open contract per good. With no road, the want stays a signal: a gap a player could fill.
+- `/enterprise contracts` shows each contract's terms, goods, what's on the road, and whose misses.
+- **Verified** in game tests: Ex Works goods collected and paid for by the buyer's caravan, a contract's copy carried to the far end putting it in force, Carriage Paid To goods on the road not a miss where Delivered At Place ones are, uncollected Ex Works goods the buyer's miss, prices by terms, a shop's contract delivering a lot a day and completing, sourcing a supplier Ex Works. Live, on a 10-day network, the spring's and hub's standing orders ran as before (three contracts, none missed).
+- **Next:** contracts drafted by players at the desk (the Contracts tab), so a player can buy Ex Works and carry it themselves; escrow when trust is low; passage agreements with toll towns; contracts as paper to trade.
 
 ## Travel cost between hexes (2026-10-13)
 

@@ -11,11 +11,12 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 
 /**
- * An agreement between two parties (for now, two Merchant's Desks): terms owed by the seller to the buyer on a
- * schedule, at a price locked when it was drafted. News travels with carriers: a party acts on a contract only once
+ * An agreement between two parties (Merchant's Desks, or a player's shop): terms owed by the seller to the buyer on
+ * a schedule, at a price locked when it was drafted, shipped on its {@link Incoterm}s. News travels with carriers: a party acts on a contract only once
  * it holds a copy, and it's in force once both do. Each installment is due on the schedule; a caravan settles what's
- * owed when it can. A party that falls a whole installment behind past the grace period has missed it; three misses
- * break the contract.
+ * owed when it can. A party that falls a whole installment behind past the grace period has missed it (the seller, for
+ * goods it didn't have or didn't send; the buyer, for goods set aside that it didn't collect, or couldn't pay for);
+ * three misses by either break the contract.
  */
 public final class Contract {
     public enum State { DRAFTED, ACTIVE, COMPLETED, BROKEN }
@@ -34,11 +35,14 @@ public final class Contract {
     final long every;
     final int installments;
     final long drafted;
+    Incoterm incoterm = Incoterm.DDP;
     State state = State.DRAFTED;
     final Set<GlobalPos> knownBy = new LinkedHashSet<>();
     int delivered; // items delivered so far (for a delivery term)
     double paid; // emeralds paid so far
-    int missed;
+    int missed; // the seller's misses: not delivered
+    int buyerMissed; // the buyer's misses: not collected (Ex Works) or not paid for
+    int shipped; // items on the road to the buyer, counted as delivered where the buyer bears the road
     int missesCounted; // installments already judged
     final List<String> history = new ArrayList<>(); // the latest settlements, for the record
 
@@ -88,6 +92,18 @@ public final class Contract {
 
     public int missed() {
         return missed;
+    }
+
+    public int buyerMissed() {
+        return buyerMissed;
+    }
+
+    public int shipped() {
+        return shipped;
+    }
+
+    public Incoterm incoterm() {
+        return incoterm;
     }
 
     public int installments() {
@@ -144,6 +160,9 @@ public final class Contract {
         tag.putInt("installments", installments);
         tag.putLong("drafted", drafted);
         tag.putString("state", state.name());
+        tag.putString("incoterm", incoterm.name());
+        tag.putInt("buyerMissed", buyerMissed);
+        tag.putInt("shipped", shipped);
         ListTag known = new ListTag();
         knownBy.forEach(desk -> GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, desk).ifSuccess(known::add));
         tag.put("knownBy", known);
@@ -165,6 +184,9 @@ public final class Contract {
         Contract contract = new Contract(tag.getInt("id"), seller, buyer, terms, tag.getLong("start"),
                 tag.getLong("every"), tag.getInt("installments"), tag.getLong("drafted"));
         contract.state = State.valueOf(tag.getString("state"));
+        contract.incoterm = tag.contains("incoterm") ? Incoterm.valueOf(tag.getString("incoterm")) : Incoterm.DDP;
+        contract.buyerMissed = tag.getInt("buyerMissed");
+        contract.shipped = tag.getInt("shipped");
         tag.getList("knownBy", Tag.TAG_COMPOUND).forEach(t ->
                 GlobalPos.CODEC.parse(NbtOps.INSTANCE, t).ifSuccess(contract.knownBy::add));
         contract.delivered = tag.getInt("delivered");

@@ -124,7 +124,7 @@ public final class Caravans {
 
     /** One pass over every route: dispatch, arrive, return. */
     public static void poll(MinecraftServer server, CaravanLedger ledger, Territory territory, long now) {
-        dev.b28.enterprise.contract.ContractBook.get(server).review(now);
+        dev.b28.enterprise.contract.ContractBook.get(server).review(server, now);
         ledger.walkersHome(now).forEach(walker -> {
             ServerLevel level = server.getLevel(walker.home().dimension());
             if (level != null && ensureLoaded(level, walker.home().pos())) {
@@ -231,7 +231,10 @@ public final class Caravans {
             shopping = Map.of();
             shoppingMoney = 0;
         }
-        double purse = food * PURSE_PER_FOOD_POINT + shoppingMoney;
+        // And the money to pay for what it collects there Ex Works, as far as the town can spare it.
+        double exWorks = Math.min(exWorksPurse(server, route, now + travelTicks(route.distance())),
+                Math.max(0, spare - shoppingMoney));
+        double purse = food * PURSE_PER_FOOD_POINT + shoppingMoney + exWorks;
         if (stock.foodNutrition() < food) {
             route.status = "waiting for food at the hub";
             ledger.setDirty();
@@ -255,7 +258,7 @@ public final class Caravans {
         }
         cargo.addAll(pickCargo(stock, wantedThere(server, route.to), slots - cargo.size()));
         Warehouse.get(server).recordStocktake(route.from, stock.totals()); // for buying decisions while away
-        if (cargo.isEmpty() && herd.isEmpty() && !hasBusinessAt(server, ledger, route, now)
+        if (cargo.isEmpty() && herd.isEmpty() && exWorks <= 0 && !hasBusinessAt(server, ledger, route, now)
                 && !hasShoppingAt(server, route.to, shopping)) {
             route.status = "nothing to sell there and nothing wanted from there";
             ledger.setDirty();
@@ -338,7 +341,11 @@ public final class Caravans {
                     .map(m -> m.getVillagerData().getLevel())
                     .orElse(Warehouse.get(server).level(route.to));
             Warehouse.get(server).recordLevel(route.to, residentLevel);
+            // The caravan carries its home's copies of contracts with this town, and collects what it's owed Ex Works.
+            var book = dev.b28.enterprise.contract.ContractBook.get(server);
+            book.copiesFor(route.from, route.to).forEach(c -> book.deliverCopy(c.id(), route.to));
             int earned = settleContracts(server, level, route, stock, caravan, mint, rate, now);
+            collectExWorks(server, level, route, stock, caravan, mint, rate, now);
             Map<Item, double[]> sold = new LinkedHashMap<>();
             earned += sell(server, level, route.to, stock, caravan, residentLevel, mint, rate, now, route, territory, sold);
             caravan.spurs += earned;
@@ -413,6 +420,7 @@ public final class Caravans {
         // The contracts drafted on the way ride home: now both parties hold a copy.
         var book = dev.b28.enterprise.contract.ContractBook.get(server);
         caravan.drafts.forEach(id -> book.deliverCopy(id, route.from));
+        book.copiesFor(route.to, route.from).forEach(c -> book.deliverCopy(c.id(), route.from));
         // Towns whose land it crossed heard of both its ends; home hears what the squad learned.
         Atlas atlas = Atlas.get(server);
         caravan.news.forEach(market -> atlas.learn(route.from, market, level.getGameTime()));
@@ -451,20 +459,22 @@ public final class Caravans {
     static List<ItemStack> pickContracted(MinecraftServer server, Route route, MerchantStock stock, long arrival,
             int slots, Map<Integer, Integer> contracted) {
         List<ItemStack> cargo = new ArrayList<>();
-        for (var contract : dev.b28.enterprise.contract.ContractBook.get(server).inForce(route.from, route.to)) {
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        for (var contract : book.inForce(route.from, route.to)) {
             var delivery = contract.delivery();
-            int owed = contract.owed(arrival);
-            if (delivery.isEmpty() || owed <= 0) {
-                continue;
+            int owed = contract.owed(arrival) - contract.shipped();
+            if (delivery.isEmpty() || owed <= 0 || !contract.incoterm().sellerCarries) {
+                continue; // Ex Works: the buyer's caravan collects it
             }
             int room = (slots - cargo.size()) * delivery.get().item().getDefaultMaxStackSize();
             int taken = 0;
-            for (ItemStack piece : stock.take(new ItemCost(delivery.get().item(), 1), Math.min(owed, room))) {
+            for (ItemStack piece : stock.take(delivery.get().cost(server.registryAccess()), Math.min(owed, room))) {
                 taken += piece.getCount();
                 cargo.add(piece);
             }
             if (taken > 0) {
                 contracted.put(contract.id(), taken);
+                book.ship(contract, taken, arrival); // on the road: the buyer's, where it bears the road
             }
         }
         return cargo;
@@ -485,10 +495,11 @@ public final class Caravans {
             }
             var delivery = contract.delivery().get();
             int toDeliver = Math.min(carried.getValue(), contract.owed(now));
+            book.arrived(contract, carried.getValue());
             int delivered = 0;
             for (Iterator<ItemStack> it = caravan.cargo.iterator(); it.hasNext() && delivered < toDeliver; ) {
                 ItemStack stack = it.next();
-                if (!stack.is(delivery.item())) {
+                if (!delivery.matches(stack, server.registryAccess())) {
                     continue;
                 }
                 ItemStack part = stack.split(Math.min(stack.getCount(), toDeliver - delivered));
@@ -511,18 +522,70 @@ public final class Caravans {
             if (delivered == 0) {
                 continue;
             }
+            // Where the buyer pays the tolls, it pays on top what the posts will take of the payment on its way home.
             double owedMoney = delivered * delivery.unitPrice();
+            if (!contract.incoterm().sellerPaysTolls) {
+                double share = tollShare(Territory.get(server), route);
+                owedMoney = share >= 1 ? owedMoney : owedMoney / (1 - share);
+            }
             Treasury.Withdrawal paid = Treasury.withdraw(level, route.to.pos(), stock, owedMoney, mint, now);
             double value = paid.value(rate);
             earned += paid.spurs() + mint.sell(Mint.DEFAULT_FACTION, paid.emeralds(), now);
             book.settle(contract, delivered, value, now);
             if (value < owedMoney * 0.9) {
-                book.adjustTrust(contract.seller(), contract.buyer(), -dev.b28.enterprise.contract.ContractBook.TRUST_PER_MISS / 2);
+                book.unpaid(contract, now);
             }
             route.itemsDelivered += delivered;
         }
         caravan.contracted.clear();
         return earned;
+    }
+
+    /**
+     * Goods this caravan's town buys here Ex Works: the caravan takes what's owed from the seller's warehouse, as far
+     * as it holds them and the caravan has room and money, and pays the locked price into the seller's treasury.
+     */
+    static void collectExWorks(MinecraftServer server, ServerLevel level, Route route, MerchantStock stock,
+            Caravan caravan, Mint mint, double rate, long now) {
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        for (var contract : book.inForce(route.to, route.from)) {
+            var delivery = contract.delivery();
+            if (delivery.isEmpty() || contract.incoterm().sellerCarries) {
+                continue;
+            }
+            int owed = contract.owed(now);
+            int room = (caravan.capacity() - caravan.cargo.size()) * delivery.get().item().getDefaultMaxStackSize();
+            int affordable = (int) Math.floor(caravan.spurs / Math.max(1e-9, delivery.get().unitPrice() * rate));
+            int quantity = Math.min(owed, Math.min(room, affordable));
+            if (quantity <= 0) {
+                continue;
+            }
+            int taken = 0;
+            for (ItemStack piece : stock.take(delivery.get().cost(server.registryAccess()), quantity)) {
+                taken += piece.getCount();
+                caravan.cargo.add(piece);
+            }
+            if (taken == 0) {
+                continue;
+            }
+            int spurs = Math.min(caravan.spurs, (int) Math.ceil(taken * delivery.get().unitPrice() * rate));
+            caravan.spurs -= spurs;
+            Treasury.deposit(level, route.to.pos(), stock, spurs);
+            book.settle(contract, taken, spurs / rate, now);
+            route.itemsBought += taken;
+            route.purchaseSpurs += spurs;
+        }
+    }
+
+    /** What this town's caravan to {@code seller} must carry to pay for what it collects there Ex Works, in emeralds. */
+    static double exWorksPurse(MinecraftServer server, Route route, long arrival) {
+        double emeralds = 0;
+        for (var contract : dev.b28.enterprise.contract.ContractBook.get(server).inForce(route.to, route.from)) {
+            if (!contract.incoterm().sellerCarries && contract.delivery().isPresent()) {
+                emeralds += contract.owed(arrival) * contract.delivery().get().unitPrice();
+            }
+        }
+        return emeralds;
     }
 
     /**
@@ -650,6 +713,21 @@ public final class Caravans {
             }
         }
         return paid;
+    }
+
+    /** The share of coins carried on this route's path that its toll posts would take: for terms where the buyer pays tolls. */
+    public static double tollShare(Territory territory, Route route) {
+        var dimension = route.from.dimension();
+        Set<GlobalPos> ends = ends(territory, route);
+        Set<GlobalPos> posted = new LinkedHashSet<>();
+        for (Hex hex : route.path()) {
+            territory.postOwner(dimension, hex).filter(owner -> !ends.contains(owner)).ifPresent(posted::add);
+        }
+        double kept = 1;
+        for (GlobalPos owner : posted) {
+            kept *= 1 - territory.tollRate(owner);
+        }
+        return 1 - kept;
     }
 
     /**

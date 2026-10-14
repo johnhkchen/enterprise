@@ -116,7 +116,7 @@ public final class Broker {
                 commissioned.add(shop.getBlockPos());
                 commission(level, desk, territory, stock, shop, now);
             } else {
-                fill(level, desk, stock, shop, rate, now, open);
+                fill(level, desk, territory, stock, shop, rate, now, open);
             }
         }
         exchange.jobs(desk).forEach((pos, job) -> {
@@ -147,46 +147,151 @@ public final class Broker {
                 - Warehouse.get(server).par(desk, item, wanted.contains(item), now));
     }
 
-    /** Fills a player's order from the warehouse, at its price, lot by lot; what's left stays open. */
-    private static void fill(ServerLevel level, GlobalPos desk, MerchantStock stock, VendorBlockEntity shop, double rate,
-            long now, Map<Item, Exchange.Order> open) {
+    /** A contract with a player's shop runs this many installments at most, one a day (commissions, every two). */
+    public static final int SHOP_INSTALLMENTS = 10;
+    public static final long SHOP_EVERY = 24000;
+    public static final long COMMISSION_EVERY = 2 * 24000;
+
+    /** A supplier town asks this much over the goods' worth, before carriage and tolls. */
+    public static final double SUPPLIER_MARGIN = 0.1;
+
+    /**
+     * The contract with a player's shop for what it orders: drafted in person at the shop (it's at this desk's market),
+     * so in force at once; Ex Works (the shop is at the seller's); as many installments as the shop's purse would pay
+     * for, up to {@link #SHOP_INSTALLMENTS}, at the shop's price, which is then locked. None if the shop offers less
+     * than {@link #AGENT_FLOOR} of the goods' worth, or can't pay a lot, or trust has run out.
+     */
+    static Optional<dev.b28.enterprise.contract.Contract> contractFor(ServerLevel level, GlobalPos desk,
+            VendorBlockEntity shop, double rate, long now) {
+        var book = dev.b28.enterprise.contract.ContractBook.get(level.getServer());
+        ItemStack lot = shop.getFilterItem();
+        GlobalPos buyer = GlobalPos.of(level.dimension(), shop.getBlockPos());
+        int price = shop.getTotalPrice();
+        var delivery = dev.b28.enterprise.contract.Delivery.of(lot, lot.getCount(), price / (double) lot.getCount() / rate);
+        var existing = book.open(desk, buyer, delivery).stream().filter(c -> c.inForce()).findFirst();
+        if (existing.isPresent()) {
+            return existing;
+        }
+        double worth = Prices.emeraldsEach(lot.getItem()) * lot.getCount() * rate;
+        int lots = Shops.purse(shop).map(p -> price <= 0 ? 0 : p.getBalance() / price).orElse(0);
+        if (price < AGENT_FLOOR * worth || lots < 1
+                || book.trust(desk, buyer) < dev.b28.enterprise.contract.ContractBook.MIN_TRUST) {
+            return Optional.empty();
+        }
+        var contract = book.draft(desk, buyer, delivery, dev.b28.enterprise.contract.Incoterm.EXW, now,
+                Shops.enchanted(lot) ? COMMISSION_EVERY : SHOP_EVERY, Math.min(SHOP_INSTALLMENTS, lots), now, desk, true);
+        Exchange.get(level.getServer()).note(desk, now, "contract #%d with the shop at %s: %s".formatted(contract.id(),
+                shop.getBlockPos().toShortString(), contract.history().get(0)));
+        return Optional.of(contract);
+    }
+
+    /** Hands a lot to a shop under its contract, at the locked price; false if the shop couldn't take or pay for it. */
+    static boolean deliver(ServerLevel level, GlobalPos desk, MerchantStock stock, VendorBlockEntity shop,
+            dev.b28.enterprise.contract.Contract contract, ItemStack goods, double rate, long now) {
+        var book = dev.b28.enterprise.contract.ContractBook.get(level.getServer());
+        var delivery = contract.delivery().orElseThrow();
+        int price = (int) Math.ceil(delivery.unitPrice() * goods.getCount() * rate);
+        boolean affordable = Shops.purse(shop).map(p -> p.getBalance() >= price).orElse(false);
+        int paid = affordable ? Shops.sellTo(shop, goods, price) : -1;
+        if (paid < 0) {
+            if (!affordable) {
+                book.unpaid(contract, now);
+            }
+            return false;
+        }
+        Treasury.deposit(level, desk.pos(), stock, paid);
+        book.settle(contract, goods.getCount(), paid / rate, now);
+        Exchange.Tally tally = Exchange.get(level.getServer()).tally(desk);
+        tally.lotsSold++;
+        tally.spursFromSales += paid;
+        return true;
+    }
+
+    /**
+     * Fills a player's order under its contract, from what the warehouse can spare, lot by lot as installments fall
+     * due; what the contract still wants beyond the warehouse stays open for the region, and is sourced from a
+     * supplier town.
+     */
+    private static void fill(ServerLevel level, GlobalPos desk, Territory territory, MerchantStock stock,
+            VendorBlockEntity shop, double rate, long now, Map<Item, Exchange.Order> open) {
         MinecraftServer server = level.getServer();
         ItemStack lot = shop.getFilterItem();
         Item item = lot.getItem();
-        int price = shop.getTotalPrice();
-        double worth = Prices.emeraldsEach(item) * lot.getCount() * rate;
-        Exchange exchange = Exchange.get(server);
-        if (price < AGENT_FLOOR * worth) {
-            return; // priced under its worth: the Merchant won't fill it, nor ask the region for it
+        var contract = contractFor(level, desk, shop, rate, now);
+        if (contract.isEmpty()) {
+            return; // priced under its worth, nothing to pay with, or no trust left: the Merchant won't take it on
         }
+        Exchange exchange = Exchange.get(server);
         Set<Item> wanted = Caravans.wantedAt(server, desk);
         int sold = 0;
-        while (Shops.roomFor(shop) > 0 && Shops.purse(shop).map(p -> p.getBalance() >= price).orElse(false)
+        while (contract.get().owed(now) >= lot.getCount() && Shops.roomFor(shop) > 0
                 && spare(server, desk, stock, item, wanted, now) >= lot.getCount()) {
             ItemStack goods = merge(stock.take(new ItemCost(item, 1), lot.getCount()));
-            int paid = Shops.sellTo(shop, goods);
-            if (paid == 0) {
+            if (!deliver(level, desk, stock, shop, contract.get(), goods, rate, now)) {
                 stock.insert(goods);
                 break;
             }
-            Treasury.deposit(level, desk.pos(), stock, paid);
-            Exchange.Tally tally = exchange.tally(desk);
-            tally.lotsSold++;
-            tally.spursFromSales += paid;
             sold++;
         }
         if (sold > 0) {
-            exchange.note(desk, now, "sold %d lots of %d %s to the shop at %s for %d spurs each".formatted(sold,
-                    lot.getCount(), path(item), shop.getBlockPos().toShortString(), price));
+            exchange.note(desk, now, "delivered %d lots of %d %s to the shop at %s under contract #%d".formatted(sold,
+                    lot.getCount(), path(item), shop.getBlockPos().toShortString(), contract.get().id()));
         }
-        int lots = Math.min(Shops.roomFor(shop),
-                Shops.purse(shop).map(p -> price <= 0 ? 0 : p.getBalance() / price).orElse(0));
-        if (lots > 0) {
-            int outstanding = lots * lot.getCount();
-            open.merge(item, new Exchange.Order(item, outstanding, price / (double) lot.getCount(), shop.getBlockPos()),
-                    (a, b) -> new Exchange.Order(item, a.outstanding() + b.outstanding(),
+        int remaining = contract.get().installments() * lot.getCount() - contract.get().delivered();
+        int short_ = remaining - spare(server, desk, stock, item, wanted, now);
+        if (short_ > 0) {
+            open.merge(item, new Exchange.Order(item, short_, contract.get().delivery().get().unitPrice() * rate,
+                    shop.getBlockPos()), (a, b) -> new Exchange.Order(item, a.outstanding() + b.outstanding(),
                             Math.max(a.spursEach(), b.spursEach()), a.shop()));
+            source(level, desk, territory, item, short_, now);
         }
+    }
+
+    /**
+     * Contracts a supplier for goods this desk is short of: the nearest market it knows that held them at its last
+     * stocktake and that a caravan runs between, Ex Works if this desk's caravans go there (they collect), else
+     * Delivered At Place (the supplier's caravans bring it). One open contract per good. Drafted here, it's in force
+     * once a caravan between the two carries the copy. Returns true if one is open.
+     */
+    public static boolean source(ServerLevel level, GlobalPos desk, Territory territory, Item item, int need, long now) {
+        MinecraftServer server = level.getServer();
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        var plain = new dev.b28.enterprise.contract.Delivery(item, 1, 0);
+        Warehouse warehouse = Warehouse.get(server);
+        var ledger = dev.b28.enterprise.caravan.CaravanLedger.get(server);
+        List<GlobalPos> markets = Atlas.get(server).known(server, desk);
+        if (markets.stream().anyMatch(m -> !book.open(m, desk, plain).isEmpty())) {
+            return true;
+        }
+        double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
+        for (GlobalPos supplier : markets) {
+            boolean kit = dev.b28.enterprise.territory.Smithing.KITS.stream().anyMatch(k -> k.item() == item);
+            int held = warehouse.onHand(supplier, item);
+            int spare = (kit ? held / 2 : held) - warehouse.par(supplier, item, false, now); // a town keeps half its kit
+            if (spare <= 0 || book.trust(supplier, desk) < dev.b28.enterprise.contract.ContractBook.MIN_TRUST) {
+                continue;
+            }
+            var collect = ledger.route(desk, supplier);
+            var bring = ledger.route(supplier, desk);
+            if (collect.isEmpty() && bring.isEmpty()) {
+                continue; // no road between them: a gap a player could fill
+            }
+            var incoterm = collect.isPresent() ? dev.b28.enterprise.contract.Incoterm.EXW
+                    : dev.b28.enterprise.contract.Incoterm.DAP;
+            var route = collect.orElseGet(bring::get);
+            int quantity = Math.min(need, spare);
+            double exWorks = Prices.emeraldsEach(item) * (1 + SUPPLIER_MARGIN);
+            double carriage = Caravans.foodNeeded(route.distance()) * 2 * Caravans.PURSE_PER_FOOD_POINT
+                    / (Caravans.CARGO_SLOTS * (double) item.getDefaultMaxStackSize());
+            double tolls = Caravans.tollShare(territory, route) * exWorks;
+            var delivery = new dev.b28.enterprise.contract.Delivery(item, quantity, incoterm.price(exWorks, carriage, tolls));
+            var contract = book.draft(supplier, desk, delivery, incoterm, now, Caravans.DEPARTURE_INTERVAL, 1, now, desk,
+                    false);
+            Exchange.get(server).note(desk, now, "sourced %d %s from %s, %s (contract #%d)".formatted(quantity, path(item),
+                    supplier.pos().toShortString(), incoterm.name(), contract.id()));
+            return true;
+        }
+        return false;
     }
 
     /** What its town and its orders want of an item, beyond what it holds. */
@@ -400,25 +505,36 @@ public final class Broker {
         Exchange exchange = Exchange.get(server);
         Exchange.Job job = exchange.job(desk, shop.getBlockPos());
         ItemStack filter = shop.getFilterItem().copyWithCount(1);
+        double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
+        var contract = contractFor(level, desk, shop, rate, now);
+        if (contract.isEmpty()) {
+            job.step = "no contract: the shop offers too little, can't pay, or trust has run out";
+            return;
+        }
         if (!job.ready.isEmpty()) {
             if (!shop.matchesFilterItem(job.ready)) {
                 stock.insert(job.ready); // the order changed: the good goes to the warehouse
                 job.ready = ItemStack.EMPTY;
+            } else if (contract.get().owed(now) < 1) {
+                job.step = "made, ready for the next installment";
+                return;
+            } else if (deliver(level, desk, stock, shop, contract.get(), job.ready, rate, now)) {
+                exchange.tally(desk).commissions++;
+                exchange.note(desk, now, "handed over a commissioned %s under contract #%d".formatted(
+                        path(filter.getItem()), contract.get().id()));
+                job.ready = ItemStack.EMPTY;
+                job.step = "delivered";
+                return;
             } else {
-                int paid = Shops.sellTo(shop, job.ready);
-                if (paid > 0) {
-                    Treasury.deposit(level, desk.pos(), stock, paid);
-                    Exchange.Tally tally = exchange.tally(desk);
-                    tally.commissions++;
-                    tally.spursFromSales += paid;
-                    exchange.note(desk, now, "handed over a commissioned %s for %d spurs".formatted(path(filter.getItem()), paid));
-                    job.ready = ItemStack.EMPTY;
-                    job.step = "delivered";
-                } else {
-                    job.step = "made, waiting for the shop's room or money";
-                }
+                job.step = "made, waiting for the shop's room or money";
                 return;
             }
+        }
+        int remaining = contract.get().installments() * contract.get().delivery().get().quantity()
+                - contract.get().delivered();
+        if (remaining <= 0) {
+            job.step = "contract fulfilled";
+            return;
         }
         Optional<GlobalPos> bell = territory.bellOf(desk);
         Map<String, Integer> skills = bell.map(b -> Services.residents(level, b)).orElse(Map.of());
@@ -439,6 +555,7 @@ public final class Broker {
                 // Every book is ready: lay them on.
                 if (!book && stock.count(plain(filter.getItem())) == 0) {
                     job.step = "waiting for " + BuiltInRegistries.ITEM.getKey(filter.getItem());
+                    source(level, desk, territory, filter.getItem(), remaining, now); // from a supplier town
                     return;
                 }
                 if (!pay(level, desk, territory, stock, XP_EMERALDS * wants.size(), now)) {
@@ -486,6 +603,8 @@ public final class Broker {
                     // The Librarian copies the best one: a book and a lapis.
                     if (stock.count(new ItemCost(Items.BOOK, 1)) == 0 || stock.count(new ItemCost(Items.LAPIS_LAZULI, 1)) == 0) {
                         job.step = "waiting for a book and a lapis to copy with";
+                        source(level, desk, territory, Items.BOOK, 4, now);
+                        source(level, desk, territory, Items.LAPIS_LAZULI, 4, now);
                         return;
                     }
                     stock.take(new ItemCost(Items.BOOK, 1), 1);
@@ -501,6 +620,8 @@ public final class Broker {
                 if (stock.count(new ItemCost(Items.BOOK, 1)) == 0
                         || stock.count(new ItemCost(Items.LAPIS_LAZULI, 1)) < tier / 10) {
                     job.step = "waiting for books and lapis to search for " + enchantment.getRegisteredName();
+                    source(level, desk, territory, Items.BOOK, 4, now);
+                    source(level, desk, territory, Items.LAPIS_LAZULI, 4 * (tier / 10), now);
                     return;
                 }
                 if (!pay(level, desk, territory, stock, tier / 10.0, now)) {
