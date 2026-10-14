@@ -59,6 +59,9 @@ public final class CensusTaker {
         int counted;
         int free;
         final List<Integer> farmers = new ArrayList<>(); // levels of the farmers counted
+        // What the village's people would buy for emeralds, item id -> items a day; and each such trade by job site.
+        final java.util.Map<String, Double> demand = new java.util.HashMap<>();
+        final List<Territory.VillageTrade> trades = new ArrayList<>();
         final java.util.Map<UUID, Settlements.Resident> seen = new java.util.LinkedHashMap<>();
 
         Job(ServerLevel level, BlockPos bell, int radius, List<UUID> villagers, int beds, int workstations) {
@@ -204,6 +207,9 @@ public final class CensusTaker {
                     job.farmers.add(villager.getVillagerData().getLevel());
                 }
                 boolean free = !baby && isFree(villager, job.bell); // a baby is a resident, not yet a worker
+                if (!baby) {
+                    noteDemand(villager, job);
+                }
                 if (free) {
                     job.free++;
                 }
@@ -219,6 +225,24 @@ public final class CensusTaker {
         if (job.villagers.isEmpty() && job == current) {
             finish(server, job);
             current = null;
+        }
+    }
+
+    /**
+     * The villager's trades that buy one good for emeralds, switched on or not: what the village would buy. Vanilla
+     * restocks twice a day, so a trade takes its cost times its uses twice a day.
+     */
+    private static void noteDemand(Villager villager, Job job) {
+        var site = villager.getBrain().getMemory(MemoryModuleType.JOB_SITE).map(GlobalPos::pos);
+        for (var offer : villager.getOffers()) {
+            if (!offer.getResult().is(net.minecraft.world.item.Items.EMERALD) || !offer.getCostB().isEmpty()
+                    || offer.getBaseCostA().isEmpty()) {
+                continue;
+            }
+            String item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(offer.getBaseCostA().getItem()).toString();
+            job.demand.merge(item, 2.0 * offer.getBaseCostA().getCount() * offer.getMaxUses(), Double::sum);
+            site.ifPresent(at -> job.trades.add(
+                    new Territory.VillageTrade(at, dev.b28.enterprise.merchant.TradeKeys.of(offer), item)));
         }
     }
 
@@ -266,7 +290,10 @@ public final class CensusTaker {
             settlements.forget(bell);
         }
         if (result.isSettlement()) {
-            Territory.get(server).afterCensus(job.level, job.bell, result, days, job.farmers);
+            Territory territory = Territory.get(server);
+            territory.recordDemand(bell, job.demand);
+            territory.afterCensus(job.level, job.bell, result, days, job.farmers);
+            territory.mediate(job.level, bell, job.trades);
         }
         Enterprise.LOGGER.debug("Census at {}: {} villagers ({} free), {} beds, {} workstations, value {}",
                 job.bell.toShortString(), result.villagers(), result.free(), result.beds(), result.workstations(),

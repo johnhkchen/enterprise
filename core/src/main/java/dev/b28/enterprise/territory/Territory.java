@@ -103,6 +103,9 @@ public final class Territory extends SavedData {
     /** A hex in a dimension. */
     public record Place(ResourceKey<Level> dimension, Hex hex) {}
 
+    /** A villager's trade buying {@code item} for emeralds, at its job site, by trade key. */
+    public record VillageTrade(BlockPos site, String key, String item) {}
+
     private static final class Holding {
         double culture;
         GlobalPos desk; // nearest Merchant's desk, if any
@@ -144,6 +147,8 @@ public final class Territory extends SavedData {
         int born;
         double walled; // share of its wall standing, from the works ledger at the last touch
         double tradingCapital; // emeralds to stock its shelves, from the warehouse at the last touch
+        Map<String, Double> demand = new HashMap<>(); // what its villagers would buy for emeralds, items a day
+        int fieldsPlanted;
     }
 
     private final Map<Place, GlobalPos> owners = new HashMap<>();
@@ -262,6 +267,45 @@ public final class Territory extends SavedData {
         setDirty();
     }
 
+    /** What the census found the village's people would buy for emeralds, item id -> items a day. */
+    public void recordDemand(GlobalPos bell, Map<String, Double> demand) {
+        holdings.computeIfAbsent(bell, b -> new Holding()).demand = new HashMap<>(demand);
+        setDirty();
+    }
+
+    public int fieldsPlanted(GlobalPos bell) {
+        return holding(bell).map(h -> h.fieldsPlanted).orElse(0);
+    }
+
+    void notePlanted(GlobalPos bell) {
+        holdings.computeIfAbsent(bell, b -> new Holding()).fieldsPlanted++;
+        setDirty();
+    }
+
+    public Map<String, Double> demand(GlobalPos bell) {
+        return holding(bell).map(h -> Map.copyOf(h.demand)).orElse(Map.of());
+    }
+
+    /**
+     * The Merchant tells its farmers what sells: every locker trade in the village that buys a crop the town grows
+     * (or paper, when it grows cane) is switched on, so a town's harvest finds its buyers without anyone's help.
+     */
+    public void mediate(ServerLevel level, GlobalPos bell, List<VillageTrade> trades) {
+        Holding holding = holdings.get(bell);
+        if (holding == null || holding.desk == null) {
+            return;
+        }
+        java.util.Set<String> grown = new java.util.HashSet<>(holding.perDay.keySet());
+        Workshop.outputsOf(grown).forEach(grown::add);
+        var book = dev.b28.enterprise.merchant.MerchantBook.get(level.getServer());
+        for (VillageTrade trade : trades) {
+            if (grown.contains(trade.item()) && !dev.b28.enterprise.locker.Lockers.touchingContainers(level, trade.site()).isEmpty()
+                    && !book.isEnabled(holding.desk, trade.site(), trade.key())) {
+                book.setEnabled(holding.desk, trade.site(), trade.key(), true);
+            }
+        }
+    }
+
     /** The desk of the settlement's Merchant, if it has one. */
     public Optional<GlobalPos> desk(GlobalPos bell) {
         return holding(bell).map(h -> h.desk);
@@ -324,10 +368,11 @@ public final class Territory extends SavedData {
         } else {
             accrue(holding, level.getGameTime());
         }
-        holding.perDay = plan(level, bellPos.getY(), hexes(bell), farmers);
+        holding.perDay = plan(level, bellPos.getY(), hexes(bell), farmers, holding.demand);
         if (holding.desk != null && level.isLoaded(holding.desk.pos())) {
             double plotsWorked = holding.perDay.values().stream().mapToDouble(Double::doubleValue).sum() / YIELD_PER_PLOT_PER_DAY;
-            Fields.consider(level, bellPos, holding.desk, MerchantStock.at(level, holding.desk.pos()), this, farmers, plotsWorked);
+            Fields.consider(level, bellPos, holding.desk, MerchantStock.at(level, holding.desk.pos()), this, farmers, plotsWorked,
+                    holding.demand, holding.perDay);
         }
         setDirty();
     }
@@ -354,45 +399,50 @@ public final class Territory extends SavedData {
         }
     }
 
-    /**
-     * Farmers take the most-planted hexes first, each tending its plots; a hex's produce follows the crops growing in
-     * it. Returns items per day by item id.
-     */
+    /** As {@link #plan(ServerLevel, int, List, List, Map)} with no demand known: the most-planted crops first. */
     public Map<String, Double> plan(ServerLevel level, int centerY, List<Hex> hexes, List<Integer> farmers) {
+        return plan(level, centerY, hexes, farmers, Map.of());
+    }
+
+    /**
+     * Farmers tend the plots the village's demand wants first (the most valuable demand first), then the rest, the
+     * most-planted first; each farmer tends {@link #PLOTS_PER_FARMER_LEVEL} plots a level. The crops growing set the
+     * produce. Returns items per day by item id.
+     */
+    public Map<String, Double> plan(ServerLevel level, int centerY, List<Hex> hexes, List<Integer> farmers,
+            Map<String, Double> demand) {
         Map<String, Double> perDay = new LinkedHashMap<>();
         if (farmers.isEmpty()) {
             return perDay;
         }
-        List<Map<Item, Integer>> fields = new ArrayList<>();
+        Map<Item, Integer> plots = new HashMap<>();
         for (Hex hex : hexes) {
-            Map<Item, Integer> plots = cropsIn(level, hex, centerY);
-            if (!plots.isEmpty()) {
-                fields.add(new HashMap<>(plots));
-            }
+            cropsIn(level, hex, centerY).forEach((item, count) -> plots.merge(item, count, Integer::sum));
         }
-        fields.sort(Comparator.comparingInt((Map<Item, Integer> f) -> total(f)).reversed());
-        List<Integer> crew = farmers.stream().sorted(Comparator.reverseOrder()).toList();
-        int field = 0;
-        for (int level0 : crew) {
-            int capacity = PLOTS_PER_FARMER_LEVEL * Math.max(1, level0);
-            while (capacity > 0 && field < fields.size()) {
-                Map<Item, Integer> plots = fields.get(field);
-                int total = total(plots);
-                int worked = Math.min(capacity, total);
-                for (Map.Entry<Item, Integer> crop : plots.entrySet()) {
-                    double share = (double) crop.getValue() / total;
-                    String id = BuiltInRegistries.ITEM.getKey(crop.getKey()).toString();
-                    perDay.merge(id, worked * share * YIELD_PER_PLOT_PER_DAY, Double::sum);
-                }
-                capacity -= worked;
-                if (worked == total) {
-                    field++;
-                } else {
-                    plots.replaceAll((item, count) -> (int) Math.round(count * (1 - (double) worked / total)));
-                }
+        List<Map.Entry<Item, Integer>> order = new ArrayList<>(plots.entrySet());
+        order.sort(Comparator.comparingDouble((Map.Entry<Item, Integer> e) -> -sellsFor(e.getKey(), demand))
+                .thenComparing(Comparator.comparingInt((Map.Entry<Item, Integer> e) -> e.getValue()).reversed())
+                .thenComparing(e -> BuiltInRegistries.ITEM.getKey(e.getKey()).toString()));
+        int capacity = farmers.stream().mapToInt(l -> PLOTS_PER_FARMER_LEVEL * Math.max(1, l)).sum();
+        for (Map.Entry<Item, Integer> crop : order) {
+            int worked = Math.min(capacity, crop.getValue());
+            if (worked <= 0) {
+                break;
             }
+            perDay.merge(BuiltInRegistries.ITEM.getKey(crop.getKey()).toString(), worked * YIELD_PER_PLOT_PER_DAY, Double::sum);
+            capacity -= worked;
         }
         return perDay;
+    }
+
+    /** What the village would pay a day for a crop (as itself, or as what a trade makes of it), in emeralds. */
+    private static double sellsFor(Item crop, Map<String, Double> demand) {
+        String id = BuiltInRegistries.ITEM.getKey(crop).toString();
+        double value = demand.getOrDefault(id, 0.0) / Prices.itemsPerEmerald(id);
+        for (String made : Workshop.outputsOf(java.util.Set.of(id))) {
+            value += demand.getOrDefault(made, 0.0) / Prices.itemsPerEmerald(made);
+        }
+        return value;
     }
 
     /** Recounts the hex's loaded chunks, keeps the last count of the rest, and returns the hex's plots. */
@@ -531,7 +581,7 @@ public final class Territory extends SavedData {
             holding.harvested += whole - left;
         }
         holding.paidShare = paidShare;
-        Fields.press(dev.b28.enterprise.merchant.Warehouse.get(level.getServer()), at, stock, now); // cane into paper
+        Workshop.convert(level, dev.b28.enterprise.merchant.Warehouse.get(level.getServer()), at, bell.get(), stock, now);
         enjoyComforts(stock, holding, now);
         double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now);
         int bankSpurs = MoneyChanger.bankAt(level, desk).map(b -> b.getBalance()).orElse(0);
@@ -952,6 +1002,8 @@ public final class Territory extends SavedData {
             entry.put("comfortMet", doubles(holding.comfortMet));
             entry.putLong("lastComforts", holding.lastComforts);
             entry.putDouble("paidShare", holding.paidShare);
+            entry.put("demand", doubles(holding.demand));
+            entry.putInt("fieldsPlanted", holding.fieldsPlanted);
             entry.putDouble("homeProgress", holding.homeProgress);
             entry.putDouble("birthProgress", holding.birthProgress);
             entry.putInt("homesBuilt", holding.homesBuilt);
@@ -1053,6 +1105,8 @@ public final class Territory extends SavedData {
                 holding.comfortMet = readDoubles(entry.getCompound("comfortMet"));
                 holding.lastComforts = entry.contains("lastComforts") ? entry.getLong("lastComforts") : -1;
                 holding.paidShare = entry.contains("paidShare") ? entry.getDouble("paidShare") : 1;
+                holding.demand = new HashMap<>(readDoubles(entry.getCompound("demand")));
+                holding.fieldsPlanted = entry.getInt("fieldsPlanted");
                 holding.homeProgress = entry.getDouble("homeProgress");
                 holding.birthProgress = entry.getDouble("birthProgress");
                 holding.homesBuilt = entry.getInt("homesBuilt");

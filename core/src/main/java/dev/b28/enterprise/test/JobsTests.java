@@ -34,36 +34,39 @@ public final class JobsTests {
     }
 
     @GameTest(template = "floor", skyAccess = true)
-    public static void fieldsGrowWhatTheMarketBuys(GameTestHelper helper) {
-        var desk = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(new BlockPos(3, 2, 3)));
-        var warehouse = dev.b28.enterprise.merchant.Warehouse.get(helper.getLevel().getServer());
+    public static void fieldsGrowWhatTheVillageWouldBuy(GameTestHelper helper) {
         helper.setBlock(new BlockPos(3, 2, 3), dev.b28.enterprise.merchant.Merchant.DESK.get());
         helper.setBlock(new BlockPos(4, 2, 3), Blocks.CHEST);
         var stock = dev.b28.enterprise.merchant.MerchantStock.at(helper.getLevel(), helper.absolutePos(new BlockPos(3, 2, 3)));
         stock.insert(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BREAD, 128)); // fed
-        helper.assertTrue(dev.b28.enterprise.territory.Fields.choose(warehouse, desk, stock).isEmpty(),
-                "no market, enough food: no field");
-        warehouse.recordCapacity(desk, 1L, Map.of(net.minecraft.world.item.Items.PAPER, 48));
-        helper.assertTrue(dev.b28.enterprise.territory.Fields.choose(warehouse, desk, stock)
-                .filter(net.minecraft.world.item.Items.SUGAR_CANE::equals).isPresent(), "lockers buy paper: sugar cane");
-        warehouse.recordCapacity(desk, 2L, Map.of(net.minecraft.world.item.Items.CARROT, 220));
-        helper.assertTrue(dev.b28.enterprise.territory.Fields.choose(warehouse, desk, stock)
-                .filter(net.minecraft.world.item.Items.CARROT::equals).isPresent(), "they'd take more in carrots: carrots");
+        helper.assertTrue(dev.b28.enterprise.territory.Fields.choose(Map.of(), Map.of(), stock).isEmpty(),
+                "nobody buys a crop, enough food: no field");
+        helper.assertTrue(dev.b28.enterprise.territory.Fields.choose(Map.of("minecraft:paper", 48.0), Map.of(), stock)
+                .filter(net.minecraft.world.item.Items.SUGAR_CANE::equals).isPresent(), "Librarians buy paper: cane");
+        var both = Map.of("minecraft:paper", 48.0, "minecraft:potato", 640.0);
+        helper.assertTrue(dev.b28.enterprise.territory.Fields.choose(both, Map.of(), stock)
+                .filter(net.minecraft.world.item.Items.POTATO::equals).isPresent(), "a Farmer buys more in potatoes");
+        helper.assertTrue(dev.b28.enterprise.territory.Fields.choose(both, Map.of("minecraft:potato", 640.0), stock)
+                .filter(net.minecraft.world.item.Items.SUGAR_CANE::equals).isPresent(), "potatoes grown already: cane next");
+        helper.assertTrue(dev.b28.enterprise.territory.Fields.choose(Map.of("minecraft:sweet_berries", 20.0), Map.of(), stock)
+                .filter(net.minecraft.world.item.Items.SWEET_BERRIES::equals).isPresent(), "a Master Butcher: berries");
         helper.succeed();
     }
 
     @GameTest(template = "floor", skyAccess = true)
     public static void caneIsPressedIntoPaper(GameTestHelper helper) {
-        var desk = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(new BlockPos(3, 2, 3)));
         helper.setBlock(new BlockPos(3, 2, 3), dev.b28.enterprise.merchant.Merchant.DESK.get());
         helper.setBlock(new BlockPos(4, 2, 3), Blocks.CHEST);
-        var warehouse = dev.b28.enterprise.merchant.Warehouse.get(helper.getLevel().getServer());
-        warehouse.recordCapacity(desk, 1L, Map.of(net.minecraft.world.item.Items.PAPER, 24)); // par: 64 paper
         var stock = dev.b28.enterprise.merchant.MerchantStock.at(helper.getLevel(), helper.absolutePos(new BlockPos(3, 2, 3)));
         stock.insert(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SUGAR_CANE, 40));
-        int made = dev.b28.enterprise.territory.Fields.press(warehouse, desk, stock, helper.getLevel().getGameTime());
+        var pressing = dev.b28.enterprise.territory.Workshop.CONVERSIONS.get(0);
+        int made = dev.b28.enterprise.territory.Workshop.runForTest(pressing, 64, stock);
         helper.assertTrue(made == 40 && stock.count(new net.minecraft.world.item.trading.ItemCost(
                 net.minecraft.world.item.Items.PAPER, 1)) == 40, "40 cane, 40 paper: " + made);
+        stock.insert(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WHEAT, 10));
+        int bread = dev.b28.enterprise.territory.Workshop.runForTest(dev.b28.enterprise.territory.Workshop.CONVERSIONS.get(1),
+                10, stock);
+        helper.assertTrue(bread == 3, "10 wheat bake 3 bread, a wheat over: " + bread);
         helper.succeed();
     }
 
