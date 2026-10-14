@@ -427,7 +427,11 @@ public final class Freight extends SavedData {
             double perTrip = (double) (r.itemsDelivered() + r.itemsBought()) / Math.max(1, r.trips());
             int stacks = (int) Math.max(1, Math.ceil(perTrip / 64));
             int toHub = (int) Math.sqrt(r.from().pos().distSqr(hub.pos()));
-            double direct = runCost(r.distance());
+            // The long run pays the posts on its way (a share of its coins, and the handling fee), going and coming.
+            var territory = dev.b28.enterprise.territory.Territory.get(server);
+            double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
+            double tolls = (Caravans.tollShare(territory, r) * r.expectedValue() + Caravans.passageFees(territory, r)) / rate;
+            double direct = runCost(r.distance()) + tolls;
             double byHub = runCost(toHub) + stacks * (legs(server, hub, r.to()).stream()
                     .mapToDouble(Freight::forwardingPrice).min().orElse(forwardingPrice(onward.get()))
                     + cartPrice() * 2 / CART * (1 + FORWARD_MARGIN));

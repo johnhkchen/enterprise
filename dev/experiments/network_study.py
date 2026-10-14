@@ -185,12 +185,14 @@ def build_ridge():
     """A mountain range across the land between the capital's side and S3's: each hex near the line x + z = RIDGE
     raised 40 blocks of stone, all but T's (the pass). A hex with a mountain's flank in it can't be crossed."""
     t = TOWNS["T"]
-    tx, tz = t[0] + 14, t[1] + 14
+    tx, tz = t[0] + 7, t[1] + 7  # T's desk: its hex is the pass, the one way through
+    cells = [(q, r) for q in range(-30, 60) for r in range(-10, 60)]
+    pass_hex = min(cells, key=lambda c: math.hypot(hex_centre(*c)[0] - tx, hex_centre(*c)[1] - tz))
     raised = 0
-    for q in range(-30, 60):
-        for r in range(-10, 60):
+    for q, r in cells:
+        if True:
             cx, cz = (round(v) for v in hex_centre(q, r))
-            if abs(cx + cz - RIDGE) > RIDGE_HALF or not 600 <= cx <= 2200 or math.hypot(cx - tx, cz - tz) < 60:
+            if abs(cx + cz - RIDGE) > RIDGE_HALF or not 600 <= cx <= 2200 or (q, r) == pass_hex:
                 continue
             if overlaps_town(cx - 28, cz - 28, cx + 28, cz + 28):
                 continue
@@ -468,7 +470,8 @@ def main():
         for x, z in [(1200, RIDGE - 1200), (t[0] + 7, t[1] + 7)]:
             print("\n" + rcon(f"enterprise hex {x} -60 {z}").strip())
         print("\n" + rcon("enterprise freight").strip())
-        print("\n" + rcon("enterprise name").strip())
+        print("\nT: " + "\n".join(l for l in rcon(f"enterprise territory {bell(t)}").splitlines()
+                                    if re.search(r"toll|guard|post|treasury|fee", l)))
     names = rcon("enterprise name")
     for label, corner in [("hub", HUB), *TOWNS.items()]:
         x, z = (HUB[0] + 2, HUB[1] + 2) if label == "hub" else (corner[0] + 7, corner[1] + 7)

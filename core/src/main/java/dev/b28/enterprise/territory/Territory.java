@@ -78,6 +78,8 @@ public final class Territory extends SavedData {
     /** Every town starts tolling caravans that cross its land at this rate, then sets its own. */
     public static final double DEFAULT_TOLL_RATE = 0.05;
     public static final double MAX_TOLL_RATE = 0.25;
+    /** A town asks at most this many emeralds a caravan as a handling fee at its posts, where there's no way round. */
+    public static final double PASSAGE_FEE_CAP = 3;
     public static final double TOLL_STEP = 0.01;
 
     /** A town judges its toll over this many days: caravans pass every few days, so one day says little. */
@@ -132,6 +134,7 @@ public final class Territory extends SavedData {
         double valuePerDay; // the harvest's value, averaged
         double treasury; // the market's money at its last touch, in emeralds (chest emeralds, coins, Banker)
         double tollRate = DEFAULT_TOLL_RATE;
+        double passageFee; // spurs a caravan through its posts, whatever it carries
         double tollIncomeToday; // since the last review
         double tollIncomeYesterday = -1; // over the last period reviewed; none yet
         long lastTollReview = -1;
@@ -1170,6 +1173,11 @@ public final class Territory extends SavedData {
     }
 
     /** The toll this town has set, as a share of the coins caravans carry. It's collected only at its posts. */
+    /** The handling fee a caravan through the town's posts pays, whatever it carries, in spurs. */
+    public double passageFee(GlobalPos bell) {
+        return holding(bell).map(h -> h.posts.isEmpty() ? 0 : h.passageFee).orElse(0.0);
+    }
+
     public double tollRate(GlobalPos bell) {
         return holding(bell).map(h -> h.tollRate).orElse(DEFAULT_TOLL_RATE);
     }
@@ -1336,7 +1344,7 @@ public final class Territory extends SavedData {
         double armoured = holding.kitShare.getOrDefault(Smithing.ARMOUR.id(), 0.0);
         Chokepoints.Plan plan = Chokepoints.bestPlan(holding.crossings.values(), guardCostPerDay(rate),
                 Chokepoints.DETOUR_SHARE + (Smithing.ARMED_DETOUR_SHARE - Chokepoints.DETOUR_SHARE) * armed,
-                MAX_TOLL_RATE + (Smithing.ARMOURED_TOLL_RATE - MAX_TOLL_RATE) * armoured);
+                MAX_TOLL_RATE + (Smithing.ARMOURED_TOLL_RATE - MAX_TOLL_RATE) * armoured, PASSAGE_FEE_CAP * rate);
         holding.posts.retainAll(plan.posts());
         plan.posts().stream()
                 .filter(hex -> !holding.posts.contains(hex))
@@ -1344,6 +1352,7 @@ public final class Territory extends SavedData {
                 .ifPresent(holding.posts::add);
         if (!plan.posts().isEmpty()) {
             holding.tollRate = plan.rate();
+            holding.passageFee = plan.fee();
         }
         holding.tollIncomeYesterday = holding.tollIncomeToday;
         holding.tollIncomeToday = 0;
@@ -1393,6 +1402,7 @@ public final class Territory extends SavedData {
             entry.putDouble("valuePerDay", holding.valuePerDay);
             entry.putDouble("treasury", holding.treasury);
             entry.putDouble("tollRate", holding.tollRate);
+            entry.putDouble("passageFee", holding.passageFee);
             entry.putDouble("tollIncomeToday", holding.tollIncomeToday);
             entry.putDouble("tollIncomeYesterday", holding.tollIncomeYesterday);
             entry.putLong("lastTollReview", holding.lastTollReview);
@@ -1523,6 +1533,7 @@ public final class Territory extends SavedData {
                 holding.salesPerDay = entry.getDouble("salesPerDay");
                 holding.valuePerDay = entry.getDouble("valuePerDay");
                 holding.treasury = entry.getDouble("treasury");
+                holding.passageFee = entry.getDouble("passageFee");
                 if (entry.contains("tollRate")) {
                     holding.tollRate = entry.getDouble("tollRate");
                     holding.tollIncomeToday = entry.getDouble("tollIncomeToday");

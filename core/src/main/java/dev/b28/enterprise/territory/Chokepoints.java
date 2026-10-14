@@ -69,9 +69,22 @@ public final class Chokepoints {
         }
     }
 
-    /** The toll and posts a town settles on, and the tolls a day they should bring in before paying the guards. */
-    public record Plan(double rate, Set<Hex> posts, double income) {
-        public static final Plan NONE = new Plan(0, Set.of(), 0);
+    /**
+     * The toll and posts a town settles on, and the tolls a day they should bring in before paying the guards: a share
+     * of the coins each caravan carries, and a handling fee a caravan, in spurs (what the pass costs whatever's carried:
+     * so a caravan with little aboard would sooner hand its goods over there and turn back).
+     */
+    public record Plan(double rate, Set<Hex> posts, double income, double fee) {
+        public static final Plan NONE = new Plan(0, Set.of(), 0, 0);
+    }
+
+    /**
+     * The fee a caravan on this route would bear at these posts, beyond the share of its coins: what's left of the
+     * share of the detour, at most {@code feeCap} (spurs).
+     */
+    static double bearableFee(Crossing crossing, Option option, double rate, double share, double feeCap) {
+        double detourShare = Double.isInfinite(option.detour()) ? Double.POSITIVE_INFINITY : share * option.detour();
+        return Math.max(0, Math.min(feeCap, detourShare - rate * crossing.value));
     }
 
     private Chokepoints() {}
@@ -82,14 +95,15 @@ public final class Chokepoints {
      * posts if none pays.
      */
     public static Plan bestPlan(Collection<Crossing> crossings, double guardCostPerDay) {
-        return bestPlan(crossings, guardCostPerDay, DETOUR_SHARE, Territory.MAX_TOLL_RATE);
+        return bestPlan(crossings, guardCostPerDay, DETOUR_SHARE, Territory.MAX_TOLL_RATE, 0);
     }
 
     /**
      * As {@link #bestPlan(Collection, double)}, asking up to {@code share} of each detour and at most {@code cap}: more,
      * with guards armed and armoured (see {@link Smithing}).
      */
-    public static Plan bestPlan(Collection<Crossing> crossings, double guardCostPerDay, double share, double cap) {
+    public static Plan bestPlan(Collection<Crossing> crossings, double guardCostPerDay, double share, double cap,
+            double feeCap) {
         TreeSet<Double> rates = new TreeSet<>();
         crossings.forEach(c -> c.options.forEach(o -> rates.add(c.bearableRate(o, share, cap))));
         List<Crossing> richestFirst = crossings.stream()
@@ -103,21 +117,28 @@ public final class Chokepoints {
             }
             Set<Hex> posts = new LinkedHashSet<>();
             double income = 0;
+            double fee = Double.POSITIVE_INFINITY;
+            double trips = 0;
             for (Crossing crossing : richestFirst) {
                 Option option = crossing.fewestPostsFor(rate, share, cap);
                 if (option == null) {
                     continue;
                 }
                 long added = option.posts().stream().filter(hex -> !posts.contains(hex)).count();
-                double gain = crossing.incomePerDay(rate);
+                double bearable = bearableFee(crossing, option, rate, share, feeCap);
+                double gain = crossing.incomePerDay(rate) + bearable * crossing.tripsPerDay;
                 if (gain > added * guardCostPerDay) {
                     posts.addAll(option.posts());
-                    income += gain;
+                    income += crossing.incomePerDay(rate);
+                    fee = Math.min(fee, bearable); // what every caravan through will still bear
+                    trips += crossing.tripsPerDay;
                 }
             }
+            fee = Double.isInfinite(fee) ? 0 : fee;
+            income += fee * trips;
             double profit = income - posts.size() * guardCostPerDay;
             if (profit > bestProfit + 1e-9) {
-                best = new Plan(rate, Set.copyOf(posts), income);
+                best = new Plan(rate, Set.copyOf(posts), income, fee);
                 bestProfit = profit;
             }
         }

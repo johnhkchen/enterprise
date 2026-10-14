@@ -103,7 +103,7 @@ public final class RoutePlanner {
         if (post.isEmpty() || free.contains(post.get()) || territory.postOwner(dimension, here).equals(post)) {
             return 0;
         }
-        return territory.tollRate(post.get()) * value;
+        return territory.tollRate(post.get()) * value + territory.passageFee(post.get());
     }
 
     private static List<Hex> walkBack(Map<Hex, Hex> cameFrom, Hex goal) {

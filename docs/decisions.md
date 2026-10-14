@@ -525,6 +525,18 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   own shopping, earning nothing from the traffic through its pass), so it never could afford the storehouse: no hub,
   no forwarding. The pass needs an income: a toll per caravan.
 
+## Tolls a caravan, and the network reorganising (built 2026-10-14)
+
+- **A handling fee a caravan.** At its posts a town charges each caravan through a flat fee besides its share of the
+  coins carried: what's left of the share of the detour, at most 3 emeralds where there's no way round. Routes count it
+  in their path, and an owner weighing its long run against a hub counts the tolls the run pays on its way.
+- **Run 37 (`--ridge`, the pass one hex wide at T):** the network reorganised itself. T (now Haygate, between cliffs)
+  became a hub and opened runs of its own to the capital, S3 and S2; S2 (Wheatfell) became a hub (2 routes passing, 3
+  calling); the capital wound down its long run to S3 ("by Wheatfell 13.2 a trip, not 29.0"). Wheatfell forwarded 68
+  stacks for 560 spurs, bought 178 spurs of freight, carried 59 stacks, bought 18 bills (275 emeralds face) and 41 carts
+  of drayage; Haygate forwarded 6 stacks and ended with 150 emeralds (broke in runs 35-36). Haygate posted no guard:
+  a second gap beside the town (the study's ridge skirts town land) lets caravans round its hex for 3 spurs.
+
 ## Names (built 2026-10-14)
 
 Every market has a name, given from the lie of the land once the hexes round it are surveyed, and kept: a first part

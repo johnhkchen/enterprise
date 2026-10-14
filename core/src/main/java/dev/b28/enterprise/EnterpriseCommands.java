@@ -387,8 +387,10 @@ final class EnterpriseCommands {
         }
         source.sendSuccess(() -> Component.literal("  %d home(s) built, %d child(ren) born".formatted(
                 territory.homesBuilt(bell), territory.born(bell))), false);
-        source.sendSuccess(() -> Component.literal("  toll %.1f%% at its posts (%.0f spurs collected last review)".formatted(
-                territory.tollRate(bell) * 100, Math.max(0, territory.tollIncomeYesterday(bell)))), false);
+        source.sendSuccess(() -> Component.literal(("  toll %.1f%% at its posts and a handling fee of %.0f spurs a caravan "
+                + "(%.0f spurs collected last review), %d guards").formatted(
+                territory.tollRate(bell) * 100, territory.passageFee(bell), Math.max(0, territory.tollIncomeYesterday(bell)),
+                territory.guards(bell))), false);
         source.sendSuccess(() -> Component.literal(("  %d guard(s) posted at %s; traffic %.0f spurs a day; %d deserted")
                 .formatted(territory.guards(bell), territory.posts(bell), territory.trafficPerDay(bell),
                         territory.deserted(bell))), false);

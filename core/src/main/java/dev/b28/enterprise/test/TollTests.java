@@ -148,7 +148,9 @@ public final class TollTests {
         helper.assertTrue(territory.tollRate(town) == Territory.MAX_TOLL_RATE,
                 "no way around, so the most it may ask: " + territory.tollRate(town));
         int paid = Caravans.payTolls(territory, route, 1000, PER_HEX, RIVER);
-        helper.assertTrue(paid == 250, "the next caravan pays 25%: " + paid);
+        double fee = territory.passageFee(town);
+        helper.assertTrue(fee > 0 && paid == (int) Math.floor(250 + fee),
+                "the next caravan pays 25%, and the handling fee where there's no way round: " + paid + ", fee " + fee);
         helper.succeed();
     }
 

@@ -1388,7 +1388,8 @@ public final class Caravans {
             territory.observeCrossing(owner, route.id, carried, postOptions(territory, route, owner, ends, perHex, terrain));
             boolean posted = town.getValue().stream()
                     .anyMatch(hex -> territory.postOwner(dimension, hex).filter(owner::equals).isPresent());
-            int toll = posted ? (int) Math.floor(carried * territory.tollRate(owner)) : 0;
+            int toll = posted ? Math.min(carried, (int) Math.floor(carried * territory.tollRate(owner)
+                    + territory.passageFee(owner))) : 0;
             if (toll > 0) {
                 territory.oweToll(owner, toll);
                 paid += toll;
@@ -1398,6 +1399,17 @@ public final class Caravans {
     }
 
     /** The share of coins carried on this route's path that its toll posts would take: for terms where the buyer pays tolls. */
+    /** The handling fees a caravan on this route pays at the posts on its path, in spurs a trip. */
+    public static double passageFees(Territory territory, Route route) {
+        var dimension = route.from.dimension();
+        Set<GlobalPos> ends = ends(territory, route);
+        Set<GlobalPos> posted = new LinkedHashSet<>();
+        for (Hex hex : route.path()) {
+            territory.postOwner(dimension, hex).filter(owner -> !ends.contains(owner)).ifPresent(posted::add);
+        }
+        return posted.stream().mapToDouble(territory::passageFee).sum();
+    }
+
     public static double tollShare(Territory territory, Route route) {
         var dimension = route.from.dimension();
         Set<GlobalPos> ends = ends(territory, route);
