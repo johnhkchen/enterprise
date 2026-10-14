@@ -16,7 +16,8 @@ public interface Term {
     CompoundTag save();
 
     /** Kinds of term by name, and how to read each back. */
-    Map<String, Function<CompoundTag, Term>> TYPES = new HashMap<>(Map.of(Delivery.TYPE, Delivery::load));
+    Map<String, Function<CompoundTag, Term>> TYPES = new HashMap<>(Map.of(Delivery.TYPE, Delivery::load,
+            Bonus.TYPE, Bonus::load, Levy.TYPE, Levy::load));
 
     static Term load(CompoundTag tag) {
         Function<CompoundTag, Term> reader = TYPES.get(tag.getString("type"));

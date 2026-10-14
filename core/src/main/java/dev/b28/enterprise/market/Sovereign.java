@@ -1,67 +1,120 @@
 package dev.b28.enterprise.market;
 
 import dev.b28.enterprise.Enterprise;
+import dev.b28.enterprise.army.Army;
+import dev.b28.enterprise.contract.Bonus;
+import dev.b28.enterprise.contract.ContractBook;
+import dev.b28.enterprise.contract.Incoterm;
+import dev.b28.enterprise.contract.Levy;
+import dev.b28.enterprise.contract.Term;
+import dev.b28.enterprise.merchant.MerchantStock;
+import dev.b28.enterprise.money.MoneyChanger;
 import dev.b28.enterprise.money.Mint;
 import dev.b28.enterprise.money.Prices;
+import dev.b28.enterprise.territory.Labour;
+import dev.b28.enterprise.territory.Territory;
 import dev.ithundxr.createnumismatics.Numismatics;
 import dev.ithundxr.createnumismatics.content.backend.BankAccount;
 import dev.ithundxr.createnumismatics.content.bank.CardItem;
 import dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.item.trading.ItemCost;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /**
- * A sovereign at war, buying what it needs as anyone would: through Numismatics shops by a Merchant's Desk, set to buy
- * gold and war goods at war prices (more for enchanted goods, the stronger the better), paid from the royal treasury,
- * a bank account the sovereign mints coin into each day. The shops are ordinary vendors; what happens next is the
- * region's own doing: the desk's master Merchant takes the shops' orders on as contracts and sources them.
+ * A sovereign shifting the region onto a war footing, through the region's own institutions. Its capital is a desk
+ * whose Blaze Banker is the royal treasury, which it mints coin into each day (debasing the spur). Mobilising, it
+ * stockpiles kit: its capital's Merchant contracts towns for it at a premium, with bonus clauses for good enchantments,
+ * and posts as wanted what no town can supply; towns answer by making it, buying it from their own villagers, and
+ * putting idle hands to the trades it calls for, their smiths trading their way up to master (who sell diamond gear).
+ * It buys gold through a Numismatics shop by the capital. At war it levies soldiers from each town by contract (paid a
+ * day each, owed home), outfits them from the capital's warehouse, and replaces what the campaign wears out. At peace
+ * the soldiers walk home and the minting stops.
  */
 public final class Sovereign extends SavedData {
     private static final String NAME = "enterprise_sovereign";
 
-    /** A war order: so many of an item (enchanted so) a lot, at so many times its worth. */
-    public record Order(Item item, int lot, double premium, List<java.util.Map.Entry<ResourceKey<Enchantment>, Integer>> enchantments) {}
+    public enum Phase { PEACE, MOBILISING, WAR }
 
-    public static final List<Order> WAR_ORDERS = List.of(
-            new Order(Items.GOLD_INGOT, 8, 3, List.of()),
-            new Order(Items.IRON_SWORD, 1, 2, List.of()),
-            new Order(Items.IRON_SWORD, 1, 4, List.of(java.util.Map.entry(Enchantments.SHARPNESS, 2))),
-            new Order(Items.IRON_SWORD, 1, 6, List.of(java.util.Map.entry(Enchantments.SHARPNESS, 3))),
-            new Order(Items.SHIELD, 1, 2, List.of()),
-            new Order(Items.IRON_CHESTPLATE, 1, 2, List.of()),
-            new Order(Items.IRON_CHESTPLATE, 1, 4, List.of(java.util.Map.entry(Enchantments.PROTECTION, 2))),
-            new Order(Items.BOW, 1, 2, List.of()),
-            new Order(Items.BOW, 1, 4, List.of(java.util.Map.entry(Enchantments.POWER, 2))),
-            new Order(Items.ARROW, 16, 2, List.of()));
+    /** Mobilising, it pays half again over worth; at war, two and a half times. */
+    public static final double MOBILISING_PREMIUM = 1.5;
+    public static final double WAR_PREMIUM = 2.5;
+    /** It buys gold at three times its worth. */
+    public static final double GOLD_PREMIUM = 3;
+    /** A soldier is paid this much a day, owed to its town. */
+    public static final double SOLDIER_PAY = 0.25;
+    /** A town sends its idle hands and this share of the rest, at least one and at most four. */
+    public static final double LEVY_SHARE = 0.2;
+    public static final int LEVY_MOST = 4;
 
-    private GlobalPos desk;
+    /** The stockpile it builds while mobilising, and keeps up at war. */
+    public static final Map<Item, Integer> STOCKPILE = stockpile();
+
+    private static Map<Item, Integer> stockpile() {
+        Map<Item, Integer> m = new LinkedHashMap<>();
+        m.put(Items.DIAMOND_SWORD, 4);
+        m.put(Items.IRON_SWORD, 12);
+        m.put(Items.STONE_SWORD, 6);
+        m.put(Items.DIAMOND_CHESTPLATE, 4);
+        m.put(Items.IRON_CHESTPLATE, 12);
+        m.put(Items.CHAINMAIL_CHESTPLATE, 6);
+        m.put(Items.LEATHER_CHESTPLATE, 6);
+        m.put(Items.SHIELD, 12);
+        m.put(Items.BOW, 8);
+        m.put(Items.ARROW, 256);
+        return m;
+    }
+
+    /** Bonus clauses on its contracts: quality is paid for, never required. */
+    public static List<Term> bonuses(Item item, Army.Theatre theatre) {
+        String path = BuiltInRegistries.ITEM.getKey(item).getPath();
+        List<Term> terms = new ArrayList<>();
+        if (path.endsWith("_sword")) {
+            terms.add(new Bonus(Map.of("minecraft:unbreaking", 1, "minecraft:sharpness", 2), 25));
+            if (theatre == Army.Theatre.UNDEAD) {
+                terms.add(new Bonus(Map.of("minecraft:smite", 3), 30));
+            }
+        } else if (path.endsWith("_chestplate")) {
+            terms.add(new Bonus(Map.of(theatre.armourEnchant, 2), 25));
+            terms.add(new Bonus(Map.of("minecraft:unbreaking", 2), 15));
+        } else if (item == Items.BOW) {
+            terms.add(new Bonus(Map.of("minecraft:power", 2), 25));
+            terms.add(new Bonus(Map.of("minecraft:unbreaking", 1), 10));
+        } else if (item == Items.SHIELD) {
+            terms.add(new Bonus(Map.of("minecraft:unbreaking", 1), 10));
+        }
+        return terms;
+    }
+
+    private Phase phase = Phase.PEACE;
+    private GlobalPos capital;
     private UUID treasury;
     private int mintPerDay;
-    private long lastMint = -1;
+    private long lastDay = -1;
+    private long phaseSince = -1;
     private final List<BlockPos> shops = new ArrayList<>();
-    private final java.util.Map<String, Integer> received = new java.util.TreeMap<>(); // sent to the front, by good
+    private final Map<String, Integer> received = new java.util.TreeMap<>(); // gold bought at the shop
+    private final Map<Item, Integer> unmet = new LinkedHashMap<>(); // kit no town could be contracted for
 
     public static Sovereign get(MinecraftServer server) {
         return server.overworld()
@@ -69,8 +122,12 @@ public final class Sovereign extends SavedData {
                 .computeIfAbsent(new SavedData.Factory<>(Sovereign::new, Sovereign::load, null), NAME);
     }
 
+    public Phase phase() {
+        return phase;
+    }
+
     public Optional<GlobalPos> desk() {
-        return Optional.ofNullable(desk);
+        return Optional.ofNullable(capital);
     }
 
     public Optional<BankAccount> treasury() {
@@ -85,44 +142,41 @@ public final class Sovereign extends SavedData {
         return mintPerDay;
     }
 
-    /** What the war has taken from the shops, by good (enchantments named). */
-    public java.util.Map<String, Integer> received() {
-        return java.util.Map.copyOf(received);
+    public Map<String, Integer> received() {
+        return Map.copyOf(received);
     }
 
-    /** The lot an order's shop asks for. */
-    public static ItemStack lot(ServerLevel level, Order order) {
-        ItemStack stack = new ItemStack(order.item(), order.lot());
-        var registry = level.registryAccess().registryOrThrow(Registries.ENCHANTMENT);
-        order.enchantments().forEach(e -> stack.enchant(registry.getHolderOrThrow(e.getKey()), e.getValue()));
-        return stack;
+    /** What the war wants at this desk that no town could be contracted for: posted as wanted. */
+    public Map<Item, Integer> unmet(GlobalPos desk) {
+        return desk.equals(capital) ? Map.copyOf(unmet) : Map.of();
     }
 
     /**
-     * War: the royal treasury opens with a day's minting, and a row of buying shops goes up beside the desk, ten
-     * blocks north of it, each with a card on the treasury. Returns the shops placed.
+     * Mobilisation: the capital's Blaze Banker becomes the royal treasury (a new account if it has none), minting
+     * {@code perDay} spurs a day into it, and a shop goes up by the capital buying gold, paid from it.
      */
-    public int declare(ServerLevel level, GlobalPos at, int perDay) {
+    public int mobilise(ServerLevel level, GlobalPos at, int perDay) {
         peace(level);
-        desk = at;
+        capital = at;
         mintPerDay = perDay;
-        treasury = UUID.randomUUID();
-        Numismatics.BANK.getOrCreateAccount(treasury, BankAccount.Type.PLAYER);
+        treasury = MoneyChanger.bankAt(level, at.pos()).map(account -> account.id).orElseGet(() -> {
+            UUID id = UUID.randomUUID();
+            Numismatics.BANK.getOrCreateAccount(id, BankAccount.Type.PLAYER);
+            return id;
+        });
+        phase = Phase.MOBILISING;
+        phaseSince = level.getGameTime();
+        lastDay = level.getGameTime(); // today's coin is this
         mint(level, level.getGameTime());
         double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, level.getGameTime());
         Block vendor = BuiltInRegistries.BLOCK.get(ResourceLocation.parse("numismatics:vendor"));
         Item card = BuiltInRegistries.ITEM.get(ResourceLocation.parse("numismatics:red_card"));
-        for (int i = 0; i < WAR_ORDERS.size(); i++) {
-            Order order = WAR_ORDERS.get(i);
-            BlockPos pos = at.pos().offset(-9 + 2 * i, 0, -10);
-            level.setBlock(pos, vendor.defaultBlockState(), 3);
-            if (!(level.getBlockEntity(pos) instanceof VendorBlockEntity shop)) {
-                continue;
-            }
-            ItemStack lot = lot(level, order);
+        BlockPos pos = at.pos().offset(0, 0, -10);
+        level.setBlock(pos, vendor.defaultBlockState(), 3);
+        if (level.getBlockEntity(pos) instanceof VendorBlockEntity shop) {
             shop.setMode(VendorBlockEntity.Mode.BUY);
-            shop.filterContainer.setItem(0, lot);
-            Shops.setPrice(shop, (int) Math.ceil(Prices.emeraldsEach(order.item()) * order.lot() * order.premium() * rate));
+            shop.filterContainer.setItem(0, new ItemStack(Items.GOLD_INGOT, 8));
+            Shops.setPrice(shop, (int) Math.ceil(Prices.emeraldsEach(Items.GOLD_INGOT) * 8 * GOLD_PREMIUM * rate));
             ItemStack bound = new ItemStack(card);
             CardItem.set(bound, treasury);
             shop.cardContainer.setItem(0, bound);
@@ -130,27 +184,65 @@ public final class Sovereign extends SavedData {
             shops.add(pos);
         }
         setDirty();
-        Enterprise.LOGGER.info("War: the sovereign buys at {} through {} shops, minting {} spurs a day",
-                at.pos().toShortString(), shops.size(), perDay);
+        Enterprise.LOGGER.info("Mobilisation: the sovereign at {} mints {} spurs a day", at.pos().toShortString(), perDay);
         return shops.size();
     }
 
-    /** Peace: the shops come down and the minting stops. */
-    public void peace(ServerLevel level) {
+    /** War: each town it knows by a road is levied by contract, the copies riding with its caravans. Returns levies drafted. */
+    public int declare(ServerLevel level, Army.Theatre theatre, long now) {
+        if (capital == null) {
+            return 0;
+        }
+        phase = Phase.WAR;
+        phaseSince = now;
+        MinecraftServer server = level.getServer();
+        Army.get(server).setTheatre(theatre);
+        ContractBook book = ContractBook.get(server);
+        Territory territory = Territory.get(server);
+        var settlements = dev.b28.enterprise.settlement.Settlements.get(server);
+        int levies = 0;
+        for (var route : dev.b28.enterprise.caravan.CaravanLedger.get(server).routes()) {
+            if (!route.from().equals(capital)) {
+                continue;
+            }
+            Optional<GlobalPos> bell = territory.bellOf(route.to());
+            if (bell.isEmpty()) {
+                continue;
+            }
+            var roster = settlements.roster(bell.get()).values();
+            long idle = roster.stream().filter(r -> !r.baby() && Labour.idle(r.profession())).count();
+            long rest = roster.stream().filter(r -> !r.baby() && !Labour.idle(r.profession())).count();
+            int soldiers = (int) Math.max(1, Math.min(LEVY_MOST, idle + Math.round(rest * LEVY_SHARE)));
+            book.draft(route.to(), capital, List.of(new Levy(soldiers, SOLDIER_PAY)), Incoterm.EXW, now, 24000, 1, now,
+                    capital, false);
+            levies++;
+        }
+        setDirty();
+        Enterprise.LOGGER.info("War against {}: {} levies", theatre, levies);
+        return levies;
+    }
+
+    /** Peace: the army walks home, the gold shop comes down, the minting stops. Returns the soldiers sent home. */
+    public int peace(ServerLevel level) {
+        int home = capital == null ? 0 : Army.get(level.getServer()).demobilise(level.getServer(), capital, level.getGameTime());
         shops.forEach(pos -> level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3));
         shops.clear();
         mintPerDay = 0;
+        phase = Phase.PEACE;
+        phaseSince = level.getGameTime();
+        unmet.clear();
         setDirty();
+        return home;
     }
 
+    /** A day's coin into the treasury, and the gold the shop bought sent to the mint. */
     void mint(ServerLevel level, long now) {
-        // What the shops bought goes to the front, leaving them room to buy more.
         for (BlockPos pos : shops) {
             if (level.isLoaded(pos) && level.getBlockEntity(pos) instanceof VendorBlockEntity shop) {
                 for (int i = 0; i < shop.items.size(); i++) {
                     ItemStack stack = shop.items.get(i);
                     if (!stack.isEmpty()) {
-                        received.merge(dev.b28.enterprise.contract.Delivery.of(stack, 1, 0).describe(), stack.getCount(),
+                        received.merge(BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath(), stack.getCount(),
                                 Integer::sum);
                         shop.items.set(i, ItemStack.EMPTY);
                     }
@@ -162,33 +254,77 @@ public final class Sovereign extends SavedData {
             account.deposit(mintPerDay);
             Mint.get(level.getServer()).mint(Mint.DEFAULT_FACTION, mintPerDay, now);
         });
-        lastMint = now;
         setDirty();
     }
 
-    /** The sovereign mints a day's coin into its treasury, each day of the war. */
+    /** What it wants on hand at the capital now: the stockpile, and at war a set of kit for each soldier besides. */
+    public Map<Item, Integer> targets(Army army) {
+        Map<Item, Integer> targets = new LinkedHashMap<>(STOCKPILE);
+        if (phase == Phase.WAR) {
+            army.wants().forEach((item, n) -> targets.merge(item, n, Integer::sum));
+        }
+        return targets;
+    }
+
+    /**
+     * Each day of mobilisation or war: mints, has its capital's Merchant contract towns for what the stockpile lacks
+     * (at the premium, with bonus clauses), posts what no town can supply, and at war campaigns.
+     */
     public static void onServerTick(ServerTickEvent.Post event) {
         MinecraftServer server = event.getServer();
         Sovereign sovereign = get(server);
         long now = server.overworld().getGameTime();
-        if (sovereign.mintPerDay > 0 && sovereign.desk != null && now - sovereign.lastMint >= 24000) {
-            ServerLevel level = server.getLevel(sovereign.desk.dimension());
-            if (level != null) {
-                sovereign.mint(level, now);
+        if (sovereign.phase == Phase.PEACE || sovereign.capital == null) {
+            return;
+        }
+        ServerLevel level = server.getLevel(sovereign.capital.dimension());
+        if (level == null || !level.isLoaded(sovereign.capital.pos())) {
+            return;
+        }
+        if (sovereign.lastDay >= 0 && now - sovereign.lastDay < 24000) {
+            return;
+        }
+        sovereign.lastDay = now;
+        sovereign.mint(level, now);
+        Army army = Army.get(server);
+        MerchantStock depot = MerchantStock.at(level, sovereign.capital.pos());
+        double premium = sovereign.phase == Phase.WAR ? WAR_PREMIUM : MOBILISING_PREMIUM;
+        Territory territory = Territory.get(server);
+        sovereign.unmet.clear();
+        for (Map.Entry<Item, Integer> target : sovereign.targets(army).entrySet()) {
+            int need = target.getValue() - depot.count(new ItemCost(target.getKey(), 1));
+            if (need <= 0) {
+                continue;
+            }
+            boolean covered = Broker.source(level, sovereign.capital, territory, target.getKey(), need, now, premium,
+                    bonuses(target.getKey(), army.theatre()));
+            if (!covered) {
+                sovereign.unmet.put(target.getKey(), need);
             }
         }
+        if (sovereign.phase == Phase.WAR) {
+            army.campaign(level, depot, sovereign.capital, now);
+        }
+        sovereign.setDirty();
+    }
+
+    /** Days in the current phase. */
+    public double daysInPhase(long now) {
+        return phaseSince < 0 ? 0 : (now - phaseSince) / 24000.0;
     }
 
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
-        if (desk != null) {
-            GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, desk).ifSuccess(t -> tag.put("desk", t));
+        tag.putString("phase", phase.name());
+        if (capital != null) {
+            GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, capital).ifSuccess(t -> tag.put("capital", t));
         }
         if (treasury != null) {
             tag.putUUID("treasury", treasury);
         }
         tag.putInt("mintPerDay", mintPerDay);
-        tag.putLong("lastMint", lastMint);
+        tag.putLong("lastDay", lastDay);
+        tag.putLong("phaseSince", phaseSince);
         tag.putLongArray("shops", shops.stream().mapToLong(BlockPos::asLong).toArray());
         CompoundTag got = new CompoundTag();
         received.forEach(got::putInt);
@@ -197,17 +333,19 @@ public final class Sovereign extends SavedData {
     }
 
     public static Sovereign load(CompoundTag tag, HolderLookup.Provider registries) {
-        Sovereign sovereign = new Sovereign();
-        sovereign.desk = tag.contains("desk") ? GlobalPos.CODEC.parse(NbtOps.INSTANCE, tag.get("desk")).result().orElse(null)
-                : null;
-        sovereign.treasury = tag.hasUUID("treasury") ? tag.getUUID("treasury") : null;
-        sovereign.mintPerDay = tag.getInt("mintPerDay");
-        sovereign.lastMint = tag.getLong("lastMint");
+        Sovereign s = new Sovereign();
+        s.phase = tag.contains("phase") ? Phase.valueOf(tag.getString("phase")) : Phase.PEACE;
+        s.capital = tag.contains("capital")
+                ? GlobalPos.CODEC.parse(NbtOps.INSTANCE, tag.get("capital")).result().orElse(null) : null;
+        s.treasury = tag.hasUUID("treasury") ? tag.getUUID("treasury") : null;
+        s.mintPerDay = tag.getInt("mintPerDay");
+        s.lastDay = tag.contains("lastDay") ? tag.getLong("lastDay") : -1;
+        s.phaseSince = tag.contains("phaseSince") ? tag.getLong("phaseSince") : -1;
         for (long pos : tag.getLongArray("shops")) {
-            sovereign.shops.add(BlockPos.of(pos));
+            s.shops.add(BlockPos.of(pos));
         }
         CompoundTag got = tag.getCompound("received");
-        got.getAllKeys().forEach(k -> sovereign.received.put(k, got.getInt(k)));
-        return sovereign;
+        got.getAllKeys().forEach(k -> s.received.put(k, got.getInt(k)));
+        return s;
     }
 }

@@ -17,6 +17,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.nbt.CompoundTag;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -60,25 +61,87 @@ public final class WarTests {
     }
 
     @GameTest(template = "floor")
-    public static void theSovereignBuysThroughShopsItFundsByMinting(GameTestHelper helper) {
+    public static void mobilisingTheSovereignMintsAndBuysGoldThroughAShop(GameTestHelper helper) {
         var server = helper.getLevel().getServer();
         BlockPos desk = new BlockPos(3, 2, 3);
         helper.setBlock(desk, Merchant.DESK.get());
         Sovereign sovereign = new Sovereign();
         long t = helper.getLevel().getGameTime();
         double before = Mint.get(server).debasement(Mint.DEFAULT_FACTION, t);
-        int shops = sovereign.declare(helper.getLevel(), GlobalPos.of(helper.getLevel().dimension(),
-                helper.absolutePos(desk)), 1000);
-        helper.assertTrue(shops == Sovereign.WAR_ORDERS.size(), "a shop for each war order: " + shops);
-        var first = (VendorBlockEntity) helper.getLevel().getBlockEntity(sovereign.shops().get(0));
-        helper.assertTrue(first.getMode() == VendorBlockEntity.Mode.BUY && first.getFilterItem().is(Items.GOLD_INGOT)
-                && first.getTotalPrice() > 0, "buying gold at a war price: " + first.getTotalPrice());
-        helper.assertTrue(dev.b28.enterprise.market.Shops.purse(first).map(a -> a.getBalance() >= 1000).orElse(false),
-                "paid from the treasury, a day's minting in it");
+        sovereign.mobilise(helper.getLevel(), GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(desk)), 1000);
+        helper.assertTrue(sovereign.phase() == Sovereign.Phase.MOBILISING, "mobilising");
+        var shop = (VendorBlockEntity) helper.getLevel().getBlockEntity(sovereign.shops().get(0));
+        helper.assertTrue(shop.getMode() == VendorBlockEntity.Mode.BUY && shop.getFilterItem().is(Items.GOLD_INGOT)
+                && dev.b28.enterprise.market.Shops.purse(shop).map(a -> a.getBalance() >= 1000).orElse(false),
+                "a shop buying gold, paid from a treasury with a day's minting in it");
         helper.assertTrue(Mint.get(server).debasement(Mint.DEFAULT_FACTION, t) > before, "the minting debases the spur");
+        helper.assertTrue(sovereign.targets(dev.b28.enterprise.army.Army.get(server)).get(Items.DIAMOND_SWORD) > 0,
+                "it stockpiles diamond swords too");
+        BlockPos at = sovereign.shops().get(0);
         sovereign.peace(helper.getLevel());
-        helper.assertTrue(helper.getLevel().getBlockState(sovereign.shops().isEmpty() ? helper.absolutePos(desk).offset(-9, 0, -10)
-                : sovereign.shops().get(0)).isAir(), "peace: the shops come down");
+        helper.assertTrue(helper.getLevel().getBlockState(at).isAir(), "peace: the shop comes down");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void bonusClausesPayForQualityWithoutRequiringIt(GameTestHelper helper) {
+        var book = new ContractBook();
+        GlobalPos a = far(helper, 8_200_000, 8_000_000);
+        GlobalPos b = far(helper, 8_200_400, 8_000_000);
+        var contract = book.draft(a, b, List.of(new dev.b28.enterprise.contract.Delivery(Items.IRON_SWORD, 4, 2),
+                        new dev.b28.enterprise.contract.Bonus(java.util.Map.of("minecraft:unbreaking", 1,
+                                "minecraft:sharpness", 2), 25)),
+                dev.b28.enterprise.contract.Incoterm.EXW, 0, 24000, 1, 0, a, true);
+        var registry = helper.getLevel().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT);
+        ItemStack plain = new ItemStack(Items.IRON_SWORD);
+        ItemStack sharp = new ItemStack(Items.IRON_SWORD);
+        sharp.enchant(registry.getHolderOrThrow(net.minecraft.world.item.enchantment.Enchantments.SHARPNESS), 3);
+        sharp.enchant(registry.getHolderOrThrow(net.minecraft.world.item.enchantment.Enchantments.UNBREAKING), 1);
+        helper.assertTrue(contract.delivery().get().matches(sharp, helper.getLevel().registryAccess()),
+                "any iron sword counts, enchanted or not");
+        helper.assertTrue(contract.priceOf(plain) == 2 && contract.priceOf(sharp) == 2.5,
+                "a plain one at the price, a sharp one with 25% on top");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void soldiersFallLessInBetterKit(GameTestHelper helper) {
+        var theatre = dev.b28.enterprise.army.Army.Theatre.FACTION;
+        double bare = dev.b28.enterprise.army.Army.risk(ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY, theatre);
+        double iron = dev.b28.enterprise.army.Army.risk(new ItemStack(Items.IRON_SWORD), new ItemStack(Items.IRON_CHESTPLATE),
+                new ItemStack(Items.SHIELD), theatre);
+        double diamond = dev.b28.enterprise.army.Army.risk(new ItemStack(Items.DIAMOND_SWORD),
+                new ItemStack(Items.DIAMOND_CHESTPLATE), new ItemStack(Items.SHIELD), theatre);
+        var registry = helper.getLevel().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT);
+        ItemStack sharp = new ItemStack(Items.DIAMOND_SWORD);
+        sharp.enchant(registry.getHolderOrThrow(net.minecraft.world.item.enchantment.Enchantments.SHARPNESS), 5);
+        double enchanted = dev.b28.enterprise.army.Army.risk(sharp, new ItemStack(Items.DIAMOND_CHESTPLATE),
+                new ItemStack(Items.SHIELD), theatre);
+        helper.assertTrue(bare > iron && iron > diamond && diamond > enchanted,
+                "bare %.4f > iron %.4f > diamond %.4f > sharpened %.4f".formatted(bare, iron, diamond, enchanted));
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void theFallenAreGoneAndTheirTownGrieves(GameTestHelper helper) {
+        helper.setBlock(new BlockPos(3, 2, 3), Merchant.DESK.get());
+        helper.setBlock(new BlockPos(4, 2, 3), Blocks.CHEST);
+        var depot = MerchantStock.at(helper.getLevel(), helper.absolutePos(new BlockPos(3, 2, 3)));
+        GlobalPos capital = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(new BlockPos(3, 2, 3)));
+        GlobalPos home = far(helper, 8_300_000, 8_000_000);
+        var army = new dev.b28.enterprise.army.Army();
+        for (int i = 0; i < 20; i++) {
+            CompoundTag villager = new CompoundTag();
+            villager.putUUID("UUID", java.util.UUID.randomUUID());
+            army.enlist(villager, home, 0);
+        }
+        long t = 1_000_000;
+        army.campaign(helper.getLevel(), depot, capital, t);
+        army.campaign(helper.getLevel(), depot, capital, t + 30 * 24000L);
+        var record = army.records().get(home);
+        helper.assertTrue(record.fallen() > 0 && army.size() == 20 - record.fallen(),
+                "unarmed for a month, some fall and are gone: " + record.fallen());
+        helper.assertTrue(record.days() > 0, "the rest serve on");
         helper.succeed();
     }
 }

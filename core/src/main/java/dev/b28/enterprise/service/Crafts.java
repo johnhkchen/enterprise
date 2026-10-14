@@ -59,6 +59,14 @@ public final class Crafts {
                 "fletches arrows for a town's contracts from its flint, sticks and feathers",
                 Map.of(Items.FLINT, 1, Items.STICK, 1, Items.FEATHER, 1), Items.ARROW, 4, 4, 0.01,
                 visit -> contracted(visit, Items.ARROW)));
+        recipe(new Recipe("enterprise:stone_swords", WEAPONSMITH,
+                "makes stone swords, for what its town has contracted to sell", "makes stone swords for a town's contracts",
+                ordered(Items.COBBLESTONE, 2, Items.STICK, 1), Items.STONE_SWORD, 1, 2, 0.05,
+                visit -> contracted(visit, Items.STONE_SWORD)));
+        recipe(new Recipe("enterprise:wooden_swords", WEAPONSMITH,
+                "makes wooden swords, for what its town has contracted to sell", "makes wooden swords for a town's contracts",
+                ordered(Items.OAK_LOG, 1, Items.STICK, 2), Items.WOODEN_SWORD, 2, 2, 0.02,
+                visit -> contracted(visit, Items.WOODEN_SWORD)));
         recipe(new Recipe("enterprise:shields", ARMORER,
                 "makes shields of wood and iron, for what its town has contracted to sell",
                 "makes shields for a town's contracts from its logs and iron",

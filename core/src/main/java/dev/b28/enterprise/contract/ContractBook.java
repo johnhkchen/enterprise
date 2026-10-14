@@ -74,6 +74,29 @@ public final class ContractBook extends SavedData {
         return contract;
     }
 
+    /** As {@link #draft}, with more terms (bonus clauses, a levy) after the first. */
+    public Contract draft(GlobalPos seller, GlobalPos buyer, List<Term> terms, Incoterm incoterm, long start, long every,
+            int installments, long now, GlobalPos where, boolean bothPresent) {
+        Contract contract = new Contract(nextId++, seller, buyer, terms, start, every, installments, now);
+        contract.incoterm = incoterm;
+        contract.knownBy.add(where);
+        if (bothPresent) {
+            contract.knownBy.add(seller);
+            contract.knownBy.add(buyer);
+            contract.state = Contract.State.ACTIVE;
+        }
+        String what = contract.delivery().map(d -> d.quantity() + " " + d.describe() + " at %.3f emeralds each"
+                        .formatted(d.unitPrice()))
+                .orElse(contract.levy().map(l -> l.soldiers() + " soldiers at %.2f emeralds a day".formatted(l.payPerDay()))
+                        .orElse("?"));
+        contract.note("drafted on day %d: %s, %s%s".formatted(now / 24000, what, incoterm.name(),
+                contract.bonuses().isEmpty() ? "" : "; bonuses " + contract.bonuses().stream().map(Bonus::describe)
+                        .collect(java.util.stream.Collectors.joining("; "))));
+        contracts.put(contract.id, contract);
+        setDirty();
+        return contract;
+    }
+
     /** Goods for a contract leave on the seller's caravan: where the buyer bears the road, they count as delivered. */
     public void ship(Contract contract, int items, long now) {
         contract.shipped += items;

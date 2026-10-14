@@ -64,6 +64,14 @@ public final class Settlements extends SavedData {
         setDirty();
     }
 
+    /** A resident is gone for good (fallen in war). */
+    public void remove(GlobalPos bell, java.util.UUID id) {
+        var roster = rosters.get(bell);
+        if (roster != null && roster.remove(id) != null) {
+            setDirty();
+        }
+    }
+
     /** Marks a resident as out with a caravan, or back. */
     public void setAway(GlobalPos bell, java.util.UUID id, boolean away) {
         var roster = rosters.get(bell);

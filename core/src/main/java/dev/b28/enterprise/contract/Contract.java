@@ -123,6 +123,23 @@ public final class Contract {
         return List.copyOf(history);
     }
 
+    /** The contract's bonus clauses. */
+    public List<Bonus> bonuses() {
+        return terms.stream().filter(Bonus.class::isInstance).map(Bonus.class::cast).toList();
+    }
+
+    /** The contract's levy term, if it has one. */
+    public java.util.Optional<Levy> levy() {
+        return terms.stream().filter(Levy.class::isInstance).map(Levy.class::cast).findFirst();
+    }
+
+    /** The price for one piece delivered: the locked unit price, and each bonus clause it meets on top. */
+    public double priceOf(net.minecraft.world.item.ItemStack piece) {
+        double unit = delivery().map(Delivery::unitPrice).orElse(0.0);
+        double bonus = bonuses().stream().filter(b -> b.met(piece)).mapToDouble(Bonus::percent).sum();
+        return unit * (1 + bonus / 100);
+    }
+
     /** The contract's delivery term, if it has one. */
     public java.util.Optional<Delivery> delivery() {
         return terms.stream().filter(Delivery.class::isInstance).map(Delivery.class::cast).findFirst();

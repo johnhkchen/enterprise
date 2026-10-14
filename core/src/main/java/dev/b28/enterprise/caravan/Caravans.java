@@ -367,6 +367,7 @@ public final class Caravans {
             }
             settleOwing(server, level, route, stock, caravan, mint, rate, now);
             presentBills(server, level, route, stock, caravan, mint, rate, now);
+            raiseLevy(server, level, route, territory, caravan, now);
             int earned = settleContracts(server, level, route, stock, caravan, mint, rate, now);
             collectExWorks(server, level, route, stock, caravan, mint, rate, now);
             Map<Item, double[]> sold = new LinkedHashMap<>();
@@ -461,6 +462,11 @@ public final class Caravans {
             bell.ifPresent(b -> dev.b28.enterprise.settlement.Settlements.get(server).setAway(b, member.getUUID("UUID"), false));
         }
         caravan.herd.forEach(animal -> Squad.release(level, route.from.pos(), animal));
+        // The levy's recruits join the army here.
+        caravan.recruits.forEach(recruit -> dev.b28.enterprise.army.Army.get(server).enlist(recruit,
+                GlobalPos.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE, recruit.get("enterprise_home")).result()
+                        .orElse(route.to), level.getGameTime()));
+        caravan.recruits.clear();
         route.spursCollected += caravan.spurs;
         route.trips++;
         route.status = "home";
@@ -525,11 +531,13 @@ public final class Caravans {
             int toDeliver = Math.min(carried.getValue(), contract.owed(now));
             book.arrived(contract, carried.getValue());
             int delivered = 0;
+            double worth = 0; // what it's owed, bonuses and all
             for (Iterator<ItemStack> it = caravan.cargo.iterator(); it.hasNext() && delivered < toDeliver; ) {
                 ItemStack stack = it.next();
                 if (!delivery.matches(stack, server.registryAccess())) {
                     continue;
                 }
+                double each = contract.priceOf(stack);
                 ItemStack part = stack.split(Math.min(stack.getCount(), toDeliver - delivered));
                 while (!part.isEmpty() && !stock.hasRoomFor(part)) {
                     // Keep the warehouse's free slots for locker results and coins: deliver less.
@@ -539,6 +547,7 @@ public final class Caravans {
                 }
                 ItemStack rest = stock.insert(part);
                 delivered += part.getCount() - rest.getCount();
+                worth += (part.getCount() - rest.getCount()) * each;
                 stack.grow(rest.getCount());
                 if (stack.isEmpty()) {
                     it.remove();
@@ -551,7 +560,7 @@ public final class Caravans {
                 continue;
             }
             // Where the buyer pays the tolls, it pays on top what the posts will take of the payment on its way home.
-            double owedMoney = delivered * delivery.unitPrice();
+            double owedMoney = worth;
             if (!contract.incoterm().sellerPaysTolls) {
                 double share = tollShare(Territory.get(server), route);
                 owedMoney = share >= 1 ? owedMoney : owedMoney / (1 - share);
@@ -608,7 +617,8 @@ public final class Caravans {
             // The seller crates it with its bill of lading, made out to the buyer: delivered here, Ex Works.
             caravan.cargo.addAll(Crates.pack(level, route.to, stock, goods,
                     Crates.shipping(contract, route.to, route.from, goods, route.id, now, true), now));
-            int cost = (int) Math.ceil(taken * delivery.get().unitPrice() * rate);
+            double worth = goods.stream().mapToDouble(g -> contract.priceOf(g) * g.getCount()).sum(); // with bonuses
+            int cost = (int) Math.ceil(worth * rate);
             int spurs = Math.min(caravan.spurs, cost);
             caravan.spurs -= spurs;
             Treasury.deposit(level, route.to.pos(), stock, spurs);
@@ -644,6 +654,56 @@ public final class Caravans {
             Treasury.deposit(level, route.to.pos(), stock, spurs);
             if (spurs > 0) {
                 book.paidOwing(contract, spurs / rate);
+            }
+        }
+    }
+
+    /**
+     * A levy on this town, its copy now here: it hands its recruits to the caravan, its idle hands first, then those
+     * of a trade it has others of, then the least skilled of the rest; never a child, nor the Merchant at its desk. They go to the army at the caravan's
+     * home. Raised, a soldier counts as delivered under the levy.
+     */
+    static void raiseLevy(MinecraftServer server, ServerLevel level, Route route, Territory territory, Caravan caravan,
+            long now) {
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        var bell = territory.bellOf(route.to);
+        if (bell.isEmpty()) {
+            return;
+        }
+        var roster = dev.b28.enterprise.settlement.Settlements.get(server).roster(bell.get());
+        for (var contract : book.of(route.to)) {
+            var levy = contract.levy();
+            if (levy.isEmpty() || !contract.inForce() || !contract.seller().equals(route.to)
+                    || !contract.buyer().equals(route.from)) {
+                continue;
+            }
+            int wanted = levy.get().soldiers() - contract.delivered();
+            if (wanted <= 0) {
+                continue;
+            }
+            java.util.Map<String, Long> trades = roster.values().stream().filter(r -> !r.baby() && !r.away())
+                    .collect(java.util.stream.Collectors.groupingBy(r -> r.profession(), java.util.stream.Collectors.counting()));
+            List<net.minecraft.world.entity.npc.Villager> able = level.getEntitiesOfClass(
+                            net.minecraft.world.entity.npc.Villager.class, new net.minecraft.world.phys.AABB(route.to.pos()).inflate(48),
+                            v -> !v.isBaby() && roster.containsKey(v.getUUID()) && !roster.get(v.getUUID()).away()
+                                    && v.getBrain().getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.JOB_SITE)
+                                            .filter(route.to::equals).isEmpty())
+                    .stream()
+                    // A levy is no choice: idle hands first, then a trade it has others of, then whoever is least missed.
+                    .sorted(Comparator.comparingInt((net.minecraft.world.entity.npc.Villager v) ->
+                                    dev.b28.enterprise.territory.Labour.idle(Squad.trade(v)) ? 0
+                                            : trades.getOrDefault(Squad.trade(v), 0L) > 1 ? 1 : 2)
+                            .thenComparingInt(v -> v.getVillagerData().getLevel()))
+                    .limit(wanted).toList();
+            for (var recruit : able) {
+                trades.merge(Squad.trade(recruit), -1L, Long::sum);
+                dev.b28.enterprise.settlement.Settlements.get(server).setAway(bell.get(), recruit.getUUID(), true);
+                CompoundTag tag = Squad.stow(recruit);
+                GlobalPos.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, route.to).ifSuccess(t -> tag.put("enterprise_home", t));
+                caravan.recruits.add(tag);
+            }
+            if (!able.isEmpty()) {
+                book.settle(contract, able.size(), 0, now);
             }
         }
     }

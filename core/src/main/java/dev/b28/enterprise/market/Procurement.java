@@ -26,15 +26,28 @@ import net.minecraft.world.item.trading.ItemCost;
  */
 public final class Procurement {
     /** Who sells what in a village, of the goods a town is asked for: so a town with one can supply them. */
-    public static final Map<Item, Set<String>> SELLERS = Map.of(
-            Items.IRON_SWORD, Set.of("minecraft:weaponsmith"),
-            Items.IRON_CHESTPLATE, Set.of("minecraft:armorer"),
-            Items.SHIELD, Set.of("minecraft:armorer"),
-            Items.BOW, Set.of("minecraft:fletcher"),
-            Items.ARROW, Set.of("minecraft:fletcher"),
-            Items.ENCHANTED_BOOK, Set.of("minecraft:librarian"),
-            Items.LAPIS_LAZULI, Set.of("minecraft:cleric"),
-            Items.BOOK, Set.of("minecraft:librarian"));
+    public static final Map<Item, Set<String>> SELLERS = Map.ofEntries(
+            Map.entry(Items.IRON_SWORD, Set.of("minecraft:weaponsmith")),
+            Map.entry(Items.DIAMOND_SWORD, Set.of("minecraft:weaponsmith")),
+            Map.entry(Items.IRON_CHESTPLATE, Set.of("minecraft:armorer")),
+            Map.entry(Items.CHAINMAIL_CHESTPLATE, Set.of("minecraft:armorer")),
+            Map.entry(Items.DIAMOND_CHESTPLATE, Set.of("minecraft:armorer")),
+            Map.entry(Items.LEATHER_CHESTPLATE, Set.of("minecraft:leatherworker")),
+            Map.entry(Items.SHIELD, Set.of("minecraft:armorer")),
+            Map.entry(Items.BOW, Set.of("minecraft:fletcher")),
+            Map.entry(Items.ARROW, Set.of("minecraft:fletcher")),
+            Map.entry(Items.ENCHANTED_BOOK, Set.of("minecraft:librarian")),
+            Map.entry(Items.LAPIS_LAZULI, Set.of("minecraft:cleric")),
+            Map.entry(Items.BOOK, Set.of("minecraft:librarian")));
+
+    /** The level a villager must reach to sell it: diamond gear is a master smith's (enchanted, for emeralds). */
+    public static final Map<Item, Integer> SELLER_LEVEL = Map.of(
+            Items.DIAMOND_SWORD, 5, Items.DIAMOND_CHESTPLATE, 5, Items.CHAINMAIL_CHESTPLATE, 2, Items.SHIELD, 3,
+            Items.BOW, 2, Items.ENCHANTED_BOOK, 1);
+
+    public static int sellerLevel(Item item) {
+        return SELLER_LEVEL.getOrDefault(item, 1);
+    }
 
     private Procurement() {}
 

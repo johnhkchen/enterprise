@@ -39,7 +39,7 @@ public final class CaravanLedger extends SavedData {
 
     private final List<Walker> walkers = new java.util.ArrayList<>();
 
-    void walkHome(GlobalPos home, CompoundTag villager, long arrives) {
+    public void walkHome(GlobalPos home, CompoundTag villager, long arrives) {
         walkers.add(new Walker(home, villager, arrives));
         setDirty();
     }

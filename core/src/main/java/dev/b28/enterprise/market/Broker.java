@@ -266,6 +266,15 @@ public final class Broker {
      * the need is covered.
      */
     public static boolean source(ServerLevel level, GlobalPos desk, Territory territory, Item item, int need, long now) {
+        return source(level, desk, territory, item, need, now, 1, List.of());
+    }
+
+    /**
+     * As above, paying {@code premium} times the price (a sovereign at war), with {@code extra} terms (bonus clauses)
+     * in each contract.
+     */
+    public static boolean source(ServerLevel level, GlobalPos desk, Territory territory, Item item, int need, long now,
+            double premium, List<dev.b28.enterprise.contract.Term> extra) {
         MinecraftServer server = level.getServer();
         var book = dev.b28.enterprise.contract.ContractBook.get(server);
         var plain = new dev.b28.enterprise.contract.Delivery(item, 1, 0);
@@ -292,8 +301,10 @@ public final class Broker {
                 }
                 int held = warehouse.onHand(supplier, item);
                 int spare = (kit ? held / 2 : held) - warehouse.par(supplier, item, false, now); // a town keeps half its kit
+                int least = Procurement.sellerLevel(item);
                 boolean makes = territory.bellOf(supplier)
-                        .map(bell -> Services.residents(level, bell).keySet().stream().anyMatch(trades::contains))
+                        .map(bell -> Services.residents(level, bell).entrySet().stream()
+                                .anyMatch(e -> trades.contains(e.getKey()) && e.getValue() >= least))
                         .orElse(false);
                 if (holders ? spare <= 0 : !makes) {
                     continue;
@@ -307,13 +318,16 @@ public final class Broker {
                         : dev.b28.enterprise.contract.Incoterm.DAP;
                 var route = collect.orElseGet(bring::get);
                 int quantity = Math.min(need - covered, holders ? spare : MAKER_LOT);
-                double exWorks = Prices.emeraldsEach(item) * (1 + SUPPLIER_MARGIN);
+                double exWorks = Prices.emeraldsEach(item) * (1 + SUPPLIER_MARGIN) * premium;
                 double carriage = Caravans.foodNeeded(route.distance()) * 2 * Caravans.PURSE_PER_FOOD_POINT
                         / (Caravans.CARGO_SLOTS * (double) item.getDefaultMaxStackSize());
                 double tolls = Caravans.tollShare(territory, route) * exWorks;
                 var delivery = new dev.b28.enterprise.contract.Delivery(item, quantity,
                         incoterm.price(exWorks, carriage, tolls));
-                var contract = book.draft(supplier, desk, delivery, incoterm, holders ? now : now + MAKER_LEAD,
+                List<dev.b28.enterprise.contract.Term> terms = new ArrayList<>();
+                terms.add(delivery);
+                terms.addAll(extra);
+                var contract = book.draft(supplier, desk, terms, incoterm, holders ? now : now + MAKER_LEAD,
                         Caravans.DEPARTURE_INTERVAL, 1, now, desk, false);
                 covered += quantity;
                 Exchange.get(server).note(desk, now, "sourced %d %s from %s, %s, %s (contract #%d)".formatted(quantity,
@@ -402,6 +416,10 @@ public final class Broker {
                     why.putIfAbsent(base, "a commission");
                 }
             }
+        });
+        Sovereign.get(server).unmet(desk).forEach((item, count) -> {
+            wants.merge(item, count, Integer::sum);
+            why.putIfAbsent(item, "the war effort");
         });
         Warehouse warehouse = Warehouse.get(server);
         List<GlobalPos> markets = Atlas.get(server).known(server, desk);

@@ -99,6 +99,11 @@ public final class Territory extends SavedData {
     public static final double CROWDING_MOOD = 0.5;
     public static final double UNPAID_MOOD = 2;
 
+    /** Each of its soldiers fallen in the last {@link #GRIEF_TICKS} takes this much from its mood, at most {@link #GRIEF_MOST}. */
+    public static final double GRIEF_MOOD = 0.5;
+    public static final double GRIEF_MOST = 2;
+    public static final long GRIEF_TICKS = 10 * 24000L;
+
     /** A Cleric's blessing adds this much to where the mood is heading, while it lasts. */
     public static final double BLESSING_MOOD = 0.5;
     private static final double MOOD_HALF_LIFE_DAYS = 3;
@@ -171,6 +176,7 @@ public final class Territory extends SavedData {
         boolean deepMine; // a master Toolsmith has sunk its mine deep: lapis too
         boolean blastFurnace; // a master Armorer has built one: smelting takes half the coal
         long armouryUntil = -1; // a master Weaponsmith keeps its guards' kit until then
+        java.util.List<Long> fallen = new java.util.ArrayList<>(); // when its soldiers fell, for its grief
     }
 
     private final Map<Place, GlobalPos> owners = new HashMap<>();
@@ -357,6 +363,14 @@ public final class Territory extends SavedData {
         return dev.b28.enterprise.settlement.Settlements.get(server).roster(bell).values().stream()
                 .filter(r -> r.profession().equals(trade) && !r.away() && !r.baby())
                 .mapToInt(r -> Math.max(1, r.level())).max().orElse(0);
+    }
+
+    /** One of the town's soldiers fell: it grieves. */
+    public void mourn(GlobalPos bell, long now) {
+        Holding holding = holdings.computeIfAbsent(bell, b -> new Holding());
+        holding.fallen.removeIf(t -> now - t > GRIEF_TICKS);
+        holding.fallen.add(now);
+        setDirty();
     }
 
     public boolean deepMine(GlobalPos bell) {
@@ -988,6 +1002,8 @@ public final class Territory extends SavedData {
                 + Works.WALL_MOOD * holding.walled
                 + (holding.blessedUntil >= holding.lastComforts
                         ? BLESSING_MOOD * (holding.buildings.contains(Buildings.TEMPLE.id()) ? 2 : 1) : 0)
+                - Math.min(GRIEF_MOST, GRIEF_MOOD * holding.fallen.stream()
+                        .filter(t -> holding.lastComforts - t < GRIEF_TICKS).count())
                 + (holding.buildings.contains(Buildings.SQUARE.id())
                         ? Buildings.SQUARE_MOOD + (holding.flowerBeds ? Buildings.FLOWER_MOOD : 0) : 0)
                 - holding.villagers / VILLAGERS_PER_WANT
@@ -1415,6 +1431,7 @@ public final class Territory extends SavedData {
             entry.putBoolean("deepMine", holding.deepMine);
             entry.putBoolean("blastFurnace", holding.blastFurnace);
             entry.putLong("armouryUntil", holding.armouryUntil);
+            entry.putLongArray("fallen", holding.fallen.stream().mapToLong(Long::longValue).toArray());
             if (holding.dock != null) {
                 entry.putLong("dock", holding.dock.asLong());
             }
@@ -1538,6 +1555,9 @@ public final class Territory extends SavedData {
                 holding.deepMine = entry.getBoolean("deepMine");
                 holding.blastFurnace = entry.getBoolean("blastFurnace");
                 holding.armouryUntil = entry.contains("armouryUntil") ? entry.getLong("armouryUntil") : -1;
+                for (long when : entry.getLongArray("fallen")) {
+                    holding.fallen.add(when);
+                }
                 holding.dock = entry.contains("dock") ? BlockPos.of(entry.getLong("dock")) : null;
                 holding.homeProgress = entry.getDouble("homeProgress");
                 holding.birthProgress = entry.getDouble("birthProgress");

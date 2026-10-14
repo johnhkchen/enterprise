@@ -29,10 +29,15 @@ towns' buildings, hands and services are printed at the end.
 With --master, the hub's Merchant is a master: it brokers with players' shops (Numismatics vendors) round its desk,
 and its market (orders, signals, takings) is printed at the end.
 
+With --war M,W,P, a sovereign at the hub (its capital: the Merchant a master, a master Librarian and a Cleric at
+court, the hub a settlement, its chunks kept loaded) mobilises on day M (minting 1,000 spurs a day into the hub's
+Blaze Banker, stockpiling kit through contracts, buying gold at a shop), declares war on a rival faction on day W
+(levying soldiers), and makes peace on day P. Each day's /enterprise war line is logged, and the tally printed.
+
 With --comforts, the hub also stocks a shulker of comforts (treats, clothing, furnishings) for towns to buy, and the
 spring, once open, refills a shulker of comforts and a stack of books every day.
 
-    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts] [--fleet] [--services] [--metal] [--trades] [--master]
+    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts] [--fleet] [--services] [--metal] [--trades] [--master] [--war M,W,P]
 """
 
 import csv
@@ -145,7 +150,17 @@ def setup():
         for i, trade in enumerate(["armorer", "toolsmith"]):
             rcon(f"summon minecraft:villager {HUB[0] + 4 + i}.5 -60 {HUB[1] + 4}.5 {{PersistenceRequired:1b,Xp:1,"
                  f"VillagerData:{{profession:\"minecraft:{trade}\",level:2,type:\"minecraft:plains\"}}}}")
-    if "--master" in sys.argv:
+    if "--war" in sys.argv:
+        # The sovereign's court at the hub: a bell, beds, a master Librarian and a Cleric; kept loaded, as a capital is.
+        rcon(f"forceload add {HUB[0] - 12} {HUB[1] - 15} {HUB[0] + 20} {HUB[1] + 22}",
+             f"setblock {HUB[0] + 4} -60 {HUB[1] + 16} minecraft:bell[attachment=floor]")
+        for i in range(4):
+            rcon(f"setblock {HUB[0] + 2 * i} -60 {HUB[1] + 18} minecraft:white_bed[facing=north,part=head]",
+                 f"setblock {HUB[0] + 2 * i} -60 {HUB[1] + 19} minecraft:white_bed[facing=north,part=foot]")
+        for i, (trade, lvl) in enumerate([("librarian", 5), ("cleric", 3)]):
+            rcon(f"summon minecraft:villager {HUB[0] + 2 + 2 * i}.5 -60 {HUB[1] + 15}.5 {{PersistenceRequired:1b,Xp:250,"
+                 f"VillagerData:{{profession:\"minecraft:{trade}\",level:{lvl},type:\"minecraft:plains\"}}}}")
+    if "--master" in sys.argv or "--war" in sys.argv:
         rcon(f"execute as @e[type=villager,x={HUB[0]},y=-61,z={HUB[1]},dx=8,dy=3,dz=8] "
              f"if data entity @s VillagerData{{profession:\"enterprise:merchant\"}} "
              f"run data merge entity @s {{VillagerData:{{level:5}},Xp:250}}")
@@ -175,9 +190,11 @@ def setup():
     sprint(600)
     for corner in TOWNS.values():
         rcon(f"enterprise census {bell(corner)}")
+    if "--war" in sys.argv:
+        rcon(f"enterprise census {HUB[0] + 4} -60 {HUB[1] + 16}")
     for name in ROUTED:
         print(f"route hub -> {name}: " + rcon(f"enterprise route add {hub_desk} {desk(TOWNS[name])}").strip().splitlines()[-1])
-    for corner in [HUB, *TOWNS.values()]:
+    for corner in [*([] if "--war" in sys.argv else [HUB]), *TOWNS.values()]:
         rcon(f"forceload remove {area(corner, 27)}")
 
 
@@ -215,7 +232,14 @@ def main():
         build_river(RIVER_ROW + 1, set())
     setup()
     rows = []
+    war = [int(d) for d in sys.argv[sys.argv.index("--war") + 1].split(",")] if "--war" in sys.argv else None
     for day in range(1, days + 1):
+        if war and day == war[0]:
+            print("day %d: " % day + rcon(f"enterprise war mobilise {HUB[0] + 2} -60 {HUB[1] + 2} 1000").strip().splitlines()[-1])
+        if war and day == war[1]:
+            print("day %d: " % day + rcon("enterprise war declare faction").strip().splitlines()[-1])
+        if war and day == war[2]:
+            print("day %d: " % day + rcon("enterprise war peace").strip().splitlines()[-1])
         if inject == day:
             open_spring()
         elif inject is not None and day > inject:
@@ -262,6 +286,19 @@ def main():
                     "purchase_spurs": int(m.group(10)), "food_spurs": int(m.group(11)), "tolls": int(m.group(12)),
                     "home_spurs": int(m.group(13)),
                 })
+        if war is not None:
+            line = rcon("enterprise war").strip().splitlines()[-1]
+            rows.append({"day": day, "kind": "war", "name": "sovereign", "mint_rate": rate, "war": line,
+                         "treasury": number(r"treasury (\d+) spurs", line),
+                         "minted": number(r"minted (\d+)", line),
+                         "contracts": number(r"contracts (\d+)", line),
+                         "delivered": number(r"delivered (\d+)", line),
+                         "serving": number(r"army (\d+) serving", line),
+                         "fallen": number(r"(\d+) fallen", line),
+                         "bills": number(r"bills ([\d.]+)", line)})
+            if day % 5 == 0 or day in war:
+                print(f"  {line}")
+            sys.stdout.flush()
         towns = [r for r in rows if r["day"] == day and r["kind"] == "town"]
         print(f"day {day:>2}: " + " | ".join(
             f"{r['name']} {r['treasury']:.0f}em {r['mood']:+.1f} {int(r['villagers'])}v {int(r['hexes'])}h "
@@ -269,6 +306,14 @@ def main():
             for r in towns)
             + f" | mint {rate:.1f}")
         sys.stdout.flush()
+    if war is not None:
+        print("\n" + rcon("enterprise war tally").strip())
+        print("\n" + rcon("enterprise war").strip())
+        print("\n" + rcon(f"enterprise market {HUB[0] + 2} -60 {HUB[1] + 2}").strip())
+        print("\n" + rcon("enterprise contracts").strip())
+        print("\n" + rcon("enterprise routes").strip())
+        for name, corner in TOWNS.items():
+            print(f"\n{name} trades: " + rcon(f"enterprise territory {bell(corner)}").strip().splitlines()[0])
     if "--metal" in sys.argv:
         for name in ["S1", "T"]:
             t = rcon(f"enterprise territory {bell(TOWNS[name])}")
