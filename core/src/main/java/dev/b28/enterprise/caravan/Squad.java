@@ -148,7 +148,13 @@ public final class Squad {
     public static List<Villager> muster(ServerLevel level, GlobalPos desk, int reach, Needs needs, int extras) {
         List<Villager> candidates = available(level, desk, reach);
         List<Villager> squad = new ArrayList<>();
-        candidates.stream().filter(v -> LEADS.contains(trade(v))).findFirst().ifPresent(squad::add);
+        // By water, a Fisherman leads: the boat needs its captain more than the wagon needs anyone else.
+        if (needs.water()) {
+            candidates.stream().filter(v -> trade(v).equals(FISHERMAN)).findFirst().ifPresent(squad::add);
+        }
+        if (squad.isEmpty()) {
+            candidates.stream().filter(v -> LEADS.contains(trade(v))).findFirst().ifPresent(squad::add);
+        }
         if (squad.isEmpty()) {
             return squad; // a Cleric or a Farmer goes along, but doesn't drive the wagon
         }

@@ -119,6 +119,28 @@ def main():
             lo, hi = relief.get(hx, (10 ** 6, -10 ** 6))
             relief[hx] = (min(lo, low), max(hi, high))
 
+    # Water by chunk (only chunks surveyed: the rest are taken as dry), and the hexes' share of it.
+    water = {}
+    for dim in load(data / "enterprise_terrain.dat").get("dimensions", []):
+        for chunk, wet in zip(dim.get("chunks", []), dim.get("water", b"")):
+            water[chunk_xz(chunk)] = wet
+
+    def wet_share(q, r):
+        cx, cz = centre(q, r)
+        wet = total = 0
+        for chx in range(int(cx - SIZE) // 16 - 1, int(cx + SIZE) // 16 + 2):
+            for chz in range(int(cz - SIZE) // 16 - 1, int(cz + SIZE) // 16 + 2):
+                if hex_at(chx * 16 + 8.5, chz * 16 + 8.5) == (q, r):
+                    wet += water.get((chx, chz), 0)
+                    total += 16
+        return wet / total if total else 0
+
+    bridges = []
+    for b in load(data / "enterprise_works.dat").get("bridges", []):
+        h = b.get("hexes", [])
+        if len(h) >= 6 and b.get("done"):
+            bridges.append(((h[0], h[1]), (h[2], h[3]), (h[4], h[5]), pos(b["owner"])))
+
     # The map's extent: the markets on the map, and the paths, with a margin.
     markets = set(bell_to_desk.values()) | {pos(r["from"]) for r in routes} | {pos(r["to"]) for r in routes}
     routed = ({pos(r["from"]) for r in routes} | {pos(r["to"]) for r in routes}) - off_map
@@ -156,7 +178,12 @@ def main():
             lo, hi = relief.get((q_, r_), (0, 0))
             rel = max(0, hi - lo)
             fill, opacity = "var(--land)", 1
-            if rel >= CLIFF:
+            wet = wet_share(q_, r_)
+            if wet > 0.5:
+                fill = "var(--sea)"
+            elif wet > 0.15:
+                fill = "var(--shore)"
+            elif rel >= CLIFF:
                 fill = "var(--cliff)"
             elif rel >= 8:
                 fill = "var(--hill)"
@@ -166,6 +193,15 @@ def main():
             if owner is not None:
                 svg.append(f'<polygon points="{pts}" fill="{tint[owner]}" fill-opacity="0.18" stroke="none">'
                            f'<title>{html.escape(names.get(owner, str(owner)))}\'s land</title></polygon>')
+
+    # Bridges: a deck across the hex, between the neighbours it joins.
+    for hexpos, a_, b_, owner in bridges:
+        (ax, az), (bx, bz) = px(*centre(*a_)), px(*centre(*b_))
+        mx, mz = px(*centre(*hexpos))
+        ax, az, bx, bz = (mx + ax) / 2, (mz + az) / 2, (mx + bx) / 2, (mz + bz) / 2
+        svg.append(f'<line x1="{ax:.1f}" y1="{az:.1f}" x2="{bx:.1f}" y2="{bz:.1f}" stroke="var(--deck)" '
+                   f'stroke-width="9" stroke-linecap="square"><title>{html.escape(names.get(bell_to_desk.get(owner, owner), "a town"))}'
+                   f"'s bridge</title></line>")
 
     # Routes along their paths, width by trips.
     most = max([r.get("trips", 0) for r in routes] or [1]) or 1
@@ -222,13 +258,14 @@ def main():
 <style>
 /* One map, framed like a sheet on the table; the key below it. b28 palette: steel blue, off-white, cream, ink. */
 :root {{ --paper:#faf8f5; --cream:#f2efe9; --ink:#1c1917; --land:#efe9dc; --hill:#d9cdb4; --cliff:#8c7f6a;
-  --grid:#e2dacb; --muted:#6b6259; --steel:#44679b; --shadow:rgba(28,25,23,.12); --lift:rgba(255,255,255,.55);
+  --grid:#e2dacb; --muted:#6b6259; --steel:#44679b; --sea:#a9c0d8; --shore:#cdd9e0; --deck:#7a5230; --shadow:rgba(28,25,23,.12); --lift:rgba(255,255,255,.55);
   --display:Lora, Georgia, serif; --body:Karla, "Helvetica Neue", Arial, sans-serif; }}
 @media (prefers-color-scheme: dark) {{ :root:not([data-theme="light"]) {{ --paper:#1c1917; --cream:#26221f;
   --ink:#f2efe9; --land:#2b2723; --hill:#3d362f; --cliff:#7a6e5c; --grid:#332e29; --muted:#a69d92; --steel:#8fb0dc;
-  --shadow:rgba(0,0,0,.4); --lift:rgba(255,255,255,.04); color-scheme:dark; }} }}
+  --sea:#2c4058; --shore:#30393f; --deck:#b98a5a; --shadow:rgba(0,0,0,.4); --lift:rgba(255,255,255,.04); color-scheme:dark; }} }}
 :root[data-theme="dark"] {{ --paper:#1c1917; --cream:#26221f; --ink:#f2efe9; --land:#2b2723; --hill:#3d362f;
-  --cliff:#7a6e5c; --grid:#332e29; --muted:#a69d92; --steel:#8fb0dc; --shadow:rgba(0,0,0,.4);
+  --cliff:#7a6e5c; --grid:#332e29; --muted:#a69d92; --steel:#8fb0dc; --sea:#2c4058; --shore:#30393f;
+  --deck:#b98a5a; --shadow:rgba(0,0,0,.4);
   --lift:rgba(255,255,255,.04); color-scheme:dark; }}
 body {{ background:var(--paper); color:var(--ink); font-family:var(--body); }}
 main {{ max-width:1160px; margin:0 auto; padding-block:24px 40px; padding-inline:16px; }}
@@ -252,6 +289,8 @@ for its trips and how it ended the run.</p>
 <div class="key">
 <span><span class="swatch" style="background:var(--cliff)"></span>cliffs: no way across</span>
 <span><span class="swatch" style="background:var(--hill)"></span>steep ground</span>
+<span><span class="swatch" style="background:var(--sea)"></span>water</span>
+<span><span class="swatch" style="background:var(--deck)"></span>bridge</span>
 <span>line width: trips made</span><span>dashed: winding down</span><span>ringed: freight hub</span>
 <span>★ the capital</span><span>square: off the map</span>
 </div></main>"""

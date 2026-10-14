@@ -1516,7 +1516,9 @@ public final class Caravans {
         }
         Terrain terrain = Terrain.get(server);
         Works works = Works.get(server);
-        return hex -> works.bridged(dimension, hex) ? 1 : terrain.crossingFactor(level, hex);
+        // A bridge carries caravans over water, not over a cliff: a bridged hex is open ground if it's mostly water.
+        return hex -> works.bridged(dimension, hex) && terrain.waterShare(level, hex) > Terrain.IMPASSABLE
+                ? 1 : terrain.crossingFactor(level, hex);
     }
 
     /**

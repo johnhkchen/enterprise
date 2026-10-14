@@ -382,8 +382,10 @@ public final class Works extends SavedData {
         Caravans.BridgeValue best = null;
         double bestPayback = PAYBACK_DAYS;
         for (Hex hex : territory.hexes(owner)) {
+            // A bridge spans water: a hex mostly under water (a cliff or a mountain's flank can't be bridged).
             if (bridges.containsKey(new Territory.Place(level.dimension(), hex))
-                    || !Double.isInfinite(terrain.crossingFactor(level, hex))) {
+                    || terrain.waterShare(level, hex) <= Terrain.IMPASSABLE
+                    || terrain.relief(level, hex) >= Terrain.CLIFF) {
                 continue;
             }
             Caravans.BridgeValue value = Caravans.bridgeValue(level.getServer(), territory, owner, hex, rate);

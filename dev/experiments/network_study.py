@@ -155,6 +155,17 @@ def overlaps_town(x0, z0, x1, z1):
     return any(x0 <= c[0] + 29 and x1 >= c[0] - 2 and z0 <= c[1] + 29 and z1 >= c[1] - 2 for c in TOWNS.values())
 
 
+def load_area(x0, z0, x1, z1):
+    """Force-loads a box and waits until each of its corners (and middle) is loaded: fills fail on unloaded ground."""
+    rcon(f"forceload add {x0} {z0} {x1} {z1}")
+    points = [(x0, z0), (x1, z0), (x0, z1), (x1, z1), ((x0 + x1) // 2, (z0 + z1) // 2)]
+    for _ in range(60):
+        if all("passed" in rcon(f"execute if loaded {x} -61 {z}") for x, z in points):
+            return
+        sprint(10)
+    print(f"warning: {x0},{z0} to {x1},{z1} not all loaded")
+
+
 def build_river(row, bridges):
     """Floods the surface layer of each river hex in strips that stay inside the hex (pointy-top), one hex at a time.
     Strips that would run under a town are left dry."""
@@ -200,15 +211,54 @@ def build_ridge():
                 half = 6
                 if overlaps_town(cx - half, cz - half, cx + half, cz + half):
                     continue
-            rcon(f"forceload add {cx - 40} {cz - 40} {cx + 40} {cz + 40}")
-            sprint(20)
+            load_area(cx - 40, cz - 40, cx + 40, cz + 40)
             # Inside the hex (its inner circle is 40 across the middle), so a slope never spills into the pass.
             for y in range(-60, -20, 5):
                 rcon(f"fill {cx - half} {y} {cz - half} {cx + half} {y + 4} {cz + half} stone")
+            rcon(f"enterprise survey {cx - 48} -60 {cz - 48} {cx + 48} -60 {cz + 48}")  # seen now, not at unload
             rcon(f"forceload remove {cx - 40} {cz - 40} {cx + 40} {cz + 40}")
             raised += 1
-    sprint(1200)  # let the chunks unload: each is surveyed as it goes
-    print(f"ridge: {raised} hexes raised, the pass at T")
+    # The pass is a ravine: T's hex flooded round the town, crossed only by the town's one great bridge.
+    cx, cz = (round(v) for v in hex_centre(*pass_hex))
+    load_area(cx - 48, cz - 48, cx + 48, cz + 48)
+    town = (t[0] - 2, t[1] - 2, t[0] + 29, t[1] + 29)
+    for x in range(cx - 40, cx + 41, 8):
+        for z in range(cz - 40, cz + 41, 8):
+            x1, z1 = min(x + 7, cx + 40), min(z + 7, cz + 40)
+            if not (x <= town[2] and x1 >= town[0] and z <= town[3] and z1 >= town[1]):
+                rcon(f"fill {x} -61 {z} {x1} -61 {z1} water replace grass_block")
+    rcon(f"enterprise survey {cx - 48} -60 {cz - 48} {cx + 48} -60 {cz + 48}")
+    print(rcon(f"enterprise bridge {tx} -60 {tz} {tx} -60 {tz}").strip().splitlines()[-1])
+    rcon(f"forceload remove {cx - 48} {cz - 48} {cx + 48} {cz + 48}")
+    print(f"ridge: {raised} hexes raised, the pass at T a ravine with one bridge")
+
+
+def build_coast():
+    """The capital a port: the sea west of it (the surface flooded hex by hex, west of x 950 across the road to the
+    market across the sea), and Fishermen at the capital to captain its boats."""
+    flooded = 0
+    for q in range(-30, 60):
+        for r in range(-10, 60):
+            cx, cz = (round(v) for v in hex_centre(q, r))
+            if not (440 <= cx <= 950 and 520 <= cz <= 1480):
+                continue
+            load_area(cx - 44, cz - 44, cx + 44, cz + 44)
+            for z in range(cz - 44, cz + 45, 22):
+                rcon(f"fill {cx - 44} -61 {z} {min(cx + 44, 950 + 40)} -61 {min(z + 21, cz + 44)} water replace grass_block")
+            rcon(f"enterprise survey {cx - 48} -60 {cz - 48} {cx + 48} -60 {cz + 48}")
+            rcon(f"forceload remove {cx - 44} {cz - 44} {cx + 44} {cz + 44}")
+            flooded += 1
+    rcon(f"forceload add {HUB[0] + 16} {HUB[1] + 10} {HUB[0] + 30} {HUB[1] + 24}")
+    sprint(20)
+    for i in range(2):
+        # In the capital's own chunk (the one kept loaded), so they're there when a boat wants a captain.
+        rcon(f"summon minecraft:villager {HUB[0] + 4 + i}.5 -60 {HUB[1] + 5}.5 {{PersistenceRequired:1b,Xp:1,"
+             f"VillagerData:{{profession:\"minecraft:fisherman\",level:3,type:\"minecraft:plains\"}}}}",
+             f"setblock {HUB[0] + 22 + 2 * i} -60 {HUB[1] + 18} minecraft:white_bed[facing=north,part=head]",
+             f"setblock {HUB[0] + 22 + 2 * i} -60 {HUB[1] + 19} minecraft:white_bed[facing=north,part=foot]")
+    rcon(f"enterprise census {HUB[0] + 4} -60 {HUB[1] + 16}")
+    rcon(f"forceload remove {HUB[0] + 16} {HUB[1] + 10} {HUB[0] + 30} {HUB[1] + 24}")
+    print(f"coast: {flooded} hexes of sea west of the capital, two Fishermen to captain its boats")
 
 
 def setup():
@@ -300,6 +350,7 @@ def setup():
         rcon(f"enterprise census {HUB[0] + 4} -60 {HUB[1] + 16}")
         print(rcon(f"enterprise war capital {hub_desk} 500").strip())
     if "--ridge" in sys.argv:
+        build_coast()
         build_ridge()
         # The pass town's carrying trade: Leatherworkers (packs), a Shepherd to lead, idle hands (porters, draymen),
         # and llamas in a pen by its desk.

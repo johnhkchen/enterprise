@@ -52,6 +52,51 @@ final class EnterpriseCommands {
                         .then(Commands.argument("bell", BlockPosArgument.blockPos())
                                 .executes(EnterpriseCommands::census)))
                 .then(Commands.literal("settlements").executes(EnterpriseCommands::settlements))
+                .then(Commands.literal("survey")
+                        .then(Commands.argument("from", BlockPosArgument.blockPos())
+                                .then(Commands.argument("to", BlockPosArgument.blockPos()).executes(context -> {
+                                    // The land in a box surveyed now (water and heights), for chunks that are loaded:
+                                    // otherwise it's seen only as chunks load and unload.
+                                    var level = context.getSource().getLevel();
+                                    BlockPos a = BlockPosArgument.getBlockPos(context, "from");
+                                    BlockPos b = BlockPosArgument.getBlockPos(context, "to");
+                                    var terrain = dev.b28.enterprise.territory.Terrain.get(level.getServer());
+                                    int surveyed = 0;
+                                    for (int cx = Math.min(a.getX(), b.getX()) >> 4; cx <= Math.max(a.getX(), b.getX()) >> 4; cx++) {
+                                        for (int cz = Math.min(a.getZ(), b.getZ()) >> 4; cz <= Math.max(a.getZ(), b.getZ()) >> 4; cz++) {
+                                            var chunk = level.getChunkSource().getChunkNow(cx, cz);
+                                            if (chunk != null) {
+                                                long pos = net.minecraft.world.level.ChunkPos.asLong(cx, cz);
+                                                terrain.record(level, pos, dev.b28.enterprise.territory.Terrain.survey(chunk));
+                                                terrain.recordHeights(level, pos, dev.b28.enterprise.territory.Terrain.surveyHeights(chunk));
+                                                surveyed++;
+                                            }
+                                        }
+                                    }
+                                    int done = surveyed;
+                                    context.getSource().sendSuccess(() -> Component.literal(done + " chunks surveyed"), false);
+                                    return done;
+                                }))))
+                .then(Commands.literal("bridge")
+                        .then(Commands.argument("at", BlockPosArgument.blockPos())
+                                .then(Commands.argument("desk", BlockPosArgument.blockPos()).executes(context -> {
+                                    // A finished bridge on the hex at {at}, its town's (the market at {desk}): a deck
+                                    // across the hex, between the neighbours either side of the way through.
+                                    var level = context.getSource().getLevel();
+                                    var hex = dev.b28.enterprise.hex.Hex.at(BlockPosArgument.getBlockPos(context, "at"));
+                                    var desk = net.minecraft.core.GlobalPos.of(level.dimension(),
+                                            BlockPosArgument.getBlockPos(context, "desk"));
+                                    var territory = dev.b28.enterprise.territory.Territory.get(level.getServer());
+                                    var owner = territory.bellOf(desk).orElse(desk);
+                                    var near = hex.neighbors();
+                                    var works = dev.b28.enterprise.territory.Works.get(level.getServer());
+                                    // (across the hex north-west to south-east: from one side of a ridge to the other)
+                                    var bridge = works.start(owner, level.dimension(), hex, near.get(2), near.get(5));
+                                    works.finish(bridge);
+                                    context.getSource().sendSuccess(() -> Component.literal("A bridge on " + hex + ", "
+                                            + dev.b28.enterprise.settlement.Names.label(desk) + "'s"), true);
+                                    return 1;
+                                }))))
                 .then(Commands.literal("hex")
                         .executes(context -> hex(context, BlockPos.containing(context.getSource().getPosition())))
                         .then(Commands.argument("pos", BlockPosArgument.blockPos())

@@ -85,6 +85,9 @@ public final class Territory extends SavedData {
     /** A town judges its toll over this many days: caravans pass every few days, so one day says little. */
     public static final long TOLL_REVIEW_TICKS = 3 * 24000L;
 
+    /** Guards on posts that bring in tolls wait this many days' pay before they go unpaid. */
+    public static final double GUARD_CREDIT_DAYS = 3;
+
     /** A guard's daily food (points of nutrition) and pay (emeralds). */
     public static final double GUARD_FOOD_PER_DAY = 6;
     public static final double GUARD_PAY_PER_DAY = 0.5;
@@ -135,6 +138,7 @@ public final class Territory extends SavedData {
         double treasury; // the market's money at its last touch, in emeralds (chest emeralds, coins, Banker)
         double tollRate = DEFAULT_TOLL_RATE;
         double passageFee; // spurs a caravan through its posts, whatever it carries
+        double plannedTollIncome; // spurs a day its toll plan expects, before the guards' pay
         double tollIncomeToday; // since the last review
         double tollIncomeYesterday = -1; // over the last period reviewed; none yet
         long lastTollReview = -1;
@@ -1287,6 +1291,18 @@ public final class Territory extends SavedData {
             double rate = mint.rate(Mint.DEFAULT_FACTION, now);
             paid = Math.min(1, Treasury.withdraw(level, desk, stock, pay, mint, now).value(rate) / pay);
             holding.guardUpkeepOwed -= pay;
+            // Guards on posts that took tolls last review will wait for their pay, up to a few days' worth: it comes
+            // out of the tolls to come. Past that, unpaid, they go.
+            double unpaid = pay * (1 - paid);
+            double credit = GUARD_CREDIT_DAYS * holding.posts.size() * GUARD_PAY_PER_DAY;
+            // (tolls taken last review, or a plan that expects them: new guards wait for the first)
+            boolean earning = holding.tollIncomeYesterday > 0
+                    || holding.plannedTollIncome > holding.posts.size() * guardCostPerDay(
+                            Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now));
+            if (unpaid > 0 && earning && holding.guardUpkeepOwed + unpaid <= credit) {
+                holding.guardUpkeepOwed += unpaid;
+                paid = 1;
+            }
         }
         double kept = Math.min(fed, paid);
         if (kept < 1) {
@@ -1354,6 +1370,7 @@ public final class Territory extends SavedData {
             holding.tollRate = plan.rate();
             holding.passageFee = plan.fee();
         }
+        holding.plannedTollIncome = plan.income();
         holding.tollIncomeYesterday = holding.tollIncomeToday;
         holding.tollIncomeToday = 0;
         holding.lastTollReview = now;
@@ -1403,6 +1420,7 @@ public final class Territory extends SavedData {
             entry.putDouble("treasury", holding.treasury);
             entry.putDouble("tollRate", holding.tollRate);
             entry.putDouble("passageFee", holding.passageFee);
+            entry.putDouble("plannedTollIncome", holding.plannedTollIncome);
             entry.putDouble("tollIncomeToday", holding.tollIncomeToday);
             entry.putDouble("tollIncomeYesterday", holding.tollIncomeYesterday);
             entry.putLong("lastTollReview", holding.lastTollReview);
@@ -1534,6 +1552,7 @@ public final class Territory extends SavedData {
                 holding.valuePerDay = entry.getDouble("valuePerDay");
                 holding.treasury = entry.getDouble("treasury");
                 holding.passageFee = entry.getDouble("passageFee");
+                holding.plannedTollIncome = entry.getDouble("plannedTollIncome");
                 if (entry.contains("tollRate")) {
                     holding.tollRate = entry.getDouble("tollRate");
                     holding.tollIncomeToday = entry.getDouble("tollIncomeToday");
