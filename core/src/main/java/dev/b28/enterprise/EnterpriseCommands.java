@@ -528,7 +528,14 @@ final class EnterpriseCommands {
         String held = metals.desk().isEmpty() ? "" : " | metals " + dev.b28.enterprise.market.MetalExchange.METALS.stream()
                 .map(m -> BuiltInRegistries.ITEM.getKey(m.item()).getPath() + "=" + metals.held(m.item()))
                 .collect(java.util.stream.Collectors.joining(" "));
-        String full = line + held + trades;
+        var requisitions = dev.b28.enterprise.market.Requisitions.get(server);
+        String reqs = " | requisitions %d open (%s), %d awarded, %d bought at its shops".formatted(
+                requisitions.all().size(), requisitions.all().stream()
+                        .map(r -> BuiltInRegistries.ITEM.getKey(r.goods().get(0)).getPath() + ":" + r.open() + "/"
+                                + r.wanted() + (r.awarded() ? "a" : "") + "b" + r.bids().size())
+                        .collect(java.util.stream.Collectors.joining(" ")),
+                requisitions.contracts(), requisitions.boughtAtShops());
+        String full = line + held + reqs + trades;
         source.sendSuccess(() -> Component.literal(full), false);
         return army.size();
     }

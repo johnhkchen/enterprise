@@ -103,6 +103,12 @@ public final class Warehouse extends SavedData {
         return java.util.Optional.of(lockers.values().stream().anyMatch(byItem -> byItem.getOrDefault(id, 0) > 0));
     }
 
+    /** How many of {@code item} the town's villagers sell a restock, all told, as its Merchant last saw them. */
+    public int offered(GlobalPos desk, Item item) {
+        String id = BuiltInRegistries.ITEM.getKey(item).toString();
+        return offered.getOrDefault(desk, Map.of()).values().stream().mapToInt(byItem -> byItem.getOrDefault(id, 0)).sum();
+    }
+
     /** What the town's lockers can take of {@code item} in a day. */
     public int capacity(GlobalPos desk, Item item) {
         String id = BuiltInRegistries.ITEM.getKey(item).toString();

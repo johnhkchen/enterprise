@@ -113,7 +113,8 @@ public final class Broker {
             if (Shops.own(shop, desk.pos()) || shop.getFilterItem().isEmpty()
                     || shop.getMode() != VendorBlockEntity.Mode.BUY
                     || Sovereign.get(server).shops().contains(shop.getBlockPos())
-                    || MetalExchange.get(server).shops().contains(shop.getBlockPos())) {
+                    || MetalExchange.get(server).shops().contains(shop.getBlockPos())
+                    || Requisitions.get(server).isShop(shop.getBlockPos())) {
                 continue; // the sovereign's and the exchange's own shops buy from players, not from its Merchant
             }
             if (Shops.enchanted(shop.getFilterItem())) {
@@ -292,8 +293,6 @@ public final class Broker {
         if (covered >= need) {
             return true;
         }
-        double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
-        boolean kit = dev.b28.enterprise.territory.Smithing.KITS.stream().anyMatch(k -> k.item() == item);
         var crown = Sovereign.get(server);
         for (boolean holders : List.of(true, false)) {
             for (GlobalPos supplier : markets) {
@@ -303,50 +302,17 @@ public final class Broker {
                 if (covered >= need || !crownOrders && !book.open(supplier, desk, plain).isEmpty()) {
                     continue;
                 }
-                // The crown doesn't put its own army on trial: its capital supplies its front whatever their record.
-                boolean trusted = book.trust(supplier, desk, now) >= dev.b28.enterprise.contract.ContractBook.MIN_TRUST
-                        || crownOrders;
-                int held = warehouse.onHand(supplier, item);
-                // A town keeps half its kit for its own hands; an armoury's goods are there to be sent on.
-                boolean keepsHalf = kit && !dev.b28.enterprise.merchant.Depots.get(server)
-                        .has(supplier, dev.b28.enterprise.merchant.Depots.Kind.ARMOURY);
-                int spare = (keepsHalf ? held / 2 : held) - warehouse.par(supplier, item, false, now);
-                var food = item.getDefaultInstance().get(net.minecraft.core.component.DataComponents.FOOD);
-                if (food != null && food.nutrition() > 0) {
-                    // And the food its caravans need, as far as its other food doesn't cover it.
-                    int otherPoints = warehouse.stocktake(supplier).entrySet().stream()
-                            .filter(e -> !e.getKey().equals(BuiltInRegistries.ITEM.getKey(item).toString()))
-                            .mapToInt(e -> e.getValue() * dev.b28.enterprise.army.Army.nutrition(
-                                    BuiltInRegistries.ITEM.get(ResourceLocation.parse(e.getKey()))))
-                            .sum();
-                    spare -= Math.max(0, 2 * Warehouse.FOOD_PAR_POINTS - otherPoints) / food.nutrition();
-                }
-                // It can make them if a villager of it sells them (at the level), or a trade of it makes them from inputs
-                // it holds or this desk does (and its caravans would bring): no gold without a mine's raw gold.
-                int least = Procurement.sellerLevel(item);
-                var residents = territory.bellOf(supplier).map(bell -> Services.residents(level, bell)).orElse(Map.of());
-                // (and, where its Merchant has seen them restock, one of them does offer it: a trade's offers vary)
-                boolean sells = residents.entrySet().stream().anyMatch(e -> Procurement.SELLERS.getOrDefault(item,
-                        Set.of()).contains(e.getKey()) && e.getValue() >= least)
-                        && warehouse.offers(supplier, item).orElse(true);
-                boolean crafts = dev.b28.enterprise.service.Crafts.recipesFor(item).stream()
-                        .anyMatch(r -> residents.containsKey(r.trade()) && r.inputs().keySet().stream()
-                                .allMatch(in -> warehouse.onHand(supplier, in) > 0 || warehouse.onHand(desk, in) > 0));
-                boolean makes = sells || crafts;
-                if (holders ? spare <= 0 : !makes) {
+                Optional<Means> found = means(level, desk, supplier, item, now);
+                if (found.isEmpty() || (holders ? found.get().spare() <= 0 : !found.get().makes())) {
                     continue;
                 }
-                var collect = ledger.route(desk, supplier);
-                var bring = ledger.route(supplier, desk);
-                if (collect.isEmpty() && bring.isEmpty()) {
-                    continue; // no road between them: a gap a player could fill
-                }
-                var incoterm = collect.isPresent() ? dev.b28.enterprise.contract.Incoterm.EXW
-                        : dev.b28.enterprise.contract.Incoterm.DAP;
-                var route = collect.orElseGet(bring::get);
+                Means means = found.get();
+                // The crown doesn't put its own army on trial: its capital supplies its front whatever their record.
+                boolean trusted = means.trusted() || crownOrders;
+                var incoterm = means.incoterm();
+                var route = means.route();
                 // (food is made by the stack: a Butcher's restock is dozens)
-                int lot = food != null && food.nutrition() > 0 ? Math.max(MAKER_LOT, item.getDefaultMaxStackSize()) : MAKER_LOT;
-                int quantity = Math.min(need - covered, holders ? spare : lot);
+                int quantity = Math.min(need - covered, holders ? means.spare() : makerLot(item));
                 if (!trusted) {
                     quantity = Math.min(quantity, TRIAL_LOT); // a trial lot, to rebuild the record
                 }
@@ -354,12 +320,8 @@ public final class Broker {
                 // build trust, and the seller isn't asked for everything at once.
                 int installments = holders || !trusted ? 1 : Math.min(MAKER_INSTALLMENTS, quantity);
                 int each = (quantity + installments - 1) / installments;
-                double exWorks = Prices.emeraldsEach(item) * (1 + SUPPLIER_MARGIN) * premium;
-                double carriage = Caravans.foodNeeded(route.distance()) * 2 * Caravans.PURSE_PER_FOOD_POINT
-                        / (Caravans.CARGO_SLOTS * (double) item.getDefaultMaxStackSize());
-                double tolls = Caravans.tollShare(territory, route) * exWorks;
                 var delivery = new dev.b28.enterprise.contract.Delivery(item, each,
-                        incoterm.price(exWorks, carriage, tolls));
+                        landed(territory, item, route, incoterm, premium));
                 List<dev.b28.enterprise.contract.Term> terms = new ArrayList<>();
                 terms.add(delivery);
                 terms.addAll(extra);
@@ -381,6 +343,79 @@ public final class Broker {
             }
         }
         return covered >= need;
+    }
+
+    /**
+     * What a supplier can do for a desk's order: what it can spare of the good (beyond its par, half its kit unless it's
+     * an armoury, and its caravans' food), whether its people make or sell it, the road and terms it would go by (Ex
+     * Works if the desk's caravans go there, else Delivered At Place), and whether the two trust each other.
+     */
+    public record Means(int spare, boolean makes, dev.b28.enterprise.caravan.Route route,
+            dev.b28.enterprise.contract.Incoterm incoterm, boolean trusted) {}
+
+    /** {@link Means} of {@code supplier} for {@code desk}, if there's a road between them. */
+    public static Optional<Means> means(ServerLevel level, GlobalPos desk, GlobalPos supplier, Item item, long now) {
+        MinecraftServer server = level.getServer();
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        Warehouse warehouse = Warehouse.get(server);
+        var ledger = dev.b28.enterprise.caravan.CaravanLedger.get(server);
+        Territory territory = Territory.get(server);
+        var collect = ledger.route(desk, supplier);
+        var bring = ledger.route(supplier, desk);
+        if (collect.isEmpty() && bring.isEmpty()) {
+            return Optional.empty(); // no road between them: a gap a player could fill
+        }
+        boolean kit = dev.b28.enterprise.territory.Smithing.KITS.stream().anyMatch(k -> k.item() == item);
+        boolean trusted = book.trust(supplier, desk, now) >= dev.b28.enterprise.contract.ContractBook.MIN_TRUST;
+        int held = warehouse.onHand(supplier, item);
+        // A town keeps half its kit for its own hands; an armoury's goods are there to be sent on.
+        boolean keepsHalf = kit && !dev.b28.enterprise.merchant.Depots.get(server)
+                .has(supplier, dev.b28.enterprise.merchant.Depots.Kind.ARMOURY);
+        int spare = (keepsHalf ? held / 2 : held) - warehouse.par(supplier, item, false, now);
+        var food = item.getDefaultInstance().get(net.minecraft.core.component.DataComponents.FOOD);
+        if (food != null && food.nutrition() > 0) {
+            // And the food its caravans need, as far as its other food doesn't cover it.
+            int otherPoints = warehouse.stocktake(supplier).entrySet().stream()
+                    .filter(e -> !e.getKey().equals(BuiltInRegistries.ITEM.getKey(item).toString()))
+                    .mapToInt(e -> e.getValue() * dev.b28.enterprise.army.Army.nutrition(
+                            BuiltInRegistries.ITEM.get(ResourceLocation.parse(e.getKey()))))
+                    .sum();
+            spare -= Math.max(0, 2 * Warehouse.FOOD_PAR_POINTS - otherPoints) / food.nutrition();
+        }
+        // It can make them if a villager of it sells them (at the level), or a trade of it makes them from inputs
+        // it holds or this desk does (and its caravans would bring): no gold without a mine's raw gold.
+        int least = Procurement.sellerLevel(item);
+        var residents = territory.bellOf(supplier).map(bell -> Services.residents(level, bell)).orElse(Map.of());
+        // (and, where its Merchant has seen them restock, one of them does offer it: a trade's offers vary)
+        boolean sells = residents.entrySet().stream().anyMatch(e -> Procurement.SELLERS.getOrDefault(item,
+                Set.of()).contains(e.getKey()) && e.getValue() >= least)
+                && warehouse.offers(supplier, item).orElse(true);
+        boolean crafts = dev.b28.enterprise.service.Crafts.recipesFor(item).stream()
+                .anyMatch(r -> residents.containsKey(r.trade()) && r.inputs().keySet().stream()
+                        .allMatch(in -> warehouse.onHand(supplier, in) > 0 || warehouse.onHand(desk, in) > 0));
+        var incoterm = collect.isPresent() ? dev.b28.enterprise.contract.Incoterm.EXW
+                : dev.b28.enterprise.contract.Incoterm.DAP;
+        return Optional.of(new Means(Math.max(0, spare), sells || crafts, collect.orElseGet(bring::get), incoterm,
+                trusted));
+    }
+
+    /** A lot to make: food by the stack (a Butcher's restock is dozens), else {@link #MAKER_LOT}. */
+    public static int makerLot(Item item) {
+        var food = item.getDefaultInstance().get(net.minecraft.core.component.DataComponents.FOOD);
+        return food != null && food.nutrition() > 0 ? Math.max(MAKER_LOT, item.getDefaultMaxStackSize()) : MAKER_LOT;
+    }
+
+    /**
+     * The price each, in emeralds, a supplier asks on these terms: the good's worth and its margin (times
+     * {@code premium}), and under Delivered At Place the carriage and the tolls on the way.
+     */
+    public static double landed(Territory territory, Item item, dev.b28.enterprise.caravan.Route route,
+            dev.b28.enterprise.contract.Incoterm incoterm, double premium) {
+        double exWorks = Prices.emeraldsEach(item) * (1 + SUPPLIER_MARGIN) * premium;
+        double carriage = Caravans.foodNeeded(route.distance()) * 2 * Caravans.PURSE_PER_FOOD_POINT
+                / (Caravans.CARGO_SLOTS * (double) item.getDefaultMaxStackSize());
+        double tolls = Caravans.tollShare(territory, route) * exWorks;
+        return incoterm.price(exWorks, carriage, tolls);
     }
 
     /** What of an item the desk has under contract from the markets it knows and not yet delivered. */

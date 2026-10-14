@@ -874,6 +874,37 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void aRequisitionTakesTheBestOfferForTheWholeLot(GameTestHelper helper) {
+        Network net = network(helper, 2);
+        var server = helper.getLevel().getServer();
+        GlobalPos hub = net.route().from();
+        GlobalPos dest = net.route().to();
+        long t = helper.getLevel().getGameTime();
+        for (int i = 0; i < 4; i++) {
+            net.dest().insert(new ItemStack(Items.BREAD, 64)); // beyond what its own caravans eat
+        }
+        dev.b28.enterprise.merchant.Warehouse.get(server).recordStocktake(dest, net.dest().totals(), t);
+        var road = CaravanLedger.get(server).addRoute(hub, dest);
+        var requisitions = dev.b28.enterprise.market.Requisitions.get(server);
+        var wanted = requisitions.post(helper.getLevel(), hub, List.of(Items.BREAD), false, 40, 1.5, null, t);
+        helper.assertTrue(requisitions.read(helper.getLevel(), dest, hub, t) == 1, "the town's Merchant bids");
+        helper.assertTrue(requisitions.read(helper.getLevel(), dest, hub, t) == 0, "once");
+        var bid = wanted.bids().get(0);
+        helper.assertTrue(bid.each() < wanted.ceiling(Items.BREAD), "under the crown's price: " + bid.each());
+        helper.assertTrue(requisitions.award(helper.getLevel(), hub, dev.b28.enterprise.army.Army.Theatre.FACTION, t) == 0,
+                "not while bids are taken");
+        long closed = t + dev.b28.enterprise.market.Requisitions.BID_DAYS * 24000L;
+        helper.assertTrue(requisitions.award(helper.getLevel(), hub, dev.b28.enterprise.army.Army.Theatre.FACTION, closed) == 1,
+                "the best offer taken");
+        var contract = dev.b28.enterprise.contract.ContractBook.get(server)
+                .open(dest, hub, new dev.b28.enterprise.contract.Delivery(Items.BREAD, 1, 0)).get(0);
+        helper.assertTrue(contract.installments() == 1 && contract.delivery().get().quantity() == bid.count()
+                && wanted.open() == 40 - bid.count(), "one contract for the lot: " + bid.count() + ", open " + wanted.open());
+        CaravanLedger.get(server).removeRoute(road.id());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aCaravanBringsMercenariesHiredOverTheSea(GameTestHelper helper) {
         Network net = network(helper, 8, 5, 192);
         var server = helper.getLevel().getServer();

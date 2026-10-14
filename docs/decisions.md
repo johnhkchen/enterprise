@@ -426,6 +426,27 @@ Soldiers at the front went hungry on 27 of 47 soldier-days (run 18) while the ca
   461 soldier-days, 41 raised). Meat is still thin: Butchers' training varies by seed (run 27: level 1 until war day
   25), and each town is contracted separately in lots of a stack.
 
+## The crown's procurement agent: requisitions (built 2026-10-14)
+
+The crown buys the way a procurement office would, not town by town.
+- **Each day** its agent at the capital works out what the stockpile and the army still need for the coming period
+  (5 days), beyond what's under contract and already requisitioned, and posts a **requisition** per good: so many, by
+  a day, at no more than the crown's price (worth, margin and carriage, times the phase's premium). Meat is one
+  requisition of a kind, counted in food points: any meat will do.
+- **Numismatics shops** go up with it, in a row by the capital's desk: a buying vendor for each good, at the crown's
+  price, paid from the treasury's card. Anyone (players above all) can sell into it; the agent sweeps what's sold into
+  the depot daily, and it counts toward the requisition. They come down when it closes.
+- **Bids:** the board's news rides with caravans. A town's Merchant who reads it bids what its town can supply by the
+  day (spare stock, and what its villagers make meanwhile, from what they offer a restock) at its landed cost (a
+  quarter more for what's made) and half the way to the crown's price.
+- **Award:** after 2 days of bids, the agent takes the cheapest offers until covered, each a single contract for the
+  whole lot, a third paid up front, with the crown's bonus clauses; the papers go back with the next caravan.
+- **Run 28:** the meat stockpile filled (1,920 food points by mobilising day 15, against 0 to 292 before), the front's
+  meals were 26% hearty (0 to 5% before), and 121 contracts were awarded. Hungry soldier-days 28% of 501 (run 27: 18% of
+  461; runs vary that much).
+- **Next:** caravans swap the crown's bills for coin on the way back (the bank discounts them), and a clearinghouse
+  town that aggregates its region's lots for one delivery.
+
 ## Pacing and the crown's bank (built 2026-10-14)
 
 Once room stopped blocking them, Merchants were blocked by cash. S2's Merchant tried to buy 405 emeralds' worth of

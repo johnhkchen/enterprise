@@ -397,6 +397,11 @@ public final class Caravans {
             }
             // The caravan brings its home's board: the Merchant here reads the tenders on it, and takes what pays.
             dev.b28.enterprise.market.Tenders.get(server).read(level, route.to, route.from, now);
+            // And its requisitions: the Merchant here bids what its town can supply; a caravan come to the buyer
+            // brings its home's Merchant to bid on the buyer's board.
+            var requisitions = dev.b28.enterprise.market.Requisitions.get(server);
+            requisitions.read(level, route.to, route.from, now);
+            requisitions.read(level, route.from, route.to, now);
             settleOwing(server, level, route, stock, caravan, mint, rate, now);
             payAdvances(server, level, route, stock, caravan, mint, rate, now);
             // From a bank's market: it buys the town's bills and lends against its contracts, for coin now.

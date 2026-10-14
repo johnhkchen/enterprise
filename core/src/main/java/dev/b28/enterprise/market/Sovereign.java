@@ -316,30 +316,22 @@ public final class Sovereign extends SavedData {
     }
 
     /**
-     * Meat for the stockpile, {@link #MEAT_POINTS} of it, counted in food points: any kind will do. What's held and
-     * already contracted counts; the rest is sourced kind by kind, from whoever sells it. Unmet, it's posted as wanted.
+     * Requisitions what the capital still needs of these goods ({@code need} units: items, or food points if
+     * {@code byPoints}), beyond what's under contract and what's already requisitioned. Wanted a whole bidding window
+     * with no offer, it's posted as wanted too (a signal to players and other regions).
      */
-    void sourceMeat(ServerLevel level, MerchantStock depot, Territory territory, long now, double premium) {
+    void requisition(ServerLevel level, List<Item> goods, boolean byPoints, int need, double premium, long now) {
         MinecraftServer server = level.getServer();
-        int points = MEAT_POINTS;
-        for (Item meat : Army.MEATS) {
-            points -= (depot.count(new ItemCost(meat, 1)) + Broker.coming(server, capital, meat)) * Army.nutrition(meat);
+        Requisitions requisitions = Requisitions.get(server);
+        int coming = goods.stream().mapToInt(g -> Broker.coming(server, capital, g) * (byPoints ? Army.nutrition(g) : 1))
+                .sum();
+        int short_ = need - coming - requisitions.open(capital, goods);
+        if (short_ > 0) {
+            requisitions.post(level, capital, goods, byPoints, short_, premium, treasury, now);
         }
-        if (points <= 0) {
-            return;
-        }
-        shortfall.put(Army.MEATS.get(0), (points + 7) / 8);
-        for (Item meat : Army.MEATS) {
-            if (points <= 0) {
-                return;
-            }
-            int coming = Broker.coming(server, capital, meat);
-            int n = (points + Army.nutrition(meat) - 1) / Army.nutrition(meat);
-            Broker.source(level, capital, territory, meat, coming + n, now, premium, List.of());
-            points -= (Broker.coming(server, capital, meat) - coming) * Army.nutrition(meat);
-        }
-        if (points > 0) {
-            unmet.put(Army.MEATS.get(0), (points + 7) / 8); // posted as wanted: a pork chop's worth of points each
+        if (requisitions.unanswered(capital, goods)) {
+            Item first = goods.get(0);
+            unmet.put(first, byPoints ? (need + Army.nutrition(first) - 1) / Army.nutrition(first) : need);
         }
     }
 
@@ -496,19 +488,25 @@ public final class Sovereign extends SavedData {
         Territory territory = Territory.get(server);
         sovereign.unmet.clear();
         sovereign.shortfall.clear();
+        // The procurement agent's day: what was sold into its shops is swept in, requisitions past their day close,
+        // those done taking bids are awarded to the best offers, and what's still wanted for the period is posted.
+        Requisitions requisitions = Requisitions.get(server);
+        requisitions.sweep(level, depot);
+        requisitions.lapse(level, now);
+        requisitions.award(level, sovereign.capital, army.theatre(), now);
         for (Map.Entry<Item, Integer> target : sovereign.targets(army).entrySet()) {
             int need = target.getValue() - depot.count(new ItemCost(target.getKey(), 1));
             if (need <= 0) {
                 continue;
             }
-            sovereign.shortfall.put(target.getKey(), need);
-            boolean covered = Broker.source(level, sovereign.capital, territory, target.getKey(), need, now, premium,
-                    bonuses(target.getKey(), army.theatre()));
-            if (!covered) {
-                sovereign.unmet.put(target.getKey(), need);
-            }
+            sovereign.shortfall.put(target.getKey(), need); // its own villagers sell to the depot too
+            sovereign.requisition(level, List.of(target.getKey()), false, need, premium, now);
         }
-        sovereign.sourceMeat(level, depot, territory, now, premium);
+        int meat = MEAT_POINTS - Army.MEATS.stream().mapToInt(m -> depot.count(new ItemCost(m, 1)) * Army.nutrition(m)).sum();
+        if (meat > 0) {
+            sovereign.shortfall.put(Army.MEATS.get(0), (meat + 7) / 8);
+            sovereign.requisition(level, Army.MEATS, true, meat, premium, now);
+        }
         if (sovereign.phase == Phase.WAR) {
             sovereign.hireMercenaries(level, army, now);
         }
