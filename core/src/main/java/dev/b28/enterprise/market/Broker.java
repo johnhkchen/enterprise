@@ -114,7 +114,8 @@ public final class Broker {
                     || shop.getMode() != VendorBlockEntity.Mode.BUY
                     || Sovereign.get(server).shops().contains(shop.getBlockPos())
                     || MetalExchange.get(server).shops().contains(shop.getBlockPos())
-                    || Requisitions.get(server).isShop(shop.getBlockPos())) {
+                    || Requisitions.get(server).isShop(shop.getBlockPos())
+                    || Freight.get(server).isShop(shop.getBlockPos())) {
                 continue; // the sovereign's and the exchange's own shops buy from players, not from its Merchant
             }
             if (Shops.enchanted(shop.getFilterItem())) {
@@ -137,7 +138,7 @@ public final class Broker {
         exchange.setSignals(desk, signals);
         for (VendorBlockEntity shop : shops) {
             if (!Shops.own(shop, desk.pos()) && shop.getMode() == VendorBlockEntity.Mode.SELL
-                    && !shop.getFilterItem().isEmpty()) {
+                    && !shop.getFilterItem().isEmpty() && !Freight.get(server).isShop(shop.getBlockPos())) {
                 buy(level, desk, territory, stock, shop, signals, rate, now);
             }
         }
@@ -321,7 +322,7 @@ public final class Broker {
                 int installments = holders || !trusted ? 1 : Math.min(MAKER_INSTALLMENTS, quantity);
                 int each = (quantity + installments - 1) / installments;
                 var delivery = new dev.b28.enterprise.contract.Delivery(item, each,
-                        landed(territory, item, route, incoterm, premium));
+                        landed(territory, item, means, premium));
                 List<dev.b28.enterprise.contract.Term> terms = new ArrayList<>();
                 terms.add(delivery);
                 terms.addAll(extra);
@@ -331,7 +332,7 @@ public final class Broker {
                 // Delivered at the buyer's, the first installment is due once the seller's next caravan can be there.
                 long due = holders ? now : now + MAKER_LEAD;
                 if (incoterm == dev.b28.enterprise.contract.Incoterm.DAP) {
-                    due = Math.max(due, ledger.nextDeparture(route, now)) + Caravans.travelTicks(route.distance());
+                    due = Math.max(due, ledger.nextDeparture(route, now)) + (long) (means.roadDays() * 24000);
                 }
                 var contract = book.draft(supplier, desk, terms, incoterm, due,
                         Caravans.DEPARTURE_INTERVAL, installments, now, desk, false);
@@ -351,7 +352,13 @@ public final class Broker {
      * Works if the desk's caravans go there, else Delivered At Place), and whether the two trust each other.
      */
     public record Means(int spare, boolean makes, dev.b28.enterprise.caravan.Route route,
-            dev.b28.enterprise.contract.Incoterm incoterm, boolean trusted) {}
+            dev.b28.enterprise.contract.Incoterm incoterm, boolean trusted, Optional<Freight.Leg> onward) {
+        /** Days the goods are on the road: the route, and the forwarded leg beyond a hub (and a day there). */
+        public double roadDays() {
+            double days = Caravans.travelTicks(route.distance()) / 24000.0;
+            return onward.map(l -> days + 1 + Caravans.travelTicks(l.route().distance()) / 24000.0).orElse(days);
+        }
+    }
 
     /** {@link Means} of {@code supplier} for {@code desk}, if there's a road between them. */
     public static Optional<Means> means(ServerLevel level, GlobalPos desk, GlobalPos supplier, Item item, long now) {
@@ -362,8 +369,16 @@ public final class Broker {
         Territory territory = Territory.get(server);
         var collect = ledger.route(desk, supplier);
         var bring = ledger.route(supplier, desk);
-        if (collect.isEmpty() && bring.isEmpty()) {
+        // No road between them, but the supplier's caravans go to a freight hub with a carrier's run to the desk: its
+        // goods go there and are forwarded, delivered at the desk.
+        Optional<Freight.Leg> onward = collect.isEmpty() && bring.isEmpty()
+                ? Freight.via(server, supplier, desk) : Optional.empty();
+        if (collect.isEmpty() && bring.isEmpty() && onward.isEmpty()) {
             return Optional.empty(); // no road between them: a gap a player could fill
+        }
+        if (onward.isPresent()) {
+            GlobalPos hub = onward.get().from();
+            bring = ledger.route(supplier, hub);
         }
         boolean kit = dev.b28.enterprise.territory.Smithing.KITS.stream().anyMatch(k -> k.item() == item);
         boolean trusted = book.trust(supplier, desk, now) >= dev.b28.enterprise.contract.ContractBook.MIN_TRUST;
@@ -396,7 +411,7 @@ public final class Broker {
         var incoterm = collect.isPresent() ? dev.b28.enterprise.contract.Incoterm.EXW
                 : dev.b28.enterprise.contract.Incoterm.DAP;
         return Optional.of(new Means(Math.max(0, spare), sells || crafts, collect.orElseGet(bring::get), incoterm,
-                trusted));
+                trusted, onward));
     }
 
     /** A lot to make: food by the stack (a Butcher's restock is dozens), else {@link #MAKER_LOT}. */
@@ -409,6 +424,12 @@ public final class Broker {
      * The price each, in emeralds, a supplier asks on these terms: the good's worth and its margin (times
      * {@code premium}), and under Delivered At Place the carriage and the tolls on the way.
      */
+    public static double landed(Territory territory, Item item, Means means, double premium) {
+        double forwarding = means.onward().map(l -> Freight.forwardingPrice(l.route())
+                / item.getDefaultMaxStackSize()).orElse(0.0);
+        return landed(territory, item, means.route(), means.incoterm(), premium) + forwarding;
+    }
+
     public static double landed(Territory territory, Item item, dev.b28.enterprise.caravan.Route route,
             dev.b28.enterprise.contract.Incoterm incoterm, double premium) {
         double exWorks = Prices.emeraldsEach(item) * (1 + SUPPLIER_MARGIN) * premium;

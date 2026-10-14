@@ -892,6 +892,35 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void aForwarderTakesCratesBoundOnAndTheirRunLoadsThemFirst(GameTestHelper helper) {
+        Network net = network(helper, 2);
+        var server = helper.getLevel().getServer();
+        GlobalPos shipper = net.route().from();
+        GlobalPos hub = net.route().to();
+        GlobalPos buyer = GlobalPos.of(hub.dimension(), hub.pos().offset(200, 0, 0)); // further on
+        var depot = dev.b28.enterprise.merchant.Depots.get(server).add(helper.getLevel(), hub,
+                dev.b28.enterprise.merchant.Depots.Kind.STOREHOUSE, hub.pos().above(3), hub.pos().above(3));
+        var onward = CaravanLedger.get(server).addRoute(hub, buyer);
+        var freight = dev.b28.enterprise.market.Freight.get(server);
+        var bill = dev.b28.enterprise.cargo.Papers.billOfLading(0, shipper, buyer, "64 paper", "DAP", 0, 0);
+        List<ItemStack> cargo = new java.util.ArrayList<>(List.of(dev.b28.enterprise.cargo.Crates.of(
+                List.of(new ItemStack(Items.PAPER, 64)), dev.b28.enterprise.cargo.Papers.NONE.with(bill))));
+        int[] purse = {1000};
+        helper.assertTrue(freight.handOver(helper.getLevel(), hub, net.dest(), cargo, purse) == 1 && cargo.isEmpty()
+                && purse[0] < 1000, "handed over for a fee: " + purse[0]);
+        var leg = new dev.b28.enterprise.market.Freight.Leg(onward, true);
+        var held = net.dest().removeLoose(dev.b28.enterprise.cargo.Crates::isCrate);
+        helper.assertTrue(held.size() == 1, "in the hub's warehouse");
+        net.dest().insert(dev.b28.enterprise.market.Freight.book(held.get(0), leg, 1));
+        var load = freight.loadBooked(hub, net.dest(), leg, 27);
+        helper.assertTrue(load.size() == 1 && dev.b28.enterprise.market.Freight.booked(load.get(0), leg) == 1
+                && dev.b28.enterprise.cargo.Crates.consignedTo(load.get(0), buyer), "booked, it loads for its run");
+        CaravanLedger.get(server).removeRoute(onward.id());
+        dev.b28.enterprise.merchant.Depots.get(server).remove(depot.id());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aRequisitionTakesTheBestOfferForTheWholeLot(GameTestHelper helper) {
         Network net = network(helper, 2);
         var server = helper.getLevel().getServer();

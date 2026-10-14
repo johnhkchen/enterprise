@@ -177,10 +177,23 @@ public final class ContractBook extends SavedData {
 
     /** Contracts either party of a route knows and the other doesn't: copies for a carrier between them. */
     public List<Contract> copiesFor(GlobalPos from, GlobalPos to) {
+        // (from may be a party, or a hub the copy was left at to pass on)
         return contracts.values().stream()
                 .filter(c -> c.state == Contract.State.DRAFTED || c.state == Contract.State.ACTIVE)
-                .filter(c -> (c.seller.equals(from) && c.buyer.equals(to)) || (c.seller.equals(to) && c.buyer.equals(from)))
+                .filter(c -> c.seller.equals(to) || c.buyer.equals(to))
                 .filter(c -> c.knownBy(from) && !c.knownBy(to))
+                .toList();
+    }
+
+    /**
+     * Copies {@code from} holds, for a party {@code hub} can pass them on to (by its roads, as {@code onward} says),
+     * neither party being the hub: left at the hub, they ride on with its caravans or those calling there.
+     */
+    public List<Contract> copiesVia(GlobalPos from, GlobalPos hub, java.util.function.Predicate<GlobalPos> onward) {
+        return contracts.values().stream()
+                .filter(c -> c.state == Contract.State.DRAFTED || c.state == Contract.State.ACTIVE)
+                .filter(c -> !c.seller.equals(hub) && !c.buyer.equals(hub) && c.knownBy(from) && !c.knownBy(hub))
+                .filter(c -> !c.knownBy(c.seller) && onward.test(c.seller) || !c.knownBy(c.buyer) && onward.test(c.buyer))
                 .toList();
     }
 

@@ -266,12 +266,20 @@ public final class Crates {
                 goods.forEach(stock::insert); // no room for the crate: what fits goes in loose
             }
             boolean settled = papers.first(Papers.BILL_OF_LADING).map(d -> d.data().getBoolean("settled")).orElse(true);
+            // Sent on by a forwarder, with a bill of exchange drawn on this market for them: paid by that bill.
+            boolean billed = papers.first(Papers.BILL_OF_LADING).map(d -> d.data().getBoolean("billed")).orElse(false);
             papers.contract().flatMap(book::contract).filter(c -> !settled && c.buyer().equals(desk) && c.inForce())
                     .ifPresent(contract -> {
-                        int counted = Math.min(items, contract.owed(now + contract.every()));
+                        int counted = Math.min(items, Math.max(contract.owed(now + contract.every()),
+                                billed ? contract.shipped() : 0));
                         double owing = counted * contract.delivery().map(d -> d.unitPrice()).orElse(0.0);
-                        book.settle(contract, counted, 0, now);
-                        book.owe(contract, owing);
+                        if (billed) {
+                            book.arrived(contract, counted);
+                            book.settle(contract, counted, owing, now);
+                        } else {
+                            book.settle(contract, counted, 0, now);
+                            book.owe(contract, owing);
+                        }
                     });
         }
         return crates.size();

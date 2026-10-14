@@ -287,7 +287,11 @@ public final class Requisitions extends SavedData {
      */
     public int read(ServerLevel level, GlobalPos reader, GlobalPos board, long now) {
         int filed = 0;
-        for (Requisition r : on(board)) {
+        // A freight hub posts the requisitions of markets it runs freight to as well: news, and a way there.
+        MinecraftServer server = level.getServer();
+        List<Requisition> posted = requisitions.stream().filter(r -> r.open > 0 && (r.buyer.equals(board)
+                || Freight.isHub(server, board) && !Freight.legs(server, board, r.buyer).isEmpty())).toList();
+        for (Requisition r : posted) {
             if (r.awarded || r.buyer.equals(reader) || r.bids.stream().anyMatch(b -> b.seller.equals(reader))) {
                 continue;
             }
@@ -322,7 +326,7 @@ public final class Requisitions extends SavedData {
                 continue;
             }
             Broker.Means means = found.get();
-            double road = dev.b28.enterprise.caravan.Caravans.travelTicks(means.route().distance()) / 24000.0;
+            double road = means.roadDays();
             double days = Math.max(0, (r.due - now) / 24000.0 - road - 1);
             int perDay = !means.makes() ? 0 : Math.max(warehouse.offered(seller, item), Broker.makerLot(item) / 2);
             int made = (int) (perDay * days);
@@ -335,7 +339,7 @@ public final class Requisitions extends SavedData {
                 continue;
             }
             double madeShare = Math.max(0, count - means.spare()) / (double) count;
-            double cost = Broker.landed(territory, item, means.route(), means.incoterm(), 1) * (1 + MAKE_MARKUP * madeShare);
+            double cost = Broker.landed(territory, item, means, 1) * (1 + MAKE_MARKUP * madeShare);
             double ceiling = r.ceiling(item);
             if (cost > ceiling) {
                 continue;

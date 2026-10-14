@@ -269,8 +269,15 @@ public final class Caravans {
         java.util.Map<Integer, Integer> contracted = new LinkedHashMap<>();
         Crates.receive(server, level, route.from, stock, now); // crates consigned here, a player brought them
         dev.b28.enterprise.market.Procurement.procure(level, route.from, stock); // its villagers sell what it owes
-        List<ItemStack> cargo = pickContracted(server, level, route, stock, now + travelTicks(route.distance()), slots,
-                contracted, now);
+        // At a freight hub, the crates booked on this run load first: they're paid for.
+        List<ItemStack> cargo = new ArrayList<>(dev.b28.enterprise.market.Freight.isHub(server, route.from)
+                ? dev.b28.enterprise.market.Freight.get(server).loadBooked(route.from, stock,
+                        new dev.b28.enterprise.market.Freight.Leg(route, true), slots)
+                : List.of());
+        cargo.addAll(pickContracted(server, level, route, stock, now + travelTicks(route.distance()),
+                slots - Crates.stacks(cargo), contracted, now));
+        cargo.addAll(pickForwarded(server, level, route, stock, now + travelTicks(route.distance()),
+                slots - Crates.stacks(cargo), now));
         cargo.addAll(pickComforts(stock, comfortWants(server, territory, route.to, now + travelTicks(route.distance()))));
         while (Crates.stacks(cargo) > slots) {
             stock.insert(cargo.remove(cargo.size() - 1)); // more comforts than the squad can carry: leave the rest
@@ -374,7 +381,19 @@ public final class Caravans {
             // The caravan carries its home's copies of contracts with this town, and collects what it's owed Ex Works.
             var book = dev.b28.enterprise.contract.ContractBook.get(server);
             book.copiesFor(route.from, route.to).forEach(c -> book.deliverCopy(c.id(), route.to));
+            // Crates it carried here on freight tickets are delivered into the warehouse, consigned here.
+            for (var it = caravan.cargo.iterator(); it.hasNext(); ) {
+                ItemStack crate = it.next();
+                if (dev.b28.enterprise.market.Freight.ticketed(crate) && Crates.consignedTo(crate, route.to)
+                        && stock.hasRoomFor(crate)) {
+                    it.remove();
+                    stock.insert(crate);
+                }
+            }
             Crates.receive(server, level, route.to, stock, now);
+            if (dev.b28.enterprise.market.Freight.isHub(server, route.to)) {
+                atHub(server, level, ledger, route, stock, caravan, now);
+            }
             dev.b28.enterprise.market.Procurement.procure(level, route.to, stock);
             ItemStack empties = Crates.spareEmpties(stock); // returnable crates go back
             if (!empties.isEmpty()) {
@@ -480,6 +499,70 @@ public final class Caravans {
             route.status = "on the way home";
         }
         ledger.setDirty();
+    }
+
+    /**
+     * A caravan calling at a freight hub: it collects what its run's freight shop there took; hands the forwarder its
+     * crates bound further on (paying the forwarding) and sells it its bills on those markets for coin; leaves the
+     * hub copies of contracts for markets the hub passes them on to; and loads the crates booked on its run home.
+     */
+    static void atHub(MinecraftServer server, ServerLevel level, CaravanLedger ledger, Route route, MerchantStock stock,
+            Caravan caravan, long now) {
+        var freight = dev.b28.enterprise.market.Freight.get(server);
+        var home = new dev.b28.enterprise.market.Freight.Leg(route, false);
+        caravan.spurs += freight.collectFares(level, home);
+        int[] purse = {caravan.spurs};
+        freight.handOver(level, route.to, stock, caravan.cargo, purse);
+        caravan.spurs = purse[0];
+        caravan.spurs += freight.discountBills(level, route.to, route.from, stock, caravan.cargo, now);
+        freight.forward(level, route.to, stock, now);
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        book.copiesVia(route.from, route.to, party -> !dev.b28.enterprise.market.Freight.legs(server, route.to, party)
+                .isEmpty()).forEach(c -> book.deliverCopy(c.id(), route.to));
+        caravan.cargo.addAll(freight.loadBooked(route.to, stock, home, caravan.capacity() - Crates.stacks(caravan.cargo)));
+    }
+
+    /** How far ahead a shipper sends goods on through a hub: the road beyond it takes time. */
+    public static final long FORWARD_LEAD = 3 * 24000L;
+
+    /**
+     * Goods owed under contracts to a market beyond the destination, where the destination is a freight hub with a
+     * carrier's run there: crated, consigned to the buyer, with a bill of lading marked paid by bill, and a bill of
+     * exchange drawn on the buyer for them (the forwarder at the hub may buy it). Returns the crates and bills.
+     */
+    static List<ItemStack> pickForwarded(MinecraftServer server, ServerLevel level, Route route, MerchantStock stock,
+            long arrival, int slots, long now) {
+        List<ItemStack> cargo = new ArrayList<>();
+        if (!dev.b28.enterprise.market.Freight.isHub(server, route.to) || slots <= 0) {
+            return cargo;
+        }
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        for (var contract : book.of(route.from)) {
+            var delivery = contract.delivery();
+            if (delivery.isEmpty() || !contract.inForce() || !contract.seller().equals(route.from)
+                    || contract.buyer().equals(route.to) || !contract.incoterm().sellerCarries
+                    || dev.b28.enterprise.market.Freight.legs(server, route.to, contract.buyer()).isEmpty()) {
+                continue;
+            }
+            int owed = contract.owed(arrival + FORWARD_LEAD) - contract.shipped();
+            int room = (slots - Crates.stacks(cargo)) * delivery.get().item().getDefaultMaxStackSize();
+            if (owed <= 0 || room <= 0) {
+                continue;
+            }
+            List<ItemStack> goods = new ArrayList<>(stock.take(delivery.get().cost(server.registryAccess()), Math.min(owed, room)));
+            int taken = goods.stream().mapToInt(ItemStack::getCount).sum();
+            if (taken <= 0) {
+                continue;
+            }
+            var papers = Crates.shipping(contract, route.from, contract.buyer(), goods, route.id, now, false);
+            papers.first(dev.b28.enterprise.cargo.Papers.BILL_OF_LADING).ifPresent(d -> d.data().putBoolean("billed", true));
+            cargo.addAll(Crates.pack(level, route.from, stock, goods, papers, now));
+            double worth = taken * delivery.get().unitPrice();
+            cargo.add(Crates.documents(dev.b28.enterprise.cargo.Papers.NONE.with(
+                    dev.b28.enterprise.contract.Bills.get(server).draw(contract.buyer(), route.from, worth, now))));
+            book.ship(contract, taken, now);
+        }
+        return cargo;
     }
 
     /** A caravan waits this long at the far end for food before it sets off home on short rations. */

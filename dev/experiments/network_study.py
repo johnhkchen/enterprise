@@ -265,8 +265,25 @@ def setup():
     if "--war" in sys.argv:
         rcon(f"enterprise census {HUB[0] + 4} -60 {HUB[1] + 16}")
         print(rcon(f"enterprise war capital {hub_desk} 500").strip())
+    if "--freight" in sys.argv:
+        # S2 a freight hub: a storehouse (two double chests) its carriers and forwarder run; its own caravans to the
+        # capital; S3's caravans to S2. The capital no longer runs the long road to S3: S3's goods come through S2.
+        c = TOWNS["S2"]
+        rcon(f"fill {c[0] + 18} -61 {c[1] + 25} {c[0] + 24} -61 {c[1] + 27} minecraft:stone_bricks")
+        for x in (c[0] + 19, c[0] + 22):
+            rcon(f"setblock {x} -60 {c[1] + 26} minecraft:chest[facing=north,type=right]",
+                 f"setblock {x + 1} -60 {c[1] + 26} minecraft:chest[facing=north,type=left]")
+        sprint(20)
+        print(rcon(f"enterprise depot add {desk(c)} storehouse {c[0] + 18} -60 {c[1] + 25} {c[0] + 24} -59 {c[1] + 27}")
+              .strip().splitlines()[-1])
     for name in ROUTED:
+        if "--freight" in sys.argv and name == "S3":
+            continue
         print(f"route hub -> {name}: " + rcon(f"enterprise route add {hub_desk} {desk(TOWNS[name])}").strip().splitlines()[-1])
+    if "--freight" in sys.argv:
+        print("route S2 -> hub: " + rcon(f"enterprise route add {desk(TOWNS['S2'])} {hub_desk}").strip().splitlines()[-1])
+        print("route S3 -> S2: " + rcon(f"enterprise route add {desk(TOWNS['S3'])} {desk(TOWNS['S2'])}")
+              .strip().splitlines()[-1])
     for corner in [*([] if "--war" in sys.argv else [HUB]), *TOWNS.values()]:
         rcon(f"forceload remove {area(corner, 27)}")
 
@@ -388,6 +405,7 @@ def main():
         print("\n" + rcon("enterprise metals").strip())
         print("\n" + rcon("enterprise tenders").strip())
         print("\n" + rcon("enterprise depot").strip())
+        print("\n" + rcon("enterprise freight").strip())
         print("\n" + rcon("enterprise trust").strip())
         print("\n" + rcon("enterprise contracts").strip())
         print("\n" + rcon("enterprise routes").strip())

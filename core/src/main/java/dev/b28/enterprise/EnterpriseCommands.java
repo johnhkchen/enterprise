@@ -123,6 +123,24 @@ final class EnterpriseCommands {
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .executes(EnterpriseCommands::market)))
                 .then(Commands.literal("metals").executes(EnterpriseCommands::metals))
+                .then(Commands.literal("freight").executes(context -> {
+                    var server = context.getSource().getServer();
+                    var freight = dev.b28.enterprise.market.Freight.get(server);
+                    StringBuilder out = new StringBuilder("Freight hubs:");
+                    freight.books().forEach((hub, b) -> out.append("\n  %s: %.0f stacks forwarded for %.0f spurs, %.0f spurs of freight bought, %.0f stacks carried on its runs, %.0f bills bought (%.1f emeralds face)"
+                            .formatted(hub.pos().toShortString(), b[0], b[1], b[5], b[4], b[2], b[3])));
+                    for (var r : dev.b28.enterprise.caravan.CaravanLedger.get(server).routes()) {
+                        for (boolean out2 : new boolean[] {true, false}) {
+                            var leg = new dev.b28.enterprise.market.Freight.Leg(r, out2);
+                            freight.shop(leg).ifPresent(pos -> out.append("\n  shop at %s: %s -> %s, %.3f emeralds a stack"
+                                    .formatted(pos.toShortString(), leg.from().pos().toShortString(),
+                                            leg.to().pos().toShortString(),
+                                            dev.b28.enterprise.market.Freight.stackPrice(r))));
+                        }
+                    }
+                    context.getSource().sendSuccess(() -> Component.literal(out.toString()), false);
+                    return 1;
+                }))
                 .then(Commands.literal("depot")
                         .executes(EnterpriseCommands::depots)
                         .then(Commands.literal("add")
