@@ -49,6 +49,21 @@ public final class Fields {
      * else nothing.
      */
     public static Optional<Item> choose(Map<String, Double> demand, Map<String, Double> grown, MerchantStock stock) {
+        return choose(demand, grown, stock, Map.of());
+    }
+
+    /**
+     * As {@link #choose(Map, Map, MerchantStock)}, but feed the herds need ({@code needs}, items a day) and the town
+     * doesn't grow enough of comes first: starving animals before anything sells.
+     */
+    public static Optional<Item> choose(Map<String, Double> demand, Map<String, Double> grown, MerchantStock stock,
+            Map<String, Double> needs) {
+        for (Item crop : CROPS) {
+            String id = BuiltInRegistries.ITEM.getKey(crop).toString();
+            if (needs.getOrDefault(id, 0.0) > grown.getOrDefault(id, 0.0)) {
+                return Optional.of(crop);
+            }
+        }
         Item best = null;
         double bestValue = 0;
         for (Item crop : CROPS) {
@@ -87,6 +102,8 @@ public final class Fields {
                     .noneMatch(c -> grown.getOrDefault(BuiltInRegistries.ITEM.getKey(c).toString(), 0.0) > 0);
         });
         boolean spareHands = capacity - plotsWorked >= SPARE_PLOTS;
+        Map<String, Double> feed = Husbandry.feedDemand(territory.herd(bellPos(level, bell)));
+        unmetCrop |= feed.entrySet().stream().anyMatch(e -> e.getValue() > grown.getOrDefault(e.getKey(), 0.0));
         if (farmers.isEmpty() || !(spareHands || unmetCrop && territory.fieldsPlanted(bellPos(level, bell)) < 2 * levels)) {
             return Optional.empty();
         }
@@ -94,7 +111,8 @@ public final class Fields {
         if (Treasury.available(level, desk.pos(), stock, rate) - territory.reserve(desk) < FIELD_EMERALDS) {
             return Optional.empty();
         }
-        Optional<Item> crop = choose(demand, grown, stock);
+        Map<String, Double> needs = Husbandry.feedDemand(territory.herd(bellPos(level, bell)));
+        Optional<Item> crop = choose(demand, grown, stock, needs);
         if (crop.isEmpty()) {
             return Optional.empty();
         }

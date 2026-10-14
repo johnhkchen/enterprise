@@ -149,6 +149,9 @@ public final class Territory extends SavedData {
         double tradingCapital; // emeralds to stock its shelves, from the warehouse at the last touch
         Map<String, Double> demand = new HashMap<>(); // what its villagers would buy for emeralds, items a day
         int fieldsPlanted;
+        Map<String, Double> herd = new LinkedHashMap<>(); // animals kept, by entity id, fractions carried
+        BlockPos pasture; // the pasture's corner, once fenced
+        long lastTend = -1;
     }
 
     private final Map<Place, GlobalPos> owners = new HashMap<>();
@@ -269,8 +272,63 @@ public final class Territory extends SavedData {
 
     /** What the census found the village's people would buy for emeralds, item id -> items a day. */
     public void recordDemand(GlobalPos bell, Map<String, Double> demand) {
-        holdings.computeIfAbsent(bell, b -> new Holding()).demand = new HashMap<>(demand);
+        Holding holding = holdings.computeIfAbsent(bell, b -> new Holding());
+        holding.demand = new HashMap<>(demand);
+        Husbandry.feedDemand(holding.herd).forEach((feed, perDay) -> holding.demand.merge(feed, perDay, Double::sum));
         setDirty();
+    }
+
+    /** The trades of the town's residents, by profession id (from its roster). */
+    static java.util.Set<String> trades(MinecraftServer server, GlobalPos bell) {
+        return dev.b28.enterprise.settlement.Settlements.get(server).roster(bell).values().stream()
+                .map(dev.b28.enterprise.settlement.Settlements.Resident::profession)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    public Map<String, Double> herd(GlobalPos bell) {
+        return holding(bell).map(h -> Map.copyOf(h.herd)).orElse(Map.of());
+    }
+
+    public void setHerd(GlobalPos bell, String kind, double count) {
+        holdings.computeIfAbsent(bell, b -> new Holding()).herd.put(kind, count);
+        setDirty();
+    }
+
+    public Optional<BlockPos> pasture(GlobalPos bell) {
+        return holding(bell).map(h -> h.pasture);
+    }
+
+    /**
+     * When counted while loaded: a new Shepherd's or Butcher's animals join the herd; a town with animals and no
+     * pasture fences one (9 x 9, in its home hex, 4 emeralds beyond its reserve); and the pasture's animals are set
+     * right by the ledger.
+     */
+    private void keepHerds(ServerLevel level, BlockPos bellPos, Holding holding, MerchantStock stock) {
+        GlobalPos bell = GlobalPos.of(level.dimension(), bellPos);
+        Husbandry.seed(holding.herd, trades(level.getServer(), bell));
+        if (!Husbandry.any(holding.herd)) {
+            return;
+        }
+        if (holding.pasture == null) {
+            double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, level.getGameTime());
+            if (Treasury.available(level, holding.desk.pos(), stock, rate) - reserve(holding.desk) < Fields.FIELD_EMERALDS) {
+                return;
+            }
+            Optional<BlockPos> site = Growth.site(level, bellPos, Husbandry.PASTURE_SIZE, 8)
+                    .filter(corner -> owner(level.dimension(), Hex.at(corner.offset(4, 0, 4))).filter(bell::equals).isPresent());
+            if (site.isEmpty()) {
+                return;
+            }
+            Husbandry.fence(level, site.get());
+            Treasury.withdraw(level, holding.desk.pos(), stock, Fields.FIELD_EMERALDS, Mint.get(level.getServer()),
+                    level.getGameTime());
+            holding.pasture = site.get();
+            dev.b28.enterprise.Enterprise.LOGGER.debug("Settlement at {} fences a pasture at {}", bellPos.toShortString(),
+                    site.get().toShortString());
+        }
+        if (level.isLoaded(holding.pasture) && level.isLoaded(holding.pasture.offset(Husbandry.PASTURE_SIZE, 0, Husbandry.PASTURE_SIZE))) {
+            Husbandry.sync(level, holding.pasture, holding.herd);
+        }
     }
 
     public int fieldsPlanted(GlobalPos bell) {
@@ -365,10 +423,11 @@ public final class Territory extends SavedData {
             MerchantStock stock = MerchantStock.at(level, holding.desk.pos());
             touch(level, holding.desk.pos(), stock);
             grow(level, bellPos, holding, census, days, stock);
+            keepHerds(level, bellPos, holding, stock);
         } else {
             accrue(holding, level.getGameTime());
         }
-        holding.perDay = plan(level, bellPos.getY(), hexes(bell), farmers, holding.demand);
+        holding.perDay = plan(level, bellPos.getY(), hexes(bell), farmers, holding.demand, Husbandry.feedDemand(holding.herd));
         if (holding.desk != null && level.isLoaded(holding.desk.pos())) {
             double plotsWorked = holding.perDay.values().stream().mapToDouble(Double::doubleValue).sum() / YIELD_PER_PLOT_PER_DAY;
             Fields.consider(level, bellPos, holding.desk, MerchantStock.at(level, holding.desk.pos()), this, farmers, plotsWorked,
@@ -399,18 +458,18 @@ public final class Territory extends SavedData {
         }
     }
 
-    /** As {@link #plan(ServerLevel, int, List, List, Map)} with no demand known: the most-planted crops first. */
+    /** As {@link #plan(ServerLevel, int, List, List, Map, Map)} with no demand known: the most-planted crops first. */
     public Map<String, Double> plan(ServerLevel level, int centerY, List<Hex> hexes, List<Integer> farmers) {
-        return plan(level, centerY, hexes, farmers, Map.of());
+        return plan(level, centerY, hexes, farmers, Map.of(), Map.of());
     }
 
     /**
-     * Farmers tend the plots the village's demand wants first (the most valuable demand first), then the rest, the
-     * most-planted first; each farmer tends {@link #PLOTS_PER_FARMER_LEVEL} plots a level. The crops growing set the
-     * produce. Returns items per day by item id.
+     * Farmers tend the plots the herds' feed needs first ({@code needs}, items a day), then those the village's demand
+     * wants (the most valuable demand first), then the rest, the most-planted first; each farmer tends
+     * {@link #PLOTS_PER_FARMER_LEVEL} plots a level. The crops growing set the produce. Returns items per day by id.
      */
     public Map<String, Double> plan(ServerLevel level, int centerY, List<Hex> hexes, List<Integer> farmers,
-            Map<String, Double> demand) {
+            Map<String, Double> demand, Map<String, Double> needs) {
         Map<String, Double> perDay = new LinkedHashMap<>();
         if (farmers.isEmpty()) {
             return perDay;
@@ -424,10 +483,23 @@ public final class Territory extends SavedData {
                 .thenComparing(Comparator.comparingInt((Map.Entry<Item, Integer> e) -> e.getValue()).reversed())
                 .thenComparing(e -> BuiltInRegistries.ITEM.getKey(e.getKey()).toString()));
         int capacity = farmers.stream().mapToInt(l -> PLOTS_PER_FARMER_LEVEL * Math.max(1, l)).sum();
+        // Feed first: as many plots of each feed crop as the herds eat.
         for (Map.Entry<Item, Integer> crop : order) {
+            double need = needs.getOrDefault(BuiltInRegistries.ITEM.getKey(crop.getKey()).toString(), 0.0);
+            int worked = Math.min(capacity, Math.min(crop.getValue(), (int) Math.ceil(need / YIELD_PER_PLOT_PER_DAY)));
+            if (worked > 0) {
+                perDay.merge(BuiltInRegistries.ITEM.getKey(crop.getKey()).toString(), worked * YIELD_PER_PLOT_PER_DAY, Double::sum);
+                crop.setValue(crop.getValue() - worked);
+                capacity -= worked;
+            }
+        }
+        for (Map.Entry<Item, Integer> crop : order) {
+            if (capacity <= 0) {
+                break;
+            }
             int worked = Math.min(capacity, crop.getValue());
             if (worked <= 0) {
-                break;
+                continue; // all its plots went to feed
             }
             perDay.merge(BuiltInRegistries.ITEM.getKey(crop.getKey()).toString(), worked * YIELD_PER_PLOT_PER_DAY, Double::sum);
             capacity -= worked;
@@ -552,6 +624,11 @@ public final class Territory extends SavedData {
         }
         long since = holding.lastHarvest;
         accrue(holding, now);
+        if (holding.lastTend >= 0) {
+            Husbandry.tend(stock, holding.herd, trades(level.getServer(), bell.get()),
+                    Math.min(MAX_DAYS, (now - holding.lastTend) / 24000.0), holding.pending);
+        }
+        holding.lastTend = now;
         double owedBefore = holding.wageOwed;
         double paidShare = payWages(level, desk, stock, holding, now);
         long harvestedBefore = holding.harvested;
@@ -1004,6 +1081,11 @@ public final class Territory extends SavedData {
             entry.putDouble("paidShare", holding.paidShare);
             entry.put("demand", doubles(holding.demand));
             entry.putInt("fieldsPlanted", holding.fieldsPlanted);
+            entry.put("herd", doubles(holding.herd));
+            if (holding.pasture != null) {
+                entry.putLong("pasture", holding.pasture.asLong());
+            }
+            entry.putLong("lastTend", holding.lastTend);
             entry.putDouble("homeProgress", holding.homeProgress);
             entry.putDouble("birthProgress", holding.birthProgress);
             entry.putInt("homesBuilt", holding.homesBuilt);
@@ -1107,6 +1189,9 @@ public final class Territory extends SavedData {
                 holding.paidShare = entry.contains("paidShare") ? entry.getDouble("paidShare") : 1;
                 holding.demand = new HashMap<>(readDoubles(entry.getCompound("demand")));
                 holding.fieldsPlanted = entry.getInt("fieldsPlanted");
+                holding.herd = readDoubles(entry.getCompound("herd"));
+                holding.pasture = entry.contains("pasture") ? BlockPos.of(entry.getLong("pasture")) : null;
+                holding.lastTend = entry.contains("lastTend") ? entry.getLong("lastTend") : -1;
                 holding.homeProgress = entry.getDouble("homeProgress");
                 holding.birthProgress = entry.getDouble("birthProgress");
                 holding.homesBuilt = entry.getInt("homesBuilt");

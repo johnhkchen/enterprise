@@ -15,7 +15,8 @@ import net.minecraft.world.item.trading.ItemCost;
 
 /**
  * A town's trades turning raw goods into the goods they deal in, in the warehouse: Librarians and Cartographers press
- * sugar cane into paper while paper is short, and Farmers bake wheat into bread while food is short. A conversion
+ * sugar cane into paper while paper is short, Farmers bake wheat into bread while food is short, and Shepherds weave
+ * wool into carpets while the town is short of furnishings. A conversion
  * runs only if a villager of its trade lives in the town (by its roster).
  */
 public final class Workshop {
@@ -24,7 +25,8 @@ public final class Workshop {
 
     public static final List<Conversion> CONVERSIONS = List.of(
             new Conversion(Set.of("minecraft:librarian", "minecraft:cartographer"), Items.SUGAR_CANE, 1, Items.PAPER, 1),
-            new Conversion(Set.of("minecraft:farmer"), Items.WHEAT, 3, Items.BREAD, 1));
+            new Conversion(Set.of("minecraft:farmer"), Items.WHEAT, 3, Items.BREAD, 1),
+            new Conversion(Set.of("minecraft:shepherd"), Items.WHITE_WOOL, 2, Items.WHITE_CARPET, 3));
 
     private Workshop() {}
 
@@ -46,9 +48,18 @@ public final class Workshop {
             if (conversion.trades().stream().noneMatch(trades::contains)) {
                 continue;
             }
-            made += run(conversion, wanted(conversion.output(), warehouse, desk, stock, now), stock);
+            int wanted = conversion.output() == Items.WHITE_CARPET
+                    ? carpetsWanted(Territory.get(level.getServer()), desk, stock)
+                    : wanted(conversion.output(), warehouse, desk, stock, now);
+            made += run(conversion, wanted, stock);
         }
         return made;
+    }
+
+    /** Carpets a Shepherd weaves while the town is short of furnishings (a comfort), up to its par. */
+    static int carpetsWanted(Territory territory, GlobalPos desk, MerchantStock stock) {
+        double short_ = territory.comfortPar(desk) - Comforts.onHand(stock).getOrDefault("furnishings", 0.0);
+        return short_ <= 0 ? 0 : (int) Math.ceil(short_ * dev.b28.enterprise.money.Prices.itemsPerEmerald("minecraft:white_carpet"));
     }
 
     /** How many more of {@code output} the town wants: paper up to its par when a locker buys it; bread for food. */

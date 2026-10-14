@@ -204,6 +204,13 @@ final class EnterpriseCommands {
         dev.b28.enterprise.territory.Works.get(source.getServer()).wall(bell).ifPresent(w -> source.sendSuccess(
                 () -> Component.literal("  wall %.0f%% built, %d columns raised, %.0f emeralds of masons' wages paid"
                         .formatted(w.progress() * 100, w.columnsPlaced(), w.wagesPaid())), false));
+        var herd = territory.herd(bell);
+        if (!herd.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("  herd: %s; pasture %s".formatted(
+                    herd.entrySet().stream().map(e -> "%s %.1f".formatted(e.getKey().replace("minecraft:", ""), e.getValue()))
+                            .collect(java.util.stream.Collectors.joining(", ")),
+                    territory.pasture(bell).map(BlockPos::toShortString).orElse("not fenced yet"))), false);
+        }
         source.sendSuccess(() -> Component.literal("  %d home(s) built, %d child(ren) born".formatted(
                 territory.homesBuilt(bell), territory.born(bell))), false);
         source.sendSuccess(() -> Component.literal("  toll %.1f%% at its posts (%.0f spurs collected last review)".formatted(

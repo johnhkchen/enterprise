@@ -20,7 +20,7 @@ Monorepo: our mods, the pack definition, and design docs.
 - `just prism`: build, then sync the Prism instance with the full pack. Launching from Prism re-copies the latest jar.
 - `just add <modrinth-slug>`: add a mod to the pack.
 - `just gametest`: run the in-game tests headless (`core/src/main/java/dev/b28/enterprise/test/`).
-- Headless dev server: `just server-setup` (flat world, testbench, wipes `core/run/world`), then `just server` in the
+- Headless dev server: `just server-setup` (flat world, testbench, wipes `core/run/world`; first says when it was last set up and whether a server still holds the world, and fails after 60s rather than waiting on one), then `just server` in the
   background, then `just rcon "<command>" ...` to drive it. It listens on localhost only: game 25599, RCON 25598.
   Other local servers use 25565/25575 (claude_plays_mc_create) and 25566/25576 (redshelf): never point RCON at those.
 
