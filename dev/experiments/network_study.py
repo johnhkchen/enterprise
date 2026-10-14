@@ -177,6 +177,36 @@ def build_river(row, bridges):
         print(rcon(f"enterprise hex {round(x)} -60 {round(z)}").strip())
 
 
+RIDGE = 2789  # x + z along the ridge: through T, between the capital's side and S3's
+RIDGE_HALF = 70  # hexes whose centre lies this near the line are mountain
+
+
+def build_ridge():
+    """A mountain range across the land between the capital's side and S3's: each hex near the line x + z = RIDGE
+    raised 40 blocks of stone, all but T's (the pass). A hex with a mountain's flank in it can't be crossed."""
+    t = TOWNS["T"]
+    tx, tz = t[0] + 14, t[1] + 14
+    raised = 0
+    for q in range(-30, 60):
+        for r in range(-10, 60):
+            cx, cz = (round(v) for v in hex_centre(q, r))
+            if abs(cx + cz - RIDGE) > RIDGE_HALF or not 600 <= cx <= 2200 or math.hypot(cx - tx, cz - tz) < 60:
+                continue
+            if overlaps_town(cx - 28, cz - 28, cx + 28, cz + 28):
+                continue
+            rcon(f"forceload add {cx - 40} {cz - 40} {cx + 40} {cz + 40}")
+            sprint(20)
+            # Inside the hex (its inner circle is 40 across the middle), so a slope never spills into the pass.
+            for y in range(-60, -20, 5):
+                rcon(f"fill {cx - 28} {y} {cz - 28} {cx + 28} {y + 4} {cz + 28} stone")
+            rcon(f"forceload remove {cx - 40} {cz - 40} {cx + 40} {cz + 40}")
+            raised += 1
+    sprint(1200)  # let the chunks unload: each is surveyed as it goes
+    print(f"ridge: {raised} hexes raised, the pass at T")
+    for x, z in [(1200, RIDGE - 1200), (t[0] + 7, t[1] + 7)]:
+        print(rcon(f"enterprise hex {x} -60 {z}").strip())
+
+
 def setup():
     hub_desk = f"{HUB[0] + 2} -60 {HUB[1] + 2}"
     rcon(f"forceload add {area(HUB, 6)}", f"execute positioned {HUB[0]} -60 {HUB[1]} run function testbench:network/hub")
@@ -265,6 +295,8 @@ def setup():
     if "--war" in sys.argv:
         rcon(f"enterprise census {HUB[0] + 4} -60 {HUB[1] + 16}")
         print(rcon(f"enterprise war capital {hub_desk} 500").strip())
+    if "--ridge" in sys.argv:
+        build_ridge()
     if "--freight" in sys.argv:
         # S2 a freight hub: a storehouse (two double chests) its carriers and forwarder run; its own caravans to the
         # capital; S3's caravans to S2. The capital no longer runs the long road to S3: S3's goods come through S2.
@@ -280,6 +312,9 @@ def setup():
         if "--freight" in sys.argv and name == "S3":
             continue
         print(f"route hub -> {name}: " + rcon(f"enterprise route add {hub_desk} {desk(TOWNS[name])}").strip().splitlines()[-1])
+    if "--ridge" in sys.argv:  # S2's caravans trade across the ridge too: two routes through the pass
+        print("route S2 -> S3: " + rcon(f"enterprise route add {desk(TOWNS['S2'])} {desk(TOWNS['S3'])}")
+              .strip().splitlines()[-1])
     if "--freight" in sys.argv:
         print("route S2 -> hub: " + rcon(f"enterprise route add {desk(TOWNS['S2'])} {hub_desk}").strip().splitlines()[-1])
         print("route S3 -> S2: " + rcon(f"enterprise route add {desk(TOWNS['S3'])} {desk(TOWNS['S2'])}")
@@ -408,11 +443,18 @@ def main():
         print("\n" + rcon("enterprise tenders").strip())
         print("\n" + rcon("enterprise depot").strip())
         print("\n" + rcon("enterprise freight").strip())
+
         print("\n" + rcon("enterprise trust").strip())
         print("\n" + rcon("enterprise contracts").strip())
         print("\n" + rcon("enterprise routes").strip())
         for name, corner in TOWNS.items():
             print(f"\n{name} trades: " + rcon(f"enterprise territory {bell(corner)}").strip().splitlines()[1])
+    if "--ridge" in sys.argv:
+        t = TOWNS["T"]
+        for x, z in [(1200, RIDGE - 1200), (t[0] + 7, t[1] + 7)]:
+            print("\n" + rcon(f"enterprise hex {x} -60 {z}").strip())
+        print("\n" + rcon("enterprise freight").strip())
+        print("\n" + "\n".join(l for l in rcon("enterprise routes").splitlines() if "Route" in l or "status" in l.lower()))
     if "--metal" in sys.argv:
         for name in ["S1", "T"]:
             t = rcon(f"enterprise territory {bell(TOWNS[name])}")

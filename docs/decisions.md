@@ -486,6 +486,19 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   at all (no Merchant, Cartographer, Librarian or Shepherd). Run 32: hungry soldier-days 1% of 622, no deserters, the
   capital's caravans freed from the 1,200-block road to S3.
 
+## Mountains, and hubs that emerge (built 2026-10-14)
+
+- **Steep ground.** The terrain survey also records each chunk's lowest and highest surface. A hex's relief (its
+  highest less its lowest) makes it harder going, as hard again every 8 blocks; 32 blocks or more (a cliff, a
+  mountain's flank) can't be crossed. Water still works as before; the two multiply.
+- **Hubs aren't assigned.** A market becomes a freight hub on its own: other markets' routes pass through its land
+  (within a hex), at least three pass or end there (or two pass), its Merchant is in, it can feed callers, and it can
+  afford the storehouse (4 emeralds): it builds two double chests by its desk and its shops follow.
+- **Study `--ridge`:** a 40-block stone ridge across the land between the capital's side and S3's, 38 hexes, with
+  the pass at T. Both routes to S3 (the capital's, S2's) find their way through the hexes beside T, and T became a hub
+  on its own (2 routes passing, 1 calling).
+- **Still to do:** caravans don't call at a hub they pass, so it isn't used yet: a stop on the way (food, freight).
+
 ## Pacing and the crown's bank (built 2026-10-14)
 
 Once room stopped blocking them, Merchants were blocked by cash. S2's Merchant tried to buy 405 emeralds' worth of

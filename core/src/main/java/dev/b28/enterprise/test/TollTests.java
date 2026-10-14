@@ -342,4 +342,36 @@ public final class TollTests {
         helper.assertTrue(Double.isInfinite(terrain.crossingFactor(level, lake)), "flooded: impassable");
         helper.succeed();
     }
+
+    @GameTest(template = "floor")
+    public static void steepGroundIsHardGoingAndACliffStopsACaravan(GameTestHelper helper) {
+        Terrain terrain = new Terrain();
+        var level = helper.getLevel();
+        Hex hills = new Hex(6000, 6000);
+        var chunks = Terrain.chunksOf(hills);
+        for (long chunk : chunks) {
+            terrain.recordHeights(level, chunk, new int[] {-60, -60});
+        }
+        helper.assertTrue(terrain.crossingFactor(level, hills) == 1, "flat: open ground");
+        terrain.recordHeights(level, chunks.get(0), new int[] {-60, -44}); // a hill of 16
+        double hard = terrain.crossingFactor(level, hills);
+        helper.assertTrue(hard > 2 && !Double.isInfinite(hard), "a hill: hard going, " + hard);
+        terrain.recordHeights(level, chunks.get(0), new int[] {-60, -20}); // a mountain's flank, 40 up
+        helper.assertTrue(Double.isInfinite(terrain.crossingFactor(level, hills)), "a cliff: impassable");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aRouteFindsThePassThroughAMountainRange(GameTestHelper helper) {
+        // A range of impassable hexes across the way, one gap off the straight line: the plan goes through the gap.
+        Hex start = new Hex(0, 0);
+        Hex goal = new Hex(8, 0);
+        Hex pass = new Hex(4, -3);
+        java.util.function.ToDoubleFunction<Hex> range = hex -> hex.q() == 4 && !hex.equals(pass)
+                ? Double.POSITIVE_INFINITY : 1;
+        var plan = dev.b28.enterprise.caravan.RoutePlanner.plan(new dev.b28.enterprise.territory.Territory(),
+                helper.getLevel().dimension(), start, goal, java.util.Set.of(), 1, range, 0, java.util.Set.of());
+        helper.assertTrue(plan.found() && plan.path().contains(pass), "through the pass: " + plan.path());
+        helper.succeed();
+    }
 }

@@ -73,6 +73,14 @@ public final class Freight extends SavedData {
     public static final double DRAY_WAGE = 0.5;
     public static final int CART = 4;
 
+    /**
+     * A market becomes a hub on its own when the roads make it one: other markets' routes pass through its land (a pass,
+     * a crossing), enough routes pass or end there, it can feed the caravans that would call, and it can afford the
+     * storehouse (two double chests by its desk).
+     */
+    public static final int HUB_ROUTES = 3;
+    public static final double STOREHOUSE_EMERALDS = 4;
+
     /** Its shops stand in a row this far south of its desk, two blocks apart. */
     public static final int SHOP_ROW = 6;
     public static final long TICKS = 24000;
@@ -270,6 +278,12 @@ public final class Freight extends SavedData {
             return;
         }
         freight.lastDay = now;
+        for (GlobalPos market : dev.b28.enterprise.caravan.Atlas.markets(server)) {
+            ServerLevel level = server.getLevel(market.dimension());
+            if (level != null && level.isLoaded(market.pos()) && !isHub(server, market)) {
+                freight.considerHub(level, market, now);
+            }
+        }
         for (var depot : Depots.get(server).all()) {
             if (depot.kind() != Depots.Kind.STOREHOUSE) {
                 continue;
@@ -286,6 +300,63 @@ public final class Freight extends SavedData {
             freight.forward(level, hub, MerchantStock.at(level, hub.pos()), now);
         }
         freight.setDirty();
+    }
+
+    /** Routes of other markets whose way passes through (or beside) this market's hex. */
+    public static List<Route> through(MinecraftServer server, GlobalPos market) {
+        var hex = dev.b28.enterprise.hex.Hex.at(market.pos());
+        return CaravanLedger.get(server).routes().stream()
+                .filter(r -> !r.from().equals(market) && !r.to().equals(market))
+                .filter(r -> r.path().stream().anyMatch(h -> h.distance(hex) <= 1))
+                .toList();
+    }
+
+    /**
+     * Should this market become a hub? Other markets' routes pass through its land, at least {@link #HUB_ROUTES} pass
+     * or end there, its Merchant is here, it can feed callers for their road home, and it has the money for a
+     * storehouse beyond its reserve: it sets one up (two double chests on open ground by the desk) and is a hub from
+     * then on.
+     */
+    void considerHub(ServerLevel level, GlobalPos market, long now) {
+        MinecraftServer server = level.getServer();
+        List<Route> passing = through(server, market);
+        if (passing.isEmpty()) {
+            return;
+        }
+        long calls = CaravanLedger.get(server).routes().stream()
+                .filter(r -> r.from().equals(market) || r.to().equals(market)).count();
+        if (passing.size() < 2 && passing.size() + calls < HUB_ROUTES
+                || dev.b28.enterprise.merchant.Merchant.workingAt(level, market.pos(),
+                        dev.b28.enterprise.locker.Lockers.MERCHANT_RANGE).isEmpty()) {
+            return;
+        }
+        MerchantStock stock = MerchantStock.at(level, market.pos());
+        double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
+        double spare = Treasury.available(level, market.pos(), stock, rate)
+                - dev.b28.enterprise.territory.Territory.get(server).reserve(market);
+        if (stock.foodNutrition() < dev.b28.enterprise.merchant.Warehouse.FOOD_PAR_POINTS || spare < STOREHOUSE_EMERALDS) {
+            return;
+        }
+        dev.b28.enterprise.territory.Growth.site(level, market.pos(), 4, 3).ifPresent(site -> {
+            BlockPos a = site.above();
+            for (int i = 0; i < 2; i++) {
+                BlockPos right = a.east(3 * i);
+                level.setBlock(right, net.minecraft.world.level.block.Blocks.CHEST.defaultBlockState()
+                        .setValue(net.minecraft.world.level.block.ChestBlock.FACING, net.minecraft.core.Direction.NORTH)
+                        .setValue(net.minecraft.world.level.block.ChestBlock.TYPE,
+                                net.minecraft.world.level.block.state.properties.ChestType.RIGHT), 3);
+                level.setBlock(right.east(), net.minecraft.world.level.block.Blocks.CHEST.defaultBlockState()
+                        .setValue(net.minecraft.world.level.block.ChestBlock.FACING, net.minecraft.core.Direction.NORTH)
+                        .setValue(net.minecraft.world.level.block.ChestBlock.TYPE,
+                                net.minecraft.world.level.block.state.properties.ChestType.LEFT), 3);
+            }
+            Depots.get(server).add(level, market, Depots.Kind.STOREHOUSE, a, a.east(4));
+            Treasury.withdraw(level, market.pos(), stock, STOREHOUSE_EMERALDS, Mint.get(server), now);
+            Exchange.get(server).note(market, now, "a freight hub now: %d routes of others pass through, %d call; "
+                    .formatted(passing.size(), calls) + "a storehouse set up at " + a.toShortString());
+            dev.b28.enterprise.Enterprise.LOGGER.info("Market at {} becomes a freight hub: {} routes pass through, {} call",
+                    market.pos().toShortString(), passing.size(), calls);
+        });
     }
 
     /**
