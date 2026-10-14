@@ -58,11 +58,20 @@ public final class Atlas extends SavedData {
         Set<GlobalPos> towns = new LinkedHashSet<>(known.getOrDefault(desk, Map.of()).keySet());
         for (GlobalPos other : markets(server)) {
             if (!other.equals(desk) && other.dimension().equals(desk.dimension())
-                    && other.pos().distSqr(desk.pos()) <= (double) WORD_OF_MOUTH * WORD_OF_MOUTH) {
+                    && other.pos().distSqr(desk.pos()) <= (double) reach(server, other) * reach(server, other)) {
                 towns.add(other);
             }
         }
         return towns.stream().sorted(Comparator.comparingDouble(other -> other.pos().distSqr(desk.pos()))).toList();
+    }
+
+    /** How far word of a market carries: further from a town with a caravanserai. */
+    static int reach(MinecraftServer server, GlobalPos market) {
+        Territory territory = Territory.get(server);
+        return territory.bellOf(market)
+                .filter(bell -> dev.b28.enterprise.territory.Works.get(server).built(bell,
+                        dev.b28.enterprise.territory.Buildings.CARAVANSERAI.id()))
+                .map(bell -> dev.b28.enterprise.territory.Buildings.CARAVANSERAI_REACH).orElse(WORD_OF_MOUTH);
     }
 
     /** Every Merchant's Desk the ledgers know: markets with lockers, settlements' desks, and caravans' ends. */

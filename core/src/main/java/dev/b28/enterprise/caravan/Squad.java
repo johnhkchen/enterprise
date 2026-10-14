@@ -96,7 +96,7 @@ public final class Squad {
     public static final List<String> TRADES = List.of(
             "enterprise:merchant", "minecraft:cartographer", "minecraft:librarian", "minecraft:shepherd",
             LEATHERWORKER, FISHERMAN, "minecraft:cleric", "minecraft:farmer", "minecraft:toolsmith", "minecraft:armorer",
-            "minecraft:weaponsmith");
+            "minecraft:weaponsmith", "minecraft:mason", "minecraft:fletcher");
 
     /** A Leatherworker's packs carry this many more stacks. */
     public static final int PACK_STACKS = 9;

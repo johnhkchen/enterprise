@@ -196,7 +196,7 @@ public final class TollTests {
             Caravans.payTolls(territory, route, 1000, PER_HEX, twoCrossings);
         }
         double detour = territory.crossings(town).get(route.id()).options().get(0).detour();
-        territory.setKitShareForTest(town, dev.b28.enterprise.territory.Smithing.SWORD, 1);
+        territory.setArmedForTest(town, 1);
         territory.reviewTolls(town, t + Territory.TOLL_REVIEW_TICKS, 16);
         double expected = Math.min(dev.b28.enterprise.territory.Smithing.ARMOURED_TOLL_RATE * 0 + Territory.MAX_TOLL_RATE,
                 0.95 * detour / 1000);

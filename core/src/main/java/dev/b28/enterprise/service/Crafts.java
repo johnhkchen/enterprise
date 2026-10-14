@@ -49,6 +49,9 @@ public final class Crafts {
                 "arms a town's guards from its iron", Smithing.SWORD, 0.1));
         recipe(kit("enterprise:armour", ARMORER, "armours its town's guards: the town can ask a higher toll",
                 "armours a town's guards from its iron", Smithing.ARMOUR, 0.4));
+        recipe(kit("enterprise:bows", TownServices.FLETCHER,
+                "makes bows of sticks and string: for its hunters, then its guards (armed, as with swords)",
+                "makes bows for a town's hunters and guards from its sticks and string", Smithing.BOW, 0.1));
     }
 
     private static Map<Item, Integer> ordered(Item a, int x, Item b, int y) {
@@ -60,13 +63,13 @@ public final class Crafts {
 
     /** Kit for each of its wearers who lacks one, of iron. */
     private static Recipe kit(String id, String trade, String does, String doesAbroad, Smithing.Kit kit, double fee) {
-        return new Recipe(id, trade, does, doesAbroad, Map.of(Items.IRON_INGOT, kit.ingots()), kit.item(), 1, 2, fee,
+        return new Recipe(id, trade, does, doesAbroad, kit.inputs(), kit.item(), 1, 2, fee,
                 visit -> visit.bell().map(bell -> {
                     Territory territory = visit.territory();
                     Map<String, Integer> workers = Territory.workers(visit.server(), bell);
                     int miners = territory.mine(bell).isPresent() ? workers.getOrDefault(TownServices.TOOLSMITH, 0) : 0;
                     int wearers = Smithing.wearers(kit, workers.getOrDefault(TownServices.FARMER, 0), miners,
-                            territory.guards(bell));
+                            territory.guards(bell), workers.getOrDefault(TownServices.FLETCHER, 0));
                     return Math.max(0, wearers - count(visit, kit.item()));
                 }).orElse(0));
     }

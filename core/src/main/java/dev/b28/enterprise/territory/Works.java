@@ -38,7 +38,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /**
- * A town's public works: bridges and walls. A bridge carries caravans over a hex too wet to cross, so the town that
+ * A town's public works: bridges, walls and buildings (see {@link Buildings}). A bridge carries caravans over a hex too wet to cross, so the town that
  * builds one holds a chokepoint it made itself. A wall rings the town; a walled town feels safe and gathers culture. Masons build it for wages, laying stone quarried from the town's land:
  * the bigger the town, the faster the stone comes. The ledger is the bridge; once finished, its deck (a causeway three
  * wide, with railings, of the local stone or wood) is laid in the world the next time its chunks can be loaded.
@@ -164,6 +164,32 @@ public final class Works extends SavedData {
         }
     }
 
+    /** A building for the town's trades or its people (see {@link Buildings}), laid in the world once finished. */
+    public static final class Building extends Project {
+        final Buildings.Kind kind;
+        final BlockPos corner;
+        boolean placed;
+
+        Building(GlobalPos owner, ResourceKey<Level> dimension, Buildings.Kind kind, BlockPos corner) {
+            super(owner, dimension);
+            this.kind = kind;
+            this.corner = corner;
+            this.blocksNeeded = kind.blocks();
+        }
+
+        public Buildings.Kind kind() {
+            return kind;
+        }
+
+        public BlockPos corner() {
+            return corner;
+        }
+
+        public boolean placed() {
+            return placed;
+        }
+    }
+
     /** Walls ring the bell at this distance: past the homes (up to 32 out), inside the census (48). */
     public static final int WALL_RADIUS = 40;
     public static final int WALL_HEIGHT = 3;
@@ -178,6 +204,7 @@ public final class Works extends SavedData {
 
     private final Map<Territory.Place, Bridge> bridges = new LinkedHashMap<>();
     private final Map<GlobalPos, Wall> walls = new LinkedHashMap<>();
+    private final Map<GlobalPos, Map<String, Building>> buildings = new LinkedHashMap<>(); // by owner, by kind
 
     public static Works get(MinecraftServer server) {
         return server.overworld()
@@ -236,10 +263,61 @@ public final class Works extends SavedData {
         return wall;
     }
 
-    /** The town's projects under way or done: bridges, then its wall. */
+    /** Starts a building of {@code kind} for the town, its corner at {@code corner}. */
+    public Building startBuilding(GlobalPos owner, Buildings.Kind kind, BlockPos corner) {
+        Building building = new Building(owner, owner.dimension(), kind, corner);
+        buildings.computeIfAbsent(owner, o -> new LinkedHashMap<>()).put(kind.id(), building);
+        setDirty();
+        return building;
+    }
+
+    public void forgetForTest(GlobalPos owner) {
+        buildings.remove(owner);
+        walls.remove(owner);
+        setDirty();
+    }
+
+    /** The town's buildings, started or finished, by kind. */
+    public Map<String, Building> buildingsOf(GlobalPos owner) {
+        return Map.copyOf(buildings.getOrDefault(owner, Map.of()));
+    }
+
+    /** Is a building of this kind finished for the town? */
+    public boolean built(GlobalPos owner, String kind) {
+        Building building = buildings.getOrDefault(owner, Map.of()).get(kind);
+        return building != null && building.done;
+    }
+
+    /** Kinds of building the town has finished. */
+    public Set<String> builtOf(GlobalPos owner) {
+        Set<String> done = new LinkedHashSet<>();
+        buildings.getOrDefault(owner, Map.of()).forEach((kind, b) -> {
+            if (b.done) {
+                done.add(kind);
+            }
+        });
+        return done;
+    }
+
+    /** The town's project being built now, if any. */
+    public Optional<Project> underway(GlobalPos owner) {
+        return projectsOf(owner).stream().filter(project -> !project.done).findFirst();
+    }
+
+    /** A visiting Mason lays {@code blocks} on a project. */
+    public void help(Project project, double blocks) {
+        project.blocksLaid = Math.min(project.blocksNeeded, project.blocksLaid + blocks);
+        if (project.blocksLaid >= project.blocksNeeded) {
+            project.done = true;
+        }
+        setDirty();
+    }
+
+    /** The town's projects under way or done: bridges, then its wall, then its buildings. */
     List<Project> projectsOf(GlobalPos owner) {
         List<Project> projects = new ArrayList<>(bridgesOf(owner));
         wall(owner).ifPresent(projects::add);
+        projects.addAll(buildings.getOrDefault(owner, Map.of()).values());
         return projects;
     }
 
@@ -281,7 +359,8 @@ public final class Works extends SavedData {
                 bridge.blocksLaid = bridge.blocksNeeded;
                 bridge.done = true;
                 Enterprise.LOGGER.debug("{} finished for the settlement at {}",
-                        bridge instanceof Bridge b ? "Bridge on " + b.hex : "Wall", owner.pos().toShortString());
+                        bridge instanceof Bridge b ? "Bridge on " + b.hex
+                                : bridge instanceof Building b ? "A " + b.kind.id() : "Wall", owner.pos().toShortString());
             }
             setDirty();
             return; // one project at a time
@@ -367,6 +446,31 @@ public final class Works extends SavedData {
                 lay(level, bridge, columns);
                 bridge.placed = true;
                 works.setDirty();
+            }
+        }
+        for (Map<String, Building> ofTown : works.buildings.values()) {
+            for (Building building : ofTown.values()) {
+                if (!building.done || building.placed) {
+                    continue;
+                }
+                ServerLevel level = server.getLevel(building.dimension);
+                if (level == null) {
+                    continue;
+                }
+                int n = Math.max(building.kind.size(), Docks.PIER * 2 + 1);
+                boolean loaded = true;
+                for (ChunkPos chunk : List.of(new ChunkPos(building.corner.offset(-n, 0, -n)), new ChunkPos(building.corner),
+                        new ChunkPos(building.corner.offset(n, 0, n))).stream().distinct().toList()) {
+                    if (!level.hasChunk(chunk.x, chunk.z)) {
+                        level.getChunkSource().addRegionTicket(LAYING, chunk, 0, chunk);
+                        loaded = false;
+                    }
+                }
+                if (loaded) {
+                    Buildings.build(level, building.kind, building.corner);
+                    building.placed = true;
+                    works.setDirty();
+                }
             }
         }
         for (Wall wall : works.walls.values()) {
@@ -538,6 +642,16 @@ public final class Works extends SavedData {
             wallList.add(entry);
         }
         tag.put("walls", wallList);
+        ListTag buildingList = new ListTag();
+        buildings.values().forEach(ofTown -> ofTown.values().forEach(building -> {
+            CompoundTag entry = new CompoundTag();
+            building.save(entry);
+            entry.putString("kind", building.kind.id());
+            entry.putLong("corner", building.corner.asLong());
+            entry.putBoolean("placed", building.placed);
+            buildingList.add(entry);
+        }));
+        tag.put("buildings", buildingList);
         return tag;
     }
 
@@ -563,6 +677,16 @@ public final class Works extends SavedData {
                 wall.columnsPlaced = entry.getInt("columnsPlaced");
                 works.walls.put(owner, wall);
             });
+        }
+        for (Tag t : tag.getList("buildings", Tag.TAG_COMPOUND)) {
+            CompoundTag entry = (CompoundTag) t;
+            var kind = Buildings.kind(entry.getString("kind"));
+            GlobalPos.CODEC.parse(NbtOps.INSTANCE, entry.get("owner")).ifSuccess(owner -> kind.ifPresent(k -> {
+                Building building = new Building(owner, owner.dimension(), k, BlockPos.of(entry.getLong("corner")));
+                building.load(entry);
+                building.placed = entry.getBoolean("placed");
+                works.buildings.computeIfAbsent(owner, o -> new LinkedHashMap<>()).put(k.id(), building);
+            }));
         }
         return works;
     }

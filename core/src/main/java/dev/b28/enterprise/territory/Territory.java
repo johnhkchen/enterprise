@@ -164,6 +164,10 @@ public final class Territory extends SavedData {
         long mendedUntil = -1; // a Toolsmith mends its tools until then
         Map<String, Double> kitShare = new LinkedHashMap<>(); // by kit item id, share of its wearers covered
         int militia; // hands without a trade standing watch at its posts, at the last touch
+        double hunting; // share of its Fletchers with bows, at the last touch
+        double armed; // share of its guards with swords or bows (or archers on a watchtower), at the last touch
+        java.util.Set<String> buildings = new java.util.LinkedHashSet<>(); // kinds finished, from the works ledger
+        boolean flowerBeds; // a Farmer has planted beds on its square
     }
 
     private final Map<Place, GlobalPos> owners = new HashMap<>();
@@ -336,6 +340,44 @@ public final class Territory extends SavedData {
     }
 
     public static final String TOOLSMITH = "minecraft:toolsmith";
+    public static final String FLETCHER = "minecraft:fletcher";
+
+    /** The levels of a trade's grown residents at home, summed. */
+    static double levels(MinecraftServer server, GlobalPos bell, String trade) {
+        return dev.b28.enterprise.settlement.Settlements.get(server).roster(bell).values().stream()
+                .filter(r -> r.profession().equals(trade) && !r.away() && !r.baby())
+                .mapToInt(r -> Math.max(1, r.level())).sum();
+    }
+
+    /** Kinds of building it has finished, at the last touch. */
+    public java.util.Set<String> buildings(GlobalPos bell) {
+        return holding(bell).map(h -> java.util.Set.copyOf(h.buildings)).orElse(java.util.Set.of());
+    }
+
+    public double armed(GlobalPos bell) {
+        return holding(bell).map(h -> h.armed).orElse(0.0);
+    }
+
+    public double hunting(GlobalPos bell) {
+        return holding(bell).map(h -> h.hunting).orElse(0.0);
+    }
+
+    public boolean flowerBeds(GlobalPos bell) {
+        return holding(bell).map(h -> h.flowerBeds).orElse(false);
+    }
+
+    public void plantFlowerBeds(GlobalPos bell) {
+        holdings.computeIfAbsent(bell, b -> new Holding()).flowerBeds = true;
+        setDirty();
+    }
+
+    public double moodTargetForTest(GlobalPos bell) {
+        return holding(bell).map(Territory::moodTarget).orElse(0.0);
+    }
+
+    public void setArmedForTest(GlobalPos bell, double armed) {
+        holdings.computeIfAbsent(bell, b -> new Holding()).armed = armed;
+    }
 
     /** Grown residents at home, by trade. */
     public static Map<String, Integer> workers(MinecraftServer server, GlobalPos bell) {
@@ -528,7 +570,9 @@ public final class Territory extends SavedData {
         Hex home = Hex.at(bellPos);
         claim(bell, home);
         if (owner(level.dimension(), home).filter(bell::equals).isPresent()) {
-            holding.culture += (census.value() + Works.WALL_CULTURE_PER_DAY * Works.get(level.getServer()).walled(bell))
+            holding.culture += (census.value() + Works.WALL_CULTURE_PER_DAY * Works.get(level.getServer()).walled(bell)
+                    + (holding.buildings.contains(Buildings.LIBRARY.id()) ? Buildings.LIBRARY_CULTURE_PER_DAY : 0)
+                    + (holding.buildings.contains(Buildings.CARAVANSERAI.id()) ? Buildings.CARAVANSERAI_CULTURE_PER_DAY : 0))
                     * days * cultureFactor(holding.mood);
             grow(bell, home);
         }
@@ -747,6 +791,7 @@ public final class Territory extends SavedData {
         Works works = Works.get(level.getServer());
         works.work(level, desk, stock, bell.get(), hexes(bell.get()).size(), now); // masons' wages and progress
         holding.walled = works.walled(bell.get());
+        holding.buildings = new java.util.LinkedHashSet<>(works.builtOf(bell.get()));
         if (holding.lastTollReview != lastReview && lastReview >= 0) {
             works.consider(level, desk, stock, bell.get(), this, now); // with the tolls: is a bridge worth building?
             dev.b28.enterprise.caravan.Commissions.consider(level, at, stock, bell.get(), this, now); // a caravan of its own?
@@ -761,7 +806,8 @@ public final class Territory extends SavedData {
                 double levels = dev.b28.enterprise.settlement.Settlements.get(level.getServer()).roster(bell.get()).values()
                         .stream().filter(r -> r.profession().equals("minecraft:fisherman") && !r.away() && !r.baby())
                         .mapToInt(r -> Math.max(1, r.level())).sum();
-                holding.pending.merge("minecraft:cod", levels * Docks.COD_PER_LEVEL_DAY * days, Double::sum);
+                holding.pending.merge("minecraft:cod", levels * Docks.COD_PER_LEVEL_DAY * days
+                        * (holding.buildings.contains(Buildings.STONE_DOCKS.id()) ? 2 : 1), Double::sum);
             }
             Map<String, Integer> workers = workers(level.getServer(), bell.get());
             if (holding.mine != null) {
@@ -769,15 +815,26 @@ public final class Territory extends SavedData {
                 double levels = dev.b28.enterprise.settlement.Settlements.get(level.getServer()).roster(bell.get()).values()
                         .stream().filter(r -> r.profession().equals(TOOLSMITH) && !r.away() && !r.baby())
                         .mapToInt(r -> Math.max(1, r.level())).sum()
-                        * (1 + Smithing.TOOL_BONUS * holding.kitShare.getOrDefault(Smithing.PICKAXE.id(), 0.0));
+                        * (1 + Smithing.TOOL_BONUS * holding.kitShare.getOrDefault(Smithing.PICKAXE.id(), 0.0))
+                        * (holding.buildings.contains(Buildings.SMITHY.id()) ? 1.5 : 1);
                 holding.pending.merge("minecraft:raw_iron", levels * Mines.RAW_IRON_PER_LEVEL_DAY * days, Double::sum);
                 holding.pending.merge("minecraft:coal", levels * Mines.COAL_PER_LEVEL_DAY * days, Double::sum);
             }
             Labour.work(level, hexes(bell.get()),
                     Labour.hands(dev.b28.enterprise.settlement.Settlements.get(level.getServer()).roster(bell.get())),
                     Math.min(holding.militia, holding.posts.size()), stock, days, holding.pending);
+            // Its Fletchers hunt: so much game a day per level each, a quarter of it without bows.
+            double hunterLevels = levels(level.getServer(), bell.get(), FLETCHER)
+                    * (Smithing.SNARES + (1 - Smithing.SNARES) * holding.hunting);
+            if (hunterLevels > 0) {
+                for (Labour.Haul game : Hunting.game(Labour.biome(level, Hex.at(bell.get().pos())))) {
+                    holding.pending.merge(BuiltInRegistries.ITEM.getKey(game.item()).toString(),
+                            game.perDay() * hunterLevels * days, Double::sum);
+                }
+            }
             Smithing.wear(stock, holding.kitWear, days, workers.getOrDefault("minecraft:farmer", 0), miners(holding, workers),
-                    holding.posts.size(), holding.mendedUntil >= now);
+                    holding.posts.size(), workers.getOrDefault(FLETCHER, 0), holding.mendedUntil >= now ? 0.5 : 1,
+                    holding.buildings.contains(Buildings.SMITHY.id()) ? 0.8 : 1);
         }
         holding.lastTend = now;
         double owedBefore = holding.wageOwed;
@@ -812,10 +869,14 @@ public final class Territory extends SavedData {
         Workshop.convert(level, dev.b28.enterprise.merchant.Warehouse.get(level.getServer()), at, bell.get(), stock, now);
         dev.b28.enterprise.service.Services.home(level, this, at, bell.get(), stock, now); // what its own trades do for it
         Map<String, Integer> workers = workers(level.getServer(), bell.get());
+        int hunters = workers.getOrDefault(FLETCHER, 0);
         for (Smithing.Kit kit : Smithing.KITS) {
             holding.kitShare.put(kit.id(), Smithing.share(stock, kit, Smithing.wearers(kit,
-                    workers.getOrDefault("minecraft:farmer", 0), miners(holding, workers), holding.posts.size())));
+                    workers.getOrDefault("minecraft:farmer", 0), miners(holding, workers), holding.posts.size(), hunters)));
         }
+        holding.hunting = Smithing.hunting(stock, hunters);
+        holding.armed = Smithing.armed(stock, holding.posts.size(), hunters,
+                holding.buildings.contains(Buildings.WATCHTOWER.id()) ? 0.5 : 0);
         enjoyComforts(stock, holding, now);
         double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now);
         int bankSpurs = MoneyChanger.bankAt(level, desk).map(b -> b.getBalance()).orElse(0);
@@ -879,7 +940,10 @@ public final class Territory extends SavedData {
         double comforts = holding.comfortMet.values().stream().mapToDouble(Double::doubleValue).sum();
         return comforts
                 + Works.WALL_MOOD * holding.walled
-                + (holding.blessedUntil >= holding.lastComforts ? BLESSING_MOOD : 0)
+                + (holding.blessedUntil >= holding.lastComforts
+                        ? BLESSING_MOOD * (holding.buildings.contains(Buildings.TEMPLE.id()) ? 2 : 1) : 0)
+                + (holding.buildings.contains(Buildings.SQUARE.id())
+                        ? Buildings.SQUARE_MOOD + (holding.flowerBeds ? Buildings.FLOWER_MOOD : 0) : 0)
                 - holding.villagers / VILLAGERS_PER_WANT
                 - CROWDING_MOOD * Math.max(0, holding.villagers - holding.beds)
                 - UNPAID_MOOD * (1 - holding.paidShare);
@@ -917,7 +981,8 @@ public final class Territory extends SavedData {
             }
         }
         if (holding.mood >= Growth.BIRTH_MOOD && census.beds() > census.villagers()) {
-            holding.birthProgress = Math.min(1, holding.birthProgress + days / Growth.DAYS_PER_BIRTH);
+            holding.birthProgress = Math.min(1, holding.birthProgress + days / Growth.DAYS_PER_BIRTH
+                    * (holding.buildings.contains(Buildings.TEMPLE.id()) ? 2 : 1));
         }
         if (holding.birthProgress >= 1
                 && stock.foodNutrition() >= dev.b28.enterprise.merchant.Warehouse.FOOD_PAR_POINTS + Growth.BIRTH_FOOD_POINTS
@@ -1185,7 +1250,7 @@ public final class Territory extends SavedData {
             }
         }
         // Armed guards ask more of the detour, armoured ones may ask a higher toll.
-        double armed = holding.kitShare.getOrDefault(Smithing.SWORD.id(), 0.0);
+        double armed = holding.armed;
         double armoured = holding.kitShare.getOrDefault(Smithing.ARMOUR.id(), 0.0);
         Chokepoints.Plan plan = Chokepoints.bestPlan(holding.crossings.values(), guardCostPerDay(rate),
                 Chokepoints.DETOUR_SHARE + (Smithing.ARMED_DETOUR_SHARE - Chokepoints.DETOUR_SHARE) * armed,
@@ -1298,6 +1363,9 @@ public final class Territory extends SavedData {
             entry.putLong("mendedUntil", holding.mendedUntil);
             entry.put("kitShare", doubles(holding.kitShare));
             entry.putInt("militia", holding.militia);
+            entry.putDouble("hunting", holding.hunting);
+            entry.putDouble("armed", holding.armed);
+            entry.putBoolean("flowerBeds", holding.flowerBeds);
             if (holding.dock != null) {
                 entry.putLong("dock", holding.dock.asLong());
             }
@@ -1415,6 +1483,9 @@ public final class Territory extends SavedData {
                 holding.mendedUntil = entry.contains("mendedUntil") ? entry.getLong("mendedUntil") : -1;
                 holding.kitShare = new LinkedHashMap<>(readDoubles(entry.getCompound("kitShare")));
                 holding.militia = entry.getInt("militia");
+                holding.hunting = entry.getDouble("hunting");
+                holding.armed = entry.getDouble("armed");
+                holding.flowerBeds = entry.getBoolean("flowerBeds");
                 holding.dock = entry.contains("dock") ? BlockPos.of(entry.getLong("dock")) : null;
                 holding.homeProgress = entry.getDouble("homeProgress");
                 holding.birthProgress = entry.getDouble("birthProgress");

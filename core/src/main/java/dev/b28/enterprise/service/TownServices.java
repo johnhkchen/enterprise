@@ -22,6 +22,8 @@ public final class TownServices {
     public static final String CARTOGRAPHER = "minecraft:cartographer";
     public static final String LIBRARIAN = "minecraft:librarian";
     public static final String TOOLSMITH = "minecraft:toolsmith";
+    public static final String FLETCHER = "minecraft:fletcher";
+    public static final String MASON = "minecraft:mason";
 
     /** A visiting Cleric's blessing costs this much and lasts two days and a day a level; a resident's lasts a day. */
     public static final double BLESSING_EMERALDS = 2;
@@ -70,6 +72,21 @@ public final class TownServices {
                         + MENDING_EMERALDS + " emerald",
                 TownServices::mendingWanted, TownServices::mend));
         Crafts.register();
+        BuildServices.register();
+        // Worked by the ledger as days pass.
+        Services.register(Service.passive("enterprise:mine", TOOLSMITH, Service.Where.HOME,
+                "digs a mine: 2 raw iron and half a coal a day a level, half again with pickaxes"));
+        Services.register(Service.passive("enterprise:hunting", FLETCHER, Service.Where.HOME,
+                "hunts the town's land: game, hides and feathers, a quarter as much without a bow"));
+        Services.register(Service.passive("enterprise:docks", "minecraft:fisherman", Service.Where.HOME,
+                "builds a pier and lands 4 cod a day a level"));
+        Services.register(Service.passive("enterprise:gathering", dev.b28.enterprise.territory.Labour.NITWIT,
+                Service.Where.HOME, "works a hex: gathers what the land gives (logs, sand, clay, flint, flowers), half "
+                        + "again as much as another villager would"));
+        Services.register(Service.passive("enterprise:militia", dev.b28.enterprise.territory.Labour.NITWIT,
+                Service.Where.HOME, "stands watch at the town's posts for its food, without pay"));
+        Services.register(Service.road("enterprise:porter", dev.b28.enterprise.territory.Labour.NITWIT,
+                "carries 9 stacks out with a caravan, then walks home"));
     }
 
     /** Does the town served have a resident of this trade (at home now)? Then it does this for itself. */

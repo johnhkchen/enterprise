@@ -24,6 +24,11 @@ public record Service(String id, String trade, Where where, String does, Predica
 
     /** A service the caravan works itself on the road: listed for the readout, run by the caravan. */
     public static Service road(String id, String trade, String does) {
-        return new Service(id, trade, Where.ROAD, does, visit -> false, visit -> 0);
+        return passive(id, trade, Where.ROAD, does);
+    }
+
+    /** Work the ledger does itself as time passes (a mine's ore, a hunt): listed for the readout, run elsewhere. */
+    public static Service passive(String id, String trade, Where where, String does) {
+        return new Service(id, trade, where, does, visit -> false, visit -> 0);
     }
 }

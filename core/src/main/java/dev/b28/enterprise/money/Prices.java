@@ -76,7 +76,22 @@ public final class Prices {
             Map.entry("minecraft:iron_hoe", 1.0),
             Map.entry("minecraft:iron_pickaxe", 2 / 3.0),
             Map.entry("minecraft:iron_sword", 2 / 3.0),
-            Map.entry("minecraft:iron_chestplate", 1 / 9.0)));
+            Map.entry("minecraft:iron_chestplate", 1 / 9.0),
+            Map.entry("minecraft:bow", 0.5),
+            Map.entry("minecraft:saddle", 1 / 6.0),
+            Map.entry("minecraft:white_banner", 1 / 3.0),
+            Map.entry("minecraft:enchanted_book", 0.1),
+            Map.entry("minecraft:lapis_lazuli", 1.0),
+            // Game and meat
+            Map.entry("minecraft:rabbit", 8.0),
+            Map.entry("minecraft:rabbit_hide", 9.0),
+            Map.entry("minecraft:beef", 8.0),
+            Map.entry("minecraft:porkchop", 7.0),
+            Map.entry("minecraft:chicken", 14.0),
+            Map.entry("minecraft:mutton", 7.0),
+            Map.entry("minecraft:cooked_beef", 5.0),
+            Map.entry("minecraft:cooked_mutton", 5.0),
+            Map.entry("minecraft:cooked_rabbit", 5.0)));
 
     static {
         // Every colour of carpet and candle: carpets 4 to the emerald (shepherds), dyed candles as plain ones.

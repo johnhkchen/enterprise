@@ -222,6 +222,15 @@ final class EnterpriseCommands {
                                     .map(k -> k.location().getPath()).orElse("?"))
                             .collect(java.util.stream.Collectors.joining(", ")))), false);
         }
+        var works = dev.b28.enterprise.territory.Works.get(source.getServer()).buildingsOf(bell);
+        if (!works.isEmpty() || territory.hunting(bell) > 0 || territory.armed(bell) > 0) {
+            source.sendSuccess(() -> Component.literal("  buildings: %s; hunters with bows %.0f%%, guards armed %.0f%%%s"
+                    .formatted(works.isEmpty() ? "none" : works.values().stream()
+                                    .map(b -> b.kind().id() + (b.done() ? "" : " (%.0f%% built)".formatted(b.progress() * 100)))
+                                    .collect(java.util.stream.Collectors.joining(", ")),
+                            territory.hunting(bell) * 100, territory.armed(bell) * 100,
+                            territory.flowerBeds(bell) ? "; flower beds on the square" : "")), false);
+        }
         var kit = territory.kitShare(bell);
         if (territory.mine(bell).isPresent() || kit.values().stream().anyMatch(v -> v > 0)) {
             source.sendSuccess(() -> Component.literal("  mine %s; kit: %s%s".formatted(
