@@ -78,9 +78,44 @@ public final class Smithing {
         return Math.max(floor, Math.min(1, (stock.count(new ItemCost(Items.IRON_SWORD, 1)) + bows) / (double) guards));
     }
 
-    /** Share of the wearers this kit covers, from the warehouse: 0 to 1 (0 with no wearers). */
+    /** Enchanted kit works better: each level of enchantment (but Unbreaking) adds this much, up to {@link #BEST}. */
+    public static final double QUALITY_PER_LEVEL = 0.15;
+    public static final double BEST = 1.5;
+
+    /** How good one piece of kit is: 1 plain, more enchanted. */
+    public static double quality(ItemStack stack) {
+        int levels = 0;
+        for (var entry : stack.getEnchantments().entrySet()) {
+            if (!entry.getKey().is(net.minecraft.world.item.enchantment.Enchantments.UNBREAKING)) {
+                levels += entry.getIntValue();
+            }
+        }
+        return Math.min(BEST, 1 + QUALITY_PER_LEVEL * levels);
+    }
+
+    /** How fast one piece wears: Unbreaking makes it last (1 + its level) times as long. */
+    static double wearRate(ItemStack stack) {
+        int unbreaking = 0;
+        for (var entry : stack.getEnchantments().entrySet()) {
+            if (entry.getKey().is(net.minecraft.world.item.enchantment.Enchantments.UNBREAKING)) {
+                unbreaking = entry.getIntValue();
+            }
+        }
+        return 1.0 / (1 + unbreaking);
+    }
+
+    /**
+     * Share of the wearers this kit covers, from the warehouse, the best pieces first and enchanted ones counting for
+     * more: 0 to {@link #BEST} (0 with no wearers).
+     */
     public static double share(MerchantStock stock, Kit kit, int wearers) {
-        return wearers <= 0 ? 0 : Math.min(1, stock.count(new ItemCost(kit.item(), 1)) / (double) wearers);
+        if (wearers <= 0) {
+            return 0;
+        }
+        List<Double> qualities = stock.copies(new ItemCost(kit.item(), 1)).stream()
+                .flatMap(stack -> java.util.Collections.nCopies(stack.getCount(), quality(stack)).stream())
+                .sorted(java.util.Comparator.reverseOrder()).limit(wearers).toList();
+        return Math.min(BEST, qualities.stream().mapToDouble(Double::doubleValue).sum() / wearers);
     }
 
     /**
@@ -94,10 +129,16 @@ public final class Smithing {
 
     /**
      * As above, with {@code hunters}; tools wear at {@code toolWear} of their rate (mended), all kit at
-     * {@code kitWear} (a smithy keeps it).
+     * {@code kitWear} (a smithy keeps it), and the guards' kit at {@code guardWear} (an armoury keeps it).
      */
     public static int wear(MerchantStock stock, Map<String, Double> wear, double days, int farmers, int miners,
             int guards, int hunters, double toolWear, double kitWear) {
+        return wear(stock, wear, days, farmers, miners, guards, hunters, toolWear, kitWear, 1);
+    }
+
+    /** As above, with the guards' kit wearing at {@code guardWear}. */
+    public static int wear(MerchantStock stock, Map<String, Double> wear, double days, int farmers, int miners,
+            int guards, int hunters, double toolWear, double kitWear, double guardWear) {
         int used = 0;
         for (Kit kit : KITS) {
             int held = stock.count(new ItemCost(kit.item(), 1));
@@ -106,8 +147,11 @@ public final class Smithing {
                 wear.remove(kit.id()); // nothing in use: nothing wearing out
                 continue;
             }
+            double rate = stock.copies(new ItemCost(kit.item(), 1)).stream()
+                    .flatMap(stack -> java.util.Collections.nCopies(stack.getCount(), wearRate(stack)).stream())
+                    .limit((long) equipped).mapToDouble(Double::doubleValue).average().orElse(1);
             double owed = wear.getOrDefault(kit.id(), 0.0)
-                    + equipped * days / kit.days() * (kit.tool() ? toolWear : 1) * kitWear;
+                    + equipped * days / kit.days() * rate * (kit.tool() ? toolWear : guardWear) * kitWear;
             int whole = (int) Math.min(held, Math.floor(owed));
             if (whole > 0) {
                 used += stock.take(new ItemCost(kit.item(), 1), whole).stream().mapToInt(ItemStack::getCount).sum();

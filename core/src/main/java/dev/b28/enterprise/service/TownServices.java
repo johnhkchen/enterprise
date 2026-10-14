@@ -73,6 +73,7 @@ public final class TownServices {
                 TownServices::mendingWanted, TownServices::mend));
         Crafts.register();
         BuildServices.register();
+        MasterServices.register();
         // Worked by the ledger as days pass.
         Services.register(Service.passive("enterprise:mine", TOOLSMITH, Service.Where.HOME,
                 "digs a mine: 2 raw iron and half a coal a day a level, half again with pickaxes"));
@@ -182,7 +183,7 @@ public final class TownServices {
         GlobalPos desk = visit.at();
         Atlas.markets(visit.server()).stream()
                 .filter(m -> m.dimension().equals(desk.dimension())
-                        && m.pos().distSqr(desk.pos()) <= (double) CHART_RANGE * CHART_RANGE)
+                        && m.pos().distSqr(desk.pos()) <= Math.pow(CHART_RANGE * (visit.skill() >= 5 ? 2 : 1), 2))
                 .forEach(visit::hear);
         return 0;
     }

@@ -12,7 +12,7 @@ Monorepo: our mods, the pack definition, and design docs.
 - `pack/`: packwiz pack definition, the source of truth for which mods ship.
 - `scripts/prism_sync.py`: mirrors `pack/` plus the built core jar into the Prism instance "Enterprise (dev)".
 - `dev/testbench/`: datapack synced into the instance's `testing` world. On load it builds a standing test market near spawn if missing (desk at 27 -60 27, bell at 27 -60 24 with a bed per villager so it's a settlement, 18 shulkers, Blaze Banker, selling trades switched on once villagers settle) and shows a welcome panel on every join. `/function testbench:help` has the rest (market build/clear anywhere, time warps). Headless servers build the same fixture; spawn chunks don't tick without a player, so `forceload add 19 19 35 35` to run it.
-- `dev/experiments/`: measurement scripts that drive the headless server over RCON: `merchant_ramp.py` (one market's ramp), `caravan_network.py` (hub warehouse supplying three settlements by caravan), `network_study.py` (days of the whole network to CSV; `--comforts`, `--river`, `--river-bridge`, `--fleet`, `--services`, `--metal`, `--inject DAY`), `standalone_town.py` (one settlement left to itself).
+- `dev/experiments/`: measurement scripts that drive the headless server over RCON: `merchant_ramp.py` (one market's ramp), `caravan_network.py` (hub warehouse supplying three settlements by caravan), `network_study.py` (days of the whole network to CSV; `--comforts`, `--river`, `--river-bridge`, `--fleet`, `--services`, `--metal`, `--trades`, `--inject DAY`), `standalone_town.py` (one settlement left to itself).
 
 ## Commands (`just`)
 - `just build`: build the core jar.
@@ -25,6 +25,7 @@ Monorepo: our mods, the pack definition, and design docs.
   Other local servers use 25565/25575 (claude_plays_mc_create) and 25566/25576 (redshelf): never point RCON at those.
 
 ## Game test gotchas
+- Stop the dev server first (`just rcon stop`): while it holds `core/run`, `just gametest` crashes at startup yet reports BUILD SUCCESSFUL with no tests run. Look for "All N required tests passed".
 - Mock server players (`makeMockServerPlayerInLevel`) break on Numismatics' login packets; make logic take positions or plain `makeMockPlayer`.
 - In dev environments Numismatics trusts only players wearing golden boots; its real trust rule can't be tested here.
 - Test coordinates start at the structure block, one below the arena: the `floor` template's floor is y=1.

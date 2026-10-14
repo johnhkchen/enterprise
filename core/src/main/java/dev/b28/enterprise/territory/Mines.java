@@ -17,6 +17,10 @@ public final class Mines {
     public static final double RAW_IRON_PER_LEVEL_DAY = 2;
     public static final double COAL_PER_LEVEL_DAY = 0.5;
 
+    /** A mine sunk deep (by a master Toolsmith, shored by a Mason) brings up lapis too. */
+    public static final double LAPIS_PER_LEVEL_DAY = 0.5;
+    public static final double DEEP_EMERALDS = 8;
+
     /** A mine head costs this much, from money beyond the town's reserve. */
     public static final double MINE_EMERALDS = 6;
 

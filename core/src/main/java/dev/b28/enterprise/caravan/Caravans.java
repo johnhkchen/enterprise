@@ -88,6 +88,10 @@ public final class Caravans {
     /** A caravan carries this much of what a town wants of a comfort: it may have used more since its stocktake. */
     public static final double COMFORT_MARGIN = 1.5;
 
+    /** A caravan with a saddle (a master Leatherworker's) rides this much faster; a trip wears this much of one. */
+    public static final double SADDLED_PACE = 4 / 3.0;
+    public static final double SADDLE_WEAR_PER_TRIP = 0.1;
+
     /** At most one departure per route per in-game day. */
     public static final long DEPARTURE_INTERVAL = 24000;
 
@@ -265,12 +269,25 @@ public final class Caravans {
                 dev.b28.enterprise.settlement.Settlements.get(server).setAway(bell, member.getUUID(), true)));
         squad.forEach(member -> ledger.recordService(route.from, member.getUUID()));
         squad.forEach(member -> crew.add(Squad.stow(member)));
-        Caravan leaving = new Caravan(route.id, Caravan.Leg.OUTBOUND, now + travelTicks(route.distance()), cargo, spurs,
-                Squad.haggleLevel(crew));
+        // Saddled, the caravan rides: a third faster. Each trip wears a tenth of a saddle.
+        double pace = 1;
+        if (stock.count(new ItemCost(Items.SADDLE, 1)) > 0) {
+            pace = SADDLED_PACE;
+            route.saddleWear += SADDLE_WEAR_PER_TRIP;
+            if (route.saddleWear >= 1) {
+                stock.take(new ItemCost(Items.SADDLE, 1), 1);
+                route.saddleWear -= 1;
+            }
+        }
+        Caravan leaving = new Caravan(route.id, Caravan.Leg.OUTBOUND, now + (long) (travelTicks(route.distance()) / pace),
+                cargo, spurs, Squad.haggleLevel(crew));
+        leaving.pace = pace;
         leaving.crew.addAll(crew);
         // Fishermen fish the water they cross: a catch for each on each water hex, sold where food is short.
         long fishermen = crew.stream().filter(m -> Squad.trade(m).equals(Squad.FISHERMAN)).count();
-        int catchCount = (int) (fishermen * waterHexes(server, route.from.dimension(), route.path()) * Squad.FISH_PER_WATER_HEX);
+        boolean master = crew.stream().anyMatch(m -> Squad.trade(m).equals(Squad.FISHERMAN) && Squad.level(m) >= 5);
+        int catchCount = (int) (fishermen * waterHexes(server, route.from.dimension(), route.path()) * Squad.FISH_PER_WATER_HEX
+                * (master ? 1.5 : 1)); // a master Fisherman knows the deep water
         for (int left = catchCount; left > 0; left -= 64) {
             leaving.cargo.add(new ItemStack(Items.COD, Math.min(64, left)));
         }
@@ -353,7 +370,7 @@ public final class Caravans {
             route.foodSpurs += price;
             route.foodEaten += food;
             caravan.leg = Caravan.Leg.RETURNING;
-            caravan.arrives = now + travelTicks(route.distance());
+            caravan.arrives = now + (long) (travelTicks(route.distance()) / caravan.pace);
             route.status = "on the way home";
         }
         ledger.setDirty();

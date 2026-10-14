@@ -113,6 +113,20 @@ public final class MerchantStock {
         return total;
     }
 
+    /** Copies of the stacks matching {@code cost}, loose and in shulker boxes: to read, not to take. */
+    public List<ItemStack> copies(ItemCost cost) {
+        List<ItemStack> found = new java.util.ArrayList<>();
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            ItemStack stack = handler.getStackInSlot(slot);
+            if (cost.test(stack)) {
+                found.add(stack.copy());
+            } else if (isShulkerBox(stack)) {
+                contents(stack).stream().filter(cost::test).forEach(inner -> found.add(inner.copy()));
+            }
+        }
+        return found;
+    }
+
     /** Removes up to {@code amount} items matching {@code cost}; returns what was taken, in stack-sized pieces. */
     public NonNullList<ItemStack> take(ItemCost cost, int amount) {
         NonNullList<ItemStack> taken = NonNullList.create();

@@ -5,6 +5,7 @@ import dev.b28.enterprise.territory.Smithing;
 import dev.b28.enterprise.territory.Territory;
 import dev.b28.enterprise.territory.Workshop;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.ToIntFunction;
 import net.minecraft.core.GlobalPos;
@@ -24,7 +25,16 @@ public final class Crafts {
      * town wants {@code wanted} more (items); abroad at {@code feeEach} emeralds an item.
      */
     public record Recipe(String id, String trade, String does, String doesAbroad, Map<Item, Integer> inputs, Item output,
-            int out, int perLevel, double feeEach, ToIntFunction<Visit> wanted) {}
+            int out, int perLevel, double feeEach, ToIntFunction<Visit> wanted, int minLevel) {
+        public Recipe(String id, String trade, String does, String doesAbroad, Map<Item, Integer> inputs, Item output,
+                int out, int perLevel, double feeEach, ToIntFunction<Visit> wanted) {
+            this(id, trade, does, doesAbroad, inputs, output, out, perLevel, feeEach, wanted, 1);
+        }
+    }
+
+    public static final String SHEPHERD = "minecraft:shepherd";
+    public static final String BUTCHER = "minecraft:butcher";
+    public static final String LEATHERWORKER = "minecraft:leatherworker";
 
     public static final String ARMORER = "minecraft:armorer";
     public static final String WEAPONSMITH = "minecraft:weaponsmith";
@@ -39,7 +49,12 @@ public final class Crafts {
         recipe(new Recipe("enterprise:smelting", ARMORER, "smelts its town's ore: raw iron and coal into iron",
                 "smelts a town's ore, for one with a mine and no Armorer",
                 ordered(Items.RAW_IRON, Smithing.RAW_PER_COAL, Items.COAL, 1), Items.IRON_INGOT, Smithing.RAW_PER_COAL, 4,
-                0.02, visit -> count(visit, Items.RAW_IRON)));
+                0.02, visit -> blast(visit) ? 0 : count(visit, Items.RAW_IRON)));
+        recipe(new Recipe("enterprise:blast_smelting", ARMORER,
+                "smelts in its town's blast furnace: twice the iron for a coal, twice as fast",
+                "smelts in a town's blast furnace, for one without an Armorer",
+                ordered(Items.RAW_IRON, 2 * Smithing.RAW_PER_COAL, Items.COAL, 1), Items.IRON_INGOT,
+                2 * Smithing.RAW_PER_COAL, 4, 0.02, visit -> blast(visit) ? count(visit, Items.RAW_IRON) : 0));
         recipe(kit("enterprise:hoes", TownServices.TOOLSMITH, "forges hoes for its town's farmers: they tend more",
                 "forges hoes for a town's farmers from its iron", Smithing.HOE, 0.1));
         recipe(kit("enterprise:pickaxes", TownServices.TOOLSMITH, "forges pickaxes for its town's miners: more ore",
@@ -49,6 +64,24 @@ public final class Crafts {
                 "arms a town's guards from its iron", Smithing.SWORD, 0.1));
         recipe(kit("enterprise:armour", ARMORER, "armours its town's guards: the town can ask a higher toll",
                 "armours a town's guards from its iron", Smithing.ARMOUR, 0.4));
+        recipe(new Recipe("enterprise:banners", SHEPHERD,
+                "weaves banners while its town is short of furnishings: a banner furnishes like twelve carpets",
+                "weaves banners for a town short of furnishings, from its wool and sticks",
+                ordered(Items.WHITE_WOOL, 6, Items.STICK, 1), Items.WHITE_BANNER, 1, 2, 0.1,
+                visit -> comfortWanted(visit, "furnishings", Items.WHITE_BANNER), 5));
+        for (var meat : List.of(Map.entry(Items.BEEF, Items.COOKED_BEEF), Map.entry(Items.PORKCHOP, Items.COOKED_PORKCHOP),
+                Map.entry(Items.CHICKEN, Items.COOKED_CHICKEN), Map.entry(Items.MUTTON, Items.COOKED_MUTTON),
+                Map.entry(Items.RABBIT, Items.COOKED_RABBIT))) {
+            String name = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(meat.getKey()).getPath();
+            recipe(new Recipe("enterprise:smoking_" + name, BUTCHER,
+                    "smokes " + name + " in its town's smokehouse while food is short: coal for fuel",
+                    "smokes a town's " + name + " while its food is short",
+                    ordered(meat.getKey(), 8, Items.COAL, 1), meat.getValue(), 8, 2, 0.01, Crafts::foodWanted, 5));
+        }
+        recipe(new Recipe("enterprise:saddles", LEATHERWORKER,
+                "makes saddles of leather and iron: its caravans ride, a third faster",
+                "makes saddles for a town's caravans from its leather and iron",
+                ordered(Items.LEATHER, 5, Items.IRON_INGOT, 1), Items.SADDLE, 1, 1, 0.25, Crafts::saddlesWanted, 5));
         recipe(kit("enterprise:bows", TownServices.FLETCHER,
                 "makes bows of sticks and string: for its hunters, then its guards (armed, as with swords)",
                 "makes bows for a town's hunters and guards from its sticks and string", Smithing.BOW, 0.1));
@@ -104,8 +137,11 @@ public final class Crafts {
     static int batches(Recipe recipe, Visit visit) {
         int batches = Math.min((recipe.wanted().applyAsInt(visit) + recipe.out() - 1) / recipe.out(),
                 recipe.perLevel() * visit.skill());
+        // Kit for the town's own hands comes before what its lockers sell; anything else leaves the lockers their share.
+        boolean kit = Smithing.KITS.stream().anyMatch(k -> k.item() == recipe.output());
         for (Map.Entry<Item, Integer> input : recipe.inputs().entrySet()) {
-            batches = Math.min(batches, spare(visit, input.getKey()) / input.getValue());
+            int have = kit ? count(visit, input.getKey()) : spare(visit, input.getKey());
+            batches = Math.min(batches, have / input.getValue());
         }
         batches = Math.min(batches, 64 / recipe.out()); // at most a stack's worth at a time
         if (visit.abroad() && !visit.planning()) {
@@ -115,7 +151,7 @@ public final class Crafts {
     }
 
     static boolean wanted(Recipe recipe, Visit visit) {
-        if (visit.bell().isEmpty() || visit.abroad() && hasOwn(visit, recipe.trade())) {
+        if (visit.bell().isEmpty() || visit.abroad() && hasOwn(visit, recipe.trade()) || visit.skill() < recipe.minLevel()) {
             return false;
         }
         return batches(recipe, visit) > 0;
@@ -161,6 +197,35 @@ public final class Crafts {
             }
         }
         return visit.abroad() ? items * recipe.feeEach() : 0;
+    }
+
+    /** Has the town a blast furnace (a master Armorer's)? */
+    private static boolean blast(Visit visit) {
+        return visit.bell().map(bell -> visit.territory().blastFurnace(bell)).orElse(false);
+    }
+
+    /** Comforts of a kind the town could use, as items of {@code output}: while short, up to its par. */
+    private static int comfortWanted(Visit visit, String kind, Item output) {
+        if (visit.planning()) {
+            return visit.bell().map(bell -> visit.territory().comfortsMet(bell).getOrDefault(kind, 0.0) < 1 ? 4 : 0)
+                    .orElse(0);
+        }
+        return Workshop.comfortWanted(visit.territory(), visit.at(), visit.stock(), kind, output);
+    }
+
+    /** Cooked meat while the town is short of food (under twice the caravans' par). */
+    private static int foodWanted(Visit visit) {
+        if (visit.planning()) {
+            return 0;
+        }
+        return Math.max(0, (2 * Warehouse.FOOD_PAR_POINTS - visit.stock().foodNutrition()) / 6);
+    }
+
+    /** A saddle for each of its routes, less those it has. */
+    private static int saddlesWanted(Visit visit) {
+        long routes = dev.b28.enterprise.caravan.CaravanLedger.get(visit.server()).routes().stream()
+                .filter(r -> r.from().equals(visit.at())).count();
+        return (int) Math.max(0, routes - count(visit, Items.SADDLE));
     }
 
     /** Books the town could use: while it's short of reading, up to its par. */

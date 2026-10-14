@@ -31,8 +31,14 @@ public final class Labour {
     /** A Nitwit gathers this much more than another villager would. */
     public static final double NITWIT_FACTOR = 1.5;
 
-    /** A good is gathered only while the warehouse holds fewer than this. */
-    public static final int KEEP = 128;
+    /**
+     * A good is gathered only while the warehouse holds fewer than this of it: {@link #KEEP_WANTED} of what the town
+     * uses (food, comforts, what its lockers buy), {@link #KEEP} of anything else; and only while the warehouse has
+     * {@link #SPARE_SLOTS} free slots beyond those it keeps for trade: gathering mustn't crowd out the caravans' goods.
+     */
+    public static final int KEEP = 16;
+    public static final int KEEP_WANTED = 64;
+    public static final int SPARE_SLOTS = 4;
 
     /** Something gathered: so many a day per hand. */
     public record Haul(Item item, double perDay) {}
@@ -85,6 +91,19 @@ public final class Labour {
                 new Haul(Items.STICK, 2), new Haul(Items.FLINT, 1), new Haul(Items.OAK_LOG, 1), new Haul(Items.STRING, 0.5));
     }
 
+    /** Is there room to bring in more of {@code item}: below what the town keeps of it (with what's owed), and slots to spare? */
+    public static boolean room(ServerLevel level, net.minecraft.core.GlobalPos desk, MerchantStock stock, Item item,
+            Map<String, Double> pending) {
+        if (stock.freeSlots() <= MerchantStock.FREE_SLOTS + SPARE_SLOTS) {
+            return false;
+        }
+        boolean wanted = item.components().has(net.minecraft.core.component.DataComponents.FOOD)
+                || Comforts.kindOf(item).isPresent()
+                || dev.b28.enterprise.merchant.Warehouse.get(level.getServer()).capacity(desk, item) > 0;
+        double owed = pending.getOrDefault(BuiltInRegistries.ITEM.getKey(item).toString(), 0.0);
+        return stock.count(new ItemCost(item, 1)) + owed < (wanted ? KEEP_WANTED : KEEP);
+    }
+
     /** The biome at a hex's centre, from the world's generator: known whether or not it's loaded. */
     public static Holder<Biome> biome(ServerLevel level, Hex hex) {
         var source = level.getChunkSource();
@@ -106,17 +125,17 @@ public final class Labour {
     /**
      * {@code days} of the hands' work, but for the last {@code militia} (who stand watch: the Nitwits gather longest):
      * each works the next of the town's hexes, home first, and what it gathers is owed to the warehouse in {@code pending}, while the warehouse
-     * holds less than {@link #KEEP} of it.
+     * has room for it (see {@link #room}).
      */
-    public static void work(ServerLevel level, List<Hex> hexes, List<Double> hands, int militia, MerchantStock stock,
-            double days, Map<String, Double> pending) {
+    public static void work(ServerLevel level, net.minecraft.core.GlobalPos desk, List<Hex> hexes, List<Double> hands,
+            int militia, MerchantStock stock, double days, Map<String, Double> pending) {
         if (hexes.isEmpty() || days <= 0) {
             return;
         }
         for (int i = 0; i < hands.size() - militia; i++) {
             Hex hex = hexes.get(i % hexes.size());
             for (Haul haul : hauls(biome(level, hex))) {
-                if (stock.count(new ItemCost(haul.item(), 1)) >= KEEP) {
+                if (!room(level, desk, stock, haul.item(), pending)) {
                     continue;
                 }
                 pending.merge(BuiltInRegistries.ITEM.getKey(haul.item()).toString(),

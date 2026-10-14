@@ -27,6 +27,7 @@ public final class Caravan {
     final java.util.Map<Integer, Integer> contracted = new java.util.LinkedHashMap<>(); // contract id -> items carried for it
     final List<Integer> drafts = new ArrayList<>(); // contracts drafted on this trip: their copies ride home
     final List<net.minecraft.core.GlobalPos> news = new ArrayList<>(); // markets the squad learned of, told at home
+    double pace = 1; // saddled: faster
 
     Caravan(int route, Leg leg, long arrives, List<ItemStack> cargo, int spurs, int merchantLevel) {
         this.route = route;
@@ -49,6 +50,10 @@ public final class Caravan {
 
     public List<CompoundTag> herd() {
         return List.copyOf(herd);
+    }
+
+    public double pace() {
+        return pace;
     }
 
     public int merchantLevel() {
@@ -102,6 +107,7 @@ public final class Caravan {
         news.forEach(market -> net.minecraft.core.GlobalPos.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, market)
                 .ifSuccess(heard::add));
         tag.put("news", heard);
+        tag.putDouble("pace", pace);
         return tag;
     }
 
@@ -121,6 +127,7 @@ public final class Caravan {
         for (int id : tag.getIntArray("drafts")) {
             caravan.drafts.add(id);
         }
+        caravan.pace = tag.contains("pace") ? tag.getDouble("pace") : 1;
         for (Tag market : tag.getList("news", Tag.TAG_COMPOUND)) {
             net.minecraft.core.GlobalPos.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE, market).ifSuccess(caravan.news::add);
         }

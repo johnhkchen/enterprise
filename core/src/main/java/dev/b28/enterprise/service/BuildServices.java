@@ -19,6 +19,12 @@ import net.minecraft.world.item.trading.ItemCost;
  * has no Mason of its own.
  */
 public final class BuildServices {
+    /**
+     * A town builds only with this many times the building's whole cost (materials and wages) to spare beyond its
+     * reserve: it shouldn't build itself out of its comforts.
+     */
+    public static final double SAVINGS = 2;
+
     private BuildServices() {}
 
     static void register() {
@@ -59,8 +65,9 @@ public final class BuildServices {
                     - visit.territory().reserve(visit.at());
             double wages = kind.blocks() / (Works.MASONS * Works.BLOCKS_PER_MASON_DAY) * Works.MASONS
                     * Works.MASON_PAY_PER_DAY;
-            if (spare < materials(visit, kind) + wages / 2) {
-                return Optional.empty(); // saving up for it: build in order
+            if (visit.territory().mood(bell.get()) < Works.WALL_MOOD_TO_START
+                    || spare < SAVINGS * (materials(visit, kind) + wages)) {
+                return Optional.empty(); // saving up for it, and not before the town's content: build in order
             }
             Optional<BlockPos> site = Buildings.site(visit.level(), bell.get().pos(), kind,
                     visit.territory().dock(bell.get()));

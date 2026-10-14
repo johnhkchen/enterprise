@@ -214,6 +214,29 @@ Mine, smelter, smiths, and what the iron is for. All of it is services (see Serv
 - **Measured** (`network_study.py --river --comforts --metal`, 20 days, against the same without): S1's Toolsmith dug a mine, visiting Armorers (the hub's and T's) smelted its ore 9 times, and it forged a hoe and a pickaxe from the iron; S1 brought in 693 items against 403 (ore, and a farmer tending half again as much). T, with the whole chain, armed and armoured both bridge guards, set its toll at 35% and collected 692 spurs of tolls against 458. T's three extra smiths crowded its beds (8 villagers, 5 beds), so its mood was worse: a real cost of taking on trades without homes.
 - **Not yet:** ore depending on the land (stone and hills richer than plains); an escort of armed crew on caravans (with raids); iron tools and armour as goods towns buy from each other.
 
+## Labour, Masons, Fletchers and masters (built 2026-10-14)
+
+The rest of the trades, as services (see Services), and a master's service for each.
+
+- **Hands without a trade** (Nitwits, and adults waiting for work) each work one of the town's hexes and gather what its biome gives: logs, sticks, apples and string in woods; spruce and berries in taiga; sand and cactus in deserts; clay, cane and ink by water; stone and flint in hills; seeds, flowers, sticks and flint on open ground. These are the goods no trade makes. A Nitwit gathers half again as much. Gathering stops at 16 of a good the town doesn't use (64 of food, comforts and what its lockers buy), and while the warehouse is short of free slots: it must not crowd out the caravans' goods (it did, in a one-chest town, until this rule).
+- **Militia:** hands stand watch at the town's posts first, fed but unpaid. **Porters:** when a caravan's cargo is more than the wagon and a Leatherworker's packs hold, hands go along carrying 9 stacks each, and walk home once it's delivered.
+- **Fletchers hunt** the town's land by biome (rabbits and hides in desert, snow and taiga; beef, pork, fowl, feathers and leather elsewhere), a quarter as much without a bow, and **make bows** of sticks and string, for themselves and then for the guards: spare bows arm guards as swords do. Kit for the town's own hands comes before what its lockers sell.
+- **Masons build** (`Buildings`), a money sink with something to show: a square (+0.5 mood), then halls as its own skill and the trade's allow: a temple (Cleric 3: blessings count double, children twice as often), a library (Librarian 3: 3 culture a day), a smithy (a smith 3: mine +50%, kit lasts a quarter longer), a watchtower (Fletcher 3: half the guards count as armed), stone docks (Mason 4, Fisherman 3: twice the catch), a caravanserai (master Mason, Merchant 3: word of the town carries 800 blocks, 1 culture a day). Materials up front (logs in the warehouse stand in for timber), wages while building. A town builds only when content and holding twice the whole cost beyond its reserve: at first a town built itself out of its comforts. A visiting Mason lays a day's work on a town's works for a day's wage.
+- **Masters,** most with another trade's help:
+  - Cleric: enchants the town's kit (10 levels as Journeyman, 20 Expert, 30 Master), laying on an enchanted book's enchantment, or at the table with lapis (from a deep mine) and an emerald of bottles o' enchanting per 10 levels. Enchanted kit works better (each level +15%, up to half again) and Unbreaking makes it last (1 + level) times as long.
+  - Librarian: copies an enchanted book with a book and a lapis, while kit wants enchanting.
+  - Toolsmith: sinks the mine deep, with a Mason to shore it: lapis too.
+  - Armorer: builds a blast furnace, with a Mason: twice the iron per coal.
+  - Weaponsmith: keeps an armoury, with an Armorer: guards' kit lasts twice as long.
+  - Farmer: plants flower beds on the Mason's square (8 flowers, which the hands gather): +0.5 more mood.
+  - Shepherd: weaves banners (6 wool and a stick furnish like twelve carpets).
+  - Butcher: smokes meat with coal while food is short.
+  - Leatherworker: saddles of leather and iron; a saddled caravan rides a third faster.
+  - Cartographer: charts twice as far. Fisherman: half again the fleet's catch. Fletcher: a hunting party, twice the game. Mason: the caravanserai and stone docks.
+- `/enterprise territory` shows hands, militia, buildings, hunters with bows and guards armed.
+- **Measured** (`network_study.py --river --comforts --trades`, 20 days, against the same without): S1, given two Nitwits, a Mason, a Cleric, a Fletcher and a master Farmer (with beds), built a square, got flower beds and its Cleric's blessing daily, grew to 11 villagers (5 without) at a better mood (+3.3 against +3.1) and brought in 2,242 items against 403 (gathering and hunting); it had 20 emeralds to the other's 43, and a temple waits on its savings. Its one chest filled, so its hands stopped gathering, and its Fletcher never got the string for a bow. T's two Nitwits stood watch at its bridges unpaid and its spare bows armed both guards; it kept 60 emeralds to 44.
+- **Not yet:** a master Farmer sowing fields abroad; arrows; dyes for banners; buildings on the desk screen.
+
 ## Travel cost between hexes (2026-10-13)
 
 Travel cost must react to real building. A long wall, a tunnel, a bridge or a wide canal should each change routes and costs.

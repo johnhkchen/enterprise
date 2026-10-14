@@ -317,6 +317,17 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void aSaddledCaravanRidesFaster(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192);
+        net.hub().insert(new ItemStack(Items.SADDLE, 1));
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        Caravan out = net.ledger().caravan(net.route().id()).orElseThrow();
+        helper.assertTrue(out.arrives() == t + 60, "a third faster: there at " + (out.arrives() - t) + " ticks, not 80");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aSquadIsNeverMoreThanFour(GameTestHelper helper) {
         Network net = network(helper, 2, 5, 192, List.of(VillagerProfession.CARTOGRAPHER, VillagerProfession.LIBRARIAN,
                 VillagerProfession.SHEPHERD, VillagerProfession.LEATHERWORKER, VillagerProfession.FISHERMAN,

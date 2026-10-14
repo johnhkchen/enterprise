@@ -21,10 +21,15 @@ With --metal, the metal chain: a trained Toolsmith in S1 (it digs a mine), a Too
 (mine, smelter and smiths: tools for its farmers, arms and armour for its guards), and an Armorer and a Toolsmith in
 the hub's squad (they smelt and forge for towns without). Each town's mine, kit and services are printed at the end.
 
+With --trades, the rest of the trades: S1 takes in two Nitwits (they gather), a Mason (it builds), a Cleric and a
+Fletcher (a temple and a watchtower to build with the Mason; the Fletcher hunts) and a master Farmer (flower beds on
+the square), with beds for them; T takes in two Nitwits, who stand watch at its posts as militia (with --river). The
+towns' buildings, hands and services are printed at the end.
+
 With --comforts, the hub also stocks a shulker of comforts (treats, clothing, furnishings) for towns to buy, and the
 spring, once open, refills a shulker of comforts and a stack of books every day.
 
-    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts] [--fleet] [--services] [--metal]
+    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts] [--fleet] [--services] [--metal] [--trades]
 """
 
 import csv
@@ -140,6 +145,16 @@ def setup():
     for corner in TOWNS.values():
         rcon(f"forceload add {area(corner, 27)}",
              f"execute positioned {corner[0]} -60 {corner[1]} run function testbench:network/settlement")
+    if "--trades" in sys.argv:
+        for name, trades in [("S1", [("nitwit", 1), ("nitwit", 1), ("mason", 3), ("cleric", 3), ("fletcher", 3),
+                                     ("farmer", 5)]), ("T", [("nitwit", 1), ("nitwit", 1)])]:
+            corner = TOWNS[name]
+            for i, (trade, lvl) in enumerate(trades):
+                rcon(f"summon minecraft:villager {corner[0] + 3 + 2 * i}.5 -60 {corner[1] + 16}.5 {{PersistenceRequired:1b,"
+                     f"Xp:{0 if trade == 'nitwit' else 1},VillagerData:{{profession:\"minecraft:{trade}\",level:{lvl},"
+                     f"type:\"minecraft:plains\"}}}}",
+                     f"setblock {corner[0] + 3 + 2 * i} -60 {corner[1] + 18} minecraft:white_bed[facing=north,part=head]",
+                     f"setblock {corner[0] + 3 + 2 * i} -60 {corner[1] + 19} minecraft:white_bed[facing=north,part=foot]")
     if "--metal" in sys.argv:
         for name, trades in [("S1", ["toolsmith"]), ("T", ["toolsmith", "armorer", "weaponsmith"])]:
             b = [int(v) for v in bell(TOWNS[name]).split()]
@@ -251,7 +266,12 @@ def main():
         for name in ["S1", "T"]:
             t = rcon(f"enterprise territory {bell(TOWNS[name])}")
             print(f"\n{name}: " + "\n".join(l for l in t.splitlines() if re.search(r"mine|farms|toll|guard|treasury", l)))
-    if "--services" in sys.argv or "--metal" in sys.argv:
+    if "--trades" in sys.argv:
+        for name in ["S1", "T"]:
+            t = rcon(f"enterprise territory {bell(TOWNS[name])}")
+            print(f"\n{name}: " + "\n".join(l for l in t.splitlines()
+                                             if re.search(r"buildings|hands|mood|treasury|toll|guard|culture", l)))
+    if "--services" in sys.argv or "--metal" in sys.argv or "--trades" in sys.argv:
         for name, corner in TOWNS.items():
             done = [l for l in rcon(f"enterprise services {desk(corner)}").splitlines()[2:] if not l.startswith("  its ")]
             print(f"\n{name}:\n" + "\n".join(done))

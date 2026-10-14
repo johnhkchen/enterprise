@@ -168,6 +168,9 @@ public final class Territory extends SavedData {
         double armed; // share of its guards with swords or bows (or archers on a watchtower), at the last touch
         java.util.Set<String> buildings = new java.util.LinkedHashSet<>(); // kinds finished, from the works ledger
         boolean flowerBeds; // a Farmer has planted beds on its square
+        boolean deepMine; // a master Toolsmith has sunk its mine deep: lapis too
+        boolean blastFurnace; // a master Armorer has built one: smelting takes half the coal
+        long armouryUntil = -1; // a master Weaponsmith keeps its guards' kit until then
     }
 
     private final Map<Place, GlobalPos> owners = new HashMap<>();
@@ -347,6 +350,41 @@ public final class Territory extends SavedData {
         return dev.b28.enterprise.settlement.Settlements.get(server).roster(bell).values().stream()
                 .filter(r -> r.profession().equals(trade) && !r.away() && !r.baby())
                 .mapToInt(r -> Math.max(1, r.level())).sum();
+    }
+
+    /** The best level of a trade's grown residents at home, 0 if none. */
+    public static int bestLevel(MinecraftServer server, GlobalPos bell, String trade) {
+        return dev.b28.enterprise.settlement.Settlements.get(server).roster(bell).values().stream()
+                .filter(r -> r.profession().equals(trade) && !r.away() && !r.baby())
+                .mapToInt(r -> Math.max(1, r.level())).max().orElse(0);
+    }
+
+    public boolean deepMine(GlobalPos bell) {
+        return holding(bell).map(h -> h.deepMine).orElse(false);
+    }
+
+    public void sinkDeepMine(GlobalPos bell) {
+        holdings.computeIfAbsent(bell, b -> new Holding()).deepMine = true;
+        setDirty();
+    }
+
+    public boolean blastFurnace(GlobalPos bell) {
+        return holding(bell).map(h -> h.blastFurnace).orElse(false);
+    }
+
+    public void buildBlastFurnace(GlobalPos bell) {
+        holdings.computeIfAbsent(bell, b -> new Holding()).blastFurnace = true;
+        setDirty();
+    }
+
+    public long armouryUntil(GlobalPos bell) {
+        return holding(bell).map(h -> h.armouryUntil).orElse(-1L);
+    }
+
+    public void keepArmoury(GlobalPos bell, long until) {
+        Holding holding = holdings.computeIfAbsent(bell, b -> new Holding());
+        holding.armouryUntil = Math.max(holding.armouryUntil, until);
+        setDirty();
     }
 
     /** Kinds of building it has finished, at the last touch. */
@@ -819,22 +857,29 @@ public final class Territory extends SavedData {
                         * (holding.buildings.contains(Buildings.SMITHY.id()) ? 1.5 : 1);
                 holding.pending.merge("minecraft:raw_iron", levels * Mines.RAW_IRON_PER_LEVEL_DAY * days, Double::sum);
                 holding.pending.merge("minecraft:coal", levels * Mines.COAL_PER_LEVEL_DAY * days, Double::sum);
+                if (holding.deepMine) {
+                    holding.pending.merge("minecraft:lapis_lazuli", levels * Mines.LAPIS_PER_LEVEL_DAY * days, Double::sum);
+                }
             }
-            Labour.work(level, hexes(bell.get()),
+            Labour.work(level, at, hexes(bell.get()),
                     Labour.hands(dev.b28.enterprise.settlement.Settlements.get(level.getServer()).roster(bell.get())),
                     Math.min(holding.militia, holding.posts.size()), stock, days, holding.pending);
             // Its Fletchers hunt: so much game a day per level each, a quarter of it without bows.
             double hunterLevels = levels(level.getServer(), bell.get(), FLETCHER)
-                    * (Smithing.SNARES + (1 - Smithing.SNARES) * holding.hunting);
+                    * (Smithing.SNARES + (1 - Smithing.SNARES) * holding.hunting)
+                    * (bestLevel(level.getServer(), bell.get(), FLETCHER) >= 5 ? 2 : 1); // a master leads a hunting party
             if (hunterLevels > 0) {
                 for (Labour.Haul game : Hunting.game(Labour.biome(level, Hex.at(bell.get().pos())))) {
+                    if (!Labour.room(level, at, stock, game.item(), holding.pending)) {
+                        continue;
+                    }
                     holding.pending.merge(BuiltInRegistries.ITEM.getKey(game.item()).toString(),
                             game.perDay() * hunterLevels * days, Double::sum);
                 }
             }
             Smithing.wear(stock, holding.kitWear, days, workers.getOrDefault("minecraft:farmer", 0), miners(holding, workers),
                     holding.posts.size(), workers.getOrDefault(FLETCHER, 0), holding.mendedUntil >= now ? 0.5 : 1,
-                    holding.buildings.contains(Buildings.SMITHY.id()) ? 0.8 : 1);
+                    holding.buildings.contains(Buildings.SMITHY.id()) ? 0.8 : 1, holding.armouryUntil >= now ? 0.5 : 1);
         }
         holding.lastTend = now;
         double owedBefore = holding.wageOwed;
@@ -1366,6 +1411,9 @@ public final class Territory extends SavedData {
             entry.putDouble("hunting", holding.hunting);
             entry.putDouble("armed", holding.armed);
             entry.putBoolean("flowerBeds", holding.flowerBeds);
+            entry.putBoolean("deepMine", holding.deepMine);
+            entry.putBoolean("blastFurnace", holding.blastFurnace);
+            entry.putLong("armouryUntil", holding.armouryUntil);
             if (holding.dock != null) {
                 entry.putLong("dock", holding.dock.asLong());
             }
@@ -1486,6 +1534,9 @@ public final class Territory extends SavedData {
                 holding.hunting = entry.getDouble("hunting");
                 holding.armed = entry.getDouble("armed");
                 holding.flowerBeds = entry.getBoolean("flowerBeds");
+                holding.deepMine = entry.getBoolean("deepMine");
+                holding.blastFurnace = entry.getBoolean("blastFurnace");
+                holding.armouryUntil = entry.contains("armouryUntil") ? entry.getLong("armouryUntil") : -1;
                 holding.dock = entry.contains("dock") ? BlockPos.of(entry.getLong("dock")) : null;
                 holding.homeProgress = entry.getDouble("homeProgress");
                 holding.birthProgress = entry.getDouble("birthProgress");
