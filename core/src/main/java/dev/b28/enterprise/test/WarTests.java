@@ -105,6 +105,29 @@ public final class WarTests {
     }
 
     @GameTest(template = "floor")
+    public static void anArmyEatsFromTheDepot(GameTestHelper helper) {
+        helper.setBlock(new BlockPos(3, 2, 3), Merchant.DESK.get());
+        helper.setBlock(new BlockPos(4, 2, 3), Blocks.CHEST);
+        var depot = MerchantStock.at(helper.getLevel(), helper.absolutePos(new BlockPos(3, 2, 3)));
+        depot.insert(new ItemStack(Items.BREAD, 64));
+        GlobalPos capital = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(new BlockPos(3, 2, 3)));
+        var army = new dev.b28.enterprise.army.Army();
+        for (int i = 0; i < 5; i++) {
+            CompoundTag villager = new CompoundTag();
+            villager.putUUID("UUID", java.util.UUID.randomUUID());
+            army.enlist(villager, far(helper, 8_400_000, 8_000_000), 0);
+        }
+        long t = 1_000_000;
+        army.campaign(helper.getLevel(), depot, capital, t);
+        army.campaign(helper.getLevel(), depot, capital, t + 24000);
+        helper.assertTrue(army.eaten() >= 5 * dev.b28.enterprise.army.Army.RATION,
+                "five soldiers ate a day's rations: " + army.eaten());
+        helper.assertTrue(depot.count(new net.minecraft.world.item.trading.ItemCost(Items.BREAD, 1)) == 64 - 8,
+                "eight loaves: " + depot.count(new net.minecraft.world.item.trading.ItemCost(Items.BREAD, 1)));
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void soldiersFallLessInBetterKit(GameTestHelper helper) {
         var theatre = dev.b28.enterprise.army.Army.Theatre.FACTION;
         double bare = dev.b28.enterprise.army.Army.risk(ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY, theatre);
@@ -139,9 +162,10 @@ public final class WarTests {
         army.campaign(helper.getLevel(), depot, capital, t);
         army.campaign(helper.getLevel(), depot, capital, t + 30 * 24000L);
         var record = army.records().get(home);
-        helper.assertTrue(record.fallen() > 0 && army.size() == 20 - record.fallen(),
+        helper.assertTrue(record.fallen() > 0 && army.size() == 20 - record.fallen() - record.deserted(),
                 "unarmed for a month, some fall and are gone: " + record.fallen());
         helper.assertTrue(record.days() > 0, "the rest serve on");
+        helper.assertTrue(record.hungry() > 0 && record.deserted() >= 0, "unfed: they go hungry, and some desert");
         helper.succeed();
     }
 }

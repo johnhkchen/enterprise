@@ -301,6 +301,10 @@ public final class Broker {
                 }
                 int held = warehouse.onHand(supplier, item);
                 int spare = (kit ? held / 2 : held) - warehouse.par(supplier, item, false, now); // a town keeps half its kit
+                var food = item.getDefaultInstance().get(net.minecraft.core.component.DataComponents.FOOD);
+                if (food != null && food.nutrition() > 0) {
+                    spare -= 2 * Warehouse.FOOD_PAR_POINTS / food.nutrition(); // and the food its caravans need
+                }
                 int least = Procurement.sellerLevel(item);
                 boolean makes = territory.bellOf(supplier)
                         .map(bell -> Services.residents(level, bell).entrySet().stream()

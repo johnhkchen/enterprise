@@ -287,6 +287,47 @@ A master Merchant (level 5) at a desk deals with the Numismatics vendors (shops)
 - **Measured live** (`network_study.py --comforts --inject 3`, 8 days): contracted goods shipped in crates and were delivered under their contracts. At first the empty crates filled S1's one-chest warehouse, a slot each: 80 sticks rode back and forth undelivered and that contract broke, and S1 traded 12 times. With empties stacking and returning, S1 traded 44 times and its paper contract delivered every installment.
 - **Not seen:** the crate's screen and textures in a client.
 
+## Bills of exchange (built 2026-10-14)
+
+- **A buyer short of coin pays with paper:** a bill of exchange drawn on its own treasury, for the debt and 2% for the wait, due in 4 days. It happens when a caravan collects Ex Works without the money, or a buyer can't pay on delivery, where the two trust each other.
+- The bill is a document, filed with the payee's other bills on the same drawee (one bundle per drawee).
+- **It's paid only when presented, by a caravan between the two:** the drawee's caravan arriving where bills on it lie pays those due from its purse (it carries the money for them). The holder's caravan carries bills on its destination there and brings the coin home.
+- Bills not yet due go back. Unpaid 4 days past due, a bill is dishonoured, and the pair's trust falls.
+
+## War footing (built 2026-10-14)
+
+A well-funded sovereign shifting the region onto a war economy, through the region's own institutions rather than conjured demand.
+
+- **The capital and the treasury:** the sovereign's capital is a desk whose Blaze Banker is the royal treasury. It mints coin into it each day. Minting debases the spur: a shulker of emeralds' worth minted (27,648 spurs) doubles the spurs an emerald fetches, working its way out with a 30-day half-life.
+- **Mobilising:** it builds a stockpile of kit in the capital's warehouse:
+  - swords (wood, stone, iron, diamond), chestplates (leather, chainmail, iron, diamond), shields, bows, arrows;
+  - the capital's master Merchant contracts towns for them at 1.5 times their worth (2.5 times at war);
+  - it buys gold through a Numismatics shop by the capital at 3 times its worth.
+- **Contracts name the tier, not the enchantments.** Any iron sword counts. Bonus clauses pay for quality without requiring it: Unbreaking 1 and Sharpness 2 or better earns 25% more on a sword; Protection 2 earns 25% more on armour.
+- **What no town can supply is posted as wanted, and towns respond:**
+  - they put idle hands to the trades the war calls for (a Weaponsmith for swords; iron goods want a Toolsmith's mine and an Armorer first);
+  - they make what they've contracted to sell;
+  - their Merchants switch on their own villagers' trades to buy it.
+  - Smiths trade their way up the levels at their stalls. Diamond gear is a master smith's, sold for emeralds.
+- **At war, levies:** a levy contract with each town the capital's caravans reach raises soldiers: its idle hands and a fifth of the rest, one to four. Idle hands go first, then a trade it has others of, then the least skilled; never a child, nor its Merchant. The recruits ride to the capital with its caravan.
+- **Campaigning:** each day a soldier draws what kit it lacks from the capital's warehouse, the best there is, and wears it out (enchanted with Unbreaking, slower). It is paid 0.25 emeralds a day, owed to its town and carried there by the capital's caravans.
+- **The fallen:** a soldier may fall, 2% a day before kit. A weapon, armour and shield cut it, better tiers more, and enchantments suited to the enemy more again: Sharpness and Protection against a faction, Smite against the undead, fire against the Nether. The fallen are gone from their town for good, and it grieves: half a point of mood each, for 10 days.
+- **At peace** the soldiers walk home and the minting stops.
+- **An army eats:** 8 food points a soldier a day, from the capital's warehouse. At war the sovereign keeps four days' rations stocked, sourced like the kit; Farmers sell bread, and towns supply what food they have beyond their caravans' needs. An unfed soldier runs half again the risk, and deserts at 10% a day (walking home, its kit lost).
+- **The tally** (`/enterprise war tally`): by town, soldiers raised, fallen and deserted, soldier-days (and hungry ones), strength (soldier-days weighted by kit and its fitness for the enemy), kit delivered and emeralds earned; in all, the kit issued by kind and enchantment levels, food eaten, gold bought, coin minted, the spur's rate.
+- **Measured** (`network_study.py --comforts --war 1,31,71`, 90 days: mobilising 30, at war 40, peace 20; three towns on the capital's roads):
+  - **The region barely moved onto a war footing.** One town, S2, answered: it grew from 5 to 13 villagers and took up Leatherworker, Toolsmith and Weaponsmith stalls for the war's wants. Its Fletcher, through its own villager trades, supplied all 280 arrows delivered.
+  - **Nothing else was made:** swords, armour, shields, bows and gold went unmet all 90 days.
+  - **The army was raised but never armed:** 4 soldiers, 3 fallen, no kit issued.
+  - **The treasury piled up 67,600 spurs it couldn't spend,** while minting took the spur from 16 to 29 an emerald.
+  - **Why:**
+    1. Trust froze contracting: small towns missed early installments (0.2 trust each), and by the war the capital's trust with S2 was 0.12 and with S1 0.00, below the 0.3 needed to draft. S2's Weaponsmith never got a sword contract.
+    2. Towns of five or six have no hands to spare.
+    3. No town completed the metal chain (mine, Armorer), so no iron, no gold.
+    4. The sovereign's money had no way to reach a town before it could deliver.
+  - **What's missing:** advances against contracts (money up front to hire, build and train), patience for a supplier ramping up (lead time, a softer first miss), and a way for coin to become people at work. That is the war finance to come: loans, bonds, taxes.
+- **The long runs got 10 times faster** (2 seconds a game day; 90 days in 3 minutes): the study now keeps one RCON connection open, and reads the debug log from where it left off. The tick warp itself was never the slow part.
+
 ## Travel cost between hexes (2026-10-13)
 
 Travel cost must react to real building. A long wall, a tunnel, a bridge or a wide canal should each change routes and costs.

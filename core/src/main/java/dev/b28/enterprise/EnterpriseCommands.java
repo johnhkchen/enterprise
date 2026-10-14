@@ -361,7 +361,8 @@ final class EnterpriseCommands {
                     contract.id(), contract.seller().pos().toShortString(), buyer, contract.state().name().toLowerCase(),
                     contract.incoterm().name(),
                     (contract.knownBy(contract.seller()) ? 1 : 0) + (contract.knownBy(contract.buyer()) ? 1 : 0),
-                    contract.delivery().map(d -> d.quantity() + " " + d.describe()).orElse("?"),
+                    contract.delivery().map(d -> d.quantity() + " " + d.describe())
+                            .orElse(contract.levy().map(l -> "a levy of " + l.soldiers() + " soldiers").orElse("?")),
                     contract.delivered(), contract.shipped(), contract.paid(), contract.missed(), contract.buyerMissed(),
                     book.trust(contract.seller(), contract.buyer()))), false);
             contract.history().forEach(line -> source.sendSuccess(() -> Component.literal("    " + line), false));
@@ -495,14 +496,16 @@ final class EnterpriseCommands {
         }
         for (GlobalPos town : towns) {
             var r = army.records().getOrDefault(town, null);
-            source.sendSuccess(() -> Component.literal(("  %s: %d raised, %d fallen, %d soldier-days, strength %.0f; "
-                    + "%d pieces of kit delivered; %.1f emeralds earned").formatted(town.pos().toShortString(),
-                    r == null ? 0 : r.raised(), r == null ? 0 : r.fallen(), r == null ? 0 : r.days(),
+            source.sendSuccess(() -> Component.literal(("  %s: %d raised, %d fallen, %d deserted, %d soldier-days (%d hungry), "
+                    + "strength %.0f; %d pieces of kit delivered; %.1f emeralds earned").formatted(town.pos().toShortString(),
+                    r == null ? 0 : r.raised(), r == null ? 0 : r.fallen(), r == null ? 0 : r.deserted(),
+                    r == null ? 0 : r.days(), r == null ? 0 : r.hungry(),
                     r == null ? 0 : r.strength(), kit.getOrDefault(town, new int[1])[0], paid.getOrDefault(town, 0.0))),
                     false);
         }
         source.sendSuccess(() -> Component.literal("  kit issued: " + army.issued()), false);
         source.sendSuccess(() -> Component.literal("  enchantment levels issued: " + army.enchantLevels()), false);
+        source.sendSuccess(() -> Component.literal("  food eaten: %d points".formatted(army.eaten())), false);
         source.sendSuccess(() -> Component.literal("  gold bought: " + sovereign.received()), false);
         var mint = dev.b28.enterprise.money.Mint.get(server);
         source.sendSuccess(() -> Component.literal("  minted %d spurs; rate now %.2f spurs an emerald".formatted(

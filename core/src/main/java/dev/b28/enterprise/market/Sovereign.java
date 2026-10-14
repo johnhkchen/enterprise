@@ -82,6 +82,7 @@ public final class Sovereign extends SavedData {
         m.put(Items.SHIELD, 12);
         m.put(Items.BOW, 8);
         m.put(Items.ARROW, 256);
+        m.put(Items.BREAD, 64); // and rations put by
         return m;
     }
 

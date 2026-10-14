@@ -43,6 +43,7 @@ spring, once open, refills a shulker of comforts and a stack of books every day.
 import csv
 import math
 import re
+import socket
 import subprocess
 import sys
 import time
@@ -61,8 +62,32 @@ RIVER_Q = range(-8, 25)
 BRIDGES = {7, 8}  # T's home hex and the one its buildings spill into
 
 
+sys.path.insert(0, str(REPO / "scripts"))
+import rcon as rcon_client  # noqa: E402
+
+_sock = None
+
+
 def rcon(*commands):
-    return subprocess.run(RCON + list(commands), capture_output=True, text=True, check=True).stdout
+    """Commands over one RCON connection kept open for the run (a process per call was most of a day's time)."""
+    global _sock
+    out = []
+    for command in commands:
+        for attempt in range(2):
+            try:
+                if _sock is None:
+                    _sock = socket.create_connection((rcon_client.HOST, rcon_client.PORT), timeout=60)
+                    rcon_client.packet(_sock, 1, 3, rcon_client.PASSWORD)
+                    if rcon_client.read(_sock)[0] == -1:
+                        sys.exit("RCON login failed")
+                rcon_client.packet(_sock, 2, 2, command.removeprefix("/"))
+                out.append(f"> {command}\n{rcon_client.read(_sock)[1]}\n")
+                break
+            except (OSError, ConnectionError):
+                _sock = None
+                if attempt:
+                    raise
+    return "".join(out)
 
 
 def gametime():
@@ -93,14 +118,27 @@ def number(pattern, text, default=0.0):
     return float(match.group(1)) if match else default
 
 
+_log_offset = 0
+_trades = {}
+
+
 def trades_by_town():
-    text = LOG.read_text(errors="replace") if LOG.exists() else ""
-    totals = {name: 0 for name in TOWNS}
-    for n, x, z in re.findall(r"Locker trades: (\d+) at (-?\d+), -60, (-?\d+)", text):
-        for name, corner in TOWNS.items():
-            if corner[0] <= int(x) <= corner[0] + 15 and corner[1] <= int(z) <= corner[1] + 15:
-                totals[name] += int(n)
-    return totals
+    """Locker trades so far by town, reading only what the debug log has added since last time."""
+    global _log_offset
+    if not _trades:
+        _trades.update({name: 0 for name in TOWNS})
+    if LOG.exists():
+        with LOG.open("rb") as log:
+            if LOG.stat().st_size < _log_offset:
+                _log_offset = 0  # a new log
+            log.seek(_log_offset)
+            text = log.read().decode(errors="replace")
+            _log_offset = log.tell()
+        for n, x, z in re.findall(r"Locker trades: (\d+) at (-?\d+), -60, (-?\d+)", text):
+            for name, corner in TOWNS.items():
+                if corner[0] <= int(x) <= corner[0] + 15 and corner[1] <= int(z) <= corner[1] + 15:
+                    _trades[name] += int(n)
+    return dict(_trades)
 
 
 def hex_centre(q, r):
