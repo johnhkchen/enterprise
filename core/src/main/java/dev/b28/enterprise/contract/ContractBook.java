@@ -127,6 +127,18 @@ public final class ContractBook extends SavedData {
         return List.copyOf(contracts.values());
     }
 
+    /**
+     * What {@code seller} still has to deliver of plain {@code item} under contracts in force it holds: what it should
+     * make, if it's a trade's work.
+     */
+    public int toDeliver(GlobalPos seller, Item item) {
+        return contracts.values().stream()
+                .filter(c -> c.inForce() && c.seller.equals(seller) && c.knownBy(seller))
+                .mapToInt(c -> c.delivery().filter(d -> d.item() == item && !d.toOrder())
+                        .map(d -> Math.max(0, d.quantity() * c.installments - c.delivered)).orElse(0))
+                .sum();
+    }
+
     /** Contracts this party is in, any state. */
     public List<Contract> of(GlobalPos desk) {
         return contracts.values().stream().filter(c -> c.seller.equals(desk) || c.buyer.equals(desk)).toList();

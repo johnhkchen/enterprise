@@ -92,6 +92,22 @@ public final class Exchange extends SavedData {
     private final Map<GlobalPos, Map<BlockPos, Job>> jobs = new LinkedHashMap<>();
     private final Map<GlobalPos, Tally> tallies = new LinkedHashMap<>();
     private final Map<GlobalPos, Deque<String>> recent = new LinkedHashMap<>();
+    private final Map<GlobalPos, java.util.Set<String>> procured = new LinkedHashMap<>(); // "workstation|trade key"
+
+    /** A locker trade the Merchant switched on (or off) to buy what's wanted. */
+    void procured(GlobalPos desk, BlockPos workstation, String key, boolean on) {
+        var keys = procured.computeIfAbsent(desk, d -> new java.util.LinkedHashSet<>());
+        if (on) {
+            keys.add(workstation.asLong() + "|" + key);
+        } else {
+            keys.remove(workstation.asLong() + "|" + key);
+        }
+        setDirty();
+    }
+
+    boolean isProcured(GlobalPos desk, BlockPos workstation, String key) {
+        return procured.getOrDefault(desk, java.util.Set.of()).contains(workstation.asLong() + "|" + key);
+    }
 
     public static Exchange get(MinecraftServer server) {
         return server.overworld()
@@ -177,6 +193,7 @@ public final class Exchange extends SavedData {
         all.addAll(jobs.keySet());
         all.addAll(tallies.keySet());
         all.addAll(recent.keySet());
+        all.addAll(procured.keySet());
         for (GlobalPos desk : all) {
             CompoundTag entry = new CompoundTag();
             GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, desk).ifSuccess(t -> entry.put("desk", t));
@@ -226,6 +243,9 @@ public final class Exchange extends SavedData {
             ListTag lines = new ListTag();
             recent.getOrDefault(desk, new ArrayDeque<>()).forEach(line -> lines.add(net.minecraft.nbt.StringTag.valueOf(line)));
             entry.put("recent", lines);
+            ListTag keys = new ListTag();
+            procured.getOrDefault(desk, java.util.Set.of()).forEach(k -> keys.add(net.minecraft.nbt.StringTag.valueOf(k)));
+            entry.put("procured", keys);
             desks.add(entry);
         }
         tag.put("desks", desks);
@@ -277,6 +297,9 @@ public final class Exchange extends SavedData {
                 Deque<String> lines = new ArrayDeque<>();
                 entry.getList("recent", Tag.TAG_STRING).forEach(l -> lines.addLast(l.getAsString()));
                 exchange.recent.put(desk, lines);
+                java.util.Set<String> keys = new java.util.LinkedHashSet<>();
+                entry.getList("procured", Tag.TAG_STRING).forEach(k -> keys.add(k.getAsString()));
+                exchange.procured.put(desk, keys);
             });
         }
         return exchange;

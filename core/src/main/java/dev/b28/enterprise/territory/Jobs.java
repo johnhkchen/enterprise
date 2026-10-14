@@ -113,7 +113,9 @@ public final class Jobs {
                 .values().forEach(r -> BuiltInRegistries.VILLAGER_PROFESSION.getOptional(
                         net.minecraft.resources.ResourceLocation.parse(r.profession())).ifPresent(present::add));
         GlobalPos bellPos = GlobalPos.of(level.dimension(), bell);
-        Optional<Trade> trade = best(supply(territory.farmPlan(bellPos), stock), present);
+        Optional<Trade> trade = forContracts(level, desk, territory, bellPos, present)
+                .or(() -> forSignals(level, desk, territory, bellPos, present))
+                .or(() -> best(supply(territory.farmPlan(bellPos), stock), present));
         Optional<BlockPos> site = trade.isPresent() ? Growth.site(level, bell, STALL_SIZE, NEAREST) : Optional.empty();
         if (site.isEmpty()) {
             return Optional.empty();
@@ -124,6 +126,75 @@ public final class Jobs {
         Enterprise.LOGGER.debug("Settlement at {} puts up a {} stall at {}", bell.toShortString(),
                 BuiltInRegistries.VILLAGER_PROFESSION.getKey(trade.get().profession()), workstation.toShortString());
         return idle;
+    }
+
+    /**
+     * A trade the town's contracts call for and it hasn't: for goods it has contracted to sell, what makes or sells
+     * them, and what that needs before it (iron goods want an Armorer to smelt, and a Toolsmith's mine for the ore).
+     */
+    static Optional<Trade> forContracts(ServerLevel level, GlobalPos desk, Territory territory, GlobalPos bell,
+            Set<VillagerProfession> present) {
+        var book = dev.b28.enterprise.contract.ContractBook.get(level.getServer());
+        java.util.List<Item> wanted = new java.util.ArrayList<>();
+        for (var contract : book.of(desk)) {
+            var delivery = contract.delivery();
+            if (delivery.isPresent() && contract.seller().equals(desk) && contract.inForce()
+                    && book.toDeliver(desk, delivery.get().item()) > 0) {
+                wanted.add(delivery.get().item());
+            }
+        }
+        return tradeFor(wanted, territory, bell, present);
+    }
+
+    /**
+     * A trade for goods a market this town knows has posted as wanted (no market it knows has them): an opportunity,
+     * taken by its idle hands; the richest want first.
+     */
+    static Optional<Trade> forSignals(ServerLevel level, GlobalPos desk, Territory territory, GlobalPos bell,
+            Set<VillagerProfession> present) {
+        var server = level.getServer();
+        java.util.List<dev.b28.enterprise.market.Exchange.Signal> signals = new java.util.ArrayList<>();
+        for (GlobalPos market : dev.b28.enterprise.caravan.Atlas.get(server).known(server, desk)) {
+            signals.addAll(dev.b28.enterprise.market.Exchange.get(server).signals(market));
+        }
+        signals.sort(Comparator.comparingDouble((dev.b28.enterprise.market.Exchange.Signal s) -> -(double) s.count() * s.spursEach()));
+        return tradeFor(signals.stream().map(dev.b28.enterprise.market.Exchange.Signal::item).toList(), territory, bell,
+                present);
+    }
+
+    /** The first trade, for the first of these goods the town can't yet make or sell, that it should take on. */
+    static Optional<Trade> tradeFor(java.util.List<Item> goods, Territory territory, GlobalPos bell,
+            Set<VillagerProfession> present) {
+        Set<String> have = new java.util.HashSet<>();
+        present.forEach(p -> have.add(BuiltInRegistries.VILLAGER_PROFESSION.getKey(p).toString()));
+        for (Item item : goods) {
+            Set<String> makers = dev.b28.enterprise.market.Procurement.suppliers(item);
+            if (makers.stream().anyMatch(have::contains)) {
+                continue;
+            }
+            java.util.List<String> chain = new java.util.ArrayList<>();
+            boolean metal = item == Items.IRON_SWORD || item == Items.IRON_CHESTPLATE || item == Items.SHIELD
+                    || item == Items.GOLD_INGOT || item == Items.IRON_INGOT;
+            if (metal && territory.mine(bell).isEmpty()) {
+                chain.add("minecraft:toolsmith");
+            }
+            if (metal) {
+                chain.add("minecraft:armorer");
+            }
+            chain.addAll(makers);
+            for (String needed : chain) {
+                if (have.contains(needed)) {
+                    continue;
+                }
+                Optional<Trade> trade = TRADES.stream()
+                        .filter(t -> BuiltInRegistries.VILLAGER_PROFESSION.getKey(t.profession()).toString().equals(needed))
+                        .findFirst();
+                if (trade.isPresent()) {
+                    return trade;
+                }
+            }
+        }
+        return Optional.empty();
     }
 
     /** A stall in a 3 x 3 plot: the workstation in the middle, a chest against its east side. Returns the workstation. */

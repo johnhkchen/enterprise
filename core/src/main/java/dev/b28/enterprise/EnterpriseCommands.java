@@ -69,6 +69,25 @@ final class EnterpriseCommands {
                         .executes(context -> contracts(context, null))
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .executes(context -> contracts(context, BlockPosArgument.getBlockPos(context, "desk")))))
+                .then(Commands.literal("war")
+                        .executes(EnterpriseCommands::war)
+                        .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                .then(Commands.argument("spursPerDay", IntegerArgumentType.integer(0))
+                                        .executes(context -> {
+                                            int shops = dev.b28.enterprise.market.Sovereign.get(context.getSource().getServer())
+                                                    .declare(context.getSource().getLevel(), GlobalPos.of(
+                                                            context.getSource().getLevel().dimension(),
+                                                            BlockPosArgument.getBlockPos(context, "desk")),
+                                                            IntegerArgumentType.getInteger(context, "spursPerDay"));
+                                            context.getSource().sendSuccess(() -> Component.literal(
+                                                    "War: the sovereign's %d shops are up".formatted(shops)), true);
+                                            return shops;
+                                        }))))
+                .then(Commands.literal("peace").executes(context -> {
+                    dev.b28.enterprise.market.Sovereign.get(context.getSource().getServer()).peace(context.getSource().getLevel());
+                    context.getSource().sendSuccess(() -> Component.literal("Peace: the sovereign's shops are down"), true);
+                    return 1;
+                }))
                 .then(Commands.literal("market")
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .executes(EnterpriseCommands::market)))
@@ -373,6 +392,55 @@ final class EnterpriseCommands {
                         e.key().from().pos().toShortString(), e.key().at().pos().toShortString(),
                         e.emeralds() > 0 ? ", %.2f emeralds".formatted(e.emeralds()) : "")), false));
         return ledger.tallies(desk).size();
+    }
+
+    /**
+     * The war effort in a line: the sovereign's treasury and minting, what its shops have bought, the contracts that
+     * source them and who supplies them, bills of exchange outstanding, and the spur's rate.
+     */
+    private static int war(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        var server = source.getServer();
+        var sovereign = dev.b28.enterprise.market.Sovereign.get(server);
+        long now = source.getLevel().getGameTime();
+        var mint = dev.b28.enterprise.money.Mint.get(server);
+        StringBuilder bought = new StringBuilder();
+        int lots = 0;
+        for (BlockPos pos : sovereign.shops()) {
+            if (source.getLevel().getBlockEntity(pos) instanceof dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity shop) {
+                int held = shop.items.stream().mapToInt(net.minecraft.world.item.ItemStack::getCount).sum();
+                lots += held / Math.max(1, shop.getFilterItem().getCount());
+                if (held > 0) {
+                    bought.append(" ").append(held).append(" ").append(
+                            dev.b28.enterprise.contract.Delivery.of(shop.getFilterItem(), 1, 0).describe().replace(" ", "_"));
+                }
+            }
+        }
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        var desk = sovereign.desk();
+        java.util.Map<String, Integer> supplied = new java.util.TreeMap<>();
+        int sourced = 0;
+        for (var c : book.all()) {
+            if (desk.isPresent() && c.buyer().equals(desk.get()) && !(source.getLevel().getBlockEntity(c.buyer().pos())
+                    instanceof dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity)) {
+                sourced++;
+                supplied.merge(c.seller().pos().toShortString().replace(" ", ""), c.delivered(), Integer::sum);
+            }
+        }
+        double bills = dev.b28.enterprise.contract.Bills.get(server).all().stream()
+                .filter(b -> b.state() != dev.b28.enterprise.contract.Bills.State.PAID)
+                .mapToDouble(dev.b28.enterprise.contract.Bills.Bill::emeralds).sum();
+        bought.append(" | to the front:");
+        sovereign.received().forEach((good, n) -> bought.append(" ").append(n).append(" ").append(good.replace(" ", "_")));
+        String line = ("war: treasury %d spurs, minted %d in all, %d a day | lots on the shelves %d:%s | contracts sourcing %d, "
+                + "supplied %s | bills outstanding %.1f emeralds | rate %.2f, debasement %.3f").formatted(
+                sovereign.treasury().map(a -> a.getBalance()).orElse(0),
+                mint.mintedInAll(dev.b28.enterprise.money.Mint.DEFAULT_FACTION), sovereign.mintPerDay(), lots,
+                bought.toString(), sourced, supplied, bills,
+                mint.rate(dev.b28.enterprise.money.Mint.DEFAULT_FACTION, now),
+                mint.debasement(dev.b28.enterprise.money.Mint.DEFAULT_FACTION, now));
+        source.sendSuccess(() -> Component.literal(line), false);
+        return lots;
     }
 
     /** A master Merchant's dealings with the players' shops round its desk. */

@@ -857,6 +857,7 @@ public final class Territory extends SavedData {
                         * (holding.buildings.contains(Buildings.SMITHY.id()) ? 1.5 : 1);
                 holding.pending.merge("minecraft:raw_iron", levels * Mines.RAW_IRON_PER_LEVEL_DAY * days, Double::sum);
                 holding.pending.merge("minecraft:coal", levels * Mines.COAL_PER_LEVEL_DAY * days, Double::sum);
+                holding.pending.merge("minecraft:raw_gold", levels * Mines.RAW_GOLD_PER_LEVEL_DAY * days, Double::sum);
                 if (holding.deepMine) {
                     holding.pending.merge("minecraft:lapis_lazuli", levels * Mines.LAPIS_PER_LEVEL_DAY * days, Double::sum);
                 }

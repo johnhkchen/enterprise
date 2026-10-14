@@ -27,7 +27,16 @@ public final class Mint extends SavedData {
     /** Selling pressure halves every three in-game days. */
     public static final long HALF_LIFE_TICKS = 3 * 24000L;
 
+    /**
+     * Coin a sovereign mints without emeralds behind it (paying for a war) debases the spur: this many spurs minted
+     * doubles the spurs an emerald fetches. It works its way out over {@link #DEBASEMENT_HALF_LIFE_TICKS}.
+     */
+    public static final double DEBASEMENT_SCALE = BASE_SPURS_PER_EMERALD * PRESSURE_SCALE;
+    public static final long DEBASEMENT_HALF_LIFE_TICKS = 30 * 24000L;
+
     private final Map<String, double[]> factions = new HashMap<>(); // faction -> {pressure, lastTick}
+    private final Map<String, double[]> minted = new HashMap<>(); // faction -> {spurs minted, lastTick}
+    private final Map<String, Long> mintedInAll = new HashMap<>();
 
     public static Mint get(MinecraftServer server) {
         return server.overworld()
@@ -45,20 +54,47 @@ public final class Mint extends SavedData {
         return state[0] * Math.pow(0.5, (double) elapsed / HALF_LIFE_TICKS);
     }
 
+    /** Spurs minted without backing, as they stand now (decayed). */
+    public double minted(String faction, long now) {
+        double[] state = minted.get(faction);
+        if (state == null) {
+            return 0;
+        }
+        long elapsed = Math.max(0, now - (long) state[1]);
+        return state[0] * Math.pow(0.5, (double) elapsed / DEBASEMENT_HALF_LIFE_TICKS);
+    }
+
+    /** Spurs minted in all, ever. */
+    public long mintedInAll(String faction) {
+        return mintedInAll.getOrDefault(faction, 0L);
+    }
+
+    /** How far the spur is debased: 1 when nothing's been minted, 2 when it fetches half as much. */
+    public double debasement(String faction, long now) {
+        return 1 + minted(faction, now) / DEBASEMENT_SCALE;
+    }
+
+    /** A sovereign mints {@code spurs} to pay with: coin with nothing behind it. */
+    public void mint(String faction, int spurs, long now) {
+        minted.put(faction, new double[] {minted(faction, now) + spurs, now});
+        mintedInAll.merge(faction, (long) spurs, Long::sum);
+        setDirty();
+    }
+
     /** Spurs per emerald for the next emerald sold. */
     public double rate(String faction, long now) {
-        return BASE_SPURS_PER_EMERALD / (1 + pressure(faction, now) / PRESSURE_SCALE);
+        return BASE_SPURS_PER_EMERALD * debasement(faction, now) / (1 + pressure(faction, now) / PRESSURE_SCALE);
     }
 
     /** Spurs paid for {@code emeralds} sold now, priced along the falling rate. Changes nothing. */
     public int quote(String faction, int emeralds, long now) {
-        return spursFor(pressure(faction, now), emeralds);
+        return (int) Math.floor(spursFor(pressure(faction, now), emeralds) * debasement(faction, now));
     }
 
     /** Sells {@code emeralds} to the faction: returns the spurs paid and adds the selling pressure. */
     public int sell(String faction, int emeralds, long now) {
         double pressure = pressure(faction, now);
-        int spurs = spursFor(pressure, emeralds);
+        int spurs = (int) Math.floor(spursFor(pressure, emeralds) * debasement(faction, now));
         factions.put(faction, new double[] {pressure + emeralds, now});
         setDirty();
         return spurs;
@@ -84,6 +120,15 @@ public final class Mint extends SavedData {
             all.put(faction, entry);
         });
         tag.put("factions", all);
+        CompoundTag mints = new CompoundTag();
+        minted.forEach((faction, state) -> {
+            CompoundTag entry = new CompoundTag();
+            entry.putDouble("spurs", state[0]);
+            entry.putLong("tick", (long) state[1]);
+            entry.putLong("inAll", mintedInAll.getOrDefault(faction, 0L));
+            mints.put(faction, entry);
+        });
+        tag.put("minted", mints);
         return tag;
     }
 
@@ -93,6 +138,12 @@ public final class Mint extends SavedData {
         for (String faction : all.getAllKeys()) {
             CompoundTag entry = all.getCompound(faction);
             mint.factions.put(faction, new double[] {entry.getDouble("pressure"), entry.getLong("tick")});
+        }
+        CompoundTag mints = tag.getCompound("minted");
+        for (String faction : mints.getAllKeys()) {
+            CompoundTag entry = mints.getCompound(faction);
+            mint.minted.put(faction, new double[] {entry.getDouble("spurs"), entry.getLong("tick")});
+            mint.mintedInAll.put(faction, entry.getLong("inAll"));
         }
         return mint;
     }

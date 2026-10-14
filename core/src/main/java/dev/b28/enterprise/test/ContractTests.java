@@ -76,8 +76,8 @@ public final class ContractTests {
         var ledger = dev.b28.enterprise.caravan.CaravanLedger.get(server);
         var route = ledger.addRoute(desk, supplier);
         long t = helper.getLevel().getGameTime();
-        helper.assertTrue(Broker.source(helper.getLevel(), desk, new Territory(), Items.IRON_PICKAXE, 5, t),
-                "sourced");
+        helper.assertFalse(Broker.source(helper.getLevel(), desk, new Territory(), Items.IRON_PICKAXE, 5, t),
+                "three of the five: the need isn't covered yet");
         var contract = ContractBook.get(server).of(desk).stream().filter(c -> c.seller().equals(supplier)).findFirst()
                 .orElseThrow();
         helper.assertTrue(contract.incoterm() == Incoterm.EXW && contract.delivery().get().quantity() == 3,

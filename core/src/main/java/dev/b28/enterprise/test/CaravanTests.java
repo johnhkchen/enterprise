@@ -426,6 +426,32 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void shortOfCoinTheBuyerPaysWithABill(GameTestHelper helper) {
+        Network net = network(helper, 2, 1, 192);
+        net.dest().insert(new ItemStack(Items.FLINT, 32));
+        var server = helper.getLevel().getServer();
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        long t = helper.getLevel().getGameTime();
+        var contract = book.draft(net.route().to(), net.route().from(),
+                new dev.b28.enterprise.contract.Delivery(Items.FLINT, 32, 0.5), dev.b28.enterprise.contract.Incoterm.EXW,
+                t, 24000, 1, t, net.route().to(), true);
+        net.poll(t);
+        net.poll(t + 80);
+        helper.assertTrue(contract.delivered() == 32, "collected in full: " + contract.history());
+        var bills = dev.b28.enterprise.contract.Bills.get(server).all().stream()
+                .filter(b -> b.drawee().equals(net.route().from()) && b.payee().equals(net.route().to())).toList();
+        helper.assertTrue(!bills.isEmpty(), "the rest on a bill drawn on the hub, left with the town");
+        net.poll(t + 160);
+        net.hub().insert(new ItemStack(Items.EMERALD, 30)); // the hub has money again
+        long later = t + dev.b28.enterprise.contract.Bills.TERM_TICKS + 24000;
+        net.poll(later);
+        net.poll(later + 80);
+        helper.assertTrue(bills.stream().allMatch(b -> b.state() == dev.b28.enterprise.contract.Bills.State.PAID),
+                "the hub's next caravan, once it was due, paid it");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aSquadIsNeverMoreThanFour(GameTestHelper helper) {
         Network net = network(helper, 2, 5, 192, List.of(VillagerProfession.CARTOGRAPHER, VillagerProfession.LIBRARIAN,
                 VillagerProfession.SHEPHERD, VillagerProfession.LEATHERWORKER, VillagerProfession.FISHERMAN,

@@ -103,6 +103,7 @@ public final class Broker {
         MinecraftServer server = level.getServer();
         MerchantStock stock = MerchantStock.at(level, desk.pos());
         dev.b28.enterprise.cargo.Crates.receive(server, level, desk, stock, now); // crates consigned here
+        Procurement.procure(level, desk, stock); // what its own villagers sell
         Exchange exchange = Exchange.get(server);
         double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
         List<VendorBlockEntity> shops = Shops.near(level, desk.pos());
@@ -251,11 +252,18 @@ public final class Broker {
         }
     }
 
+    /** A supplier that can make or sell goods, but doesn't hold them, is asked for at most this many at a time. */
+    public static final int MAKER_LOT = 16;
+    /** And given this long to make them before the first is due. */
+    public static final long MAKER_LEAD = 2 * 24000L;
+
     /**
-     * Contracts a supplier for goods this desk is short of: the nearest market it knows that held them at its last
-     * stocktake and that a caravan runs between, Ex Works if this desk's caravans go there (they collect), else
-     * Delivered At Place (the supplier's caravans bring it). One open contract per good. Drafted here, it's in force
-     * once a caravan between the two carries the copy. Returns true if one is open.
+     * Contracts suppliers for goods this desk is short of, until what's contracted covers the need: markets it knows
+     * with a road between them, nearest first, that held the goods at their last stocktake, or (failing those) whose
+     * people include a trade that makes or sells them (a Weaponsmith for swords; see {@link Procurement#suppliers}).
+     * Ex Works if this desk's caravans go there (they collect), else Delivered At Place. One open contract per good
+     * per supplier. Drafted here, each is in force once a caravan between the two carries its copy. Returns true if
+     * the need is covered.
      */
     public static boolean source(ServerLevel level, GlobalPos desk, Territory territory, Item item, int need, long now) {
         MinecraftServer server = level.getServer();
@@ -264,38 +272,56 @@ public final class Broker {
         Warehouse warehouse = Warehouse.get(server);
         var ledger = dev.b28.enterprise.caravan.CaravanLedger.get(server);
         List<GlobalPos> markets = Atlas.get(server).known(server, desk);
-        if (markets.stream().anyMatch(m -> !book.open(m, desk, plain).isEmpty())) {
+        int covered = 0;
+        for (GlobalPos m : markets) {
+            for (var c : book.open(m, desk, plain)) {
+                covered += c.delivery().map(d -> d.quantity() * c.installments() - c.delivered()).orElse(0);
+            }
+        }
+        if (covered >= need) {
             return true;
         }
         double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
-        for (GlobalPos supplier : markets) {
-            boolean kit = dev.b28.enterprise.territory.Smithing.KITS.stream().anyMatch(k -> k.item() == item);
-            int held = warehouse.onHand(supplier, item);
-            int spare = (kit ? held / 2 : held) - warehouse.par(supplier, item, false, now); // a town keeps half its kit
-            if (spare <= 0 || book.trust(supplier, desk) < dev.b28.enterprise.contract.ContractBook.MIN_TRUST) {
-                continue;
+        boolean kit = dev.b28.enterprise.territory.Smithing.KITS.stream().anyMatch(k -> k.item() == item);
+        java.util.Set<String> trades = Procurement.suppliers(item);
+        for (boolean holders : List.of(true, false)) {
+            for (GlobalPos supplier : markets) {
+                if (covered >= need || !book.open(supplier, desk, plain).isEmpty()
+                        || book.trust(supplier, desk) < dev.b28.enterprise.contract.ContractBook.MIN_TRUST) {
+                    continue;
+                }
+                int held = warehouse.onHand(supplier, item);
+                int spare = (kit ? held / 2 : held) - warehouse.par(supplier, item, false, now); // a town keeps half its kit
+                boolean makes = territory.bellOf(supplier)
+                        .map(bell -> Services.residents(level, bell).keySet().stream().anyMatch(trades::contains))
+                        .orElse(false);
+                if (holders ? spare <= 0 : !makes) {
+                    continue;
+                }
+                var collect = ledger.route(desk, supplier);
+                var bring = ledger.route(supplier, desk);
+                if (collect.isEmpty() && bring.isEmpty()) {
+                    continue; // no road between them: a gap a player could fill
+                }
+                var incoterm = collect.isPresent() ? dev.b28.enterprise.contract.Incoterm.EXW
+                        : dev.b28.enterprise.contract.Incoterm.DAP;
+                var route = collect.orElseGet(bring::get);
+                int quantity = Math.min(need - covered, holders ? spare : MAKER_LOT);
+                double exWorks = Prices.emeraldsEach(item) * (1 + SUPPLIER_MARGIN);
+                double carriage = Caravans.foodNeeded(route.distance()) * 2 * Caravans.PURSE_PER_FOOD_POINT
+                        / (Caravans.CARGO_SLOTS * (double) item.getDefaultMaxStackSize());
+                double tolls = Caravans.tollShare(territory, route) * exWorks;
+                var delivery = new dev.b28.enterprise.contract.Delivery(item, quantity,
+                        incoterm.price(exWorks, carriage, tolls));
+                var contract = book.draft(supplier, desk, delivery, incoterm, holders ? now : now + MAKER_LEAD,
+                        Caravans.DEPARTURE_INTERVAL, 1, now, desk, false);
+                covered += quantity;
+                Exchange.get(server).note(desk, now, "sourced %d %s from %s, %s, %s (contract #%d)".formatted(quantity,
+                        path(item), supplier.pos().toShortString(), holders ? "from its stock" : "to make", incoterm.name(),
+                        contract.id()));
             }
-            var collect = ledger.route(desk, supplier);
-            var bring = ledger.route(supplier, desk);
-            if (collect.isEmpty() && bring.isEmpty()) {
-                continue; // no road between them: a gap a player could fill
-            }
-            var incoterm = collect.isPresent() ? dev.b28.enterprise.contract.Incoterm.EXW
-                    : dev.b28.enterprise.contract.Incoterm.DAP;
-            var route = collect.orElseGet(bring::get);
-            int quantity = Math.min(need, spare);
-            double exWorks = Prices.emeraldsEach(item) * (1 + SUPPLIER_MARGIN);
-            double carriage = Caravans.foodNeeded(route.distance()) * 2 * Caravans.PURSE_PER_FOOD_POINT
-                    / (Caravans.CARGO_SLOTS * (double) item.getDefaultMaxStackSize());
-            double tolls = Caravans.tollShare(territory, route) * exWorks;
-            var delivery = new dev.b28.enterprise.contract.Delivery(item, quantity, incoterm.price(exWorks, carriage, tolls));
-            var contract = book.draft(supplier, desk, delivery, incoterm, now, Caravans.DEPARTURE_INTERVAL, 1, now, desk,
-                    false);
-            Exchange.get(server).note(desk, now, "sourced %d %s from %s, %s (contract #%d)".formatted(quantity, path(item),
-                    supplier.pos().toShortString(), incoterm.name(), contract.id()));
-            return true;
         }
-        return false;
+        return covered >= need;
     }
 
     /** What its town and its orders want of an item, beyond what it holds. */

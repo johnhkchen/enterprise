@@ -102,6 +102,10 @@ public record Papers(List<Papers.Document> documents) {
                         pos(t, "consignee").map(p -> p.pos().toShortString()).orElse("?"), t.getInt("contract"),
                         t.getString("terms"), t.getLong("issued") / 24000));
                 case CONTRACT -> lines.add("Contract #%d: %s".formatted(t.getInt("contract"), t.getString("summary")));
+                case BILL_OF_EXCHANGE -> lines.add("Bill of exchange #%d: %.2f emeralds, drawn on %s to pay %s, due day %d"
+                        .formatted(t.getInt("bill"), t.getDouble("emeralds"),
+                                pos(t, "drawee").map(p -> p.pos().toShortString()).orElse("?"),
+                                pos(t, "payee").map(p -> p.pos().toShortString()).orElse("?"), t.getLong("due") / 24000));
                 default -> lines.add(d.kind().replace('_', ' '));
             }
         }

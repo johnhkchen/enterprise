@@ -233,7 +233,9 @@ public final class Caravans {
             shoppingMoney = 0;
         }
         // And the money to pay for what it collects there Ex Works, as far as the town can spare it.
-        double exWorks = Math.min(exWorksPurse(server, route, now + travelTicks(route.distance())),
+        double exWorks = Math.min(exWorksPurse(server, route, now + travelTicks(route.distance()))
+                        + dev.b28.enterprise.contract.Bills.get(server).dueAt(route.from, route.to,
+                                now + travelTicks(route.distance())), // and the bills on it that lie there
                 Math.max(0, spare - shoppingMoney));
         double purse = food * PURSE_PER_FOOD_POINT + shoppingMoney + exWorks;
         if (stock.foodNutrition() < food) {
@@ -253,6 +255,7 @@ public final class Caravans {
         // Goods owed under contracts go first, then comforts, then what the destination's trades want.
         java.util.Map<Integer, Integer> contracted = new LinkedHashMap<>();
         Crates.receive(server, level, route.from, stock, now); // crates consigned here, a player brought them
+        dev.b28.enterprise.market.Procurement.procure(level, route.from, stock); // its villagers sell what it owes
         List<ItemStack> cargo = pickContracted(server, level, route, stock, now + travelTicks(route.distance()), slots,
                 contracted, now);
         cargo.addAll(pickComforts(stock, comfortWants(server, territory, route.to, now + travelTicks(route.distance()))));
@@ -285,6 +288,7 @@ public final class Caravans {
                 route.saddleWear -= 1;
             }
         }
+        cargo.addAll(dev.b28.enterprise.contract.Bills.takeBillsOn(stock, route.to)); // bills to present there
         Caravan leaving = new Caravan(route.id, Caravan.Leg.OUTBOUND, now + (long) (travelTicks(route.distance()) / pace),
                 cargo, spurs, Squad.haggleLevel(crew));
         leaving.pace = pace;
@@ -356,11 +360,13 @@ public final class Caravans {
                 }
             }
             Crates.receive(server, level, route.to, stock, now);
+            dev.b28.enterprise.market.Procurement.procure(level, route.to, stock);
             ItemStack empties = Crates.spareEmpties(stock); // returnable crates go back
             if (!empties.isEmpty()) {
                 caravan.cargo.add(empties);
             }
             settleOwing(server, level, route, stock, caravan, mint, rate, now);
+            presentBills(server, level, route, stock, caravan, mint, rate, now);
             int earned = settleContracts(server, level, route, stock, caravan, mint, rate, now);
             collectExWorks(server, level, route, stock, caravan, mint, rate, now);
             Map<Item, double[]> sold = new LinkedHashMap<>();
@@ -553,6 +559,12 @@ public final class Caravans {
             Treasury.Withdrawal paid = Treasury.withdraw(level, route.to.pos(), stock, owedMoney, mint, now);
             double value = paid.value(rate);
             earned += paid.spurs() + mint.sell(Mint.DEFAULT_FACTION, paid.emeralds(), now);
+            if (value < owedMoney * 0.99 && book.trust(route.from, route.to) >= dev.b28.enterprise.contract.ContractBook.MIN_TRUST) {
+                // Short of coin, the buyer pays the rest with a bill on its own treasury: it rides home to the seller.
+                caravan.cargo.add(Crates.documents(dev.b28.enterprise.cargo.Papers.NONE.with(
+                        dev.b28.enterprise.contract.Bills.get(server).draw(route.to, route.from, owedMoney - value, now))));
+                value = owedMoney;
+            }
             book.settle(contract, delivered, value, now);
             if (value < owedMoney * 0.9) {
                 book.unpaid(contract, now);
@@ -578,7 +590,9 @@ public final class Caravans {
             int owed = contract.owed(now);
             int room = (caravan.capacity() - Crates.stacks(caravan.cargo)) * delivery.get().item().getDefaultMaxStackSize();
             int affordable = (int) Math.floor(caravan.spurs / Math.max(1e-9, delivery.get().unitPrice() * rate));
-            int quantity = Math.min(owed, Math.min(room, affordable));
+            // Short of coin, the buyer's Merchant pays the rest with a bill drawn on its own treasury, where trusted.
+            boolean credit = book.trust(route.from, route.to) >= dev.b28.enterprise.contract.ContractBook.MIN_TRUST;
+            int quantity = Math.min(owed, credit ? room : Math.min(room, affordable));
             if (quantity <= 0) {
                 continue;
             }
@@ -594,10 +608,16 @@ public final class Caravans {
             // The seller crates it with its bill of lading, made out to the buyer: delivered here, Ex Works.
             caravan.cargo.addAll(Crates.pack(level, route.to, stock, goods,
                     Crates.shipping(contract, route.to, route.from, goods, route.id, now, true), now));
-            int spurs = Math.min(caravan.spurs, (int) Math.ceil(taken * delivery.get().unitPrice() * rate));
+            int cost = (int) Math.ceil(taken * delivery.get().unitPrice() * rate);
+            int spurs = Math.min(caravan.spurs, cost);
             caravan.spurs -= spurs;
             Treasury.deposit(level, route.to.pos(), stock, spurs);
-            book.settle(contract, taken, spurs / rate, now);
+            double onPaper = (cost - spurs) / rate;
+            if (onPaper > 0.01) {
+                dev.b28.enterprise.contract.Bills.file(stock, dev.b28.enterprise.contract.Bills.get(server)
+                        .draw(route.from, route.to, onPaper, now));
+            }
+            book.settle(contract, taken, cost / rate, now);
             route.itemsBought += taken;
             route.purchaseSpurs += spurs;
         }
@@ -625,6 +645,51 @@ public final class Caravans {
             if (spurs > 0) {
                 book.paidOwing(contract, spurs / rate);
             }
+        }
+    }
+
+    /**
+     * Bills of exchange between the two ends: those drawn on the caravan's home that lie here are presented to it, and
+     * it pays what's due from its purse; those it carries drawn on this town are presented here, and this town pays
+     * what's due into the caravan, to carry home. Bills not yet due, or not paid, go back where they came from.
+     */
+    static void presentBills(MinecraftServer server, ServerLevel level, Route route, MerchantStock stock, Caravan caravan,
+            Mint mint, double rate, long now) {
+        var bills = dev.b28.enterprise.contract.Bills.get(server);
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        var here = dev.b28.enterprise.contract.Bills.takeBillsOn(stock, route.from);
+        if (!here.isEmpty()) {
+            var presented = bills.present(here, caravan.spurs / rate, now, book);
+            int spurs = (int) Math.ceil(presented.paid() * rate);
+            caravan.spurs -= Math.min(caravan.spurs, spurs);
+            Treasury.deposit(level, route.to.pos(), stock, spurs);
+            presented.returned().forEach(stock::insert);
+            route.billSpurs += spurs;
+        }
+        List<ItemStack> carried = new ArrayList<>();
+        for (Iterator<ItemStack> it = caravan.cargo.iterator(); it.hasNext(); ) {
+            ItemStack stack = it.next();
+            if (stack.is(dev.b28.enterprise.cargo.Cargo.DOCUMENTS.get())
+                    && !dev.b28.enterprise.contract.Bills.ids(stack).isEmpty()
+                    && stack.getOrDefault(dev.b28.enterprise.cargo.Cargo.PAPERS.get(), dev.b28.enterprise.cargo.Papers.NONE)
+                            .first(dev.b28.enterprise.cargo.Papers.BILL_OF_EXCHANGE)
+                            .flatMap(d -> dev.b28.enterprise.cargo.Papers.pos(d.data(), "drawee"))
+                            .filter(route.to::equals).isPresent()) {
+                carried.add(stack);
+                it.remove();
+            }
+        }
+        if (!carried.isEmpty()) {
+            double can = Math.max(0, Treasury.available(level, route.to.pos(), stock, rate)
+                    - Territory.get(server).reserve(route.to));
+            var presented = bills.present(carried, can, now, book);
+            if (presented.paid() > 0) {
+                Treasury.Withdrawal paid = Treasury.withdraw(level, route.to.pos(), stock, presented.paid(), mint, now);
+                int spurs = paid.spurs() + mint.sell(Mint.DEFAULT_FACTION, paid.emeralds(), now);
+                caravan.spurs += spurs;
+                route.billSpurs += spurs;
+            }
+            caravan.cargo.addAll(presented.returned());
         }
     }
 

@@ -50,6 +50,20 @@ public final class Crafts {
                 "smelts a town's ore, for one with a mine and no Armorer",
                 ordered(Items.RAW_IRON, Smithing.RAW_PER_COAL, Items.COAL, 1), Items.IRON_INGOT, Smithing.RAW_PER_COAL, 4,
                 0.02, visit -> blast(visit) ? 0 : count(visit, Items.RAW_IRON)));
+        recipe(new Recipe("enterprise:gold_smelting", ARMORER, "smelts its town's gold ore: raw gold and coal into gold",
+                "smelts a town's gold ore, for one with a mine and no Armorer",
+                ordered(Items.RAW_GOLD, Smithing.RAW_PER_COAL, Items.COAL, 1), Items.GOLD_INGOT, Smithing.RAW_PER_COAL, 4,
+                0.02, visit -> count(visit, Items.RAW_GOLD)));
+        recipe(new Recipe("enterprise:arrows", TownServices.FLETCHER,
+                "fletches arrows of flint, sticks and feathers, for what its town has contracted to sell",
+                "fletches arrows for a town's contracts from its flint, sticks and feathers",
+                Map.of(Items.FLINT, 1, Items.STICK, 1, Items.FEATHER, 1), Items.ARROW, 4, 4, 0.01,
+                visit -> contracted(visit, Items.ARROW)));
+        recipe(new Recipe("enterprise:shields", ARMORER,
+                "makes shields of wood and iron, for what its town has contracted to sell",
+                "makes shields for a town's contracts from its logs and iron",
+                ordered(Items.OAK_LOG, 2, Items.IRON_INGOT, 1), Items.SHIELD, 1, 2, 0.1,
+                visit -> contracted(visit, Items.SHIELD)));
         recipe(new Recipe("enterprise:blast_smelting", ARMORER,
                 "smelts in its town's blast furnace: twice the iron for a coal, twice as fast",
                 "smelts in a town's blast furnace, for one without an Armorer",
@@ -103,12 +117,24 @@ public final class Crafts {
                     int miners = territory.mine(bell).isPresent() ? workers.getOrDefault(TownServices.TOOLSMITH, 0) : 0;
                     int wearers = Smithing.wearers(kit, workers.getOrDefault(TownServices.FARMER, 0), miners,
                             territory.guards(bell), workers.getOrDefault(TownServices.FLETCHER, 0));
-                    return Math.max(0, wearers - count(visit, kit.item()));
+                    // Its own wearers' kit, and what it has contracted to sell.
+                    return Math.max(0, wearers + contracted(visit, kit.item()) - count(visit, kit.item()));
                 }).orElse(0));
+    }
+
+    private static final List<Recipe> RECIPES = new java.util.ArrayList<>();
+
+    /** The trades whose recipes make {@code item}. */
+    public static java.util.Set<String> makers(Item item) {
+        Services.all(); // registered
+        java.util.Set<String> trades = new java.util.LinkedHashSet<>();
+        RECIPES.stream().filter(r -> r.output() == item).forEach(r -> trades.add(r.trade()));
+        return trades;
     }
 
     /** Registers the recipe at home, and abroad (its id + "_abroad") for towns without the trade. */
     static void recipe(Recipe recipe) {
+        RECIPES.add(recipe);
         Services.register(new Service(recipe.id(), recipe.trade(), Service.Where.HOME, recipe.does(),
                 visit -> wanted(recipe, visit), visit -> make(recipe, visit)));
         Services.register(new Service(recipe.id() + "_abroad", recipe.trade(), Service.Where.ABROAD,
@@ -197,6 +223,12 @@ public final class Crafts {
             }
         }
         return visit.abroad() ? items * recipe.feeEach() : 0;
+    }
+
+    /** What the town has contracted to sell of {@code item} and must still deliver: work for its trades. */
+    static int contracted(Visit visit, Item item) {
+        int owed = dev.b28.enterprise.contract.ContractBook.get(visit.server()).toDeliver(visit.at(), item);
+        return owed <= 0 ? 0 : Math.max(0, owed - (visit.planning() ? 0 : visit.stock().count(new ItemCost(item, 1))));
     }
 
     /** Has the town a blast furnace (a master Armorer's)? */
