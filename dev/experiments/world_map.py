@@ -216,33 +216,36 @@ def main():
                    f'<tspan class="tag">{tag}</tspan></text>')
 
     total_trips = sum(r.get("trips", 0) for r in routes)
-    page = f"""<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cartographer's Map</title>
+    page = f"""<title>Cartographer's Map</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Karla:wght@400;600&family=Lora:wght@600&display=swap" rel="stylesheet">
 <style>
+/* One map, framed like a sheet on the table; the key below it. b28 palette: steel blue, off-white, cream, ink. */
 :root {{ --paper:#faf8f5; --cream:#f2efe9; --ink:#1c1917; --land:#efe9dc; --hill:#d9cdb4; --cliff:#8c7f6a;
-  --grid:#e2dacb; --muted:#6b6259; }}
+  --grid:#e2dacb; --muted:#6b6259; --steel:#44679b; --shadow:rgba(28,25,23,.12); --lift:rgba(255,255,255,.55);
+  --display:Lora, Georgia, serif; --body:Karla, "Helvetica Neue", Arial, sans-serif; }}
 @media (prefers-color-scheme: dark) {{ :root:not([data-theme="light"]) {{ --paper:#1c1917; --cream:#26221f;
-  --ink:#f2efe9; --land:#2b2723; --hill:#3d362f; --cliff:#6b6050; --grid:#332e29; --muted:#a69d92; }} }}
+  --ink:#f2efe9; --land:#2b2723; --hill:#3d362f; --cliff:#7a6e5c; --grid:#332e29; --muted:#a69d92; --steel:#8fb0dc;
+  --shadow:rgba(0,0,0,.4); --lift:rgba(255,255,255,.04); color-scheme:dark; }} }}
 :root[data-theme="dark"] {{ --paper:#1c1917; --cream:#26221f; --ink:#f2efe9; --land:#2b2723; --hill:#3d362f;
-  --cliff:#6b6050; --grid:#332e29; --muted:#a69d92; }}
-body {{ margin:0; background:var(--paper); color:var(--ink); font-family:Karla, sans-serif; }}
-main {{ max-width:1160px; margin:0 auto; padding:24px 16px 40px; }}
-h1 {{ font-family:Lora, serif; font-weight:600; margin:0 0 4px; font-size:1.7rem; }}
-p.sub {{ margin:0 0 16px; color:var(--muted); }}
-.map {{ background:var(--cream); border-radius:20px; padding:12px; box-shadow:6px 6px 18px rgba(28,25,23,.12),
-  -4px -4px 12px rgba(255,255,255,.5); }}
+  --cliff:#7a6e5c; --grid:#332e29; --muted:#a69d92; --steel:#8fb0dc; --shadow:rgba(0,0,0,.4);
+  --lift:rgba(255,255,255,.04); color-scheme:dark; }}
+body {{ background:var(--paper); color:var(--ink); font-family:var(--body); }}
+main {{ max-width:1160px; margin:0 auto; padding-block:24px 40px; padding-inline:16px; }}
+h1 {{ font-family:var(--display); font-weight:600; margin:0 0 4px; font-size:1.7rem; text-wrap:balance; }}
+p.sub {{ margin:0 0 16px; color:var(--muted); max-width:65ch; }}
+.map {{ background:var(--cream); border-radius:20px; padding:12px; box-shadow:6px 6px 18px var(--shadow),
+  -4px -4px 12px var(--lift); }}
 svg {{ width:100%; height:auto; display:block; }}
-.name {{ font:600 13px Karla, sans-serif; fill:var(--ink); paint-order:stroke; stroke:var(--paper); stroke-width:3px; }}
+.name {{ font:600 13px var(--body); fill:var(--ink); paint-order:stroke; stroke:var(--cream); stroke-width:3px; }}
 .tag {{ font-weight:400; fill:var(--muted); }}
 .key {{ display:flex; flex-wrap:wrap; gap:8px 20px; margin-top:14px; color:var(--muted); font-size:.95rem; }}
 .swatch {{ display:inline-block; width:14px; height:14px; border-radius:4px; vertical-align:-2px; margin-right:6px; }}
-</style></head><body><main>
+</style>
+<main>
 <h1>{html.escape(title)}</h1>
 <p class="sub">{len(on_map)} markets on the map, {len(routes)} routes, {total_trips} caravan trips in all. Hover a route
-for its trips.</p>
+for its trips and how it ended the run.</p>
 <div class="map"><svg viewBox="0 0 {width} {height:.0f}" role="img" aria-label="Map of markets and caravan routes">
 {chr(10).join(svg)}
 </svg></div>
@@ -251,7 +254,7 @@ for its trips.</p>
 <span><span class="swatch" style="background:var(--hill)"></span>steep ground</span>
 <span>line width: trips made</span><span>dashed: winding down</span><span>ringed: freight hub</span>
 <span>★ the capital</span><span>square: off the map</span>
-</div></main></body></html>"""
+</div></main>"""
     out.write_text(page)
     print(f"map: {out}")
 
