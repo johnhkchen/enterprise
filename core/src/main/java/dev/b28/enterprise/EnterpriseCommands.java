@@ -150,8 +150,8 @@ final class EnterpriseCommands {
                     var server = context.getSource().getServer();
                     var freight = dev.b28.enterprise.market.Freight.get(server);
                     StringBuilder out = new StringBuilder("Freight hubs:");
-                    freight.books().forEach((hub, b) -> out.append("\n  %s: %.0f stacks forwarded for %.0f spurs, %.0f spurs of freight bought, %.0f stacks carried on its runs, %.0f bills bought (%.1f emeralds face), %.0f carts of drayage (%.0f spurs of wages)"
-                            .formatted(dev.b28.enterprise.settlement.Names.label(hub), b[0], b[1], b[5], b[4], b[2], b[3], b[7], b[6])));
+                    freight.books().forEach((hub, b) -> out.append("\n  %s: %.0f stacks forwarded for %.0f spurs, %.0f spurs of freight bought, %.0f stacks carried on its runs, %.0f bills bought (%.1f emeralds face), %.0f carts of drayage (%.0f spurs of wages), %.0f spurs of landing fees"
+                            .formatted(dev.b28.enterprise.settlement.Names.label(hub), b[0], b[1], b[5], b[4], b[2], b[3], b[7], b[6], b[8])));
                     for (var depot : dev.b28.enterprise.merchant.Depots.get(server).all()) {
                         if (depot.kind() != dev.b28.enterprise.merchant.Depots.Kind.STOREHOUSE) {
                             continue;

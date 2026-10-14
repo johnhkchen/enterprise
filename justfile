@@ -51,3 +51,7 @@ server-setup:
 # Send commands to the running dev server, e.g. `just rcon "time set day"`
 rcon +commands:
     python3 scripts/rcon.py {{commands}}
+
+# The cartographer's map of the dev server's world: towns, hubs, and routes by trips (after the server stops).
+map out="world_map.html" title="The realm, by its cartographer":
+    python3 dev/experiments/world_map.py core/run/world/data {{out}} "{{title}}"

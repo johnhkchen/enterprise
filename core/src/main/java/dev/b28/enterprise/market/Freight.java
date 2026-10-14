@@ -81,6 +81,33 @@ public final class Freight extends SavedData {
     public static final int HUB_ROUTES = 3;
     public static final double STOREHOUSE_EMERALDS = 4;
 
+    /**
+     * A stop fee, not a transit fee: a caravan landing at a hub (ending its run there, or calling to drop off and take
+     * on) pays the hub a landing fee, a quarter of what passing through its posts costs, and at least a small one. So
+     * dropping goods off and turning back is always cheaper than driving through. It needs no guards: it's the
+     * market's charge for its quay.
+     */
+    public static final double STOP_FEE_SHARE = 0.25;
+    public static final double BASE_STOP_FEE = 0.25;
+
+    /** A caravan's landing fee at the hub, in spurs. */
+    public static double stopFee(MinecraftServer server, GlobalPos hub, double rate) {
+        var territory = dev.b28.enterprise.territory.Territory.get(server);
+        double transit = territory.bellOf(hub).map(territory::passageFee).orElse(0.0);
+        return Math.max(BASE_STOP_FEE * rate, transit * STOP_FEE_SHARE);
+    }
+
+    /** A caravan lands at the hub: its landing fee from its purse (as far as it can), banked with the hub. */
+    public int land(ServerLevel level, GlobalPos hub, int purse, long now) {
+        double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now);
+        int fee = Math.min(purse, (int) Math.ceil(stopFee(level.getServer(), hub, rate)));
+        if (fee > 0) {
+            Treasury.deposit(level, hub.pos(), MerchantStock.at(level, hub.pos()), fee);
+            tally(hub)[8] += fee;
+        }
+        return fee;
+    }
+
     /** Its shops stand in a row this far south of its desk, two blocks apart. */
     public static final int SHOP_ROW = 6;
     public static final long TICKS = 24000;
@@ -328,10 +355,10 @@ public final class Freight extends SavedData {
 
     /**
      * {stacks forwarded, forwarding fees in spurs, bills bought, their face, stacks carried, freight bought in spurs,
-     * drayage wages in spurs, carts bought}.
+     * drayage wages in spurs, carts bought, landing fees in spurs}.
      */
     public double[] book(GlobalPos hub) {
-        return books.getOrDefault(hub, new double[8]).clone();
+        return books.getOrDefault(hub, new double[9]).clone();
     }
 
     public Map<GlobalPos, double[]> books() {
@@ -342,7 +369,7 @@ public final class Freight extends SavedData {
 
     double[] tally(GlobalPos hub) {
         setDirty();
-        return books.computeIfAbsent(hub, h -> new double[8]);
+        return books.computeIfAbsent(hub, h -> new double[9]);
     }
 
     /** Once a day, at each loaded hub: its carriers' shops up and restocked, and its forwarder books what it holds. */
@@ -431,8 +458,9 @@ public final class Freight extends SavedData {
             var territory = dev.b28.enterprise.territory.Territory.get(server);
             double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
             double tolls = (Caravans.tollShare(territory, r) * r.expectedValue() + Caravans.passageFees(territory, r)) / rate;
-            double direct = runCost(r.distance()) + tolls;
-            double byHub = runCost(toHub) + stacks * (legs(server, hub, r.to()).stream()
+            double landing = stopFee(server, hub, rate) / rate; // both land at the hub: the long run calls there too
+            double direct = runCost(r.distance()) + tolls + landing;
+            double byHub = runCost(toHub) + landing + stacks * (legs(server, hub, r.to()).stream()
                     .mapToDouble(Freight::forwardingPrice).min().orElse(forwardingPrice(onward.get()))
                     + cartPrice() * 2 / CART * (1 + FORWARD_MARGIN));
             if (byHub <= direct * SWITCH_SHARE && Caravans.inRange(toHub)) {
@@ -911,8 +939,8 @@ public final class Freight extends SavedData {
             CompoundTag e = (CompoundTag) t;
             GlobalPos.CODEC.parse(NbtOps.INSTANCE, e.get("hub")).result().ifPresent(hub -> {
                 ListTag values = e.getList("book", Tag.TAG_DOUBLE);
-                double[] b = new double[8];
-                for (int i = 0; i < Math.min(8, values.size()); i++) {
+                double[] b = new double[9];
+                for (int i = 0; i < Math.min(9, values.size()); i++) {
                     b[i] = values.getDouble(i);
                 }
                 freight.books.put(hub, b);

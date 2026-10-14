@@ -404,6 +404,7 @@ public final class Caravans {
             }
             Crates.receive(server, level, route.to, stock, now);
             if (dev.b28.enterprise.market.Freight.isHub(server, route.to)) {
+                caravan.spurs -= dev.b28.enterprise.market.Freight.get(server).land(level, route.to, caravan.spurs, now);
                 atHub(server, level, ledger, route, stock, caravan, now);
             }
             if (dev.b28.enterprise.market.Freight.isHub(server, route.from)) {
@@ -678,6 +679,7 @@ public final class Caravans {
         var freight = dev.b28.enterprise.market.Freight.get(server);
         var leg = new dev.b28.enterprise.market.Freight.Leg(route, outbound, hub);
         caravan.spurs += freight.collectFares(level, leg);
+        caravan.spurs -= freight.land(level, hub, caravan.spurs, now); // the hub's landing fee: it stops here
         // Food: outbound, for the road home too where the far end may not feed it; it buys here, where it can.
         if (outbound && caravan.provisions == 0) {
             int food = foodNeeded(route.distance()) * Math.max(1, caravan.crew.size());

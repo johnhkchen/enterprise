@@ -194,13 +194,17 @@ def build_ridge():
             cx, cz = (round(v) for v in hex_centre(q, r))
             if abs(cx + cz - RIDGE) > RIDGE_HALF or not 600 <= cx <= 2200 or (q, r) == pass_hex:
                 continue
-            if overlaps_town(cx - 28, cz - 28, cx + 28, cz + 28):
-                continue
+            half = 28
+            if overlaps_town(cx - half, cz - half, cx + half, cz + half):
+                # Town land in the hex: a narrow crag off the town still makes the hex a cliff's.
+                half = 6
+                if overlaps_town(cx - half, cz - half, cx + half, cz + half):
+                    continue
             rcon(f"forceload add {cx - 40} {cz - 40} {cx + 40} {cz + 40}")
             sprint(20)
             # Inside the hex (its inner circle is 40 across the middle), so a slope never spills into the pass.
             for y in range(-60, -20, 5):
-                rcon(f"fill {cx - 28} {y} {cz - 28} {cx + 28} {y + 4} {cz + 28} stone")
+                rcon(f"fill {cx - half} {y} {cz - half} {cx + half} {y + 4} {cz + half} stone")
             rcon(f"forceload remove {cx - 40} {cz - 40} {cx + 40} {cz + 40}")
             raised += 1
     sprint(1200)  # let the chunks unload: each is surveyed as it goes

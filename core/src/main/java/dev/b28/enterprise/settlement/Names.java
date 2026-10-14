@@ -42,6 +42,7 @@ public final class Names extends SavedData {
     private static final List<String> FARM_ENDS = List.of("field", "ton", "stead", "ley", "wick", "by", "worth", "ham");
 
     private final Map<GlobalPos, String> names = new HashMap<>();
+    private final Set<GlobalPos> settled = new HashSet<>(); // names given once the land round them was known
 
     public static Names get(MinecraftServer server) {
         return server.overworld()
@@ -54,13 +55,20 @@ public final class Names extends SavedData {
         Names names = get(server);
         GlobalPos desk = deskFor(server, at);
         String name = names.names.get(desk);
-        if (name == null) {
-            // Given for good once the land round it has been seen (else a pass town might be named for farmland).
+        if (name == null || !names.settled.contains(desk)) {
+            // Kept from the first asking; given again, for good, once the land round it has been seen (else a pass town
+            // might keep a name for farmland).
             ServerLevel level = server.getLevel(desk.dimension());
             boolean seen = level == null || dev.b28.enterprise.merchant.OffMap.get(server).is(desk)
                     || Hex.at(desk.pos()).neighbors().stream().allMatch(h -> Terrain.get(server).surveyed(level, h))
                             && Terrain.get(server).surveyed(level, Hex.at(desk.pos()));
-            name = seen ? names.give(server, desk) : names.invent(server, desk);
+            if (name == null || seen) {
+                names.names.remove(desk);
+                name = names.give(server, desk);
+            }
+            if (seen) {
+                names.settled.add(desk);
+            }
         }
         return name;
     }
@@ -74,6 +82,7 @@ public final class Names extends SavedData {
     /** Renames a market. */
     public void rename(GlobalPos desk, String name) {
         names.put(desk, name);
+        settled.add(desk);
         setDirty();
     }
 
@@ -182,6 +191,7 @@ public final class Names extends SavedData {
             CompoundTag e = new CompoundTag();
             GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, desk).ifSuccess(t -> e.put("desk", t));
             e.putString("name", name);
+            e.putBoolean("settled", settled.contains(desk));
             list.add(e);
         });
         tag.put("names", list);
@@ -193,7 +203,12 @@ public final class Names extends SavedData {
         for (Tag t : tag.getList("names", Tag.TAG_COMPOUND)) {
             CompoundTag e = (CompoundTag) t;
             GlobalPos.CODEC.parse(NbtOps.INSTANCE, e.get("desk")).result()
-                    .ifPresent(desk -> out.names.put(desk, e.getString("name")));
+                    .ifPresent(desk -> {
+                        out.names.put(desk, e.getString("name"));
+                        if (e.getBoolean("settled")) {
+                            out.settled.add(desk);
+                        }
+                    });
         }
         return out;
     }
