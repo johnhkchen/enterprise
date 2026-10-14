@@ -138,6 +138,9 @@ public final class LockerTrading {
     public static int trade(ServerLevel level, Villager villager, BlockPos workstation, Manager manager) {
         MerchantBook merchants = MerchantBook.get(level.getServer());
         GlobalPos at = GlobalPos.of(level.dimension(), manager.desk());
+        // What the Merchant buys of this villager for its contracts and orders: it's here now, wherever its stall is.
+        dev.b28.enterprise.market.Procurement.procureAt(level, at, workstation, villager,
+                MerchantStock.at(level, manager.desk()));
         // The Merchant's training, for the training contracts it holds.
         dev.b28.enterprise.market.Apprentices.review(level, villager, workstation, manager.desk(),
                 merchantReputation(manager.merchant().getVillagerData().getLevel()));
@@ -344,10 +347,9 @@ public final class LockerTrading {
         int xp = 3 + merchant.getRandom().nextInt(4) + (villagerLevelledUp ? 5 : 0);
         merchant.setVillagerXp(merchant.getVillagerXp() + xp);
         int level = merchant.getVillagerData().getLevel();
-        if (level < 5 && merchant.getVillagerXp() >= merchantXpForNextLevel(level)
-                && !merchant.increaseProfessionLevelOnUpdate) {
-            merchant.updateMerchantTimer = 40;
-            merchant.increaseProfessionLevelOnUpdate = true;
+        if (level < 5 && merchant.getVillagerXp() >= merchantXpForNextLevel(level)) {
+            // At once, as for its villagers: a town loaded only for a round may never give it the ticks to wait.
+            merchant.setVillagerData(merchant.getVillagerData().setLevel(level + 1));
         }
     }
 

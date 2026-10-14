@@ -363,6 +363,32 @@ What run 1 of the war lacked: patience with new suppliers, money before producti
     3. The army's meals were still 0% hearty: no meat reached the depot.
     4. The treasury ended with 76,000 spurs unspent, and the spur fell from 16 to 34 an emerald.
 
+## Why training broke, and where the swords went (2026-10-14)
+
+Run 16 trained three masters, broke eight training contracts, and issued five diamond swords. From its contracts and
+locker logs:
+
+- **Five of nine smith stalls never traded once.** A Novice Merchant manages two lockers, and town Merchants stayed
+  Novices: a Merchant's level-up waited on its own tick timer, which a town loaded only for a round never runs (the
+  smiths had the same bug, fixed earlier). Merchants now level up at once. After the fix the "beyond its locker
+  limit" message never appeared.
+- **A contract for a second master had no one to train.** A town with a master Weaponsmith that took a contract for
+  another never hired a second smith: a trade was taken up only when the town lacked it. Now it is taken up whenever
+  every villager of it is already at the level.
+- **A master's goods were never bought.** The Merchant switched on its villagers' selling trades (diamond armour
+  from a master Armorer) only when a caravan came, and then only for villagers loaded at that moment. S2's stalls
+  stood in other chunks than its desk, so S2's master Armorer and Weaponsmith (masters by day 40) sold nothing: 30
+  contracts for 48 diamond swords and 208 diamond armour pieces broke. The Merchant now does this at each villager's
+  own restock, when that villager is certainly there.
+- **The stockpile asked for little.** It wanted 4 diamond swords, for an army of about six. It now equips a planned
+  army of 24: 16 diamond swords and 8 iron, 8 of each diamond armour piece and 16 of each iron one, shields for half.
+- **Run 17** (the first three fixes in): 5 of 6 training contracts finished; 8 masters by day 120, S2's Armorer,
+  Toolsmith and Weaponsmith all by day 40. **Run 18** (and buying at the restock): S2 delivered **148 pieces of
+  diamond gear** (26 swords, 25 chestplates, 25 helmets, 36 leggings, 36 boots) and earned 9,250 emeralds; every
+  soldier at the front was issued a full enchanted diamond set and a diamond sword. 5 training contracts finished,
+  3 broke.
+- **Now the army is the limit:** five to seven soldiers (small towns' levies), and half of them deserted hungry.
+
 ## Pacing and the crown's bank (built 2026-10-14)
 
 Once room stopped blocking them, Merchants were blocked by cash. S2's Merchant tried to buy 405 emeralds' worth of

@@ -85,24 +85,28 @@ public final class Sovereign extends SavedData {
     public static final double LEVY_SHARE = 0.2;
     public static final int LEVY_MOST = 4;
 
-    /** The stockpile it builds while mobilising, and keeps up at war. */
+    /**
+     * The stockpile it builds while mobilising, and keeps up at war: kit for an army of {@link #PLANNED_ARMY}, the best
+     * a third of it (diamond, from master smiths), and food put by.
+     */
+    public static final int PLANNED_ARMY = 24;
     public static final Map<Item, Integer> STOCKPILE = stockpile();
 
     private static Map<Item, Integer> stockpile() {
         Map<Item, Integer> m = new LinkedHashMap<>();
-        m.put(Items.DIAMOND_SWORD, 4);
-        m.put(Items.IRON_SWORD, 12);
-        m.put(Items.STONE_SWORD, 6);
+        int best = PLANNED_ARMY * 2 / 3;
+        m.put(Items.DIAMOND_SWORD, best);
+        m.put(Items.IRON_SWORD, PLANNED_ARMY - best);
         // Armour in whole sets: a helmet, chestplate, leggings and boots.
         for (Item piece : List.of(Items.DIAMOND_HELMET, Items.DIAMOND_CHESTPLATE, Items.DIAMOND_LEGGINGS, Items.DIAMOND_BOOTS)) {
-            m.put(piece, 4);
+            m.put(piece, PLANNED_ARMY / 3);
         }
         for (Item piece : List.of(Items.IRON_HELMET, Items.IRON_CHESTPLATE, Items.IRON_LEGGINGS, Items.IRON_BOOTS)) {
-            m.put(piece, 12);
+            m.put(piece, PLANNED_ARMY * 2 / 3);
         }
         m.put(Items.CHAINMAIL_CHESTPLATE, 6);
         m.put(Items.LEATHER_CHESTPLATE, 6);
-        m.put(Items.SHIELD, 12);
+        m.put(Items.SHIELD, PLANNED_ARMY / 2);
         m.put(Items.BOW, 8);
         m.put(Items.ARROW, 256);
         m.put(Items.BREAD, 64); // and rations put by,

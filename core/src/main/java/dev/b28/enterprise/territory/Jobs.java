@@ -136,11 +136,14 @@ public final class Jobs {
             Set<VillagerProfession> present) {
         var book = dev.b28.enterprise.contract.ContractBook.get(level.getServer());
         java.util.List<Item> wanted = new java.util.ArrayList<>();
-        // A trade it has contracted to train someone in, and hasn't: an idle hand takes it up.
+        // A trade it has contracted to train someone in, and has no one to train (none of it, or all already at the
+        // level: a contract for a second master wants a second smith): an idle hand takes it up.
+        var roster = dev.b28.enterprise.settlement.Settlements.get(level.getServer()).roster(bell).values();
         for (var contract : book.trainingFor(desk)) {
             String profession = contract.training().get().profession();
-            boolean has = present.stream().anyMatch(p -> BuiltInRegistries.VILLAGER_PROFESSION.getKey(p).toString()
-                    .equals(profession));
+            int target = contract.training().get().level();
+            boolean has = roster.stream().anyMatch(r -> !r.baby() && r.profession().equals(profession)
+                    && r.level() < target);
             Optional<Trade> trade = TRADES.stream().filter(t -> BuiltInRegistries.VILLAGER_PROFESSION
                     .getKey(t.profession()).toString().equals(profession)).findFirst();
             if (!has && trade.isPresent()) {

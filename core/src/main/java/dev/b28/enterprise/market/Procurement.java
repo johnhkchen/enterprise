@@ -115,6 +115,40 @@ public final class Procurement {
      * Switches the desk's lockers' selling trades on for what's wanted (paid in emeralds), and off again for what isn't
      * (those it switched on). Needs the lockers' villagers loaded. Returns the trades switched on now.
      */
+    /**
+     * At one villager's restock (it's loaded, wherever its stall is): the Merchant switches on what it sells that's
+     * wanted, and off what it switched on that isn't. Returns trades switched on.
+     */
+    public static int procureAt(ServerLevel level, GlobalPos desk, net.minecraft.core.BlockPos workstation,
+            net.minecraft.world.entity.npc.Villager villager, dev.b28.enterprise.merchant.MerchantStock stock) {
+        return procure(desk, workstation, villager, wanted(level, desk, stock), MerchantBook.get(level.getServer()),
+                Exchange.get(level.getServer()));
+    }
+
+    private static int procure(GlobalPos desk, net.minecraft.core.BlockPos workstation,
+            net.minecraft.world.entity.npc.Villager villager, Map<Item, Integer> wanted, MerchantBook book,
+            Exchange exchange) {
+        int switched = 0;
+        for (var offer : villager.getOffers()) {
+            if (!offer.getBaseCostA().is(Items.EMERALD)) {
+                continue; // only what it sells for emeralds
+            }
+            String key = TradeKeys.of(offer);
+            Item result = offer.getResult().getItem();
+            boolean want = wanted.containsKey(result);
+            boolean on = book.isEnabled(desk, workstation, key);
+            if (want && !on) {
+                book.setEnabled(desk, workstation, key, true);
+                exchange.procured(desk, workstation, key, true);
+                switched++;
+            } else if (!want && on && exchange.isProcured(desk, workstation, key)) {
+                book.setEnabled(desk, workstation, key, false);
+                exchange.procured(desk, workstation, key, false);
+            }
+        }
+        return switched;
+    }
+
     public static int procure(ServerLevel level, GlobalPos desk, dev.b28.enterprise.merchant.MerchantStock stock) {
         if (dev.b28.enterprise.merchant.OffMap.get(level.getServer()).is(desk)) {
             return 0; // no villagers there
@@ -127,25 +161,8 @@ public final class Procurement {
                 .map(m -> Merchant.lockerLimit(m.getVillagerData().getLevel())).orElse(0);
         for (var locker : Lockers.near(level, desk.pos(), Lockers.MERCHANT_RANGE, limit)) {
             var villager = Merchant.workingAt(level, locker.workstation(), Lockers.MERCHANT_RANGE); // wherever it stands
-            if (villager.isEmpty()) {
-                continue;
-            }
-            for (var offer : villager.get().getOffers()) {
-                if (!offer.getBaseCostA().is(Items.EMERALD)) {
-                    continue; // only what it sells for emeralds
-                }
-                String key = TradeKeys.of(offer);
-                Item result = offer.getResult().getItem();
-                boolean want = wanted.containsKey(result);
-                boolean on = book.isEnabled(desk, locker.workstation(), key);
-                if (want && !on) {
-                    book.setEnabled(desk, locker.workstation(), key, true);
-                    exchange.procured(desk, locker.workstation(), key, true);
-                    switched++;
-                } else if (!want && on && exchange.isProcured(desk, locker.workstation(), key)) {
-                    book.setEnabled(desk, locker.workstation(), key, false);
-                    exchange.procured(desk, locker.workstation(), key, false);
-                }
+            if (villager.isPresent()) {
+                switched += procure(desk, locker.workstation(), villager.get(), wanted, book, exchange);
             }
         }
         if (switched > 0) {

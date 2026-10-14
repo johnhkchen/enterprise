@@ -239,6 +239,35 @@ public final class LockerTradingTests {
     }
 
     @GameTest(template = "floor", timeoutTicks = 400)
+    public static void atItsRestockTheMerchantBuysWhatItsContractsWantOfAVillager(GameTestHelper helper) {
+        Market market = market(helper, true);
+        helper.setBlock(DESK.east(), Blocks.CHEST); // the Merchant's stock
+        helper.startSequence().thenWaitUntil(() -> helper.assertTrue(market.ready(), "waiting for job sites"))
+                .thenExecute(() -> {
+                    Villager smith = market.librarian();
+                    smith.setVillagerData(smith.getVillagerData().setProfession(VillagerProfession.WEAPONSMITH).setLevel(5));
+                    MerchantOffers offers = new MerchantOffers(); // a master's sword
+                    offers.add(new MerchantOffer(new ItemCost(Items.EMERALD, 20), Optional.empty(),
+                            new ItemStack(Items.DIAMOND_SWORD), 0, 3, 30, 0.2F, 0));
+                    smith.setOffers(offers);
+                    var server = helper.getLevel().getServer();
+                    GlobalPos desk = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(DESK));
+                    var stock = dev.b28.enterprise.merchant.MerchantStock.at(helper.getLevel(), helper.absolutePos(DESK));
+                    stock.insert(new ItemStack(Items.EMERALD, 64));
+                    dev.b28.enterprise.contract.ContractBook.get(server).draft(desk,
+                            GlobalPos.of(helper.getLevel().dimension(), new BlockPos(9_950_000, 64, 9_000_000)),
+                            new dev.b28.enterprise.contract.Delivery(Items.DIAMOND_SWORD, 1, 30),
+                            dev.b28.enterprise.contract.Incoterm.EXW, helper.getLevel().getGameTime(), 24000, 4,
+                            helper.getLevel().getGameTime(), desk, true);
+                    smith.restock();
+                    helper.assertTrue(MerchantBook.get(server).isEnabled(desk, helper.absolutePos(LECTERN),
+                            "minecraft:emerald+>minecraft:diamond_sword"), "its sword trade switched on, at the restock");
+                    helper.assertTrue(stock.count(new ItemCost(Items.DIAMOND_SWORD, 1)) >= 1, "and swords bought for the contract");
+                })
+                .thenSucceed();
+    }
+
+    @GameTest(template = "floor", timeoutTicks = 400)
     public static void switchedOffTradeDoesNotRun(GameTestHelper helper) {
         Market market = market(helper, true);
         helper.startSequence().thenWaitUntil(() -> helper.assertTrue(market.ready(), "waiting for job sites"))
