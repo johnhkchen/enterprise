@@ -284,6 +284,8 @@ def setup():
         print("route S2 -> hub: " + rcon(f"enterprise route add {desk(TOWNS['S2'])} {hub_desk}").strip().splitlines()[-1])
         print("route S3 -> S2: " + rcon(f"enterprise route add {desk(TOWNS['S3'])} {desk(TOWNS['S2'])}")
               .strip().splitlines()[-1])
+        print("route S2 -> S3: " + rcon(f"enterprise route add {desk(TOWNS['S2'])} {desk(TOWNS['S3'])}")
+              .strip().splitlines()[-1])
     for corner in [*([] if "--war" in sys.argv else [HUB]), *TOWNS.values()]:
         rcon(f"forceload remove {area(corner, 27)}")
 

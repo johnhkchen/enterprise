@@ -62,6 +62,17 @@ public final class Freight extends SavedData {
     /** A forwarder discounts the bills it buys as a bank does: a fee, and so much a day to their due day. */
     public static final double DISCOUNT_FEE = 0.02;
     public static final double DISCOUNT_PER_DAY = 0.01;
+    /**
+     * Drayage: carting crates between the quay where caravans stand and the hub's warehouse. The hub's draymen (its
+     * idle hands, and one more) each move this many stacks a day for a day's wage; it's sold at a shop of its own by the
+     * cart, a ticket a cart of {@link #CART} stacks. A crate is carted in when it's handed over and out when its run
+     * loads: the forwarder buys both up front.
+     */
+    public static final String DRAY = "drayage";
+    public static final int DRAY_STACKS = 16;
+    public static final double DRAY_WAGE = 0.5;
+    public static final int CART = 4;
+
     /** Its shops stand in a row this far south of its desk, two blocks apart. */
     public static final int SHOP_ROW = 6;
     public static final long TICKS = 24000;
@@ -89,7 +100,9 @@ public final class Freight extends SavedData {
     }
 
     private final Map<Integer, BlockPos> shops = new HashMap<>(); // leg key -> its freight shop
-    // hub -> {stacks forwarded, forwarding fees, bills bought, their face, stacks carried, freight bought}
+    private final Map<GlobalPos, BlockPos> drayShops = new HashMap<>(); // hub -> its drayage shop
+    // hub -> {stacks forwarded, forwarding fees, bills bought, their face, stacks carried, freight bought, drayage
+    // wages taken, carts bought}
     private final Map<GlobalPos, double[]> books = new HashMap<>();
     private long lastDay = -1;
 
@@ -125,11 +138,15 @@ public final class Freight extends SavedData {
         return legs;
     }
 
-    /** The hub between a shipper and a buyer: one the shipper's caravans go to, with a carrier's run to the buyer. */
+    /**
+     * The hub between a shipper and a buyer: one the shipper's caravans go to (or whose caravans call at the shipper's),
+     * with a carrier's run on to the buyer.
+     */
     public static Optional<Leg> via(MinecraftServer server, GlobalPos shipper, GlobalPos buyer) {
         for (Route in : CaravanLedger.get(server).routes()) {
-            if (in.from().equals(shipper) && isHub(server, in.to())) {
-                List<Leg> on = legs(server, in.to(), buyer);
+            GlobalPos hub = in.from().equals(shipper) ? in.to() : in.to().equals(shipper) ? in.from() : null;
+            if (hub != null && isHub(server, hub) && !hub.equals(buyer)) {
+                List<Leg> on = legs(server, hub, buyer);
                 if (!on.isEmpty()) {
                     return Optional.of(on.get(0));
                 }
@@ -188,18 +205,49 @@ public final class Freight extends SavedData {
         return Crates.of(Crates.goods(crate), Crates.papers(crate).with(new Papers.Document(TICKET, tag)));
     }
 
-    /** Is this one of the carriers' freight shops? (Merchants don't trade with them as with players' shops.) */
+    /** Is this one of the carriers' freight shops, or a hub's drayage? (Merchants don't shop there as players do.) */
     public boolean isShop(BlockPos pos) {
-        return shops.containsValue(pos);
+        return shops.containsValue(pos) || drayShops.containsValue(pos);
+    }
+
+    /** A ticket for a cart of drayage at the hub. */
+    public static ItemStack cart(GlobalPos hub) {
+        CompoundTag tag = new CompoundTag();
+        Papers.put(tag, "at", hub);
+        tag.putInt("stacks", CART);
+        ItemStack ticket = new ItemStack(Cargo.DOCUMENTS.get());
+        ticket.set(Cargo.PAPERS.get(), Papers.NONE.with(new Papers.Document(DRAY, tag)));
+        return ticket;
+    }
+
+    /** What a cart costs, in emeralds: the draymen's wage for its stacks, and a margin. */
+    public static double cartPrice() {
+        return DRAY_WAGE / DRAY_STACKS * CART * (1 + MARGIN);
+    }
+
+    /** Carts the hub's draymen can move a day: its idle hands and one more, each {@link #DRAY_STACKS} stacks. */
+    public static int cartsPerDay(MinecraftServer server, GlobalPos hub) {
+        long idle = dev.b28.enterprise.territory.Territory.get(server).bellOf(hub)
+                .map(bell -> dev.b28.enterprise.settlement.Settlements.get(server).roster(bell).values().stream()
+                        .filter(r -> !r.baby() && dev.b28.enterprise.territory.Labour.idle(r.profession())).count())
+                .orElse(0L);
+        return (int) ((idle + 1) * DRAY_STACKS / CART);
+    }
+
+    public Optional<BlockPos> drayShop(GlobalPos hub) {
+        return Optional.ofNullable(drayShops.get(hub));
     }
 
     public Optional<BlockPos> shop(Leg leg) {
         return Optional.ofNullable(shops.get(leg.key()));
     }
 
-    /** {stacks forwarded, forwarding fees in spurs, bills bought, their face, stacks carried, freight bought in spurs}. */
+    /**
+     * {stacks forwarded, forwarding fees in spurs, bills bought, their face, stacks carried, freight bought in spurs,
+     * drayage wages in spurs, carts bought}.
+     */
     public double[] book(GlobalPos hub) {
-        return books.getOrDefault(hub, new double[6]).clone();
+        return books.getOrDefault(hub, new double[8]).clone();
     }
 
     public Map<GlobalPos, double[]> books() {
@@ -210,7 +258,7 @@ public final class Freight extends SavedData {
 
     double[] tally(GlobalPos hub) {
         setDirty();
-        return books.computeIfAbsent(hub, h -> new double[6]);
+        return books.computeIfAbsent(hub, h -> new double[8]);
     }
 
     /** Once a day, at each loaded hub: its carriers' shops up and restocked, and its forwarder books what it holds. */
@@ -234,6 +282,7 @@ public final class Freight extends SavedData {
             for (Leg leg : legsFrom(server, hub)) {
                 freight.restock(level, leg, now);
             }
+            freight.restockDray(level, hub, now);
             freight.forward(level, hub, MerchantStock.at(level, hub.pos()), now);
         }
         freight.setDirty();
@@ -271,19 +320,54 @@ public final class Freight extends SavedData {
         shop.setChanged();
     }
 
+    /** The hub's drayage shop: up if there's none, the day's wages taken, and stocked with a day's carts. */
+    void restockDray(ServerLevel level, GlobalPos hub, long now) {
+        MinecraftServer server = level.getServer();
+        BlockPos pos = drayShops.get(hub);
+        if (pos == null || !(level.getBlockEntity(pos) instanceof VendorBlockEntity)) {
+            pos = putUp(level, hub.pos(), cart(hub)).orElse(null);
+            if (pos != null) {
+                drayShops.put(hub, pos);
+            }
+        }
+        if (pos == null || !(level.getBlockEntity(pos) instanceof VendorBlockEntity shop)) {
+            return;
+        }
+        MerchantStock stock = MerchantStock.at(level, hub.pos());
+        int wages = Shops.collect(shop); // the draymen's pay: the town's people's, kept in its treasury
+        if (wages > 0) {
+            Treasury.deposit(level, hub.pos(), stock, wages);
+            tally(hub)[6] += wages;
+        }
+        double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
+        Shops.setPrice(shop, Math.max(1, (int) Math.ceil(cartPrice() * rate)));
+        shop.items.clear();
+        for (int i = 0; i < Math.min(cartsPerDay(server, hub), shop.items.size()); i++) {
+            shop.items.set(i, cart(hub));
+        }
+        shop.setChanged();
+    }
+
     private Optional<BlockPos> putUp(ServerLevel level, Leg leg) {
-        BlockPos desk = leg.from().pos();
+        Optional<BlockPos> pos = putUp(level, leg.from().pos(), ticket(leg));
+        pos.ifPresent(p -> {
+            shops.put(leg.key(), p);
+            setDirty();
+        });
+        return pos;
+    }
+
+    /** A selling shop for {@code ticket}s in the row by the desk. */
+    private Optional<BlockPos> putUp(ServerLevel level, BlockPos desk, ItemStack ticket) {
         Block vendor = BuiltInRegistries.BLOCK.get(ResourceLocation.parse("numismatics:vendor"));
         for (int i = 0; i < 12; i++) {
             BlockPos pos = desk.offset(-6 + 2 * i, 0, SHOP_ROW);
-            if (!shops.containsValue(pos) && level.getBlockState(pos).isAir()) {
+            if (!isShop(pos) && level.getBlockState(pos).isAir()) {
                 level.setBlock(pos, vendor.defaultBlockState(), 3);
                 if (level.getBlockEntity(pos) instanceof VendorBlockEntity shop) {
                     shop.setMode(VendorBlockEntity.Mode.SELL);
-                    shop.filterContainer.setItem(0, ticket(leg));
+                    shop.filterContainer.setItem(0, ticket.copy());
                     shop.setChanged();
-                    shops.put(leg.key(), pos);
-                    setDirty();
                     return Optional.of(pos);
                 }
             }
@@ -319,22 +403,87 @@ public final class Freight extends SavedData {
                 continue;
             }
             int stacks = Crates.stacks(List.of(crate));
+            // Carted in from the quay and out to its run: the forwarder buys the drayage up front, at the hub's shop.
+            int carts = (2 * stacks + CART - 1) / CART;
+            Optional<VendorBlockEntity> dray = drayShop(hub).map(level::getBlockEntity)
+                    .filter(VendorBlockEntity.class::isInstance).map(VendorBlockEntity.class::cast);
+            if (dray.isEmpty() || Shops.lots(dray.get()) < carts) {
+                continue; // no draymen free today: it stays aboard
+            }
             double cheapest = on.stream().mapToDouble(l -> forwardingPrice(l.route())).min().orElse(0);
-            int fee = (int) Math.ceil(stacks * cheapest * rate);
+            int drayage = carts * dray.get().getTotalPrice();
+            int fee = (int) Math.ceil(stacks * cheapest * rate + drayage * (1 + FORWARD_MARGIN));
             if (purse[0] < fee) {
                 continue;
             }
             purse[0] -= fee;
-            Treasury.deposit(level, hub.pos(), stock, fee);
+            Treasury.deposit(level, hub.pos(), stock, fee - drayage);
+            for (int i = 0; i < carts; i++) {
+                Shops.buyFrom(dray.get()); // paid into the drayage shop: the draymen's wages
+            }
             CompoundTag tag = new CompoundTag();
             Papers.put(tag, "to", to.get());
+            CompoundTag carted = new CompoundTag();
+            Papers.put(carted, "at", hub);
+            carted.putInt("stacks", carts * CART);
             it.remove();
-            stock.insert(Crates.of(Crates.goods(crate), Crates.papers(crate).with(new Papers.Document(FORWARDING, tag))));
+            stock.insert(Crates.of(Crates.goods(crate), Crates.papers(crate).with(new Papers.Document(FORWARDING, tag))
+                    .with(new Papers.Document(DRAY, carted))));
+            tally(hub)[7] += carts;
             tally(hub)[0] += stacks;
             tally(hub)[1] += fee;
             stacksIn += stacks;
         }
         return stacksIn;
+    }
+
+    /** A crate in the forwarder's hands: marked to be booked on toward its consignee. */
+    public ItemStack forwarding(ItemStack crate) {
+        CompoundTag tag = new CompoundTag();
+        Crates.papers(crate).consignee().ifPresent(to -> Papers.put(tag, "to", to));
+        return Crates.of(Crates.goods(crate), Crates.papers(crate).with(new Papers.Document(FORWARDING, tag)));
+    }
+
+    /** The forwarder's books: stacks it took on, and the fees it was paid. */
+    public void forwarded(GlobalPos hub, int stacks, int fee) {
+        tally(hub)[0] += stacks;
+        tally(hub)[1] += fee;
+    }
+
+    /**
+     * The forwarder's agent, on a hub caravan at a shipper's, buys the shipper's bills (among {@code papers}) drawn on
+     * markets the hub runs freight to, not yet due, for coin from the caravan's purse (up to {@code purse}), less the
+     * discount; the coin goes into the shipper's treasury, the bills, endorsed to the hub, ride home. Returns spurs paid.
+     */
+    public int discountBills(ServerLevel level, GlobalPos hub, GlobalPos shipper, List<ItemStack> papers, int purse,
+            long now) {
+        MinecraftServer server = level.getServer();
+        Bills ledger = Bills.get(server);
+        double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
+        int paid = 0;
+        for (ItemStack bundle : papers) {
+            if (!bundle.is(Cargo.DOCUMENTS.get())) {
+                continue;
+            }
+            for (Papers.Document doc : bundle.getOrDefault(Cargo.PAPERS.get(), Papers.NONE).documents()) {
+                var bill = ledger.bill(doc.data().getInt("bill")).orElse(null);
+                if (bill == null || bill.state() != Bills.State.OUTSTANDING || !bill.payee().equals(shipper)
+                        || bill.due() <= now || legs(server, hub, bill.drawee()).isEmpty()) {
+                    continue;
+                }
+                double days = (bill.due() - now) / 24000.0;
+                int spurs = (int) Math.floor(bill.emeralds() * (1 - DISCOUNT_FEE - DISCOUNT_PER_DAY * days) * rate);
+                if (spurs <= 0 || purse - paid < spurs) {
+                    continue;
+                }
+                paid += spurs;
+                Treasury.deposit(level, shipper.pos(), MerchantStock.at(level, shipper.pos()), spurs);
+                ledger.endorse(bill, hub);
+                tally(hub)[2] += 1;
+                tally(hub)[3] += bill.emeralds();
+            }
+        }
+        return paid;
     }
 
     /**
@@ -352,6 +501,27 @@ public final class Freight extends SavedData {
             Optional<GlobalPos> to = Crates.papers(crate).consignee();
             int stacks = Crates.stacks(List.of(crate));
             ItemStack result = crate;
+            if (Crates.papers(crate).first(DRAY).isEmpty()) {
+                // Collected from a town by the hub's own caravan: carted in and out now, from the hub's drayage.
+                int carts = (2 * stacks + CART - 1) / CART;
+                Optional<VendorBlockEntity> dray = drayShop(hub).map(level::getBlockEntity)
+                        .filter(VendorBlockEntity.class::isInstance).map(VendorBlockEntity.class::cast);
+                if (dray.isEmpty() || Shops.lots(dray.get()) < carts) {
+                    stock.insert(crate); // no draymen free today: it waits on the quay
+                    continue;
+                }
+                double cost = carts * dray.get().getTotalPrice() / rate;
+                Treasury.withdraw(level, hub.pos(), stock, cost, Mint.get(server), now);
+                for (int i = 0; i < carts; i++) {
+                    Shops.buyFrom(dray.get());
+                }
+                CompoundTag carted = new CompoundTag();
+                Papers.put(carted, "at", hub);
+                carted.putInt("stacks", carts * CART);
+                result = Crates.of(Crates.goods(crate), Crates.papers(crate).with(new Papers.Document(DRAY, carted)));
+                tally(hub)[7] += carts;
+                crate = result;
+            }
             if (to.isPresent()) {
                 List<Leg> on = new ArrayList<>(legs(server, hub, to.get()));
                 on.sort(java.util.Comparator.comparingLong(l -> nextRun(server, l, now)));
@@ -468,6 +638,14 @@ public final class Freight extends SavedData {
         CompoundTag shopTag = new CompoundTag();
         shops.forEach((route, pos) -> shopTag.putLong(Integer.toString(route), pos.asLong()));
         tag.put("shops", shopTag);
+        ListTag drays = new ListTag();
+        drayShops.forEach((hub, pos) -> {
+            CompoundTag e = new CompoundTag();
+            GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, hub).ifSuccess(t -> e.put("hub", t));
+            e.putLong("pos", pos.asLong());
+            drays.add(e);
+        });
+        tag.put("drayShops", drays);
         ListTag list = new ListTag();
         books.forEach((hub, b) -> {
             CompoundTag e = new CompoundTag();
@@ -488,12 +666,17 @@ public final class Freight extends SavedData {
         Freight freight = new Freight();
         CompoundTag shopTag = tag.getCompound("shops");
         shopTag.getAllKeys().forEach(k -> freight.shops.put(Integer.parseInt(k), BlockPos.of(shopTag.getLong(k))));
+        for (Tag t : tag.getList("drayShops", Tag.TAG_COMPOUND)) {
+            CompoundTag e = (CompoundTag) t;
+            GlobalPos.CODEC.parse(NbtOps.INSTANCE, e.get("hub")).result()
+                    .ifPresent(hub -> freight.drayShops.put(hub, BlockPos.of(e.getLong("pos"))));
+        }
         for (Tag t : tag.getList("books", Tag.TAG_COMPOUND)) {
             CompoundTag e = (CompoundTag) t;
             GlobalPos.CODEC.parse(NbtOps.INSTANCE, e.get("hub")).result().ifPresent(hub -> {
                 ListTag values = e.getList("book", Tag.TAG_DOUBLE);
-                double[] b = new double[6];
-                for (int i = 0; i < Math.min(6, values.size()); i++) {
+                double[] b = new double[8];
+                for (int i = 0; i < Math.min(8, values.size()); i++) {
                     b[i] = values.getDouble(i);
                 }
                 freight.books.put(hub, b);

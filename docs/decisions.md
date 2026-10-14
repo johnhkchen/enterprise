@@ -463,6 +463,29 @@ ended "waiting for food at the destination".
 - **Logistics specialists haven't emerged:** the capital's caravans make most trips (4 routes, ~280 trips), towns'
   own routes carry only their own trade, and no caravan carries goods for a third market for a fee.
 
+## Freight: carriers, forwarders, drayage (built 2026-10-14)
+
+Not everyone hauls to the capital. A market with a storehouse (a warehouse it owns and runs) is a **freight hub**.
+- **Carriers sell space.** Every route touching a hub is a carrier's run through it (the hub's own caravans out, or
+  another market's caravans calling and going home). Each has a Numismatics shop by the hub's desk selling **freight
+  tickets**, a stack of space each, restocked daily to half a wagon less what's booked, at the road's food cost a stack
+  and a quarter. What a shop takes is its carrier's (another market's caravan collects it when it calls).
+- **Forwarders buy it.** The hub's Merchant forwards: a caravan arriving with crates bound further on hands them over
+  for a fee (freight, drayage, a fifth on top) and heads home; the forwarder buys just the tickets each crate needs on
+  the soonest run its way and puts them in the crate's papers; booked crates load first. The hub's own caravans also
+  collect at the towns they call at (a town that can't send caravans still ships through the hub). The forwarder buys
+  the shippers' bills of exchange on the buyers for coin, less a discount, and its caravans present them.
+- **Drayage.** Crates don't teleport from the quay to the warehouse: the hub's draymen (its idle hands and one more,
+  16 stacks a day each for half an emerald) cart them, sold by the cart (4 stacks) at a drayage shop. The forwarder
+  buys a crate's carting in and out up front and bundles it into its fee; with no draymen free, a crate waits.
+- **Shippers through hubs.** A supplier with no road to a buyer bids and delivers through a hub: DAP, landed price
+  with forwarding, crates consigned to the buyer and paid by a bill drawn on it. Contract copies pass through hubs.
+  Requisitions are posted at hubs that run freight to their buyer.
+- **Runs (study `--freight`: S2 the hub, S3 its spoke, no capital road to S3):** run 30 forwarded 20 stacks and bought 5
+  bills; runs 31 and 32 forwarded none: S3 (one level-1 Fletcher) won no bids, and in run 31 couldn't send caravans
+  at all (no Merchant, Cartographer, Librarian or Shepherd). Run 32: hungry soldier-days 1% of 622, no deserters, the
+  capital's caravans freed from the 1,200-block road to S3.
+
 ## Pacing and the crown's bank (built 2026-10-14)
 
 Once room stopped blocking them, Merchants were blocked by cash. S2's Merchant tried to buy 405 emeralds' worth of

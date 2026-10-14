@@ -127,8 +127,8 @@ final class EnterpriseCommands {
                     var server = context.getSource().getServer();
                     var freight = dev.b28.enterprise.market.Freight.get(server);
                     StringBuilder out = new StringBuilder("Freight hubs:");
-                    freight.books().forEach((hub, b) -> out.append("\n  %s: %.0f stacks forwarded for %.0f spurs, %.0f spurs of freight bought, %.0f stacks carried on its runs, %.0f bills bought (%.1f emeralds face)"
-                            .formatted(hub.pos().toShortString(), b[0], b[1], b[5], b[4], b[2], b[3])));
+                    freight.books().forEach((hub, b) -> out.append("\n  %s: %.0f stacks forwarded for %.0f spurs, %.0f spurs of freight bought, %.0f stacks carried on its runs, %.0f bills bought (%.1f emeralds face), %.0f carts of drayage (%.0f spurs of wages)"
+                            .formatted(hub.pos().toShortString(), b[0], b[1], b[5], b[4], b[2], b[3], b[7], b[6])));
                     for (var r : dev.b28.enterprise.caravan.CaravanLedger.get(server).routes()) {
                         for (boolean out2 : new boolean[] {true, false}) {
                             var leg = new dev.b28.enterprise.market.Freight.Leg(r, out2);

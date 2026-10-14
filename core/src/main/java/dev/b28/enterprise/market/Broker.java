@@ -378,7 +378,7 @@ public final class Broker {
         }
         if (onward.isPresent()) {
             GlobalPos hub = onward.get().from();
-            bring = ledger.route(supplier, hub);
+            bring = ledger.route(supplier, hub).or(() -> ledger.route(hub, supplier)); // its caravans, or the hub's
         }
         boolean kit = dev.b28.enterprise.territory.Smithing.KITS.stream().anyMatch(k -> k.item() == item);
         boolean trusted = book.trust(supplier, desk, now) >= dev.b28.enterprise.contract.ContractBook.MIN_TRUST;

@@ -906,12 +906,10 @@ public final class CaravanTests {
         List<ItemStack> cargo = new java.util.ArrayList<>(List.of(dev.b28.enterprise.cargo.Crates.of(
                 List.of(new ItemStack(Items.PAPER, 64)), dev.b28.enterprise.cargo.Papers.NONE.with(bill))));
         int[] purse = {1000};
-        helper.assertTrue(freight.handOver(helper.getLevel(), hub, net.dest(), cargo, purse) == 1 && cargo.isEmpty()
-                && purse[0] < 1000, "handed over for a fee: " + purse[0]);
+        helper.assertTrue(freight.handOver(helper.getLevel(), hub, net.dest(), cargo, purse) == 0 && cargo.size() == 1
+                && purse[0] == 1000, "no draymen to cart it in: it stays aboard, nothing paid");
         var leg = new dev.b28.enterprise.market.Freight.Leg(onward, true);
-        var held = net.dest().removeLoose(dev.b28.enterprise.cargo.Crates::isCrate);
-        helper.assertTrue(held.size() == 1, "in the hub's warehouse");
-        net.dest().insert(dev.b28.enterprise.market.Freight.book(held.get(0), leg, 1));
+        net.dest().insert(dev.b28.enterprise.market.Freight.book(cargo.get(0), leg, 1));
         var load = freight.loadBooked(hub, net.dest(), leg, 27);
         helper.assertTrue(load.size() == 1 && dev.b28.enterprise.market.Freight.booked(load.get(0), leg) == 1
                 && dev.b28.enterprise.cargo.Crates.consignedTo(load.get(0), buyer), "booked, it loads for its run");
