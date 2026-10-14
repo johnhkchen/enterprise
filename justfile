@@ -48,6 +48,15 @@ server-setup:
     cp -R dev/testbench core/run/world/datapacks/enterprise-testbench
     @date +%s > core/run/.last-setup
 
+# The dev server's world put back as a study checkpoint left it (`network_study.py --save-at`), to fork a run from there
+server-restore checkpoint:
+    @scripts/server-check
+    @test -d "{{checkpoint}}/world" || (echo "no world in {{checkpoint}}: checkpoints are core/run/checkpoints/LABEL/dayN" >&2; exit 1)
+    rm -rf core/run/world
+    cp -R "{{checkpoint}}/world" core/run/world
+    @date +%s > core/run/.last-setup
+    @echo "restored {{checkpoint}}: start the server, then run the study with --resume {{checkpoint}}"
+
 # Send commands to the running dev server, e.g. `just rcon "time set day"`
 rcon +commands:
     python3 scripts/rcon.py {{commands}}

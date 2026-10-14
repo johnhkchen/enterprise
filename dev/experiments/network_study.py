@@ -42,12 +42,21 @@ buildings and trust.
 With --comforts, the hub also stocks a shulker of comforts (treats, clothing, furnishings) for towns to buy, and the
 spring, once open, refills a shulker of comforts and a stack of books every day.
 
-    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts] [--fleet] [--services] [--metal] [--trades] [--master] [--war M,W,P]
+Checkpoints: with --save-at D,D,... the world is copied after day D (0: right after setup) to
+core/run/checkpoints/LABEL/dayD (LABEL from --label, else "study"), with the flags it was run with. To fork a run from
+one: `just server-restore core/run/checkpoints/LABEL/dayD`, start the server, and run the study with --resume and the
+same DIR; it skips setup and carries on from day D+1 (a checkpoint is good for code changes that touch nothing before
+its day). A day that takes far longer than the others is reported: the machine slept (a closed lid on battery) or the
+server stalled.
+
+    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts] [--fleet] [--services] [--metal] [--trades] [--master] [--war M,W,P] [--save-at D,... [--label NAME]] [--resume DIR]
 """
 
 import csv
+import json
 import math
 import re
+import shutil
 import socket
 import subprocess
 import sys
@@ -60,6 +69,8 @@ LOG = REPO / "core" / "run" / "logs" / "debug.log"
 HUB = (1000, 1000)
 SPRING = (900, 860)  # behind the hub: its route to S3 also crosses the toll town
 TOWNS = {"S1": (1295, 995), "S2": (995, 1595), "S3": (1844, 1844), "S4": (4995, 995), "T": (1393, 1396)}
+if "--ridge" in sys.argv:  # towns east of the ridge, left to find their own trade (through the pass, or not at all)
+    TOWNS.update({"E1": (1650, 1350), "E2": (1300, 1750), "E3": (2050, 1300)})
 ROUTED = ["S1", "S2", "S3", "S4"]
 HEX_SIZE = 80 / math.sqrt(3)  # centre to corner
 RIVER_ROW = 20  # T's row of hexes
@@ -97,7 +108,12 @@ def rcon(*commands):
 
 
 def gametime():
-    return int(re.search(r"time is (\d+)", rcon("time query gametime")).group(1))
+    for _ in range(20):  # an RCON reply now and then comes back garbled: ask again
+        found = re.search(r"time is (\d+)", rcon("time query gametime"))
+        if found:
+            return int(found.group(1))
+        time.sleep(0.5)
+    raise RuntimeError("the server won't say what time it is")
 
 
 def sprint(ticks):
@@ -105,6 +121,25 @@ def sprint(ticks):
     rcon(f"tick sprint {ticks}")
     while gametime() < start + ticks:
         time.sleep(0.2)
+
+
+def flag(name, default=None):
+    return sys.argv[sys.argv.index(name) + 1] if name in sys.argv else default
+
+
+def save_checkpoint(day):
+    """Copies the world as it stands after this day, saving paused so the copy is whole."""
+    dest = REPO / "core" / "run" / "checkpoints" / flag("--label", "study") / f"day{day}"
+    rcon("save-off", "save-all flush")
+    try:
+        if dest.exists():
+            shutil.rmtree(dest)
+        shutil.copytree(REPO / "core" / "run" / "world", dest / "world", ignore=shutil.ignore_patterns("session.lock"))
+    finally:
+        rcon("save-on")
+    # The study's own running count (from the server's log, which the checkpoint doesn't carry).
+    (dest / "study.json").write_text(json.dumps({"day": day, "argv": sys.argv[1:], "trades": trades_by_town()}, indent=1))
+    print(f"checkpoint: day {day} saved to {dest.relative_to(REPO)}")
 
 
 def desk(corner):
@@ -131,8 +166,8 @@ _trades = {}
 def trades_by_town():
     """Locker trades so far by town, reading only what the debug log has added since last time."""
     global _log_offset
-    if not _trades:
-        _trades.update({name: 0 for name in TOWNS})
+    for name in TOWNS:
+        _trades.setdefault(name, 0)
     if LOG.exists():
         with LOG.open("rb") as log:
             if LOG.stat().st_size < _log_offset:
@@ -457,14 +492,35 @@ def main():
     days = int(sys.argv[1])
     out = Path(sys.argv[2])
     inject = int(sys.argv[sys.argv.index("--inject") + 1]) if "--inject" in sys.argv else None
-    if "--river" in sys.argv:
-        build_river(RIVER_ROW, BRIDGES)
-    elif "--river-bridge" in sys.argv:
-        build_river(RIVER_ROW + 1, set())
-    setup()
+    save_at = {int(d) for d in flag("--save-at", "").split(",") if d}
+    started = time.time()
+    first = 1
+    if "--resume" in sys.argv:
+        saved = json.loads((Path(flag("--resume")) / "study.json").read_text())
+        first = saved["day"] + 1
+        _trades.update(saved.get("trades", {}))
+        # Flags that shape the world before the first day must match the checkpoint's.
+        shaping = {"--river", "--river-bridge", "--ridge", "--war", "--comforts", "--fleet", "--services", "--metal",
+                   "--trades", "--master"}
+        theirs = {a for a in saved["argv"] if a in shaping}
+        ours = {a for a in sys.argv if a in shaping}
+        if theirs != ours:
+            sys.exit(f"the checkpoint was set up with {sorted(theirs)}, not {sorted(ours)}")
+        print(f"resumed from {flag('--resume')}: day {saved['day']} done, carrying on from day {first}")
+    else:
+        if "--river" in sys.argv:
+            build_river(RIVER_ROW, BRIDGES)
+        elif "--river-bridge" in sys.argv:
+            build_river(RIVER_ROW + 1, set())
+        setup()
+        print(f"setup took {time.time() - started:.0f}s")
+        if 0 in save_at:
+            save_checkpoint(0)
     rows = []
     war = [int(d) for d in sys.argv[sys.argv.index("--war") + 1].split(",")] if "--war" in sys.argv else None
-    for day in range(1, days + 1):
+    took = []
+    for day in range(first, days + 1):
+        day_started = time.time()
         if war and day == war[0]:
             print("day %d: " % day + rcon(f"enterprise war mobilise {HUB[0] + 2} -60 {HUB[1] + 2} 1000").strip().splitlines()[-1])
         if war and day == war[1]:
@@ -476,6 +532,11 @@ def main():
         elif inject is not None and day > inject:
             refill_spring()
         sprint(24000)
+        took.append(time.time() - day_started)
+        usual = sorted(took)[len(took) // 2]
+        if len(took) > 3 and took[-1] > max(60, 6 * usual):
+            print(f"day {day} took {took[-1]:.0f}s, not the usual {usual:.0f}s: the machine slept (lid closed on "
+                  f"battery?) or the server stalled; `pmset -g log | grep Sleep` tells which")
         rate = number(r"([\d.]+) spurs per emerald", rcon("enterprise mint"), 16)
         trades = trades_by_town()
         for name, corner in TOWNS.items():
@@ -537,8 +598,10 @@ def main():
             f"{r['name']} {r['treasury']:.0f}em {r['mood']:+.1f} {int(r['villagers'])}v {int(r['hexes'])}h "
             f"{int(r['guards'])}g {r['toll_pct']:.0f}% {r['trades']}t"
             for r in towns)
-            + f" | mint {rate:.1f}")
+            + f" | mint {rate:.1f} | {time.time() - day_started:.0f}s")
         sys.stdout.flush()
+        if day in save_at:
+            save_checkpoint(day)
     if war is not None:
         print("\n" + rcon("enterprise war tally").strip())
         print("\n" + rcon("enterprise war").strip())
@@ -558,6 +621,7 @@ def main():
         for x, z in [(1200, RIDGE - 1200), (t[0] + 7, t[1] + 7)]:
             print("\n" + rcon(f"enterprise hex {x} -60 {z}").strip())
         print("\n" + rcon("enterprise freight").strip())
+        print("\n" + rcon("enterprise paperwork").strip())
         print("\nT: " + "\n".join(l for l in rcon(f"enterprise territory {bell(t)}").splitlines()
                                     if re.search(r"toll|guard|post|treasury|fee", l)))
     names = rcon("enterprise name")
@@ -587,7 +651,7 @@ def main():
         writer = csv.DictWriter(f, fieldnames=fields)
         writer.writeheader()
         writer.writerows(rows)
-    print(f"\nwrote {len(rows)} rows to {out}")
+    print(f"\nwrote {len(rows)} rows to {out}; {time.time() - started:.0f}s in all")
 
 
 if __name__ == "__main__":
