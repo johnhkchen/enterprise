@@ -1968,6 +1968,7 @@ public final class Caravans {
                 }
                 money -= territory.reserve(desk);
             } else {
+                money -= territory.payroll(desk); // never the farmers' wages or the guards' pay
                 par = Math.min(warehouse.par(desk, item, wanted.contains(item), now), roomFor(stock, wanted.size(), item));
                 int nutrition = foodPoints(stack);
                 if (nutrition > 0) {

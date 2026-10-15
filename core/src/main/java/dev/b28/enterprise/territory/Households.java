@@ -15,7 +15,8 @@ import net.minecraft.world.item.Items;
  *
  * A Merchant short of coin pays in credit (the town owes its farmers), up to {@link #CREDIT_DAYS} days of a customary
  * wage (half the crop's worth): the
- * harvest still comes in. Beyond that, nobody works on credit; the days unpaid are unworked, as before. Credit is
+ * harvest still comes in. Beyond that, the farmers take their wage in kind (their share of the crop) and the town
+ * gets the rest: a town that can't pay still has a harvest to sell, and climbs out. Credit is
  * spent first on land: a household with {@link #LAND_EMERALDS} in purse and credit buys a field of its own (a
  * freehold), where there are farmers with hands to work it. On freehold plots the farmers are owners, not hands: they
  * take at least {@link #FREEHOLD_SHARE} of what the crop is worth.

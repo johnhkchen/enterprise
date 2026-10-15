@@ -171,7 +171,7 @@ public final class TerritoryTests {
     }
 
     @GameTest(template = "floor")
-    public static void unpaidFarmersWorkOnCreditThenStop(GameTestHelper helper) {
+    public static void unpaidFarmersWorkOnCreditThenTakeTheirShare(GameTestHelper helper) {
         Territory territory = new Territory();
         GlobalPos bell = farm(helper, territory);
         long t = helper.getLevel().getGameTime();
@@ -187,7 +187,15 @@ public final class TerritoryTests {
         }
         helper.assertTrue(territory.households(bell)[1] <= cap + 1e-9,
                 "credit stops at ten days' customary pay: " + territory.households(bell)[1] + " of " + cap);
-        helper.assertTrue(territory.wagesUnpaid(bell) >= 1, "then the unpaid days go unworked, recorded");
+        helper.assertTrue(territory.wagesUnpaid(bell) >= 1, "then the wages go unpaid, recorded");
+        int before = farmStock(helper).count(new ItemCost(Items.WHEAT, 1));
+        double worked = Territory.yieldFactor(territory.mood(bell)); // unpaid, they're unhappy and work less
+        territory.touch(helper.getLevel(), desk, farmStock(helper), t + 9 * 10 * 24000L);
+        int delivered = farmStock(helper).count(new ItemCost(Items.WHEAT, 1)) - before;
+        double share = territory.wagePerDay(bell) / (perDay / 20);
+        helper.assertTrue(Math.abs(delivered - perDay * 10 * worked * (1 - share)) <= 2,
+                "and the farmers keep their share of the crop, the town the rest: " + delivered + " of "
+                        + perDay * 10 + " at a share of " + share);
         helper.succeed();
     }
 

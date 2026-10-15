@@ -134,7 +134,7 @@ public final class Territory extends SavedData {
         double labourTightness = 1; // how scarce farm hands are, from the last census
         double handTools; // tools given to the hands working its land: they gather more until worn out
         double wagesPaid; // emeralds' worth paid, in all
-        double wagesUnpaid; // emeralds' worth that couldn't be paid: those days' produce was lost
+        double wagesUnpaid; // emeralds' worth that couldn't be paid: the farmers took it in crops
         long harvested; // items delivered to the Merchant's chest, in all
         double farmXp; // experience the Farmers earned with their harvest, not yet given them
         double laborShare = LABOR_SHARE;
@@ -947,8 +947,8 @@ public final class Territory extends SavedData {
      * Pays the farmers the whole emeralds owed: emeralds from the Merchant's chest first, then its coins at the
      * region's rate, then the settlement's Blaze Banker. Returns the share of the wage paid (1 when nothing whole is
      * owed yet). What's paid is the households' (see {@link Households}); what the Merchant can't pay it owes them as
-     * credit, up to {@link Households#CREDIT_DAYS} days' pay, and the farmers keep working. Beyond that, unpaid wages
-     * are forgiven: the farmers didn't work, and that part of the harvest is lost.
+     * credit, up to {@link Households#CREDIT_DAYS} days' pay, and the farmers keep working. Beyond that, the farmers
+     * take their wage in kind, as sharecroppers do: their share of the crop is theirs, and the town gets the rest.
      */
     private double payWages(ServerLevel level, BlockPos desk, MerchantStock stock, Holding holding, long now) {
         int whole = (int) Math.floor(holding.wageOwed);
@@ -1054,7 +1054,11 @@ public final class Territory extends SavedData {
         double paidShare = payWages(level, desk, stock, holding, now);
         long harvestedBefore = holding.harvested;
         if (paidShare < 1) {
-            holding.pending.replaceAll((item, owed) -> owed * paidShare); // unpaid days' harvest is lost
+            // Unpaid, the farmers take their wage in kind: their share of those days' crop. The town gets the rest.
+            double value = valuePerDay(holding.perDay);
+            double share = value <= 0 ? 1 : Math.min(1, wagePerDay(holding) / value);
+            double kept = 1 - (1 - paidShare) * share;
+            holding.pending.replaceAll((item, owed) -> isCrop(item) ? owed * kept : owed);
         }
         for (Map.Entry<String, Double> owed : holding.pending.entrySet()) {
             int whole = (int) Math.floor(owed.getValue());
@@ -1365,8 +1369,16 @@ public final class Territory extends SavedData {
      * trading capital couldn't buy the goods that earn its money, and would stay poor.
      */
     public double reserve(GlobalPos desk) {
-        return wageFloat(desk) + bellOf(desk).map(bell -> holdings.get(bell).posts.size() * GUARD_PAY_PER_DAY * 3
-                + holdings.get(bell).tradingCapital).orElse(0.0);
+        return payroll(desk) + bellOf(desk).map(bell -> holdings.get(bell).tradingCapital).orElse(0.0);
+    }
+
+    /**
+     * Money the town keeps back even from the goods its trades use, in emeralds: its wage float and three days of
+     * guards' pay. A Merchant that spent its farmers' wages on coal would lose their harvest.
+     */
+    public double payroll(GlobalPos desk) {
+        return wageFloat(desk) + bellOf(desk).map(bell -> holdings.get(bell).posts.size() * GUARD_PAY_PER_DAY * 3)
+                .orElse(0.0);
     }
 
     /** The toll this town has set, as a share of the coins caravans carry. It's collected only at its posts. */
