@@ -142,7 +142,9 @@ public final class Broker {
                 buy(level, desk, territory, stock, shop, signals, rate, now);
             }
         }
-        List<VendorBlockEntity> own = shops.stream().filter(s -> Shops.own(s, desk.pos())).toList();
+        ShopBoard board = ShopBoard.get(level.getServer());
+        List<VendorBlockEntity> own = shops.stream().filter(s -> Shops.own(s, desk.pos())
+                && !board.isBoards(desk, s.getBlockPos())).toList(); // the town's shop board keeps its own
         sellSurplus(level, desk, stock, own, rate, now);
         return true;
     }

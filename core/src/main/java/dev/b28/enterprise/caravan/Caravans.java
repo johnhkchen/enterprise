@@ -465,6 +465,8 @@ public final class Caravans {
                         recruit.get("enterprise_home")).result().orElse(route.from), now));
                 caravan.recruits.clear();
             }
+            // It reads the shop here: what the town is after, and at what price, is news it carries home.
+            dev.b28.enterprise.market.ShopBoard.get(server).sighted(route.to, rate);
             // The caravan brings its home's board: the Merchant here reads the tenders on it, and takes what pays.
             dev.b28.enterprise.market.Tenders.get(server).read(level, route.to, route.from, now);
             // And its requisitions: the Merchant here bids what its town can supply; a caravan come to the buyer

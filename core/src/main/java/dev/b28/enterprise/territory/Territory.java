@@ -993,6 +993,8 @@ public final class Territory extends SavedData {
                 holding.buildings.contains(Buildings.WATCHTOWER.id()) ? 0.5 : 0);
         // The comforts the town used: the households pay for them, as far as their purse goes.
         householdsPay(level, desk, stock, holding, enjoyComforts(stock, holding, now));
+        // Its shop: what it's after, listed at what it would pay.
+        dev.b28.enterprise.market.ShopBoard.get(level.getServer()).keep(level, at, stock, now, this);
         double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now);
         int bankSpurs = MoneyChanger.bankAt(level, desk).map(b -> b.getBalance()).orElse(0);
         holding.treasury = stock.count(new ItemCost(Items.EMERALD, 1))

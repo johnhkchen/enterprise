@@ -52,6 +52,33 @@ public final class MoodTests {
     }
 
     @GameTest(template = "floor")
+    public static void theShopListsWhatTheTownIsAfterAtWhatItWouldPay(GameTestHelper helper) {
+        Territory territory = new Territory();
+        town(helper, territory);
+        var level = helper.getLevel();
+        var desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
+        stock(helper).insert(new ItemStack(Items.EMERALD, 40)); // money to pay for what it's after, and a shop
+        var ledger = dev.b28.enterprise.caravan.CaravanLedger.get(level.getServer());
+        var road = ledger.addRoute(desk, GlobalPos.of(level.dimension(), helper.absolutePos(BELL).offset(64, 0, 0)));
+        var board = dev.b28.enterprise.market.ShopBoard.get(level.getServer());
+        long t = level.getGameTime() + 1300; // past the look the town's own census took
+        board.keep(level, desk, stock(helper), t, territory);
+        var pipe = dev.b28.enterprise.trade.Wares.PIPE_TOBACCO.get();
+        var listed = board.listings(desk).entrySet().stream().filter(e -> e.getValue().item() == pipe).findFirst();
+        helper.assertTrue(listed.isPresent(), "no leisure in town, a road for it: pipe tobacco listed " + board.listings(desk));
+        var shop = (dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity) level.getBlockEntity(listed.get().getKey());
+        helper.assertTrue(dev.b28.enterprise.market.Shops.lots(shop) == 0 && shop.getTotalPrice() > 0,
+                "out of stock, at a price: " + shop.getTotalPrice() + " spurs a lot");
+        stock(helper).insert(new ItemStack(pipe, 64));
+        board.keep(level, desk, stock(helper), t + 2400, territory);
+        helper.assertTrue(board.listings(desk).values().stream().noneMatch(l -> l.item() == pipe)
+                        || dev.b28.enterprise.market.Shops.lots(shop) > 0,
+                "once it's in: on the shelf, or no longer wanted");
+        ledger.removeRoute(road.id());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void treatsAreNotRoadFood(GameTestHelper helper) {
         Territory territory = new Territory();
         town(helper, territory);

@@ -26,8 +26,17 @@ public final class Desires {
 
     private Desires() {}
 
-    /** What the market at {@code desk} would pay for one of {@code item} on arrival at {@code at}, in emeralds. */
+    /**
+     * What the market at {@code desk} would pay for one of {@code item} on arrival at {@code at}, in emeralds, as other
+     * Merchants know it: the price its shop listed when a caravan last called (see
+     * {@link dev.b28.enterprise.market.ShopBoard}), else reckoned from what its caravans last saw of its stock.
+     */
     public static double willPay(MinecraftServer server, GlobalPos desk, Item item, long at) {
+        return dev.b28.enterprise.market.ShopBoard.get(server).seen(desk, item).orElseGet(() -> reckon(server, desk, item, at));
+    }
+
+    /** What the market would pay, reckoned from its shortfall, how unmet the kind is and what its people can afford. */
+    public static double reckon(MinecraftServer server, GlobalPos desk, Item item, long at) {
         double value = Prices.emeraldsEach(item);
         Territory territory = Territory.get(server);
         var kind = Comforts.kindOf(item);
