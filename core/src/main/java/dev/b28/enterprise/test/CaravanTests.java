@@ -999,6 +999,18 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void aMerchantBuysToSellOnOnlyAtAMargin(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 192);
+        var outlet = new dev.b28.enterprise.caravan.Desires.Outlet(net.route().to(), 0.5, 40);
+        helper.assertTrue(dev.b28.enterprise.caravan.Desires.worthBuying(0.40, outlet), "0.40 against 0.50 there: worth it");
+        helper.assertFalse(dev.b28.enterprise.caravan.Desires.worthBuying(0.45, outlet),
+                "0.45 leaves less than the 15% a Merchant wants: no");
+        double haul = dev.b28.enterprise.caravan.Desires.haulEach(net.route(), Items.COOKIE);
+        helper.assertTrue(haul > 0 && haul < 0.01, "the road costs a cookie a fraction of a spur's worth: " + haul);
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aForeignRealmSendsItsOwnTraders(GameTestHelper helper) {
         Network net = network(helper, 2, 5, 640);
         var server = helper.getLevel().getServer();

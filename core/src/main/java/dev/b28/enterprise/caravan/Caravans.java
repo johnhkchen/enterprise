@@ -1830,12 +1830,20 @@ public final class Caravans {
             double value = Prices.emeraldsEach(item);
             var comfort = Comforts.kindOf(item);
             int par;
+            int ownPar = Integer.MAX_VALUE;
+            java.util.Optional<Desires.Outlet> outlet = java.util.Optional.empty();
             double money = Treasury.available(level, desk.pos(), stock, rate);
             if (comfort.isPresent()) {
                 // Comforts: up to the kind's par in worth, paid from money the town doesn't need for wages and guards.
                 double held = Comforts.onHand(stock).getOrDefault(Comforts.name(comfort.get()), 0.0);
                 // Whole items: a town short of a kind buys one even if it costs more than the gap (a pair of boots).
                 par = onHand + (int) Math.max(0, Math.ceil((territory.comfortPar(desk) - held) / value));
+                ownPar = par;
+                // And a Merchant supplying other towns buys for them, where it can sell on at a margin after the road.
+                outlet = Desires.outlet(server, desk, route.from, item, now);
+                if (outlet.isPresent() && Desires.worthBuying(value, outlet.get())) {
+                    par += outlet.get().units();
+                }
                 money -= territory.reserve(desk);
             } else {
                 par = Math.min(warehouse.par(desk, item, wanted.contains(item), now), roomFor(stock, wanted.size(), item));
@@ -1852,6 +1860,9 @@ public final class Caravans {
                 double midShortage = Bargain.shortage(onHand + quantity / 2, par);
                 each = Bargain.price(value, midShortage, caravan.merchantLevel, residentLevel);
                 quantity = each <= 0 ? 0 : Math.min(quantity, (int) Math.floor(money / each));
+            }
+            if (outlet.isPresent() && each > 0 && !Desires.worthBuying(each, outlet.get())) {
+                quantity = Math.min(quantity, Math.max(0, ownPar - onHand)); // too dear to sell on: only its own
             }
             if (quantity <= 0) {
                 continue;
@@ -2070,8 +2081,16 @@ public final class Caravans {
                     || item == dev.b28.enterprise.cargo.Cargo.CRATE_ITEM.get() || item == dev.b28.enterprise.cargo.Cargo.DOCUMENTS.get()) {
                 continue;
             }
-            int surplus = Math.min(held.getValue() - warehouse.par(desk, item, wanted.contains(item), now),
-                    networkWants.getOrDefault(item, 0));
+            int network = networkWants.getOrDefault(item, 0);
+            // Comforts the towns it supplies are short of, where they'd pay more than this costs and the road.
+            java.util.Optional<Desires.Outlet> outlet = Desires.outlet(server, route.from, route.to, item, now);
+            int theirPar = warehouse.par(desk, item, wanted.contains(item), now);
+            if (outlet.isPresent()) {
+                int inCargo = Crates.contents(caravan.cargo).stream().filter(st -> st.is(item)).mapToInt(ItemStack::getCount).sum();
+                network = Math.max(network, outlet.get().units() - warehouse.onHand(route.from, item) - inCargo);
+                theirPar = (int) Math.ceil(territory.comfortPar(desk) / Math.max(1e-9, Prices.emeraldsEach(item))); // they keep their own
+            }
+            int surplus = Math.min(held.getValue() - theirPar, network);
             var food = item.getDefaultInstance().get(net.minecraft.core.component.DataComponents.FOOD);
             if (food != null && food.nutrition() > 0) {
                 surplus = Math.min(surplus, Math.max(0, spareFood) / food.nutrition());
@@ -2081,6 +2100,9 @@ public final class Caravans {
             double each = Bargain.between(Bargain.sellerFloor(value), value * RESALE_CEILING, residentLevel,
                     caravan.merchantLevel);
             int quantity = Math.min(surplus, room);
+            if (outlet.isPresent() && !Desires.worthBuying(each, outlet.get())) {
+                continue; // no margin in it
+            }
             if (each > 0) {
                 quantity = Math.min(quantity, (int) Math.floor((caravan.spurs - keepForFood) / (each * rate)));
             }
