@@ -592,6 +592,42 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   content (Meadowworth +2.5, Hollowwick -2.0 to +0.5); no wages unpaid anywhere; 26 children born. Still unmet
   everywhere: treats and furnishings.
 
+## The town's shop, the Merchant's books, and its reasons (built 2026-10-15)
+
+- **The town's shop.** Up to three Numismatics vendors by the Merchant's desk, built when the town can pay. A comfort
+  the town lacks, or a good its lockers take that it holds none of, is listed out of stock at what the town would pay
+  now (the price floats with how short it is and what its people can afford). The listing is honest: only while the
+  Merchant is procuring the good, with a road for it, and has money for a lot. The shelf takes only true surplus,
+  comforts first. **The listings are news:** a caravan calling there reads them, and other Merchants value the good at
+  the price their caravans last saw.
+- **Books.** Each market's Merchant keeps books: what it bought and sold, what its caravans carried out and brought
+  home, what its shop sold, with whom, and at what price. A caravan keeps its own log at the far end and hands it in at
+  home: the books know of a far market only what a caravan brought back. A page a day takes stationery. They go back
+  10 days with a Merchant alone, 60 with a Librarian in town, 365 with a library. A Merchant values a good at a market
+  by the last price its books show there.
+- **Hauling only what sells.** A caravan exports a comfort only beyond its own town's par, and loads of each good at
+  most the far end's par less what it held when last seen. Realms use 64 a day of each good they want, so they keep
+  buying.
+- **Reasons are the trading system's debug messages.** The books keep a tally (how often, how many, last day) of why
+  each good was sent or not ("they hold their fill", "we have none", "no room aboard"), why the far end wouldn't buy
+  ("they hold their fill", "can't pay", "too dear to sell on", "no use for it"), why no caravan left, and the
+  workshop's potential: what it could make and which input it's short of. Reasons cost no stationery.
+  `/enterprise whys <desk>`.
+- **Potential becomes demand.** A town tracks what its trades could make if they had the inputs. The workshop's draw of
+  inputs for its people's comforts (books back through paper to cane; biscuits to wheat and cane) joins the census
+  demand when farmers plan plots and fields. A town growing or building still farms food first, but plants cane for
+  its own workshop once its food is in hand. Without this, nobody grew cane: the capability couldn't start without the
+  raw material, and no Merchant carried a raw material nobody could yet use.
+- Measured (three lanes per change, 120 days from the era's day 0): the reasons showed the Coast turning away 3,483 of
+  the capital's 3,611 books ("they hold their fill of reading": a realm had no comfort par), the March stalling from
+  day 29 ("waiting for food": its people ate the bread its caravans needed), and every town's paper, books and
+  biscuits short of cane, with bread and biscuits short of wheat even in Wheatfield.
+- With these fixes (three lanes each, mean [range] at day 120): the March ran 74-81 trips (from 24); Lindenfield 115
+  to 321 emeralds; moods up in seven of eight towns (Haygate -0.65 to +1.41, Barleyby -0.03 to +0.81, Hollowwick -0.13
+  to +0.32); the Coast stopped turning books away after day 43; 5-10 cane fields planted per run, all pressed into
+  paper. Treats still 0% everywhere: the Librarians' paper takes the cane first, and the biscuits are short of wheat
+  too. `dev/experiments/compare_lanes.py` compares lanes.
+
 ## Wages stay in the world: households (built 2026-10-15)
 
 - A town's farm pay is its households' money, not a sink: wages go into their purse, and they spend it at the market,
