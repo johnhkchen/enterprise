@@ -628,6 +628,24 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   paper. Treats still 0% everywhere: the Librarians' paper takes the cane first, and the biscuits are short of wheat
   too. `dev/experiments/compare_lanes.py` compares lanes.
 
+## Where the next item earns most; Farmers who learn and multiply (built 2026-10-15)
+
+- **Marginal value, not market size.** The workshop gives an input first to the conversion that earns most per emerald
+  of inputs (comforts at what the town would pay): a cane goes to biscuits (about 1.6) before paper (1.0). Farmers'
+  plots go use by use, dearest item first, as many plots as each use takes: the Librarians' huge cheap paper market
+  no longer takes every hand from the cane and wheat for the town's own biscuits.
+- **Farmers learn by farming.** The harvest earns its Farmers 3 experience per emerald of crops; they rise as for a
+  trade. Before, only the locker's trades levelled them, and half the towns' Farmers stayed Novices.
+- **Another Farmer when the land lies idle.** An idle adult gets a Farmer's stall, though the town has one, when its
+  untended plots would yield more in 4 days than the best new buyer would take (and at least half an emerald a day).
+  Before, stalls opened only trades a town lacked: every town kept its one Farmer.
+- Measured (three lanes each, 120 days from the era's day 0, mean): marginal value got biscuits made for the first
+  time (800-1,800 a run) and wheat grown in Wheatfield (32-48 a day, from 0). Farmers who learn and multiply then
+  raised farm output three to tenfold (Barleyby: 5-8 Farmers, 368-576 items a day, 395 emeralds in its treasury, mood
+  +1.56; Wheatfield +2.14; Haygate +1.97). But Greenwick (-1.41) and Lindenfield (-0.71) fell: their households held
+  430-830 emeralds of wages with nothing to buy (comforts 0%; Greenwick has no caravan road). Prosperity now waits on
+  comforts reaching the towns that can pay for them.
+
 ## Wages stay in the world: households (built 2026-10-15)
 
 - A town's farm pay is its households' money, not a sink: wages go into their purse, and they spend it at the market,
