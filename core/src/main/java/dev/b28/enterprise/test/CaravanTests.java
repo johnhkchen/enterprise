@@ -126,6 +126,39 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void aMerchantNotesWhyGoodsGoOrStay(GameTestHelper helper) {
+        Network net = network(helper, 2);
+        var server = helper.getLevel().getServer();
+        GlobalPos hub = net.route().from();
+        GlobalPos town = net.route().to();
+        long t = helper.getLevel().getGameTime();
+        // The far end holds more wheat than its par; wants cane, which the hub hasn't got; and paper, which it has.
+        dev.b28.enterprise.merchant.Warehouse.get(server).recordStocktake(town, java.util.Map.of("minecraft:wheat", 500), t);
+        net.hub().insert(new ItemStack(Items.WHEAT, 64));
+        net.hub().insert(new ItemStack(Items.PAPER, 32));
+        java.util.Map<net.minecraft.world.item.Item, String> wants = new java.util.LinkedHashMap<>();
+        wants.put(Items.WHEAT, "its workshop makes bread of it");
+        wants.put(Items.SUGAR_CANE, "its workshop makes cookie of it");
+        wants.put(Items.PAPER, "stationery for its papers");
+        var cargo = Caravans.pickCargoForTest(server, hub, town, net.hub(), wants, 4, t);
+        int paper = cargo.stream().filter(s -> s.is(Items.PAPER)).mapToInt(ItemStack::getCount).sum();
+        helper.assertTrue(paper >= 32 && cargo.stream().noneMatch(s -> s.is(Items.WHEAT)),
+                "it sends the paper and keeps the wheat: " + cargo);
+        var whys = String.join("\n", dev.b28.enterprise.merchant.Books.get(server).whys(hub).keySet());
+        helper.assertTrue(whys.contains("wheat | not sent: they hold their fill"), "why the wheat stayed: " + whys);
+        helper.assertTrue(whys.contains("sugar_cane | not sent: we have none"), "why no cane went: " + whys);
+        helper.assertTrue(whys.contains("paper | sent: stationery for its papers"), "why the paper went: " + whys);
+        // A reason in a caravan's log, handed in at home, goes in the tally, not the pages.
+        int lines = dev.b28.enterprise.merchant.Books.get(server).of(hub).size();
+        dev.b28.enterprise.merchant.Books.get(server).file(server, hub, t, List.of(dev.b28.enterprise.merchant.Books.Entry
+                .why(t, town, Items.BOOK, "unsold: they hold their fill of reading", 12)));
+        helper.assertTrue(dev.b28.enterprise.merchant.Books.get(server).of(hub).size() == lines
+                && String.join("\n", dev.b28.enterprise.merchant.Books.get(server).whys(hub).keySet())
+                        .contains("book | unsold: they hold their fill of reading"), "the log's reason is tallied");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aTownShortOfComfortsCommissionsItsOwnCaravan(GameTestHelper helper) {
         Network net = network(helper, 2, 5, 192);
         var server = helper.getLevel().getServer();

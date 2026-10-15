@@ -65,7 +65,6 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 RCON = [sys.executable, str(REPO / "scripts" / "rcon.py")]
-LOG = REPO / "core" / "run" / "logs" / "debug.log"
 HUB = (1000, 1000)
 SPRING = (900, 860)  # behind the hub: its route to S3 also crosses the toll town
 TOWNS = {"S1": (1295, 995), "S2": (995, 1595), "S3": (1844, 1844), "S4": (4995, 995), "T": (1393, 1396)}
@@ -81,6 +80,9 @@ COURT_SMITHS = [("weaponsmith", "grindstone"), ("armorer", "blast_furnace"), ("t
 
 sys.path.insert(0, str(REPO / "scripts"))
 import rcon as rcon_client  # noqa: E402
+
+RUN = REPO / "core" / "run" / ("lanes/" + str(rcon_client.LANE) if rcon_client.LANE else "")  # ENTERPRISE_LANE: a lane's server
+LOG = RUN / "logs" / "debug.log"
 
 _sock = None
 
@@ -133,7 +135,7 @@ def save_checkpoint(day):
     try:
         if dest.exists():
             shutil.rmtree(dest)
-        shutil.copytree(REPO / "core" / "run" / "world", dest / "world", ignore=shutil.ignore_patterns("session.lock"))
+        shutil.copytree(RUN / "world", dest / "world", ignore=shutil.ignore_patterns("session.lock"))
     finally:
         rcon("save-on")
     # The study's own running count (from the server's log, which the checkpoint doesn't carry).
@@ -632,6 +634,12 @@ def main():
         print("\n" + rcon("enterprise expeditions").strip())
         print("\n" + rcon("enterprise realms").strip())
         print("\n" + rcon(f"enterprise books {HUB[0] + 2} -60 {HUB[1] + 2}").strip())
+        # Each market's reasons: why goods went or didn't, why its workshop stood idle.
+        for name, corner in TOWNS.items():
+            print("\n" + rcon(f"enterprise whys {desk(corner)}").strip())
+        if "--realms" in sys.argv:
+            print("\n" + rcon(f"enterprise whys {HUB[0] - 2398} -60 {HUB[1] + 2}").strip())
+            print("\n" + rcon("enterprise whys 3400 -60 1350").strip())
         print("\nT: " + "\n".join(l for l in rcon(f"enterprise territory {bell(t)}").splitlines()
                                     if re.search(r"toll|guard|post|treasury|fee", l)))
     names = rcon("enterprise name")

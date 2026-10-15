@@ -35,6 +35,8 @@ neoForge {
         }
         server {
             server()
+            // `-Plane=N`: a server of its own in run/lanes/N (see `just lane`), so runs can go side by side.
+            gameDirectory = project.file(providers.gradleProperty('lane').map { "run/lanes/$it" }.getOrElse('run'))
             programArgument '--nogui'
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }

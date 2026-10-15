@@ -675,7 +675,13 @@ public final class Territory extends SavedData {
         }
         holding.idlePerDay = new LinkedHashMap<>();
         double hands = 1 + Smithing.TOOL_BONUS * holding.kitShare.getOrDefault(Smithing.HOE.id(), 0.0); // hoes help
-        holding.perDay = plan(level, bellPos.getY(), hexes(bell), farmers, holding.demand, Husbandry.feedDemand(holding.herd),
+        // What it would buy, and what its own workshop would draw to make its people's comforts: its potential.
+        Map<String, Double> wants = new HashMap<>(holding.demand);
+        if (holding.desk != null) {
+            Workshop.inputDemand(level, holding.desk, bell, census.villagers())
+                    .forEach((item, perDay) -> wants.merge(item, perDay, Double::sum));
+        }
+        holding.perDay = plan(level, bellPos.getY(), hexes(bell), farmers, wants, Husbandry.feedDemand(holding.herd),
                 holding.idlePerDay, hands);
         double tended = holding.perDay.values().stream().mapToDouble(Double::doubleValue).sum() / YIELD_PER_PLOT_PER_DAY;
         double capacity = hands * farmers.stream().mapToInt(l -> PLOTS_PER_FARMER_LEVEL * Math.max(1, l)).sum();
@@ -688,7 +694,7 @@ public final class Territory extends SavedData {
             MerchantStock fieldStock = MerchantStock.at(level, holding.desk.pos());
             holding.focus = Focus.of(census.villagers(), census.beds(), fieldStock.foodNutrition());
             Fields.consider(level, bellPos, holding.desk, fieldStock, this, farmers, plotsWorked,
-                    holding.demand, holding.perDay, holding.focus);
+                    wants, holding.perDay, holding.focus);
             buyLand(level, bellPos, holding, fieldStock);
         }
         setDirty();

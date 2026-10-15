@@ -64,7 +64,7 @@ public final class Fields {
     /** As above; with {@code foodOnly} (a town growing or building, see {@link Focus}), food crops alone. */
     public static Optional<Item> choose(Map<String, Double> demand, Map<String, Double> grown, MerchantStock stock,
             Map<String, Double> needs, boolean foodOnly) {
-        List<Item> crops = foodOnly ? CROPS.stream().filter(c -> c != Items.SUGAR_CANE).toList() : CROPS;
+        List<Item> crops = CROPS.stream().filter(c -> allowed(c, demand, stock, foodOnly)).toList();
         for (Item crop : crops) {
             String id = BuiltInRegistries.ITEM.getKey(crop).toString();
             if (needs.getOrDefault(id, 0.0) > grown.getOrDefault(id, 0.0)) {
@@ -74,12 +74,11 @@ public final class Fields {
         Item best = null;
         double bestValue = 0;
         for (Item crop : crops) {
-            String sold = BuiltInRegistries.ITEM.getKey(SOLD_AS.get(crop)).toString();
             double already = CROPS.stream()
                     .filter(c -> SOLD_AS.get(c) == SOLD_AS.get(crop))
                     .mapToDouble(c -> grown.getOrDefault(BuiltInRegistries.ITEM.getKey(c).toString(), 0.0))
                     .sum();
-            double value = (demand.getOrDefault(sold, 0.0) - already) * Prices.emeraldsEach(SOLD_AS.get(crop));
+            double value = (wanted(crop, demand, foodOnly) - already) * Prices.emeraldsEach(SOLD_AS.get(crop));
             if (value > bestValue) {
                 best = crop;
                 bestValue = value;
@@ -89,6 +88,28 @@ public final class Fields {
             best = Items.CARROT;
         }
         return Optional.ofNullable(best);
+    }
+
+    /**
+     * Can a town plant this crop now: anything while it trades; while it grows or builds (food first), food crops, and
+     * cane where its own workshop wants it (its Farmers' biscuits for its own people) once its food is in hand.
+     */
+    static boolean allowed(Item crop, Map<String, Double> demand, MerchantStock stock, boolean foodOnly) {
+        return !foodOnly || crop != Items.SUGAR_CANE
+                || demand.getOrDefault(BuiltInRegistries.ITEM.getKey(crop).toString(), 0.0) > 0
+                        && stock.foodNutrition() >= 2 * Warehouse.FOOD_PAR_POINTS;
+    }
+
+    /**
+     * Items a day the town wants of a crop: as itself (food, feed, or its workshop's input), and, while it trades, as
+     * what a locker takes for it (paper, for cane).
+     */
+    static double wanted(Item crop, Map<String, Double> demand, boolean foodOnly) {
+        double want = demand.getOrDefault(BuiltInRegistries.ITEM.getKey(crop).toString(), 0.0);
+        if (SOLD_AS.get(crop) != crop && !foodOnly) {
+            want += demand.getOrDefault(BuiltInRegistries.ITEM.getKey(SOLD_AS.get(crop)).toString(), 0.0);
+        }
+        return want;
     }
 
     /**
@@ -102,9 +123,8 @@ public final class Fields {
         // A crop the village would buy and the town doesn't grow at all gets a field even if the farmers are busy
         // (they split their time): a farmer always plants for its own trades. Up to two fields a farmer level.
         int levels = farmers.stream().mapToInt(l -> Math.max(1, l)).sum();
-        boolean unmetCrop = CROPS.stream().filter(crop -> !focus.foodOnly() || crop != Items.SUGAR_CANE).anyMatch(crop -> {
-            String sold = BuiltInRegistries.ITEM.getKey(SOLD_AS.get(crop)).toString();
-            return demand.getOrDefault(sold, 0.0) > 0 && CROPS.stream()
+        boolean unmetCrop = CROPS.stream().filter(crop -> allowed(crop, demand, stock, focus.foodOnly())).anyMatch(crop -> {
+            return wanted(crop, demand, focus.foodOnly()) > 0 && CROPS.stream()
                     .filter(c -> SOLD_AS.get(c) == SOLD_AS.get(crop))
                     .noneMatch(c -> grown.getOrDefault(BuiltInRegistries.ITEM.getKey(c).toString(), 0.0) > 0);
         });

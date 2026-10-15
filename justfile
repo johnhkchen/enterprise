@@ -57,6 +57,23 @@ server-restore checkpoint:
     @date +%s > core/run/.last-setup
     @echo "restored {{checkpoint}}: start the server, then run the study with --resume {{checkpoint}}"
 
+# A lane is a dev server of its own in core/run/lanes/N, on game port 25599+2N and RCON 25600+2N, so runs go side by
+# side. Start it with `just lane N`; drive it with ENTERPRISE_LANE=N set (rcon.py, network_study.py).
+# Lane N's world put back as a study checkpoint left it
+lane-restore lane checkpoint:
+    @test -d "{{checkpoint}}/world" || (echo "no world in {{checkpoint}}" >&2; exit 1)
+    @! lsof core/run/lanes/{{lane}}/world/session.lock >/dev/null 2>&1 || (echo "lane {{lane}}'s server is still running: ENTERPRISE_LANE={{lane}} just rcon stop" >&2; exit 1)
+    mkdir -p core/run/lanes/{{lane}}
+    rm -rf core/run/lanes/{{lane}}/world core/run/lanes/{{lane}}/config
+    cp -R core/run/config core/run/lanes/{{lane}}/config
+    echo "eula=true" > core/run/lanes/{{lane}}/eula.txt
+    printf '%s\n' 'level-type=minecraft\:flat' 'enable-rcon=true' 'rcon.password=dev' "rcon.port=$((25600 + 2 * {{lane}}))" 'online-mode=false' 'spawn-protection=0' 'difficulty=peaceful' 'server-ip=127.0.0.1' "server-port=$((25599 + 2 * {{lane}}))" > core/run/lanes/{{lane}}/server.properties
+    cp -R "{{checkpoint}}/world" core/run/lanes/{{lane}}/world
+
+# Run lane N's server (see lane-restore)
+lane lane:
+    ./gradlew :core:runServer -Plane={{lane}}
+
 # Send commands to the running dev server, e.g. `just rcon "time set day"`
 rcon +commands:
     python3 scripts/rcon.py {{commands}}

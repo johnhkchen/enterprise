@@ -199,7 +199,14 @@ public final class Realms extends SavedData {
     static void make(ServerLevel level, Realm realm, int days) {
         MerchantStock stock = MerchantStock.at(level, realm.home.pos());
         for (Item want : realm.wants) { // its people use what it bought
-            stock.take(new ItemCost(want, 1), USES_PER_DAY * days);
+            // Of food, only beyond what its caravans need on the road: they eat what's over.
+            var food = want.getDefaultInstance().get(net.minecraft.core.component.DataComponents.FOOD);
+            int keep = food == null || food.nutrition() <= 0 ? 0
+                    : 2 * dev.b28.enterprise.merchant.Warehouse.FOOD_PAR_POINTS / food.nutrition();
+            int over = stock.count(new ItemCost(want, 1)) - keep;
+            if (over > 0) {
+                stock.take(new ItemCost(want, 1), Math.min(over, USES_PER_DAY * days));
+            }
         }
         for (Make make : realm.makes) {
             int held = stock.count(new ItemCost(make.item(), 1));

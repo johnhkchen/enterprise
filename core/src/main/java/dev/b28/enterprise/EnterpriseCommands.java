@@ -88,8 +88,27 @@ final class EnterpriseCommands {
                                     dev.b28.enterprise.settlement.Names.label(desk),
                                     dev.b28.enterprise.merchant.Books.keeps(server, desk), summary.size()));
                             summary.forEach((key, t) -> out.append("\n  %s: %d for %d spurs".formatted(key, t[0], t[1])));
+                            // And its reasons: why goods went or didn't, why its workshop stood idle.
+                            var whys = dev.b28.enterprise.merchant.Books.get(server).whys(desk);
+                            out.append("\nReasons (%d):".formatted(whys.size()));
+                            whys.forEach((key, t) -> out.append("\n  why | %s: %d times, %d items, last day %d"
+                                    .formatted(key, t[0], t[1], t[2])));
                             context.getSource().sendSuccess(() -> Component.literal(out.toString()), false);
                             return summary.size();
+                        })))
+                .then(Commands.literal("whys")
+                        .then(Commands.argument("desk", BlockPosArgument.blockPos()).executes(context -> {
+                            // A market's reasons alone: why goods went or didn't, why its workshop stood idle.
+                            var server = context.getSource().getServer();
+                            var desk = net.minecraft.core.GlobalPos.of(context.getSource().getLevel().dimension(),
+                                    BlockPosArgument.getBlockPos(context, "desk"));
+                            var whys = dev.b28.enterprise.merchant.Books.get(server).whys(desk);
+                            StringBuilder out = new StringBuilder("Reasons of %s (%d):".formatted(
+                                    dev.b28.enterprise.settlement.Names.label(desk), whys.size()));
+                            whys.forEach((key, t) -> out.append("\n  %s: %d times, %d items, last day %d"
+                                    .formatted(key, t[0], t[1], t[2])));
+                            context.getSource().sendSuccess(() -> Component.literal(out.toString()), false);
+                            return whys.size();
                         })))
                 .then(Commands.literal("realms").executes(context -> {
                     // The realms beyond the border: their trade with ours, and the customs paid.

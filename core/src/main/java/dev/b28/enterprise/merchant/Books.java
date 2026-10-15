@@ -30,6 +30,10 @@ import net.minecraft.world.level.saveddata.SavedData;
  * How far back they go is the town's learning: a Merchant alone keeps {@link #MERCHANT_DAYS} days; with a Librarian in
  * the town, {@link #LIBRARIAN_DAYS}; with a library, {@link #LIBRARY_DAYS}. A Merchant values a good at a market by
  * the last price its books show there (see {@link dev.b28.enterprise.caravan.Desires}).
+ *
+ * And its reasons: why it sent a good or didn't, why the far end wouldn't buy, why its workshop stood idle. These are
+ * the Merchant's own reckoning, not dealings: no page, no stationery. They're kept as a tally (how often, how many
+ * items, last day) for as long as the books last, so a whole run's reasons show at once.
  */
 public final class Books extends SavedData {
     private static final String NAME = "enterprise_books";
@@ -38,11 +42,22 @@ public final class Books extends SavedData {
     public static final int LIBRARIAN_DAYS = 60;
     public static final int LIBRARY_DAYS = 365;
 
-    /** What kind of dealing: bought and sold here, carried out and brought home, sold in the shop. */
-    public enum Kind { BOUGHT, SOLD, SENT, HOME, SHOP }
+    /** What kind of dealing: bought and sold here, carried out and brought home, sold in the shop; or a reason. */
+    public enum Kind { BOUGHT, SOLD, SENT, HOME, SHOP, WHY }
 
-    /** One line: on {@code day}, {@code count} of {@code item} for {@code spurs}, with {@code with} (none: the town). */
-    public record Entry(long day, Kind kind, GlobalPos with, Item item, int count, int spurs) {
+    /**
+     * One line: on {@code day}, {@code count} of {@code item} for {@code spurs}, with {@code with} (none: the town). A
+     * reason ({@link Kind#WHY}) says {@code why}.
+     */
+    public record Entry(long day, Kind kind, GlobalPos with, Item item, int count, int spurs, String why) {
+        public Entry(long day, Kind kind, GlobalPos with, Item item, int count, int spurs) {
+            this(day, kind, with, item, count, spurs, null);
+        }
+
+        public static Entry why(long now, GlobalPos with, Item item, String why, int count) {
+            return new Entry(now / 24000, Kind.WHY, with, item, count, 0, why);
+        }
+
         public CompoundTag save() {
             CompoundTag tag = new CompoundTag();
             tag.putLong("day", day);
@@ -53,6 +68,9 @@ public final class Books extends SavedData {
             tag.putString("item", BuiltInRegistries.ITEM.getKey(item).toString());
             tag.putInt("count", count);
             tag.putInt("spurs", spurs);
+            if (why != null) {
+                tag.putString("why", why);
+            }
             return tag;
         }
 
@@ -61,12 +79,14 @@ public final class Books extends SavedData {
                     ? GlobalPos.CODEC.parse(NbtOps.INSTANCE, tag.get("with")).result().orElse(null) : null;
             return new Entry(tag.getLong("day"), Kind.valueOf(tag.getString("kind")), with,
                     BuiltInRegistries.ITEM.get(ResourceLocation.parse(tag.getString("item"))), tag.getInt("count"),
-                    tag.getInt("spurs"));
+                    tag.getInt("spurs"), tag.contains("why") ? tag.getString("why") : null);
         }
     }
 
     private final Map<GlobalPos, List<Entry>> books = new HashMap<>();
     private final Map<GlobalPos, Long> lastPage = new HashMap<>();
+    /** Reasons, by market: "with | good | why" -> {times, items, last day}. */
+    private final Map<GlobalPos, Map<String, long[]>> whys = new HashMap<>();
 
     public static Books get(MinecraftServer server) {
         return server.overworld()
@@ -98,8 +118,50 @@ public final class Books extends SavedData {
         file(server, desk, now, List.of(new Entry(now / 24000, kind, with, item, count, spurs)));
     }
 
+    /** A reason, in the market's tally: why {@code count} of {@code item} went (or didn't) with {@code with}. */
+    public void why(GlobalPos desk, long now, GlobalPos with, Item item, String why, int count) {
+        tally(desk, Entry.why(now, with, item, why, count), false);
+    }
+
+    /** A standing reason, noted each time it's reckoned: the tally keeps its latest count, not the sum. */
+    public void whyNow(GlobalPos desk, long now, GlobalPos with, Item item, String why, int count) {
+        tally(desk, Entry.why(now, with, item, why, count), true);
+    }
+
+    private void tally(GlobalPos desk, Entry e) {
+        tally(desk, e, false);
+    }
+
+    private void tally(GlobalPos desk, Entry e, boolean latest) {
+        String with = e.with() == null ? "the town" : dev.b28.enterprise.settlement.Names.label(e.with());
+        long[] t = whys.computeIfAbsent(desk, d -> new HashMap<>()).computeIfAbsent(
+                with + " | " + (e.item() == net.minecraft.world.item.Items.AIR ? "-"
+                        : BuiltInRegistries.ITEM.getKey(e.item()).getPath()) + " | " + e.why(), k -> new long[3]);
+        t[0]++;
+        t[1] = latest ? Math.max(0, e.count()) : t[1] + Math.max(0, e.count());
+        t[2] = Math.max(t[2], e.day());
+        setDirty();
+    }
+
+    /** The market's reasons: "with | good | why" -> {times, items, last day}, most often first. */
+    public Map<String, long[]> whys(GlobalPos desk) {
+        Map<String, long[]> out = new LinkedHashMap<>();
+        whys.getOrDefault(desk, Map.of()).entrySet().stream()
+                .sorted((a, b) -> Long.compare(b.getValue()[0], a.getValue()[0]))
+                .forEach(e -> out.put(e.getKey(), e.getValue().clone()));
+        return out;
+    }
+
     /** Files lines in the market's books (a caravan's log, handed in), keeping only as far back as it can. */
-    public void file(MinecraftServer server, GlobalPos desk, long now, List<Entry> entries) {
+    public void file(MinecraftServer server, GlobalPos desk, long now, List<Entry> lines) {
+        List<Entry> entries = new ArrayList<>();
+        for (Entry e : lines) {
+            if (e.kind() == Kind.WHY) {
+                tally(desk, e); // its reasons: no page
+            } else {
+                entries.add(e);
+            }
+        }
         if (entries.isEmpty()) {
             return;
         }
@@ -169,6 +231,16 @@ public final class Books extends SavedData {
             list.add(e);
         });
         tag.put("books", list);
+        ListTag reasons = new ListTag();
+        whys.forEach((desk, tally) -> {
+            CompoundTag e = new CompoundTag();
+            GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, desk).ifSuccess(t -> e.put("desk", t));
+            CompoundTag lines = new CompoundTag();
+            tally.forEach((key, t) -> lines.putLongArray(key, t));
+            e.put("lines", lines);
+            reasons.add(e);
+        });
+        tag.put("whys", reasons);
         return tag;
     }
 
@@ -181,6 +253,15 @@ public final class Books extends SavedData {
                 e.getList("lines", Tag.TAG_COMPOUND).forEach(l -> lines.add(Entry.load((CompoundTag) l)));
                 out.books.put(desk, lines);
                 out.lastPage.put(desk, e.getLong("lastPage"));
+            });
+        }
+        for (Tag t : tag.getList("whys", Tag.TAG_COMPOUND)) {
+            CompoundTag e = (CompoundTag) t;
+            GlobalPos.CODEC.parse(NbtOps.INSTANCE, e.get("desk")).result().ifPresent(desk -> {
+                Map<String, long[]> tally = new HashMap<>();
+                CompoundTag lines = e.getCompound("lines");
+                lines.getAllKeys().forEach(key -> tally.put(key, lines.getLongArray(key)));
+                out.whys.put(desk, tally);
             });
         }
         return out;

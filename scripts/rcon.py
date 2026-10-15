@@ -4,14 +4,17 @@
     python3 scripts/rcon.py "time set day" "enterprise lockers 7 -60 7"
 
 The dev server (just server) enables RCON on localhost:25598 with password "dev";
-see core/run/server.properties, written by `just server-setup`.
+see core/run/server.properties, written by `just server-setup`. With ENTERPRISE_LANE=N set, it talks to lane N's
+server instead (`just lane-restore`): RCON on 25600 + 2N, the game on 25599 + 2N.
 """
 
+import os
 import socket
 import struct
 import sys
 
-HOST, PORT, PASSWORD = "127.0.0.1", 25598, "dev"
+LANE = int(os.environ.get("ENTERPRISE_LANE", "0"))
+HOST, PORT, PASSWORD = "127.0.0.1", 25600 + 2 * LANE if LANE else 25598, "dev"
 
 
 def packet(sock: socket.socket, request_id: int, kind: int, body: str) -> None:

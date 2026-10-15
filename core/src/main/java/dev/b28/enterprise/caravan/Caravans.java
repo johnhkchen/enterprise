@@ -160,8 +160,11 @@ public final class Caravans {
             if (caravan.isEmpty()) {
                 if (route.stopping) {
                     ledger.retire(route);
-                } else if (now - route.lastDeparture >= DEPARTURE_INTERVAL) {
-                    dispatch(server, ledger, territory, route, now);
+                } else if (now - route.lastDeparture >= DEPARTURE_INTERVAL
+                        && !dispatch(server, ledger, territory, route, now)) {
+                    // Why no caravan left today, in the books with the rest of its reasons.
+                    dev.b28.enterprise.merchant.Books.get(server).why(route.from, now, route.to, Items.AIR,
+                            "no trip: " + route.status, 0);
                 }
             } else if (now >= caravan.get().arrives) {
                 Caravan c = caravan.get();
@@ -327,16 +330,27 @@ public final class Caravans {
                 comfortWants(server, territory, route.to, now + travelTicks(route.distance())));
         double ownPar = territory.comfortPar(route.from);
         Map<String, Double> heldHere = Comforts.onHand(stock);
+        var books = dev.b28.enterprise.merchant.Books.get(server);
+        wantedThereNow.forEach((kind, want) -> {
+            if (heldHere.getOrDefault(kind, 0.0) <= ownPar) {
+                books.why(route.from, now, route.to, Items.AIR, "not sent: they're short of " + kind
+                        + (heldHere.getOrDefault(kind, 0.0) > 0 ? ", but we keep our own par" : ", and we have none"), 0);
+            }
+        });
         wantedThereNow.replaceAll((kind, want) -> Math.min(want,
                 Math.max(0, heldHere.getOrDefault(kind, 0.0) - ownPar) / COMFORT_MARGIN));
         wantedThereNow.values().removeIf(want -> want <= 0);
+        int before = cargo.size();
         cargo.addAll(pickComforts(stock, wantedThereNow));
         while (Crates.stacks(cargo) > slots) {
             stock.insert(cargo.remove(cargo.size() - 1)); // more comforts than the squad can carry: leave the rest
         }
+        dev.b28.enterprise.merchant.Books.byGood(cargo.subList(before, cargo.size())).forEach((item, count) ->
+                books.why(route.from, now, route.to, item, "sent: they're short of "
+                        + Comforts.kindOf(item).map(Comforts::name).orElse("it"), count));
         // Goods for sale go packed, a crate to a good: the buyer stores them as they come, nine stacks to a slot.
-        cargo.addAll(lots(level, route.from, stock, pickCargo(server, route.to, stock, wantedThere(server, route.to),
-                slots - Crates.stacks(cargo), now), now));
+        cargo.addAll(lots(level, route.from, stock, pickCargo(server, route.from, route.to, stock,
+                wantsThere(server, route.to), slots - Crates.stacks(cargo), now), now));
         Warehouse.get(server).recordStocktake(route.from, stock.totals()); // for buying decisions while away
         var army = dev.b28.enterprise.army.Army.get(server);
         boolean toFront = army.front().filter(route.to::equals).isPresent();
@@ -398,7 +412,6 @@ public final class Caravans {
         setStop(server, route, leaving, now, true, 1);
         ledger.put(leaving);
         // Into the books: what went out, and where to.
-        var books = dev.b28.enterprise.merchant.Books.get(server);
         dev.b28.enterprise.merchant.Books.byGood(leaving.cargo).forEach((item, count) -> books.enter(server, route.from, now,
                 dev.b28.enterprise.merchant.Books.Kind.SENT, route.to, item, count, 0));
         route.lastDeparture = now;
@@ -1753,10 +1766,17 @@ public final class Caravans {
      * switched-on trades take, read from the trade keys ("costA+costB>result").
      */
     public static Set<Item> wantedAt(MinecraftServer server, GlobalPos desk) {
+        return new LinkedHashSet<>(wantsAt(server, desk).keySet());
+    }
+
+    /** As {@link #wantedAt}, each good with why the market wants it (the first reason found). */
+    public static Map<Item, String> wantsAt(MinecraftServer server, GlobalPos desk) {
         MerchantBook book = MerchantBook.get(server);
-        Set<Item> items = new LinkedHashSet<>(Warehouse.get(server).inputs(desk).keySet());
+        Map<Item, String> items = new LinkedHashMap<>();
+        Warehouse.get(server).inputs(desk).keySet().forEach(item -> items.putIfAbsent(item, "an input to goods it's contracted to sell"));
         // A foreign realm wants what its people can't make.
-        dev.b28.enterprise.trade.Realms.get(server).of(desk).ifPresent(realm -> items.addAll(realm.wants()));
+        dev.b28.enterprise.trade.Realms.get(server).of(desk).ifPresent(realm ->
+                realm.wants().forEach(item -> items.putIfAbsent(item, "the realm's people use it")));
         // What the town's own workshop turns into its goods: the inputs of each conversion a resident's trade can do.
         Territory.get(server).bellOf(desk).ifPresent(bell -> {
             Set<String> trades = new java.util.HashSet<>();
@@ -1764,16 +1784,17 @@ public final class Caravans {
                     .forEach(r -> trades.add(r.profession()));
             for (var conversion : dev.b28.enterprise.territory.Workshop.CONVERSIONS) {
                 if (conversion.trades().stream().anyMatch(trades::contains)) {
-                    items.add(conversion.input());
+                    String why = "its workshop makes " + BuiltInRegistries.ITEM.getKey(conversion.output()).getPath() + " of it";
+                    items.putIfAbsent(conversion.input(), why);
                     if (conversion.input2() != null) {
-                        items.add(conversion.input2());
+                        items.putIfAbsent(conversion.input2(), why);
                     }
                 }
             }
         });
         // Stationery, where it draws up papers enough to keep some on hand.
         if (dev.b28.enterprise.cargo.Paperwork.get(server).busy(desk, server.overworld().getGameTime())) {
-            items.addAll(List.of(Items.PAPER, Items.INK_SAC, Items.FEATHER));
+            List.of(Items.PAPER, Items.INK_SAC, Items.FEATHER).forEach(item -> items.putIfAbsent(item, "stationery for its papers"));
         }
         // Axes for the hands working its land, while some lack a tool.
         Territory territory = Territory.get(server);
@@ -1781,7 +1802,7 @@ public final class Caravans {
             int hands = dev.b28.enterprise.territory.Labour.hands(
                     dev.b28.enterprise.settlement.Settlements.get(server).roster(bell)).size();
             if (territory.handTools(bell) < hands) {
-                items.add(Items.IRON_AXE);
+                items.putIfAbsent(Items.IRON_AXE, "tools for its hands");
             }
         });
         for (BlockPos workstation : book.workstations(desk)) {
@@ -1791,7 +1812,7 @@ public final class Caravans {
                     if (!id.isEmpty() && !id.equals("minecraft:emerald")) {
                         Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(id));
                         if (item != Items.AIR) {
-                            items.add(item);
+                            items.putIfAbsent(item, "a trade it has switched on takes it");
                         }
                     }
                 }
@@ -1802,8 +1823,14 @@ public final class Caravans {
 
     /** What a caravan should bring a desk: what its lockers trade, and what players' shops there have ordered. */
     static Set<Item> wantedThere(MinecraftServer server, GlobalPos desk) {
-        Set<Item> items = new LinkedHashSet<>(wantedAt(server, desk));
-        items.addAll(dev.b28.enterprise.market.Exchange.get(server).wanted(desk).keySet());
+        return new LinkedHashSet<>(wantsThere(server, desk).keySet());
+    }
+
+    /** As {@link #wantedThere}, each good with why. */
+    static Map<Item, String> wantsThere(MinecraftServer server, GlobalPos desk) {
+        Map<Item, String> items = wantsAt(server, desk);
+        dev.b28.enterprise.market.Exchange.get(server).wanted(desk).keySet()
+                .forEach(item -> items.putIfAbsent(item, "a player's shop there ordered it"));
         return items;
     }
 
@@ -1834,15 +1861,23 @@ public final class Caravans {
      */
     /**
      * As {@link #pickCargo(MerchantStock, Set, int)}, but of each good no more than the far end will take: its par less
-     * what it held when a caravan last saw its stock. A Merchant doesn't haul what it can't sell.
+     * what it held when a caravan last saw its stock. A Merchant doesn't haul what it can't sell. Its reasons, good by
+     * good, go in {@code home}'s books.
      */
-    static List<ItemStack> pickCargo(MinecraftServer server, GlobalPos there, MerchantStock stock, Set<Item> wanted,
-            int slots, long now) {
+    static List<ItemStack> pickCargo(MinecraftServer server, GlobalPos home, GlobalPos there, MerchantStock stock,
+            Map<Item, String> wanted, int slots, long now) {
         Warehouse warehouse = Warehouse.get(server);
+        var books = dev.b28.enterprise.merchant.Books.get(server);
         Map<Item, Integer> limits = new LinkedHashMap<>();
-        for (Item item : wanted) {
+        for (Map.Entry<Item, String> want : wanted.entrySet()) {
+            Item item = want.getKey();
             int room = warehouse.par(there, item, true, now) - warehouse.onHand(there, item);
-            if (room > 0) {
+            if (room <= 0) {
+                books.why(home, now, there, item, "not sent: they hold their fill (" + want.getValue() + ")",
+                        warehouse.onHand(there, item));
+            } else if (stock.count(new ItemCost(item, 1)) <= 0) {
+                books.why(home, now, there, item, "not sent: we have none (" + want.getValue() + ")", room);
+            } else {
                 limits.put(item, room);
             }
         }
@@ -1855,11 +1890,22 @@ public final class Caravans {
             Item item = want.getKey();
             int room = (slots - Crates.stacks(cargo)) * item.getDefaultMaxStackSize();
             if (room <= 0) {
-                break;
+                books.why(home, now, there, item, "not sent: no room aboard", want.getValue());
+                continue;
             }
-            cargo.addAll(stock.take(new ItemCost(item, 1), Math.min(Math.min(perItem, want.getValue()), room)));
+            int taken = 0;
+            for (ItemStack piece : stock.take(new ItemCost(item, 1), Math.min(Math.min(perItem, want.getValue()), room))) {
+                taken += piece.getCount();
+                cargo.add(piece);
+            }
+            books.why(home, now, there, item, "sent: " + wanted.get(item), taken);
         }
         return cargo;
+    }
+
+    public static List<ItemStack> pickCargoForTest(MinecraftServer server, GlobalPos home, GlobalPos there,
+            MerchantStock stock, Map<Item, String> wanted, int slots, long now) {
+        return pickCargo(server, home, there, stock, wanted, slots, now);
     }
 
     static List<ItemStack> pickCargo(MerchantStock stock, Set<Item> wanted, int slots) {
@@ -1890,6 +1936,7 @@ public final class Caravans {
             Map<Item, double[]> tallies) {
         Warehouse warehouse = Warehouse.get(server);
         Set<Item> wanted = wantedAt(server, desk);
+        boolean foreign = dev.b28.enterprise.trade.Realms.get(server).isForeign(desk);
         int earned = 0;
         for (java.util.ListIterator<ItemStack> it = caravan.cargo.listIterator(); it.hasNext(); ) {
             ItemStack entry = it.next();
@@ -1902,7 +1949,8 @@ public final class Caravans {
             Item item = stack.getItem();
             int onHand = stock.count(new ItemCost(item, 1));
             double value = Prices.emeraldsEach(item);
-            var comfort = Comforts.kindOf(item);
+            // A realm's people want some comforts (the Coast, books) as a country does: by its par, like any good.
+            var comfort = foreign ? java.util.Optional.<net.minecraft.tags.TagKey<Item>>empty() : Comforts.kindOf(item);
             int par;
             int ownPar = Integer.MAX_VALUE;
             java.util.Optional<Desires.Outlet> outlet = java.util.Optional.empty();
@@ -1928,17 +1976,29 @@ public final class Caravans {
                 }
             }
             int quantity = Math.min(stack.getCount(), par - onHand);
+            // Why it won't take the rest, for the caravan's log: the last thing that cut what it takes.
+            String why = quantity >= stack.getCount() ? null
+                    : comfort.isPresent() ? "unsold: they hold their fill of " + Comforts.name(comfort.get())
+                    : wanted.contains(item) || foodPoints(stack) > 0 ? "unsold: they hold their fill"
+                    : "unsold: they've no use for it";
             double each = -1;
             for (int pass = 0; pass < 2 && quantity > 0; pass++) {
                 // Price at the middle of the batch: the resident's shortage shrinks as the shelf fills.
                 double midShortage = Bargain.shortage(onHand + quantity / 2, par);
                 each = Bargain.price(value, midShortage, caravan.merchantLevel, residentLevel);
-                quantity = each <= 0 ? 0 : Math.min(quantity, (int) Math.floor(money / each));
+                int afford = each <= 0 ? 0 : (int) Math.floor(money / each);
+                if (afford < quantity) {
+                    why = "unsold: they can't pay";
+                }
+                quantity = Math.min(quantity, afford);
             }
-            if (outlet.isPresent() && each > 0 && !Desires.worthBuying(each, outlet.get())) {
-                quantity = Math.min(quantity, Math.max(0, ownPar - onHand)); // too dear to sell on: only its own
+            if (outlet.isPresent() && each > 0 && !Desires.worthBuying(each, outlet.get())
+                    && ownPar - onHand < quantity) {
+                quantity = Math.max(0, ownPar - onHand); // too dear to sell on: only its own
+                why = "unsold: too dear for them to sell on";
             }
             if (quantity <= 0) {
+                logUnsold(caravan, desk, item, why, stack.getCount(), now);
                 continue;
             }
             int delivered;
@@ -1946,10 +2006,15 @@ public final class Caravans {
                 delivered = stack.getCount(); // the whole crate, into store as it is
                 it.remove();
             } else {
+                int wanted0 = quantity;
                 while (quantity > 0 && !stock.hasRoomFor(stack.copyWithCount(quantity))) {
                     quantity -= Math.min(quantity, item.getDefaultMaxStackSize()); // keep the warehouse's free slots
                 }
+                if (quantity < wanted0) {
+                    why = "unsold: no room in their warehouse";
+                }
                 if (quantity <= 0) {
+                    logUnsold(caravan, desk, item, why, stack.getCount(), now);
                     continue;
                 }
                 if (lot.isPresent()) {
@@ -1969,6 +2034,7 @@ public final class Caravans {
             Treasury.Withdrawal paid = Treasury.withdraw(level, desk.pos(), stock, delivered * each, mint, now);
             earned += paid.spurs() + mint.sell(Mint.DEFAULT_FACTION, paid.emeralds(), now);
             route.itemsDelivered += delivered;
+            logUnsold(caravan, desk, item, why, lot.isPresent() ? stack.getCount() - delivered : stack.getCount(), now);
             double[] tally = tallies.computeIfAbsent(item, i -> new double[2]);
             tally[0] += delivered;
             tally[1] += delivered * each;
@@ -1977,6 +2043,13 @@ public final class Caravans {
             }
         }
         return earned;
+    }
+
+    /** Why the far end wouldn't take the rest of a good, in the caravan's log: its home's Merchant reads it there. */
+    private static void logUnsold(Caravan caravan, GlobalPos desk, Item item, String why, int left, long now) {
+        if (why != null && left > 0) {
+            caravan.log.add(dev.b28.enterprise.merchant.Books.Entry.why(now, desk, item, why, left));
+        }
     }
 
     /**

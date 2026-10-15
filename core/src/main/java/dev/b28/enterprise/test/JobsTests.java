@@ -52,6 +52,11 @@ public final class JobsTests {
                 .filter(net.minecraft.world.item.Items.SWEET_BERRIES::equals).isPresent(), "a Master Butcher: berries");
         helper.assertTrue(dev.b28.enterprise.territory.Fields.choose(both, Map.of("minecraft:potato", 640.0), stock, Map.of(),
                 true).filter(net.minecraft.world.item.Items.SUGAR_CANE::equals).isEmpty(), "a town still growing: no cane yet");
+        // Its own Farmers' biscuits want cane: a fed town plants it even while it grows, for its own people.
+        var biscuits = Map.of("minecraft:potato", 640.0, "minecraft:sugar_cane", 4.0);
+        helper.assertTrue(dev.b28.enterprise.territory.Fields.choose(biscuits, Map.of("minecraft:potato", 640.0), stock,
+                Map.of(), true).filter(net.minecraft.world.item.Items.SUGAR_CANE::equals).isPresent(),
+                "its workshop's cane: planted while it grows");
         helper.assertTrue(dev.b28.enterprise.territory.Focus.of(5, 8, 2000) == dev.b28.enterprise.territory.Focus.GROW,
                 "five villagers: it grows first");
         helper.assertTrue(dev.b28.enterprise.territory.Focus.of(9, 12, 100) == dev.b28.enterprise.territory.Focus.GROW,
