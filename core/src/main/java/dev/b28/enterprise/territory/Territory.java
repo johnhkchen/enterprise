@@ -137,6 +137,7 @@ public final class Territory extends SavedData {
         double wagesUnpaid; // emeralds' worth that couldn't be paid: the farmers took it in crops
         long harvested; // items delivered to the Merchant's chest, in all
         double farmXp; // experience the Farmers earned with their harvest, not yet given them
+        double grain; // wheat banked in its granary, as hay bales
         double laborShare = LABOR_SHARE;
         double salesSince; // emeralds from selling crops since the last accrual
         double salesPerDay; // averaged
@@ -943,6 +944,54 @@ public final class Territory extends SavedData {
         holding.lastHarvest = now;
     }
 
+    private static boolean granary(Holding holding) {
+        return holding.buildings.contains(Buildings.GRANARY.id());
+    }
+
+    /** Wheat the warehouse keeps loose beside a granary: its par, and at least two stacks for its workshop. */
+    private static int looseWheat(ServerLevel level, GlobalPos desk, long now) {
+        return Math.max(2 * 64, dev.b28.enterprise.merchant.Warehouse.get(level.getServer())
+                .par(desk, Items.WHEAT, true, now));
+    }
+
+    /**
+     * With a granary: wheat beyond what the warehouse keeps loose goes into it as bales, out of the way; and it tops
+     * the warehouse back up as its lockers, its workshop's bread and its caravans draw the wheat down. Wheat waits
+     * as grain until someone wants it.
+     */
+    private static void bank(ServerLevel level, GlobalPos desk, MerchantStock stock, Holding holding, long now) {
+        if (!granary(holding)) {
+            return;
+        }
+        int keep = looseWheat(level, desk, now);
+        int held = stock.count(new ItemCost(Items.WHEAT, 1));
+        if (held > keep) {
+            int in = (int) Math.min(held - keep, Buildings.GRANARY_WHEAT - holding.grain);
+            if (in > 0) {
+                holding.grain += stock.take(new ItemCost(Items.WHEAT, 1), in).stream().mapToInt(ItemStack::getCount).sum();
+            }
+            return;
+        }
+        int out = (int) Math.min(keep - held, Math.floor(holding.grain));
+        while (out > 0) {
+            ItemStack stack = new ItemStack(Items.WHEAT, Math.min(out, 64));
+            if (!stock.hasRoomFor(stack)) {
+                break;
+            }
+            int put = stack.getCount() - stock.insert(stack).getCount();
+            holding.grain -= put;
+            out -= put;
+            if (put == 0) {
+                break;
+            }
+        }
+    }
+
+    /** Wheat banked in the town's granary. */
+    public double grain(GlobalPos bell) {
+        return holding(bell).map(h -> h.grain).orElse(0.0);
+    }
+
     /**
      * Pays the farmers the whole emeralds owed: emeralds from the Merchant's chest first, then its coins at the
      * region's rate, then the settlement's Blaze Banker. Returns the share of the wage paid (1 when nothing whole is
@@ -995,6 +1044,7 @@ public final class Territory extends SavedData {
         if (holding.lastTollReview != lastReview && lastReview >= 0) {
             works.consider(level, desk, stock, bell.get(), this, now); // with the tolls: is a bridge worth building?
             dev.b28.enterprise.caravan.Commissions.consider(level, at, stock, bell.get(), this, now); // a caravan of its own?
+            dev.b28.enterprise.service.BuildServices.hire(level, at, stock, bell.get(), this, now); // a hall, by hired builders
         }
         long since = holding.lastHarvest;
         accrue(holding, now);
@@ -1067,6 +1117,13 @@ public final class Territory extends SavedData {
             }
             Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(owed.getKey()));
             int left = whole;
+            if (item == Items.WHEAT && granary(holding)) {
+                // What the warehouse needn't keep loose goes straight to the granary.
+                int short_ = Math.max(0, looseWheat(level, at, now) - stock.count(new ItemCost(Items.WHEAT, 1)));
+                int banked = (int) Math.max(0, Math.min(left - short_, Buildings.GRANARY_WHEAT - holding.grain));
+                holding.grain += banked;
+                left -= banked;
+            }
             while (left > 0) {
                 ItemStack stack = new ItemStack(item, Math.min(left, item.getDefaultMaxStackSize()));
                 if (!stock.hasRoomFor(stack)) {
@@ -1087,6 +1144,7 @@ public final class Territory extends SavedData {
             }
         }
         holding.paidShare = paidShare;
+        bank(level, at, stock, holding, now); // before the workshop: the wheat it bakes with
         Workshop.convert(level, dev.b28.enterprise.merchant.Warehouse.get(level.getServer()), at, bell.get(), stock, now);
         dev.b28.enterprise.service.Services.home(level, this, at, bell.get(), stock, now); // what its own trades do for it
         Map<String, Integer> workers = workers(level.getServer(), bell.get());
@@ -1624,6 +1682,7 @@ public final class Territory extends SavedData {
             entry.putDouble("wagesUnpaid", holding.wagesUnpaid);
             entry.putLong("harvested", holding.harvested);
             entry.putDouble("farmXp", holding.farmXp);
+            entry.putDouble("grain", holding.grain);
             entry.putDouble("laborShare", holding.laborShare);
             entry.putDouble("salesSince", holding.salesSince);
             entry.putDouble("salesPerDay", holding.salesPerDay);
@@ -1762,6 +1821,7 @@ public final class Territory extends SavedData {
                 holding.wagesUnpaid = entry.getDouble("wagesUnpaid");
                 holding.harvested = entry.getLong("harvested");
                 holding.farmXp = entry.getDouble("farmXp");
+                holding.grain = entry.getDouble("grain");
                 if (entry.contains("laborShare")) {
                     holding.laborShare = entry.getDouble("laborShare");
                 }

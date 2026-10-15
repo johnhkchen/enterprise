@@ -628,6 +628,32 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   paper. Treats still 0% everywhere: the Librarians' paper takes the cane first, and the biscuits are short of wheat
   too. `dev/experiments/compare_lanes.py` compares lanes.
 
+## Sharecroppers, hired builders, a granary and a bag of marbles (built 2026-10-15)
+
+- **Sharecroppers.** Past its credit, a town that can't pay its Farmers no longer loses the harvest: they take their
+  wage in kind, their share of the crop, and the town gets the rest. Before, a broke town had nothing to sell and
+  stayed broke (Hollowwick, frozen from day 20 in one lane in three).
+- **The payroll is untouchable.** Goods a caravan sells a town, and what its lockers pay its own villagers for
+  procured goods (bread and armour for a crown contract), come only from money beyond its wage float and guards' pay.
+  Meadowworth's coal took Hollowwick's wages on day 16; a contract's bread filled another town's warehouse.
+- **Food beyond twice its par is idle**, so the warehouse crates it like any idle good, and a glut of bread no longer
+  shuts out the harvest.
+- **Hired builders.** A town without a Mason hires builders for its halls, as it does masons for its walls: materials
+  up front, wages as they build, halls up to a Mason's level 3. Stone docks and a caravanserai still need a Mason.
+  Before, no town ever built a hall: none had a Mason.
+- **A granary** (after the square; a Farmer of level 2) banks wheat the warehouse needn't keep loose (its par, at least
+  two stacks) as hay bales, up to 36,864, outside the warehouse, and tops the warehouse up as it's drawn on.
+- **A bag of marbles.** An idle hand draws its trade: each trade's marbles are the emeralds of demand it would meet
+  (what its villagers would buy of the town's supply, shared with those of the trade already there; goods markets it
+  knows have posted as wanted; four days of what idle plots would yield, a Farmer's; what the town has paid hired
+  builders, a Mason's until it has one). A contract's trade still comes first.
+- Measured (three lanes, 120 days from the era's day 0, against sharecroppers alone): halls went up for the first time
+  (10 granaries, 8 squares, smithies, watchtowers, libraries); moods rose in Wheatfield (+1.40 to +2.67), Barleyby
+  (+0.70 to +1.86) and Meadowworth (+1.35 to +1.73). But every granary held nothing: no town grows wheat it doesn't
+  use (Wheatfield grows 50 a day and holds 1; the east grows roots). No town took on a Mason: hall wages (a few
+  emeralds) are small marbles beside four days of supply. Cloverby still holds about 1,700 bread in every lane and
+  never trades: its bread comes another way, not yet traced.
+
 ## Where the next item earns most; Farmers who learn and multiply (built 2026-10-15)
 
 - **Marginal value, not market size.** The workshop gives an input first to the conversion that earns most per emerald
@@ -652,7 +678,8 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   paying the Merchant for the comforts the town uses, the food for a child, and (first, before the town's money) for
   family homes and children. Wages are demand.
 - **Credit.** A Merchant short of coin pays its farmers in credit, up to 10 days of a customary wage (half the crop's
-  worth), and the harvest keeps coming. Beyond that, nobody works on credit: unpaid days go unworked, as before.
+  worth), and the harvest keeps coming. Beyond that, the farmers take their wage in kind, their share of the crop, and
+  the town gets the rest (see "Sharecroppers"; before, unpaid days went unworked).
 - **Freeholds.** A household with 8 emeralds in purse and credit, where farmers have hands for a third of a field more,
   buys a field of its own (credit first, then money paid to the market). On its own plots it takes at least three
   quarters of the crop's worth.

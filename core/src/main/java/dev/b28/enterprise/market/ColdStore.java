@@ -112,7 +112,20 @@ public final class ColdStore {
      * only where it saves room.
      */
     static void pack(ServerLevel level, GlobalPos desk, MerchantStock stock, Set<Item> using, long now) {
-        List<ItemStack> idle = new ArrayList<>(stock.removeLoose(s -> idle(s, using)));
+        // Food beyond twice its par is idle too (bread for a contract that broke): crated, it still feeds.
+        int[] spareFood = {stock.foodNutrition() - 2 * Warehouse.FOOD_PAR_POINTS};
+        List<ItemStack> idle = new ArrayList<>(stock.removeLoose(s -> {
+            if (idle(s, using)) {
+                return true;
+            }
+            int points = MerchantStock.nutrition(s) * s.getCount();
+            if (points > 0 && points <= spareFood[0] && !using.contains(s.getItem()) && s.getItem().canFitInsideContainerItems()
+                    && !s.has(net.minecraft.core.component.DataComponents.CONTAINER)) {
+                spareFood[0] -= points;
+                return true;
+            }
+            return false;
+        }));
         for (Item item : using) {
             if (!new ItemStack(item).getItem().canFitInsideContainerItems() || item.getDefaultMaxStackSize() < 16) {
                 continue;

@@ -20,23 +20,45 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder(Enterprise.MOD_ID)
 @PrefixGameTestTemplate(false)
 public final class JobsTests {
+    private static double marbles(Map<Jobs.Trade, Double> bag, VillagerProfession profession) {
+        return bag.entrySet().stream().filter(e -> e.getKey().profession() == profession)
+                .mapToDouble(Map.Entry::getValue).sum();
+    }
+
     @GameTest(template = "floor")
-    public static void theTradeThatBuysMostOfTheSupply(GameTestHelper helper) {
+    public static void anIdleHandDrawsATradeByWhatItWouldMeet(GameTestHelper helper) {
         Map<String, Double> paper = Map.of("minecraft:paper", 3.0, "minecraft:carrot", 1.0);
-        helper.assertTrue(Jobs.best(paper, Set.of()).orElseThrow().profession() == VillagerProfession.LIBRARIAN,
-                "paper: a Librarian");
-        helper.assertTrue(Jobs.best(paper, Set.of(VillagerProfession.LIBRARIAN)).orElseThrow().profession()
-                == VillagerProfession.CARTOGRAPHER, "with a Librarian already, a Cartographer");
-        helper.assertTrue(Jobs.best(Map.of("minecraft:carrot", 2.0), Set.of()).orElseThrow().profession()
-                == VillagerProfession.FARMER, "carrots: a Farmer");
-        helper.assertTrue(Jobs.best(Map.of(), Set.of()).isEmpty(), "nothing to sell: no stall");
-        // Untended plots worth more than what the best new buyer would take: another Farmer, though the town has one.
-        helper.assertTrue(dev.b28.enterprise.territory.Jobs.forFields(Map.of("minecraft:wheat", 40.0), 1.0)
-                .filter(t -> t.profession() == VillagerProfession.FARMER).isPresent(), "40 wheat a day untended: a Farmer");
-        helper.assertTrue(dev.b28.enterprise.territory.Jobs.forFields(Map.of("minecraft:wheat", 40.0), 100.0).isEmpty(),
-                "a buyer for 100 emeralds of its goods comes first");
-        helper.assertTrue(dev.b28.enterprise.territory.Jobs.forFields(Map.of("minecraft:wheat", 4.0), 0.0).isEmpty(),
-                "a few plots idle: not worth a hand");
+        var bag = Jobs.bag(paper, Map.of(), Map.of(), 0, Map.of());
+        helper.assertTrue(marbles(bag, VillagerProfession.LIBRARIAN) == 3 && marbles(bag, VillagerProfession.FARMER) == 1,
+                "paper: 3 marbles a Librarian's, carrots 1 a Farmer's: " + bag);
+        bag = Jobs.bag(paper, Map.of(VillagerProfession.LIBRARIAN, 1), Map.of(), 0, Map.of());
+        helper.assertTrue(marbles(bag, VillagerProfession.LIBRARIAN) == 1.5,
+                "with a Librarian already, a second shares the paper: " + marbles(bag, VillagerProfession.LIBRARIAN));
+        helper.assertTrue(Jobs.draw(Jobs.bag(Map.of(), Map.of(), Map.of(), 0, Map.of()), helper.getLevel().random).isEmpty(),
+                "nothing to sell: no stall");
+        var carrots = Jobs.bag(Map.of("minecraft:carrot", 2.0), Map.of(), Map.of(), 0, Map.of());
+        helper.assertTrue(Jobs.draw(carrots, helper.getLevel().random).orElseThrow().profession() == VillagerProfession.FARMER,
+                "only carrots: a Farmer");
+        // Untended plots: four days of what they'd yield, in a Farmer's marbles.
+        helper.assertTrue(marbles(Jobs.bag(Map.of(), Map.of(), Map.of("minecraft:wheat", 40.0), 0, Map.of()),
+                VillagerProfession.FARMER) == 8, "40 wheat a day untended: 8 marbles a Farmer's");
+        helper.assertTrue(marbles(Jobs.bag(Map.of(), Map.of(), Map.of("minecraft:wheat", 4.0), 0, Map.of()),
+                VillagerProfession.FARMER) == 0, "a few plots idle: not worth a hand");
+        // A town paying hired builders: a Mason's marbles, until it has one.
+        helper.assertTrue(marbles(Jobs.bag(Map.of(), Map.of(), Map.of(), 8, Map.of()), VillagerProfession.MASON) == 8,
+                "8 emeralds to builders: 8 marbles a Mason's");
+        helper.assertTrue(marbles(Jobs.bag(Map.of(), Map.of(VillagerProfession.MASON, 1), Map.of(), 8, Map.of()),
+                VillagerProfession.MASON) == 0, "one is enough");
+        // Drawn often enough, each trade comes up about as often as its share.
+        var even = Jobs.bag(paper, Map.of(), Map.of(), 0, Map.of());
+        int librarians = 0;
+        for (int i = 0; i < 1000; i++) {
+            if (Jobs.draw(even, helper.getLevel().random).orElseThrow().profession() == VillagerProfession.LIBRARIAN) {
+                librarians++;
+            }
+        }
+        helper.assertTrue(librarians > 330 && librarians < 530,
+                "Librarian, Cartographer and Farmer at 3:3:1: about 3 in 7 Librarians, " + librarians + " of 1000");
         helper.succeed();
     }
 

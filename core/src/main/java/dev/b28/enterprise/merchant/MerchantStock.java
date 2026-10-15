@@ -308,7 +308,7 @@ public final class MerchantStock {
     }
 
     /** Nutrition as road food and rations. Comforts (cake, cookies, pies) are kept for the town, never eaten as food. */
-    private static int nutrition(ItemStack stack) {
+    public static int nutrition(ItemStack stack) {
         FoodProperties food = stack.get(DataComponents.FOOD);
         return food == null || dev.b28.enterprise.territory.Comforts.isComfort(stack) ? 0 : food.nutrition();
     }

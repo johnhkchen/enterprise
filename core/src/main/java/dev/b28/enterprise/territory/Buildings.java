@@ -36,6 +36,11 @@ public final class Buildings {
 
     public static final Kind SQUARE = new Kind("square", 9, 1, 2, Set.of(), 0, 8,
             "a paved square by the bell, where the town gathers: happier");
+    /** Wheat a granary holds, as hay bales: 64 stacks of bales. */
+    public static final int GRANARY_WHEAT = 64 * 64 * 9;
+    public static final Kind GRANARY = new Kind("granary", 7, 4, 2, Set.of("minecraft:farmer"), 2, 12,
+            "banks the town's wheat as hay bales, up to " + GRANARY_WHEAT + ": what the warehouse can't hold, drawn "
+                    + "on as the town wants it");
     public static final Kind TEMPLE = new Kind("temple", 7, 4, 3, Set.of("minecraft:cleric"), 3, 16,
             "its Clerics' blessing counts double, and children come twice as often");
     public static final Kind LIBRARY = new Kind("library", 7, 4, 3, Set.of("minecraft:librarian"), 3, 16,
@@ -51,7 +56,7 @@ public final class Buildings {
             "a waystation: markets within 800 blocks hear of the town, and 1 culture a day");
 
     /** In the order a town builds them. */
-    public static final List<Kind> KINDS = List.of(SQUARE, TEMPLE, LIBRARY, SMITHY, WATCHTOWER, STONE_DOCKS, CARAVANSERAI);
+    public static final List<Kind> KINDS = List.of(SQUARE, GRANARY, TEMPLE, LIBRARY, SMITHY, WATCHTOWER, STONE_DOCKS, CARAVANSERAI);
 
     /** A square brings this much mood; with a Farmer's flower beds, this much more. */
     public static final double SQUARE_MOOD = 0.5;
@@ -87,8 +92,9 @@ public final class Buildings {
             tower(level, corner, kind);
             return;
         }
-        Block floor = kind == CARAVANSERAI ? Blocks.SPRUCE_PLANKS : Blocks.STONE_BRICKS;
-        Block wall = kind == CARAVANSERAI ? Blocks.OAK_PLANKS : Blocks.STONE_BRICKS;
+        boolean timber = kind == CARAVANSERAI || kind == GRANARY;
+        Block floor = timber ? Blocks.SPRUCE_PLANKS : Blocks.STONE_BRICKS;
+        Block wall = timber ? Blocks.OAK_PLANKS : Blocks.STONE_BRICKS;
         int n = kind.size();
         for (int dx = 0; dx < n; dx++) {
             for (int dz = 0; dz < n; dz++) {
@@ -139,6 +145,11 @@ public final class Buildings {
             level.setBlock(middle.north().west(), Blocks.SMITHING_TABLE.defaultBlockState(), 3);
             level.setBlock(middle.north(), Blocks.BLAST_FURNACE.defaultBlockState(), 3);
             level.setBlock(middle.north().east(), Blocks.ANVIL.defaultBlockState(), 3);
+        } else if (kind == GRANARY) {
+            for (int dx = 1; dx < n - 1; dx++) {
+                level.setBlock(corner.offset(dx, 1, 1), Blocks.HAY_BLOCK.defaultBlockState(), 3);
+                level.setBlock(corner.offset(dx, 2, 1), Blocks.HAY_BLOCK.defaultBlockState(), 3);
+            }
         } else if (kind == CARAVANSERAI) {
             level.setBlock(middle.north(), Blocks.HAY_BLOCK.defaultBlockState(), 3);
             level.setBlock(middle.north().west(), Blocks.BARREL.defaultBlockState(), 3);

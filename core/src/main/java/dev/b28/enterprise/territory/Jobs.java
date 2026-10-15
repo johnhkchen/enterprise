@@ -27,8 +27,8 @@ import net.minecraft.world.phys.AABB;
 
 /**
  * Work for a town's idle hands. A town with an unemployed adult (never a baby) puts up a work stall, a workstation
- * with a chest against it (so it's a locker), for the trade that would buy most of what the town has to sell: its
- * farms' output and its warehouse's stock. The villager takes the job at once and its selling trades are switched on,
+ * with a chest against it (so it's a locker), for a trade drawn from a bag of marbles (see {@link #bag}): the more of
+ * the region's demand a trade would meet, the likelier it is. The villager takes the job at once and its selling trades are switched on,
  * so the town earns from what it grows and what caravans bring.
  */
 public final class Jobs {
@@ -75,40 +75,63 @@ public final class Jobs {
         return worth;
     }
 
-    /** The trade, not yet in the town, whose villagers would buy most of its supply; none if they'd buy nothing. */
-    public static Optional<Trade> best(Map<String, Double> supply, Set<VillagerProfession> present) {
-        return TRADES.stream()
-                .filter(trade -> !present.contains(trade.profession()))
-                .map(trade -> Map.entry(trade, trade.buys().stream()
-                        .mapToDouble(item -> supply.getOrDefault(BuiltInRegistries.ITEM.getKey(item).toString(), 0.0))
-                        .sum()))
-                .filter(entry -> entry.getValue() > 0)
-                .max(Comparator.comparingDouble((Map.Entry<Trade, Double> e) -> e.getValue())
-                        .thenComparing(e -> -TRADES.indexOf(e.getKey())))
-                .map(Map.Entry::getKey);
-    }
-
     /** The worth of the town's supply a trade's villagers would buy, in emeralds. */
     static double buys(Trade trade, Map<String, Double> supply) {
         return trade.buys().stream()
                 .mapToDouble(item -> supply.getOrDefault(BuiltInRegistries.ITEM.getKey(item).toString(), 0.0)).sum();
     }
 
-    /** Idle plots must yield at least this much a day, in emeralds, to be worth another Farmer. */
+    /** Idle plots must yield at least this much a day, in emeralds, to put Farmers' marbles in the bag. */
     public static final double FARMER_IDLE_EMERALDS = 0.5;
 
     /**
-     * Another Farmer, where the town's plots stand untended: when what they'd yield in 4 days (as {@link #supply} counts
-     * a town's farms) is worth more than what the best new trade's villagers would buy, and at least
-     * {@link #FARMER_IDLE_EMERALDS} a day. A town short of hands for its land takes on hands before buyers.
+     * The bag of marbles an idle hand draws its trade from: each trade's marbles are the emeralds of demand it would
+     * meet. What its villagers would buy of the town's supply (shared with those of the trade already there); goods
+     * that markets the town knows have posted as wanted ({@code signals}, by the trade that would supply them); four
+     * days of what its untended plots would yield (a Farmer's); and what it has paid hired builders for its halls (a
+     * Mason's, until it has one). The likeliest trade is the one most wanted, not the only one.
      */
-    public static Optional<Trade> forFields(Map<String, Double> idlePerDay, double bestBuyer) {
+    public static Map<Trade, Double> bag(Map<String, Double> supply, Map<VillagerProfession, Integer> present,
+            Map<String, Double> idlePerDay, double hallWages, Map<Trade, Double> signals) {
+        Map<Trade, Double> bag = new java.util.LinkedHashMap<>();
+        for (Trade trade : TRADES) {
+            double buys = buys(trade, supply) / (1 + present.getOrDefault(trade.profession(), 0));
+            if (buys > 0) {
+                bag.merge(trade, buys, Double::sum);
+            }
+        }
+        signals.forEach((trade, emeralds) -> bag.merge(trade, emeralds, Double::sum));
         double idle = idlePerDay.entrySet().stream()
                 .mapToDouble(e -> e.getValue() / Prices.itemsPerEmerald(e.getKey())).sum();
-        if (idle < FARMER_IDLE_EMERALDS || idle * 4 <= bestBuyer) {
+        if (idle >= FARMER_IDLE_EMERALDS) {
+            bag.merge(trade(VillagerProfession.FARMER), idle * 4, Double::sum);
+        }
+        if (hallWages > 0 && !present.containsKey(VillagerProfession.MASON)) {
+            bag.merge(trade(VillagerProfession.MASON), hallWages, Double::sum);
+        }
+        return bag;
+    }
+
+    /** A marble drawn from the bag: each trade as likely as its share of the marbles. None from an empty bag. */
+    public static Optional<Trade> draw(Map<Trade, Double> bag, net.minecraft.util.RandomSource random) {
+        double total = bag.values().stream().mapToDouble(Double::doubleValue).sum();
+        if (total <= 0) {
             return Optional.empty();
         }
-        return TRADES.stream().filter(t -> t.profession() == VillagerProfession.FARMER).findFirst();
+        double marble = random.nextDouble() * total;
+        Trade last = null;
+        for (Map.Entry<Trade, Double> e : bag.entrySet()) {
+            last = e.getKey();
+            marble -= e.getValue();
+            if (marble < 0) {
+                return Optional.of(e.getKey());
+            }
+        }
+        return Optional.ofNullable(last);
+    }
+
+    private static Trade trade(VillagerProfession profession) {
+        return TRADES.stream().filter(t -> t.profession() == profession).findFirst().orElseThrow();
     }
 
     /**
@@ -131,18 +154,17 @@ public final class Jobs {
             return Optional.empty();
         }
         // The town's trades from its roster: everyone, loaded or not.
-        Set<VillagerProfession> present = new java.util.HashSet<>();
+        Map<VillagerProfession, Integer> present = new java.util.HashMap<>();
         dev.b28.enterprise.settlement.Settlements.get(level.getServer()).roster(GlobalPos.of(level.dimension(), bell))
-                .values().forEach(r -> BuiltInRegistries.VILLAGER_PROFESSION.getOptional(
-                        net.minecraft.resources.ResourceLocation.parse(r.profession())).ifPresent(present::add));
+                .values().stream().filter(r -> !r.baby()).forEach(r -> BuiltInRegistries.VILLAGER_PROFESSION.getOptional(
+                        net.minecraft.resources.ResourceLocation.parse(r.profession()))
+                        .ifPresent(p -> present.merge(p, 1, Integer::sum)));
         GlobalPos bellPos = GlobalPos.of(level.dimension(), bell);
-        Map<String, Double> supply = supply(territory.farmPlan(bellPos), stock);
-        Optional<Trade> buyer = best(supply, present);
-        double buys = buyer.map(t -> buys(t, supply)).orElse(0.0);
-        Optional<Trade> trade = forContracts(level, desk, territory, bellPos, present)
-                .or(() -> forSignals(level, desk, territory, bellPos, present))
-                .or(() -> forFields(territory.idlePlots(bellPos), buys))
-                .or(() -> buyer);
+        // What it has signed for comes first; otherwise the hand draws a marble.
+        Optional<Trade> trade = forContracts(level, desk, territory, bellPos, present.keySet())
+                .or(() -> draw(bag(supply(territory.farmPlan(bellPos), stock), present, territory.idlePlots(bellPos),
+                        Works.get(level.getServer()).hallWages(bellPos),
+                        signals(level, desk, territory, bellPos, present.keySet())), level.random));
         Optional<BlockPos> site = trade.isPresent() ? Growth.site(level, bell, STALL_SIZE, NEAREST) : Optional.empty();
         if (site.isEmpty()) {
             return Optional.empty();
@@ -188,19 +210,21 @@ public final class Jobs {
     }
 
     /**
-     * A trade for goods a market this town knows has posted as wanted (no market it knows has them): an opportunity,
-     * taken by its idle hands; the richest want first.
+     * Goods markets this town knows have posted as wanted (no market it knows has them), by the trade that would
+     * supply them (or the first it lacks of what that takes), in emeralds: opportunities for its idle hands.
      */
-    static Optional<Trade> forSignals(ServerLevel level, GlobalPos desk, Territory territory, GlobalPos bell,
+    static Map<Trade, Double> signals(ServerLevel level, GlobalPos desk, Territory territory, GlobalPos bell,
             Set<VillagerProfession> present) {
         var server = level.getServer();
-        java.util.List<dev.b28.enterprise.market.Exchange.Signal> signals = new java.util.ArrayList<>();
+        double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, level.getGameTime());
+        Map<Trade, Double> marbles = new java.util.LinkedHashMap<>();
         for (GlobalPos market : dev.b28.enterprise.caravan.Atlas.get(server).known(server, desk)) {
-            signals.addAll(dev.b28.enterprise.market.Exchange.get(server).signals(market));
+            for (var signal : dev.b28.enterprise.market.Exchange.get(server).signals(market)) {
+                tradeFor(List.of(signal.item()), territory, bell, present).ifPresent(trade ->
+                        marbles.merge(trade, (double) signal.count() * signal.spursEach() / rate, Double::sum));
+            }
         }
-        signals.sort(Comparator.comparingDouble((dev.b28.enterprise.market.Exchange.Signal s) -> -(double) s.count() * s.spursEach()));
-        return tradeFor(signals.stream().map(dev.b28.enterprise.market.Exchange.Signal::item).toList(), territory, bell,
-                present);
+        return marbles;
     }
 
     /** The first trade, for the first of these goods the town can't yet make or sell, that it should take on. */

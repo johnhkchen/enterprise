@@ -200,6 +200,31 @@ public final class TerritoryTests {
     }
 
     @GameTest(template = "floor")
+    public static void aGranaryBanksTheWheatTheWarehouseNeedNotKeep(GameTestHelper helper) {
+        Territory territory = new Territory();
+        GlobalPos bell = farm(helper, territory);
+        var works = dev.b28.enterprise.territory.Works.get(helper.getLevel().getServer());
+        works.finish(works.startBuilding(bell, dev.b28.enterprise.territory.Buildings.GRANARY,
+                helper.absolutePos(new BlockPos(1, 1, 1))));
+        BlockPos desk = helper.absolutePos(new BlockPos(5, 2, 5));
+        long t = helper.getLevel().getGameTime();
+        for (int i = 0; i < 6; i++) {
+            farmStock(helper).insert(new ItemStack(Items.WHEAT, 64));
+        }
+        territory.touch(helper.getLevel(), desk, farmStock(helper), t);
+        int loose = farmStock(helper).count(new ItemCost(Items.WHEAT, 1));
+        helper.assertTrue(loose == 128 && territory.grain(bell) == 256,
+                "two stacks kept loose, the rest banked: " + loose + " loose, " + territory.grain(bell) + " banked");
+        farmStock(helper).take(new ItemCost(Items.WHEAT, 1), 100);
+        territory.touch(helper.getLevel(), desk, farmStock(helper), t);
+        loose = farmStock(helper).count(new ItemCost(Items.WHEAT, 1));
+        helper.assertTrue(loose == 128 && territory.grain(bell) == 156,
+                "drawn on, the granary tops the warehouse up: " + loose + " loose, " + territory.grain(bell) + " banked");
+        works.forgetForTest(bell);
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void farmersTakeCoinsAtTheRegionsRate(GameTestHelper helper) {
         Territory territory = new Territory();
         GlobalPos bell = farm(helper, territory);

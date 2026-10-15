@@ -192,6 +192,23 @@ public final class LockerTrading {
             }
             runs.put(key, uses);
         }
+        // What it pays out in emeralds never takes its farmers' wages or its guards' pay (the payroll), whether the
+        // emeralds are loose in the warehouse or changed from coin: beyond that, and what it was paid up front.
+        double rate0 = dev.b28.enterprise.money.Mint.get(level.getServer())
+                .rate(dev.b28.enterprise.money.Mint.DEFAULT_FACTION, level.getGameTime());
+        int budget = (int) Math.floor(dev.b28.enterprise.money.Treasury.available(level, manager.desk(), stock, rate0)
+                - territory0(level).payroll(at)
+                + dev.b28.enterprise.contract.ContractBook.get(level.getServer()).advancesHeld(at));
+        for (MerchantOffer offer : offers) {
+            if (!offer.getBaseCostA().is(net.minecraft.world.item.Items.EMERALD)) {
+                continue;
+            }
+            int price = price(offer, reputation);
+            int can = price <= 0 ? runs.getOrDefault(TradeKeys.of(offer), 0)
+                    : Math.min(runs.getOrDefault(TradeKeys.of(offer), 0), Math.max(0, budget) / price);
+            runs.put(TradeKeys.of(offer), can);
+            budget -= can * price;
+        }
         // What these trades will pay out in emeralds: the Merchant changes coin for what the warehouse lacks, from
         // money beyond the town's reserve.
         int emeralds = offers.stream().filter(o -> o.getBaseCostA().is(net.minecraft.world.item.Items.EMERALD))
