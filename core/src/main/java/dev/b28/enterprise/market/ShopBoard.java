@@ -53,6 +53,8 @@ public final class ShopBoard extends SavedData {
     private static final String NAME = "enterprise_shop_board";
 
     public static final int SIZE = 3;
+    /** Comforts rank above the goods a town's lockers take, in its shop. */
+    private static final double COMFORT_FIRST = 1_000_000;
     /** A vendor's brass and glass, in emeralds. */
     public static final double VENDOR_EMERALDS = 4;
     /** The board is looked over at most this often. */
@@ -148,7 +150,8 @@ public final class ShopBoard extends SavedData {
             }
             // What's come in goes on the shelf at that price: a stack's worth, beyond what the town keeps for itself.
             int onShelf = shop.items.stream().filter(s -> s.is(listing.item())).mapToInt(ItemStack::getCount).sum();
-            int spare = Math.max(0, stock.count(new ItemCost(listing.item(), 1)) - keepFor(territory, desk, listing.item()));
+            int spare = Math.max(0, stock.count(new ItemCost(listing.item(), 1)) - keepFor(territory, desk, listing.item())
+                    - Desires.outlet(server, desk, null, listing.item(), now).map(Desires.Outlet::units).orElse(0));
             int top = Math.min(listing.item().getDefaultMaxStackSize() - onShelf, spare);
             if (top > 0) {
                 for (ItemStack goods : stock.take(new ItemCost(listing.item(), 1), top)) {
@@ -164,7 +167,10 @@ public final class ShopBoard extends SavedData {
         setDirty();
     }
 
-    /** What the town keeps of a comfort for its own villagers: the kind's par, in that good. */
+    /**
+     * What the town keeps of a comfort for its own villagers: the kind's par, in that good. (And on top of that, what
+     * the towns it supplies are short of: a wholesaler's stock is for them, not its shelf.)
+     */
     private static int keepFor(Territory territory, GlobalPos desk, Item item) {
         if (Comforts.kindOf(item).isEmpty()) {
             return Integer.MAX_VALUE; // a good its lockers use: none for sale
@@ -195,7 +201,8 @@ public final class ShopBoard extends SavedData {
                 continue; // it has some: the kind isn't missing
             }
             Item item = STANDS_FOR.get(want.getKey());
-            add(ranked, item, Desires.reckon(server, desk, item, now), want.getValue(), money, rate);
+            // Comforts first: it's the townsfolk's shop. Ranked above any good its lockers take.
+            add(ranked, item, Desires.reckon(server, desk, item, now), COMFORT_FIRST + want.getValue(), money, rate);
         }
         for (Item item : Caravans.wantedAt(server, desk)) {
             if (stock.count(new ItemCost(item, 1)) == 0 && Comforts.kindOf(item).isEmpty()) {
