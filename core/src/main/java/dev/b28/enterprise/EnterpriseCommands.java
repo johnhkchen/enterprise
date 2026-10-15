@@ -405,6 +405,10 @@ final class EnterpriseCommands {
                     territory.wagesPaid(bell), territory.wagesUnpaid(bell), territory.harvested(bell))), false);
         }
         source.sendSuccess(() -> Component.literal("  focus: " + territory.focus(bell).label()), false);
+        double[] homes = territory.households(bell);
+        source.sendSuccess(() -> Component.literal(("  households: purse %.1f emeralds, owed %.1f in credit, %d freehold "
+                + "plots, %.1f spent at the market; hands %s (wage x%.2f)").formatted(homes[0], homes[1], (int) homes[2],
+                homes[3], homes[4] > 1.01 ? "scarce" : homes[4] < 0.99 ? "idle" : "matched", homes[4])), false);
         source.sendSuccess(() -> Component.literal("  treasury %.1f emeralds at the market's last touch, %.1f kept back"
                 .formatted(territory.treasury(bell), territory.desk(bell).map(territory::reserve).orElse(0.0))), false);
         double mood = territory.mood(bell);

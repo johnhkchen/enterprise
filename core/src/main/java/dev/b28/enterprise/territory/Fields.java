@@ -139,6 +139,27 @@ public final class Fields {
     }
 
     /**
+     * A household's own field (see {@link Households}): the crop the town would buy (food alone while it grows or
+     * builds), on zoned ground near the bell. Paid for by the household, not the town. Returns the plots planted.
+     */
+    public static Optional<Integer> freehold(ServerLevel level, BlockPos bell, Focus focus, Map<String, Double> demand,
+            Map<String, Double> grown, MerchantStock stock) {
+        Optional<Item> crop = choose(demand, grown, stock, Map.of(), focus.foodOnly());
+        if (crop.isEmpty()) {
+            crop = Optional.of(Items.WHEAT); // nothing wanted in particular: bread keeps
+        }
+        Optional<BlockPos> site = Growth.farmSite(level, bell, SIZE, 8);
+        if (site.isEmpty()) {
+            return Optional.empty();
+        }
+        plant(level, site.get(), crop.get());
+        Enterprise.LOGGER.debug("Settlement at {}: a freehold field of {} at {}", bell.toShortString(),
+                BuiltInRegistries.ITEM.getKey(crop.get()), site.get().toShortString());
+        int water = crop.get() == Items.SUGAR_CANE ? SIZE * 3 : crop.get() == Items.SWEET_BERRIES ? 0 : 1;
+        return Optional.of(SIZE * SIZE - water);
+    }
+
+    /**
      * Plants a 9 x 9 field with its corner at ground level. Crops: farmland round a water block in the middle (it
      * waters 4 blocks out), seedlings on it. Sugar cane: three water channels with cane along both banks.
      */

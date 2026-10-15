@@ -571,6 +571,24 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   the roster. Before, the eastern towns lost half their people to the census (not to death) and couldn't grow.
 - Measured: a 20-day ridge run, every town keeps its villagers; only the trading pass town plants cane.
 
+## Wages stay in the world: households (built 2026-10-15)
+
+- A town's farm pay is its households' money, not a sink: wages go into their purse, and they spend it at the market,
+  paying the Merchant for the comforts the town uses, the food for a child, and (first, before the town's money) for
+  family homes and children. Wages are demand.
+- **Credit.** A Merchant short of coin pays its farmers in credit, up to 10 days of a customary wage (half the crop's
+  worth), and the harvest keeps coming. Beyond that, nobody works on credit: unpaid days go unworked, as before.
+- **Freeholds.** A household with 8 emeralds in purse and credit, where farmers have hands for a third of a field more,
+  buys a field of its own (credit first, then money paid to the market). On its own plots it takes at least three
+  quarters of the crop's worth.
+- **The wage follows the labour market.** The share moves toward the share of the harvest that sells, times how scarce
+  hands are: up to half again with plots going untended, down to half with hands idle.
+- Measured (ridge, forked from the era's day 0, 120 days, against the old system): 999 emeralds of wages, 516 spent
+  back at the markets and 483 still in purses (old: 715, gone); moods up in six of eight towns (Cloverby -0.75 to
+  +0.33, Meadowworth +0.97 to +1.63); unpaid wages 35 (old 41). No freehold bought: hands were scarce everywhere
+  (plots untended), so the east's limit is people, not land. Barleyby's farmers sat on 282 emeralds with little to
+  buy: nothing in the world makes comforts.
+
 ## Settlers (built 2026-10-15)
 
 - A town grown past growing (8 villagers or more, not short of food) raises a party of settlers: while it does, its

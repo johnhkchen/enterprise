@@ -49,6 +49,19 @@ public final class LabourTests {
     }
 
     @GameTest(template = "floor")
+    public static void wagesFollowTheLabourMarketAndOwnersTakeMore(GameTestHelper helper) {
+        helper.assertTrue(dev.b28.enterprise.territory.Households.tightness(100, 100, 0) == 1, "every hand busy, no plot idle");
+        helper.assertTrue(dev.b28.enterprise.territory.Households.tightness(100, 100, 50) == 1.5,
+                "plots going untended: hands are scarce, the wage rises (up to half again)");
+        helper.assertTrue(dev.b28.enterprise.territory.Households.tightness(100, 40, 0) == 0.5,
+                "hands idle: the wage falls (to half at most)");
+        helper.assertTrue(dev.b28.enterprise.territory.Households.share(0.25, 0) == 0.25, "hands on the estate: the wage");
+        helper.assertTrue(dev.b28.enterprise.territory.Households.share(0.25, 1) == 0.75, "owners take three quarters");
+        helper.assertTrue(dev.b28.enterprise.territory.Households.share(0.9, 1) == 0.9, "or the wage, if it's more");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aNitwitGathersWhatTheLandGives(GameTestHelper helper) {
         Territory territory = new Territory();
         GlobalPos bell = town(helper, territory, Labour.NITWIT);

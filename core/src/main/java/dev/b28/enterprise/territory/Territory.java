@@ -127,6 +127,11 @@ public final class Territory extends SavedData {
         long lastHarvest = -1;
         long tollsOwed;
         double wageOwed; // emeralds owed to the farmers, fractions carried
+        double purse; // the households' money: their wages, to spend at the market (see Households)
+        double credit; // pay the town owes its farmers, in emeralds
+        int freeholds; // plots the farmers own
+        double householdSpent; // emeralds the households have paid the market, in all
+        double labourTightness = 1; // how scarce farm hands are, from the last census
         double handTools; // tools given to the hands working its land: they gather more until worn out
         double wagesPaid; // emeralds' worth paid, in all
         double wagesUnpaid; // emeralds' worth that couldn't be paid: those days' produce was lost
@@ -231,7 +236,8 @@ public final class Territory extends SavedData {
     }
 
     private static double wagePerDay(Holding holding) {
-        return valuePerDay(holding.perDay) * holding.laborShare;
+        double plots = holding.perDay.values().stream().mapToDouble(Double::doubleValue).sum() / YIELD_PER_PLOT_PER_DAY;
+        return valuePerDay(holding.perDay) * Households.share(holding.laborShare, plots <= 0 ? 0 : holding.freeholds / plots);
     }
 
     /** What a day's harvest sells for at local buying prices, in emeralds. */
@@ -276,6 +282,12 @@ public final class Territory extends SavedData {
 
     public long harvested(GlobalPos bell) {
         return holding(bell).map(h -> h.harvested).orElse(0L);
+    }
+
+    /** {purse, credit owed them, freehold plots, spent at the market in all, labour tightness} of the town's households. */
+    public double[] households(GlobalPos bell) {
+        return holding(bell).map(h -> new double[] {h.purse, h.credit, h.freeholds, h.householdSpent, h.labourTightness})
+                .orElse(new double[] {0, 0, 0, 0, 1});
     }
 
     public double wagesUnpaid(GlobalPos bell) {
@@ -666,14 +678,18 @@ public final class Territory extends SavedData {
         holding.perDay = plan(level, bellPos.getY(), hexes(bell), farmers, holding.demand, Husbandry.feedDemand(holding.herd),
                 holding.idlePerDay, hands);
         double tended = holding.perDay.values().stream().mapToDouble(Double::doubleValue).sum() / YIELD_PER_PLOT_PER_DAY;
-        holding.spareFarmPlots = (int) Math.max(0,
-                hands * farmers.stream().mapToInt(l -> PLOTS_PER_FARMER_LEVEL * Math.max(1, l)).sum() - Math.round(tended));
+        double capacity = hands * farmers.stream().mapToInt(l -> PLOTS_PER_FARMER_LEVEL * Math.max(1, l)).sum();
+        holding.spareFarmPlots = (int) Math.max(0, capacity - Math.round(tended));
+        double untended = holding.idlePerDay.values().stream().mapToDouble(Double::doubleValue).sum() / YIELD_PER_PLOT_PER_DAY;
+        holding.labourTightness = Households.tightness(capacity, tended, untended);
+        holding.freeholds = (int) Math.min(holding.freeholds, Math.round(tended + untended)); // fields gone, titles with them
         if (holding.desk != null && level.isLoaded(holding.desk.pos())) {
             double plotsWorked = holding.perDay.values().stream().mapToDouble(Double::doubleValue).sum() / YIELD_PER_PLOT_PER_DAY;
             MerchantStock fieldStock = MerchantStock.at(level, holding.desk.pos());
             holding.focus = Focus.of(census.villagers(), census.beds(), fieldStock.foodNutrition());
             Fields.consider(level, bellPos, holding.desk, fieldStock, this, farmers, plotsWorked,
                     holding.demand, holding.perDay, holding.focus);
+            buyLand(level, bellPos, holding, fieldStock);
         }
         setDirty();
     }
@@ -818,8 +834,8 @@ public final class Territory extends SavedData {
                 holding.valuePerDay += (valuePerDay(holding.perDay) - holding.valuePerDay) * weight;
                 holding.salesSince = 0;
                 if (holding.valuePerDay > 0) {
-                    double target = Math.max(MIN_LABOR_SHARE,
-                            Math.min(MAX_LABOR_SHARE, holding.salesPerDay / holding.valuePerDay));
+                    double target = Math.max(MIN_LABOR_SHARE, Math.min(MAX_LABOR_SHARE,
+                            holding.salesPerDay / holding.valuePerDay * holding.labourTightness));
                     holding.laborShare += (target - holding.laborShare)
                             * (1 - Math.pow(0.5, days / SHARE_HALF_LIFE_DAYS));
                 }
@@ -831,7 +847,9 @@ public final class Territory extends SavedData {
     /**
      * Pays the farmers the whole emeralds owed: emeralds from the Merchant's chest first, then its coins at the
      * region's rate, then the settlement's Blaze Banker. Returns the share of the wage paid (1 when nothing whole is
-     * owed yet). Unpaid wages are forgiven: the farmers didn't work, and that part of the harvest is lost.
+     * owed yet). What's paid is the households' (see {@link Households}); what the Merchant can't pay it owes them as
+     * credit, up to {@link Households#CREDIT_DAYS} days' pay, and the farmers keep working. Beyond that, unpaid wages
+     * are forgiven: the farmers didn't work, and that part of the harvest is lost.
      */
     private double payWages(ServerLevel level, BlockPos desk, MerchantStock stock, Holding holding, long now) {
         int whole = (int) Math.floor(holding.wageOwed);
@@ -841,10 +859,15 @@ public final class Territory extends SavedData {
         Mint mint = Mint.get(level.getServer());
         double rate = mint.rate(Mint.DEFAULT_FACTION, now);
         double paid = Math.min(whole, Treasury.withdraw(level, desk, stock, whole, mint, now).value(rate));
+        holding.purse += paid; // the households' now: to spend at the market
+        // Short of coin, the Merchant pays in credit, as far as the farmers will wait.
+        double room = Math.max(0, Households.CREDIT_DAYS * valuePerDay(holding.perDay) * LABOR_SHARE - holding.credit);
+        double credited = Math.min(whole - paid, room);
+        holding.credit += credited;
         holding.wageOwed -= whole;
         holding.wagesPaid += paid;
-        holding.wagesUnpaid += whole - paid;
-        return paid / whole;
+        holding.wagesUnpaid += whole - paid - credited;
+        return (paid + credited) / whole;
     }
 
     /** The market at {@code desk} was touched: hand over the produce and tolls owed to its settlement. */
@@ -968,7 +991,8 @@ public final class Territory extends SavedData {
         holding.hunting = Smithing.hunting(stock, hunters);
         holding.armed = Smithing.armed(stock, holding.posts.size(), hunters,
                 holding.buildings.contains(Buildings.WATCHTOWER.id()) ? 0.5 : 0);
-        enjoyComforts(stock, holding, now);
+        // The comforts the town used: the households pay for them, as far as their purse goes.
+        householdsPay(level, desk, stock, holding, enjoyComforts(stock, holding, now));
         double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now);
         int bankSpurs = MoneyChanger.bankAt(level, desk).map(b -> b.getBalance()).orElse(0);
         holding.treasury = stock.count(new ItemCost(Items.EMERALD, 1))
@@ -1003,27 +1027,65 @@ public final class Territory extends SavedData {
      * last touch; rations that can't be met are gone without, not owed. Then the mood moves toward what that,
      * the town's size, its beds and its wages make it.
      */
-    private void enjoyComforts(MerchantStock stock, Holding holding, long now) {
+    /**
+     * A household with {@link Households#LAND_EMERALDS} in purse and credit, where the farmers have hands for a third
+     * of a field more, buys a field of its own: what the town owes it first, then its money, paid to the market.
+     */
+    private void buyLand(ServerLevel level, BlockPos bellPos, Holding holding, MerchantStock stock) {
+        if (holding.purse + holding.credit < Households.LAND_EMERALDS
+                || holding.spareFarmPlots < Fields.SIZE * Fields.SIZE / 3) {
+            return;
+        }
+        Optional<Integer> plots = Fields.freehold(level, bellPos, holding.focus, holding.demand, holding.perDay, stock);
+        if (plots.isEmpty()) {
+            return;
+        }
+        double fromCredit = Math.min(holding.credit, Households.LAND_EMERALDS);
+        holding.credit -= fromCredit;
+        double rest = Households.LAND_EMERALDS - fromCredit;
+        double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, level.getGameTime());
+        double paid = Households.payIn(level, holding.desk.pos(), stock, Math.min(rest, holding.purse), rate);
+        holding.purse -= paid;
+        holding.householdSpent += paid;
+        holding.freeholds += plots.get();
+        holding.fieldsPlanted++;
+        dev.b28.enterprise.Enterprise.LOGGER.debug("Settlement at {}: a household buys a field of its own ({} plots; {} freehold)",
+                bellPos.toShortString(), plots.get(), holding.freeholds);
+    }
+
+    /** The households pay the market for what they use, as far as their purse goes. */
+    private static void householdsPay(ServerLevel level, BlockPos desk, MerchantStock stock, Holding holding, double emeralds) {
+        double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, level.getGameTime());
+        double paid = Households.payIn(level, desk, stock, Math.min(holding.purse, emeralds), rate);
+        holding.purse -= paid;
+        holding.householdSpent += paid;
+    }
+
+    private double enjoyComforts(MerchantStock stock, Holding holding, long now) {
         if (holding.lastComforts < 0) {
             holding.lastComforts = now;
-            return;
+            return 0;
         }
         double days = Math.min(MAX_DAYS, (now - holding.lastComforts) / 24000.0);
         if (days <= 0) {
-            return;
+            return 0;
         }
         holding.lastComforts = now;
+        double used = 0;
         for (var kind : Comforts.kinds()) {
             String name = Comforts.name(kind);
             double due = holding.villagers * Comforts.RATION_EMERALDS * days;
             double owed = holding.comfortOwed.getOrDefault(name, 0.0) + due;
             if (owed > 0) {
-                owed -= Comforts.use(stock, kind, owed);
+                double took = Comforts.use(stock, kind, owed);
+                owed -= took;
+                used += took;
             }
             holding.comfortMet.put(name, due <= 0 ? 0 : Math.max(0, Math.min(1, 1 - Math.max(0, owed) / due)));
             holding.comfortOwed.put(name, Math.min(0, owed));
         }
         holding.mood += (moodTarget(holding) - holding.mood) * (1 - Math.pow(0.5, days / MOOD_HALF_LIFE_DAYS));
+        return used;
     }
 
     /** Where the town's mood is heading: comforts met, its wall and any blessing, less its size, villagers without beds, unpaid wages. */
@@ -1067,12 +1129,16 @@ public final class Territory extends SavedData {
         if (holding.mood >= Growth.HOME_MOOD && census.villagers() >= census.beds()) {
             holding.homeProgress = Math.min(1, holding.homeProgress + days / Growth.DAYS_PER_HOME);
         }
-        if (holding.homeProgress >= 1
-                && Treasury.available(level, desk, stock, rate) - reserve(holding.desk) >= Growth.HOME_EMERALDS) {
+        if (holding.homeProgress >= 1 && holding.purse
+                + Treasury.available(level, desk, stock, rate) - reserve(holding.desk) >= Growth.HOME_EMERALDS) {
             Optional<BlockPos> site = Growth.homeSite(level, bell);
             if (site.isPresent()) {
                 Growth.buildHome(level, site.get());
-                Treasury.withdraw(level, desk, stock, Growth.HOME_EMERALDS, mint, now);
+                // A family's home, paid for by the households as far as they can; the town pays the rest.
+                double theirs = Math.min(holding.purse, Growth.HOME_EMERALDS);
+                holding.purse -= theirs;
+                holding.householdSpent += theirs;
+                Treasury.withdraw(level, desk, stock, Growth.HOME_EMERALDS - theirs, mint, now);
                 holding.homeProgress = 0;
                 holding.homesBuilt++;
                 dev.b28.enterprise.Enterprise.LOGGER.debug("Settlement at {} built a home at {}",
@@ -1085,9 +1151,15 @@ public final class Territory extends SavedData {
         }
         if (holding.birthProgress >= 1
                 && stock.foodNutrition() >= dev.b28.enterprise.merchant.Warehouse.FOOD_PAR_POINTS + Growth.BIRTH_FOOD_POINTS
-                && Treasury.available(level, desk, stock, rate) - reserve(holding.desk) >= Growth.BIRTH_EMERALDS) {
+                && holding.purse + Treasury.available(level, desk, stock, rate) - reserve(holding.desk) >= Growth.BIRTH_EMERALDS) {
             stock.eat(Growth.BIRTH_FOOD_POINTS);
-            Treasury.withdraw(level, desk, stock, Growth.BIRTH_EMERALDS, mint, now);
+            // The family pays the market for the food, and what it can of the rest; the town the remainder.
+            householdsPay(level, desk, stock, holding, Growth.BIRTH_FOOD_POINTS / 5.0
+                    * dev.b28.enterprise.money.Prices.emeraldsEach(Items.BREAD));
+            double theirs = Math.min(holding.purse, Growth.BIRTH_EMERALDS);
+            holding.purse -= theirs;
+            holding.householdSpent += theirs;
+            Treasury.withdraw(level, desk, stock, Growth.BIRTH_EMERALDS - theirs, mint, now);
             Growth.bear(level, bell);
             holding.birthProgress = 0;
             holding.born++;
@@ -1424,6 +1496,11 @@ public final class Territory extends SavedData {
             entry.putLong("lastHarvest", holding.lastHarvest);
             entry.putLong("tollsOwed", holding.tollsOwed);
             entry.putDouble("wageOwed", holding.wageOwed);
+            entry.putDouble("purse", holding.purse);
+            entry.putDouble("credit", holding.credit);
+            entry.putInt("freeholds", holding.freeholds);
+            entry.putDouble("householdSpent", holding.householdSpent);
+            entry.putDouble("labourTightness", holding.labourTightness);
             entry.putDouble("handTools", holding.handTools);
             entry.putDouble("wagesPaid", holding.wagesPaid);
             entry.putDouble("wagesUnpaid", holding.wagesUnpaid);
@@ -1556,6 +1633,11 @@ public final class Territory extends SavedData {
                 holding.lastHarvest = entry.getLong("lastHarvest");
                 holding.tollsOwed = entry.getLong("tollsOwed");
                 holding.wageOwed = entry.getDouble("wageOwed");
+                holding.purse = entry.getDouble("purse");
+                holding.credit = entry.getDouble("credit");
+                holding.freeholds = entry.getInt("freeholds");
+                holding.householdSpent = entry.getDouble("householdSpent");
+                holding.labourTightness = entry.contains("labourTightness") ? entry.getDouble("labourTightness") : 1;
                 holding.handTools = entry.getDouble("handTools");
                 holding.wagesPaid = entry.getDouble("wagesPaid");
                 holding.wagesUnpaid = entry.getDouble("wagesUnpaid");

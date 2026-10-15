@@ -171,13 +171,23 @@ public final class TerritoryTests {
     }
 
     @GameTest(template = "floor")
-    public static void unpaidFarmersDontWork(GameTestHelper helper) {
+    public static void unpaidFarmersWorkOnCreditThenStop(GameTestHelper helper) {
         Territory territory = new Territory();
         GlobalPos bell = farm(helper, territory);
         long t = helper.getLevel().getGameTime();
-        territory.touch(helper.getLevel(), helper.absolutePos(new BlockPos(5, 2, 5)), farmStock(helper), t + 10 * 24000);
-        helper.assertTrue(farmStock(helper).count(new ItemCost(Items.WHEAT, 1)) == 0, "no pay, no harvest");
-        helper.assertTrue(territory.wagesUnpaid(bell) >= 1, "the unpaid wage is recorded");
+        BlockPos desk = helper.absolutePos(new BlockPos(5, 2, 5));
+        double perDay = territory.farmPlan(bell).get("minecraft:wheat");
+        double cap = dev.b28.enterprise.territory.Households.CREDIT_DAYS * perDay / 20 * Territory.LABOR_SHARE; // 20 to the emerald
+        territory.touch(helper.getLevel(), desk, farmStock(helper), t + 10 * 24000L);
+        helper.assertTrue(farmStock(helper).count(new ItemCost(Items.WHEAT, 1)) == (int) Math.floor(perDay * 10),
+                "no coin in the chest: the farmers work on credit, the whole harvest in");
+        helper.assertTrue(territory.households(bell)[1] >= 1, "the town owes them: " + territory.households(bell)[1]);
+        for (int touch = 2; touch <= 8; touch++) {
+            territory.touch(helper.getLevel(), desk, farmStock(helper), t + touch * 10 * 24000L);
+        }
+        helper.assertTrue(territory.households(bell)[1] <= cap + 1e-9,
+                "credit stops at ten days' customary pay: " + territory.households(bell)[1] + " of " + cap);
+        helper.assertTrue(territory.wagesUnpaid(bell) >= 1, "then the unpaid days go unworked, recorded");
         helper.succeed();
     }
 
@@ -222,7 +232,9 @@ public final class TerritoryTests {
     @GameTest(template = "floor")
     public static void wagesClimbTowardEverythingTheHarvestSellsFor(GameTestHelper helper) {
         double share = tenDays(helper, true);
-        helper.assertTrue(share > 0.9, "farmers' share climbs toward 100% when the whole harvest sells: " + share);
+        // Toward what sells (all of it), less for the hands this little farm leaves idle (the labour market).
+        helper.assertTrue(share > Territory.LABOR_SHARE + 0.05,
+                "farmers' share climbs when the whole harvest sells: " + share);
         helper.succeed();
     }
 
