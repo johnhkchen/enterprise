@@ -30,6 +30,13 @@ public final class JobsTests {
         helper.assertTrue(Jobs.best(Map.of("minecraft:carrot", 2.0), Set.of()).orElseThrow().profession()
                 == VillagerProfession.FARMER, "carrots: a Farmer");
         helper.assertTrue(Jobs.best(Map.of(), Set.of()).isEmpty(), "nothing to sell: no stall");
+        // Untended plots worth more than what the best new buyer would take: another Farmer, though the town has one.
+        helper.assertTrue(dev.b28.enterprise.territory.Jobs.forFields(Map.of("minecraft:wheat", 40.0), 1.0)
+                .filter(t -> t.profession() == VillagerProfession.FARMER).isPresent(), "40 wheat a day untended: a Farmer");
+        helper.assertTrue(dev.b28.enterprise.territory.Jobs.forFields(Map.of("minecraft:wheat", 40.0), 100.0).isEmpty(),
+                "a buyer for 100 emeralds of its goods comes first");
+        helper.assertTrue(dev.b28.enterprise.territory.Jobs.forFields(Map.of("minecraft:wheat", 4.0), 0.0).isEmpty(),
+                "a few plots idle: not worth a hand");
         helper.succeed();
     }
 

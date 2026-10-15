@@ -88,6 +88,29 @@ public final class Jobs {
                 .map(Map.Entry::getKey);
     }
 
+    /** The worth of the town's supply a trade's villagers would buy, in emeralds. */
+    static double buys(Trade trade, Map<String, Double> supply) {
+        return trade.buys().stream()
+                .mapToDouble(item -> supply.getOrDefault(BuiltInRegistries.ITEM.getKey(item).toString(), 0.0)).sum();
+    }
+
+    /** Idle plots must yield at least this much a day, in emeralds, to be worth another Farmer. */
+    public static final double FARMER_IDLE_EMERALDS = 0.5;
+
+    /**
+     * Another Farmer, where the town's plots stand untended: when what they'd yield in 4 days (as {@link #supply} counts
+     * a town's farms) is worth more than what the best new trade's villagers would buy, and at least
+     * {@link #FARMER_IDLE_EMERALDS} a day. A town short of hands for its land takes on hands before buyers.
+     */
+    public static Optional<Trade> forFields(Map<String, Double> idlePerDay, double bestBuyer) {
+        double idle = idlePerDay.entrySet().stream()
+                .mapToDouble(e -> e.getValue() / Prices.itemsPerEmerald(e.getKey())).sum();
+        if (idle < FARMER_IDLE_EMERALDS || idle * 4 <= bestBuyer) {
+            return Optional.empty();
+        }
+        return TRADES.stream().filter(t -> t.profession() == VillagerProfession.FARMER).findFirst();
+    }
+
     /**
      * When counted while loaded: an unemployed adult of the town (on its census roster) gets a stall for the best trade, if there's open
      * ground for it and {@link #STALL_EMERALDS} to spare beyond the reserve. One a count.
@@ -113,9 +136,13 @@ public final class Jobs {
                 .values().forEach(r -> BuiltInRegistries.VILLAGER_PROFESSION.getOptional(
                         net.minecraft.resources.ResourceLocation.parse(r.profession())).ifPresent(present::add));
         GlobalPos bellPos = GlobalPos.of(level.dimension(), bell);
+        Map<String, Double> supply = supply(territory.farmPlan(bellPos), stock);
+        Optional<Trade> buyer = best(supply, present);
+        double buys = buyer.map(t -> buys(t, supply)).orElse(0.0);
         Optional<Trade> trade = forContracts(level, desk, territory, bellPos, present)
                 .or(() -> forSignals(level, desk, territory, bellPos, present))
-                .or(() -> best(supply(territory.farmPlan(bellPos), stock), present));
+                .or(() -> forFields(territory.idlePlots(bellPos), buys))
+                .or(() -> buyer);
         Optional<BlockPos> site = trade.isPresent() ? Growth.site(level, bell, STALL_SIZE, NEAREST) : Optional.empty();
         if (site.isEmpty()) {
             return Optional.empty();

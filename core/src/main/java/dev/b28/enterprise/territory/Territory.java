@@ -136,6 +136,7 @@ public final class Territory extends SavedData {
         double wagesPaid; // emeralds' worth paid, in all
         double wagesUnpaid; // emeralds' worth that couldn't be paid: those days' produce was lost
         long harvested; // items delivered to the Merchant's chest, in all
+        double farmXp; // experience the Farmers earned with their harvest, not yet given them
         double laborShare = LABOR_SHARE;
         double salesSince; // emeralds from selling crops since the last accrual
         double salesPerDay; // averaged
@@ -224,6 +225,11 @@ public final class Territory extends SavedData {
 
     public double nextHexCost(GlobalPos bell) {
         return CULTURE_PER_HEX * Math.max(1, hexes(bell).size());
+    }
+
+    /** What the plots no one tends would yield a day, by crop id. */
+    public Map<String, Double> idlePlots(GlobalPos bell) {
+        return holding(bell).map(h -> Map.copyOf(h.idlePerDay)).orElse(Map.of());
     }
 
     public Map<String, Double> farmPlan(GlobalPos bell) {
@@ -699,6 +705,43 @@ public final class Territory extends SavedData {
         setDirty();
     }
 
+    /**
+     * Experience a Farmer earns for each emerald's worth of harvest it brings in: as a Novice's trade of crops for an
+     * emerald gives (vanilla's 2), and a little over, since it grew them too.
+     */
+    public static final double HARVEST_XP_PER_EMERALD = 3;
+
+    /**
+     * The Farmers of the town (loaded, on its roster) take the experience their harvest earned, shared out, and rise
+     * a level when it's enough, as for a trade: a Farmer gets better by farming, not only by selling at its locker.
+     */
+    private void farmersLearn(ServerLevel level, BlockPos bell, Holding holding) {
+        int xp = (int) Math.floor(holding.farmXp);
+        if (xp <= 0) {
+            return;
+        }
+        var residents = dev.b28.enterprise.settlement.Settlements.get(level.getServer())
+                .roster(GlobalPos.of(level.dimension(), bell)).keySet();
+        List<net.minecraft.world.entity.npc.Villager> farmers = level.getEntitiesOfClass(
+                net.minecraft.world.entity.npc.Villager.class, new net.minecraft.world.phys.AABB(bell).inflate(64),
+                v -> !v.isBaby() && residents.contains(v.getUUID())
+                        && v.getVillagerData().getProfession() == net.minecraft.world.entity.npc.VillagerProfession.FARMER);
+        if (farmers.isEmpty()) {
+            return; // not loaded: it waits for them
+        }
+        int each = xp / farmers.size();
+        if (each <= 0) {
+            return;
+        }
+        for (var farmer : farmers) {
+            farmer.setVillagerXp(farmer.getVillagerXp() + each);
+            while (farmer.shouldIncreaseLevel()) {
+                farmer.increaseMerchantCareer();
+            }
+        }
+        holding.farmXp -= each * farmers.size();
+    }
+
     /** Spends culture on the nearest unclaimed neighbouring hexes, one at a time. */
     private void grow(GlobalPos bell, Hex home) {
         Holding holding = holdings.get(bell);
@@ -1034,6 +1077,10 @@ public final class Territory extends SavedData {
             }
             owed.setValue(owed.getValue() - (whole - left));
             holding.harvested += whole - left;
+            if (isCrop(owed.getKey())) {
+                // The Farmers learn their trade by working it: the harvest earns them what selling it would.
+                holding.farmXp += (whole - left) * Prices.emeraldsEach(item) * HARVEST_XP_PER_EMERALD;
+            }
         }
         holding.paidShare = paidShare;
         Workshop.convert(level, dev.b28.enterprise.merchant.Warehouse.get(level.getServer()), at, bell.get(), stock, now);
@@ -1173,6 +1220,7 @@ public final class Territory extends SavedData {
         // (its idle hands wait for that).
         var expeditions = dev.b28.enterprise.caravan.Expeditions.get(level.getServer());
         boolean raising = expeditions.raising(holding.desk, holding.focus, census.villagers(), level.getGameTime());
+        farmersLearn(level, bell, holding);
         if (dev.b28.enterprise.caravan.Commissions.train(level, holding.desk, bell, stock, this).isEmpty()
                 && !dev.b28.enterprise.caravan.Commissions.squadShort(level, holding.desk, bell) && !raising) {
             Jobs.employ(level, bell, holding.desk, stock, this);
@@ -1563,6 +1611,7 @@ public final class Territory extends SavedData {
             entry.putDouble("wagesPaid", holding.wagesPaid);
             entry.putDouble("wagesUnpaid", holding.wagesUnpaid);
             entry.putLong("harvested", holding.harvested);
+            entry.putDouble("farmXp", holding.farmXp);
             entry.putDouble("laborShare", holding.laborShare);
             entry.putDouble("salesSince", holding.salesSince);
             entry.putDouble("salesPerDay", holding.salesPerDay);
@@ -1700,6 +1749,7 @@ public final class Territory extends SavedData {
                 holding.wagesPaid = entry.getDouble("wagesPaid");
                 holding.wagesUnpaid = entry.getDouble("wagesUnpaid");
                 holding.harvested = entry.getLong("harvested");
+                holding.farmXp = entry.getDouble("farmXp");
                 if (entry.contains("laborShare")) {
                     holding.laborShare = entry.getDouble("laborShare");
                 }
