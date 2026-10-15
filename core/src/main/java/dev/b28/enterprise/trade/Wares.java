@@ -11,8 +11,8 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 /**
  * Wares: goods the villager economy doesn't make, standing in for the crafting chains the pack will bring later. Each
  * is an ordinary item with a price, so it rides the whole framework (warehouses, caravans, contracts, comforts); the
- * chain behind it is nominal for now. Tobacco: the coast realm grows and cures the leaf; a Butcher's
- * smokehouse (or the coast's own works) turns leaf into pipe tobacco, a comfort of its own kind, leisure.
+ * chain behind it is nominal for now. Tobacco: the Coast grows and cures the leaf and makes the pipe tobacco our
+ * villagers enjoy, a comfort of its own kind (leisure); none of our trades makes it, so it's imported.
  */
 public final class Wares {
     private static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(Enterprise.MOD_ID);

@@ -999,6 +999,29 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void aForeignRealmSendsItsOwnTraders(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 640);
+        var server = helper.getLevel().getServer();
+        GlobalPos dest = net.route().to();
+        // A locker of the town's buys leather: the March has it.
+        MerchantBook.get(server).setEnabled(dest, helper.absolutePos(new BlockPos(5, 2, 6)),
+                "minecraft:leather+>minecraft:emerald", true);
+        var realms = dev.b28.enterprise.trade.Realms.get(server);
+        var realm = realms.open(helper.getLevel(), "march", dest.pos().offset(64, 0, 0), 2000, List.of(dest));
+        var ledger = CaravanLedger.get(server);
+        var road = ledger.route(realm.home(), dest).orElseThrow();
+        long t = helper.getLevel().getGameTime();
+        for (long at = t; at <= t + 6000 && road.trips() == 0; at += 100) {
+            Caravans.poll(server, ledger, net.territory(), at);
+        }
+        helper.assertTrue(net.dest().count(new ItemCost(Items.LEATHER, 1)) > 0, "the March's caravan sold its leather here");
+        helper.assertTrue(road.trips() >= 1, "and went home: " + road.trips() + " trips, " + road.status());
+        helper.assertTrue(road.salesSpurs() > 0, "paid for: " + road.salesSpurs() + " spurs");
+        ledger.removeRoute(road.id());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aCaravanFetchesHomeCratesMadeOutToIt(GameTestHelper helper) {
         Network net = network(helper, 4, 5, 192);
         GlobalPos hub = net.route().from();

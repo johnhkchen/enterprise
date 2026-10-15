@@ -16,8 +16,8 @@ import net.minecraft.world.item.trading.ItemCost;
 /**
  * A town's trades turning raw goods into the goods they deal in, in the warehouse: Librarians and Cartographers press
  * sugar cane into paper while paper is short, Farmers bake wheat into bread while food is short, and the town's own
- * comforts: biscuits (a baker's: wheat sweetened with cane), books (paper bound in leather), carpets (wool), boots
- * (leather), pipe tobacco (leaf cured in a Butcher's smokehouse). A conversion runs only if a villager of its trade
+ * comforts: biscuits (a Farmer's: wheat sweetened with cane), books (a Librarian's: paper bound in leather), carpets
+ * (a Shepherd's, of wool), boots (a Leatherworker's). A conversion runs only if a villager of its trade
  * lives in the town (by its roster). Comforts are made up to the town's own par, and as much again for each run its
  * caravans make to other towns: what it makes, it can sell.
  */
@@ -39,9 +39,7 @@ public final class Workshop {
             new Conversion(Set.of("minecraft:leatherworker"), Items.LEATHER, 4, Items.LEATHER_BOOTS, 1),
             new Conversion(Set.of("minecraft:fisherman"), Items.COD, 1, Items.COOKED_COD, 1),
             new Conversion(Set.of("minecraft:farmer"), Items.WHEAT, 2, Items.SUGAR_CANE, 1, Items.COOKIE, 4),
-            new Conversion(Set.of("minecraft:librarian"), Items.PAPER, 3, Items.LEATHER, 1, Items.BOOK, 1),
-            new Conversion(Set.of("minecraft:butcher"), dev.b28.enterprise.trade.Wares.TOBACCO_LEAF.get(), 2,
-                    dev.b28.enterprise.trade.Wares.PIPE_TOBACCO.get(), 1));
+            new Conversion(Set.of("minecraft:librarian"), Items.PAPER, 3, Items.LEATHER, 1, Items.BOOK, 1));
 
     private Workshop() {}
 

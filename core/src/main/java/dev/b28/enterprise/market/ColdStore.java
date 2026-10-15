@@ -57,6 +57,9 @@ public final class ColdStore {
 
     /** The Merchant at {@code desk} makes room, if it's short. Returns slots freed. */
     public static int tidy(ServerLevel level, GlobalPos desk, MerchantStock stock, long now) {
+        if (dev.b28.enterprise.merchant.OffMap.get(level.getServer()).is(desk)) {
+            return 0; // a market off the map keeps its own house
+        }
         MinecraftServer server = level.getServer();
         if (OffMap.get(server).is(desk)) {
             return 0;

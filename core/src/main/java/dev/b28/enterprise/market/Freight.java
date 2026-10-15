@@ -498,6 +498,9 @@ public final class Freight extends SavedData {
      */
     void considerHub(ServerLevel level, GlobalPos market, long now) {
         MinecraftServer server = level.getServer();
+        if (dev.b28.enterprise.merchant.OffMap.get(server).is(market)) {
+            return; // off the map: no storehouse to build here
+        }
         List<Route> passing = through(server, market);
         if (passing.isEmpty()) {
             return;

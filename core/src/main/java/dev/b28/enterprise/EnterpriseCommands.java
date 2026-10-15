@@ -77,6 +77,34 @@ final class EnterpriseCommands {
                                     context.getSource().sendSuccess(() -> Component.literal(done + " chunks surveyed"), false);
                                     return done;
                                 }))))
+                .then(Commands.literal("realms").executes(context -> {
+                    // The realms beyond the border: their trade with ours, and the customs paid.
+                    var lines = dev.b28.enterprise.trade.Realms.get(context.getSource().getServer())
+                            .report(context.getSource().getServer());
+                    context.getSource().sendSuccess(() -> Component.literal("Realms (%d):\n  ".formatted(lines.size())
+                            + String.join("\n  ", lines)), false);
+                    return lines.size();
+                })
+                        .then(Commands.literal("open")
+                                .then(Commands.argument("realm", com.mojang.brigadier.arguments.StringArgumentType.word())
+                                        .then(Commands.argument("home", BlockPosArgument.blockPos())
+                                                .then(Commands.argument("partners", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+                                                        .executes(context -> {
+                    // Opens a realm's market off the map at {home}, trading with the desks listed ("x y z; x y z").
+                    var level = context.getSource().getLevel();
+                    String id = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "realm");
+                    var home = BlockPosArgument.getBlockPos(context, "home");
+                    java.util.List<net.minecraft.core.GlobalPos> partners = new java.util.ArrayList<>();
+                    for (String part : com.mojang.brigadier.arguments.StringArgumentType.getString(context, "partners").split(";")) {
+                        String[] xyz = part.trim().split("\\s+");
+                        partners.add(net.minecraft.core.GlobalPos.of(level.dimension(), new net.minecraft.core.BlockPos(
+                                Integer.parseInt(xyz[0]), Integer.parseInt(xyz[1]), Integer.parseInt(xyz[2]))));
+                    }
+                    var realm = dev.b28.enterprise.trade.Realms.get(level.getServer()).open(level, id, home, 20000, partners);
+                    context.getSource().sendSuccess(() -> Component.literal("%s opens trade with %d of our markets"
+                            .formatted(realm.name(), partners.size())), false);
+                    return 1;
+                }))))))
                 .then(Commands.literal("expeditions").executes(context -> {
                     // Settlers on the road, and the villages settled and towns founded.
                     var server = context.getSource().getServer();

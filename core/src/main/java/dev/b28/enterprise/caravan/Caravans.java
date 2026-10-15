@@ -101,6 +101,10 @@ public final class Caravans {
     static final TicketType<ChunkPos> CARAVAN =
             TicketType.create("enterprise_caravan", Comparator.comparingLong(ChunkPos::toLong), TICKET_TICKS);
 
+    /** A foreign realm's Merchants haggle as Experts, and two of its people go with each caravan or fleet. */
+    static final int FOREIGN_MERCHANT_LEVEL = 4;
+    static final int FOREIGN_CREW = 2;
+
     private Caravans() {}
 
     public static int foodNeeded(int distance) {
@@ -168,13 +172,16 @@ public final class Caravans {
         if (level == null || !ensureLoaded(level, route.from.pos())) {
             return false;
         }
-        var hubMerchant = Merchant.workingAt(level, route.from.pos(), Lockers.MERCHANT_RANGE);
-        if (hubMerchant.isEmpty()) {
+        // A foreign realm's market (off the map) sends its own traders: its Merchant and crew are its own, never seen.
+        boolean foreign = dev.b28.enterprise.trade.Realms.get(server).isForeign(route.from);
+        var hubMerchant = foreign ? java.util.Optional.<net.minecraft.world.entity.npc.Villager>empty()
+                : Merchant.workingAt(level, route.from.pos(), Lockers.MERCHANT_RANGE);
+        if (!foreign && hubMerchant.isEmpty()) {
             route.status = "no Merchant at the hub";
             ledger.setDirty();
             return false;
         }
-        Warehouse.get(server).recordLevel(route.from, hubMerchant.get().getVillagerData().getLevel());
+        Warehouse.get(server).recordLevel(route.from, foreign ? FOREIGN_MERCHANT_LEVEL : hubMerchant.get().getVillagerData().getLevel());
         MerchantStock stock = MerchantStock.at(level, route.from.pos());
         territory.touch(level, route.from.pos(), stock);
         Mint mint = Mint.get(server);
@@ -182,7 +189,7 @@ public final class Caravans {
         // By land, and (if a Fisherman could captain it) by boat: is the water way better?
         List<net.minecraft.world.entity.npc.Villager> home = Squad.available(level, route.from, Squad.reach());
         RoutePlanner.Plan byLand = plan(server, territory, route, rate, false);
-        boolean captain = home.stream().anyMatch(v -> Squad.trade(v).equals(Squad.FISHERMAN));
+        boolean captain = foreign || home.stream().anyMatch(v -> Squad.trade(v).equals(Squad.FISHERMAN));
         RoutePlanner.Plan byBoat = captain ? plan(server, territory, route, rate, true) : byLand;
         boolean water = byBoat.found() && waterHexes(server, route.from.dimension(), byBoat.path()) > 0
                 && (!byLand.found() || byBoat.cost() < byLand.cost());
@@ -206,7 +213,7 @@ public final class Caravans {
         int extras = (int) Math.max(0, home.size() - waiting);
         List<net.minecraft.world.entity.npc.Villager> mustered =
                 Squad.muster(level, route.from, Squad.reach(), needs, extras);
-        if (mustered.isEmpty()) {
+        if (mustered.isEmpty() && !foreign) {
             // No one to lead it: the Merchant takes on a hand of the town waiting for work, if it can pay one.
             int routes = (int) ledger.routes().stream().filter(r -> r.from.equals(route.from) && !r.stopping).count();
             int out = (int) ledger.routes().stream()
@@ -218,12 +225,12 @@ public final class Caravans {
                 mustered = Squad.muster(level, route.from, Squad.reach(), needs, extras);
             }
         }
-        if (mustered.isEmpty()) {
+        if (mustered.isEmpty() && !foreign) {
             route.status = "no squad at home: no hand waiting for work to take on as a travelling Merchant, or no money to pay one";
             ledger.setDirty();
             return false;
         }
-        boolean boat = mustered.stream().anyMatch(v -> Squad.trade(v).equals(Squad.FISHERMAN)) && water;
+        boolean boat = (foreign || mustered.stream().anyMatch(v -> Squad.trade(v).equals(Squad.FISHERMAN))) && water;
         if (captain || waterHexes(server, route.from.dimension(), byLand.path()) > 0 || !byLand.found()) {
             Enterprise.LOGGER.debug("Route {}: by land {} ({} hexes, {}), by boat {} ({} hexes, {}); captain {}, mustered {}",
                     route.id, byLand.found(), byLand.path().size(), Math.round(byLand.cost()), byBoat.found(),
@@ -247,7 +254,7 @@ public final class Caravans {
             members--;
         }
         List<net.minecraft.world.entity.npc.Villager> squad = List.copyOf(mustered.subList(0, members));
-        int food = foodNeeded(route.distance()) * squad.size();
+        int food = foodNeeded(route.distance()) * (foreign ? FOREIGN_CREW : squad.size());
         // Where the far end won't or can't feed the squad for the road home (the front sells nothing; a town may be
         // short), it takes that food along too, if a caravan can carry both legs'.
         // (what other caravans on their way there will buy of its food first doesn't count)
@@ -343,7 +350,7 @@ public final class Caravans {
         cargo.addAll(dev.b28.enterprise.contract.Bills.takeBillsOn(stock, route.to)); // bills to present there
         List<CompoundTag> recruits = toFront ? army.embark(Integer.MAX_VALUE) : List.of(); // to the war, with the kit
         Caravan leaving = new Caravan(route.id, Caravan.Leg.OUTBOUND, now + (long) (travelTicks(route.distance()) / pace),
-                cargo, spurs, Squad.haggleLevel(crew));
+                cargo, spurs, foreign ? FOREIGN_MERCHANT_LEVEL : Squad.haggleLevel(crew));
         leaving.pace = pace;
         leaving.crew.addAll(crew);
         // Fishermen fish the water they cross: a catch for each on each water hex, sold where food is short.
@@ -482,7 +489,10 @@ public final class Caravans {
             }
             collectExWorks(server, level, route, stock, caravan, mint, rate, now);
             Map<Item, double[]> sold = new LinkedHashMap<>();
-            earned += sell(server, level, route.to, stock, caravan, residentLevel, mint, rate, now, route, territory, sold);
+            int takings = sell(server, level, route.to, stock, caravan, residentLevel, mint, rate, now, route, territory, sold);
+            // A foreign trader pays the crown's customs on what it sells inside the realm.
+            takings -= dev.b28.enterprise.trade.Realms.get(server).customs(server, route.from, takings);
+            earned += takings;
             caravan.spurs += earned;
             route.salesSpurs += earned;
             // Then the squad's services: deals, droving, the survey and the books, a blessing, help with the harvest...
@@ -1701,6 +1711,22 @@ public final class Caravans {
     public static Set<Item> wantedAt(MinecraftServer server, GlobalPos desk) {
         MerchantBook book = MerchantBook.get(server);
         Set<Item> items = new LinkedHashSet<>(Warehouse.get(server).inputs(desk).keySet());
+        // A foreign realm wants what its people can't make.
+        dev.b28.enterprise.trade.Realms.get(server).of(desk).ifPresent(realm -> items.addAll(realm.wants()));
+        // What the town's own workshop turns into its goods: the inputs of each conversion a resident's trade can do.
+        Territory.get(server).bellOf(desk).ifPresent(bell -> {
+            Set<String> trades = new java.util.HashSet<>();
+            dev.b28.enterprise.settlement.Settlements.get(server).roster(bell).values()
+                    .forEach(r -> trades.add(r.profession()));
+            for (var conversion : dev.b28.enterprise.territory.Workshop.CONVERSIONS) {
+                if (conversion.trades().stream().anyMatch(trades::contains)) {
+                    items.add(conversion.input());
+                    if (conversion.input2() != null) {
+                        items.add(conversion.input2());
+                    }
+                }
+            }
+        });
         // Stationery, where it draws up papers enough to keep some on hand.
         if (dev.b28.enterprise.cargo.Paperwork.get(server).busy(desk, server.overworld().getGameTime())) {
             items.addAll(List.of(Items.PAPER, Items.INK_SAC, Items.FEATHER));
