@@ -98,7 +98,7 @@ public final class Caravans {
 
     private static final long POLL_TICKS = 100;
     private static final int TICKET_TICKS = 200;
-    private static final TicketType<ChunkPos> CARAVAN =
+    static final TicketType<ChunkPos> CARAVAN =
             TicketType.create("enterprise_caravan", Comparator.comparingLong(ChunkPos::toLong), TICKET_TICKS);
 
     private Caravans() {}

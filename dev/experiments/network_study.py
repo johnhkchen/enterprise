@@ -97,8 +97,7 @@ def rcon(*commands):
                     rcon_client.packet(_sock, 1, 3, rcon_client.PASSWORD)
                     if rcon_client.read(_sock)[0] == -1:
                         sys.exit("RCON login failed")
-                rcon_client.packet(_sock, 2, 2, command.removeprefix("/"))
-                out.append(f"> {command}\n{rcon_client.read(_sock)[1]}\n")
+                out.append(f"> {command}\n{rcon_client.command(_sock, 2, command)}\n")
                 break
             except (OSError, ConnectionError):
                 _sock = None

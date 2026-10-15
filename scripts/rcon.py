@@ -26,6 +26,26 @@ def read(sock: socket.socket) -> tuple[int, str]:
     return request_id, data[8:-2].decode(errors="replace")
 
 
+MARKER = 0x7E57
+
+
+def command(sock: socket.socket, request_id: int, text: str) -> str:
+    """Runs a command and returns its whole reply. The server splits a long reply into 4 KB packets with no end
+    mark, so a request of an unknown kind follows it: the server answers that only once the reply is all sent, and
+    everything before its answer is the reply. (Reading one packet left the rest to be taken for the next reply.)"""
+    packet(sock, request_id, 2, text.removeprefix("/"))
+    # Only once the reply has begun: the server reads one packet per read, and drops a client whose two came together.
+    got_id, body = read(sock)
+    parts = [body] if got_id == request_id else []
+    packet(sock, MARKER, 0, "")
+    while True:
+        got_id, body = read(sock)
+        if got_id == MARKER:
+            return "".join(parts)
+        if got_id == request_id:
+            parts.append(body)
+
+
 def _exactly(sock: socket.socket, n: int) -> bytes:
     buf = b""
     while len(buf) < n:
@@ -41,9 +61,8 @@ def main() -> None:
         packet(sock, 1, 3, PASSWORD)
         if read(sock)[0] == -1:
             sys.exit("RCON login failed")
-        for i, command in enumerate(sys.argv[1:], start=2):
-            packet(sock, i, 2, command.removeprefix("/"))
-            print(f"> {command}\n{read(sock)[1]}")
+        for i, text in enumerate(sys.argv[1:], start=2):
+            print(f"> {text}\n{command(sock, i, text)}")
 
 
 if __name__ == "__main__":

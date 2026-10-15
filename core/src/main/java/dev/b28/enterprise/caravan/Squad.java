@@ -236,6 +236,16 @@ public final class Squad {
                 .filter(v -> trade(v).equals(dev.b28.enterprise.territory.Labour.NONE))
                 .findFirst();
         if (hand.isEmpty()) {
+            // One the town's roster has, waiting for work, where its Merchant can't see it now: it's sent for (its
+            // chunk loaded), to be taken on at the next try.
+            var server = level.getServer();
+            dev.b28.enterprise.territory.Territory.get(server).bellOf(desk).ifPresent(bell ->
+                    dev.b28.enterprise.settlement.Settlements.get(server).roster(bell).values().stream()
+                            .filter(r -> !r.baby() && !r.away() && r.profession().equals(dev.b28.enterprise.territory.Labour.NONE))
+                            .map(r -> new net.minecraft.world.level.ChunkPos(r.chunk()))
+                            .filter(chunk -> !level.hasChunk(chunk.x, chunk.z))
+                            .findFirst()
+                            .ifPresent(chunk -> level.getChunkSource().addRegionTicket(Caravans.CARAVAN, chunk, 0, chunk)));
             return Optional.empty();
         }
         var mint = dev.b28.enterprise.money.Mint.get(level.getServer());
