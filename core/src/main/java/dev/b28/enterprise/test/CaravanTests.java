@@ -656,9 +656,11 @@ public final class CaravanTests {
 
         net.poll(t);
         Caravan out = net.ledger().caravan(net.route().id()).orElseThrow();
-        helper.assertTrue(out.leg() == Caravan.Leg.OUTBOUND && out.items() == 128, "leaves with the 128 paper");
+        helper.assertTrue(out.leg() == Caravan.Leg.OUTBOUND && out.items() == 64,
+                "leaves with the 64 paper the far end will take (its par, one stack): " + out.items());
         helper.assertTrue(out.spurs() > 0, "and a purse for the road");
-        helper.assertTrue(net.hub().count(PAPER) == 0 && net.hub().foodNutrition() == 5, "paper gone, one bread eaten");
+        helper.assertTrue(net.hub().count(PAPER) == 64 && net.hub().foodNutrition() == 5,
+                "the rest of the paper stays home, one bread eaten");
         int purse = out.spurs();
 
         int destMoney = MoneyChanger.value(net.dest().looseStacks());
@@ -682,7 +684,7 @@ public final class CaravanTests {
         helper.assertTrue(net.ledger().caravan(net.route().id()).isEmpty(), "the caravan is home");
         helper.assertTrue(MoneyChanger.value(net.hub().looseStacks()) - hubBefore == carried, "the hub banks what it carried");
         helper.assertTrue(net.route().trips() == 1 && net.route().itemsDelivered() == 64, "one trip, 64 sold");
-        helper.assertTrue(net.hub().count(PAPER) == 64, "the unsold 64 paper came home to the hub's warehouse");
+        helper.assertTrue(net.hub().count(PAPER) == 64, "the paper it didn't send is still in the hub's warehouse");
         helper.succeed();
     }
 
@@ -807,7 +809,7 @@ public final class CaravanTests {
         net.poll(t + 80);
         helper.assertTrue(net.dest().count(PAPER) == 0, "no money, no paper");
         helper.assertTrue(dev.b28.enterprise.cargo.Crates.contents(net.ledger().caravan(net.route().id()).orElseThrow().cargo())
-                .stream().filter(stack -> stack.is(Items.PAPER)).mapToInt(ItemStack::getCount).sum() == 128,
+                .stream().filter(stack -> stack.is(Items.PAPER)).mapToInt(ItemStack::getCount).sum() == 64,
                 "the paper rides home, crated");
         helper.succeed();
     }

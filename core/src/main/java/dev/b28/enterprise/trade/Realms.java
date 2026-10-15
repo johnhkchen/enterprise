@@ -44,6 +44,11 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 public final class Realms extends SavedData {
     private static final String NAME = "enterprise_realms";
 
+    /** Of each good a realm wants, its people use this many a day (and so it keeps buying). */
+    public static final int USES_PER_DAY = 64;
+    /** Its warehouse aims to hold this many days of each. */
+    private static final long WANT_KEY = -42; // the realm's own "workstation" in the warehouse's capacity book
+
     /** Customs the crown takes on what a foreign trader sells inside the realm, of its takings. */
     public static final double CUSTOMS = 0.1;
 
@@ -122,6 +127,10 @@ public final class Realms extends SavedData {
         }
         bank.deposit(capital);
         Warehouse.get(server).recordLevel(at, 4);
+        // A country's demand, not a stall's: so many a day of each good it wants.
+        Map<Item, Integer> perDay = new LinkedHashMap<>();
+        realm.wants.forEach(item -> perDay.put(item, USES_PER_DAY));
+        Warehouse.get(server).recordCapacity(at, WANT_KEY, perDay);
         CaravanLedger ledger = CaravanLedger.get(server);
         for (GlobalPos partner : partners) {
             if (!realm.partners.contains(partner)) {
@@ -189,6 +198,9 @@ public final class Realms extends SavedData {
     /** The realm's people at work: {@code days} of what it makes, up to what it keeps on hand. */
     static void make(ServerLevel level, Realm realm, int days) {
         MerchantStock stock = MerchantStock.at(level, realm.home.pos());
+        for (Item want : realm.wants) { // its people use what it bought
+            stock.take(new ItemCost(want, 1), USES_PER_DAY * days);
+        }
         for (Make make : realm.makes) {
             int held = stock.count(new ItemCost(make.item(), 1));
             int add = Math.min(make.perDay() * days, make.keep() - held);

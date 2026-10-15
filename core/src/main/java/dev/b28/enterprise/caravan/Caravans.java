@@ -335,8 +335,8 @@ public final class Caravans {
             stock.insert(cargo.remove(cargo.size() - 1)); // more comforts than the squad can carry: leave the rest
         }
         // Goods for sale go packed, a crate to a good: the buyer stores them as they come, nine stacks to a slot.
-        cargo.addAll(lots(level, route.from, stock, pickCargo(stock, wantedThere(server, route.to),
-                slots - Crates.stacks(cargo)), now));
+        cargo.addAll(lots(level, route.from, stock, pickCargo(server, route.to, stock, wantedThere(server, route.to),
+                slots - Crates.stacks(cargo), now), now));
         Warehouse.get(server).recordStocktake(route.from, stock.totals()); // for buying decisions while away
         var army = dev.b28.enterprise.army.Army.get(server);
         boolean toFront = army.front().filter(route.to::equals).isPresent();
@@ -1832,6 +1832,36 @@ public final class Caravans {
      * Up to {@code slots} stacks, shared across the wanted items in order, each up to {@link #WANT_PER_ITEM}; with
      * more wanted items than slots, a stack each of the first.
      */
+    /**
+     * As {@link #pickCargo(MerchantStock, Set, int)}, but of each good no more than the far end will take: its par less
+     * what it held when a caravan last saw its stock. A Merchant doesn't haul what it can't sell.
+     */
+    static List<ItemStack> pickCargo(MinecraftServer server, GlobalPos there, MerchantStock stock, Set<Item> wanted,
+            int slots, long now) {
+        Warehouse warehouse = Warehouse.get(server);
+        Map<Item, Integer> limits = new LinkedHashMap<>();
+        for (Item item : wanted) {
+            int room = warehouse.par(there, item, true, now) - warehouse.onHand(there, item);
+            if (room > 0) {
+                limits.put(item, room);
+            }
+        }
+        List<ItemStack> cargo = new ArrayList<>();
+        if (limits.isEmpty() || slots <= 0) {
+            return cargo;
+        }
+        int perItem = Math.min(WANT_PER_ITEM, Math.max(1, slots / limits.size()) * 64);
+        for (Map.Entry<Item, Integer> want : limits.entrySet()) {
+            Item item = want.getKey();
+            int room = (slots - Crates.stacks(cargo)) * item.getDefaultMaxStackSize();
+            if (room <= 0) {
+                break;
+            }
+            cargo.addAll(stock.take(new ItemCost(item, 1), Math.min(Math.min(perItem, want.getValue()), room)));
+        }
+        return cargo;
+    }
+
     static List<ItemStack> pickCargo(MerchantStock stock, Set<Item> wanted, int slots) {
         List<ItemStack> cargo = new ArrayList<>();
         if (wanted.isEmpty() || slots <= 0) {
