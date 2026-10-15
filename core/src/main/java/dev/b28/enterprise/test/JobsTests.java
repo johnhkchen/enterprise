@@ -81,6 +81,30 @@ public final class JobsTests {
     }
 
     @GameTest(template = "floor", skyAccess = true)
+    public static void townsMakeTheirOwnComforts(GameTestHelper helper) {
+        helper.setBlock(new BlockPos(3, 2, 3), dev.b28.enterprise.merchant.Merchant.DESK.get());
+        helper.setBlock(new BlockPos(4, 2, 3), Blocks.CHEST);
+        var stock = dev.b28.enterprise.merchant.MerchantStock.at(helper.getLevel(), helper.absolutePos(new BlockPos(3, 2, 3)));
+        stock.insert(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WHEAT, 10));
+        stock.insert(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SUGAR_CANE, 2));
+        stock.insert(new net.minecraft.world.item.ItemStack(dev.b28.enterprise.trade.Wares.TOBACCO_LEAF.get(), 5));
+        java.util.function.Function<net.minecraft.world.item.Item, dev.b28.enterprise.territory.Workshop.Conversion> making =
+                out -> dev.b28.enterprise.territory.Workshop.CONVERSIONS.stream().filter(c -> c.output() == out).findFirst()
+                        .orElseThrow();
+        int biscuits = dev.b28.enterprise.territory.Workshop.runForTest(making.apply(net.minecraft.world.item.Items.COOKIE),
+                64, stock);
+        helper.assertTrue(biscuits == 8, "10 wheat and 2 cane: two batches of biscuits, the cane runs out first: " + biscuits);
+        helper.assertTrue(stock.count(new net.minecraft.world.item.trading.ItemCost(net.minecraft.world.item.Items.WHEAT, 1)) == 6,
+                "4 wheat used, 6 left");
+        int pipes = dev.b28.enterprise.territory.Workshop.runForTest(
+                making.apply(dev.b28.enterprise.trade.Wares.PIPE_TOBACCO.get()), 64, stock);
+        helper.assertTrue(pipes == 2, "5 leaf, 2 pipe tobacco (a leaf over): " + pipes);
+        helper.assertTrue(dev.b28.enterprise.territory.Comforts.kindOf(dev.b28.enterprise.trade.Wares.PIPE_TOBACCO.get())
+                .map(dev.b28.enterprise.territory.Comforts::name).filter("leisure"::equals).isPresent(), "a comfort: leisure");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor", skyAccess = true)
     public static void aStallIsALockerWithAWorker(GameTestHelper helper) {
         Villager idle = helper.spawn(EntityType.VILLAGER, new BlockPos(5, 2, 1));
         var trade = Jobs.TRADES.stream().filter(t -> t.profession() == VillagerProfession.LIBRARIAN).findFirst().orElseThrow();

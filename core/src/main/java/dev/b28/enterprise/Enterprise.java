@@ -21,6 +21,7 @@ public final class Enterprise {
     public Enterprise(IEventBus modBus) {
         Merchant.register(modBus);
         dev.b28.enterprise.cargo.Cargo.register(modBus);
+        dev.b28.enterprise.trade.Wares.register(modBus);
         NeoForge.EVENT_BUS.addListener(EnterpriseCommands::register);
         NeoForge.EVENT_BUS.addListener(LockerCatchUp::onJoin);
         NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.territory.Growth::onJoin);

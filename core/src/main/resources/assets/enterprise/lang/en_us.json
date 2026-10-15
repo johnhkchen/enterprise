@@ -31,5 +31,7 @@
   "item.enterprise.crate.empty": "Empty",
   "item.enterprise.crate.goods": "%s items in %s stacks",
   "item.enterprise.documents": "Documents",
-  "item.enterprise.documents.blank": "Blank: a merchant fills these in"
+  "item.enterprise.documents.blank": "Blank: a merchant fills these in",
+  "item.enterprise.tobacco_leaf": "Tobacco Leaf",
+  "item.enterprise.pipe_tobacco": "Pipe Tobacco"
 }

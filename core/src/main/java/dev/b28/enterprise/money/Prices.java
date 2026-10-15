@@ -65,6 +65,8 @@ public final class Prices {
             Map.entry("minecraft:cake", 1.0),
             Map.entry("minecraft:pumpkin_pie", 4.0),
             Map.entry("minecraft:honey_bottle", 3.0),
+            Map.entry("enterprise:pipe_tobacco", 4.0), // a comfort: leisure
+            Map.entry("enterprise:tobacco_leaf", 8.0), // the coast's raw ware
             Map.entry("minecraft:leather_helmet", 0.2),
             Map.entry("minecraft:leather_chestplate", 1 / 7.0),
             Map.entry("minecraft:leather_leggings", 1 / 3.0),

@@ -44,7 +44,7 @@ public final class MoodTests {
     @GameTest(template = "floor")
     public static void comfortsAreTags(GameTestHelper helper) {
         List<String> kinds = Comforts.kinds().stream().map(Comforts::name).toList();
-        helper.assertTrue(kinds.equals(List.of("clothing", "furnishings", "reading", "treats")), "four kinds: " + kinds);
+        helper.assertTrue(kinds.equals(List.of("clothing", "furnishings", "leisure", "reading", "treats")), "five kinds: " + kinds);
         helper.assertTrue(Comforts.kindOf(Items.RED_CARPET).map(Comforts::name).orElse("").equals("furnishings"),
                 "a carpet is a furnishing");
         helper.assertTrue(Comforts.kindOf(Items.PAPER).isEmpty(), "paper is no comfort");
