@@ -322,7 +322,15 @@ public final class Caravans {
                 slots - Crates.stacks(cargo), contracted, now));
         cargo.addAll(pickForwarded(server, level, route, stock, now + travelTicks(route.distance()),
                 slots - Crates.stacks(cargo), now));
-        cargo.addAll(pickComforts(stock, comfortWants(server, territory, route.to, now + travelTicks(route.distance()))));
+        // Comforts the far end wants, out of what this town can spare beyond its own par of each kind.
+        Map<String, Double> wantedThereNow = new LinkedHashMap<>(
+                comfortWants(server, territory, route.to, now + travelTicks(route.distance())));
+        double ownPar = territory.comfortPar(route.from);
+        Map<String, Double> heldHere = Comforts.onHand(stock);
+        wantedThereNow.replaceAll((kind, want) -> Math.min(want,
+                Math.max(0, heldHere.getOrDefault(kind, 0.0) - ownPar) / COMFORT_MARGIN));
+        wantedThereNow.values().removeIf(want -> want <= 0);
+        cargo.addAll(pickComforts(stock, wantedThereNow));
         while (Crates.stacks(cargo) > slots) {
             stock.insert(cargo.remove(cargo.size() - 1)); // more comforts than the squad can carry: leave the rest
         }
