@@ -1049,15 +1049,21 @@ public final class Territory extends SavedData {
      */
     private void grow(ServerLevel level, BlockPos bell, Holding holding, Census census, double days, MerchantStock stock) {
         days = Math.min(MAX_DAYS, Math.max(0, days));
-        // Squads before anything; then work for whoever is still idle.
+        // Squads before anything; then work for whoever is still idle, unless the town is raising a party of settlers
+        // (its idle hands wait for that).
+        var expeditions = dev.b28.enterprise.caravan.Expeditions.get(level.getServer());
+        boolean raising = expeditions.raising(holding.desk, holding.focus, census.villagers(), level.getGameTime());
         if (dev.b28.enterprise.caravan.Commissions.train(level, holding.desk, bell, stock, this).isEmpty()
-                && !dev.b28.enterprise.caravan.Commissions.squadShort(level, holding.desk, bell)) {
+                && !dev.b28.enterprise.caravan.Commissions.squadShort(level, holding.desk, bell) && !raising) {
             Jobs.employ(level, bell, holding.desk, stock, this);
         }
         BlockPos desk = holding.desk.pos();
         Mint mint = Mint.get(level.getServer());
         long now = level.getGameTime();
         double rate = mint.rate(Mint.DEFAULT_FACTION, now);
+        // Grown, with hands and money to spare: settlers, to a village nobody trades with or to found a town.
+        expeditions.consider(level, holding.desk,
+                GlobalPos.of(level.dimension(), bell), stock, this, holding.focus, census.villagers(), now);
         if (holding.mood >= Growth.HOME_MOOD && census.villagers() >= census.beds()) {
             holding.homeProgress = Math.min(1, holding.homeProgress + days / Growth.DAYS_PER_HOME);
         }

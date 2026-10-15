@@ -571,6 +571,23 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   the roster. Before, the eastern towns lost half their people to the census (not to death) and couldn't grow.
 - Measured: a 20-day ridge run, every town keeps its villagers; only the trading pass town plants cane.
 
+## Settlers (built 2026-10-15)
+
+- A town grown past growing (8 villagers or more, not short of food) raises a party of settlers: while it does, its
+  Merchant keeps hands waiting for work back from new jobs. Once every 8 days at most.
+- **A village nobody trades with** (a naturally grown one, no Merchant's Desk, 4 hexes or more from any market, within
+  8 of home): one hand signs on as a travelling Merchant and goes alone with 10 emeralds of capital and bread
+  (14 emeralds in all). It sets up a desk and chest by the village's bell and works it; the old town opens a route
+  to it.
+- **Founding a town** where no village is in reach: a Merchant and a settler go to the best open ground the town knows
+  (4 to 8 hexes out, unclaimed, flat and dry by the survey, fresh water a plus) with 16 emeralds of capital (34 in
+  all). They build a bell, a desk and chest, a composter, a lectern, a cartography table and two family cottages.
+- The trip is one way with no market at the far end yet, so it isn't a caravan route: it's planned over the same
+  hexes, takes as long as a caravan would, and its people are off the world on the road like a squad.
+- Measured (40-day ridge run): Meadowworth settled Greenley and Wheatfield settled Elmford, villages 260 to 320
+  blocks out; caravans ran to both, and Greenley opened a route of its own. Not yet seen: a town founded on open
+  ground; and a settled village claiming its land.
+
 ## Names (built 2026-10-14)
 
 Every market has a name, given from the lie of the land once the hexes round it are surveyed, and kept: a first part

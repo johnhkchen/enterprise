@@ -77,6 +77,14 @@ final class EnterpriseCommands {
                                     context.getSource().sendSuccess(() -> Component.literal(done + " chunks surveyed"), false);
                                     return done;
                                 }))))
+                .then(Commands.literal("expeditions").executes(context -> {
+                    // Settlers on the road, and the villages settled and towns founded.
+                    var server = context.getSource().getServer();
+                    var lines = dev.b28.enterprise.caravan.Expeditions.get(server).report(server.overworld().getGameTime());
+                    context.getSource().sendSuccess(() -> Component.literal("Expeditions (%d):\n  ".formatted(lines.size())
+                            + String.join("\n  ", lines)), false);
+                    return lines.size();
+                }))
                 .then(Commands.literal("cottage")
                         .then(Commands.argument("corner", BlockPosArgument.blockPos()).executes(context -> {
                             // A family's cottage (two beds) with its corner at {corner}: a settlement's starter home.

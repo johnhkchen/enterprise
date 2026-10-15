@@ -29,6 +29,7 @@ public final class Enterprise {
         NeoForge.EVENT_BUS.addListener(CensusTaker::onServerTick);
         NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.settlement.Settlements::onDeath);
         NeoForge.EVENT_BUS.addListener(Caravans::onServerTick);
+        NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.caravan.Expeditions::onServerTick);
         NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.market.Broker::onServerTick);
         NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.market.Sovereign::onServerTick);
         NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.market.Freight::onServerTick);
