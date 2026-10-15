@@ -47,6 +47,11 @@ public final class Settlements extends SavedData {
                     tag.getLong("lastSeen"), tag.getBoolean("away"));
         }
 
+        /** As last seen, but taken to be there still at {@code now}: its chunk wasn't loaded to look. */
+        public Resident assumedAt(long now) {
+            return new Resident(id, chunk, home, profession, level, free, baby, now, away);
+        }
+
         public Resident away(boolean out) {
             return new Resident(id, chunk, home, profession, level, free, baby, lastSeen, out);
         }
@@ -111,6 +116,29 @@ public final class Settlements extends SavedData {
     public void record(GlobalPos bell, Census result) {
         census.put(bell, result);
         setDirty();
+    }
+
+    /** A villager has died: off every roster (the census otherwise keeps those it can't see). */
+    public void died(java.util.UUID villager) {
+        boolean changed = false;
+        for (var entry : rosters.entrySet()) {
+            if (entry.getValue().containsKey(villager)) {
+                var roster = new java.util.HashMap<>(entry.getValue());
+                roster.remove(villager);
+                entry.setValue(roster);
+                changed = true;
+            }
+        }
+        if (changed) {
+            setDirty();
+        }
+    }
+
+    public static void onDeath(net.neoforged.neoforge.event.entity.living.LivingDeathEvent event) {
+        if (event.getEntity() instanceof net.minecraft.world.entity.npc.Villager villager
+                && villager.level() instanceof net.minecraft.server.level.ServerLevel level) {
+            get(level.getServer()).died(villager.getUUID());
+        }
     }
 
     public void forget(GlobalPos bell) {

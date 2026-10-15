@@ -77,6 +77,16 @@ final class EnterpriseCommands {
                                     context.getSource().sendSuccess(() -> Component.literal(done + " chunks surveyed"), false);
                                     return done;
                                 }))))
+                .then(Commands.literal("cottage")
+                        .then(Commands.argument("corner", BlockPosArgument.blockPos()).executes(context -> {
+                            // A family's cottage (two beds) with its corner at {corner}: a settlement's starter home.
+                            var level = context.getSource().getLevel();
+                            var corner = BlockPosArgument.getBlockPos(context, "corner");
+                            var head = dev.b28.enterprise.territory.Growth.buildHome(level, corner);
+                            context.getSource().sendSuccess(() -> Component.literal(
+                                    "A cottage at " + corner.toShortString() + ", beds from " + head.toShortString()), false);
+                            return 1;
+                        })))
                 .then(Commands.literal("bridge")
                         .then(Commands.argument("at", BlockPosArgument.blockPos())
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos()).executes(context -> {
@@ -386,6 +396,7 @@ final class EnterpriseCommands {
                     territory.wagePerDay(bell), territory.laborShare(bell) * 100, territory.cropSalesPerDay(bell),
                     territory.wagesPaid(bell), territory.wagesUnpaid(bell), territory.harvested(bell))), false);
         }
+        source.sendSuccess(() -> Component.literal("  focus: " + territory.focus(bell).label()), false);
         source.sendSuccess(() -> Component.literal("  treasury %.1f emeralds at the market's last touch, %.1f kept back"
                 .formatted(territory.treasury(bell), territory.desk(bell).map(territory::reserve).orElse(0.0))), false);
         double mood = territory.mood(bell);

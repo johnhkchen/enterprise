@@ -58,7 +58,14 @@ public final class Fields {
      */
     public static Optional<Item> choose(Map<String, Double> demand, Map<String, Double> grown, MerchantStock stock,
             Map<String, Double> needs) {
-        for (Item crop : CROPS) {
+        return choose(demand, grown, stock, needs, false);
+    }
+
+    /** As above; with {@code foodOnly} (a town growing or building, see {@link Focus}), food crops alone. */
+    public static Optional<Item> choose(Map<String, Double> demand, Map<String, Double> grown, MerchantStock stock,
+            Map<String, Double> needs, boolean foodOnly) {
+        List<Item> crops = foodOnly ? CROPS.stream().filter(c -> c != Items.SUGAR_CANE).toList() : CROPS;
+        for (Item crop : crops) {
             String id = BuiltInRegistries.ITEM.getKey(crop).toString();
             if (needs.getOrDefault(id, 0.0) > grown.getOrDefault(id, 0.0)) {
                 return Optional.of(crop);
@@ -66,7 +73,7 @@ public final class Fields {
         }
         Item best = null;
         double bestValue = 0;
-        for (Item crop : CROPS) {
+        for (Item crop : crops) {
             String sold = BuiltInRegistries.ITEM.getKey(SOLD_AS.get(crop)).toString();
             double already = CROPS.stream()
                     .filter(c -> SOLD_AS.get(c) == SOLD_AS.get(crop))
@@ -90,12 +97,12 @@ public final class Fields {
      */
     public static Optional<BlockPos> consider(ServerLevel level, BlockPos bell, GlobalPos desk, MerchantStock stock,
             Territory territory, List<Integer> farmers, double plotsWorked, Map<String, Double> demand,
-            Map<String, Double> grown) {
+            Map<String, Double> grown, Focus focus) {
         int capacity = farmers.stream().mapToInt(l -> Territory.PLOTS_PER_FARMER_LEVEL * Math.max(1, l)).sum();
         // A crop the village would buy and the town doesn't grow at all gets a field even if the farmers are busy
         // (they split their time): a farmer always plants for its own trades. Up to two fields a farmer level.
         int levels = farmers.stream().mapToInt(l -> Math.max(1, l)).sum();
-        boolean unmetCrop = CROPS.stream().anyMatch(crop -> {
+        boolean unmetCrop = CROPS.stream().filter(crop -> !focus.foodOnly() || crop != Items.SUGAR_CANE).anyMatch(crop -> {
             String sold = BuiltInRegistries.ITEM.getKey(SOLD_AS.get(crop)).toString();
             return demand.getOrDefault(sold, 0.0) > 0 && CROPS.stream()
                     .filter(c -> SOLD_AS.get(c) == SOLD_AS.get(crop))
@@ -112,12 +119,12 @@ public final class Fields {
             return Optional.empty();
         }
         Map<String, Double> needs = Husbandry.feedDemand(territory.herd(bellPos(level, bell)));
-        Optional<Item> crop = choose(demand, grown, stock, needs);
+        Optional<Item> crop = choose(demand, grown, stock, needs, focus.foodOnly());
         if (crop.isEmpty()) {
             return Optional.empty();
         }
         GlobalPos home = GlobalPos.of(level.dimension(), bell);
-        Optional<BlockPos> site = Growth.site(level, bell, SIZE, 8)
+        Optional<BlockPos> site = Growth.farmSite(level, bell, SIZE, 8)
                 .filter(corner -> territory.owner(level.dimension(), dev.b28.enterprise.hex.Hex.at(corner.offset(4, 0, 4)))
                         .filter(home::equals).isPresent());
         if (site.isEmpty()) {

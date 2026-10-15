@@ -64,22 +64,27 @@ public final class SettlementTests {
         var here = new net.minecraft.world.level.ChunkPos(bell).toLong(); // loaded, and nobody there
         java.util.UUID asleep = java.util.UUID.randomUUID();
         java.util.UUID gone = java.util.UUID.randomUUID();
+        java.util.UUID wandered = java.util.UUID.randomUUID();
         java.util.UUID out = java.util.UUID.randomUUID();
         settlements.setRoster(at, java.util.Map.of(
                 asleep, new dev.b28.enterprise.settlement.Settlements.Resident(asleep, faraway, java.util.Optional.empty(),
                         "minecraft:farmer", 2, true, false, now, false),
                 gone, new dev.b28.enterprise.settlement.Settlements.Resident(gone, here, java.util.Optional.empty(),
                         "minecraft:farmer", 1, true, false, now, false),
+                wandered, new dev.b28.enterprise.settlement.Settlements.Resident(wandered, here, java.util.Optional.empty(),
+                        "minecraft:fletcher", 1, true, false, now, false),
                 out, new dev.b28.enterprise.settlement.Settlements.Resident(out, here, java.util.Optional.empty(),
                         "minecraft:none", 1, true, false, now, true)));
         Villager baby = helper.spawn(EntityType.VILLAGER, new BlockPos(2, 2, 2));
         baby.setAge(-24000);
+        settlements.died(gone);
         Census census = CensusTaker.countNow(helper.getLevel(), bell, RADIUS);
-        // The baby, the villager asleep out of sight, and the one out with a caravan; not the one who left.
-        helper.assertTrue(census.villagers() == 3, "3 residents: " + census.villagers());
+        // The baby, the villager asleep out of sight, the one out with a caravan, and the one not where it was last
+        // seen (wandered off the loaded ground: sent for); not the one who died.
+        helper.assertTrue(census.villagers() == 4, "4 residents: " + census.villagers());
         var roster = settlements.roster(at);
-        helper.assertTrue(roster.containsKey(asleep) && roster.containsKey(out) && !roster.containsKey(gone)
-                && roster.containsKey(baby.getUUID()), "the roster keeps the unseen, drops the gone: " + roster.keySet());
+        helper.assertTrue(roster.containsKey(asleep) && roster.containsKey(out) && roster.containsKey(wandered) && !roster.containsKey(gone)
+                && roster.containsKey(baby.getUUID()), "the roster keeps the unseen, drops the dead: " + roster.keySet());
         helper.succeed();
     }
 

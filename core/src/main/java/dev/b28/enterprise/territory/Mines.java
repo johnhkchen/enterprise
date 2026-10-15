@@ -34,7 +34,7 @@ public final class Mines {
 
     /** The nearest corner (ground level) where a mine head fits. */
     public static Optional<BlockPos> site(ServerLevel level, BlockPos bell) {
-        return Growth.site(level, bell, SIZE, NEAREST);
+        return Growth.farmSite(level, bell, SIZE, NEAREST);
     }
 
     /**

@@ -160,6 +160,7 @@ public final class Territory extends SavedData {
         double homeProgress; // toward the next home, 1 when due
         double birthProgress; // toward the next child
         int homesBuilt;
+        Focus focus = Focus.GROW; // what it puts first, from its last census while loaded
         int born;
         double walled; // share of its wall standing, from the works ledger at the last touch
         double tradingCapital; // emeralds to stock its shelves, from the warehouse at the last touch
@@ -530,7 +531,7 @@ public final class Territory extends SavedData {
             if (Treasury.available(level, holding.desk.pos(), stock, rate) - reserve(holding.desk) < Fields.FIELD_EMERALDS) {
                 return;
             }
-            Optional<BlockPos> site = Growth.site(level, bellPos, Husbandry.PASTURE_SIZE, 8)
+            Optional<BlockPos> site = Growth.farmSite(level, bellPos, Husbandry.PASTURE_SIZE, 8)
                     .filter(corner -> owner(level.dimension(), Hex.at(corner.offset(4, 0, 4))).filter(bell::equals).isPresent());
             if (site.isEmpty()) {
                 return;
@@ -669,8 +670,10 @@ public final class Territory extends SavedData {
                 hands * farmers.stream().mapToInt(l -> PLOTS_PER_FARMER_LEVEL * Math.max(1, l)).sum() - Math.round(tended));
         if (holding.desk != null && level.isLoaded(holding.desk.pos())) {
             double plotsWorked = holding.perDay.values().stream().mapToDouble(Double::doubleValue).sum() / YIELD_PER_PLOT_PER_DAY;
-            Fields.consider(level, bellPos, holding.desk, MerchantStock.at(level, holding.desk.pos()), this, farmers, plotsWorked,
-                    holding.demand, holding.perDay);
+            MerchantStock fieldStock = MerchantStock.at(level, holding.desk.pos());
+            holding.focus = Focus.of(census.villagers(), census.beds(), fieldStock.foodNutrition());
+            Fields.consider(level, bellPos, holding.desk, fieldStock, this, farmers, plotsWorked,
+                    holding.demand, holding.perDay, holding.focus);
         }
         setDirty();
     }
@@ -1086,6 +1089,11 @@ public final class Territory extends SavedData {
         }
     }
 
+    /** What the town puts first (see {@link Focus}). */
+    public Focus focus(GlobalPos bell) {
+        return holding(bell).map(h -> h.focus).orElse(Focus.GROW);
+    }
+
     public int homesBuilt(GlobalPos bell) {
         return holding(bell).map(h -> h.homesBuilt).orElse(0);
     }
@@ -1488,6 +1496,7 @@ public final class Territory extends SavedData {
             entry.putDouble("homeProgress", holding.homeProgress);
             entry.putDouble("birthProgress", holding.birthProgress);
             entry.putInt("homesBuilt", holding.homesBuilt);
+            entry.putString("focus", holding.focus.name());
             entry.putInt("born", holding.born);
             entry.put("perDay", doubles(holding.perDay));
             entry.put("pending", doubles(holding.pending));
@@ -1615,6 +1624,7 @@ public final class Territory extends SavedData {
                 holding.homeProgress = entry.getDouble("homeProgress");
                 holding.birthProgress = entry.getDouble("birthProgress");
                 holding.homesBuilt = entry.getInt("homesBuilt");
+                holding.focus = entry.contains("focus") ? Focus.valueOf(entry.getString("focus")) : Focus.GROW;
                 holding.born = entry.getInt("born");
                 holding.perDay = readDoubles(entry.getCompound("perDay"));
                 holding.pending = readDoubles(entry.getCompound("pending"));

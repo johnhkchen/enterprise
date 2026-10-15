@@ -554,6 +554,23 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   from it). Haygate forwarded 22 stacks, bought 13 carts of drayage (651 spurs to its draymen) and took 2,774 spurs of
   landing fees. Its transit toll (25% and a 100-spur fee) finds nobody passing through: the stop fee won.
 
+## Towns grow before they trade (built 2026-10-15)
+
+- **Focus.** Each census sets what a town puts first, as an early city in Civilization grows before it builds and
+  builds before it trades. *Growing* (under 8 villagers, or food under twice the caravans' par): fields of food only.
+  *Building* (fed and peopled, every bed taken): food and feed while it builds homes. *Trading*: fields for what sells,
+  cane for paper among it. Planting cane in a five-villager town starved its growth.
+- **Zoning.** Fields, pastures and pits keep 3 blocks clear of every bed, workstation and the bell, and never sit
+  between a home and the bell: farms ring the houses, and no one is cut off from bed, work or market.
+- **Starter homes.** A cottage is a family's: two beds, a chest, a lantern (10 emeralds). Study settlements start with
+  one, and a hand waiting for work living in it.
+- **Crew.** A route with no one to lead it: the desk's Merchant signs on a hand of the town waiting for work as a
+  travelling Merchant (2 emeralds), one lead a route at most.
+- **The census keeps who it can't see.** A villager in a chunk nobody loaded is where it was; one not found where it
+  was last seen is sent for (its chunks loaded). Only death, or days of being looked for and not found, takes one off
+  the roster. Before, the eastern towns lost half their people to the census (not to death) and couldn't grow.
+- Measured: a 20-day ridge run, every town keeps its villagers; only the trading pass town plants cane.
+
 ## Names (built 2026-10-14)
 
 Every market has a name, given from the lie of the land once the hexes round it are surveyed, and kept: a first part

@@ -28,12 +28,27 @@ public final class GrowthTests {
     private static final BlockPos BELL = new BlockPos(3, 2, 3);
     private static final BlockPos DESK = new BlockPos(5, 2, 5);
 
+    @GameTest(template = "floor")
+    public static void fieldsRingTheTownAndCutNoOneOff(GameTestHelper helper) {
+        BlockPos bell = new BlockPos(0, 64, 0);
+        BlockPos home = new BlockPos(10, 64, 0);
+        java.util.List<BlockPos> town = java.util.List.of(bell, home);
+        helper.assertFalse(Growth.zoned(bell, new BlockPos(2, 64, -4), 9, town), "not over a home");
+        helper.assertFalse(Growth.zoned(bell, new BlockPos(12, 64, -4), 9, town), "not in its yard");
+        helper.assertTrue(Growth.zoned(bell, new BlockPos(14, 64, -4), 9, town), "beyond it, out from the bell: yes");
+        helper.assertTrue(Growth.zoned(bell, new BlockPos(-22, 64, -4), 9, town), "or well away on the far side");
+        helper.assertFalse(Growth.zoned(bell, new BlockPos(-4, 64, 4), 9, java.util.List.of(bell, new BlockPos(0, 64, 16))),
+                "never between a home and the bell");
+        helper.succeed();
+    }
+
     @GameTest(template = "floor", skyAccess = true) // no barrier ceiling: the cottage needs open sky over the floor
     public static void aCottageFitsOnOpenGroundAndHasABed(GameTestHelper helper) {
         BlockPos corner = helper.absolutePos(new BlockPos(1, 1, 1));
         helper.assertTrue(Growth.fits(helper.getLevel(), corner), "flat, open floor with a block around: fits");
         BlockPos head = Growth.buildHome(helper.getLevel(), corner);
         helper.assertTrue(helper.getLevel().getBlockState(head).getBlock() instanceof BedBlock, "a bed inside");
+        helper.assertTrue(helper.getLevel().getBlockState(head.east(2)).getBlock() instanceof BedBlock, "two: a family's");
         helper.assertTrue(helper.getLevel().getPoiManager().getType(head).filter(type -> type.is(PoiTypes.HOME)).isPresent(),
                 "villagers can claim it");
         helper.assertFalse(Growth.fits(helper.getLevel(), corner), "and nothing else fits on top of it");

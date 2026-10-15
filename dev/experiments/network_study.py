@@ -561,6 +561,7 @@ def main():
                 "wall_pct": number(r"wall (\d+)% built", t),
                 "bridges": len(re.findall(r"bridge on", t)),
                 "culture": number(r"culture ([\d.]+) of", t),
+                "focus": (re.search(r"focus: (\w+)", t) or [None, ""])[1],
             })
         routes = rcon("enterprise routes")
         for line in routes.splitlines():

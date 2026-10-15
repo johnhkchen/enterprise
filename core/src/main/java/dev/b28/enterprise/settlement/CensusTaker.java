@@ -246,23 +246,38 @@ public final class CensusTaker {
         }
     }
 
+    private static final net.minecraft.server.level.TicketType<ChunkPos> RESIDENT = net.minecraft.server.level.TicketType
+            .create("enterprise_resident", java.util.Comparator.comparingLong(ChunkPos::toLong), 400);
+
+    /** Loads the chunks round where a resident was last seen, for a while: it's found at the next count. */
+    private static void sendFor(ServerLevel level, ChunkPos chunk) {
+        level.getChunkSource().addRegionTicket(RESIDENT, chunk, 1, chunk);
+    }
+
     /** Residents unseen this long are taken to have left. */
     private static final long FORGET_AFTER_TICKS = 10 * 24000L;
 
     private static Census finish(MinecraftServer server, Job job) {
         GlobalPos bell = GlobalPos.of(job.level.dimension(), job.bell);
         Settlements settlements = Settlements.get(server);
-        // Residents not seen: out with a caravan, or in a chunk that isn't loaded, still count as last seen. One whose
-        // chunk is loaded and isn't there has gone.
+        // Residents not seen still count as last seen: out with a caravan, in a chunk that isn't loaded, or wandered off
+        // the chunks loaded round the town (a villager walking out of them stops where the loaded ground ends). Those at
+        // home are sent for: the chunks round where they were last seen are loaded, so the next count finds them. Only
+        // death (see Settlements#died), or days of being looked for where it was and not found, takes one off the roster.
         java.util.Map<UUID, Settlements.Resident> roster = new java.util.LinkedHashMap<>(job.seen);
         long now = job.level.getGameTime();
         for (Settlements.Resident resident : settlements.roster(bell).values()) {
             if (roster.containsKey(resident.id())) {
                 continue;
             }
-            boolean unseen = resident.away() || !job.level.areEntitiesLoaded(resident.chunk());
-            if (!unseen || now - resident.lastSeen() > FORGET_AFTER_TICKS && !resident.away()) {
+            if (now - resident.lastSeen() > FORGET_AFTER_TICKS && !resident.away()) {
                 continue;
+            }
+            if (!resident.away()) {
+                if (!job.level.areEntitiesLoaded(resident.chunk())) {
+                    resident = resident.assumedAt(now); // nobody looked: it's where it was
+                }
+                sendFor(job.level, new ChunkPos(resident.chunk()));
             }
             roster.put(resident.id(), resident);
             job.counted++;

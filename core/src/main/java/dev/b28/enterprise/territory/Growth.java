@@ -10,6 +10,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.ai.village.poi.PoiManager;
+import net.minecraft.world.entity.ai.village.poi.PoiRecord;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.npc.VillagerType;
 import net.minecraft.world.level.block.BedBlock;
@@ -30,10 +32,10 @@ import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
  * villager; it grows up on the clock, even while its town is unloaded.
  */
 public final class Growth {
-    /** A town builds homes at this mood or better, about one every {@link #DAYS_PER_HOME} days, for 8 emeralds. */
+    /** A town builds homes (two beds each) at this mood or better, about one every {@link #DAYS_PER_HOME} days, for 10 emeralds. */
     public static final double HOME_MOOD = 0.5;
     public static final double DAYS_PER_HOME = 4;
-    public static final double HOME_EMERALDS = 8;
+    public static final double HOME_EMERALDS = 10;
 
     /** A town has children at this mood or better, about one every {@link #DAYS_PER_BIRTH} days. */
     public static final double BIRTH_MOOD = 1;
@@ -57,6 +59,55 @@ public final class Growth {
 
     /** The nearest corner where a {@code size} x {@code size} building fits, at least {@code nearest} from the bell. */
     public static Optional<BlockPos> site(ServerLevel level, BlockPos bell, int size, int nearest) {
+        return site(level, bell, size, nearest, corner -> true);
+    }
+
+    /** Ground kept clear round each home, workstation and the bell: no field, pasture or pit within it. */
+    public static final int YARD = 3;
+    /** Homes and workstations this near a field are its neighbours (see {@link #farmSite}). */
+    private static final int NEIGHBOURHOOD = 12;
+
+    /**
+     * Where works that dig up the ground (a field and its water, a pasture's fences, a pit) may go: as {@link #site},
+     * but zoned off from where people live and work. Nothing of the town's (a bed, a workstation, the bell) within
+     * {@link #YARD} of it, and none of its neighbours farther out from the bell than it is, so a field never stands
+     * between a home and the bell: the town's farms ring its houses, and never cut anyone off from bed, work or market.
+     */
+    public static Optional<BlockPos> farmSite(ServerLevel level, BlockPos bell, int size, int nearest) {
+        List<BlockPos> town = level.getPoiManager()
+                .getInRange(type -> true, bell, FARTHEST + NEIGHBOURHOOD + size, PoiManager.Occupancy.ANY)
+                .map(PoiRecord::getPos)
+                .toList();
+        return site(level, bell, size, nearest, corner -> zoned(bell, corner, size, town));
+    }
+
+    /** Is a {@code size} x {@code size} footprint with this corner clear of the town's places, and outside them? */
+    public static boolean zoned(BlockPos bell, BlockPos corner, int size, List<BlockPos> town) {
+        int x0 = corner.getX();
+        int z0 = corner.getZ();
+        int x1 = x0 + size - 1;
+        int z1 = z0 + size - 1;
+        double fromBell = Math.sqrt(squaredToBox(bell.getX(), bell.getZ(), x0, z0, x1, z1));
+        for (BlockPos place : town) {
+            double near = Math.sqrt(squaredToBox(place.getX(), place.getZ(), x0, z0, x1, z1));
+            if (near <= YARD) {
+                return false;
+            }
+            if (near <= NEIGHBOURHOOD && Math.hypot(place.getX() - bell.getX(), place.getZ() - bell.getZ()) > fromBell) {
+                return false; // a home or workstation beyond it: the field would stand in its way to the bell
+            }
+        }
+        return true;
+    }
+
+    private static double squaredToBox(int x, int z, int x0, int z0, int x1, int z1) {
+        int dx = Math.max(0, Math.max(x0 - x, x - x1));
+        int dz = Math.max(0, Math.max(z0 - z, z - z1));
+        return (double) dx * dx + (double) dz * dz;
+    }
+
+    private static Optional<BlockPos> site(ServerLevel level, BlockPos bell, int size, int nearest,
+            java.util.function.Predicate<BlockPos> allowed) {
         List<BlockPos> corners = new ArrayList<>();
         for (int dx = -FARTHEST; dx <= FARTHEST; dx++) {
             for (int dz = -FARTHEST; dz <= FARTHEST; dz++) {
@@ -71,7 +122,7 @@ public final class Growth {
             int ground = surface(level, corner.getX(), corner.getZ());
             if (ground != Integer.MIN_VALUE && Math.abs(ground - bell.getY()) <= 4) {
                 BlockPos site = new BlockPos(corner.getX(), ground, corner.getZ());
-                if (fits(level, site, size)) {
+                if (fits(level, site, size) && allowed.test(site)) {
                     return Optional.of(site);
                 }
             }
@@ -123,8 +174,9 @@ public final class Growth {
     }
 
     /**
-     * A cottage: cobblestone floor, plank walls with log corners, a door facing south, two windows, a slab roof, a bed
-     * and a lantern. Returns the bed's head, where villagers claim it.
+     * A cottage for a family: cobblestone floor, plank walls with log corners, a door facing south, two windows, a slab
+     * roof, two beds either side of the way in, a chest and a lantern. Returns the first bed's head, where villagers
+     * claim it.
      */
     public static BlockPos buildHome(ServerLevel level, BlockPos corner) {
         int g = corner.getY();
@@ -150,11 +202,15 @@ public final class Growth {
         level.setBlock(door.above(), doorState.setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER), 3);
         level.setBlock(corner.offset(0, 2, 2), Blocks.GLASS_PANE.defaultBlockState(), 3);
         level.setBlock(corner.offset(HOME_SIZE - 1, 2, 2), Blocks.GLASS_PANE.defaultBlockState(), 3);
-        BlockPos foot = corner.offset(1, 1, 3);
-        BlockPos head = foot.north();
         BlockState bed = Blocks.WHITE_BED.defaultBlockState().setValue(BedBlock.FACING, Direction.NORTH);
-        level.setBlock(foot, bed.setValue(BedBlock.PART, BedPart.FOOT), 3);
-        level.setBlock(head, bed.setValue(BedBlock.PART, BedPart.HEAD), 3);
+        BlockPos head = null;
+        for (int side : new int[] {1, 3}) {
+            BlockPos foot = corner.offset(side, 1, 3);
+            level.setBlock(foot, bed.setValue(BedBlock.PART, BedPart.FOOT), 3);
+            level.setBlock(foot.north(), bed.setValue(BedBlock.PART, BedPart.HEAD), 3);
+            head = head == null ? foot.north() : head;
+        }
+        level.setBlock(corner.offset(1, 1, 1), Blocks.CHEST.defaultBlockState(), 3);
         level.setBlock(corner.offset(3, 1, 1), Blocks.LANTERN.defaultBlockState(), 3);
         return head;
     }
