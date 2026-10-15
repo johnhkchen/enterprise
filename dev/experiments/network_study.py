@@ -49,7 +49,7 @@ same DIR; it skips setup and carries on from day D+1 (a checkpoint is good for c
 its day). A day that takes far longer than the others is reported: the machine slept (a closed lid on battery) or the
 server stalled.
 
-    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts] [--fleet] [--services] [--metal] [--trades] [--master] [--war M,W,P] [--save-at D,... [--label NAME]] [--resume DIR]
+    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts] [--fleet] [--services] [--metal] [--trades] [--master] [--war M,W,P] [--realms] [--save-at D,... [--label NAME]] [--resume DIR]
 """
 
 import csv
@@ -520,6 +520,13 @@ def main():
     took = []
     for day in range(first, days + 1):
         day_started = time.time()
+        if "--realms" in sys.argv and day == first:
+            # The realms beyond the border: the Coast over the sea west of the capital, its fleets landing at the
+            # capital's port; the March overland to the east, its caravans to the eastern towns.
+            print(rcon(f"enterprise realms open coast {HUB[0] - 2398} -60 {HUB[1] + 2} {HUB[0] + 2} -60 {HUB[1] + 2}")
+                  .strip().splitlines()[-1])
+            print(rcon(f"enterprise realms open march 3400 -60 1350 {desk(TOWNS['E3'])}; {desk(TOWNS['E1'])}")
+                  .strip().splitlines()[-1])
         if war and day == war[0]:
             print("day %d: " % day + rcon(f"enterprise war mobilise {HUB[0] + 2} -60 {HUB[1] + 2} 1000").strip().splitlines()[-1])
         if war and day == war[1]:
@@ -623,6 +630,7 @@ def main():
         print("\n" + rcon("enterprise freight").strip())
         print("\n" + rcon("enterprise paperwork").strip())
         print("\n" + rcon("enterprise expeditions").strip())
+        print("\n" + rcon("enterprise realms").strip())
         print("\nT: " + "\n".join(l for l in rcon(f"enterprise territory {bell(t)}").splitlines()
                                     if re.search(r"toll|guard|post|treasury|fee", l)))
     names = rcon("enterprise name")
