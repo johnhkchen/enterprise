@@ -571,6 +571,27 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   the roster. Before, the eastern towns lost half their people to the census (not to death) and couldn't grow.
 - Measured: a 20-day ridge run, every town keeps its villagers; only the trading pass town plants cane.
 
+## Realms beyond the border, wares, and Merchants who value what towns want (built 2026-10-15)
+
+- **Wares** stand in for crafting chains to come: ordinary items with a price (tobacco leaf, pipe tobacco), so they
+  ride every warehouse, caravan and contract. Pipe tobacco is a comfort of its own kind, leisure. None of our trades
+  makes it: it's imported. Production goes only to trades that plausibly make a good (Farmers bake biscuits from
+  wheat and cane, Librarians bind books from paper and leather, Shepherds weave carpets, Leatherworkers make boots).
+- **Realms** are off the map, each a market with its own account, making what our villagers can't and wanting some
+  of what they make. The Coast (over the sea west of the capital) makes pipe tobacco, leaf, cocoa and bread, and wants
+  wheat, paper, iron and books; the March (overland, east) makes leather, wool and bread, and wants grain and iron.
+  Their caravans and fleets run on our routes like ours (the dispatcher skips the Merchant and squad it can't see).
+  The crown takes 10% customs on what they sell inside the realm.
+- **Desires.** A town short of a comfort pays up to twice its worth the less of that kind it has had, as far as its
+  households and spare money can pay; one with its fill takes more only at half. A Merchant supplying other towns buys
+  comforts for them, from caravans that come to it and at the far end of its own runs, where it can sell on for 15%
+  more than it pays after the road (its share of a stack's road food).
+- Measured (ridge, 120 days from the era's day 0, each against the last): with the realms, the March's 71-76 trips
+  revived the east (Lindenfield 0 to 303-332 emeralds, 1 to 315-373 trades). With desires too, the capital bought the
+  Coast's pipe tobacco to sell on: leisure met in Meadowworth, Wheatfield and Barleyby; every town but Greenwick
+  content (Meadowworth +2.5, Hollowwick -2.0 to +0.5); no wages unpaid anywhere; 26 children born. Still unmet
+  everywhere: treats and furnishings.
+
 ## Wages stay in the world: households (built 2026-10-15)
 
 - A town's farm pay is its households' money, not a sink: wages go into their purse, and they spend it at the market,
