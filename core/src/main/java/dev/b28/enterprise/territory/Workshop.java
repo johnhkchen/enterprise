@@ -94,44 +94,79 @@ public final class Workshop {
     }
 
     /**
-     * What the town's workshop would draw a day of each input to keep up the comforts its trades make: each kind at
-     * the town's ration of it (and as much again for each town its caravans run to, as {@link #convert} makes), in the
-     * inputs that make it, and back through what its own trades make of those (books from paper, paper from cane). Its
-     * farmers grow for this as for any demand: a town whose Farmers can bake biscuits plants cane. Item id -> a day.
+     * What the town's workshop would draw a day of each input to keep up the comforts its trades make, and what an item
+     * of it earns there: each kind at the town's ration of it (and as much again for each town its caravans run to, as
+     * {@link #convert} makes), in the inputs that make it, and back through what its own trades make of those (books from
+     * paper, paper from cane). An input earns its share of the output's worth to the town, by the inputs' worth: a cane
+     * in biscuits earns more than a cane pressed into paper. Its farmers grow for this as for any demand, at that worth.
+     * Item id -> {items a day, emeralds each}.
      */
-    public static java.util.Map<String, Double> inputDemand(ServerLevel level, GlobalPos desk, GlobalPos bell,
+    public static java.util.Map<String, double[]> inputDemand(ServerLevel level, GlobalPos desk, GlobalPos bell,
             int villagers) {
         Set<String> trades = tradesOf(level, bell);
         int towns = 1 + routesOut(level, desk);
-        java.util.Map<Item, Double> out = new java.util.LinkedHashMap<>();
+        long now = level.getGameTime();
+        java.util.Map<Item, double[]> out = new java.util.LinkedHashMap<>();
         for (Conversion conversion : CONVERSIONS) {
             if (conversion.trades().stream().anyMatch(trades::contains) && Comforts.kindOf(conversion.output()).isPresent()) {
+                double each = worth(level, desk, conversion.output(), now);
                 draw(conversion, villagers * Comforts.RATION_EMERALDS * towns
-                        / dev.b28.enterprise.money.Prices.emeraldsEach(conversion.output()), trades, out, 2);
+                        / dev.b28.enterprise.money.Prices.emeraldsEach(conversion.output()), each, trades, out, 2);
             }
         }
-        java.util.Map<String, Double> byId = new java.util.LinkedHashMap<>();
-        out.forEach((item, perDay) -> byId.put(BuiltInRegistries.ITEM.getKey(item).toString(), perDay));
+        java.util.Map<String, double[]> byId = new java.util.LinkedHashMap<>();
+        out.forEach((item, d) -> byId.put(BuiltInRegistries.ITEM.getKey(item).toString(), d));
         return byId;
     }
 
-    /** Adds what making {@code made} a day draws of each input, and of what makes those, {@code depth} steps back. */
-    private static void draw(Conversion conversion, double made, Set<String> trades, java.util.Map<Item, Double> out,
-            int depth) {
+    /**
+     * Adds what making {@code made} a day (worth {@code each} apiece) draws of each input, at its share of that worth;
+     * and of what makes those, {@code depth} steps back. Where two outputs draw on one input, it keeps the higher worth.
+     */
+    private static void draw(Conversion conversion, double made, double each, Set<String> trades,
+            java.util.Map<Item, double[]> out, int depth) {
         double batches = made / conversion.out();
-        java.util.Map<Item, Double> inputs = new java.util.LinkedHashMap<>();
-        inputs.put(conversion.input(), batches * conversion.in());
+        double inputsWorth = inputsWorth(conversion);
+        java.util.Map<Item, Integer> inputs = new java.util.LinkedHashMap<>();
+        inputs.put(conversion.input(), conversion.in());
         if (conversion.input2() != null) {
-            inputs.put(conversion.input2(), batches * conversion.in2());
+            inputs.put(conversion.input2(), conversion.in2());
         }
-        inputs.forEach((input, perDay) -> {
-            out.merge(input, perDay, Double::sum);
+        inputs.forEach((input, n) -> {
+            double perDay = batches * n;
+            // Its share of the batch's worth, by what it's worth beside the other inputs.
+            double share = conversion.out() * each * dev.b28.enterprise.money.Prices.emeraldsEach(input) / inputsWorth;
+            double[] d = out.computeIfAbsent(input, i -> new double[2]);
+            d[0] += perDay;
+            d[1] = Math.max(d[1], share);
             if (depth > 1) {
                 CONVERSIONS.stream()
                         .filter(c -> c.output() == input && c.trades().stream().anyMatch(trades::contains))
-                        .findFirst().ifPresent(c -> draw(c, perDay, trades, out, depth - 1));
+                        .findFirst().ifPresent(c -> draw(c, perDay, share, trades, out, depth - 1));
             }
         });
+    }
+
+    /** What a batch earns for each emerald of its inputs' worth, its output worth {@code each} apiece. */
+    public static double gain(Conversion conversion, double each) {
+        return conversion.out() * each / Math.max(1e-9, inputsWorth(conversion));
+    }
+
+    /** What a batch's inputs are worth at their prices, in emeralds. */
+    static double inputsWorth(Conversion conversion) {
+        return conversion.in() * dev.b28.enterprise.money.Prices.emeraldsEach(conversion.input())
+                + (conversion.input2() == null ? 0
+                        : conversion.in2() * dev.b28.enterprise.money.Prices.emeraldsEach(conversion.input2()));
+    }
+
+    /**
+     * What one of an output is worth to the town now: a comfort, what its people would pay for it (more the shorter
+     * they are, see {@link dev.b28.enterprise.caravan.Desires#reckon}); anything else, its price.
+     */
+    static double worth(ServerLevel level, GlobalPos desk, Item output, long now) {
+        return Comforts.kindOf(output).isPresent()
+                ? dev.b28.enterprise.caravan.Desires.reckon(level.getServer(), desk, output, now)
+                : dev.b28.enterprise.money.Prices.emeraldsEach(output);
     }
 
     /**
@@ -142,18 +177,25 @@ public final class Workshop {
             long now) {
         var books = dev.b28.enterprise.merchant.Books.get(level.getServer());
         int made = 0;
-        for (Potential p : potential(level, warehouse, desk, bell, stock, now)) {
+        // Inputs go first where they earn most: the conversion whose output is worth most beside its inputs' worth
+        // (biscuits before paper, while the town is short of treats). Ties keep the list's order.
+        List<Potential> ranked = new java.util.ArrayList<>(potential(level, warehouse, desk, bell, stock, now));
+        java.util.Map<Conversion, Double> gain = new java.util.HashMap<>();
+        ranked.forEach(p -> gain.put(p.conversion(), gain(p.conversion(), worth(level, desk, p.conversion().output(), now))));
+        ranked.sort(java.util.Comparator.comparingDouble((Potential p) -> -gain.get(p.conversion())));
+        for (Potential p : ranked) {
             int done = run(p.conversion(), p.wanted(), stock);
             made += done;
-            Item output = p.conversion().output();
-            if (p.wanted() <= 0) {
-                continue; // nothing wanted of it: not idle for want of anything
-            }
             if (done > 0) {
-                books.why(desk, now, null, output, "made: wanted here or by its caravans' towns", done);
+                books.why(desk, now, null, p.conversion().output(), "made: wanted here or by its caravans' towns", done);
             }
-            p.short_().forEach((input, by) -> books.whyNow(desk, now, null, output, "could make more: short of "
-                    + BuiltInRegistries.ITEM.getKey(input).getPath(), by));
+        }
+        // What it still wants and lacks, once the inputs went where they earn most: its potential, unmet.
+        for (Potential p : potential(level, warehouse, desk, bell, stock, now)) {
+            if (p.wanted() > 0) {
+                p.short_().forEach((input, by) -> books.whyNow(desk, now, null, p.conversion().output(),
+                        "could make more: short of " + BuiltInRegistries.ITEM.getKey(input).getPath(), by));
+            }
         }
         return made;
     }

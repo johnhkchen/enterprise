@@ -677,12 +677,11 @@ public final class Territory extends SavedData {
         double hands = 1 + Smithing.TOOL_BONUS * holding.kitShare.getOrDefault(Smithing.HOE.id(), 0.0); // hoes help
         // What it would buy, and what its own workshop would draw to make its people's comforts: its potential.
         Map<String, Double> wants = new HashMap<>(holding.demand);
-        if (holding.desk != null) {
-            Workshop.inputDemand(level, holding.desk, bell, census.villagers())
-                    .forEach((item, perDay) -> wants.merge(item, perDay, Double::sum));
-        }
-        holding.perDay = plan(level, bellPos.getY(), hexes(bell), farmers, wants, Husbandry.feedDemand(holding.herd),
-                holding.idlePerDay, hands);
+        Map<String, double[]> workshop = holding.desk == null ? Map.of()
+                : Workshop.inputDemand(level, holding.desk, bell, census.villagers());
+        workshop.forEach((item, d) -> wants.merge(item, d[0], Double::sum));
+        holding.perDay = plan(level, bellPos.getY(), hexes(bell), farmers, holding.demand, workshop,
+                Husbandry.feedDemand(holding.herd), holding.idlePerDay, hands);
         double tended = holding.perDay.values().stream().mapToDouble(Double::doubleValue).sum() / YIELD_PER_PLOT_PER_DAY;
         double capacity = hands * farmers.stream().mapToInt(l -> PLOTS_PER_FARMER_LEVEL * Math.max(1, l)).sum();
         holding.spareFarmPlots = (int) Math.max(0, capacity - Math.round(tended));
@@ -743,49 +742,100 @@ public final class Territory extends SavedData {
      */
     public Map<String, Double> plan(ServerLevel level, int centerY, List<Hex> hexes, List<Integer> farmers,
             Map<String, Double> demand, Map<String, Double> needs, Map<String, Double> idle, double hands) {
+        return plan(level, centerY, hexes, farmers, demand, Map.of(), needs, idle, hands);
+    }
+
+    /** One use of a crop: so many items a day, at what an item earns there. */
+    private record Use(Item crop, double perDay, double each) {}
+
+    /**
+     * Farmers tend the plots the herds' feed needs first, then go plot by plot where the next item earns most: each use
+     * of a crop (as itself, as what a trade makes of it, as its workshop's input, {@code workshop}: id -> {items a day,
+     * emeralds each}) at what an item earns there, the dearest first, as many plots as that use takes; then the rest,
+     * by what the crop earns, the most-planted first. A huge cheap market (paper for the Librarians' lockers) no longer
+     * takes every hand from a small dear one (the cane and wheat for the town's biscuits).
+     */
+    public Map<String, Double> plan(ServerLevel level, int centerY, List<Hex> hexes, List<Integer> farmers,
+            Map<String, Double> demand, Map<String, double[]> workshop, Map<String, Double> needs,
+            Map<String, Double> idle, double hands) {
         Map<String, Double> perDay = new LinkedHashMap<>();
         Map<Item, Integer> plots = new HashMap<>();
         for (Hex hex : hexes) {
             cropsIn(level, hex, centerY).forEach((item, count) -> plots.merge(item, count, Integer::sum));
         }
-        List<Map.Entry<Item, Integer>> order = new ArrayList<>(plots.entrySet());
-        order.sort(Comparator.comparingDouble((Map.Entry<Item, Integer> e) -> -sellsFor(e.getKey(), demand))
-                .thenComparing(Comparator.comparingInt((Map.Entry<Item, Integer> e) -> e.getValue()).reversed())
-                .thenComparing(e -> BuiltInRegistries.ITEM.getKey(e.getKey()).toString()));
         int capacity = (int) Math.round(hands * farmers.stream().mapToInt(l -> PLOTS_PER_FARMER_LEVEL * Math.max(1, l)).sum());
+        Map<Item, Integer> left = new HashMap<>(plots);
+        java.util.function.BiConsumer<Item, Integer> work = (crop, n) -> {
+            perDay.merge(BuiltInRegistries.ITEM.getKey(crop).toString(), n * YIELD_PER_PLOT_PER_DAY, Double::sum);
+            left.merge(crop, -n, Integer::sum);
+        };
         // Feed first: as many plots of each feed crop as the herds eat.
-        for (Map.Entry<Item, Integer> crop : order) {
-            double need = needs.getOrDefault(BuiltInRegistries.ITEM.getKey(crop.getKey()).toString(), 0.0);
-            int worked = Math.min(capacity, Math.min(crop.getValue(), (int) Math.ceil(need / YIELD_PER_PLOT_PER_DAY)));
+        List<Item> crops = new ArrayList<>(plots.keySet());
+        crops.sort(Comparator.comparing(c -> BuiltInRegistries.ITEM.getKey(c).toString()));
+        for (Item crop : crops) {
+            double need = needs.getOrDefault(BuiltInRegistries.ITEM.getKey(crop).toString(), 0.0);
+            int worked = Math.min(capacity, Math.min(left.get(crop), (int) Math.ceil(need / YIELD_PER_PLOT_PER_DAY)));
             if (worked > 0) {
-                perDay.merge(BuiltInRegistries.ITEM.getKey(crop.getKey()).toString(), worked * YIELD_PER_PLOT_PER_DAY, Double::sum);
-                crop.setValue(crop.getValue() - worked);
+                work.accept(crop, worked);
                 capacity -= worked;
             }
         }
-        for (Map.Entry<Item, Integer> crop : order) {
-            int worked = Math.min(capacity, crop.getValue());
-            String id = BuiltInRegistries.ITEM.getKey(crop.getKey()).toString();
-            if (crop.getValue() > worked) {
-                idle.merge(id, (crop.getValue() - worked) * YIELD_PER_PLOT_PER_DAY, Double::sum);
+        // Then each use, where an item earns most.
+        List<Use> uses = new ArrayList<>();
+        for (Item crop : crops) {
+            uses.addAll(usesOf(crop, demand, workshop));
+        }
+        uses.sort(Comparator.comparingDouble((Use u) -> -u.each()));
+        Map<Item, Double> best = new HashMap<>();
+        for (Use use : uses) {
+            best.merge(use.crop(), use.each(), Math::max);
+            int worked = Math.min(capacity, Math.min(left.get(use.crop()),
+                    (int) Math.ceil(use.perDay() / YIELD_PER_PLOT_PER_DAY)));
+            if (worked > 0) {
+                work.accept(use.crop(), worked);
+                capacity -= worked;
             }
-            if (worked <= 0) {
-                continue; // all its plots went to feed, or no farmer is left to tend it
+        }
+        // The rest: what's left of each crop's plots, the best-earning crop first, then the most planted.
+        crops.sort(Comparator.comparingDouble((Item c) -> -best.getOrDefault(c, 0.0))
+                .thenComparing(Comparator.comparingInt((Item c) -> plots.get(c)).reversed())
+                .thenComparing(c -> BuiltInRegistries.ITEM.getKey(c).toString()));
+        for (Item crop : crops) {
+            int worked = Math.min(capacity, left.get(crop));
+            if (worked > 0) {
+                work.accept(crop, worked);
+                capacity -= worked;
             }
-            perDay.merge(id, worked * YIELD_PER_PLOT_PER_DAY, Double::sum);
-            capacity -= worked;
+            if (left.get(crop) > 0) {
+                idle.merge(BuiltInRegistries.ITEM.getKey(crop).toString(), left.get(crop) * YIELD_PER_PLOT_PER_DAY,
+                        Double::sum);
+            }
         }
         return perDay;
     }
 
-    /** What the village would pay a day for a crop (as itself, or as what a trade makes of it), in emeralds. */
-    private static double sellsFor(Item crop, Map<String, Double> demand) {
+    /**
+     * A crop's uses: as itself at its price; as what a trade makes of it alone (paper of cane, bread of wheat) at that
+     * good's price per item of the crop; and as its workshop's input at the share of the output's worth it earns.
+     */
+    private static List<Use> usesOf(Item crop, Map<String, Double> demand, Map<String, double[]> workshop) {
         String id = BuiltInRegistries.ITEM.getKey(crop).toString();
-        double value = demand.getOrDefault(id, 0.0) / Prices.itemsPerEmerald(id);
-        for (String made : Workshop.outputsOf(java.util.Set.of(id))) {
-            value += demand.getOrDefault(made, 0.0) / Prices.itemsPerEmerald(made);
+        List<Use> uses = new ArrayList<>();
+        if (demand.getOrDefault(id, 0.0) > 0) {
+            uses.add(new Use(crop, demand.get(id), Prices.emeraldsEach(crop)));
         }
-        return value;
+        for (Workshop.Conversion c : Workshop.CONVERSIONS) {
+            String made = BuiltInRegistries.ITEM.getKey(c.output()).toString();
+            if (c.input() == crop && c.input2() == null && demand.getOrDefault(made, 0.0) > 0) {
+                uses.add(new Use(crop, demand.get(made) * c.in() / c.out(),
+                        Prices.emeraldsEach(c.output()) * c.out() / c.in()));
+            }
+        }
+        double[] drawn = workshop.get(id);
+        if (drawn != null && drawn[0] > 0) {
+            uses.add(new Use(crop, drawn[0], drawn[1]));
+        }
+        return uses;
     }
 
     /** Recounts the hex's loaded chunks, keeps the last count of the rest, and returns the hex's plots. */

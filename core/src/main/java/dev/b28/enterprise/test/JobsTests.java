@@ -98,6 +98,12 @@ public final class JobsTests {
         int biscuits = dev.b28.enterprise.territory.Workshop.runForTest(making.apply(net.minecraft.world.item.Items.COOKIE),
                 64, stock);
         helper.assertTrue(biscuits == 8, "10 wheat and 2 cane: two batches of biscuits, the cane runs out first: " + biscuits);
+        // A cane earns more in biscuits than pressed into paper: the workshop gives it to the biscuits first.
+        double biscuit = dev.b28.enterprise.territory.Workshop.gain(making.apply(net.minecraft.world.item.Items.COOKIE),
+                dev.b28.enterprise.money.Prices.emeraldsEach(net.minecraft.world.item.Items.COOKIE));
+        double paper = dev.b28.enterprise.territory.Workshop.gain(making.apply(net.minecraft.world.item.Items.PAPER),
+                dev.b28.enterprise.money.Prices.emeraldsEach(net.minecraft.world.item.Items.PAPER));
+        helper.assertTrue(biscuit > 1.4 * paper, "biscuits " + biscuit + " a emerald of inputs, paper " + paper);
         helper.assertTrue(stock.count(new net.minecraft.world.item.trading.ItemCost(net.minecraft.world.item.Items.WHEAT, 1)) == 6,
                 "4 wheat used, 6 left");
         helper.assertTrue(dev.b28.enterprise.territory.Comforts.kindOf(dev.b28.enterprise.trade.Wares.PIPE_TOBACCO.get())
