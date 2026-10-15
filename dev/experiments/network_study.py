@@ -631,6 +631,7 @@ def main():
         print("\n" + rcon("enterprise paperwork").strip())
         print("\n" + rcon("enterprise expeditions").strip())
         print("\n" + rcon("enterprise realms").strip())
+        print("\n" + rcon(f"enterprise books {HUB[0] + 2} -60 {HUB[1] + 2}").strip())
         print("\nT: " + "\n".join(l for l in rcon(f"enterprise territory {bell(t)}").splitlines()
                                     if re.search(r"toll|guard|post|treasury|fee", l)))
     names = rcon("enterprise name")

@@ -118,6 +118,12 @@ public final class ShopBoard extends SavedData {
             int takings = Shops.collect(shop);
             if (takings > 0) {
                 Treasury.deposit(level, desk.pos(), stock, takings);
+                Listing listing = listings.getOrDefault(desk, Map.of()).get(shop.getBlockPos());
+                if (listing != null) {
+                    dev.b28.enterprise.merchant.Books.get(server).enter(server, desk, now,
+                            dev.b28.enterprise.merchant.Books.Kind.SHOP, null, listing.item(),
+                            takings / Math.max(1, listing.spurs()) * listing.lot(), takings);
+                }
             }
         }
         List<Listing> wants = wants(level, desk, stock, now, rate, territory);

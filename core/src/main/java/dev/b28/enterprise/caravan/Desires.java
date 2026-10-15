@@ -35,6 +35,20 @@ public final class Desires {
         return dev.b28.enterprise.market.ShopBoard.get(server).seen(desk, item).orElseGet(() -> reckon(server, desk, item, at));
     }
 
+    /**
+     * As {@link #willPay(MinecraftServer, GlobalPos, Item, long)}, as {@code home}'s Merchant knows it: the shop's price
+     * a caravan last saw, else the last price its own books show it sold that good there for, else reckoned.
+     */
+    public static double willPay(MinecraftServer server, GlobalPos home, GlobalPos desk, Item item, long at) {
+        var shop = dev.b28.enterprise.market.ShopBoard.get(server).seen(desk, item);
+        if (shop.isPresent()) {
+            return shop.get();
+        }
+        double rate = dev.b28.enterprise.money.Mint.get(server).rate(dev.b28.enterprise.money.Mint.DEFAULT_FACTION, at);
+        return dev.b28.enterprise.merchant.Books.get(server).lastPrice(home, desk, item).map(spurs -> spurs / rate)
+                .orElseGet(() -> reckon(server, desk, item, at));
+    }
+
     /** What the market would pay, reckoned from its shortfall, how unmet the kind is and what its people can afford. */
     public static double reckon(MinecraftServer server, GlobalPos desk, Item item, long at) {
         double value = Prices.emeraldsEach(item);
@@ -98,7 +112,7 @@ public final class Desires {
                 continue;
             }
             units += short_;
-            double each = willPay(server, route.to(), item, at) - haulEach(route, item);
+            double each = willPay(server, home, route.to(), item, at) - haulEach(route, item);
             if (each > bestEach) {
                 bestEach = each;
                 best = route.to();

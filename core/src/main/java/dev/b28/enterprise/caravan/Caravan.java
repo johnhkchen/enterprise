@@ -35,6 +35,7 @@ public final class Caravan {
     net.minecraft.core.GlobalPos stop; // the hub it calls at on this leg, if any
     boolean stopped; // called there already on this leg
     long remaining; // ticks of road left after the stop
+    final List<dev.b28.enterprise.merchant.Books.Entry> log = new ArrayList<>(); // its dealings at the far end, for home's books
 
     Caravan(int route, Leg leg, long arrives, List<ItemStack> cargo, int spurs, int merchantLevel) {
         this.route = route;
@@ -146,6 +147,9 @@ public final class Caravan {
         }
         tag.putBoolean("stopped", stopped);
         tag.putLong("remaining", remaining);
+        ListTag lines = new ListTag();
+        log.forEach(e -> lines.add(e.save()));
+        tag.put("log", lines);
         return tag;
     }
 
@@ -174,6 +178,8 @@ public final class Caravan {
                 .result().orElse(null);
         caravan.stopped = tag.getBoolean("stopped");
         caravan.remaining = tag.getLong("remaining");
+        tag.getList("log", Tag.TAG_COMPOUND).forEach(t -> caravan.log.add(
+                dev.b28.enterprise.merchant.Books.Entry.load((CompoundTag) t)));
         for (Tag market : tag.getList("news", Tag.TAG_COMPOUND)) {
             net.minecraft.core.GlobalPos.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE, market).ifSuccess(caravan.news::add);
         }

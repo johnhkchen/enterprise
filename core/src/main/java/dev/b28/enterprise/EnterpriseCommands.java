@@ -77,6 +77,20 @@ final class EnterpriseCommands {
                                     context.getSource().sendSuccess(() -> Component.literal(done + " chunks surveyed"), false);
                                     return done;
                                 }))))
+                .then(Commands.literal("books")
+                        .then(Commands.argument("desk", BlockPosArgument.blockPos()).executes(context -> {
+                            // A market's books, as its Merchant keeps them: dealings by kind, counterparty and good.
+                            var server = context.getSource().getServer();
+                            var desk = net.minecraft.core.GlobalPos.of(context.getSource().getLevel().dimension(),
+                                    BlockPosArgument.getBlockPos(context, "desk"));
+                            var summary = dev.b28.enterprise.merchant.Books.get(server).summary(server, desk);
+                            StringBuilder out = new StringBuilder("Books of %s (kept %d days): %d lines".formatted(
+                                    dev.b28.enterprise.settlement.Names.label(desk),
+                                    dev.b28.enterprise.merchant.Books.keeps(server, desk), summary.size()));
+                            summary.forEach((key, t) -> out.append("\n  %s: %d for %d spurs".formatted(key, t[0], t[1])));
+                            context.getSource().sendSuccess(() -> Component.literal(out.toString()), false);
+                            return summary.size();
+                        })))
                 .then(Commands.literal("realms").executes(context -> {
                     // The realms beyond the border: their trade with ours, and the customs paid.
                     var lines = dev.b28.enterprise.trade.Realms.get(context.getSource().getServer())

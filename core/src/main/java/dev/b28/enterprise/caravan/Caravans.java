@@ -101,6 +101,18 @@ public final class Caravans {
     static final TicketType<ChunkPos> CARAVAN =
             TicketType.create("enterprise_caravan", Comparator.comparingLong(ChunkPos::toLong), TICKET_TICKS);
 
+    private static MinecraftServer server(ServerLevel level) {
+        return level.getServer();
+    }
+
+    /** A purchase at the far end, in both sets of books: the far market sold it, the caravan's log bought it. */
+    static void boughtThere(MinecraftServer server, Route route, Caravan caravan, Item item, int count, int spurs, long now) {
+        dev.b28.enterprise.merchant.Books.get(server).enter(server, route.to, now,
+                dev.b28.enterprise.merchant.Books.Kind.SOLD, route.from, item, count, spurs);
+        caravan.log.add(new dev.b28.enterprise.merchant.Books.Entry(now / 24000,
+                dev.b28.enterprise.merchant.Books.Kind.BOUGHT, route.to, item, count, spurs));
+    }
+
     /** A foreign realm's Merchants haggle as Experts, and two of its people go with each caravan or fleet. */
     static final int FOREIGN_MERCHANT_LEVEL = 4;
     static final int FOREIGN_CREW = 2;
@@ -377,6 +389,10 @@ public final class Caravans {
         route.lastCrew = Math.max(1, crew.size());
         setStop(server, route, leaving, now, true, 1);
         ledger.put(leaving);
+        // Into the books: what went out, and where to.
+        var books = dev.b28.enterprise.merchant.Books.get(server);
+        dev.b28.enterprise.merchant.Books.byGood(leaving.cargo).forEach((item, count) -> books.enter(server, route.from, now,
+                dev.b28.enterprise.merchant.Books.Kind.SENT, route.to, item, count, 0));
         route.lastDeparture = now;
         route.foodEaten += food;
         route.status = "on the way out";
@@ -494,6 +510,15 @@ public final class Caravans {
             int takings = sell(server, level, route.to, stock, caravan, residentLevel, mint, rate, now, route, territory, sold);
             // A foreign trader pays the crown's customs on what it sells inside the realm.
             takings -= dev.b28.enterprise.trade.Realms.get(server).customs(server, route.from, takings);
+            // Both sides keep books: the Merchant here what it bought, the caravan's log what it sold.
+            for (Map.Entry<Item, double[]> line : sold.entrySet()) {
+                int count = (int) line.getValue()[0];
+                int spursFor = (int) Math.round(line.getValue()[1] * rate);
+                dev.b28.enterprise.merchant.Books.get(server).enter(server, route.to, now,
+                        dev.b28.enterprise.merchant.Books.Kind.BOUGHT, route.from, line.getKey(), count, spursFor);
+                caravan.log.add(new dev.b28.enterprise.merchant.Books.Entry(now / 24000,
+                        dev.b28.enterprise.merchant.Books.Kind.SOLD, route.to, line.getKey(), count, spursFor));
+            }
             earned += takings;
             caravan.spurs += earned;
             route.salesSpurs += earned;
@@ -815,6 +840,13 @@ public final class Caravans {
         int tolls = payTolls(territory, route, caravan.spurs, perHex(rate), terrain(server, route));
         caravan.spurs -= tolls;
         route.tollsPaid += tolls;
+        // Home's books: what came back, and the caravan's log of its dealings there, handed in.
+        var books = dev.b28.enterprise.merchant.Books.get(server);
+        long home = level.getGameTime();
+        dev.b28.enterprise.merchant.Books.byGood(caravan.cargo).forEach((item, count) -> books.enter(server, route.from, home,
+                dev.b28.enterprise.merchant.Books.Kind.HOME, route.to, item, count, 0));
+        books.file(server, route.from, home, caravan.log);
+        caravan.log.clear();
         for (Iterator<ItemStack> it = caravan.cargo.iterator(); it.hasNext(); ) {
             ItemStack rest = stock.insert(it.next());
             if (rest.isEmpty()) {
@@ -1053,6 +1085,7 @@ public final class Caravans {
             book.settle(contract, taken, cost / rate + recoup, now);
             route.itemsBought += taken;
             route.purchaseSpurs += spurs;
+            boughtThere(server, route, caravan, goods.get(0).getItem(), taken, spurs + (int) Math.round(repaid * rate), now);
         }
     }
 
@@ -1392,6 +1425,7 @@ public final class Caravans {
                 budget -= taken * value;
                 route.itemsBought += taken;
                 route.purchaseSpurs += spurs;
+                boughtThere(server(level), route, caravan, item, taken, spurs, now);
             }
         }
         caravan.shopping.clear();
@@ -2055,6 +2089,7 @@ public final class Caravans {
             Treasury.deposit(level, desk.pos(), stock, spurs);
             route.itemsBought += taken;
             route.purchaseSpurs += spurs;
+            boughtThere(server(level), route, caravan, item, taken, spurs, now);
             route.backhaulItems += taken;
             bought += taken;
         }
@@ -2128,6 +2163,7 @@ public final class Caravans {
             }
             route.itemsBought += taken;
             route.purchaseSpurs += spurs;
+            boughtThere(server, route, caravan, item, taken, spurs, now);
         }
     }
 

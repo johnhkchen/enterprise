@@ -676,6 +676,7 @@ public final class CaravanTests {
                 "the caravan carries its purse plus sales less food");
 
         int carried = back.spurs();
+        net.hub().insert(new ItemStack(Items.PAPER, 1)); // a sheet for the day's page of its books: no scribe to pay
         int hubBefore = MoneyChanger.value(net.hub().looseStacks()); // includes change from funding the purse
         net.poll(t + 160);
         helper.assertTrue(net.ledger().caravan(net.route().id()).isEmpty(), "the caravan is home");
@@ -995,6 +996,29 @@ public final class CaravanTests {
         helper.assertTrue(army.waiting() - before >= 3, "and waiting in the barracks: " + (army.waiting() - before));
         army.embark(3);
         net.ledger().removeRoute(route.id());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void bothMerchantsKeepBooksOfATrip(GameTestHelper helper) {
+        Network net = network(helper, 2, 5, 640);
+        var server = helper.getLevel().getServer();
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        net.poll(t + 80);
+        net.poll(t + 160);
+        var books = dev.b28.enterprise.merchant.Books.get(server);
+        var home = books.of(net.route().from());
+        var there = books.of(net.route().to());
+        helper.assertTrue(home.stream().anyMatch(e -> e.kind() == dev.b28.enterprise.merchant.Books.Kind.SENT
+                && e.item() == Items.PAPER), "home's books: paper sent out " + home);
+        helper.assertTrue(home.stream().anyMatch(e -> e.kind() == dev.b28.enterprise.merchant.Books.Kind.SOLD
+                && e.item() == Items.PAPER && e.spurs() > 0 && net.route().to().equals(e.with())),
+                "and, from the caravan's log, paper sold there: " + home);
+        helper.assertTrue(there.stream().anyMatch(e -> e.kind() == dev.b28.enterprise.merchant.Books.Kind.BOUGHT
+                && e.item() == Items.PAPER && e.spurs() > 0), "the far Merchant's: paper bought " + there);
+        helper.assertTrue(books.lastPrice(net.route().from(), net.route().to(), Items.PAPER).isPresent(),
+                "home knows what paper fetched there");
         helper.succeed();
     }
 
