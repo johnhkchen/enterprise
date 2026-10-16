@@ -8,6 +8,8 @@ import dev.b28.enterprise.contract.Delivery;
 import dev.b28.enterprise.contract.Harvest;
 import dev.b28.enterprise.contract.Incoterm;
 import dev.b28.enterprise.contract.Rents;
+import dev.b28.enterprise.cargo.Crates;
+import dev.b28.enterprise.merchant.MerchantStock;
 import dev.b28.enterprise.money.Prices;
 import dev.b28.enterprise.territory.Territory;
 import java.util.HashMap;
@@ -18,6 +20,8 @@ import net.minecraft.core.GlobalPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.trading.ItemCost;
 
 /**
  * Forward sales of crops, as abbeys sold their wool and farms their standing grain: a market whose lockers buy a crop
@@ -48,7 +52,7 @@ public final class ForwardSales {
             if (caravan.spurs - keep >= spurs) {
                 caravan.spurs -= spurs;
                 dev.b28.enterprise.money.Treasury.deposit(level, route.to().pos(), stock, spurs);
-                rents.redeem(rent, now);
+                rents.redeem(rent, ContractBook.get(server), now);
             }
         }
         ContractBook book = ContractBook.get(server);
@@ -107,17 +111,88 @@ public final class ForwardSales {
      * What the farm keeps back of a crop for its forward sales and rents' coupons: what falls due by the end of the
      * next harvest window, not yet delivered or on the road. Its caravans sell, and its workshop uses, only the rest.
      */
-    public static int setAside(MinecraftServer server, GlobalPos farm, Item crop, long now) {
+    public static int setAside(MinecraftServer server, GlobalPos farm, Item crop, MerchantStock stock, long now) {
         int kept = 0;
         for (Contract c : ContractBook.get(server).of(farm)) {
             if (!c.seller().equals(farm) || c.harvest().isEmpty() || !c.inForce()) {
                 continue;
             }
             if (c.delivery().filter(d -> d.item() == crop).isPresent()) {
-                kept += Math.max(0, c.owed(now + c.harvest().get().windowTicks()) - c.shipped());
+                // Less what's crated for it already: out of the stock's reach.
+                kept += Math.max(0, c.owed(now + c.harvest().get().windowTicks()) - c.shipped()
+                        - earmarked(stock, c.id(), crop));
             }
         }
         return kept;
+    }
+
+    /** Is this one of the stock's crates earmarked under the contract (its bill of lading ships under it)? */
+    static boolean earmarkedFor(ItemStack stack, int contract) {
+        return Crates.isCrate(stack) && Crates.papers(stack).contract().filter(id -> id == contract).isPresent();
+    }
+
+    static int goodsIn(ItemStack crate) {
+        return Crates.goods(crate).stream().mapToInt(ItemStack::getCount).sum();
+    }
+
+    /** Of a crop, what's crated in the stock under the contract. */
+    public static int earmarked(MerchantStock stock, int contract, Item crop) {
+        return stock.looseStacks().stream().filter(s -> earmarkedFor(s, contract))
+                .flatMap(s -> Crates.goods(s).stream()).filter(g -> g.is(crop)).mapToInt(ItemStack::getCount).sum();
+    }
+
+    /** Takes the crates earmarked under the contract out of the stock, as many as cover {@code most} items. */
+    public static List<ItemStack> takeEarmarked(MerchantStock stock, int contract, int most) {
+        int[] left = {most};
+        return stock.removeLoose(s -> {
+            if (left[0] <= 0 || !earmarkedFor(s, contract)) {
+                return false;
+            }
+            left[0] -= goodsIn(s);
+            return true;
+        });
+    }
+
+    /**
+     * The farm earmarks its harvest for what it owes: as soon as the crop is in, what falls due under its forward
+     * sales and rents' coupons by the end of the next harvest window is crated, a bill of lading made out to the buyer
+     * and a copy of the contract in each crate. Crated, it's a shipment, out of reach of the lockers, the bakers and
+     * the caravans' spot sales; the next caravan to the buyer, or the buyer's own collecting, takes it first. A crate
+     * whose contract has closed, or gone to another buyer, goes back on the shelf.
+     */
+    public static void earmark(net.minecraft.server.level.ServerLevel level, GlobalPos desk, MerchantStock stock, long now) {
+        MinecraftServer server = level.getServer();
+        ContractBook book = ContractBook.get(server);
+        List<ItemStack> stale = stock.removeLoose(s -> Crates.isCrate(s) && Crates.papers(s).contract()
+                .flatMap(book::contract)
+                .filter(c -> c.seller().equals(desk) && c.harvest().isPresent()
+                        && (!c.inForce() || !Crates.papers(s).consignee().equals(Optional.of(c.buyer()))))
+                .isPresent());
+        for (ItemStack crate : stale) {
+            Crates.goods(crate).forEach(stock::insert);
+            stock.insert(new ItemStack(dev.b28.enterprise.cargo.Cargo.CRATE_ITEM.get()));
+        }
+        for (Contract c : book.of(desk)) {
+            if (!c.seller().equals(desk) || c.harvest().isEmpty() || !c.inForce() || c.delivery().isEmpty()) {
+                continue;
+            }
+            Item crop = c.delivery().get().item();
+            int want = c.owed(now + c.harvest().get().windowTicks()) - c.shipped() - earmarked(stock, c.id(), crop);
+            if (want <= 0) {
+                continue;
+            }
+            List<ItemStack> goods = new java.util.ArrayList<>(stock.take(new ItemCost(crop, 1), want));
+            if (goods.isEmpty()) {
+                continue;
+            }
+            for (ItemStack packed : Crates.pack(level, desk, stock, goods,
+                    Crates.shipping(c, desk, c.buyer(), goods, -1, now, false), now)) {
+                ItemStack rest = stock.insert(packed);
+                if (!rest.isEmpty()) {
+                    (Crates.isCrate(rest) ? Crates.goods(rest) : List.of(rest)).forEach(stock::insert); // no room
+                }
+            }
+        }
     }
 
     /** Items a day of every crop the farm has sold forward, drafted or in force (contracts and rents' coupons). */

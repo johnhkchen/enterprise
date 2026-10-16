@@ -676,8 +676,18 @@ for so much grain a year, for good, until the farm bought it back. (Futures prop
   +2.50, Meadowworth +1.81 to +2.00; Hollowwick +1.59 to +0.22 (broke in two lanes; a 16-beetroot rent to Haygate went
   undelivered for 42 days though it has a road there: not yet traced), Haygate +1.54 to +0.98. Sum of the eight 14.86
   against 15.08: within the noise.
-- **Next:** trace Hollowwick's undelivered rent; tune from a forked checkpoint with the paper in play; coupons sold on
-  their own; forwarding coupons for holders whose farm can't pay the fare; a rent's price moving with local prices.
+- **Earmarked in crates.** As soon as its crop is in, a farm crates what falls due under its forward sales and coupons
+  by the end of the next harvest window: a bill of lading made out to the buyer and a copy of the contract in each
+  crate. A crate with papers is a shipment, out of the stock's reach (lockers, bakers, spot sales); its caravan to the
+  buyer loads it first, and a buyer collecting Ex Works takes it first. A crate whose contract has closed, or gone to
+  another buyer, goes back on the shelf. A bought-back rent's coupon closes (traced: one stood owed for ever, keeping
+  48 potatoes set aside for no one).
+- Measured (forked from a day-120 checkpoint with the paper in play, 20 days, the harvest window at 4, 6 and 8 days):
+  no forward sale rolled over or broke, farms delivered ahead of their days, coupons 56 to 100% delivered; the window
+  made no difference once deliveries weren't late. Hollowwick stayed broke in every lane: its caravans wait for road
+  food (its bakers short of wheat, 167 potato plots a day untended for want of hands), not for paper.
+- **Next:** Hollowwick's food and hands; coupons sold on their own; forwarding coupons for holders whose farm can't pay
+  the fare; a rent's price moving with local prices.
 
 ## The Merchant tells its Farmers what sells; lockers by worth; root cellars (built 2026-10-16)
 

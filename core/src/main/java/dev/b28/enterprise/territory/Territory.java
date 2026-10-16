@@ -1353,6 +1353,7 @@ public final class Territory extends SavedData {
         }
         holding.paidShare = paidShare;
         bank(level, at, stock, holding, now); // before the workshop: the wheat it bakes with
+        dev.b28.enterprise.caravan.ForwardSales.earmark(level, at, stock, now); // what it owes, crated for its buyer
         Workshop.convert(level, dev.b28.enterprise.merchant.Warehouse.get(level.getServer()), at, bell.get(), stock, now);
         dev.b28.enterprise.service.Services.home(level, this, at, bell.get(), stock, now); // what its own trades do for it
         Map<String, Integer> workers = workers(level.getServer(), bell.get());

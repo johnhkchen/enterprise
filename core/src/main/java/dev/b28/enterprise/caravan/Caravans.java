@@ -960,8 +960,14 @@ public final class Caravans {
             }
             int room = (slots - Crates.stacks(cargo)) * delivery.get().item().getDefaultMaxStackSize();
             int taken = 0;
+            // Its crates earmarked for it first, as they are; then loose goods for the rest.
+            for (ItemStack crate : ForwardSales.takeEarmarked(stock, contract.id(), Math.min(owed, room))) {
+                taken += ForwardSales.goodsIn(crate);
+                cargo.add(crate);
+            }
             List<ItemStack> goods = new ArrayList<>();
-            for (ItemStack piece : stock.take(delivery.get().cost(server.registryAccess()), Math.min(owed, room))) {
+            for (ItemStack piece : stock.take(delivery.get().cost(server.registryAccess()),
+                    Math.max(0, Math.min(owed, room) - taken))) {
                 taken += piece.getCount();
                 goods.add(piece);
             }
@@ -1096,7 +1102,15 @@ public final class Caravans {
             }
             int taken = 0;
             List<ItemStack> goods = new ArrayList<>();
-            for (ItemStack piece : stock.take(delivery.get().cost(server.registryAccess()), quantity)) {
+            // What the seller crated for it first (opened, to be crated again with the Ex Works papers), then loose.
+            for (ItemStack crate : ForwardSales.takeEarmarked(stock, contract.id(), quantity)) {
+                for (ItemStack piece : Crates.goods(crate)) {
+                    taken += piece.getCount();
+                    goods.add(piece);
+                }
+                stock.insert(new ItemStack(dev.b28.enterprise.cargo.Cargo.CRATE_ITEM.get()));
+            }
+            for (ItemStack piece : stock.take(delivery.get().cost(server.registryAccess()), Math.max(0, quantity - taken))) {
                 taken += piece.getCount();
                 goods.add(piece);
             }
@@ -1894,11 +1908,11 @@ public final class Caravans {
                         warehouse.onHand(there, item));
             } else if (stock.count(new ItemCost(item, 1)) <= 0) {
                 books.why(home, now, there, item, "not sent: we have none (" + want.getValue() + ")", room);
-            } else if (stock.count(new ItemCost(item, 1)) <= ForwardSales.setAside(server, home, item, now)) {
+            } else if (stock.count(new ItemCost(item, 1)) <= ForwardSales.setAside(server, home, item, stock, now)) {
                 books.why(home, now, there, item, "not sent: set aside for a forward sale (" + want.getValue() + ")", room);
             } else {
                 limits.put(item, Math.min(room, stock.count(new ItemCost(item, 1))
-                        - ForwardSales.setAside(server, home, item, now)));
+                        - ForwardSales.setAside(server, home, item, stock, now)));
             }
         }
         List<ItemStack> cargo = new ArrayList<>();

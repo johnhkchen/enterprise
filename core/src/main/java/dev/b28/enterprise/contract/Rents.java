@@ -135,7 +135,12 @@ public final class Rents extends SavedData {
      */
     public void review(ContractBook book, long now) {
         for (Rent rent : rents.values()) {
-            if (rent.state != State.ACTIVE || now < rent.nextCoupon) {
+            if (rent.state != State.ACTIVE) {
+                // Bought back or defaulted: no coupon stands (one saved before redeeming closed its coupon, closes now).
+                book.contract(rent.coupon).filter(Contract::inForce).ifPresent(c -> book.close(c, "the rent is over", now));
+                continue;
+            }
+            if (now < rent.nextCoupon) {
                 continue;
             }
             issue(rent, book, now);
@@ -232,8 +237,9 @@ public final class Rents extends SavedData {
         return rents.values().stream().filter(r -> r.state == State.ACTIVE && r.holder.equals(holder)).toList();
     }
 
-    /** Bought back: the farm has paid the holder its capital. The coupon in force is the last. */
-    public void redeem(Rent rent, long now) {
+    /** Bought back: the farm has paid the holder its capital, and owes nothing more: its coupon closes. */
+    public void redeem(Rent rent, ContractBook book, long now) {
+        book.contract(rent.coupon).ifPresent(c -> book.close(c, "the rent bought back", now));
         rent.state = State.REDEEMED;
         rent.note("day %d: bought back for %.1f emeralds".formatted(now / 24000, rent.capital));
         setDirty();

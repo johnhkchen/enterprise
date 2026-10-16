@@ -185,7 +185,8 @@ public final class Workshop {
         ranked.sort(java.util.Comparator.comparingDouble((Potential p) -> -gain.get(p.conversion())));
         for (Potential p : ranked) {
             // Not the crop set aside for its forward sales: the bakers leave the wheat it owes.
-            int kept = dev.b28.enterprise.caravan.ForwardSales.setAside(level.getServer(), desk, p.conversion().input(), now);
+            int kept = dev.b28.enterprise.caravan.ForwardSales.setAside(level.getServer(), desk, p.conversion().input(),
+                    stock, now);
             int free = stock.count(new ItemCost(p.conversion().input(), 1)) - kept;
             int wanted = kept <= 0 ? p.wanted() : Math.min(p.wanted(),
                     Math.max(0, free) / p.conversion().in() * p.conversion().out());

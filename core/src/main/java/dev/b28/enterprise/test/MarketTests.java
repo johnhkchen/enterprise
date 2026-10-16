@@ -86,6 +86,32 @@ public final class MarketTests {
     }
 
     @GameTest(template = "floor")
+    public static void aFarmCratesWhatItOwesOutOfReachUntilItShips(GameTestHelper helper) {
+        GlobalPos desk = market(helper);
+        stock(helper).insert(new ItemStack(Items.EMERALD, 10)); // for the crates
+        stock(helper).insert(new ItemStack(Items.POTATO, 64));
+        var level = helper.getLevel();
+        var book = dev.b28.enterprise.contract.ContractBook.get(level.getServer());
+        GlobalPos buyer = GlobalPos.of(level.dimension(), new BlockPos(7_880_000, 64, 7_000_000));
+        long t = level.getGameTime();
+        var contract = book.draft(desk, buyer, java.util.List.of(new dev.b28.enterprise.contract.Delivery(Items.POTATO, 40, 0.04),
+                        new dev.b28.enterprise.contract.Harvest(4)), dev.b28.enterprise.contract.Incoterm.DDP, t, 10 * 24000L, 3, t,
+                desk, true);
+        dev.b28.enterprise.caravan.ForwardSales.earmark(level, desk, stock(helper), t);
+        int loose = stock(helper).count(new net.minecraft.world.item.trading.ItemCost(Items.POTATO, 1));
+        int crated = dev.b28.enterprise.caravan.ForwardSales.earmarked(stock(helper), contract.id(), Items.POTATO);
+        helper.assertTrue(crated == 40 && loose == 24, "the 40 owed crated, out of reach: " + crated + " crated, " + loose
+                + " loose");
+        helper.assertTrue(dev.b28.enterprise.caravan.ForwardSales.setAside(level.getServer(), desk, Items.POTATO,
+                stock(helper), t) == 0, "crated, nothing more set aside");
+        book.close(contract, "test", t);
+        dev.b28.enterprise.caravan.ForwardSales.earmark(level, desk, stock(helper), t);
+        loose = stock(helper).count(new net.minecraft.world.item.trading.ItemCost(Items.POTATO, 1));
+        helper.assertTrue(loose == 64, "its contract closed, back on the shelf: " + loose + " loose");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aPlayerBuysARentsDeedCollectsItsCropAndSellsItBack(GameTestHelper helper) {
         GlobalPos desk = market(helper);
         stock(helper).insert(new ItemStack(Items.EMERALD, 64));
@@ -124,7 +150,7 @@ public final class MarketTests {
         dev.b28.enterprise.market.RentDeeds.quote(level, desk, stock(helper), mint, rate, t, sites);
         helper.assertTrue(!rent.bearer() && shop.getMode() == VendorBlockEntity.Mode.SELL && Shops.lots(shop) == 1,
                 "the dealer's own again, on sale: " + rent.history());
-        rents.redeem(rent, t); // done with it
+        rents.redeem(rent, book, t); // done with it
         helper.succeed();
     }
 
