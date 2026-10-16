@@ -105,4 +105,53 @@ public final class PostTests {
         helper.assertTrue(after > before + 4, "the coin back by post: " + before + " -> " + after);
         helper.succeed();
     }
+
+    @GameTest(template = "floor")
+    public static void aTownsBookingsFillingAWagonBringTheForwarderToCollect(GameTestHelper helper) {
+        var level = helper.getLevel();
+        MerchantStock stock = market(helper, new BlockPos(1, 2, 1), 5);
+        GlobalPos hub = GlobalPos.of(level.dimension(), helper.absolutePos(new BlockPos(1, 2, 1)));
+        GlobalPos small = GlobalPos.of(level.dimension(), hub.pos().offset(300, 0, 0));
+        GlobalPos big = GlobalPos.of(level.dimension(), hub.pos().offset(0, 0, 300));
+        long t = level.getGameTime();
+        var forwarder = dev.b28.enterprise.market.Forwarder.get(level.getServer());
+        forwarder.bookedForTest(hub, small, 2, 10, t);
+        forwarder.bookedForTest(hub, big, 12, 60, t);
+        forwarder.review(level, hub, stock, t);
+        helper.assertFalse(forwarder.collecting(hub, small), "two stacks: it waits for more, or the week");
+        helper.assertTrue(forwarder.collecting(hub, big), "twelve: it sends to collect");
+        CaravanLedger ledger = CaravanLedger.get(level.getServer());
+        var run = ledger.route(hub, big);
+        helper.assertTrue(run.isPresent() && run.get().onCall(), "on a run on call, the hub having none there");
+        forwarder.review(level, hub, stock, t + 7 * 24000);
+        helper.assertTrue(forwarder.collecting(hub, small), "a week waited: it collects the small one too");
+        ledger.route(hub, big).ifPresent(r -> ledger.removeRoute(r.id()));
+        ledger.route(hub, small).ifPresent(r -> ledger.removeRoute(r.id()));
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void goodsOnConsignmentSellAndTheMoneyComesBackByPost(GameTestHelper helper) {
+        var level = helper.getLevel();
+        MerchantStock hubStock = market(helper, new BlockPos(1, 2, 1), 30);
+        MerchantStock townStock = market(helper, new BlockPos(4, 2, 4), 0);
+        GlobalPos hub = GlobalPos.of(level.dimension(), helper.absolutePos(new BlockPos(1, 2, 1)));
+        GlobalPos town = GlobalPos.of(level.dimension(), helper.absolutePos(new BlockPos(4, 2, 4)));
+        long t = level.getGameTime();
+        var forwarder = dev.b28.enterprise.market.Forwarder.get(level.getServer());
+        double[] before = forwarder.totalsForTest();
+        forwarder.lotForTest(hub, town, Items.LEATHER, 20, 5, t);
+        forwarder.sold(hub, Items.LEATHER, 20, 100); // sold for 100 spurs
+        forwarder.review(level, hub, hubStock, t);
+        double[] after = forwarder.totalsForTest();
+        helper.assertTrue(Math.abs(after[0] - before[0] - 85) < 1e-6 && Math.abs(after[1] - before[1] - 10) < 1e-6,
+                "100 spurs: 10 commission, 5 fare, 85 remitted: " + (after[0] - before[0]) + ", " + (after[1] - before[1]));
+        Post post = Post.get(level.getServer());
+        helper.assertTrue(post.onTheRoad(town, Post.Kind.REMIT) == 1, "the coin on its way by post");
+        post.deliverNowForTest(t);
+        Post.atDesk(level, town, townStock, t);
+        int coins = dev.b28.enterprise.money.MoneyChanger.value(townStock.looseStacks());
+        helper.assertTrue(coins >= 84, "and in the town's chest: " + coins + " spurs");
+        helper.succeed();
+    }
 }

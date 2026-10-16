@@ -404,6 +404,7 @@ public final class Freight extends SavedData {
             }
             freight.restockDray(level, hub, now);
             freight.forward(level, hub, MerchantStock.at(level, hub.pos()), now);
+            Forwarder.get(server).review(level, hub, MerchantStock.at(level, hub.pos()), now); // collections, remittances
             freight.reorganise(level, hub, now);
         }
         freight.setDirty();

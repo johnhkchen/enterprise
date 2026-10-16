@@ -151,6 +151,14 @@ public final class Dials extends SavedData {
     public static final Dial CALLS_PER_DAY = dial("calls_per_day", 1, "calls a hub books a day at most");
     public static final Dial CROWN_AID = dial("crown_aid", 0.5,
             "share of the road food of a hub's first call at a town the crown pays");
+    // The forwarder (see market.Forwarder).
+    public static final Dial COLLECT_STACKS = dial("collect_stacks", 8,
+            "stacks a town's bookings fill before the forwarder sends to collect");
+    public static final Dial COLLECT_DAYS = dial("collect_days", 6, "days a booking waits before the forwarder collects anyway");
+    public static final Dial CONSIGN_COMMISSION = dial("consign_commission", 0.1,
+            "share of what a town's goods on consignment sell for the forwarder keeps");
+    public static final Dial CONSIGN_DAYS = dial("consign_days", 20,
+            "days the forwarder holds goods on consignment before it buys what's left itself");
     // The accountant (see money.Accountant).
     public static final Dial BUDGET_SHARE = dial("budget_share", 0.5,
             "share of its free money a town spends a day at its own choosing (half again with a counting house)");

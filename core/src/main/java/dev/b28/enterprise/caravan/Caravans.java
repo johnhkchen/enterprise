@@ -388,6 +388,7 @@ public final class Caravans {
         if (!foreign && !route.onCall && !dev.b28.enterprise.army.Army.get(server).front().filter(route.to::equals).isPresent()) {
             boolean hub = dev.b28.enterprise.market.Freight.isHub(server, route.from);
             boolean due = cargo.size() > bookedCrates || exWorks > 0 || buyBack > 0 || bankFloat > 0
+                    || hub && dev.b28.enterprise.market.Forwarder.get(server).collecting(route.from, route.to)
                     || recruitsOwedAt(server, route)
                     || !dev.b28.enterprise.contract.ContractBook.get(server).copiesFor(route.from, route.to).isEmpty();
             if (!due) {
@@ -566,6 +567,9 @@ public final class Caravans {
             if (dev.b28.enterprise.market.Freight.isHub(server, route.from)) {
                 buyStrandedAtTown(server, level, route, stock, caravan, rate, now);
                 collectForwarding(server, level, route, route.from, stock, caravan, rate, now);
+                // And what the town booked with the forwarder: its goods for sale, on consignment.
+                dev.b28.enterprise.market.Forwarder.get(server).collect(level, route.from, route.to, stock, caravan.cargo,
+                        caravan.capacity(), now);
             } else {
                 // A run that calls at a hub on its way home takes this town's goods for markets the hub serves.
                 var stop = dev.b28.enterprise.market.Freight.stopOn(server, route);
@@ -2304,6 +2308,10 @@ public final class Caravans {
             Treasury.Withdrawal paid = Treasury.withdraw(level, desk.pos(), stock, delivered * each, mint, now);
             if (!foreign) {
                 dev.b28.enterprise.money.Accountant.spent(desk, paid.value(rate), now); // booked against today's budget
+            }
+            if (dev.b28.enterprise.market.Freight.isHub(server, route.from)) {
+                // A hub's caravan selling: some of it may be towns' goods on consignment, sold on their account.
+                dev.b28.enterprise.market.Forwarder.get(server).sold(route.from, item, delivered, paid.value(rate) * rate);
             }
             earned += paid.spurs() + mint.sell(Mint.DEFAULT_FACTION, paid.emeralds(), now);
             route.itemsDelivered += delivered;

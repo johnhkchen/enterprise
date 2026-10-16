@@ -39,7 +39,8 @@ import net.minecraft.world.level.saveddata.SavedData;
  * any wagon. A letter costs its sender the postage ({@code postage}); the crown keeps the riders. A letter waits at
  * the desk it's for until its Merchant next looks (so a town no one has loaded still gets its mail).
  * <ul>
- *   <li><b>Come call:</b> a town with goods a hub wants, worth the hub's trip, writes to say so. The hub weighs the trip
+ *   <li><b>Bookings:</b> a town books carriage with its hub's forwarder (see {@link Forwarder}).</li>
+ *   <li><b>Come call:</b> a town with goods a hub wants, worth the hub's trip, may write to say so. The hub weighs the trip
  *   against goods it now knows are there, and books the call into a day with a wagon free (one call a day: it never
  *   promises more visits than it can make), or declines. Its run there leaves only on a booked day, with a purse for
  *   what's offered. The crown pays half the road food of a hub's first visit to a town, to get a route going.</li>
@@ -50,7 +51,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 public final class Post extends SavedData {
     private static final String NAME = "enterprise_post";
 
-    public enum Kind { CALL, REPLY, BILLS, REMIT }
+    public enum Kind { CALL, REPLY, BILLS, REMIT, BOOK }
 
     /** A letter: what it is, from and to, when it arrives, and what it carries. */
     static final class Letter {
@@ -61,6 +62,7 @@ public final class Post extends SavedData {
         long arrives;
         double value; // a call: what the goods offered are worth; a remittance: spurs paid
         long day = -1; // a reply: the day booked (or -1, declined)
+        int stacks; // a booking: stacks to collect
         List<ItemStack> papers = new ArrayList<>(); // bills sent, or returned
     }
 
@@ -121,14 +123,50 @@ public final class Post extends SavedData {
                     letter.papers.forEach(stock::insert);
                 }
                 case REPLY -> { } // the town knows when to have its goods ready
+                case BOOK -> Forwarder.get(level.getServer()).booked(desk, letter.from, letter.stacks, letter.value, now);
             }
             setDirty();
         }
     }
 
     private void write(ServerLevel level, GlobalPos desk, MerchantStock stock, long now) {
-        offer(level, desk, stock, now);
+        Forwarder.get(level.getServer()).considerBooking(level, desk, stock, now);
         mailBills(level, desk, stock, now);
+    }
+
+    /** A town books {@code stacks} with its hub's forwarder, its goods for sale worth {@code worth}. */
+    void book(ServerLevel level, MerchantStock stock, GlobalPos town, GlobalPos hub, int stacks, double worth, long now) {
+        Letter letter = new Letter();
+        letter.kind = Kind.BOOK;
+        letter.from = town;
+        letter.to = hub;
+        letter.stacks = stacks;
+        letter.value = worth;
+        post(level, stock, letter, now);
+        dev.b28.enterprise.Enterprise.LOGGER.info("{} books {} stacks with {}'s forwarder ({} emeralds of goods for sale)",
+                dev.b28.enterprise.settlement.Names.label(town), stacks, dev.b28.enterprise.settlement.Names.label(hub),
+                Math.round(worth));
+    }
+
+    /** The forwarder sends a town what its goods sold for, in coin by post. */
+    void remit(ServerLevel level, MerchantStock stock, GlobalPos hub, GlobalPos town, double spurs, long now) {
+        Letter letter = new Letter();
+        letter.kind = Kind.REMIT;
+        letter.from = hub;
+        letter.to = town;
+        letter.value = spurs;
+        post(level, stock, letter, now);
+    }
+
+    /** A call booked at a hub's run to a town for {@code day} (the forwarder's collection), outside a letter. */
+    void bookCall(GlobalPos hub, GlobalPos town, long day, double value) {
+        calls.add(new Call(hub, town, day, value));
+        setDirty();
+    }
+
+    /** Letters on the road to {@code to} of this kind, from {@code from}. */
+    public long onTheRoad(GlobalPos to, Kind kind, GlobalPos from) {
+        return letters.stream().filter(l -> l.to.equals(to) && l.kind == kind && l.from.equals(from)).count();
     }
 
     /** The hubs the town's riders reach: freight hubs within a wagon's range, nearest first. */
@@ -167,41 +205,6 @@ public final class Post extends SavedData {
     /** What a hub reckons it makes on goods offered, against what its trip there costs. */
     static double tripCost(GlobalPos hub, GlobalPos town) {
         return Freight.runCost((int) Math.sqrt(hub.pos().distSqr(town.pos())));
-    }
-
-    /**
-     * A town with no run of its own to a hub, and none of the hub's that calls on its own: when what it has for the hub
-     * would pay for its trip by {@code call_start}, it writes to come call (unless a call's already asked or booked).
-     */
-    private void offer(ServerLevel level, GlobalPos town, MerchantStock stock, long now) {
-        MinecraftServer server = level.getServer();
-        if (Freight.isHub(server, town) || Sovereign.get(server).desk().filter(town::equals).isPresent()) {
-            return; // a hub, or the capital: their own caravans go out
-        }
-        CaravanLedger ledger = CaravanLedger.get(server);
-        for (GlobalPos hub : hubsFor(server, town)) {
-            boolean served = ledger.route(town, hub).isPresent()
-                    || ledger.route(hub, town).filter(r -> !r.onCall()).isPresent();
-            boolean asked = letters.stream().anyMatch(l -> l.kind == Kind.CALL && l.from.equals(town) && l.to.equals(hub))
-                    || calls.stream().anyMatch(c -> c.hub().equals(hub) && c.town().equals(town))
-                    || ledger.route(hub, town).flatMap(r -> ledger.caravan(r.id())).isPresent();
-            if (served || asked) {
-                continue;
-            }
-            double worth = offered(server, town, hub, stock, now);
-            if (worth * Dials.CALL_MARGIN.get() >= Dials.CALL_START.get() * tripCost(hub, town)) {
-                Letter letter = new Letter();
-                letter.kind = Kind.CALL;
-                letter.from = town;
-                letter.to = hub;
-                letter.value = worth;
-                post(level, stock, letter, now);
-                dev.b28.enterprise.Enterprise.LOGGER.info("{} writes to {}: come call, {} emeralds of goods ready",
-                        dev.b28.enterprise.settlement.Names.label(town), dev.b28.enterprise.settlement.Names.label(hub),
-                        Math.round(worth));
-                return; // one hub at a time
-            }
-        }
     }
 
     /**
@@ -399,6 +402,7 @@ public final class Post extends SavedData {
             e.putLong("arrives", l.arrives);
             e.putDouble("value", l.value);
             e.putLong("day", l.day);
+            e.putInt("stacks", l.stacks);
             ListTag papers = new ListTag();
             l.papers.forEach(p -> papers.add(p.save(registries)));
             e.put("papers", papers);
@@ -431,6 +435,7 @@ public final class Post extends SavedData {
             l.arrives = e.getLong("arrives");
             l.value = e.getDouble("value");
             l.day = e.getLong("day");
+            l.stacks = e.getInt("stacks");
             for (Tag p : e.getList("papers", Tag.TAG_COMPOUND)) {
                 ItemStack.parse(registries, p).ifPresent(l.papers::add);
             }
