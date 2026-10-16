@@ -80,6 +80,13 @@ public final class Dials extends SavedData {
             "a dealer buys this much under its price and sells this much over");
     public static final Dial TAKE_PROFIT = dial("dealer_take_profit", 1.25,
             "a holder sells to the dealer when it bids this many times what the holder paid");
+    // Stranded paper and freight on credit (see market.Freight).
+    public static final Dial FREIGHT_CREDIT_DAYS = dial("freight_credit_days", 30,
+            "days a carrier gives a town to pay a fare it couldn't pay up front (its bill on itself to the hub)");
+    public static final Dial FREIGHT_LIEN = dial("freight_lien", 0.5,
+            "a carrier takes goods on credit while the fare is at most this share of their worth");
+    public static final Dial STALE_DISCOUNT = dial("stale_bill_discount", 0.1,
+            "a dealer takes this much more off a bill past its day");
     // Fields (see territory.Territory).
     public static final Dial ROTATE_PLOTS = dial("rotate_plots", 81, "plots turned over to another crop a census");
     public static final Dial OWED_FIELDS = dial("rotate_owed_fields", 2,

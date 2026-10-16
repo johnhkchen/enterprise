@@ -628,6 +628,43 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   paper. Treats still 0% everywhere: the Librarians' paper takes the cane first, and the biscuits are short of wheat
   too. `dev/experiments/compare_lanes.py` compares lanes.
 
+## Stranded paper: a sound town ruined by a closed road (built 2026-10-16)
+
+**The failure (traced).** Hollowwick, rich on day 20 (163 emeralds, mood +3.4), took the capital's training contract:
+train an Armorer, and sell the capital the pupil's work Ex Works, paid by bill when its caravan next called. Each
+lesson its Merchant paid its own Armorer for iron leggings, crated them for the capital and drew a bill on it: 19
+bills, 1,628 emeralds. Meanwhile freight wound down the capital's direct run to Hollowwick (cheaper by the Haygate
+hub). Then no one could settle any of it: the capital never came to collect or pay; Hollowwick had no road to the
+capital; the hub's carriers took only goods whose fare was prepaid; and a bill only lapsed when presented, so they
+stood outstanding for ever. The contract broke (the pupil untrained); its crates, someone else's shipment, filled the
+warehouse, and from day 40 the harvest had no room. With nothing to sell, its wages went on credit, its caravans had
+no coin for road food, it could take on no Farmer (1, against 3 in a healthy lane), and it sank to -0.26 by day 90.
+Its wealth was real but illiquid and out of reach: correspondent risk, the way the 1763 Amsterdam bill crisis spread.
+
+**The remedies, as merchants found them:**
+- **The hub buys stranded paper.** A bill a town holds on a market whose caravans don't call (or past its day), that a
+  freight hub runs to, is bought at its face less a fee (2%, and 10% more past its day) less the forwarding of the
+  goods it paid for, which go with it to the hub's forwarder. Paid in coin as far as the hub trusts the drawee and can
+  spare; the rest in the hub's own bills, in up to six installments a bill term apart, each at most half what its
+  treasury could pay; beyond that it doesn't buy. Bad credit and value in hand are worth more than nothing. Either
+  way: the hub's caravan calling at the town, or the town's caravan bringing its paper to the hub. Never a bill on the
+  hub itself: the town presents that there, for its face.
+- **Freight on credit.** The hub's own caravan carries a town's goods for markets the hub serves even when it can't pay
+  the fare: what it can't pay is its bill to the hub, due in 30 days (dial), as far as the goods' stack worth covers
+  the fare at the lien's share (half, dial).
+- **No offtake without a collector.** The pupil's work is crated and billed to the buyer only where a caravan of the
+  buyer's calls, or the town's caravans reach a hub that runs to the buyer; else it stays the town's own.
+- **Dead paper goes.** A crate shipped under a contract no longer in force goes back on the shelf, unless it was paid
+  for by a bill still to be collected (then it's the buyer's, and goes with the bill). A bill presented gets its grace
+  from its first presenting, not from its day; one no one can carry (no road between the two, no hub to buy it) lapses
+  12 days past due; paper no longer the desk's to collect is thrown out of its warehouse.
+- Measured (forked from the day-120 checkpoint where Hollowwick was broke, 20 days, three lanes): Hollowwick 0 emeralds
+  and -0.26 in every lane before; after, 755-1,265 emeralds, mood +1.25 to +1.98, the harvest moving again. Haygate,
+  carrying the risk now, 990 to 11-971 emeralds, mood +2.17 to +1.65: the capital paid its bills in full in one lane,
+  and dishonoured 17 (about 1,400 emeralds) in two, unable to find the coin within the grace.
+- **Next:** the grace a dial, and longer for a large debt; a dealer pricing a drawee's record into its discount;
+  a town or its Merchant borrowing against goods in its warehouse (a Lombard loan).
+
 ## Forward crop sales, rents and a dealer in them (built 2026-10-16)
 
 Medieval farms sold their crops ahead: abbeys sold years of wool to Italian merchants for money up front, merchants

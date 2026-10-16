@@ -190,6 +190,60 @@ public final class ContractTests {
     }
 
     @GameTest(template = "floor")
+    public static void aHubBuysATownsStrandedPaperForCoinAndItsOwnBill(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        var bills = dev.b28.enterprise.contract.Bills.get(server);
+        GlobalPos hub = far(helper, 7_890_000, 7_000_000);
+        GlobalPos town = far(helper, 7_890_400, 7_000_000);
+        GlobalPos capital = far(helper, 7_890_800, 7_000_000); // the drawee: the hub runs there, the capital doesn't call
+        var ledger = dev.b28.enterprise.caravan.CaravanLedger.get(server);
+        var run = ledger.addRoute(hub, capital);
+        long t = 2_000_000;
+        var doc = bills.draw(capital, town, 100, t - 10 * 24000L); // for goods crated for the capital; long past its day
+        int id = doc.data().getInt("bill");
+        var bundles = new java.util.ArrayList<>(java.util.List.of(dev.b28.enterprise.cargo.Crates.documents(
+                dev.b28.enterprise.cargo.Papers.NONE.with(doc))));
+        var lading = dev.b28.enterprise.cargo.Papers.billOfLading(-1, town, capital, "1 iron_leggings", "EXW", 0, t);
+        lading.data().putBoolean("settled", true);
+        var crates = new java.util.ArrayList<>(java.util.List.of(dev.b28.enterprise.cargo.Crates.of(
+                java.util.List.of(new net.minecraft.world.item.ItemStack(Items.IRON_LEGGINGS)),
+                dev.b28.enterprise.cargo.Papers.NONE.with(lading))));
+        double rate = 10;
+        var deal = dev.b28.enterprise.market.Stranded.buy(server, hub, town, crates, bundles, 1000, rate, t);
+        ledger.removeRoute(run.id());
+        helper.assertTrue(deal.isPresent(), "the hub buys it");
+        double face = 100 * (1 + dev.b28.enterprise.contract.Bills.INTEREST);
+        double ceiling = face * (1 - dev.b28.enterprise.market.Freight.DISCOUNT_FEE - dev.b28.enterprise.Dials.STALE_DISCOUNT.get())
+                * dev.b28.enterprise.contract.ContractBook.get(server).trust(hub, capital, t);
+        double coin = deal.get().spurs() / rate;
+        helper.assertTrue(coin > 0 && coin <= ceiling + 0.2,
+                "coin as far as it trusts the drawee, less the forwarding: " + coin + " (at most " + ceiling + ")");
+        helper.assertTrue(deal.get().hubBill().isPresent() && deal.get().crates().size() == 1 && crates.isEmpty(),
+                "the rest in the hub's own bill, and the goods go with the bill");
+        helper.assertTrue(bills.bill(id).orElseThrow().payee().equals(hub), "the bill endorsed to the hub");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aBillNoOneCanCarryLapses(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        var bills = dev.b28.enterprise.contract.Bills.get(server);
+        var book = new ContractBook();
+        GlobalPos drawee = far(helper, 7_891_000, 7_000_000);
+        GlobalPos payee = far(helper, 7_891_400, 7_000_000);
+        long t = 2_000_000;
+        int id = bills.draw(drawee, payee, 10, t).data().getInt("bill");
+        long due = bills.bill(id).orElseThrow().due();
+        bills.lapse(server, book, due + dev.b28.enterprise.contract.Bills.LAPSE_TICKS - 1);
+        helper.assertTrue(bills.bill(id).orElseThrow().state() == dev.b28.enterprise.contract.Bills.State.OUTSTANDING,
+                "not yet");
+        bills.lapse(server, book, due + dev.b28.enterprise.contract.Bills.LAPSE_TICKS + 1);
+        helper.assertTrue(bills.bill(id).orElseThrow().state() == dev.b28.enterprise.contract.Bills.State.DISHONOURED,
+                "no road between them and no hub to buy it: it lapses");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aDialIsSetForTheWorldAndSavedWithIt(GameTestHelper helper) {
         var server = helper.getLevel().getServer();
         var dials = dev.b28.enterprise.Dials.get(server);

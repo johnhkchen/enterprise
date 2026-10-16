@@ -168,10 +168,20 @@ public final class ForwardSales {
                 .filter(c -> c.seller().equals(desk) && c.harvest().isPresent()
                         && (!c.inForce() || !Crates.papers(s).consignee().equals(Optional.of(c.buyer()))))
                 .isPresent());
+        // And any crate it shipped under a contract no longer in force (broken, say): unless it was paid for by a bill
+        // still to be collected, the goods are its own again. (A crate paid for is its buyer's: see market.Stranded.)
+        var bills = dev.b28.enterprise.contract.Bills.get(server);
+        stale.addAll(stock.removeLoose(s -> Crates.isCrate(s) && Crates.papers(s).shipper().filter(desk::equals).isPresent()
+                && Crates.papers(s).consignee().filter(c -> !c.equals(desk)).isPresent()
+                && Crates.papers(s).contract().flatMap(book::contract).filter(c -> !c.inForce()).isPresent()
+                && !(Crates.papers(s).settled() && bills.all().stream().anyMatch(b -> b.state()
+                        == dev.b28.enterprise.contract.Bills.State.OUTSTANDING && b.payee().equals(desk)
+                        && Crates.papers(s).consignee().filter(b.drawee()::equals).isPresent()))));
         for (ItemStack crate : stale) {
             Crates.goods(crate).forEach(stock::insert);
             stock.insert(new ItemStack(dev.b28.enterprise.cargo.Cargo.CRATE_ITEM.get()));
         }
+        bills.tidy(stock, desk); // and paper no longer its to collect, thrown out
         for (Contract c : book.of(desk)) {
             if (!c.seller().equals(desk) || c.harvest().isEmpty() || !c.inForce() || c.delivery().isEmpty()) {
                 continue;

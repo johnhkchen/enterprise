@@ -100,6 +100,9 @@ public final class Apprentices {
         }
         GlobalPos buyer = contract.get().buyer();
         long now = level.getGameTime();
+        if (!collectable(level.getServer(), desk, buyer)) {
+            return; // no caravan of the buyer's calls, and no hub the town reaches runs there: the work is the town's
+        }
         double worth = work.stream().mapToDouble(w -> dev.b28.enterprise.money.Prices.emeraldsEach(w.getItem()) * w.getCount())
                 .sum() * contract.get().training().get().offtake();
         var bill = dev.b28.enterprise.cargo.Papers.billOfLading(contract.get().id(), desk, buyer,
@@ -110,9 +113,30 @@ public final class Apprentices {
             stock.insert(crate);
         }
         dev.b28.enterprise.contract.Bills.file(stock, dev.b28.enterprise.contract.Bills.get(level.getServer())
-                .draw(buyer, desk, worth, now));
+                .draw(buyer, desk, worth, now, contract.get().id()));
         ContractBook.get(level.getServer()).noteOfftake(contract.get(), work.stream().mapToInt(ItemStack::getCount).sum(),
                 worth, now);
+    }
+
+    /**
+     * Can the buyer get the work, and the town its money: a caravan of the buyer's calls at the town, or the town's
+     * caravans reach a freight hub that runs to the buyer (it will buy the bill and forward the goods).
+     */
+    public static boolean collectable(net.minecraft.server.MinecraftServer server, GlobalPos desk, GlobalPos buyer) {
+        if (Stranded.calls(server, buyer, desk)) {
+            return true;
+        }
+        for (var route : dev.b28.enterprise.caravan.CaravanLedger.get(server).routes()) {
+            if (!route.from().equals(desk) || route.stopping()) {
+                continue;
+            }
+            var hub = Freight.isHub(server, route.to()) ? java.util.Optional.of(route.to())
+                    : Freight.stopOn(server, route).map(Freight.Stop::hub);
+            if (hub.filter(h -> Stranded.reaches(server, h, buyer)).isPresent()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

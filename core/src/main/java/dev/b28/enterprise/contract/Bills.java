@@ -34,6 +34,11 @@ public final class Bills extends SavedData {
     public static final double INTEREST = 0.02;
     /** Unpaid this long past its day, a bill is dishonoured. */
     public static final long DISHONOUR_TICKS = 4 * 24000L;
+    /**
+     * Never presented this long past its day, a bill lapses (dishonoured: no one could carry it to its drawee, or no
+     * one would pay): written off, its paper thrown out, and trust between the two falls.
+     */
+    public static final long LAPSE_TICKS = 3 * DISHONOUR_TICKS;
 
     /** A bill paid when presented counts this much of a kept installment toward trust; a dishonoured one, a whole miss. */
     public static final double HONOURED_WEIGHT = 0.5;
@@ -49,6 +54,8 @@ public final class Bills extends SavedData {
         final long drawn;
         final long due;
         State state = State.OUTSTANDING;
+        int contract = -1; // the contract it pays for, if any (goods crated for the drawee: their title)
+        long presented = -1; // when it was first presented to its drawee
 
         Bill(int id, GlobalPos drawee, GlobalPos payee, double emeralds, long drawn, long due) {
             this.id = id;
@@ -82,6 +89,10 @@ public final class Bills extends SavedData {
         public State state() {
             return state;
         }
+
+        public int contract() {
+            return contract;
+        }
     }
 
     private final Map<Integer, Bill> bills = new LinkedHashMap<>();
@@ -95,7 +106,19 @@ public final class Bills extends SavedData {
 
     /** {@code drawee} draws a bill on itself to pay {@code payee} {@code debt} emeralds: the bill's paper. */
     public Papers.Document draw(GlobalPos drawee, GlobalPos payee, double debt, long now) {
-        Bill bill = new Bill(nextId++, drawee, payee, debt * (1 + INTEREST), now, now + TERM_TICKS);
+        return draw(drawee, payee, debt, now, -1);
+    }
+
+    /** As {@link #draw(GlobalPos, GlobalPos, double, long)}, paying for goods under {@code contract}. */
+    public Papers.Document draw(GlobalPos drawee, GlobalPos payee, double debt, long now, int contract) {
+        return draw(drawee, payee, debt, now, contract, TERM_TICKS);
+    }
+
+    /** As above, due {@code term} ticks after it's drawn (a forwarder's thirty days, say), at the same interest. */
+    public Papers.Document draw(GlobalPos drawee, GlobalPos payee, double debt, long now, int contract, long term) {
+        Bill bill = new Bill(nextId++, drawee, payee, debt * (1 + INTEREST * Math.max(1, term / (double) TERM_TICKS)),
+                now, now + term);
+        bill.contract = contract;
         dev.b28.enterprise.cargo.Paperwork.drawn(payee, 1); // drawn by its payee
         bills.put(bill.id, bill);
         setDirty();
@@ -143,6 +166,47 @@ public final class Bills extends SavedData {
     public void redeem(Bill bill) {
         bill.state = State.PAID;
         setDirty();
+    }
+
+    /**
+     * Bills never presented {@link #LAPSE_TICKS} past their day, that no one can carry to their drawee (no road between
+     * the two, and no freight hub the holder reaches that runs there to buy them), lapse: dishonoured, and trust
+     * between the two falls. A bill someone could still carry stands.
+     */
+    public void lapse(MinecraftServer server, ContractBook book, long now) {
+        var routes = dev.b28.enterprise.caravan.CaravanLedger.get(server);
+        for (Bill bill : bills.values()) {
+            if (bill.state == State.OUTSTANDING && now > bill.due + LAPSE_TICKS
+                    && routes.route(bill.payee, bill.drawee).isEmpty()
+                    && !dev.b28.enterprise.market.Apprentices.collectable(server, bill.payee, bill.drawee)) {
+                bill.state = State.DISHONOURED;
+                book.missed(bill.drawee, bill.payee, 1, now);
+                setDirty();
+            }
+        }
+    }
+
+    /** Is there a bill still to be paid for goods under this contract? */
+    public boolean outstandingFor(int contract) {
+        return contract >= 0 && bills.values().stream()
+                .anyMatch(b -> b.contract == contract && b.state == State.OUTSTANDING);
+    }
+
+    /**
+     * Bills in a warehouse that are no longer this desk's to collect (paid, dishonoured, or sold on) are thrown out;
+     * a bundle keeps only its live ones. Dead paper shouldn't take the room a harvest needs.
+     */
+    public void tidy(MerchantStock stock, GlobalPos desk) {
+        List<ItemStack> bundles = stock.removeLoose(s -> s.is(Cargo.DOCUMENTS.get()) && !ids(s).isEmpty());
+        for (ItemStack bundle : bundles) {
+            Papers papers = bundle.getOrDefault(Cargo.PAPERS.get(), Papers.NONE);
+            List<Papers.Document> live = papers.documents().stream().filter(d -> !d.kind().equals(Papers.BILL_OF_EXCHANGE)
+                    || Optional.ofNullable(bills.get(d.data().getInt("bill")))
+                            .filter(b -> b.state == State.OUTSTANDING && b.payee.equals(desk)).isPresent()).toList();
+            if (!live.isEmpty()) {
+                stock.insert(Crates.documents(new Papers(live)));
+            }
+        }
     }
 
     /** The bills a bundle of documents holds, as ledger entries. */
@@ -199,7 +263,13 @@ public final class Bills extends SavedData {
                     paid(bill);
                     continue;
                 }
-                if (bill.state == State.OUTSTANDING && now > bill.due + DISHONOUR_TICKS) {
+                // The drawee has its grace from the day the bill is first put to it, not before: a bill no one could
+                // carry to it for weeks isn't its fault.
+                if (bill.presented < 0) {
+                    bill.presented = now;
+                    setDirty();
+                }
+                if (bill.state == State.OUTSTANDING && now > Math.max(bill.due, bill.presented) + DISHONOUR_TICKS) {
                     bill.state = State.DISHONOURED;
                     book.missed(bill.drawee, bill.payee, 1, now);
                     setDirty();
@@ -225,6 +295,8 @@ public final class Bills extends SavedData {
             entry.putLong("drawn", b.drawn);
             entry.putLong("due", b.due);
             entry.putString("state", b.state.name());
+            entry.putInt("contract", b.contract);
+            entry.putLong("presented", b.presented);
             list.add(entry);
         });
         tag.put("bills", list);
@@ -244,6 +316,8 @@ public final class Bills extends SavedData {
             Bill bill = new Bill(entry.getInt("id"), drawee.get(), payee.get(), entry.getDouble("emeralds"),
                     entry.getLong("drawn"), entry.getLong("due"));
             bill.state = State.valueOf(entry.getString("state"));
+            bill.contract = entry.contains("contract") ? entry.getInt("contract") : -1;
+            bill.presented = entry.contains("presented") ? entry.getLong("presented") : -1;
             ledger.bills.put(bill.id, bill);
         }
         ledger.nextId = Math.max(1, tag.getInt("nextId"));

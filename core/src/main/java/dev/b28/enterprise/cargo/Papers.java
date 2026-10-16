@@ -87,6 +87,16 @@ public record Papers(List<Papers.Document> documents) {
         return first(BILL_OF_LADING).flatMap(d -> pos(d.data(), "consignee"));
     }
 
+    /** Who shipped the goods under a bill of lading. */
+    public Optional<GlobalPos> shipper() {
+        return first(BILL_OF_LADING).flatMap(d -> pos(d.data(), "shipper"));
+    }
+
+    /** Were the goods paid for when crated (by a bill of exchange drawn with them)? */
+    public boolean settled() {
+        return first(BILL_OF_LADING).map(d -> d.data().getBoolean("settled")).orElse(false);
+    }
+
     /** The contract a bill of lading ships under, if any. */
     public Optional<Integer> contract() {
         return first(BILL_OF_LADING).map(d -> d.data().getInt("contract"));

@@ -54,8 +54,11 @@ public final class WarTests {
         GlobalPos payee = far(helper, 8_100_400, 8_000_000);
         long t = 1_000_000;
         var bundle = List.of(dev.b28.enterprise.cargo.Crates.documents(Papers.NONE.with(bills.draw(drawee, payee, 10, t))));
-        bills.present(bundle, 0, t + Bills.TERM_TICKS + Bills.DISHONOUR_TICKS + 1, book);
-        helper.assertTrue(bills.all().get(0).state() == Bills.State.DISHONOURED, "dishonoured");
+        long late = t + Bills.TERM_TICKS + Bills.DISHONOUR_TICKS + 1;
+        bills.present(bundle, 0, late, book); // first put to it long after its day: its grace starts now
+        helper.assertTrue(bills.all().get(0).state() == Bills.State.OUTSTANDING, "a grace from its first presenting");
+        bills.present(bundle, 0, late + Bills.DISHONOUR_TICKS + 1, book);
+        helper.assertTrue(bills.all().get(0).state() == Bills.State.DISHONOURED, "still unpaid after it: dishonoured");
         helper.assertTrue(book.trust(drawee, payee) < ContractBook.START_TRUST, "and trust falls");
         helper.succeed();
     }

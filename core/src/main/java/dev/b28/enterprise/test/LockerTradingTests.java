@@ -227,7 +227,11 @@ public final class LockerTradingTests {
                             List.of(new dev.b28.enterprise.contract.Training("minecraft:weaponsmith", 5, 24, 1.0)),
                             dev.b28.enterprise.contract.Incoterm.EXW, helper.getLevel().getGameTime() + 240000, 24000, 1,
                             helper.getLevel().getGameTime(), desk, true);
+                    // The buyer's caravans call here: it will collect the work, and pay for it.
+                    var ledger = dev.b28.enterprise.caravan.CaravanLedger.get(server);
+                    var route = ledger.addRoute(buyer, desk);
                     smith.restock();
+                    ledger.removeRoute(route.id());
                     helper.assertTrue(stock.count(new ItemCost(Items.IRON_AXE, 1)) == 0, "no axes left loose to clog it");
                     long crates = stock.looseStacks().stream()
                             .filter(s -> dev.b28.enterprise.cargo.Crates.consignedTo(s, buyer)).count();
