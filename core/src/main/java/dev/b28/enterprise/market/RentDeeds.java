@@ -110,19 +110,19 @@ public final class RentDeeds {
                     int spurs = Shops.collect(vendor);
                     Treasury.deposit(level, hub.pos(), stock, spurs);
                     rents.setBearer(rent, true, spurs / rate, now);
-                    buyBack(level, hub, stock, vendor, rent, price * (1 - RentDealer.SPREAD), mint, rate, now);
+                    buyBack(level, hub, stock, vendor, rent, price * (1 - dev.b28.enterprise.Dials.DEALER_SPREAD.get()), mint, rate, now);
                 } else {
-                    Shops.setPrice(vendor, (int) Math.ceil(price * (1 + RentDealer.SPREAD) * rate));
+                    Shops.setPrice(vendor, (int) Math.ceil(price * (1 + dev.b28.enterprise.Dials.DEALER_SPREAD.get()) * rate));
                 }
             } else {
                 boolean handedBack = vendor.items.stream().anyMatch(s -> rentOf(s).filter(id -> id == rent.id()).isPresent());
                 if (handedBack) {
                     // A player sold the deed back: the rent is the dealer's own again, and the shop sells it.
-                    rents.setBearer(rent, false, price * (1 - RentDealer.SPREAD), now);
+                    rents.setBearer(rent, false, price * (1 - dev.b28.enterprise.Dials.DEALER_SPREAD.get()), now);
                     vendor.cardContainer.setItem(0, ItemStack.EMPTY);
-                    Shops.offer(vendor, deed(rent), (int) Math.ceil(price * (1 + RentDealer.SPREAD) * rate));
+                    Shops.offer(vendor, deed(rent), (int) Math.ceil(price * (1 + dev.b28.enterprise.Dials.DEALER_SPREAD.get()) * rate));
                 } else {
-                    buyBack(level, hub, stock, vendor, rent, price * (1 - RentDealer.SPREAD), mint, rate, now);
+                    buyBack(level, hub, stock, vendor, rent, price * (1 - dev.b28.enterprise.Dials.DEALER_SPREAD.get()), mint, rate, now);
                 }
             }
         }

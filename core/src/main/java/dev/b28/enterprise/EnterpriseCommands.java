@@ -189,6 +189,17 @@ final class EnterpriseCommands {
                                 .then(Commands.argument("id", IntegerArgumentType.integer(1))
                                         .executes(EnterpriseCommands::removeRoute))))
                 .then(Commands.literal("routes").executes(EnterpriseCommands::routes))
+                .then(Commands.literal("dial")
+                        .executes(context -> dials(context.getSource()))
+                        .then(Commands.argument("name", com.mojang.brigadier.arguments.StringArgumentType.word())
+                                .suggests((context, builder) -> net.minecraft.commands.SharedSuggestionProvider.suggest(
+                                        Dials.all().stream().map(d -> d.name), builder))
+                                .then(Commands.literal("reset").executes(context -> setDial(context.getSource(),
+                                        com.mojang.brigadier.arguments.StringArgumentType.getString(context, "name"), null)))
+                                .then(Commands.argument("value", com.mojang.brigadier.arguments.DoubleArgumentType.doubleArg())
+                                        .executes(context -> setDial(context.getSource(),
+                                                com.mojang.brigadier.arguments.StringArgumentType.getString(context, "name"),
+                                                com.mojang.brigadier.arguments.DoubleArgumentType.getDouble(context, "value"))))))
                 .then(Commands.literal("contracts")
                         .executes(context -> contracts(context, null))
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
@@ -590,6 +601,31 @@ final class EnterpriseCommands {
     }
 
     /** Every contract (or a desk's), with its terms, state and record. */
+    /** Every dial: its value now, its default, and what it does. */
+    private static int dials(CommandSourceStack source) {
+        for (Dials.Dial dial : Dials.all()) {
+            source.sendSuccess(() -> Component.literal("%s = %s%s: %s".formatted(dial.name, trim(dial.get()),
+                    dial.get() == dial.initial ? "" : " (default " + trim(dial.initial) + ")", dial.does)), false);
+        }
+        return Dials.all().size();
+    }
+
+    private static String trim(double value) {
+        return value == Math.rint(value) ? Long.toString((long) value) : "%.3f".formatted(value);
+    }
+
+    /** Sets a dial for this world, or back to its default ({@code value} null). */
+    private static int setDial(CommandSourceStack source, String name, Double value) {
+        var dial = Dials.named(name);
+        if (dial.isEmpty()) {
+            source.sendFailure(Component.literal("No dial called " + name + "; /enterprise dial lists them"));
+            return 0;
+        }
+        Dials.get(source.getServer()).set(dial.get(), value);
+        source.sendSuccess(() -> Component.literal("%s = %s".formatted(name, trim(dial.get().get()))), true);
+        return 1;
+    }
+
     private static int contracts(CommandContext<CommandSourceStack> context, BlockPos desk) {
         CommandSourceStack source = context.getSource();
         var book = dev.b28.enterprise.contract.ContractBook.get(source.getServer());

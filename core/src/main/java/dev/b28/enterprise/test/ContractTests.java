@@ -190,6 +190,21 @@ public final class ContractTests {
     }
 
     @GameTest(template = "floor")
+    public static void aDialIsSetForTheWorldAndSavedWithIt(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        var dials = dev.b28.enterprise.Dials.get(server);
+        var dial = dev.b28.enterprise.Dials.FORWARD_INSTALLMENTS;
+        dials.set(dial, 6.0);
+        boolean set = dial.getInt() == 6;
+        var registries = helper.getLevel().registryAccess();
+        var saved = dials.save(new net.minecraft.nbt.CompoundTag(), registries);
+        dials.set(dial, null); // back to its default, within the tick: no other test sees it
+        helper.assertTrue(set && saved.getDouble("forward_installments") == 6 && dial.getInt() == 10,
+                "set to 6, saved as 6, reset to 10: " + saved + ", now " + dial.get());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aThinHarvestRollsOverWhereAPlainContractMisses(GameTestHelper helper) {
         ContractBook book = new ContractBook();
         GlobalPos farm = far(helper, 7_850_000, 7_000_000);
@@ -223,7 +238,7 @@ public final class ContractTests {
         GlobalPos farm = far(helper, 7_860_000, 7_000_000);
         GlobalPos holder = far(helper, 7_860_400, 7_000_000);
         long t = 1_000_000;
-        long season = dev.b28.enterprise.contract.Rents.SEASON_TICKS + new dev.b28.enterprise.contract.Harvest(4).windowTicks();
+        long season = dev.b28.enterprise.contract.Rents.seasonTicks() + new dev.b28.enterprise.contract.Harvest(4).windowTicks();
         var rent = rents.sell(farm, holder, Items.POTATO, 64, dev.b28.enterprise.contract.Rents.capital(64, 0.05), book, t);
         Contract first = book.contract(rent.coupon()).orElseThrow();
         helper.assertTrue(first.inForce() && first.delivery().orElseThrow().quantity() == 64

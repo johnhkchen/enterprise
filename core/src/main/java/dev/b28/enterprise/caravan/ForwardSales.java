@@ -1,5 +1,6 @@
 package dev.b28.enterprise.caravan;
 
+import dev.b28.enterprise.Dials;
 import dev.b28.enterprise.contract.Advance;
 import dev.b28.enterprise.contract.Contract;
 import dev.b28.enterprise.contract.ContractBook;
@@ -26,14 +27,7 @@ import net.minecraft.world.item.Item;
  * once the caravan has brought its copy home.
  */
 public final class ForwardSales {
-    /** Days after each installment's day a farm may still deliver it. */
-    public static final int WINDOW_DAYS = 4;
-    /** Share of the contract's worth the buyer pays up front. */
-    public static final double ADVANCE_SHARE = 1.0 / 3;
-    /** Days the farm has to sow before its first installment falls due. */
-    public static final int SOW_DAYS = 4;
-    /** At most this many of a crop an installment. */
-    public static final int MAX_QUANTITY = 256;
+    // Its settings are dials (see Dials): the harvest window, the advance, the sowing lead, the largest lot.
 
     private ForwardSales() {}
 
@@ -85,7 +79,7 @@ public final class ForwardSales {
                 continue;
             }
             // A rent, where the farm needs money and the town here has it to put by.
-            int season = (int) Math.min(2 * MAX_QUANTITY, Math.floor(lacking * Rents.SEASON_TICKS / 24000.0 / 16) * 16);
+            int season = (int) Math.min(2 * Dials.FORWARD_MAX.get(), Math.floor(lacking * Rents.seasonTicks() / 24000.0 / 16) * 16);
             double capital = Rents.capital(season, Prices.emeraldsEach(crop));
             double farmSpare = territory.treasury(farm.get()) - territory.reserve(route.from());
             double savings = dev.b28.enterprise.money.Treasury.available(level, route.to().pos(), stock, rate)
@@ -96,14 +90,14 @@ public final class ForwardSales {
                 rents.sell(route.from(), route.to(), crop, season, capital, book, now);
                 continue;
             }
-            int quantity = (int) Math.min(MAX_QUANTITY, Math.floor(lacking * every / 24000.0 / 16) * 16);
+            int quantity = (int) Math.min(Dials.FORWARD_MAX.get(), Math.floor(lacking * every / 24000.0 / 16) * 16);
             if (quantity < Caravans.CONTRACT_MIN_ITEMS) {
                 continue;
             }
             Contract contract = book.draft(route.from(), route.to(), List.of(
-                            new Delivery(crop, quantity, Prices.emeraldsEach(crop)), new Harvest(WINDOW_DAYS),
-                            new Advance(ADVANCE_SHARE)),
-                    Incoterm.DDP, now + every + SOW_DAYS * 24000L, every, Caravans.CONTRACT_INSTALLMENTS, now,
+                            new Delivery(crop, quantity, Prices.emeraldsEach(crop)), new Harvest(Dials.HARVEST_WINDOW.getInt()),
+                            new Advance(Dials.ADVANCE_SHARE.get())),
+                    Incoterm.DDP, now + every + Dials.SOW_DAYS.ticks(), every, Dials.FORWARD_INSTALLMENTS.getInt(), now,
                     route.to(), false);
             caravan.drafts.add(contract.id());
         }

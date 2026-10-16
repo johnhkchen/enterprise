@@ -111,7 +111,7 @@ public final class MarketTests {
         // A season's coupon collected, in the dealer's keeping.
         book.settle(book.contract(rent.coupon()).orElseThrow(), 64, 0, t);
         stock(helper).insert(new ItemStack(Items.POTATO, 64));
-        rents.review(book, t + dev.b28.enterprise.contract.Rents.SEASON_TICKS
+        rents.review(book, t + dev.b28.enterprise.contract.Rents.seasonTicks()
                 + new dev.b28.enterprise.contract.Harvest(4).windowTicks());
         var player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         int handed = dev.b28.enterprise.market.RentDeeds.present(level, desk.pos(), deed, player);

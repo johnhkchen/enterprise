@@ -23,18 +23,16 @@ import net.minecraft.world.level.saveddata.SavedData;
  * a capital once; the farm owes so much of a crop every season, for good, until it buys the rent back at the same
  * capital. Each season the rent issues a coupon: a forward contract for that season's crop (and any arrears), already
  * paid for, delivered within its harvest window (see {@link Harvest}). A thin season's shortfall rides on the next
- * coupon; arrears past {@link #ARREARS_SEASONS} seasons are a default. Paid in kind, a rent keeps its worth when the
+ * coupon; arrears past {@code rent_arrears_seasons} seasons are a default. Paid in kind, a rent keeps its worth when the
  * coin is debased.
  */
 public final class Rents extends SavedData {
     private static final String NAME = "enterprise_rents";
 
-    /** A season: a coupon falls due each. */
-    public static final long SEASON_TICKS = 10 * 24000L;
-    /** A rent sells for this many seasons' crop at today's price ("years' purchase"). */
-    public static final int PURCHASE_SEASONS = 8;
-    /** Arrears of more than this many seasons' crop are a default. */
-    public static final int ARREARS_SEASONS = 2;
+    /** A season: a coupon falls due each (a dial, see {@link dev.b28.enterprise.Dials}). */
+    public static long seasonTicks() {
+        return dev.b28.enterprise.Dials.SEASON_DAYS.ticks();
+    }
 
     public enum State { ACTIVE, REDEEMED, DEFAULTED }
 
@@ -112,9 +110,9 @@ public final class Rents extends SavedData {
                 .computeIfAbsent(new SavedData.Factory<>(Rents::new, Rents::load, null), NAME);
     }
 
-    /** A rent's price: {@link #PURCHASE_SEASONS} seasons' crop at {@code each} emeralds. */
+    /** A rent's price: {@code rent_purchase_seasons} seasons' crop at {@code each} emeralds. */
     public static double capital(int quantity, double each) {
-        return PURCHASE_SEASONS * quantity * each;
+        return dev.b28.enterprise.Dials.PURCHASE_SEASONS.get() * quantity * each;
     }
 
     /** Sold: the holder has paid the capital; the first coupon is issued at once. */
@@ -133,7 +131,7 @@ public final class Rents extends SavedData {
 
     /**
      * Each season: the last coupon's shortfall goes into the arrears (its contract closed), and a new coupon is
-     * issued for the season's crop and the arrears. Arrears past {@link #ARREARS_SEASONS} seasons: a default.
+     * issued for the season's crop and the arrears. Arrears past {@code rent_arrears_seasons} seasons: a default.
      */
     public void review(ContractBook book, long now) {
         for (Rent rent : rents.values()) {
@@ -160,7 +158,7 @@ public final class Rents extends SavedData {
             book.close(c, owed > 0 ? owed + " short, on the next coupon" : "delivered", now);
         }
         rent.arrears = owed;
-        if (rent.arrears > ARREARS_SEASONS * rent.quantity) {
+        if (rent.arrears > dev.b28.enterprise.Dials.RENT_ARREARS.get() * rent.quantity) {
             rent.state = State.DEFAULTED;
             book.missed(rent.farm, rent.holder, 3, now);
             rent.note("day %d: defaulted, %d in arrears".formatted(now / 24000, rent.arrears));
@@ -169,13 +167,14 @@ public final class Rents extends SavedData {
         // The coupon: this season's crop and the arrears, already paid for, due at the season's end, both parties
         // holding the rent's deed (so it's in force at once).
         Contract coupon = book.draft(rent.farm, rent.holder, List.of(
-                        new Delivery(rent.crop, rent.quantity + rent.arrears, 0), new Harvest(4, true)),
-                rent.exWorks ? Incoterm.EXW : Incoterm.DDP, now + SEASON_TICKS, SEASON_TICKS, 1, now, rent.farm, true);
+                        new Delivery(rent.crop, rent.quantity + rent.arrears, 0),
+                        new Harvest(dev.b28.enterprise.Dials.HARVEST_WINDOW.getInt(), true)),
+                rent.exWorks ? Incoterm.EXW : Incoterm.DDP, now + seasonTicks(), seasonTicks(), 1, now, rent.farm, true);
         rent.coupon = coupon.id();
         rent.coupons++;
-        rent.nextCoupon = now + SEASON_TICKS + new Harvest(4).windowTicks();
+        rent.nextCoupon = now + seasonTicks() + dev.b28.enterprise.Dials.HARVEST_WINDOW.ticks();
         rent.note("day %d: coupon %d, %d due by day %d".formatted(now / 24000, rent.coupons,
-                rent.quantity + rent.arrears, (now + SEASON_TICKS) / 24000));
+                rent.quantity + rent.arrears, (now + seasonTicks()) / 24000));
     }
 
     /**

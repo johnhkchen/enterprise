@@ -329,10 +329,10 @@ public final class ContractBook extends SavedData {
                 if (short_ <= 0) {
                     kept(contract.seller, contract.buyer, 1, now);
                 } else if (harvest.isPresent() && (harvest.get().carried()
-                        || !last && needed - counted <= Harvest.ARREARS * quantity)) {
+                        || !last && needed - counted <= dev.b28.enterprise.Dials.HARVEST_ARREARS.get() * quantity)) {
                     // A thin or late harvest: the shortfall rolls over to the next installment.
                     kept(contract.seller, contract.buyer, 1 - short_, now);
-                    missed(contract.seller, contract.buyer, short_ * Harvest.ROLLED_WEIGHT, now);
+                    missed(contract.seller, contract.buyer, short_ * dev.b28.enterprise.Dials.ROLLED_WEIGHT.get(), now);
                     contract.note("day %d: installment %d %d short, rolled over".formatted(now / 24000,
                             contract.missesCounted + 1, needed - counted));
                 } else if (contract.incoterm == Incoterm.EXW && server != null && dev.b28.enterprise.merchant.Warehouse

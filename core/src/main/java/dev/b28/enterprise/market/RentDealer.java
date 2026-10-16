@@ -1,5 +1,6 @@
 package dev.b28.enterprise.market;
 
+import dev.b28.enterprise.Dials;
 import dev.b28.enterprise.caravan.CaravanLedger;
 import dev.b28.enterprise.contract.ContractBook;
 import dev.b28.enterprise.contract.Rents;
@@ -21,12 +22,8 @@ import net.minecraft.server.level.ServerLevel;
  * farm for each season's coupon, so a remote farm with no caravan of its own still keeps its rent.
  */
 public final class RentDealer {
-    /** It buys this much under its price and sells this much over. */
-    public static final double SPREAD = 0.1;
-    /** A holder sells when the dealer bids this many times what it paid. */
-    public static final double TAKE_PROFIT = 1.25;
-    /** A rent changes hands at most once in this long, and never back to who sold it within it. */
-    public static final long HOLD_TICKS = Rents.SEASON_TICKS;
+    // Its spread and the holders' take-profit are dials (see Dials). A rent changes hands at most once a season, and
+    // never back to who sold it within it.
 
     private RentDealer() {}
 
@@ -40,7 +37,7 @@ public final class RentDealer {
         double wanted = territory.marketWants(server, hub).getOrDefault(id, List.of()).stream()
                 .mapToDouble(m -> m[0]).sum();
         double ahead = Rents.get(server).all().stream().filter(r -> r.state() == Rents.State.ACTIVE && r.crop() == rent.crop())
-                .mapToDouble(r -> r.quantity() * 24000.0 / Rents.SEASON_TICKS).sum();
+                .mapToDouble(r -> r.quantity() * 24000.0 / Rents.seasonTicks()).sum();
         double share = wanted + ahead <= 0 ? 0.5 : wanted / (wanted + ahead);
         return Rents.capital(rent.quantity(), Prices.emeraldsEach(rent.crop())) * (0.5 + 1.5 * share);
     }
@@ -65,12 +62,12 @@ public final class RentDealer {
             if (ledger.route(hub, rent.farm()).isEmpty()) {
                 continue; // it can't collect what it can't reach
             }
-            double bid = price(server, hub, rent) * (1 - SPREAD);
+            double bid = price(server, hub, rent) * (1 - Dials.DEALER_SPREAD.get());
             double spare = Treasury.available(level, hub.pos(), stock, rate) - territory.reserve(hub);
-            if (now - rent.traded() < HOLD_TICKS) {
+            if (now - rent.traded() < Rents.seasonTicks()) {
                 continue;
             }
-            if ((visitorSpare < 0 || bid >= TAKE_PROFIT * rent.paid()) && spare >= bid) {
+            if ((visitorSpare < 0 || bid >= Dials.TAKE_PROFIT.get() * rent.paid()) && spare >= bid) {
                 Treasury.Withdrawal paid = Treasury.withdraw(level, hub.pos(), stock, bid, mint, now);
                 caravan.addSpurs(paid.spurs() + mint.sell(Mint.DEFAULT_FACTION, paid.emeralds(), now));
                 // The farm delivers where its caravans go; the dealer's collect only where they don't.
@@ -85,8 +82,8 @@ public final class RentDealer {
             if (rent.bearer()) {
                 continue; // a player's, in its keeping
             }
-            double ask = price(server, hub, rent) * (1 + SPREAD);
-            if (rent.farm().equals(visitor) || visitorSpare < 2 * ask || now - rent.traded() < HOLD_TICKS
+            double ask = price(server, hub, rent) * (1 + Dials.DEALER_SPREAD.get());
+            if (rent.farm().equals(visitor) || visitorSpare < 2 * ask || now - rent.traded() < Rents.seasonTicks()
                     && rent.previous().filter(visitor::equals).isPresent()) {
                 continue;
             }

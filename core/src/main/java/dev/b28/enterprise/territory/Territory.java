@@ -239,7 +239,8 @@ public final class Territory extends SavedData {
             String id = BuiltInRegistries.ITEM.getKey(crop).toString();
             double others = ROTATION.stream().filter(c -> c != crop).mapToDouble(c -> h.perDay.getOrDefault(
                     BuiltInRegistries.ITEM.getKey(c).toString(), 0.0)).sum();
-            return h.spareFarmPlots * YIELD_PER_PLOT_PER_DAY + 0.5 * h.perDay.getOrDefault(id, 0.0) + 0.25 * others;
+            return h.spareFarmPlots * YIELD_PER_PLOT_PER_DAY + dev.b28.enterprise.Dials.OWN_SHARE.get() * h.perDay.getOrDefault(id, 0.0)
+                    + dev.b28.enterprise.Dials.OTHER_SHARE.get() * others;
         }).orElse(0.0);
     }
 
@@ -855,9 +856,6 @@ public final class Territory extends SavedData {
     /** Field crops that share farmland, so a field can be turned over from one to another. */
     public static final List<Item> ROTATION = List.of(Items.WHEAT, Items.CARROT, Items.POTATO, Items.BEETROOT);
 
-    /** At most this many plots turned over to another crop a census: about a field. */
-    public static final int ROTATE_PLOTS = 81;
-
     /**
      * Crop rotation: plots of a crop grown beyond all its uses are turned over, a field at most a census, to the crop
      * owed under contract that's shortest of plots ({@code needs}: what it has sold forward, the herds' feed), whether
@@ -916,7 +914,8 @@ public final class Territory extends SavedData {
         if (from == null || to == null || from == to) {
             return;
         }
-        int most = owedTo != null ? 2 * ROTATE_PLOTS : ROTATE_PLOTS; // two fields a census for a promise
+        int plotsPer = dev.b28.enterprise.Dials.ROTATE_PLOTS.getInt();
+        int most = owedTo != null ? dev.b28.enterprise.Dials.OWED_FIELDS.getInt() * plotsPer : plotsPer; // more for a promise
         int plots_ = Math.min(most, Math.min(spare, short_));
         // In the ground where the fields are loaded; on the books for the rest, sown when next it's worked.
         int sown = Crops.resow(level, hexes, centerY, from, to, plots_);
