@@ -26,6 +26,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.EnchantedBookItem;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.EnchantmentInstance;
@@ -83,6 +84,69 @@ public final class MarketTests {
 
     private static int held(VendorBlockEntity vendor, net.minecraft.world.item.Item item) {
         return vendor.items.stream().filter(s -> s.is(item)).mapToInt(ItemStack::getCount).sum();
+    }
+
+    @GameTest(template = "floor")
+    public static void aFarmCratesOwedCropInLotsNotAsItTrickles(GameTestHelper helper) {
+        GlobalPos desk = market(helper);
+        MerchantStock stock = stock(helper);
+        stock.insert(new ItemStack(Items.EMERALD, 10));
+        stock.insert(new ItemStack(Items.CARROT, 10));
+        var level = helper.getLevel();
+        var book = dev.b28.enterprise.contract.ContractBook.get(level.getServer());
+        GlobalPos buyer = GlobalPos.of(level.dimension(), new BlockPos(7_900_000, 64, 7_000_000));
+        long t = level.getGameTime();
+        var contract = book.draft(desk, buyer, java.util.List.of(new dev.b28.enterprise.contract.Delivery(Items.CARROT, 40, 0.04),
+                        new dev.b28.enterprise.contract.Harvest(4)), dev.b28.enterprise.contract.Incoterm.DDP, t, 10 * 24000L, 3, t,
+                desk, true);
+        var paperwork = dev.b28.enterprise.cargo.Paperwork.get(level.getServer());
+        double before = paperwork.book(desk)[0];
+        for (int i = 0; i < 20; i++) {
+            dev.b28.enterprise.caravan.ForwardSales.earmark(level, desk, stock, t); // touched as the harvest trickles in
+        }
+        helper.assertTrue(paperwork.book(desk)[0] == before
+                        && dev.b28.enterprise.caravan.ForwardSales.earmarked(stock, contract.id(), Items.CARROT) == 0,
+                "10 of 40 owed: not yet a lot, no crate and no papers");
+        stock.insert(new ItemStack(Items.CARROT, 30));
+        dev.b28.enterprise.caravan.ForwardSales.earmark(level, desk, stock, t);
+        helper.assertTrue(dev.b28.enterprise.caravan.ForwardSales.earmarked(stock, contract.id(), Items.CARROT) == 40
+                        && paperwork.book(desk)[0] == before + 1,
+                "all 40 in: crated at once, one bill of lading: " + (paperwork.book(desk)[0] - before));
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aFarmWithNoRoomForCratesDrawsNoPapers(GameTestHelper helper) {
+        GlobalPos desk = market(helper);
+        MerchantStock stock = stock(helper);
+        stock.insert(new ItemStack(Items.EMERALD, 10));
+        stock.insert(new ItemStack(Items.POTATO, 64));
+        Item[] filler = {Items.STONE, Items.DIRT, Items.SAND, Items.GRAVEL, Items.COBBLESTONE, Items.OAK_LOG,
+                Items.BIRCH_LOG, Items.SPRUCE_LOG, Items.GRANITE, Items.DIORITE, Items.ANDESITE, Items.CLAY_BALL,
+                Items.FLINT, Items.STICK, Items.STRING, Items.FEATHER, Items.BONE, Items.ARROW, Items.COAL, Items.REDSTONE};
+        for (Item item : filler) {
+            if (stock.freeSlots() <= MerchantStock.FREE_SLOTS) {
+                break;
+            }
+            stock.insert(new ItemStack(item, 64));
+        }
+        var level = helper.getLevel();
+        var book = dev.b28.enterprise.contract.ContractBook.get(level.getServer());
+        GlobalPos buyer = GlobalPos.of(level.dimension(), new BlockPos(7_890_000, 64, 7_000_000));
+        long t = level.getGameTime();
+        book.draft(desk, buyer, java.util.List.of(new dev.b28.enterprise.contract.Delivery(Items.POTATO, 40, 0.04),
+                        new dev.b28.enterprise.contract.Harvest(4)), dev.b28.enterprise.contract.Incoterm.DDP, t, 10 * 24000L, 3, t,
+                desk, true);
+        var paperwork = dev.b28.enterprise.cargo.Paperwork.get(level.getServer());
+        double before = paperwork.book(desk)[0];
+        for (int i = 0; i < 20; i++) {
+            dev.b28.enterprise.caravan.ForwardSales.earmark(level, desk, stock, t); // touched again and again
+        }
+        helper.assertTrue(paperwork.book(desk)[0] == before, "no room for a crate, no bill of lading drawn: "
+                + (paperwork.book(desk)[0] - before) + " drawn");
+        helper.assertTrue(stock.count(new net.minecraft.world.item.trading.ItemCost(Items.POTATO, 1)) == 64,
+                "the potatoes still in stock");
+        helper.succeed();
     }
 
     @GameTest(template = "floor")

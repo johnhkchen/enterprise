@@ -286,7 +286,8 @@ final class EnterpriseCommands {
                     StringBuilder out = new StringBuilder("Paperwork (documents, paper, ink, quills used; scribes paid):");
                     dev.b28.enterprise.cargo.Paperwork.get(server).books().forEach((desk, b) -> out.append(
                             "\n  %s: %.0f documents, %.0f paper, %.0f ink, %.0f quills, %.1f emeralds to scribes".formatted(
-                                    dev.b28.enterprise.settlement.Names.label(desk), b[0], b[1], b[2], b[3], b[4])));
+                                    dev.b28.enterprise.settlement.Names.label(desk), b[0], b[1], b[2], b[3], b[4])
+                            + " " + dev.b28.enterprise.cargo.Paperwork.get(server).byKind(desk)));
                     context.getSource().sendSuccess(() -> Component.literal(out.toString()), false);
                     return 1;
                 }))

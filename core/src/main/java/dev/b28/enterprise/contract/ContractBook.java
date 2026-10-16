@@ -132,7 +132,7 @@ public final class ContractBook extends SavedData {
         Contract contract = new Contract(nextId++, seller, buyer, terms, start, every, installments, now);
         contract.incoterm = incoterm;
         contract.knownBy.add(where);
-        dev.b28.enterprise.cargo.Paperwork.drawn(where, 2); // the contract and its copy
+        dev.b28.enterprise.cargo.Paperwork.drawn(where, 2, dev.b28.enterprise.cargo.Paperwork.CONTRACT); // the contract and its copy
         if (bothPresent) {
             contract.knownBy.add(seller);
             contract.knownBy.add(buyer);

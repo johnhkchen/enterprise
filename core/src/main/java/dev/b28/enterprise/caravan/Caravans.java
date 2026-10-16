@@ -357,6 +357,10 @@ public final class Caravans {
                     && dev.b28.enterprise.contract.Bills.get(server).in(s).stream()
                             .anyMatch(b -> dev.b28.enterprise.market.Stranded.bill(server, hub, route.from, b, now))));
         }
+        // A hub short of money sends its best bills to its correspondent at the capital (see Correspondent).
+        if (!foreign) {
+            cargo.addAll(dev.b28.enterprise.market.Correspondent.send(level, route, stock, now));
+        }
         // Comforts the far end wants, out of what this town can spare beyond its own par of each kind.
         Map<String, Double> wantedThereNow = new LinkedHashMap<>(
                 comfortWants(server, territory, route.to, now + travelTicks(route.distance())));
@@ -504,6 +508,7 @@ public final class Caravans {
                 caravan.spurs -= dev.b28.enterprise.market.Freight.get(server).land(level, route.to, caravan.spurs, now);
                 atHub(server, level, ledger, route, stock, caravan, now);
             }
+            dev.b28.enterprise.market.Correspondent.rediscount(level, route, stock, caravan, now);
             if (dev.b28.enterprise.market.Freight.isHub(server, route.from)) {
                 buyStrandedAtTown(server, level, route, stock, caravan, rate, now);
                 collectForwarding(server, level, route, route.from, stock, caravan, rate, now);

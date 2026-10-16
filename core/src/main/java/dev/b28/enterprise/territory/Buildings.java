@@ -30,9 +30,25 @@ public final class Buildings {
      * emeralds, and what it does.
      */
     public record Kind(String id, int size, int height, int masonLevel, Set<String> partners, int partnerLevel,
-            double emeralds, String does) {
+            double emeralds, boolean everyPartner, String does) {
+        /** A hall for one of its trades: any one of them at home will do. */
+        public Kind(String id, int size, int height, int masonLevel, Set<String> partners, int partnerLevel,
+                double emeralds, String does) {
+            this(id, size, height, masonLevel, partners, partnerLevel, emeralds, false, does);
+        }
+
         public int blocks() {
             return size * size * height;
+        }
+
+        /**
+         * Does the town have the trades it serves, at the level: one of them, or (a hall two trades share) every one?
+         * {@code skills} are the residents' best levels by trade; {@code merchant}, the town Merchant's level.
+         */
+        public boolean partnered(java.util.Map<String, Integer> skills, int merchant) {
+            java.util.function.Predicate<String> has = trade -> trade.equals("enterprise:merchant")
+                    ? merchant >= partnerLevel : skills.getOrDefault(trade, 0) >= partnerLevel;
+            return partners.isEmpty() || (everyPartner ? partners.stream().allMatch(has) : partners.stream().anyMatch(has));
         }
     }
 
@@ -62,6 +78,15 @@ public final class Buildings {
         return STORES.stream().filter(s -> s.kind() == kind).findFirst();
     }
 
+    /**
+     * A counting house: the Merchant's books and the Librarian's clerks under one roof, where a busy market's paper is
+     * drawn up, kept and discounted. Built where the papers pile up (see {@link #countingWanted}).
+     */
+    public static final Kind COUNTING_HOUSE = new Kind("counting_house", 7, 4, 3,
+            Set.of("minecraft:librarian", "enterprise:merchant"), 3, 16, true,
+            "its clerks draw up its papers on its own forms (half the stationery, a fifth of a scribe's fee), and it "
+                    + "carries twice the paper on its discount desk, any day, at half the fee");
+
     public static final Kind TEMPLE = new Kind("temple", 7, 4, 3, Set.of("minecraft:cleric"), 3, 16,
             "its Clerics' blessing counts double, and children come twice as often");
     public static final Kind LIBRARY = new Kind("library", 7, 4, 3, Set.of("minecraft:librarian"), 3, 16,
@@ -77,7 +102,7 @@ public final class Buildings {
             "a waystation: markets within 800 blocks hear of the town, and 1 culture a day");
 
     /** In the order a town builds them. */
-    public static final List<Kind> KINDS = List.of(SQUARE, GRANARY, ROOT_CELLAR, TEMPLE, LIBRARY, SMITHY, WATCHTOWER, STONE_DOCKS, CARAVANSERAI);
+    public static final List<Kind> KINDS = List.of(SQUARE, GRANARY, ROOT_CELLAR, COUNTING_HOUSE, TEMPLE, LIBRARY, SMITHY, WATCHTOWER, STONE_DOCKS, CARAVANSERAI);
 
     /** A square brings this much mood; with a Farmer's flower beds, this much more. */
     public static final double SQUARE_MOOD = 0.5;
@@ -90,6 +115,19 @@ public final class Buildings {
     public static final double EMERALDS_PER_LOG = 0.125;
 
     private Buildings() {}
+
+    /** Has the town whose market is at {@code desk} built this? */
+    public static boolean has(net.minecraft.server.MinecraftServer server, net.minecraft.core.GlobalPos desk, Kind kind) {
+        return Territory.get(server).bellOf(desk).map(bell -> Works.get(server).builtOf(bell).contains(kind.id()))
+                .orElse(false);
+    }
+
+    /** A counting house only where the market draws up papers enough to keep clerks busy. */
+    public static boolean countingWanted(net.minecraft.server.MinecraftServer server, net.minecraft.core.GlobalPos desk,
+            long now) {
+        return dev.b28.enterprise.cargo.Paperwork.get(server).perDay(desk, now)
+                >= dev.b28.enterprise.Dials.COUNTING_DOCUMENTS.get();
+    }
 
     public static Optional<Kind> kind(String id) {
         return KINDS.stream().filter(k -> k.id().equals(id)).findFirst();
@@ -177,6 +215,14 @@ public final class Buildings {
             }
             level.setBlock(corner.offset(1, 1, 2), Blocks.BARREL.defaultBlockState(), 3);
             level.setBlock(corner.offset(n - 2, 1, 2), Blocks.BARREL.defaultBlockState(), 3);
+        } else if (kind == COUNTING_HOUSE) {
+            // The clerks' lectern, the books along the back wall, the files in barrels, the strongbox.
+            level.setBlock(middle, Blocks.LECTERN.defaultBlockState(), 3);
+            for (int dx = 1; dx < n - 1; dx++) {
+                level.setBlock(corner.offset(dx, 1, 1), dx % 2 == 0 ? Blocks.BOOKSHELF.defaultBlockState()
+                        : Blocks.BARREL.defaultBlockState(), 3);
+            }
+            level.setBlock(middle.east(2), Blocks.CHEST.defaultBlockState(), 3);
         } else if (kind == CARAVANSERAI) {
             level.setBlock(middle.north(), Blocks.HAY_BLOCK.defaultBlockState(), 3);
             level.setBlock(middle.north().west(), Blocks.BARREL.defaultBlockState(), 3);

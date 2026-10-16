@@ -32,6 +32,9 @@ public final class Paperwork extends SavedData {
     public static final double INK_PER_DOCUMENT = 1 / 8.0;
     public static final double QUILL_PER_DOCUMENT = 1 / 32.0;
     public static final double SCRIBE_EMERALDS = 0.1;
+    /** A counting house's clerks: half the stationery a document, and this for one they lack it for. */
+    public static final double COUNTING_STATIONERY = 0.5;
+    public static final double CLERK_EMERALDS = 0.02;
     /** A market with this many documents a day or more to draw up wants stationery on hand. */
     public static final double BUSY = 0.5;
 
@@ -39,13 +42,19 @@ public final class Paperwork extends SavedData {
         double owed; // documents drawn up, not yet reckoned
         double inkOwed;
         double quillOwed;
+        double paperOwed; // sheets owed, less than a whole one (a counting house's forms take half a sheet)
         long documents;
         long paper;
         long ink;
         long quills;
         double scribeFees;
         long since = -1; // when it first drew up a document
+        Map<String, Long> byKind = new java.util.TreeMap<>(); // documents drawn, by what they are
     }
+
+    /** What a document is, for the books: a contract (and its copy), a bill of lading or of exchange, a ledger page. */
+    public static final String CONTRACT = "contract", LADING = "bill of lading", EXCHANGE = "bill of exchange",
+            LEDGER = "ledger page";
 
     private final Map<GlobalPos, Desk> desks = new HashMap<>();
 
@@ -55,8 +64,8 @@ public final class Paperwork extends SavedData {
                 .computeIfAbsent(new SavedData.Factory<>(Paperwork::new, Paperwork::load, null), NAME);
     }
 
-    /** {@code count} documents drawn up at this market (reckoned when it's next touched). */
-    public static void drawn(GlobalPos desk, int count) {
+    /** {@code count} documents of {@code kind} drawn up at this market (reckoned when it's next touched). */
+    public static void drawn(GlobalPos desk, int count, String kind) {
         MinecraftServer server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
         if (server == null || desk == null) {
             return;
@@ -65,10 +74,20 @@ public final class Paperwork extends SavedData {
         Desk d = paperwork.desks.computeIfAbsent(desk, k -> new Desk());
         d.owed += count;
         d.documents += count;
+        d.byKind.merge(kind, (long) count, Long::sum);
         if (d.since < 0) {
             d.since = server.overworld().getGameTime();
         }
         paperwork.setDirty();
+    }
+
+    /** Documents a day this market has drawn up since its first. */
+    public double perDay(GlobalPos desk, long now) {
+        Desk d = desks.get(desk);
+        if (d == null || d.since < 0) {
+            return 0;
+        }
+        return d.documents / Math.max(1, (now - d.since) / 24000.0);
     }
 
     /** Does this market draw up enough papers to keep stationery on hand? */
@@ -92,9 +111,17 @@ public final class Paperwork extends SavedData {
         }
         int documents = (int) Math.floor(d.owed);
         d.owed -= documents;
-        d.inkOwed += documents * INK_PER_DOCUMENT;
-        d.quillOwed += documents * QUILL_PER_DOCUMENT;
-        int paper = take(stock, Items.PAPER, documents);
+        // With a counting house, its clerks keep the papers on the town's own forms: half the stationery, and a
+        // clerk's fee for what it lacks rather than a scribe's.
+        boolean counting = dev.b28.enterprise.territory.Buildings.has(level.getServer(), desk,
+                dev.b28.enterprise.territory.Buildings.COUNTING_HOUSE);
+        double stationery = counting ? COUNTING_STATIONERY : 1;
+        d.inkOwed += documents * INK_PER_DOCUMENT * stationery;
+        d.quillOwed += documents * QUILL_PER_DOCUMENT * stationery;
+        d.paperOwed += documents * stationery;
+        int paperWanted = (int) Math.floor(d.paperOwed);
+        int paper = take(stock, Items.PAPER, paperWanted);
+        d.paperOwed -= paperWanted;
         int inkWanted = (int) Math.floor(d.inkOwed);
         int ink = take(stock, Items.INK_SAC, inkWanted);
         int quillsWanted = (int) Math.floor(d.quillOwed);
@@ -104,11 +131,11 @@ public final class Paperwork extends SavedData {
         d.paper += paper;
         d.ink += ink;
         d.quills += quills;
-        int lacking = Math.max(documents - paper,
-                Math.max((int) Math.round((inkWanted - ink) / INK_PER_DOCUMENT),
-                        (int) Math.round((quillsWanted - quills) / QUILL_PER_DOCUMENT)));
+        int lacking = (int) Math.round(Math.max((paperWanted - paper) / stationery,
+                Math.max((inkWanted - ink) / INK_PER_DOCUMENT / stationery,
+                        (quillsWanted - quills) / QUILL_PER_DOCUMENT / stationery)));
         if (lacking > 0) {
-            double fee = Math.min(lacking, documents) * SCRIBE_EMERALDS;
+            double fee = Math.min(lacking, documents) * (counting ? CLERK_EMERALDS : SCRIBE_EMERALDS);
             Treasury.withdraw(level, desk.pos(), stock, fee, Mint.get(level.getServer()), now);
             d.scribeFees += fee;
         }
@@ -128,6 +155,12 @@ public final class Paperwork extends SavedData {
         return d == null ? new double[5] : new double[] {d.documents, d.paper, d.ink, d.quills, d.scribeFees};
     }
 
+    /** Documents drawn at a market, by kind. */
+    public Map<String, Long> byKind(GlobalPos desk) {
+        Desk d = desks.get(desk);
+        return d == null ? Map.of() : Map.copyOf(d.byKind);
+    }
+
     public Map<GlobalPos, double[]> books() {
         Map<GlobalPos, double[]> out = new HashMap<>();
         desks.keySet().forEach(desk -> out.put(desk, book(desk)));
@@ -143,12 +176,16 @@ public final class Paperwork extends SavedData {
             e.putDouble("owed", d.owed);
             e.putDouble("inkOwed", d.inkOwed);
             e.putDouble("quillOwed", d.quillOwed);
+            e.putDouble("paperOwed", d.paperOwed);
             e.putLong("documents", d.documents);
             e.putLong("paper", d.paper);
             e.putLong("ink", d.ink);
             e.putLong("quills", d.quills);
             e.putDouble("scribeFees", d.scribeFees);
             e.putLong("since", d.since);
+            CompoundTag kinds = new CompoundTag();
+            d.byKind.forEach(kinds::putLong);
+            e.put("byKind", kinds);
             list.add(e);
         });
         tag.put("desks", list);
@@ -164,12 +201,15 @@ public final class Paperwork extends SavedData {
                 d.owed = e.getDouble("owed");
                 d.inkOwed = e.getDouble("inkOwed");
                 d.quillOwed = e.getDouble("quillOwed");
+                d.paperOwed = e.getDouble("paperOwed");
                 d.documents = e.getLong("documents");
                 d.paper = e.getLong("paper");
                 d.ink = e.getLong("ink");
                 d.quills = e.getLong("quills");
                 d.scribeFees = e.getDouble("scribeFees");
                 d.since = e.contains("since") ? e.getLong("since") : -1;
+                CompoundTag kinds = e.getCompound("byKind");
+                kinds.getAllKeys().forEach(k -> d.byKind.put(k, kinds.getLong(k)));
                 out.desks.put(desk, d);
             });
         }

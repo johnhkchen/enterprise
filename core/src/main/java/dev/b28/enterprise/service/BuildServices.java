@@ -74,9 +74,7 @@ public final class BuildServices {
             if (works.buildingsOf(bell).containsKey(kind.id()) || skill < kind.masonLevel()) {
                 continue;
             }
-            boolean partnered = kind.partners().isEmpty() || kind.partners().stream().anyMatch(trade ->
-                    trade.equals("enterprise:merchant") ? merchant >= kind.partnerLevel()
-                            : skills.getOrDefault(trade, 0) >= kind.partnerLevel());
+            boolean partnered = kind.partnered(skills, merchant);
             if (!partnered || kind == Buildings.STONE_DOCKS && territory.dock(bell).isEmpty() || !wanted(level, desk,
                     stock, territory, kind)) {
                 continue;
@@ -93,8 +91,14 @@ public final class BuildServices {
         return Optional.empty();
     }
 
-    /** A granary or root cellar only where that crop piles up; any other hall whenever its partners are there. */
+    /**
+     * A granary or root cellar only where that crop piles up, a counting house only where the papers do; any other hall
+     * whenever its partners are there.
+     */
     static boolean wanted(ServerLevel level, GlobalPos desk, MerchantStock stock, Territory territory, Buildings.Kind kind) {
+        if (kind == Buildings.COUNTING_HOUSE) {
+            return Buildings.countingWanted(level.getServer(), desk, level.getGameTime());
+        }
         return Buildings.store(kind).map(store -> territory.wantsStore(level, desk, stock, store, level.getGameTime()))
                 .orElse(true);
     }
@@ -122,9 +126,7 @@ public final class BuildServices {
             if (works.buildingsOf(bell).containsKey(kind.id())) {
                 continue;
             }
-            boolean partnered = kind.partners().isEmpty() || kind.partners().stream().anyMatch(trade ->
-                    trade.equals("enterprise:merchant") ? merchant >= kind.partnerLevel()
-                            : skills.getOrDefault(trade, 0) >= kind.partnerLevel());
+            boolean partnered = kind.partnered(skills, merchant);
             if (!partnered || kind == Buildings.STONE_DOCKS && territory.dock(bell).isEmpty()
                     || !wanted(level, desk, stock, territory, kind)) {
                 continue;

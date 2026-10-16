@@ -172,7 +172,7 @@ public final class Books extends SavedData {
         book.removeIf(e -> e.day() < oldest);
         if (lastPage.getOrDefault(desk, -1L) < today) {
             lastPage.put(desk, today);
-            dev.b28.enterprise.cargo.Paperwork.drawn(desk, 1); // a page of the day's dealings
+            dev.b28.enterprise.cargo.Paperwork.drawn(desk, 1, dev.b28.enterprise.cargo.Paperwork.LEDGER); // a page of the day's dealings
         }
         setDirty();
     }

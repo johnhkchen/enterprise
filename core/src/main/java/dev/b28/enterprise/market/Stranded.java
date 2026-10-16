@@ -1,6 +1,5 @@
 package dev.b28.enterprise.market;
 
-import dev.b28.enterprise.Dials;
 import dev.b28.enterprise.caravan.CaravanLedger;
 import dev.b28.enterprise.cargo.Cargo;
 import dev.b28.enterprise.cargo.Crates;
@@ -89,6 +88,13 @@ public final class Stranded {
         double face = 0;
         double price = 0;
         double least = 1; // the trust the hub has in the least trusted drawee bought
+        // Its goods come with it where a crate for the drawee is among them: paper on goods in hand.
+        Set<GlobalPos> crated = new java.util.HashSet<>();
+        for (ItemStack crate : crates) {
+            if (crate(server, hub, town, crate)) {
+                Crates.papers(crate).consignee().ifPresent(crated::add);
+            }
+        }
         for (ItemStack bundle : bundles) {
             List<Papers.Document> kept = new ArrayList<>();
             for (Papers.Document doc : bundle.getOrDefault(Cargo.PAPERS.get(), Papers.NONE).documents()) {
@@ -98,16 +104,16 @@ public final class Stranded {
                     kept.add(doc);
                     continue;
                 }
-                double days = Math.max(0, (bill.get().due() - now) / 24000.0);
-                double off = Freight.DISCOUNT_FEE + (bill.get().due() < now ? Dials.STALE_DISCOUNT.get()
-                        : Freight.DISCOUNT_PER_DAY * days);
-                double paying = bill.get().emeralds() * Math.max(0, 1 - off);
-                if (price + paying - Math.max(0, coin) > INSTALLMENTS * means / 2) {
+                // Priced and capped at the hub's discount desk, as any paper it buys (its book, the drawee's share).
+                var quote = Discounts.quote(server, hub, bill.get(), crated.contains(bill.get().drawee()), face, 0,
+                        means == Double.MAX_VALUE ? coin : means, now);
+                double paying = bill.get().emeralds() * quote.share();
+                if (!quote.taken() || price + paying - Math.max(0, coin) > INSTALLMENTS * means / 2) {
                     kept.add(doc); // more than it could pay in its own bills: it leaves the rest
                     continue;
                 }
                 face += bill.get().emeralds();
-                price += bill.get().emeralds() * Math.max(0, 1 - off);
+                price += paying;
                 least = Math.min(least, book.trust(hub, bill.get().drawee(), now));
                 bought.computeIfAbsent(bill.get().drawee(), d -> new ArrayList<>()).add(doc);
             }

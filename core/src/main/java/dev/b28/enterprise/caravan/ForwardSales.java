@@ -191,8 +191,20 @@ public final class ForwardSales {
             if (want <= 0) {
                 continue;
             }
+            // In lots: a stack, or all that's still owed, at a time (a crate and its bill of lading for every
+            // carrot harvested between touches was thousands of papers a season at a busy hub).
+            int lot = Math.min(want, crop.getDefaultMaxStackSize());
+            if (stock.count(new ItemCost(crop, 1)) < lot) {
+                continue;
+            }
             List<ItemStack> goods = new java.util.ArrayList<>(stock.take(new ItemCost(crop, 1), want));
             if (goods.isEmpty()) {
+                continue;
+            }
+            int crates = (Crates.stacks(goods) + Crates.GOODS - 1) / Crates.GOODS;
+            if (stock.freeSlots() - MerchantStock.FREE_SLOTS < crates) {
+                // No room for the crates: the crop stays loose (still set aside), and no papers are drawn for it.
+                goods.forEach(stock::insert);
                 continue;
             }
             for (ItemStack packed : Crates.pack(level, desk, stock, goods,

@@ -59,7 +59,10 @@ public final class Freight extends SavedData {
     public static final double SHARE = 0.5;
     /** A forwarder charges this much over the freight it buys. */
     public static final double FORWARD_MARGIN = 0.2;
-    /** A forwarder discounts the bills it buys as a bank does: a fee, and so much a day to their due day. */
+    /**
+     * A forwarder discounts the bills it buys as a bank does: a fee, and so much a day to their due day (and more, by
+     * the goods behind them and how full its book is: see {@link Discounts}).
+     */
     public static final double DISCOUNT_FEE = 0.02;
     public static final double DISCOUNT_PER_DAY = 0.01;
     /**
@@ -720,31 +723,46 @@ public final class Freight extends SavedData {
     public int discountBills(ServerLevel level, GlobalPos hub, GlobalPos buyer, GlobalPos shipper, List<ItemStack> papers,
             int purse, long now) {
         MinecraftServer server = level.getServer();
+        if (!Discounts.open(server, hub, now)) {
+            return 0; // not one of its discount days: the bills wait for the next
+        }
         Bills ledger = Bills.get(server);
         double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
-        int paid = 0;
+        var territory = dev.b28.enterprise.territory.Territory.get(server);
+        double means = territory.bellOf(hub).map(territory::treasury).orElse(0.0) - territory.reserve(hub)
+                + territory.depositsOnCall(hub); // at home, as last counted
+        double fill = level.isLoaded(hub.pos()) ? Discounts.fill(MerchantStock.at(level, hub.pos())) : 0.5;
+        // The sitting: every bill offered, priced, the best-secured bought first, as far as the purse and book go.
+        List<Bills.Bill> offered = new ArrayList<>();
         for (ItemStack bundle : papers) {
             if (!bundle.is(Cargo.DOCUMENTS.get())) {
                 continue;
             }
             for (Papers.Document doc : bundle.getOrDefault(Cargo.PAPERS.get(), Papers.NONE).documents()) {
                 var bill = ledger.bill(doc.data().getInt("bill")).orElse(null);
-                if (bill == null || bill.state() != Bills.State.OUTSTANDING || !bill.payee().equals(shipper)
-                        || bill.due() <= now || legs(server, hub, bill.drawee()).isEmpty()) {
-                    continue;
+                if (bill != null && bill.state() == Bills.State.OUTSTANDING && bill.payee().equals(shipper)
+                        && bill.due() > now && !legs(server, hub, bill.drawee()).isEmpty()) {
+                    offered.add(bill);
                 }
-                double days = (bill.due() - now) / 24000.0;
-                int spurs = (int) Math.floor(bill.emeralds() * (1 - DISCOUNT_FEE - DISCOUNT_PER_DAY * days) * rate);
-                if (spurs <= 0 || purse - paid < spurs) {
-                    continue;
-                }
-                paid += spurs;
-                Treasury.deposit(level, shipper.pos(), MerchantStock.at(level, shipper.pos()), spurs);
-                ledger.endorse(bill, buyer);
-                if (buyer.equals(hub)) {
-                    tally(hub)[2] += 1;
-                    tally(hub)[3] += bill.emeralds();
-                }
+            }
+        }
+        offered.sort(java.util.Comparator.comparingDouble((Bills.Bill b) ->
+                -Discounts.quote(server, hub, b, false, 0, fill, means, now).share()));
+        int paid = 0;
+        double taking = 0;
+        for (Bills.Bill bill : offered) {
+            var quote = Discounts.quote(server, hub, bill, false, taking, fill, means, now);
+            int spurs = (int) Math.floor(bill.emeralds() * quote.share() * rate);
+            if (!quote.taken() || spurs <= 0 || purse - paid < spurs) {
+                continue;
+            }
+            paid += spurs;
+            taking += bill.emeralds();
+            Treasury.deposit(level, shipper.pos(), MerchantStock.at(level, shipper.pos()), spurs);
+            ledger.endorse(bill, buyer);
+            if (buyer.equals(hub)) {
+                tally(hub)[2] += 1;
+                tally(hub)[3] += bill.emeralds();
             }
         }
         return paid;
@@ -858,6 +876,10 @@ public final class Freight extends SavedData {
         double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
         double spare = Treasury.available(level, hub.pos(), stock, rate)
                 - dev.b28.enterprise.territory.Territory.get(server).reserve(hub);
+        double means = spare;
+        double fill = Discounts.fill(stock);
+        boolean open = Discounts.open(server, hub, now);
+        double taking = 0;
         int paid = 0;
         List<Papers.Document> bought = new ArrayList<>();
         for (var it = cargo.listIterator(); it.hasNext(); ) {
@@ -873,13 +895,15 @@ public final class Freight extends SavedData {
                     kept.add(doc);
                     continue;
                 }
-                double days = (bill.due() - now) / 24000.0;
-                double price = bill.emeralds() * (1 - DISCOUNT_FEE - DISCOUNT_PER_DAY * days);
-                if (price <= 0 || spare < price) {
+                var quote = open ? Discounts.quote(server, hub, bill, false, taking, fill, means, now)
+                        : Discounts.Quote.no("not a discount day");
+                double price = bill.emeralds() * quote.share();
+                if (!quote.taken() || price <= 0 || spare < price) {
                     kept.add(doc);
                     continue;
                 }
                 spare -= price;
+                taking += bill.emeralds();
                 Treasury.Withdrawal taken = Treasury.withdraw(level, hub.pos(), stock, price, Mint.get(server), now);
                 paid += taken.spurs() + Mint.get(server).sell(Mint.DEFAULT_FACTION, taken.emeralds(), now);
                 ledger.endorse(bill, hub);

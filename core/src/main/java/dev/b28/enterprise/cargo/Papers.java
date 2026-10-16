@@ -54,7 +54,7 @@ public record Papers(List<Papers.Document> documents) {
     /** A bill of lading: the goods (a line of item counts), from the shipper to the consignee, under a contract. */
     public static Document billOfLading(int contract, GlobalPos shipper, GlobalPos consignee, String goods, String terms,
             int route, long issued) {
-        Paperwork.drawn(shipper, 1);
+        Paperwork.drawn(shipper, 1, Paperwork.LADING);
         CompoundTag tag = new CompoundTag();
         tag.putInt("contract", contract);
         put(tag, "shipper", shipper);

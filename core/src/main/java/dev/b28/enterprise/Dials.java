@@ -110,6 +110,31 @@ public final class Dials extends SavedData {
     public static final Dial ROTATE_PLOTS = dial("rotate_plots", 81, "plots turned over to another crop a census");
     public static final Dial OWED_FIELDS = dial("rotate_owed_fields", 2,
             "times as many plots a census for a crop owed under contract");
+    // The counting house and a hub's discount desk (see territory.Buildings, market.Discounts).
+    public static final Dial COUNTING_DOCUMENTS = dial("counting_house_documents", 3,
+            "documents a day a market draws up before it wants a counting house");
+    public static final Dial DISCOUNT_DAYS = dial("discount_days", 3,
+            "a hub without a counting house buys paper every so many days (its discount days)");
+    public static final Dial DISCOUNT_BOOK_SHARE = dial("discount_book_share", 1.0,
+            "the most paper a hub holds, as a share of its spare money (twice with a counting house)");
+    public static final Dial DISCOUNT_DRAWEE_SHARE = dial("discount_drawee_share", 0.35,
+            "the most of a hub's book on one market's paper");
+    public static final Dial DISCOUNT_FOREIGN_SHARE = dial("discount_foreign_share", 0.5,
+            "the most of a hub's book on foreign markets' paper");
+    public static final Dial DISCOUNT_UNBACKED = dial("discount_unbacked", 0.04,
+            "more off a bill whose goods the hub can't see yet (not shipped)");
+    public static final Dial DISCOUNT_LONG_DAYS = dial("discount_long_days", 12,
+            "a bill due further out than this is past its season");
+    public static final Dial DISCOUNT_LONG = dial("discount_long", 0.05, "more off a bill due past its season");
+    public static final Dial DISCOUNT_THROTTLE = dial("discount_throttle", 0.03,
+            "more off at a full warehouse, and again at a full book: the hub's throttle");
+    public static final Dial CORRESPONDENT_FLOOR = dial("correspondent_floor", 24,
+            "emeralds beyond its reserve below which a hub with a counting house rediscounts bills at the capital");
+    // Settlers (see caravan.Expeditions).
+    public static final Dial FOUNDING_CAPITAL = dial("founding_capital", 42,
+            "emeralds settlers carry to start a new town, if their town can spare twice that");
+    public static final Dial SETTLING_CAPITAL = dial("settling_capital", 30,
+            "emeralds a travelling Merchant carries to start a market in a village nobody trades with");
     // Herds (see territory.Husbandry).
     public static final Dial PASTURE_ANIMALS = dial("pasture_animals", 16, "animals a pasture holds");
     public static final Dial PASTURES_MAX = dial("pastures_max", 3, "pastures a town fences at most, a new one once full");

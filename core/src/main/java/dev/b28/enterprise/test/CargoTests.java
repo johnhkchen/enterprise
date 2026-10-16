@@ -74,12 +74,12 @@ public final class CargoTests {
         stock.insert(new ItemStack(Items.INK_SAC, 1));
         stock.insert(new ItemStack(Items.EMERALD, 10));
         var paperwork = dev.b28.enterprise.cargo.Paperwork.get(level.getServer());
-        dev.b28.enterprise.cargo.Paperwork.drawn(desk, 8);
+        dev.b28.enterprise.cargo.Paperwork.drawn(desk, 8, dev.b28.enterprise.cargo.Paperwork.LADING);
         paperwork.settle(level, desk, stock, level.getGameTime());
         var b = paperwork.book(desk);
         helper.assertTrue(b[1] == 8 && b[2] == 1 && b[4] == 0, "eight papers, an ink sac, no scribe: "
                 + java.util.Arrays.toString(b));
-        dev.b28.enterprise.cargo.Paperwork.drawn(desk, 8);
+        dev.b28.enterprise.cargo.Paperwork.drawn(desk, 8, dev.b28.enterprise.cargo.Paperwork.LADING);
         paperwork.settle(level, desk, stock, level.getGameTime());
         b = paperwork.book(desk);
         helper.assertTrue(b[4] > 0, "out of paper: a scribe paid " + java.util.Arrays.toString(b));

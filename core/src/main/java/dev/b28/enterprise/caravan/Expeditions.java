@@ -11,6 +11,7 @@ import dev.b28.enterprise.settlement.CensusTaker;
 import dev.b28.enterprise.settlement.Settlements;
 import dev.b28.enterprise.territory.Focus;
 import dev.b28.enterprise.territory.Growth;
+import dev.b28.enterprise.territory.Jobs;
 import dev.b28.enterprise.territory.Labour;
 import dev.b28.enterprise.territory.Terrain;
 import dev.b28.enterprise.territory.Territory;
@@ -37,6 +38,7 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.entity.ai.village.poi.PoiTypes;
 import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.trading.ItemCost;
@@ -53,8 +55,8 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
  * Merchant's Desk), a travelling Merchant goes alone, sets up a desk by its bell with a little capital, and works it.
  * Where there's none in reach, a Merchant and a settler go to the best open ground the town knows of, between
  * {@link #MIN_HEXES} and {@link #MAX_HEXES} hexes out and that far from any other market (flat, dry, unclaimed), and
- * found a town: a bell, a desk and its chest, a farmer's composter, a lectern and a cartography table, and two
- * family cottages. The settlers leave the old town's roll for the new one's; the old town opens a route to it.
+ * found a town: a bell, a desk and its chest, a Farmer's stall for the settler (who goes as its Farmer, so the town
+ * grows its food from the first day), a lectern and a cartography table, and two family cottages. The settlers leave the old town's roll for the new one's; the old town opens a route to it.
  *
  * The trip is one way and has no market at the far end yet to trade with, so it isn't a caravan route: it's planned
  * over the same hexes as one (the same terrain), takes as long as a caravan would, and its people are off the world
@@ -69,8 +71,10 @@ public final class Expeditions extends SavedData {
     /** What founding a town costs: the bell, desk, workstations and cottages (18) and its capital (16). */
     public static final double FOUNDING_EMERALDS = 34;
     public static final double FOUNDING_CAPITAL = 16;
-    /** Bread a party takes for the road and the first days. */
-    public static final int BREAD = 32;
+    /** Bread a party takes for the road and the first days: till the Farmer's first harvest, for a new town. */
+    public static final int BREAD = 64;
+    private static final Jobs.Trade FARMER = Jobs.TRADES.stream()
+            .filter(t -> t.profession() == VillagerProfession.FARMER).findFirst().orElseThrow();
     /** A new market goes this many hexes from any other, and at most so far from home. */
     public static final int MIN_HEXES = 4;
     public static final int MAX_HEXES = 8;
@@ -168,11 +172,18 @@ public final class Expeditions extends SavedData {
         lead.setVillagerData(lead.getVillagerData().setProfession(Merchant.PROFESSION.get()).setLevel(1));
         lead.setVillagerXp(1); // trained: it keeps the trade on the road
         List<Villager> going = kind == Kind.VILLAGE ? List.of(lead) : List.of(lead, hands.get(1));
+        if (kind == Kind.FOUND) {
+            // The settler goes as its Farmer: a new town grows its own food from the first day.
+            Villager farmer = hands.get(1);
+            farmer.setVillagerData(farmer.getVillagerData().setProfession(VillagerProfession.FARMER).setLevel(1));
+            farmer.setVillagerXp(1);
+        }
         Mint mint = Mint.get(level.getServer());
-        Treasury.withdraw(level, desk.pos(), stock, (kind == Kind.VILLAGE ? SETTLING_EMERALDS : FOUNDING_EMERALDS)
-                - (kind == Kind.VILLAGE ? SETTLING_CAPITAL : FOUNDING_CAPITAL), mint, now);
-        var capital = Treasury.withdraw(level, desk.pos(), stock,
-                kind == Kind.VILLAGE ? SETTLING_CAPITAL : FOUNDING_CAPITAL, mint, now);
+        double least = kind == Kind.VILLAGE ? SETTLING_CAPITAL : FOUNDING_CAPITAL;
+        double setUp = (kind == Kind.VILLAGE ? SETTLING_EMERALDS : FOUNDING_EMERALDS) - least; // desk, stalls, homes
+        Treasury.withdraw(level, desk.pos(), stock, setUp, mint, now);
+        double capital0 = capital(kind, spare - setUp);
+        var capital = Treasury.withdraw(level, desk.pos(), stock, capital0, mint, now);
         party.emeralds = capital.emeralds();
         party.spurs = capital.spurs();
         party.bread = stock.take(new ItemCost(Items.BREAD, 1), BREAD).stream().mapToInt(ItemStack::getCount).sum();
@@ -192,6 +203,18 @@ public final class Expeditions extends SavedData {
                 kind == Kind.VILLAGE ? "a village nobody trades with" : "found a town", target.toShortString(), distance,
                 "%.1f".formatted((party.arrives - now) / 24000.0));
         return Optional.of(target);
+    }
+
+    /**
+     * What the party carries to start the new market on: half what the town can spare beyond its set-up, up to the
+     * {@code founding_capital} (or {@code settling_capital}) dial's jumpstart (a new town's first stalls, pasture, home
+     * and children, and its Farmer's wages until the harvest sells), and never less than the least it takes.
+     */
+    static double capital(Kind kind, double spare) {
+        double least = kind == Kind.VILLAGE ? SETTLING_CAPITAL : FOUNDING_CAPITAL;
+        double jumpstart = (kind == Kind.VILLAGE ? dev.b28.enterprise.Dials.SETTLING_CAPITAL
+                : dev.b28.enterprise.Dials.FOUNDING_CAPITAL).get();
+        return Math.max(least, Math.min(jumpstart, spare / 2));
     }
 
     /** The nearest village in reach with no market within {@link #MIN_HEXES} hexes, and no party already bound there. */
@@ -302,6 +325,10 @@ public final class Expeditions extends SavedData {
                         PoiManager.Occupancy.ANY).orElse(null)
                 : null;
         Kind kind = bell == null ? Kind.FOUND : Kind.VILLAGE;
+        if (kind == Kind.FOUND && party.crew.size() < 2) {
+            // A Merchant alone, bound for a village that isn't there: no town without a Farmer to feed it.
+            return homeAgain(level, party, "no village at " + party.target.toShortString() + ", and no Farmer along");
+        }
         if (bell == null) {
             Optional<BlockPos> square = Growth.site(level, party.target, 3, 0);
             if (square.isEmpty()) {
@@ -317,8 +344,13 @@ public final class Expeditions extends SavedData {
         BlockPos desk = stall.get().above();
         level.setBlock(desk, Merchant.DESK.get().defaultBlockState(), 3);
         level.setBlock(desk.east(), Blocks.CHEST.defaultBlockState(), 3);
+        BlockPos farm = null; // the Farmer's stall, where the settler works
         if (kind == Kind.FOUND) {
-            for (var workstation : List.of(Blocks.COMPOSTER, Blocks.LECTERN, Blocks.CARTOGRAPHY_TABLE)) {
+            Optional<BlockPos> plot = Growth.site(level, bell, 3, 4);
+            if (plot.isPresent()) {
+                farm = Jobs.buildStall(level, plot.get(), FARMER);
+            }
+            for (var workstation : List.of(Blocks.LECTERN, Blocks.CARTOGRAPHY_TABLE)) {
                 Growth.site(level, bell, 1, 4).ifPresent(at -> level.setBlock(at.above(), workstation.defaultBlockState(), 3));
             }
             for (int i = 0; i < 2; i++) {
@@ -341,6 +373,8 @@ public final class Expeditions extends SavedData {
                 // The Merchant takes the desk it set up.
                 level.getPoiManager().take(type -> type.is(Merchant.DESK_POI.getKey()), (type, at) -> at.equals(desk), desk, 1);
                 merchant.getBrain().setMemory(MemoryModuleType.JOB_SITE, market);
+            } else if (!first && farm != null && back.isPresent() && back.get() instanceof Villager farmer) {
+                Jobs.hire(level, farmer, farm, FARMER, market); // and the Farmer its stall
             }
             first = false;
         }

@@ -119,7 +119,7 @@ public final class Bills extends SavedData {
         Bill bill = new Bill(nextId++, drawee, payee, debt * (1 + INTEREST * Math.max(1, term / (double) TERM_TICKS)),
                 now, now + term);
         bill.contract = contract;
-        dev.b28.enterprise.cargo.Paperwork.drawn(payee, 1); // drawn by its payee
+        dev.b28.enterprise.cargo.Paperwork.drawn(payee, 1, dev.b28.enterprise.cargo.Paperwork.EXCHANGE); // drawn by its payee
         bills.put(bill.id, bill);
         setDirty();
         CompoundTag tag = new CompoundTag();
