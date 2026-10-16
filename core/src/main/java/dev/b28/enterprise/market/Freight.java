@@ -178,6 +178,21 @@ public final class Freight extends SavedData {
         return Optional.ofNullable(best);
     }
 
+    /**
+     * A space contract: the forwarder has bought {@code stacks} of space on each of a carrier's next {@code runs} runs out
+     * of the hub, at {@code price} a stack (emeralds, below the shop's), paid as each run loads, full or not. What it
+     * wanted on each (the stacks it had to send that way) it remembers, to buy the next block by.
+     */
+    static final class SpaceBlock {
+        int stacks;
+        int runs;
+        double price;
+        double wanted; // stacks booked for that way since its last run, and overflow
+        double average = -1; // what it's wanted a run, smoothed
+    }
+
+    private final Map<Integer, SpaceBlock> blocks = new HashMap<>(); // leg key -> the forwarder's block on it
+    private final Map<Integer, Double> wantedOn = new HashMap<>(); // leg key -> stacks wanted that way, no block yet
     private final Map<Integer, BlockPos> shops = new HashMap<>(); // leg key -> its freight shop
     private final Map<GlobalPos, BlockPos> drayShops = new HashMap<>(); // hub -> its drayage shop
     // hub -> {stacks forwarded, forwarding fees, bills bought, their face, stacks carried, freight bought, drayage
@@ -404,6 +419,7 @@ public final class Freight extends SavedData {
             }
             freight.restockDray(level, hub, now);
             freight.forward(level, hub, MerchantStock.at(level, hub.pos()), now);
+            freight.buyBlocks(level, hub, now); // space ahead on the carriers' runs it sends crates by
             Forwarder.get(server).review(level, hub, MerchantStock.at(level, hub.pos()), now); // collections, remittances
             freight.reorganise(level, hub, now);
         }
@@ -545,6 +561,82 @@ public final class Freight extends SavedData {
         });
     }
 
+    /** Stacks of the forwarder's block on a leg still free for its next run: the block less the crates booked on it. */
+    int blockRoom(Leg leg, MerchantStock stock) {
+        SpaceBlock b = blocks.get(leg.key());
+        if (b == null || b.runs <= 0) {
+            return 0;
+        }
+        int booked = stock.looseStacks().stream().mapToInt(s -> booked(s, leg)).sum();
+        return Math.max(0, b.stacks - booked);
+    }
+
+    /** Has the forwarder bought space on this leg's runs (so the carrier's run is due on its day)? */
+    public boolean hasBlock(Leg leg) {
+        SpaceBlock b = blocks.get(leg.key());
+        return b != null && b.runs > 0;
+    }
+
+    /** The fares a carrier's run earns from the forwarder's block on a leg, in emeralds: its whole block. */
+    public double blockFares(Leg leg) {
+        SpaceBlock b = blocks.get(leg.key());
+        return b == null || b.runs <= 0 ? 0 : b.stacks * b.price;
+    }
+
+    /**
+     * Once a day: the forwarder buys space ahead on the carriers' runs out of the hub it's been sending crates on (not
+     * its own runs: those it fills with its own goods), {@code block_runs} runs at a time, at a wholesale price
+     * ({@code block_price} of the shop's); as big a block as it's wanted a run, smoothed.
+     */
+    public void buyBlocks(ServerLevel level, GlobalPos hub, long now) {
+        MinecraftServer server = level.getServer();
+        for (Leg leg : legsFrom(server, hub)) {
+            if (leg.carrier().equals(hub) || !leg.from().equals(hub)) {
+                continue;
+            }
+            SpaceBlock b = blocks.get(leg.key());
+            double wanted = b != null ? Math.max(b.average, 0) : wantedOn.getOrDefault(leg.key(), 0.0);
+            if ((b == null || b.runs <= 0) && wanted >= 1) {
+                SpaceBlock block = new SpaceBlock();
+                block.stacks = (int) Math.min(Caravans.CARGO_SLOTS * SHARE, Math.ceil(wanted));
+                block.runs = dev.b28.enterprise.Dials.BLOCK_RUNS.getInt();
+                block.price = legPrice(leg) * dev.b28.enterprise.Dials.BLOCK_PRICE.get();
+                block.average = b != null ? b.average : wanted;
+                blocks.put(leg.key(), block);
+                wantedOn.remove(leg.key());
+                dev.b28.enterprise.Enterprise.LOGGER.info("{}'s forwarder buys {} stacks a run on {}'s run to {}, {} runs",
+                        dev.b28.enterprise.settlement.Names.label(hub), block.stacks,
+                        dev.b28.enterprise.settlement.Names.label(leg.carrier()),
+                        dev.b28.enterprise.settlement.Names.label(leg.to()), block.runs);
+            }
+        }
+    }
+
+    /**
+     * A carrier's run loads at the hub on a leg the forwarder has a block on: the forwarder pays for the block, full or
+     * not, into the caravan's purse; it learns what it wanted this run, for the next block's size. Returns spurs paid.
+     */
+    public int runBlock(ServerLevel level, GlobalPos hub, MerchantStock stock, Leg leg, long now) {
+        SpaceBlock b = blocks.get(leg.key());
+        if (b == null || b.runs <= 0) {
+            return 0;
+        }
+        double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now);
+        double cost = b.stacks * b.price;
+        Treasury.Withdrawal paid = Treasury.withdraw(level, hub.pos(), stock, cost, Mint.get(level.getServer()), now);
+        int spurs = paid.spurs() + Mint.get(level.getServer()).sell(Mint.DEFAULT_FACTION, paid.emeralds(), now);
+        b.average = b.average < 0 ? b.wanted : 0.5 * b.average + 0.5 * b.wanted;
+        b.wanted = 0;
+        b.runs--;
+        if (b.runs > 0) {
+            // A block it didn't half fill shrinks; one that overflowed grows, for the runs still to come.
+            b.stacks = (int) Math.max(1, Math.min(Caravans.CARGO_SLOTS * SHARE, Math.ceil(b.average)));
+        }
+        tally(hub)[5] += spurs;
+        setDirty();
+        return spurs;
+    }
+
     /**
      * A leg's freight shop by its hub's desk: put up if there's none, and stocked with tickets for the space its next
      * run has to spare (its share of a wagon, less what's booked and waiting), at its price. The hub's own runs' takings
@@ -569,7 +661,8 @@ public final class Freight extends SavedData {
         double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
         Shops.setPrice(shop, Math.max(1, (int) Math.ceil(legPrice(leg) * rate)));
         int waiting = stock.looseStacks().stream().mapToInt(s -> booked(s, leg)).sum();
-        int forSale = Math.max(0, (int) (Caravans.CARGO_SLOTS * SHARE) - waiting);
+        SpaceBlock block = blocks.get(leg.key());
+        int forSale = Math.max(0, (int) (Caravans.CARGO_SLOTS * SHARE) - Math.max(waiting, block == null ? 0 : block.stacks));
         shop.items.clear();
         for (int i = 0; i < Math.min(forSale, shop.items.size()); i++) {
             shop.items.set(i, ticket(leg)); // a ticket a slot: papers don't stack
@@ -808,6 +901,23 @@ public final class Freight extends SavedData {
             if (to.isPresent()) {
                 List<Leg> on = new ArrayList<>(legs(server, hub, to.get()));
                 on.sort(java.util.Comparator.comparingLong(l -> nextRun(server, l, now)));
+                // On the forwarder's own block first: space it's bought already.
+                Optional<Leg> onBlock = on.stream().filter(l -> blockRoom(l, stock) >= stacks).findFirst();
+                if (onBlock.isPresent()) {
+                    blocks.get(onBlock.get().key()).wanted += stacks;
+                    result = book(crate, onBlock.get(), stacks);
+                    bookedStacks += stacks;
+                    stock.insert(result);
+                    continue;
+                }
+                on.stream().filter(l -> !l.carrier().equals(hub)).findFirst().ifPresent(l -> {
+                    SpaceBlock b = blocks.get(l.key());
+                    if (b != null) {
+                        b.wanted += stacks; // overflow: it'll want a bigger block
+                    } else {
+                        wantedOn.merge(l.key(), (double) stacks, Double::sum);
+                    }
+                });
                 for (Leg leg : on) {
                     Optional<BlockPos> at = shop(leg);
                     if (at.isEmpty() || !(level.getBlockEntity(at.get()) instanceof VendorBlockEntity shop)
@@ -950,6 +1060,20 @@ public final class Freight extends SavedData {
             list.add(e);
         });
         tag.put("books", list);
+        CompoundTag blockTag = new CompoundTag();
+        blocks.forEach((key, b) -> {
+            CompoundTag e = new CompoundTag();
+            e.putInt("stacks", b.stacks);
+            e.putInt("runs", b.runs);
+            e.putDouble("price", b.price);
+            e.putDouble("wanted", b.wanted);
+            e.putDouble("average", b.average);
+            blockTag.put(Integer.toString(key), e);
+        });
+        tag.put("blocks", blockTag);
+        CompoundTag wantedTag = new CompoundTag();
+        wantedOn.forEach((key, v) -> wantedTag.putDouble(Integer.toString(key), v));
+        tag.put("wantedOn", wantedTag);
         tag.putLong("lastDay", lastDay);
         return tag;
     }
@@ -974,6 +1098,19 @@ public final class Freight extends SavedData {
                 freight.books.put(hub, b);
             });
         }
+        CompoundTag blockTag = tag.getCompound("blocks");
+        for (String key : blockTag.getAllKeys()) {
+            CompoundTag e = blockTag.getCompound(key);
+            SpaceBlock b = new SpaceBlock();
+            b.stacks = e.getInt("stacks");
+            b.runs = e.getInt("runs");
+            b.price = e.getDouble("price");
+            b.wanted = e.getDouble("wanted");
+            b.average = e.getDouble("average");
+            freight.blocks.put(Integer.parseInt(key), b);
+        }
+        CompoundTag wantedTag = tag.getCompound("wantedOn");
+        wantedTag.getAllKeys().forEach(k -> freight.wantedOn.put(Integer.parseInt(k), wantedTag.getDouble(k)));
         freight.lastDay = tag.contains("lastDay") ? tag.getLong("lastDay") : -1;
         return freight;
     }

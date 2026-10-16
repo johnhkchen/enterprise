@@ -159,6 +159,9 @@ public final class Dials extends SavedData {
             "share of what a town's goods on consignment sell for the forwarder keeps");
     public static final Dial CONSIGN_DAYS = dial("consign_days", 20,
             "days the forwarder holds goods on consignment before it buys what's left itself");
+    public static final Dial BLOCK_RUNS = dial("block_runs", 5, "runs a block of space the forwarder buys covers");
+    public static final Dial BLOCK_PRICE = dial("block_price", 0.8,
+            "what a stack of space bought in a block costs, as a share of the shop's price");
     // The accountant (see money.Accountant).
     public static final Dial BUDGET_SHARE = dial("budget_share", 0.5,
             "share of its free money a town spends a day at its own choosing (half again with a counting house)");

@@ -391,11 +391,19 @@ public final class Caravans {
                     || hub && dev.b28.enterprise.market.Forwarder.get(server).collecting(route.from, route.to)
                     || recruitsOwedAt(server, route)
                     || !dev.b28.enterprise.contract.ContractBook.get(server).copiesFor(route.from, route.to).isEmpty();
+            // The forwarder's bought space on this run's way home from the hub: sold space, so it runs on its day.
+            var homeLeg = new dev.b28.enterprise.market.Freight.Leg(route, false);
+            boolean sold = !hub && dev.b28.enterprise.market.Freight.isHub(server, route.to)
+                    && dev.b28.enterprise.market.Freight.get(server).hasBlock(homeLeg);
+            if (sold && now - route.lastDeparture >= dev.b28.enterprise.Dials.LINER_DAYS.ticks()) {
+                due = true;
+            }
             if (!due) {
                 double[] load = saleLoad(server, territory, route, stock, slots - Crates.stacks(cargo), now);
                 int booked = Crates.stacks(cargo);
                 double fares = booked * dev.b28.enterprise.market.Freight.legPrice(
-                        new dev.b28.enterprise.market.Freight.Leg(route, true));
+                        new dev.b28.enterprise.market.Freight.Leg(route, true))
+                        + (sold ? dev.b28.enterprise.market.Freight.get(server).blockFares(homeLeg) : 0);
                 double worth = load[1] + shoppingMoney + fares;
                 double cost = 2 * food * PURSE_PER_FOOD_POINT;
                 boolean full = load[0] + booked >= dev.b28.enterprise.Dials.WAGON_FULL.get() * slots;
@@ -403,8 +411,9 @@ public final class Caravans {
                         && dev.b28.enterprise.market.Freight.isHub(server, r.from));
                 boolean onItsDay = now - route.lastDeparture >= (hub ? dev.b28.enterprise.Dials.LINER_DAYS.ticks()
                         : dev.b28.enterprise.Dials.WAGON_WAIT_DAYS.ticks()) && !served;
+                // A hub's runs keep their timetable (the forwarder fills them); a town's may go any day with a rich load.
                 boolean go = worth >= cost && (full || onItsDay)
-                        || worth >= dev.b28.enterprise.Dials.WAGON_PAYS.get() * cost;
+                        || !hub && worth >= dev.b28.enterprise.Dials.WAGON_PAYS.get() * cost;
                 if (!go) {
                     route.status = "waiting for a fuller load: %d of %d stacks, worth %.1f against %.1f of road food"
                             .formatted((int) load[0] + booked, slots, worth, cost)
@@ -723,6 +732,7 @@ public final class Caravans {
         book.copiesVia(route.from, route.to, party -> !dev.b28.enterprise.market.Freight.legs(server, route.to, party)
                 .isEmpty()).forEach(c -> book.deliverCopy(c.id(), route.to));
         caravan.cargo.addAll(freight.loadBooked(route.to, stock, home, caravan.capacity() - Crates.stacks(caravan.cargo)));
+        caravan.spurs += freight.runBlock(level, route.to, stock, home, now); // the forwarder's block on it, paid
     }
 
     /**
@@ -1003,6 +1013,7 @@ public final class Caravans {
         caravan.spurs += freight.discountBills(level, hub, route.from, stock, caravan.cargo, now);
         freight.forward(level, hub, stock, now);
         caravan.cargo.addAll(freight.loadBooked(hub, stock, leg, caravan.capacity() - Crates.stacks(caravan.cargo)));
+        caravan.spurs += freight.runBlock(level, hub, stock, leg, now); // the forwarder's block on it, paid
         // Papers the hub holds for either end ride on; the caravan's for markets the hub serves are left with it.
         var book = dev.b28.enterprise.contract.ContractBook.get(server);
         book.copiesFor(hub, bound).forEach(c -> book.deliverCopy(c.id(), bound));

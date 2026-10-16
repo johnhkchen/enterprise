@@ -992,6 +992,44 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void theForwarderBuysABlockOfSpaceItFillsAndPaysForEachRun(GameTestHelper helper) {
+        Network net = network(helper, 2);
+        var server = helper.getLevel().getServer();
+        var level = helper.getLevel();
+        GlobalPos hub = net.route().to();
+        GlobalPos carrier = GlobalPos.of(hub.dimension(), hub.pos().offset(200, 0, 0)); // a town whose wagon calls
+        var depot = dev.b28.enterprise.merchant.Depots.get(server).add(level, hub,
+                dev.b28.enterprise.merchant.Depots.Kind.STOREHOUSE, hub.pos().above(3), hub.pos().above(3));
+        var calling = CaravanLedger.get(server).addRoute(carrier, hub);
+        var home = new dev.b28.enterprise.market.Freight.Leg(calling, false); // its run home from the hub
+        var freight = dev.b28.enterprise.market.Freight.get(server);
+        long t = level.getGameTime();
+        MerchantStock stock = net.dest();
+        stock.insert(new ItemStack(Items.EMERALD, 20));
+        java.util.function.Supplier<ItemStack> crate = () -> {
+            var bill = dev.b28.enterprise.cargo.Papers.billOfLading(0, net.route().from(), carrier, "64 paper", "DAP", 0, 0);
+            net.minecraft.nbt.CompoundTag carted = new net.minecraft.nbt.CompoundTag();
+            dev.b28.enterprise.cargo.Papers.put(carted, "at", hub);
+            return freight.forwarding(dev.b28.enterprise.cargo.Crates.of(List.of(new ItemStack(Items.PAPER, 64)),
+                    dev.b28.enterprise.cargo.Papers.NONE.with(bill)
+                            .with(new dev.b28.enterprise.cargo.Papers.Document(dev.b28.enterprise.market.Freight.DRAY, carted))));
+        };
+        stock.insert(crate.get());
+        freight.forward(level, hub, stock, t);
+        helper.assertFalse(freight.hasBlock(home), "no shop, no block yet: it waits, and remembers what it wanted");
+        freight.buyBlocks(level, hub, t);
+        helper.assertTrue(freight.hasBlock(home), "a block on the carrier's run home");
+        freight.forward(level, hub, stock, t);
+        boolean booked = stock.looseStacks().stream().anyMatch(s -> dev.b28.enterprise.market.Freight.booked(s, home) == 1);
+        helper.assertTrue(booked, "the crate booked on its block, no shop needed");
+        int paid = freight.runBlock(level, hub, stock, home, t);
+        helper.assertTrue(paid > 0, "the run loads: the forwarder pays for its block, " + paid + " spurs");
+        CaravanLedger.get(server).removeRoute(calling.id());
+        dev.b28.enterprise.merchant.Depots.get(server).remove(depot.id());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aRequisitionTakesTheBestOfferForTheWholeLot(GameTestHelper helper) {
         Network net = network(helper, 2);
         var server = helper.getLevel().getServer();
