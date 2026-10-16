@@ -88,11 +88,12 @@ public final class Jobs {
      * The bag of marbles an idle hand draws its trade from: each trade's marbles are the emeralds of demand it would
      * meet. What its villagers would buy of the town's supply (shared with those of the trade already there); goods
      * that markets the town knows have posted as wanted ({@code signals}, by the trade that would supply them); four
-     * days of what its untended plots would yield (a Farmer's); and what it has paid hired builders for its halls (a
-     * Mason's, until it has one). The likeliest trade is the one most wanted, not the only one.
+     * days of what its untended plots would yield (a Farmer's); and the halls it wants and could pay for now (a
+     * Mason's, until it has one: see {@link dev.b28.enterprise.service.BuildServices#work}). The likeliest trade is
+     * the one most wanted, not the only one.
      */
     public static Map<Trade, Double> bag(Map<String, Double> supply, Map<VillagerProfession, Integer> present,
-            Map<String, Double> idlePerDay, double hallWages, Map<Trade, Double> signals) {
+            Map<String, Double> idlePerDay, double buildWork, Map<Trade, Double> signals) {
         Map<Trade, Double> bag = new java.util.LinkedHashMap<>();
         for (Trade trade : TRADES) {
             double buys = buys(trade, supply) / (1 + present.getOrDefault(trade.profession(), 0));
@@ -106,8 +107,8 @@ public final class Jobs {
         if (idle >= FARMER_IDLE_EMERALDS) {
             bag.merge(trade(VillagerProfession.FARMER), idle * 4, Double::sum);
         }
-        if (hallWages > 0 && !present.containsKey(VillagerProfession.MASON)) {
-            bag.merge(trade(VillagerProfession.MASON), hallWages, Double::sum);
+        if (buildWork > 0 && !present.containsKey(VillagerProfession.MASON)) {
+            bag.merge(trade(VillagerProfession.MASON), buildWork, Double::sum);
         }
         return bag;
     }
@@ -163,7 +164,7 @@ public final class Jobs {
         // What it has signed for comes first; otherwise the hand draws a marble.
         Optional<Trade> trade = forContracts(level, desk, territory, bellPos, present.keySet())
                 .or(() -> draw(bag(supply(territory.farmPlan(bellPos), stock), present, territory.idlePlots(bellPos),
-                        Works.get(level.getServer()).hallWages(bellPos),
+                        dev.b28.enterprise.service.BuildServices.work(level, desk, stock, bellPos, territory, rate),
                         signals(level, desk, territory, bellPos, present.keySet())), level.random));
         Optional<BlockPos> site = trade.isPresent() ? Growth.site(level, bell, STALL_SIZE, NEAREST) : Optional.empty();
         if (site.isEmpty()) {

@@ -32,8 +32,9 @@ public final class BuildServices {
 
     static void register() {
         Services.register(new Service("enterprise:building", TownServices.MASON, Service.Where.HOME,
-                "builds its town a square, then halls for its trades (temple, library, smithy, watchtower, stone docks, "
-                        + "caravanserai) as its own skill and theirs allow, for materials and wages",
+                "builds its town a square, a granary or root cellar where its harvest piles up, then halls for its trades "
+                        + "(temple, library, smithy, watchtower, stone docks, caravanserai) as its own skill and theirs "
+                        + "allow, for materials and wages",
                 visit -> next(visit).isPresent(), BuildServices::build));
         Services.register(new Service("enterprise:masonry_abroad", TownServices.MASON, Service.Where.ABROAD,
                 "lays a day's work on the works of a town without a Mason, " + Works.MASON_PAY_PER_DAY
@@ -76,13 +77,12 @@ public final class BuildServices {
             boolean partnered = kind.partners().isEmpty() || kind.partners().stream().anyMatch(trade ->
                     trade.equals("enterprise:merchant") ? merchant >= kind.partnerLevel()
                             : skills.getOrDefault(trade, 0) >= kind.partnerLevel());
-            if (!partnered || kind == Buildings.STONE_DOCKS && territory.dock(bell).isEmpty()) {
+            if (!partnered || kind == Buildings.STONE_DOCKS && territory.dock(bell).isEmpty() || !wanted(level, desk,
+                    stock, territory, kind)) {
                 continue;
             }
             double spare = Treasury.available(level, desk.pos(), stock, rate) - territory.reserve(desk);
-            double wages = kind.blocks() / (Works.MASONS * Works.BLOCKS_PER_MASON_DAY) * Works.MASONS
-                    * Works.MASON_PAY_PER_DAY;
-            if (territory.mood(bell) < Works.WALL_MOOD_TO_START || spare < SAVINGS * (materials(stock, kind) + wages)) {
+            if (territory.mood(bell) < Works.WALL_MOOD_TO_START || spare < SAVINGS * cost(stock, kind)) {
                 return Optional.empty(); // saving up for it, and not before the town's content: build in order
             }
             Optional<BlockPos> site = Buildings.site(level, bell.pos(), kind, territory.dock(bell));
@@ -91,6 +91,51 @@ public final class BuildServices {
             }
         }
         return Optional.empty();
+    }
+
+    /** A granary or root cellar only where that crop piles up; any other hall whenever its partners are there. */
+    static boolean wanted(ServerLevel level, GlobalPos desk, MerchantStock stock, Territory territory, Buildings.Kind kind) {
+        return Buildings.store(kind).map(store -> territory.wantsStore(level, desk, stock, store, level.getGameTime()))
+                .orElse(true);
+    }
+
+    /** A hall's materials still to buy and its builders' wages, in emeralds. */
+    static double cost(MerchantStock stock, Buildings.Kind kind) {
+        double wages = kind.blocks() / (Works.MASONS * Works.BLOCKS_PER_MASON_DAY) * Works.MASONS
+                * Works.MASON_PAY_PER_DAY;
+        return materials(stock, kind) + wages;
+    }
+
+    /**
+     * The building work a town wants and could pay for now, in emeralds: each hall it lacks whose partners it has
+     * and that it wants, in the order it builds them, as far as its money beyond the reserve goes. What a Mason of
+     * its own would be paid to build; the Mason's marbles in the bag (see {@link dev.b28.enterprise.territory.Jobs#bag}).
+     */
+    public static double work(ServerLevel level, GlobalPos desk, MerchantStock stock, GlobalPos bell, Territory territory,
+            double rate) {
+        Works works = Works.get(level.getServer());
+        Map<String, Integer> skills = Services.residents(level, bell);
+        int merchant = Warehouse.get(level.getServer()).level(desk);
+        double spare = Treasury.available(level, desk.pos(), stock, rate) - territory.reserve(desk);
+        double work = 0;
+        for (Buildings.Kind kind : Buildings.KINDS) {
+            if (works.buildingsOf(bell).containsKey(kind.id())) {
+                continue;
+            }
+            boolean partnered = kind.partners().isEmpty() || kind.partners().stream().anyMatch(trade ->
+                    trade.equals("enterprise:merchant") ? merchant >= kind.partnerLevel()
+                            : skills.getOrDefault(trade, 0) >= kind.partnerLevel());
+            if (!partnered || kind == Buildings.STONE_DOCKS && territory.dock(bell).isEmpty()
+                    || !wanted(level, desk, stock, territory, kind)) {
+                continue;
+            }
+            double cost = cost(stock, kind);
+            if (work + cost > spare) {
+                break;
+            }
+            work += cost;
+        }
+        return work;
     }
 
     /**

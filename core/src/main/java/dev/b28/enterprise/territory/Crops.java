@@ -78,6 +78,62 @@ public final class Crops {
         return plots;
     }
 
+    /** The seedling of a field crop that grows on farmland. */
+    private static final Map<Item, Block> SOWN = Map.of(Items.WHEAT, Blocks.WHEAT, Items.CARROT, Blocks.CARROTS,
+            Items.POTATO, Blocks.POTATOES, Items.BEETROOT, Blocks.BEETROOTS);
+
+    /**
+     * Turns over up to {@code max} plots of {@code from} in the hexes' loaded chunks to seedlings of {@code to} (both
+     * farmland crops), within {@link #HEIGHT} blocks of {@code centerY}. Returns the plots turned over.
+     */
+    public static int resow(ServerLevel level, List<Hex> hexes, int centerY, Item from, Item to, int max) {
+        Block was = SOWN.get(from);
+        Block now = SOWN.get(to);
+        if (was == null || now == null || max <= 0) {
+            return 0;
+        }
+        int turned = 0;
+        for (Hex hex : hexes) {
+            for (long chunk : chunksOf(hex)) {
+                int cx = ChunkPos.getX(chunk);
+                int cz = ChunkPos.getZ(chunk);
+                if (!level.getChunkSource().hasChunk(cx, cz)) {
+                    continue;
+                }
+                LevelChunk loaded = level.getChunk(cx, cz);
+                for (int sy = SectionPos.blockToSectionCoord(centerY - HEIGHT);
+                        sy <= SectionPos.blockToSectionCoord(centerY + HEIGHT); sy++) {
+                    int index = loaded.getSectionIndexFromSectionY(sy);
+                    if (index < 0 || index >= loaded.getSectionsCount()
+                            || !loaded.getSection(index).maybeHas(state -> state.is(was))) {
+                        continue;
+                    }
+                    LevelChunkSection section = loaded.getSection(index);
+                    for (int y = 0; y < 16; y++) {
+                        int worldY = (sy << 4) + y;
+                        if (Math.abs(worldY - centerY) > HEIGHT) {
+                            continue;
+                        }
+                        for (int z = 0; z < 16; z++) {
+                            for (int x = 0; x < 16; x++) {
+                                int wx = (cx << 4) + x;
+                                int wz = (cz << 4) + z;
+                                if (section.getBlockState(x, y, z).is(was) && Hex.at(wx + 0.5, wz + 0.5).equals(hex)) {
+                                    level.setBlock(new net.minecraft.core.BlockPos(wx, worldY, wz),
+                                            now.defaultBlockState(), 3);
+                                    if (++turned >= max) {
+                                        return turned;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return turned;
+    }
+
     private static void countSection(
             LevelChunkSection section, int cx, int sy, int cz, Hex hex, int centerY, Map<Item, Integer> plots) {
         for (int y = 0; y < 16; y++) {

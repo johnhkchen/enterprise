@@ -26,6 +26,25 @@ public final class JobsTests {
     }
 
     @GameTest(template = "floor")
+    public static void aMerchantValuesALockerByWhatItsTradesWouldDoForTheTown(GameTestHelper helper) {
+        var offers = new net.minecraft.world.item.trading.MerchantOffers();
+        offers.add(new net.minecraft.world.item.trading.MerchantOffer(
+                new net.minecraft.world.item.trading.ItemCost(net.minecraft.world.item.Items.CARROT, 22),
+                new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.EMERALD), 16, 2, 0.05f));
+        offers.add(new net.minecraft.world.item.trading.MerchantOffer(
+                new net.minecraft.world.item.trading.ItemCost(net.minecraft.world.item.Items.EMERALD, 1),
+                new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BREAD, 6), 16, 1, 0.05f));
+        double some = Lockers.worth(offers, Map.of("minecraft:carrot", 5.0), Set.of());
+        helper.assertTrue(some == 5, "carrots worth 5 emeralds to sell: worth 5 a restock, not " + some);
+        double many = Lockers.worth(offers, Map.of("minecraft:carrot", 100.0), Set.of());
+        helper.assertTrue(many == 16, "a glut: as much as its 16 uses pay, not " + many);
+        double fed = Lockers.worth(offers, Map.of(), Set.of(net.minecraft.world.item.Items.BREAD));
+        helper.assertTrue(fed == 8, "bread the town wants: half what it charges, not " + fed);
+        helper.assertTrue(Lockers.worth(offers, Map.of(), Set.of()) == 0, "nothing to sell it, nothing wanted: none");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void anIdleHandDrawsATradeByWhatItWouldMeet(GameTestHelper helper) {
         Map<String, Double> paper = Map.of("minecraft:paper", 3.0, "minecraft:carrot", 1.0);
         var bag = Jobs.bag(paper, Map.of(), Map.of(), 0, Map.of());
@@ -44,9 +63,9 @@ public final class JobsTests {
                 VillagerProfession.FARMER) == 8, "40 wheat a day untended: 8 marbles a Farmer's");
         helper.assertTrue(marbles(Jobs.bag(Map.of(), Map.of(), Map.of("minecraft:wheat", 4.0), 0, Map.of()),
                 VillagerProfession.FARMER) == 0, "a few plots idle: not worth a hand");
-        // A town paying hired builders: a Mason's marbles, until it has one.
+        // A town with halls it wants and could pay for: a Mason's marbles, until it has one.
         helper.assertTrue(marbles(Jobs.bag(Map.of(), Map.of(), Map.of(), 8, Map.of()), VillagerProfession.MASON) == 8,
-                "8 emeralds to builders: 8 marbles a Mason's");
+                "8 emeralds of building wanted: 8 marbles a Mason's");
         helper.assertTrue(marbles(Jobs.bag(Map.of(), Map.of(VillagerProfession.MASON, 1), Map.of(), 8, Map.of()),
                 VillagerProfession.MASON) == 0, "one is enough");
         // Drawn often enough, each trade comes up about as often as its share.

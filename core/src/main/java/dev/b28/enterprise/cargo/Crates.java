@@ -233,14 +233,21 @@ public final class Crates {
         return goods(crate);
     }
 
-    /** Empty crates beyond the stack a Merchant keeps, taken from its stock (to go back with a caravan). */
-    public static ItemStack spareEmpties(MerchantStock stock) {
+    /**
+     * Empty crates beyond the stack a Merchant keeps, taken from its stock (to go back with a caravan), in stacks of
+     * at most {@link #EMPTIES_KEPT}: one stack of more can't be saved.
+     */
+    public static List<ItemStack> spareEmpties(MerchantStock stock) {
         int held = stock.count(new net.minecraft.world.item.trading.ItemCost(Cargo.CRATE_ITEM.get(), 1));
         int spare = 0;
         for (int i = held; i > EMPTIES_KEPT && takeEmpty(stock); i--) {
             spare++;
         }
-        return spare == 0 ? ItemStack.EMPTY : new ItemStack(Cargo.CRATE_ITEM.get(), spare);
+        List<ItemStack> stacks = new java.util.ArrayList<>();
+        for (; spare > 0; spare -= EMPTIES_KEPT) {
+            stacks.add(new ItemStack(Cargo.CRATE_ITEM.get(), Math.min(spare, EMPTIES_KEPT)));
+        }
+        return stacks;
     }
 
     /** Is this a crate whose bill of lading names {@code desk} as consignee? */

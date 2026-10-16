@@ -6,6 +6,8 @@ import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DoorBlock;
@@ -41,6 +43,25 @@ public final class Buildings {
     public static final Kind GRANARY = new Kind("granary", 7, 4, 2, Set.of("minecraft:farmer"), 2, 12,
             "banks the town's wheat as hay bales, up to " + GRANARY_WHEAT + ": what the warehouse can't hold, drawn "
                     + "on as the town wants it");
+    /** Roots a root cellar keeps: sixteen barrels of them. */
+    public static final int ROOT_CELLAR_ROOTS = 16 * 27 * 64;
+    public static final Kind ROOT_CELLAR = new Kind("root_cellar", 5, 3, 2, Set.of("minecraft:farmer"), 2, 8,
+            "keeps the town's carrots, potatoes and beetroot cool in barrels, up to " + ROOT_CELLAR_ROOTS
+                    + ": what the warehouse can't hold, drawn on as the town wants them");
+
+    /**
+     * A hall that banks a crop: what it keeps and how much in all. A town builds one only where that crop piles up
+     * (see {@link Territory#wantsStore}); the warehouse keeps its par loose, and the store tops it back up.
+     */
+    public record Store(Kind kind, Set<Item> items, int holds) {}
+
+    public static final List<Store> STORES = List.of(new Store(GRANARY, Set.of(Items.WHEAT), GRANARY_WHEAT),
+            new Store(ROOT_CELLAR, Set.of(Items.CARROT, Items.POTATO, Items.BEETROOT), ROOT_CELLAR_ROOTS));
+
+    public static Optional<Store> store(Kind kind) {
+        return STORES.stream().filter(s -> s.kind() == kind).findFirst();
+    }
+
     public static final Kind TEMPLE = new Kind("temple", 7, 4, 3, Set.of("minecraft:cleric"), 3, 16,
             "its Clerics' blessing counts double, and children come twice as often");
     public static final Kind LIBRARY = new Kind("library", 7, 4, 3, Set.of("minecraft:librarian"), 3, 16,
@@ -56,7 +77,7 @@ public final class Buildings {
             "a waystation: markets within 800 blocks hear of the town, and 1 culture a day");
 
     /** In the order a town builds them. */
-    public static final List<Kind> KINDS = List.of(SQUARE, GRANARY, TEMPLE, LIBRARY, SMITHY, WATCHTOWER, STONE_DOCKS, CARAVANSERAI);
+    public static final List<Kind> KINDS = List.of(SQUARE, GRANARY, ROOT_CELLAR, TEMPLE, LIBRARY, SMITHY, WATCHTOWER, STONE_DOCKS, CARAVANSERAI);
 
     /** A square brings this much mood; with a Farmer's flower beds, this much more. */
     public static final double SQUARE_MOOD = 0.5;
@@ -93,8 +114,8 @@ public final class Buildings {
             return;
         }
         boolean timber = kind == CARAVANSERAI || kind == GRANARY;
-        Block floor = timber ? Blocks.SPRUCE_PLANKS : Blocks.STONE_BRICKS;
-        Block wall = timber ? Blocks.OAK_PLANKS : Blocks.STONE_BRICKS;
+        Block floor = timber ? Blocks.SPRUCE_PLANKS : kind == ROOT_CELLAR ? Blocks.PACKED_MUD : Blocks.STONE_BRICKS;
+        Block wall = timber ? Blocks.OAK_PLANKS : kind == ROOT_CELLAR ? Blocks.COBBLESTONE : Blocks.STONE_BRICKS;
         int n = kind.size();
         for (int dx = 0; dx < n; dx++) {
             for (int dz = 0; dz < n; dz++) {
@@ -150,6 +171,12 @@ public final class Buildings {
                 level.setBlock(corner.offset(dx, 1, 1), Blocks.HAY_BLOCK.defaultBlockState(), 3);
                 level.setBlock(corner.offset(dx, 2, 1), Blocks.HAY_BLOCK.defaultBlockState(), 3);
             }
+        } else if (kind == ROOT_CELLAR) {
+            for (int dx = 1; dx < n - 1; dx++) {
+                level.setBlock(corner.offset(dx, 1, 1), Blocks.BARREL.defaultBlockState(), 3);
+            }
+            level.setBlock(corner.offset(1, 1, 2), Blocks.BARREL.defaultBlockState(), 3);
+            level.setBlock(corner.offset(n - 2, 1, 2), Blocks.BARREL.defaultBlockState(), 3);
         } else if (kind == CARAVANSERAI) {
             level.setBlock(middle.north(), Blocks.HAY_BLOCK.defaultBlockState(), 3);
             level.setBlock(middle.north().west(), Blocks.BARREL.defaultBlockState(), 3);

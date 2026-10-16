@@ -63,6 +63,22 @@ public final class CensusTaker {
         final java.util.Map<String, Double> demand = new java.util.HashMap<>();
         final List<Territory.VillageTrade> trades = new ArrayList<>();
         final java.util.Map<UUID, Settlements.Resident> seen = new java.util.LinkedHashMap<>();
+        java.util.Set<BlockPos> lockers; // job sites the town's Merchant manages as lockers, found when first wanted
+
+        /** Job sites the Merchant trades at: a villager's trades meet the town's goods only through a locker. */
+        java.util.Set<BlockPos> lockers() {
+            if (lockers == null) {
+                lockers = new java.util.HashSet<>();
+                Territory.nearestDesk(level, bell).ifPresent(desk -> dev.b28.enterprise.merchant.Merchant
+                        .workingAt(level, desk, dev.b28.enterprise.locker.Lockers.MERCHANT_RANGE)
+                        .ifPresent(merchant -> dev.b28.enterprise.locker.Lockers.near(level, desk,
+                                        dev.b28.enterprise.locker.Lockers.MERCHANT_RANGE,
+                                        dev.b28.enterprise.merchant.Merchant.lockerLimit(
+                                                merchant.getVillagerData().getLevel()))
+                                .forEach(locker -> lockers.add(locker.workstation()))));
+            }
+            return lockers;
+        }
 
         Job(ServerLevel level, BlockPos bell, int radius, List<UUID> villagers, int beds, int workstations) {
             this.level = level;
@@ -230,10 +246,14 @@ public final class CensusTaker {
 
     /**
      * The villager's trades that buy one good for emeralds, switched on or not: what the village would buy. Vanilla
-     * restocks twice a day, so a trade takes its cost times its uses twice a day.
+     * restocks twice a day, so a trade takes its cost times its uses twice a day. Only a villager at a locker the
+     * Merchant manages buys from the town: one waiting for a higher Merchant level, or with no chest, buys nothing.
      */
     private static void noteDemand(Villager villager, Job job) {
         var site = villager.getBrain().getMemory(MemoryModuleType.JOB_SITE).map(GlobalPos::pos);
+        if (site.isEmpty() || !job.lockers().contains(site.get())) {
+            return;
+        }
         for (var offer : villager.getOffers()) {
             if (!offer.getResult().is(net.minecraft.world.item.Items.EMERALD) || !offer.getCostB().isEmpty()
                     || offer.getBaseCostA().isEmpty()) {
@@ -306,6 +326,8 @@ public final class CensusTaker {
         }
         if (result.isSettlement()) {
             Territory territory = Territory.get(server);
+            // The Merchant reviews its clients: the lockers it serves (counted from tomorrow's census).
+            Territory.nearestDesk(job.level, job.bell).ifPresent(desk -> dev.b28.enterprise.locker.Lockers.review(job.level, desk));
             territory.recordDemand(bell, job.demand);
             territory.afterCensus(job.level, job.bell, result, days, job.farmers);
             territory.mediate(job.level, bell, job.trades);

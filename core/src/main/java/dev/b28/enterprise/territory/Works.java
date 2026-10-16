@@ -304,11 +304,6 @@ public final class Works extends SavedData {
         return projectsOf(owner).stream().filter(project -> !project.done).findFirst();
     }
 
-    /** What the town has paid builders for its halls, in emeralds. */
-    public double hallWages(GlobalPos owner) {
-        return buildings.getOrDefault(owner, Map.of()).values().stream().mapToDouble(b -> b.wagesPaid).sum();
-    }
-
     /** A visiting Mason lays {@code blocks} on a project. */
     public void help(Project project, double blocks) {
         project.blocksLaid = Math.min(project.blocksNeeded, project.blocksLaid + blocks);

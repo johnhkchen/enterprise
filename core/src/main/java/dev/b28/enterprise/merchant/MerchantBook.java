@@ -28,6 +28,58 @@ public final class MerchantBook extends SavedData {
     private final Map<GlobalPos, Long> lastRound = new HashMap<>();
     // desk -> "workstation|trade key" the Merchant switched on to train a villager (see Apprentices)
     private final Map<GlobalPos, Set<String>> training = new HashMap<>();
+    // desk -> the lockers it has taken on as clients, in the order taken (see Lockers#review)
+    private final Map<GlobalPos, java.util.List<BlockPos>> clients = new HashMap<>();
+    // desk -> workstation -> what its villager's trades are worth to the town a restock, in emeralds, when last seen
+    private final Map<GlobalPos, Map<BlockPos, Double>> worth = new HashMap<>();
+
+    /** The lockers the Merchant has taken on as clients, in the order taken. */
+    public java.util.List<BlockPos> clients(GlobalPos desk) {
+        return java.util.List.copyOf(clients.getOrDefault(desk, java.util.List.of()));
+    }
+
+    public void setClients(GlobalPos desk, java.util.List<BlockPos> lockers) {
+        if (!lockers.equals(clients.getOrDefault(desk, java.util.List.of()))) {
+            clients.put(desk, new java.util.ArrayList<>(lockers));
+            setDirty();
+        }
+    }
+
+    // desk -> workstation -> what its trades did for the town since the last review, in emeralds (not saved)
+    private final Map<GlobalPos, Map<BlockPos, Double>> earned = new HashMap<>();
+
+    // desk -> workstation -> game time it was taken on as a client by a swap (not saved: an old client after a restart)
+    private final Map<GlobalPos, Map<BlockPos, Long>> takenOn = new HashMap<>();
+
+    public long takenOn(GlobalPos desk, BlockPos workstation) {
+        return takenOn.getOrDefault(desk, Map.of()).getOrDefault(workstation, Long.MIN_VALUE / 2);
+    }
+
+    public void setTakenOn(GlobalPos desk, BlockPos workstation, long gameTime) {
+        takenOn.computeIfAbsent(desk, d -> new HashMap<>()).put(workstation, gameTime);
+    }
+
+    public void addEarned(GlobalPos desk, BlockPos workstation, double emeralds) {
+        if (emeralds > 0) {
+            earned.computeIfAbsent(desk, d -> new HashMap<>()).merge(workstation, emeralds, Double::sum);
+        }
+    }
+
+    /** What the desk's lockers did for the town since the last review, which this clears. */
+    public Map<BlockPos, Double> takeEarned(GlobalPos desk) {
+        Map<BlockPos, Double> taken = earned.remove(desk);
+        return taken == null ? Map.of() : taken;
+    }
+
+    /** What a locker's villager's trades were worth to the town a restock, in emeralds, when last seen (0 unseen). */
+    public double worth(GlobalPos desk, BlockPos workstation) {
+        return worth.getOrDefault(desk, Map.of()).getOrDefault(workstation, 0.0);
+    }
+
+    public void setWorth(GlobalPos desk, BlockPos workstation, double emeralds) {
+        worth.computeIfAbsent(desk, d -> new HashMap<>()).put(workstation, emeralds);
+        setDirty();
+    }
 
     public static MerchantBook get(MinecraftServer server) {
         return server.overworld()
@@ -119,6 +171,20 @@ public final class MerchantBook extends SavedData {
             trained.add(entry);
         });
         tag.put("trainingTrades", trained);
+        ListTag clientList = new ListTag();
+        java.util.Set<GlobalPos> known = new HashSet<>(clients.keySet());
+        known.addAll(worth.keySet());
+        known.forEach(desk -> {
+            CompoundTag entry = new CompoundTag();
+            GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, desk).ifSuccess(pos -> entry.put("desk", pos));
+            entry.putLongArray("clients", clients.getOrDefault(desk, java.util.List.of()).stream()
+                    .mapToLong(BlockPos::asLong).toArray());
+            CompoundTag worths = new CompoundTag();
+            worth.getOrDefault(desk, Map.of()).forEach((at, w) -> worths.putDouble(Long.toString(at.asLong()), w));
+            entry.put("worth", worths);
+            clientList.add(entry);
+        });
+        tag.put("clients", clientList);
         return tag;
     }
 
@@ -147,6 +213,21 @@ public final class MerchantBook extends SavedData {
             GlobalPos.CODEC.parse(NbtOps.INSTANCE, entry.get("desk")).ifSuccess(desk ->
                     entry.getList("training", Tag.TAG_STRING).forEach(k ->
                             book.training.computeIfAbsent(desk, d -> new HashSet<>()).add(k.getAsString())));
+        }
+        for (Tag t : tag.getList("clients", Tag.TAG_COMPOUND)) {
+            CompoundTag entry = (CompoundTag) t;
+            GlobalPos.CODEC.parse(NbtOps.INSTANCE, entry.get("desk")).ifSuccess(desk -> {
+                java.util.List<BlockPos> list = new java.util.ArrayList<>();
+                for (long at : entry.getLongArray("clients")) {
+                    list.add(BlockPos.of(at));
+                }
+                if (!list.isEmpty()) {
+                    book.clients.put(desk, list);
+                }
+                CompoundTag worths = entry.getCompound("worth");
+                worths.getAllKeys().forEach(k -> book.worth.computeIfAbsent(desk, d -> new HashMap<>())
+                        .put(BlockPos.of(Long.parseLong(k)), worths.getDouble(k)));
+            });
         }
         return book;
     }

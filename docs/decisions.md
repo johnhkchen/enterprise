@@ -628,6 +628,44 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   paper. Treats still 0% everywhere: the Librarians' paper takes the cane first, and the biscuits are short of wheat
   too. `dev/experiments/compare_lanes.py` compares lanes.
 
+## The Merchant tells its Farmers what sells; lockers by worth; root cellars (built 2026-10-16)
+
+- **Why Cloverby starved.** It grew carrots no one bought: a town planted for its own villagers' buying trades only,
+  counted even where the villager had no locker the Merchant served (its Farmer waited on a higher Merchant level);
+  its neighbours' wants (Haygate's lockers take potatoes and beetroot) never reached its fields; and its Farmers worked
+  every plot, wanted or not, for wages. Its caravans had nothing to sell, it went broke in a week, and could never pay
+  a trip's road food again.
+- **Demand from where the town sells.** The census counts a villager's buying trades only at a locker its Merchant
+  manages. The farm plan adds what the markets its caravans go to would take: a town's demand for a crop beyond what it
+  grows itself (a realm's: what its people use), at the crop's worth less the road's cost there and back, for goods the
+  far Merchant buys. New fields are chosen with it too.
+- **Fallow and rotation.** Once the town has its food (twice its par), plots of a crop no one wants lie fallow: not
+  worked, not paid for, no marbles for another Farmer. And at each census a field's worth of plots (81) of a crop grown
+  beyond all its uses is turned over to the farmland crop whose unmet use earns most.
+- **Lockers by worth, with hot-swap.** Each day at the census the Merchant values every locker in reach by what its
+  villager's trades would do for the town a restock (its buying trades, as far as the warehouse holds the goods now; half
+  what its selling trades charge for goods the town wants), or by what it did since the last review if more. Its
+  clients keep their places; the weakest is let go (its trades switched off) for a waiting locker worth half again
+  as much and half an emerald more, one a day, and a new client has two days before it's judged. Its trades that buy
+  goods the town holds are switched on: taking it on is serving it. Contract lockers are never let go.
+- **Root cellars, and stores only where the crop piles up.** A root cellar (5 x 5, a Farmer of level 2, 8 emeralds)
+  banks carrots, potatoes and beetroot in barrels, up to 27,648, as the granary banks wheat. A town builds either only
+  where that crop piles up: twice what the warehouse keeps loose, or a stack of harvest waiting for room.
+- **Masons from the work wanted.** A Mason's marbles are the halls a town wants and could pay for now (materials and
+  builders' wages), not the wages it has paid hired builders.
+- **A poor town packs its own road food.** A town that can't pay the far end for the road home's food, but has food to
+  spare beyond its par, carries it. (Every town packing its own took the far ends' road-food income: moods fell in four
+  towns, so only the poor do.)
+- **Empty crates go home in stacks of 16:** a caravan carrying more in one stack crashed the save.
+- Measured (lanes, 120 days from the era's day 0, against the granary run; lane 2 crashed on the crate bug at day 112):
+  every town's mood rose. Cloverby -0.76 to +1.04 (365 trades, from 0), Lindenfield -0.74 to +2.54, Greenwick -1.98 to
+  +0.28, Hollowwick +0.22 to +1.54, Wheatfield +2.67 to +3.65 (2,042 emeralds), Haygate +1.16 to +1.95, Meadowworth
+  +1.73 to +2.46, Barleyby +1.86 to +2.38. Masons came (two a lane), a root cellar went up in Meadowworth, and no
+  granary was built where no wheat piled up.
+- **Next:** forward crop contracts with a harvest window (shortfalls roll over), rents bought once that pay a coupon of
+  crop each season, Haygate dealing in both (and calling on remote towns on request, forwarding their crop on its
+  backhaul), then the paper as items its vendors quote to players.
+
 ## Sharecroppers, hired builders, a granary and a bag of marbles (built 2026-10-15)
 
 - **Sharecroppers.** Past its credit, a town that can't pay its Farmers no longer loses the harvest: they take their
@@ -652,7 +690,7 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   (+0.70 to +1.86) and Meadowworth (+1.35 to +1.73). But every granary held nothing: no town grows wheat it doesn't
   use (Wheatfield grows 50 a day and holds 1; the east grows roots). No town took on a Mason: hall wages (a few
   emeralds) are small marbles beside four days of supply. Cloverby still holds about 1,700 bread in every lane and
-  never trades: its bread comes another way, not yet traced.
+  never trades (the bread is its larder from the era's setup; why it never trades: see the next section).
 
 ## Where the next item earns most; Farmers who learn and multiply (built 2026-10-15)
 

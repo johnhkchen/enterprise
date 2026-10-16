@@ -248,6 +248,11 @@ public final class LockerTrading {
                 if (sellsCrop) {
                     territory.recordCropSale(deskPos, offer.getResult().getCount());
                 }
+                // What the client did for the town, for the Merchant's review (see Lockers#worth): sales whole,
+                // purchases at half.
+                merchants.addEarned(at, workstation, offer.getResult().is(net.minecraft.world.item.Items.EMERALD)
+                        ? offer.getResult().getCount()
+                        : offer.getBaseCostA().is(net.minecraft.world.item.Items.EMERALD) ? 0.5 * priceA : 0);
                 warehouse.recordUse(deskPos, offer.getBaseCostA().getItem(), priceA, now);
                 offer.getItemCostB().ifPresent(b -> warehouse.recordUse(deskPos, b.item().value(), b.count(), now));
                 made++;

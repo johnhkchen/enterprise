@@ -46,6 +46,11 @@ public final class Route {
         this.to = to;
     }
 
+    /** No more departures: off the books once its caravan is home. */
+    public boolean stopping() {
+        return stopping;
+    }
+
     public int id() {
         return id;
     }

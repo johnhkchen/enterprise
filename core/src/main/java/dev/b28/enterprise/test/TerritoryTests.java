@@ -225,6 +225,41 @@ public final class TerritoryTests {
     }
 
     @GameTest(template = "floor")
+    public static void aRootCellarIsWantedWhereRootsPileUpAndBanksThem(GameTestHelper helper) {
+        Territory territory = new Territory();
+        GlobalPos bell = farm(helper, territory);
+        var level = helper.getLevel();
+        BlockPos desk = helper.absolutePos(new BlockPos(5, 2, 5));
+        GlobalPos deskAt = GlobalPos.of(level.dimension(), desk);
+        long t = level.getGameTime();
+        var cellar = dev.b28.enterprise.territory.Buildings.store(dev.b28.enterprise.territory.Buildings.ROOT_CELLAR)
+                .orElseThrow();
+        var granary = dev.b28.enterprise.territory.Buildings.store(dev.b28.enterprise.territory.Buildings.GRANARY)
+                .orElseThrow();
+        farmStock(helper).insert(new ItemStack(Items.CARROT, 64));
+        helper.assertFalse(territory.wantsStore(level, deskAt, farmStock(helper), cellar, t),
+                "a stack of carrots: no need of a cellar");
+        for (int i = 0; i < 5; i++) {
+            farmStock(helper).insert(new ItemStack(Items.CARROT, 64));
+        }
+        helper.assertTrue(territory.wantsStore(level, deskAt, farmStock(helper), cellar, t),
+                "six stacks of carrots: a cellar is wanted");
+        helper.assertFalse(territory.wantsStore(level, deskAt, farmStock(helper), granary, t),
+                "but not a granary: no wheat piles up");
+        var works = dev.b28.enterprise.territory.Works.get(level.getServer());
+        works.finish(works.startBuilding(bell, dev.b28.enterprise.territory.Buildings.ROOT_CELLAR,
+                helper.absolutePos(new BlockPos(1, 1, 1))));
+        territory.touch(level, desk, farmStock(helper), t);
+        int loose = farmStock(helper).count(new ItemCost(Items.CARROT, 1));
+        double banked = territory.banked(bell, Items.CARROT);
+        helper.assertTrue(loose == 128 && banked == 256,
+                "two stacks kept loose, the rest in the cellar: " + loose + " loose, " + banked + " banked");
+        helper.assertTrue(territory.grain(bell) == 0, "the cellar keeps roots, not wheat");
+        works.forgetForTest(bell);
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void farmersTakeCoinsAtTheRegionsRate(GameTestHelper helper) {
         Territory territory = new Territory();
         GlobalPos bell = farm(helper, territory);

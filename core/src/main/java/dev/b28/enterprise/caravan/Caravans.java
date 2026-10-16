@@ -275,11 +275,17 @@ public final class Caravans {
         // (what other caravans on their way there will buy of its food first doesn't count)
         boolean fedThere = dev.b28.enterprise.merchant.OffMap.get(server).sells(route.to)
                 && foodKnownAt(server, level, route.to) - ledger.foodPromisedAt(route.to) >= food;
-        int provisions = !fedThere && 2 * foodNeeded(route.distance()) <= FOOD_CAPACITY ? food : 0;
+        // A town too poor to pay the far end for the road home's food packs that too, from food it can spare beyond
+        // its par: a town rich in bread and poor in coin can still send its goods out.
+        boolean ownFood = !foreign && stock.foodNutrition() - Warehouse.FOOD_PAR_POINTS >= 2 * food
+                && Treasury.available(level, route.from.pos(), stock, rate) - territory.reserve(route.from)
+                        < food * PURSE_PER_FOOD_POINT;
+        int provisions = (!fedThere || ownFood) && 2 * foodNeeded(route.distance()) <= FOOD_CAPACITY ? food : 0;
+        double roadPurse = provisions > 0 ? 0 : food * PURSE_PER_FOOD_POINT;
         // A town sending its own caravan gives it money to bring home the comforts it lacks.
         Map<String, Double> shopping = Commissions.shoppingList(territory, route.from, stock);
         double spare = Math.max(0, Treasury.available(level, route.from.pos(), stock, rate) - territory.reserve(route.from)
-                - food * PURSE_PER_FOOD_POINT);
+                - roadPurse);
         double shoppingMoney = Math.min(spare, shopping.values().stream().mapToDouble(Double::doubleValue).sum());
         // Shopping is worth the trip only if it's worth twice the road food it costs.
         if (shoppingMoney < Math.max(0.5, 2 * food * PURSE_PER_FOOD_POINT)) {
@@ -294,7 +300,7 @@ public final class Caravans {
         // A bank's caravan carries money for its dealings there too, as far as its market can spare.
         double bankFloat = dev.b28.enterprise.market.Bank.get(server).is(route.from)
                 ? Math.max(0, Math.min(dev.b28.enterprise.market.Bank.FLOAT, spare - shoppingMoney - exWorks)) : 0;
-        double purse = food * PURSE_PER_FOOD_POINT + shoppingMoney + exWorks + bankFloat;
+        double purse = roadPurse + shoppingMoney + exWorks + bankFloat;
         if (stock.foodNutrition() < food + provisions) {
             route.status = "waiting for food at the hub";
             ledger.setDirty();
@@ -482,10 +488,7 @@ public final class Caravans {
                 }
             }
             dev.b28.enterprise.market.Procurement.procure(level, route.to, stock);
-            ItemStack empties = Crates.spareEmpties(stock); // returnable crates go back
-            if (!empties.isEmpty()) {
-                caravan.cargo.add(empties);
-            }
+            caravan.cargo.addAll(Crates.spareEmpties(stock)); // returnable crates go back
             // Crates here made out to the caravan's home (bought and paid for, waiting to be fetched) go home with it.
             List<ItemStack> consigned = stock.removeLoose(s -> Crates.consignedTo(s, route.from));
             for (ItemStack crate : consigned) {
@@ -550,7 +553,7 @@ public final class Caravans {
             route.serviceSpurs += paid;
             sendPortersHome(ledger, route, caravan, now);
             food = foodNeeded(route.distance()) * Math.max(1, caravan.crew.size());
-            int keepForFood = (int) Math.ceil(food * PURSE_PER_FOOD_POINT * rate);
+            int keepForFood = caravan.provisions >= food ? 0 : (int) Math.ceil(food * PURSE_PER_FOOD_POINT * rate);
             buyForHome(level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
             buySurplus(server, ledger, level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
             buyBackhaul(server, level, route, stock, caravan, keepForFood, territory, rate, now);

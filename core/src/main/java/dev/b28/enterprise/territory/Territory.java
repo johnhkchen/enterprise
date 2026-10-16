@@ -137,7 +137,7 @@ public final class Territory extends SavedData {
         double wagesUnpaid; // emeralds' worth that couldn't be paid: the farmers took it in crops
         long harvested; // items delivered to the Merchant's chest, in all
         double farmXp; // experience the Farmers earned with their harvest, not yet given them
-        double grain; // wheat banked in its granary, as hay bales
+        Map<String, Double> banked = new HashMap<>(); // crops banked in its stores (granary, root cellar), by item
         double laborShare = LABOR_SHARE;
         double salesSince; // emeralds from selling crops since the last accrual
         double salesPerDay; // averaged
@@ -687,8 +687,16 @@ public final class Territory extends SavedData {
         Map<String, double[]> workshop = holding.desk == null ? Map.of()
                 : Workshop.inputDemand(level, holding.desk, bell, census.villagers());
         workshop.forEach((item, d) -> wants.merge(item, d[0], Double::sum));
-        holding.perDay = plan(level, bellPos.getY(), hexes(bell), farmers, holding.demand, workshop,
-                Husbandry.feedDemand(holding.herd), holding.idlePerDay, hands);
+        // And what the markets its caravans reach would take: the Merchant tells its Farmers what sells there.
+        Map<String, List<double[]>> markets = holding.desk == null ? Map.of() : marketWants(level.getServer(), holding.desk);
+        markets.forEach((item, each) -> each.forEach(m -> wants.merge(item, m[0], Double::sum)));
+        boolean fed = holding.desk != null && level.isLoaded(holding.desk.pos()) && MerchantStock.at(level,
+                holding.desk.pos()).foodNutrition() >= 2 * dev.b28.enterprise.merchant.Warehouse.FOOD_PAR_POINTS;
+        if (fed) {
+            rotate(level, bellPos.getY(), hexes(bell), holding.demand, workshop, markets);
+        }
+        holding.perDay = plan(level, bellPos.getY(), hexes(bell), farmers, holding.demand, workshop, markets,
+                Husbandry.feedDemand(holding.herd), holding.idlePerDay, hands, fed);
         double tended = holding.perDay.values().stream().mapToDouble(Double::doubleValue).sum() / YIELD_PER_PLOT_PER_DAY;
         double capacity = hands * farmers.stream().mapToInt(l -> PLOTS_PER_FARMER_LEVEL * Math.max(1, l)).sum();
         holding.spareFarmPlots = (int) Math.max(0, capacity - Math.round(tended));
@@ -789,6 +797,87 @@ public final class Territory extends SavedData {
         return plan(level, centerY, hexes, farmers, demand, Map.of(), needs, idle, hands);
     }
 
+    /**
+     * What the markets the town's caravans go to would take of its crops, item id -> each market's {items a day,
+     * emeralds each}: a town's people's demand (its lockers' trades) for a crop beyond what it grows itself, or a
+     * realm's (what its people use), at the crop's worth less the road's cost of carrying it there and back. Only
+     * goods the far end's Merchant buys (see {@link dev.b28.enterprise.caravan.Caravans#wantsAt}).
+     */
+    public Map<String, List<double[]>> marketWants(MinecraftServer server, GlobalPos desk) {
+        Map<String, List<double[]>> wants = new HashMap<>();
+        for (var route : dev.b28.enterprise.caravan.CaravanLedger.get(server).routes()) {
+            if (!route.from().equals(desk) || route.stopping()) {
+                continue;
+            }
+            GlobalPos far = route.to();
+            var buys = dev.b28.enterprise.caravan.Caravans.wantsAt(server, far).keySet();
+            var realm = dev.b28.enterprise.trade.Realms.get(server).of(far);
+            Optional<Holding> there = bellOf(far).flatMap(this::holding);
+            for (Item crop : Crops.YIELDS.values().stream().distinct().toList()) {
+                if (!buys.contains(crop)) {
+                    continue;
+                }
+                String id = BuiltInRegistries.ITEM.getKey(crop).toString();
+                double perDay = realm.isPresent() ? dev.b28.enterprise.trade.Realms.USES_PER_DAY
+                        : there.map(h -> h.demand.getOrDefault(id, 0.0) - h.perDay.getOrDefault(id, 0.0)).orElse(0.0);
+                double each = Prices.emeraldsEach(crop) - dev.b28.enterprise.caravan.Desires.haulEach(route, crop);
+                if (perDay > 0 && each > 0) {
+                    wants.computeIfAbsent(id, k -> new ArrayList<>()).add(new double[] {perDay, each});
+                }
+            }
+        }
+        return wants;
+    }
+
+    /** Field crops that share farmland, so a field can be turned over from one to another. */
+    static final List<Item> ROTATION = List.of(Items.WHEAT, Items.CARROT, Items.POTATO, Items.BEETROOT);
+
+    /** At most this many plots turned over to another crop a census: about a field. */
+    public static final int ROTATE_PLOTS = 81;
+
+    /**
+     * Crop rotation: plots of a crop grown beyond all its uses are turned over, a field at most a census, to the
+     * crop whose unmet use earns most (its own lockers', its workshop's, the markets' its caravans reach).
+     */
+    private void rotate(ServerLevel level, int centerY, List<Hex> hexes, Map<String, Double> demand,
+            Map<String, double[]> workshop, Map<String, List<double[]>> markets) {
+        Map<Item, Integer> plots = new HashMap<>();
+        for (Hex hex : hexes) {
+            cropsIn(level, hex, centerY).forEach((item, count) -> plots.merge(item, count, Integer::sum));
+        }
+        Item from = null;
+        int spare = 0;
+        Item to = null;
+        double toEach = 0;
+        int short_ = 0;
+        for (Item crop : ROTATION) {
+            String id = BuiltInRegistries.ITEM.getKey(crop).toString();
+            List<Use> uses = new ArrayList<>(usesOf(crop, demand, workshop));
+            markets.getOrDefault(id, List.of()).forEach(m -> uses.add(new Use(crop, m[0], m[1])));
+            double wanted = uses.stream().mapToDouble(Use::perDay).sum();
+            double each = uses.stream().mapToDouble(Use::each).max().orElse(0);
+            int needed = (int) Math.ceil(wanted / YIELD_PER_PLOT_PER_DAY);
+            int have = plots.getOrDefault(crop, 0);
+            if (have - needed > spare) {
+                from = crop;
+                spare = have - needed;
+            }
+            if (needed > have && each > toEach) {
+                to = crop;
+                toEach = each;
+                short_ = needed - have;
+            }
+        }
+        if (from == null || to == null || from == to) {
+            return;
+        }
+        int turned = Crops.resow(level, hexes, centerY, from, to, Math.min(ROTATE_PLOTS, Math.min(spare, short_)));
+        if (turned > 0) {
+            dev.b28.enterprise.Enterprise.LOGGER.debug("Fields turned over: {} plots of {} to {}", turned,
+                    BuiltInRegistries.ITEM.getKey(from), BuiltInRegistries.ITEM.getKey(to));
+        }
+    }
+
     /** One use of a crop: so many items a day, at what an item earns there. */
     private record Use(Item crop, double perDay, double each) {}
 
@@ -802,6 +891,17 @@ public final class Territory extends SavedData {
     public Map<String, Double> plan(ServerLevel level, int centerY, List<Hex> hexes, List<Integer> farmers,
             Map<String, Double> demand, Map<String, double[]> workshop, Map<String, Double> needs,
             Map<String, Double> idle, double hands) {
+        return plan(level, centerY, hexes, farmers, demand, workshop, Map.of(), needs, idle, hands, false);
+    }
+
+    /**
+     * As above, with the markets its caravans reach as uses too ({@code markets}: id -> each market's {items a day,
+     * emeralds each, less the road}, see {@link #marketWants}); and, once the town is {@code fed}, plots of a crop no
+     * one wants lie fallow: not worked, not paid for, and no reason to take on another Farmer.
+     */
+    public Map<String, Double> plan(ServerLevel level, int centerY, List<Hex> hexes, List<Integer> farmers,
+            Map<String, Double> demand, Map<String, double[]> workshop, Map<String, List<double[]>> markets,
+            Map<String, Double> needs, Map<String, Double> idle, double hands, boolean fed) {
         Map<String, Double> perDay = new LinkedHashMap<>();
         Map<Item, Integer> plots = new HashMap<>();
         for (Hex hex : hexes) {
@@ -828,6 +928,9 @@ public final class Territory extends SavedData {
         List<Use> uses = new ArrayList<>();
         for (Item crop : crops) {
             uses.addAll(usesOf(crop, demand, workshop));
+            for (double[] market : markets.getOrDefault(BuiltInRegistries.ITEM.getKey(crop).toString(), List.of())) {
+                uses.add(new Use(crop, market[0], market[1]));
+            }
         }
         uses.sort(Comparator.comparingDouble((Use u) -> -u.each()));
         Map<Item, Double> best = new HashMap<>();
@@ -845,6 +948,10 @@ public final class Territory extends SavedData {
                 .thenComparing(Comparator.comparingInt((Item c) -> plots.get(c)).reversed())
                 .thenComparing(c -> BuiltInRegistries.ITEM.getKey(c).toString()));
         for (Item crop : crops) {
+            if (fed && best.getOrDefault(crop, 0.0) <= 0 && needs.getOrDefault(
+                    BuiltInRegistries.ITEM.getKey(crop).toString(), 0.0) <= 0) {
+                continue; // no one wants it, and the town has its food: fallow
+            }
             int worked = Math.min(capacity, left.get(crop));
             if (worked > 0) {
                 work.accept(crop, worked);
@@ -944,52 +1051,91 @@ public final class Territory extends SavedData {
         holding.lastHarvest = now;
     }
 
-    private static boolean granary(Holding holding) {
-        return holding.buildings.contains(Buildings.GRANARY.id());
+    /** The store the town has built that banks {@code item}, if any. */
+    private static Optional<Buildings.Store> storeFor(Holding holding, Item item) {
+        return Buildings.STORES.stream()
+                .filter(s -> s.items().contains(item) && holding.buildings.contains(s.kind().id())).findFirst();
     }
 
-    /** Wheat the warehouse keeps loose beside a granary: its par, and at least two stacks for its workshop. */
-    private static int looseWheat(ServerLevel level, GlobalPos desk, long now) {
+    /** What's banked in a store, of all it keeps. */
+    private static double inStore(Holding holding, Buildings.Store store) {
+        return store.items().stream()
+                .mapToDouble(i -> holding.banked.getOrDefault(BuiltInRegistries.ITEM.getKey(i).toString(), 0.0)).sum();
+    }
+
+    /** What the warehouse keeps loose of a crop beside its store: its par, and at least two stacks for its workshop. */
+    private static int loose(ServerLevel level, GlobalPos desk, Item item, long now) {
         return Math.max(2 * 64, dev.b28.enterprise.merchant.Warehouse.get(level.getServer())
-                .par(desk, Items.WHEAT, true, now));
+                .par(desk, item, true, now));
     }
 
     /**
-     * With a granary: wheat beyond what the warehouse keeps loose goes into it as bales, out of the way; and it tops
-     * the warehouse back up as its lockers, its workshop's bread and its caravans draw the wheat down. Wheat waits
-     * as grain until someone wants it.
+     * Does the town grow more of a store's crops than it keeps: twice what it keeps loose in the warehouse, or a
+     * stack of harvest waiting for room there? Only then is a granary, or a root cellar, worth building.
+     */
+    public boolean wantsStore(ServerLevel level, GlobalPos desk, MerchantStock stock, Buildings.Store store, long now) {
+        Optional<Holding> holding = bellOf(desk).flatMap(this::holding);
+        if (holding.isEmpty()) {
+            return false;
+        }
+        for (Item item : store.items()) {
+            String id = BuiltInRegistries.ITEM.getKey(item).toString();
+            if (stock.count(new ItemCost(item, 1)) >= 2 * loose(level, desk, item, now)
+                    || holding.get().pending.getOrDefault(id, 0.0) >= item.getDefaultMaxStackSize()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * With a store: crops beyond what the warehouse keeps loose go into it (wheat as bales in the granary, roots in
+     * the cellar's barrels), out of the way; and it tops the warehouse back up as its lockers, its workshop and its
+     * caravans draw them down. A crop waits there until someone wants it.
      */
     private static void bank(ServerLevel level, GlobalPos desk, MerchantStock stock, Holding holding, long now) {
-        if (!granary(holding)) {
-            return;
-        }
-        int keep = looseWheat(level, desk, now);
-        int held = stock.count(new ItemCost(Items.WHEAT, 1));
-        if (held > keep) {
-            int in = (int) Math.min(held - keep, Buildings.GRANARY_WHEAT - holding.grain);
-            if (in > 0) {
-                holding.grain += stock.take(new ItemCost(Items.WHEAT, 1), in).stream().mapToInt(ItemStack::getCount).sum();
+        for (Buildings.Store store : Buildings.STORES) {
+            if (!holding.buildings.contains(store.kind().id())) {
+                continue;
             }
-            return;
-        }
-        int out = (int) Math.min(keep - held, Math.floor(holding.grain));
-        while (out > 0) {
-            ItemStack stack = new ItemStack(Items.WHEAT, Math.min(out, 64));
-            if (!stock.hasRoomFor(stack)) {
-                break;
-            }
-            int put = stack.getCount() - stock.insert(stack).getCount();
-            holding.grain -= put;
-            out -= put;
-            if (put == 0) {
-                break;
+            for (Item item : store.items()) {
+                String id = BuiltInRegistries.ITEM.getKey(item).toString();
+                int keep = loose(level, desk, item, now);
+                int held = stock.count(new ItemCost(item, 1));
+                if (held > keep) {
+                    int in = (int) Math.min(held - keep, store.holds() - inStore(holding, store));
+                    if (in > 0) {
+                        int taken = stock.take(new ItemCost(item, 1), in).stream().mapToInt(ItemStack::getCount).sum();
+                        holding.banked.merge(id, (double) taken, Double::sum);
+                    }
+                    continue;
+                }
+                int out = (int) Math.min(keep - held, Math.floor(holding.banked.getOrDefault(id, 0.0)));
+                while (out > 0) {
+                    ItemStack stack = new ItemStack(item, Math.min(out, item.getDefaultMaxStackSize()));
+                    if (!stock.hasRoomFor(stack)) {
+                        break;
+                    }
+                    int put = stack.getCount() - stock.insert(stack).getCount();
+                    holding.banked.merge(id, (double) -put, Double::sum);
+                    out -= put;
+                    if (put == 0) {
+                        break;
+                    }
+                }
             }
         }
     }
 
     /** Wheat banked in the town's granary. */
     public double grain(GlobalPos bell) {
-        return holding(bell).map(h -> h.grain).orElse(0.0);
+        return banked(bell, Items.WHEAT);
+    }
+
+    /** What the town has banked of a crop in its stores. */
+    public double banked(GlobalPos bell, Item item) {
+        return holding(bell).map(h -> h.banked.getOrDefault(BuiltInRegistries.ITEM.getKey(item).toString(), 0.0))
+                .orElse(0.0);
     }
 
     /**
@@ -1117,11 +1263,12 @@ public final class Territory extends SavedData {
             }
             Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(owed.getKey()));
             int left = whole;
-            if (item == Items.WHEAT && granary(holding)) {
-                // What the warehouse needn't keep loose goes straight to the granary.
-                int short_ = Math.max(0, looseWheat(level, at, now) - stock.count(new ItemCost(Items.WHEAT, 1)));
-                int banked = (int) Math.max(0, Math.min(left - short_, Buildings.GRANARY_WHEAT - holding.grain));
-                holding.grain += banked;
+            Optional<Buildings.Store> store = storeFor(holding, item);
+            if (store.isPresent()) {
+                // What the warehouse needn't keep loose goes straight to the granary, or the root cellar.
+                int short_ = Math.max(0, loose(level, at, item, now) - stock.count(new ItemCost(item, 1)));
+                int banked = (int) Math.max(0, Math.min(left - short_, store.get().holds() - inStore(holding, store.get())));
+                holding.banked.merge(owed.getKey(), (double) banked, Double::sum);
                 left -= banked;
             }
             while (left > 0) {
@@ -1644,7 +1791,8 @@ public final class Territory extends SavedData {
         return Optional.ofNullable(holdings.get(bell));
     }
 
-    private static Optional<BlockPos> nearestDesk(ServerLevel level, BlockPos bell) {
+    /** The Merchant's desk nearest the bell, in the census's reach. */
+    public static Optional<BlockPos> nearestDesk(ServerLevel level, BlockPos bell) {
         return level.getPoiManager()
                 .findClosest(type -> type.is(Merchant.DESK_POI.getKey()), bell,
                         dev.b28.enterprise.settlement.CensusTaker.RADIUS, PoiManager.Occupancy.ANY);
@@ -1682,7 +1830,13 @@ public final class Territory extends SavedData {
             entry.putDouble("wagesUnpaid", holding.wagesUnpaid);
             entry.putLong("harvested", holding.harvested);
             entry.putDouble("farmXp", holding.farmXp);
-            entry.putDouble("grain", holding.grain);
+            CompoundTag banked = new CompoundTag();
+            holding.banked.forEach((id, n) -> {
+                if (n > 0) {
+                    banked.putDouble(id, n);
+                }
+            });
+            entry.put("banked", banked);
             entry.putDouble("laborShare", holding.laborShare);
             entry.putDouble("salesSince", holding.salesSince);
             entry.putDouble("salesPerDay", holding.salesPerDay);
@@ -1821,7 +1975,11 @@ public final class Territory extends SavedData {
                 holding.wagesUnpaid = entry.getDouble("wagesUnpaid");
                 holding.harvested = entry.getLong("harvested");
                 holding.farmXp = entry.getDouble("farmXp");
-                holding.grain = entry.getDouble("grain");
+                if (entry.contains("grain")) { // saved before root cellars: the granary's wheat
+                    holding.banked.put("minecraft:wheat", entry.getDouble("grain"));
+                }
+                CompoundTag banked = entry.getCompound("banked");
+                banked.getAllKeys().forEach(id -> holding.banked.put(id, banked.getDouble(id)));
                 if (entry.contains("laborShare")) {
                     holding.laborShare = entry.getDouble("laborShare");
                 }
