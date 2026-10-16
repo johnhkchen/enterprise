@@ -136,6 +136,8 @@ public final class Dials extends SavedData {
             "days a town's wagon waits for a full load before it goes with less (where no hub's wagon calls)");
     public static final Dial WAGON_PAYS = dial("wagon_pays", 3,
             "times its road food a load must be worth to go however full");
+    public static final Dial LINER_DAYS = dial("liner_days", 4,
+            "a hub's wagon runs on a timetable, every so many days (or when full, or with something due)");
     // The crown's post (see market.Post).
     public static final Dial POST_DAYS = dial("post_days", 3, "the crown's riders leave every so many days");
     public static final Dial POST_SPEED = dial("post_speed", 2000, "blocks a rider covers a day");

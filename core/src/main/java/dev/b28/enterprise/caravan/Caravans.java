@@ -354,6 +354,7 @@ public final class Caravans {
                 ? dev.b28.enterprise.market.Freight.get(server).loadBooked(route.from, stock,
                         new dev.b28.enterprise.market.Freight.Leg(route, true), slots)
                 : List.of());
+        int bookedCrates = cargo.size(); // shippers' crates, their space bought: they ride, but don't make the run due
         cargo.addAll(pickContracted(server, level, route, stock, now + travelTicks(route.distance()),
                 slots - Crates.stacks(cargo), contracted, now));
         cargo.addAll(pickForwarded(server, level, route, stock, now + travelTicks(route.distance()),
@@ -379,26 +380,35 @@ public final class Caravans {
         if (!foreign) {
             cargo.addAll(dev.b28.enterprise.market.Correspondent.send(level, route, stock, now));
         }
-        // Full or due: a town's own wagon goes with what it owes; otherwise only with a load worth its road food there
-        // and back, and full (or long waited for, where no hub's wagon calls; or worth thrice the food). Reckoned before
-        // anything's packed, so a wagon that waits costs nothing.
-        if (!foreign && !dev.b28.enterprise.market.Freight.isHub(server, route.from) && !route.onCall
-                && !dev.b28.enterprise.army.Army.get(server).front().filter(route.to::equals).isPresent()) {
-            boolean due = !cargo.isEmpty() || exWorks > 0 || buyBack > 0 || bankFloat > 0 || recruitsOwedAt(server, route)
+        // Full or due: a wagon goes with what it owes; otherwise only with a load worth its road food there and back,
+        // and full, or on its day: a town's after a long wait where no hub's wagon calls, a hub's on its timetable
+        // (every {@code liner_days}, so shippers can plan on it), or any day with a load worth thrice the food. Booked
+        // crates fill the wagon and their fares count, but wait for its day. Reckoned before anything else is packed,
+        // so a wagon that waits costs nothing.
+        if (!foreign && !route.onCall && !dev.b28.enterprise.army.Army.get(server).front().filter(route.to::equals).isPresent()) {
+            boolean hub = dev.b28.enterprise.market.Freight.isHub(server, route.from);
+            boolean due = cargo.size() > bookedCrates || exWorks > 0 || buyBack > 0 || bankFloat > 0
+                    || recruitsOwedAt(server, route)
                     || !dev.b28.enterprise.contract.ContractBook.get(server).copiesFor(route.from, route.to).isEmpty();
             if (!due) {
-                double[] load = saleLoad(server, territory, route, stock, slots, now);
-                double worth = load[1] + shoppingMoney;
+                double[] load = saleLoad(server, territory, route, stock, slots - Crates.stacks(cargo), now);
+                int booked = Crates.stacks(cargo);
+                double fares = booked * dev.b28.enterprise.market.Freight.legPrice(
+                        new dev.b28.enterprise.market.Freight.Leg(route, true));
+                double worth = load[1] + shoppingMoney + fares;
                 double cost = 2 * food * PURSE_PER_FOOD_POINT;
-                boolean full = load[0] >= dev.b28.enterprise.Dials.WAGON_FULL.get() * slots;
-                boolean served = ledger.routes().stream().anyMatch(r -> r.to.equals(route.from) && !r.stopping
+                boolean full = load[0] + booked >= dev.b28.enterprise.Dials.WAGON_FULL.get() * slots;
+                boolean served = !hub && ledger.routes().stream().anyMatch(r -> r.to.equals(route.from) && !r.stopping
                         && dev.b28.enterprise.market.Freight.isHub(server, r.from));
-                boolean waited = now - route.lastDeparture >= dev.b28.enterprise.Dials.WAGON_WAIT_DAYS.ticks();
-                boolean go = worth >= cost && (full || !served && waited)
+                boolean onItsDay = now - route.lastDeparture >= (hub ? dev.b28.enterprise.Dials.LINER_DAYS.ticks()
+                        : dev.b28.enterprise.Dials.WAGON_WAIT_DAYS.ticks()) && !served;
+                boolean go = worth >= cost && (full || onItsDay)
                         || worth >= dev.b28.enterprise.Dials.WAGON_PAYS.get() * cost;
                 if (!go) {
                     route.status = "waiting for a fuller load: %d of %d stacks, worth %.1f against %.1f of road food"
-                            .formatted((int) load[0], slots, worth, cost) + (served ? " (a hub's wagon calls here)" : "");
+                            .formatted((int) load[0] + booked, slots, worth, cost)
+                            + (served ? " (a hub's wagon calls here)" : hub ? " (it runs every few days)" : "");
+                    cargo.forEach(stock::insert); // the booked crates wait for its day
                     dev.b28.enterprise.money.Accountant.spent(route.from, -(shoppingMoney + callPurse), now); // unspent
                     ledger.setDirty();
                     return false;
