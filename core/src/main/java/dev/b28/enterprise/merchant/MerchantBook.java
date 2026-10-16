@@ -48,6 +48,31 @@ public final class MerchantBook extends SavedData {
     // desk -> workstation -> what its trades did for the town since the last review, in emeralds (not saved)
     private final Map<GlobalPos, Map<BlockPos, Double>> earned = new HashMap<>();
 
+    // desk -> workstation -> days in a row its villager's trades did nothing for the town (saved)
+    private final Map<GlobalPos, Map<BlockPos, Integer>> slack = new HashMap<>();
+
+    /** Days in a row a locker's villager's trades did nothing for the town, at the Merchant's reviews. */
+    public int slackDays(GlobalPos desk, BlockPos workstation) {
+        return slack.getOrDefault(desk, Map.of()).getOrDefault(workstation, 0);
+    }
+
+    /** A new hand at the locker: {@code days} of grace before its slack counts (its herd to breed, say). */
+    public void startSlack(GlobalPos desk, BlockPos workstation, int days) {
+        slack.computeIfAbsent(desk, d -> new HashMap<>()).put(workstation, -days);
+        setDirty();
+    }
+
+    /** At a review: one more day of nothing done, or none ({@code idle} false). */
+    public void noteSlack(GlobalPos desk, BlockPos workstation, boolean idle) {
+        Map<BlockPos, Integer> days = slack.computeIfAbsent(desk, d -> new HashMap<>());
+        if (idle) {
+            days.merge(workstation, 1, Integer::sum);
+        } else if (days.getOrDefault(workstation, 0) >= 0) {
+            days.remove(workstation); // doing something: no slack (a new hand's grace stands until it's spent)
+        }
+        setDirty();
+    }
+
     // desk -> workstation -> game time it was taken on as a client by a swap (not saved: an old client after a restart)
     private final Map<GlobalPos, Map<BlockPos, Long>> takenOn = new HashMap<>();
 
@@ -174,6 +199,7 @@ public final class MerchantBook extends SavedData {
         ListTag clientList = new ListTag();
         java.util.Set<GlobalPos> known = new HashSet<>(clients.keySet());
         known.addAll(worth.keySet());
+        known.addAll(slack.keySet());
         known.forEach(desk -> {
             CompoundTag entry = new CompoundTag();
             GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, desk).ifSuccess(pos -> entry.put("desk", pos));
@@ -182,6 +208,9 @@ public final class MerchantBook extends SavedData {
             CompoundTag worths = new CompoundTag();
             worth.getOrDefault(desk, Map.of()).forEach((at, w) -> worths.putDouble(Long.toString(at.asLong()), w));
             entry.put("worth", worths);
+            CompoundTag slacks = new CompoundTag();
+            slack.getOrDefault(desk, Map.of()).forEach((at, d) -> slacks.putInt(Long.toString(at.asLong()), d));
+            entry.put("slack", slacks);
             clientList.add(entry);
         });
         tag.put("clients", clientList);
@@ -227,6 +256,9 @@ public final class MerchantBook extends SavedData {
                 CompoundTag worths = entry.getCompound("worth");
                 worths.getAllKeys().forEach(k -> book.worth.computeIfAbsent(desk, d -> new HashMap<>())
                         .put(BlockPos.of(Long.parseLong(k)), worths.getDouble(k)));
+                CompoundTag slacks = entry.getCompound("slack");
+                slacks.getAllKeys().forEach(k -> book.slack.computeIfAbsent(desk, d -> new HashMap<>())
+                        .put(BlockPos.of(Long.parseLong(k)), slacks.getInt(k)));
             });
         }
         return book;

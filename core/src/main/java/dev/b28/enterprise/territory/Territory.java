@@ -571,8 +571,9 @@ public final class Territory extends SavedData {
         }
         if (holding.pasture == null) {
             double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, level.getGameTime());
-            if (Treasury.available(level, holding.desk.pos(), stock, rate) - reserve(holding.desk) < Fields.FIELD_EMERALDS) {
-                return;
+            double cash = Treasury.available(level, holding.desk.pos(), stock, rate) - reserve(holding.desk);
+            if (cash + depositsOnCall(holding.desk) < Fields.FIELD_EMERALDS) {
+                return; // not even with its households' savings
             }
             Optional<BlockPos> site = Growth.farmSite(level, bellPos, Husbandry.PASTURE_SIZE, 8)
                     .filter(corner -> owner(level.dimension(), Hex.at(corner.offset(4, 0, 4))).filter(bell::equals).isPresent());
@@ -580,6 +581,9 @@ public final class Territory extends SavedData {
                 return;
             }
             Husbandry.fence(level, site.get());
+            if (cash < Fields.FIELD_EMERALDS) {
+                borrowDeposits(level, holding.desk, stock, Fields.FIELD_EMERALDS - cash);
+            }
             Treasury.withdraw(level, holding.desk.pos(), stock, Fields.FIELD_EMERALDS, Mint.get(level.getServer()),
                     level.getGameTime());
             holding.pasture = site.get();
@@ -1572,7 +1576,7 @@ public final class Territory extends SavedData {
         // Grown, with hands and money to spare: settlers, to a village nobody trades with or to found a town.
         expeditions.consider(level, holding.desk,
                 GlobalPos.of(level.dimension(), bell), stock, this, holding.focus, census.villagers(), now);
-        if (holding.mood >= Growth.HOME_MOOD && census.villagers() >= census.beds()) {
+        if (holding.mood >= dev.b28.enterprise.Dials.HOME_MOOD.get() && census.villagers() >= census.beds()) {
             holding.homeProgress = Math.min(1, holding.homeProgress + days / Growth.DAYS_PER_HOME);
         }
         if (holding.homeProgress >= 1 && holding.purse
@@ -1591,7 +1595,7 @@ public final class Territory extends SavedData {
                         bell.toShortString(), site.get().toShortString());
             }
         }
-        if (holding.mood >= Growth.BIRTH_MOOD && census.beds() > census.villagers()) {
+        if (holding.mood >= dev.b28.enterprise.Dials.BIRTH_MOOD.get() && census.beds() > census.villagers()) {
             holding.birthProgress = Math.min(1, holding.birthProgress + days / Growth.DAYS_PER_BIRTH
                     * (holding.buildings.contains(Buildings.TEMPLE.id()) ? 2 : 1));
         }

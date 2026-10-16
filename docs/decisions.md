@@ -628,6 +628,31 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   paper. Treats still 0% everywhere: the Librarians' paper takes the cane first, and the biscuits are short of wheat
   too. `dev/experiments/compare_lanes.py` compares lanes.
 
+## Greenwick: a town with no road makes its own comforts (built 2026-10-16)
+
+- **The trap (traced).** Greenwick has no caravan road (in every lane). No clothing, furnishings or leisure ever reach
+  it, so its mood held near +0.3 for 120 days: under the 0.5 a full town needs to build a family a home, and the 1.0
+  a town needs for a child. It stayed at six villagers, every adult employed (a Cartographer and a Fletcher among them,
+  serving caravans that don't exist), so no idle hand ever drew a new trade; and the job draw weighed trades by what
+  they'd buy of the town's goods, not by the comforts it lacked. Its households saved 317 to 717 emeralds of wages
+  and spent about 70: there was nothing to buy but its own biscuits.
+- **Comforts in the job draw.** Each comfort a town lacks puts marbles in the draw for the trade whose workshop makes
+  it (carpets a Shepherd's, boots a Leatherworker's, books a Librarian's, biscuits a Farmer's), if the town has none
+  of that trade: a share (0.2, dial) of its households' savings, times the share of the ration unmet.
+- **A trade with nothing to do gives way, where there are no roads.** In a town no caravan comes to or goes from, a
+  villager whose locker's trades did nothing for the town at the Merchant's last 5 reviews (dial) takes up the trade the
+  draw picks, if the town hasn't it: its stall taken down, its trades forgotten. A new hand has twice that before it's
+  judged (a Leatherworker's cows must breed past four before it has hides). Farmers, Masons and Clerics never: their
+  work isn't in their lockers. (Retraining everywhere cost towns with roads up to a point of mood: there a trade's
+  work may be its workshop's, a service, or goods carried away.)
+- **Deposits fund the start.** A stall, and a first pasture, are paid for with the households' savings where the
+  treasury can't (see "Citizens' deposits").
+- **New families as a dial.** A town needs mood 0.5 (dial `birth_mood`, was 1.0) for a child, 0.5 (`home_mood`) to
+  build a full town a home.
+- Measured (forked from day 120, 20 days, three lanes, against the same build with all of it off): Greenwick +0.29 to
+  +0.55 (to +0.87 where it had a child; with retraining in every town it reached +0.96, but Meadowworth fell to
+  +0.82); the other towns within the noise. Not yet measured over a whole run with the lower birth mood.
+
 ## Stranded paper: a sound town ruined by a closed road (built 2026-10-16)
 
 **The failure (traced).** Hollowwick, rich on day 20 (163 emeralds, mood +3.4), took the capital's training contract:

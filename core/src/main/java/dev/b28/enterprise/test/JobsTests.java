@@ -45,6 +45,22 @@ public final class JobsTests {
     }
 
     @GameTest(template = "floor")
+    public static void aComfortTheTownLacksDrawsTheTradeThatMakesIt(GameTestHelper helper) {
+        var met = Map.of("furnishings", 0.0, "clothing", 0.5, "treats", 1.0);
+        var marbles = Jobs.comfortMarbles(met, 500, Map.of());
+        double share = dev.b28.enterprise.Dials.COMFORT_MARBLES.get();
+        double shepherd = marbles.entrySet().stream().filter(e -> e.getKey().profession() == VillagerProfession.SHEPHERD)
+                .mapToDouble(Map.Entry::getValue).sum();
+        double leatherworker = marbles.entrySet().stream()
+                .filter(e -> e.getKey().profession() == VillagerProfession.LEATHERWORKER).mapToDouble(Map.Entry::getValue).sum();
+        helper.assertTrue(Math.abs(shepherd - 500 * share) < 1e-9, "no furnishings: a Shepherd's share of savings, " + shepherd);
+        helper.assertTrue(Math.abs(leatherworker - 0.5 * 500 * share) < 1e-9, "clothing half met: half, " + leatherworker);
+        helper.assertTrue(Jobs.comfortMarbles(met, 500, Map.of(VillagerProfession.SHEPHERD, 1)).keySet().stream()
+                .noneMatch(t -> t.profession() == VillagerProfession.SHEPHERD), "the town has a Shepherd: none for it");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void anIdleHandDrawsATradeByWhatItWouldMeet(GameTestHelper helper) {
         Map<String, Double> paper = Map.of("minecraft:paper", 3.0, "minecraft:carrot", 1.0);
         var bag = Jobs.bag(paper, Map.of(), Map.of(), 0, Map.of());

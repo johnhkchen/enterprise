@@ -113,6 +113,43 @@ public final class Jobs {
         return bag;
     }
 
+    /**
+     * Marbles for the comforts the town lacks: each kind short of its ration puts in a share of what its households
+     * have saved (what they'd spend on it, could they get it), for the trade whose workshop makes it (carpets a
+     * Shepherd's, boots a Leatherworker's), if the town has none of that trade. A town nobody brings comforts makes its
+     * own.
+     */
+    public static Map<Trade, Double> comfortMarbles(Map<String, Double> met, double savings,
+            Map<VillagerProfession, Integer> present) {
+        Map<Trade, Double> marbles = new java.util.LinkedHashMap<>();
+        double share = dev.b28.enterprise.Dials.COMFORT_MARBLES.get();
+        for (Workshop.Conversion c : Workshop.CONVERSIONS) {
+            var kind = Comforts.kindOf(c.output());
+            if (kind.isEmpty()) {
+                continue;
+            }
+            double lacking = 1 - met.getOrDefault(Comforts.name(kind.get()), 0.0);
+            if (lacking <= 0.01) {
+                continue;
+            }
+            for (String id : c.trades()) {
+                TRADES.stream().filter(t -> BuiltInRegistries.VILLAGER_PROFESSION.getKey(t.profession()).toString().equals(id)
+                                && !present.containsKey(t.profession()))
+                        .findFirst().ifPresent(t -> marbles.merge(t, lacking * savings * share, Double::sum));
+            }
+        }
+        return marbles;
+    }
+
+    /** The markets' signals, and the comforts the town lacks (see {@link #comfortMarbles}). */
+    static Map<Trade, Double> withComforts(Map<Trade, Double> signals, Territory territory, GlobalPos bell,
+            Map<VillagerProfession, Integer> present) {
+        Map<Trade, Double> all = new java.util.LinkedHashMap<>(signals);
+        comfortMarbles(territory.comfortsMet(bell), territory.households(bell)[0], present)
+                .forEach((t, m) -> all.merge(t, m, Double::sum));
+        return all;
+    }
+
     /** A marble drawn from the bag: each trade as likely as its share of the marbles. None from an empty bag. */
     public static Optional<Trade> draw(Map<Trade, Double> bag, net.minecraft.util.RandomSource random) {
         double total = bag.values().stream().mapToDouble(Double::doubleValue).sum();
@@ -147,11 +184,18 @@ public final class Jobs {
                         v -> !v.isBaby() && v.getVillagerData().getProfession() == VillagerProfession.NONE
                                 && residents.contains(v.getUUID()))
                 .stream().findFirst();
+        // With no one idle: a hand whose trade has done nothing for the town for days may take up one it needs.
+        boolean retraining = idle.isEmpty();
+        if (retraining) {
+            idle = slack(level, desk, residents);
+        }
         if (idle.isEmpty()) {
             return Optional.empty();
         }
         double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, level.getGameTime());
-        if (Treasury.available(level, desk.pos(), stock, rate) - territory.reserve(desk) < STALL_EMERALDS) {
+        double cash = Treasury.available(level, desk.pos(), stock, rate) - territory.reserve(desk);
+        // Short of coin for the stall, the Merchant may borrow its households' savings.
+        if (cash + territory.depositsOnCall(desk) < STALL_EMERALDS) {
             return Optional.empty();
         }
         // The town's trades from its roster: everyone, loaded or not.
@@ -165,10 +209,25 @@ public final class Jobs {
         Optional<Trade> trade = forContracts(level, desk, territory, bellPos, present.keySet())
                 .or(() -> draw(bag(supply(territory.farmPlan(bellPos), stock), present, territory.idlePlots(bellPos),
                         dev.b28.enterprise.service.BuildServices.work(level, desk, stock, bellPos, territory, rate),
-                        signals(level, desk, territory, bellPos, present.keySet())), level.random));
+                        withComforts(signals(level, desk, territory, bellPos, present.keySet()), territory, bellPos,
+                                present)), level.random));
+        if (retraining && (trade.isEmpty() || present.containsKey(trade.get().profession()))) {
+            return Optional.empty(); // nothing it needs that the town hasn't: the hand keeps its trade
+        }
         Optional<BlockPos> site = trade.isPresent() ? Growth.site(level, bell, STALL_SIZE, NEAREST) : Optional.empty();
         if (site.isEmpty()) {
             return Optional.empty();
+        }
+        if (retraining) {
+            Enterprise.LOGGER.info("{}: its {} has done nothing for the town for {} days, and takes up the {}'s trade",
+                    dev.b28.enterprise.settlement.Names.label(desk),
+                    BuiltInRegistries.VILLAGER_PROFESSION.getKey(idle.get().getVillagerData().getProfession()).getPath(),
+                    dev.b28.enterprise.Dials.SLACK_DAYS.getInt(),
+                    BuiltInRegistries.VILLAGER_PROFESSION.getKey(trade.get().profession()).getPath());
+            leaveTrade(level, idle.get(), desk);
+        }
+        if (cash < STALL_EMERALDS) {
+            territory.borrowDeposits(level, desk, stock, STALL_EMERALDS - cash);
         }
         BlockPos workstation = buildStall(level, site.get(), trade.get());
         hire(level, idle.get(), workstation, trade.get(), desk);
@@ -276,8 +335,62 @@ public final class Jobs {
      * The villager takes the job at once (waiting for it to find the workstation is chancy in an unloaded town), and
      * the trades where it buys goods for emeralds are switched on for the desk's Merchant.
      */
+    /** Trades whose work isn't in their locker's trades (fields, the desk, halls, blessings): never slack by them. */
+    static final Set<VillagerProfession> KEPT = Set.of(VillagerProfession.FARMER, VillagerProfession.MASON,
+            VillagerProfession.CLERIC, VillagerProfession.NONE, VillagerProfession.NITWIT);
+
+    /**
+     * In a town with no roads, a resident whose trade has done nothing for it at the Merchant's last {@code slack_days}
+     * reviews (its locker's trades worth nothing to it: no goods of the town's to buy, nothing it wants to sell), if any.
+     */
+    static Optional<Villager> slack(ServerLevel level, GlobalPos desk, Set<java.util.UUID> residents) {
+        // Only in a town no caravan comes to or goes from: elsewhere a trade's work may be its workshop's, a
+        // service, or goods carried away, none of which shows in its locker's trades (measured: retraining
+        // everywhere cost towns with roads up to a point of mood).
+        if (dev.b28.enterprise.caravan.CaravanLedger.get(level.getServer()).routes().stream()
+                .anyMatch(r -> !r.stopping() && (r.from().equals(desk) || r.to().equals(desk)))) {
+            return Optional.empty();
+        }
+        MerchantBook book = MerchantBook.get(level.getServer());
+        int days = dev.b28.enterprise.Dials.SLACK_DAYS.getInt();
+        for (var locker : dev.b28.enterprise.locker.Lockers.near(level, desk.pos(),
+                dev.b28.enterprise.locker.Lockers.MERCHANT_RANGE, Integer.MAX_VALUE)) {
+            if (book.slackDays(desk, locker.workstation()) < days) {
+                continue;
+            }
+            var villager = dev.b28.enterprise.merchant.Merchant.workingAt(level, locker.workstation(),
+                    dev.b28.enterprise.locker.Lockers.MERCHANT_RANGE);
+            if (villager.isPresent() && !villager.get().isBaby() && residents.contains(villager.get().getUUID())
+                    && !KEPT.contains(villager.get().getVillagerData().getProfession())
+                    && !dev.b28.enterprise.merchant.Merchant.isMerchant(villager.get())) {
+                return villager;
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** A villager leaves its trade: its stall taken down, its trades and what it knew of them gone. */
+    static void leaveTrade(ServerLevel level, Villager villager, GlobalPos desk) {
+        MerchantBook book = MerchantBook.get(level.getServer());
+        villager.getBrain().getMemory(MemoryModuleType.JOB_SITE).ifPresent(site -> {
+            for (String key : Set.copyOf(book.enabledTrades(desk, site.pos()))) {
+                book.setEnabled(desk, site.pos(), key, false);
+            }
+            book.noteSlack(desk, site.pos(), false);
+            level.getPoiManager().release(site.pos());
+            level.setBlock(site.pos(), Blocks.AIR.defaultBlockState(), 3);
+        });
+        villager.getBrain().eraseMemory(MemoryModuleType.JOB_SITE);
+        villager.getBrain().eraseMemory(MemoryModuleType.POTENTIAL_JOB_SITE);
+        villager.setVillagerXp(0);
+        villager.setOffers(new net.minecraft.world.item.trading.MerchantOffers());
+        villager.setVillagerData(villager.getVillagerData().setProfession(VillagerProfession.NONE).setLevel(1));
+    }
+
     public static void hire(ServerLevel level, Villager villager, BlockPos workstation, Trade trade, GlobalPos desk) {
         level.getPoiManager().take(type -> true, (type, at) -> at.equals(workstation), workstation, 1);
+        // A new hand has time to get going (its herd to breed, its first goods) before it's judged slack.
+        MerchantBook.get(level.getServer()).startSlack(desk, workstation, 2 * dev.b28.enterprise.Dials.SLACK_DAYS.getInt());
         villager.getBrain().setMemory(MemoryModuleType.JOB_SITE, GlobalPos.of(level.dimension(), workstation));
         villager.setVillagerData(villager.getVillagerData().setProfession(trade.profession()).setLevel(1));
         MerchantBook book = MerchantBook.get(level.getServer());

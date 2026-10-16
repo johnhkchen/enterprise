@@ -99,6 +99,13 @@ public final class Dials extends SavedData {
             "what a Merchant pays its households a day on what it has borrowed of their savings");
     public static final Dial DEPOSIT_KEEP = dial("deposit_keep", 10,
             "emeralds beyond its reserve a Merchant keeps before it repays its households");
+    // Families and trades (see territory.Territory#grow, territory.Jobs).
+    public static final Dial HOME_MOOD = dial("home_mood", 0.5, "mood a full town needs to build a family a home");
+    public static final Dial BIRTH_MOOD = dial("birth_mood", 0.5, "mood a town with a bed free needs for a child");
+    public static final Dial COMFORT_MARBLES = dial("comfort_marbles", 0.2,
+            "share of its households' savings a comfort the town lacks puts in the job draw, for the trade that makes it");
+    public static final Dial SLACK_DAYS = dial("slack_days", 5,
+            "days a villager's trades do nothing for the town before it takes up a trade the town needs");
     // Fields (see territory.Territory).
     public static final Dial ROTATE_PLOTS = dial("rotate_plots", 81, "plots turned over to another crop a census");
     public static final Dial OWED_FIELDS = dial("rotate_owed_fields", 2,

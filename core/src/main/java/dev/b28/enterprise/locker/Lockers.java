@@ -119,9 +119,11 @@ public final class Lockers {
         // than what it could do with the goods left: having sold the town's carrots, a Farmer has none left to buy.
         Map<BlockPos, Double> earned = book.takeEarned(at);
         for (Locker locker : all) {
-            Merchant.workingAt(level, locker.workstation(), MERCHANT_RANGE)
-                    .ifPresent(v -> book.setWorth(at, locker.workstation(), Math.max(worth(v.getOffers(), supply, wanted),
-                            earned.getOrDefault(locker.workstation(), 0.0) / 2)));
+            Merchant.workingAt(level, locker.workstation(), MERCHANT_RANGE).ifPresent(v -> {
+                double w = Math.max(worth(v.getOffers(), supply, wanted), earned.getOrDefault(locker.workstation(), 0.0) / 2);
+                book.setWorth(at, locker.workstation(), w);
+                book.noteSlack(at, locker.workstation(), w <= 0.01); // a trade doing nothing for the town today
+            });
         }
         int limit = Merchant.lockerLimit(merchant.get().getVillagerData().getLevel());
         Set<String> needed = dev.b28.enterprise.market.Apprentices.neededTrades(level.getServer(), at);
