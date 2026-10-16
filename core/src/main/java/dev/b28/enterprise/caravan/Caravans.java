@@ -162,11 +162,19 @@ public final class Caravans {
             if (caravan.isEmpty()) {
                 if (route.stopping) {
                     ledger.retire(route);
-                } else if (now - route.lastDeparture >= DEPARTURE_INTERVAL
-                        && !dispatch(server, ledger, territory, route, now)) {
-                    // Why no caravan left today, in the books with the rest of its reasons.
-                    dev.b28.enterprise.merchant.Books.get(server).why(route.from, now, route.to, Items.AIR,
-                            "no trip: " + route.status, 0);
+                } else if (now - route.lastDeparture >= DEPARTURE_INTERVAL) {
+                    var post = dev.b28.enterprise.market.Post.get(server);
+                    if (route.onCall && !post.due(route.from, route.to, now)) {
+                        route.status = "on call: waiting for the town to write"; // a run on call goes when it's booked
+                    } else if (dispatch(server, ledger, territory, route, now)) {
+                        if (route.onCall) {
+                            post.made(route.from, route.to, now);
+                        }
+                    } else {
+                        // Why no caravan left today, in the books with the rest of its reasons.
+                        dev.b28.enterprise.merchant.Books.get(server).why(route.from, now, route.to, Items.AIR,
+                                "no trip: " + route.status, 0);
+                    }
                 }
             } else if (now >= caravan.get().arrives) {
                 Caravan c = caravan.get();
@@ -315,7 +323,11 @@ public final class Caravans {
                 buyBack += rent.capital();
             }
         }
-        double purse = roadPurse + shoppingMoney + exWorks + bankFloat + buyBack;
+        // A run on call carries the money for the goods the town wrote it has ready, as far as the hub can spare.
+        double callPurse = route.onCall ? dev.b28.enterprise.money.Accountant.allow(level, route.from, stock,
+                "a call's goods", Math.min(dev.b28.enterprise.market.Post.get(server).purse(route.from, route.to, now),
+                        Math.max(0, spare - shoppingMoney - exWorks - bankFloat - buyBack)), now) : 0;
+        double purse = roadPurse + shoppingMoney + exWorks + bankFloat + buyBack + callPurse;
         if (stock.foodNutrition() < food + provisions) {
             route.status = "waiting for food at the hub";
             ledger.setDirty();

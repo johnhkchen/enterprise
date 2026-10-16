@@ -35,6 +35,7 @@ public final class Route {
     long animalsSold;
     long mappedAt = -1; // when a Cartographer last walked it
     boolean stopping; // no more departures; off the books once its caravan is home
+    boolean onCall; // a hub's run to a town that leaves only on a day the town's booked it for, by post
     int townsMapped; // towns a Cartographer has seen along it
     long fishCaught; // by Fishermen sailing it
     String status = "new";
@@ -44,6 +45,15 @@ public final class Route {
         this.id = id;
         this.from = from;
         this.to = to;
+    }
+
+    /** A run that leaves only when its far end has booked a call, by post (see market.Post). */
+    public boolean onCall() {
+        return onCall;
+    }
+
+    public void setOnCall(boolean onCall) {
+        this.onCall = onCall;
     }
 
     /** No more departures: off the books once its caravan is home. */
@@ -225,6 +235,7 @@ public final class Route {
         tag.putLong("animalsSold", animalsSold);
         tag.putLong("mappedAt", mappedAt);
         tag.putBoolean("stopping", stopping);
+        tag.putBoolean("onCall", onCall);
         tag.putInt("townsMapped", townsMapped);
         tag.putLong("fishCaught", fishCaught);
         tag.putString("status", status);
@@ -265,6 +276,7 @@ public final class Route {
         route.animalsSold = tag.getLong("animalsSold");
         route.mappedAt = tag.contains("mappedAt") ? tag.getLong("mappedAt") : -1;
         route.stopping = tag.getBoolean("stopping");
+        route.onCall = tag.getBoolean("onCall");
         route.townsMapped = tag.getInt("townsMapped");
         route.fishCaught = tag.getLong("fishCaught");
         route.status = tag.getString("status");

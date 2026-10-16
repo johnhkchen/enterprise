@@ -417,7 +417,7 @@ public final class Freight extends SavedData {
     static final int CREW = 2;
 
     /** What a run's road food costs a trip, both ways, for a usual squad, in emeralds. */
-    static double runCost(int distance) {
+    public static double runCost(int distance) {
         return Caravans.foodNeeded(distance) * 2.0 * CREW * Caravans.PURSE_PER_FOOD_POINT;
     }
 

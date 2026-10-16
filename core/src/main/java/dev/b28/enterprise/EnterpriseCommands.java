@@ -285,6 +285,12 @@ final class EnterpriseCommands {
                         .executes(context -> cashbook(context, 10))
                         .then(Commands.argument("days", IntegerArgumentType.integer(1, 60))
                                 .executes(context -> cashbook(context, IntegerArgumentType.getInteger(context, "days"))))))
+                .then(Commands.literal("post").executes(context -> {
+                    var server = context.getSource().getServer();
+                    String out = String.join("\n", dev.b28.enterprise.market.Post.get(server).report(server));
+                    context.getSource().sendSuccess(() -> Component.literal(out), false);
+                    return 1;
+                }))
                 .then(Commands.literal("paperwork").executes(context -> {
                     var server = context.getSource().getServer();
                     StringBuilder out = new StringBuilder("Paperwork (documents, paper, ink, quills used; scribes paid):");

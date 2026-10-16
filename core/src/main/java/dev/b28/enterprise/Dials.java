@@ -130,6 +130,19 @@ public final class Dials extends SavedData {
             "more off at a full warehouse, and again at a full book: the hub's throttle");
     public static final Dial CORRESPONDENT_FLOOR = dial("correspondent_floor", 24,
             "emeralds beyond its reserve below which a hub with a counting house rediscounts bills at the capital");
+    // The crown's post (see market.Post).
+    public static final Dial POST_DAYS = dial("post_days", 3, "the crown's riders leave every so many days");
+    public static final Dial POST_SPEED = dial("post_speed", 2000, "blocks a rider covers a day");
+    public static final Dial POSTAGE = dial("postage", 0.1, "emeralds a letter costs its sender");
+    public static final Dial CALL_MARGIN = dial("call_margin", 0.25,
+            "share of the worth of a town's goods a hub reckons to make on them, buying and selling on");
+    public static final Dial CALL_START = dial("call_start", 1.5,
+            "times its trip's road food a town's goods must make the hub before it writes to come call");
+    public static final Dial CALL_STOP = dial("call_stop", 1.0,
+            "times its trip's road food (less the crown's aid) the goods offered must make the hub for it to call");
+    public static final Dial CALLS_PER_DAY = dial("calls_per_day", 1, "calls a hub books a day at most");
+    public static final Dial CROWN_AID = dial("crown_aid", 0.5,
+            "share of the road food of a hub's first call at a town the crown pays");
     // The accountant (see money.Accountant).
     public static final Dial BUDGET_SHARE = dial("budget_share", 0.5,
             "share of its free money a town spends a day at its own choosing (half again with a counting house)");

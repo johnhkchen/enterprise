@@ -662,6 +662,7 @@ def main():
             print("\n" + rcon(f"enterprise hex {x} -60 {z}").strip())
         print("\n" + rcon("enterprise freight").strip())
         print("\n" + rcon("enterprise paperwork").strip())
+        print("\n" + rcon("enterprise post").strip())
         print("\n" + rcon("enterprise expeditions").strip())
         print("\n" + rcon("enterprise realms").strip())
         print("\n" + rcon(f"enterprise books {HUB[0] + 2} -60 {HUB[1] + 2}").strip())
