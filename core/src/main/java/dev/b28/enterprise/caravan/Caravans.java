@@ -345,7 +345,14 @@ public final class Caravans {
                 : dev.b28.enterprise.market.Freight.stopOn(server, route).map(dev.b28.enterprise.market.Freight.Stop::hub);
         if (strandedHub.isPresent() && !foreign) {
             GlobalPos hub = strandedHub.get();
-            cargo.addAll(stock.removeLoose(s -> dev.b28.enterprise.market.Stranded.crate(server, hub, route.from, s)));
+            int[] room = {slots - Crates.stacks(cargo)};
+            cargo.addAll(stock.removeLoose(s -> {
+                if (room[0] <= 0 || !dev.b28.enterprise.market.Stranded.crate(server, hub, route.from, s)) {
+                    return false;
+                }
+                room[0] -= Crates.stacks(List.of(s));
+                return true;
+            }));
             cargo.addAll(stock.removeLoose(s -> s.is(dev.b28.enterprise.cargo.Cargo.DOCUMENTS.get())
                     && dev.b28.enterprise.contract.Bills.get(server).in(s).stream()
                             .anyMatch(b -> dev.b28.enterprise.market.Stranded.bill(server, hub, route.from, b, now))));
@@ -367,7 +374,7 @@ public final class Caravans {
         wantedThereNow.values().removeIf(want -> want <= 0);
         int before = cargo.size();
         cargo.addAll(pickComforts(stock, wantedThereNow));
-        while (Crates.stacks(cargo) > slots) {
+        while (Crates.stacks(cargo) > slots && cargo.size() > before) {
             stock.insert(cargo.remove(cargo.size() - 1)); // more comforts than the squad can carry: leave the rest
         }
         dev.b28.enterprise.merchant.Books.byGood(cargo.subList(before, cargo.size())).forEach((item, count) ->
@@ -734,7 +741,7 @@ public final class Caravans {
         int keep = (int) Math.ceil(foodNeeded(route.distance()) * Math.max(1, caravan.crew.size()) * PURSE_PER_FOOD_POINT
                 * rate);
         double means = Territory.get(server).bellOf(hub).map(b -> Territory.get(server).treasury(b)).orElse(0.0)
-                - Territory.get(server).reserve(hub); // what it had at home, when last counted
+                - Territory.get(server).reserve(hub) + Territory.get(server).depositsOnCall(hub); // at home, last counted
         var deal = dev.b28.enterprise.market.Stranded.buy(server, hub, town, crates, bundles,
                 Math.max(0, caravan.spurs - keep) / rate, Math.max(0, means), rate, now);
         crates.forEach(stock::insert);
@@ -777,12 +784,18 @@ public final class Caravans {
             return;
         }
         double rate = Mint.get(server).rate(Mint.DEFAULT_FACTION, now);
-        double spare = Math.max(0, Treasury.available(level, hub.pos(), stock, rate) - Territory.get(server).reserve(hub));
+        Territory territory = Territory.get(server);
+        double cash = Math.max(0, Treasury.available(level, hub.pos(), stock, rate) - territory.reserve(hub));
+        // Its households' savings count too: deposits the Merchant may lend on such paper.
+        double spare = cash + territory.depositsOnCall(hub);
         var deal = dev.b28.enterprise.market.Stranded.buy(server, hub, town, crates, bundles, spare, spare, rate, now);
         caravan.cargo.addAll(crates);
         bundles.stream().filter(b -> !b.getOrDefault(dev.b28.enterprise.cargo.Cargo.PAPERS.get(),
                 dev.b28.enterprise.cargo.Papers.NONE).documents().isEmpty()).forEach(caravan.cargo::add);
         deal.ifPresent(d -> {
+            if (d.spurs() / rate > cash) {
+                territory.borrowDeposits(level, hub, stock, d.spurs() / rate - cash);
+            }
             Treasury.Withdrawal paid = Treasury.withdraw(level, hub.pos(), stock, d.spurs() / rate, Mint.get(server), now);
             caravan.spurs += paid.spurs() + Mint.get(server).sell(Mint.DEFAULT_FACTION, paid.emeralds(), now);
             if (!d.hubBills().isEmpty()) {
@@ -1478,9 +1491,14 @@ public final class Caravans {
             }
         }
         if (!carried.isEmpty()) {
-            double can = Math.max(0, Treasury.available(level, route.to.pos(), stock, rate)
-                    - Territory.get(server).reserve(route.to));
+            Territory territory = Territory.get(server);
+            double cash = Math.max(0, Treasury.available(level, route.to.pos(), stock, rate) - territory.reserve(route.to));
+            // Short of coin, the Merchant honours its bills with its households' savings, as far as it may borrow.
+            double can = cash + territory.depositsOnCall(route.to);
             var presented = bills.present(carried, can, now, book);
+            if (presented.paid() > cash) {
+                territory.borrowDeposits(level, route.to, stock, presented.paid() - cash);
+            }
             if (presented.paid() > 0) {
                 Treasury.Withdrawal paid = Treasury.withdraw(level, route.to.pos(), stock, presented.paid(), mint, now);
                 int spurs = paid.spurs() + mint.sell(Mint.DEFAULT_FACTION, paid.emeralds(), now);

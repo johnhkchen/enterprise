@@ -267,6 +267,25 @@ public final class TerritoryTests {
     }
 
     @GameTest(template = "floor")
+    public static void aMerchantBorrowsItsHouseholdsSavingsUpToItsShare(GameTestHelper helper) {
+        Territory territory = new Territory();
+        GlobalPos bell = farm(helper, territory);
+        GlobalPos desk = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(new BlockPos(5, 2, 5)));
+        territory.setPurseForTest(bell, 100);
+        double onCall = territory.depositsOnCall(desk);
+        helper.assertTrue(Math.abs(onCall - 100 * dev.b28.enterprise.Dials.DEPOSIT_SHARE.get()) < 1e-9,
+                "its share of their savings on call: " + onCall);
+        int before = farmStock(helper).count(new ItemCost(Items.EMERALD, 1));
+        double got = territory.borrowDeposits(helper.getLevel(), desk, farmStock(helper), 30);
+        int after = farmStock(helper).count(new ItemCost(Items.EMERALD, 1));
+        helper.assertTrue(got == 30 && after - before == 30 && territory.deposits(bell) == 30,
+                "30 borrowed into the chest, owed them: " + got + ", chest +" + (after - before));
+        double more = territory.borrowDeposits(helper.getLevel(), desk, farmStock(helper), 100);
+        helper.assertTrue(Math.abs(more - 20) < 1e-6, "no more than its share in all: " + more);
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void farmersTakeCoinsAtTheRegionsRate(GameTestHelper helper) {
         Territory territory = new Territory();
         GlobalPos bell = farm(helper, territory);

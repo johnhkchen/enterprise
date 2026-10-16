@@ -481,6 +481,10 @@ final class EnterpriseCommands {
                     territory.wagePerDay(bell), territory.laborShare(bell) * 100, territory.cropSalesPerDay(bell),
                     territory.wagesPaid(bell), territory.wagesUnpaid(bell), territory.harvested(bell))), false);
         }
+        if (territory.deposits(bell) > 0.01) {
+            source.sendSuccess(() -> Component.literal("  deposits: %.1f emeralds borrowed of its households' savings"
+                    .formatted(territory.deposits(bell))), false);
+        }
         source.sendSuccess(() -> Component.literal("  focus: " + territory.focus(bell).label()), false);
         double[] homes = territory.households(bell);
         source.sendSuccess(() -> Component.literal(("  households: purse %.1f emeralds, owed %.1f in credit, %d freehold "

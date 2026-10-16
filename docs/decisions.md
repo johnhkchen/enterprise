@@ -662,8 +662,18 @@ Its wealth was real but illiquid and out of reach: correspondent risk, the way t
   and -0.26 in every lane before; after, 755-1,265 emeralds, mood +1.25 to +1.98, the harvest moving again. Haygate,
   carrying the risk now, 990 to 11-971 emeralds, mood +2.17 to +1.65: the capital paid its bills in full in one lane,
   and dishonoured 17 (about 1,400 emeralds) in two, unable to find the coin within the grace.
-- **Next:** the grace a dial, and longer for a large debt; a dealer pricing a drawee's record into its discount;
-  a town or its Merchant borrowing against goods in its warehouse (a Lombard loan).
+- **Grace by the size of the debt.** A drawee has 8 days (dial) from a bill's first presenting, and a day more for
+  every 100 emeralds (dial) it owes the same holder: a capital owing a hub 1,600 emeralds has about three weeks to find
+  them. Measured from the same checkpoint: Hayford's bills to Haygate dishonoured, 17 (about 1,400 emeralds) at a
+  fixed 4 days; 4 (343) at 4 days scaled; none at 8 (49 paid, 2,064 emeralds) or 16 days scaled. Hollowwick ends at
+  900 to 1,150 emeralds, mood about +1.9.
+- **Citizens' deposits.** A Merchant short of coin to honour a bill put to it, or to buy stranded paper, borrows its
+  households' savings, up to half of all they have (dial), into its chest; it owes them that with interest (0.2% a day,
+  dial) and repays from what it can spare beyond its reserve and a keep of 10 emeralds. (Not called on in the
+  Hollowwick fork: those households spend their wages, and the capital keeps none; it's for towns like Greenwick, whose
+  purses hold hundreds.)
+- **Next:** a dealer pricing a drawee's record into its discount; a Merchant lending against goods in its warehouse
+  (a Lombard loan); deposits where the savings are.
 
 ## Forward crop sales, rents and a dealer in them (built 2026-10-16)
 

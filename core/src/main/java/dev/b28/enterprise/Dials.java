@@ -87,6 +87,18 @@ public final class Dials extends SavedData {
             "a carrier takes goods on credit while the fare is at most this share of their worth");
     public static final Dial STALE_DISCOUNT = dial("stale_bill_discount", 0.1,
             "a dealer takes this much more off a bill past its day");
+    // Bills (see contract.Bills).
+    public static final Dial BILL_GRACE = dial("bill_grace_days", 8,
+            "days a drawee has to pay a bill from when it's first put to it");
+    public static final Dial BILL_GRACE_PER = dial("bill_grace_emeralds_per_day", 100,
+            "a day more of grace for every so many emeralds the drawee owes the same holder (0: none)");
+    // Deposits (see territory.Territory#borrowDeposits).
+    public static final Dial DEPOSIT_SHARE = dial("deposit_share", 0.5,
+            "share of its households' savings a Merchant may borrow, to honour its bills or buy paper");
+    public static final Dial DEPOSIT_INTEREST = dial("deposit_interest_per_day", 0.002,
+            "what a Merchant pays its households a day on what it has borrowed of their savings");
+    public static final Dial DEPOSIT_KEEP = dial("deposit_keep", 10,
+            "emeralds beyond its reserve a Merchant keeps before it repays its households");
     // Fields (see territory.Territory).
     public static final Dial ROTATE_PLOTS = dial("rotate_plots", 81, "plots turned over to another crop a census");
     public static final Dial OWED_FIELDS = dial("rotate_owed_fields", 2,

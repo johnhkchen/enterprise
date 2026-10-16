@@ -169,6 +169,17 @@ public final class Bills extends SavedData {
     }
 
     /**
+     * A drawee's grace to pay a bill put to it: so many days (a dial), and a day more for every so many emeralds it
+     * owes the same holder on bills outstanding (a capital owing a town a fortune needs longer to find it).
+     */
+    public long grace(Bill bill) {
+        double per = dev.b28.enterprise.Dials.BILL_GRACE_PER.get();
+        double owed = bills.values().stream().filter(b -> b.state == State.OUTSTANDING && b.drawee.equals(bill.drawee)
+                && b.payee.equals(bill.payee)).mapToDouble(b -> b.emeralds).sum();
+        return dev.b28.enterprise.Dials.BILL_GRACE.ticks() + (per > 0 ? Math.round(owed / per * 24000) : 0);
+    }
+
+    /**
      * Bills never presented {@link #LAPSE_TICKS} past their day, that no one can carry to their drawee (no road between
      * the two, and no freight hub the holder reaches that runs there to buy them), lapse: dishonoured, and trust
      * between the two falls. A bill someone could still carry stands.
@@ -269,7 +280,7 @@ public final class Bills extends SavedData {
                     bill.presented = now;
                     setDirty();
                 }
-                if (bill.state == State.OUTSTANDING && now > Math.max(bill.due, bill.presented) + DISHONOUR_TICKS) {
+                if (bill.state == State.OUTSTANDING && now > Math.max(bill.due, bill.presented) + grace(bill)) {
                     bill.state = State.DISHONOURED;
                     book.missed(bill.drawee, bill.payee, 1, now);
                     setDirty();

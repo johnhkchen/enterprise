@@ -128,6 +128,8 @@ public final class Territory extends SavedData {
         long tollsOwed;
         double wageOwed; // emeralds owed to the farmers, fractions carried
         double purse; // the households' money: their wages, to spend at the market (see Households)
+        double deposits; // what the Merchant has borrowed of the households' savings, with interest: owed them
+        long lastDeposits; // when interest on them was last reckoned
         double credit; // pay the town owes its farmers, in emeralds
         int freeholds; // plots the farmers own
         double householdSpent; // emeralds the households have paid the market, in all
@@ -331,6 +333,12 @@ public final class Territory extends SavedData {
         java.util.Set<GlobalPos> desks = new java.util.LinkedHashSet<>();
         holdings.values().stream().filter(h -> h.desk != null && !h.perDay.isEmpty()).forEach(h -> desks.add(h.desk));
         return desks;
+    }
+
+    /** Sets the households' savings (for tests). */
+    public void setPurseForTest(GlobalPos bell, double emeralds) {
+        holdings.computeIfAbsent(bell, b -> new Holding()).purse = emeralds;
+        setDirty();
     }
 
     /** Links a settlement to its Merchant's desk without a census (for tests). */
@@ -1353,6 +1361,7 @@ public final class Territory extends SavedData {
         }
         holding.paidShare = paidShare;
         bank(level, at, stock, holding, now); // before the workshop: the wheat it bakes with
+        settleDeposits(level, at, stock, holding, now);
         dev.b28.enterprise.caravan.ForwardSales.earmark(level, at, stock, now); // what it owes, crated for its buyer
         Workshop.convert(level, dev.b28.enterprise.merchant.Warehouse.get(level.getServer()), at, bell.get(), stock, now);
         dev.b28.enterprise.service.Services.home(level, this, at, bell.get(), stock, now); // what its own trades do for it
@@ -1427,6 +1436,66 @@ public final class Territory extends SavedData {
         holding.fieldsPlanted++;
         dev.b28.enterprise.Enterprise.LOGGER.debug("Settlement at {}: a household buys a field of its own ({} plots; {} freehold)",
                 bellPos.toShortString(), plots.get(), holding.freeholds);
+    }
+
+    /**
+     * What the Merchant could still borrow of its households' savings now, in emeralds: its share of all they have
+     * (in purse and lent it), less what it has borrowed already, as far as their purse goes.
+     */
+    public double depositsOnCall(GlobalPos desk) {
+        return bellOf(desk).flatMap(this::holding).map(h -> Math.max(0, Math.min(h.purse,
+                dev.b28.enterprise.Dials.DEPOSIT_SHARE.get() * (h.purse + h.deposits) - h.deposits))).orElse(0.0);
+    }
+
+    /** What the Merchant owes its households on their savings, in emeralds. */
+    public double deposits(GlobalPos bell) {
+        return holding(bell).map(h -> h.deposits).orElse(0.0);
+    }
+
+    /**
+     * The Merchant borrows up to {@code emeralds} of its households' savings (as far as {@link #depositsOnCall}), into
+     * its chest: to honour a bill put to it, or buy paper a town can't collect. Owed them back with interest. Returns
+     * what came in.
+     */
+    public double borrowDeposits(ServerLevel level, GlobalPos desk, MerchantStock stock, double emeralds) {
+        Optional<Holding> holding = bellOf(desk).flatMap(this::holding);
+        double take = Math.min(emeralds, depositsOnCall(desk));
+        if (holding.isEmpty() || take <= 0.01) {
+            return 0;
+        }
+        double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, level.getGameTime());
+        double paid = Households.payIn(level, desk.pos(), stock, take, rate);
+        if (holding.get().deposits <= 0.01) {
+            holding.get().lastDeposits = level.getGameTime(); // interest runs from now
+        }
+        holding.get().purse -= paid;
+        holding.get().deposits += paid;
+        setDirty();
+        dev.b28.enterprise.Enterprise.LOGGER.info("{} borrows {} emeralds of its households' savings",
+                dev.b28.enterprise.settlement.Names.label(desk), String.format("%.1f", paid));
+        return paid;
+    }
+
+    /** Interest on what the Merchant owes its households; and it repays them from what it can spare beyond its keep. */
+    private void settleDeposits(ServerLevel level, GlobalPos desk, MerchantStock stock, Holding holding, long now) {
+        if (holding.deposits <= 0.01) {
+            return;
+        }
+        double days = Math.max(0, (now - holding.lastDeposits) / 24000.0);
+        holding.lastDeposits = now;
+        holding.deposits *= Math.pow(1 + dev.b28.enterprise.Dials.DEPOSIT_INTEREST.get(), Math.min(MAX_DAYS, days));
+        Mint mint = Mint.get(level.getServer());
+        double rate = mint.rate(Mint.DEFAULT_FACTION, now);
+        double spare = Treasury.available(level, desk.pos(), stock, rate) - reserve(desk)
+                - dev.b28.enterprise.Dials.DEPOSIT_KEEP.get();
+        double repay = Math.min(holding.deposits, spare);
+        if (repay > 0.01) {
+            Treasury.Withdrawal paid = Treasury.withdraw(level, desk.pos(), stock, repay, mint, now);
+            double value = paid.value(rate);
+            holding.deposits -= value;
+            holding.purse += value;
+        }
+        setDirty();
     }
 
     /** The households pay the market for what they use, as far as their purse goes. */
@@ -1883,6 +1952,8 @@ public final class Territory extends SavedData {
             entry.putLong("tollsOwed", holding.tollsOwed);
             entry.putDouble("wageOwed", holding.wageOwed);
             entry.putDouble("purse", holding.purse);
+            entry.putDouble("deposits", holding.deposits);
+            entry.putLong("lastDeposits", holding.lastDeposits);
             entry.putDouble("credit", holding.credit);
             entry.putInt("freeholds", holding.freeholds);
             entry.putDouble("householdSpent", holding.householdSpent);
@@ -2035,6 +2106,8 @@ public final class Territory extends SavedData {
                 holding.tollsOwed = entry.getLong("tollsOwed");
                 holding.wageOwed = entry.getDouble("wageOwed");
                 holding.purse = entry.getDouble("purse");
+                holding.deposits = entry.getDouble("deposits");
+                holding.lastDeposits = entry.getLong("lastDeposits");
                 holding.credit = entry.getDouble("credit");
                 holding.freeholds = entry.getInt("freeholds");
                 holding.householdSpent = entry.getDouble("householdSpent");

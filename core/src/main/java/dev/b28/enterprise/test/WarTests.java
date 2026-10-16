@@ -57,7 +57,7 @@ public final class WarTests {
         long late = t + Bills.TERM_TICKS + Bills.DISHONOUR_TICKS + 1;
         bills.present(bundle, 0, late, book); // first put to it long after its day: its grace starts now
         helper.assertTrue(bills.all().get(0).state() == Bills.State.OUTSTANDING, "a grace from its first presenting");
-        bills.present(bundle, 0, late + Bills.DISHONOUR_TICKS + 1, book);
+        bills.present(bundle, 0, late + bills.grace(bills.all().get(0)) + 1, book);
         helper.assertTrue(bills.all().get(0).state() == Bills.State.DISHONOURED, "still unpaid after it: dishonoured");
         helper.assertTrue(book.trust(drawee, payee) < ContractBook.START_TRUST, "and trust falls");
         helper.succeed();
