@@ -459,6 +459,11 @@ final class EnterpriseCommands {
         source.sendSuccess(() -> Component.literal("  hexes " + hexes), false);
         territory.farmPlan(bell).forEach((item, perDay) -> source.sendSuccess(
                 () -> Component.literal("  farms %s: %.1f a day".formatted(item, perDay)), false));
+        territory.idlePlots(bell).forEach((item, perDay) -> source.sendSuccess(
+                () -> Component.literal("  idle %s: %.1f a day untended".formatted(item, perDay)), false));
+        territory.desk(bell).ifPresent(desk -> dev.b28.enterprise.caravan.ForwardSales.sold(source.getServer(), desk)
+                .forEach((item, sold) -> source.sendSuccess(() -> Component.literal(
+                        "  sold forward %s: %.1f a day at %.3f".formatted(item, sold[0], sold[1])), false)));
         if (territory.wagePerDay(bell) > 0) {
             source.sendSuccess(() -> Component.literal(("  farm wages %.2f emeralds a day (%.0f%% of the harvest's value; crops "
                     + "sell %.2f a day); %.1f paid, %.1f unpaid (harvest lost); %d items harvested").formatted(
@@ -605,6 +610,18 @@ final class EnterpriseCommands {
                     contract.buyerMissed(),
                     book.trust(contract.seller(), contract.buyer()))), false);
             contract.history().forEach(line -> source.sendSuccess(() -> Component.literal("    " + line), false));
+        }
+        var rents = dev.b28.enterprise.contract.Rents.get(source.getServer()).all().stream()
+                .filter(r -> desk == null || r.farm().pos().equals(desk) || r.holder().pos().equals(desk)).toList();
+        source.sendSuccess(() -> Component.literal("%d rent(s)".formatted(rents.size())), false);
+        for (var rent : rents) {
+            source.sendSuccess(() -> Component.literal(("  rent %d: %s owes %s %d %s a season, bought for %.1f "
+                    + "emeralds; %s, %d coupons, %d delivered, %d in arrears").formatted(rent.id(),
+                    dev.b28.enterprise.settlement.Names.label(rent.farm()),
+                    dev.b28.enterprise.settlement.Names.label(rent.holder()), rent.quantity(),
+                    net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(rent.crop()).getPath(), rent.capital(),
+                    rent.state().name().toLowerCase(), rent.coupons(), rent.delivered(), rent.arrears())), false);
+            rent.history().forEach(line -> source.sendSuccess(() -> Component.literal("    " + line), false));
         }
         return list.size();
     }

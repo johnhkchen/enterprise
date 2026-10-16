@@ -184,7 +184,12 @@ public final class Workshop {
         ranked.forEach(p -> gain.put(p.conversion(), gain(p.conversion(), worth(level, desk, p.conversion().output(), now))));
         ranked.sort(java.util.Comparator.comparingDouble((Potential p) -> -gain.get(p.conversion())));
         for (Potential p : ranked) {
-            int done = run(p.conversion(), p.wanted(), stock);
+            // Not the crop set aside for its forward sales: the bakers leave the wheat it owes.
+            int kept = dev.b28.enterprise.caravan.ForwardSales.setAside(level.getServer(), desk, p.conversion().input(), now);
+            int free = stock.count(new ItemCost(p.conversion().input(), 1)) - kept;
+            int wanted = kept <= 0 ? p.wanted() : Math.min(p.wanted(),
+                    Math.max(0, free) / p.conversion().in() * p.conversion().out());
+            int done = run(p.conversion(), wanted, stock);
             made += done;
             if (done > 0) {
                 books.why(desk, now, null, p.conversion().output(), "made: wanted here or by its caravans' towns", done);

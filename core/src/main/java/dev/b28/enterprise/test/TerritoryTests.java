@@ -98,6 +98,13 @@ public final class TerritoryTests {
                 "half a wheat per worked plot per day: " + worked * Territory.YIELD_PER_PLOT_PER_DAY + ", got " + wheat);
         helper.assertTrue(new Territory().plan(helper.getLevel(), helper.absolutePos(BELL).getY(), List.of(hex), List.of())
                 .isEmpty(), "no farmers, no produce");
+        // Fields turned over on the books (their chunks unloaded) count as their new crop.
+        var turned = new Territory().plan(helper.getLevel(), helper.absolutePos(BELL).getY(), List.of(hex), List.of(1),
+                java.util.Map.of(), java.util.Map.of(), java.util.Map.of(), java.util.Map.of(), new java.util.LinkedHashMap<>(), 1, false,
+                java.util.Map.of("minecraft:wheat", -10_000, "minecraft:beetroot", 10));
+        helper.assertTrue(turned.getOrDefault("minecraft:wheat", 0.0) == 0
+                && turned.getOrDefault("minecraft:beetroot", 0.0) >= 10 * Territory.YIELD_PER_PLOT_PER_DAY,
+                "the wheat turned over to beetroot on the books: " + turned);
         helper.succeed();
     }
 

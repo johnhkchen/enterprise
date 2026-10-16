@@ -190,6 +190,63 @@ public final class ContractTests {
     }
 
     @GameTest(template = "floor")
+    public static void aThinHarvestRollsOverWhereAPlainContractMisses(GameTestHelper helper) {
+        ContractBook book = new ContractBook();
+        GlobalPos farm = far(helper, 7_850_000, 7_000_000);
+        GlobalPos town = far(helper, 7_850_400, 7_000_000);
+        GlobalPos other = far(helper, 7_850_800, 7_000_000);
+        long t = 1_000_000;
+        var harvest = new dev.b28.enterprise.contract.Harvest(4);
+        Contract forward = book.draft(farm, town, java.util.List.of(new Delivery(Items.WHEAT, 16, 0.05), harvest),
+                Incoterm.DDP, t, 24000, 5, t, farm, true);
+        Contract plain = book.draft(other, town, java.util.List.of(new Delivery(Items.WHEAT, 16, 0.05)),
+                Incoterm.DDP, t, 24000, 5, t, other, true);
+        book.settle(forward, 8, 0.4, t);
+        book.settle(plain, 8, 0.4, t);
+        book.review(t + harvest.windowTicks() + 1); // the first installment judged, half delivered
+        helper.assertTrue(forward.missed() == 0 && forward.inForce(), "a thin harvest rolls over: " + forward.history());
+        helper.assertTrue(plain.state() == Contract.State.BROKEN,
+                "a plain contract, judged on its two days' grace, has missed three and broken: " + plain.history());
+        book.review(t + 2 * 24000L + harvest.windowTicks() + 1); // three judged, 40 behind: past two installments
+        helper.assertTrue(forward.missed() == 1, "arrears past two installments are a miss: " + forward.history());
+        book.settle(forward, 40 + 16, 2.8, t + 3 * 24000L); // caught up, and the fourth
+        book.review(t + 4 * 24000L + harvest.windowTicks() + 1); // the last falls due: 16 short
+        helper.assertTrue(forward.missed() == 2 && forward.inForce(),
+                "what's owed at the last is a miss, not rolled: " + forward.history());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aRentPaysACouponEachSeasonAndCarriesItsArrears(GameTestHelper helper) {
+        ContractBook book = new ContractBook();
+        var rents = new dev.b28.enterprise.contract.Rents();
+        GlobalPos farm = far(helper, 7_860_000, 7_000_000);
+        GlobalPos holder = far(helper, 7_860_400, 7_000_000);
+        long t = 1_000_000;
+        long season = dev.b28.enterprise.contract.Rents.SEASON_TICKS + new dev.b28.enterprise.contract.Harvest(4).windowTicks();
+        var rent = rents.sell(farm, holder, Items.POTATO, 64, dev.b28.enterprise.contract.Rents.capital(64, 0.05), book, t);
+        Contract first = book.contract(rent.coupon()).orElseThrow();
+        helper.assertTrue(first.inForce() && first.delivery().orElseThrow().quantity() == 64
+                && first.delivery().orElseThrow().unitPrice() == 0, "a coupon at once, already paid for: " + first.history());
+        helper.assertTrue(Math.abs(rent.capital() - 8 * 64 * 0.05) < 1e-9, "bought for eight seasons' crop: " + rent.capital());
+        book.settle(first, 40, 0, t);
+        book.review(t + season); // the coupon judged: 24 short, carried by the rent, not a miss
+        helper.assertTrue(first.missed() == 0, "a coupon's shortfall isn't a miss: " + first.history());
+        rents.review(book, t + season);
+        Contract second = book.contract(rent.coupon()).orElseThrow();
+        helper.assertTrue(first.state() == Contract.State.COMPLETED && rent.arrears() == 24
+                && second.delivery().orElseThrow().quantity() == 88, "the shortfall rides on the next coupon: "
+                        + rent.history());
+        rents.review(book, t + 2 * season); // nothing delivered: 88 in arrears, within two seasons'
+        helper.assertTrue(rent.state() == dev.b28.enterprise.contract.Rents.State.ACTIVE && rent.arrears() == 88,
+                "still in force: " + rent.history());
+        rents.review(book, t + 3 * season); // 152 in arrears: past two seasons' crop
+        helper.assertTrue(rent.state() == dev.b28.enterprise.contract.Rents.State.DEFAULTED,
+                "defaulted: " + rent.history());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aBrokenContractOwesBackItsUnearnedAdvance(GameTestHelper helper) {
         ContractBook book = new ContractBook();
         GlobalPos seller = far(helper, 7_800_000, 7_000_000);

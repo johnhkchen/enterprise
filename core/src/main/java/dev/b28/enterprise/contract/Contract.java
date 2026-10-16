@@ -29,7 +29,7 @@ public final class Contract {
 
     final int id;
     final GlobalPos seller;
-    final GlobalPos buyer;
+    GlobalPos buyer; // a coupon's holder can sell it on (see ContractBook#endorse)
     final List<Term> terms;
     final long start;
     final long every;
@@ -126,6 +126,11 @@ public final class Contract {
     /** The contract's advance term, if it has one. */
     public java.util.Optional<Advance> advance() {
         return terms.stream().filter(Advance.class::isInstance).map(Advance.class::cast).findFirst();
+    }
+
+    /** The contract's harvest term (a forward sale of a crop), if it has one. */
+    public java.util.Optional<Harvest> harvest() {
+        return terms.stream().filter(Harvest.class::isInstance).map(Harvest.class::cast).findFirst();
     }
 
     /** The contract's training term, if it has one. */

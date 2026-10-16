@@ -251,6 +251,29 @@ public final class ContractBook extends SavedData {
                 .anyMatch(c -> c.delivery().filter(d -> d.item() == item).isPresent());
     }
 
+    /**
+     * Endorsed over: the buyer's side is {@code to}'s from now (a rent's coupon, sold with the rent), on
+     * {@code incoterm}. The new buyer holds a copy (the endorsed deed); the seller's stands.
+     */
+    public void endorse(Contract contract, GlobalPos to, Incoterm incoterm, long now) {
+        GlobalPos was = contract.buyer;
+        contract.buyer = to;
+        contract.incoterm = incoterm;
+        contract.knownBy.add(to);
+        contract.note("day %d: endorsed over from %s".formatted(now / 24000,
+                dev.b28.enterprise.settlement.Names.label(was)));
+        setDirty();
+    }
+
+    /** Closes a contract whose business is carried on elsewhere (a rent's coupon, its arrears on the next). */
+    public void close(Contract contract, String why, long now) {
+        if (contract.state == Contract.State.ACTIVE || contract.state == Contract.State.DRAFTED) {
+            contract.state = Contract.State.COMPLETED;
+            contract.note("day %d: closed, %s".formatted(now / 24000, why));
+            setDirty();
+        }
+    }
+
     /** Records a delivery under a contract: items delivered and emeralds paid for them. */
     public void settle(Contract contract, int items, double emeralds, long now) {
         contract.delivered += items;
@@ -294,15 +317,24 @@ public final class ContractBook extends SavedData {
                 reviewTraining(server, contract, contract.training().get(), now);
                 continue;
             }
-            int judged = contract.dueBy(now - Contract.GRACE_TICKS);
+            Optional<Harvest> harvest = contract.harvest();
+            int judged = contract.dueBy(now - harvest.map(Harvest::windowTicks).orElse(Contract.GRACE_TICKS));
             Optional<Delivery> delivery = contract.delivery();
             int counted = contract.delivered + (contract.incoterm.sellerBearsRoad ? 0 : contract.shipped);
             while (contract.missesCounted < judged && delivery.isPresent()) {
                 int quantity = delivery.get().quantity();
                 int needed = (contract.missesCounted + 1) * quantity;
                 double short_ = Math.min(1, Math.max(0, (needed - counted) / (double) quantity));
+                boolean last = contract.missesCounted + 1 >= contract.installments;
                 if (short_ <= 0) {
                     kept(contract.seller, contract.buyer, 1, now);
+                } else if (harvest.isPresent() && (harvest.get().carried()
+                        || !last && needed - counted <= Harvest.ARREARS * quantity)) {
+                    // A thin or late harvest: the shortfall rolls over to the next installment.
+                    kept(contract.seller, contract.buyer, 1 - short_, now);
+                    missed(contract.seller, contract.buyer, short_ * Harvest.ROLLED_WEIGHT, now);
+                    contract.note("day %d: installment %d %d short, rolled over".formatted(now / 24000,
+                            contract.missesCounted + 1, needed - counted));
                 } else if (contract.incoterm == Incoterm.EXW && server != null && dev.b28.enterprise.merchant.Warehouse
                         .get(server).onHand(contract.seller, delivery.get().item()) >= quantity) {
                     contract.buyerMissed++;

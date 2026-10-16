@@ -142,6 +142,7 @@ public final class Caravans {
     /** One pass over every route: dispatch, arrive, return. */
     public static void poll(MinecraftServer server, CaravanLedger ledger, Territory territory, long now) {
         dev.b28.enterprise.contract.ContractBook.get(server).review(server, now);
+        dev.b28.enterprise.contract.Rents.get(server).review(dev.b28.enterprise.contract.ContractBook.get(server), now);
         ledger.walkersHome(now).forEach(walker -> {
             if (dev.b28.enterprise.merchant.OffMap.get(server).is(walker.home())) {
                 ledger.arrived(walker); // home off the map (a mercenary over the sea): gone
@@ -300,7 +301,14 @@ public final class Caravans {
         // A bank's caravan carries money for its dealings there too, as far as its market can spare.
         double bankFloat = dev.b28.enterprise.market.Bank.get(server).is(route.from)
                 ? Math.max(0, Math.min(dev.b28.enterprise.market.Bank.FLOAT, spare - shoppingMoney - exWorks)) : 0;
-        double purse = roadPurse + shoppingMoney + exWorks + bankFloat;
+        // And the capital to buy back the rents it owes there, each when it can spare twice that.
+        double buyBack = 0;
+        for (var rent : dev.b28.enterprise.contract.Rents.get(server).owed(route.from, route.to)) {
+            if (spare - shoppingMoney - exWorks - bankFloat - buyBack >= 2 * rent.capital()) {
+                buyBack += rent.capital();
+            }
+        }
+        double purse = roadPurse + shoppingMoney + exWorks + bankFloat + buyBack;
         if (stock.foodNutrition() < food + provisions) {
             route.status = "waiting for food at the hub";
             ledger.setDirty();
@@ -532,6 +540,10 @@ public final class Caravans {
             collectExWorks(server, level, route, stock, caravan, mint, rate, now);
             Map<Item, double[]> sold = new LinkedHashMap<>();
             int takings = sell(server, level, route.to, stock, caravan, residentLevel, mint, rate, now, route, territory, sold);
+            // What the town here lacks of the crops a farm town could grow, it buys forward from the caravan's.
+            ForwardSales.offer(server, level, route, stock, caravan, mint, rate, now);
+            // At a hub: its Merchant deals in rents with the caravan's town.
+            dev.b28.enterprise.market.RentDealer.deal(server, level, route.to, route.from, stock, caravan, mint, rate, now);
             // A foreign trader pays the crown's customs on what it sells inside the realm.
             takings -= dev.b28.enterprise.trade.Realms.get(server).customs(server, route.from, takings);
             // Both sides keep books: the Merchant here what it bought, the caravan's log what it sold.
@@ -763,6 +775,8 @@ public final class Caravans {
         var leg = new dev.b28.enterprise.market.Freight.Leg(route, outbound, hub);
         caravan.spurs += freight.collectFares(level, leg);
         caravan.spurs -= freight.land(level, hub, caravan.spurs, now); // the hub's landing fee: it stops here
+        dev.b28.enterprise.market.RentDealer.deal(server, level, hub, route.from, stock, caravan, Mint.get(server),
+                rate, now); // and it deals in rents with the caravan's town
         // Food: outbound, for the road home too where the far end may not feed it; it buys here, where it can.
         if (outbound && caravan.provisions == 0) {
             int food = foodNeeded(route.distance()) * Math.max(1, caravan.crew.size());
@@ -1880,8 +1894,11 @@ public final class Caravans {
                         warehouse.onHand(there, item));
             } else if (stock.count(new ItemCost(item, 1)) <= 0) {
                 books.why(home, now, there, item, "not sent: we have none (" + want.getValue() + ")", room);
+            } else if (stock.count(new ItemCost(item, 1)) <= ForwardSales.setAside(server, home, item, now)) {
+                books.why(home, now, there, item, "not sent: set aside for a forward sale (" + want.getValue() + ")", room);
             } else {
-                limits.put(item, room);
+                limits.put(item, Math.min(room, stock.count(new ItemCost(item, 1))
+                        - ForwardSales.setAside(server, home, item, now)));
             }
         }
         List<ItemStack> cargo = new ArrayList<>();

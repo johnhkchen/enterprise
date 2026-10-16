@@ -628,6 +628,57 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   paper. Treats still 0% everywhere: the Librarians' paper takes the cane first, and the biscuits are short of wheat
   too. `dev/experiments/compare_lanes.py` compares lanes.
 
+## Forward crop sales, rents and a dealer in them (built 2026-10-16)
+
+Medieval farms sold their crops ahead: abbeys sold years of wool to Italian merchants for money up front, merchants
+bought grain standing in the field, and towns and widows bought rents (a *census*, a *rente*): a capital paid once
+for so much grain a year, for good, until the farm bought it back. (Futures proper came later: Osaka's rice market,
+1730; Chicago, 1848.) Here, the same paper:
+
+- **A forward crop sale** is a contract with a **harvest term**. A market whose lockers buy a crop its fields don't grow
+  enough of offers the farm town whose caravan has come so much a round trip, ten times, at today's price, a third paid
+  up front (into the caravan's purse). No more than the farm could add (its idle plots, its spare hands, half what it
+  grows of the crop now, less what it has promised already); the first installment falls due after 4 days to sow.
+- **The harvest term** judges each installment 4 days after its day, not 2; a short one rolls over to the next,
+  costing a quarter of a miss in trust; only arrears past two installments, or what's owed at the last, are misses.
+- **Farmers sow for it first**, after the herds' feed, at its locked price; rotation turns up to two fields a census
+  over to a crop owed, fed or not.
+- **A rent** (`Rents`): the holder pays the farm a capital of eight seasons' crop at today's price; the farm owes so much
+  a season (10 days) for good. Each season issues a **coupon**, a one-installment forward contract already paid for;
+  a season's shortfall rides on the next coupon, and arrears past two seasons are a default. Sold where the farm is
+  short of money and the buyer has twice the capital to put by; bought back at the capital when the farm can spare
+  twice that (its caravan carries it). Paid in kind, a rent keeps its worth when the mint debases.
+- **A dealer.** A freight hub's Merchant buys rents from holders short of coin, or for a quarter's profit on what they
+  paid, a tenth under its price, and sells to towns with savings a tenth over; a rent changes hands at most once a
+  season and never straight back. Its price is its capital times how short the hub's markets are of the crop (twice
+  with none bought ahead, half with all of it). A rent the dealer holds is collected Ex Works: its caravans call at
+  the farm for each coupon, so a remote farm without a caravan of its own keeps its rent. A sale endorses the season's
+  coupon over; the season runs on.
+- **Deeds for players.** The dealer quotes each rent it holds on a vendor by its desk, selling the deed (a document
+  naming the rent) at the ask; once a player has bought it, the vendor buys it back at the bid, from a bank card the
+  dealer keeps funded. The deed is the title: the dealer collects the coupons in its keeping, and a player bringing the
+  deed to its desk is handed the crop collected for it.
+- **Owed crop is set aside.** What falls due under harvest contracts by the end of the next window, not yet delivered
+  or on the road, is kept from the town's spot sales and its workshop. (Traced: Cloverby's own caravan sold the wheat it
+  owed Haygate on the spot, and its bakers took the rest; a coupon of 57 got 1.)
+- **Wants by use, promises by hands.** A buyer buys forward what its lockers use (at least a lot a round trip, to start a
+  trade), not all its villagers could buy (Haygate's treasury fell from 617 to 11 emeralds); a farm promises what its
+  spare hands, half its crop and a quarter of its other field crops could grow, not its untended plots.
+- **Rotation on the books.** A field turned over where its chunks aren't loaded (most of the time) is kept in the save,
+  and counts as its new crop; and a crop owed takes its field from the crop with most plots lying untended (the
+  census's demand counted every field as needed: Wheatfield owed potatoes, grew none, and had 140 wheat plots idle).
+- **A dealer takes delivery where it can**, collecting at the farm only where the farm's caravans don't go, and sells a
+  rent on only to a town the farm can deliver to or that collects. A rent changes hands at most once a season, never
+  straight back; a holder sells for a quarter's profit on what it paid.
+- Measured (three lanes, 120 days from the era's day 0, against the last commit): forward sales 1 to 6 a lane, half
+  delivered or running (before the trace, 22 to 25, three in four broken); rents 9 to 11 a lane, most bought back, 1 to 3
+  defaulted. Moods: Wheatfield +2.17 to +3.13, Cloverby +1.63 to +2.37 (236 emeralds, from 84), Lindenfield +2.24 to
+  +2.50, Meadowworth +1.81 to +2.00; Hollowwick +1.59 to +0.22 (broke in two lanes; a 16-beetroot rent to Haygate went
+  undelivered for 42 days though it has a road there: not yet traced), Haygate +1.54 to +0.98. Sum of the eight 14.86
+  against 15.08: within the noise.
+- **Next:** trace Hollowwick's undelivered rent; tune from a forked checkpoint with the paper in play; coupons sold on
+  their own; forwarding coupons for holders whose farm can't pay the fare; a rent's price moving with local prices.
+
 ## The Merchant tells its Farmers what sells; lockers by worth; root cellars (built 2026-10-16)
 
 - **Why Cloverby starved.** It grew carrots no one bought: a town planted for its own villagers' buying trades only,

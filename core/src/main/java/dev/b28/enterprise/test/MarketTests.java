@@ -86,6 +86,49 @@ public final class MarketTests {
     }
 
     @GameTest(template = "floor")
+    public static void aPlayerBuysARentsDeedCollectsItsCropAndSellsItBack(GameTestHelper helper) {
+        GlobalPos desk = market(helper);
+        stock(helper).insert(new ItemStack(Items.EMERALD, 64));
+        var level = helper.getLevel();
+        var server = level.getServer();
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        var rents = dev.b28.enterprise.contract.Rents.get(server);
+        var mint = dev.b28.enterprise.money.Mint.get(server);
+        GlobalPos farm = GlobalPos.of(level.dimension(), new BlockPos(7_870_000, 64, 7_000_000));
+        long t = level.getGameTime();
+        double rate = mint.rate(dev.b28.enterprise.money.Mint.DEFAULT_FACTION, t);
+        var rent = rents.sell(farm, desk, Items.POTATO, 64, 10, book, t); // the dealer holds it
+        var sites = java.util.List.of(helper.absolutePos(new BlockPos(6, 2, 6)));
+        dev.b28.enterprise.market.RentDeeds.quote(level, desk, stock(helper), mint, rate, t, sites);
+        VendorBlockEntity shop = (VendorBlockEntity) level.getBlockEntity(sites.get(0));
+        helper.assertTrue(shop != null && shop.getMode() == VendorBlockEntity.Mode.SELL && Shops.lots(shop) == 1
+                && shop.getTotalPrice() > 0, "its deed on sale at the dealer's shop");
+        ItemStack deed = Shops.buyFrom(shop); // a player buys it
+        helper.assertTrue(dev.b28.enterprise.market.RentDeeds.rentOf(deed).orElse(-1) == rent.id(), "the deed names it");
+        dev.b28.enterprise.market.RentDeeds.quote(level, desk, stock(helper), mint, rate, t, sites);
+        helper.assertTrue(rent.bearer() && shop.getMode() == VendorBlockEntity.Mode.BUY && shop.getTotalPrice() > 0,
+                "the player's now, and the shop buys it back: " + rent.history());
+        // A season's coupon collected, in the dealer's keeping.
+        book.settle(book.contract(rent.coupon()).orElseThrow(), 64, 0, t);
+        stock(helper).insert(new ItemStack(Items.POTATO, 64));
+        rents.review(book, t + dev.b28.enterprise.contract.Rents.SEASON_TICKS
+                + new dev.b28.enterprise.contract.Harvest(4).windowTicks());
+        var player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+        int handed = dev.b28.enterprise.market.RentDeeds.present(level, desk.pos(), deed, player);
+        int potatoes = player.getInventory().countItem(Items.POTATO);
+        helper.assertTrue(handed == 64 && potatoes == 64, "the deed at the desk: its crop handed over, " + handed);
+        int paid = Shops.sellTo(shop, deed); // the player sells it back
+        helper.assertTrue(paid > 0, "the shop pays for it from its card: " + paid + " (price " + shop.getTotalPrice()
+                + ", card " + Shops.purse(shop).map(a -> a.getBalance()).orElse(-1) + ", room " + Shops.roomFor(shop)
+                + ", matches " + shop.matchesFilterItem(deed) + ", stock " + stock(helper).totals() + ")");
+        dev.b28.enterprise.market.RentDeeds.quote(level, desk, stock(helper), mint, rate, t, sites);
+        helper.assertTrue(!rent.bearer() && shop.getMode() == VendorBlockEntity.Mode.SELL && Shops.lots(shop) == 1,
+                "the dealer's own again, on sale: " + rent.history());
+        rents.redeem(rent, t); // done with it
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aMasterMerchantFillsAPlayersOrder(GameTestHelper helper) {
         GlobalPos desk = market(helper);
         stock(helper).insert(new ItemStack(Items.PAPER, 64));

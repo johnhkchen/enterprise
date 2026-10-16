@@ -85,6 +85,11 @@ public final class Caravan {
         return spurs;
     }
 
+    /** Takes {@code amount} spurs into the purse (or out, if negative): its home's business at the far end. */
+    public void addSpurs(int amount) {
+        spurs += amount;
+    }
+
     /** Pays {@code amount} spurs out of the purse (its home's business at the far end: a bank's, say). */
     public void pay(int amount) {
         spurs -= amount;

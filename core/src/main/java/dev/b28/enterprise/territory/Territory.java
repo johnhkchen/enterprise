@@ -138,6 +138,7 @@ public final class Territory extends SavedData {
         long harvested; // items delivered to the Merchant's chest, in all
         double farmXp; // experience the Farmers earned with their harvest, not yet given them
         Map<String, Double> banked = new HashMap<>(); // crops banked in its stores (granary, root cellar), by item
+        Map<String, Integer> turned = new HashMap<>(); // plots turned over on its books, not yet in the ground, by crop
         double laborShare = LABOR_SHARE;
         double salesSince; // emeralds from selling crops since the last accrual
         double salesPerDay; // averaged
@@ -226,6 +227,20 @@ public final class Territory extends SavedData {
 
     public double nextHexCost(GlobalPos bell) {
         return CULTURE_PER_HEX * Math.max(1, hexes(bell).size());
+    }
+
+    /**
+     * What more of a farmland crop the town could grow a day: its Farmers' spare hands (on new fields), half what it
+     * grows of it now, and a quarter of its other field crops (turned over). Not its untended plots: no one to work
+     * them. What a farm can promise forward, before what it has promised.
+     */
+    public double couldGrow(GlobalPos bell, Item crop) {
+        return holding(bell).map(h -> {
+            String id = BuiltInRegistries.ITEM.getKey(crop).toString();
+            double others = ROTATION.stream().filter(c -> c != crop).mapToDouble(c -> h.perDay.getOrDefault(
+                    BuiltInRegistries.ITEM.getKey(c).toString(), 0.0)).sum();
+            return h.spareFarmPlots * YIELD_PER_PLOT_PER_DAY + 0.5 * h.perDay.getOrDefault(id, 0.0) + 0.25 * others;
+        }).orElse(0.0);
     }
 
     /** What the plots no one tends would yield a day, by crop id. */
@@ -680,6 +695,7 @@ public final class Territory extends SavedData {
         } else {
             accrue(holding, level.getGameTime());
         }
+        Map<String, Double> lastIdle = holding.idlePerDay; // what lay untended under the last plan
         holding.idlePerDay = new LinkedHashMap<>();
         double hands = 1 + Smithing.TOOL_BONUS * holding.kitShare.getOrDefault(Smithing.HOE.id(), 0.0); // hoes help
         // What it would buy, and what its own workshop would draw to make its people's comforts: its potential.
@@ -688,15 +704,22 @@ public final class Territory extends SavedData {
                 : Workshop.inputDemand(level, holding.desk, bell, census.villagers());
         workshop.forEach((item, d) -> wants.merge(item, d[0], Double::sum));
         // And what the markets its caravans reach would take: the Merchant tells its Farmers what sells there.
-        Map<String, List<double[]>> markets = holding.desk == null ? Map.of() : marketWants(level.getServer(), holding.desk);
+        Map<String, List<double[]>> markets = holding.desk == null ? new HashMap<>()
+                : marketWants(level.getServer(), holding.desk);
+        // What it has sold forward comes first, after the herds' feed: a contract to keep, at its locked price.
+        Map<String, Double> needs = new HashMap<>(Husbandry.feedDemand(holding.herd));
+        if (holding.desk != null) {
+            dev.b28.enterprise.caravan.ForwardSales.sold(level.getServer(), holding.desk).forEach((item, sold) -> {
+                needs.merge(item, sold[0], Double::sum);
+                markets.computeIfAbsent(item, k -> new ArrayList<>()).add(sold);
+            });
+        }
         markets.forEach((item, each) -> each.forEach(m -> wants.merge(item, m[0], Double::sum)));
         boolean fed = holding.desk != null && level.isLoaded(holding.desk.pos()) && MerchantStock.at(level,
                 holding.desk.pos()).foodNutrition() >= 2 * dev.b28.enterprise.merchant.Warehouse.FOOD_PAR_POINTS;
-        if (fed) {
-            rotate(level, bellPos.getY(), hexes(bell), holding.demand, workshop, markets);
-        }
+        rotate(level, bellPos.getY(), hexes(bell), holding.demand, workshop, markets, needs, fed, holding.turned, lastIdle);
         holding.perDay = plan(level, bellPos.getY(), hexes(bell), farmers, holding.demand, workshop, markets,
-                Husbandry.feedDemand(holding.herd), holding.idlePerDay, hands, fed);
+                needs, holding.idlePerDay, hands, fed, holding.turned);
         double tended = holding.perDay.values().stream().mapToDouble(Double::doubleValue).sum() / YIELD_PER_PLOT_PER_DAY;
         double capacity = hands * farmers.stream().mapToInt(l -> PLOTS_PER_FARMER_LEVEL * Math.max(1, l)).sum();
         holding.spareFarmPlots = (int) Math.max(0, capacity - Math.round(tended));
@@ -830,26 +853,28 @@ public final class Territory extends SavedData {
     }
 
     /** Field crops that share farmland, so a field can be turned over from one to another. */
-    static final List<Item> ROTATION = List.of(Items.WHEAT, Items.CARROT, Items.POTATO, Items.BEETROOT);
+    public static final List<Item> ROTATION = List.of(Items.WHEAT, Items.CARROT, Items.POTATO, Items.BEETROOT);
 
     /** At most this many plots turned over to another crop a census: about a field. */
     public static final int ROTATE_PLOTS = 81;
 
     /**
-     * Crop rotation: plots of a crop grown beyond all its uses are turned over, a field at most a census, to the
-     * crop whose unmet use earns most (its own lockers', its workshop's, the markets' its caravans reach).
+     * Crop rotation: plots of a crop grown beyond all its uses are turned over, a field at most a census, to the crop
+     * owed under contract that's shortest of plots ({@code needs}: what it has sold forward, the herds' feed), whether
+     * or not the town is {@code fed}; else, once it is, to the crop whose unmet use earns most (its own lockers', its
+     * workshop's, the markets' its caravans reach).
      */
     private void rotate(ServerLevel level, int centerY, List<Hex> hexes, Map<String, Double> demand,
-            Map<String, double[]> workshop, Map<String, List<double[]>> markets) {
-        Map<Item, Integer> plots = new HashMap<>();
-        for (Hex hex : hexes) {
-            cropsIn(level, hex, centerY).forEach((item, count) -> plots.merge(item, count, Integer::sum));
-        }
+            Map<String, double[]> workshop, Map<String, List<double[]>> markets, Map<String, Double> needs,
+            boolean fed, Map<String, Integer> turned, Map<String, Double> idle) {
+        Map<Item, Integer> plots = plots(level, centerY, hexes, turned);
         Item from = null;
         int spare = 0;
         Item to = null;
         double toEach = 0;
         int short_ = 0;
+        Item owedTo = null;
+        int owedShort = 0;
         for (Item crop : ROTATION) {
             String id = BuiltInRegistries.ITEM.getKey(crop).toString();
             List<Use> uses = new ArrayList<>(usesOf(crop, demand, workshop));
@@ -867,15 +892,55 @@ public final class Territory extends SavedData {
                 toEach = each;
                 short_ = needed - have;
             }
+            int owed = (int) Math.ceil(needs.getOrDefault(id, 0.0) / YIELD_PER_PLOT_PER_DAY) - have;
+            if (owed > owedShort) {
+                owedTo = crop;
+                owedShort = owed;
+            }
+        }
+        if (owedTo != null) {
+            // A promise first: from the crop with most plots lying untended, else the most planted.
+            to = owedTo;
+            short_ = owedShort;
+            Item target = owedTo;
+            Item idlest = ROTATION.stream().filter(c -> c != target).max(java.util.Comparator
+                    .comparingDouble((Item c) -> idle.getOrDefault(BuiltInRegistries.ITEM.getKey(c).toString(), 0.0))
+                    .thenComparingInt(c -> plots.getOrDefault(c, 0))).orElse(null);
+            if (idlest != null && plots.getOrDefault(idlest, 0) > 0) {
+                from = idlest;
+                spare = plots.get(idlest);
+            }
+        } else if (!fed) {
+            return; // nothing owed, and food first
         }
         if (from == null || to == null || from == to) {
             return;
         }
-        int turned = Crops.resow(level, hexes, centerY, from, to, Math.min(ROTATE_PLOTS, Math.min(spare, short_)));
-        if (turned > 0) {
-            dev.b28.enterprise.Enterprise.LOGGER.debug("Fields turned over: {} plots of {} to {}", turned,
-                    BuiltInRegistries.ITEM.getKey(from), BuiltInRegistries.ITEM.getKey(to));
+        int most = owedTo != null ? 2 * ROTATE_PLOTS : ROTATE_PLOTS; // two fields a census for a promise
+        int plots_ = Math.min(most, Math.min(spare, short_));
+        // In the ground where the fields are loaded; on the books for the rest, sown when next it's worked.
+        int sown = Crops.resow(level, hexes, centerY, from, to, plots_);
+        int booked = plots_ - sown;
+        if (booked > 0) {
+            turned.merge(BuiltInRegistries.ITEM.getKey(from).toString(), -booked, Integer::sum);
+            turned.merge(BuiltInRegistries.ITEM.getKey(to).toString(), booked, Integer::sum);
         }
+        if (plots_ > 0) {
+            dev.b28.enterprise.Enterprise.LOGGER.debug("Fields turned over at {}: {} plots of {} to {}{} ({} on the books)",
+                    hexes.isEmpty() ? "?" : hexes.get(0), plots_, BuiltInRegistries.ITEM.getKey(from),
+                    BuiltInRegistries.ITEM.getKey(to), owedTo != null ? " (owed)" : "", booked);
+        }
+    }
+
+    /** The hexes' plots by crop: those in the ground, and those turned over on the books (never fewer than none). */
+    private Map<Item, Integer> plots(ServerLevel level, int centerY, List<Hex> hexes, Map<String, Integer> turned) {
+        Map<Item, Integer> plots = new HashMap<>();
+        for (Hex hex : hexes) {
+            cropsIn(level, hex, centerY).forEach((item, count) -> plots.merge(item, count, Integer::sum));
+        }
+        turned.forEach((id, n) -> plots.merge(BuiltInRegistries.ITEM.get(ResourceLocation.parse(id)), n, Integer::sum));
+        plots.replaceAll((item, n) -> Math.max(0, n));
+        return plots;
     }
 
     /** One use of a crop: so many items a day, at what an item earns there. */
@@ -891,7 +956,7 @@ public final class Territory extends SavedData {
     public Map<String, Double> plan(ServerLevel level, int centerY, List<Hex> hexes, List<Integer> farmers,
             Map<String, Double> demand, Map<String, double[]> workshop, Map<String, Double> needs,
             Map<String, Double> idle, double hands) {
-        return plan(level, centerY, hexes, farmers, demand, workshop, Map.of(), needs, idle, hands, false);
+        return plan(level, centerY, hexes, farmers, demand, workshop, Map.of(), needs, idle, hands, false, Map.of());
     }
 
     /**
@@ -901,12 +966,9 @@ public final class Territory extends SavedData {
      */
     public Map<String, Double> plan(ServerLevel level, int centerY, List<Hex> hexes, List<Integer> farmers,
             Map<String, Double> demand, Map<String, double[]> workshop, Map<String, List<double[]>> markets,
-            Map<String, Double> needs, Map<String, Double> idle, double hands, boolean fed) {
+            Map<String, Double> needs, Map<String, Double> idle, double hands, boolean fed, Map<String, Integer> turned) {
         Map<String, Double> perDay = new LinkedHashMap<>();
-        Map<Item, Integer> plots = new HashMap<>();
-        for (Hex hex : hexes) {
-            cropsIn(level, hex, centerY).forEach((item, count) -> plots.merge(item, count, Integer::sum));
-        }
+        Map<Item, Integer> plots = plots(level, centerY, hexes, turned);
         int capacity = (int) Math.round(hands * farmers.stream().mapToInt(l -> PLOTS_PER_FARMER_LEVEL * Math.max(1, l)).sum());
         Map<Item, Integer> left = new HashMap<>(plots);
         java.util.function.BiConsumer<Item, Integer> work = (crop, n) -> {
@@ -1837,6 +1899,13 @@ public final class Territory extends SavedData {
                 }
             });
             entry.put("banked", banked);
+            CompoundTag turnedTag = new CompoundTag();
+            holding.turned.forEach((id, n) -> {
+                if (n != 0) {
+                    turnedTag.putInt(id, n);
+                }
+            });
+            entry.put("turned", turnedTag);
             entry.putDouble("laborShare", holding.laborShare);
             entry.putDouble("salesSince", holding.salesSince);
             entry.putDouble("salesPerDay", holding.salesPerDay);
@@ -1980,6 +2049,8 @@ public final class Territory extends SavedData {
                 }
                 CompoundTag banked = entry.getCompound("banked");
                 banked.getAllKeys().forEach(id -> holding.banked.put(id, banked.getDouble(id)));
+                CompoundTag turnedTag = entry.getCompound("turned");
+                turnedTag.getAllKeys().forEach(id -> holding.turned.put(id, turnedTag.getInt(id)));
                 if (entry.contains("laborShare")) {
                     holding.laborShare = entry.getDouble("laborShare");
                 }
