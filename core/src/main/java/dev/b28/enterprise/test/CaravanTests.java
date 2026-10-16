@@ -106,6 +106,23 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
+    public static void aTownsWagonWaitsForALoadWorthItsRoadFood(GameTestHelper helper) {
+        Network net = network(helper, 8, 5, 192);
+        net.hub().take(PAPER, 128);
+        net.hub().insert(new ItemStack(Items.PAPER, 1)); // a sheet: not worth the road food
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        helper.assertTrue(net.ledger().caravan(net.route().id()).isEmpty()
+                && net.route().status().startsWith("waiting for a fuller load"), "it waits: " + net.route().status());
+        net.hub().insert(new ItemStack(Items.PAPER, 64));
+        net.hub().insert(new ItemStack(Items.PAPER, 63));
+        net.poll(t + Caravans.DEPARTURE_INTERVAL);
+        helper.assertTrue(net.ledger().caravan(net.route().id()).isPresent(), "two stacks, worth the trip: it goes, "
+                + net.route().status());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void caravansAreCommissionedAtTheDesk(GameTestHelper helper) {
         Network net = network(helper, 2, 5, 192);
         var server = helper.getLevel().getServer();

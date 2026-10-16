@@ -130,6 +130,12 @@ public final class Dials extends SavedData {
             "more off at a full warehouse, and again at a full book: the hub's throttle");
     public static final Dial CORRESPONDENT_FLOOR = dial("correspondent_floor", 24,
             "emeralds beyond its reserve below which a hub with a counting house rediscounts bills at the capital");
+    // A town's own wagon: full or due (see caravan.Caravans#dispatch).
+    public static final Dial WAGON_FULL = dial("wagon_full", 0.75, "share of its space a town's wagon fills before it goes");
+    public static final Dial WAGON_WAIT_DAYS = dial("wagon_wait_days", 6,
+            "days a town's wagon waits for a full load before it goes with less (where no hub's wagon calls)");
+    public static final Dial WAGON_PAYS = dial("wagon_pays", 3,
+            "times its road food a load must be worth to go however full");
     // The crown's post (see market.Post).
     public static final Dial POST_DAYS = dial("post_days", 3, "the crown's riders leave every so many days");
     public static final Dial POST_SPEED = dial("post_speed", 2000, "blocks a rider covers a day");

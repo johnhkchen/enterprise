@@ -379,6 +379,32 @@ public final class Caravans {
         if (!foreign) {
             cargo.addAll(dev.b28.enterprise.market.Correspondent.send(level, route, stock, now));
         }
+        // Full or due: a town's own wagon goes with what it owes; otherwise only with a load worth its road food there
+        // and back, and full (or long waited for, where no hub's wagon calls; or worth thrice the food). Reckoned before
+        // anything's packed, so a wagon that waits costs nothing.
+        if (!foreign && !dev.b28.enterprise.market.Freight.isHub(server, route.from) && !route.onCall
+                && !dev.b28.enterprise.army.Army.get(server).front().filter(route.to::equals).isPresent()) {
+            boolean due = !cargo.isEmpty() || exWorks > 0 || buyBack > 0 || bankFloat > 0 || recruitsOwedAt(server, route)
+                    || !dev.b28.enterprise.contract.ContractBook.get(server).copiesFor(route.from, route.to).isEmpty();
+            if (!due) {
+                double[] load = saleLoad(server, territory, route, stock, slots, now);
+                double worth = load[1] + shoppingMoney;
+                double cost = 2 * food * PURSE_PER_FOOD_POINT;
+                boolean full = load[0] >= dev.b28.enterprise.Dials.WAGON_FULL.get() * slots;
+                boolean served = ledger.routes().stream().anyMatch(r -> r.to.equals(route.from) && !r.stopping
+                        && dev.b28.enterprise.market.Freight.isHub(server, r.from));
+                boolean waited = now - route.lastDeparture >= dev.b28.enterprise.Dials.WAGON_WAIT_DAYS.ticks();
+                boolean go = worth >= cost && (full || !served && waited)
+                        || worth >= dev.b28.enterprise.Dials.WAGON_PAYS.get() * cost;
+                if (!go) {
+                    route.status = "waiting for a fuller load: %d of %d stacks, worth %.1f against %.1f of road food"
+                            .formatted((int) load[0], slots, worth, cost) + (served ? " (a hub's wagon calls here)" : "");
+                    dev.b28.enterprise.money.Accountant.spent(route.from, -(shoppingMoney + callPurse), now); // unspent
+                    ledger.setDirty();
+                    return false;
+                }
+            }
+        }
         // Comforts the far end wants, out of what this town can spare beyond its own par of each kind.
         Map<String, Double> wantedThereNow = new LinkedHashMap<>(
                 comfortWants(server, territory, route.to, now + travelTicks(route.distance())));
@@ -1896,6 +1922,36 @@ public final class Caravans {
     /** Stacks of the goods a destination wants that the stock holds. */
     static int wantedStacks(MerchantStock stock, Set<Item> wanted) {
         return wanted.stream().mapToInt(item -> (stock.count(new ItemCost(item, 1)) + 63) / 64).sum();
+    }
+
+    /**
+     * What a caravan leaving now would carry to sell, taking nothing: {stacks, worth in emeralds} of the goods the far
+     * end wants (up to its par, beyond what's set aside, as {@link #pickCargo} would), and the comforts it's short of
+     * that the town can spare beyond its own par, in at most {@code slots} stacks.
+     */
+    static double[] saleLoad(MinecraftServer server, Territory territory, Route route, MerchantStock stock, int slots,
+            long now) {
+        Warehouse warehouse = Warehouse.get(server);
+        double stacks = 0;
+        double worth = 0;
+        for (Item item : wantsThere(server, route.to).keySet()) {
+            int room = warehouse.par(route.to, item, true, now) - warehouse.onHand(route.to, item);
+            int have = stock.count(new ItemCost(item, 1)) - ForwardSales.setAside(server, route.from, item, stock, now);
+            int going = Math.min(Math.min(room, have), WANT_PER_ITEM);
+            if (going <= 0 || stacks >= slots) {
+                continue;
+            }
+            going = (int) Math.min(going, (slots - stacks) * item.getDefaultMaxStackSize());
+            stacks += Math.ceil(going / (double) item.getDefaultMaxStackSize());
+            worth += going * Prices.emeraldsEach(item);
+        }
+        Map<String, Double> held = Comforts.onHand(stock);
+        double ownPar = territory.comfortPar(route.from);
+        for (var want : comfortWants(server, territory, route.to, now + travelTicks(route.distance())).entrySet()) {
+            double spare = Math.max(0, held.getOrDefault(want.getKey(), 0.0) - ownPar);
+            worth += Math.min(want.getValue(), spare);
+        }
+        return new double[] {stacks, worth};
     }
 
     /**
