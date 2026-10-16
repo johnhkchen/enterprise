@@ -191,6 +191,9 @@ public final class BuildServices {
             BlockPos corner, long now) {
         int logs = (int) Math.min(logs(stock), Math.ceil(kind.emeralds() / Buildings.EMERALDS_PER_LOG));
         double toBuy = materials(stock, kind);
+        if (!dev.b28.enterprise.money.Accountant.approve(level, desk, stock, "a " + kind.id().replace('_', ' '), toBuy, now)) {
+            return; // not today: the accountant holds the money back
+        }
         takeLogs(stock, logs);
         Treasury.withdraw(level, desk.pos(), stock, toBuy, Mint.get(level.getServer()), now);
         Works.get(level.getServer()).startBuilding(bell, kind, corner);

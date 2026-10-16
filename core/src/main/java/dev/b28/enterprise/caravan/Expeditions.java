@@ -163,6 +163,11 @@ public final class Expeditions extends SavedData {
         if (!plan.found() || !Caravans.inRange(distance)) {
             return Optional.empty();
         }
+        double setUp0 = (kind == Kind.VILLAGE ? SETTLING_EMERALDS : FOUNDING_EMERALDS)
+                - (kind == Kind.VILLAGE ? SETTLING_CAPITAL : FOUNDING_CAPITAL);
+        if (!dev.b28.enterprise.money.Accountant.approve(level, desk, stock, "settlers", setUp0 + capital(kind, spare - setUp0), now)) {
+            return Optional.empty();
+        }
         Party party = new Party();
         party.id = nextId++;
         party.from = desk;

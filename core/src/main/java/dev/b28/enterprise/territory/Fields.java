@@ -147,7 +147,7 @@ public final class Fields {
         Optional<BlockPos> site = Growth.farmSite(level, bell, SIZE, 8)
                 .filter(corner -> territory.owner(level.dimension(), dev.b28.enterprise.hex.Hex.at(corner.offset(4, 0, 4)))
                         .filter(home::equals).isPresent());
-        if (site.isEmpty()) {
+        if (site.isEmpty() || !dev.b28.enterprise.money.Accountant.approve(level, desk, stock, "a field", FIELD_EMERALDS, level.getGameTime())) {
             return Optional.empty();
         }
         plant(level, site.get(), crop.get());

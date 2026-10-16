@@ -250,7 +250,8 @@ public final class ShopBoard extends SavedData {
     private Optional<VendorBlockEntity> build(ServerLevel level, GlobalPos desk, MerchantStock stock, long now,
             Territory territory) {
         double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now);
-        if (Treasury.available(level, desk.pos(), stock, rate) - territory.reserve(desk) < VENDOR_EMERALDS) {
+        if (Treasury.available(level, desk.pos(), stock, rate) - territory.reserve(desk) < VENDOR_EMERALDS
+                || !dev.b28.enterprise.money.Accountant.approve(level, desk, stock, "a shop", VENDOR_EMERALDS, now)) {
             return Optional.empty();
         }
         Block vendor = BuiltInRegistries.BLOCK.get(ResourceLocation.parse("numismatics:vendor"));

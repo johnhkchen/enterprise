@@ -130,6 +130,11 @@ public final class Dials extends SavedData {
             "more off at a full warehouse, and again at a full book: the hub's throttle");
     public static final Dial CORRESPONDENT_FLOOR = dial("correspondent_floor", 24,
             "emeralds beyond its reserve below which a hub with a counting house rediscounts bills at the capital");
+    // The accountant (see money.Accountant).
+    public static final Dial BUDGET_SHARE = dial("budget_share", 0.5,
+            "share of its free money a town spends a day at its own choosing (half again with a counting house)");
+    public static final Dial BUDGET_DAYS = dial("budget_days", 3,
+            "days ahead of bills falling due a town keeps the money for (twice with a counting house)");
     // Settlers (see caravan.Expeditions).
     public static final Dial FOUNDING_CAPITAL = dial("founding_capital", 42,
             "emeralds settlers carry to start a new town, if their town can spare twice that");

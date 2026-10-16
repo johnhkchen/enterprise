@@ -49,7 +49,11 @@ same DIR; it skips setup and carries on from day D+1 (a checkpoint is good for c
 its day). A day that takes far longer than the others is reported: the machine slept (a closed lid on battery) or the
 server stalled.
 
-    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts] [--fleet] [--services] [--metal] [--trades] [--master] [--war M,W,P] [--realms] [--save-at D,... [--label NAME]] [--resume DIR]
+Stopping early: --stop-when E2.treasury<5 (or any.treasury<5, S3.mood<0, E3.villagers>=12; comma-separated, any one
+will do) ends the run at the end of the first day a town meets it, saves a checkpoint of that day, and prints the
+town's cash book for the last ten days (`/enterprise cashbook DESK [DAYS]`): what its money went on.
+
+    python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts] [--fleet] [--services] [--metal] [--trades] [--master] [--war M,W,P] [--realms] [--save-at D,... [--label NAME]] [--resume DIR] [--stop-when TOWN.field<value,...]
 """
 
 import csv
@@ -489,6 +493,27 @@ def refill_spring():
     rcon(f"forceload remove {area(SPRING, 6)}")
 
 
+STOP = re.compile(r"(\w+)\.(\w+)\s*(<=|>=|<|>)\s*(-?[\d.]+)")
+
+
+def stop_met(towns):
+    """The --stop-when conditions met today: TOWN.field<value (TOWN a key like E2, or any), comma-separated; e.g.
+    any.treasury<5, S3.mood<0, E3.villagers>=12. Returns (why, town) for each town that meets one."""
+    met = []
+    for cond in [c for c in (flag("--stop-when", "") or "").split(",") if c.strip()]:
+        m = STOP.fullmatch(cond.strip())
+        if not m:
+            sys.exit(f"--stop-when: can't read {cond!r} (TOWN.field<value)")
+        who, field, op, value = m.group(1), m.group(2), m.group(3), float(m.group(4))
+        for r in towns:
+            if who not in ("any", r["name"]) or field not in r:
+                continue
+            v = float(r[field])
+            if {"<": v < value, "<=": v <= value, ">": v > value, ">=": v >= value}[op]:
+                met.append((f"{r['name']} {field} {v:g} {op} {value:g}", r["name"]))
+    return met
+
+
 def main():
     days = int(sys.argv[1])
     out = Path(sys.argv[2])
@@ -609,8 +634,14 @@ def main():
             for r in towns)
             + f" | mint {rate:.1f} | {time.time() - day_started:.0f}s")
         sys.stdout.flush()
-        if day in save_at:
+        met = stop_met(towns)
+        if day in save_at or met:
             save_checkpoint(day)
+        if met:
+            print(f"stopped on day {day}: " + "; ".join(why for why, _ in met))
+            for _, name in met:
+                print(f"\n{name}: " + rcon(f"enterprise cashbook {desk(TOWNS[name])} 10").strip())
+            break
     if war is not None:
         print("\n" + rcon("enterprise war tally").strip())
         print("\n" + rcon("enterprise war").strip())

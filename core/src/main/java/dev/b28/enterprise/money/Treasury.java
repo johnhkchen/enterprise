@@ -42,6 +42,7 @@ public final class Treasury {
         stock.take(EMERALD, whole);
         double rest = emeralds - whole;
         if (rest <= 1e-9) {
+            CashBook.note(net.minecraft.core.GlobalPos.of(level.dimension(), desk), CashBook.caller(), -whole);
             return new Withdrawal(whole, 0);
         }
         int spursOwed = (int) Math.ceil(rest * rate);
@@ -64,7 +65,9 @@ public final class Treasury {
             changed = Math.min(short1, got);
             MoneyChanger.coins(got - changed).forEach(stock::insert); // change goes back
         }
-        return new Withdrawal(whole, fromChest + fromBank + changed);
+        Withdrawal taken = new Withdrawal(whole, fromChest + fromBank + changed);
+        CashBook.note(net.minecraft.core.GlobalPos.of(level.dimension(), desk), CashBook.caller(), -taken.value(rate));
+        return taken;
     }
 
     /** Pays {@code spurs} into the market: its Blaze Banker if it has one, otherwise coins in the chest. */
@@ -72,6 +75,8 @@ public final class Treasury {
         if (spurs <= 0) {
             return;
         }
+        CashBook.note(net.minecraft.core.GlobalPos.of(level.dimension(), desk), CashBook.caller(),
+                spurs / Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, level.getGameTime()));
         var bank = MoneyChanger.bankAt(level, desk);
         if (bank.isPresent()) {
             bank.get().deposit(spurs);

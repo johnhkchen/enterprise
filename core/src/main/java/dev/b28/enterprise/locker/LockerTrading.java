@@ -211,16 +211,28 @@ public final class LockerTrading {
         int budget = (int) Math.floor(dev.b28.enterprise.money.Treasury.available(level, manager.desk(), stock, rate0)
                 - territory0(level).payroll(at)
                 + dev.b28.enterprise.contract.ContractBook.get(level.getServer()).advancesHeld(at));
+        // A pupil's lessons (its work, bought to train it) are the town's choice of pace: out of what it was paid up
+        // front for the training, and beyond that the accountant's budget for the day.
+        double lessons = dev.b28.enterprise.contract.ContractBook.get(level.getServer()).advancesHeld(at)
+                + dev.b28.enterprise.money.Accountant.left(level, at, stock, level.getGameTime());
+        double lessonsPaid = 0;
         for (MerchantOffer offer : offers) {
             if (!offer.getBaseCostA().is(net.minecraft.world.item.Items.EMERALD)) {
                 continue;
             }
             int price = price(offer, reputation);
+            boolean lesson = merchants.isTraining(at, workstation, TradeKeys.of(offer));
             int can = price <= 0 ? runs.getOrDefault(TradeKeys.of(offer), 0)
                     : Math.min(runs.getOrDefault(TradeKeys.of(offer), 0), Math.max(0, budget) / price);
+            if (lesson && price > 0) {
+                can = Math.min(can, (int) Math.floor(Math.max(0, lessons - lessonsPaid) / price));
+                lessonsPaid += can * price;
+            }
             runs.put(TradeKeys.of(offer), can);
             budget -= can * price;
         }
+        dev.b28.enterprise.money.Accountant.spent(at, Math.max(0, lessonsPaid
+                - dev.b28.enterprise.contract.ContractBook.get(level.getServer()).advancesHeld(at)), level.getGameTime());
         // What these trades will pay out in emeralds: the Merchant changes coin for what the warehouse lacks, from
         // money beyond the town's reserve.
         int emeralds = offers.stream().filter(o -> o.getBaseCostA().is(net.minecraft.world.item.Items.EMERALD))
@@ -265,6 +277,16 @@ public final class LockerTrading {
                 merchants.addEarned(at, workstation, offer.getResult().is(net.minecraft.world.item.Items.EMERALD)
                         ? offer.getResult().getCount()
                         : offer.getBaseCostA().is(net.minecraft.world.item.Items.EMERALD) ? 0.5 * priceA : 0);
+                // The cash book: emeralds paid a villager for its goods, or taken from it for the town's.
+                if (offer.getBaseCostA().is(net.minecraft.world.item.Items.EMERALD)) {
+                    dev.b28.enterprise.money.CashBook.note(deskPos, "lockers: bought "
+                            + net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(offer.getResult().getItem())
+                                    .getPath(), -priceA);
+                } else if (offer.getResult().is(net.minecraft.world.item.Items.EMERALD)) {
+                    dev.b28.enterprise.money.CashBook.note(deskPos, "lockers: sold "
+                            + net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(offer.getBaseCostA().getItem())
+                                    .getPath(), offer.getResult().getCount());
+                }
                 warehouse.recordUse(deskPos, offer.getBaseCostA().getItem(), priceA, now);
                 offer.getItemCostB().ifPresent(b -> warehouse.recordUse(deskPos, b.item().value(), b.count(), now));
                 made++;

@@ -289,7 +289,10 @@ public final class Caravans {
         double spare = Math.max(0, Treasury.available(level, route.from.pos(), stock, rate) - territory.reserve(route.from)
                 - roadPurse);
         double shoppingMoney = Math.min(spare, shopping.values().stream().mapToDouble(Double::doubleValue).sum());
-        // Shopping is worth the trip only if it's worth twice the road food it costs.
+        // Shopping is worth the trip only if it's worth twice the road food it costs; and the accountant has a say.
+        if (shoppingMoney >= Math.max(0.5, 2 * food * PURSE_PER_FOOD_POINT) && !foreign) {
+            shoppingMoney = dev.b28.enterprise.money.Accountant.allow(level, route.from, stock, "caravan shopping", shoppingMoney, now);
+        }
         if (shoppingMoney < Math.max(0.5, 2 * food * PURSE_PER_FOOD_POINT)) {
             shopping = Map.of();
             shoppingMoney = 0;
@@ -301,11 +304,14 @@ public final class Caravans {
                 Math.max(0, spare - shoppingMoney));
         // A bank's caravan carries money for its dealings there too, as far as its market can spare.
         double bankFloat = dev.b28.enterprise.market.Bank.get(server).is(route.from)
-                ? Math.max(0, Math.min(dev.b28.enterprise.market.Bank.FLOAT, spare - shoppingMoney - exWorks)) : 0;
+                ? dev.b28.enterprise.money.Accountant.allow(level, route.from, stock, "a bank's float",
+                        Math.max(0, Math.min(dev.b28.enterprise.market.Bank.FLOAT, spare - shoppingMoney - exWorks)), now)
+                : 0;
         // And the capital to buy back the rents it owes there, each when it can spare twice that.
         double buyBack = 0;
         for (var rent : dev.b28.enterprise.contract.Rents.get(server).owed(route.from, route.to)) {
-            if (spare - shoppingMoney - exWorks - bankFloat - buyBack >= 2 * rent.capital()) {
+            if (spare - shoppingMoney - exWorks - bankFloat - buyBack >= 2 * rent.capital()
+                    && dev.b28.enterprise.money.Accountant.approve(level, route.from, stock, "buying back a rent", rent.capital(), now)) {
                 buyBack += rent.capital();
             }
         }
@@ -2145,7 +2151,8 @@ public final class Caravans {
                 if (outlet.isPresent() && Desires.worthBuying(value, outlet.get())) {
                     par += outlet.get().units();
                 }
-                money -= territory.reserve(desk);
+                money = Math.min(money - territory.reserve(desk),
+                        foreign ? Double.MAX_VALUE : dev.b28.enterprise.money.Accountant.left(level, desk, stock, now));
             } else {
                 money -= territory.payroll(desk); // never the farmers' wages or the guards' pay
                 par = Math.min(warehouse.par(desk, item, wanted.contains(item), now), roomFor(stock, wanted.size(), item));
@@ -2153,6 +2160,11 @@ public final class Caravans {
                 if (nutrition > 0) {
                     // Food: a town short of it (under twice the caravans' par) buys enough to get there.
                     par = Math.max(par, onHand + Math.max(0, 2 * Warehouse.FOOD_PAR_POINTS - stock.foodNutrition()) / nutrition);
+                }
+                // Food it's short of it buys as far as it can; any other goods, out of the accountant's budget.
+                boolean shortOfFood = nutrition > 0 && stock.foodNutrition() < 2 * Warehouse.FOOD_PAR_POINTS;
+                if (!foreign && !shortOfFood) {
+                    money = Math.min(money, dev.b28.enterprise.money.Accountant.left(level, desk, stock, now));
                 }
             }
             int quantity = Math.min(stack.getCount(), par - onHand);
@@ -2212,6 +2224,9 @@ public final class Caravans {
                 }
             }
             Treasury.Withdrawal paid = Treasury.withdraw(level, desk.pos(), stock, delivered * each, mint, now);
+            if (!foreign) {
+                dev.b28.enterprise.money.Accountant.spent(desk, paid.value(rate), now); // booked against today's budget
+            }
             earned += paid.spurs() + mint.sell(Mint.DEFAULT_FACTION, paid.emeralds(), now);
             route.itemsDelivered += delivered;
             logUnsold(caravan, desk, item, why, lot.isPresent() ? stack.getCount() - delivered : stack.getCount(), now);

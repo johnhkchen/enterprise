@@ -281,6 +281,10 @@ final class EnterpriseCommands {
                                                     + desk.pos().toShortString() + " is " + name + " now"), true);
                                             return 1;
                                         }))))
+                .then(Commands.literal("cashbook").then(Commands.argument("desk", BlockPosArgument.blockPos())
+                        .executes(context -> cashbook(context, 10))
+                        .then(Commands.argument("days", IntegerArgumentType.integer(1, 60))
+                                .executes(context -> cashbook(context, IntegerArgumentType.getInteger(context, "days"))))))
                 .then(Commands.literal("paperwork").executes(context -> {
                     var server = context.getSource().getServer();
                     StringBuilder out = new StringBuilder("Paperwork (documents, paper, ink, quills used; scribes paid):");
@@ -1096,6 +1100,20 @@ final class EnterpriseCommands {
                 .setEnabled(GlobalPos.of(source.getLevel().dimension(), desk), workstation, trade, on);
         source.sendSuccess(() -> Component.literal("%s %s at %s"
                 .formatted(on ? "Enabled" : "Disabled", trade, workstation.toShortString())), true);
+        return 1;
+    }
+
+    /** A market's cash book: the last {@code days} days' money in and out, by what for. */
+    private static int cashbook(com.mojang.brigadier.context.CommandContext<CommandSourceStack> context, int days)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        var server = context.getSource().getServer();
+        BlockPos pos = BlockPosArgument.getBlockPos(context, "desk"); // the book's on the ledger: loaded or not
+        GlobalPos desk = GlobalPos.of(context.getSource().getLevel().dimension(), pos);
+        long today = context.getSource().getLevel().getGameTime() / 24000;
+        StringBuilder out = new StringBuilder("Cash book of " + dev.b28.enterprise.settlement.Names.label(desk) + ":");
+        dev.b28.enterprise.money.CashBook.get(server).report(desk, today - days + 1, today)
+                .forEach(line -> out.append("\n").append(line));
+        context.getSource().sendSuccess(() -> Component.literal(out.toString()), false);
         return 1;
     }
 }

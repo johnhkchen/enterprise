@@ -588,7 +588,8 @@ public final class Territory extends SavedData {
         }
         Optional<BlockPos> site = Growth.farmSite(level, bellPos, Husbandry.PASTURE_SIZE, 8)
                 .filter(corner -> owner(level.dimension(), Hex.at(corner.offset(4, 0, 4))).filter(bell::equals).isPresent());
-        if (site.isEmpty()) {
+        if (site.isEmpty() || cash >= Fields.FIELD_EMERALDS && !dev.b28.enterprise.money.Accountant.approve(level,
+                holding.desk, stock, "a pasture", Fields.FIELD_EMERALDS, level.getGameTime())) {
             return;
         }
         Husbandry.fence(level, site.get());
@@ -1293,6 +1294,8 @@ public final class Territory extends SavedData {
             return;
         }
         Holding holding = holdings.get(bell.get());
+        dev.b28.enterprise.money.CashBook.get(level.getServer()).level(at, now, Treasury.available(level, desk, stock,
+                Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now))); // the day's opening balance
         upkeepGuards(level, desk, stock, bell.get(), holding, now); // pay the guards who served, then review the garrison
         long lastReview = holding.lastTollReview;
         reviewTolls(bell.get(), now, Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, now));

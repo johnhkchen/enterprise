@@ -145,6 +145,12 @@ public final class Bills extends SavedData {
                 .mapToDouble(b -> b.emeralds).sum();
     }
 
+    /** Emeralds of outstanding bills on {@code drawee} falling due by {@code at}, whoever holds them. */
+    public double dueBy(GlobalPos drawee, long at) {
+        return bills.values().stream().filter(b -> b.state == State.OUTSTANDING && b.drawee.equals(drawee)
+                && b.due <= at).mapToDouble(b -> b.emeralds).sum();
+    }
+
     /** Emeralds a caravan from {@code drawee} should carry to pay the bills on it due by {@code at} held at {@code holder}. */
     public double dueAt(GlobalPos drawee, GlobalPos holder, long at) {
         return bills.values().stream().filter(b -> b.state != State.PAID && b.drawee.equals(drawee)
