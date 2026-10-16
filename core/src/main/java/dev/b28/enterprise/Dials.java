@@ -110,6 +110,14 @@ public final class Dials extends SavedData {
     public static final Dial ROTATE_PLOTS = dial("rotate_plots", 81, "plots turned over to another crop a census");
     public static final Dial OWED_FIELDS = dial("rotate_owed_fields", 2,
             "times as many plots a census for a crop owed under contract");
+    // Herds (see territory.Husbandry).
+    public static final Dial PASTURE_ANIMALS = dial("pasture_animals", 16, "animals a pasture holds");
+    public static final Dial PASTURES_MAX = dial("pastures_max", 3, "pastures a town fences at most, a new one once full");
+    public static final Dial BREED_PER_DAY = dial("breed_per_day", 0.15, "share a fed herd grows by a day, while there's room");
+    public static final Dial CULL_SHARE = dial("cull_share", 0.75,
+            "share of its pastures' room a herd fills before its Butcher or Leatherworker culls it");
+    public static final Dial FEED_DAYS = dial("feed_days", 3,
+            "days of its herds' feed a town keeps back from selling its crop");
 
     public static Collection<Dial> all() {
         return ALL.values();

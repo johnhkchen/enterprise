@@ -90,6 +90,26 @@ def pos(gp):
 PALETTE = ["#44679b", "#b4582f", "#4f7d4a", "#8a5a9b", "#b08a2e", "#2f8a8a", "#9b4458", "#5a6b7d"]
 
 
+PASTURE = 16
+FEED = {"minecraft:sheep": 0.25, "minecraft:cow": 0.25, "minecraft:pig": 0.25, "minecraft:chicken": 0.1}
+PLURAL = {"sheep": "sheep", "cow": "cows", "pig": "pigs", "chicken": "chickens"}
+
+
+def herd_text(town):
+    """Its animals, rounded: '2 sheep, 1 cow'."""
+    parts = []
+    for k, n in town.get("herd", {}).items():
+        kind = k.split(":")[1]
+        if round(n) >= 1:
+            parts.append(f"{round(n)} {kind if round(n) == 1 else PLURAL.get(kind, kind)}")
+    return ", ".join(parts)
+
+
+def folk_and_herd(town):
+    herd = herd_text(town)
+    return f"{town.get('villagers', 0)} folk" + (f" · {herd}" if herd else "")
+
+
 def main():
     data = Path(sys.argv[1] if len(sys.argv) > 1 else "core/run/world/data")
     out = Path(sys.argv[2] if len(sys.argv) > 2 else "world_map.html")
@@ -99,6 +119,7 @@ def main():
     territory = load(data / "enterprise_territory.dat")
     settlements = territory.get("settlements", [])
     bell_to_desk = {pos(s["bell"]): pos(s["desk"]) for s in settlements if "desk" in s}
+    towns = {pos(s["desk"]): s for s in settlements if "desk" in s}
     owners = {}
     for h in territory.get("hexes", []):
         owners[(h["q"], h["r"])] = bell_to_desk.get(pos(h["bell"]), pos(h["bell"]))
@@ -253,8 +274,20 @@ def main():
         anchor, dx = ("end", -13) if crowded else ("start", 13)
         svg.append(f'<text x="{x + dx:.1f}" y="{z + 4:.1f}" text-anchor="{anchor}" class="name">{html.escape(name)}'
                    f'<tspan class="tag">{tag}</tspan></text>')
+        if m in towns:
+            svg.append(f'<text x="{x + dx:.1f}" y="{z + 19:.1f}" text-anchor="{anchor}" class="herd">'
+                       f'{html.escape(folk_and_herd(towns[m]))}</text>')
 
     total_trips = sum(r.get("trips", 0) for r in routes)
+    rows = []
+    for m, t in sorted(towns.items(), key=lambda kv: -int(kv[1].get("villagers", 0))):
+        per_day, idle = t.get("perDay", {}), t.get("idlePerDay", {})
+        wheat, wheat_idle = per_day.get("minecraft:wheat", 0), idle.get("minecraft:wheat", 0)
+        feed = sum(n * FEED.get(k, 0) for k, n in t.get("herd", {}).items())
+        rows.append(f"<tr><td>{html.escape(names.get(m, str(m)))}</td><td>{t.get('villagers', 0)}</td>"
+                    f"<td>{t.get('mood', 0):.2f}</td><td>{html.escape(herd_text(t) or '—')}</td>"
+                    f"<td>{'yes' if t.get('pasture') else '—'}</td><td>{feed:.1f}</td>"
+                    f"<td>{wheat:.1f}</td><td>{wheat_idle:.1f}</td></tr>")
     page = f"""<title>Cartographer's Map</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Karla:wght@400;600&family=Lora:wght@600&display=swap" rel="stylesheet">
@@ -279,6 +312,13 @@ p.sub {{ margin:0 0 16px; color:var(--muted); max-width:65ch; }}
 svg {{ width:100%; height:auto; display:block; }}
 .name {{ font:600 13px var(--body); fill:var(--ink); paint-order:stroke; stroke:var(--cream); stroke-width:3px; }}
 .tag {{ font-weight:400; fill:var(--muted); }}
+.herd {{ font:400 11.5px var(--body); fill:var(--muted); paint-order:stroke; stroke:var(--cream); stroke-width:3px; }}
+h2 {{ font-family:var(--display); font-weight:600; font-size:1.3rem; margin:32px 0 4px; }}
+.table {{ overflow-x:auto; background:var(--cream); border-radius:16px; padding:8px 12px; }}
+table {{ border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; }}
+th, td {{ text-align:left; padding:6px 10px; border-bottom:1px solid var(--grid); white-space:nowrap; }}
+th {{ font-weight:600; color:var(--muted); font-size:.85rem; letter-spacing:.03em; }}
+tr:last-child td {{ border-bottom:none; }}
 .key {{ display:flex; flex-wrap:wrap; gap:8px 20px; margin-top:14px; color:var(--muted); font-size:.95rem; }}
 .swatch {{ display:inline-block; width:14px; height:14px; border-radius:4px; vertical-align:-2px; margin-right:6px; }}
 </style>
@@ -296,7 +336,14 @@ for its trips and how it ended the run.</p>
 <span><span class="swatch" style="background:var(--deck)"></span>bridge</span>
 <span>line width: trips made</span><span>dashed: winding down</span><span>dotted: not yet run</span><span>ringed: freight hub</span>
 <span>★ the capital</span><span>square: off the map</span>
-</div></main>"""
+</div>
+<h2>Towns and their herds</h2>
+<p class="sub">A pasture holds {PASTURE} animals. Feed is wheat (carrots or potatoes for pigs), a quarter a day each.
+Wheat a day is what its worked plots grow; idle is what its untended plots would add.</p>
+<div class="table"><table>
+<thead><tr><th>Town</th><th>Folk</th><th>Mood</th><th>Herd</th><th>Pasture</th><th>Feed a day</th>
+<th>Wheat a day</th><th>Wheat idle</th></tr></thead>
+<tbody>{"".join(rows)}</tbody></table></div></main>"""
     out.write_text(page)
     print(f"map: {out}")
 

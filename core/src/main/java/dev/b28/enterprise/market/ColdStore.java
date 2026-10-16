@@ -137,6 +137,21 @@ public final class ColdStore {
                         (full - 1) * item.getDefaultMaxStackSize()));
             }
         }
+        // Crates packed before and since picked at (a lockers' or a caravan's few taken at a time) are repacked with
+        // the rest: a crate of a poppy and some seeds holds a slot as a full one would.
+        List<ItemStack> thin = stock.removeLoose(s -> Crates.isCrate(s) && !Crates.empty(s)
+                && Crates.papers(s).documents().isEmpty() && Crates.goods(s).size() < Crates.GOODS);
+        if (thin.size() < 2) {
+            thin.forEach(stock::insert);
+        } else {
+            for (ItemStack crate : thin) {
+                idle.addAll(Crates.goods(crate));
+            }
+            for (int n = thin.size(); n > 0; n -= Crates.EMPTIES_KEPT) { // the empties, to pack in again
+                stock.insert(new ItemStack(Cargo.CRATE_ITEM.get(), Math.min(n, Crates.EMPTIES_KEPT)));
+            }
+        }
+        idle = merged(idle);
         if (idle.size() < 2) {
             idle.forEach(stock::insert);
             return;
@@ -170,6 +185,28 @@ public final class ColdStore {
         if (packed > 0) {
             Enterprise.LOGGER.debug("Cold store at {}: packed {} crate(s)", desk.pos().toShortString(), packed);
         }
+    }
+
+    /** The same goods in as few stacks as they fit. */
+    static List<ItemStack> merged(List<ItemStack> goods) {
+        List<ItemStack> out = new ArrayList<>();
+        for (ItemStack stack : goods) {
+            ItemStack left = stack.copy();
+            for (ItemStack into : out) {
+                if (left.isEmpty()) {
+                    break;
+                }
+                if (ItemStack.isSameItemSameComponents(into, left) && into.getCount() < into.getMaxStackSize()) {
+                    int moved = Math.min(left.getCount(), into.getMaxStackSize() - into.getCount());
+                    into.grow(moved);
+                    left.shrink(moved);
+                }
+            }
+            if (!left.isEmpty()) {
+                out.add(left);
+            }
+        }
+        return out;
     }
 
     private static boolean buyCrate(ServerLevel level, GlobalPos desk, MerchantStock stock, long now) {

@@ -270,6 +270,28 @@ public final class LogisticsTests {
     }
 
     @GameTest(template = "floor")
+    public static void shortOfRoomTheMerchantRepacksCratesPickedAt(GameTestHelper helper) {
+        var level = helper.getLevel();
+        BlockPos desk = new BlockPos(1, 2, 1);
+        helper.setBlock(desk, Merchant.DESK.get());
+        helper.setBlock(desk.east(), Blocks.CHEST);
+        GlobalPos at = GlobalPos.of(level.dimension(), helper.absolutePos(desk));
+        MerchantStock stock = MerchantStock.at(level, helper.absolutePos(desk));
+        // Crates packed long ago, picked at since: a poppy and a seed or two in each, a slot each.
+        for (int i = 0; i < 22; i++) {
+            stock.insert(dev.b28.enterprise.cargo.Crates.of(List.of(new ItemStack(Items.POPPY),
+                    new ItemStack(Items.WHEAT_SEEDS, 2)), dev.b28.enterprise.cargo.Papers.NONE));
+        }
+        helper.assertTrue(stock.freeSlots() == 5, "the chest full of thin crates: " + stock.freeSlots());
+        dev.b28.enterprise.market.ColdStore.tidy(level, at, stock, level.getGameTime());
+        MerchantStock after = MerchantStock.at(level, helper.absolutePos(desk));
+        helper.assertTrue(after.freeSlots() >= 20, "repacked into one crate, the empties stacked: " + after.freeSlots());
+        helper.assertTrue(after.count(new ItemCost(Items.POPPY, 1)) == 22
+                && after.count(new ItemCost(Items.WHEAT_SEEDS, 1)) == 44, "every poppy and seed still stock");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void shortOfRoomTheMerchantPacksIdleGoodsIntoColdStorage(GameTestHelper helper) {
         var level = helper.getLevel();
         BlockPos desk = new BlockPos(1, 2, 1);

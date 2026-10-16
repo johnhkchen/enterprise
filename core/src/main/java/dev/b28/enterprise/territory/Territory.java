@@ -178,6 +178,8 @@ public final class Territory extends SavedData {
         int fieldsPlanted;
         Map<String, Double> herd = new LinkedHashMap<>(); // animals kept, by entity id, fractions carried
         BlockPos pasture; // the pasture's corner, once fenced
+        List<BlockPos> morePastures = new ArrayList<>(); // pastures fenced since, as the herd outgrew the first
+        Map<String, Double> fodder = new LinkedHashMap<>(); // feed each kind is owed, less than a whole item
         BlockPos dock; // the pier's first block over water, once built
         long lastTend = -1;
         long blessedUntil = -1; // a Cleric's blessing lasts until then
@@ -560,8 +562,8 @@ public final class Territory extends SavedData {
 
     /**
      * When counted while loaded: a new Shepherd's or Butcher's animals join the herd; a town with animals and no
-     * pasture fences one (9 x 9, in its home hex, 4 emeralds beyond its reserve); and the pasture's animals are set
-     * right by the ledger.
+     * pasture fences one (9 x 9, in its home hex, 4 emeralds beyond its reserve), and another when the herd fills the
+     * ones it has (up to the {@code pastures_max} dial); and the pastures' animals are set right by the ledger.
      */
     private void keepHerds(ServerLevel level, BlockPos bellPos, Holding holding, MerchantStock stock) {
         GlobalPos bell = GlobalPos.of(level.dimension(), bellPos);
@@ -569,30 +571,69 @@ public final class Territory extends SavedData {
         if (!Husbandry.any(holding.herd)) {
             return;
         }
+        double animals = holding.herd.values().stream().mapToDouble(Double::doubleValue).sum();
+        boolean full = holding.pasture != null && pastures(holding).size() < dev.b28.enterprise.Dials.PASTURES_MAX.getInt()
+                && animals >= 0.9 * Husbandry.capacity(pastures(holding).size());
+        if (holding.pasture == null || full) {
+            fencePasture(level, bellPos, bell, holding, stock);
+        }
+        Husbandry.sync(level, pastures(holding), holding.herd);
+    }
+
+    private void fencePasture(ServerLevel level, BlockPos bellPos, GlobalPos bell, Holding holding, MerchantStock stock) {
+        double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, level.getGameTime());
+        double cash = Treasury.available(level, holding.desk.pos(), stock, rate) - reserve(holding.desk);
+        if (cash + depositsOnCall(holding.desk) < Fields.FIELD_EMERALDS) {
+            return; // not even with its households' savings
+        }
+        Optional<BlockPos> site = Growth.farmSite(level, bellPos, Husbandry.PASTURE_SIZE, 8)
+                .filter(corner -> owner(level.dimension(), Hex.at(corner.offset(4, 0, 4))).filter(bell::equals).isPresent());
+        if (site.isEmpty()) {
+            return;
+        }
+        Husbandry.fence(level, site.get());
+        if (cash < Fields.FIELD_EMERALDS) {
+            borrowDeposits(level, holding.desk, stock, Fields.FIELD_EMERALDS - cash);
+        }
+        Treasury.withdraw(level, holding.desk.pos(), stock, Fields.FIELD_EMERALDS, Mint.get(level.getServer()),
+                level.getGameTime());
         if (holding.pasture == null) {
-            double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, level.getGameTime());
-            double cash = Treasury.available(level, holding.desk.pos(), stock, rate) - reserve(holding.desk);
-            if (cash + depositsOnCall(holding.desk) < Fields.FIELD_EMERALDS) {
-                return; // not even with its households' savings
-            }
-            Optional<BlockPos> site = Growth.farmSite(level, bellPos, Husbandry.PASTURE_SIZE, 8)
-                    .filter(corner -> owner(level.dimension(), Hex.at(corner.offset(4, 0, 4))).filter(bell::equals).isPresent());
-            if (site.isEmpty()) {
-                return;
-            }
-            Husbandry.fence(level, site.get());
-            if (cash < Fields.FIELD_EMERALDS) {
-                borrowDeposits(level, holding.desk, stock, Fields.FIELD_EMERALDS - cash);
-            }
-            Treasury.withdraw(level, holding.desk.pos(), stock, Fields.FIELD_EMERALDS, Mint.get(level.getServer()),
-                    level.getGameTime());
             holding.pasture = site.get();
-            dev.b28.enterprise.Enterprise.LOGGER.debug("Settlement at {} fences a pasture at {}", bellPos.toShortString(),
-                    site.get().toShortString());
+        } else {
+            holding.morePastures.add(site.get());
         }
-        if (level.isLoaded(holding.pasture) && level.isLoaded(holding.pasture.offset(Husbandry.PASTURE_SIZE, 0, Husbandry.PASTURE_SIZE))) {
-            Husbandry.sync(level, holding.pasture, holding.herd);
+        dev.b28.enterprise.Enterprise.LOGGER.debug("Settlement at {} fences a pasture at {}", bellPos.toShortString(),
+                site.get().toShortString());
+    }
+
+    private static List<BlockPos> pastures(Holding holding) {
+        List<BlockPos> all = new ArrayList<>();
+        if (holding.pasture != null) {
+            all.add(holding.pasture);
         }
+        all.addAll(holding.morePastures);
+        return all;
+    }
+
+    /** The pastures this town has fenced, the first first. */
+    public List<BlockPos> pastures(GlobalPos bell) {
+        return holding(bell).map(Territory::pastures).orElse(List.of());
+    }
+
+    /**
+     * What of {@code item} the town at {@code desk} keeps back from selling: the feed for the {@code feed_days} dial's
+     * days of every kind in its herds that eats it.
+     */
+    public int feedKept(GlobalPos desk, Item item) {
+        return bellOf(desk).flatMap(this::holding).map(h -> {
+            double perDay = 0;
+            for (Husbandry.Kind kind : Husbandry.KINDS) {
+                if (kind.feed().contains(item)) {
+                    perDay += h.herd.getOrDefault(kind.id(), 0.0) * kind.feedPerDay();
+                }
+            }
+            return (int) Math.ceil(perDay * dev.b28.enterprise.Dials.FEED_DAYS.get());
+        }).orElse(0);
     }
 
     public int fieldsPlanted(GlobalPos bell) {
@@ -1269,7 +1310,8 @@ public final class Territory extends SavedData {
         accrue(holding, now);
         if (holding.lastTend >= 0) {
             double days = Math.min(MAX_DAYS, (now - holding.lastTend) / 24000.0);
-            Husbandry.tend(stock, holding.herd, trades(level.getServer(), bell.get()), days, holding.pending);
+            Husbandry.tend(stock, holding.herd, holding.fodder, trades(level.getServer(), bell.get()), days,
+                    Husbandry.capacity(pastures(holding).size()), holding.pending);
             if (holding.dock != null) {
                 // The Fishermen's catch: so many cod a day per level each.
                 double levels = dev.b28.enterprise.settlement.Settlements.get(level.getServer()).roster(bell.get()).values()
@@ -2028,6 +2070,10 @@ public final class Territory extends SavedData {
             entry.put("demand", doubles(holding.demand));
             entry.putInt("fieldsPlanted", holding.fieldsPlanted);
             entry.put("herd", doubles(holding.herd));
+            if (!holding.morePastures.isEmpty()) {
+                entry.putLongArray("morePastures", holding.morePastures.stream().mapToLong(BlockPos::asLong).toArray());
+            }
+            entry.put("fodder", doubles(holding.fodder));
             if (holding.pasture != null) {
                 entry.putLong("pasture", holding.pasture.asLong());
             }
@@ -2176,6 +2222,10 @@ public final class Territory extends SavedData {
                 holding.fieldsPlanted = entry.getInt("fieldsPlanted");
                 holding.herd = readDoubles(entry.getCompound("herd"));
                 holding.pasture = entry.contains("pasture") ? BlockPos.of(entry.getLong("pasture")) : null;
+                for (long corner : entry.getLongArray("morePastures")) {
+                    holding.morePastures.add(BlockPos.of(corner));
+                }
+                holding.fodder = readDoubles(entry.getCompound("fodder"));
                 holding.lastTend = entry.contains("lastTend") ? entry.getLong("lastTend") : -1;
                 holding.blessedUntil = entry.contains("blessedUntil") ? entry.getLong("blessedUntil") : -1;
                 holding.idlePerDay = readDoubles(entry.getCompound("idlePerDay"));

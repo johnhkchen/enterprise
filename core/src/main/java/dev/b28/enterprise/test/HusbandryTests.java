@@ -45,7 +45,7 @@ public final class HusbandryTests {
         helper.assertTrue(herd.get("minecraft:cow") == 2, "a Leatherworker brings 2 cows");
         MerchantStock stock = warehouse(helper);
         stock.insert(new ItemStack(Items.WHEAT, 64));
-        herd.put("minecraft:cow", 8.0);
+        herd.put("minecraft:cow", 16.0); // a full pasture: culled down toward three quarters of it
         Map<String, Double> produce = new HashMap<>();
         Husbandry.tend(stock, herd, Set.of("minecraft:leatherworker"), 2, produce);
         helper.assertTrue(produce.getOrDefault("minecraft:leather", 0.0) > 2 && produce.getOrDefault("minecraft:beef", 0.0) > 4,
@@ -95,15 +95,56 @@ public final class HusbandryTests {
     }
 
     @GameTest(template = "floor")
-    public static void butchersSlaughterBeyondTheBreedingStock(GameTestHelper helper) {
+    public static void butchersSlaughterWhatTheFullPastureBreeds(GameTestHelper helper) {
         MerchantStock stock = warehouse(helper);
         stock.insert(new ItemStack(Items.CARROT, 64));
-        Map<String, Double> herd = new HashMap<>(Map.of("minecraft:pig", 10.0));
+        Map<String, Double> herd = new HashMap<>(Map.of("minecraft:pig", 16.0));
         Map<String, Double> produce = new HashMap<>();
         Husbandry.tend(stock, herd, Set.of("minecraft:butcher"), 2, produce);
-        helper.assertTrue(herd.get("minecraft:pig") >= Husbandry.BREEDING_STOCK && herd.get("minecraft:pig") < 10,
-                "pigs slaughtered down toward the breeding stock: " + herd);
+        helper.assertTrue(herd.get("minecraft:pig") >= 12 && herd.get("minecraft:pig") < 16,
+                "a full pasture culled toward three quarters of it, 12: " + herd);
         helper.assertTrue(produce.getOrDefault("minecraft:porkchop", 0.0) > 4, "porkchops: " + produce);
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aCulledHerdGrowsToItsPastureFirst(GameTestHelper helper) {
+        MerchantStock stock = warehouse(helper);
+        stock.insert(new ItemStack(Items.CARROT, 64));
+        stock.insert(new ItemStack(Items.CARROT, 64));
+        Map<String, Double> herd = new HashMap<>(Map.of("minecraft:pig", 4.0));
+        Map<String, Double> owed = new HashMap<>();
+        Map<String, Double> produce = new HashMap<>();
+        for (int i = 0; i < 80; i++) { // 20 days, tended four times a day
+            Husbandry.tend(stock, herd, owed, Set.of("minecraft:butcher"), 0.25, Husbandry.capacity(1), produce);
+        }
+        helper.assertTrue(herd.get("minecraft:pig") > 11, "4 pigs breed up to near 12 before the Butcher culls: " + herd);
+        helper.assertTrue(produce.getOrDefault("minecraft:porkchop", 0.0) > 5, "and then culls what they breed: " + produce);
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aSecondPastureHoldsTwiceTheHerd(GameTestHelper helper) {
+        MerchantStock stock = warehouse(helper);
+        stock.insert(new ItemStack(Items.WHEAT, 64));
+        Map<String, Double> herd = new HashMap<>(Map.of("minecraft:sheep", 16.0));
+        Husbandry.tend(stock, herd, new HashMap<>(), Set.of("minecraft:shepherd"), 3, Husbandry.capacity(2), new HashMap<>());
+        helper.assertTrue(herd.get("minecraft:sheep") > 20, "a flock with two pastures outgrows one: " + herd);
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aHerdTendedOftenEatsOnlyItsShare(GameTestHelper helper) {
+        MerchantStock stock = warehouse(helper);
+        stock.insert(new ItemStack(Items.WHEAT, 64));
+        Map<String, Double> herd = new HashMap<>(Map.of("minecraft:sheep", 4.0));
+        Map<String, Double> owed = new HashMap<>();
+        for (int i = 0; i < 100; i++) { // a day, tended a hundred times
+            Husbandry.tend(stock, herd, owed, Set.of(), 0.01, Husbandry.capacity(1), new HashMap<>());
+        }
+        int eaten = 64 - stock.count(new ItemCost(Items.WHEAT, 1));
+        helper.assertTrue(eaten >= 1 && eaten <= 2, "4 sheep eat a wheat a day however often tended, ate " + eaten);
+        helper.assertTrue(herd.get("minecraft:sheep") > 4.4, "and, fed, grow: " + herd);
         helper.succeed();
     }
 }

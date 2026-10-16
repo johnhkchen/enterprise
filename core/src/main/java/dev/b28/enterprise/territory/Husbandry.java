@@ -1,5 +1,6 @@
 package dev.b28.enterprise.territory;
 
+import dev.b28.enterprise.Dials;
 import dev.b28.enterprise.merchant.MerchantStock;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,15 +41,11 @@ public final class Husbandry {
                     Items.PORKCHOP, 2),
             new Kind("minecraft:chicken", EntityType.CHICKEN, List.of(Items.WHEAT), 0.1, Items.CHICKEN, 1));
 
-    /** A pasture holds this many animals in all. */
-    public static final int PASTURE_CAPACITY = 16;
-
-    /** A Butcher keeps this many of each kind to breed from, and slaughters half the rest a day. */
+    /** A Butcher or Leatherworker always keeps this many of a kind to breed from, and culls half the surplus a day. */
     public static final int BREEDING_STOCK = 4;
     public static final double SLAUGHTER_PER_DAY = 0.5;
 
-    /** Fed animals breed by this share a day; hungry ones dwindle by this share. */
-    public static final double BREED_PER_DAY = 0.15;
+    /** Hungry animals dwindle by this share a day (fed ones breed by the {@code breed_per_day} dial). */
     public static final double STARVE_PER_DAY = 0.1;
 
     /** A shorn sheep gives this much wool a day; a slaughtered cow this much leather. */
@@ -93,22 +90,45 @@ public final class Husbandry {
         return feed;
     }
 
+    /** What {@code pastures} pastures hold; a herd not yet fenced in has the room of one. */
+    public static double capacity(int pastures) {
+        return Dials.PASTURE_ANIMALS.get() * Math.max(1, pastures);
+    }
+
     /**
-     * Tends the herds for {@code days}: they eat from the warehouse, breed or dwindle, are shorn and slaughtered.
-     * Products (wool, meat, leather) are added to {@code produce}, owed to the warehouse with the farms' harvest.
+     * Tends the herds for {@code days} in one pasture's room, owing nothing from before: as below.
      */
     public static void tend(MerchantStock stock, Map<String, Double> herd, Set<String> trades, double days,
             Map<String, Double> produce) {
+        tend(stock, herd, new LinkedHashMap<>(), trades, days, capacity(1), produce);
+    }
+
+    /**
+     * Tends the herds for {@code days}: they eat from the warehouse, breed into the room their pastures have
+     * ({@code capacity} animals in all) or dwindle, are shorn and culled. Feed is eaten whole: {@code owed} carries what
+     * each kind has eaten less than its share, between tendings (a herd tended many times a day eats no more for it).
+     * A Butcher (or a Leatherworker its cows) culls only once the herd fills most of its room, so a culled herd grows
+     * to its pastures first, and breeds the most it can. Products (wool, meat, leather) are added to {@code produce},
+     * owed to the warehouse with the farms' harvest.
+     */
+    public static void tend(MerchantStock stock, Map<String, Double> herd, Map<String, Double> owed, Set<String> trades,
+            double days, double capacity, Map<String, Double> produce) {
         if (days <= 0) {
             return;
         }
         double total = herd.values().stream().mapToDouble(Double::doubleValue).sum();
+        long kept = herd.values().stream().filter(count -> count >= 1).count();
+        // Each kind's share of the room the cull leaves: the herd fills that much before it's culled.
+        double keep = Math.max(BREEDING_STOCK, Dials.CULL_SHARE.get() * capacity / Math.max(1, kept));
         for (Kind kind : KINDS) {
             double count = herd.getOrDefault(kind.id(), 0.0);
             if (count <= 0) {
+                owed.remove(kind.id());
                 continue;
             }
-            int wanted = (int) Math.ceil(count * kind.feedPerDay() * days);
+            double need = count * kind.feedPerDay() * days;
+            double due = owed.getOrDefault(kind.id(), 0.0) + need;
+            int wanted = (int) Math.floor(due);
             int eaten = 0;
             for (Item feed : kind.feed()) {
                 if (eaten >= wanted) {
@@ -116,25 +136,29 @@ public final class Husbandry {
                 }
                 eaten += stock.take(new ItemCost(feed, 1), wanted - eaten).stream().mapToInt(ItemStack::getCount).sum();
             }
-            double fed = wanted == 0 ? 1 : (double) eaten / wanted;
-            if (fed >= 0.9) {
-                double room = Math.max(0, PASTURE_CAPACITY - total);
-                double born = Math.min(room, count * BREED_PER_DAY * days);
+            due -= eaten;
+            if (due < 1) {
+                double room = Math.max(0, capacity - total);
+                double born = Math.min(room, count * Dials.BREED_PER_DAY.get() * days);
                 count += born;
                 total += born;
             } else {
+                // Short of feed: it dwindles by how much of this tending's share went uneaten, and doesn't eat it back.
+                double fed = Math.max(0, 1 - (due - 1) / need);
                 double lost = count * STARVE_PER_DAY * (1 - fed) * days;
                 count -= lost;
                 total -= lost;
+                due = Math.min(due, 1);
             }
+            owed.put(kind.id(), due);
             if (kind.id().equals("minecraft:sheep") && trades.contains("minecraft:shepherd")) {
                 produce.merge("minecraft:white_wool", count * WOOL_PER_SHEEP_DAY * days, Double::sum);
             }
             // A Butcher culls any herd for meat; a Leatherworker culls cows for their hides (and beef).
             boolean culls = trades.contains("minecraft:butcher")
                     || kind.id().equals("minecraft:cow") && trades.contains("minecraft:leatherworker");
-            if (culls && count > BREEDING_STOCK) {
-                double slaughtered = Math.min(count - BREEDING_STOCK, (count - BREEDING_STOCK) * SLAUGHTER_PER_DAY * days);
+            if (culls && count > keep) {
+                double slaughtered = Math.min(count - keep, (count - keep) * SLAUGHTER_PER_DAY * days);
                 count -= slaughtered;
                 total -= slaughtered;
                 produce.merge(BuiltInRegistries.ITEM.getKey(kind.meat()).toString(), slaughtered * kind.meatEach(), Double::sum);
@@ -164,13 +188,35 @@ public final class Husbandry {
     }
 
     /**
-     * Sets the pasture's animals right by the ledger: spawns the ones it's missing of each kind, removes ones it no
-     * longer has (slaughtered, starved). Only whole animals show.
+     * Sets the pastures' animals right by the ledger: each pasture in turn takes its share of the herd, kind by kind, up
+     * to what one holds; it spawns the ones it's missing and removes ones it no longer has (slaughtered, starved). Only
+     * whole animals show, and only in pastures loaded.
      */
-    public static void sync(ServerLevel level, BlockPos corner, Map<String, Double> herd) {
+    public static void sync(ServerLevel level, List<BlockPos> corners, Map<String, Double> herd) {
+        int holds = (int) Math.round(Dials.PASTURE_ANIMALS.get());
+        Map<Kind, Integer> left = new LinkedHashMap<>();
+        for (Kind kind : KINDS) {
+            left.put(kind, (int) Math.floor(herd.getOrDefault(kind.id(), 0.0)));
+        }
+        for (BlockPos corner : corners) {
+            int room = holds;
+            Map<Kind, Integer> here = new LinkedHashMap<>();
+            for (Kind kind : KINDS) {
+                int n = Math.min(room, left.get(kind));
+                here.put(kind, n);
+                left.put(kind, left.get(kind) - n);
+                room -= n;
+            }
+            if (level.isLoaded(corner) && level.isLoaded(corner.offset(PASTURE_SIZE, 0, PASTURE_SIZE))) {
+                sync(level, corner, here);
+            }
+        }
+    }
+
+    private static void sync(ServerLevel level, BlockPos corner, Map<Kind, Integer> herd) {
         AABB inside = new AABB(corner.above()).expandTowards(PASTURE_SIZE - 1, 2, PASTURE_SIZE - 1);
         for (Kind kind : KINDS) {
-            int wanted = (int) Math.floor(herd.getOrDefault(kind.id(), 0.0));
+            int wanted = herd.getOrDefault(kind, 0);
             List<Animal> there = level.getEntitiesOfClass(Animal.class, inside, animal -> animal.getType() == kind.type());
             for (int i = there.size(); i < wanted; i++) {
                 Animal animal = kind.type().create(level);

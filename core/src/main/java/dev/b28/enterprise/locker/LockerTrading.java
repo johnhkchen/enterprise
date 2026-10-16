@@ -182,6 +182,8 @@ public final class LockerTrading {
         Map<String, Integer> runs = new java.util.HashMap<>();
         Map<net.minecraft.world.item.Item, Integer> soon = dev.b28.enterprise.market.Procurement.soon(level, at, stock);
         var exchange = dev.b28.enterprise.market.Exchange.get(level.getServer());
+        var territoryNow = dev.b28.enterprise.territory.Territory.get(level.getServer());
+        Map<net.minecraft.world.item.Item, Integer> spareCrop = new java.util.HashMap<>(); // what it may still sell
         for (MerchantOffer offer : offers) {
             String key = TradeKeys.of(offer);
             int uses = offer.getMaxUses() - offer.getUses();
@@ -189,6 +191,16 @@ public final class LockerTrading {
             if (exchange.isProcured(at, workstation, key) && !merchants.isTraining(at, workstation, key)) {
                 int need = soon.getOrDefault(offer.getResult().getItem(), 0);
                 uses = Math.min(uses, (need + offer.getResult().getCount() - 1) / offer.getResult().getCount());
+            }
+            // Its crop sold for emeralds leaves the herds' feed behind: they eat from the same warehouse.
+            net.minecraft.world.item.Item crop = offer.getBaseCostA().getItem();
+            if (offer.getResult().is(net.minecraft.world.item.Items.EMERALD) && dev.b28.enterprise.territory.Territory
+                    .isCrop(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(crop).toString())) {
+                int price = Math.max(1, price(offer, reputation));
+                int spare = spareCrop.computeIfAbsent(crop, c -> stock.count(new ItemCost(c, 1))
+                        + count(locker, new ItemCost(c, 1)) - territoryNow.feedKept(at, c));
+                uses = Math.max(0, Math.min(uses, spare / price));
+                spareCrop.put(crop, spare - uses * price);
             }
             runs.put(key, uses);
         }
