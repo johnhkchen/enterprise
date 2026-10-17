@@ -6,7 +6,7 @@ use bevy_ecs::prelude::*;
 use crate::content::{Content, GoodId};
 use crate::contracts::{Book, Contract, Incoterm};
 use crate::messages::{Input, Output, RouteId, TownId};
-use crate::rules::{catch_up_town, look_schedule};
+use crate::rules::{look_schedule, touch::catch_up_town};
 use crate::state::*;
 
 pub struct Society {

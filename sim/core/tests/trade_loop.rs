@@ -63,6 +63,7 @@ fn a_buyer_short_of_cash_takes_less_from_fewer_wagons() {
     assert!(four > sold(4.0, 8.4, false), "though the compounding still helps");
 }
 
+// parity-partial: CaravanTests.aTownsWagonWaitsForALoadWorthItsRoadFood
 #[test]
 fn a_route_with_work_keeps_its_timetable() {
     let mut s = farm_and_mill(3.0, 50.0);

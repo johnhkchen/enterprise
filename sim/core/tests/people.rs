@@ -31,6 +31,7 @@ fn town(villagers: f64, beds: f64, land: f64, comfort_days: f64, money: f64) -> 
     s
 }
 
+// parity: MoodTests.comfortsLiftTheMood
 #[test]
 fn comforts_met_lift_mood_toward_their_count_less_the_towns_size() {
     let mut s = town(8.0, 8.0, 8.0, 30.0, 20.0);
@@ -41,6 +42,7 @@ fn comforts_met_lift_mood_toward_their_count_less_the_towns_size() {
     assert!((p.mood - 4.0).abs() < 0.1, "mood {}", p.mood);
 }
 
+// parity-partial: MoodTests.crowdingAndUnpaidWagesSour
 #[test]
 fn a_town_without_comforts_sinks_and_crowding_sinks_it_further() {
     let mut s = town(10.0, 6.0, 6.0, 0.0, 200.0); // money enough for 20 days of wages
@@ -50,6 +52,7 @@ fn a_town_without_comforts_sinks_and_crowding_sinks_it_further() {
     assert!((p.mood + 3.25).abs() < 0.1, "mood {}", p.mood);
 }
 
+// parity-partial: MoodTests.crowdingAndUnpaidWagesSour
 #[test]
 fn unpaid_wages_cost_two_points() {
     let mut s = town(8.0, 8.0, 8.0, 30.0, 0.0);
@@ -60,6 +63,7 @@ fn unpaid_wages_cost_two_points() {
     assert!(p.mood < 2.5, "mood {}", p.mood);
 }
 
+// parity: MoodTests.villagersUseTheirRations
 #[test]
 fn the_households_pay_for_the_comforts_they_use() {
     let mut s = town(8.0, 8.0, 8.0, 30.0, 20.0);
@@ -69,6 +73,7 @@ fn the_households_pay_for_the_comforts_they_use() {
     assert!(p.purse < 3.2, "they spent their wages on comforts: {} left", p.purse);
 }
 
+// parity: GrowthTests.aContentTownWithASpareBedHasAChild
 #[test]
 fn a_content_town_builds_homes_and_has_children() {
     let mut s = town(6.0, 6.0, 40.0, 60.0, 60.0);
@@ -89,6 +94,7 @@ fn its_land_is_the_most_it_can_grow_to() {
     assert_eq!(p.beds, 10.0, "but up to it");
 }
 
+// parity: CaravanTests.townsBuyComfortsUpToTheirPar
 #[test]
 fn wagons_bring_comforts_where_they_are_short() {
     let mut s = Society::new(content());
@@ -102,4 +108,13 @@ fn wagons_bring_comforts_where_they_are_short() {
     s.advance(20 * DAY);
     let p = s.town(short).people;
     assert!(p.comfort_met[0] > 0.5, "treats reached the town that makes none: {:?}", p.comfort_met);
+}
+
+// parity: GrowthTests.anUnhappyTownHasNoChildren
+#[test]
+fn an_unhappy_town_has_no_children() {
+    let mut s = town(6.0, 10.0, 40.0, 0.0, 200.0); // a spare bed, no comforts: its mood sinks below zero
+    s.deliver(0, BREAD, 640.0);
+    s.advance(60 * DAY);
+    assert_eq!(s.town(0).people.born, 0, "no children: mood {}", s.town(0).people.mood);
 }

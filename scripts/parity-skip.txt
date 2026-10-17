@@ -1,0 +1,3 @@
+# Java game tests that pin Minecraft itself, not the society: they stay with the binding, never come to the core.
+# One File.method a line, the reason after #.
+MerchantScreenTests.* # the Merchant's screen: client UI

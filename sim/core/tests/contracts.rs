@@ -16,6 +16,7 @@ fn mill_and_scribes(every: f64) -> Society {
     s
 }
 
+// parity: CaravanTests.contractedGoodsGoFirstAndSettleAtTheLockedPrice
 #[test]
 fn contracted_goods_go_first_and_settle_at_the_locked_price() {
     let mut s = mill_and_scribes(1.0);
@@ -28,6 +29,7 @@ fn contracted_goods_go_first_and_settle_at_the_locked_price() {
     assert!((c.paid - c.delivered * 0.05).abs() < 1e-9, "at the locked price, not the market's: {}", c.paid);
 }
 
+// parity: CaravanTests.missedInstallmentsCostTrustAndBreakTheContract
 #[test]
 fn missed_installments_cost_trust_and_break_the_contract() {
     let mut s = mill_and_scribes(30.0);
@@ -40,6 +42,8 @@ fn missed_installments_cost_trust_and_break_the_contract() {
     assert!(s.trust(0, 1) < before, "and trust falls: {} from {}", s.trust(0, 1), before);
 }
 
+// parity: ContractTests.aNewSupplierIsForgivenWhileItRampsUp
+// parity: ContractTests.missesAreForgivenWithTime
 #[test]
 fn a_new_pairs_misses_weigh_a_quarter_and_fade() {
     let mut s = mill_and_scribes(30.0);
@@ -53,6 +57,8 @@ fn a_new_pairs_misses_weigh_a_quarter_and_fade() {
     assert!(s.trust(0, 1) > after_miss + 0.01, "forgiven in time: {} after 40 days", s.trust(0, 1));
 }
 
+// parity: CaravanTests.aTravellingMerchantDraftsAStandingOrder
+// parity: CaravanTests.aContractsCopyRidesWithTheCaravan
 #[test]
 fn a_wagon_that_sold_well_drafts_a_standing_order_whose_copy_rides_home() {
     let mut s = mill_and_scribes(4.0);
@@ -67,6 +73,7 @@ fn a_wagon_that_sold_well_drafts_a_standing_order_whose_copy_rides_home() {
     assert!(s.contract(c.id).in_force(), "the copy rode home: in force");
 }
 
+// parity: CaravanTests.aTownPromisesOnlyWhatItSells
 #[test]
 fn a_town_promises_only_what_it_sells_steadily() {
     let mut s = mill_and_scribes(4.0);
@@ -76,6 +83,7 @@ fn a_town_promises_only_what_it_sells_steadily() {
     assert!(s.contracts().is_empty(), "no standing order for a trickle");
 }
 
+// parity-partial: CaravanTests.goodsOwedWaitTillTheyCantAndASmallLoadGoesByPorter
 #[test]
 fn goods_owed_wait_till_they_cant_then_go() {
     let mut s = mill_and_scribes(30.0);
@@ -95,6 +103,7 @@ fn goods_owed_wait_till_they_cant_then_go() {
     assert_eq!(s.contract(id).missed, 0, "in time");
 }
 
+// parity: CaravanTests.exWorksTheBuyersCaravanCollects
 #[test]
 fn ex_works_the_buyer_collects_in_time_and_pays_from_its_purse() {
     let content = Content::new(vec![Good::new("book", 0.6, 64)], DAY);
@@ -111,6 +120,8 @@ fn ex_works_the_buyer_collects_in_time_and_pays_from_its_purse() {
     assert!(s.town(hub).stock[0] >= 64.0, "and the books are home");
 }
 
+// parity: CaravanTests.shortOfCoinTheBuyerPaysWithABill
+// parity: WarTests.aBillIsPaidWhenPresentedOnceDue
 #[test]
 fn short_of_coin_the_buyer_pays_with_a_bill_presented_once_due() {
     let mut s = mill_and_scribes(3.0);
@@ -129,6 +140,7 @@ fn short_of_coin_the_buyer_pays_with_a_bill_presented_once_due() {
     assert!(s.trust(0, 1) > 0.5, "a promise kept: trust {}", s.trust(0, 1));
 }
 
+// parity: WarTests.aBillLongUnpaidIsDishonoured
 #[test]
 fn a_bill_unpaid_past_its_grace_is_dishonoured() {
     let mut s = mill_and_scribes(2.0);

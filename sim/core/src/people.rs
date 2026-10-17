@@ -7,7 +7,7 @@
 use bevy_ecs::prelude::*;
 
 use crate::content::Content;
-use crate::rules::trading_capital;
+use crate::rules::{trading_capital, Step};
 use crate::state::*;
 
 /// What a town holds of a kind of comfort, in emeralds' worth.
@@ -44,6 +44,10 @@ fn eat(content: &Content, ledger: &mut Ledger, stock: &mut Stock, mut points: f6
         eaten += n * g.food;
     }
     eaten
+}
+
+pub fn register(schedule: &mut Schedule) {
+    schedule.add_systems(live.in_set(Step::Touch).after(crate::rules::touch::catch_up));
 }
 
 /// The town's people live the time since they were last counted: wages, comforts, mood, a home, a child.

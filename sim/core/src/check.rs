@@ -57,12 +57,18 @@ impl Society {
         Ok(())
     }
 
-    /// No town in debt.
+    /// No town in debt, and none holding less than nothing of a good.
     pub fn solvent(&mut self) -> Result<(), String> {
-        let mut towns = self.world.query::<(&Town, &Money)>();
-        match towns.iter(&self.world).find(|(_, m)| m.0 < -1e-9) {
-            Some((t, m)) => Err(format!("{} is in debt: {}", t.name, m.0)),
-            None => Ok(()),
+        let names: Vec<String> = self.content().goods.iter().map(|g| g.name.clone()).collect();
+        let mut towns = self.world.query::<(&Town, &Money, &Stock)>();
+        for (t, m, stock) in towns.iter(&self.world) {
+            if m.0 < -1e-9 {
+                return Err(format!("{} is in debt: {}", t.name, m.0));
+            }
+            if let Some(g) = stock.0.iter().position(|n| *n < -1e-9) {
+                return Err(format!("{} holds {} {}", t.name, stock.0[g], names[g]));
+            }
         }
+        Ok(())
     }
 }

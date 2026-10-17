@@ -109,6 +109,9 @@ pub struct Wagon {
     pub collecting: Vec<usize>,
     pub drafts: Vec<usize>,
     pub bills: Vec<usize>,
+    /// What it sold of each good at the far end this visit, and its takings.
+    pub sold_here: Vec<f64>,
+    pub takings_here: f64,
 }
 
 /// A town's run to another: how long the road takes one way, what a round trip costs in road food, its timetable.
@@ -125,12 +128,29 @@ pub struct Route {
     pub every_ticks: u64,
 }
 
-/// What a route has done, and its wagon if one's on the road.
+/// An idle route's plan for a wagon this look, built up by the planning steps (each module adds what it owes, wants or
+/// carries) and acted on by the deciding step: the cargo, of which owed under which contract; the Ex Works contracts
+/// it would collect for and the money for them; its worth, its stacks, and whether something can't wait.
+#[derive(Clone, Debug, Default)]
+pub struct Plan {
+    pub cargo: Vec<f64>,
+    pub contracted: Vec<(usize, f64)>,
+    pub collecting: Vec<usize>,
+    pub purse: f64,
+    pub worth: f64,
+    pub stacks: u32,
+    pub pressing: bool,
+}
+
+/// What a route has done, its wagon if one's on the road, the leg its wagon finished this look (the arriving steps
+/// act on it), and its plan this look if it's idle.
 #[derive(Component, Clone, Debug, Default)]
 pub struct RouteState {
     pub last_departure: Option<u64>,
     pub last_sold: Option<u64>,
     pub wagon: Option<Wagon>,
+    pub arrived: Option<Leg>,
+    pub plan: Option<Plan>,
     pub trips: u32,
     pub sold: f64,
     pub carried: f64,
