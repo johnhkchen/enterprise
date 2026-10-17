@@ -8,7 +8,12 @@
 //!   items while the warehouse has room.
 //! - **Work,** after the home services: a Master Toolsmith with a Mason sinks the mine deep; then the kit shares
 //!   are measured from the warehouse (the farm's hands, the hunting share, the guards armed and armoured), for the
-//!   next day's work and the next count's plan.
+//!   next day's work and the next count's plan; both before the town's Merchant buys of its lockers and trades there.
+//!
+//! Gaps: the deep mine is spent for after every home service, not in the services' registration order as the mod's
+//! `enterprise:deep_mine`; what was gathered, hunted and mined is owed in `Kits.pending`, apart from the farm's (the
+//! mod's one `holding.pending`), so `Labour.room` doesn't count crops owed of the same good and gathered food skips
+//! `Territory.storeFor` (granary, root cellar).
 
 use bevy_ecs::prelude::*;
 
@@ -27,10 +32,17 @@ use crate::works::{Kind, Works};
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
-        dig.in_set(Step::Review).after(super::territory::review),
-        work.in_set(Step::Work).after(crate::herds::tend_towns).before(super::workshop::work),
-        deep_mine.in_set(Step::Work).after(super::services::home),
-        measure.in_set(Step::Work).after(deep_mine),
+        // (after the stalls' review and before sourcing's: Bevy's free choice pinned as it ran)
+        dig.in_set(Step::Review).after(super::territory::review).after(super::jobs::review)
+            .before(super::sourcing::review),
+        // (before the earmarks: Bevy's free choice pinned as it ran)
+        work.in_set(Step::Work).after(crate::herds::tend_towns).before(super::cargo::earmark).before(super::workshop::work),
+        // The mine sunk and the shares measured in the town's touch, before its Merchant buys of its lockers, teaches
+        // and trades there (`LockerTrading.trade` touches the territory before its trades).
+        deep_mine.in_set(Step::Work).after(super::services::home).before(super::sourcing::procure_lockers)
+            .before(super::training::lessons).before(super::lockers::restock),
+        measure.in_set(Step::Work).after(deep_mine).before(super::sourcing::procure_lockers)
+            .before(super::training::lessons).before(super::lockers::restock),
     ));
 }
 
