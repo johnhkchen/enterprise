@@ -155,4 +155,7 @@ dials! {
     guard_pay: f64 = 0.5,
     guard_credit_days: f64 = 3.0,
     default_toll_rate: f64 = 0.05,
+    // Advances and refunds (`contract/Advance.java`).
+    /// The share of a contract's worth the buyer pays up front, for a draft that asks for an advance (a third).
+    advance_share: f64 = 1.0 / 3.0,
 }

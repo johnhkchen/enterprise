@@ -49,6 +49,7 @@ pub fn register(schedule: &mut Schedule) {
     crate::people::register(schedule);
     crate::rules::contracts::register(schedule);
     crate::rules::bills::register(schedule);
+    crate::rules::advances::register(schedule);
     crate::rules::arrive::register(schedule);
     crate::rules::plan::register(schedule);
     crate::rules::roster::register(schedule);

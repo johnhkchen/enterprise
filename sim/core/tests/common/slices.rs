@@ -15,4 +15,5 @@ slices! {
     roster,
     cash_book,
     territory_growth,
+    advances_and_refunds,
 }

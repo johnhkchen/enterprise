@@ -53,7 +53,7 @@ slice needs them; tick them here when they land.
 |---|---|---|---|
 | ✅ | **Utility or expected-profit decision rules:** one line per agent type | A wagon goes when its load is worth its road food (`departures`); a town buys within its budget. More of the same as slices land | In use |
 | 🔜 | **Lanchester equations:** attrition combat as supply-scaled strength | The war's outcome from soldiers, kit and food, no per-unit simulation | War |
-| 🔜 | **Principal-agent / collateral contracts:** escrow and deposits make risky shipments possible | Advances against contracts (the mod has them), deposits on consignment | Contracts (advances) / forwarder |
+| ✅ in use: advances | **Principal-agent / collateral contracts:** escrow and deposits make risky shipments possible | Advances against contracts: a share paid up front by the buyer's wagon, worked off at the same share of each delivery, owed back on a break (`advances.rs`, `rules/advances.rs`); deposits on consignment still to come | Contracts (advances) / forwarder |
 | 💭 | **Replicator dynamics:** strategies that earn more get copied | Towns' choices (what to make, which routes to run) drift toward what pays, without learning code | Maybe, later |
 
 ## Validation

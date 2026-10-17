@@ -15,6 +15,7 @@
 //! A module joins a step with its own systems in its own file (`register`), listed in `slices.rs`, so slices don't edit
 //! each other's.
 
+pub mod advances;
 pub mod arrive;
 pub mod bills;
 pub mod contracts;

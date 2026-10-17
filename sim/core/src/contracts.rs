@@ -106,9 +106,43 @@ pub struct Contract {
     /// Money paid, and money the buyer owes for goods delivered it couldn't pay for at the time.
     pub paid: f64,
     pub owing: f64,
+    /// The advance (`contract/Advance.java`): the share of the contract's worth the buyer pays up front (0: none), what
+    /// it has paid, how much of that is worked off, and what the seller owes back after the contract broke.
+    pub advance_share: f64,
+    pub advanced: f64,
+    pub recouped: f64,
+    pub refund: f64,
 }
 
+/// Sums under this are nothing (`Contract.advanceDue` and `refunds` list above 0.01; `recoupFrom` stops at 0.001).
+pub const ADVANCE_EPS: f64 = 0.01;
+pub const RECOUP_EPS: f64 = 0.001;
+
 impl Contract {
+    /// The whole contract's worth at the locked price: `Contract.worth`.
+    pub fn worth(&self) -> f64 {
+        self.quantity * self.installments as f64 * self.price
+    }
+
+    /// What the buyer has still to pay up front, while the contract stands: `Contract.advanceDue`.
+    pub fn advance_due(&self) -> f64 {
+        if !matches!(self.state, State::Drafted | State::Active) {
+            return 0.0;
+        }
+        (self.advance_share * self.worth() - self.advanced).max(0.0)
+    }
+
+    /// Of a delivery worth `price` of `items`, what's taken off for the advance already paid: its share of the price,
+    /// and on the last delivery whatever is left: `Contract.recoupFrom`.
+    pub fn recoup_from(&self, price: f64, items: f64) -> f64 {
+        let left = self.advanced - self.recouped;
+        if left <= RECOUP_EPS {
+            return 0.0;
+        }
+        let last = self.delivered + items >= self.quantity * self.installments as f64;
+        price.min(if last { left } else { left.min(price * self.advance_share) })
+    }
+
     pub fn in_force(&self) -> bool {
         self.state == State::Active
     }
@@ -195,6 +229,10 @@ impl Book {
         let known_by_seller = at_seller || both;
         let known_by_buyer = !at_seller || both;
         self.contracts.push(Contract {
+            advance_share: 0.0,
+            advanced: 0.0,
+            recouped: 0.0,
+            refund: 0.0,
             id,
             seller,
             buyer,
@@ -220,12 +258,91 @@ impl Book {
         id
     }
 
+    /// As [`Book::draft`], the buyer to pay `advance_share` of the contract's worth up front.
+    #[allow(clippy::too_many_arguments)]
+    pub fn draft_with_advance(&mut self, seller: TownId, buyer: TownId, good: GoodId, quantity: f64, price: f64,
+            start: u64, every: u64, installments: u32, incoterm: Incoterm, at_seller: bool, both: bool,
+            advance_share: f64) -> usize {
+        let id = self.draft(seller, buyer, good, quantity, price, start, every, installments, incoterm, at_seller, both);
+        self.contracts[id].advance_share = advance_share;
+        id
+    }
+
+    /// The buyer paid `emeralds` up front (coin, or a bill on itself): `ContractBook.advanced`.
+    pub fn advanced(&mut self, id: usize, emeralds: f64) {
+        self.contracts[id].advanced += emeralds;
+    }
+
+    /// Of a delivery's price, `emeralds` were taken off to work off the advance: `ContractBook.recouped`.
+    pub fn recouped(&mut self, id: usize, emeralds: f64) {
+        self.contracts[id].recouped += emeralds;
+    }
+
+    /// The seller paid back `emeralds` of an advance it hadn't worked off: `ContractBook.refunded`.
+    pub fn refunded(&mut self, id: usize, emeralds: f64) {
+        let c = &mut self.contracts[id];
+        c.refund = (c.refund - emeralds).max(0.0);
+        self.tidy();
+    }
+
+    /// What this seller holds paid up front and not yet worked off: money its contracts' work may spend.
+    pub fn advances_held(&self, seller: TownId) -> f64 {
+        self.open.iter().map(|&id| &self.contracts[id]).filter(|c| c.in_force() && c.seller == seller)
+            .map(|c| (c.advanced - c.recouped).max(0.0)).sum()
+    }
+
+    /// Contracts from this seller to this buyer with an advance still to pay.
+    pub fn advances_due(&self, seller: TownId, buyer: TownId) -> Vec<usize> {
+        self.open.iter().copied().filter(|&id| {
+            let c = &self.contracts[id];
+            c.seller == seller && c.buyer == buyer && c.advance_due() > ADVANCE_EPS
+        }).collect()
+    }
+
+    /// Contracts where this seller owes this buyer back an advance: `ContractBook.refunds`.
+    pub fn refunds(&self, seller: TownId, buyer: TownId) -> Vec<usize> {
+        self.open.iter().copied().filter(|&id| {
+            let c = &self.contracts[id];
+            c.seller == seller && c.buyer == buyer && c.refund > ADVANCE_EPS
+        }).collect()
+    }
+
+    /// The buyer owes the seller this much more for goods delivered: `ContractBook.owe`.
+    pub fn owe(&mut self, id: usize, emeralds: f64) {
+        self.contracts[id].owing += emeralds;
+    }
+
+    /// What's owed was paid (carried to the seller): `ContractBook.paidOwing`.
+    pub fn paid_owing(&mut self, id: usize, emeralds: f64) {
+        let c = &mut self.contracts[id];
+        c.owing = (c.owing - emeralds).max(0.0);
+        c.paid += emeralds;
+    }
+
+    /// Contracts where `buyer` owes `seller` for goods already delivered: `ContractBook.owing`.
+    pub fn owing(&self, seller: TownId, buyer: TownId) -> Vec<usize> {
+        self.open.iter().copied().filter(|&id| {
+            let c = &self.contracts[id];
+            c.owing > ADVANCE_EPS && c.seller == seller && c.buyer == buyer
+        }).collect()
+    }
+
+    /// A broken contract: what was paid up front and not yet worked off is owed back to the buyer.
+    fn broken(&mut self, id: usize) {
+        let c = &mut self.contracts[id];
+        let unearned = c.advanced - c.recouped;
+        if unearned > ADVANCE_EPS {
+            c.refund += unearned;
+            c.recouped = c.advanced;
+        }
+    }
+
     /// Drops contracts no longer open from the open list (finished ones that still owe money stay till paid).
     fn tidy(&mut self) {
         let contracts = &self.contracts;
         self.open.retain(|&id| {
             let c = &contracts[id];
-            matches!(c.state, State::Drafted | State::Active) || c.owing > 0.0
+            matches!(c.state, State::Drafted | State::Active) || c.owing > 0.0 || c.refund > 0.0
         });
     }
 
@@ -334,6 +451,7 @@ impl Book {
             let c = &mut self.contracts[i];
             if c.missed >= MISSES_TO_BREAK || c.buyer_missed >= MISSES_TO_BREAK {
                 c.state = State::Broken;
+                self.broken(i);
             }
         }
         self.tidy();

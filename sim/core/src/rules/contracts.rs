@@ -51,17 +51,21 @@ fn settle(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut 
             let c = &book.contracts[id];
             let n = carried.min(c.owed(now)).min(wagon.cargo[c.good]);
             let worth = n * c.price;
-            let paid = worth.min(money.0.max(0.0));
+            // What was paid up front is worked off: its share of this delivery's price.
+            let recoup = c.recoup_from(worth, n);
+            let owed_money = worth - recoup;
+            let paid = owed_money.min(money.0.max(0.0));
             wagon.cargo[c.good] -= n;
             stock.0[c.good] += n;
             post(&mut ledger, &mut cash, Side::treasury(route.to_id, &mut money.0), Side::wagon(route.seq, &mut wagon.purse),
                 paid, Reason::Contract, now, day);
-            let short = worth - paid;
+            let short = owed_money - paid;
             let by_bill = short > 1e-9 && book.trust(route.from_id, route.to_id, now, day) >= contracts::MIN_TRUST;
             if by_bill {
                 wagon.bills.push(bills.draw(route.to_id, route.from_id, short, now, day));
             }
-            book.settle(id, carried, n, paid + if by_bill { short } else { 0.0 }, if by_bill { 0.0 } else { short });
+            book.recouped(id, recoup);
+            book.settle(id, carried, n, paid + if by_bill { short } else { 0.0 } + recoup, if by_bill { 0.0 } else { short });
         }
         for id in book.open_between(route.from_id, route.to_id) {
             let c = &mut book.contracts[id];
@@ -95,12 +99,15 @@ fn collect(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut
             if n <= 0.0 {
                 continue;
             }
-            let paid = n * c.price;
+            let worth = n * c.price;
+            let recoup = c.recoup_from(worth, n);
+            let paid = worth - recoup;
             stock.0[c.good] -= n;
             wagon.cargo[c.good] += n;
             post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut money.0),
                 paid, Reason::Contract, now, content.day_ticks);
-            book.settle(id, 0.0, n, paid, 0.0);
+            book.recouped(id, recoup);
+            book.settle(id, 0.0, n, paid + recoup, 0.0);
         }
     }
 }
@@ -146,7 +153,7 @@ fn plan_collect(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut r
                 continue;
             }
             plan.collecting.push(c.id);
-            plan.purse += owed * c.price;
+            plan.purse += owed * c.price - c.recoup_from(owed * c.price, 0.0);
             plan.worth += owed * c.price;
             plan.pressing |= c.next_deadline(grace).is_some_and(|deadline| arrival + day > deadline);
         }
