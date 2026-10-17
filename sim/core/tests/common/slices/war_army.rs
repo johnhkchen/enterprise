@@ -72,8 +72,11 @@ pub fn extend(s: &mut Society, r: &mut Rng) {
                 s.muster(t, 1 + r.below(3) as usize);
             }
             1 => {
-                // Under a levy: a contract with another town, in force, its pay owed through it.
-                let buyer = r.below(towns as u64) as usize;
+                // Under a levy: a contract with the capital (where there's one), in force, its pay owed through it;
+                // with another town, its pay in the army's ledger.
+                let buyer = s.world.resource::<enterprise_core::realms::Crown>().capital
+                    .filter(|_| r.below(4) != 0)
+                    .unwrap_or_else(|| r.below(towns as u64) as usize);
                 if buyer != t {
                     let levy = s.draft(t, buyer, 0, 1.0, 0.0, 400 * DAY, DAY, 1, enterprise_core::Incoterm::Exw, true);
                     s.muster_levied(t, 1 + r.below(3) as usize, Some(levy));

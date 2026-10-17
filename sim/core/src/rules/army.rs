@@ -27,7 +27,7 @@ pub fn register(schedule: &mut Schedule) {
 /// The army's day: walkers home, then the campaign's days since the last on the front's warehouse.
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn campaign(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut army: ResMut<Army>,
-        mut ledger: ResMut<Ledger>, mut book: ResMut<Book>, places: Query<&Town>,
+        crown: Res<crate::realms::Crown>, mut ledger: ResMut<Ledger>, mut book: ResMut<Book>, places: Query<&Town>,
         mut fronts: Query<(&mut Stock, &mut Kits)>,
         mut homes: Query<(&mut People, Option<&mut Roster>, Option<&mut Lockers>)>) {
     let now = clock.now;
@@ -59,7 +59,7 @@ pub fn campaign(clock: Res<Clock>, content: Res<Content>, all: Res<Towns>, mut a
     let front_hex = hex(front);
     for _ in 0..days {
         let Ok((mut stock, mut kits)) = fronts.get_mut(front) else { return };
-        let losses = army.day(&content, &mut ledger, &mut book, &mut stock, &mut kits);
+        let losses = army.day(&content, &mut ledger, &mut book, &mut stock, &mut kits, crown.capital);
         // Fallen: gone from its town for good, which grieves.
         for soldier in losses.fallen {
             let Some(&e) = all.0.get(soldier.home) else { continue };

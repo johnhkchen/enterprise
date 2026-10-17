@@ -38,8 +38,8 @@
 //! the enemy (Sharpness or Power on a weapon, Protection on armour: the mod's `Theatre.FACTION`), as the core's kit
 //! doesn't name its enchantments, so there's no theatre to choose; Unbreaking is Unbreaking. Kit drawn and food eaten
 //! leave the world's goods (`Ledger.used`): the soldier's worn kit is the army's, not a warehouse's. Pay (0.25 a
-//! soldier-day) is owed through the soldier's levy contract while it's in force (`Book::owe`: the capital's wagons
-//! carry it home, `rules/cargo.rs`), as the mod's; a soldier with none (the core has no levy contracts yet: the crown
+//! soldier-day) is owed through the soldier's levy contract while it's in force and is its home's with the capital
+//! (`Book::owe`: the capital's wagons carry it home, `rules/cargo.rs`), as the mod's; a soldier with none (the core has no levy contracts yet: the crown
 //! slice drafts them) has it owed in the army's own pay ledger ([`Army::pay_owed`]), which the crown settles. Recruits
 //! wait at the capital (`realms::Crown`'s) until a host or the crown's wagons send them on ([`Society::embark`]); the
 //! levy's "the only one of a trade its contracts need or the crown wants trained, last" is the crown's to add. Walking
@@ -191,7 +191,7 @@ pub fn heartiness(good: &Good) -> f64 {
 }
 
 /// The foods a warehouse holds, the heartiest first, then by saturation a point, bread and the like last
-/// (`Army.heartiestFirst`); equals in the goods' order.
+/// (`Army.heartiestFirst`); equals by name, as the mod's stock lists its items by id.
 pub fn heartiest_first(content: &Content, stock: &Stock) -> Vec<GoodId> {
     let mut foods: Vec<GoodId> = (0..content.goods.len())
         .filter(|&g| content.goods[g].food > 0.0 && whole(stock.0[g]) >= 1.0)
@@ -200,6 +200,7 @@ pub fn heartiest_first(content: &Content, stock: &Stock) -> Vec<GoodId> {
     foods.sort_by(|&a, &b| {
         heartiness(&content.goods[b]).total_cmp(&heartiness(&content.goods[a]))
             .then(per_point(b).total_cmp(&per_point(a)))
+            .then(bare(&content.goods[a].name).cmp(bare(&content.goods[b].name)))
     });
     foods
 }
@@ -309,10 +310,12 @@ pub struct Worn {
 
 impl Worn {
     /// A day's wear of a piece lasting `days` (Unbreaking makes it last its level more times as long): true once it's
-    /// worn out.
+    /// worn out. The mod's running sum against 1, dust and all: summed in doubles, 1/6, 1/10, 1/24 and 1/30 fall just
+    /// short of 1 on their last day, so there a stone weapon lasts 7 days, an iron sword or bow 11, diamond armour 31,
+    /// and the core's the same.
     fn wear(&mut self, days: u32) -> bool {
         self.worn += 1.0 / (days.max(1) as f64 * (1 + self.unbreaking as u32) as f64);
-        self.worn >= 1.0 - 1e-9
+        self.worn >= 1.0
     }
 }
 
@@ -465,13 +468,15 @@ impl Army {
             if whole(stock.0[g]) < 1.0 {
                 continue;
             }
-            // The most enchanted piece there (by its enchantment, then its Unbreaking), the first of equals.
+            // The piece there with the most enchantments (the mod's `getEnchantments().size()`: its enchantment and its
+            // Unbreaking, whatever their levels), the first of equals.
+            let enchantments = |k: &crate::kit::Kit| (k.enchant_level > 0.0) as u8 + (k.unbreaking > 0) as u8;
             let mut best: Option<usize> = None;
             for (i, k) in kits.pieces.iter().enumerate() {
                 if k.good != g || k.count == 0 {
                     continue;
                 }
-                if best.is_none_or(|b| (k.enchant_level, k.unbreaking) > (kits.pieces[b].enchant_level, kits.pieces[b].unbreaking)) {
+                if best.is_none_or(|b| enchantments(k) > enchantments(&kits.pieces[b])) {
                     best = Some(i);
                 }
             }
@@ -508,8 +513,8 @@ impl Army {
     /// far as its rations go; the hungry desert at the expected rate, carried; the rest draw what kit they lack, the
     /// best there is, serve (their towns' records and pay), wear their kit, and run their risk, whose sum is the day's
     /// expected fallen, carried. Returns the day's losses, already off the army.
-    pub fn day(&mut self, content: &Content, ledger: &mut Ledger, book: &mut Book, stock: &mut Stock, kits: &mut Kits)
-            -> Losses {
+    pub fn day(&mut self, content: &Content, ledger: &mut Ledger, book: &mut Book, stock: &mut Stock, kits: &mut Kits,
+            capital: Option<TownId>) -> Losses {
         let d = &content.dials;
         let mut losses = Losses::default();
         // The day's rations, the best food first: as far as they go, the army is fed, and the heartier the meal, the
@@ -522,7 +527,7 @@ impl Army {
         let hearty = if meal.eaten <= 0.0 { 0.0 } else { meal.hearty / meal.eaten };
         self.hearty_sum += hearty * n as f64;
         self.meal_days += n as f64;
-        let fed_soldiers = whole(n as f64 * fed) as usize;
+        let fed_soldiers = (n as f64 * fed).floor() as usize; // (the mod's floor, dust and all)
         let mut hungry: Vec<bool> = (0..n).map(|i| i >= fed_soldiers).collect();
         // Deserted: the hungry's chance, summed and carried; whole deserters walk home, their kit lost to the army.
         let hungry_now = hungry.iter().filter(|h| **h).count();
@@ -584,9 +589,13 @@ impl Army {
             }
             record.strength += power * (1.0 + 0.1 * edge) * (armour_points * 0.4 + 4.0) / 10.0
                 * if hungry { 0.5 } else { 1.0 + HEARTY_STRENGTH * hearty };
-            // Its pay: owed under the levy it came by, while that's in force; else in the army's own pay ledger.
+            // Its pay: owed under the levy it came by, while that's in force and is its home's with the capital (the
+            // mod's `seller == home`, `buyer == capital`); else in the army's own pay ledger. (The mod pays through
+            // the home's first such levy in force; the core's contracts have no levy term yet to find one by: the
+            // crown's, with `Contract.levy`.)
             record.pay += soldier.pay;
-            match soldier.levy.filter(|&c| book.contracts.get(c).is_some_and(|c| c.in_force())) {
+            let levied = |c: &crate::contracts::Contract| c.in_force() && c.seller == soldier.home && Some(c.buyer) == capital;
+            match soldier.levy.filter(|&c| book.contracts.get(c).is_some_and(levied)) {
                 Some(c) => book.owe(c, soldier.pay),
                 None => *self.pay_owed.entry(soldier.home).or_default() += soldier.pay,
             }

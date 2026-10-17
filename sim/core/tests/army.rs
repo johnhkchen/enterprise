@@ -325,11 +325,12 @@ fn soldiers_draw_the_best_kit_there_is_and_wear_it_out() {
     assert_eq!((stock(&s, front, "iron_sword"), stock(&s, front, "shield")), (2.0, 0.0), "drawn from the front's");
     assert_eq!(s.army().issued.get("diamond_sword"), Some(&1));
     let worn = s.army().soldiers[1].weapon.clone().unwrap();
-    assert!((worn.worn - 0.1).abs() < 1e-12, "an iron sword lasts 10 days");
-    // An iron sword gone after 10 days, another drawn the day after.
-    s.advance(LOOK + 10 * DAY);
-    assert_eq!(stock(&s, front, "iron_sword"), 2.0, "still the first");
+    assert!((worn.worn - 0.1).abs() < 1e-12, "an iron sword's 10 days");
+    // An iron sword gone after 11 days (the mod's ten tenths summed in doubles fall just short of 1), another drawn
+    // the day after.
     s.advance(LOOK + 11 * DAY);
+    assert_eq!(stock(&s, front, "iron_sword"), 2.0, "still the first");
+    s.advance(LOOK + 12 * DAY);
     assert_eq!(stock(&s, front, "iron_sword"), 1.0, "worn out, and the next drawn");
     assert!(s.army().soldiers[1].weapon.is_some());
     let risk = army::risk(&c.dials, Some(("iron_sword", 0.0)), &[("iron_chestplate", 0.0)], true);
@@ -450,17 +451,24 @@ fn pay_is_owed_home_through_its_levy_or_the_armys_ledger() {
     let mut s = Society::new(content());
     let (home, front) = war(&mut s, 4);
     let capital = s.add_town("Capital", 0.0);
+    s.set_capital(Some(capital));
     let bread = good(s.content(), "bread");
     let levy = s.draft(home, capital, bread, 1.0, 0.0, 1000 * DAY, DAY, 1, Incoterm::Exw, true);
-    deliver(&mut s, front, "bread", 640.0);
+    // A contract of its home's with another town is no levy: its soldier's pay isn't owed through it (the mod's
+    // `buyer == capital`).
+    let other = s.add_town("Other", 0.0);
+    let not_levy = s.draft(home, other, bread, 1.0, 0.0, 1000 * DAY, DAY, 1, Incoterm::Exw, true);
+    deliver(&mut s, front, "bread", 960.0);
     assert_eq!(s.muster_levied(home, 2, Some(levy)), 2);
-    assert_eq!(s.muster(home, 2), 2);
+    assert_eq!(s.muster(home, 1), 1);
+    assert_eq!(s.muster_levied(home, 1, Some(not_levy)), 1);
     assert_eq!(s.embark(10), 4, "all four reach the front");
     s.set_front(front);
     s.advance(LOOK);
     s.advance(LOOK + 3 * DAY);
     assert!((s.contract(levy).owing - 2.0 * 3.0 * 0.25).abs() < 1e-12, "the levied two: owed under the levy");
     assert!((s.army().pay_owed[&home] - 2.0 * 3.0 * 0.25).abs() < 1e-12, "the other two: in the army's ledger");
+    assert_eq!(s.contract(not_levy).owing, 0.0, "none through a contract with another town");
     assert!((s.army().record(home).pay - 3.0).abs() < 1e-12, "12 soldier-days at 0.25");
 }
 
