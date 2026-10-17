@@ -2,11 +2,11 @@
 //!     cargo run --release --example budget
 use enterprise_core::{Content, Good, Society};
 fn main() {
-    for money in [2.0, 5.0, 10.0, 20.0, 50.0] {
+    for money in [8.4, 10.0, 16.4, 26.4, 56.4] {
         let sold = |every: f64, compound: bool| {
             let content = Content::new(vec![Good { name: "wheat".into(), value: 0.05, stack: 64 }], 24_000);
             let mut s = Society::new(content);
-            let farm = s.add_town("farm", 20.0);
+            let farm = s.add_town("farm", 20.0); s.content_mut().dials.standing_orders = false;
             let mill = s.add_town("mill", money);
             s.set_trade(farm, 0, 128.0, 0.0);
             s.set_trade(mill, 0, 0.0, 64.0);

@@ -14,6 +14,8 @@ pub enum Input {
     Advance { to: u64 },
     /// Goods handed to a town from outside the society (a player's delivery).
     Deliver { town: TownId, good: GoodId, count: f64 },
+    /// Money paid a town from outside the society (a player buying at its shops).
+    Pay { town: TownId, money: f64 },
 }
 
 /// What happened, for the host to show.

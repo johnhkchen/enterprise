@@ -112,18 +112,34 @@ fn ex_works_the_buyer_collects_in_time_and_pays_from_its_purse() {
 }
 
 #[test]
-fn a_buyer_short_of_coin_owes_and_pays_later() {
-    let mut s = mill_and_scribes(1.0);
+fn short_of_coin_the_buyer_pays_with_a_bill_presented_once_due() {
+    let mut s = mill_and_scribes(3.0);
+    s.content_mut().dials.standing_orders = false;
     s.deliver(0, 0, 640.0);
-    s.set_trade(1, 0, 0.0, 0.0); // its people use none: no income from them
-    s.deliver(1, 0, 0.0);
-    let id = s.draft(0, 1, 0, 64.0, 1.0, 0, DAY, 1, Incoterm::Ddp, true); // 64 emeralds, it has 40
+    s.set_trade(1, 0, 0.0, 0.0); // its people use none: no income from them yet
+    let id = s.draft(0, 1, 0, 64.0, 1.0, 0, DAY, 1, Incoterm::Ddp, true); // 64 emeralds; it has 40
     s.advance(DAY + DAY / 2);
     let c = s.contract(id);
-    assert!(c.delivered >= 64.0 && c.owing > 0.0, "delivered, {} owed", c.owing);
-    s.set_trade(1, 0, 0.0, 32.0); // now its people buy paper: money comes in
+    assert!(c.delivered >= 64.0 && c.owing == 0.0, "delivered, nothing owed: {} owed", c.owing);
+    let bill = s.bills().into_iter().next().expect("the rest on a bill on the scribes");
+    assert!(bill.drawee == 1 && bill.payee == 0 && (bill.amount - 24.0 * 1.02).abs() < 1e-6, "{bill:?}");
+    s.pay(1, 30.0); // a player buys at the scribes' shops: money comes in
+    s.advance(20 * DAY);
+    assert_eq!(s.bills()[0].state, enterprise_core::bills::BillState::Paid, "the mill's next wagon, once it was due, was paid");
+    assert!(s.trust(0, 1) > 0.5, "a promise kept: trust {}", s.trust(0, 1));
+}
+
+#[test]
+fn a_bill_unpaid_past_its_grace_is_dishonoured() {
+    let mut s = mill_and_scribes(2.0);
+    s.content_mut().dials.standing_orders = false;
+    s.deliver(0, 0, 640.0);
+    s.set_trade(1, 0, 0.0, 0.0); // the scribes never earn: they can't pay
+    s.draft(0, 1, 0, 64.0, 1.0, 0, DAY, 1, Incoterm::Ddp, true);
     s.advance(30 * DAY);
-    assert!(s.contract(id).owing < c.owing, "and it pays what it owes as it can: {} left", s.contract(id).owing);
+    let bill = &s.bills()[0];
+    assert_eq!(bill.state, enterprise_core::bills::BillState::Dishonoured, "{bill:?}");
+    assert!(s.trust(0, 1) < 0.5, "and trust falls: {}", s.trust(0, 1));
 }
 
 #[test]

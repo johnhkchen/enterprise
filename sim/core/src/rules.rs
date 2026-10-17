@@ -6,6 +6,7 @@
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::SingleThreadedExecutor;
 
+use crate::bills::{self, BillState, Bills};
 use crate::content::Content;
 use crate::contracts::{self, Book, Incoterm};
 use crate::messages::Output;
@@ -63,13 +64,26 @@ pub fn shelf(content: &Content, trades: &Trades, good: usize) -> f64 {
     content.dials.shelf_days * trades.uses[good]
 }
 
+/// The town's trading capital: `reserve_days` of what its people use, at its worth. Spend it on anything else and it
+/// couldn't buy the goods that earn its money.
+pub fn trading_capital(content: &Content, trades: &Trades) -> f64 {
+    trades.uses.iter().zip(&content.goods).map(|(u, g)| u * g.value).sum::<f64>() * content.dials.reserve_days
+}
+
+/// The town's free money: what it holds beyond its trading capital, less the bills on it falling due soon.
+pub fn free(content: &Content, trades: &Trades, money: &Money, bills: &Bills, town: usize, now: u64) -> f64 {
+    let ahead = now + (content.dials.budget_days * content.day_ticks as f64) as u64;
+    (money.0 - trading_capital(content, trades) - bills.due_by(town, ahead)).max(0.0)
+}
+
 /// What's left of a town's day's budget for a seller who last came `days` ago: what the daily looks it missed would
-/// have allowed, one after another (`1 - (1 - share)^days` of the free money), less what's spent today.
-pub fn left_for(content: &Content, now: u64, money: &Money, budget: &mut Budget, days: f64) -> f64 {
+/// have allowed, one after another (`1 - (1 - share)^days` of the free money), less what's spent today. The budget is
+/// set at the day's first look, from the free money then.
+pub fn left_for(content: &Content, now: u64, free: f64, budget: &mut Budget, days: f64) -> f64 {
     let share = content.dials.budget_share;
     let today = now / content.day_ticks;
     if !budget.set || budget.day != today {
-        *budget = Budget { day: today, budget: share * money.0.max(0.0), spent: 0.0, set: true };
+        *budget = Budget { day: today, budget: share * free.max(0.0), spent: 0.0, set: true };
     }
     let allowed = if days <= 1.0 || share <= 0.0 || share >= 1.0 {
         budget.budget
@@ -92,7 +106,8 @@ fn in_order(routes: &Query<(Entity, &Route, &mut RouteState)>) -> Vec<Entity> {
 /// drafted as a standing order, its copy riding home. Home: what didn't sell goes back on the shelves, the purse into
 /// the town's money, and the copies to the town (in force once both hold one).
 #[allow(clippy::too_many_arguments)]
-fn arrivals(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut outbox: ResMut<Outbox>,
+fn arrivals(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
+        mut outbox: ResMut<Outbox>,
         mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<(&mut Stock, &mut Money, &Trades, &mut Budget)>) {
     let now = clock.now;
@@ -111,13 +126,41 @@ fn arrivals(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mu
             for id in &wagon.drafts {
                 book.deliver_copy(*id, route.from_id);
             }
+            bills.home(&wagon.bills, route.from_id);
             state.trips += 1;
             outbox.0.push(Output::WagonHome { route: route.seq, takings: wagon.purse });
             continue;
         }
         let (mut stock, mut money, trades, mut budget) = towns.get_mut(route.to).expect("the far end");
         let mut wagon = state.wagon.take().unwrap();
-        // Under contract first: delivered whatever its shelf holds, at the locked price.
+        // Bills the wagon carries on this town, presented: it pays the due ones it can, whole.
+        let carried_bills = std::mem::take(&mut wagon.bills);
+        for id in carried_bills {
+            let b = &mut bills.bills[id];
+            if b.drawee != route.to_id || b.state == BillState::Paid {
+                wagon.bills.push(id);
+                continue;
+            }
+            if b.due <= now && money.0 >= b.amount {
+                money.0 -= b.amount;
+                wagon.purse += b.amount;
+                if b.state == BillState::Outstanding {
+                    book.kept(b.drawee, b.payee, bills::HONOURED_WEIGHT, now, day);
+                }
+                b.state = BillState::Paid;
+                continue;
+            }
+            // Its grace runs from the day it's first put to it.
+            let presented = *b.presented.get_or_insert(now);
+            if b.state == BillState::Outstanding && now > b.due.max(presented) + Bills::grace(b, day) {
+                b.state = BillState::Dishonoured;
+                book.missed(b.drawee, b.payee, 1.0, now, day);
+            }
+            wagon.bills.push(id);
+        }
+        bills.tidy();
+        // Under contract first: delivered whatever its shelf holds, at the locked price. What it can't pay in coin it
+        // pays with a bill on itself, if they trust each other; else it owes it.
         for (id, carried) in std::mem::take(&mut wagon.contracted) {
             let c = &book.contracts[id];
             let n = carried.min(c.owed(now)).min(wagon.cargo[c.good]);
@@ -127,7 +170,12 @@ fn arrivals(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mu
             stock.0[c.good] += n;
             money.0 -= paid;
             wagon.purse += paid;
-            book.settle(id, carried, n, paid, worth - paid);
+            let short = worth - paid;
+            let by_bill = short > 1e-9 && book.trust(route.from_id, route.to_id, now, day) >= contracts::MIN_TRUST;
+            if by_bill {
+                wagon.bills.push(bills.draw(route.to_id, route.from_id, short, now, day));
+            }
+            book.settle(id, carried, n, paid + if by_bill { short } else { 0.0 }, if by_bill { 0.0 } else { short });
         }
         // What it owes from before, as far as it can now.
         for id in book.open_between(route.from_id, route.to_id) {
@@ -165,7 +213,8 @@ fn arrivals(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mu
             }
             let price = content.goods[g].value;
             let room = (shelf(&content, trades, g) - stock.0[g]).max(0.0);
-            let can = left_for(&content, now, &money, &mut budget, days).min(money.0.max(0.0)); // never beyond what it holds
+            let free_money = free(&content, trades, &money, &bills, route.to_id, now);
+            let can = left_for(&content, now, free_money, &mut budget, days).min(money.0.max(0.0)); // never beyond what it holds
             let n = wagon.cargo[g].min(room).min((can / price).floor()).max(0.0);
             if n <= 0.0 {
                 continue;
@@ -209,7 +258,8 @@ fn arrivals(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mu
 /// far end's people use, what home can spare beyond its own shelf, up to the room on the far end's shelf, in the
 /// wagon's slots. What's owed and not pressing rides along, and counts toward the load.
 #[allow(clippy::too_many_arguments)]
-fn departures(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut ledger: ResMut<Ledger>,
+fn departures(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
+        mut ledger: ResMut<Ledger>,
         mut outbox: ResMut<Outbox>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<(&mut Stock, &mut Money, &Trades, &mut Budget)>) {
     let now = clock.now;
@@ -278,6 +328,11 @@ fn departures(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, 
             stacks += (going / stack).ceil() as u32;
             worth += going * content.goods[g].value;
         }
+        // Bills it holds on the far end, due by the time it's there: to present (collecting them is worth the trip).
+        worth += bills.open.iter().map(|&id| &bills.bills[id])
+            .filter(|b| b.held == bills::Held::Town(route.from_id) && b.payee == route.from_id && b.drawee == route.to_id
+                && b.due <= arrival)
+            .map(|b| b.amount).sum::<f64>();
         let full = stacks as f64 >= d.wagon_full * d.wagon_slots as f64;
         let on_its_day = state.last_departure.map_or(true, |t| now - t >= route.every_ticks);
         let pays = worth >= route.road_cost;
@@ -294,7 +349,9 @@ fn departures(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, 
         ledger.road += route.road_cost;
         state.last_departure = Some(now);
         state.carried += cargo.iter().sum::<f64>();
-        state.wagon = Some(Wagon { cargo, purse, leg: Leg::Out, arrives: arrival, contracted, collecting, drafts: Vec::new() });
+        let papers = bills.take_to_present(route.from_id, route.to_id, arrival);
+        state.wagon = Some(Wagon { cargo, purse, leg: Leg::Out, arrives: arrival, contracted, collecting,
+            drafts: Vec::new(), bills: papers });
         outbox.0.push(Output::WagonLeft { route: route.seq, stacks, worth });
     }
 }

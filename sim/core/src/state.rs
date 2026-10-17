@@ -86,6 +86,7 @@ pub struct Wagon {
     pub contracted: Vec<(usize, f64)>,
     pub collecting: Vec<usize>,
     pub drafts: Vec<usize>,
+    pub bills: Vec<usize>,
 }
 
 /// A town's run to another: how long the road takes one way, what a round trip costs in road food, its timetable.

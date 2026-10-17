@@ -43,6 +43,7 @@ impl Society {
         world.insert_resource(Outbox::default());
         world.insert_resource(Towns::default());
         world.insert_resource(Book::default());
+        world.insert_resource(crate::bills::Bills::default());
         Society { world, look: look_schedule(), towns: Vec::new(), routes: Vec::new() }
     }
 
@@ -133,12 +134,23 @@ impl Society {
         });
     }
 
+    /// Money paid a town from outside the society (a player buying at its shops).
+    pub fn pay(&mut self, town: TownId, money: f64) {
+        let e = self.towns[town];
+        self.world.get_mut::<Money>(e).expect("a town").0 += money;
+        self.world.resource_mut::<Ledger>().income += money;
+    }
+
     /// Applies one happening and returns what came of it.
     pub fn apply(&mut self, input: &Input) -> Vec<Output> {
         match *input {
             Input::Advance { to } => self.advance(to),
             Input::Deliver { town, good, count } => {
                 self.deliver(town, good, count);
+                Vec::new()
+            }
+            Input::Pay { town, money } => {
+                self.pay(town, money);
                 Vec::new()
             }
         }
@@ -169,6 +181,10 @@ impl Society {
 
     pub fn contract(&self, id: usize) -> Contract {
         self.world.resource::<Book>().contracts[id].clone()
+    }
+
+    pub fn bills(&self) -> Vec<crate::bills::Bill> {
+        self.world.resource::<crate::bills::Bills>().bills.clone()
     }
 
     pub fn contracts(&self) -> Vec<Contract> {

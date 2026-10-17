@@ -31,12 +31,16 @@ pub struct Dials {
     pub look_ticks: u64,
     /// A wagon that sold a good well drafts a standing order for it.
     pub standing_orders: bool,
+    /// Days of what its people use, at its worth, a town keeps back from spending: its trading capital.
+    pub reserve_days: f64,
+    /// Bills on a town falling due this many days ahead aren't free money.
+    pub budget_days: f64,
 }
 
 impl Default for Dials {
     fn default() -> Self {
         Dials { shelf_days: 5.0, budget_share: 0.5, max_budget_days: 6.0, wagon_full: 0.75, wagon_slots: 27, look_ticks: 1200,
-            standing_orders: true }
+            standing_orders: true, reserve_days: 2.0, budget_days: 3.0 }
     }
 }
 

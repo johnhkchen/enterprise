@@ -44,10 +44,11 @@ fn sold(every: f64, money: f64, compounding: bool) -> f64 {
 fn with_cash_enough_a_wagon_every_four_days_sells_what_daily_ones_would() {
     // A buyer spends half its free money a day. One that a wagon reaches every four days allows it what the four
     // daily looks would have, one after another: without that it would buy a quarter less.
-    let daily = sold(1.0, 20.0, true);
-    let four = sold(4.0, 20.0, true);
+    // (the mill keeps 6.4 emeralds back, two days of what its people use: its trading capital)
+    let daily = sold(1.0, 26.4, true);
+    let four = sold(4.0, 26.4, true);
     assert!(four >= 0.9 * daily, "four-day wagons sell {four}, daily ones {daily}");
-    let without = sold(4.0, 20.0, false);
+    let without = sold(4.0, 26.4, false);
     assert!(without < 0.8 * daily, "and without it they don't: {without} against {daily}");
 }
 
@@ -56,10 +57,10 @@ fn a_buyer_short_of_cash_takes_less_from_fewer_wagons() {
     // Its money goes round: what it pays the wagon comes back as its people buy what it bought. Daily wagons meet
     // that money every day; one every four days meets it once, and a buyer holding 2 emeralds can't pay for four
     // days of wheat at once. Fewer, fuller wagons need buyers with working capital (or credit, or consignment).
-    let daily = sold(1.0, 2.0, true);
-    let four = sold(4.0, 2.0, true);
+    let daily = sold(1.0, 8.4, true);
+    let four = sold(4.0, 8.4, true);
     assert!(four < 0.7 * daily, "four-day wagons sell {four}, daily ones {daily}");
-    assert!(four > sold(4.0, 2.0, false), "though the compounding still helps");
+    assert!(four > sold(4.0, 8.4, false), "though the compounding still helps");
 }
 
 #[test]
