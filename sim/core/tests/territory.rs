@@ -30,15 +30,13 @@ fn society() -> Society {
 fn the_home_hex_first_then_growth_with_culture() {
     let mut s = society();
     let t = town_of_five(&mut s, "Meadowworth", 3.0, 3.0);
+    // Its first count is a day's culture: home free, 5 culture buys the next hex (5 x 1 held).
     assert!(s.claim(t));
     let home = Hex::at(3.0, 3.0);
-    assert_eq!(s.holding(t).hexes, [home], "the home hex at its first count");
-    s.advance(DAY);
-    // Home free; 5 culture buys the next hex (5 x 1 held).
     assert_eq!(s.holding(t).hexes.len(), 2, "home plus one");
     assert_eq!(s.holding(t).hexes[0], home, "the home hex is the bell's");
     assert_eq!(s.holding(t).culture, 0.0);
-    s.advance(3 * DAY);
+    s.advance(2 * DAY);
     // 10 more culture buys a third hex (5 x 2 held).
     assert_eq!(s.holding(t).hexes.len(), 3, "a third hex after two more days");
 }
@@ -48,8 +46,9 @@ fn a_town_claims_its_home_at_its_first_look_without_being_asked() {
     let mut s = society();
     let t = town_of_five(&mut s, "Meadowworth", 3.0, 3.0);
     s.advance(DAY / 2);
-    assert_eq!(s.holding(t).hexes, [Hex::at(3.0, 3.0)]);
+    assert_eq!(s.holding(t).hexes[0], Hex::at(3.0, 3.0));
     assert_eq!(s.hex_owner(Hex::at(3.0, 3.0)), Some(t));
+    assert_eq!(s.holding(t).hexes.len(), 2, "a first count is a day's culture, which buys a hex");
 }
 
 #[test]
@@ -64,12 +63,14 @@ fn culture_follows_mood_confinement_and_works() {
     let t = town_of_five(&mut s, "Meadowworth", 3.0, 3.0);
     s.set_confined(t, 2);
     s.claim(t);
+    assert!((s.holding(t).culture - 3.2).abs() < 1e-9, "a first count: {}", s.holding(t).culture);
     s.advance(DAY);
-    assert!((s.holding(t).culture - 3.2).abs() < 1e-9, "{}", s.holding(t).culture);
+    assert_eq!(s.holding(t).hexes.len(), 2, "6.4 buys one hex (5)");
+    assert!((s.holding(t).culture - 1.4).abs() < 1e-9, "{}", s.holding(t).culture);
     s.set_culture_extras(t, 6.0);
-    s.advance(2 * DAY);
-    assert_eq!(s.holding(t).hexes.len(), 2, "3.2 + 9.2 = 12.4 buys one hex (5), not a second (10)");
-    assert!((s.holding(t).culture - 7.4).abs() < 1e-9, "{}", s.holding(t).culture);
+    s.advance(3 * DAY);
+    assert_eq!(s.holding(t).hexes.len(), 3, "1.4 + 2 x 9.2 = 19.8 buys a second (10), not a third (15)");
+    assert!((s.holding(t).culture - 9.8).abs() < 1e-9, "{}", s.holding(t).culture);
 }
 
 // parity: TerritoryTests.growthStopsAtTwoRings
@@ -168,12 +169,23 @@ fn unpaid_guards_desert_unless_their_post_takes_tolls() {
 
 #[test]
 fn the_guards_posted_first_stay_longest() {
-    let (mut s, t) = garrison(2.0, 64.0, 4); // food for a third of a day's 24 points
-    let posts = s.holding(t).posts.clone();
+    // Four guards are owed 2 a day; with 1 to pay them, half stay: the first two posted, by q then r.
+    let (mut s, t) = garrison(64.0, 1.0, 4);
+    let mut posts = s.holding(t).hexes;
+    posts.sort_by_key(|x| (x.q, x.r));
+    assert_eq!(s.holding(t).posts, posts, "posted by q, then r");
     s.advance(DAY);
-    let left = s.holding(t).posts;
-    assert!(left.len() < 4);
-    assert_eq!(left, posts[..left.len()], "the earliest posted stay");
+    assert_eq!(s.holding(t).posts, posts[..2], "the earliest posted stay");
+    assert_eq!(s.deserted(t), 2);
+}
+
+#[test]
+fn guards_eat_a_full_meal_or_nothing() {
+    // 2 bread (10 points) against the 24 four guards eat a day: the warehouse feeds none, and keeps its bread.
+    let (mut s, t) = garrison(2.0, 64.0, 4);
+    s.advance(DAY);
+    assert_eq!(s.guards(t), 0, "all four go");
+    assert_eq!(s.town(t).stock[BREAD], 2.0, "and the bread stays");
 }
 
 // parity: LabourTests.handsStandWatchForTheirFood

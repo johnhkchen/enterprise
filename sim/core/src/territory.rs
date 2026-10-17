@@ -19,7 +19,8 @@
 //! credited to the next day. The bell's position isn't kept, only its hex: growth picks the unclaimed neighbour
 //! nearest the home hex's centre. Wall, library and caravanserai culture comes in as a daily figure the host sets
 //! (`set_culture_extras`). The mod's `tollIncomeYesterday` is the tolls taken since the day before last's pay. Tolls are
-//! paid out of a wagon's purse in whole coins of the host's unit, at once (the mod owes them until the next touch).
+//! reckoned in spurs (the coins a wagon carries at the mint's rate, the fee in spurs, the toll floored in spurs, as in
+//! the mod) and paid out of a wagon's purse at once (the mod owes them until the next touch).
 
 use std::collections::BTreeMap;
 
@@ -62,7 +63,7 @@ pub struct Holding {
     pub posts: Vec<Hex>,
     /// Its toll as a share of the coins a wagon carries; the default dial if never set.
     pub toll_rate: Option<f64>,
-    /// A handling fee a wagon pays at its posts whatever it carries.
+    /// A handling fee a wagon pays at its posts whatever it carries, in spurs.
     pub passage_fee: f64,
     /// Guards who deserted, in all.
     pub deserted: u32,
@@ -110,6 +111,24 @@ impl Territory {
         culture_per_hex * self.holdings.get(&town).map_or(1, |h| h.hexes.len().max(1)) as f64
     }
 
+    /// A town's count (`Territory.afterCensus`): claims its home hex if nobody holds it; if home is its own, adds
+    /// culture for `days` (its free villagers 1 each, confined ones a tenth, its works' daily figure) times its mood's
+    /// factor, and grows.
+    #[allow(clippy::too_many_arguments)]
+    pub fn count(&mut self, town: TownId, home: Hex, villagers: f64, mood: f64, days: f64, now: u64,
+            culture_per_hex: f64, rings: i32) {
+        self.claim(town, home);
+        self.holdings.entry(town).or_default().reviewed = Some(now);
+        if self.owner(home) != Some(town) {
+            return;
+        }
+        let h = self.holdings.get_mut(&town).unwrap();
+        let confined = (h.confined as f64).min(villagers);
+        let value = (villagers - confined) + CONFINED_WEIGHT * confined;
+        h.culture += (value + h.extra_culture) * days * culture_factor(mood);
+        self.grow(town, home, culture_per_hex, rings);
+    }
+
     /// Spends a town's culture on the nearest unclaimed neighbouring hexes, one at a time (`Territory.grow`): within
     /// `rings` of `home`, nearest home's centre, then lowest q, then lowest r.
     pub fn grow(&mut self, town: TownId, home: Hex, culture_per_hex: f64, rings: i32) {
@@ -131,7 +150,7 @@ impl Territory {
         }
     }
 
-    /// The toll each owner takes of a wagon carrying `carried` coins over `path`, in the order it crosses their land
+    /// The toll each owner takes of a wagon carrying `carried` spurs over `path`, in the order it crosses their land
     /// (`Caravans.payTolls`): the route's own `ends` take none; an owner is paid once, if one of its posts is on the
     /// path, `min(carried, floor(carried * rate + fee))` of what's left after the owners before it.
     pub fn tolls_due(&self, ends: &[TownId], path: &[Hex], carried: f64, default_rate: f64) -> Vec<(TownId, f64)> {
@@ -164,14 +183,21 @@ impl Territory {
 
 /// Host calls.
 impl Society {
-    /// The town claims the hex it stands in, as at its first count, if nobody holds it. False if it isn't placed or
-    /// the hex is taken. Its reviews (culture) count from now.
+    /// The town claims the hex it stands in if nobody holds it. False if it isn't placed or the hex is taken. If it
+    /// was never counted, this is its first count: a day's culture, and the hexes it buys (`Territory.afterCensus`).
     pub fn claim(&mut self, town: TownId) -> bool {
         let Some(home) = self.town_hex(town) else { return false };
         let now = self.now();
+        let (villagers, mood) = {
+            let p = self.world.get::<crate::state::People>(self.towns[town]).expect("a town");
+            (p.villagers, p.mood)
+        };
+        let (per_hex, rings) = (self.content().dials.culture_per_hex, self.content().dials.max_rings as i32);
         let mut t = self.world.resource_mut::<Territory>();
         let claimed = t.claim(town, home);
-        t.holdings.entry(town).or_default().reviewed.get_or_insert(now);
+        if t.holdings.get(&town).and_then(|h| h.reviewed).is_none() {
+            t.count(town, home, villagers, mood, 1.0, now, per_hex, rings);
+        }
         claimed
     }
 
@@ -211,9 +237,11 @@ impl Society {
         h.posts = posts;
     }
 
-    /// Guards on the first `n` of the town's hexes (`Territory.setGuards`).
+    /// Guards on the first `n` of the town's hexes by q, then r (`Territory.setGuards` over `hexes`).
     pub fn set_guards(&mut self, town: TownId, n: usize) {
-        let hexes: Vec<Hex> = self.holding(town).hexes.into_iter().take(n).collect();
+        let mut hexes = self.holding(town).hexes;
+        hexes.sort_by_key(|x| (x.q, x.r));
+        hexes.truncate(n);
         self.set_posts(town, &hexes);
     }
 
@@ -243,7 +271,7 @@ impl Society {
         self.holding(town).toll_rate.unwrap_or(default)
     }
 
-    /// Sets the town's handling fee at its posts.
+    /// Sets the town's handling fee at its posts, in spurs.
     pub fn set_passage_fee(&mut self, town: TownId, fee: f64) {
         self.world.resource_mut::<Territory>().holdings.entry(town).or_default().passage_fee = fee.max(0.0);
     }
@@ -258,7 +286,7 @@ impl Society {
         self.world.resource_mut::<Territory>().holdings.entry(town).or_default().extra_culture = per_day.max(0.0);
     }
 
-    /// The tolls a wagon carrying `carried` coins over `path` between two towns would pay.
+    /// The tolls, in spurs, a wagon carrying `carried` spurs over `path` between two towns would pay.
     pub fn tolls_for(&self, from: TownId, to: TownId, path: &[Hex], carried: f64) -> Vec<(TownId, f64)> {
         self.territory().tolls_due(&[from, to], path, carried, self.content().dials.default_toll_rate)
     }

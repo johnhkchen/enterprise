@@ -18,8 +18,9 @@ pub fn register(schedule: &mut Schedule) {
     ));
 }
 
-/// A town claims its home hex at its first count; each day after, its culture grows by its people's worth (and its
-/// works') times the days and its mood's factor, and buys the hexes it can.
+/// A town's count, once a day (`Territory.afterCensus`): it claims its home hex, then its culture grows by its
+/// people's worth (and its works') times the days since and its mood's factor, and buys the hexes it can. A first
+/// count counts as one day (`CensusTaker`).
 pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut territory: ResMut<Territory>,
         q: Query<(&Town, &People)>) {
     let (now, day) = (clock.now, content.day_ticks);
@@ -27,37 +28,29 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut t
     for &e in &towns.0 {
         let Ok((town, people)) = q.get(e) else { continue };
         let Some(home) = town.hex else { continue };
-        let id = town.id;
-        let Some(last) = territory.holdings.entry(id).or_default().reviewed else {
-            territory.claim(id, home);
-            territory.holdings.get_mut(&id).unwrap().reviewed = Some(now);
-            continue;
+        let days = match territory.holdings.get(&town.id).and_then(|h| h.reviewed) {
+            None => 1.0,
+            Some(last) if now >= last + day => (now - last) as f64 / day as f64,
+            Some(_) => continue,
         };
-        if now < last + day {
-            continue;
-        }
-        territory.holdings.get_mut(&id).unwrap().reviewed = Some(now);
-        territory.claim(id, home);
-        if territory.owner(home) != Some(id) {
-            continue;
-        }
-        let days = (now - last) as f64 / day as f64;
-        let h = territory.holdings.get_mut(&id).unwrap();
-        let confined = (h.confined as f64).min(people.villagers);
-        let value = (people.villagers - confined) + CONFINED_WEIGHT * confined;
-        h.culture += (value + h.extra_culture) * days * culture_factor(people.mood);
-        territory.grow(id, home, d.culture_per_hex, d.max_rings as i32);
+        territory.count(town.id, home, people.villagers, people.mood, days, now, d.culture_per_hex, d.max_rings as i32);
     }
 }
 
-/// Eats `points` of food from the warehouse, whole items in the order of the goods; returns the points eaten.
+/// Eats at least `points` of food from the warehouse, whole items in the order of the goods; returns the points
+/// eaten. Nothing at all if it holds too little (`MerchantStock.eat`).
 fn eat(content: &Content, ledger: &mut Ledger, stock: &mut Stock, mut points: f64) -> f64 {
+    let whole = |x: f64| x.floor().max(0.0);
+    let held: f64 = content.goods.iter().enumerate().filter(|(_, g)| g.food > 0.0).map(|(i, g)| whole(stock.0[i]) * g.food).sum();
+    if points <= 0.0 || held < points {
+        return 0.0;
+    }
     let mut eaten = 0.0;
     for (i, g) in content.goods.iter().enumerate() {
         if points <= 0.0 || g.food <= 0.0 {
             continue;
         }
-        let n = stock.0[i].min((points / g.food).ceil());
+        let n = whole(stock.0[i]).min((points / g.food).ceil());
         stock.0[i] -= n;
         ledger.used[i] += n;
         points -= n * g.food;
@@ -107,7 +100,7 @@ pub fn upkeep(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut t
         }
         let mut paid = 1.0;
         if pay > 0.0 {
-            let taken = pay.min(money.0.floor().max(0.0));
+            let taken = pay.min(money.0.max(0.0));
             post(&mut ledger, &mut book, Side::treasury(town.id, &mut money.0), Side::outside(), taken,
                 Reason::Other("guards".into()), now, day);
             paid = (taken / pay).min(1.0);
@@ -134,12 +127,13 @@ pub fn upkeep(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut t
 }
 
 /// A wagon that has got home pays each owner of posted land its path crosses its toll out of its purse, before the
-/// purse is banked (`Caravans.payTolls`).
+/// purse is banked (`Caravans.payTolls`): reckoned in spurs at the mint's rate, as the mod's coins are.
 #[allow(clippy::too_many_arguments)]
 pub fn tolls(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut territory: ResMut<Territory>,
-        mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, mut money: Query<&mut Money>,
+        mint: Res<crate::mint::Mint>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, mut money: Query<&mut Money>,
         mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>) {
     let (now, day) = (clock.now, content.day_ticks);
+    let spurs = mint.rate(now, day);
     let order = in_order(routes.iter().map(|(e, r, _, _)| (e, r)));
     for entity in order {
         let (_, route, mut state, path) = routes.get_mut(entity).unwrap();
@@ -148,8 +142,10 @@ pub fn tolls(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut te
             continue;
         }
         let Some(wagon) = state.wagon.as_mut() else { continue };
-        let due = territory.tolls_due(&[route.from_id, route.to_id], &path.0, wagon.purse, content.dials.default_toll_rate);
+        let carried = wagon.purse * spurs;
+        let due = territory.tolls_due(&[route.from_id, route.to_id], &path.0, carried, content.dials.default_toll_rate);
         for (owner, toll) in due {
+            let toll = (toll / spurs).min(wagon.purse);
             let Ok(mut m) = money.get_mut(towns.0[owner]) else { continue };
             post(&mut ledger, &mut book, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(owner, &mut m.0), toll,
                 Reason::Other("toll".into()), now, day);
