@@ -37,7 +37,7 @@ fn refund_reason() -> Reason {
 /// purse (the rest by a bill on the buyer where trusted); and advances the town here owes home are paid into the purse
 /// from what it can spare.
 #[allow(clippy::too_many_arguments)]
-fn advances_papers(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
+pub(crate) fn advances_papers(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<TownData>) {
     let now = clock.now;

@@ -157,6 +157,11 @@ pub struct Wagon {
     /// feed it; and since when it has waited at the far end for food it couldn't get (the arriving steps leave it be).
     pub provisions: f64,
     pub waiting_since: Option<u64>,
+    /// Crates and their papers (`cargo.rs`): the shipments aboard (crated goods, not in `cargo`), the empty crates it
+    /// carries home, and the lots for sale opened at the far end this visit (good, count).
+    pub shipments: Vec<crate::cargo::Shipment>,
+    pub empties: u32,
+    pub lots: Vec<(usize, f64)>,
 }
 
 /// A town's run to another: how long the road takes one way, what a round trip costs in road food, its timetable.
@@ -194,6 +199,8 @@ pub struct Plan {
     pub worth: f64,
     pub stacks: u32,
     pub pressing: bool,
+    /// Crated goods it would take from home's crates (`cargo.rs`): owed under contract, not in `cargo`.
+    pub shipments: Vec<crate::cargo::Shipment>,
 }
 
 /// What a route has done, its wagon if one's on the road, the leg its wagon finished this look (the arriving steps

@@ -376,7 +376,8 @@ impl Society {
     /// What the town keeps back of a good for what it owes under harvest contracts: kept from its spot sales and its
     /// workshop (the workshop's own hook is [`Society::set_aside`]).
     pub fn set_aside_for_harvest(&self, town: TownId, good: GoodId) -> f64 {
-        set_aside(self.world.resource::<Book>(), town, good, self.now(), self.content().day_ticks)
+        let store = self.world.get::<crate::cargo::Shipments>(self.towns[town]);
+        crate::cargo::set_aside(self.world.resource::<Book>(), store, town, good, self.now(), self.content().day_ticks)
     }
 
     /// A rent's price at a hub now: its capital times how short the markets the hub's wagons reach (and the hub itself)

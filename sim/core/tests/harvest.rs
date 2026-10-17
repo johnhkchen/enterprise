@@ -188,7 +188,8 @@ fn owed_crop_is_set_aside_from_spot_sales() {
     assert_eq!(without.set_aside_for_harvest(0, 0), 0.0);
     with.advance(DAY / 2);
     without.advance(DAY / 2);
-    let kept = with.town(0).stock[0];
+    // Crated for the buyer (`cargo.rs`), out of the stock's reach, or loose: none of it sold.
+    let kept = with.town(0).stock[0] + with.shipments(0).held.iter().map(|s| s.count).sum::<f64>();
     assert_eq!(kept, 200.0, "owed crop stays in the store ({aside} owed, 200 held): {kept} left");
     assert!(without.town(0).stock[0] < kept, "and without the contract it sold: {} left", without.town(0).stock[0]);
 }

@@ -35,7 +35,8 @@ fn start(content: Res<Content>, mut routes: Query<&mut RouteState>) {
 /// shelf up to the room on theirs; all in the wagon's slots. The load is worth what the far end is expected to pay:
 /// the bargained price at the middle of each good's batch (`bargain.rs`), and a good it won't deal in stays home.
 fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut routes: Query<(&Route, &mut RouteState)>,
-        towns: Query<(&Stock, &Trades, &People)>, rosters: Query<&crate::roster::Roster>) {
+        towns: Query<(&Stock, &Trades, &People)>, rosters: Query<&crate::roster::Roster>,
+        stores: Query<&crate::cargo::Shipments>) {
     let d = &content.dials;
     let n = content.goods.len();
     let mut order: Vec<usize> = (0..n).collect();
@@ -47,10 +48,10 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut rout
         let seller = crate::bargain::merchant_level(rosters.get(route.from).ok());
         let buyer = crate::bargain::merchant_level(rosters.get(route.to).ok());
         // What the town owes under harvest contracts by the end of the next window, beyond what this plan already
-        // carries to the contract's buyer, isn't for sale (`ForwardSales.setAside`).
+        // carries to the contract's buyer and what's crated for them, isn't for sale (`ForwardSales.setAside`).
         let mut aside = vec![0.0; n];
         for g in 0..n {
-            aside[g] = crate::harvest::set_aside(&book, route.from_id, g, clock.now, content.day_ticks);
+            aside[g] = crate::cargo::set_aside(&book, stores.get(route.from).ok(), route.from_id, g, clock.now, content.day_ticks);
         }
         for &(id, taken) in &plan.contracted {
             let c = &book.contracts[id];
@@ -59,6 +60,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut rout
             }
         }
         let mut stacks: u32 = (0..n).map(|g| (plan.cargo[g] / content.goods[g].stack as f64).ceil() as u32).sum();
+        stacks += plan.shipments.iter().map(|s| s.stacks(&content)).sum::<u32>(); // home's crates (`rules/cargo.rs`)
         let mut loaded_kind = vec![0.0; content.comforts.len()];
         for &g in &order {
             if stacks >= d.wagon_slots {
@@ -102,7 +104,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut rout
 /// can pay for the road and what it collects (where content has food, the road's food: `rules/road.rs`). Leaving, it
 /// takes its cargo, the money for its collections and the bills home holds on the far end.
 #[allow(clippy::too_many_arguments)]
-fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
+pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut outbox: ResMut<Outbox>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<TownData>, rosters: Query<&crate::roster::Roster>) {
     let now = clock.now;
@@ -149,6 +151,8 @@ fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut 
             plan.cargo[g] = owed[g] + (plan.cargo[g] - owed[g]).min(left[g].max(0.0)).max(0.0).floor();
             stacks += (plan.cargo[g] / content.goods[g].stack as f64).ceil() as u32;
         }
+        // Home's crates it takes (`rules/cargo.rs`).
+        stacks += plan.shipments.iter().map(|s| s.stacks(&content)).sum::<u32>();
         plan.stacks = stacks;
         let full = plan.stacks as f64 >= d.wagon_full * d.wagon_slots as f64;
         let on_its_day = state.last_departure.map_or(true, |t| now - t >= route.every_ticks);
@@ -214,6 +218,7 @@ fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut 
             collecting: plan.collecting,
             bills: papers,
             provisions: provision.map_or(0.0, |p| p.provisions),
+            shipments: plan.shipments,
             ..Default::default()
         });
         outbox.0.push(Output::WagonLeft { route: route.seq, stacks: plan.stacks, worth: plan.worth });

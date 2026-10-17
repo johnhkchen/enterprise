@@ -26,4 +26,5 @@ slices! {
     harvest_and_rents,
     jobs,
     chokepoints,
+    crates_and_papers,
 }

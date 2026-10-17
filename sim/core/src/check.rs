@@ -48,12 +48,22 @@ impl Society {
                 goods[*g] += n;
             }
         }
+        // Goods crated in the towns' warehouses (`cargo.rs`).
+        let mut stores = self.world.query::<&crate::cargo::Shipments>();
+        for store in stores.iter(&self.world) {
+            for s in &store.held {
+                goods[s.good] += s.count;
+            }
+        }
         let mut routes = self.world.query::<(&Route, &RouteState)>();
         for (route, state) in routes.iter(&self.world) {
             let purse = state.wagon.as_ref().map_or(0.0, |w| w.purse);
             if let Some(w) = &state.wagon {
                 for g in 0..n {
                     goods[g] += w.cargo[g];
+                }
+                for s in &w.shipments {
+                    goods[s.good] += s.count;
                 }
                 money += w.purse;
             }

@@ -117,7 +117,9 @@ fn ex_works_the_buyer_collects_in_time_and_pays_from_its_purse() {
     s.advance(6 * DAY);
     let c = s.contract(id);
     assert!(c.delivered >= 64.0 && c.buyer_missed == 0, "collected: {} delivered", c.delivered);
-    assert!(s.town(town).money >= 5.0 + 32.0 - 1e-9, "the town paid 32 emeralds: {}", s.town(town).money);
+    assert!((c.paid - 32.0).abs() < 1e-9, "paid at the locked price: {}", c.paid);
+    // The town crated them for the hub (`cargo.rs`): a new crate, and a scribe for the bill of lading (no paper).
+    assert!((s.town(town).money - (5.0 + 32.0 - 0.125 - 0.1)).abs() < 1e-9, "the town took 32 emeralds: {}", s.town(town).money);
     assert!(s.town(hub).stock[0] >= 64.0, "and the books are home");
 }
 

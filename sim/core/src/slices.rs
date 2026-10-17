@@ -47,6 +47,8 @@ crate::saved! {
         deposits: crate::farms::Deposits,
         herds: crate::herds::Herds,
         lockers: crate::lockers::Lockers,
+        shipments: crate::cargo::Shipments,
+        paperwork: crate::cargo::Paperwork,
     }
     route {
         route: Route,
@@ -75,4 +77,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::harvest::register(schedule);
     crate::rules::jobs::register(schedule);
     crate::rules::chokepoints::register(schedule);
+    crate::rules::cargo::register(schedule);
 }

@@ -255,4 +255,17 @@ dials! {
     passage_fee_cap: f64 = 3.0,
     max_posts_per_route: u32 = 6,
     forget_after_reviews: u32 = 4,
+    // crates-and-papers (`cargo.rs`: `cargo/Crates.java`, `cargo/Paperwork.java`)
+    /// What a new crate costs (`Crates.CRATE_EMERALDS`: a log's worth of wood and the work).
+    crate_emeralds: f64 = 0.125,
+    /// Empty crates a town keeps to ship with; the rest go back with a wagon (`Crates.EMPTIES_KEPT`).
+    empties_kept: u32 = 16,
+    /// Crates of shipments a town's warehouse has room for (the mod counts its chests' free slots): a farm with none
+    /// left crates nothing and draws no papers.
+    crate_room: u32 = 27,
+    /// What a scribe charges for a document the town lacks the stationery for (`Paperwork.SCRIBE_EMERALDS`).
+    scribe_emeralds: f64 = 0.1,
+    /// Ink sacs and feathers a document takes (`Paperwork.INK_PER_DOCUMENT`, `QUILL_PER_DOCUMENT`).
+    ink_per_document: f64 = 1.0 / 8.0,
+    quill_per_document: f64 = 1.0 / 32.0,
 }

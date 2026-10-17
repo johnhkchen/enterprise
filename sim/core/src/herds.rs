@@ -226,7 +226,8 @@ pub fn tend_for(content: &Content, herds: &mut Herds, keepers: Keepers, days: f6
             total -= lost;
             due = due.min(1.0);
         }
-        herds.owed[k] = due;
+        // (Eaten whole, forgiving float dust, can leave a hair below nought owed: none owed.)
+        herds.owed[k] = due.max(0.0);
         if let (Some(wool), true) = (a.wool, keepers.shepherd) {
             produce.push((wool, count * d.wool_per_sheep_day * days));
         }

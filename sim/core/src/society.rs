@@ -94,6 +94,8 @@ impl Society {
         self.world.entity_mut(e).insert(crate::herds::Herds { last: now, ..Default::default() });
         // And its lockers (empty until it keeps a roster), so taking a roster never moves it to another archetype.
         self.world.entity_mut(e).insert(crate::lockers::Lockers::default());
+        // And its crates and paperwork (`cargo.rs`), none yet.
+        self.world.entity_mut(e).insert((crate::cargo::Shipments::default(), crate::cargo::Paperwork::default()));
         self.towns.push(e);
         self.world.resource_mut::<Towns>().0.push(e);
         self.towns.len() - 1
