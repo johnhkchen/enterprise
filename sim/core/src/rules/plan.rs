@@ -11,7 +11,7 @@ use crate::cash_book::{post_legs, CashBook, Reason, Side};
 use crate::content::Content;
 use crate::contracts::Book;
 use crate::messages::Output;
-use crate::people::{comfort_held, comfort_keep, comfort_par};
+use crate::people::{comfort_keep, comfort_par};
 use crate::realms::{OffMap, Realm};
 use crate::state::*;
 use crate::squad::crewed;
@@ -101,27 +101,57 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
         }
         let mut stacks: u32 = (0..n).map(|g| (plan.cargo[g] / content.goods[g].stack as f64).ceil() as u32).sum();
         stacks += plan.shipments.iter().map(|s| s.stacks(&content)).sum::<u32>(); // home's crates (`rules/cargo.rs`)
-        let mut loaded_kind = vec![0.0; content.comforts.len()];
-        let mut kinds_told: Vec<usize> = Vec::new();
+        // Comforts first, out of what home holds beyond its own par of each kind: half again what the far end is short
+        // of (`comfort_margin`), the cheapest goods of a kind first, whole items (`Caravans.dispatch` 468–492,
+        // `pickComforts`). What the far end is short of is its par less what its last stocktake held while that's fresh
+        // (a home with a roster), less what its people have used since (`comfortWants`); else as it stands.
+        if far_realm.is_none() {
+            let counted = if rostered { stocktakes.fresh(&content, route.to_id, clock.now) } else { None };
+            let arrival = clock.now + route.travel_ticks;
+            let far_par = comfort_par(&content, far_people);
+            let needs = match counted {
+                Some(t) => crate::desires::comfort_wants(&content, far_par, far_people.villagers, &t.stock, t.when, arrival),
+                None => crate::desires::comfort_wants(&content, far_par, far_people.villagers, &far_stock.0, None, arrival),
+            };
+            let keep = comfort_keep(&content, home_people);
+            let left: Vec<f64> = (0..n).map(|g| home_stock.0[g] - plan.cargo[g]).collect();
+            let mut wants = needs.clone();
+            for kind in 0..wants.len() {
+                if wants[kind] <= 0.0 {
+                    continue;
+                }
+                let held = crate::desires::held_in(&content, &left, kind);
+                if held <= keep {
+                    // They're short of it, and we keep our own par of it, or have none (`dispatch` 476–483).
+                    whys.push((None, if held > 0.0 { Why::ShortKeepOurPar(kind) } else { Why::ShortHaveNone(kind) }, 0.0));
+                }
+                wants[kind] = wants[kind].min((held - keep).max(0.0) / d.comfort_margin);
+            }
+            let avail: Vec<f64> = (0..n).map(|g| (left[g] - aside[g]).max(0.0)).collect();
+            for (g, count) in crate::desires::pick_comforts(&content, &wants, &avail) {
+                let stack = content.goods[g].stack as f64;
+                let going = count.min(slots.saturating_sub(stacks) as f64 * stack).floor();
+                if going <= 0.0 {
+                    continue;
+                }
+                let kind = content.goods[g].comfort.expect("a comfort");
+                // What the far end will buy: whole items up to the gap (`sell`), at the price at the middle of the batch.
+                let gap = (needs[kind] / content.goods[g].value.max(1e-9)).ceil();
+                let held = far_stock.0[g];
+                let sells = going.min(gap);
+                let Some(price) = crate::bargain::unit_price(&content, g, held, sells, held + gap, seller, buyer) else { continue };
+                plan.cargo[g] += going;
+                stacks += (going / stack).ceil() as u32;
+                plan.worth += sells * price;
+                plan.sale.push((g, sells, price));
+                whys.push((Some(g), Why::SentComfort(kind), going));
+            }
+        }
         for &g in &order {
             let full = stacks >= slots;
-            let value = content.goods[g].value.max(1e-9);
             let planned = plan.cargo[g];
             let (spare, room, par, want) = match content.goods[g].comfort.filter(|_| far_realm.is_none()) {
-                Some(_) if full => continue,
-                Some(kind) => {
-                    let room = comfort_par(&content, far_people) - comfort_held(&content, far_stock, kind) - loaded_kind[kind];
-                    let ours = comfort_held(&content, home_stock, kind) - comfort_keep(&content, home_people) - loaded_kind[kind];
-                    if room > 0.0 && ours <= 0.0 && !kinds_told.contains(&kind) {
-                        // They're short of it, and we keep our own par of it, or have none (`dispatch` 476–483).
-                        kinds_told.push(kind);
-                        let why = if comfort_held(&content, home_stock, kind) > 0.0 { Why::ShortKeepOurPar(kind) }
-                            else { Why::ShortHaveNone(kind) };
-                        whys.push((None, why, 0.0));
-                    }
-                    ((ours / value).min(home_stock.0[g] - planned - aside[g]), room / value,
-                        far_stock.0[g] + (room / value).floor(), None)
-                }
+                Some(_) => continue, // (the comforts went first)
                 None if far_trades.uses[g] > 0.0 || far_realm.is_some_and(|r| r.wants.contains(&g)) => {
                     let want = Want::of(far_trades, g);
                     let room = shelf(&content, far_trades, g) - held(g);
@@ -166,10 +196,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
             plan.worth += going * price;
             plan.sale.push((g, going, price));
             match (content.goods[g].comfort, want) {
-                (Some(kind), _) => {
-                    loaded_kind[kind] += going * value;
-                    whys.push((Some(g), Why::SentComfort(kind), going));
-                }
+                (Some(kind), _) => whys.push((Some(g), Why::SentComfort(kind), going)),
                 (None, Some(want)) => whys.push((Some(g), Why::Sent(want), going)),
                 _ => {}
             }
@@ -232,7 +259,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         } else {
             0.0
         };
-        let (mut stock, mut money, trades, _, _) = towns.get_mut(route.from).expect("home");
+        let (mut stock, mut money, trades, mut budget, _) = towns.get_mut(route.from).expect("home");
         // Every route planned on the warehouse as it was at the look's start: another wagon from here may have left
         // with some of it since. What's owed first, then the rest, as far as the shelves still hold.
         let mut left = stock.0.clone();
@@ -347,6 +374,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         }
         // Road food (what it lacks of it, and the team's fodder, bought on the way) and the wagon's purse go out of the
         // treasury as one sum.
+        let free_before = free(&content, trades, &money, &bills, route.from_id, now);
         let mut purse = 0.0;
         post_legs(&mut ledger, &mut cash, Side::treasury(route.from_id, &mut money.0), vec![
             (Side::outside(), road_money, Reason::RoadFood),
@@ -360,6 +388,11 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         let saddled = crate::rules::squad::saddle(&content, &mut ledger, &mut state, &mut stock.0);
         let arrival = now + crate::squad::leg_ticks(&content, route.travel_ticks, saddled, 1.0);
         state.last_departure = Some(now);
+        // What its last wagon could carry and the mouths that ate on the road, team included (`Desires.haulEach`); and
+        // the shopping money it took, counted spent off its town's day's budget (the Accountant allowed it at the plan).
+        state.last_capacity = slots;
+        state.last_crew = (mouths + if porter || foreign { 0.0 } else { d.wagon_team as f64 }) as u32;
+        super::desires::spend(&content, now, free_before, &mut budget, plan.shopping_money);
         state.carried += plan.cargo.iter().sum::<f64>();
         let papers = bills.take_to_present(route.from_id, route.to_id, arrival);
         state.wagon = Some(Wagon {
@@ -376,6 +409,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             porter,
             slots,
             saddled,
+            shopping: plan.shopping,
             ..Default::default()
         });
         outbox.0.push(Output::WagonLeft { route: route.seq, stacks: plan.stacks, worth: plan.worth });

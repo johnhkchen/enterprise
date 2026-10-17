@@ -39,15 +39,22 @@ pub fn mark(clock: Res<Clock>, mut routes: Query<&mut RouteState>) {
 }
 
 /// At the far end, what's left for sale sold up to the room on the buyer's shelf (a comfort, up to the kind's par
-/// in worth), within its budget for a seller away so long, and never beyond what it holds. Each good at the price
+/// in worth, whole items: a town short of a kind buys one even if it costs more than the gap, a pair of boots), within
+/// its budget for a seller away so long, and never beyond what it holds. A comfort is paid for out of the money
+/// beyond the buyer's reserve; a Merchant there who supplies other towns buys more of it for them, where it can sell
+/// on at a margin after the road (`desires.rs`), and not at a price too dear for that. Each good at the price
 /// the two Merchants settle at the middle of the batch (`bargain.rs`; `Caravans.sell`), priced again once what the
 /// buyer can pay has cut the batch; no deal, no sale.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut ledger: ResMut<Ledger>,
         mut book: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
-        mut towns: Query<TownData>, rosters: Query<&crate::roster::Roster>, realms: Query<&Realm>) {
+        mut towns: Query<TownData>, rosters: Query<&crate::roster::Roster>, realms: Query<&Realm>,
+        stocktakes: Res<crate::atlas::Stocktakes>, books: Res<crate::atlas::Books>, listings: Res<crate::desires::Listings>,
+        farms: Query<&crate::farms::Farm>) {
     let now = clock.now;
     let day = content.day_ticks;
+    let n_goods = content.goods.len();
+    let all = super::desires::infos(&routes);
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(entity).unwrap();
         if state.arrived != Some(Leg::Out) {
@@ -60,6 +67,14 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
         let seller = crate::realms::level(&content, realms.get(route.from).ok(), rosters.get(route.from).ok());
         let buyer = crate::realms::level(&content, realms.get(route.to).ok(), rosters.get(route.to).ok());
         let realm_buys = realms.get(route.to).is_ok();
+        // Where a Merchant there could sell a comfort on (`Desires.outlet`: its own routes' far ends but this one's home).
+        let outlets: Vec<Option<crate::desires::Outlet>> = if realm_buys { vec![None; n_goods] } else {
+            let known = crate::desires::Knowledge { content: &content, now, stocktakes: &stocktakes, books: &books, listings: &listings };
+            (0..n_goods).map(|g| known.outlet(&all, route.to_id, Some(route.from_id), g, &|e| {
+                towns.get(e).ok().map(|(s, m, t, _, p)| super::desires::facts_of(&content, s, m, t, p, farms.get(e).ok()))
+            })).collect()
+        };
+        let far_reserve = super::farms::reserve(&content, towns.get(route.to).expect("the far end").2, farms.get(route.to).ok());
         let (mut stock, mut money, trades, mut budget, people) = towns.get_mut(route.to).expect("the far end");
         let wagon = state.wagon.as_mut().unwrap();
         let mut sold_all = 0.0;
@@ -68,14 +83,27 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
                 continue;
             }
             let value = content.goods[g].value;
-            let room = match content.goods[g].comfort.filter(|_| !realm_buys) {
-                Some(kind) => ((comfort_par(&content, people) - comfort_held(&content, &stock, kind)) / value).floor(),
-                None => shelf(&content, trades, g) - stock.0[g],
-            }
-            .max(0.0);
+            // A comfort: whole items up to the kind's par, and more for the towns a Merchant there supplies where it can
+            // sell on at a margin; its own people's room is the first part.
+            let comfort = content.goods[g].comfort.filter(|_| !realm_buys);
+            let outlet = outlets[g];
+            let (own, room) = match comfort {
+                Some(kind) => {
+                    let own = ((comfort_par(&content, people) - comfort_held(&content, &stock, kind)) / value).ceil().max(0.0);
+                    (own, own + outlet.filter(|o| crate::desires::worth_buying(&content, value, o)).map_or(0.0, |o| o.units))
+                }
+                None => (0.0, (shelf(&content, trades, g) - stock.0[g]).max(0.0)),
+            };
             let par = stock.0[g] + room;
             let free_money = free(&content, trades, &money, &bills, route.to_id, now);
-            let can = if realm_buys { money.0.max(0.0) } else { left_for(&content, now, free_money, &mut budget, days).min(money.0.max(0.0)) };
+            let can = if realm_buys {
+                money.0.max(0.0)
+            } else if comfort.is_some() {
+                // Out of the money it doesn't need for wages and its trading capital, within its budget.
+                left_for(&content, now, free_money, &mut budget, days).min((money.0 - far_reserve).max(0.0))
+            } else {
+                left_for(&content, now, free_money, &mut budget, days).min(money.0.max(0.0))
+            };
             let mut n = wagon.cargo[g].min(room);
             let mut price = value;
             for _ in 0..2 {
@@ -85,6 +113,10 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
                 let each = crate::bargain::unit_price(&content, g, stock.0[g], n, par, seller, buyer);
                 price = each.unwrap_or(0.0);
                 n = n.min(each.map_or(0.0, |each| (can / each).floor()));
+            }
+            // Too dear for it to sell on: only what its own people have room for.
+            if outlet.is_some_and(|o| price > 0.0 && !crate::desires::worth_buying(&content, price, &o)) && own < n {
+                n = own;
             }
             let n = n.max(0.0);
             if n <= 0.0 {

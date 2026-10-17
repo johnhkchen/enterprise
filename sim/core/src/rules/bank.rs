@@ -78,7 +78,7 @@ fn plan_loans(clock: Res<Clock>, book: Res<Book>, banks: Res<Banks>,
 /// A bank's wagon's float: up to `bank_float`, as far as its market can spare beyond its reserve, the road and the
 /// purses of every plan from it this look (and floats planned already), and as far as its Accountant allows today.
 #[allow(clippy::type_complexity)]
-fn plan_float(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut banks: ResMut<Banks>,
+pub(crate) fn plan_float(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut banks: ResMut<Banks>,
         mut routes: Query<(Entity, &Route, &mut RouteState)>,
         towns: Query<(&Money, &Stock, &Trades, &Budget, Option<&crate::roster::Roster>, Option<&Farm>)>) {
     banks.floats.clear();

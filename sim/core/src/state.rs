@@ -178,6 +178,9 @@ pub struct Wagon {
     /// at home; and its takings for each good there this visit.
     pub log: Vec<crate::atlas::Entry>,
     pub paid_here: Vec<f64>,
+    /// Desires and backhauls (`desires.rs`): what its town shops for at the far end, in emeralds' worth of each kind
+    /// of comfort (`Caravan.shopping`), until it has shopped.
+    pub shopping: Vec<f64>,
 }
 
 /// A town's run to another: how long the road takes one way, what a round trip costs in road food, its timetable.
@@ -226,6 +229,10 @@ pub struct Plan {
     /// What the sale load put aboard, in the order it went (good, count, price each): a squad that leaves with fewer
     /// slots than the plan was made for leaves the last of it home.
     pub sale: Vec<(usize, f64, f64)>,
+    /// Desires and backhauls (`desires.rs`): what the town would shop for at the far end (worth of each kind of
+    /// comfort it holds less than its par of), and the money in the purse for it.
+    pub shopping: Vec<f64>,
+    pub shopping_money: f64,
 }
 
 /// What a route has done, its wagon if one's on the road, the leg its wagon finished this look (the arriving steps
@@ -258,6 +265,15 @@ pub struct RouteState {
     /// whether the far end's books are stale this look (its trip wants a Librarian).
     pub whys: Vec<(Option<usize>, crate::atlas::Why, f64)>,
     pub books_stale: bool,
+    /// Desires and backhauls (`desires.rs`): the stacks its last wagon could carry and the mouths that ate on the road
+    /// (`lastCapacity`, `lastCrew`: the cost of hauling a good, `Desires.haulEach`; 0 until a wagon has left), and
+    /// what its wagons bought at the far end: items and emeralds paid (`itemsBought`, `purchaseSpurs`), of which
+    /// backhauled (`backhaulItems`).
+    pub last_capacity: u32,
+    pub last_crew: u32,
+    pub bought: f64,
+    pub purchases: f64,
+    pub backhauled: f64,
 }
 
 /// A route's ends, before a load links them to their towns' entities again (from `from_id` and `to_id`).

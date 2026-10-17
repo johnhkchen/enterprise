@@ -360,4 +360,15 @@ dials! {
     stale_books_days: f64 = 3.0,
     /// A commissioned route's wagon goes every so many days, or full (`Dials.WAGON_WAIT_DAYS`).
     wagon_wait_days: f64 = 4.0,
+    // desires-and-backhauls (`desires.rs`: `caravan/Desires.java`, `Caravans.java`)
+    /// A kind none of the town's villagers has had: they pay up to this many times its worth (`Desires.MOST`).
+    desire_most: f64 = 2.0,
+    /// What a town with its fill pays for more: this share of its worth (`Desires.GLUT`).
+    desire_glut: f64 = 0.5,
+    /// The margin a Merchant wants over the landed cost before it buys to sell on (`Desires.MARGIN`).
+    resale_margin: f64 = 0.15,
+    /// A travelling Merchant buying surplus to sell on pays at most this share of its local value (`RESALE_CEILING`).
+    resale_ceiling: f64 = 0.75,
+    /// A wagon takes this much over what the far end is short of in a kind of comfort (`COMFORT_MARGIN`).
+    comfort_margin: f64 = 1.5,
 }

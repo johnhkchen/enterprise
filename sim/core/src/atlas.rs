@@ -42,8 +42,8 @@
 //! as holding nothing (its wagons haul its whole par); the core reads its stock as it is, so towns without Librarians
 //! trade as before, and a stocktake gone stale is read the same way rather than for ever. Reasons are tallied when a
 //! wagon leaves, or once a day while it stays (the mod tallies at each try, four a day). A page of the books takes no
-//! stationery yet (`Paperwork.drawn(desk, 1, LEDGER)`). A commissioned route carries no shopping purse yet
-//! (`desires-and-backhauls`), and a Cartographer's news isn't brought home yet (`services`).
+//! stationery yet (`Paperwork.drawn(desk, 1, LEDGER)`). A commissioned route carries a shopping purse like any town's wagon
+//! (`desires.rs`), and a Cartographer's news isn't brought home yet (`services`).
 
 use std::collections::BTreeMap;
 

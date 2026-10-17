@@ -40,6 +40,7 @@ crate::saved! {
         stocktakes: crate::atlas::Stocktakes = crate::atlas::Stocktakes::default(),
         books: crate::atlas::Books = crate::atlas::Books::default(),
         whys: crate::atlas::Whys = crate::atlas::Whys::default(),
+        listings: crate::desires::Listings = crate::desires::Listings::default(),
     }
     town {
         town: Town,
@@ -96,4 +97,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::bank::register(schedule);
     crate::rules::realms::register(schedule);
     crate::rules::atlas::register(schedule);
+    crate::rules::desires::register(schedule);
 }

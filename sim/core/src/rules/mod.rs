@@ -23,6 +23,7 @@ pub mod bills;
 pub mod cargo;
 pub mod chokepoints;
 pub mod contracts;
+pub mod desires;
 pub mod farms;
 pub mod harvest;
 pub mod herds;

@@ -34,4 +34,5 @@ slices! {
     bank_and_discounts,
     realms,
     atlas_and_books,
+    desires_and_backhauls,
 }
