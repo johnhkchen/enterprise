@@ -12,8 +12,10 @@ use crate::contracts::Book;
 use crate::state::*;
 
 pub fn register(schedule: &mut Schedule) {
-    // `plan_papers` before what's owed for goods a player brought, as it ran unpinned (both add to the plan's worth).
-    schedule.add_systems((present.in_set(Step::Papers), plan_papers.in_set(Step::PlanPapers).before(super::cargo::plan_owing)));
+    // `plan_papers` after what's owed for goods a player brought, as it runs unpinned on main (both add to the plan's
+    // worth: an ulp's difference).
+    schedule.add_systems((present.in_set(Step::Papers), plan_papers.in_set(Step::PlanPapers)
+        .after(super::cargo::plan_owing)));
 }
 
 /// Bills the wagon carries on this town, presented: it pays whole the due ones it can, from its money (what it owes

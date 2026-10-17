@@ -8,7 +8,8 @@
 //! - `PlanBuy`, before the rents' buy-back (`Caravans.dispatch`: `bankFloat` after the shopping and Ex Works money,
 //!   before `buyBack`): a bank's wagon takes up to `bank_float` more in its purse, as far as its market can spare beyond
 //!   its reserve, the road and what every plan from it carries already, and its Accountant allows today.
-//! - `Decide`, after the wagons leave: the float a bank's wagon took is spent off its day's budget.
+//! - `Decide`, as the wagons leave: the float a bank's wagon took (its Accountant allowed it at the plan) is counted spent
+//!   off its day's budget.
 //! - `Papers`, after the advances and before the bills are presented (`Caravans.arrive`: `settleOwing`, `payAdvances`,
 //!   `Bank.deal`, `presentBills`): a bank's wagon collects loans on contracts done or broken, buys the town's bills not
 //!   yet due, and lends against its contracts in force (`Bank.deal`: `collect`, `discount`, `lend`).
@@ -24,7 +25,7 @@ use super::farms::reserve;
 use super::{free, in_order, Step};
 use crate::bank::{self, discount_price, loan_cap, to_come, Banks, COLLECT_EPS, LOAN_EPS, MIN_LOAN};
 use crate::bills::{BillState, Bills, Held};
-use crate::cash_book::{post, Accountant, CashBook, Reason, Side};
+use crate::cash_book::{post, Accountant, CashBook, Side};
 use crate::content::Content;
 use crate::contracts::{self, Book};
 use crate::farms::Farm;
@@ -35,13 +36,9 @@ pub fn register(schedule: &mut Schedule) {
         lapse.in_set(Step::Judge).after(super::contracts::review).after(super::harvest::review_rents),
         plan_loans.in_set(Step::PlanCollect).after(super::contracts::plan_collect),
         plan_float.in_set(Step::PlanBuy).before(super::harvest::plan_redeem),
-        spend_float.in_set(Step::Decide).after(super::plan::decide),
+        spend_float.in_set(Step::Decide).after(super::plan::decide).before(super::cargo::ship),
         deal.in_set(Step::Papers).after(super::advances::advances_papers).before(super::bills::present),
     ));
-}
-
-fn float_reason() -> Reason {
-    Reason::Other("a bank's float".into())
 }
 
 /// Bills no one can carry to their drawee lapse `lapse_days` past their day (`Bills.lapse`).
@@ -98,8 +95,10 @@ fn plan_float(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut b
         }
         let (_, stock, trades, _, roster, _) = towns.get(route.from).expect("home");
         let keep_wheat = crate::road::keep_wheat(&content, trades, roster);
+        // (for the crew it has mustered, `squad.rs`: one without)
+        let mouths = plan.crew.len().max(1) as f64;
         *committed.entry(route.from_id).or_insert(0.0) += plan.purse
-            + crate::road::road_money(&content, route, &stock.0, keep_wheat);
+            + crate::road::road_money(&content, route, &stock.0, keep_wheat, mouths);
     }
     let mut budgets: BTreeMap<usize, Budget> = BTreeMap::new();
     let mut planned: BTreeMap<usize, f64> = BTreeMap::new();
@@ -131,10 +130,11 @@ fn plan_float(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut b
     }
 }
 
-/// The floats of the banks' wagons that left this look, spent off their market's day's budget (`Accountant.allow`).
-fn spend_float(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut banks: ResMut<Banks>,
-        mut cash: ResMut<CashBook>, routes: Query<(Entity, &Route, &RouteState)>,
-        mut towns: Query<(&Money, &Trades, &mut Budget)>) {
+/// The floats of the banks' wagons that left this look, spent off their market's day's budget: the Accountant allowed
+/// them when they were planned (`Caravans.dispatch`: `accountant.allow` on the `bankFloat`), so they're only counted
+/// spent here, after the wagons are sent and their purses taken (`cargo::ship` after it: neither reads the other).
+fn spend_float(clock: Res<Clock>, mut banks: ResMut<Banks>, routes: Query<(Entity, &Route, &RouteState)>,
+        mut budgets: Query<&mut Budget>) {
     if banks.floats.is_empty() {
         return;
     }
@@ -146,9 +146,7 @@ fn spend_float(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut 
         if state.last_departure != Some(now) || state.wagon.is_none() {
             continue;
         }
-        let (money, trades, mut budget) = towns.get_mut(route.from).expect("home");
-        let free_money = free(&content, trades, money, &bills, route.from_id, now);
-        Accountant::allow(&content, &mut cash, route.from_id, now, free_money, &mut budget, float_reason(), float);
+        budgets.get_mut(route.from).expect("home").spent += float;
     }
 }
 
@@ -177,8 +175,8 @@ fn deal(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut bills: Re
         let (bank_id, town) = (route.from_id, route.to_id);
         let (mut money, trades, farm) = towns.get_mut(route.to).expect("the far end");
         let reserve = reserve(&content, trades, farm);
-        let keep = crate::road::purse_keep(&content, &route);
         let wagon = state.wagon.as_mut().unwrap();
+        let keep = crate::road::purse_keep(&content, &route, crate::road::mouths(Some(wagon)));
 
         // Collect: loans on contracts no longer in force, from what the town can spare beyond its reserve.
         for i in 0..banks.loans.len() {

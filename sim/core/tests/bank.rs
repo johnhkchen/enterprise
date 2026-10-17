@@ -5,7 +5,7 @@
 
 mod common;
 
-use enterprise_core::bank::{discount_price, loan_cap, Discounts};
+use enterprise_core::bank::{discount_price, loan_cap, to_come, Discounts};
 use enterprise_core::bills::{BillState, Bills, Held, LAPSE_DAYS};
 use enterprise_core::contracts::Book;
 use enterprise_core::{Content, Good, Incoterm, Society, State};
@@ -244,6 +244,10 @@ fn the_banks_rules_in_numbers() {
     book.advanced(id, 16.0);
     // Half of 64 to come, less the 16 paid up front, less 4 lent already.
     assert!((loan_cap(&book.contracts[id], 4.0, &dials) - 12.0).abs() < 1e-12);
+    // A training contract's goods to come are its bonus (`Bank.lend`: `contract.worth()` when there's no delivery).
+    let t = book.draft_with_advance(1, 0, 1, 0.0, 0.0, 0, DAY, 1, Incoterm::Exw, true, true, 0.0);
+    book.contracts[t].training = Some(enterprise_core::training::Training::new(0, 2, 30.0, 0.0));
+    assert!((to_come(&book.contracts[t]) - 30.0).abs() < 1e-12, "half the bonus to lend on");
 }
 
 #[test]

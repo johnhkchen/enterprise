@@ -156,8 +156,12 @@ pub fn discount_price(face: f64, due: u64, now: u64, day: u64, dials: &Dials) ->
     face * (1.0 - dials.discount_fee - dials.discount_per_day * days)
 }
 
-/// What the goods still to come under a contract are worth at its price (`Bank.lend`'s `toCome`).
+/// What the goods still to come under a contract are worth at its price; a training contract's, its bonus
+/// (`Bank.lend`'s `toCome`).
 pub fn to_come(c: &Contract) -> f64 {
+    if c.training.is_some() {
+        return c.worth();
+    }
     (c.quantity * c.installments as f64 - c.delivered).max(0.0) * c.price
 }
 
