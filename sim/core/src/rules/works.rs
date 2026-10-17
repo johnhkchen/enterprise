@@ -1,0 +1,258 @@
+//! Public works' steps (`works.rs`):
+//!
+//! - **Pay:** the masons of a town's project are paid out of its treasury for the days since they last worked, and lay
+//!   blocks in proportion (`Works.work`); a project finished marks the world (a bridge on the map, a store on the farm,
+//!   a counting house on the budget) once.
+//! - **Review:** the culture its works add is set on its holding before the census counts it; then each day the town
+//!   tells the job draw what its halls would cost (`BuildServices.work`), and, with nothing under way, starts a bridge
+//!   that repays its wages, else a wall, else the next hall it wants and can pay twice over (`Works.consider`,
+//!   `BuildServices.next`, `hire`); a master Farmer plants the square's flower beds.
+
+use bevy_ecs::prelude::*;
+
+use super::Step;
+use crate::bills::Bills;
+use crate::cash_book::{post, Accountant, CashBook, Reason, Side};
+use crate::cargo::Paperwork;
+use crate::chokepoints::{bridge_value, guard_cost_per_day, RouteEnds, Takings};
+use crate::content::Content;
+use crate::farms::Farm;
+use crate::jobs::Signals;
+use crate::map::{Map, CLIFF, IMPASSABLE};
+use crate::mint::Mint;
+use crate::roster::Roster;
+use crate::state::*;
+use crate::territory::Territory;
+use crate::works::*;
+
+pub fn register(schedule: &mut Schedule) {
+    schedule.add_systems((
+        pay.in_set(Step::Pay),
+        culture.in_set(Step::Review).before(super::territory::review),
+        review.in_set(Step::Review).after(super::territory::review).after(super::farms::review)
+            .after(super::chokepoints::review).before(super::jobs::review),
+    ));
+}
+
+/// The masons are paid and lay their blocks, towns in their order, once a day each (`Works.work`, at each touch in the
+/// mod). The first look at a project only starts its clock.
+#[allow(clippy::type_complexity)]
+pub fn pay(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, territory: Res<Territory>, mut map: ResMut<Map>,
+        mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
+        mut q: Query<(&Town, &mut Works, &mut Money, &mut Trades, &mut Budget, Option<&mut Farm>)>) {
+    let (now, day) = (clock.now, content.day_ticks);
+    for &e in &towns.0 {
+        let Ok((town, mut works, mut money, mut trades, mut budget, mut farm)) = q.get_mut(e) else { continue };
+        if let Some(i) = works.underway() {
+            let hexes = territory.holding(town.id).map_or(0, |h| h.hexes.len());
+            let p = &mut works.projects[i];
+            if p.started.is_none_or(|t| now >= t + day) {
+                let paid = work(p, &content.dials, hexes, now, day, money.0);
+                post(&mut ledger, &mut book, Side::treasury(town.id, &mut money.0), Side::outside(), paid,
+                    Reason::Other("masons".into()), now, day);
+            }
+        }
+        apply(&mut works, &mut map, farm.as_deref_mut());
+        flags(&works, &mut trades, &mut budget);
+    }
+}
+
+/// What a town's works add to its culture a day is set on its holding before the census counts it: the change since
+/// last time, so a host's own figure (`Society::set_culture_extras`) stays.
+pub fn culture(towns: Res<Towns>, mut territory: ResMut<Territory>, mut q: Query<(&Town, &mut Works)>) {
+    for &e in &towns.0 {
+        let Ok((town, mut works)) = q.get_mut(e) else { continue };
+        let now = works.culture();
+        if now == works.culture_applied {
+            continue;
+        }
+        let h = territory.holdings.entry(town.id).or_default();
+        h.extra_culture = (h.extra_culture + now - works.culture_applied).max(0.0);
+        works.culture_applied = now;
+    }
+}
+
+/// Is the hall one the town wants (`BuildServices.wanted`): a store where its crop piles up, a counting house where the
+/// papers do, any other whenever its partners are there.
+fn wanted(content: &Content, farm: Option<&Farm>, paperwork: &Paperwork, now: u64, kind: Kind) -> bool {
+    if kind == Kind::CountingHouse {
+        return paperwork.per_day(now, content.day_ticks) >= content.dials.counting_house_documents;
+    }
+    match kind.store() {
+        Some(store) => farm.is_some_and(|f| f.stores_wanted.contains(&store)),
+        None => true,
+    }
+}
+
+/// The halls a town could build now: not started, its partners at home, wanted (and a pier for stone docks).
+#[allow(clippy::too_many_arguments)]
+fn buildable(content: &Content, works: &Works, roster: Option<&Roster>, farm: Option<&Farm>, paperwork: &Paperwork,
+        now: u64, kind: Kind) -> bool {
+    if works.has_started(kind) {
+        return false;
+    }
+    let skills = skills(content, roster);
+    let merchant = crate::bargain::merchant_level(roster);
+    kind.partnered(&skills, merchant) && (kind != Kind::StoneDocks || works.dock) && wanted(content, farm, paperwork, now, kind)
+}
+
+/// Each town reviews what to build, once a day.
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
+pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills: Res<Bills>, map: Res<Map>,
+        mint: Res<Mint>, takings: Res<Takings>, territory: Res<Territory>, mut signals: ResMut<Signals>,
+        mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, routes: Query<&Route>, places: Query<&Town>,
+        mut q: Query<(&Town, &mut Works, &mut Money, &mut Stock, &Trades, &mut Budget, &People, Option<&Farm>,
+            Option<&Roster>, &Paperwork)>) {
+    let (now, day) = (clock.now, content.day_ticks);
+    let d = &content.dials;
+    for &e in &towns.0 {
+        let Ok((town, mut works, mut money, mut stock, trades, mut budget, people, farm, roster, paperwork)) = q.get_mut(e)
+            else { continue };
+        if works.reviewed.is_some_and(|t| now < t + day) {
+            continue;
+        }
+        works.reviewed = Some(now);
+        let t = town.id;
+        let spare = money.0 - super::farms::reserve(&content, trades, farm);
+        // What its halls would cost, for the Mason's marbles in the job draw (`BuildServices.work`).
+        let mut work_wanted = 0.0;
+        for kind in KINDS {
+            if !buildable(&content, &works, roster, farm, paperwork, now, kind) {
+                continue;
+            }
+            let c = cost(&content, &stock.0, kind);
+            if work_wanted + c > spare {
+                break;
+            }
+            work_wanted += c;
+        }
+        if work_wanted > 0.0 {
+            signals.build_work.insert(t, work_wanted);
+        } else {
+            signals.build_work.remove(&t);
+        }
+        // A master Farmer plants the square's flower beds (`MasterServices.plantFlowers`).
+        plant_flowers(&content, &mut works, &mut stock, &mut ledger, roster);
+        let hexes = territory.holding(t).map_or(0, |h| h.hexes.len());
+        // A town without land has no stone: it starts nothing.
+        if works.busy() || hexes == 0 {
+            continue;
+        }
+        let spurs = mint.rate(now, day);
+        let per_day = per_day(d, hexes);
+        // A bridge whose tolls repay its wages soonest, within `payback_days`, if the town can pay half of them now.
+        if works.bridges_looked.is_none_or(|l| now >= l + (d.toll_review_days * day as f64) as u64) {
+            works.bridges_looked = Some(now);
+            let ends: Vec<RouteEnds> = routes.iter().filter_map(|r| {
+                let hex = |id: usize| towns.0.get(id).and_then(|&x| places.get(x).ok()).and_then(|p| p.hex);
+                Some(RouteEnds { ends: [r.from_id, r.to_id], start: hex(r.from_id)?, goal: hex(r.to_id)?,
+                    value: takings.expected_value(r.seq) })
+            }).collect();
+            let posts = territory.toll_posts(d.default_toll_rate);
+            let per_hex = crate::map::per_hex_at_bread(&content) * spurs;
+            let mut best: Option<(Hex2, f64)> = None;
+            let mut best_payback = d.payback_days;
+            for &hex in territory.holding(t).map_or(&[][..], |h| &h.hexes[..]) {
+                let g = map.ground(hex);
+                if works.has_bridge(hex) || g.bridged || g.water_share <= IMPASSABLE || g.relief >= CLIFF {
+                    continue;
+                }
+                let value = bridge_value(&map, &posts, &ends, t, hex, per_hex, d.max_toll_rate, d.detour_share);
+                let net = value.tolls_per_day / spurs - guard_cost_per_day(d, spurs) / spurs;
+                let (Some(from), Some(to)) = (value.from, value.to) else { continue };
+                if net <= 0.0 {
+                    continue;
+                }
+                let deck = deck_size(hex, from, to);
+                let wages = deck as f64 / per_day * d.masons as f64 * d.mason_pay;
+                let payback = wages / net;
+                if payback < best_payback && spare >= wages / 2.0 {
+                    best = Some(((hex, from, to, deck), payback));
+                    best_payback = payback;
+                }
+            }
+            if let Some(((hex, from, to, deck), _)) = best {
+                works.start(What::Bridge { hex, from, to }, deck);
+                continue;
+            }
+        }
+        // Nothing that pays: a content town with money to spare walls itself in.
+        if works.wall().is_none() && people.mood >= MOOD_TO_START && spare >= d.wall_start_emeralds {
+            works.start(What::Wall, d.wall_blocks);
+            continue;
+        }
+        // Else the next hall it wants, with its Mason's skill or hired builders' (`BuildServices.next`, `hire`).
+        let skill = match mason(&content, roster) {
+            None => d.hired_skill as u8,
+            Some(None) => continue, // its Masons are away
+            Some(Some(level)) => level,
+        };
+        let Some(kind) = next_hall(&content, &works, roster, farm, paperwork, &stock.0, people.mood, spare, now, skill)
+            else { continue };
+        let to_buy = materials(&content, &stock.0, kind);
+        let what = Reason::Other(format!("a {}", kind.id().replace('_', " ")));
+        let free = super::free(&content, trades, &money, &bills, t, now);
+        if !Accountant::approve(&content, &mut book, t, now, free, &mut budget, what.clone(), to_buy) {
+            continue; // not today: the accountant holds the money back
+        }
+        take_logs(&content, &mut stock, &mut ledger, (kind.emeralds() / EMERALDS_PER_LOG).ceil());
+        post(&mut ledger, &mut book, Side::treasury(t, &mut money.0), Side::outside(), to_buy, what, now, day);
+        works.start(What::Hall(kind), kind.blocks());
+    }
+}
+
+type Hex2 = (crate::hex::Hex, crate::hex::Hex, crate::hex::Hex, u32);
+
+/// The first kind a town lacks whose partners it has, if it can pay twice over (`BuildServices.next`): a town that
+/// isn't content or can't yet pay for the first it wants saves up, and builds in order.
+#[allow(clippy::too_many_arguments)]
+fn next_hall(content: &Content, works: &Works, roster: Option<&Roster>, farm: Option<&Farm>, paperwork: &Paperwork,
+        stock: &[f64], mood: f64, spare: f64, now: u64, skill: u8) -> Option<Kind> {
+    for kind in KINDS {
+        if works.has_started(kind) || skill < kind.mason_level() || !buildable(content, works, roster, farm, paperwork, now, kind) {
+            continue;
+        }
+        if mood < MOOD_TO_START || spare < content.dials.build_savings * cost(content, stock, kind) {
+            return None;
+        }
+        return Some(kind);
+    }
+    None
+}
+
+/// Takes up to `count` logs from the stock, in the order of `LOGS` (`BuildServices.takeLogs`).
+fn take_logs(content: &Content, stock: &mut Stock, ledger: &mut Ledger, mut count: f64) {
+    for name in LOGS {
+        let Some(g) = crate::jobs::good_named(content, name) else { continue };
+        if count <= 0.0 {
+            return;
+        }
+        let n = stock.0[g].floor().max(0.0).min(count);
+        stock.0[g] -= n;
+        ledger.used[g] += n;
+        count -= n;
+    }
+}
+
+/// A master Farmer with a square to plant and eight flowers in the warehouse plants its beds
+/// (`MasterServices.flowersWanted`, `plantFlowers`).
+fn plant_flowers(content: &Content, works: &mut Works, stock: &mut Stock, ledger: &mut Ledger, roster: Option<&Roster>) {
+    if works.flowers || !works.built(Kind::Square) {
+        return;
+    }
+    let master = content.trade("farmer").zip(roster).is_some_and(|(trade, r)| {
+        r.hands.iter().any(|h| h.trade == trade && !h.is_baby() && !h.away && h.level >= FLOWER_FARMER_LEVEL)
+    });
+    let flowers: Vec<usize> = FLOWER_ITEMS.iter().filter_map(|n| crate::jobs::good_named(content, n)).collect();
+    if !master || flowers.iter().map(|&g| stock.0[g].floor().max(0.0)).sum::<f64>() < FLOWERS {
+        return;
+    }
+    let mut left = FLOWERS;
+    for g in flowers {
+        let n = stock.0[g].floor().max(0.0).min(left);
+        stock.0[g] -= n;
+        ledger.used[g] += n;
+        left -= n;
+    }
+    works.flowers = true;
+}

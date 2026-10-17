@@ -114,6 +114,9 @@ pub struct Trades {
     /// What the town's lockers can take of each good a day (`Warehouse.capacity`, `bargain.rs`): its par is
     /// `shelf_days` of it. `set_trade` sets it to what its people use; a host with lockers records it per locker.
     pub capacity: Vec<f64>,
+    /// A counting house stands in the town: the bills it holds back from its free money cover twice the days
+    /// (`Accountant.free`, set by `works.rs`).
+    pub counting_house: bool,
 }
 
 /// When a town was last brought up to date.
@@ -127,6 +130,8 @@ pub struct Budget {
     pub budget: f64,
     pub spent: f64,
     pub set: bool,
+    /// A counting house stands in the town: its budget share is half as much again (`Accountant.today`, set by `works.rs`).
+    pub counting_house: bool,
 }
 
 /// Which way a wagon is going.

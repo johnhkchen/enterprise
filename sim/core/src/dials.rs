@@ -268,4 +268,24 @@ dials! {
     /// Ink sacs and feathers a document takes (`Paperwork.INK_PER_DOCUMENT`, `QUILL_PER_DOCUMENT`).
     ink_per_document: f64 = 1.0 / 8.0,
     quill_per_document: f64 = 1.0 / 32.0,
+    // buildings-and-works (`works.rs`: `territory/Works.java`, `service/BuildServices.java`)
+    /// Masons on a project, each paid `mason_pay` a day and laying `blocks_per_mason_day` blocks (`Works.MASONS`,
+    /// `MASON_PAY_PER_DAY`, `BLOCKS_PER_MASON_DAY`).
+    masons: u32 = 2,
+    mason_pay: f64 = 1.0,
+    blocks_per_mason_day: f64 = 32.0,
+    /// Stone each hex a town holds supplies a day (`Works.STONE_PER_HEX_DAY`).
+    stone_per_hex_day: f64 = 16.0,
+    /// A town builds a bridge if its tolls should repay the masons' wages within this many days (`Works.PAYBACK_DAYS`).
+    payback_days: f64 = 30.0,
+    /// A wall's blocks: its ring of 252 columns, 3 high (`Works.ring`, `WALL_HEIGHT`); and the emeralds a town needs to
+    /// spare to start one (`Works.WALL_START_EMERALDS`).
+    wall_blocks: u32 = 756,
+    wall_start_emeralds: f64 = 12.0,
+    /// A town builds a hall only with this many times its whole cost to spare beyond its reserve
+    /// (`BuildServices.SAVINGS`), with builders of at most this level when it has no Mason (`HIRED_SKILL`).
+    build_savings: f64 = 2.0,
+    hired_skill: u32 = 3,
+    /// Documents a day a market draws up before it wants a counting house (`Dials.COUNTING_DOCUMENTS`).
+    counting_house_documents: f64 = 3.0,
 }

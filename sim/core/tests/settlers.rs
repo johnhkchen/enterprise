@@ -123,7 +123,9 @@ fn a_party_goes_once_in_eight_days_at_most() {
     assert_eq!(settled.len(), 2);
     assert_eq!(settled[0], v1);
     assert!(settled[1] != v2 && s.roster(v2).merchant.is_none(), "{settled:?}");
-    assert!((s.town(v1).money - 30.0).abs() < 1e-9);
+    // The capital, less the stall of the Mason it took on for the square its works now want (`buildings-and-works`).
+    let stall = s.content().dials.stall_emeralds;
+    assert!((s.town(v1).money - (30.0 - stall)).abs() < 1e-9, "{:?}", s.cash_book(v1, 30));
     conserved(&mut s, &before);
 }
 

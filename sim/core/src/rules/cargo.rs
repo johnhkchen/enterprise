@@ -50,12 +50,18 @@ pub fn register(schedule: &mut Schedule) {
 
 /// Each town's paperwork reckoned as it's touched, in town order: stationery from its stock, a scribe for the rest.
 fn reckon(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
-        mut towns: Query<(&Town, &mut Money, &mut Stock, &mut Paperwork)>) {
-    let mut order: Vec<_> = towns.iter_mut().filter(|(.., p)| p.owed >= 1.0).collect();
+        mut towns: Query<(&Town, &mut Money, &mut Stock, &mut Paperwork, Option<&crate::works::Works>)>) {
+    let mut order: Vec<_> = towns.iter_mut().filter(|(_, _, _, p, _)| p.owed >= 1.0).collect();
     order.sort_by_key(|(town, ..)| town.id);
-    for (town, mut money, mut stock, mut paperwork) in order {
+    for (town, mut money, mut stock, mut paperwork, works) in order {
+        // With a counting house, its clerks keep the papers: half the stationery, a clerk's fee for what's lacking.
+        let (stationery, fee) = if works.is_some_and(|w| w.counting()) {
+            (cargo::COUNTING_STATIONERY, cargo::CLERK_EMERALDS)
+        } else {
+            (1.0, content.dials.scribe_emeralds)
+        };
         cargo::reckon(&content, &mut ledger, &mut cash, clock.now, town.id, &mut money.0, &mut stock.0, &mut paperwork,
-            1.0, content.dials.scribe_emeralds);
+            stationery, fee);
     }
 }
 

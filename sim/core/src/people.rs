@@ -48,6 +48,16 @@ fn eat(content: &Content, ledger: &mut Ledger, stock: &mut Stock, mut points: f6
     eaten
 }
 
+/// Where a town's mood is heading (`Territory.moodTarget`): the comforts met and its works (a wall, a square, its flower
+/// beds), less its size, villagers without beds and unpaid wages.
+pub fn mood_target(d: &crate::content::Dials, people: &People, works: Option<&crate::works::Works>) -> f64 {
+    people.comfort_met.iter().sum::<f64>()
+        + works.map_or(0.0, |w| w.mood())
+        - people.villagers / d.villagers_per_want
+        - d.crowding_mood * (people.villagers - people.beds).max(0.0)
+        - d.unpaid_mood * (1.0 - people.paid_share)
+}
+
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems(live.in_set(Step::Touch).after(crate::rules::touch::catch_up));
 }
@@ -55,11 +65,12 @@ pub fn register(schedule: &mut Schedule) {
 /// The town's people live the time since they were last counted: wages, comforts, mood, a home, a child.
 #[allow(clippy::type_complexity)]
 pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
-        mut towns: Query<(&Town, &mut People, &mut Stock, &mut Money, &Trades, Option<&mut Roster>, Option<&crate::farms::Farm>)>) {
+        mut towns: Query<(&Town, &mut People, &mut Stock, &mut Money, &Trades, Option<&mut Roster>, Option<&crate::farms::Farm>,
+            Option<&crate::works::Works>)>) {
     let d = &content.dials;
     let k = content.comforts.len();
     let (now, day) = (clock.now, content.day_ticks);
-    for (town, mut people, mut stock, mut money, trades, mut roster, farm) in &mut towns {
+    for (town, mut people, mut stock, mut money, trades, mut roster, farm, works) in &mut towns {
         let t = town.id;
         let people = &mut *people;
         let days = clock.now.saturating_sub(people.last) as f64 / content.day_ticks as f64;
@@ -107,10 +118,7 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
             people.comfort_owed[kind] = owed.min(0.0);
         }
         // Mood heads toward the comforts met, less its size, villagers without beds and unpaid wages.
-        let target = people.comfort_met.iter().sum::<f64>()
-            - people.villagers / d.villagers_per_want
-            - d.crowding_mood * (people.villagers - people.beds).max(0.0)
-            - d.unpaid_mood * (1.0 - people.paid_share);
+        let target = mood_target(d, people, works);
         people.mood += (target - people.mood) * (1.0 - 0.5f64.powf(days / d.mood_half_life_days));
         // A home, once the beds are full, as far as the land holds: the households pay what they can, the town the rest.
         let spare = money.0 - trading_capital(&content, trades);

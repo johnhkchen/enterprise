@@ -80,7 +80,7 @@ impl Society {
                 Town { name: name.to_string(), id: self.towns.len(), hex: None },
                 Money(money),
                 Stock(vec![0.0; n]),
-                Trades { makes: vec![0.0; n], uses: vec![0.0; n], capacity: vec![0.0; n] },
+                Trades { makes: vec![0.0; n], uses: vec![0.0; n], capacity: vec![0.0; n], ..Default::default() },
                 Touched(now),
                 Budget::default(),
                 People { last: now, paid_share: 1.0, ..Default::default() },
@@ -96,6 +96,8 @@ impl Society {
         self.world.entity_mut(e).insert(crate::lockers::Lockers::default());
         // And its crates and paperwork (`cargo.rs`), none yet.
         self.world.entity_mut(e).insert((crate::cargo::Shipments::default(), crate::cargo::Paperwork::default()));
+        // And its public works (`works.rs`), none yet.
+        self.world.entity_mut(e).insert(crate::works::Works::default());
         self.towns.push(e);
         self.world.resource_mut::<Towns>().0.push(e);
         self.towns.len() - 1

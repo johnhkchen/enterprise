@@ -27,4 +27,5 @@ slices! {
     jobs,
     chokepoints,
     crates_and_papers,
+    buildings_and_works,
 }

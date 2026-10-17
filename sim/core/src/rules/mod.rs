@@ -33,6 +33,7 @@ pub mod settlers;
 pub mod territory;
 pub mod touch;
 pub mod workshop;
+pub mod works;
 
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::SingleThreadedExecutor;
@@ -107,7 +108,8 @@ pub fn trading_capital(content: &Content, trades: &Trades) -> f64 {
 
 /// The town's free money: what it holds beyond its trading capital, less the bills on it falling due soon.
 pub fn free(content: &Content, trades: &Trades, money: &Money, bills: &Bills, town: usize, now: u64) -> f64 {
-    let ahead = now + (content.dials.budget_days * content.day_ticks as f64) as u64;
+    let days = content.dials.budget_days * if trades.counting_house { 2.0 } else { 1.0 };
+    let ahead = now + (days * content.day_ticks as f64) as u64;
     (money.0 - trading_capital(content, trades) - bills.due_by(town, ahead)).max(0.0)
 }
 
@@ -115,10 +117,10 @@ pub fn free(content: &Content, trades: &Trades, money: &Money, bills: &Bills, to
 /// have allowed, one after another (`1 - (1 - share)^days` of the free money), less what's spent today. The budget is
 /// set at the day's first look, from the free money then.
 pub fn left_for(content: &Content, now: u64, free: f64, budget: &mut Budget, days: f64) -> f64 {
-    let share = content.dials.budget_share;
+    let share = if budget.counting_house { (content.dials.budget_share * 1.5).min(1.0) } else { content.dials.budget_share };
     let today = now / content.day_ticks;
     if !budget.set || budget.day != today {
-        *budget = Budget { day: today, budget: share * free.max(0.0), spent: 0.0, set: true };
+        *budget = Budget { day: today, budget: share * free.max(0.0), spent: 0.0, set: true, counting_house: budget.counting_house };
     }
     let allowed = if days <= 1.0 || share <= 0.0 || share >= 1.0 {
         budget.budget
