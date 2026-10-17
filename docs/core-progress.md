@@ -6,9 +6,9 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `1ab4f22`. 443 tests pass (`just core-test`, a few seconds). Parity: **149 covered, 31 partial, 46
-  skipped, 36 left of 262** (`just parity`). `just core-fingerprint`: `ab69f13d1be68c56` (services send Clerics, Farmers,
-  Cartographers and Shepherds along and bless and chart at home, so every rostered world moved; was `ca7842aa7dc277c5`).
+- **Main:** `9063831`. 461 tests pass (`just core-test`, a few seconds). Parity: **151 covered, 31 partial, 46
+  skipped, 34 left of 262** (`just parity`). `just core-fingerprint`: `7a4c78f51da66249` (hubs emerge where roads pass a
+  town, in about half the base worlds, and the slice makes one in a third; with neither, main's `ab69f13d1be68c56`).
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
 - **Paused 2026-10-17 21:05** (13 of 32 landed), with no landing under way. Four trees waited in `.trees/`
@@ -43,7 +43,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 23 | 3 | `mines-and-kit` | sonnet/medium (sonnet/medium) | `territory-growth`, `services` | — |  |
 | 24 | 3 | `desires-and-backhauls` | sonnet/high (sonnet/medium) | `bargain-and-par`, `atlas-and-books` | `3464146` | `will_pay`/`reckon`, outlets and `worth_buying`, whole comforts paid from beyond the reserve, comforts loaded first at half again the stocktake's want less use since, shopping purses, surplus and glut bought for the trip home, shop listings as news; 7 tags pinned, the shop partial (vendor's Minecraft's). Gaps: ex-works funded before shopping (the mod: shopping first), shopping money counts toward worth only where the far end holds the kind, an uncounted market read live (mod: whole par wanted), listings only for locker goods, no crown reserve, bought goods loose. At landing: a glut bought for home's food only where home's food is known short (`foodKnownAt`: an untimed stocktake is plenty), the bank's float sees the shopping allowance, shop kept after the last reviews and buying after porters go home |
 | 25 | 3 | `crates-and-papers` | opus/high (sonnet/medium) | `harvest-and-rents`, `advances-and-refunds` | `54d36bc` | changes what cargo is, through arrive and plan. Shipments with bills of lading, empties, earmarks, paperwork and scribes, `settleOwing` both ways; 6 tags, 4 partial (one good a crate, `crate_room` for chest slots, clerks are buildings-and-works'). Gaps: no paperwork for drafts or bills, empties take no slots, stored goods plain stock. At landing: spare empties and crates made out home first at the far end (the mod's order), Ex Works earmarks left to the paid collection, scribes' fees booked in full |
-| 26 | 3 | `freight-hubs` | opus/xhigh (opus/high) | `crates-and-papers`, `atlas-and-books`, `territory-growth` | — |  |
+| 26 | 3 | `freight-hubs` | opus/xhigh (opus/high) | `crates-and-papers`, `atlas-and-books`, `territory-growth` | `9063831` | Hubs emerge at the review, sell space by the stack, book crates bound on and buy blocks, cart with idle hands; roads call at hubs; routes reorganise by price; both CaravanTests tags pinned. Gaps: no shop tills or vendor slot cap, no consignment/credit, `copiesVia`, stranded paper (held crates re-sent instead), rents at hubs; bare routes pass no hub; a hub's runs keep their own timetable, not `liner_days`; the day's later hubs see a wound-down run. At landing: a long run's usual load is sold, delivered and bought a trip (`itemsDelivered + itemsBought`, was loaded out), its tolls reckoned ahead as `tollShare` and `passageFees`, the landing unrounded; `Hub` inserted with the works (its own insert moved main's worlds) |
 | 27 | 3 | `sourcing-and-procurement` | sonnet/high (sonnet/high) | `lockers`, `atlas-and-books`, `services` | — |  |
 | 28 | 3 | `war-army` | opus/xhigh (opus/high) | `roster`, `mines-and-kit` | — |  |
 | 29 | 3 | `bank-and-discounts` | opus/high (sonnet/high) | `advances-and-refunds`, `crates-and-papers` | `9d4f2d4` | Banks discount a town's bills, lend against its contracts and are repaid from the payment first; the hub's discount desk; grace scaled by debt; bills no one can carry lapse; all 4 tags pinned. Gaps: no spurs, Ex Works purse shrunk by the loan (mod draws a bill for the shortfall), hubs and realms hooks, float spare against every plan this look. At landing: training contracts lend on their bonus, the float counted spent at Decide without a second allow, the crew's mouths, `plan_papers` pinned as main runs it |
@@ -156,3 +156,7 @@ dependencies are the integrator's; `trees.py` locks its registry, so agents can 
   `tests/common/slices.rs` commented out (it must equal main's), and pin what moved; diff the order by printing
   `look_schedule().systems()` after `initialize`. A slice that adds towns also moves other slices' random picks of a
   town (banks repaid fell from 4 to 2): their picks go among the towns on the map.
+- Even a component on every town in `add_town` can move main's worlds: `freight-hubs` inserted `Hub` in an insert of
+  its own, and with no hub able to emerge and its slice off the fingerprint still moved (something still meets towns
+  in archetype order); in the works' insert it didn't. Fingerprint with the rule unable to fire as well as the slice
+  off, and add a new town component to an existing insert's bundle.
