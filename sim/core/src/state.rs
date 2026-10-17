@@ -36,6 +36,8 @@ pub struct Outbox(pub Vec<Output>);
 pub struct Town {
     pub name: String,
     pub id: usize,
+    /// The hex it stands in, once the host has placed it.
+    pub hex: Option<crate::hex::Hex>,
 }
 
 /// Every town's entity, by its number.
@@ -132,6 +134,11 @@ pub struct Route {
     pub road_cost: f64,
     pub every_ticks: u64,
 }
+
+/// The hexes a route's wagons cross, start to goal: on a road planned over the map (`Society::add_road`), not on a
+/// bare route. Its own component, not a field of [`Route`], so `Route` stays `Copy` for the steps that copy it.
+#[derive(Component, Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
+pub struct RoutePath(pub Vec<crate::hex::Hex>);
 
 /// An idle route's plan for a wagon this look, built up by the planning steps (each module adds what it owes, wants or
 /// carries) and acted on by the deciding step: the cargo, of which owed under which contract; the Ex Works contracts

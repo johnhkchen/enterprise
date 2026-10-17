@@ -100,6 +100,7 @@ saved! {
         book: Book,
         bills: Bills,
         mint: crate::mint::Mint,
+        map: crate::map::Map,
     }
     town {
         town: Town,
@@ -114,6 +115,7 @@ saved! {
     route {
         route: Route,
         state: RouteState,
+        path: RoutePath,
     }
 }
 

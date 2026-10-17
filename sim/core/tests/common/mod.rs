@@ -1,7 +1,7 @@
 //! The random worlds' generator, shared by the tests that run them (`random_worlds.rs`, `save.rs`).
 #![allow(dead_code)]
 
-use enterprise_core::{Content, Good, Incoterm, Society};
+use enterprise_core::{Content, Good, Hex, Incoterm, Society};
 
 pub const DAY: u64 = 24_000;
 
@@ -74,6 +74,33 @@ pub fn world(seed: u64) -> Society {
             let terms = [Incoterm::Exw, Incoterm::Cpt, Incoterm::Dap, Incoterm::Ddp][r.below(4) as usize];
             s.draft(a, b, r.below(n_goods as u64) as usize, (1 + r.below(8)) as f64 * 16.0, r.range(0.02, 2.0),
                 r.below(10) * DAY, (1 + r.below(4)) * DAY, 1 + r.below(10) as u32, terms, r.below(2) == 0);
+        }
+    }
+    // A 12 x 12 patch of hexes: lakes, marsh, hills and cliffs, a few bridges; the towns placed on it, some joined by
+    // roads planned over it (a road with no way through isn't built).
+    for q in 0..12 {
+        for rr in 0..12 {
+            let hex = Hex::new(q, rr);
+            let water = match r.below(5) {
+                0 => 1.0,
+                1 => r.range(0.0, 0.5),
+                _ => 0.0,
+            };
+            let relief = if r.below(5) == 0 { r.range(0.0, 40.0) } else { 0.0 };
+            s.set_ground(hex, water, relief);
+            if water > 0.5 && r.below(4) == 0 {
+                s.bridge(hex);
+            }
+        }
+    }
+    for t in 0..n_towns {
+        let hex = Hex::new(r.below(12) as i32, r.below(12) as i32);
+        s.place_town(t, hex.center_x() + r.range(-20.0, 20.0), hex.center_z() + r.range(-20.0, 20.0));
+    }
+    for _ in 0..r.below(2 * n_towns as u64) + 1 {
+        let (a, b) = (r.below(n_towns as u64) as usize, r.below(n_towns as u64) as usize);
+        if a != b {
+            s.add_road(a, b, r.range(1.0, 8.0));
         }
     }
     s

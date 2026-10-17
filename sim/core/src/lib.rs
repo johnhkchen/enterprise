@@ -12,6 +12,8 @@ pub mod bills;
 pub mod check;
 pub mod content;
 pub mod contracts;
+pub mod hex;
+pub mod map;
 pub mod messages;
 pub mod mint;
 pub mod people;
@@ -23,6 +25,8 @@ pub mod state;
 
 pub use content::{Content, Dials, Good, GoodId};
 pub use contracts::{Contract, Incoterm, State};
+pub use hex::Hex;
+pub use map::{Ground, Map, Path, Post, Posts};
 pub use messages::{Input, Output, RouteId, TownId};
 pub use society::Society;
 pub use roster::{Hand, Roster, Trade, TradeId};

@@ -23,6 +23,7 @@ fn run_day(s: &mut Society, daily: &[u64], day: u64) -> Vec<Output> {
 
 #[test]
 fn the_books_balance_and_nobody_goes_into_debt_in_any_world() {
+    let (mut roads, mut detours, mut road_trips) = (0, 0, 0);
     for seed in 0..300 {
         let mut s = world(seed);
         let daily = sellers(seed);
@@ -44,7 +45,16 @@ fn the_books_balance_and_nobody_goes_into_debt_in_any_world() {
                 assert!(roster.hands.iter().all(|h| (1..=5).contains(&h.level)), "seed {seed}, day {day}: levels 1 to 5");
             }
         }
+        for route in 0..s.route_count() {
+            if let Some(path) = s.route_path(route) {
+                roads += 1;
+                detours += (path.len() as i32 > path[0].distance(*path.last().unwrap()) + 1) as u32;
+                road_trips += s.route(route).trips;
+            }
+        }
     }
+    // The map is exercised: roads are built, some go round the water and hills, and wagons run on them.
+    assert!(roads > 300 && detours > 30 && road_trips > 1000, "{roads} roads, {detours} detours, {road_trips} trips");
 }
 
 #[test]

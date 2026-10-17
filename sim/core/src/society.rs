@@ -46,6 +46,7 @@ impl Society {
         world.insert_resource(Book::default());
         world.insert_resource(crate::bills::Bills::default());
         world.insert_resource(crate::mint::Mint::default());
+        world.insert_resource(crate::map::Map::default());
         Society { world, look: look_schedule(), towns: Vec::new(), routes: Vec::new() }
     }
 
@@ -68,7 +69,7 @@ impl Society {
         let e = self
             .world
             .spawn((
-                Town { name: name.to_string(), id: self.towns.len() },
+                Town { name: name.to_string(), id: self.towns.len(), hex: None },
                 Money(money),
                 Stock(vec![0.0; n]),
                 Trades { makes: vec![0.0; n], uses: vec![0.0; n] },
@@ -153,6 +154,72 @@ impl Society {
         let e = self.world.spawn((route, RouteState::default())).id();
         self.routes.push(e);
         self.routes.len() - 1
+    }
+
+    /// Places a town at the point (x, z) in blocks: it stands in that point's hex.
+    pub fn place_town(&mut self, town: TownId, x: f64, z: f64) {
+        self.world.get_mut::<Town>(self.towns[town]).expect("a town").hex = Some(crate::hex::Hex::at(x, z));
+    }
+
+    /// The hex a town stands in, if it's been placed.
+    pub fn town_hex(&self, town: TownId) -> Option<crate::hex::Hex> {
+        self.world.get::<Town>(self.towns[town]).expect("a town").hex
+    }
+
+    /// A hex's ground: its share under water (0 to 1) and its relief in blocks. Its bridge, if any, stays.
+    pub fn set_ground(&mut self, hex: crate::hex::Hex, water_share: f64, relief: f64) {
+        self.world.resource_mut::<crate::map::Map>().set_ground(hex, water_share, relief);
+    }
+
+    /// A finished bridge on a hex: if it's mostly water, caravans cross it as open ground.
+    pub fn bridge(&mut self, hex: crate::hex::Hex) {
+        self.world.resource_mut::<crate::map::Map>().bridge(hex);
+    }
+
+    pub fn map(&self) -> &crate::map::Map {
+        self.world.resource::<crate::map::Map>()
+    }
+
+    /// Road food both ways across a hex of open ground (`Caravans.perHex`): 16 food points, at bread's worth a point
+    /// (the mod's 1/30 of an emerald when the host has no bread with food points).
+    pub fn per_hex(&self) -> f64 {
+        let content = self.content();
+        let point = content
+            .good("bread")
+            .map(|b| &content.goods[b])
+            .filter(|b| b.food > 0.0)
+            .map_or(crate::map::FOOD_POINT_VALUE, |b| b.value / b.food);
+        crate::map::per_hex(point)
+    }
+
+    /// The cheapest way between two placed towns over the map (no tolls yet), or `None` if either isn't placed or
+    /// there is no way through.
+    pub fn plan_road(&self, from: TownId, to: TownId) -> Option<crate::map::Path> {
+        let (a, b) = (self.town_hex(from)?, self.town_hex(to)?);
+        let free = [from, to].into_iter().collect();
+        self.map().plan(a, b, self.per_hex(), 0.0, &Default::default(), &free, false, &Default::default())
+    }
+
+    /// A road from one placed town to another over the map, a wagon every `every_days` on its timetable: its path is
+    /// the cheapest way (`plan_road`), its time the path's blocks (80 a hex) at 1,200 blocks a day (20 ticks a block),
+    /// its road food the path's cost. `None` when there's no way through (or a town isn't placed).
+    pub fn add_road(&mut self, from: TownId, to: TownId, every_days: f64) -> Option<RouteId> {
+        let path = self.plan_road(from, to)?;
+        let days = path.blocks().max(1.0) / crate::map::BLOCKS_PER_DAY;
+        let id = self.add_route(from, to, days, path.cost, every_days);
+        self.world.entity_mut(self.routes[id]).insert(RoutePath(path.hexes));
+        Some(id)
+    }
+
+    /// The hexes a route's wagons cross, if it's a road over the map.
+    pub fn route_path(&self, route: RouteId) -> Option<Vec<crate::hex::Hex>> {
+        self.world.get::<RoutePath>(self.routes[route]).map(|p| p.0.clone())
+    }
+
+    /// The ticks a route's wagons take one way, and its road food a round trip.
+    pub fn route_road(&self, route: RouteId) -> (u64, f64) {
+        let r = self.world.get::<Route>(self.routes[route]).expect("a route");
+        (r.travel_ticks, r.road_cost)
     }
 
     /// Moves the society on to `to` (in ticks), looking at it every `look_ticks`. Returns what happened.
