@@ -8,6 +8,12 @@
 //!   households' savings, with interest, repaid beyond its reserve.
 //! - **Review** (each day's first look): the crop rotation, the plan made again, the town's focus, the stores it
 //!   would build, a field when its Farmers have hands to spare, and a field of their own for households that can pay.
+//!
+//! **Not yet as the mod:** a household's freehold crop is chosen from all the town's wants (demand, trades' use,
+//! draws) where `Fields.freehold` reads the villagers' demand with the herds' feed; and `Fields.consider` reads only the
+//! feed as needs where this reads [`Farm::needs`] (feed and forward sales). Both hooks are empty until `herds` and the
+//! forward sales fill them. Share-cropping cuts each look's crop by the share paid at the last settlement, so it lags
+//! a recovery by up to one settlement.
 
 use std::collections::BTreeMap;
 
@@ -34,6 +40,9 @@ pub fn register(schedule: &mut Schedule) {
 /// Each farm accrues for the time since, with the crop sales its cash book shows since it last looked.
 fn work(clock: Res<Clock>, content: Res<Content>, book: Res<CashBook>, mut farms: Query<(&Town, &mut Farm, &People)>) {
     for (town, mut farm, people) in &mut farms {
+        if !farm.set_up {
+            continue;
+        }
         let sold = crop_sales(&content, &book, town.id, &mut farm, clock.now);
         farm.sales_since += sold;
         accrue(&content, &mut farm, people.mood, clock.now);
@@ -52,6 +61,9 @@ fn pay(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut
         mut farms: Query<(&Town, &mut Farm, &mut Money, &mut People, &mut Stock, &Trades)>) {
     let (now, day) = (clock.now, content.day_ticks);
     for (town, mut farm, mut money, mut people, mut stock, trades) in &mut farms {
+        if !farm.set_up {
+            continue;
+        }
         let t = town.id;
         let farm = &mut *farm;
         // The whole emeralds owed: what the treasury has, then credit as far as the Farmers will wait.
@@ -67,6 +79,10 @@ fn pay(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut
             farm.wages_paid += paid;
             farm.wages_unpaid += whole - paid - credited;
             farm.paid_share = (paid + credited) / whole;
+        } else if wage_per_day(&content, farm) <= 0.0 {
+            // No one at work, no wage running: nothing is left unpaid (the mod's 1 with nothing whole owed). Without
+            // this a share of 0 from the last settlement would stand for good once the plan empties.
+            farm.paid_share = 1.0;
         }
         // Unpaid, the Farmers take their wage in kind: their share of the crop. The town gets the rest.
         if farm.paid_share < 1.0 {
@@ -135,7 +151,7 @@ fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut ledge
     let (now, day) = (clock.now, content.day_ticks);
     let today = now / day;
     for (town, mut farm, mut money, mut people, stock, trades, mut budget, roster) in &mut farms {
-        if farm.reviewed == Some(today) {
+        if !farm.set_up || farm.reviewed == Some(today) {
             continue;
         }
         farm.reviewed = Some(today);

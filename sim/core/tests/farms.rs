@@ -102,6 +102,9 @@ fn a_farmer_works_32_plots_a_level_half_an_item_each() {
 fn produce_lands_in_the_warehouse_on_touch() {
     let mut s = Society::new(content());
     s.content_mut().dials.villagers_per_want = f64::INFINITY;
+    // The Farmer's baking (wheat into bread for a hungry town) is the workshop's (tests/workshop.rs): here the
+    // wheat stays wheat.
+    s.content_mut().conversions.clear();
     let t = s.add_town("Meadowworth", 100.0);
     s.set_roster(t, &[("farmer", 1)]);
     s.set_people(t, 1.0, 1.0, 1.0);
@@ -248,6 +251,7 @@ fn a_root_cellar_is_wanted_where_roots_pile_up_and_banks_them() {
 #[test]
 fn a_harvest_goes_to_the_store_beyond_what_the_warehouse_keeps_loose() {
     let mut s = farm(100.0);
+    s.content_mut().conversions.clear(); // no baking: the wheat stays wheat
     s.build_store(0, Store::Granary);
     s.deliver(0, WHEAT, 120.0);
     s.advance(10 * DAY);
@@ -413,6 +417,8 @@ fn a_household_buys_a_field_of_its_own_and_owners_take_more() {
 #[test]
 fn unpaid_farmers_sour_the_mood() {
     let mut s = Society::new(content());
+    // No baking: bread from the wheat would feed the town, and its unwanted wheat would lie fallow.
+    s.content_mut().conversions.clear();
     let t = s.add_town("Meadowworth", 0.0);
     s.set_roster(t, &[("farmer", 1)]);
     s.set_people(t, 1.0, 1.0, 1.0);
@@ -453,4 +459,18 @@ fn fields_stop_where_the_town_has_no_more_room() {
     let ground: u32 = f.plots.values().sum();
     assert!(ground as f64 <= farms::farmland(), "{ground} plots in {} blocks", farms::farmland());
     assert_eq!(f.fields_planted, (farms::farmland() / 81.0).floor() as u32, "as many fields as the ring holds");
+}
+
+/// Unpaid Farmers who stop working are owed nothing more: the share paid goes back to whole, and the town's people
+/// with it, rather than standing at the last settlement's for good.
+#[test]
+fn farmers_with_no_plan_left_are_not_left_unpaid() {
+    let mut s = farm(0.0);
+    s.advance(30 * DAY);
+    assert!(the_farm(&s).paid_share < 1.0, "past their credit, the Farmers go unpaid: {}", the_farm(&s).paid_share);
+    s.set_plots(0, WHEAT, 0);
+    s.advance(31 * DAY);
+    assert!(the_farm(&s).per_day.is_empty(), "no plots, no plan");
+    assert_eq!(the_farm(&s).paid_share, 1.0, "no wage running, nothing unpaid");
+    assert_eq!(s.town(0).people.paid_share, 1.0, "and the town's people paid as far as the farm goes");
 }

@@ -102,10 +102,8 @@ pub fn yield_factor(mood: f64) -> f64 {
     (1.0 + 0.1 * mood).clamp(0.5, 1.5)
 }
 
-/// Culture for a mood: a quarter more a point, between a quarter and double (`Territory.cultureFactor`).
-pub fn culture_factor(mood: f64) -> f64 {
-    (1.0 + 0.25 * mood).clamp(0.25, 2.0)
-}
+/// Culture for a mood (`Territory.cultureFactor`): territory's, where culture is counted.
+pub use crate::territory::culture_factor;
 
 /// How scarce farm hands are, as a factor on the wage (`Households.tightness`): above 1 with plots going untended (to
 /// [`TIGHTEST`] when as many go untended as are worked), below 1 with hands idle (to [`SLACKEST`] when half are).
@@ -198,6 +196,9 @@ impl Store {
 /// and paid, and what the town wants of its crops.
 #[derive(Component, Clone, Debug, Serialize, Deserialize)]
 pub struct Farm {
+    /// Has the host set the farm up (plots, demand, a store)? Every town has a farm from the start, so towns share one
+    /// archetype (the order queries visit them in, as a loaded world has it); until it's set up it farms nothing.
+    pub set_up: bool,
     /// Plots in the ground, by crop: the host's fields, and those the town plants.
     pub plots: BTreeMap<GoodId, u32>,
     /// Plots turned over to another crop on the books, by crop (below 0: turned away from it).
@@ -258,6 +259,7 @@ pub struct Farm {
 impl Default for Farm {
     fn default() -> Self {
         Farm {
+            set_up: false,
             plots: BTreeMap::new(),
             turned: BTreeMap::new(),
             per_day: BTreeMap::new(),
@@ -734,9 +736,13 @@ pub struct FarmView {
 impl crate::society::Society {
     fn farm_entity(&mut self, town: crate::messages::TownId) -> Entity {
         let e = self.towns[town];
-        if self.world.get::<Farm>(e).is_none() {
+        if !self.world.get::<Farm>(e).is_some_and(|f| f.set_up) {
             let now = self.now();
-            self.world.entity_mut(e).insert(Farm { last: Some(now), ..Default::default() });
+            let content = self.world.resource::<Content>();
+            let mut farm = Farm { set_up: true, last: Some(now), sales_day: now / content.day_ticks.max(1), ..Default::default() };
+            // Crop sales start counting from now: what its lockers sold before the farm was set up isn't its.
+            crop_sales(content, self.world.resource::<crate::cash_book::CashBook>(), town, &mut farm, now);
+            self.world.entity_mut(e).insert(farm);
         }
         e
     }
@@ -802,15 +808,15 @@ impl crate::society::Society {
     /// Does the town grow more of a store's crops than it keeps (`Territory.wantsStore`)?
     pub fn wants_store(&self, town: crate::messages::TownId, store: Store) -> bool {
         let e = self.world.entity(self.towns[town]);
-        let Some(farm) = e.get::<Farm>() else { return false };
+        let Some(farm) = e.get::<Farm>().filter(|f| f.set_up) else { return false };
         wants_store(self.content(), farm, &e.get::<crate::state::Stock>().unwrap().0,
             &e.get::<crate::state::Trades>().unwrap().uses, store)
     }
 
-    /// A town's farm, if it has one, as it stood at the last look.
+    /// A town's farm, if it's been set up, as it stood at the last look.
     pub fn farm(&self, town: crate::messages::TownId) -> Option<FarmView> {
         let e = self.world.entity(self.towns[town]);
-        e.get::<Farm>().map(|f| FarmView {
+        e.get::<Farm>().filter(|f| f.set_up).map(|f| FarmView {
             farm: f.clone(),
             wage_per_day: wage_per_day(self.content(), f),
             deposits: e.get::<Deposits>().map_or(0.0, |d| d.owed),

@@ -84,6 +84,8 @@ impl Society {
             .id();
         // Every town has a workshop's hooks, so towns share one archetype whether or not a hook is set.
         self.world.entity_mut(e).insert(crate::workshop::Workshop::default());
+        // And a farm not yet set up and its households' savings lent the treasury (none yet), for the same reason.
+        self.world.entity_mut(e).insert((crate::farms::Farm::default(), crate::farms::Deposits::default()));
         self.towns.push(e);
         self.world.resource_mut::<Towns>().0.push(e);
         self.towns.len() - 1
