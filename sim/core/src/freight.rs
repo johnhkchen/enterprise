@@ -55,9 +55,10 @@
 //! buyer (the mod's `billed` lading, the only way the core sends one), so its consignee takes it as paid. The discount
 //! desk sits every day (the mod's `Discounts.open` days aside). Only roads over the map pass through a hub's land (a bare
 //! route has no path), and the distances the reorganising reckons are between the hexes' centres. A crate booked on a
-//! run that's gone (wound down) is booked again. Not yet: the forwarder's collections at towns the hub's runs call at
-//! (`collectForwarding`, its consignment and credit: `Forwarder.java`), contract copies left at a hub for markets it
-//! serves (`copiesVia`), stranded paper (`Stranded.java`), rents at the hub (`RentDealer`), and the porter run's freight
+//! run that's gone (wound down) is booked again. Stranded paper, and the hub's own wagon's collections at its
+//! towns (`collectForwarding`: the fare and the freight on credit), are `stranded.rs`'s. Not yet: the forwarder's
+//! consignment (`Forwarder.java`), contract copies left at a hub for markets it
+//! serves (`copiesVia`), rents at the hub (`RentDealer`), and the porter run's freight
 //! check (`porterRun`: a run with space sold or crates booked goes by wagon).
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -727,6 +728,9 @@ pub struct Aboard {
     pub stop: Option<Stop>,
     pub reckoned: Option<crate::state::Leg>,
     pub booked: Vec<Shipment>,
+    /// Crates the hub's own wagon bought or collected for its forwarder (`Freight.forwarding`; stranded paper's goods,
+    /// a town's goods on consignment): copies of those in `shipments`, put in the forwarder's hands when it's home.
+    pub forwarding: Vec<Shipment>,
 }
 
 /// A route's freight (`RouteState.freight`): its calls at hubs (`Route.stops`), its last wagon's mouths with the team
@@ -744,6 +748,8 @@ pub struct RouteFreight {
 pub struct Freight {
     pub day: Option<u64>,
     pub pending: Vec<(TownId, TownId)>,
+    /// Each hub's book of stranded paper bought and freight carried on credit (`stranded.rs`).
+    pub stranded: BTreeMap<TownId, crate::stranded::StrandedBook>,
 }
 
 /// A crate on freight received by its consignee (`Crates.receive`): its copy filed, its goods into `stock`, its crates

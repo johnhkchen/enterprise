@@ -268,12 +268,6 @@ impl Discounts {
     }
 }
 
-/// Can a freight hub the payee's wagons reach buy a bill on the drawee (`Apprentices.collectable`'s hub branch)? The
-/// hubs are freight-hubs' and stranded-paper's: none yet.
-pub fn hub_collects(_payee: TownId, _drawee: TownId) -> bool {
-    false
-}
-
 impl Society {
     /// The town's market opens a bank (`Bank.open`; the mod's `/enterprise bank open <desk>`).
     pub fn open_bank(&mut self, town: TownId) {

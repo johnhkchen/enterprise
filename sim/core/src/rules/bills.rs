@@ -4,11 +4,12 @@
 
 use bevy_ecs::prelude::*;
 
-use super::{in_order, Step, TownData};
+use super::{in_order, Step};
 use crate::bills::{self, BillState, Bills, Held};
 use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
 use crate::contracts::Book;
+use crate::farms::{borrow, on_call, Deposits};
 use crate::state::*;
 
 pub fn register(schedule: &mut Schedule) {
@@ -19,11 +20,13 @@ pub fn register(schedule: &mut Schedule) {
 }
 
 /// Bills the wagon carries on this town, presented: it pays whole the due ones it can, from its money (what it owes
-/// isn't its money manager's to hold back). Its grace runs from the day a bill is first put to it; unpaid past that,
+/// isn't its money manager's to hold back), short of it from its households' savings, as far as the treasury may borrow
+/// them (`Caravans.presentBills`: `depositsOnCall`, `borrowDeposits`). Its grace runs from the day a bill is first put to it; unpaid past that,
 /// the bill is dishonoured and trust falls a whole miss; honoured, it counts half a kept installment.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn present(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
-        mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<TownData>) {
+        mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
+        mut towns: Query<(&mut Money, &mut People, &mut Deposits)>) {
     let now = clock.now;
     let day = content.day_ticks;
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
@@ -32,13 +35,18 @@ pub(super) fn present(clock: Res<Clock>, content: Res<Content>, mut book: ResMut
             continue;
         }
         let route = *route;
-        let (_, mut money, _, _, _) = towns.get_mut(route.to).expect("the far end");
+        let (mut money, mut people, mut deposits) = towns.get_mut(route.to).expect("the far end");
         let wagon = state.wagon.as_mut().unwrap();
         for id in std::mem::take(&mut wagon.bills) {
             let b = &mut bills.bills[id];
             if b.drawee != route.to_id || b.state == BillState::Paid {
                 wagon.bills.push(id);
                 continue;
+            }
+            // Short of coin, the Merchant honours its bills with its households' savings, as far as it may borrow them.
+            if b.due <= now && money.0 < b.amount && money.0 + on_call(&content, people.purse, deposits.owed) >= b.amount {
+                let short = b.amount - money.0;
+                borrow(&content, &mut ledger, &mut cash, route.to_id, &mut money.0, &mut people.purse, &mut deposits, short, now);
             }
             if b.due <= now && money.0 >= b.amount {
                 post(&mut ledger, &mut cash, Side::treasury(route.to_id, &mut money.0),

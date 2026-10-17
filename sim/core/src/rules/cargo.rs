@@ -77,7 +77,7 @@ fn spare(content: &Content, money: f64, trades: &Trades, farm: Option<&Farm>) ->
 /// and crated already, crated in one go once the stock holds a lot of it (a stack, or all that's owed), if there's room
 /// for the crates; one bill of lading for it, made out to the buyer, with a copy of the contract.
 #[allow(clippy::type_complexity)]
-pub(crate) fn earmark(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
+pub(crate) fn earmark(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, bills: Res<crate::bills::Bills>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
         mut towns: Query<(&Town, &mut Stock, &mut Money, &Trades, Option<&Farm>, &mut Shipments, &mut Paperwork)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let harvests: Vec<usize> = book.open.iter().copied()
@@ -92,8 +92,12 @@ pub(crate) fn earmark(clock: Res<Clock>, content: Res<Content>, book: Res<Book>,
             let s = &store.held[i];
             let stale = s.shipper == town.id && !s.consigned_to(town.id) && s.contract.is_some_and(|id| {
                 let c = &book.contracts[id];
-                // (A pupil's work crated for a training contract's buyer waits for its wagon after the contract is done.)
-                (!c.in_force() && c.training.is_none()) || (c.harvest.is_some() && c.seller == town.id && s.consignee != Some(c.buyer))
+                // A harvest crate whose contract has closed or gone to another buyer; any crate shipped under a contract no
+                // longer in force, unless a bill it was paid for by is still to be collected (then it's the buyer's, and goes
+                // with the bill: `ForwardSales.earmark`, `market.Stranded`).
+                (c.harvest.is_some() && c.seller == town.id && (!c.in_force() || s.consignee != Some(c.buyer)))
+                    || (!c.in_force() && !(s.settled && bills.open.iter().map(|&b| &bills.bills[b]).any(|b|
+                        b.state == crate::bills::BillState::Outstanding && b.payee == town.id && s.consignee == Some(b.drawee))))
             });
             if stale {
                 let s = store.held.remove(i);

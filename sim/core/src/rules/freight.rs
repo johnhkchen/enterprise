@@ -512,7 +512,8 @@ fn deal(at: &AtHub, skip: &[TownId], book: &Book, bills: &mut Bills, ledger: &mu
     let seq = at.route.seq;
     // Its crates bound on, handed over (those on freight tickets already are for its own run's end).
     let (mut offered, mut rest): (Vec<Shipment>, Vec<Shipment>) = std::mem::take(&mut wagon.shipments).into_iter()
-        .partition(|s| s.consignee.is_some_and(|c| c != id && !skip.contains(&c)) && !wagon.freight.booked.contains(s));
+        .partition(|s| s.consignee.is_some_and(|c| c != id && !skip.contains(&c)) && !wagon.freight.booked.contains(s)
+            && !wagon.freight.forwarding.contains(s)); // (nor those it bought or collected for its own forwarder)
     if !offered.is_empty() {
         let taken = hub.hand_over(content, net, id, &mut offered, wagon.purse.max(0.0), at.rate, skip);
         if taken.stacks > 0 {
@@ -580,7 +581,7 @@ fn deal(at: &AtHub, skip: &[TownId], book: &Book, bills: &mut Bills, ledger: &mu
 
 /// How full the hub's warehouse is, 0 to 1 (`Discounts.fill`): its stock's stacks and the forwarder's crates against its
 /// slots.
-fn fill(content: &Content, stock: &Stock, hub: &Hub) -> f64 {
+pub(crate) fn fill(content: &Content, stock: &Stock, hub: &Hub) -> f64 {
     let used: u32 = stock.0.iter().enumerate().map(|(g, n)| crate::cargo::stacks_of(content, g, *n)).sum::<u32>()
         + hub.held.iter().map(|h| h.shipment.crates(content)).sum::<u32>();
     let slots = content.dials.warehouse_slots;

@@ -69,6 +69,12 @@ impl Bills {
 
     /// As [`Bills::draw`], paying for goods under `contract`.
     pub fn draw_for(&mut self, drawee: TownId, payee: TownId, debt: f64, now: u64, day: u64, contract: Option<usize>) -> usize {
+        self.draw_term(drawee, payee, debt, now, (TERM_DAYS * day as f64) as u64, contract)
+    }
+
+    /// As [`Bills::draw_for`], due in `term` ticks rather than a bill term (`Bills.draw`'s `term`: a hub's bill for stranded
+    /// paper in installments, a town's bill for freight on credit).
+    pub fn draw_term(&mut self, drawee: TownId, payee: TownId, debt: f64, now: u64, term: u64, contract: Option<usize>) -> usize {
         let id = self.bills.len();
         self.bills.push(Bill {
             id,
@@ -76,7 +82,7 @@ impl Bills {
             payee,
             amount: debt * (1.0 + INTEREST),
             drawn: now,
-            due: now + (TERM_DAYS * day as f64) as u64,
+            due: now + term,
             presented: None,
             state: BillState::Outstanding,
             held: Held::Wagon,

@@ -41,14 +41,17 @@ pub fn register(schedule: &mut Schedule) {
     ));
 }
 
-/// Bills no one can carry to their drawee lapse `lapse_days` past their day (`Bills.lapse`).
-fn lapse(clock: Res<Clock>, content: Res<Content>, mut bills: ResMut<Bills>, mut book: ResMut<Book>, routes: Query<&Route>) {
+/// Bills no one can carry to their drawee lapse `lapse_days` past their day (`Bills.lapse`): no road between the two, and
+/// no freight hub the holder's wagons reach that runs to the drawee (`Apprentices.collectable`: it would buy them).
+fn lapse(clock: Res<Clock>, content: Res<Content>, mut bills: ResMut<Bills>, mut book: ResMut<Book>,
+        routes: Query<(&Route, &RouteState, Option<&RoutePath>)>, towns: Query<(&Town, &crate::freight::Hub)>) {
     if bills.open.is_empty() {
         return;
     }
-    let roads: BTreeSet<(usize, usize)> = routes.iter().map(|r| (r.from_id, r.to_id)).collect();
+    let roads: BTreeSet<(usize, usize)> = routes.iter().map(|(r, ..)| (r.from_id, r.to_id)).collect();
+    let net = crate::freight::Network::of(&content, routes.iter(), towns.iter().map(|(t, h)| (t.id, t.hex, h.storehouse)));
     let carried = |payee: usize, drawee: usize| roads.contains(&(payee, drawee)) || roads.contains(&(drawee, payee))
-        || bank::hub_collects(payee, drawee);
+        || crate::stranded::collectable(&net, payee, drawee);
     bills.lapse(&mut book, clock.now, content.day_ticks, content.dials.lapse_days, carried);
 }
 
@@ -160,7 +163,7 @@ fn spend_float(clock: Res<Clock>, mut banks: ResMut<Banks>, routes: Query<(Entit
 /// its bills not yet due bought for coin now; loans made against its contracts in force where it's short. All from
 /// the purse beyond what the wagon keeps for the road home's food.
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
-fn deal(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut bills: ResMut<Bills>, mut banks: ResMut<Banks>,
+pub(crate) fn deal(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut bills: ResMut<Bills>, mut banks: ResMut<Banks>,
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<(&mut Money, &Trades, Option<&Farm>)>) {
     if banks.banks.is_empty() {

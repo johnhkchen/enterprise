@@ -31,7 +31,7 @@
 //! **Stood in for:** the mod's census is the town's [`Roster`]; its warehouse slots are `warehouse_slots` stacks (the core
 //! has no slots), `FREE_SLOTS` the dial `free_slots`; what a town wants is what its people use below its shelf, and what its
 //! contracts have to deliver; the cold store, the atlas (a town knows the board's if a road joins them) and freight hubs
-//! (the work is collectable only by a route of the buyer's to the town) wait for the slices that bring them. The
+//! (the work is collectable only where a wagon of the buyer's calls or a hub runs to the buyer: `stranded.rs`). The
 //! per-restock review is called with the plan made at the look (or at the host's restock), not at each of a catch-up's
 //! restocks. A lapsed tender is reposted here at its bonus times 1.25 for its span; the mod's `Sovereign.offerTraining`
 //! recounts the realm's shortfall and raises a per-trade counter (the crown's to port; `training_bonus` waits for it).
@@ -334,10 +334,11 @@ pub fn plan(content: &Content, book: &Book, apprenticeships: &mut Apprenticeship
     lockers.lessons.targets = targets;
 }
 
-/// Can the buyer get the work, and the town its money: a route of the buyer's calls at the town (the mod's
-/// `Stranded.calls`; a freight hub that runs to the buyer waits for `freight-hubs`) (`Apprentices.collectable`).
-pub fn collectable(routes: &[Route], desk: usize, buyer: usize) -> bool {
-    routes.iter().any(|r| r.from_id == buyer && r.to_id == desk)
+/// Can the buyer get the work, and the town its money: a wagon of the buyer's calls at the town (`Stranded.calls`), or the
+/// town's wagons reach a freight hub that runs to the buyer (it will buy the bill and forward the goods)
+/// (`Apprentices.collectable`; see [`crate::stranded::collectable`]).
+pub fn collectable(net: &crate::freight::Network, desk: usize, buyer: usize) -> bool {
+    crate::stranded::collectable(net, desk, buyer)
 }
 
 /// After the restocks: what the Merchant paid the pupil to make, under a training contract with an offtake, is the
@@ -346,11 +347,11 @@ pub fn collectable(routes: &[Route], desk: usize, buyer: usize) -> bool {
 /// the buyer's wagon is next here (`Apprentices.afterTrade`). With no wagon of the buyer's calling, the work is the town's.
 #[allow(clippy::too_many_arguments)]
 pub fn finish(content: &Content, book: &Book, bills: &mut Bills, ledger: &mut Ledger, cash: &mut CashBook,
-        routes: &[Route], now: u64, town: usize, lockers: &mut Lockers, stock: &mut Stock, money: &mut Money,
+        net: &crate::freight::Network, now: u64, town: usize, lockers: &mut Lockers, stock: &mut Stock, money: &mut Money,
         trades: &Trades, farm: Option<&Farm>, store: &mut Shipments, paperwork: &mut Paperwork) {
     for made in std::mem::take(&mut lockers.lessons.made) {
         let Some((c, t)) = book.training_for(town).find(|(_, t)| t.trade == made.trade && t.offtake > 0.0) else { continue };
-        if !collectable(routes, town, c.buyer) {
+        if !collectable(net, town, c.buyer) {
             continue;
         }
         let n = made.count.min(stock.0[made.good].floor());
@@ -708,11 +709,11 @@ impl Society {
             ent.get::<Trades>().unwrap().clone());
         let farm = ent.get::<Farm>().cloned();
         let (mut store, mut paperwork) = (ent.get::<Shipments>().unwrap().clone(), ent.get::<Paperwork>().unwrap().clone());
-        let routes: Vec<Route> = self.routes.iter().filter_map(|&r| self.world.get::<Route>(r).copied()).collect();
+        let net = self.network();
         let mut bills = std::mem::take(&mut *self.world.resource_mut::<Bills>());
         let mut ledger = std::mem::take(&mut *self.world.resource_mut::<Ledger>());
         let mut cash = std::mem::take(&mut *self.world.resource_mut::<CashBook>());
-        finish(self.content(), self.world.resource::<Book>(), &mut bills, &mut ledger, &mut cash, &routes, self.now(), town,
+        finish(self.content(), self.world.resource::<Book>(), &mut bills, &mut ledger, &mut cash, &net, self.now(), town,
             &mut lockers, &mut stock, &mut money, &trades, farm.as_ref(), &mut store, &mut paperwork);
         *self.world.resource_mut::<Bills>() = bills;
         *self.world.resource_mut::<Ledger>() = ledger;

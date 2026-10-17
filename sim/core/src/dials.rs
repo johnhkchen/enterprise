@@ -489,4 +489,13 @@ dials! {
     own_lot: u32 = 16,
     /// A contract with a player's shop runs this many daily lots at most (`Broker.SHOP_INSTALLMENTS`).
     shop_installments: u32 = 10,
+    // stranded-paper (`stranded.rs`: `market/Stranded.java`, `Caravans.collectForwarding`, `Dials.java`)
+    /// A hub pays what it can't in coin for stranded paper in at most this many of its own bills, a bill term apart
+    /// (`Stranded.INSTALLMENTS`).
+    stranded_installments: u32 = 6,
+    /// The hub's own caravan carries a town's goods on credit when it can't pay the fare: what it can't pay is its bill
+    /// to the hub, due in so many days, as far as a stack's worth over the fare is at least this share (`FREIGHT_CREDIT_DAYS`,
+    /// `FREIGHT_LIEN`).
+    freight_credit_days: f64 = 30.0,
+    freight_lien: f64 = 0.5,
 }

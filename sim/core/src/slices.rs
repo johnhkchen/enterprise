@@ -116,4 +116,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::post::register(schedule);
     crate::rules::army::register(schedule);
     crate::rules::orders::register(schedule);
+    crate::rules::stranded::register(schedule);
 }
