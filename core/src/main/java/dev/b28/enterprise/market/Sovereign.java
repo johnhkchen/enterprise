@@ -185,6 +185,18 @@ public final class Sovereign extends SavedData {
         return Optional.ofNullable(capital);
     }
 
+    /**
+     * Food points the crown keeps at its capital for the army while mobilising and at war (the ration store it puts
+     * by): not road food for the capital's other caravans, nor for sale; only the run to the front, the army's own
+     * supply, draws on it. The capital buys its own food as if it weren't there.
+     */
+    public int foodReserve(GlobalPos desk) {
+        if (capital == null || phase == Phase.PEACE || !capital.equals(desk)) {
+            return 0;
+        }
+        return STOCKPILE.getOrDefault(Items.BREAD, 0) * Army.nutrition(Items.BREAD) + MEAT_POINTS;
+    }
+
     public Optional<BankAccount> treasury() {
         return treasury == null ? Optional.empty() : Optional.ofNullable(Numismatics.BANK.getAccount(treasury));
     }

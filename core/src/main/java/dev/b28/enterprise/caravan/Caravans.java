@@ -294,7 +294,10 @@ public final class Caravans {
         }
         // Each member eats; one more goes only if the town can spare its food beyond the caravans' par.
         int members = mustered.size();
-        while (members > 1 && stock.foodNutrition() - Warehouse.FOOD_PAR_POINTS < foodNeeded(route.distance()) * members) {
+        // Food at home for the road: at the capital, not the crown's ration store, but for the run to the front.
+        boolean supplyRun = dev.b28.enterprise.army.Army.get(server).front().filter(route.to::equals).isPresent();
+        int homeFood = supplyRun ? stock.foodNutrition() : spareFoodAt(server, route.from, stock);
+        while (members > 1 && homeFood - Warehouse.FOOD_PAR_POINTS < foodNeeded(route.distance()) * members) {
             members--;
         }
         List<net.minecraft.world.entity.npc.Villager> squad = List.copyOf(mustered.subList(0, members));
@@ -311,10 +314,13 @@ public final class Caravans {
                 && foodKnownAt(server, level, route.to) - ledger.foodPromisedAt(route.to) >= food;
         // A town too poor to pay the far end for the road home's food packs that too, from food it can spare beyond
         // its par: a town rich in bread and poor in coin can still send its goods out.
-        boolean ownFood = !foreign && stock.foodNutrition() - Warehouse.FOOD_PAR_POINTS >= 2 * food
+        boolean ownFood = !foreign && homeFood - Warehouse.FOOD_PAR_POINTS >= 2 * food
                 && Treasury.available(level, route.from.pos(), stock, rate) - territory.reserve(route.from)
                         < food * PURSE_PER_FOOD_POINT;
-        int provisions = (!fedThere || ownFood) && 2 * foodNeeded(route.distance()) <= FOOD_CAPACITY ? food : 0;
+        // (only as far as home can spare it, both legs' worth: else it takes the money and buys there, or comes home
+        // on short rations, rather than never going)
+        int provisions = (!fedThere || ownFood) && 2 * foodNeeded(route.distance()) <= FOOD_CAPACITY
+                && (homeFood >= 2 * food || supplyRun) ? food : 0;
         double roadPurse = provisions > 0 ? 0 : food * PURSE_PER_FOOD_POINT;
         // A town sending its own caravan gives it money to bring home the comforts it lacks.
         Map<String, Double> shopping = Commissions.shoppingList(territory, route.from, stock);
@@ -355,13 +361,13 @@ public final class Caravans {
         // The provisions for a far end that sells no food come from home; the crew's road food there, as far as home
         // has it, and the rest bought on the road in coin, like the team's fodder: a town with money is never stuck
         // at home for want of bread to send a wagon for more.
-        if (stock.foodNutrition() < provisions) {
+        if (provisions > 0 && homeFood < provisions) {
             route.status = "waiting for food at the hub";
             route.recheckAt = now + RECHECK_TICKS; // planning the road again every poll is dear: a while
             ledger.setDirty();
             return false;
         }
-        int fromHome = Math.max(0, Math.min(food, stock.foodNutrition() - provisions));
+        int fromHome = Math.max(0, Math.min(food, homeFood - provisions));
         double foodCoin = (food - fromHome) * PURSE_PER_FOOD_POINT;
         if (Treasury.available(level, route.from.pos(), stock, rate) < purse + teamCoin + foodCoin) {
             route.status = "the hub can't fund the trip";
@@ -2477,10 +2483,11 @@ public final class Caravans {
                 int nutrition = foodPoints(stack);
                 if (nutrition > 0) {
                     // Food: a town short of it (under twice the caravans' par) buys enough to get there.
-                    par = Math.max(par, onHand + Math.max(0, 2 * Warehouse.FOOD_PAR_POINTS - stock.foodNutrition()) / nutrition);
+                    par = Math.max(par, onHand + Math.max(0, 2 * Warehouse.FOOD_PAR_POINTS - spareFoodAt(server, desk, stock))
+                            / nutrition);
                 }
                 // Food it's short of it buys as far as it can; any other goods, out of the accountant's budget.
-                boolean shortOfFood = nutrition > 0 && stock.foodNutrition() < 2 * Warehouse.FOOD_PAR_POINTS;
+                boolean shortOfFood = nutrition > 0 && spareFoodAt(server, desk, stock) < 2 * Warehouse.FOOD_PAR_POINTS;
                 if (!foreign && !shortOfFood) {
                     money = Math.min(money, dev.b28.enterprise.money.Accountant.leftFor(level, desk, stock, days, now));
                 }
@@ -2573,6 +2580,11 @@ public final class Caravans {
      * Food points a caravan's home knows the far end holds: an off-map market's ledger, or a town's last stocktake (and
      * plenty, if it has none yet).
      */
+    /** The market's food beyond what the crown keeps there for the army (see Sovereign#foodReserve), in points. */
+    static int spareFoodAt(MinecraftServer server, GlobalPos desk, MerchantStock stock) {
+        return stock.foodNutrition() - dev.b28.enterprise.market.Sovereign.get(server).foodReserve(desk);
+    }
+
     static int foodKnownAt(MinecraftServer server, ServerLevel level, GlobalPos desk) {
         if (dev.b28.enterprise.merchant.OffMap.get(server).is(desk)) {
             return MerchantStock.at(level, desk.pos()).foodNutrition();
@@ -2667,7 +2679,8 @@ public final class Caravans {
         Warehouse warehouse = Warehouse.get(server);
         Set<Item> wantedHere = wantedAt(server, desk);
         Set<Item> usedAtHome = wantedAt(server, route.from);
-        int homeFood = foodKnownAt(server, level, route.from);
+        int homeFood = foodKnownAt(server, level, route.from)
+                - dev.b28.enterprise.market.Sovereign.get(server).foodReserve(route.from);
         Set<String> shortAtHome = territory.bellOf(route.from).map(bell -> territory.comfortsMet(bell).entrySet().stream()
                 .filter(e -> e.getValue() < 1).map(Map.Entry::getKey).collect(java.util.stream.Collectors.toSet()))
                 .orElse(Set.of());
@@ -2736,7 +2749,7 @@ public final class Caravans {
         Warehouse warehouse = Warehouse.get(server);
         Set<Item> wanted = wantedAt(server, desk);
         Map<Item, Integer> networkWants = networkWants(server, ledger, route, caravan, now);
-        int spareFood = stock.foodNutrition() - Warehouse.FOOD_PAR_POINTS;
+        int spareFood = spareFoodAt(server, desk, stock) - Warehouse.FOOD_PAR_POINTS;
         for (Map.Entry<String, Integer> held : stock.totals().entrySet()) {
             if (Crates.stacks(caravan.cargo) >= caravan.capacity()) {
                 return;

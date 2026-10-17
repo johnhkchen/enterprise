@@ -80,9 +80,15 @@ public final class WarTests {
         helper.assertTrue(Mint.get(server).debasement(Mint.DEFAULT_FACTION, t) > before, "the minting debases the spur");
         helper.assertTrue(sovereign.targets(dev.b28.enterprise.army.Army.get(server)).get(Items.DIAMOND_SWORD) > 0,
                 "it stockpiles diamond swords too");
+        GlobalPos capital = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(desk));
+        helper.assertTrue(sovereign.foodReserve(capital) == Sovereign.STOCKPILE.get(Items.BREAD)
+                        * dev.b28.enterprise.army.Army.nutrition(Items.BREAD) + Sovereign.MEAT_POINTS
+                        && sovereign.foodReserve(GlobalPos.of(capital.dimension(), capital.pos().east(64))) == 0,
+                "the capital keeps the army's ration store from its own caravans; no other town does");
         BlockPos at = sovereign.shops().get(0);
         sovereign.peace(helper.getLevel());
         helper.assertTrue(helper.getLevel().getBlockState(at).isAir(), "peace: the shop comes down");
+        helper.assertTrue(sovereign.foodReserve(capital) == 0, "at peace it keeps none");
         helper.succeed();
     }
 
