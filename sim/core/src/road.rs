@@ -110,7 +110,7 @@ pub fn travel_ticks(blocks: u32) -> u64 {
 
 /// Mouths on a wagon: its crew, at least one (`Caravan.mouths`; a town without a roster sends one).
 pub fn mouths(wagon: Option<&Wagon>) -> f64 {
-    wagon.map_or(1, |w| w.crew.len().max(1)) as f64
+    wagon.map_or(1, |w| if w.foreign_mouths > 0 { w.foreign_mouths as usize } else { w.crew.len().max(1) }) as f64
 }
 
 /// Food points in a warehouse, whole items of road food (`MerchantStock.foodNutrition`).

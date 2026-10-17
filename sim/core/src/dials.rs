@@ -342,4 +342,13 @@ dials! {
     discount_long: f64 = 0.05,
     discount_throttle: f64 = 0.03,
     stale_bill_discount: f64 = 0.1,
+    // realms (`realms.rs`, `trade/Realms.java`, `Caravans.java`)
+    /// The crown's share of what a foreign trader sells inside the kingdom (`Realms.CUSTOMS`).
+    customs: f64 = 0.1,
+    /// What a realm's people use a day of each good it wants (`Realms.USES_PER_DAY`).
+    realm_uses_per_day: u32 = 64,
+    /// A foreign realm's Merchants haggle at this level, and this many of its people go with each caravan
+    /// (`Caravans.FOREIGN_MERCHANT_LEVEL`, `FOREIGN_CREW`).
+    foreign_merchant_level: u32 = 4,
+    foreign_crew: u32 = 2,
 }

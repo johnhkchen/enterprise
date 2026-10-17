@@ -174,6 +174,8 @@ pub struct Wagon {
     pub porter: bool,
     pub slots: u32,
     pub saddled: bool,
+    /// A foreign realm's wagon (`realms.rs`): its crew are its own, never in a roster; this many mouths (0: not foreign).
+    pub foreign_mouths: u32,
 }
 
 /// A town's run to another: how long the road takes one way, what a round trip costs in road food, its timetable.

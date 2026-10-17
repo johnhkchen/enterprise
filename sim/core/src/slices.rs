@@ -35,6 +35,7 @@ crate::saved! {
         apprenticeships: crate::training::Apprenticeships = crate::training::Apprenticeships::default(),
         squads: crate::squad::Squads = crate::squad::Squads::default(),
         banks: crate::bank::Banks = crate::bank::Banks::default(),
+        crown: crate::realms::Crown = crate::realms::Crown::default(),
     }
     town {
         town: Town,
@@ -54,6 +55,8 @@ crate::saved! {
         shipments: crate::cargo::Shipments,
         paperwork: crate::cargo::Paperwork,
         works: crate::works::Works,
+        off_map: crate::realms::OffMap,
+        realm: crate::realms::Realm,
     }
     route {
         route: Route,
@@ -87,4 +90,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::training::register(schedule);
     crate::rules::squad::register(schedule);
     crate::rules::bank::register(schedule);
+    crate::rules::realms::register(schedule);
 }

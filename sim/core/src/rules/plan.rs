@@ -12,6 +12,7 @@ use crate::content::Content;
 use crate::contracts::Book;
 use crate::messages::Output;
 use crate::people::{comfort_held, comfort_keep, comfort_par};
+use crate::realms::{OffMap, Realm};
 use crate::state::*;
 use crate::squad::crewed;
 use std::collections::BTreeMap;
@@ -38,7 +39,7 @@ pub fn start(content: Res<Content>, mut routes: Query<&mut RouteState>) {
 /// the bargained price at the middle of each good's batch (`bargain.rs`), and a good it won't deal in stays home.
 fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut routes: Query<(&Route, &mut RouteState)>,
         towns: Query<(&Stock, &Trades, &People)>, rosters: Query<&crate::roster::Roster>,
-        stores: Query<&crate::cargo::Shipments>) {
+        stores: Query<&crate::cargo::Shipments>, realms: Query<&Realm>) {
     let d = &content.dials;
     let n = content.goods.len();
     let mut order: Vec<usize> = (0..n).collect();
@@ -49,8 +50,10 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut rout
         let slots = if plan.slots > 0 { plan.slots } else { d.wagon_slots };
         let Ok([(home_stock, home_trades, home_people), (far_stock, far_trades, far_people)]) =
             towns.get_many([route.from, route.to]) else { continue };
-        let seller = crate::bargain::merchant_level(rosters.get(route.from).ok());
-        let buyer = crate::bargain::merchant_level(rosters.get(route.to).ok());
+        // A realm's Merchants haggle at their own level (`realms.rs`), and its people want comforts as goods, by par.
+        let far_realm = realms.get(route.to).ok();
+        let seller = crate::realms::level(&content, realms.get(route.from).ok(), rosters.get(route.from).ok());
+        let buyer = crate::realms::level(&content, far_realm, rosters.get(route.to).ok());
         // What the town owes under harvest contracts by the end of the next window, beyond what this plan already
         // carries to the contract's buyer and what's crated for them, isn't for sale (`ForwardSales.setAside`).
         let mut aside = vec![0.0; n];
@@ -72,13 +75,13 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut rout
             }
             let value = content.goods[g].value.max(1e-9);
             let planned = plan.cargo[g];
-            let (spare, room, par) = match content.goods[g].comfort {
+            let (spare, room, par) = match content.goods[g].comfort.filter(|_| far_realm.is_none()) {
                 Some(kind) => {
                     let room = comfort_par(&content, far_people) - comfort_held(&content, far_stock, kind) - loaded_kind[kind];
                     let spare = comfort_held(&content, home_stock, kind) - comfort_keep(&content, home_people) - loaded_kind[kind];
                     ((spare / value).min(home_stock.0[g] - planned - aside[g]), room / value, far_stock.0[g] + (room / value).floor())
                 }
-                None if far_trades.uses[g] > 0.0 => (
+                None if far_trades.uses[g] > 0.0 || far_realm.is_some_and(|r| r.wants.contains(&g)) => (
                     home_stock.0[g] - planned - aside[g] - shelf(&content, home_trades, g),
                     shelf(&content, far_trades, g) - far_stock.0[g],
                     shelf(&content, far_trades, g),
@@ -111,7 +114,8 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut rout
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut outbox: ResMut<Outbox>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
-        mut towns: Query<TownData>, mut rosters: Query<&mut crate::roster::Roster>, mut lockers: Query<&mut crate::lockers::Lockers>) {
+        mut towns: Query<TownData>, mut rosters: Query<&mut crate::roster::Roster>, mut lockers: Query<&mut crate::lockers::Lockers>,
+        places: Query<(Option<&OffMap>, Option<&Realm>)>) {
     let now = clock.now;
     let d = &content.dials;
     // Squads (`squad.rs`): each town's routes, and those of them without a wagon (`dispatch`'s `waiting`).
@@ -136,7 +140,9 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         let route = *route;
         let Some(mut plan) = state.plan.take() else { continue };
         let mut roster = rosters.get_mut(route.from).ok();
-        let rostered = roster.as_deref().is_some_and(|r| crewed(Some(r)));
+        // (A realm's wagons are never crewed from a roster, whoever stands in it: `realms.rs`.)
+        let foreign = places.get(route.from).is_ok_and(|(_, realm)| realm.is_some());
+        let rostered = !foreign && roster.as_deref().is_some_and(|r| crewed(Some(r)));
         // A town with a roster sends no wagon with no Merchant at its desk (`Caravans.dispatch` 210).
         if rostered && roster.as_ref().is_some_and(|r| r.merchant.is_none()) {
             state.stayed = Some(Stay::NoMerchant);
@@ -147,7 +153,10 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             (true, Ok((home, ..)), Ok((_, _, far, ..))) => crate::squad::wanted_stacks(&content, &home.0, far),
             _ => 0,
         };
-        let far_food = if food_mode {
+        // A realm's wagon is its own people's: no squad, two mouths, no team, and it never counts on home's poverty.
+        // An off-map market that sells no food feeds no one (`OffMap.sells`): its wagons pack the road home's food.
+        let far_sells = places.get(route.to).map_or(true, |(off, _)| off.map_or(true, |o| o.sells_food));
+        let far_food = if food_mode && far_sells {
             towns.get(route.to).map_or(0.0, |(far, ..)| crate::road::held(&content, &far.0))
                 - promised.get(&route.to_id).copied().unwrap_or(0.0)
         } else {
@@ -211,16 +220,16 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         }
         let full = plan.stacks as f64 >= d.wagon_full * slots as f64;
         // Each of the crew eats (`squad.rs`); a town without a roster sends one.
-        let mouths = plan.crew.len().max(1) as f64;
+        let mouths = if foreign { crate::realms::crew(&content) } else { plan.crew.len().max(1) as f64 };
         // The road's cost: its food where content has food (eaten from home, bought on the way, a purse for the road
         // home's), else its money; a load must be worth both legs' food, and home must pay for the road and the purse.
         let keep_wheat = food_mode && crate::road::keep_wheat(&content, trades, roster.as_deref());
         let provision = food_mode.then(|| {
             let after: Vec<f64> = stock.0.iter().zip(&plan.cargo).map(|(s, c)| s - c).collect();
-            let home_free = free(&content, trades, &money, &bills, route.from_id, now);
+            let home_free = if foreign { f64::INFINITY } else { free(&content, trades, &money, &bills, route.from_id, now) };
             let mut p = provision(&content, route.blocks, mouths, crate::road::held(&content, &after), far_food,
                 home_free, |feed| crate::road::fodder(&content, &after, feed, keep_wheat).2);
-            if porter {
+            if porter || foreign {
                 crate::rules::squad::no_team(&content, &mut p);
             }
             p
@@ -289,6 +298,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             porter,
             slots,
             saddled,
+            foreign_mouths: if foreign { crate::realms::crew(&content) as u32 } else { 0 },
             ..Default::default()
         });
         outbox.0.push(Output::WagonLeft { route: route.seq, stacks: plan.stacks, worth: plan.worth });

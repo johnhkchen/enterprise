@@ -28,6 +28,7 @@ pub mod herds;
 pub mod jobs;
 pub mod lockers;
 pub mod plan;
+pub mod realms;
 pub mod road;
 pub mod roster;
 pub mod settlers;

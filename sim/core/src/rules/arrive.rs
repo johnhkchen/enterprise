@@ -11,6 +11,7 @@ use crate::content::Content;
 use crate::contracts::{self, Book, Incoterm};
 use crate::messages::Output;
 use crate::people::{comfort_held, comfort_par};
+use crate::realms::Realm;
 use crate::state::*;
 
 pub fn register(schedule: &mut Schedule) {
@@ -43,7 +44,7 @@ pub fn mark(clock: Res<Clock>, mut routes: Query<&mut RouteState>) {
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut ledger: ResMut<Ledger>,
         mut book: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
-        mut towns: Query<TownData>, rosters: Query<&crate::roster::Roster>) {
+        mut towns: Query<TownData>, rosters: Query<&crate::roster::Roster>, realms: Query<&Realm>) {
     let now = clock.now;
     let day = content.day_ticks;
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
@@ -54,8 +55,10 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
         let route = *route;
         let days = state.last_sold.map_or(1.0, |t| ((now - t) as f64 / day as f64).clamp(1.0, content.dials.max_budget_days));
         // The travelling Merchant is its home's Merchant; the buyer, the far end's.
-        let seller = crate::bargain::merchant_level(rosters.get(route.from).ok());
-        let buyer = crate::bargain::merchant_level(rosters.get(route.to).ok());
+        // (A realm's are at its own fixed level, and a realm buys by par with the money it holds: `realms.rs`.)
+        let seller = crate::realms::level(&content, realms.get(route.from).ok(), rosters.get(route.from).ok());
+        let buyer = crate::realms::level(&content, realms.get(route.to).ok(), rosters.get(route.to).ok());
+        let realm_buys = realms.get(route.to).is_ok();
         let (mut stock, mut money, trades, mut budget, people) = towns.get_mut(route.to).expect("the far end");
         let wagon = state.wagon.as_mut().unwrap();
         let mut sold_all = 0.0;
@@ -64,14 +67,14 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
                 continue;
             }
             let value = content.goods[g].value;
-            let room = match content.goods[g].comfort {
+            let room = match content.goods[g].comfort.filter(|_| !realm_buys) {
                 Some(kind) => ((comfort_par(&content, people) - comfort_held(&content, &stock, kind)) / value).floor(),
                 None => shelf(&content, trades, g) - stock.0[g],
             }
             .max(0.0);
             let par = stock.0[g] + room;
             let free_money = free(&content, trades, &money, &bills, route.to_id, now);
-            let can = left_for(&content, now, free_money, &mut budget, days).min(money.0.max(0.0));
+            let can = if realm_buys { money.0.max(0.0) } else { left_for(&content, now, free_money, &mut budget, days).min(money.0.max(0.0)) };
             let mut n = wagon.cargo[g].min(room);
             let mut price = value;
             for _ in 0..2 {
