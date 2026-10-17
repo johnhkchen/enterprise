@@ -5,6 +5,8 @@ use bevy_ecs::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::messages::Output;
+/// A town's people, hand by hand (`roster.rs`): a component on towns that keep one.
+pub use crate::roster::{Hand, Roster};
 
 /// The society's time, in the host's ticks.
 #[derive(Resource, Clone, Copy, Debug, Default, Serialize, Deserialize)]

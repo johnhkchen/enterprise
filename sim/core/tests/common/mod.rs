@@ -45,6 +45,12 @@ pub fn world(seed: u64) -> Society {
         s.add_town(&format!("town{t}"), r.range(0.0, 100.0));
         let villagers = r.below(20) as f64;
         s.set_people(t, villagers, villagers + r.below(4) as f64, villagers + r.below(20) as f64);
+        // Its villagers as a roster: random squad trades and levels.
+        let hands: Vec<(&str, u8)> = (0..villagers as usize)
+            .map(|_| (enterprise_core::roster::SQUAD[r.below(enterprise_core::roster::SQUAD.len() as u64) as usize],
+                1 + r.below(5) as u8))
+            .collect();
+        s.set_roster(t, &hands);
         for g in 0..n_goods {
             match r.below(3) {
                 0 => s.set_trade(t, g, r.range(0.0, 200.0), 0.0),

@@ -212,6 +212,8 @@ pub struct Content {
     pub comforts: Vec<String>,
     pub day_ticks: u64,
     pub dials: Dials,
+    /// The trades a town's hands can have (`roster.rs`): the mod's sixteen by default.
+    pub trades: Vec<crate::roster::Trade>,
 }
 
 impl Content {
@@ -219,7 +221,8 @@ impl Content {
     pub const COMFORTS: [&'static str; 5] = ["treats", "reading", "clothing", "furnishings", "leisure"];
 
     pub fn new(goods: Vec<Good>, day_ticks: u64) -> Self {
-        Content { goods, comforts: Self::COMFORTS.iter().map(|k| k.to_string()).collect(), day_ticks, dials: Dials::default() }
+        Content { goods, comforts: Self::COMFORTS.iter().map(|k| k.to_string()).collect(), day_ticks, dials: Dials::default(),
+            trades: crate::roster::trades() }
     }
 
     /// The kind of comfort called `name`.
@@ -230,5 +233,11 @@ impl Content {
     /// The good called `name`, if the host has one.
     pub fn good(&self, name: &str) -> Option<GoodId> {
         self.goods.iter().position(|g| g.name == name)
+    }
+
+    /// The trade called `name`, with or without the host's namespace (`librarian`, `minecraft:librarian`).
+    pub fn trade(&self, name: &str) -> Option<crate::roster::TradeId> {
+        let name = name.rsplit(':').next().unwrap_or(name);
+        self.trades.iter().position(|t| t.name == name)
     }
 }

@@ -3,6 +3,7 @@
 //! each kind a day. Mood heads toward the comforts met, less the town's size, villagers without beds and unpaid
 //! wages. A content town grows: a home once its beds are full, a child once a bed is free, each after a few days and
 //! for a price; its land is the most beds it can hold (its carrying capacity).
+//! A town with a [`Roster`] counts its villagers from it, and a child born there is a baby hand.
 
 use bevy_ecs::prelude::*;
 
@@ -52,10 +53,10 @@ pub fn register(schedule: &mut Schedule) {
 
 /// The town's people live the time since they were last counted: wages, comforts, mood, a home, a child.
 pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>,
-        mut towns: Query<(&mut People, &mut Stock, &mut Money, &Trades)>) {
+        mut towns: Query<(&mut People, &mut Stock, &mut Money, &Trades, Option<&mut Roster>)>) {
     let d = &content.dials;
     let k = content.comforts.len();
-    for (mut people, mut stock, mut money, trades) in &mut towns {
+    for (mut people, mut stock, mut money, trades, mut roster) in &mut towns {
         let days = clock.now.saturating_sub(people.last) as f64 / content.day_ticks as f64;
         people.last = clock.now;
         if days <= 0.0 || people.villagers <= 0.0 {
@@ -126,7 +127,13 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
             eat(&content, &mut ledger, &mut stock, d.birth_food);
             money.0 -= d.birth_cost;
             ledger.spent += d.birth_cost;
-            people.villagers += 1.0;
+            // A town with a roster has a baby hand (`Growth.bear`): a resident, not yet a worker.
+            if let Some(roster) = roster.as_deref_mut() {
+                roster.hands.push(crate::roster::Hand::baby(&content, clock.now));
+                people.villagers = roster.residents() as f64;
+            } else {
+                people.villagers += 1.0;
+            }
             people.birth_progress = 0.0;
             people.born += 1;
         }

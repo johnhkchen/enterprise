@@ -109,6 +109,7 @@ saved! {
         touched: Touched,
         budget: Budget,
         people: People,
+        roster: crate::roster::Roster,
     }
     route {
         route: Route,

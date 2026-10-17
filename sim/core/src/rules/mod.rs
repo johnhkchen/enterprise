@@ -18,6 +18,7 @@ pub mod arrive;
 pub mod bills;
 pub mod contracts;
 pub mod plan;
+pub mod roster;
 pub mod touch;
 
 use bevy_ecs::prelude::*;
@@ -70,6 +71,7 @@ pub fn look_schedule() -> Schedule {
     bills::register(&mut schedule);
     arrive::register(&mut schedule);
     plan::register(&mut schedule);
+    roster::register(&mut schedule);
     schedule
 }
 

@@ -38,6 +38,11 @@ fn the_books_balance_and_nobody_goes_into_debt_in_any_world() {
             if let Err(e) = s.conserved(&start).and_then(|_| s.solvent()) {
                 panic!("seed {seed}, day {day}: {e}");
             }
+            for t in 0..s.town_count() {
+                let (roster, people) = (s.roster(t), s.town(t).people);
+                assert_eq!(roster.residents() as f64, people.villagers, "seed {seed}, day {day}: town {t} follows its roster");
+                assert!(roster.hands.iter().all(|h| (1..=5).contains(&h.level)), "seed {seed}, day {day}: levels 1 to 5");
+            }
         }
     }
 }

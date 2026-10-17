@@ -90,6 +90,46 @@ impl Society {
         p.land = land;
     }
 
+    /// A town's people as a roster, replacing any it had: a hand of each `(trade, level)` (the trade by name, as
+    /// [`Content::trade`] reads it), with the XP its level took. Its villagers follow the roster from now on; the
+    /// desk's Merchant is its most experienced Merchant.
+    pub fn set_roster(&mut self, town: TownId, hands: &[(&str, u8)]) {
+        let content = self.content();
+        let hands: Vec<crate::roster::Hand> = hands
+            .iter()
+            .map(|&(trade, level)| {
+                let t = content.trade(trade).unwrap_or_else(|| panic!("no trade called {trade}"));
+                crate::roster::Hand::new(content, t, level)
+            })
+            .collect();
+        let roster = crate::roster::Roster::new(content, hands);
+        self.put_roster(town, roster);
+    }
+
+    /// One more hand for a town (a town without a roster starts one). Returns its place in the roster.
+    pub fn add_hand(&mut self, town: TownId, trade: &str, level: u8) -> usize {
+        let e = self.towns[town];
+        let mut roster = self.world.get::<crate::roster::Roster>(e).cloned().unwrap_or_default();
+        let content = self.content();
+        let t = content.trade(trade).unwrap_or_else(|| panic!("no trade called {trade}"));
+        let i = roster.add(content, crate::roster::Hand::new(content, t, level));
+        self.put_roster(town, roster);
+        i
+    }
+
+    /// A town's roster as it is now (its children grown by the time elapsed); empty if it keeps none.
+    pub fn roster(&self, town: TownId) -> crate::roster::Roster {
+        let mut roster = self.world.get::<crate::roster::Roster>(self.towns[town]).cloned().unwrap_or_default();
+        roster.grow_up(self.now());
+        roster
+    }
+
+    fn put_roster(&mut self, town: TownId, roster: crate::roster::Roster) {
+        let e = self.towns[town];
+        self.world.get_mut::<People>(e).expect("a town").villagers = roster.residents() as f64;
+        self.world.entity_mut(e).insert(roster);
+    }
+
     /// Sets what a town's people make and use of a good a day.
     pub fn set_trade(&mut self, town: TownId, good: GoodId, makes: f64, uses: f64) {
         let mut trades = self.world.get_mut::<Trades>(self.towns[town]).expect("a town");
