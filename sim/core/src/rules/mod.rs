@@ -20,6 +20,7 @@ pub mod bills;
 pub mod contracts;
 pub mod plan;
 pub mod roster;
+pub mod territory;
 pub mod touch;
 
 use bevy_ecs::prelude::*;

@@ -1,0 +1,161 @@
+//! Territory's steps: a town's culture counted and its hexes claimed once a day (`Review`), its guards fed and paid
+//! once a day (`Pay`), and the tolls a wagon pays on the land it crosses, coming home (before `Turn` banks its purse).
+//! See `territory.rs`.
+
+use bevy_ecs::prelude::*;
+
+use super::{in_order, Step};
+use crate::cash_book::{post, CashBook, Reason, Side};
+use crate::content::Content;
+use crate::state::*;
+use crate::territory::*;
+
+pub fn register(schedule: &mut Schedule) {
+    schedule.add_systems((
+        review.in_set(Step::Review),
+        upkeep.in_set(Step::Pay),
+        tolls.in_set(Step::Services),
+    ));
+}
+
+/// A town claims its home hex at its first count; each day after, its culture grows by its people's worth (and its
+/// works') times the days and its mood's factor, and buys the hexes it can.
+pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut territory: ResMut<Territory>,
+        q: Query<(&Town, &People)>) {
+    let (now, day) = (clock.now, content.day_ticks);
+    let d = &content.dials;
+    for &e in &towns.0 {
+        let Ok((town, people)) = q.get(e) else { continue };
+        let Some(home) = town.hex else { continue };
+        let id = town.id;
+        let Some(last) = territory.holdings.entry(id).or_default().reviewed else {
+            territory.claim(id, home);
+            territory.holdings.get_mut(&id).unwrap().reviewed = Some(now);
+            continue;
+        };
+        if now < last + day {
+            continue;
+        }
+        territory.holdings.get_mut(&id).unwrap().reviewed = Some(now);
+        territory.claim(id, home);
+        if territory.owner(home) != Some(id) {
+            continue;
+        }
+        let days = (now - last) as f64 / day as f64;
+        let h = territory.holdings.get_mut(&id).unwrap();
+        let confined = (h.confined as f64).min(people.villagers);
+        let value = (people.villagers - confined) + CONFINED_WEIGHT * confined;
+        h.culture += (value + h.extra_culture) * days * culture_factor(people.mood);
+        territory.grow(id, home, d.culture_per_hex, d.max_rings as i32);
+    }
+}
+
+/// Eats `points` of food from the warehouse, whole items in the order of the goods; returns the points eaten.
+fn eat(content: &Content, ledger: &mut Ledger, stock: &mut Stock, mut points: f64) -> f64 {
+    let mut eaten = 0.0;
+    for (i, g) in content.goods.iter().enumerate() {
+        if points <= 0.0 || g.food <= 0.0 {
+            continue;
+        }
+        let n = stock.0[i].min((points / g.food).ceil());
+        stock.0[i] -= n;
+        ledger.used[i] += n;
+        points -= n * g.food;
+        eaten += n * g.food;
+    }
+    eaten
+}
+
+/// Once a day a town's guards eat from its warehouse and are paid from its money, for the days since (`upkeepGuards`):
+/// food first, pay for those the idle hands don't stand in for; guards on posts that took tolls wait for their pay up
+/// to `guard_credit_days`; unfed or unpaid guards desert in proportion, the earliest posted staying.
+#[allow(clippy::too_many_arguments)]
+pub fn upkeep(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut territory: ResMut<Territory>,
+        mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
+        mut q: Query<(&Town, &mut Stock, &mut Money, Option<&Roster>)>) {
+    let (now, day) = (clock.now, content.day_ticks);
+    let d = &content.dials;
+    for &e in &towns.0 {
+        let Ok((town, mut stock, mut money, roster)) = q.get_mut(e) else { continue };
+        let Some(h) = territory.holdings.get_mut(&town.id) else { continue };
+        if h.posts.is_empty() {
+            h.upkept = Some(now);
+            continue;
+        }
+        let last = match h.upkept {
+            Some(t) if now >= t + day => t,
+            Some(_) => continue,
+            None => {
+                h.upkept = Some(now);
+                continue;
+            }
+        };
+        h.upkept = Some(now);
+        let days = ((now - last) as f64 / day as f64).min(MAX_DAYS);
+        let posts = h.posts.len();
+        // Hands without a trade stand watch first, as militia: for their food, without pay.
+        let militia = roster.map_or(0, |r| r.idle(&content).len()).min(posts);
+        h.militia = militia as u32;
+        h.food_owed += posts as f64 * d.guard_food * days;
+        h.pay_owed += (posts - militia) as f64 * d.guard_pay * days;
+        let (food, pay) = (h.food_owed.floor(), h.pay_owed.floor());
+        let mut fed = 1.0;
+        if food > 0.0 {
+            let eaten = eat(&content, &mut ledger, &mut stock, food);
+            fed = (eaten / food).min(1.0);
+            h.food_owed -= eaten.max(food);
+        }
+        let mut paid = 1.0;
+        if pay > 0.0 {
+            let taken = pay.min(money.0.floor().max(0.0));
+            post(&mut ledger, &mut book, Side::treasury(town.id, &mut money.0), Side::outside(), taken,
+                Reason::Other("guards".into()), now, day);
+            paid = (taken / pay).min(1.0);
+            h.pay_owed -= pay;
+            // Guards on posts that took tolls wait for their pay, up to a few days' worth: it comes out of the tolls
+            // to come. Past that, unpaid, they go.
+            let unpaid = pay * (1.0 - paid);
+            let credit = d.guard_credit_days * posts as f64 * d.guard_pay;
+            let earning = h.toll_today + h.toll_before > 0.0;
+            if unpaid > 0.0 && earning && h.pay_owed + unpaid <= credit {
+                h.pay_owed += unpaid;
+                paid = 1.0;
+            }
+        }
+        h.toll_before = h.toll_today;
+        h.toll_today = 0.0;
+        let kept = fed.min(paid);
+        if kept < 1.0 {
+            let stay = (posts as f64 * kept).floor() as usize;
+            h.deserted += (posts - stay) as u32;
+            h.posts.truncate(stay);
+        }
+    }
+}
+
+/// A wagon that has got home pays each owner of posted land its path crosses its toll out of its purse, before the
+/// purse is banked (`Caravans.payTolls`).
+#[allow(clippy::too_many_arguments)]
+pub fn tolls(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut territory: ResMut<Territory>,
+        mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, mut money: Query<&mut Money>,
+        mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>) {
+    let (now, day) = (clock.now, content.day_ticks);
+    let order = in_order(routes.iter().map(|(e, r, _, _)| (e, r)));
+    for entity in order {
+        let (_, route, mut state, path) = routes.get_mut(entity).unwrap();
+        let Some(path) = path else { continue };
+        if state.arrived != Some(Leg::Home) {
+            continue;
+        }
+        let Some(wagon) = state.wagon.as_mut() else { continue };
+        let due = territory.tolls_due(&[route.from_id, route.to_id], &path.0, wagon.purse, content.dials.default_toll_rate);
+        for (owner, toll) in due {
+            let Ok(mut m) = money.get_mut(towns.0[owner]) else { continue };
+            post(&mut ledger, &mut book, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(owner, &mut m.0), toll,
+                Reason::Other("toll".into()), now, day);
+            let h = territory.holdings.entry(owner).or_default();
+            h.toll_today += toll;
+            h.tolls_taken += toll;
+        }
+    }
+}

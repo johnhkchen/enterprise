@@ -25,6 +25,7 @@ pub mod save;
 pub mod slices;
 pub mod society;
 pub mod state;
+pub mod territory;
 
 pub use content::{Content, Dials, Good, GoodId};
 pub use contracts::{Contract, Incoterm, State};

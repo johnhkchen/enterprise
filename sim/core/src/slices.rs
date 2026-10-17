@@ -24,6 +24,7 @@ crate::saved! {
         mint: crate::mint::Mint = crate::mint::Mint::default(),
         map: crate::map::Map = crate::map::Map::default(),
         cash_book: crate::cash_book::CashBook = crate::cash_book::CashBook::default(),
+        territory: crate::territory::Territory = crate::territory::Territory::default(),
     }
     town {
         town: Town,
@@ -51,4 +52,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::arrive::register(schedule);
     crate::rules::plan::register(schedule);
     crate::rules::roster::register(schedule);
+    crate::rules::territory::register(schedule);
 }

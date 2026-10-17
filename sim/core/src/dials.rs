@@ -146,4 +146,13 @@ dials! {
     birth_days: f64 = 4.0,
     birth_cost: f64 = 3.0,
     birth_food: f64 = 36.0,
+    /// Territory (`territory-growth`): culture a hex costs per hex already held, and how many rings out a town may grow;
+    /// a guard's daily food (points) and pay, days of pay a guard on a tolling post waits for; the toll a town asks
+    /// until it sets its own.
+    culture_per_hex: f64 = 5.0,
+    max_rings: u32 = 2,
+    guard_food: f64 = 6.0,
+    guard_pay: f64 = 0.5,
+    guard_credit_days: f64 = 3.0,
+    default_toll_rate: f64 = 0.05,
 }

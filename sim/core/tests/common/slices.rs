@@ -14,4 +14,5 @@ use super::*;
 slices! {
     roster,
     cash_book,
+    territory_growth,
 }
