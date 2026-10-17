@@ -16,6 +16,7 @@ pub mod messages;
 pub mod mint;
 pub mod people;
 pub mod rules;
+pub mod save;
 pub mod society;
 pub mod state;
 

@@ -1,5 +1,6 @@
 //! What a host's game brings: its goods, how long its day is, and the dials that tune the society.
 
+use serde::{Deserialize, Serialize};
 use bevy_ecs::prelude::Resource;
 
 /// A good, by its place in [`Content::goods`].
@@ -8,7 +9,7 @@ pub type GoodId = usize;
 /// A good the society trades: its name in the host's game, what one is worth, how many make a stack (a wagon's slot
 /// holds a stack), the kind of comfort it is if any (by its place in [`Content::comforts`]), and the food points one
 /// is worth if it's food.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Good {
     pub name: String,
     pub value: f64,
@@ -36,7 +37,7 @@ impl Good {
 }
 
 /// Settings a study tunes, as in the mod's `Dials`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Dials {
     /// Days of what its people use a town's warehouse aims to hold of each good (its shelf).
     pub shelf_days: f64,
@@ -91,8 +92,121 @@ impl Default for Dials {
     }
 }
 
+/// A dial's value as the mod keeps every dial: a number. Whole-number dials round it (the mod's `Dial.getInt`), and a
+/// switch is on for anything but 0.
+pub trait DialValue: Sized {
+    fn from_f64(value: f64) -> Result<Self, String>;
+    fn to_f64(&self) -> f64;
+}
+
+impl DialValue for f64 {
+    fn from_f64(value: f64) -> Result<Self, String> {
+        if value.is_finite() { Ok(value) } else { Err(format!("{value} isn't a number")) }
+    }
+    fn to_f64(&self) -> f64 {
+        *self
+    }
+}
+
+impl DialValue for u32 {
+    fn from_f64(value: f64) -> Result<Self, String> {
+        let n = value.round();
+        if n.is_finite() && (0.0..=u32::MAX as f64).contains(&n) { Ok(n as u32) } else { Err(format!("{value} isn't a count")) }
+    }
+    fn to_f64(&self) -> f64 {
+        *self as f64
+    }
+}
+
+impl DialValue for u64 {
+    fn from_f64(value: f64) -> Result<Self, String> {
+        let n = value.round();
+        if n.is_finite() && (0.0..=u64::MAX as f64).contains(&n) { Ok(n as u64) } else { Err(format!("{value} isn't a count")) }
+    }
+    fn to_f64(&self) -> f64 {
+        *self as f64
+    }
+}
+
+impl DialValue for bool {
+    fn from_f64(value: f64) -> Result<Self, String> {
+        if value.is_finite() { Ok(value != 0.0) } else { Err(format!("{value} isn't a switch")) }
+    }
+    fn to_f64(&self) -> f64 {
+        if *self { 1.0 } else { 0.0 }
+    }
+}
+
+/// Dials by name, as the mod's `Dials.java` sets them for a world (`set`, `/enterprise dial <name> <value>`, or
+/// `reset`). They're saved with the world, in its [`Content`].
+macro_rules! dials_by_name {
+    ($($name:ident),* $(,)?) => {
+        impl Dials {
+            /// Every dial's name, in the order they're declared.
+            pub fn names() -> Vec<&'static str> {
+                vec![$(stringify!($name)),*]
+            }
+
+            /// A dial's value, as a number.
+            pub fn get(&self, name: &str) -> Option<f64> {
+                match name {
+                    $(stringify!($name) => Some(DialValue::to_f64(&self.$name)),)*
+                    _ => None,
+                }
+            }
+
+            /// Sets a dial for this world.
+            pub fn set(&mut self, name: &str, value: f64) -> Result<(), String> {
+                match name {
+                    $(stringify!($name) => self.$name = DialValue::from_f64(value)?,)*
+                    _ => return Err(format!("no dial called {name}")),
+                }
+                Ok(())
+            }
+
+            /// Puts a dial back to the mod's default.
+            pub fn reset(&mut self, name: &str) -> Result<(), String> {
+                let initial = Dials::default();
+                match name {
+                    $(stringify!($name) => self.$name = initial.$name,)*
+                    _ => return Err(format!("no dial called {name}")),
+                }
+                Ok(())
+            }
+        }
+    };
+}
+
+// Every field of `Dials`, one a line: a new dial adds its name here too (a test checks none is missing).
+dials_by_name!(
+    shelf_days,
+    budget_share,
+    max_budget_days,
+    wagon_full,
+    wagon_slots,
+    look_ticks,
+    standing_orders,
+    reserve_days,
+    budget_days,
+    ration,
+    comfort_days,
+    comfort_keep_days,
+    mood_half_life_days,
+    villagers_per_want,
+    crowding_mood,
+    unpaid_mood,
+    labour_share,
+    home_mood,
+    home_days,
+    home_cost,
+    birth_mood,
+    birth_days,
+    birth_cost,
+    birth_food,
+);
+
 /// The host's goods, the kinds of comfort its people want, its day's length in ticks, and the dials.
-#[derive(Clone, Debug, Resource)]
+#[derive(Clone, Debug, Resource, Serialize, Deserialize)]
 pub struct Content {
     pub goods: Vec<Good>,
     pub comforts: Vec<String>,

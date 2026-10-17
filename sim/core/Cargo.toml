@@ -8,5 +8,10 @@ description = "The Enterprise society: towns, goods, money and wagons, for any g
 # Bevy's ECS alone: entities, components, systems. Single-threaded (no multi_threaded): the same inputs always give
 # the same world, and it builds for WebAssembly, so a Java host can run it.
 bevy_ecs = { version = "0.20", default-features = false, features = ["std"] }
-# Save-ready state: every component and resource derives Serialize and Deserialize (the save slice writes them out).
-serde = { version = "1", features = ["derive"] }
+# The save: every state type derives serde; the blob is postcard (compact, no std needed, builds for wasm32-wasip1).
+postcard = { version = "1.1.3", default-features = false, features = ["alloc"] }
+serde = { version = "1.0.229", features = ["derive"] }
+
+[dev-dependencies]
+# Tests only: reads a struct's field names (every dial has a name).
+serde_json = "1.0.154"

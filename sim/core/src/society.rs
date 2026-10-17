@@ -241,4 +241,30 @@ impl Society {
     pub fn route_count(&self) -> usize {
         self.routes.len()
     }
+
+    /// The society as one blob, for the game to keep with its save (see [`crate::save`]).
+    pub fn save(&mut self) -> Vec<u8> {
+        crate::save::save(&mut self.world)
+    }
+
+    /// A society from a blob [`Society::save`] made: run on, it comes out as the saved one would have.
+    pub fn load(bytes: &[u8]) -> Result<Society, String> {
+        let (world, towns, routes) = crate::save::load(bytes)?;
+        Ok(Society { world, look: look_schedule(), towns, routes })
+    }
+
+    /// Sets a dial for this world by its name (saved with it), as the mod's `/enterprise dial <name> <value>`.
+    pub fn set_dial(&mut self, name: &str, value: f64) -> Result<(), String> {
+        self.content_mut().dials.set(name, value)
+    }
+
+    /// Puts a dial back to the mod's default.
+    pub fn reset_dial(&mut self, name: &str) -> Result<(), String> {
+        self.content_mut().dials.reset(name)
+    }
+
+    /// A dial's value now, by its name.
+    pub fn dial(&self, name: &str) -> Option<f64> {
+        self.content().dials.get(name)
+    }
 }

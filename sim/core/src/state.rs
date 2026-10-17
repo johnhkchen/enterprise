@@ -2,18 +2,19 @@
 //! of what came into the world and left it are resources. All of it plain data, for a host to save with its own save.
 
 use bevy_ecs::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::messages::Output;
 
 /// The society's time, in the host's ticks.
-#[derive(Resource, Clone, Copy, Debug, Default)]
+#[derive(Resource, Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub struct Clock {
     pub now: u64,
 }
 
 /// What came into the world and left it, for the checks: goods made, used and delivered; money people paid in and
 /// money spent on the road.
-#[derive(Resource, Clone, Debug, Default)]
+#[derive(Resource, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Ledger {
     pub made: Vec<f64>,
     pub used: Vec<f64>,
@@ -25,11 +26,11 @@ pub struct Ledger {
 }
 
 /// What happened this look, for the host to show.
-#[derive(Resource, Clone, Debug, Default)]
+#[derive(Resource, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Outbox(pub Vec<Output>);
 
 /// A town, by name, and its number (messages and contracts name towns by it).
-#[derive(Component, Clone, Debug)]
+#[derive(Component, Clone, Debug, Serialize, Deserialize)]
 pub struct Town {
     pub name: String,
     pub id: usize,
@@ -40,13 +41,13 @@ pub struct Town {
 pub struct Towns(pub Vec<Entity>);
 
 /// A town's money.
-#[derive(Component, Clone, Copy, Debug, Default)]
+#[derive(Component, Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub struct Money(pub f64);
 
 /// A town's people: how many, their beds and the most beds its land will hold, their mood, how well each kind of
 /// comfort was met last time and what's still owed of it (below 0: credit from a big item), progress toward the next
 /// home and child, the share of wages paid, and the households' purse (their wages, which pay for their comforts).
-#[derive(Component, Clone, Debug, Default)]
+#[derive(Component, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct People {
     pub villagers: f64,
     pub beds: f64,
@@ -64,23 +65,23 @@ pub struct People {
 }
 
 /// What a town holds of each good.
-#[derive(Component, Clone, Debug, Default)]
+#[derive(Component, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Stock(pub Vec<f64>);
 
 /// What a town's people make and use of each good a day. They buy what they use from the warehouse, at its worth:
 /// the town's income.
-#[derive(Component, Clone, Debug, Default)]
+#[derive(Component, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Trades {
     pub makes: Vec<f64>,
     pub uses: Vec<f64>,
 }
 
 /// When a town was last brought up to date.
-#[derive(Component, Clone, Copy, Debug, Default)]
+#[derive(Component, Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub struct Touched(pub u64);
 
 /// A town's day's budget, as its money manager set it at the day's first look.
-#[derive(Component, Clone, Copy, Debug, Default)]
+#[derive(Component, Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub struct Budget {
     pub day: u64,
     pub budget: f64,
@@ -89,7 +90,7 @@ pub struct Budget {
 }
 
 /// Which way a wagon is going.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum Leg {
     #[default]
     Out,
@@ -99,7 +100,7 @@ pub enum Leg {
 /// A wagon on the road: its cargo of each good, the money it carries, which way, and when it gets there; what of
 /// its cargo is owed under which contract, the Ex Works contracts it's collecting for, and the contracts drafted on
 /// this trip (their copies ride home with it).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Wagon {
     pub cargo: Vec<f64>,
     pub purse: f64,
@@ -116,10 +117,12 @@ pub struct Wagon {
 
 /// A town's run to another: how long the road takes one way, what a round trip costs in road food, its timetable.
 /// `seq` orders routes, so every look takes them the same way.
-#[derive(Component, Clone, Copy, Debug)]
+#[derive(Component, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Route {
     pub seq: usize,
+    #[serde(skip, default = "unlinked")]
     pub from: Entity,
+    #[serde(skip, default = "unlinked")]
     pub to: Entity,
     pub from_id: usize,
     pub to_id: usize,
@@ -131,7 +134,7 @@ pub struct Route {
 /// An idle route's plan for a wagon this look, built up by the planning steps (each module adds what it owes, wants or
 /// carries) and acted on by the deciding step: the cargo, of which owed under which contract; the Ex Works contracts
 /// it would collect for and the money for them; its worth, its stacks, and whether something can't wait.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Plan {
     pub cargo: Vec<f64>,
     pub contracted: Vec<(usize, f64)>,
@@ -144,7 +147,7 @@ pub struct Plan {
 
 /// What a route has done, its wagon if one's on the road, the leg its wagon finished this look (the arriving steps
 /// act on it), and its plan this look if it's idle.
-#[derive(Component, Clone, Debug, Default)]
+#[derive(Component, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct RouteState {
     pub last_departure: Option<u64>,
     pub last_sold: Option<u64>,
@@ -154,4 +157,23 @@ pub struct RouteState {
     pub trips: u32,
     pub sold: f64,
     pub carried: f64,
+}
+
+/// A route's ends, before a load links them to their towns' entities again (from `from_id` and `to_id`).
+fn unlinked() -> Entity {
+    Entity::PLACEHOLDER
+}
+
+/// The towns' entities aren't saved: a load spawns the towns again and rebuilds the list (`save.rs`).
+impl Serialize for Towns {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_unit_struct("Towns")
+    }
+}
+
+impl<'de> Deserialize<'de> for Towns {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        <()>::deserialize(deserializer)?;
+        Ok(Towns::default())
+    }
 }

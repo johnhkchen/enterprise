@@ -2,13 +2,14 @@
 //! beside it or in a test, so a run's messages can be logged and replayed. Towns and routes go by their number, in
 //! the order they were added: stable across saves and hosts, unlike the ECS's own entity ids.
 
+use serde::{Deserialize, Serialize};
 use crate::content::GoodId;
 
 pub type TownId = usize;
 pub type RouteId = usize;
 
 /// A happening the host hands the core.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Input {
     /// Time has passed, to this tick.
     Advance { to: u64 },
@@ -19,7 +20,7 @@ pub enum Input {
 }
 
 /// What happened, for the host to show.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Output {
     WagonLeft { route: RouteId, stacks: u32, worth: f64 },
     WagonSold { route: RouteId, sold: f64, takings: f64 },

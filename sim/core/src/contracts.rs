@@ -4,6 +4,7 @@
 //! and three misses break the contract. Trust between two towns is their track record: installments kept and missed,
 //! the misses fading faster.
 
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 use bevy_ecs::prelude::Resource;
@@ -35,7 +36,7 @@ pub const CONTRACT_INSTALLMENTS: u32 = 10;
 pub const CONTRACT_MIN_INSTALLMENTS: u32 = 3;
 
 /// Who carries a delivery and who bears the road: the shipping terms, after the trade's own Incoterms.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Incoterm {
     /// Ex Works: the buyer collects at the seller's, with its own wagon, and bears everything from there.
     Exw,
@@ -70,7 +71,7 @@ impl Incoterm {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum State {
     /// Only one party holds a copy yet.
     Drafted,
@@ -80,7 +81,7 @@ pub enum State {
 }
 
 /// A contract for so many of a good each installment.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Contract {
     pub id: usize,
     pub seller: TownId,
@@ -148,7 +149,7 @@ impl Contract {
 }
 
 /// Two towns' record: installments kept and missed (weighted, fading), as of `touched`.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub struct Record {
     pub kept: f64,
     pub missed: f64,
@@ -172,7 +173,7 @@ impl Record {
 }
 
 /// Every contract, the ones still open (drafted or in force: what each look reads), and every pair's record.
-#[derive(Resource, Clone, Debug, Default)]
+#[derive(Resource, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Book {
     pub contracts: Vec<Contract>,
     pub open: Vec<usize>,

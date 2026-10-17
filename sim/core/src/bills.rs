@@ -4,6 +4,7 @@
 //! isn't its money manager's to hold back). Its grace runs from the day it's first put to it: unpaid past that, the
 //! bill is dishonoured and trust falls a whole miss; honoured, it counts half a kept installment.
 
+use serde::{Deserialize, Serialize};
 use bevy_ecs::prelude::Resource;
 
 use crate::messages::TownId;
@@ -17,7 +18,7 @@ pub const GRACE_EMERALDS_PER_DAY: f64 = 100.0;
 /// A bill paid when presented counts this much of a kept installment toward trust; a dishonoured one, a whole miss.
 pub const HONOURED_WEIGHT: f64 = 0.5;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BillState {
     Outstanding,
     Paid,
@@ -25,14 +26,14 @@ pub enum BillState {
 }
 
 /// Where a bill's paper is: with a town, or riding with a wagon.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Held {
     Town(TownId),
     Wagon,
 }
 
 /// A bill: who pays it, to whom, the sum, when drawn and due, when first put to the drawee, and where its paper is.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Bill {
     pub id: usize,
     pub drawee: TownId,
@@ -46,7 +47,7 @@ pub struct Bill {
 }
 
 /// Every bill, and the ones still to be paid.
-#[derive(Resource, Clone, Debug, Default)]
+#[derive(Resource, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Bills {
     pub bills: Vec<Bill>,
     pub open: Vec<usize>,
