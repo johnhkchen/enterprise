@@ -242,7 +242,7 @@ fn a_counting_house_widens_the_accountants_budget() {
     let content = Content::new(vec![Good::new("bread", 0.2, 64)], DAY);
     let mut bills = enterprise_core::bills::Bills::default();
     bills.draw(0, 1, 10.0, 0, DAY);
-    let mut trades = enterprise_core::state::Trades { makes: vec![0.0], uses: vec![0.0], capacity: vec![0.0], counting_house: false };
+    let mut trades = enterprise_core::state::Trades { makes: vec![0.0], uses: vec![0.0], capacity: vec![0.0], counting_house: false, ..Default::default() };
     let money = enterprise_core::state::Money(100.0);
     assert_eq!(enterprise_core::rules::free(&content, &trades, &money, &bills, 0, 0), 100.0, "three days: not yet counted");
     trades.counting_house = true;

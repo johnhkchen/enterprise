@@ -41,6 +41,7 @@ pub mod save;
 pub mod settlers;
 pub mod services;
 pub mod slices;
+pub mod sourcing;
 pub mod squad;
 pub mod society;
 pub mod state;

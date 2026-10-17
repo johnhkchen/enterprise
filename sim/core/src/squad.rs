@@ -238,7 +238,8 @@ pub fn porters_needed(content: &Content, stacks: u32, packs: bool) -> usize {
 pub fn wanted_there(content: &Content, far: &Trades) -> Vec<GoodId> {
     (0..content.goods.len())
         .filter(|&g| content.goods[g].comfort.is_none()
-            && (far.uses[g] > 0.0 || far.capacity.get(g).is_some_and(|c| *c > 0.0)))
+            && (far.uses[g] > 0.0 || far.capacity.get(g).is_some_and(|c| *c > 0.0)
+                || far.inputs.get(g).is_some_and(|n| *n > 0.0)))
         .collect()
 }
 

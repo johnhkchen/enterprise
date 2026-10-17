@@ -11,7 +11,8 @@ const DAY: u64 = 24_000;
 
 /// A mill (town 0) and a scribes' town (town 1) a day apart, a route each way every `every` days.
 fn two_towns(mill_money: f64, scribes_money: f64, every: f64) -> Society {
-    let mut s = Society::new(Content::new(vec![Good::new("paper", 1.0, 64)], DAY));
+    let mut s = Society::new(Content::new(vec![Good::new("paper", 1.0, 64), Good::new("iron_ingot", 0.1, 64),
+        Good::new("iron_sword", 1.0, 1)], DAY));
     let mill = s.add_town("Wheatfield", mill_money);
     let scribes = s.add_town("Hayford", scribes_money);
     s.set_trade(mill, 0, 128.0, 0.0);
@@ -78,12 +79,14 @@ fn the_last_delivery_takes_what_is_left_and_never_more_than_the_price() {
     assert!((book.contracts[id].recoup_from(1.0, 3.0) - 1.0).abs() < 1e-9, "never more than the price");
 }
 
-// parity-partial: CaravanTests.theAdvanceRidesWithTheCopyAndTheInputsFollow
+// parity: CaravanTests.theAdvanceRidesWithTheCopyAndTheInputsFollow
 #[test]
 fn the_advance_rides_with_the_copy() {
-    // The scribes (buyer) order eight, two a day from the third day, a third paid up front; the copy is theirs.
+    // The scribes (buyer) order eight iron swords made, two a day from the third day, a third paid up front; the copy is
+    // theirs. They hold 64 iron.
     let mut s = two_towns(5.0, 50.0, 1.0);
-    let id = s.draft_advanced(0, 1, 0, 2.0, 1.0, 3 * DAY, DAY, 4, Incoterm::Exw, false, false, true);
+    s.deliver(1, 1, 64.0);
+    let id = s.draft_advanced(0, 1, 2, 2.0, 1.0, 3 * DAY, DAY, 4, Incoterm::Exw, false, false, true);
     let c = s.contract(id);
     assert_eq!(c.state, State::Drafted, "only the buyer holds the copy");
     assert!((c.advance_due() - 8.0 / 3.0).abs() < 1e-9);
@@ -98,6 +101,13 @@ fn the_advance_rides_with_the_copy() {
     assert!((s.town(0).money - mill_before - 8.0 / 3.0).abs() < 0.01, "in coin, from its purse: the seller holds it");
     assert!((s.advances_held(0) - 8.0 / 3.0).abs() < 0.01);
     assert!(s.bills().is_empty(), "no paper where the purse sufficed");
+    s.conserved(&start).unwrap();
+    // The inputs follow: the mill needs sixteen iron for eight swords, and the next wagon from the scribes brings it.
+    s.advance(2 * DAY);
+    assert_eq!(s.inputs(0)[1], 16.0, "the mill's par has the iron for the swords in it: {:?}", s.inputs(0));
+    s.advance(5 * DAY);
+    let iron = s.town(0).stock[1];
+    assert!(iron >= 16.0, "the next wagon brings the iron for the swords: {iron}");
     s.conserved(&start).unwrap();
 }
 

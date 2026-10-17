@@ -149,17 +149,22 @@ pub enum Want {
     Uses,
     /// A locker of its takes it.
     Locker,
+    /// It's an input to goods the town has contracted to sell (`Trades.inputs`; `Caravans.wantsAt`'s first reason).
+    Inputs,
 }
 
 impl Want {
     pub fn of(trades: &Trades, good: GoodId) -> Want {
-        if trades.capacity.get(good).is_some_and(|c| *c > 0.0) { Want::Locker } else { Want::Uses }
+        if trades.inputs.get(good).is_some_and(|n| *n > 0.0) {
+            Want::Inputs
+        } else if trades.capacity.get(good).is_some_and(|c| *c > 0.0) { Want::Locker } else { Want::Uses }
     }
 
     fn label(self) -> &'static str {
         match self {
             Want::Uses => "its people use it",
             Want::Locker => "a trade it has switched on takes it",
+            Want::Inputs => "an input to goods it's contracted to sell",
         }
     }
 }

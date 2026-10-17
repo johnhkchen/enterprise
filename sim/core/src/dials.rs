@@ -407,4 +407,18 @@ dials! {
     stop_fee_share: f64 = 0.25,
     /// A carrier with space sold to a forwarder on its way home from a hub runs every so many days (`Dials.LINER_DAYS`).
     liner_days: f64 = 4.0,
+    // sourcing-and-procurement (`sourcing.rs`: `market/Broker.java`, `Procurement.java`, `MetalExchange.java`)
+    /// A supplier town asks this much over the goods' worth, before carriage and tolls (`Broker.SUPPLIER_MARGIN`).
+    supplier_margin: f64 = 0.1,
+    /// Where two towns don't trust each other they still deal, on trial terms: this many, in one lot, nothing up front
+    /// (`Broker.TRIAL_LOT`).
+    trial_lot: u32 = 4,
+    /// A Merchant buys from its villagers for what its contracts want within this many days (`Procurement.PACE_TICKS`).
+    pace_days: f64 = 2.0,
+    /// A supplier that can make or sell goods, but doesn't hold them, is asked for at most this many at a time, given
+    /// this many days before the first is due, in at most this many installments a day apart (`Broker.MAKER_LOT`,
+    /// `MAKER_LEAD`, `MAKER_INSTALLMENTS`).
+    maker_lot: u32 = 16,
+    maker_lead_days: f64 = 3.0,
+    maker_installments: u32 = 4,
 }

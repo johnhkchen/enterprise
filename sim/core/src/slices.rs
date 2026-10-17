@@ -43,6 +43,8 @@ crate::saved! {
         listings: crate::desires::Listings = crate::desires::Listings::default(),
         service_ledger: crate::services::ServiceLedger = crate::services::ServiceLedger::default(),
         freight: crate::freight::Freight = crate::freight::Freight::default(),
+        sourcing: crate::sourcing::Sourcing = crate::sourcing::Sourcing::default(),
+        exchange: crate::sourcing::MetalExchange = crate::sourcing::MetalExchange::default(),
     }
     town {
         town: Town,
@@ -103,4 +105,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::desires::register(schedule);
     crate::rules::services::register(schedule);
     crate::rules::freight::register(schedule);
+    crate::rules::sourcing::register(schedule);
 }

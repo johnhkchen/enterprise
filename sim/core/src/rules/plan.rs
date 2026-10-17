@@ -148,12 +148,18 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
                 whys.push((Some(g), Why::SentComfort(kind), going));
             }
         }
+        // What the far end needs to make what it has contracted to sell goes first, a stack each when slots are short
+        // (`Caravans.wantsAt`: its inputs are listed first; `pickCargo`).
+        let needs_input = |g: usize| far_trades.inputs.get(g).is_some_and(|n| *n > 0.0);
+        let mut order = order.clone();
+        order.sort_by_key(|&g| !needs_input(g));
+        let input_share = slots.max(1) as usize / (0..n).filter(|&g| needs_input(g)).count().max(1);
         for &g in &order {
             let full = stacks >= slots;
             let planned = plan.cargo[g];
             let (spare, room, par, want) = match content.goods[g].comfort.filter(|_| far_realm.is_none()) {
                 Some(_) => continue, // (the comforts went first)
-                None if far_trades.uses[g] > 0.0 || far_realm.is_some_and(|r| r.wants.contains(&g)) => {
+                None if far_trades.uses[g] > 0.0 || needs_input(g) || far_realm.is_some_and(|r| r.wants.contains(&g)) => {
                     let want = Want::of(far_trades, g);
                     let room = shelf(&content, far_trades, g) - held(g);
                     let have = home_stock.0[g] - planned;
@@ -181,7 +187,10 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
                 None => continue,
             };
             let stack = content.goods[g].stack as f64;
-            let going = spare.min(room).min((slots - stacks) as f64 * stack).floor();
+            let mut going = spare.min(room).min((slots - stacks) as f64 * stack).floor();
+            if needs_input(g) {
+                going = going.min(input_share.max(1) as f64 * stack);
+            }
             if going <= 0.0 {
                 continue;
             }

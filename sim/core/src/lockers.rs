@@ -85,6 +85,9 @@ pub struct Offer {
     /// Switched on by the Merchant for a training contract, and to go off again with it (`MerchantBook.training`;
     /// `training.rs`).
     pub training: bool,
+    /// Switched on by the Merchant for what its contracts want of the villager (`Exchange.procured`; `sourcing.rs`),
+    /// and to go off again when it isn't wanted; its runs are capped at what's due soon (`Lockers::due`).
+    pub procured: bool,
 }
 
 impl Offer {
@@ -198,6 +201,9 @@ pub struct Lockers {
     pub capacity: Vec<f64>,
     /// What the training contracts the town holds ask of its Merchant at a restock (`training.rs`).
     pub lessons: crate::training::Lessons,
+    /// What the town's contracts will have it deliver within `pace_days`, of each good, not yet less its stock
+    /// (`Procurement.soon`; `sourcing.rs` sets it before each restock): a procured offer runs no more than that.
+    pub due: Vec<f64>,
 }
 
 /// The books a locker trade writes in: the ledger (goods used and made), the cash book, and the world's dice.
@@ -393,6 +399,15 @@ fn trade(content: &Content, books: &mut Books, now: u64, town: usize, roster: &m
     order.sort_by(|&a, &b| per_item(a).total_cmp(&per_item(b)));
     // As many runs as its uses left; those that cost emeralds, within the town's money.
     let mut runs: Vec<u32> = order.iter().map(|&k| (offers[k].uses - offers[k].used.min(offers[k].uses)) as u32).collect();
+    // What the Merchant buys of this villager for its contracts is only what's wanted soon (`Procurement.soon`, less what
+    // the warehouse holds now): a restock's worth at most, not the whole of a long contract.
+    for (r, &k) in runs.iter_mut().zip(&order) {
+        let o = &offers[k];
+        if o.sells && o.procured && !o.training {
+            let need = (lockers.due.get(o.good).copied().unwrap_or(0.0) - stock.0[o.good]).max(0.0).ceil();
+            *r = (*r).min((need / o.count.max(1) as f64).ceil() as u32);
+        }
+    }
     let mut budget = money.0.max(0.0).floor() as i64;
     for (r, &k) in runs.iter_mut().zip(&order) {
         if offers[k].sells {
@@ -675,6 +690,7 @@ impl crate::society::Society {
     /// One restock of the town's hands now (vanilla's `restock`, as the mod hooks it); the clock stays. Returns the
     /// trades made.
     pub fn restock(&mut self, town: usize) -> u32 {
+        self.procure(town);
         self.plan_lessons(town);
         let made = self.with_lockers(town, restock);
         self.finish_lessons(town);
@@ -683,6 +699,7 @@ impl crate::society::Society {
 
     /// Replays the restocks the town missed since its clock (`LockerCatchUp.catchUp`). Returns the restocks.
     pub fn catch_up_lockers(&mut self, town: usize) -> u32 {
+        self.procure(town);
         self.plan_lessons(town);
         let made = self.with_lockers(town, catch_up);
         self.finish_lessons(town);

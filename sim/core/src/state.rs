@@ -119,6 +119,9 @@ pub struct Trades {
     /// A counting house stands in the town: the bills it holds back from its free money cover twice the days
     /// (`Accountant.free`, set by `works.rs`).
     pub counting_house: bool,
+    /// What the town needs of each good to make what it has contracted to sell (`Warehouse.inputs`, set from its
+    /// contracts' recipes: `sourcing.rs`): its shelf and its par are at least this, so wagons bring it.
+    pub inputs: Vec<f64>,
 }
 
 /// When a town was last brought up to date.

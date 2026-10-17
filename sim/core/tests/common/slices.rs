@@ -37,4 +37,5 @@ slices! {
     desires_and_backhauls,
     services,
     freight_hubs,
+    sourcing_and_procurement,
 }

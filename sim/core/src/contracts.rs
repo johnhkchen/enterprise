@@ -118,6 +118,9 @@ pub struct Contract {
     /// The training term (`contract/Training.java`), if any: the contract is for a new master, not for goods
     /// (`training.rs`).
     pub training: Option<crate::training::Training>,
+    /// When it was drafted (`Contract.drafted`; 0 for one a host drafted without saying), for `previous_due` before the
+    /// first installment.
+    pub drafted: u64,
 }
 
 /// Sums under this are nothing (`Contract.advanceDue` and `refunds` list above 0.01; `recoupFrom` stops at 0.001).
@@ -244,6 +247,7 @@ impl Book {
             refund: 0.0,
             harvest: None,
             training: None,
+            drafted: 0,
             id,
             seller,
             buyer,

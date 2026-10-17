@@ -37,6 +37,7 @@ pub mod roster;
 pub mod settlers;
 pub mod services;
 pub mod squad;
+pub mod sourcing;
 pub mod territory;
 pub mod touch;
 pub mod training;
@@ -103,9 +104,11 @@ pub fn in_order<'a>(routes: impl Iterator<Item = (Entity, &'a Route)>) -> Vec<En
 
 /// What a town's warehouse aims to hold of a good: `shelf_days` of what its lockers can take a day (`Trades.capacity`),
 /// or of what its people use where it has no capacity.
+/// At least what it needs of the good to make what it has contracted to sell (`Trades.inputs`, `Warehouse.par`).
 pub fn shelf(content: &Content, trades: &Trades, good: usize) -> f64 {
     let capacity = trades.capacity.get(good).copied().unwrap_or(0.0);
-    content.dials.shelf_days * if capacity > 0.0 { capacity } else { trades.uses[good] }
+    let aim = content.dials.shelf_days * if capacity > 0.0 { capacity } else { trades.uses[good] };
+    aim.max(trades.inputs.get(good).copied().unwrap_or(0.0))
 }
 
 /// The town's trading capital: `reserve_days` of what its people use, at its worth. Spend it on anything else and it
