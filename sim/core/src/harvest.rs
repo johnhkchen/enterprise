@@ -240,11 +240,11 @@ pub fn set_aside(book: &Book, farm: TownId, crop: GoodId, now: u64, day: u64) ->
 }
 
 /// What a farm could add of a crop to what it grows now, items a day: its spare plots at a plot's yield, its own share
-/// of what it grows of the crop, and the other share of its other field crops (`Territory.couldGrow`).
+/// of what it grows of the crop, and the other share of its other rotation crops (`Territory.couldGrow`).
 pub fn could_grow(content: &Content, farm: &Farm, crop: GoodId) -> f64 {
     let d = &content.dials;
     let at = |g: GoodId| farm.per_day.get(&g).copied().unwrap_or(0.0);
-    let others: f64 = crate::farms::field_crops(content).into_iter().filter(|&c| c != crop).map(at).sum();
+    let others: f64 = crate::farms::rotation(content).into_iter().filter(|&c| c != crop).map(at).sum();
     farm.spare_plots as f64 * YIELD_PER_PLOT_PER_DAY + d.could_grow_own_share * at(crop) + d.could_grow_other_share * others
 }
 

@@ -554,6 +554,11 @@ pub fn field_crops(content: &Content) -> Vec<GoodId> {
     CROPS.iter().filter_map(|n| content.good(n)).collect()
 }
 
+/// The [`ROTATION`] crops content has (`Territory.ROTATION`): what forward sales and rents are of.
+pub fn rotation(content: &Content) -> Vec<GoodId> {
+    ROTATION.iter().filter_map(|n| content.good(n)).collect()
+}
+
 /// Can a town plant this crop now (`Fields.allowed`): anything while it trades; while it grows or builds, food crops,
 /// and cane where its own workshop wants it once its food is in hand.
 pub fn allowed(content: &Content, crop: GoodId, wants: &Wants, food_points: f64, food_only: bool) -> bool {

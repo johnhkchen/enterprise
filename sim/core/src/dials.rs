@@ -221,6 +221,8 @@ dials! {
     /// At most this many of a crop an installment; installments in a forward sale.
     forward_max_quantity: f64 = 256.0,
     forward_installments: u32 = 10,
+    /// The share of a forward sale's worth the buyer pays up front (`Dials.ADVANCE_SHARE`, a third).
+    forward_advance_share: f64 = 1.0 / 3.0,
     /// Markets offer farm towns forward sales and rents of the crops they lack (`ForwardSales.offer`).
     forward_sales: bool = true,
     /// Share of what a farm grows of a crop it may promise more of.

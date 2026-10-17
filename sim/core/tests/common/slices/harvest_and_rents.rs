@@ -7,7 +7,6 @@ use enterprise_core::harvest::RentState;
 use enterprise_core::State;
 
 pub fn extend(s: &mut Society, r: &mut Rng) {
-    s.content_mut().dials.forward_sales = true;
     let (n_towns, n_goods) = (s.town_count(), s.content().goods.len());
     if n_towns < 2 {
         return;

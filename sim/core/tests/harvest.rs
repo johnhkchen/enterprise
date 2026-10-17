@@ -211,7 +211,8 @@ fn the_harvest_dials_are_the_mods() {
     let s = Society::new(Content::new(vec![Good::new("wheat", 1.0, 64)], DAY));
     for (name, value) in [("harvest_window_days", 4.0), ("harvest_arrears", 2.0), ("harvest_rolled_weight", 0.25),
         ("rent_season_days", 10.0), ("rent_purchase_seasons", 8.0), ("rent_arrears_seasons", 2.0), ("dealer_spread", 0.1),
-        ("forward_sow_days", 4.0), ("forward_installments", 10.0), ("forward_max_quantity", 256.0)] {
+        ("forward_sow_days", 4.0), ("forward_installments", 10.0), ("forward_max_quantity", 256.0),
+        ("forward_advance_share", 1.0 / 3.0), ("could_grow_own_share", 0.5), ("could_grow_other_share", 0.25)] {
         assert_eq!(s.dial(name), Some(value), "{name}");
     }
 }
