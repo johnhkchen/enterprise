@@ -40,4 +40,5 @@ slices! {
     sourcing_and_procurement,
     mines_and_kit,
     post,
+    war_army,
 }

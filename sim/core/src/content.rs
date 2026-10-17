@@ -20,11 +20,15 @@ pub struct Good {
     pub food: f64,
     /// A crop farmers grow (`Territory.isCrop`): its sales at the town's lockers count as farm sales (`farms.rs`).
     pub crop: bool,
+    /// The army (`army.rs`): the saturation one gives, as the host's food holds it (bread: 6 for its 5 food points),
+    /// for how hearty it is; and whether it's meat (any cooked meat or stew, `Army.MEATS`: hearty however plain).
+    pub saturation: f64,
+    pub meat: bool,
 }
 
 impl Good {
     pub fn new(name: &str, value: f64, stack: u32) -> Self {
-        Good { name: name.to_string(), value, stack, comfort: None, food: 0.0, crop: false }
+        Good { name: name.to_string(), value, stack, comfort: None, food: 0.0, crop: false, saturation: 0.0, meat: false }
     }
 
     /// A comfort of the kind at `kind` in [`Content::comforts`].
@@ -42,6 +46,18 @@ impl Good {
     /// Food, worth `points` a piece.
     pub fn food(mut self, points: f64) -> Self {
         self.food = points;
+        self
+    }
+
+    /// Food giving `saturation` a piece (`army.rs`: its heartiness).
+    pub fn saturation(mut self, saturation: f64) -> Self {
+        self.saturation = saturation;
+        self
+    }
+
+    /// Meat: hearty food for an army (`Army.MEATS`).
+    pub fn meat(mut self) -> Self {
+        self.meat = true;
         self
     }
 }

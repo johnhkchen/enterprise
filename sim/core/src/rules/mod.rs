@@ -16,6 +16,7 @@
 //! each other's.
 
 pub mod advances;
+pub mod army;
 pub mod arrive;
 pub mod atlas;
 pub mod bank;

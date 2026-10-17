@@ -101,6 +101,9 @@ pub struct People {
     pub born: u32,
     /// Services (`services.rs`): a Cleric's blessing lasts until then (`Holding.blessedUntil`); none, never blessed.
     pub blessed_until: Option<u64>,
+    /// The war (`army.rs`): its soldiers fallen, as (the tick its grief for them ends, how many fell), `Holding.fallen`:
+    /// each takes `grief_mood` from its mood target until then, at most `grief_most` (`Territory.moodTarget`).
+    pub grief: Vec<(u64, f64)>,
 }
 
 /// What a town holds of each good.

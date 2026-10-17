@@ -66,6 +66,15 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
         }
         out[c.home] += c.crew.len() + c.walkers;
     }
+    // Or at the war (`army.rs`): its soldiers, its recruits waiting at the capital, and those walking home from either.
+    let army = s.army();
+    let at_war = army.soldiers.iter().map(|x| (x.home, &x.hand)).chain(army.barracks.iter().map(|x| (x.home, &x.hand)))
+        .chain(army.walking.iter().map(|x| (x.home, &x.hand)));
+    for (home, _) in at_war.filter(|(_, hand)| hand.is_some()) {
+        if let Some(n) = out.get_mut(home) {
+            *n += 1;
+        }
+    }
     for (t, n) in out.iter().enumerate() {
         let away = s.roster(t).hands.iter().filter(|h| h.away).count();
         if away != *n {

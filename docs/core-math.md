@@ -52,7 +52,7 @@ slice needs them; tick them here when they land.
 | | Trick | Where it fits | Status |
 |---|---|---|---|
 | ✅ | **Utility or expected-profit decision rules:** one line per agent type | A wagon goes when its load is worth its road food (`departures`); a town buys within its budget. More of the same as slices land | In use |
-| 🔜 | **Lanchester equations:** attrition combat as supply-scaled strength | The war's outcome from soldiers, kit and food, no per-unit simulation | War |
+| ✅ | **Lanchester equations:** attrition combat as supply-scaled strength | `army.rs`: the front's losses as a rate against a fixed foe, `dN = Σ risk` a day (each soldier's by its kit, its hunger and how hearty the meal), and desertion as the hungry's summed chance; the expected losses carried as a fraction and taken a whole soldier at a time (the one who has run the most risk), never a roll a head, so the same army in the same kit loses the same soldiers on the same days whatever the dice (`tests/army.rs`, `losses_are_the_expected_value_carried_not_dice`). Still to come: an enemy whose strength the army's (the tally's `strength`) wears down in turn, the square law | In use (attrition; an enemy to fight, later) |
 | ✅ in use: advances | **Principal-agent / collateral contracts:** escrow and deposits make risky shipments possible | Advances against contracts: a share paid up front by the buyer's wagon, worked off at the same share of each delivery, owed back on a break (`advances.rs`, `rules/advances.rs`); deposits on consignment still to come | Contracts (advances) / forwarder |
 | 💭 | **Replicator dynamics:** strategies that earn more get copied | Towns' choices (what to make, which routes to run) drift toward what pays, without learning code | Maybe, later |
 

@@ -458,4 +458,23 @@ dials! {
     /// what's left itself (`CONSIGN_COMMISSION`, `CONSIGN_DAYS`).
     consign_commission: f64 = 0.1,
     consign_days: f64 = 20.0,
+    // war-army (`army.rs`: `army/Army.java`, `market/Sovereign.java` `SOLDIER_PAY`, `territory/Territory.java` `mourn`)
+    /// A campaign day's chance of a soldier falling, before its kit (`Army.DEATH_BASE`).
+    death_base: f64 = 0.02,
+    /// Food points a soldier eats a day, from the front's warehouse (`Army.RATION`).
+    army_ration: f64 = 8.0,
+    /// Unfed, a soldier runs this many times the risk, and deserts at this chance a day (`Army.HUNGRY_RISK`, `DESERTION`).
+    hungry_risk: f64 = 1.5,
+    desertion: f64 = 0.1,
+    /// Days of rations the front keeps beyond what three round trips of a delivery take (`Army.RATION_SPARE_DAYS`).
+    ration_spare_days: u32 = 2,
+    /// Arrows an archer shoots a day (`Army.ARROWS_PER_DAY`).
+    arrows_per_day: u32 = 8,
+    /// A soldier's pay a day, owed its town (`Sovereign.SOLDIER_PAY`).
+    soldier_pay: f64 = 0.25,
+    /// Each of a town's soldiers fallen in the last so many days takes this much from its mood target, at most this
+    /// much (`Territory.GRIEF_MOOD`, `GRIEF_MOST`, `GRIEF_TICKS`).
+    grief_mood: f64 = 0.5,
+    grief_most: f64 = 2.0,
+    grief_days: f64 = 10.0,
 }

@@ -50,10 +50,12 @@ fn eat(content: &Content, ledger: &mut Ledger, stock: &mut Stock, mut points: f6
 
 /// Where a town's mood is heading (`Territory.moodTarget`): the comforts met and its works (a wall, a square, its flower
 /// beds), less its size, villagers without beds and unpaid wages.
+/// Less its grief for its soldiers fallen (`army.rs`).
 pub fn mood_target(d: &crate::content::Dials, people: &People, works: Option<&crate::works::Works>) -> f64 {
     people.comfort_met.iter().sum::<f64>()
         + works.map_or(0.0, |w| w.mood())
         + crate::services::blessing_mood(d, people, works) // a Cleric's blessing (`services.rs`)
+        - crate::army::grief(d, people) // its soldiers fallen (`army.rs`)
         - people.villagers / d.villagers_per_want
         - d.crowding_mood * (people.villagers - people.beds).max(0.0)
         - d.unpaid_mood * (1.0 - people.paid_share)
