@@ -1,3 +1,62 @@
 # Java game tests that pin Minecraft itself, not the society: they stay with the binding, never come to the core.
 # One File.method a line, the reason after #.
+
+# Client, registration, villager AI
 MerchantScreenTests.* # the Merchant's screen: client UI
+MerchantTests.deskIsMerchantJobSite # POI and profession registration
+MerchantTests.villagerTakesDeskJob # POI and profession registration
+JobsTests.aStallIsALockerWithAWorker # places a lectern and hires a villager entity
+
+# Containers, slots, chunk loading
+LockerTests.findsContainersTouchingWorkstations # block adjacency
+LockerTests.otherDesksAreNotLockers # block adjacency
+LockerTests.deskStockIsTouchingContainers # block adjacency
+LockerTests.doubleChestCountsOnceWithBothHalves # block adjacency
+LockerTradingTests.catchUpWaitsForItsMerchant # chunk loading, a mixin hook
+LockerTradingTests.villagerWithLockerAsksToRestock # chunk loading, a mixin hook
+LogisticsTests.anOffMapMarketKeepsItsWarehouseOnTheLedger # ledger-only storage is the core's only kind; the binding has chests
+LogisticsTests.aBuildingsChestsAreOneStoreAndHoldWhatItsFor # chest slot management: the core's warehouse has no slots
+LogisticsTests.aStorageCrateHoldsNineStacksInASlotAndTheStockReachesIn # chest slot management: the core's warehouse has no slots
+LogisticsTests.shortOfRoomTheMerchantRepacksCratesPickedAt # chest slot management: the core's warehouse has no slots
+LogisticsTests.shortOfRoomTheMerchantPacksIdleGoodsIntoColdStorage # chest slot management: the core's warehouse has no slots
+CargoTests.aCrateHoldsNineStacksAndItsPapers # the crate block and item
+CargoTests.aBrokenCrateKeepsItsGoodsAndPapers # the crate block and item
+
+# Structures and world geometry
+BuildingTests.aWatchtowerHasALadderUp # block placement
+MetalTests.aMineHeadHasALadderDown # block placement
+HusbandryTests.fishermenBuildADockWhereLandMeetsWater # block placement
+GrowthTests.aCottageFitsOnOpenGroundAndHasABed # block placement; the ring's size reaches the core as a blocks-needed number
+GrowthTests.fieldsAndWaterAreNoPlaceForAHome # block placement; the ring's size reaches the core as a blocks-needed number
+GrowthTests.fieldsRingTheTownAndCutNoOneOff # block placement; the ring's size reaches the core as a blocks-needed number
+GrowthTests.wallsRiseOnGroundAndLeaveFieldsOpen # block placement; the ring's size reaches the core as a blocks-needed number
+GrowthTests.aWallRingsTheBellWithFourGates # block placement; the ring's size reaches the core as a blocks-needed number
+TollTests.surveysSeeWater # heightmap scan
+TollTests.marketsGetNamesThatStick # names from biomes
+
+# Census by pathfinding and POIs
+SettlementTests.bellBedsAndWorkstationsMakeASettlement # bells, beds and workstations as POIs
+SettlementTests.theRosterCountsVillagersOutOfSight # loaded chunks: the core takes a town's people as data
+SettlementTests.tooFewBedsIsNotASettlement # bells, beds and workstations as POIs
+SettlementTests.bellsNearPlayersComeUpForCensusOncePerDay # loaded chunks: the core takes a town's people as data
+SettlementTests.villagerWhoCanReachEverythingIsFree # villagers' walkability
+SettlementTests.cagedVillagerIsNotFree # villagers' walkability
+
+# Numismatics coins and bank
+MoneyTests.surplusEmeraldsBecomeCoinsInStock # coin items: the emerald/coin split is the binding's
+MoneyTests.coinsAreRemintedIntoFewStacks # coin items: the emerald/coin split is the binding's
+MoneyTests.sellingOnlyMerchantsKeepNoReserve # the 64-emerald working reserve is the binding's
+MoneyTests.reserveIsNotSold # the 64-emerald working reserve is the binding's
+MoneyTests.blazeBankerTakesTheDeposit # the Blaze Banker is an entity
+MoneyTests.firstPlayerToOpenTheBankerOwnsTheEarnings # the Blaze Banker is an entity
+TerritoryTests.farmersTakeCoinsAtTheRegionsRate # coin items with change
+
+# Enchanting
+MarketTests.aCommissionIsEnchantedToOrder # vanilla enchantment rolls; kit quality reaches the core as numbers
+MasterTests.aMasterClericEnchantsWithLapis # vanilla enchantment rolls; kit quality reaches the core as numbers
+MasterTests.aClericLaysABooksEnchantmentOn # vanilla enchantment rolls; kit quality reaches the core as numbers
+MasterTests.aMasterLibrarianCopiesABook # vanilla enchantment rolls; kit quality reaches the core as numbers
+
+# Other
+MoodTests.comfortsAreTags # item tags; the kinds table is content
+CaravanTests.onlyTheDesksCommunityIsMustered # JOB_SITE memory and an 8-block radius

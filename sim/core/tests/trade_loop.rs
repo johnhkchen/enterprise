@@ -106,3 +106,32 @@ fn a_hundred_days_at_once_is_a_hundred_days_one_at_a_time() {
         assert!((a.stock[0] - b.stock[0]).abs() < 1e-9, "{}'s wheat", a.name);
     }
 }
+
+// parity: CaravanTests.townsKeepTheirTradingCapital
+#[test]
+fn a_buyer_keeps_its_trading_capital_and_buys_only_the_excess() {
+    // The mill uses 64 wheat a day at 0.05 each, reserve_days 2: its trading capital is 6.4 emeralds. Holding exactly
+    // that, it buys nothing from the wagon; with 20 more, it buys with the excess.
+    let mut held = farm_and_mill(2.0, 6.4);
+    held.advance(20 * DAY);
+    assert_eq!(held.route(0).sold, 0.0, "no excess, no sale");
+    assert_eq!(held.town(1).stock[0], 0.0, "the mill bought no wheat");
+
+    let mut excess = farm_and_mill(2.0, 26.4);
+    excess.advance(20 * DAY);
+    assert!(excess.route(0).sold > 0.0, "the excess buys wheat");
+    assert!(excess.town(1).money >= 6.4 - 1e-9, "and the mill keeps its trading capital");
+}
+
+// parity: CaravanTests.aDestinationThatCantPayGetsNothing
+#[test]
+fn a_buyer_with_no_money_buys_nothing_and_the_wagon_brings_it_all_home() {
+    let mut s = farm_and_mill(2.0, 0.0);
+    let start = s.totals();
+    s.advance(20 * DAY);
+    assert!(s.route(0).trips >= 1, "the wagon still makes its trips");
+    assert_eq!(s.route(0).sold, 0.0, "no money, no wheat sold");
+    assert_eq!(s.town(1).stock[0], 0.0, "the mill holds no wheat");
+    assert_eq!(s.town(1).money, 0.0, "and pays nothing");
+    s.conserved(&start).unwrap_or_else(|e| panic!("{e}"));
+}
