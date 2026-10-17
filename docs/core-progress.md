@@ -6,9 +6,9 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `e714595`. 232 tests pass (`just core-test`, a few seconds). Parity: **90 covered, 20 partial, 46
-  skipped, 106 left of 262** (`just parity`). `just core-fingerprint`: `9ee54991e64ba313` (forward sales change the
-  farm worlds).
+- **Main:** `fee3be2`. 252 tests pass (`just core-test`, a few seconds). Parity: **92 covered, 20 partial, 46
+  skipped, 104 left of 262** (`just parity`). `just core-fingerprint`: `79c37cbf3266deeb` (grown children in a
+  Merchant's town take stalls).
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
 
@@ -25,7 +25,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 12 | 2 | `lockers` | opus/high (sonnet/high) | `roster`, `cash-book` | `cead554` | structural: rostered towns' income; five later tasks build on it. 11 tags, 3 partial (shulker stock, nearest by hand index, `needed` set by hand). At landing: capacity one restock's worth a day as the mod (384 paper, was 768), a hand leaving takes its locker, restock after the farm, review after settlers |
 | 13 | 2 | `squads` | opus/high (sonnet/high) | `roster`, `road-food` | — | threads a crew through Plan, Decide and Turn beside road-food |
 | 14 | 2 | `farms-and-wages` | opus/high (sonnet/high) | `roster`, `cash-book` | `026b50d` | the largest port. Plan, wages, credit, sharecropping, labour market, fields, stores, deposits; 11 tags, 2 partial (block scan, tolls). Hooks: `Farm.needs`, `draws`, `stores_wanted`. At landing: every town spawns a farm (inert till set up), paid share back to 1 with no wage running, sales from the farm's start |
-| 15 | 2 | `jobs` | sonnet/medium (sonnet/medium) | `roster`, `lockers` | — |  |
+| 15 | 2 | `jobs` | sonnet/medium (sonnet/medium) | `roster`, `lockers` | `fee3be2` | The bag of marbles (supply, signals, idle plots, halls, comforts), the seeded draw, a 6-emerald stall beyond the reserve or on the households' savings, slack hands retrain where no road comes; both JobsTests tags pinned. Gaps: no site, a Merchant stands for the desk, `forContracts` is `Lockers::needed`, no training or squad gates yet. At landing: no stall while the town raises settlers or on a party's day (`Territory.grow`), after the farm and the census, `rules::free`; herds' bound +9 (late keepers' seeds) confirmed |
 | 16 | 2 | `territory-growth` | sonnet/medium (sonnet/medium) | `hex-map`, `cash-book` | `4aa28bd` | Claims, culture to two rings, guards, militia, tolls; 7 tags. At landing: food all or nothing, tolls floored in spurs, posts by q then r, a first count a day's culture |
 | 17 | 2 | `workshop` | sonnet/medium (sonnet/medium) | `roster` | `e57577f` | The mod's seven conversions by name, gain order, whole batches, `input_demand` two steps back; JobsTests paper pinned, comforts partial. Gaps: comfort worth not `Desires.reckon`, no room limit, runs after the touch's use. At landing: random worlds keep the base goods' comfort and food flags |
 | 18 | 2 | `harvest-and-rents` | sonnet/medium (sonnet/medium) | `advances-and-refunds` | `e714595` | Harvest term judged on a window with shortfalls rolled, rents with coupons, `ForwardSales.offer`, set-aside from sales and the workshop; 2 ContractTests pinned, the rents deed partial (no Numismatics vendor, dealer on synthetic inputs). Gaps: no crates/earmarks, `RentDealer.deal`, `Accountant.approve`. At landing: rotation crops only (was cane and berries too), both towns' money beyond `reserve` (was trading capital), buy-back keeps the road home's food, `forward_advance_share` dial, base generator left alone |
@@ -129,3 +129,6 @@ dependencies are the integrator's; `trees.py` locks its registry, so agents can 
   crops (cane and berries too; now `farms::rotation`). Briefs name the core's counterpart of each Java helper they
   cite. And a slice whose rule changes other slices' worlds changes the fingerprint: it doesn't add a switch to the
   base generator to hide it.
+- Agents port the Java method and miss its caller's gates: `Jobs.employ` is called from `Territory.grow` only when the
+  town isn't raising settlers, has no hand to train and no squad short, and `jobs` hired the hands a party was waiting
+  for. Briefs name the reference's call site and each condition around it.
