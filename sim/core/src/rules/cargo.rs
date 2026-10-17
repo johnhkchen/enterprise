@@ -183,7 +183,8 @@ fn plan_owing(content: Res<Content>, book: Res<Book>, mut routes: Query<(&Route,
         }
         let (money, stock, trades, roster) = towns.get(route.from).expect("home");
         let keep_wheat = crate::road::keep_wheat(&content, trades, roster);
-        let money = money.0 - crate::road::road_money(&content, route, &stock.0, keep_wheat);
+        let mouths = plan.crew.len().max(1) as f64; // the crew it has mustered (`squad.rs`), one without
+        let money = money.0 - crate::road::road_money(&content, route, &stock.0, keep_wheat, mouths);
         for id in owing {
             let owed = book.contracts[id].owing;
             plan.purse += owed.min((money - plan.purse).max(0.0));
@@ -207,7 +208,9 @@ fn ship(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut le
         if state.last_departure != Some(now) {
             continue;
         }
-        let Some(wagon) = state.wagon.as_mut().filter(|w| w.leg == Leg::Out && w.arrives == now + route.travel_ticks)
+        // Just left (a saddled wagon rides a third faster: `squad.rs`).
+        let Some(wagon) = state.wagon.as_mut().filter(|w| w.leg == Leg::Out
+            && w.arrives == now + crate::squad::leg_ticks(&content, route.travel_ticks, w.saddled, 1.0))
             else { continue };
         let Ok((mut money, trades, farm, mut store, mut paperwork)) = towns.get_mut(route.from) else { continue };
         // The crates planned, from home's.
@@ -272,8 +275,8 @@ fn pay_owing(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, m
             continue;
         }
         let mut money = towns.get_mut(route.to).expect("the far end");
-        let keep = crate::road::purse_keep(&content, &route);
         let wagon = state.wagon.as_mut().unwrap();
+        let keep = crate::road::purse_keep(&content, &route, crate::road::mouths(Some(wagon)));
         for id in owing {
             let pay = book.contracts[id].owing.min((wagon.purse - keep).max(0.0));
             if pay > 0.0 {

@@ -385,6 +385,24 @@ fn a_saddled_caravan_rides_faster() {
 }
 
 #[test]
+fn a_saddled_wagon_takes_its_crates_from_home() {
+    // A saddled wagon gets there sooner (`leg_ticks`); crating as it leaves (`rules/cargo.rs` `ship`) still knows it
+    // for one just gone: the crate it planned leaves home's warehouse, not rides on and stays too.
+    let mut s = network(2.0, 5.0, 192.0, &["librarian"]);
+    s.deliver(HUB, SADDLE, 1.0);
+    let id = s.draft(HUB, DEST, PAPER, 64.0, 1.0 / 24.0, 0, DAY, 1, Incoterm::Ddp, true);
+    s.deliver_shipment(HUB, enterprise_core::cargo::Shipment { good: PAPER, count: 64.0, shipper: HUB,
+        consignee: Some(DEST), contract: Some(id), settled: false, copy: true });
+    assert_eq!(s.shipments(HUB).held.len(), 1, "crated at home");
+    let start = s.totals();
+    s.advance(LOOK);
+    assert!(s.route(0).on_the_road && s.crew(0).saddled, "the wagon went, saddled");
+    assert!(s.shipments(HUB).held.is_empty(), "the crate left home's warehouse");
+    assert!(s.wagon_shipments(0).0.iter().any(|c| c.contract == Some(id) && c.count == 64.0), "and rides aboard");
+    s.conserved(&start).unwrap();
+}
+
+#[test]
 fn a_saddle_wears_out_on_its_eleventh_trip() {
     let c = content();
     let mut state = enterprise_core::state::RouteState::default();
