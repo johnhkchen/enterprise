@@ -32,6 +32,7 @@ pub mod roster;
 pub mod settlers;
 pub mod territory;
 pub mod touch;
+pub mod training;
 pub mod workshop;
 pub mod works;
 

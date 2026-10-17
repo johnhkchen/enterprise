@@ -39,6 +39,7 @@ pub mod society;
 pub mod state;
 pub mod territory;
 pub mod works;
+pub mod training;
 pub mod workshop;
 
 pub use content::{Content, Dials, Good, GoodId};

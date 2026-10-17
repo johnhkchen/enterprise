@@ -90,7 +90,8 @@ fn earmark(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut ledger
             let s = &store.held[i];
             let stale = s.shipper == town.id && !s.consigned_to(town.id) && s.contract.is_some_and(|id| {
                 let c = &book.contracts[id];
-                !c.in_force() || (c.harvest.is_some() && c.seller == town.id && s.consignee != Some(c.buyer))
+                // (A pupil's work crated for a training contract's buyer waits for its wagon after the contract is done.)
+                (!c.in_force() && c.training.is_none()) || (c.harvest.is_some() && c.seller == town.id && s.consignee != Some(c.buyer))
             });
             if stale {
                 let s = store.held.remove(i);

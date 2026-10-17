@@ -288,4 +288,18 @@ dials! {
     hired_skill: u32 = 3,
     /// Documents a day a market draws up before it wants a counting house (`Dials.COUNTING_DOCUMENTS`).
     counting_house_documents: f64 = 3.0,
+    // training-and-tenders (`training.rs`: `market/Tenders.java`, `market/Apprentices.java`, `Sovereign.TRAINING_BONUS`)
+    /// What a master is worth to a buyer who tenders for one, at the top level (`Sovereign.TRAINING_BONUS`).
+    training_bonus: f64 = 24.0,
+    /// A Merchant carrying a tender on keeps this share of its price (`Tenders.RELAY_MARGIN`).
+    relay_margin: f64 = 0.15,
+    /// What a Merchant reckons training costs its town a level: coal, iron and the rest bought in (`Tenders.LEVEL_COST`).
+    level_cost: f64 = 2.0,
+    /// The days a level takes, with the coal and iron to hand, and the days to get them there (`DAYS_PER_LEVEL`, `SUPPLY_DAYS`).
+    days_per_level: f64 = 2.0,
+    supply_days: f64 = 2.0,
+    /// Slots in a town's warehouse, and the free ones it keeps (`MerchantStock.FREE_SLOTS`): the core has no chests, so
+    /// a stack of a good is a slot and the warehouse holds this many (a double chest's worth).
+    warehouse_slots: u32 = 54,
+    free_slots: u32 = 5,
 }

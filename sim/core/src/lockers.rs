@@ -26,8 +26,7 @@
 //!   the training and sourcing slices fill.
 //! - `merchant/MerchantBook.java` `noteSlack`, `addEarned`, `takeEarned`, `takenOn`.
 //!
-//! Not here yet: the Merchant buying what its contracts want (`Procurement`, its runs capped by what's due soon), a
-//! pupil's lessons (`Apprentices.review`), herds' feed kept back from crop sales (`feedKept`), the payroll held back
+//! Not here yet: the Merchant buying what its contracts want (`Procurement`, its runs capped by what's due soon), herds' feed kept back from crop sales (`feedKept`), the payroll held back
 //! from the emeralds a locker pays out; the offers a villager rolls at random (here a trade offers all of its level's).
 //! Simplified: one restock clock a town, not one a villager (a hand added later shares it); what a town wants, for a
 //! selling offer's worth, is what its people use (`Trades.uses > 0`, where `Caravans.wantedAt` also counts the
@@ -82,6 +81,9 @@ pub struct Offer {
     pub demand: i32,
     pub used: u8,
     pub on: bool,
+    /// Switched on by the Merchant for a training contract, and to go off again with it (`MerchantBook.training`;
+    /// `training.rs`).
+    pub training: bool,
 }
 
 impl Offer {
@@ -193,6 +195,8 @@ pub struct Lockers {
     pub reviewed: Option<u64>,
     pub kept: Vec<Option<f64>>,
     pub capacity: Vec<f64>,
+    /// What the training contracts the town holds ask of its Merchant at a restock (`training.rs`).
+    pub lessons: crate::training::Lessons,
 }
 
 /// The books a locker trade writes in: the ledger (goods used and made), the cash book, and the world's dice.
@@ -360,6 +364,8 @@ pub fn restock(content: &Content, books: &mut Books, now: u64, town: usize, rost
         }
         // The Merchant's lockers this restock: its level may have risen on the last.
         if roster.merchant.is_some() && lockers.order(content, roster, roster.locker_limit() as usize).contains(&i) {
+            // Training, at the villager's restock before its locker trades run (`Apprentices.review`).
+            crate::training::review(content, roster, lockers, i, stock, money);
             made += trade(content, books, now, town, roster, lockers, i, stock, money);
         }
     }
@@ -420,6 +426,11 @@ fn trade(content: &Content, books: &mut Books, now: u64, town: usize, roster: &m
             ran += 1;
         }
         if ran > 0 {
+            if o.sells && o.training {
+                // What the Merchant paid the pupil to make (`Apprentices.afterTrade`, in `rules/training.rs`).
+                let trade = lockers.hands[i].trade;
+                lockers.lessons.made.push(crate::training::Made { trade, good: g, count: (o.count * ran) as f64 });
+            }
             if o.sells {
                 // Named as `Reason::Sold` names its good, so a book's lines read alike.
                 let name = &content.goods[g].name;
@@ -663,12 +674,18 @@ impl crate::society::Society {
     /// One restock of the town's hands now (vanilla's `restock`, as the mod hooks it); the clock stays. Returns the
     /// trades made.
     pub fn restock(&mut self, town: usize) -> u32 {
-        self.with_lockers(town, restock)
+        self.plan_lessons(town);
+        let made = self.with_lockers(town, restock);
+        self.finish_lessons(town);
+        made
     }
 
     /// Replays the restocks the town missed since its clock (`LockerCatchUp.catchUp`). Returns the restocks.
     pub fn catch_up_lockers(&mut self, town: usize) -> u32 {
-        self.with_lockers(town, catch_up)
+        self.plan_lessons(town);
+        let made = self.with_lockers(town, catch_up);
+        self.finish_lessons(town);
+        made
     }
 
     /// The Merchant's review of a town's lockers now (as its day's first look does). Returns the hand let go.

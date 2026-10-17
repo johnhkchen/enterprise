@@ -115,6 +115,9 @@ pub struct Contract {
     pub refund: f64,
     /// The harvest term (`contract/Harvest.java`), if any: a forward crop sale or a rent's coupon (`harvest.rs`).
     pub harvest: Option<crate::harvest::Harvest>,
+    /// The training term (`contract/Training.java`), if any: the contract is for a new master, not for goods
+    /// (`training.rs`).
+    pub training: Option<crate::training::Training>,
 }
 
 /// Sums under this are nothing (`Contract.advanceDue` and `refunds` list above 0.01; `recoupFrom` stops at 0.001).
@@ -124,6 +127,9 @@ pub const RECOUP_EPS: f64 = 0.001;
 impl Contract {
     /// The whole contract's worth at the locked price: `Contract.worth`.
     pub fn worth(&self) -> f64 {
+        if let Some(t) = &self.training {
+            return t.bonus;
+        }
         self.quantity * self.installments as f64 * self.price
     }
 
@@ -237,6 +243,7 @@ impl Book {
             recouped: 0.0,
             refund: 0.0,
             harvest: None,
+            training: None,
             id,
             seller,
             buyer,
@@ -352,7 +359,7 @@ impl Book {
     }
 
     /// A broken contract: what was paid up front and not yet worked off is owed back to the buyer.
-    fn broken(&mut self, id: usize) {
+    pub(crate) fn broken(&mut self, id: usize) {
         let c = &mut self.contracts[id];
         let unearned = c.advanced - c.recouped;
         if unearned > ADVANCE_EPS {
@@ -362,7 +369,7 @@ impl Book {
     }
 
     /// Drops contracts no longer open from the open list (finished ones that still owe money stay till paid).
-    fn tidy(&mut self) {
+    pub(crate) fn tidy(&mut self) {
         let contracts = &self.contracts;
         self.open.retain(|&id| {
             let c = &contracts[id];
@@ -397,7 +404,7 @@ impl Book {
     /// Is there a contract drafted or in force between them for this good?
     pub fn covers(&self, seller: TownId, buyer: TownId, good: GoodId) -> bool {
         self.open.iter().map(|&id| &self.contracts[id]).any(|c| matches!(c.state, State::Drafted | State::Active)
-            && c.seller == seller && c.buyer == buyer && c.good == good)
+            && c.training.is_none() && c.seller == seller && c.buyer == buyer && c.good == good)
     }
 
     pub fn trust(&self, a: TownId, b: TownId, now: u64, day: u64) -> f64 {
@@ -434,7 +441,8 @@ impl Book {
         c.delivered += delivered;
         c.paid += paid;
         c.owing += owing;
-        if c.delivered >= c.quantity * c.installments as f64 - 1e-9 {
+        // (A training contract has no goods to deliver: only the census completes it, `Book::review_training`.)
+        if c.training.is_none() && c.delivered >= c.quantity * c.installments as f64 - 1e-9 {
             c.state = State::Completed;
         }
         self.tidy();
@@ -454,7 +462,8 @@ impl Book {
     pub fn review_with(&mut self, now: u64, day: u64, dials: &HarvestDials, seller_holds: impl Fn(&Contract) -> bool) {
         let grace = (GRACE_DAYS * day as f64) as u64;
         for i in self.open.clone() {
-            if !self.contracts[i].in_force() {
+            // A training contract is judged on the census, not on installments (`Book::review_training`).
+            if !self.contracts[i].in_force() || self.contracts[i].training.is_some() {
                 continue;
             }
             loop {
