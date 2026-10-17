@@ -1,5 +1,6 @@
 //! Contracts, pinned as the mod's game tests pin them (`CaravanTests`, `ContractTests`), in milliseconds.
 
+use enterprise_core::contracts::Book;
 use enterprise_core::{Content, Good, Incoterm, Society, State};
 
 const DAY: u64 = 24_000;
@@ -167,4 +168,81 @@ fn the_books_balance_with_contracts_running() {
         s.conserved(&start).unwrap_or_else(|e| panic!("day {day}: {e}"));
         s.solvent().unwrap_or_else(|e| panic!("day {day}: {e}"));
     }
+}
+
+// Book-level tests: the mod's ContractTests drive a ContractBook directly, with no towns around it.
+
+fn book_draft(book: &mut Book, seller: usize, buyer: usize, quantity: f64, incoterm: Incoterm, installments: u32) -> usize {
+    book.draft(seller, buyer, 0, quantity, 0.25, 0, DAY, installments, incoterm, true, true)
+}
+
+// parity: ContractTests.eachIncotermPricesItsBurdens
+#[test]
+fn each_incoterm_prices_its_burdens() {
+    assert_eq!(Incoterm::Exw.price(1.0, 0.1, 0.2), 1.0, "Ex Works: the price at the seller's");
+    assert!((Incoterm::Cpt.price(1.0, 0.1, 0.2) - 1.1).abs() < 1e-9, "Carriage Paid To: and the carriage");
+    assert!((Incoterm::Dap.price(1.0, 0.1, 0.2) - 1.1).abs() < 1e-9, "Delivered At Place: the same");
+    assert!((Incoterm::Ddp.price(1.0, 0.1, 0.2) - 1.3).abs() < 1e-9, "Delivered Duty Paid: and the tolls");
+}
+
+// parity: ContractTests.underCarriagePaidToTheRoadIsTheBuyers
+#[test]
+fn under_carriage_paid_to_the_road_is_the_buyers() {
+    let mut book = Book::default();
+    let cpt = book_draft(&mut book, 0, 1, 10.0, Incoterm::Cpt, 1);
+    let dap = book_draft(&mut book, 0, 1, 10.0, Incoterm::Dap, 1);
+    book.ship(cpt, 10.0);
+    book.ship(dap, 10.0);
+    // Judged past its grace, still on the road.
+    book.review(2 * DAY + 1, DAY, |_| false);
+    assert_eq!(book.contracts[cpt].missed, 0, "CPT: on the road counts as delivered");
+    assert_eq!(book.contracts[dap].missed, 1, "DAP: not there yet, the seller's miss");
+}
+
+// parity: ContractTests.exWorksGoodsLeftUncollectedAreTheBuyersMiss
+#[test]
+fn ex_works_goods_left_uncollected_are_the_buyers_miss() {
+    let mut book = Book::default();
+    let exw = book_draft(&mut book, 0, 1, 10.0, Incoterm::Exw, 1);
+    // The seller holds the goods and nobody came for them.
+    book.review(2 * DAY + 1, DAY, |_| true);
+    assert_eq!(book.contracts[exw].buyer_missed, 1, "set aside, nobody came: the buyer's miss");
+    assert_eq!(book.contracts[exw].missed, 0, "and not the seller's");
+}
+
+// parity: ContractTests.trustIsATrackRecordThatOneBadWeekDoesntUndo
+#[test]
+fn trust_is_a_track_record_that_one_bad_week_doesnt_undo() {
+    let mut book = Book::default();
+    let t = 1_000_000;
+    assert_eq!(book.trust(0, 1, t, DAY), 0.5, "strangers start at a half");
+    book.kept(0, 1, 1.0, t, DAY);
+    let one = book.trust(0, 1, t, DAY) - 0.5;
+    for day in 1..20 {
+        book.kept(0, 1, 1.0, t + day * DAY, DAY);
+    }
+    let later = t + 20 * DAY;
+    let steady = book.trust(0, 1, later, DAY);
+    assert!(steady > 0.8, "twenty installments kept, one a day: {steady}");
+    book.kept(0, 1, 1.0, later, DAY);
+    assert!(book.trust(0, 1, later, DAY) - steady < one, "each adds less as the record grows");
+    book.missed(0, 1, 1.0, later, DAY);
+    book.missed(0, 1, 1.0, later, DAY);
+    let after = book.trust(0, 1, later, DAY);
+    assert!(after > 0.7, "two misses don't undo it: {after}");
+}
+
+// parity: ContractTests.anInstallmentDeliveredInPartIsKeptInPart
+#[test]
+fn an_installment_delivered_in_part_is_kept_in_part() {
+    let mut book = Book::default();
+    let c = book_draft(&mut book, 0, 1, 10.0, Incoterm::Dap, 4);
+    // 27 of the first thirty: three installments judged (10, 20 and 30 owed) past their grace.
+    book.settle(c, 0.0, 27.0, 6.75, 0.0);
+    let now = 2 * DAY + 2 * DAY + 1;
+    book.review(now, DAY, |_| false);
+    let record = book.record(0, 1, now, DAY);
+    assert_eq!(book.contracts[c].missed, 0, "three short of thirty: not a miss toward breaking it");
+    assert!((record.kept - 2.7).abs() < 0.01, "kept two and seven tenths: {}", record.kept);
+    assert!(record.missed > 0.0 && record.missed < 0.3, "the shortfall, lightly: {}", record.missed);
 }

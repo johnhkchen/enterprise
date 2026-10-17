@@ -57,6 +57,17 @@ impl Incoterm {
     pub fn seller_bears_road(self) -> bool {
         matches!(self, Incoterm::Dap | Incoterm::Ddp)
     }
+
+    /// The seller pays the tolls on the way (otherwise the buyer pays them on top of the price).
+    pub fn seller_pays_tolls(self) -> bool {
+        self == Incoterm::Ddp
+    }
+
+    /// The price per item under these terms, from the price at the seller's (`ex_works`): plus the carriage where
+    /// the seller carries, and the tolls where it pays them. Java: `Incoterm.price` (`contract/Incoterm.java`).
+    pub fn price(self, ex_works: f64, carriage: f64, tolls: f64) -> f64 {
+        ex_works + if self.seller_carries() { carriage } else { 0.0 } + if self.seller_pays_tolls() { tolls } else { 0.0 }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
