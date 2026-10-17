@@ -19,7 +19,7 @@
 //! locker, nor the Merchant's); a new hand gets twice that long to get going.
 //!
 //! **Not as the mod:** there is no ground to find a site on, so a stall needs none; the mod's `Villager` is a
-//! [`Hand`] here, and a Nitwit is never idle for a stall (the mod takes villagers with no profession only).
+//! [`Hand`] here. The caller gates it as the mod's `Territory.grow` does (see `rules/jobs.rs`); `review_jobs` doesn't.
 //! The draw uses the world's seeded [`Rng`], not the level's.
 
 use std::collections::BTreeMap;
@@ -275,8 +275,7 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
     }
     // Out of its own money, the Accountant's say; on its households' savings, theirs.
     if cash >= stall {
-        let free = (*place.money - crate::rules::trading_capital(content, place.trades)
-            - bills.due_by(place.town, now + (content.dials.budget_days * content.day_ticks as f64) as u64)).max(0.0);
+        let free = crate::rules::free(content, place.trades, &Money(*place.money), bills, place.town, now);
         if !Accountant::approve(content, books.book, place.town, now, free, place.budget, Reason::Other("stall".into()),
                 stall) {
             return None;

@@ -371,3 +371,28 @@ fn the_dials_are_the_mods() {
     assert_eq!(s.dial("slack_days"), Some(5.0));
     assert_eq!(s.dial("farmer_idle_emeralds"), Some(0.5));
 }
+
+#[test]
+fn a_town_raising_settlers_keeps_its_idle_hands_for_them() {
+    // Grown (8 villagers), fed at twice the caravans' par, no party out: it is raising one, and can't pay for it yet
+    // (12 is short of a village's 14), so its idle hand waits (`Territory.grow`), where a smaller town hires.
+    let idle_after = |masons: usize| {
+        let mut s = Society::new(Content::new(vec![
+            Good::new("paper", 1.0 / 24.0, 64),
+            Good::new("bread", 1.0 / 3.0, 64).food(5.0),
+        ], DAY));
+        s.seed(1);
+        let t = s.add_town("Inkwell", 12.0);
+        let mut hands = vec![("merchant", 1), ("none", 1)];
+        hands.extend(std::iter::repeat_n(("mason", 1), masons));
+        s.set_roster(t, &hands);
+        s.deliver(t, 0, 72.0);
+        s.deliver(t, 1, 400.0);
+        assert_eq!(s.raising(t), masons + 2 >= 8);
+        s.advance(3 * DAY);
+        assert_eq!(s.parties().len(), 0, "no party: 12 is short of a village");
+        s.roster(t).hands.iter().filter(|h| h.trade == s.content().trade("none").unwrap()).count()
+    };
+    assert_eq!(idle_after(6), 1, "raising settlers: the hand waits for them");
+    assert_eq!(idle_after(2), 0, "not grown: it takes a stall");
+}

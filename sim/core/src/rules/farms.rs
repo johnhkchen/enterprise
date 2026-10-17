@@ -145,7 +145,7 @@ fn settle_deposits(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<
 /// Each day's first look, the farm's census (`Territory.afterCensus`): rotation, the plan again, the focus, the
 /// stores it would build, a new field (`Fields.consider`) and a household's own (`buyLand`).
 #[allow(clippy::type_complexity)]
-fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contracts: Res<crate::contracts::Book>,
+pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contracts: Res<crate::contracts::Book>,
         mut ledger: ResMut<Ledger>,
         mut book: ResMut<CashBook>,
         mut farms: Query<(&Town, &mut Farm, &mut Money, &mut People, &Stock, &Trades, &mut Budget, Option<&Roster>)>) {
