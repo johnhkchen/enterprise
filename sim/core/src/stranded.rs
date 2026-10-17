@@ -206,7 +206,7 @@ pub fn buy(t: &Terms, bills: &mut Bills, crates: &mut Vec<Shipment>, offered: &m
     };
     let term = (crate::bills::TERM_DAYS * day as f64) as u64;
     let hub_bills = (0..pieces).map(|i| {
-        bills.draw_term(t.hub, t.town, rest / pieces as f64 / (1.0 + crate::bills::INTEREST), t.now, term * (i as u64 + 1), None)
+        bills.draw_term(t.hub, t.town, rest / pieces as f64 / (1.0 + crate::bills::INTEREST), t.now, day, term * (i as u64 + 1), None)
     }).collect();
     let bills_bought: Vec<usize> = bought.into_values().flatten().collect();
     for &id in &bills_bought {

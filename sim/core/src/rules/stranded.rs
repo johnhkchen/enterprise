@@ -171,7 +171,7 @@ fn sell_aboard(cx: &Cx, bills: &mut Bills, ledger: &mut Ledger, cash: &mut CashB
     let short = coin - paid;
     if short > 0.01 {
         let term = (crate::bills::TERM_DAYS * day as f64) as u64;
-        let id = bills.draw_term(h.id, route.from_id, short / (1.0 + crate::bills::INTEREST), now, term, None);
+        let id = bills.draw_term(h.id, route.from_id, short / (1.0 + crate::bills::INTEREST), now, day, term, None);
         bills.bills[id].held = Paper::Wagon;
         wagon.bills.push(id);
         freight.stranded(h.id).promised += bills.bills[id].amount;
@@ -404,7 +404,7 @@ pub fn collect_forwarding(clock: Res<Clock>, content: Res<Content>, towns_list: 
     }
     let net = Network::of(&content, routes.iter().map(|(_, r, s, p)| (r, s, p)),
         towns.iter().map(|t| (t.0.id, t.0.hex, t.7.storehouse)));
-        for e in in_order(routes.iter().filter(|(e, ..)| here.contains(e)).map(|(e, r, _, _)| (e, r))) {
+    for e in in_order(routes.iter().filter(|(e, ..)| here.contains(e)).map(|(e, r, _, _)| (e, r))) {
         let (_, route, mut state, _) = routes.get_mut(e).unwrap();
         let route = *route;
         let (hub, town) = (route.from_id, route.to_id);
@@ -463,7 +463,7 @@ pub fn collect_forwarding(clock: Res<Clock>, content: Res<Content>, towns_list: 
         if credit > 0.01 {
             // The rest on the town's bill to the hub, thirty days hence (it rides home in the wagon's papers).
             let term = (d.freight_credit_days * content.day_ticks as f64) as u64;
-            let id = bills.draw_term(town, hub, credit, now, term, None);
+            let id = bills.draw_term(town, hub, credit, now, content.day_ticks, term, None);
             bills.bills[id].held = Paper::Wagon;
             wagon.bills.push(id);
         }

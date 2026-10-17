@@ -144,9 +144,12 @@ fn the_hub_pays_in_up_to_six_installments_each_at_most_half_what_it_could_pay_an
         let b = &s.bills()[b];
         assert_eq!(b.due, s.now() + term * (i as u64 + 1), "a bill term apart");
         assert!(b.amount <= 50.0 + 1e-9, "each at most half of the hub's means: {}", b.amount);
+        // A sixth of the price, its interest a bill term's for every term it runs (`Bills.draw` with a term).
+        let due = deal.price / 6.0 / 1.02 * (1.0 + 0.02 * (i as f64 + 1.0));
+        assert!(close(b.amount, due), "installment {i}: {} against {due}", b.amount);
     }
     let owed: f64 = deal.hub_bills.iter().map(|&b| s.bills()[b].amount).sum();
-    assert!(close(owed, deal.price), "the whole price: {owed} of {}", deal.price);
+    assert!(owed > deal.price && close(owed, deal.price * 1.07 / 1.02), "the whole price, and the later terms' interest: {owed} of {}", deal.price);
 }
 
 #[test]
@@ -532,7 +535,8 @@ fn a_hubs_wagon_carries_a_towns_goods_on_credit_when_it_cannot_pay_the_fare() {
     // The bill on the town, payable to the hub, in thirty days, for the fare of the stacks.
     let owed: Vec<_> = s.bills().into_iter().skip(bills_before).filter(|b| b.drawee == town && b.payee == hub).collect();
     assert_eq!(owed.len(), 1, "{:?}", s.bills());
-    assert!(close(owed[0].amount, book.credit * 1.02), "the fare, and the bill's two per cent: {} of {}", owed[0].amount, book.credit);
+    // Two per cent for every bill term it runs: 30 days are seven and a half of them.
+    assert!(close(owed[0].amount, book.credit * 1.15), "the fare, and its fifteen per cent: {} of {}", owed[0].amount, book.credit);
     assert_eq!(owed[0].due - owed[0].drawn, 30 * DAY, "due in thirty days");
     assert!(s.hub(hub).book.forwarded >= 1 || !s.hub(hub).held.is_empty(), "the goods are the forwarder's, or on their way home");
     assert!(s.town(town).money >= 0.0 && s.hub(hub).book.fees > 0.0, "it paid what it could: {:?}", s.hub(hub).book);
