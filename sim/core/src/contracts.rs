@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 use bevy_ecs::prelude::Resource;
 
 use crate::content::GoodId;
+use crate::harvest::HarvestDials;
 use crate::messages::TownId;
 
 /// Installments may be settled this long after they fall due before they're judged (two days, in the host's ticks
@@ -112,6 +113,8 @@ pub struct Contract {
     pub advanced: f64,
     pub recouped: f64,
     pub refund: f64,
+    /// The harvest term (`contract/Harvest.java`), if any: a forward crop sale or a rent's coupon (`harvest.rs`).
+    pub harvest: Option<crate::harvest::Harvest>,
 }
 
 /// Sums under this are nothing (`Contract.advanceDue` and `refunds` list above 0.01; `recoupFrom` stops at 0.001).
@@ -233,6 +236,7 @@ impl Book {
             advanced: 0.0,
             recouped: 0.0,
             refund: 0.0,
+            harvest: None,
             id,
             seller,
             buyer,
@@ -256,6 +260,26 @@ impl Book {
         });
         self.open.push(id);
         id
+    }
+
+    /// As [`Book::draft`], with a harvest term: judged `window_days` after each installment's day, shortfalls rolled over.
+    #[allow(clippy::too_many_arguments)]
+    pub fn draft_harvest(&mut self, seller: TownId, buyer: TownId, good: GoodId, quantity: f64, price: f64, start: u64,
+            every: u64, installments: u32, incoterm: Incoterm, at_seller: bool, both: bool,
+            harvest: crate::harvest::Harvest) -> usize {
+        let id = self.draft(seller, buyer, good, quantity, price, start, every, installments, incoterm, at_seller, both);
+        self.contracts[id].harvest = Some(harvest);
+        id
+    }
+
+    /// Closes a contract whose business is carried on elsewhere (a rent's coupon, its arrears on the next):
+    /// `ContractBook.close`. One already over stays as it was.
+    pub fn close(&mut self, id: usize) {
+        let c = &mut self.contracts[id];
+        if matches!(c.state, State::Active | State::Drafted) {
+            c.state = State::Completed;
+        }
+        self.tidy();
     }
 
     /// As [`Book::draft`], the buyer to pay `advance_share` of the contract's worth up front.
@@ -420,6 +444,14 @@ impl Book {
     /// breaking. Ex Works, an installment not collected while the seller held the goods is the buyer's miss.
     /// `seller_holds(contract)`: does the seller have the goods on hand?
     pub fn review(&mut self, now: u64, day: u64, seller_holds: impl Fn(&Contract) -> bool) {
+        self.review_with(now, day, &HarvestDials::default(), seller_holds);
+    }
+
+    /// As [`Book::review`], with the dials a harvest term reads. A contract with a harvest term (`ContractBook.review`)
+    /// is judged `window_days` after each installment's day, not after the grace; a shortfall that is a rent's coupon's,
+    /// or (not at the last installment) within `harvest_arrears` installments behind, rolls over to the next, costing
+    /// `harvest_rolled_weight` of a miss in trust; any other is judged as a plain contract's is.
+    pub fn review_with(&mut self, now: u64, day: u64, dials: &HarvestDials, seller_holds: impl Fn(&Contract) -> bool) {
         let grace = (GRACE_DAYS * day as f64) as u64;
         for i in self.open.clone() {
             if !self.contracts[i].in_force() {
@@ -427,15 +459,21 @@ impl Book {
             }
             loop {
                 let c = &self.contracts[i];
-                let judged = c.due_by(now.saturating_sub(grace));
+                let judged = c.due_by(now.saturating_sub(c.wait_ticks(grace, day)));
                 if c.judged >= judged {
                     break;
                 }
                 let needed = (c.judged + 1) as f64 * c.quantity;
-                let short = ((needed - c.counted()) / c.quantity).clamp(0.0, 1.0);
+                let behind = needed - c.counted();
+                let short = (behind / c.quantity).clamp(0.0, 1.0);
+                let last = c.judged + 1 >= c.installments;
                 let (seller, buyer) = (c.seller, c.buyer);
                 if short <= 0.0 {
                     self.kept(seller, buyer, 1.0, now, day);
+                } else if c.harvest.is_some_and(|h| h.carried || (!last && behind <= dials.arrears * c.quantity)) {
+                    // A thin or late harvest: the shortfall rolls over to the next installment.
+                    self.kept(seller, buyer, 1.0 - short, now, day);
+                    self.missed(seller, buyer, short * dials.rolled_weight, now, day);
                 } else if c.incoterm == Incoterm::Exw && seller_holds(c) {
                     self.contracts[i].buyer_missed += 1;
                     self.missed(seller, buyer, 1.0, now, day);

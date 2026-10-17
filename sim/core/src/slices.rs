@@ -27,6 +27,7 @@ crate::saved! {
         territory: crate::territory::Territory = crate::territory::Territory::default(),
         settlers: crate::settlers::Settlers = crate::settlers::Settlers::default(),
         rng: crate::state::Rng = crate::state::Rng::default(),
+        rents: crate::harvest::Rents = crate::harvest::Rents::default(),
     }
     town {
         town: Town,
@@ -68,4 +69,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::herds::register(schedule);
     crate::rules::lockers::register(schedule);
     crate::rules::road::register(schedule);
+    crate::rules::harvest::register(schedule);
 }

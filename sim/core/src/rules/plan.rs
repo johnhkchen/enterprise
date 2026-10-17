@@ -32,9 +32,8 @@ fn start(content: Res<Content>, mut routes: Query<&mut RouteState>) {
 
 /// For sale, on top of what's planned already: comforts by kind, the cheapest first, up to the far end's par in worth
 /// from what home holds beyond its keep; any other good the far end's people use, what home can spare beyond its own
-/// shelf up to the room on theirs; all in the wagon's slots. The load is worth what the far end is expected to pay:
 /// the bargained price at the middle of each good's batch (`bargain.rs`), and a good it won't deal in stays home.
-fn plan_sale(content: Res<Content>, mut routes: Query<(&Route, &mut RouteState)>,
+fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut routes: Query<(&Route, &mut RouteState)>,
         towns: Query<(&Stock, &Trades, &People)>, rosters: Query<&crate::roster::Roster>) {
     let d = &content.dials;
     let n = content.goods.len();
@@ -46,6 +45,18 @@ fn plan_sale(content: Res<Content>, mut routes: Query<(&Route, &mut RouteState)>
             towns.get_many([route.from, route.to]) else { continue };
         let seller = crate::bargain::merchant_level(rosters.get(route.from).ok());
         let buyer = crate::bargain::merchant_level(rosters.get(route.to).ok());
+        // What the town owes under harvest contracts by the end of the next window, beyond what this plan already
+        // carries to the contract's buyer, isn't for sale (`ForwardSales.setAside`).
+        let mut aside = vec![0.0; n];
+        for g in 0..n {
+            aside[g] = crate::harvest::set_aside(&book, route.from_id, g, clock.now, content.day_ticks);
+        }
+        for &(id, taken) in &plan.contracted {
+            let c = &book.contracts[id];
+            if c.harvest.is_some() {
+                aside[c.good] = (aside[c.good] - taken).max(0.0);
+            }
+        }
         let mut stacks: u32 = (0..n).map(|g| (plan.cargo[g] / content.goods[g].stack as f64).ceil() as u32).sum();
         let mut loaded_kind = vec![0.0; content.comforts.len()];
         for &g in &order {
@@ -58,10 +69,10 @@ fn plan_sale(content: Res<Content>, mut routes: Query<(&Route, &mut RouteState)>
                 Some(kind) => {
                     let room = comfort_par(&content, far_people) - comfort_held(&content, far_stock, kind) - loaded_kind[kind];
                     let spare = comfort_held(&content, home_stock, kind) - comfort_keep(&content, home_people) - loaded_kind[kind];
-                    ((spare / value).min(home_stock.0[g] - planned), room / value, far_stock.0[g] + (room / value).floor())
+                    ((spare / value).min(home_stock.0[g] - planned - aside[g]), room / value, far_stock.0[g] + (room / value).floor())
                 }
                 None if far_trades.uses[g] > 0.0 => (
-                    home_stock.0[g] - planned - shelf(&content, home_trades, g),
+                    home_stock.0[g] - planned - aside[g] - shelf(&content, home_trades, g),
                     shelf(&content, far_trades, g) - far_stock.0[g],
                     shelf(&content, far_trades, g),
                 ),

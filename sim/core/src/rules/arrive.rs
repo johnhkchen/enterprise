@@ -41,7 +41,7 @@ fn mark(clock: Res<Clock>, mut routes: Query<&mut RouteState>) {
 /// the two Merchants settle at the middle of the batch (`bargain.rs`; `Caravans.sell`), priced again once what the
 /// buyer can pay has cut the batch; no deal, no sale.
 #[allow(clippy::too_many_arguments)]
-fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut ledger: ResMut<Ledger>,
+pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut ledger: ResMut<Ledger>,
         mut book: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<TownData>, rosters: Query<&crate::roster::Roster>) {
     let now = clock.now;

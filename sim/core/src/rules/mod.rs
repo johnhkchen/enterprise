@@ -20,6 +20,7 @@ pub mod arrive;
 pub mod bills;
 pub mod contracts;
 pub mod farms;
+pub mod harvest;
 pub mod herds;
 pub mod lockers;
 pub mod plan;

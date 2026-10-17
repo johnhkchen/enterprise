@@ -18,6 +18,7 @@ pub mod dials;
 pub mod farms;
 pub mod contracts;
 pub mod herds;
+pub mod harvest;
 pub mod hex;
 pub mod lockers;
 pub mod map;

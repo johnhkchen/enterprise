@@ -209,4 +209,25 @@ dials! {
     max_wait_ticks: u64 = 12000,
     /// Animals in a wagon's team, each eating a mouth's food in fodder there and back (`WAGON_TEAM`).
     wagon_team: u32 = 1,
+    // Forward crop sales and rents (`Dials.java`: `contract/Harvest.java`, `caravan/ForwardSales.java`, `contract/Rents.java`).
+    /// Days after an installment's day a farm may still deliver it.
+    harvest_window_days: u32 = 4,
+    /// Installments a farm may fall behind before a shortfall is a miss.
+    harvest_arrears: f64 = 2.0,
+    /// A shortfall rolled over costs this much of a miss in trust.
+    harvest_rolled_weight: f64 = 0.25,
+    /// Days a farm has to sow before its first installment falls due.
+    forward_sow_days: f64 = 4.0,
+    /// At most this many of a crop an installment; installments in a forward sale.
+    forward_max_quantity: f64 = 256.0,
+    forward_installments: u32 = 10,
+    /// Share of what a farm grows of a crop it may promise more of.
+    could_grow_own_share: f64 = 0.5,
+    /// A rent's season (a coupon falls due each), the seasons' crop it sells for, and the arrears (in seasons' crop)
+    /// past which it is a default.
+    rent_season_days: u32 = 10,
+    rent_purchase_seasons: f64 = 8.0,
+    rent_arrears_seasons: f64 = 2.0,
+    /// A dealer buys this much under its price and sells this much over.
+    dealer_spread: f64 = 0.1,
 }

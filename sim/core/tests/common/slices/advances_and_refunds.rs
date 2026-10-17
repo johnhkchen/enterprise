@@ -35,7 +35,9 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
         if c.state == State::Broken && (c.advanced - c.recouped).abs() > 1e-6 {
             return Err(format!("contract {id}: broken with {} not worked off or owed back", c.advanced - c.recouped));
         }
-        if c.state != State::Broken && c.refund > 0.0 {
+        // (A broken contract whose goods were on the road when it broke completes when they arrive, as the mod's
+        // `settle` has it, with the refund still owed.)
+        if !matches!(c.state, State::Broken | State::Completed) && c.refund > 0.0 {
             return Err(format!("contract {id}: {} owed back, not broken", c.refund));
         }
         if c.advance_share == 0.0 && (c.advanced != 0.0 || c.recouped != 0.0) {

@@ -118,7 +118,7 @@ fn advances_papers(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Bo
 /// In the plan: the advance home owes the far end under contracts it buys there, and the advances it owes back, go in
 /// the purse, as far as the town can pay for the road and its purse; the trip is pressing while an advance can be paid
 /// (in coin, or by a bill where trusted).
-fn plan_advances(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut routes: Query<(&Route, &mut RouteState)>,
+pub(crate) fn plan_advances(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut routes: Query<(&Route, &mut RouteState)>,
         towns: Query<(&Money, &Stock, &Trades, Option<&crate::roster::Roster>)>) {
     let now = clock.now;
     for (route, mut state) in &mut routes {

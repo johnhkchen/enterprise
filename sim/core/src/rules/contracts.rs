@@ -22,13 +22,13 @@ pub fn register(schedule: &mut Schedule) {
 }
 
 /// Once a day: installments whose grace has run out are judged.
-fn review(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, towns: Res<Towns>, stocks: Query<&Stock>) {
+pub(crate) fn review(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, towns: Res<Towns>, stocks: Query<&Stock>) {
     let day = content.day_ticks;
     if book.reviewed == Some(clock.now / day) {
         return;
     }
     let holds = |c: &Contract| stocks.get(towns.0[c.seller]).map_or(false, |s| s.0[c.good] >= c.quantity);
-    book.review(clock.now, day, holds);
+    book.review_with(clock.now, day, &crate::harvest::HarvestDials::of(&content.dials), holds);
 }
 
 /// Goods owed under contract delivered first, whatever the buyer's shelf holds, at the locked price; what it can't
@@ -133,7 +133,7 @@ fn plan_owed(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut rout
             plan.contracted.push((c.id, going));
             plan.worth += going * c.price;
             let counts = if c.incoterm.seller_bears_road() { arrival + day } else { now + day };
-            plan.pressing |= c.next_deadline(grace).is_some_and(|deadline| counts > deadline);
+            plan.pressing |= c.next_deadline(c.wait_ticks(grace, day)).is_some_and(|deadline| counts > deadline);
         }
     }
 }
@@ -155,7 +155,7 @@ fn plan_collect(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut r
             plan.collecting.push(c.id);
             plan.purse += owed * c.price - c.recoup_from(owed * c.price, 0.0);
             plan.worth += owed * c.price;
-            plan.pressing |= c.next_deadline(grace).is_some_and(|deadline| arrival + day > deadline);
+            plan.pressing |= c.next_deadline(c.wait_ticks(grace, day)).is_some_and(|deadline| arrival + day > deadline);
         }
     }
 }
