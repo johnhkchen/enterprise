@@ -6,8 +6,8 @@ conflict magnets fixed; waves 1b to 5 starting as one workflow.
 
 ## Now
 
-- **Main:** `24bfc0b`. 83 tests pass (`just core-test`, a few seconds). Parity: **37 covered, 13 partial, 46
-  skipped, 166 left of 262** (`just parity`). `just core-fingerprint`: `6a1a8646ef76403c`.
+- **Main:** `4aa28bd`. 98 tests pass (`just core-test`, a few seconds). Parity: **44 covered, 13 partial, 46
+  skipped, 159 left of 262** (`just parity`). `just core-fingerprint`: `6a1a8646ef76403c`.
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
 
@@ -25,7 +25,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 13 | 2 | `squads` | opus/high (sonnet/high) | `roster`, `road-food` | — | threads a crew through Plan, Decide and Turn beside road-food |
 | 14 | 2 | `farms-and-wages` | opus/high (sonnet/high) | `roster`, `cash-book` | — | the largest port; wages and the labour market touch money and people |
 | 15 | 2 | `jobs` | sonnet/medium (sonnet/medium) | `roster`, `lockers` | — |  |
-| 16 | 2 | `territory-growth` | sonnet/medium (sonnet/medium) | `hex-map`, `cash-book` | — |  |
+| 16 | 2 | `territory-growth` | sonnet/medium (sonnet/medium) | `hex-map`, `cash-book` | `4aa28bd` | Claims, culture to two rings, guards, militia, tolls; 7 tags. At landing: food all or nothing, tolls floored in spurs, posts by q then r, a first count a day's culture |
 | 17 | 2 | `workshop` | sonnet/medium (sonnet/medium) | `roster` | — |  |
 | 18 | 2 | `harvest-and-rents` | sonnet/medium (sonnet/medium) | `advances-and-refunds` | — |  |
 | 19 | 2 | `atlas-and-books` | opus/high (sonnet/medium) | `hex-map`, `squads` | — | stocktakes change what every plan reads |
@@ -92,3 +92,5 @@ dependencies are the integrator's; `trees.py` locks its registry, so agents can 
   and check new state against `saved!` at landing (now a test).
 - "Bit-identical" needs a fingerprint, not a claim: cash-book's own check passed on its old base, but on main a split
   debit moved one town's money by an ulp. `just core-fingerprint` before and after.
+- Name the unit wherever a brief floors money: the core counts emerald-worth, the mod floors tolls and fees in spurs
+  (1/16 emerald), so `floor()` on the core's money is 16 times coarser (`territory-growth` tolled small purses nothing).
