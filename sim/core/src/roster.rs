@@ -57,7 +57,7 @@ pub const LOCKERS_PER_LEVEL: u32 = 2;
 
 /// A trade a hand can have: its name in the core (a host maps its own ids, `minecraft:farmer`, onto these), whether
 /// it can lead a squad, go with one, is the Merchant's, or is no trade at all (`none`, `nitwit`).
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Trade {
     pub name: String,
     pub leads: bool,
@@ -65,6 +65,10 @@ pub struct Trade {
     pub merchant: bool,
     pub none: bool,
     pub nitwit: bool,
+    /// The trades its hands offer, each from the level it's offered at (`lockers.rs`): the mod's defaults for the
+    /// host's goods by name (`lockers::default_offers`), every one switched off.
+    #[serde(default)]
+    pub offers: Vec<crate::lockers::Offer>,
 }
 
 impl Trade {

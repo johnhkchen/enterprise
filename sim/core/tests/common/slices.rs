@@ -21,4 +21,5 @@ slices! {
     settlers_rule,
     farms_and_wages,
     herds,
+    lockers,
 }

@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use crate::messages::Output;
 /// A town's people, hand by hand (`roster.rs`): a component on towns that keep one.
 pub use crate::roster::{Hand, Roster};
+/// A rostered town's lockers: its hands' offers and which the Merchant manages (`lockers.rs`).
+pub use crate::lockers::Lockers;
 
 /// The society's time, in the host's ticks.
 #[derive(Resource, Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -25,6 +27,37 @@ pub struct Ledger {
     pub road: f64,
     /// Money spent out of the world: homes built, children raised.
     pub spent: f64,
+}
+
+/// The world's dice (decision 8 of `docs/core-plan.md`): xorshift64*, seeded, saved with the state, and drawn only
+/// where the mod rolls dice (the Merchant's XP from a locker trade, `lockers.rs`; the jobs draw). Seeded 1 unless the
+/// host seeds it (`Society::seed`).
+#[derive(Resource, Clone, Debug, Serialize, Deserialize)]
+pub struct Rng(pub u64);
+
+impl Default for Rng {
+    fn default() -> Self {
+        Rng(1)
+    }
+}
+
+impl Rng {
+    /// A generator from `seed` (0 isn't a state xorshift can leave, so it's taken as 1).
+    pub fn new(seed: u64) -> Self {
+        Rng(seed.max(1))
+    }
+
+    pub fn next(&mut self) -> u64 {
+        self.0 ^= self.0 >> 12;
+        self.0 ^= self.0 << 25;
+        self.0 ^= self.0 >> 27;
+        self.0.wrapping_mul(0x2545_F491_4F6C_DD1D)
+    }
+
+    /// A roll of 0 to `n - 1`, as Java's `nextInt(n)` (0 when `n` is 0).
+    pub fn below(&mut self, n: u64) -> u64 {
+        if n == 0 { 0 } else { self.next() % n }
+    }
 }
 
 /// What happened this look, for the host to show.

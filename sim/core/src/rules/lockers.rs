@@ -1,0 +1,57 @@
+//! A rostered town's lockers through the look (`lockers.rs`; every town has them from `add_town`, empty until it
+//! keeps a roster): following its roster and setting aside the uses its switched-on offers take over (Touch, before
+//! the town's people buy at their worth); replaying the restocks missed since its clock, two a whole day (Work); the
+//! Merchant's review at the day's first look (Review).
+
+use bevy_ecs::prelude::*;
+
+use super::Step;
+use crate::cash_book::CashBook;
+use crate::content::Content;
+use crate::lockers::{catch_up, review as review_town, Books, Lockers};
+use crate::state::*;
+use crate::workshop::Workshop;
+
+pub fn register(schedule: &mut Schedule) {
+    schedule.add_systems((
+        follow.in_set(Step::Touch).before(super::touch::catch_up),
+        // After the workshop: the Merchant touches the town's stock before its lockers trade (`LockerTrading.trade`).
+        restock.in_set(Step::Work).after(super::workshop::work),
+        review.in_set(Step::Review),
+    ));
+}
+
+/// Every town's lockers follow its roster, and the uses of goods its switched-on offers buy are set aside: its income
+/// from them is its lockers', its par for them their capacity, and its workshop makes them up to that par.
+pub fn follow(content: Res<Content>, mut towns: Query<(&Roster, &mut Lockers, &mut Trades, Option<&mut Workshop>)>) {
+    for (roster, mut lockers, mut trades, workshop) in &mut towns {
+        lockers.sync(&content, roster);
+        lockers.set_aside(&content, &mut trades, workshop.map(|w| w.into_inner()));
+    }
+}
+
+/// Every town's missed restocks replayed, its managed lockers trading at each.
+#[allow(clippy::type_complexity)]
+pub fn restock(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
+        mut rng: ResMut<Rng>, mut towns: Query<(&Town, &mut Roster, &mut Lockers, &mut Stock, &mut Money)>) {
+    let mut books = Books { ledger: &mut ledger, book: &mut book, rng: &mut rng };
+    let mut order: Vec<_> = towns.iter_mut().collect();
+    order.sort_by_key(|(t, ..)| t.id);
+    for (town, mut roster, mut lockers, mut stock, mut money) in order {
+        catch_up(&content, &mut books, clock.now, town.id, &mut roster, &mut lockers, &mut stock, &mut money);
+    }
+}
+
+/// The Merchant's review of its lockers, once a day at the day's first look. The goods the town wants (for its
+/// lockers' selling offers): those its people use.
+pub fn review(clock: Res<Clock>, content: Res<Content>, mut towns: Query<(&Roster, &mut Lockers, &Stock, &Trades)>) {
+    let today = clock.now / content.day_ticks.max(1);
+    for (roster, mut lockers, stock, trades) in &mut towns {
+        if lockers.reviewed.is_some_and(|d| d >= today) {
+            continue;
+        }
+        lockers.reviewed = Some(today);
+        let wanted: Vec<bool> = trades.uses.iter().map(|u| *u > 0.0).collect();
+        review_town(&content, clock.now, roster, &mut lockers, stock, &wanted);
+    }
+}

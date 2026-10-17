@@ -21,6 +21,7 @@ pub mod bills;
 pub mod contracts;
 pub mod farms;
 pub mod herds;
+pub mod lockers;
 pub mod plan;
 pub mod roster;
 pub mod settlers;

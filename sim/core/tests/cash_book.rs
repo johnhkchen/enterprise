@@ -182,7 +182,8 @@ fn each_towns_book_explains_its_treasury_in_random_worlds() {
         // Days 90 to 120's entries are what each town's money moved since day 89.
         for t in 0..s.town_count() {
             let booked: f64 = s.cash_book(t, 31).iter().map(|(_, _, v)| v).sum();
-            let moved = s.town(t).money - at_90[t];
+            // A town founded since (settlers) had nothing at day 89.
+            let moved = s.town(t).money - at_90.get(t).copied().unwrap_or(0.0);
             assert!((booked - moved).abs() < 1e-6 * moved.abs().max(1.0), "seed {seed}, town {t}: {booked} {moved}");
         }
     }

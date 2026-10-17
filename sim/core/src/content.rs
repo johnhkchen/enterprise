@@ -70,6 +70,8 @@ impl Content {
             dials: Dials::default(), trades: crate::roster::trades(), conversions: Vec::new(), animals: Vec::new() };
         content.conversions = crate::workshop::mod_conversions(&content);
         content.animals = crate::herds::mod_animals(&content);
+        // The mod's villager trades for the goods the host has (`lockers.rs`).
+        crate::lockers::default_offers(&mut content);
         content
     }
 

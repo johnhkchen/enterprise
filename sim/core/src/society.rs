@@ -65,6 +65,11 @@ impl Society {
         self.world.resource::<Clock>().now
     }
 
+    /// Seeds the world's dice (`Rng`): the same seed, the same rolls.
+    pub fn seed(&mut self, seed: u64) {
+        self.world.insert_resource(Rng::new(seed));
+    }
+
     /// A town with `money` and nothing made, used or held yet.
     pub fn add_town(&mut self, name: &str, money: f64) -> TownId {
         let n = self.content().goods.len();
@@ -87,6 +92,8 @@ impl Society {
         // And a farm not yet set up and its households' savings lent the treasury (none yet), for the same reason.
         self.world.entity_mut(e).insert((crate::farms::Farm::default(), crate::farms::Deposits::default()));
         self.world.entity_mut(e).insert(crate::herds::Herds { last: now, ..Default::default() });
+        // And its lockers (empty until it keeps a roster), so taking a roster never moves it to another archetype.
+        self.world.entity_mut(e).insert(crate::lockers::Lockers::default());
         self.towns.push(e);
         self.world.resource_mut::<Towns>().0.push(e);
         self.towns.len() - 1

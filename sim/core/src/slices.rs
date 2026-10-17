@@ -26,6 +26,7 @@ crate::saved! {
         cash_book: crate::cash_book::CashBook = crate::cash_book::CashBook::default(),
         territory: crate::territory::Territory = crate::territory::Territory::default(),
         settlers: crate::settlers::Settlers = crate::settlers::Settlers::default(),
+        rng: crate::state::Rng = crate::state::Rng::default(),
     }
     town {
         town: Town,
@@ -41,6 +42,7 @@ crate::saved! {
         farm: crate::farms::Farm,
         deposits: crate::farms::Deposits,
         herds: crate::herds::Herds,
+        lockers: crate::lockers::Lockers,
     }
     route {
         route: Route,
@@ -64,4 +66,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::settlers::register(schedule);
     crate::rules::farms::register(schedule);
     crate::rules::herds::register(schedule);
+    crate::rules::lockers::register(schedule);
 }
