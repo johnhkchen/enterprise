@@ -236,4 +236,13 @@ dials! {
     rent_arrears_seasons: f64 = 2.0,
     /// A dealer buys this much under its price and sells this much over.
     dealer_spread: f64 = 0.1,
+    // jobs (`territory/Jobs.java`)
+    /// A stall's workstation, chest and labour, in emeralds.
+    stall_emeralds: f64 = 6.0,
+    /// The share of its households' savings a comfort the town lacks puts in the job draw, for the trade that makes it.
+    comfort_marbles: f64 = 0.2,
+    /// Days a villager's trades do nothing for the town before it takes up a trade the town needs.
+    slack_days: u32 = 5,
+    /// Idle plots must yield at least this much a day, in emeralds, to put Farmers' marbles in the bag.
+    farmer_idle_emeralds: f64 = 0.5,
 }

@@ -28,6 +28,8 @@ crate::saved! {
         settlers: crate::settlers::Settlers = crate::settlers::Settlers::default(),
         rng: crate::state::Rng = crate::state::Rng::default(),
         rents: crate::harvest::Rents = crate::harvest::Rents::default(),
+        signals: crate::jobs::Signals = crate::jobs::Signals::default(),
+        hiring: crate::jobs::Hiring = crate::jobs::Hiring::default(),
     }
     town {
         town: Town,
@@ -70,4 +72,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::lockers::register(schedule);
     crate::rules::road::register(schedule);
     crate::rules::harvest::register(schedule);
+    crate::rules::jobs::register(schedule);
 }

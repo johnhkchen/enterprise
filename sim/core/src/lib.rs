@@ -20,6 +20,7 @@ pub mod contracts;
 pub mod herds;
 pub mod harvest;
 pub mod hex;
+pub mod jobs;
 pub mod lockers;
 pub mod map;
 pub mod messages;

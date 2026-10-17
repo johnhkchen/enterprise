@@ -34,7 +34,8 @@ pub fn daily(s: &mut Society, r: &mut Rng, _day: u64) {
     }
 }
 
-/// No herd is negative or beyond what its pastures hold plus the seed, and the feed owed is under a unit.
+/// No herd is negative or beyond what its pastures hold plus the seeds (3 sheep, 2 cows, 2 pigs and 2 chickens: a
+/// Shepherd, Leatherworker or Butcher that takes up its trade late, as jobs lets a hand, brings its kinds on top), and the feed owed is under a unit.
 pub fn check(s: &Society, _day: u64) -> Result<(), String> {
     let room = s.content().dials.pasture_animals as f64;
     for t in 0..s.town_count() {
@@ -46,7 +47,7 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
             return Err(format!("town {t}: feed owed outside 0 to 1"));
         }
         let total: f64 = h.count.iter().sum();
-        if total > room * h.pastures.max(1) as f64 + 4.0 + 1e-9 {
+        if total > room * h.pastures.max(1) as f64 + 9.0 + 1e-9 {
             return Err(format!("town {t}: {total} animals in {} pastures", h.pastures));
         }
     }

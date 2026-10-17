@@ -22,6 +22,7 @@ pub mod contracts;
 pub mod farms;
 pub mod harvest;
 pub mod herds;
+pub mod jobs;
 pub mod lockers;
 pub mod plan;
 pub mod road;
