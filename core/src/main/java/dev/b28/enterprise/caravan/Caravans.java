@@ -302,7 +302,8 @@ public final class Caravans {
         // A wagon's team eats fodder, there and back, carried from home: wheat or hay, or bought on the road.
         int team = porter || foreign ? 0 : dev.b28.enterprise.Dials.WAGON_TEAM.getInt();
         int teamFeed = 2 * foodNeeded(route.distance()) * team;
-        double teamCoin = Math.max(0, teamFeed - fodderOnHand(stock)) * PURSE_PER_FOOD_POINT;
+        boolean keepWheat = wantedAt(server, route.from).contains(Items.WHEAT); // its bakers' or its trades'
+        double teamCoin = Math.max(0, teamFeed - fodderOnHand(stock, keepWheat)) * PURSE_PER_FOOD_POINT;
         // Where the far end won't or can't feed the squad for the road home (the front sells nothing; a town may be
         // short), it takes that food along too, if a caravan can carry both legs'.
         // (what other caravans on their way there will buy of its food first doesn't count)
@@ -351,13 +352,20 @@ public final class Caravans {
                 "a call's goods", Math.min(dev.b28.enterprise.market.Post.get(server).purse(route.from, route.to, now),
                         Math.max(0, spare - shoppingMoney - exWorks - bankFloat - buyBack)), now) : 0;
         double purse = roadPurse + shoppingMoney + exWorks + bankFloat + buyBack + callPurse;
-        if (stock.foodNutrition() < food + provisions) {
+        // The provisions for a far end that sells no food come from home; the crew's road food there, as far as home
+        // has it, and the rest bought on the road in coin, like the team's fodder: a town with money is never stuck
+        // at home for want of bread to send a wagon for more.
+        if (stock.foodNutrition() < provisions) {
             route.status = "waiting for food at the hub";
+            route.recheckAt = now + RECHECK_TICKS; // planning the road again every poll is dear: a while
             ledger.setDirty();
             return false;
         }
-        if (Treasury.available(level, route.from.pos(), stock, rate) < purse + teamCoin) {
+        int fromHome = Math.max(0, Math.min(food, stock.foodNutrition() - provisions));
+        double foodCoin = (food - fromHome) * PURSE_PER_FOOD_POINT;
+        if (Treasury.available(level, route.from.pos(), stock, rate) < purse + teamCoin + foodCoin) {
             route.status = "the hub can't fund the trip";
+            route.recheckAt = now + RECHECK_TICKS;
             ledger.setDirty();
             return false;
         }
@@ -496,8 +504,11 @@ public final class Caravans {
         dev.b28.enterprise.merchant.Books.get(server).why(route.from, now, route.to, Items.AIR, "went: " + goesFor,
                 (int) Math.round(Crates.fullStacks(cargo)));
         noteLoad(route, cargo, true);
-        stock.eat(food + provisions); // the hub's own food: already paid for
-        int fed = eatFodder(stock, teamFeed);
+        stock.eat(fromHome + provisions); // the hub's own food: already paid for
+        if (foodCoin > 0) {
+            Treasury.withdraw(level, route.from.pos(), stock, foodCoin, mint, now); // road food bought on the way
+        }
+        int fed = eatFodder(stock, teamFeed, keepWheat);
         if (fed < teamFeed) {
             Treasury.withdraw(level, route.from.pos(), stock, (teamFeed - fed) * PURSE_PER_FOOD_POINT, mint, now); // bought on the road
         }
@@ -1313,19 +1324,20 @@ public final class Caravans {
     /** A wagon team's fodder: a wheat a point, a hay bale nine. */
     static final int HAY_POINTS = 9;
 
-    /** Fodder points in the warehouse for a wagon's team. */
-    static int fodderOnHand(MerchantStock stock) {
-        return stock.count(new ItemCost(Items.WHEAT, 1)) + HAY_POINTS * stock.count(new ItemCost(Items.HAY_BLOCK, 1));
+    /** Fodder points in the warehouse for a wagon's team (no wheat where the town's work takes it: {@code keepWheat}). */
+    static int fodderOnHand(MerchantStock stock, boolean keepWheat) {
+        return (keepWheat ? 0 : stock.count(new ItemCost(Items.WHEAT, 1)))
+                + HAY_POINTS * stock.count(new ItemCost(Items.HAY_BLOCK, 1));
     }
 
     /** The team takes {@code points} of fodder from the warehouse, hay first; returns the points it found. */
-    static int eatFodder(MerchantStock stock, int points) {
+    static int eatFodder(MerchantStock stock, int points, boolean keepWheat) {
         int fed = 0;
         int bales = Math.min(points / HAY_POINTS, stock.count(new ItemCost(Items.HAY_BLOCK, 1)));
         if (bales > 0) {
             fed += HAY_POINTS * stock.take(new ItemCost(Items.HAY_BLOCK, 1), bales).stream().mapToInt(ItemStack::getCount).sum();
         }
-        if (fed < points) {
+        if (fed < points && !keepWheat) {
             fed += stock.take(new ItemCost(Items.WHEAT, 1), points - fed).stream().mapToInt(ItemStack::getCount).sum();
         }
         return fed;

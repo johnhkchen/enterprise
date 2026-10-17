@@ -9,7 +9,8 @@ e.g. `forks.py core/run/checkpoints/era/day0 potential 3 /tmp/out -- 120 --comfo
 --save-at 120`. Lane N writes OUTDIR/LABEL-N.csv and .out (the study's report) and saves its checkpoints under
 LABEL-N; its server's log is OUTDIR/LABEL-N.server. Each lane stops its server when its study ends.
 
-`--dial N:name=value` sets a dial (`/enterprise dial`) on lane N before its study begins (`*:name=value`: every
+A `{n}` in CHECKPOINT is the lane's number: `run-{n}/day120` carries each lane of an earlier fork on from its own
+world. `--dial N:name=value` sets a dial (`/enterprise dial`) on lane N before its study begins (`*:name=value`: every
 lane), so lanes from one build try different settings; each lane's settings go in OUTDIR/LABEL-N.dials.
 """
 
@@ -41,6 +42,7 @@ def rcon(lane, *commands):
 def run_lane(lane, checkpoint, label, out, study, delay, dials=()):
     env = {**os.environ, "ENTERPRISE_LANE": str(lane)}
     name = f"{label}-{lane}"
+    checkpoint = checkpoint.replace("{n}", str(lane))  # each lane its own: core/run/checkpoints/run-{n}/day120
     time.sleep(delay)  # Gradle's start-up, one lane at a time
     subprocess.run(["just", "lane-restore", str(lane), checkpoint], cwd=REPO, check=True, capture_output=True)
     with open(out / f"{name}.server", "w") as log:

@@ -928,12 +928,31 @@ public final class CaravanTests {
     }
 
     @GameTest(template = "floor")
-    public static void noFoodNoCaravan(GameTestHelper helper) {
-        Network net = network(helper, 0);
+    public static void noFoodNoMoneyNoCaravan(GameTestHelper helper) {
+        Network net = network(helper, 0, 0, 192);
         net.poll(helper.getLevel().getGameTime());
-        helper.assertTrue(net.ledger().caravan(net.route().id()).isEmpty(), "without food, nobody leaves");
+        helper.assertTrue(net.ledger().caravan(net.route().id()).isEmpty(), "without food or money for it, nobody leaves");
         helper.assertTrue(net.hub().count(PAPER) == 128, "the goods stay at the hub");
-        helper.assertTrue(net.route().status().contains("food"), "the route says it's waiting for food");
+        helper.assertTrue(net.route().status().contains("fund"), "the route says it can't fund the trip: "
+                + net.route().status());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void withoutBreadAWagonBuysItsRoadFood(GameTestHelper helper) {
+        Network net = network(helper, 0, 20, 192);
+        long t = helper.getLevel().getGameTime();
+        var hub = net.route().from().pos();
+        double rate = dev.b28.enterprise.money.Mint.get(helper.getLevel().getServer())
+                .rate(dev.b28.enterprise.money.Mint.DEFAULT_FACTION, t);
+        double before = dev.b28.enterprise.money.Treasury.available(helper.getLevel(), hub, net.hub(), rate);
+        net.poll(t);
+        var out = net.ledger().caravan(net.route().id());
+        helper.assertTrue(out.isPresent(), "no bread at home, but money: it goes, " + net.route().status());
+        double after = dev.b28.enterprise.money.Treasury.available(helper.getLevel(), hub, net.hub(), rate);
+        helper.assertTrue(before - after > out.get().spurs() / rate,
+                "more than its purse went: its road food (and any team's fodder) bought on the way, "
+                        + before + " -> " + after + ", purse " + out.get().spurs() / rate);
         helper.succeed();
     }
 

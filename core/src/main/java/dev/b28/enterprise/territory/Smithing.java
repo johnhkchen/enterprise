@@ -94,7 +94,7 @@ public final class Smithing {
     }
 
     /** How fast one piece wears: Unbreaking makes it last (1 + its level) times as long. */
-    static double wearRate(ItemStack stack) {
+    public static double wearRate(ItemStack stack) {
         int unbreaking = 0;
         for (var entry : stack.getEnchantments().entrySet()) {
             if (entry.getKey().is(net.minecraft.world.item.enchantment.Enchantments.UNBREAKING)) {

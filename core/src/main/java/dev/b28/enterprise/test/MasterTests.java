@@ -84,7 +84,9 @@ public final class MasterTests {
         helper.assertTrue(stock(helper).count(new ItemCost(Items.LAPIS_LAZULI, 1)) == 0, "for three lapis");
         helper.assertTrue(stock(helper).count(new ItemCost(Items.EMERALD, 1)) == 7, "and three emeralds of bottles: "
                 + stock(helper).count(new ItemCost(Items.EMERALD, 1)));
-        helper.assertTrue(Smithing.quality(sword.get(0)) > 1, "enchanted kit is better kit");
+        // (the table's roll may give only Unbreaking: no better a blade, but it lasts)
+        helper.assertTrue(Smithing.quality(sword.get(0)) > 1 || Smithing.wearRate(sword.get(0)) < 1,
+                "enchanted kit is better kit: it works better or lasts longer, " + sword.get(0).getEnchantments());
         forget(helper, bell);
         helper.succeed();
     }
