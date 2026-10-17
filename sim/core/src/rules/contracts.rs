@@ -6,6 +6,7 @@ use bevy_ecs::prelude::*;
 
 use super::{in_order, Step, TownData};
 use crate::bills::Bills;
+use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
 use crate::contracts::{self, Book, Contract};
 use crate::state::*;
@@ -33,8 +34,9 @@ fn review(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, town
 /// Goods owed under contract delivered first, whatever the buyer's shelf holds, at the locked price; what it can't
 /// pay in coin it pays with a bill on itself if they trust each other, else owes. Then what it owes from before, as
 /// far as it can.
+#[allow(clippy::too_many_arguments)]
 fn settle(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
-        mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<TownData>) {
+        mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<TownData>) {
     let now = clock.now;
     let day = content.day_ticks;
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
@@ -52,8 +54,8 @@ fn settle(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut 
             let paid = worth.min(money.0.max(0.0));
             wagon.cargo[c.good] -= n;
             stock.0[c.good] += n;
-            money.0 -= paid;
-            wagon.purse += paid;
+            post(&mut ledger, &mut cash, Side::treasury(route.to_id, &mut money.0), Side::wagon(route.seq, &mut wagon.purse),
+                paid, Reason::Contract, now, day);
             let short = worth - paid;
             let by_bill = short > 1e-9 && book.trust(route.from_id, route.to_id, now, day) >= contracts::MIN_TRUST;
             if by_bill {
@@ -69,15 +71,15 @@ fn settle(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut 
             let paid = c.owing.min(money.0.max(0.0));
             c.owing -= paid;
             c.paid += paid;
-            money.0 -= paid;
-            wagon.purse += paid;
+            post(&mut ledger, &mut cash, Side::treasury(route.to_id, &mut money.0), Side::wagon(route.seq, &mut wagon.purse),
+                paid, Reason::Contract, now, day);
         }
     }
 }
 
 /// Ex Works: what the buyer's wagon collects at the seller's, paid from the purse it brought.
-fn collect(clock: Res<Clock>, mut book: ResMut<Book>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
-        mut towns: Query<TownData>) {
+fn collect(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut ledger: ResMut<Ledger>,
+        mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<TownData>) {
     let now = clock.now;
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(entity).unwrap();
@@ -96,8 +98,8 @@ fn collect(clock: Res<Clock>, mut book: ResMut<Book>, mut routes: Query<(Entity,
             let paid = n * c.price;
             stock.0[c.good] -= n;
             wagon.cargo[c.good] += n;
-            money.0 += paid;
-            wagon.purse -= paid;
+            post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut money.0),
+                paid, Reason::Contract, now, content.day_ticks);
             book.settle(id, 0.0, n, paid, 0.0);
         }
     }

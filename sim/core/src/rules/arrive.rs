@@ -6,6 +6,7 @@ use bevy_ecs::prelude::*;
 
 use super::{free, in_order, left_for, shelf, Step, TownData};
 use crate::bills::Bills;
+use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
 use crate::contracts::{self, Book, Incoterm};
 use crate::messages::Output;
@@ -36,7 +37,9 @@ fn mark(clock: Res<Clock>, mut routes: Query<&mut RouteState>) {
 
 /// At the far end, what's left for sale sold up to the room on the buyer's shelf (a comfort, up to the kind's par
 /// in worth), within its budget for a seller away so long, and never beyond what it holds.
-fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
+#[allow(clippy::too_many_arguments)]
+fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut ledger: ResMut<Ledger>,
+        mut book: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<TownData>) {
     let now = clock.now;
     let day = content.day_ticks;
@@ -69,9 +72,9 @@ fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut routes:
             wagon.cargo[g] -= n;
             stock.0[g] += n;
             let paid = n * price;
-            money.0 -= paid;
+            post(&mut ledger, &mut book, Side::treasury(route.to_id, &mut money.0), Side::wagon(route.seq, &mut wagon.purse),
+                paid, Reason::Sale, now, day);
             budget.spent += paid;
-            wagon.purse += paid;
             wagon.sold_here[g] += n;
             wagon.takings_here += paid;
             sold_all += n;
@@ -113,7 +116,9 @@ fn draft(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>,
 
 /// At the far end, the wagon turns for home. At home, what didn't sell goes back on the shelves, the purse into the
 /// town's money, the copies to the town (in force once both hold one) and the bills into its keeping.
-fn turn(clock: Res<Clock>, mut book: ResMut<Book>, mut bills: ResMut<Bills>, mut outbox: ResMut<Outbox>,
+#[allow(clippy::too_many_arguments)]
+fn turn(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
+        mut book: ResMut<Book>, mut bills: ResMut<Bills>, mut outbox: ResMut<Outbox>,
         mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<TownData>) {
     let now = clock.now;
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
@@ -129,18 +134,20 @@ fn turn(clock: Res<Clock>, mut book: ResMut<Book>, mut bills: ResMut<Bills>, mut
                 outbox.0.push(Output::WagonSold { route: route.seq, sold, takings: w.takings_here });
             }
             Some(Leg::Home) => {
-                let wagon = state.wagon.take().unwrap();
+                let mut wagon = state.wagon.take().unwrap();
                 let (mut stock, mut money, _, _, _) = towns.get_mut(route.from).expect("home");
                 for (g, n) in wagon.cargo.iter().enumerate() {
                     stock.0[g] += n;
                 }
-                money.0 += wagon.purse;
+                let takings = wagon.purse;
+                post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse),
+                    Side::treasury(route.from_id, &mut money.0), takings, Reason::Takings, now, content.day_ticks);
                 for id in &wagon.drafts {
                     book.deliver_copy(*id, route.from_id);
                 }
                 bills.home(&wagon.bills, route.from_id);
                 state.trips += 1;
-                outbox.0.push(Output::WagonHome { route: route.seq, takings: wagon.purse });
+                outbox.0.push(Output::WagonHome { route: route.seq, takings });
             }
             None => {}
         }

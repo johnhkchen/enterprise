@@ -3,6 +3,7 @@
 
 use bevy_ecs::prelude::*;
 
+use crate::cash_book::{self, Account, Accountant, CashBook, Reason, Side};
 use crate::content::{Content, GoodId};
 use crate::contracts::{Book, Contract, Incoterm};
 use crate::messages::{Input, Output, RouteId, TownId};
@@ -47,6 +48,7 @@ impl Society {
         world.insert_resource(crate::bills::Bills::default());
         world.insert_resource(crate::mint::Mint::default());
         world.insert_resource(crate::map::Map::default());
+        world.insert_resource(CashBook::default());
         Society { world, look: look_schedule(), towns: Vec::new(), routes: Vec::new() }
     }
 
@@ -239,24 +241,143 @@ impl Society {
         let now = self.now();
         self.world.resource_scope(|world, content: Mut<Content>| {
             world.resource_scope(|world, mut ledger: Mut<Ledger>| {
+              world.resource_scope(|world, mut book: Mut<CashBook>| {
                 let mut town = world.entity_mut(e);
+                let id = town.get::<Town>().expect("a town").id;
                 let trades = town.get::<Trades>().expect("a town").clone();
                 let mut touched = *town.get::<Touched>().unwrap();
                 let mut money = *town.get::<Money>().unwrap();
                 let mut stock = town.get::<Stock>().unwrap().clone();
-                catch_up_town(now, &content, &mut ledger, &mut stock, &mut money, &trades, &mut touched);
+                catch_up_town(now, &content, &mut ledger, &mut book, id, &mut stock, &mut money, &trades, &mut touched);
                 stock.0[good] += count;
                 ledger.delivered[good] += count;
                 town.insert((stock, money, touched));
+              });
             });
         });
     }
 
     /// Money paid a town from outside the society (a player buying at its shops).
     pub fn pay(&mut self, town: TownId, money: f64) {
+        self.post(Account::Outside, Account::Treasury(town), money, Reason::PaidIn);
+    }
+
+    /// Moves `amount` from one account to another for `reason`, noted in both books (a host's own transfers, and
+    /// tests). A wagon's purse moves only while its wagon is on the road.
+    pub fn post(&mut self, from: Account, to: Account, amount: f64, reason: Reason) {
+        if from == to {
+            return;
+        }
+        let now = self.now();
+        let day = self.content().day_ticks;
+        let mut balances: Vec<(Account, f64)> = [from, to].into_iter().filter(|a| *a != Account::Outside)
+            .map(|a| (a, self.balance(a).expect("an account that holds money"))).collect();
+        let mut ledger = std::mem::take(&mut *self.world.resource_mut::<Ledger>());
+        let mut book = std::mem::take(&mut *self.world.resource_mut::<CashBook>());
+        {
+            let mut sides = balances.iter_mut();
+            let mut side = |a: Account| -> Side<'_> {
+                if a == Account::Outside { Side::outside() } else {
+                    let (_, b) = sides.next().unwrap();
+                    Side { account: a, balance: Some(b) }
+                }
+            };
+            let (f, t) = (side(from), side(to));
+            cash_book::post(&mut ledger, &mut book, f, t, amount, reason, now, day);
+        }
+        *self.world.resource_mut::<Ledger>() = ledger;
+        *self.world.resource_mut::<CashBook>() = book;
+        for (a, b) in balances {
+            self.set_balance(a, b);
+        }
+    }
+
+    /// What an account holds now (the outside holds no count; a wagon's purse, none while it's home).
+    pub fn balance(&self, account: Account) -> Option<f64> {
+        match account {
+            Account::Treasury(t) => self.world.get::<Money>(self.towns[t]).map(|m| m.0),
+            Account::Households(t) => self.world.get::<People>(self.towns[t]).map(|p| p.purse),
+            Account::Wagon(r) => self.world.get::<RouteState>(self.routes[r]).and_then(|s| s.wagon.as_ref()).map(|w| w.purse),
+            Account::Outside => None,
+        }
+    }
+
+    fn set_balance(&mut self, account: Account, value: f64) {
+        match account {
+            Account::Treasury(t) => self.world.get_mut::<Money>(self.towns[t]).unwrap().0 = value,
+            Account::Households(t) => self.world.get_mut::<People>(self.towns[t]).unwrap().purse = value,
+            Account::Wagon(r) => self.world.get_mut::<RouteState>(self.routes[r]).unwrap().wagon.as_mut().unwrap().purse = value,
+            Account::Outside => {}
+        }
+    }
+
+    /// A town's cash book for the last `days` days, today's included: by day, then what for (in words), the money
+    /// in (+) or out (-) of its treasury.
+    pub fn cash_book(&self, town: TownId, days: u64) -> Vec<(u64, String, f64)> {
+        self.account_book(Account::Treasury(town), days)
+    }
+
+    /// Any account's book for the last `days` days, as [`Society::cash_book`].
+    pub fn account_book(&self, account: Account, days: u64) -> Vec<(u64, String, f64)> {
+        let today = self.now() / self.content().day_ticks;
+        let from = (today + 1).saturating_sub(days);
+        self.world.resource::<CashBook>().entries(account, from, today).into_iter()
+            .map(|(d, r, v)| (d, r.label(self.content()), v)).collect()
+    }
+
+    /// What the Accountant held back from a town's spenders, by day and what for, the last `days` days.
+    pub fn held_back(&self, town: TownId, days: u64) -> Vec<(u64, String, f64)> {
+        let today = self.now() / self.content().day_ticks;
+        let from = (today + 1).saturating_sub(days);
+        self.world.resource::<CashBook>().held.get(&Account::Treasury(town)).map_or_else(Vec::new, |h| {
+            h.range((from, Reason::Sold(0))..).take_while(|((d, _), _)| *d <= today)
+                .map(|((d, r), v)| (*d, r.label(self.content()), *v)).collect()
+        })
+    }
+
+    /// A town's free money now: beyond its trading capital, less the bills on it falling due within `budget_days`.
+    pub fn free(&self, town: TownId) -> f64 {
+        let e = self.world.entity(self.towns[town]);
+        crate::rules::free(self.content(), e.get::<Trades>().unwrap(), e.get::<Money>().unwrap(),
+            self.world.resource::<crate::bills::Bills>(), town, self.now())
+    }
+
+    /// What's left of a town's day's budget.
+    pub fn budget_left(&mut self, town: TownId) -> f64 {
+        let free = self.free(town);
+        let now = self.now();
+        self.world.resource_scope(|world, content: Mut<Content>| {
+            let mut budget = world.get_mut::<Budget>(self.towns[town]).unwrap();
+            Accountant::left(&content, now, free, &mut budget)
+        })
+    }
+
+    /// May the town spend `amount` on `what` today? If so it's taken off its day's budget; if not, held back.
+    pub fn approve(&mut self, town: TownId, what: &str, amount: f64) -> bool {
+        self.accountant(town, what, |content, book, now, free, budget, what| {
+            if Accountant::approve(content, book, town, now, free, budget, what, amount) { 1.0 } else { 0.0 }
+        }) > 0.0
+    }
+
+    /// As much of `amount` for `what` as the town's day's budget has left, taken off it.
+    pub fn allow(&mut self, town: TownId, what: &str, amount: f64) -> f64 {
+        self.accountant(town, what, |content, book, now, free, budget, what| {
+            Accountant::allow(content, book, town, now, free, budget, what, amount)
+        })
+    }
+
+    fn accountant(&mut self, town: TownId, what: &str,
+            f: impl FnOnce(&Content, &mut CashBook, u64, f64, &mut Budget, Reason) -> f64) -> f64 {
+        let free = self.free(town);
+        let now = self.now();
+        let what = Reason::parse(self.content(), what);
         let e = self.towns[town];
-        self.world.get_mut::<Money>(e).expect("a town").0 += money;
-        self.world.resource_mut::<Ledger>().income += money;
+        self.world.resource_scope(|world, content: Mut<Content>| {
+            world.resource_scope(|world, mut book: Mut<CashBook>| {
+                let mut budget = world.get_mut::<Budget>(e).unwrap();
+                f(&content, &mut book, now, free, &mut budget, what)
+            })
+        })
     }
 
     /// The mint as it stands (its pressure and debasement, touched as of their last change).

@@ -5,6 +5,7 @@ use bevy_ecs::prelude::*;
 
 use super::{in_order, shelf, Step, TownData};
 use crate::bills::Bills;
+use crate::cash_book::{post_legs, CashBook, Reason, Side};
 use crate::content::Content;
 use crate::contracts::Book;
 use crate::messages::Output;
@@ -81,7 +82,7 @@ fn plan_sale(content: Res<Content>, mut routes: Query<(&Route, &mut RouteState)>
 /// home holds on the far end.
 #[allow(clippy::too_many_arguments)]
 fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
-        mut ledger: ResMut<Ledger>, mut outbox: ResMut<Outbox>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
+        mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut outbox: ResMut<Outbox>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<TownData>) {
     let now = clock.now;
     let d = &content.dials;
@@ -119,15 +120,19 @@ fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut 
         for &(id, n) in &plan.contracted {
             book.ship(id, n);
         }
-        money.0 -= route.road_cost + plan.purse;
-        ledger.road += route.road_cost;
+        // Road food and the wagon's purse go out of the treasury as one sum.
+        let mut purse = 0.0;
+        post_legs(&mut ledger, &mut cash, Side::treasury(route.from_id, &mut money.0), vec![
+            (Side::outside(), route.road_cost, Reason::RoadFood),
+            (Side::wagon(route.seq, &mut purse), plan.purse, Reason::WagonPurse),
+        ], now, content.day_ticks);
         let arrival = now + route.travel_ticks;
         state.last_departure = Some(now);
         state.carried += plan.cargo.iter().sum::<f64>();
         let papers = bills.take_to_present(route.from_id, route.to_id, arrival);
         state.wagon = Some(Wagon {
             cargo: plan.cargo,
-            purse: plan.purse,
+            purse,
             leg: Leg::Out,
             arrives: arrival,
             contracted: plan.contracted,

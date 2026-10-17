@@ -6,6 +6,7 @@ use bevy_ecs::prelude::*;
 
 use super::{in_order, Step, TownData};
 use crate::bills::{self, BillState, Bills, Held};
+use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
 use crate::contracts::Book;
 use crate::state::*;
@@ -17,8 +18,9 @@ pub fn register(schedule: &mut Schedule) {
 /// Bills the wagon carries on this town, presented: it pays whole the due ones it can, from its money (what it owes
 /// isn't its money manager's to hold back). Its grace runs from the day a bill is first put to it; unpaid past that,
 /// the bill is dishonoured and trust falls a whole miss; honoured, it counts half a kept installment.
+#[allow(clippy::too_many_arguments)]
 fn present(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
-        mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<TownData>) {
+        mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<TownData>) {
     let now = clock.now;
     let day = content.day_ticks;
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
@@ -36,8 +38,8 @@ fn present(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut
                 continue;
             }
             if b.due <= now && money.0 >= b.amount {
-                money.0 -= b.amount;
-                wagon.purse += b.amount;
+                post(&mut ledger, &mut cash, Side::treasury(route.to_id, &mut money.0),
+                    Side::wagon(route.seq, &mut wagon.purse), b.amount, Reason::Bill, now, day);
                 if b.state == BillState::Outstanding {
                     book.kept(b.drawee, b.payee, bills::HONOURED_WEIGHT, now, day);
                 }

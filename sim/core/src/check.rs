@@ -1,7 +1,15 @@
 //! Checks that must hold however the rules change: what's in the world is what came into it, less what left it, and
 //! no town is in debt. A study runs them every day and stops at the first one broken.
+//!
+//! Money is reconciled from the cash book's postings (`cash_book.rs`): every account's balance has moved by what was
+//! posted to it, and the world's money by what the outside posted in less what it was paid; the ledger's running
+//! totals (`income`, `road`, `spent`) must agree with the outside's postings.
+
+use std::collections::BTreeMap;
 
 use bevy_ecs::prelude::*;
+
+use crate::cash_book::{Account, CashBook};
 
 use crate::society::Society;
 use crate::state::*;
@@ -11,7 +19,10 @@ use crate::state::*;
 pub struct Totals {
     pub goods: Vec<f64>,
     pub money: f64,
+    /// What each account holds (a wagon's purse: 0 while it's home).
+    pub balances: BTreeMap<Account, f64>,
     ledger: Ledger,
+    posted: BTreeMap<Account, f64>,
 }
 
 impl Society {
@@ -20,23 +31,29 @@ impl Society {
         let n = self.content().goods.len();
         let mut goods = vec![0.0; n];
         let mut money = 0.0;
-        let mut towns = self.world.query::<(&Stock, &Money, &People)>();
-        for (stock, m, people) in towns.iter(&self.world) {
+        let mut balances = BTreeMap::new();
+        let mut towns = self.world.query::<(&Town, &Stock, &Money, &People)>();
+        for (town, stock, m, people) in towns.iter(&self.world) {
             for g in 0..n {
                 goods[g] += stock.0[g];
             }
             money += m.0 + people.purse;
+            balances.insert(Account::Treasury(town.id), m.0);
+            balances.insert(Account::Households(town.id), people.purse);
         }
-        let mut routes = self.world.query::<&RouteState>();
-        for state in routes.iter(&self.world) {
+        let mut routes = self.world.query::<(&Route, &RouteState)>();
+        for (route, state) in routes.iter(&self.world) {
+            let purse = state.wagon.as_ref().map_or(0.0, |w| w.purse);
             if let Some(w) = &state.wagon {
                 for g in 0..n {
                     goods[g] += w.cargo[g];
                 }
                 money += w.purse;
             }
+            balances.insert(Account::Wagon(route.seq), purse);
         }
-        Totals { goods, money, ledger: self.world.resource::<Ledger>().clone() }
+        Totals { goods, money, balances, ledger: self.world.resource::<Ledger>().clone(),
+            posted: self.world.resource::<CashBook>().net.clone() }
     }
 
     /// Since `before`: goods = before + made + delivered - used; money = before + money paid in - road food - money
@@ -50,9 +67,25 @@ impl Society {
                 return Err(format!("{}: {} in the world, {} expected", self.content().goods[g].name, now.goods[g], expected));
             }
         }
-        let expected = before.money + (b.income - a.income) - (b.road - a.road) - (b.spent - a.spent);
-        if (now.money - expected).abs() > 1e-6 * expected.abs().max(1.0) {
+        let posted = |t: &Totals, a: &Account| t.posted.get(a).copied().unwrap_or(0.0);
+        let close = |x: f64, y: f64| (x - y).abs() <= 1e-6 * x.abs().max(y.abs()).max(1.0);
+        // The outside's postings: what it paid in less what it was paid, the world's money's whole change.
+        let came_in = -(posted(&now, &Account::Outside) - posted(before, &Account::Outside));
+        let expected = before.money + came_in;
+        if !close(now.money, expected) {
             return Err(format!("money: {} in the world, {} expected", now.money, expected));
+        }
+        let by_ledger = (b.income - a.income) - (b.road - a.road) - (b.spent - a.spent);
+        if !close(by_ledger, came_in) {
+            return Err(format!("money: the ledger has {by_ledger} come in, the cash book {came_in}"));
+        }
+        // Every account moved by what was posted to it: no money moved off the books.
+        for (account, held) in &now.balances {
+            let was = before.balances.get(account).copied().unwrap_or(0.0);
+            let moved = posted(&now, account) - posted(before, account);
+            if !close(held - was, moved) {
+                return Err(format!("{account:?}: holds {held}, held {was}, but {moved} was posted to it"));
+            }
         }
         Ok(())
     }

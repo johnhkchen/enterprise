@@ -101,6 +101,7 @@ saved! {
         bills: Bills,
         mint: crate::mint::Mint,
         map: crate::map::Map,
+        cash_book: crate::cash_book::CashBook,
     }
     town {
         town: Town,

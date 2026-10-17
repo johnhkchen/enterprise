@@ -4,6 +4,8 @@
 
 mod common;
 
+use enterprise_core::cash_book::{Account, Reason};
+
 use common::{world, Rng, DAY};
 use enterprise_core::{Output, Society};
 
@@ -21,6 +23,27 @@ fn run_day(s: &mut Society, daily: &[u64], day: u64) -> Vec<Output> {
     s.advance(day * DAY)
 }
 
+/// A day's spending at towns' own choosing, through the Accountant and the cash book: some ask approval for a work
+/// out of the world, some take what the budget allows for their households, the rest spend nothing.
+fn spend(s: &mut Society, r: &mut Rng) {
+    for t in 0..s.town_count() {
+        match r.below(4) {
+            0 => {
+                let cost = r.range(0.0, 30.0);
+                if s.approve(t, "works", cost) {
+                    let cost = cost.min(s.town(t).money.max(0.0));
+                    s.post(Account::Treasury(t), Account::Outside, cost, Reason::Other("works".into()));
+                }
+            }
+            1 => {
+                let gift = s.allow(t, "a feast", r.range(0.0, 10.0)).min(s.town(t).money.max(0.0));
+                s.post(Account::Treasury(t), Account::Households(t), gift, Reason::Other("a feast".into()));
+            }
+            _ => {}
+        }
+    }
+}
+
 #[test]
 fn the_books_balance_and_nobody_goes_into_debt_in_any_world() {
     let (mut roads, mut detours, mut road_trips) = (0, 0, 0);
@@ -28,8 +51,16 @@ fn the_books_balance_and_nobody_goes_into_debt_in_any_world() {
         let mut s = world(seed);
         let daily = sellers(seed);
         let start = s.totals();
+        let mut r = Rng(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1);
+        let mut at_90 = Vec::new();
         for day in 1..=120 {
+            if day == 90 {
+                // The last look of day 89 (a look is every 1,200 ticks, so this adds none).
+                s.advance(day * DAY - 1200);
+                at_90 = (0..s.town_count()).map(|t| s.town(t).money).collect();
+            }
             run_day(&mut s, &daily, day);
+            spend(&mut s, &mut r);
             if day == 60 {
                 // Saved and loaded mid-run: the checks still hold after, and the loaded world saves the same blob.
                 let blob = s.save();
@@ -51,6 +82,12 @@ fn the_books_balance_and_nobody_goes_into_debt_in_any_world() {
                 detours += (path.len() as i32 > path[0].distance(*path.last().unwrap()) + 1) as u32;
                 road_trips += s.route(route).trips;
             }
+        }
+        // Each town's book explains its treasury: days 90 to 120's entries are what its money moved since day 89.
+        for t in 0..s.town_count() {
+            let booked: f64 = s.cash_book(t, 31).iter().map(|(_, _, v)| v).sum();
+            let moved = s.town(t).money - at_90[t];
+            assert!((booked - moved).abs() < 1e-6 * moved.abs().max(1.0), "seed {seed}, town {t}: {booked} {moved}");
         }
     }
     // The map is exercised: roads are built, some go round the water and hills, and wagons run on them.

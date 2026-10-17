@@ -7,6 +7,7 @@
 
 use bevy_ecs::prelude::*;
 
+use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
 use crate::rules::{trading_capital, Step};
 use crate::state::*;
@@ -52,11 +53,15 @@ pub fn register(schedule: &mut Schedule) {
 }
 
 /// The town's people live the time since they were last counted: wages, comforts, mood, a home, a child.
-pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>,
-        mut towns: Query<(&mut People, &mut Stock, &mut Money, &Trades, Option<&mut Roster>)>) {
+#[allow(clippy::type_complexity)]
+pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
+        mut towns: Query<(&Town, &mut People, &mut Stock, &mut Money, &Trades, Option<&mut Roster>)>) {
     let d = &content.dials;
     let k = content.comforts.len();
-    for (mut people, mut stock, mut money, trades, mut roster) in &mut towns {
+    let (now, day) = (clock.now, content.day_ticks);
+    for (town, mut people, mut stock, mut money, trades, mut roster) in &mut towns {
+        let t = town.id;
+        let people = &mut *people;
         let days = clock.now.saturating_sub(people.last) as f64 / content.day_ticks as f64;
         people.last = clock.now;
         if days <= 0.0 || people.villagers <= 0.0 {
@@ -69,8 +74,8 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
         // Wages: a share of the worth of what the town makes, as far as its money goes.
         let due = d.labour_share * trades.makes.iter().zip(&content.goods).map(|(m, g)| m * g.value).sum::<f64>() * days;
         let paid = due.min(money.0.max(0.0));
-        money.0 -= paid;
-        people.purse += paid;
+        post(&mut ledger, &mut book, Side::treasury(t, &mut money.0), Side::households(t, &mut people.purse), paid,
+            Reason::Wages, now, day);
         people.paid_share = if due > 0.0 { paid / due } else { 1.0 };
         // Comforts: each villager a ration of each kind a day, the cheapest goods of the kind first, whole ones (a big
         // one leaves credit); the households pay the town for what they use, as far as their purse goes.
@@ -92,8 +97,8 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
                 used += n * value;
             }
             let pays = used.min(people.purse);
-            people.purse -= pays;
-            money.0 += pays;
+            post(&mut ledger, &mut book, Side::households(t, &mut people.purse), Side::treasury(t, &mut money.0), pays,
+                Reason::Comforts, now, day);
             people.comfort_met[kind] = if due > 0.0 { (1.0 - owed.max(0.0) / due).clamp(0.0, 1.0) } else { 0.0 };
             people.comfort_owed[kind] = owed.min(0.0);
         }
@@ -110,9 +115,10 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
         }
         if people.home_progress >= 1.0 && people.purse + spare.max(0.0) >= d.home_cost {
             let theirs = people.purse.min(d.home_cost);
-            people.purse -= theirs;
-            money.0 -= d.home_cost - theirs;
-            ledger.spent += d.home_cost;
+            post(&mut ledger, &mut book, Side::households(t, &mut people.purse), Side::outside(), theirs, Reason::Home,
+                now, day);
+            post(&mut ledger, &mut book, Side::treasury(t, &mut money.0), Side::outside(), d.home_cost - theirs,
+                Reason::Home, now, day);
             people.beds += 2.0;
             people.home_progress = 0.0;
             people.homes_built += 1;
@@ -125,8 +131,8 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
         if people.birth_progress >= 1.0 && people.villagers < people.beds && spare >= d.birth_cost
             && food_points(&content, &stock) >= d.birth_food {
             eat(&content, &mut ledger, &mut stock, d.birth_food);
-            money.0 -= d.birth_cost;
-            ledger.spent += d.birth_cost;
+            post(&mut ledger, &mut book, Side::treasury(t, &mut money.0), Side::outside(), d.birth_cost, Reason::Child,
+                now, day);
             // A town with a roster has a baby hand (`Growth.bear`): a resident, not yet a worker.
             if let Some(roster) = roster.as_deref_mut() {
                 roster.hands.push(crate::roster::Hand::baby(&content, clock.now));
