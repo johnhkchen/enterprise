@@ -72,6 +72,7 @@ public final class Forwarder extends SavedData {
     private final List<GlobalPos[]> collecting = new ArrayList<>(); // {hub, town}: a collection due
     private double remitted; // spurs, all told
     private double commission; // spurs, all told
+    private long consigned; // items left unsold by towns' wagons at hubs and taken on consignment, all told
 
     public static Forwarder get(MinecraftServer server) {
         return server.overworld().getDataStorage()
@@ -254,6 +255,66 @@ public final class Forwarder extends SavedData {
         }
     }
 
+    /**
+     * A town's wagon at the hub with goods it couldn't sell: what the hub's network wants (its own shelves and the
+     * towns its runs serve, beyond what it holds and has on consignment already), the forwarder takes on consignment,
+     * as far as the hub has room. Into the hub's stock as the town's lots, sold with its own; no collection fare (the
+     * town brought them). The rest rides home. Returns how many it took.
+     */
+    public int consignUnsold(ServerLevel level, GlobalPos hub, GlobalPos town, MerchantStock stock,
+            List<ItemStack> cargo, long now) {
+        MinecraftServer server = level.getServer();
+        Warehouse warehouse = Warehouse.get(server);
+        Map<Item, Integer> room = new java.util.HashMap<>();
+        java.util.function.Function<Item, Integer> roomFor = item -> room.computeIfAbsent(item, i -> {
+            int want = warehouse.par(hub, i, Caravans.wantedAt(server, hub).contains(i), now);
+            for (var r : CaravanLedger.get(server).routes()) {
+                if (r.from().equals(hub) && !r.to().equals(town) && Caravans.wantedAt(server, r.to()).contains(i)) {
+                    want += warehouse.par(r.to(), i, true, now);
+                }
+            }
+            int onConsignment = lots.stream().filter(l -> l.hub.equals(hub) && l.item == i)
+                    .mapToInt(l -> l.count - l.sold).sum();
+            return Math.max(0, want - stock.count(new ItemCost(i, 1)) - onConsignment);
+        });
+        Map<Item, Integer> taken = new java.util.LinkedHashMap<>();
+        for (var it = cargo.listIterator(); it.hasNext(); ) {
+            ItemStack entry = it.next();
+            var lot = Crates.lot(entry); // a crate of one good for sale
+            if (Crates.isCrate(entry) && lot.isEmpty() || entry.is(dev.b28.enterprise.cargo.Cargo.DOCUMENTS.get())) {
+                continue; // someone's shipment, empties, or papers
+            }
+            ItemStack goods = lot.orElse(entry);
+            Item item = goods.getItem();
+            int can = roomFor.apply(item);
+            if (Prices.emeraldsEach(item) <= 0 || can < goods.getCount() || !stock.hasRoomFor(goods)) {
+                continue;
+            }
+            it.remove();
+            if (lot.isPresent()) {
+                Crates.open(server, hub, stock, entry).forEach(stock::insert);
+            } else {
+                stock.insert(goods);
+            }
+            room.put(item, can - goods.getCount());
+            taken.merge(item, goods.getCount(), Integer::sum);
+        }
+        taken.forEach((item, count) -> {
+            Lot l = new Lot();
+            l.hub = hub;
+            l.town = town;
+            l.item = item;
+            l.count = count;
+            l.since = now;
+            lots.add(l);
+            consigned += count;
+        });
+        if (!taken.isEmpty()) {
+            setDirty();
+        }
+        return taken.values().stream().mapToInt(Integer::intValue).sum();
+    }
+
     /** Goods of {@code item} the hub's caravan sold: credited to the town's lots of it, oldest first. */
     public void sold(GlobalPos hub, Item item, int count, double spurs) {
         if (count <= 0) {
@@ -346,8 +407,9 @@ public final class Forwarder extends SavedData {
     /** The forwarder's report: bookings, collections due, lots, what it's remitted and earned. */
     public List<String> report(MinecraftServer server) {
         List<String> out = new ArrayList<>();
-        out.add("Forwarders: %d bookings, %d collections due, %d lots on consignment; %.0f spurs remitted, %.0f commission"
-                .formatted(bookings.size(), collecting.size(), lots.size(), remitted, commission));
+        out.add(("Forwarders: %d bookings, %d collections due, %d lots on consignment (%d items left by towns' wagons, "
+                + "all told); %.0f spurs remitted, %.0f commission")
+                .formatted(bookings.size(), collecting.size(), lots.size(), consigned, remitted, commission));
         for (Booking b : bookings) {
             out.add("  booked: %s with %s, %d stacks, %.0f emeralds of goods, since day %d".formatted(
                     dev.b28.enterprise.settlement.Names.label(b.town), dev.b28.enterprise.settlement.Names.label(b.hub),
@@ -398,6 +460,7 @@ public final class Forwarder extends SavedData {
         tag.put("collecting", c);
         tag.putDouble("remitted", remitted);
         tag.putDouble("commission", commission);
+        tag.putLong("consigned", consigned);
         return tag;
     }
 
@@ -448,6 +511,7 @@ public final class Forwarder extends SavedData {
         }
         out.remitted = tag.getDouble("remitted");
         out.commission = tag.getDouble("commission");
+        out.consigned = tag.getLong("consigned");
         return out;
     }
 }

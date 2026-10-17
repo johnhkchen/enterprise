@@ -115,6 +115,10 @@ public final class Caravans {
                 dev.b28.enterprise.merchant.Books.Kind.SOLD, route.from, item, count, spurs);
         caravan.log.add(new dev.b28.enterprise.merchant.Books.Entry(now / 24000,
                 dev.b28.enterprise.merchant.Books.Kind.BOUGHT, route.to, item, count, spurs));
+        if (dev.b28.enterprise.market.Freight.isHub(server, route.to)) {
+            // Bought at a hub: some of it may be towns' goods on consignment, sold on their account.
+            dev.b28.enterprise.market.Forwarder.get(server).sold(route.to, item, count, spurs);
+        }
     }
 
     /** A foreign realm's Merchants haggle as Experts, and two of its people go with each caravan or fleet. */
@@ -677,6 +681,17 @@ public final class Caravans {
             earned += takings;
             caravan.spurs += earned;
             route.salesSpurs += earned;
+            // At a hub, what a town's wagon couldn't sell the forwarder takes on consignment, to sell with its own.
+            if (dev.b28.enterprise.market.Freight.isHub(server, route.to)
+                    && !dev.b28.enterprise.trade.Realms.get(server).isForeign(route.from)
+                    && !dev.b28.enterprise.market.Freight.isHub(server, route.from)) {
+                int left = dev.b28.enterprise.market.Forwarder.get(server).consignUnsold(level, route.to, route.from,
+                        stock, caravan.cargo, now);
+                if (left > 0) {
+                    caravan.log.add(dev.b28.enterprise.merchant.Books.Entry.why(now, route.to, Items.AIR,
+                            "left unsold goods on consignment at the hub", left));
+                }
+            }
             // Then the squad's services: deals, droving, the survey and the books, a blessing, help with the harvest...
             int paid = dev.b28.enterprise.service.Services.abroad(level, territory, route, stock, caravan, sold, now,
                     caravan.news);
@@ -2111,7 +2126,9 @@ public final class Caravans {
         double stacks = 0;
         double worth = 0;
         // The stacks it'd sell, as far as they could pay last time (what makes a wagon full); the worth of all it'd send.
-        double purse = route.farPurse < 0 ? Double.MAX_VALUE : route.farPurse;
+        // (a hub's forwarder takes on consignment what it can't pay for: no limit there)
+        double purse = route.farPurse < 0 || dev.b28.enterprise.market.Freight.isHub(server, route.to)
+                ? Double.MAX_VALUE : route.farPurse;
         double paid = 0;
         for (Item item : wantsThere(server, route.to).keySet()) {
             int room = warehouse.par(route.to, item, true, now) - warehouse.onHand(route.to, item);

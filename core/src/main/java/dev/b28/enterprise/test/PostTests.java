@@ -154,4 +154,30 @@ public final class PostTests {
         helper.assertTrue(coins >= 84, "and in the town's chest: " + coins + " spurs");
         helper.succeed();
     }
+
+    @GameTest(template = "floor")
+    public static void whatATownsWagonCantSellAtTheHubIsLeftOnConsignment(GameTestHelper helper) {
+        var level = helper.getLevel();
+        MerchantStock hubStock = market(helper, new BlockPos(1, 2, 1), 30);
+        GlobalPos hub = GlobalPos.of(level.dimension(), helper.absolutePos(new BlockPos(1, 2, 1)));
+        GlobalPos town = GlobalPos.of(level.dimension(), helper.absolutePos(new BlockPos(4, 2, 4)));
+        long t = level.getGameTime();
+        // The hub's lockers take leather; nobody there wants dirt.
+        dev.b28.enterprise.merchant.Warehouse.get(level.getServer()).recordCapacity(hub,
+                helper.absolutePos(new BlockPos(2, 2, 2)).asLong(), java.util.Map.of(Items.LEATHER, 32));
+        java.util.List<ItemStack> cargo = new java.util.ArrayList<>(java.util.List.of(
+                new ItemStack(Items.LEATHER, 64), new ItemStack(Items.DIRT, 64)));
+        var forwarder = dev.b28.enterprise.market.Forwarder.get(level.getServer());
+        int left = forwarder.consignUnsold(level, hub, town, hubStock, cargo, t);
+        helper.assertTrue(left == 64 && hubStock.count(new ItemCost(Items.LEATHER, 1)) == 64,
+                "the leather the hub's shelves want stays, on consignment: " + left);
+        helper.assertTrue(cargo.size() == 1 && cargo.get(0).is(Items.DIRT), "the dirt rides home");
+        double[] before = forwarder.totalsForTest();
+        forwarder.sold(hub, Items.LEATHER, 64, 160);
+        forwarder.review(level, hub, hubStock, t);
+        double[] after = forwarder.totalsForTest();
+        helper.assertTrue(Math.abs(after[0] - before[0] - 144) < 1e-6,
+                "sold: the town's 160 spurs, less 10% commission, on their way: " + (after[0] - before[0]));
+        helper.succeed();
+    }
 }
