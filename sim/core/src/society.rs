@@ -4,6 +4,7 @@
 use bevy_ecs::prelude::*;
 
 use crate::content::{Content, GoodId};
+use crate::contracts::{Book, Contract, Incoterm};
 use crate::messages::{Input, Output, RouteId, TownId};
 use crate::rules::{catch_up_town, look_schedule};
 use crate::state::*;
@@ -40,6 +41,8 @@ impl Society {
         world.insert_resource(content);
         world.insert_resource(Clock::default());
         world.insert_resource(Outbox::default());
+        world.insert_resource(Towns::default());
+        world.insert_resource(Book::default());
         Society { world, look: look_schedule(), towns: Vec::new(), routes: Vec::new() }
     }
 
@@ -62,7 +65,7 @@ impl Society {
         let e = self
             .world
             .spawn((
-                Town { name: name.to_string() },
+                Town { name: name.to_string(), id: self.towns.len() },
                 Money(money),
                 Stock(vec![0.0; n]),
                 Trades { makes: vec![0.0; n], uses: vec![0.0; n] },
@@ -71,6 +74,7 @@ impl Society {
             ))
             .id();
         self.towns.push(e);
+        self.world.resource_mut::<Towns>().0.push(e);
         self.towns.len() - 1
     }
 
@@ -88,6 +92,8 @@ impl Society {
             seq: self.routes.len(),
             from: self.towns[from],
             to: self.towns[to],
+            from_id: from,
+            to_id: to,
             travel_ticks: (days * day).round().max(1.0) as u64,
             road_cost,
             every_ticks: (every_days * day).round() as u64,
@@ -150,6 +156,35 @@ impl Society {
     pub fn route(&self, route: RouteId) -> RouteView {
         let s = self.world.get::<RouteState>(self.routes[route]).unwrap();
         RouteView { trips: s.trips, sold: s.sold, carried: s.carried, on_the_road: s.wagon.is_some() }
+    }
+
+    /// A contract drafted at one party's (`at_seller`: the seller's; `both`: both hold copies, in force at once):
+    /// `quantity` of `good` an installment, from `start`, every `every` ticks, `installments` times.
+    #[allow(clippy::too_many_arguments)]
+    pub fn draft(&mut self, seller: TownId, buyer: TownId, good: GoodId, quantity: f64, price: f64, start: u64,
+            every: u64, installments: u32, incoterm: Incoterm, both: bool) -> usize {
+        self.world.resource_mut::<Book>().draft(seller, buyer, good, quantity, price, start, every, installments,
+            incoterm, true, both)
+    }
+
+    pub fn contract(&self, id: usize) -> Contract {
+        self.world.resource::<Book>().contracts[id].clone()
+    }
+
+    pub fn contracts(&self) -> Vec<Contract> {
+        self.world.resource::<Book>().contracts.clone()
+    }
+
+    /// Trust between two towns now.
+    pub fn trust(&self, a: TownId, b: TownId) -> f64 {
+        self.world.resource::<Book>().trust(a, b, self.now(), self.content().day_ticks)
+    }
+
+    /// Judges installments now (as each day's first look does).
+    pub fn review(&mut self) {
+        let now = self.now();
+        let day = self.content().day_ticks;
+        self.world.resource_mut::<Book>().review(now, day, |_| false);
     }
 
     pub fn town_count(&self) -> usize {

@@ -10,11 +10,13 @@
 
 pub mod check;
 pub mod content;
+pub mod contracts;
 pub mod messages;
 pub mod rules;
 pub mod society;
 pub mod state;
 
 pub use content::{Content, Dials, Good, GoodId};
+pub use contracts::{Contract, Incoterm, State};
 pub use messages::{Input, Output, RouteId, TownId};
 pub use society::Society;

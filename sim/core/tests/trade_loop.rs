@@ -9,6 +9,7 @@ const DAY: u64 = 24_000;
 fn farm_and_mill(every: f64, money: f64) -> Society {
     let content = Content::new(vec![Good { name: "wheat".into(), value: 0.05, stack: 64 }], DAY);
     let mut s = Society::new(content);
+    s.content_mut().dials.standing_orders = false; // the selling alone, no contracts
     let farm = s.add_town("Wheatfield", 20.0);
     let mill = s.add_town("Hayford", money);
     s.set_trade(farm, 0, 128.0, 0.0);

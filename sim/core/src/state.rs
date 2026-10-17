@@ -26,11 +26,16 @@ pub struct Ledger {
 #[derive(Resource, Clone, Debug, Default)]
 pub struct Outbox(pub Vec<Output>);
 
-/// A town, by name.
+/// A town, by name, and its number (messages and contracts name towns by it).
 #[derive(Component, Clone, Debug)]
 pub struct Town {
     pub name: String,
+    pub id: usize,
 }
+
+/// Every town's entity, by its number.
+#[derive(Resource, Clone, Debug, Default)]
+pub struct Towns(pub Vec<Entity>);
 
 /// A town's money.
 #[derive(Component, Clone, Copy, Debug, Default)]
@@ -62,19 +67,25 @@ pub struct Budget {
 }
 
 /// Which way a wagon is going.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Leg {
+    #[default]
     Out,
     Home,
 }
 
-/// A wagon on the road: its cargo of each good, the money it carries, which way, and when it gets there.
-#[derive(Clone, Debug)]
+/// A wagon on the road: its cargo of each good, the money it carries, which way, and when it gets there; what of
+/// its cargo is owed under which contract, the Ex Works contracts it's collecting for, and the contracts drafted on
+/// this trip (their copies ride home with it).
+#[derive(Clone, Debug, Default)]
 pub struct Wagon {
     pub cargo: Vec<f64>,
     pub purse: f64,
     pub leg: Leg,
     pub arrives: u64,
+    pub contracted: Vec<(usize, f64)>,
+    pub collecting: Vec<usize>,
+    pub drafts: Vec<usize>,
 }
 
 /// A town's run to another: how long the road takes one way, what a round trip costs in road food, its timetable.
@@ -84,6 +95,8 @@ pub struct Route {
     pub seq: usize,
     pub from: Entity,
     pub to: Entity,
+    pub from_id: usize,
+    pub to_id: usize,
     pub travel_ticks: u64,
     pub road_cost: f64,
     pub every_ticks: u64,

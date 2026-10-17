@@ -29,11 +29,14 @@ pub struct Dials {
     pub wagon_slots: u32,
     /// How often the core looks at its wagons and towns, in ticks.
     pub look_ticks: u64,
+    /// A wagon that sold a good well drafts a standing order for it.
+    pub standing_orders: bool,
 }
 
 impl Default for Dials {
     fn default() -> Self {
-        Dials { shelf_days: 5.0, budget_share: 0.5, max_budget_days: 6.0, wagon_full: 0.75, wagon_slots: 27, look_ticks: 1200 }
+        Dials { shelf_days: 5.0, budget_share: 0.5, max_budget_days: 6.0, wagon_full: 0.75, wagon_slots: 27, look_ticks: 1200,
+            standing_orders: true }
     }
 }
 
