@@ -45,6 +45,7 @@ impl Society {
         world.insert_resource(Towns::default());
         world.insert_resource(Book::default());
         world.insert_resource(crate::bills::Bills::default());
+        world.insert_resource(crate::mint::Mint::default());
         Society { world, look: look_schedule(), towns: Vec::new(), routes: Vec::new() }
     }
 
@@ -149,6 +150,25 @@ impl Society {
         let e = self.towns[town];
         self.world.get_mut::<Money>(e).expect("a town").0 += money;
         self.world.resource_mut::<Ledger>().income += money;
+    }
+
+    /// The mint as it stands (its pressure and debasement, touched as of their last change).
+    pub fn mint(&self) -> &crate::mint::Mint {
+        self.world.resource::<crate::mint::Mint>()
+    }
+
+    /// Spurs per emerald now: the rate the host and prices read.
+    pub fn mint_rate(&self) -> f64 {
+        self.mint().rate(self.now(), self.content().day_ticks)
+    }
+
+    /// Sells `emeralds` to the mint and returns the spurs paid. Money-neutral in the core's books: the core's money is
+    /// emerald-worth, so the coin paid for emeralds stands for the same worth. What the mint changes is the rate
+    /// (selling pressure) and so what coin buys, which the host reads through [`Society::mint_rate`].
+    pub fn sell_emeralds(&mut self, emeralds: u64) -> u64 {
+        let now = self.now();
+        let day = self.content().day_ticks;
+        self.world.resource_mut::<crate::mint::Mint>().sell(emeralds, now, day)
     }
 
     /// Applies one happening and returns what came of it.

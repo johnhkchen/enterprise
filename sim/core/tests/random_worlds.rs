@@ -1,7 +1,7 @@
 //! Property-based: random worlds (towns, goods, trades, people, routes, contracts) over hundreds of seeds, every day
 //! of each checked for the books balancing and nobody in debt. A small generator of our own, so no dependency.
 
-use enterprise_core::{Content, Good, Incoterm, Society};
+use enterprise_core::{Content, Good, Incoterm, Output, Society};
 
 const DAY: u64 = 24_000;
 
@@ -26,7 +26,8 @@ impl Rng {
     }
 }
 
-fn world(seed: u64) -> Society {
+/// A world, and the emeralds its sellers sell to the mint each day: a few towns, a stack or two each.
+fn world(seed: u64) -> (Society, Vec<u64>) {
     let mut r = Rng(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1);
     let n_goods = 2 + r.below(6) as usize;
     let goods: Vec<Good> = (0..n_goods)
@@ -70,16 +71,26 @@ fn world(seed: u64) -> Society {
                 r.below(10) * DAY, (1 + r.below(4)) * DAY, 1 + r.below(10) as u32, terms, r.below(2) == 0);
         }
     }
-    s
+    let sellers = r.below(4);
+    let daily = (0..sellers).map(|_| (1 + r.below(4)) * 64 + r.below(64)).collect();
+    (s, daily)
+}
+
+/// Advances `s` to day `day`, with each seller's emeralds sold to the mint at the day's start. Returns what came out.
+fn run_day(s: &mut Society, daily: &[u64], day: u64) -> Vec<Output> {
+    for &emeralds in daily {
+        s.sell_emeralds(emeralds);
+    }
+    s.advance(day * DAY)
 }
 
 #[test]
 fn the_books_balance_and_nobody_goes_into_debt_in_any_world() {
     for seed in 0..300 {
-        let mut s = world(seed);
+        let (mut s, daily) = world(seed);
         let start = s.totals();
         for day in 1..=120 {
-            s.advance(day * DAY);
+            run_day(&mut s, &daily, day);
             if let Err(e) = s.conserved(&start).and_then(|_| s.solvent()) {
                 panic!("seed {seed}, day {day}: {e}");
             }
@@ -90,11 +101,16 @@ fn the_books_balance_and_nobody_goes_into_debt_in_any_world() {
 #[test]
 fn the_same_seed_gives_the_same_world() {
     for seed in [3, 77, 1234] {
-        let (mut a, mut b) = (world(seed), world(seed));
-        let (oa, ob) = (a.advance(90 * DAY), b.advance(90 * DAY));
+        let ((mut a, da), (mut b, db)) = (world(seed), world(seed));
+        let (mut oa, mut ob) = (Vec::new(), Vec::new());
+        for day in 1..=90 {
+            oa.extend(run_day(&mut a, &da, day));
+            ob.extend(run_day(&mut b, &db, day));
+        }
         assert_eq!(oa, ob, "seed {seed}: the same wagons");
         for t in 0..a.town_count() {
             assert_eq!(a.town(t).money.to_bits(), b.town(t).money.to_bits(), "seed {seed}, town {t}");
         }
+        assert_eq!(a.mint_rate().to_bits(), b.mint_rate().to_bits(), "seed {seed}: the same mint rate");
     }
 }
