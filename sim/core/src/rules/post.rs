@@ -39,7 +39,7 @@ pub fn register(schedule: &mut Schedule) {
             .before(super::squad::size_up).before(super::atlas::want_books).before(super::services::plan),
         go_on_call.in_set(Step::PlanFreight).after(super::freight::plan_freight),
         made.in_set(Step::Decide).after(super::plan::decide),
-        credit_sold.in_set(Step::Sell).after(super::arrive::sell).before(super::cargo::relot),
+        credit_sold.in_set(Step::Sell).after(super::arrive::sell).after(super::atlas::log_sales).before(super::cargo::relot),
         consign.in_set(Step::Sell).after(super::arrive::sell).after(super::atlas::log_sales).after(super::harvest::offer)
             .after(super::realms::customs).after(credit_sold).before(super::cargo::relot),
         collect.in_set(Step::Buy).after(super::squad::send_porters_home).before(super::desires::buy_for_home),
@@ -186,7 +186,7 @@ fn mail_copies(content: &Content, now: u64, town: TownId, book: &Book, roads: &R
             (false, true) if c.buyer == town => c.seller,
             _ => continue,
         };
-        if c.state != State::Drafted || to == town || to >= n || known[to].outside || roads.between(town, to)
+        if c.state != State::Drafted || to == town || to >= n || known[to].outside || roads.regular_between(town, to)
             || mail.letters.iter().any(|l| l.kind == Kind::Copy && l.contract == Some(id) && l.to == to) {
             continue;
         }
@@ -415,7 +415,7 @@ fn mail_bills(content: &Content, now: u64, town: TownId, roads: &Roads, places: 
     for &id in &bills.open {
         let b = &bills.bills[id];
         if b.held == Held::Town(town) && b.payee == town && b.state == BillState::Outstanding && b.drawee != town
-            && b.drawee < known.len() && !known[b.drawee].outside && b.due <= now && !roads.between(town, b.drawee) {
+            && b.drawee < known.len() && !known[b.drawee].outside && b.due <= now && !roads.regular_between(town, b.drawee) {
             by_drawee.entry(b.drawee).or_default().push(id);
         }
     }
@@ -467,22 +467,27 @@ pub fn stay_on_call(clock: Res<Clock>, content: Res<Content>, mail: Res<Mail>, f
     }
 }
 
-/// A hub's run with a call due or a collection goes (`Caravans.dispatch`'s "on call", "a collection"), with a purse for
-/// the goods offered on the calls due, as far as the hub can spare beyond its reserve and its day's budget allows ("a
-/// call's goods").
+/// A hub's run on call with a call due, or any hub's run with a collection, goes (`Caravans.dispatch`'s "on call", "a
+/// collection"); a run on call with a purse for the goods offered on the calls due, as far as the hub can spare beyond
+/// its reserve and its day's budget allows ("a call's goods", `callPurse`: only `route.onCall`'s). A regular run's
+/// calls (the forwarder books one with each collection) carry no purse and press it to go only through the collection.
 #[allow(clippy::type_complexity)]
 pub fn go_on_call(clock: Res<Clock>, content: Res<Content>, mail: Res<Mail>, forwarder: Res<Forwarder>,
-        bills: Res<Bills>, mut cash: ResMut<CashBook>, mut routes: Query<(&Route, &mut RouteState)>,
+        bills: Res<Bills>, mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<(&Money, &Trades, &mut Budget, Option<&Farm>)>) {
     let now = clock.now;
     let today = today(&content, now);
-    for (route, mut state) in &mut routes {
+    for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
+        let (_, route, mut state) = routes.get_mut(e).unwrap();
         let Some(plan) = state.plan.as_mut() else { continue };
-        let due = mail.due(route.from_id, route.to_id, today);
+        let due = route.on_call && mail.due(route.from_id, route.to_id, today);
         if !due && !forwarder.is_collecting(route.from_id, route.to_id) {
             continue;
         }
         plan.pressing = true;
+        if !route.on_call {
+            continue;
+        }
         let offered = mail.purse(route.from_id, route.to_id, today);
         if offered <= 0.0 {
             continue;
@@ -495,23 +500,33 @@ pub fn go_on_call(clock: Res<Clock>, content: Res<Content>, mail: Res<Mail>, for
     }
 }
 
-/// The run has left: its calls due are made (`Post.made`).
+/// A run on call has left: its calls due are made (`Post.made`, called only for `route.onCall`). A regular run's calls
+/// (booked with the forwarder's collections) the mod never clears; nothing reads them past their day, so a regular run
+/// leaving drops those of days gone, to keep the post's book from growing without end.
 pub fn made(clock: Res<Clock>, content: Res<Content>, mut mail: ResMut<Mail>, routes: Query<(&Route, &RouteState)>) {
     let today = today(&content, clock.now);
     for (route, state) in &routes {
-        if state.wagon.is_some() && state.last_departure == Some(clock.now) && mail.due(route.from_id, route.to_id, today) {
-            mail.made(route.from_id, route.to_id, today);
+        if state.wagon.is_none() || state.last_departure != Some(clock.now) {
+            continue;
+        }
+        if route.on_call {
+            if mail.due(route.from_id, route.to_id, today) {
+                mail.made(route.from_id, route.to_id, today);
+            }
+        } else if today > 0 && mail.due(route.from_id, route.to_id, today - 1) {
+            mail.made(route.from_id, route.to_id, today - 1);
         }
     }
 }
 
 /// A hub's wagon's sales at the far end: some may be towns' goods on consignment, sold on their account (`Caravans`
 /// 2557: `Forwarder.sold`).
-pub fn credit_sold(mut forwarder: ResMut<Forwarder>, routes: Query<(&Route, &RouteState)>, hubs: Query<&Hub>) {
+pub fn credit_sold(mut forwarder: ResMut<Forwarder>, routes: Query<(Entity, &Route, &RouteState)>, hubs: Query<&Hub>) {
     if forwarder.lots.is_empty() {
         return;
     }
-    for (route, state) in &routes {
+    for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
+        let (_, route, state) = routes.get(e).unwrap();
         if state.arrived != Some(Leg::Out) || !hubs.get(route.from).is_ok_and(|h| h.storehouse) {
             continue;
         }
@@ -607,7 +622,10 @@ pub fn collect(clock: Res<Clock>, content: Res<Content>, list: Res<Towns>, book:
         forwarder.collected(route.from_id, route.to_id);
         let roads = roads(routes.iter().map(|(_, r, s)| (r, s)));
         let known = known(&towns, &list);
-        let fare = fare(&content, route.blocks, !route.on_call);
+        // The fare on the towns' distance, as the booking reckoned it (`Forwarder.fare`'s `distSqr`), not the road's.
+        let blocks = distances(towns.iter().map(|p| p.0), &roads).between(route.from_id, route.to_id)
+            .unwrap_or(route.blocks);
+        let fare = fare(&content, blocks, !route.on_call);
         let (_, _, mut state) = routes.get_mut(e).unwrap();
         let wagon = state.wagon.as_mut().unwrap();
         let capacity = if wagon.slots > 0 { wagon.slots } else { content.dials.wagon_slots };
@@ -631,12 +649,13 @@ pub fn collect(clock: Res<Clock>, content: Res<Content>, list: Res<Towns>, book:
 /// A wagon's purchases at a hub: some may be towns' goods on consignment, sold on their account (`Caravans
 /// .boughtThere`: `Forwarder.sold`).
 pub fn credit_bought(clock: Res<Clock>, content: Res<Content>, mut forwarder: ResMut<Forwarder>,
-        routes: Query<(&Route, &RouteState)>, hubs: Query<&Hub>) {
+        routes: Query<(Entity, &Route, &RouteState)>, hubs: Query<&Hub>) {
     if forwarder.lots.is_empty() {
         return;
     }
     let today = today(&content, clock.now);
-    for (route, state) in &routes {
+    for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
+        let (_, route, state) = routes.get(e).unwrap();
         if state.arrived != Some(Leg::Out) || !hubs.get(route.to).is_ok_and(|h| h.storehouse) {
             continue;
         }

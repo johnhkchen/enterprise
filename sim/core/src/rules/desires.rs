@@ -118,7 +118,9 @@ pub fn plan_shopping(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>
     let now = clock.now;
     // What every plan from a town carries and its road costs this look.
     let mut committed: BTreeMap<usize, f64> = BTreeMap::new();
-    for (_, route, state) in routes.iter() {
+    // (In the routes' order: a sum's last bit mustn't hang on archetypes, which a load reorders.)
+    for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
+        let (_, route, state) = routes.get(e).unwrap();
         let Some(plan) = state.plan.as_ref() else { continue };
         let Ok((_, stock, trades, _, _, roster, _)) = towns.get(route.from) else { continue };
         let keep_wheat = crate::road::keep_wheat(&content, trades, roster);

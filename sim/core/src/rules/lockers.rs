@@ -20,7 +20,9 @@ pub fn register(schedule: &mut Schedule) {
         restock.in_set(Step::Work).after(super::farms::work).after(super::workshop::work),
         // After settlers: the hands that left are off its roster, and the stock they took gone, before it reviews.
         // (After the farm's review too, as main ran them before `realms` registered systems and moved an ambiguous order.)
-        review.in_set(Step::Review).after(super::settlers::review).after(super::farms::review),
+        // Before the works' review, as main ran them before `post` registered systems and moved an ambiguous order.
+        review.in_set(Step::Review).after(super::settlers::review).after(super::farms::review)
+            .before(super::works::review),
     ));
 }
 

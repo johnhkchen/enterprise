@@ -90,7 +90,9 @@ pub(crate) fn plan_float(clock: Res<Clock>, content: Res<Content>, bills: Res<Bi
     let mut committed: BTreeMap<usize, f64> = BTreeMap::new();
     // And the shopping money the Accountant allowed them already (`rules/desires.rs::plan_shopping`, before this).
     let mut shopping: BTreeMap<usize, f64> = BTreeMap::new();
-    for (_, route, state) in routes.iter() {
+    // (In the routes' order: a sum's last bit mustn't hang on archetypes, which a load reorders.)
+    for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
+        let (_, route, state) = routes.get(e).unwrap();
         let Some(plan) = state.plan.as_ref() else { continue };
         if !banks.is(route.from_id) {
             continue;

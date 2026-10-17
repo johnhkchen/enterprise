@@ -38,7 +38,8 @@
 //! before the one that first saw it drafted. Where neither town is placed
 //! and no road joins them, a rider takes its least time. A copy goes by post only where no wagon runs between the two
 //! (the brief's rule: the mod posts one wherever the other party hasn't seen it a day on), and a bill only where no
-//! wagon runs either way (the mod also posts one a post round past due that no wagon took). The crown's aid counts
+//! wagon runs either way (the mod also posts one a post round past due that no wagon took); a run on call, which goes
+//! only on booked days, doesn't count as one. The crown's aid counts
 //! toward a call only where there's a crown to pay it. The forwarder's bookings are its towns' goods for sale (contract
 //! crates bound on through the hub, `collectForwarding`, aren't collected yet), and a collection's fare is a run on
 //! call's (half as much again) where the hub's run there is on call or not there yet. Bills in a letter are held
@@ -229,6 +230,12 @@ impl Roads {
     /// Does a wagon run between the two, either way?
     pub fn between(&self, a: TownId, b: TownId) -> bool {
         self.route(a, b).is_some() || self.route(b, a).is_some()
+    }
+
+    /// Does a wagon run between the two either way that isn't on call (one that goes only on a booked day carries no
+    /// copy or bill in between)? The post's test for copies and bills.
+    pub fn regular_between(&self, a: TownId, b: TownId) -> bool {
+        self.0.iter().any(|r| r.running && !r.on_call && ((r.from == a && r.to == b) || (r.from == b && r.to == a)))
     }
 
     /// The far ends of the hub's running routes, but `but`.
@@ -463,8 +470,8 @@ impl Forwarder {
                 continue;
             }
             if net > 0.0 {
-                if *spare < net + d.postage {
-                    keep.push(lot); // the hub's short just now (the coin and its postage): next time
+                if *spare < net {
+                    keep.push(lot); // the hub's short just now: next time (the postage is paid as far as it goes)
                     continue;
                 }
                 *spare -= net + d.postage;

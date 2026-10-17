@@ -235,7 +235,9 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
     let food_mode = crate::road::road_food(&content);
     let mut promised: std::collections::BTreeMap<usize, f64> = std::collections::BTreeMap::new();
     if food_mode {
-        for (_, route, state) in routes.iter() {
+        // (In the routes' order: a sum's last bit mustn't hang on archetypes, which a load reorders.)
+        for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
+            let (_, route, state) = routes.get(e).unwrap();
             if let Some(w) = state.wagon.as_ref().filter(|w| w.leg == Leg::Out && w.provisions <= 0.0) {
                 *promised.entry(route.to_id).or_insert(0.0) += crate::road::food_needed(&content, route.blocks)
                     * crate::road::mouths(Some(w));

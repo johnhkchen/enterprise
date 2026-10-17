@@ -121,7 +121,7 @@ pub fn copies(mut sourcing: ResMut<Sourcing>, mut book: ResMut<Book>, mut routes
 /// inputs it is short of for what it makes this town, once an installment: the far end's stock (as home knows it) holds
 /// less of an input than its contracts need, home has some, and a contract in force from the far end to home was due
 /// since the route last left. And, on the route's day, a contract sourcing drafted that waits for a copy to ride between
-/// the two (the mod's copies go by post; there is none yet): business there.
+/// the two (the mod's copies also go by post; the core's post carries one only where no regular run joins the two, `post.rs`): business there.
 #[allow(clippy::type_complexity)]
 pub fn plan_inputs(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktakes: Res<Stocktakes>,
         sourcing: Res<Sourcing>, mut routes: Query<(&Route, &mut RouteState)>,
