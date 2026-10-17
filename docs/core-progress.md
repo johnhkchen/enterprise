@@ -6,8 +6,8 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `fe48704`. 117 tests pass (`just core-test`, a few seconds). Parity: **50 covered, 13 partial, 46
-  skipped, 153 left of 262** (`just parity`). `just core-fingerprint`: `078567edb645ea86`.
+- **Main:** `e57577f`. 129 tests pass (`just core-test`, a few seconds). Parity: **51 covered, 14 partial, 46
+  skipped, 151 left of 262** (`just parity`). `just core-fingerprint`: `b0a24be467e3f938`.
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
 
@@ -26,7 +26,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 14 | 2 | `farms-and-wages` | opus/high (sonnet/high) | `roster`, `cash-book` | — | the largest port; wages and the labour market touch money and people |
 | 15 | 2 | `jobs` | sonnet/medium (sonnet/medium) | `roster`, `lockers` | — |  |
 | 16 | 2 | `territory-growth` | sonnet/medium (sonnet/medium) | `hex-map`, `cash-book` | `4aa28bd` | Claims, culture to two rings, guards, militia, tolls; 7 tags. At landing: food all or nothing, tolls floored in spurs, posts by q then r, a first count a day's culture |
-| 17 | 2 | `workshop` | sonnet/medium (sonnet/medium) | `roster` | — |  |
+| 17 | 2 | `workshop` | sonnet/medium (sonnet/medium) | `roster` | `e57577f` | The mod's seven conversions by name, gain order, whole batches, `input_demand` two steps back; JobsTests paper pinned, comforts partial. Gaps: comfort worth not `Desires.reckon`, no room limit, runs after the touch's use. At landing: random worlds keep the base goods' comfort and food flags |
 | 18 | 2 | `harvest-and-rents` | sonnet/medium (sonnet/medium) | `advances-and-refunds` | — |  |
 | 19 | 2 | `atlas-and-books` | opus/high (sonnet/medium) | `hex-map`, `squads` | — | stocktakes change what every plan reads |
 | 20 | 2 | `herds` | sonnet/medium (sonnet/medium) | `roster`, `workshop` | — |  |
@@ -101,3 +101,6 @@ dependencies are the integrator's; `trees.py` locks its registry, so agents can 
   component inserted on some towns mid-run reorders them against a loaded world and load-then-run differs in the last
   bit (`bargain-and-par` gave every town `LockerCapacity` from `add_town` to dodge it). Briefs: spawn a town's
   components in `add_town`, never insert one later.
+- A slice's random-world `extend` may rename the base goods (conversions match by name) but never rewrite their
+  flags: `workshop` made every good plain but cookie, book and bread, and a third of the worlds lost all food and
+  comforts for every slice. Briefs: rename, or add, never overwrite what the base world drew.
