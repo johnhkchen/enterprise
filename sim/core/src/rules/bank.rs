@@ -34,7 +34,7 @@ use crate::state::*;
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
         lapse.in_set(Step::Judge).after(super::contracts::review).after(super::harvest::review_rents),
-        plan_loans.in_set(Step::PlanCollect).after(super::contracts::plan_collect),
+        plan_loans.in_set(Step::PlanCollect).after(super::contracts::plan_collect).before(super::sourcing::plan_inputs),
         plan_float.in_set(Step::PlanBuy).before(super::harvest::plan_redeem),
         spend_float.in_set(Step::Decide).after(super::plan::decide).before(super::cargo::ship),
         deal.in_set(Step::Papers).after(super::advances::advances_papers).before(super::bills::present),

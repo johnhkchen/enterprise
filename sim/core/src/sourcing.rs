@@ -28,12 +28,14 @@
 //!   while the sovereign mobilises, three times at war), contracts for the shortfall at a premium that rises as it runs
 //!   short, nearest holder first: a town with a mine, then the market across the sea.
 //!
-//! **Where the core differs.** No freight hubs yet (`Broker.means` by a hub), no armoury (a town keeps half its kit
-//! always), no player shops or orders (the mod's `Exchange.wanted`) or crown shortfall (`Sovereign.shortfall`) among a
-//! town's wants: those slices call [`Society::source`] and add to [`wanted`] when they land. The mod only sources for
-//! orders, the crown and the exchange; the core's towns with a master Merchant also source what their contracts want and
-//! can't be made at home, once a day. The shops of the exchange (Numismatics vendors) and the players' sales to it are
-//! the binding's. Overseas, the exchange's market makes its metals and bread up to what it keeps, once a day.
+//! **Where the core differs.** No way by a freight hub (`Broker.means(.., viaHub)`, `Freight.via`), no armoury (a town
+//! keeps half its kit always), no player shops or orders (the mod's `Exchange.wanted`) or crown shortfall
+//! (`Sovereign.shortfall`) among a town's wants: those slices call [`Society::source`] and add to [`wanted`] when they
+//! land. The mod only sources for orders, the crown and the exchange; the core's towns with a master Merchant also
+//! source what their contracts want and can't be made at home, once a day; what none of the markets with a road can
+//! supply is its signal (the mod's `Broker.signals`: what no known market holds, road or not). The shops of the
+//! exchange (Numismatics vendors) and the players' sales to it are the binding's. Overseas, the exchange's market makes
+//! its metals and bread up to what it keeps, once a day.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -523,6 +525,10 @@ pub fn apply(world: &mut World, desk: TownId, drafts: &[Draft]) {
         (c.day_ticks.max(1), c.dials.advance_share)
     };
     for dr in drafts {
+        // One open contract per good per supplier: the exchange's and the desk's own wants were read from one book.
+        if world.resource::<Book>().covers(dr.seller, dr.buyer, dr.good) {
+            continue;
+        }
         let id = world.resource_mut::<Book>().draft_with_advance(dr.seller, dr.buyer, dr.good, dr.quantity, dr.price,
             dr.start, dr.every, dr.installments, dr.incoterm, false, false, if dr.advance { share } else { 0.0 });
         world.resource_mut::<Book>().contracts[id].drafted = now;

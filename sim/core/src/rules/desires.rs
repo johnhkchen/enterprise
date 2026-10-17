@@ -38,7 +38,9 @@ pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
         // (last of the reviews, as the mod's `Territory.touch` keeps the shop at its end)
         keep_shops.in_set(Step::Review).after(super::works::review).after(super::chokepoints::review)
-            .after(super::jobs::review).after(super::atlas::consider),
+            .after(super::jobs::review).after(super::atlas::consider)
+            // (before the hubs' review, as main ran them before sourcing's review joined the step)
+            .before(super::freight::review),
         sight.in_set(Step::Settle),
         plan_shopping.in_set(Step::PlanBuy).before(super::bank::plan_float),
         // (porters gone home first, as the mod's `sendPortersHome` before the buying: the mouths the road home feeds)

@@ -40,8 +40,10 @@ pub fn register(schedule: &mut Schedule) {
         plan_owing.in_set(Step::PlanPapers).before(super::advances::plan_advances),
         ship.in_set(Step::Decide).after(super::plan::decide),
         fetch.in_set(Step::Papers).before(pay_owing),
-        pay_owing.in_set(Step::Papers).before(super::advances::advances_papers).before(super::bills::present),
-        open.in_set(Step::Settle).before(super::contracts::settle),
+        pay_owing.in_set(Step::Papers).before(super::advances::advances_papers).before(super::bills::present)
+            .before(super::sourcing::copies),
+        // (after the shop's sighting, as main ran them before sourcing's systems joined the look)
+        open.in_set(Step::Settle).after(super::desires::sight).before(super::contracts::settle),
         unlot.in_set(Step::Sell).before(super::arrive::sell),
         relot.in_set(Step::Sell).after(super::arrive::sell),
         unload.in_set(Step::Turn).after(super::road::feed).after(super::squad::come_home).before(super::arrive::turn),

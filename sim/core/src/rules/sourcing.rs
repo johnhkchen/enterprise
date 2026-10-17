@@ -34,8 +34,12 @@ pub fn register(schedule: &mut Schedule) {
         // (`LockerTrading.trade` switches on what's wanted first).
         procure_lockers.in_set(Step::Work).after(super::services::home).before(super::training::lessons)
             .before(super::lockers::restock),
-        review.in_set(Step::Review).after(super::jobs::review),
-        inputs.in_set(Step::Judge).after(super::contracts::review),
+        // (before the hubs' review and the shop, the last of the reviews: Bevy's free choice pinned as it ran)
+        review.in_set(Step::Review).after(super::jobs::review).before(super::freight::review)
+            .before(super::desires::keep_shops),
+        // (as part of the contracts' review, before the rents' and so the bank's and training's judgements)
+        inputs.in_set(Step::Judge).after(super::contracts::review).before(super::harvest::review_rents),
+        // (once the wagon has fetched and paid what's owed there: `cargo::pay_owing` comes first)
         copies.in_set(Step::Papers).before(super::advances::advances_papers),
         plan_inputs.in_set(Step::PlanCollect).after(super::contracts::plan_collect),
     ));
@@ -200,13 +204,14 @@ pub fn review(world: &mut World) {
         }
         let sourcing = world.resource::<Sourcing>();
         for t in 0..env.towns.len() {
-            if sourcing.reviewed.get(&t).is_some_and(|&d| d >= today) {
-                continue;
-            }
             let e = env.towns[t];
             let brokers = world.get::<Roster>(e).and_then(|r| r.merchant_level()).is_some_and(|l| l >= MASTER)
                 && !world.entity(e).contains::<OffMap>();
             if !brokers {
+                unmet.remove(&t); // (a town that no longer brokers posts nothing)
+                continue;
+            }
+            if sourcing.reviewed.get(&t).is_some_and(|&d| d >= today) {
                 continue;
             }
             reviewed.push(t);
