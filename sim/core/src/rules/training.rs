@@ -24,19 +24,19 @@ use crate::training::{finish, mastered, plan, Apprenticeships, Desk, Env, Tender
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
-        lessons.in_set(Step::Work).before(super::lockers::restock),
+        lessons.in_set(Step::Work).after(super::cargo::earmark).after(super::workshop::work).before(super::lockers::restock),
         crate_work.in_set(Step::Work).after(super::lockers::restock),
         lapse.in_set(Step::Review),
-        judge.in_set(Step::Judge),
-        read_out.in_set(Step::Draft),
+        judge.in_set(Step::Judge).after(super::harvest::review_rents),
+        read_out.in_set(Step::Draft).after(super::arrive::draft),
         read_home.in_set(Step::Turn).after(super::road::feed).before(super::arrive::turn),
-        copies.in_set(Step::Services),
+        copies.in_set(Step::Services).after(super::chokepoints::takings),
     ));
 }
 
 /// Every town's lockers told what its training contracts ask, in town order.
 #[allow(clippy::type_complexity)]
-fn lessons(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut apprenticeships: ResMut<Apprenticeships>,
+fn lessons(content: Res<Content>, book: Res<Book>, mut apprenticeships: ResMut<Apprenticeships>,
         mut towns: Query<(&Town, &mut Lockers, &Stock, &Trades, Option<&Farm>, Option<&Shipments>)>) {
     let mut order: Vec<_> = towns.iter_mut().collect();
     order.sort_by_key(|(t, ..)| t.id);
@@ -47,7 +47,6 @@ fn lessons(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut appren
             continue;
         }
         plan(&content, &book, &mut apprenticeships, town.id, &mut lockers, stock, trades, farm, store);
-        let _ = clock.now;
     }
 }
 

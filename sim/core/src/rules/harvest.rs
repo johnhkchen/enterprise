@@ -32,7 +32,7 @@ fn rent_reason() -> Reason {
 }
 
 /// Every look: a rent whose season is out issues its coupon, or defaults.
-fn review_rents(clock: Res<Clock>, content: Res<Content>, mut rents: ResMut<Rents>, mut book: ResMut<Book>) {
+pub(crate) fn review_rents(clock: Res<Clock>, content: Res<Content>, mut rents: ResMut<Rents>, mut book: ResMut<Book>) {
     if rents.rents.is_empty() {
         return;
     }

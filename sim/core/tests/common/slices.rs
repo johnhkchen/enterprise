@@ -29,4 +29,5 @@ slices! {
     crates_and_papers,
     buildings_and_works,
     //training_and_tenders,
+    training_and_tenders,
 }

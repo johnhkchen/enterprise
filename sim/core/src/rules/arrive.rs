@@ -102,7 +102,7 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
 
 /// A good that sold well here, the buyer's people using it steadily: a standing order, if they trust each other (in
 /// sixteens, ten installments, every round trip). The buyer holds the copy; the seller's rides home with the wagon.
-fn draft(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>,
+pub(crate) fn draft(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>,
         mut routes: Query<(Entity, &Route, &mut RouteState)>, towns: Query<&Trades>) {
     if !content.dials.standing_orders {
         return;

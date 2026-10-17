@@ -75,7 +75,7 @@ fn spare(content: &Content, money: f64, trades: &Trades, farm: Option<&Farm>) ->
 /// and crated already, crated in one go once the stock holds a lot of it (a stack, or all that's owed), if there's room
 /// for the crates; one bill of lading for it, made out to the buyer, with a copy of the contract.
 #[allow(clippy::type_complexity)]
-fn earmark(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
+pub(crate) fn earmark(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
         mut towns: Query<(&Town, &mut Stock, &mut Money, &Trades, Option<&Farm>, &mut Shipments, &mut Paperwork)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let harvests: Vec<usize> = book.open.iter().copied()

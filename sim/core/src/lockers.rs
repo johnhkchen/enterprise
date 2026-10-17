@@ -26,8 +26,9 @@
 //!   the training and sourcing slices fill.
 //! - `merchant/MerchantBook.java` `noteSlack`, `addEarned`, `takeEarned`, `takenOn`.
 //!
-//! Not here yet: the Merchant buying what its contracts want (`Procurement`, its runs capped by what's due soon), herds' feed kept back from crop sales (`feedKept`), the payroll held back
-//! from the emeralds a locker pays out; the offers a villager rolls at random (here a trade offers all of its level's).
+//! Not here yet: the Merchant buying what its contracts want (`Procurement`, its runs capped by what's due soon), herds'
+//! feed kept back from crop sales (`feedKept`), the payroll held back from the emeralds a locker pays out; the offers a
+//! villager rolls at random (here a trade offers all of its level's).
 //! Simplified: one restock clock a town, not one a villager (a hand added later shares it); what a town wants, for a
 //! selling offer's worth, is what its people use (`Trades.uses > 0`, where `Caravans.wantedAt` also counts the
 //! warehouse's, the realm's and the workshop's inputs); the host's `Society::restock` leaves the clock where it is.

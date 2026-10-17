@@ -33,7 +33,13 @@
 //! contracts have to deliver; the cold store, the atlas (a town knows the board's if a road joins them) and freight hubs
 //! (the work is collectable only by a route of the buyer's to the town) wait for the slices that bring them. The
 //! per-restock review is called with the plan made at the look (or at the host's restock), not at each of a catch-up's
-//! restocks.
+//! restocks. A lapsed tender is reposted here at its bonus times 1.25 for its span; the mod's `Sovereign.offerTraining`
+//! recounts the realm's shortfall and raises a per-trade counter (the crown's to port; `training_bonus` waits for it).
+//!
+//! **Differs from the mod, on purpose:** `Tenders.lapse` clears a fully taken or carried tender at once, so a later
+//! lapse of its carrier has nothing to give back to and a later take drafts no contract with the first buyer; here it
+//! stays while a tender carrying it on is posted. And `Apprentices.afterTrade` takes the pupil's work out of stock before
+//! it asks whether the buyer can collect, losing it when it can't; here the work stays the town's.
 
 use std::collections::BTreeMap;
 
@@ -202,16 +208,17 @@ pub fn pupil(roster: &Roster, trade: TradeId, target: u8) -> Option<usize> {
     best
 }
 
-/// Free warehouse slots after the crates and the stacks the stock fills, `extra` of a good more.
-fn slots_after(content: &Content, stock: &Stock, crates: u32, good: GoodId, extra: f64) -> i64 {
+/// Free warehouse slots: what the stock's stacks and the crates leave (`MerchantStock.freeSlots`; a crate takes a slot).
+fn free_slots(content: &Content, stock: &Stock, crates: u32) -> i64 {
     let used: i64 = stock.0.iter().enumerate().map(|(g, n)| stacks_of(content, g, *n) as i64).sum::<i64>() + crates as i64;
-    let more = stacks_of(content, good, stock.0[good] + extra) as i64 - stacks_of(content, good, stock.0[good]) as i64;
-    content.dials.warehouse_slots as i64 - used - more
+    content.dials.warehouse_slots as i64 - used
 }
 
-/// Room for `extra` of a good, keeping `free_slots` free (`MerchantStock.hasRoomFor`).
+/// Room for `extra` of a good without dipping into the `free_slots` kept free; merging into its stacks is fine
+/// (`MerchantStock.hasRoomFor`).
 fn room(content: &Content, stock: &Stock, crates: u32, good: GoodId, extra: f64) -> bool {
-    slots_after(content, stock, crates, good, extra) >= content.dials.free_slots as i64
+    let more = stacks_of(content, good, stock.0[good] + extra) as i64 - stacks_of(content, good, stock.0[good]) as i64;
+    (free_slots(content, stock, crates) - content.dials.free_slots as i64).max(0) >= more
 }
 
 /// At a pupil's restock, before its locker trades run (`Apprentices.review`): trains it or stops training it.
@@ -423,8 +430,7 @@ pub fn worth(content: &Content, now: u64, desk: &Desk, tender: &Tender) -> Optio
     }
     let cost = if best == 0 { d.stall_emeralds } else { 0.0 } + levels * d.level_cost;
     let money = desk.money - crate::rules::farms::reserve(content, desk.trades, desk.farm) + tender.work.bonus * d.advance_share;
-    let held: &[Shipment] = desk.store.map_or(&[], |s| &s.held);
-    let free = d.warehouse_slots as i64 - crate::cargo::stacks(content, &desk.stock.0, held) as i64;
+    let free = free_slots(content, desk.stock, desk.store.map_or(0, |s| s.crates(content)));
     if money < cost || free < d.free_slots as i64 {
         return None;
     }
