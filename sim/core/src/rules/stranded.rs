@@ -483,8 +483,11 @@ pub fn collect_forwarding(clock: Res<Clock>, content: Res<Content>, towns_list: 
 
 /// Home again, before the crates are unloaded: those the wagon bought or collected for the forwarder are in its hands, to be
 /// carted in and booked on (`Freight.forwarding`, then `insert`).
-pub fn home_forwarding(mut routes: Query<(&Route, &mut RouteState)>, mut hubs: Query<&mut Hub>, towns_list: Res<Towns>) {
-    for (route, mut state) in &mut routes {
+pub fn home_forwarding(mut routes: Query<(Entity, &Route, &mut RouteState)>, mut hubs: Query<&mut Hub>,
+        towns_list: Res<Towns>) {
+    // In the routes' order: crates from several runs reach one forwarder's hands in an order a load keeps.
+    for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
+        let (_, route, mut state) = routes.get_mut(e).unwrap();
         if state.arrived != Some(Leg::Home) {
             continue;
         }
