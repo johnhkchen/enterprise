@@ -352,6 +352,12 @@ pub fn copies_books(content: &Content, trade: TradeId) -> bool {
 /// and a Librarian while the far end's books are stale.
 pub fn trip_wants(content: &Content, state: &RouteState) -> Vec<TradeId> {
     let mut wanted = state.wanted_trades.clone();
+    // And the trades whose services there the ledgers say the far end would want (`services.rs`).
+    for &t in &state.services_wanted {
+        if !wanted.contains(&t) {
+            wanted.push(t);
+        }
+    }
     if state.books_stale {
         if let Some(l) = content.trade(LIBRARIAN) {
             if !wanted.contains(&l) {

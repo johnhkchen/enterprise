@@ -38,6 +38,7 @@ pub mod roster;
 pub mod rules;
 pub mod save;
 pub mod settlers;
+pub mod services;
 pub mod slices;
 pub mod squad;
 pub mod society;

@@ -53,6 +53,7 @@ fn eat(content: &Content, ledger: &mut Ledger, stock: &mut Stock, mut points: f6
 pub fn mood_target(d: &crate::content::Dials, people: &People, works: Option<&crate::works::Works>) -> f64 {
     people.comfort_met.iter().sum::<f64>()
         + works.map_or(0.0, |w| w.mood())
+        + crate::services::blessing_mood(d, people, works) // a Cleric's blessing (`services.rs`)
         - people.villagers / d.villagers_per_want
         - d.crowding_mood * (people.villagers - people.beds).max(0.0)
         - d.unpaid_mood * (1.0 - people.paid_share)

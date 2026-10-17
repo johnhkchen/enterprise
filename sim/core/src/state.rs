@@ -99,6 +99,8 @@ pub struct People {
     pub last: u64,
     pub homes_built: u32,
     pub born: u32,
+    /// Services (`services.rs`): a Cleric's blessing lasts until then (`Holding.blessedUntil`); none, never blessed.
+    pub blessed_until: Option<u64>,
 }
 
 /// What a town holds of each good.
@@ -181,6 +183,10 @@ pub struct Wagon {
     /// Desires and backhauls (`desires.rs`): what its town shops for at the far end, in emeralds' worth of each kind
     /// of comfort (`Caravan.shopping`), until it has shopped.
     pub shopping: Vec<f64>,
+    /// Services (`services.rs`): the animals a Shepherd drives, a kind each (by place in `Content::animals`), and the
+    /// markets the crew learned of at the far end, which its town hears of once it's home (`Caravan.news`).
+    pub herd: Vec<usize>,
+    pub news: Vec<usize>,
 }
 
 /// A town's run to another: how long the road takes one way, what a round trip costs in road food, its timetable.
@@ -274,6 +280,15 @@ pub struct RouteState {
     pub bought: f64,
     pub purchases: f64,
     pub backhauled: f64,
+    /// Services (`services.rs`): the trades whose services abroad the far end would want this trip, from the ledgers
+    /// alone (`Services.wantedAbroad`); when a Cartographer last mapped the road and the most towns it saw along it
+    /// (`mappedAt`, `townsMapped`); animals its Shepherds sold there (`animalsSold`); and what its squads' services
+    /// earned in all (`serviceSpurs`, in emeralds).
+    pub services_wanted: Vec<crate::roster::TradeId>,
+    pub mapped_at: Option<u64>,
+    pub towns_mapped: u32,
+    pub animals_sold: u32,
+    pub service_paid: f64,
 }
 
 /// A route's ends, before a load links them to their towns' entities again (from `from_id` and `to_id`).

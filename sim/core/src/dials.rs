@@ -371,4 +371,16 @@ dials! {
     resale_ceiling: f64 = 0.75,
     /// A wagon takes this much over what the far end is short of in a kind of comfort (`COMFORT_MARGIN`).
     comfort_margin: f64 = 1.5,
+    // services (`services.rs`: `service/Services.java`, `TownServices.java`, `Crafts.java`, `CaravanServices.java`)
+    /// The trades' services at all: at home, abroad and in planning a trip (off: none, as before they came).
+    services: bool = true,
+    /// A visiting Cleric's blessing costs this much and lasts so many days and a day a level (`TownServices.BLESSING_EMERALDS`,
+    /// `BLESSING_DAYS`); while blessed, the town's mood heads this much higher (`Territory.BLESSING_MOOD`).
+    blessing_emeralds: f64 = 2.0,
+    blessing_days: f64 = 2.0,
+    blessing_mood: f64 = 0.5,
+    /// A town pays this much for each market it learns of from a map swap beyond those it teaches (`MAP_EMERALDS`).
+    map_emeralds: f64 = 0.25,
+    /// Each paid service abroad counts this much of a kept installment toward the two towns' trust (`TRUST_PER_SERVICE`).
+    trust_per_service: f64 = 0.1,
 }
