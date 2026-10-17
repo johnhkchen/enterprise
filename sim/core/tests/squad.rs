@@ -1,0 +1,395 @@
+//! Squads (`squad.rs`, `rules/squad.rs`), pinned as the mod's caravan tests pin them: the test network's hub and far
+//! end four blocks apart (a point of food a leg, 80 ticks on the road), bread at six an emerald for 5 points, paper at
+//! 24 an emerald; the hub's Merchant at its desk and a squad of trained hands (level 2, no locker of their own:
+//! `CaravanTests.squadMember`).
+
+use enterprise_core::cash_book::Account;
+use enterprise_core::road::Stay;
+use enterprise_core::roster::Hand;
+use enterprise_core::squad::{self, available, eligible, muster, Needs};
+use enterprise_core::{Content, Good, Incoterm, Roster, Society};
+
+const DAY: u64 = 24_000;
+/// A look: the core looks every 1,200 ticks.
+const LOOK: u64 = 1_200;
+const PAPER: usize = 0;
+const BREAD: usize = 1;
+const SADDLE: usize = 2;
+const HUB: usize = 0;
+const DEST: usize = 1;
+
+fn content() -> Content {
+    Content::new(vec![Good::new("paper", 1.0 / 24.0, 64), Good::new("bread", 1.0 / 6.0, 64).food(5.0),
+        Good::new("saddle", 6.0, 1)], DAY)
+}
+
+/// The mod's test network (`CaravanTests.network`): a hub with 128 paper, `bread` and `emeralds`, its Merchant at the
+/// desk and a squad of `squad` (trained at level 2: no locker; `none` and `nitwit` as they come); a far end four blocks
+/// away holding `dest_spurs` (16 an emerald) and two bread, whose lockers take paper up to a stack (its par).
+fn network(bread: f64, emeralds: f64, dest_spurs: f64, squad: &[&str]) -> Society {
+    let mut s = Society::new(content());
+    s.content_mut().dials.standing_orders = false;
+    let hub = s.add_town("Hub", emeralds);
+    let dest = s.add_town("Dest", dest_spurs / 16.0);
+    s.record_capacity(dest, 1, &[(PAPER, 64.0 / 5.0)]);
+    s.set_trade(dest, PAPER, 0.0, 1e-9);
+    s.deliver(hub, PAPER, 128.0);
+    if bread > 0.0 {
+        s.deliver(hub, BREAD, bread);
+    }
+    s.deliver(dest, BREAD, 2.0);
+    let mut hands: Vec<(&str, u8)> = vec![("merchant", 1)];
+    hands.extend(squad.iter().map(|&t| (t, if t == "none" || t == "nitwit" { 1 } else { 2 })));
+    s.set_roster(hub, &hands);
+    for i in 1..hands.len() {
+        s.set_offers(hub, i, Vec::new()); // trained: it keeps its trade without a workstation
+    }
+    s.add_route(hub, dest, 4.0 / 1200.0, 0.0, 4.0);
+    s
+}
+
+/// The hands who could go from the hub, and its roster.
+fn home(s: &Society) -> (Roster, Vec<usize>) {
+    let roster = s.roster(HUB);
+    let lockers = s.lockers(HUB);
+    let avail = available(s.content(), &roster, lockers.as_ref());
+    (roster, avail)
+}
+
+fn trades(s: &Society, roster: &Roster, hands: &[usize]) -> Vec<String> {
+    hands.iter().map(|&i| s.content().trades[roster.hands[i].trade].name.clone()).collect()
+}
+
+fn away(s: &Society, town: usize) -> usize {
+    s.roster(town).hands.iter().filter(|h| h.away).count()
+}
+
+// parity: CaravanTests.extraMembersGoOnlyWhereTheyHelp
+#[test]
+fn extra_members_go_only_where_they_help() {
+    let s = network(2.0, 5.0, 192.0, &["cartographer", "shepherd"]);
+    let c = s.content();
+    let (roster, avail) = home(&s);
+    assert_eq!(muster(c, &roster, &avail, &Needs::of(c, false, false, false), 3).len(), 1,
+        "nothing to map, no animals: the lead goes alone");
+    let animals = Needs::of(c, false, false, true);
+    let squad = muster(c, &roster, &avail, &animals, 3);
+    assert_eq!(trades(&s, &roster, &squad), ["cartographer", "shepherd"], "animals to drive: the Shepherd comes too");
+    assert_eq!(muster(c, &roster, &avail, &animals, 0).len(), 1, "unless she's another route's lead");
+}
+
+// parity: CaravanTests.aClericGoesAlongButNeverLeads
+#[test]
+fn a_cleric_goes_along_but_never_leads() {
+    let s = network(2.0, 5.0, 192.0, &["cleric"]);
+    let (roster, avail) = home(&s);
+    assert_eq!(trades(&s, &roster, &avail), ["cleric"], "she could go");
+    assert!(muster(s.content(), &roster, &avail, &Needs::all(s.content()), 3).is_empty(),
+        "a Cleric alone doesn't drive the wagon");
+}
+
+// parity: CaravanTests.aSquadIsNeverMoreThanFour
+#[test]
+fn a_squad_is_never_more_than_four() {
+    let s = network(2.0, 5.0, 192.0, &["cartographer", "librarian", "shepherd", "leatherworker", "fisherman", "fisherman"]);
+    let (roster, avail) = home(&s);
+    let squad = muster(s.content(), &roster, &avail, &Needs::all(s.content()), 9);
+    assert_eq!(squad.len(), squad::MAX, "four at most: {:?}", trades(&s, &roster, &squad));
+    assert_eq!(trades(&s, &roster, &squad), ["fisherman", "cartographer", "librarian", "shepherd"],
+        "by water a Fisherman leads, then the rest in the squad's order");
+}
+
+// parity: CaravanTests.babiesAndTheDesksMerchantStayHome
+#[test]
+fn babies_and_the_desks_merchant_stay_home() {
+    let c = content();
+    let cartographer = c.trade("cartographer").unwrap();
+    let none = c.trade("none").unwrap();
+    let mut baby = Hand::new(&c, cartographer, 2);
+    baby.baby_until = Some(DAY);
+    let roster = Roster::new(&c, vec![Hand::new(&c, c.trade("merchant").unwrap(), 1), baby, Hand::new(&c, none, 1)]);
+    assert!(!eligible(&c, &roster, None, 1), "no babies on the road");
+    let avail = available(&c, &roster, None);
+    assert_eq!(avail, vec![2], "only the untrained adult could go");
+    let needs = Needs { porters: 2, ..Default::default() };
+    assert!(muster(&c, &roster, &avail, &needs, 3).is_empty(), "the untrained go only as porters, and never alone");
+    assert!(!eligible(&c, &roster, None, 0) && !avail.contains(&0), "and not the Merchant who works the desk");
+}
+
+#[test]
+fn a_hand_working_a_locker_stays_home() {
+    // A Librarian whose paper-buying offer the Merchant runs is the market's trade: it doesn't go.
+    let mut s = network(2.0, 5.0, 192.0, &["librarian"]);
+    let c = s.content().clone();
+    let (roster, avail) = home(&s);
+    assert_eq!(trades(&s, &roster, &avail), ["librarian"]);
+    let paper = enterprise_core::Offer::buys(PAPER, 24, 1, 16, 2, 0.05);
+    s.set_offers(HUB, 1, vec![paper]);
+    s.switch(HUB, 1, 0, true);
+    let lockers = s.lockers(HUB).unwrap();
+    assert!(lockers.managed.contains(&1));
+    assert!(available(&c, &s.roster(HUB), Some(&lockers)).is_empty(), "working its locker: not in the squad");
+}
+
+// parity: CaravanTests.noSquadNoCaravan
+#[test]
+fn no_squad_no_caravan() {
+    let mut s = network(2.0, 5.0, 192.0, &[]);
+    s.advance(LOOK);
+    assert!(!s.route(0).on_the_road, "nobody to send, nobody goes");
+    assert_eq!(s.road_food(0).stayed, Some(Stay::NoSquad), "the route says so");
+    assert_eq!(s.town(HUB).stock[PAPER], 128.0, "the paper stays home");
+}
+
+// parity: CaravanTests.aTownShortOfCrewTakesOnAHand
+#[test]
+fn a_town_short_of_crew_takes_on_a_hand() {
+    let mut s = network(2.0, 8.0, 192.0, &["none"]);
+    // (A town that can't pay to train one: it signs the hand on instead, as the poll does in the mod's test.)
+    s.set_dial("training_emeralds", 1000.0).unwrap();
+    s.advance(LOOK);
+    let (trade, level, xp, away) = s.hand(HUB, 1).unwrap();
+    assert_eq!((trade.as_str(), level), ("merchant", 1), "the Merchant takes the hand on as a travelling Merchant");
+    assert!(xp > 0, "and it keeps the trade");
+    assert!(s.route(0).on_the_road, "it leads the caravan");
+    assert!(away, "off home while on the road");
+    assert_eq!(s.crew(0).crew, vec![("merchant".to_string(), 1)]);
+    let book = s.cash_book(HUB, 1);
+    assert!(book.iter().any(|(_, why, v)| why == "signing" && (*v + 2.0).abs() < 1e-12), "2 emeralds to sign on: {book:?}");
+    assert_eq!(s.roster(HUB).merchant, Some(0), "the desk's Merchant is still the desk's");
+    s.advance(4 * LOOK);
+    assert!(!s.route(0).on_the_road, "home");
+    let (trade, _, _, away) = s.hand(HUB, 1).unwrap();
+    assert!(trade == "merchant" && !away, "home again, still a travelling Merchant");
+}
+
+// parity: CaravanTests.aTownWithARouteTrainsItsSquad
+#[test]
+fn a_town_with_a_route_trains_its_squad() {
+    let mut s = network(2.0, 20.0, 192.0, &["none"]);
+    let pupil = 1;
+    let money = s.town(HUB).money;
+    assert_eq!(s.train_squad(HUB), Some(pupil), "the unemployed adult is trained");
+    let (trade, level, xp, _) = s.hand(HUB, pupil).unwrap();
+    assert!(trade == "merchant" && level == 1 && xp > 0, "as a Merchant first, and keeps the trade: {trade} {xp}");
+    assert!((money - s.town(HUB).money - 4.0).abs() < 1e-12, "for 4 emeralds");
+    let book = s.cash_book(HUB, 1);
+    assert!(book.iter().any(|(_, why, v)| why == "training" && (*v + 4.0).abs() < 1e-12), "{book:?}");
+    // A lead a route and a spare, at most four: the next learns the next lead trade, then it has enough.
+    s.add_hand(HUB, "none", 1);
+    s.add_hand(HUB, "none", 1);
+    assert_eq!(s.train_squad(HUB), Some(2));
+    assert_eq!(s.hand(HUB, 2).unwrap().0, "cartographer", "the trade the squad lacks next");
+    assert_eq!(s.train_squad(HUB), None, "two leads for one route: enough");
+    // A town with no route trains nobody.
+    let mut s = network(2.0, 20.0, 192.0, &["none"]);
+    let lone = s.add_town("Lone", 20.0);
+    s.set_roster(lone, &[("merchant", 1), ("none", 1)]);
+    assert_eq!(s.train_squad(lone), None);
+}
+
+#[test]
+fn a_town_trains_once_a_day_in_its_review() {
+    let mut s = network(2.0, 20.0, 192.0, &["none", "none", "none"]);
+    s.advance(LOOK);
+    let roster = s.roster(HUB);
+    let named: Vec<String> = (1..4).map(|i| s.hand(HUB, i).unwrap().0).collect();
+    assert_eq!(named, ["merchant", "none", "none"], "one a day: {roster:?}");
+    assert!(s.route(0).on_the_road, "and the trained Merchant leads the day's wagon");
+    s.advance(DAY + LOOK);
+    assert_eq!(s.hand(HUB, 2).unwrap().0, "cartographer", "the next day, the next lead");
+    s.advance(2 * DAY + LOOK);
+    assert_eq!(s.hand(HUB, 3).unwrap().0, "none", "a lead and a spare for one route: no more");
+}
+
+// parity-partial: CaravanTests.theSquadLeavesTheWorldAndComesBack
+#[test]
+fn the_squad_leaves_home_and_comes_back() {
+    // 70 bread (350 food points): food to spare past the caravans' 320-point par, for a second member. What the trip
+    // wants of them (books, mapping: `Services.wantedAbroad`) is the host's to say here.
+    let mut s = network(70.0, 5.0, 192.0, &["cartographer", "librarian"]);
+    s.want_trades(0, &["cartographer", "librarian"]);
+    assert_eq!(s.food_points(HUB), 350.0);
+    s.advance(LOOK);
+    let crew = s.crew(0);
+    assert_eq!(crew.crew.len(), 2, "both go: {crew:?}");
+    assert_eq!(away(&s, HUB), 2, "both are away from home while on the road");
+    assert_eq!(s.food_points(HUB), 345.0, "both eat: 2 food points, one bread");
+    assert_eq!(s.road_food(0).food_a_leg, 2.0);
+    s.advance(4 * LOOK);
+    assert!(!s.route(0).on_the_road, "home");
+    assert_eq!(away(&s, HUB), 0, "both are back");
+    let named: Vec<String> = (1..3).map(|i| s.hand(HUB, i).unwrap().0).collect();
+    assert_eq!(named, ["cartographer", "librarian"], "still in their trades");
+    assert_eq!(s.road_food(0).food_eaten, 4.0, "two mouths, both ways");
+}
+
+#[test]
+fn one_more_mouth_goes_only_when_home_can_feed_it() {
+    // Two bread (10 points) is short of the caravans' 320-point par: the lead goes alone, though both are wanted.
+    let mut s = network(2.0, 5.0, 192.0, &["cartographer", "librarian"]);
+    s.want_trades(0, &["cartographer", "librarian"]);
+    s.advance(LOOK);
+    assert_eq!(s.crew(0).crew, vec![("cartographer".to_string(), 2)], "the lead alone");
+    assert_eq!(away(&s, HUB), 1);
+}
+
+#[test]
+fn every_other_waiting_route_keeps_a_lead() {
+    // Two routes out of the hub and two leads: the first doesn't take the second's lead as an extra.
+    let mut s = network(70.0, 10.0, 192.0, &["cartographer", "librarian"]);
+    let far = s.add_town("Far", 12.0);
+    s.record_capacity(far, 1, &[(PAPER, 64.0 / 5.0)]);
+    s.set_trade(far, PAPER, 0.0, 1e-9);
+    s.deliver(far, BREAD, 2.0);
+    s.add_route(HUB, far, 4.0 / 1200.0, 0.0, 4.0);
+    s.want_trades(0, &["librarian"]);
+    s.advance(LOOK);
+    assert_eq!(s.crew(0).crew, vec![("cartographer".to_string(), 2)], "the first route's lead, no extra");
+    assert_eq!(s.crew(1).crew, vec![("librarian".to_string(), 2)], "the second keeps its lead");
+}
+
+// parity: CaravanTests.aLeatherworkersPacksCarryMore
+#[test]
+fn a_leatherworkers_packs_carry_more() {
+    let mut s = network(70.0, 5.0, 192.0, &["librarian", "leatherworker"]);
+    s.deliver(HUB, PAPER, 30.0 * 64.0); // 32 stacks of paper for a town that buys paper
+    s.advance(LOOK);
+    let crew = s.crew(0);
+    assert_eq!((crew.crew.len(), crew.slots), (2, 36), "with packs: 36 stacks, {crew:?}");
+}
+
+// parity: CaravanTests.aPorterCarriesOutAndWalksHome
+#[test]
+fn a_porter_carries_out_and_walks_home() {
+    let mut s = network(70.0, 5.0, 192.0, &["librarian", "nitwit"]);
+    s.deliver(HUB, PAPER, 30.0 * 64.0);
+    s.advance(LOOK);
+    let crew = s.crew(0);
+    assert_eq!((crew.crew.len(), crew.slots), (2, 36), "a porter: 36 stacks, {crew:?}");
+    assert_eq!(away(&s, HUB), 2);
+    s.advance(2 * LOOK); // there, at 1,280
+    let crew = s.crew(0);
+    assert_eq!((crew.crew.len(), crew.walkers), (1, 1), "the load delivered, the porter walks home: {crew:?}");
+    assert_eq!(crew.walker_home_at, Some(2 * LOOK + 80), "a leg's walk");
+    assert_eq!(crew.slots, 27, "the wagon's own slots left");
+    s.advance(3 * LOOK);
+    let crew = s.crew(0);
+    assert_eq!(crew.walkers, 0, "and is home");
+    assert_eq!(away(&s, HUB), 0, "by the desk");
+    assert_eq!(crew.porters_sent, 1);
+    assert_eq!(s.road_food(0).food_eaten, 3.0, "two mouths out, one home");
+}
+
+// parity: CaravanTests.aSaddledCaravanRidesFaster
+#[test]
+fn a_saddled_caravan_rides_faster() {
+    let mut s = network(2.0, 5.0, 192.0, &["librarian"]);
+    s.deliver(HUB, SADDLE, 1.0);
+    s.advance(LOOK);
+    let crew = s.crew(0);
+    assert_eq!(crew.arrives, Some(LOOK + 60), "a third faster: there at 60 ticks, not 80");
+    assert!(crew.saddled && (crew.saddle_wear - 0.1).abs() < 1e-12, "a tenth of the saddle worn");
+    s.advance(2 * LOOK);
+    assert_eq!(s.road_food(0).home_at, Some(2 * LOOK + 60), "and home again as fast");
+    // Without a saddle, 80.
+    let mut s = network(2.0, 5.0, 192.0, &["librarian"]);
+    s.advance(LOOK);
+    assert_eq!(s.crew(0).arrives, Some(LOOK + 80));
+}
+
+#[test]
+fn a_saddle_wears_out_on_its_eleventh_trip() {
+    let c = content();
+    let mut state = enterprise_core::state::RouteState::default();
+    let mut ledger = enterprise_core::state::Ledger { used: vec![0.0; 3], ..Default::default() };
+    let mut stock = vec![0.0, 0.0, 1.0];
+    let trips = (1..=20).take_while(|_| enterprise_core::rules::squad::saddle(&c, &mut ledger, &mut state, &mut stock)).count();
+    assert_eq!(trips, 11, "a tenth a trip (ten tenths sum a hair short of one): used up on the eleventh");
+    assert_eq!((stock[SADDLE], ledger.used[SADDLE]), (0.0, 1.0), "into the ledger's used");
+    assert!(!enterprise_core::rules::squad::saddle(&c, &mut ledger, &mut state, &mut stock), "none left: no saddle");
+}
+
+/// The mod's test: a first trip home with nothing left, then 32 paper owed in two days. Returns the society, the
+/// contract and the tick its wagon went.
+fn owed_by_porter() -> (Society, usize, u64) {
+    let mut s = network(8.0, 5.0, 192.0, &["librarian"]);
+    s.advance(LOOK);
+    s.advance(4 * LOOK);
+    assert!(!s.route(0).on_the_road, "its first trip done");
+    assert_eq!(s.crew(0).last_home, Some(0), "all of it sold: nothing came home");
+    let t = s.now();
+    let id = s.draft(HUB, DEST, PAPER, 32.0, 0.5, t + 2 * DAY, DAY, 1, Incoterm::Dap, true);
+    s.advance(t + 2 * DAY);
+    assert!(!s.route(0).on_the_road && s.contract(id).delivered == 0.0, "due, with days of grace yet: it waits");
+    for look in 1..=(2 * DAY / LOOK) {
+        s.advance(t + 2 * DAY + look * LOOK);
+        if s.route(0).on_the_road {
+            let went = s.now();
+            return (s, id, went);
+        }
+    }
+    panic!("it never went");
+}
+
+// parity-partial: CaravanTests.goodsOwedWaitTillTheyCantAndASmallLoadGoesByPorter
+#[test]
+fn the_day_it_cant_wait_a_small_load_goes_by_porter() {
+    let (mut s, id, went) = owed_by_porter();
+    let crew = s.crew(0);
+    assert!(crew.porter && crew.slots == 9, "the day it can't wait, it goes; half a stack on a porter's back: {crew:?}");
+    assert_eq!(crew.crew.len(), 1);
+    s.advance(went + 2 * LOOK);
+    assert_eq!(s.contract(id).delivered, 32.0, "delivered");
+    assert_eq!(s.contract(id).missed, 0, "in time");
+}
+
+#[test]
+fn a_porter_run_has_no_team_to_feed() {
+    let (s, _, went) = owed_by_porter();
+    let day = went / DAY;
+    let road = |s: &Society, d: u64| -> f64 {
+        s.cash_book(HUB, 30).iter().filter(|(on, why, _)| *on == d && why == "road food").map(|(_, _, v)| -v).sum()
+    };
+    assert!((road(&s, 0) - 0.1).abs() < 1e-12, "the first trip's wagon bought its team's fodder, 2 points: {}", road(&s, 0));
+    assert_eq!(road(&s, day), 0.0, "the porter's trip: its food from home's bread, and no team");
+}
+
+#[test]
+fn a_town_without_a_roster_sends_its_one_mouth_wagon() {
+    let mut s = Society::new(content());
+    let hub = s.add_town("Hub", 5.0);
+    let dest = s.add_town("Dest", 12.0);
+    s.record_capacity(dest, 1, &[(PAPER, 64.0 / 5.0)]);
+    s.set_trade(dest, PAPER, 0.0, 1e-9);
+    s.deliver(hub, PAPER, 128.0);
+    s.deliver(hub, BREAD, 2.0);
+    s.add_route(hub, dest, 4.0 / 1200.0, 0.0, 4.0);
+    s.advance(LOOK);
+    assert!(s.route(0).on_the_road, "no roster, no squad wanted");
+    let crew = s.crew(0);
+    assert!(crew.crew.is_empty() && !crew.porter, "{crew:?}");
+    assert_eq!(s.road_food(0).food_a_leg, 1.0, "one mouth");
+}
+
+#[test]
+fn a_crew_on_the_road_survives_a_save() {
+    let mut s = network(70.0, 5.0, 192.0, &["librarian", "nitwit"]);
+    s.deliver(HUB, PAPER, 30.0 * 64.0);
+    s.advance(LOOK);
+    let blob = s.save();
+    let mut loaded = Society::load(&blob).unwrap();
+    assert!(loaded.unsaved().is_empty(), "{:?}", loaded.unsaved());
+    for to in [2 * LOOK, 3 * LOOK, 5 * LOOK] {
+        s.advance(to);
+        loaded.advance(to);
+        assert_eq!(s.crew(0), loaded.crew(0));
+        assert_eq!(s.roster(HUB), loaded.roster(HUB));
+    }
+    let start = s.totals();
+    s.advance(10 * DAY);
+    s.conserved(&start).unwrap();
+    s.solvent().unwrap();
+    assert_eq!(s.balance(Account::Wagon(0)).is_some(), s.route(0).on_the_road);
+}
+

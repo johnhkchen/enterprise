@@ -30,6 +30,7 @@ pub mod plan;
 pub mod road;
 pub mod roster;
 pub mod settlers;
+pub mod squad;
 pub mod territory;
 pub mod touch;
 pub mod training;

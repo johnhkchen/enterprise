@@ -23,7 +23,7 @@ pub fn register(schedule: &mut Schedule) {
 }
 
 /// An idle route starts a plan; a route with its wagon out has none.
-fn start(content: Res<Content>, mut routes: Query<&mut RouteState>) {
+pub fn start(content: Res<Content>, mut routes: Query<&mut RouteState>) {
     let n = content.goods.len();
     for mut state in &mut routes {
         state.plan = state.wagon.is_none().then(|| Plan { cargo: vec![0.0; n], ..Default::default() });
@@ -43,6 +43,8 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut rout
     order.sort_by(|&a, &b| content.goods[a].value.total_cmp(&content.goods[b].value));
     for (route, mut state) in &mut routes {
         let Some(plan) = state.plan.as_mut() else { continue };
+        // The squad's slots (`squad.rs`: packs and porters), a wagon's without one.
+        let slots = if plan.slots > 0 { plan.slots } else { d.wagon_slots };
         let Ok([(home_stock, home_trades, home_people), (far_stock, far_trades, far_people)]) =
             towns.get_many([route.from, route.to]) else { continue };
         let seller = crate::bargain::merchant_level(rosters.get(route.from).ok());
@@ -63,7 +65,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut rout
         stacks += plan.shipments.iter().map(|s| s.stacks(&content)).sum::<u32>(); // home's crates (`rules/cargo.rs`)
         let mut loaded_kind = vec![0.0; content.comforts.len()];
         for &g in &order {
-            if stacks >= d.wagon_slots {
+            if stacks >= slots {
                 break;
             }
             let value = content.goods[g].value.max(1e-9);
@@ -82,7 +84,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut rout
                 None => continue,
             };
             let stack = content.goods[g].stack as f64;
-            let going = spare.min(room).min((d.wagon_slots - stacks) as f64 * stack).floor();
+            let going = spare.min(room).min((slots - stacks) as f64 * stack).floor();
             if going <= 0.0 {
                 continue;
             }
@@ -106,7 +108,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut rout
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut outbox: ResMut<Outbox>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
-        mut towns: Query<TownData>, rosters: Query<&crate::roster::Roster>) {
+        mut towns: Query<TownData>, mut rosters: Query<&mut crate::roster::Roster>) {
     let now = clock.now;
     let d = &content.dials;
     // Road food (`road.rs`): what wagons on their way out will eat at each far end, if they packed none.
@@ -154,16 +156,31 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         // Home's crates it takes (`rules/cargo.rs`).
         stacks += plan.shipments.iter().map(|s| s.stacks(&content)).sum::<u32>();
         plan.stacks = stacks;
-        let full = plan.stacks as f64 >= d.wagon_full * d.wagon_slots as f64;
         let on_its_day = state.last_departure.map_or(true, |t| now - t >= route.every_ticks);
+        // A small load goes on a porter's back (`squad.rs`): one hand, one pack, no team to feed.
+        let owed_stacks: u32 = owed.iter().enumerate()
+            .map(|(g, n)| (n / content.goods[g].stack as f64).ceil() as u32).sum();
+        let porter = crate::rules::squad::porter_run(&content, &state, &plan, owed_stacks, on_its_day,
+            rosters.get(route.from).ok());
+        if porter {
+            crate::rules::squad::to_porter(&content, &mut plan, rosters.get(route.from).unwrap());
+        }
+        let slots = if plan.slots > 0 { plan.slots } else { d.wagon_slots };
+        let full = plan.stacks as f64 >= d.wagon_full * slots as f64;
+        // Each of the crew eats (`squad.rs`); a town without a roster sends one.
+        let mouths = plan.crew.len().max(1) as f64;
         // The road's cost: its food where content has food (eaten from home, bought on the way, a purse for the road
         // home's), else its money; a load must be worth both legs' food, and home must pay for the road and the purse.
         let keep_wheat = food_mode && crate::road::keep_wheat(&content, trades, rosters.get(route.from).ok());
         let provision = food_mode.then(|| {
             let after: Vec<f64> = stock.0.iter().zip(&plan.cargo).map(|(s, c)| s - c).collect();
             let home_free = free(&content, trades, &money, &bills, route.from_id, now);
-            provision(&content, route.blocks, crate::road::mouths(None), crate::road::held(&content, &after), far_food,
-                home_free, |feed| crate::road::fodder(&content, &after, feed, keep_wheat).2)
+            let mut p = provision(&content, route.blocks, mouths, crate::road::held(&content, &after), far_food,
+                home_free, |feed| crate::road::fodder(&content, &after, feed, keep_wheat).2);
+            if porter {
+                crate::rules::squad::no_team(&content, &mut p);
+            }
+            p
         });
         let (road_money, wagon_purse, cost) = match provision {
             Some(p) => (p.food_coin + p.team_coin, p.road_purse + plan.purse, p.cost),
@@ -205,7 +222,10 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             (Side::outside(), road_money, Reason::RoadFood),
             (Side::wagon(route.seq, &mut purse), wagon_purse, Reason::WagonPurse),
         ], now, content.day_ticks);
-        let arrival = now + route.travel_ticks;
+        // The crew go away from home (`squad.rs`); a saddle in the warehouse, it rides a third faster.
+        let crew = crate::rules::squad::depart(rosters.get_mut(route.from).ok().map(|r| r.into_inner()), &plan.crew);
+        let saddled = crate::rules::squad::saddle(&content, &mut ledger, &mut state, &mut stock.0);
+        let arrival = now + crate::squad::leg_ticks(&content, route.travel_ticks, saddled, 1.0);
         state.last_departure = Some(now);
         state.carried += plan.cargo.iter().sum::<f64>();
         let papers = bills.take_to_present(route.from_id, route.to_id, arrival);
@@ -219,6 +239,10 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             bills: papers,
             provisions: provision.map_or(0.0, |p| p.provisions),
             shipments: plan.shipments,
+            crew,
+            porter,
+            slots,
+            saddled,
             ..Default::default()
         });
         outbox.0.push(Output::WagonLeft { route: route.seq, stacks: plan.stacks, worth: plan.worth });

@@ -113,6 +113,7 @@ pub fn feed(clock: Res<Clock>, content: Res<Content>, mint: Res<crate::mint::Min
             }
         };
         wagon.leg = Leg::Home;
-        wagon.arrives = now + (route.travel_ticks as f64 * pace) as u64;
+        // At its pace (a saddled wagon a third faster: `squad.rs`), and half that on short rations.
+        wagon.arrives = now + crate::squad::leg_ticks(&content, route.travel_ticks, wagon.saddled, pace);
     }
 }

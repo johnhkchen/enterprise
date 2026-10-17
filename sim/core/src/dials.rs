@@ -302,4 +302,15 @@ dials! {
     /// a stack of a good is a slot and the warehouse holds this many (a double chest's worth).
     warehouse_slots: u32 = 54,
     free_slots: u32 = 5,
+    // squads (`squad.rs`, `caravan/Squad.java`, `Commissions.java`, `Caravans.java`)
+    /// What the desk's Merchant pays a hand to sign on as a travelling Merchant (`Squad.SIGNING_EMERALDS`).
+    signing_emeralds: f64 = 2.0,
+    /// What training a hand for a squad costs (`Commissions.TRAINING_EMERALDS`).
+    training_emeralds: f64 = 4.0,
+    /// Stacks a Leatherworker's packs, or a porter's back, carry beyond the wagon (`Squad.PACK_STACKS`).
+    pack_stacks: u32 = 9,
+    /// A saddled wagon's pace: a third faster (`Caravans.SADDLED_PACE`).
+    saddled_pace: f64 = 4.0 / 3.0,
+    /// The share of a saddle a trip wears out (`Caravans.SADDLE_WEAR_PER_TRIP`).
+    saddle_wear: f64 = 0.1,
 }

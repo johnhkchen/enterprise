@@ -20,10 +20,11 @@ fn at(s: &mut Society, t: usize, hex: Hex) {
 }
 
 /// A town of ten at the origin, five of them idle, with 150 bread (750 food points, past twice the par of 320) and
-/// `money`; its Merchant, a Farmer and three of other trades make up the rest.
+/// `money`; its Merchant, a Farmer and three of other trades make up the rest: a Cartographer and a Librarian among
+/// them, the leads its road to a settled village wants, so it trains none (`squad.rs`).
 fn home(s: &mut Society, money: f64) -> usize {
     let t = s.add_town("Home", money);
-    s.set_roster(t, &[("merchant", 2), ("farmer", 1), ("farmer", 1), ("cleric", 1), ("mason", 1), ("none", 1), ("none", 1),
+    s.set_roster(t, &[("merchant", 2), ("farmer", 1), ("farmer", 1), ("cartographer", 1), ("librarian", 1), ("none", 1), ("none", 1),
         ("none", 1), ("nitwit", 1), ("none", 1)]);
     s.set_people(t, 10.0, 12.0, 12.0);
     s.deliver(t, BREAD, 150.0);

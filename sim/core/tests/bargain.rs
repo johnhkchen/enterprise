@@ -74,7 +74,8 @@ fn farm_and_mill(farm_level: Option<u8>, mill_level: Option<u8>, bargain: bool) 
     s.set_trade(mill, 0, 0.0, 64.0);
     s.deliver(farm, 0, 200.0);
     if let Some(l) = farm_level {
-        s.set_roster(farm, &[("merchant", l)]);
+        // And a Cartographer to drive its wagon: the desk's Merchant stays home (`squad.rs`).
+        s.set_roster(farm, &[("merchant", l), ("cartographer", 1)]);
     }
     if let Some(l) = mill_level {
         s.set_roster(mill, &[("merchant", l)]);

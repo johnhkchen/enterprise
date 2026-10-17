@@ -42,7 +42,7 @@ pub fn daily(s: &mut Society, r: &mut Rng, _day: u64) {
     s.deliver(t, g, r.range(0.0, 64.0).floor());
 }
 
-/// No wagon waits at a far end longer than `max_wait_ticks` (and a look); provisions within a wagon's food; without
+/// No wagon waits at a far end longer than `max_wait_ticks` (and a look); provisions within its crew's food; without
 /// road food in the content, nothing eaten, paid for or waited on.
 pub fn check(s: &Society, _day: u64) -> Result<(), String> {
     let content = s.content();
@@ -54,7 +54,9 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
                 return Err(format!("route {route} has waited since {since}: {v:?}"));
             }
         }
-        if v.provisions < 0.0 || v.provisions > content.dials.food_capacity as f64 || v.food_eaten < 0.0 || v.food_paid < 0.0 {
+        // (a leg's food a mouth, for a crew of at most a squad: `squad.rs`)
+        let most = content.dials.food_capacity as f64 * enterprise_core::squad::MAX as f64;
+        if v.provisions < 0.0 || v.provisions > most || v.food_eaten < 0.0 || v.food_paid < 0.0 {
             return Err(format!("route {route}: {v:?}"));
         }
         if !food && (v.waiting_since.is_some() || v.short_rations > 0 || v.food_eaten > 0.0 || v.food_paid > 0.0) {

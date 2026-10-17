@@ -84,7 +84,7 @@ pub(crate) fn advances_papers(clock: Res<Clock>, content: Res<Content>, mut book
             }
             let due = c.advance_due();
             // Keeping its road food: the purse for the road home's (`payAdvances`'s `keep`).
-            let coin = due.min((wagon.purse - crate::road::purse_keep(&content, &route)).max(0.0));
+            let coin = due.min((wagon.purse - crate::road::purse_keep(&content, &route, crate::road::mouths(Some(wagon)))).max(0.0));
             post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut money.0),
                 coin, advance_reason(), now, day);
             let mut paid = coin;
@@ -124,9 +124,11 @@ pub(crate) fn plan_advances(clock: Res<Clock>, content: Res<Content>, book: Res<
     for (route, mut state) in &mut routes {
         let Some(plan) = state.plan.as_mut() else { continue };
         let (money, stock, trades, roster) = towns.get(route.from).expect("home");
-        // Room left for the road: its food, fodder and purse where content has food (`road.rs`), else its money.
+        // Room left for the road: its food, fodder and purse where content has food (`road.rs`), else its money; for
+        // the crew it has mustered (`squad.rs`), one without.
         let keep_wheat = crate::road::keep_wheat(&content, trades, roster);
-        let money = money.0 - crate::road::road_money(&content, route, &stock.0, keep_wheat);
+        let mouths = plan.crew.len().max(1) as f64;
+        let money = money.0 - crate::road::road_money(&content, route, &stock.0, keep_wheat, mouths);
         let trusted = book.trust(route.from_id, route.to_id, now, content.day_ticks) >= contracts::MIN_TRUST;
         for id in book.advances_due(route.to_id, route.from_id) {
             let due = book.contracts[id].advance_due();

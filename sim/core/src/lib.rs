@@ -35,6 +35,7 @@ pub mod rules;
 pub mod save;
 pub mod settlers;
 pub mod slices;
+pub mod squad;
 pub mod society;
 pub mod state;
 pub mod territory;

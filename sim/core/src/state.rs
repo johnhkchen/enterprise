@@ -167,6 +167,13 @@ pub struct Wagon {
     pub shipments: Vec<crate::cargo::Shipment>,
     pub empties: u32,
     pub lots: Vec<(usize, f64)>,
+    /// Squads (`squad.rs`): its crew as they left home (marked away in the roster while on the road), whether it's a
+    /// porter run (one hand on foot with a pack, no team), the stacks it carries (0: a wagon's `wagon_slots`), and
+    /// whether it rides saddled (a third faster).
+    pub crew: Vec<crate::roster::Hand>,
+    pub porter: bool,
+    pub slots: u32,
+    pub saddled: bool,
 }
 
 /// A town's run to another: how long the road takes one way, what a round trip costs in road food, its timetable.
@@ -206,6 +213,12 @@ pub struct Plan {
     pub pressing: bool,
     /// Crated goods it would take from home's crates (`cargo.rs`): owed under contract, not in `cargo`.
     pub shipments: Vec<crate::cargo::Shipment>,
+    /// Squads (`squad.rs`): the hands mustered (their places in home's roster), the stacks they carry (0: a wagon's
+    /// `wagon_slots`), the trades this trip wants and the porters its load wants.
+    pub crew: Vec<usize>,
+    pub slots: u32,
+    pub wanted: Vec<crate::roster::TradeId>,
+    pub porters: usize,
 }
 
 /// What a route has done, its wagon if one's on the road, the leg its wagon finished this look (the arriving steps
@@ -226,6 +239,14 @@ pub struct RouteState {
     pub food_eaten: f64,
     pub food_paid: f64,
     pub stayed: Option<crate::road::Stay>,
+    /// Squads (`squad.rs`): the saddle's wear so far (a saddle is used up at 1), porters walking home from the far end,
+    /// the stacks its wagon brought home last trip (`lastHome`), porters sent home (`portersSent`), and the trades whose
+    /// work the far end wants (a host's or a later slice's hook: `Services.wantedAbroad`).
+    pub saddle_wear: f64,
+    pub walkers: Vec<crate::squad::Walker>,
+    pub last_home: Option<u32>,
+    pub porters_sent: u32,
+    pub wanted_trades: Vec<crate::roster::TradeId>,
 }
 
 /// A route's ends, before a load links them to their towns' entities again (from `from_id` and `to_id`).

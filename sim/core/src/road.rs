@@ -16,10 +16,11 @@
 //! cost is the route's `road_cost` in money, as before.
 //!
 //! The wagon's team eats a mouth's food in fodder each leg, from home's hay and wheat it doesn't keep, else bought on the
-//! road (`teamFeed`, `fodderOnHand`, `eatFodder`, `teamCoin`). Not yet: the crew's mouths (one until `squads` lands),
-//! the wheat kept for a contract's inputs or a realm (`wantedAt`: here only its trades and its workshop), the crown's
-//! food reserve (`spareFoodAt`), buying food at the far end's shops (`buyFoodAtShops`), stocktakes (the far end's food
-//! is read off its warehouse now; the mod's unknown stocktake counts as plenty).
+//! road (`teamFeed`, `fodderOnHand`, `eatFodder`, `teamCoin`). Every one of a wagon's crew is a mouth (`squad.rs`; one
+//! for a town without a roster). Not yet: the wheat kept for a contract's inputs or a realm (`wantedAt`: here only its
+//! trades and its workshop), the crown's food reserve (`spareFoodAt`), buying food at the far end's shops
+//! (`buyFoodAtShops`), stocktakes (the far end's food is read off its warehouse now; the mod's unknown stocktake counts
+//! as plenty).
 
 use serde::{Deserialize, Serialize};
 
@@ -73,6 +74,8 @@ pub enum Stay {
     CantFund,
     /// Not full nor on its day, or its load isn't worth its road food ("waiting for a fuller load").
     WaitingForALoad,
+    /// Nobody at home to lead it, and no hand to take on (`squad.rs`: "no squad at home").
+    NoSquad,
 }
 
 /// The food points one of a good is worth on the road: none for a comfort (`MerchantStock.nutrition`: treats aren't
@@ -103,9 +106,9 @@ pub fn travel_ticks(blocks: u32) -> u64 {
     (blocks as u64 * TICKS_PER_BLOCK).max(20)
 }
 
-/// Mouths on a wagon: one, until squads give it a crew.
-pub fn mouths(_wagon: Option<&Wagon>) -> f64 {
-    1.0
+/// Mouths on a wagon: its crew, at least one (`Caravan.mouths`; a town without a roster sends one).
+pub fn mouths(wagon: Option<&Wagon>) -> f64 {
+    wagon.map_or(1, |w| w.crew.len().max(1)) as f64
 }
 
 /// Food points in a warehouse, whole items of road food (`MerchantStock.foodNutrition`).
@@ -147,12 +150,13 @@ pub fn eat(content: &Content, ledger: &mut Ledger, stock: &mut [f64], points: f6
 /// less `roadPurse`; and the food and fodder bought on the road, which the mod's leaves out, so a plan that fills the
 /// purse never keeps the wagon home): where content has food, the road home's purse, the way out's food home hasn't
 /// got and the team's fodder it hasn't; else the route's `road_cost`.
-pub fn road_money(content: &Content, route: &Route, home_stock: &[f64], keep_wheat: bool) -> f64 {
+/// `mouths`: the crew it plans to send (`squad.rs`), one without.
+pub fn road_money(content: &Content, route: &Route, home_stock: &[f64], keep_wheat: bool, mouths: f64) -> f64 {
     if !road_food(content) {
         return route.road_cost;
     }
     let ppfp = content.dials.purse_per_food_point;
-    let food = food_needed(content, route.blocks) * mouths(None);
+    let food = food_needed(content, route.blocks) * mouths;
     let team = 2.0 * food_needed(content, route.blocks) * content.dials.wagon_team as f64;
     let fed = fodder(content, home_stock, team, keep_wheat).2;
     (food + (food - held(content, home_stock)).max(0.0) + team - fed) * ppfp
@@ -160,9 +164,10 @@ pub fn road_money(content: &Content, route: &Route, home_stock: &[f64], keep_whe
 
 /// What a wagon at the far end keeps of its purse for the road home's food, paying advances there (`payAdvances`'s
 /// `keep`): none where content has no road food.
-pub fn purse_keep(content: &Content, route: &Route) -> f64 {
+/// `mouths`: its crew's.
+pub fn purse_keep(content: &Content, route: &Route, mouths: f64) -> f64 {
     if road_food(content) {
-        food_needed(content, route.blocks) * mouths(None) * content.dials.purse_per_food_point
+        food_needed(content, route.blocks) * mouths * content.dials.purse_per_food_point
     } else {
         0.0
     }
