@@ -1,0 +1,8 @@
+# The Enterprise core and its fast host. The core is the society (towns, goods, money, wagons) with no game in it;
+# a host passes time and happenings in, and shows what comes out. See docs/architecture.md.
+[workspace]
+members = ["core", "host"]
+resolver = "2"
+
+[profile.release]
+debug = false

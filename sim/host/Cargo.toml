@@ -1,0 +1,8 @@
+[package]
+name = "enterprise-sim"
+version = "0.1.0"
+edition = "2021"
+description = "Runs the Enterprise core with no game: thousands of days in seconds"
+
+[dependencies]
+enterprise-core = { path = "../core" }

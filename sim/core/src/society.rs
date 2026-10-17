@@ -1,0 +1,162 @@
+//! A society in a world of its own, for hosts that aren't Bevy apps (a Minecraft mod, a companion program, a test):
+//! build it, hand it happenings, read what came out.
+
+use bevy_ecs::prelude::*;
+
+use crate::content::{Content, GoodId};
+use crate::messages::{Input, Output, RouteId, TownId};
+use crate::rules::{catch_up_town, look_schedule};
+use crate::state::*;
+
+pub struct Society {
+    pub world: World,
+    look: Schedule,
+    towns: Vec<Entity>,
+    routes: Vec<Entity>,
+}
+
+/// A town as a host sees it.
+#[derive(Clone, Debug)]
+pub struct TownView {
+    pub name: String,
+    pub money: f64,
+    pub stock: Vec<f64>,
+}
+
+/// A route as a host sees it.
+#[derive(Clone, Debug)]
+pub struct RouteView {
+    pub trips: u32,
+    pub sold: f64,
+    pub carried: f64,
+    pub on_the_road: bool,
+}
+
+impl Society {
+    pub fn new(content: Content) -> Self {
+        let n = content.goods.len();
+        let mut world = World::new();
+        world.insert_resource(Ledger { made: vec![0.0; n], used: vec![0.0; n], delivered: vec![0.0; n], ..Default::default() });
+        world.insert_resource(content);
+        world.insert_resource(Clock::default());
+        world.insert_resource(Outbox::default());
+        Society { world, look: look_schedule(), towns: Vec::new(), routes: Vec::new() }
+    }
+
+    pub fn content(&self) -> &Content {
+        self.world.resource::<Content>()
+    }
+
+    pub fn content_mut(&mut self) -> Mut<'_, Content> {
+        self.world.resource_mut::<Content>()
+    }
+
+    pub fn now(&self) -> u64 {
+        self.world.resource::<Clock>().now
+    }
+
+    /// A town with `money` and nothing made, used or held yet.
+    pub fn add_town(&mut self, name: &str, money: f64) -> TownId {
+        let n = self.content().goods.len();
+        let now = self.now();
+        let e = self
+            .world
+            .spawn((
+                Town { name: name.to_string() },
+                Money(money),
+                Stock(vec![0.0; n]),
+                Trades { makes: vec![0.0; n], uses: vec![0.0; n] },
+                Touched(now),
+                Budget::default(),
+            ))
+            .id();
+        self.towns.push(e);
+        self.towns.len() - 1
+    }
+
+    /// Sets what a town's people make and use of a good a day.
+    pub fn set_trade(&mut self, town: TownId, good: GoodId, makes: f64, uses: f64) {
+        let mut trades = self.world.get_mut::<Trades>(self.towns[town]).expect("a town");
+        trades.makes[good] = makes;
+        trades.uses[good] = uses;
+    }
+
+    /// A run from one town to another, `days` each way, `road_cost` a round trip, every `every_days` on its timetable.
+    pub fn add_route(&mut self, from: TownId, to: TownId, days: f64, road_cost: f64, every_days: f64) -> RouteId {
+        let day = self.content().day_ticks as f64;
+        let route = Route {
+            seq: self.routes.len(),
+            from: self.towns[from],
+            to: self.towns[to],
+            travel_ticks: (days * day).round().max(1.0) as u64,
+            road_cost,
+            every_ticks: (every_days * day).round() as u64,
+        };
+        let e = self.world.spawn((route, RouteState::default())).id();
+        self.routes.push(e);
+        self.routes.len() - 1
+    }
+
+    /// Moves the society on to `to` (in ticks), looking at it every `look_ticks`. Returns what happened.
+    pub fn advance(&mut self, to: u64) -> Vec<Output> {
+        let look = self.content().dials.look_ticks.max(1);
+        while self.now() < to {
+            let next = ((self.now() / look + 1) * look).min(to);
+            self.world.resource_mut::<Clock>().now = next;
+            self.look.run(&mut self.world);
+        }
+        std::mem::take(&mut self.world.resource_mut::<Outbox>().0)
+    }
+
+    /// Goods handed to a town from outside the society (a player's delivery): into its warehouse.
+    pub fn deliver(&mut self, town: TownId, good: GoodId, count: f64) {
+        let e = self.towns[town];
+        let now = self.now();
+        self.world.resource_scope(|world, content: Mut<Content>| {
+            world.resource_scope(|world, mut ledger: Mut<Ledger>| {
+                let mut town = world.entity_mut(e);
+                let trades = town.get::<Trades>().expect("a town").clone();
+                let mut touched = *town.get::<Touched>().unwrap();
+                let mut money = *town.get::<Money>().unwrap();
+                let mut stock = town.get::<Stock>().unwrap().clone();
+                catch_up_town(now, &content, &mut ledger, &mut stock, &mut money, &trades, &mut touched);
+                stock.0[good] += count;
+                ledger.delivered[good] += count;
+                town.insert((stock, money, touched));
+            });
+        });
+    }
+
+    /// Applies one happening and returns what came of it.
+    pub fn apply(&mut self, input: &Input) -> Vec<Output> {
+        match *input {
+            Input::Advance { to } => self.advance(to),
+            Input::Deliver { town, good, count } => {
+                self.deliver(town, good, count);
+                Vec::new()
+            }
+        }
+    }
+
+    pub fn town(&self, town: TownId) -> TownView {
+        let e = self.world.entity(self.towns[town]);
+        TownView {
+            name: e.get::<Town>().unwrap().name.clone(),
+            money: e.get::<Money>().unwrap().0,
+            stock: e.get::<Stock>().unwrap().0.clone(),
+        }
+    }
+
+    pub fn route(&self, route: RouteId) -> RouteView {
+        let s = self.world.get::<RouteState>(self.routes[route]).unwrap();
+        RouteView { trips: s.trips, sold: s.sold, carried: s.carried, on_the_road: s.wagon.is_some() }
+    }
+
+    pub fn town_count(&self) -> usize {
+        self.towns.len()
+    }
+
+    pub fn route_count(&self) -> usize {
+        self.routes.len()
+    }
+}
