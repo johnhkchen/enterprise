@@ -121,7 +121,8 @@ pub fn merchant_trade_xp(roll: u32, villager_levelled_up: bool) -> u32 {
 }
 
 /// One of a town's people: its trade, level (1 to 5) and XP (in all, as vanilla counts it), when it grows up if it's
-/// a child, and whether it's away (out with a caravan).
+/// a child, and whether it's away (out with a caravan), and the id its town gave it when it last left with one (0:
+/// never has; `squad.rs`, as the mod knows a villager by its UUID).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Hand {
     pub trade: TradeId,
@@ -129,11 +130,13 @@ pub struct Hand {
     pub xp: u32,
     pub baby_until: Option<u64>,
     pub away: bool,
+    #[serde(default)]
+    pub id: u32,
 }
 
 impl Default for Hand {
     fn default() -> Self {
-        Hand { trade: 0, level: 1, xp: 0, baby_until: None, away: false }
+        Hand { trade: 0, level: 1, xp: 0, baby_until: None, away: false, id: 0 }
     }
 }
 

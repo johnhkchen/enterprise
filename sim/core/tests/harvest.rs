@@ -105,8 +105,9 @@ fn farm_and_market(farm_money: f64, market_money: f64, every: f64) -> Society {
     let mut s = Society::new(Content::new(vec![Good::new("wheat", 1.0, 64).crop()], DAY));
     s.add_town("Cloverby", farm_money);
     s.add_town("Haygate", market_money);
-    // The farm has Farmers and plots, so a farm plan: what it grows and what it could grow.
-    s.set_roster(0, &[("farmer", 6)]);
+    // The farm has Farmers and plots, so a farm plan: what it grows and what it could grow; a Merchant at its desk and a
+    // Cartographer to drive its wagon (`squad.rs`: a town with a roster and no Merchant sends none).
+    s.set_roster(0, &[("merchant", 1), ("farmer", 6), ("cartographer", 1)]);
     s.set_people(0, 6.0, 6.0, 1.0);
     s.set_plots(0, 0, 400);
     s.set_trade(0, 0, 100.0, 0.0);

@@ -15,11 +15,17 @@
 //!   locker), `available` (208: in `TRADES` order, most experienced first), `order`, `muster` (148), `leads`, `hire`
 //!   (229), `porter`, `carries`.
 //! - `caravan/Commissions.java`: `train` (99), `squadShort` (81), `TRAINING_EMERALDS`.
-//! - `caravan/Caravans.java` `dispatch` 223–303 (the far end's wanted stacks, porters and packs, extras keeping a lead
-//!   for every other waiting route, hiring when nobody leads, the porter run, the food trim), 380 (slots), 528–537
+//! - `caravan/Caravans.java` `dispatch` 210–215 (no Merchant at the hub, no caravan), 223–303 (route by route as it
+//!   leaves: the far end's wanted stacks, porters and packs, extras keeping a lead for every route still without a
+//!   caravan, hiring when nobody leads, the porter run, the food trim), 380 (slots), 528–537
 //!   (the saddle's pace and wear); `sendPortersHome` (1136); `porterRun` (1299); `arriveHome` (the squad released);
 //!   `Caravan.mouths`, `Caravan.capacity`.
 //! - `caravan/CaravanLedger.java` `walkHome` (42), `walkersHome`, `arrived`.
+//! - `territory/Territory.java` `grow` 1614: the squad trains before anything, and the idle find work
+//!   (`Jobs.employ`) only when it trained nobody and isn't short ([`hiring_waits`]).
+//!
+//! A hand on the road is known by an id its town stamps it with as it leaves ([`stamp`], as the mod knows a villager by
+//! its UUID): its place in the roster shifts while it's away, as settlers leave (`settlers::take_hand`).
 //!
 //! The core's hands have no workstations: a hand "works a locker" when the desk's Merchant manages its locker and one
 //! of its offers is switched on (`lockers.rs`); a hand trained or taken on for a squad keeps its trade with no
@@ -49,10 +55,22 @@ pub const CARTOGRAPHER: &str = "cartographer";
 /// The good a saddle is, by name (`Items.SADDLE`).
 pub const SADDLE: &str = "saddle";
 
-/// The day the towns last trained their squads (`Commissions.train`, once a count: here once a day).
+/// The day towns last trained their squads (`Commissions.train`, once a count: here once a day), and the day each town
+/// last trained a hand (its hiring waits that day: `Territory.grow`).
 #[derive(Resource, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Squads {
     pub trained: Option<u64>,
+    #[serde(default)]
+    pub trained_hand: std::collections::BTreeMap<TownId, u64>,
+}
+
+/// Does a town's hiring wait for its squad today (`Territory.grow`: `Jobs.employ` only when `Commissions.train` trained
+/// nobody and the squad isn't short)? It trained a hand today, or it has `routes` of its own, a Merchant at its desk to
+/// train one, and its squad is short of leads.
+pub fn hiring_waits(content: &Content, squads: &Squads, town: TownId, today: u64, roster: &Roster,
+        lockers: Option<&Lockers>, routes: usize) -> bool {
+    squads.trained_hand.get(&town) == Some(&today)
+        || crewed(Some(roster)) && roster.merchant.is_some() && squad_short(content, roster, lockers, routes)
 }
 
 /// A squad member walking home on its own, a porter whose load is delivered (`CaravanLedger.Walker`): home at
@@ -290,16 +308,24 @@ pub fn to_train(content: &Content, roster: &Roster, lockers: Option<&Lockers>, r
     Some((pupil, trade))
 }
 
-/// The hands of a crew back home: each marked at home again in its town's roster (the first away hand like it; if
-/// it's gone, one away of the same trade).
+/// The hands of a crew back home: each marked at home again in its town's roster, the away hand with the id it left
+/// with ([`stamp`]; a hand that left the roster meanwhile frees nobody in its place).
 pub fn release(roster: &mut Roster, crew: &[Hand]) {
     for hand in crew {
-        let like = |h: &Hand| h.away && h.trade == hand.trade && h.level == hand.level && h.xp == hand.xp;
-        let i = roster.hands.iter().position(like).or_else(|| roster.hands.iter().position(|h| h.away && h.trade == hand.trade));
-        if let Some(i) = i {
-            roster.hands[i].away = false;
+        if let Some(h) = roster.hands.iter_mut().find(|h| h.away && h.id == hand.id) {
+            h.away = false;
         }
     }
+}
+
+/// A hand leaves with a caravan: away, with an id none of its town's hands has (the mod knows a villager by its UUID;
+/// a hand's place in the roster shifts as others leave it, `settlers::take_hand`). Returns the hand as it left.
+pub fn stamp(roster: &mut Roster, i: usize) -> Option<Hand> {
+    let id = roster.hands.iter().map(|h| h.id).max().unwrap_or(0) + 1;
+    let h = roster.hands.get_mut(i)?;
+    h.away = true;
+    h.id = id;
+    Some(h.clone())
 }
 
 /// The ticks a leg takes a wagon, `slow` times its pace's (short rations: 2): a saddled wagon a third faster
@@ -382,6 +408,10 @@ impl Society {
             lockers.as_mut(), &mut money);
         *self.world.resource_mut::<Ledger>() = ledger;
         *self.world.resource_mut::<crate::cash_book::CashBook>() = book;
+        if out.is_some() {
+            let today = now / self.content().day_ticks.max(1);
+            self.world.resource_mut::<Squads>().trained_hand.insert(town, today);
+        }
         let mut ent = self.world.entity_mut(e);
         ent.insert((roster, money));
         if let Some(l) = lockers {

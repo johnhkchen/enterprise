@@ -219,6 +219,9 @@ pub struct Plan {
     pub slots: u32,
     pub wanted: Vec<crate::roster::TradeId>,
     pub porters: usize,
+    /// What the sale load put aboard, in the order it went (good, count, price each): a squad that leaves with fewer
+    /// slots than the plan was made for leaves the last of it home.
+    pub sale: Vec<(usize, f64, f64)>,
 }
 
 /// What a route has done, its wagon if one's on the road, the leg its wagon finished this look (the arriving steps

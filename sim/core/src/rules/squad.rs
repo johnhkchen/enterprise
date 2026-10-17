@@ -1,15 +1,18 @@
 //! Squads through the look (`squad.rs`; `Caravans.dispatch`, `sendPortersHome`, `arriveHome`, `poll`'s walkers,
 //! `Commissions.train`):
 //!
-//! - **Review:** once a day, a town with routes and a squad short of leads trains one ([`train`]).
+//! - **Review:** once a day, a town with routes, a desk's Merchant and a squad short of leads trains one ([`train`]).
 //! - **Arrive:** porters walking home get there ([`walk_home`]).
 //! - **Buy:** at the far end, once the cargo fits without them, porters leave and walk home ([`send_porters_home`]),
 //!   before the wagon buys for home or eats there (`rules/road.rs`).
 //! - **Turn:** home again, the crew are home ([`come_home`]).
-//! - **Plan:** each idle route of a town with a roster musters its squad, in the routes' order, each keeping a lead for
-//!   every other route waiting there; a route nobody can lead takes on a hand, or gets no wagon ([`muster`]).
-//! - **Decide** (`plan::decide`): a small load goes by porter ([`porter_run`]); the crew go away and eat the road's
-//!   food ([`depart`]); a saddle makes the wagon ride faster ([`saddle`]).
+//! - **Plan:** each idle route of a town with a roster sizes up its squad, as the roster stands at the look's start
+//!   ([`size_up`]): the slots its load fills, the mouths its road feeds. Nobody's hired, nobody's kept back.
+//! - **Decide** (`plan::decide`, route by route as `Caravans.dispatch` goes): a town with no Merchant at its desk sends
+//!   none; the route musters its squad of the hands still at home, keeping a lead for every route here still without
+//!   a wagon; nobody to lead it, it takes on a hand, or gets no wagon ([`crew`]); a small load goes by porter
+//!   ([`porter_run`]); the crew is trimmed to the mouths home's food feeds ([`trim`]); the crew go away and eat the
+//!   road's food ([`depart`]); a saddle makes the wagon ride faster ([`saddle`]).
 
 use std::collections::BTreeMap;
 
@@ -22,17 +25,18 @@ use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
 use crate::lockers::Lockers;
 use crate::road::{food_needed, held, road_food, Stay, FOOD_PAR_POINTS};
-use crate::roster::{Hand, Roster, MERCHANT};
+use crate::roster::{Hand, Roster, TradeId, MERCHANT};
 use crate::squad::*;
 use crate::state::*;
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
-        train.in_set(Step::Review).after(super::settlers::review).after(super::lockers::review),
+        train.in_set(Step::Review).after(super::settlers::review).after(super::lockers::review)
+            .after(super::farms::review).before(super::jobs::review),
         walk_home.in_set(Step::Arrive).after(super::arrive::mark),
         send_porters_home.in_set(Step::Buy),
         come_home.in_set(Step::Turn).after(super::road::feed).before(super::arrive::turn),
-        muster.in_set(Step::Plan).after(super::plan::start),
+        size_up.in_set(Step::Plan).after(super::plan::start),
     ));
 }
 
@@ -44,110 +48,111 @@ fn training() -> Reason {
     Reason::Other("training".into())
 }
 
-/// Each idle route of a town with a roster, in the routes' order: the hands who could go (less those mustered for
-/// its earlier routes this look, as if they'd left), the trades the trip wants (those the far end wants of the
-/// hands at home; a Leatherworker, and porters, for more stacks of what the far end wants than the wagon holds), and
-/// as many extras as leave a lead for every other route still waiting; nobody to lead, it takes on a hand waiting
-/// for work as a travelling Merchant if it can pay one, else no wagon ("no squad"). Each more mouth goes only while
-/// home's food beyond the caravans' par feeds the whole crew a leg. The crew and their slots go on the plan.
-#[allow(clippy::too_many_arguments, clippy::type_complexity)]
-pub fn muster(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut ledger: ResMut<Ledger>,
-        mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
-        mut homes: Query<(&mut Roster, Option<&Lockers>, &Stock, &mut Money, &Trades)>, fars: Query<&Trades>) {
-    let (now, day) = (clock.now, content.day_ticks);
-    let d = &content.dials;
-    let food_mode = road_food(&content);
-    let order = in_order(routes.iter().map(|(e, r, _)| (e, r)));
-    let (mut all, mut idle, mut out): (BTreeMap<usize, usize>, BTreeMap<usize, usize>, BTreeMap<usize, usize>) =
-        Default::default();
-    for (_, route, state) in routes.iter() {
-        *all.entry(route.from_id).or_default() += 1;
-        *idle.entry(route.from_id).or_default() += state.plan.is_some() as usize;
-        *out.entry(route.from_id).or_default() += state.wagon.is_some() as usize;
+/// What a trip calls for of a town's hands at home (`dispatch` 249–270): the trades wanted there that a hand at home
+/// has (`Services.wantedAbroad`, a hook); a Leatherworker, and porters, for more stacks of what the far end wants than
+/// a wagon holds; and how many may go beyond a lead for every route `waiting` here (this one too).
+pub fn call(content: &Content, roster: &Roster, home: &[usize], stacks: u32, wanted_trades: &[TradeId], waiting: usize)
+        -> (Needs, usize) {
+    let mut wanted: Vec<TradeId> = Vec::new();
+    for &t in wanted_trades {
+        if !wanted.contains(&t) && home.iter().any(|&i| roster.hands[i].trade == t) {
+            wanted.push(t);
+        }
     }
-    // Per town: the hands mustered for its earlier routes this look, and how many routes they crew.
-    let mut taken: BTreeMap<usize, (Vec<usize>, usize)> = BTreeMap::new();
-    let merchant = content.trade(MERCHANT);
     let leatherworker = content.trade(LEATHERWORKER);
-    for e in order {
+    let mut porters = 0;
+    if stacks > content.dials.wagon_slots {
+        if let Some(lw) = leatherworker {
+            if !wanted.contains(&lw) {
+                wanted.push(lw);
+            }
+        }
+        let packs = home.iter().any(|&i| Some(roster.hands[i].trade) == leatherworker);
+        porters = porters_needed(content, stacks, packs);
+    }
+    (Needs { wanted, water: false, porters }, home.len().saturating_sub(waiting))
+}
+
+/// Plan: each idle route of a town with a roster sizes up the squad it would muster (in the routes' order, on the
+/// roster as it stands at the look's start, each keeping a lead for every route here without a wagon), for the slots
+/// its load fills (`plan_sale`) and the mouths its road feeds (`plan_advances`), trimmed to the mouths home's food
+/// feeds. Nobody's hired and nobody's kept back: the route musters its squad for good as it leaves ([`crew`]).
+pub fn size_up(content: Res<Content>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
+        homes: Query<(&Roster, Option<&Lockers>, &Stock)>, fars: Query<&Trades>) {
+    let food_mode = road_food(&content);
+    let mut idle: BTreeMap<usize, usize> = BTreeMap::new();
+    for (_, route, state) in routes.iter() {
+        *idle.entry(route.from_id).or_default() += state.wagon.is_none() as usize;
+    }
+    for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(e).unwrap();
         let route = *route;
-        if state.plan.is_none() {
-            continue;
-        }
-        let Ok((mut roster, lockers, stock, mut money, trades)) = homes.get_mut(route.from) else { continue };
-        if !crewed(Some(&roster)) {
+        let state = &mut *state;
+        let Some(plan) = state.plan.as_mut() else { continue };
+        let Ok((roster, lockers, stock)) = homes.get(route.from) else { continue };
+        if !crewed(Some(roster)) {
             continue;
         }
         let Ok(far) = fars.get(route.to) else { continue };
-        let mine = taken.entry(route.from_id).or_default();
-        let at_home = |roster: &Roster| -> Vec<usize> {
-            available(&content, roster, lockers).into_iter().filter(|i| !mine.0.contains(i)).collect()
-        };
-        let mut home = at_home(&roster);
-        let waiting = idle.get(&route.from_id).copied().unwrap_or(0).saturating_sub(mine.1);
-        // The trades wanted there that a hand at home has (`Services.wantedAbroad`, a hook); packs for more than a
-        // wagon holds.
-        let mut wanted: Vec<_> = Vec::new();
-        for &t in &state.wanted_trades {
-            if !wanted.contains(&t) && home.iter().any(|&i| roster.hands[i].trade == t) {
-                wanted.push(t);
-            }
-        }
+        let home = available(&content, roster, lockers);
         let stacks = wanted_stacks(&content, &stock.0, far);
-        let mut porters = 0;
-        if stacks > d.wagon_slots {
-            if let Some(lw) = leatherworker {
-                if !wanted.contains(&lw) {
-                    wanted.push(lw);
-                }
-            }
-            let packs = home.iter().any(|&i| Some(roster.hands[i].trade) == leatherworker);
-            porters = porters_needed(&content, stacks, packs);
+        let waiting = idle.get(&route.from_id).copied().unwrap_or(0);
+        let (needs, extras) = call(&content, roster, &home, stacks, &state.wanted_trades, waiting);
+        plan.crew = crate::squad::muster(&content, roster, &home, &needs, extras);
+        plan.wanted = needs.wanted;
+        plan.porters = needs.porters;
+        plan.slots = 0;
+        if !plan.crew.is_empty() {
+            trim(&content, roster, plan, food_mode.then(|| held(&content, &stock.0)), route.blocks, false);
         }
-        let needs = Needs { wanted: wanted.clone(), water: false, porters };
-        let extras = home.len().saturating_sub(waiting);
-        let mut crew = muster_hands(&content, &roster, &home, &needs, extras);
-        if crew.is_empty() {
-            // No one to lead it: the Merchant takes on a hand waiting for work, if the town can pay one.
-            let leads_out = out.get(&route.from_id).copied().unwrap_or(0) + mine.1;
-            let routes_here = all.get(&route.from_id).copied().unwrap_or(0);
-            if let (Some(i), Some(merchant)) = (to_hire(&content, &roster, &home, routes_here, leads_out), merchant) {
-                if free(&content, trades, &money, &bills, route.from_id, now) >= d.signing_emeralds {
-                    post(&mut ledger, &mut cash, Side::treasury(route.from_id, &mut money.0), Side::outside(),
-                        d.signing_emeralds, signing(), now, day);
-                    sign_on(&content, &mut roster, None, i, merchant);
-                    home = at_home(&roster);
-                    crew = muster_hands(&content, &roster, &home, &needs, extras);
-                }
-            }
-        }
-        if crew.is_empty() {
-            state.plan = None;
-            state.stayed = Some(Stay::NoSquad);
-            continue;
-        }
-        // Each member eats: one more goes only if home can spare its food beyond the caravans' par.
-        if food_mode {
-            let home_food = held(&content, &stock.0);
-            let per_mouth = food_needed(&content, route.blocks);
-            while crew.len() > 1 && home_food - FOOD_PAR_POINTS < per_mouth * crew.len() as f64 {
-                crew.pop();
-            }
-        }
-        let slots = capacity(&content, crew.iter().map(|&i| roster.hands[i].trade), false);
-        mine.0.extend(&crew);
-        mine.1 += 1;
-        let plan = state.plan.as_mut().unwrap();
-        plan.crew = crew;
-        plan.slots = slots;
-        plan.wanted = wanted;
-        plan.porters = porters;
     }
 }
 
-fn muster_hands(content: &Content, roster: &Roster, home: &[usize], needs: &Needs, extras: usize) -> Vec<usize> {
-    crate::squad::muster(content, roster, home, needs, extras)
+/// Decide, a crewed town's route as it leaves (`Caravans.dispatch` 249–270): its squad mustered of the hands still at
+/// home (those of the routes gone before it this look are away), keeping a lead for each of the `waiting` routes here
+/// without a wagon (those that stayed too); nobody to lead it, the Merchant takes on a hand waiting for work as a
+/// travelling Merchant while the leads at home and on the road are fewer than its `routes`, if the town can pay one
+/// (`free`), and musters again; still nobody, "no squad". The crew, the trades wanted and the porters go on the plan.
+#[allow(clippy::too_many_arguments)]
+pub fn crew(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u64, town: usize, plan: &mut Plan,
+        roster: &mut Roster, mut lockers: Option<&mut Lockers>, stacks: u32, wanted_trades: &[TradeId],
+        waiting: usize, routes: usize, money: &mut Money, free: impl Fn(&Money) -> f64) -> Result<(), Stay> {
+    let d = &content.dials;
+    let mut home = available(content, roster, lockers.as_deref());
+    let (needs, extras) = call(content, roster, &home, stacks, wanted_trades, waiting);
+    let mut squad = crate::squad::muster(content, roster, &home, &needs, extras);
+    if squad.is_empty() {
+        let out = routes.saturating_sub(waiting);
+        if let (Some(i), Some(merchant)) = (to_hire(content, roster, &home, routes, out), content.trade(MERCHANT)) {
+            if free(money) >= d.signing_emeralds {
+                post(ledger, cash, Side::treasury(town, &mut money.0), Side::outside(), d.signing_emeralds, signing(),
+                    now, content.day_ticks);
+                sign_on(content, roster, lockers.as_deref_mut(), i, merchant);
+                home = available(content, roster, lockers.as_deref());
+                squad = crate::squad::muster(content, roster, &home, &needs, extras);
+            }
+        }
+    }
+    if squad.is_empty() {
+        return Err(Stay::NoSquad);
+    }
+    plan.crew = squad;
+    plan.wanted = needs.wanted;
+    plan.porters = needs.porters;
+    plan.slots = capacity(content, plan.crew.iter().map(|&i| roster.hands[i].trade), false);
+    Ok(())
+}
+
+/// Each member eats (`dispatch` 296–301): one more goes only while `home_food` (none: content has no food) beyond the
+/// caravans' par feeds the whole crew a leg; the crew's slots, as it goes (a porter run's, one pack).
+pub fn trim(content: &Content, roster: &Roster, plan: &mut Plan, home_food: Option<f64>, blocks: u32, porter: bool) {
+    if let Some(home_food) = home_food {
+        let per_mouth = food_needed(content, blocks);
+        while plan.crew.len() > 1 && home_food - FOOD_PAR_POINTS < per_mouth * plan.crew.len() as f64 {
+            plan.crew.pop();
+        }
+    }
+    plan.slots = capacity(content, plan.crew.iter().map(|&i| roster.hands[i].trade), porter);
 }
 
 /// A small load goes on a porter's back (`Caravans.porterRun`, as `dispatch` asks it): a town with a roster whose
@@ -182,13 +187,11 @@ pub fn no_team(content: &Content, p: &mut Provision) {
     p.cost = 2.0 * p.food * content.dials.purse_per_food_point;
 }
 
-/// The crew leave: each marked away in home's roster, and the hands as they left, for the wagon.
+/// The crew leave: each marked away in home's roster, with an id to know it by ([`stamp`]), and the hands as they
+/// left, for the wagon.
 pub fn depart(roster: Option<&mut Roster>, crew: &[usize]) -> Vec<Hand> {
     let Some(roster) = roster else { return Vec::new() };
-    crew.iter().filter_map(|&i| roster.hands.get_mut(i).map(|h| {
-        h.away = true;
-        h.clone()
-    })).collect()
+    crew.iter().filter_map(|&i| stamp(roster, i)).collect()
 }
 
 /// A saddle in home's warehouse: the wagon rides a third faster, and the trip wears a tenth of it (used up at a
@@ -271,7 +274,8 @@ pub fn come_home(content: Res<Content>, mut routes: Query<(Entity, &Route, &mut 
     }
 }
 
-/// Once a day: every town with a roster and routes of its own trains a hand for its squad, while it's short of leads.
+/// Once a day: every town with a roster and routes of its own trains a hand for its squad, while it's short of leads;
+/// before the idle find work (`rules/jobs.rs`), which waits on it (`Territory.grow`: squads before anything).
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn train(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, towns_order: Res<Towns>, mut squads: ResMut<Squads>,
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, routes: Query<&Route>,
@@ -293,16 +297,20 @@ pub fn train(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, towns_
             continue;
         }
         let spare = free(&content, trades, &money, &bills, town.id, now);
-        train_town(&content, &mut ledger, &mut cash, now, town.id, routes, spare, &mut roster,
-            lockers.map(|l| l.into_inner()), &mut money);
+        if train_town(&content, &mut ledger, &mut cash, now, town.id, routes, spare, &mut roster,
+            lockers.map(|l| l.into_inner()), &mut money).is_some() {
+            squads.trained_hand.insert(town.id, today);
+        }
     }
 }
 
-/// A town with `routes` and `free` money trains a hand for its squad (`Commissions.train`): the one [`to_train`] picks,
-/// if it can pay `training_emeralds` from its free money. Returns the hand trained.
+/// A town with `routes`, a Merchant at its desk and `free` money trains a hand for its squad (`Commissions.train`): the
+/// one [`to_train`] picks, if it can pay `training_emeralds` from its free money. Returns the hand trained.
 #[allow(clippy::too_many_arguments)]
 pub fn train_town(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u64, town: usize, routes: usize,
         free: f64, roster: &mut Roster, lockers: Option<&mut Lockers>, money: &mut Money) -> Option<usize> {
+    // No Merchant at the desk, nobody to commission it (`Caravans.dispatch` 210: the town sends no caravan either).
+    roster.merchant?;
     let cost = content.dials.training_emeralds;
     let (i, trade) = to_train(content, roster, lockers.as_deref(), routes)?;
     if free < cost {

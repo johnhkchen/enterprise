@@ -3,8 +3,8 @@
 //! settlers' (trained adults go with caravans first): one unemployed adult, or a slack one, takes a trade drawn from
 //! the town's bag of marbles when the town can pay for its stall. Not while the town is raising a party of settlers
 //! (`Territory.grow`: its idle hands wait for that), nor on the day one left (the mod's `grow` hires before `consider`
-//! sends, so the party's day hires nobody). The mod's other two gates, a hand to train (`Commissions.train`) and a
-//! squad short, wait for `training-and-tenders` and `squads`.
+//! sends, so the party's day hires nobody). Nor while its squad waits for hands (`squad.rs` `hiring_waits`: the town
+//! trained one today, or its squad is short of leads: `Territory.grow` trains the squad before anything).
 
 use bevy_ecs::prelude::*;
 
@@ -26,7 +26,7 @@ pub fn register(schedule: &mut Schedule) {
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signals: Res<Signals>, order: Res<Towns>,
-        settlers: Res<Settlers>, mut hiring: ResMut<Hiring>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, mut rng: ResMut<Rng>,
+        settlers: Res<Settlers>, squads: Res<crate::squad::Squads>, mut hiring: ResMut<Hiring>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, mut rng: ResMut<Rng>,
         routes: Query<&Route>,
         mut towns: Query<(&Town, &mut Money, &mut People, &Stock, &Trades, &Farm, &mut Deposits, &mut Budget,
             Option<&mut Roster>, &mut Lockers)>) {
@@ -42,6 +42,10 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
         hiring.reviewed.insert(town.id, today);
         let sent_today = settlers.last_sent.get(&town.id).is_some_and(|&t| t / content.day_ticks.max(1) == today);
         if sent_today || raising(&content, &settlers, town.id, &*people, stock, now) {
+            continue;
+        }
+        let own = routes.iter().filter(|r| r.from_id == town.id).count();
+        if crate::squad::hiring_waits(&content, &squads, town.id, today, &roster, Some(&*lockers), own) {
             continue;
         }
         let roads = routes.iter().any(|r| r.from_id == town.id || r.to_id == town.id);

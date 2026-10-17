@@ -76,6 +76,8 @@ pub enum Stay {
     WaitingForALoad,
     /// Nobody at home to lead it, and no hand to take on (`squad.rs`: "no squad at home").
     NoSquad,
+    /// A town with a roster and no Merchant at its desk sends no wagon (`squad.rs`: "no Merchant at the hub").
+    NoMerchant,
 }
 
 /// The food points one of a good is worth on the road: none for a comfort (`MerchantStock.nutrition`: treats aren't

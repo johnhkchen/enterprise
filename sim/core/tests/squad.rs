@@ -198,8 +198,10 @@ fn a_town_trains_once_a_day_in_its_review() {
     assert!(s.route(0).on_the_road, "and the trained Merchant leads the day's wagon");
     s.advance(DAY + LOOK);
     assert_eq!(s.hand(HUB, 2).unwrap().0, "cartographer", "the next day, the next lead");
+    assert_eq!(s.hand(HUB, 3).unwrap().0, "none", "and the idle wait for the squad: no stall while it's short");
     s.advance(2 * DAY + LOOK);
-    assert_eq!(s.hand(HUB, 3).unwrap().0, "none", "a lead and a spare for one route: no more");
+    let trainings = s.cash_book(HUB, 3).iter().filter(|(_, why, _)| why == "training").count();
+    assert_eq!(trainings, 2, "a lead and a spare for one route: no more (the last idle hand may find work now)");
 }
 
 // parity-partial: CaravanTests.theSquadLeavesTheWorldAndComesBack
@@ -249,6 +251,68 @@ fn every_other_waiting_route_keeps_a_lead() {
     assert_eq!(s.crew(1).crew, vec![("librarian".to_string(), 2)], "the second keeps its lead");
 }
 
+#[test]
+fn a_route_that_stays_keeps_no_hands_from_the_next() {
+    // The hub's first route goes to a town that buys nothing: it stays. Its lead isn't kept back for it (`dispatch`
+    // musters a route as it leaves), so the second route, to Dest, goes with the Cartographer and nobody is hired.
+    let mut s = Society::new(content());
+    s.content_mut().dials.standing_orders = false;
+    let hub = s.add_town("Hub", 5.0);
+    let nowhere = s.add_town("Nowhere", 0.0);
+    let dest = s.add_town("Dest", 192.0 / 16.0);
+    s.record_capacity(dest, 1, &[(PAPER, 64.0 / 5.0)]);
+    s.set_trade(dest, PAPER, 0.0, 1e-9);
+    s.deliver(hub, PAPER, 128.0);
+    s.deliver(hub, BREAD, 2.0);
+    s.deliver(dest, BREAD, 2.0);
+    s.set_roster(hub, &[("merchant", 1), ("cartographer", 2)]);
+    s.set_offers(hub, 1, Vec::new());
+    s.add_route(hub, nowhere, 4.0 / 1200.0, 0.0, 4.0);
+    s.add_route(hub, dest, 4.0 / 1200.0, 0.0, 4.0);
+    s.advance(LOOK);
+    assert!(!s.route(0).on_the_road, "nothing Nowhere wants: the first route stays");
+    assert_eq!(s.road_food(0).stayed, Some(Stay::WaitingForALoad), "for a load, not for want of a squad");
+    assert!(s.route(1).on_the_road, "the second goes");
+    assert_eq!(s.road_food(1).stayed, None);
+    assert_eq!(s.crew(1).crew, vec![("cartographer".to_string(), 2)], "with the Cartographer");
+    assert_eq!(s.roster(hub).hands.len(), 2, "nobody taken on");
+    assert!(!s.cash_book(hub, 1).iter().any(|(_, why, _)| why == "signing" || why == "training"), "nobody paid for");
+}
+
+#[test]
+fn no_merchant_at_the_desk_no_caravan_and_no_training() {
+    // A roster with no Merchant at its desk (`Caravans.dispatch` 210: "no Merchant at the hub").
+    let mut s = network(2.0, 20.0, 192.0, &["cartographer", "none"]);
+    s.set_roster(HUB, &[("cartographer", 2), ("none", 1)]);
+    s.set_offers(HUB, 0, Vec::new());
+    assert_eq!(s.roster(HUB).merchant, None);
+    s.advance(LOOK);
+    assert!(!s.route(0).on_the_road, "nobody sends it");
+    assert_eq!(s.road_food(0).stayed, Some(Stay::NoMerchant));
+    assert_eq!(s.hand(HUB, 1).unwrap().0, "none", "and nobody's commissioned to train");
+    assert_eq!(s.train_squad(HUB), None);
+}
+
+#[test]
+fn a_crew_home_frees_its_own_hands_only() {
+    // Two porters alike in every way, out with two wagons; a hand at home leaves the roster meanwhile (a settler).
+    let c = content();
+    let none = c.trade("none").unwrap();
+    let mut roster = Roster::new(&c, vec![Hand::new(&c, c.trade("merchant").unwrap(), 1), Hand::new(&c, none, 1),
+        Hand::new(&c, none, 1), Hand::new(&c, none, 1)]);
+    let first = squad::stamp(&mut roster, 2).unwrap();
+    let second = squad::stamp(&mut roster, 3).unwrap();
+    assert_ne!(first.id, second.id, "each known by its own id");
+    enterprise_core::settlers::take_hand(&mut roster, 1);
+    squad::release(&mut roster, std::slice::from_ref(&second));
+    assert_eq!(roster.hands.iter().map(|h| h.away).collect::<Vec<_>>(), [false, true, false],
+        "the second wagon's porter is home, the first's still out");
+    squad::release(&mut roster, std::slice::from_ref(&second));
+    assert!(roster.hands[1].away, "and its crew home again frees nobody else");
+    squad::release(&mut roster, &[first]);
+    assert!(roster.hands.iter().all(|h| !h.away));
+}
+
 // parity: CaravanTests.aLeatherworkersPacksCarryMore
 #[test]
 fn a_leatherworkers_packs_carry_more() {
@@ -257,6 +321,28 @@ fn a_leatherworkers_packs_carry_more() {
     s.advance(LOOK);
     let crew = s.crew(0);
     assert_eq!((crew.crew.len(), crew.slots), (2, 36), "with packs: 36 stacks, {crew:?}");
+}
+
+#[test]
+fn a_squad_with_fewer_slots_than_planned_leaves_the_last_of_the_sale_home() {
+    // Two routes, one Leatherworker: both plan for her packs (36 stacks), the first takes her, and the second, with
+    // the wagon's 27, leaves the rest of its load home.
+    let mut s = network(70.0, 10.0, 192.0, &["cartographer", "librarian", "leatherworker"]);
+    let far = s.add_town("Far", 12.0);
+    s.set_trade(far, PAPER, 0.0, 1e-9);
+    s.deliver(far, BREAD, 2.0);
+    s.add_route(HUB, far, 4.0 / 1200.0, 0.0, 4.0);
+    for t in [DEST, far] {
+        s.record_capacity(t, 1, &[(PAPER, 40.0 * 64.0 / 5.0)]); // room on their shelves for 40 stacks each
+    }
+    s.deliver(HUB, PAPER, 100.0 * 64.0);
+    s.advance(LOOK);
+    let (first, second) = (s.crew(0), s.crew(1));
+    assert_eq!(first.slots, 36, "the first with her packs: {first:?}");
+    assert_eq!(second.slots, 27, "the second without: {second:?}");
+    assert_eq!((s.route(0).carried, s.route(1).carried), (36.0 * 64.0, 27.0 * 64.0),
+        "each a full load for its slots: the second planned 36 stacks and left 9 home");
+    assert_eq!(s.town(HUB).stock[PAPER], (100.0 + 2.0 - 36.0 - 27.0) * 64.0);
 }
 
 // parity: CaravanTests.aPorterCarriesOutAndWalksHome

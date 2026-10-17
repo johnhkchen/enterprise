@@ -53,7 +53,9 @@ fn plan_redeem(content: Res<Content>, rents: Res<Rents>, mut routes: Query<(&Rou
         let Some(plan) = state.plan.as_mut() else { continue };
         let (money, stock, trades, roster, farm) = towns.get(route.from).expect("home");
         let keep_wheat = crate::road::keep_wheat(&content, trades, roster);
-        let free = money.0 - reserve(&content, trades, farm) - crate::road::road_money(&content, route, &stock.0, keep_wheat);
+        // (for the crew it has mustered, `squad.rs`: one without)
+        let mouths = plan.crew.len().max(1) as f64;
+        let free = money.0 - reserve(&content, trades, farm) - crate::road::road_money(&content, route, &stock.0, keep_wheat, mouths);
         for id in rents.owed(route.from_id, route.to_id) {
             let capital = rents.rents[id].capital;
             let spare = free - plan.purse;
@@ -79,8 +81,8 @@ fn redeem(clock: Res<Clock>, content: Res<Content>, mut rents: ResMut<Rents>, mu
         }
         let route = *route;
         let (_, mut money, _, _, _) = towns.get_mut(route.to).expect("the far end");
-        let keep = crate::road::purse_keep(&content, &route);
         let wagon = state.wagon.as_mut().unwrap();
+        let keep = crate::road::purse_keep(&content, &route, crate::road::mouths(Some(wagon)));
         for id in rents.owed(route.from_id, route.to_id) {
             let capital = rents.rents[id].capital;
             if wagon.purse - keep >= capital {
