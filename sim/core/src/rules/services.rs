@@ -34,9 +34,12 @@ use crate::works::Works;
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
-        home.in_set(Step::Work).after(super::workshop::work).before(super::lockers::restock),
-        plan.in_set(Step::Plan).after(super::plan::start).before(super::squad::size_up),
-        drive.in_set(Step::Decide).after(super::plan::decide),
+        // Home services in the touch, after the workshop (`Territory.touch`), so before the lockers' trading and the
+        // lessons it pays for (`LockerTrading`).
+        home.in_set(Step::Work).after(super::workshop::work).before(super::training::lessons)
+            .before(super::lockers::restock),
+        plan.in_set(Step::Plan).after(super::plan::start).after(super::atlas::want_books).before(super::squad::size_up),
+        drive.in_set(Step::Decide).after(super::plan::decide).after(super::atlas::depart),
         abroad.in_set(Step::Services).after(super::atlas::copy_books),
         home_again.in_set(Step::Turn).after(super::atlas::hand_in).before(super::squad::come_home),
     ));

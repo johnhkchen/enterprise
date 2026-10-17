@@ -211,7 +211,8 @@ fn the_town_that_learns_more_pays_a_quarter_a_market() {
     assert_eq!(done.heard, vec![at], "our copy of its map: itself");
 }
 
-// parity: MetalTests.anArmorerSmeltsAndAToolsmithForgesHoes
+// parity-partial: MetalTests.anArmorerSmeltsAndAToolsmithForgesHoes (the hoe share reckoned from the stock here, not a
+// territory kit share kept at each touch: mines-and-kit's)
 #[test]
 fn an_armorer_smelts_and_a_toolsmith_forges_hoes() {
     let mut s = Society::new(content());

@@ -752,8 +752,11 @@ pub fn perform(service: &Service, visit: &Visit) -> Done {
         }
         Work::Droving => {
             let Some(trip) = visit.trip else { return done };
-            let pasture: f64 = town.herds.map_or(0.0, |h| h.count.iter().sum::<f64>());
-            let room = town.herds.map_or(0.0, |h| h.capacity(c)) - pasture;
+            // Its pasture counts the kinds a Shepherd drives (`Squad.pasture`: `ANIMAL_VALUE`'s); the room, every kind.
+            let pasture: f64 = town.herds.map_or(0.0, |h| {
+                h.count.iter().enumerate().filter(|&(k, _)| animal_value(c, k) > 0.0).map(|(_, n)| n).sum::<f64>()
+            });
+            let room = town.herds.map_or(0.0, |h| h.capacity(c) - h.count.iter().sum::<f64>());
             let mut wanted = (whole(town.people.villagers) * ANIMALS_PER_VILLAGER - whole(pasture)).min(whole(room));
             let mut owed = 0.0;
             for (i, &kind) in trip.herd.iter().enumerate() {
@@ -1001,7 +1004,8 @@ impl Society {
             route: r,
             mapped_at: state.and_then(|s| s.mapped_at),
             path,
-            home_spare_plots: home.get::<Farm>().map(|f| f.spare_plots),
+            // (as the runner's `plan`: a home off the map has no fields to spare a Farmer from)
+            home_spare_plots: (!home.contains::<crate::realms::OffMap>()).then(|| home.get::<Farm>().map_or(0, |f| f.spare_plots)),
             home_animals: home.get::<Herds>().map_or(0, |h| drivable(&content, h).len()),
             herd,
             seller_level: crate::bargain::merchant_level(home.get::<Roster>()),

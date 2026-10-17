@@ -37,7 +37,7 @@ pub fn register(schedule: &mut Schedule) {
 
 /// Every town's lockers told what its training contracts ask, in town order.
 #[allow(clippy::type_complexity)]
-fn lessons(content: Res<Content>, book: Res<Book>, mut apprenticeships: ResMut<Apprenticeships>,
+pub(crate) fn lessons(content: Res<Content>, book: Res<Book>, mut apprenticeships: ResMut<Apprenticeships>,
         mut towns: Query<(&Town, &mut Lockers, &Stock, &Trades, Option<&Farm>, Option<&Shipments>)>) {
     let mut order: Vec<_> = towns.iter_mut().collect();
     order.sort_by_key(|(t, ..)| t.id);
