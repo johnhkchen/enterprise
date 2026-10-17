@@ -83,7 +83,8 @@ fn advances_papers(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Bo
                 continue;
             }
             let due = c.advance_due();
-            let coin = due.min(wagon.purse.max(0.0));
+            // Keeping its road food: the purse for the road home's (`payAdvances`'s `keep`).
+            let coin = due.min((wagon.purse - crate::road::purse_keep(&content, &route)).max(0.0));
             post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut money.0),
                 coin, advance_reason(), now, day);
             let mut paid = coin;
@@ -117,22 +118,26 @@ fn advances_papers(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Bo
 /// In the plan: the advance home owes the far end under contracts it buys there, and the advances it owes back, go in
 /// the purse, as far as the town can pay for the road and its purse; the trip is pressing while an advance can be paid
 /// (in coin, or by a bill where trusted).
-fn plan_advances(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut routes: Query<(&Route, &mut RouteState)>, towns: Query<&Money>) {
+fn plan_advances(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut routes: Query<(&Route, &mut RouteState)>,
+        towns: Query<(&Money, &Stock, &Trades, Option<&crate::roster::Roster>)>) {
     let now = clock.now;
     for (route, mut state) in &mut routes {
         let Some(plan) = state.plan.as_mut() else { continue };
-        let money = towns.get(route.from).expect("home").0;
+        let (money, stock, trades, roster) = towns.get(route.from).expect("home");
+        // Room left for the road: its food, fodder and purse where content has food (`road.rs`), else its money.
+        let keep_wheat = crate::road::keep_wheat(&content, trades, roster);
+        let money = money.0 - crate::road::road_money(&content, route, &stock.0, keep_wheat);
         let trusted = book.trust(route.from_id, route.to_id, now, content.day_ticks) >= contracts::MIN_TRUST;
         for id in book.advances_due(route.to_id, route.from_id) {
             let due = book.contracts[id].advance_due();
-            let coin = due.min((money - route.road_cost - plan.purse).max(0.0));
+            let coin = due.min((money - plan.purse).max(0.0));
             plan.purse += coin;
             plan.worth += due;
             plan.pressing |= coin > ADVANCE_EPS || trusted;
         }
         for id in book.refunds(route.from_id, route.to_id) {
             let owed = book.contracts[id].refund;
-            plan.purse += owed.min((money - route.road_cost - plan.purse).max(0.0));
+            plan.purse += owed.min((money - plan.purse).max(0.0));
             plan.worth += owed;
         }
     }

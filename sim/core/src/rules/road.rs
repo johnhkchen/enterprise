@@ -27,14 +27,21 @@ pub struct Provision {
     pub food_coin: f64,
     /// The purse for the road home's food at the far end (none if it packed its own).
     pub road_purse: f64,
-    /// Both legs' food at `purse_per_food_point`: what a load must be worth for the trip.
+    /// The team's fodder there and back (`teamFeed`: a leg's food per animal of `wagon_team`, both ways), from home's
+    /// (`fed`, `eatFodder`), and what it lacks bought on the road (`teamCoin`).
+    pub team_feed: f64,
+    pub fed: f64,
+    pub team_coin: f64,
+    /// Both legs' food and the team's fodder at `purse_per_food_point`: what a load must be worth for the trip.
     pub cost: f64,
 }
 
 /// A wagon's road food as it leaves (`dispatch`): `home_food` is the food points home holds (beyond its cargo),
 /// `far_food` what the far end is known to hold less what wagons already bound there will eat (`foodKnownAt` less
-/// `foodPromisedAt`), `home_free` home's money beyond its reserve.
-pub fn provision(content: &Content, blocks: u32, mouths: f64, home_food: f64, far_food: f64, home_free: f64) -> Provision {
+/// `foodPromisedAt`), `home_free` home's money beyond its reserve, `fodder` the points of the team's fodder home has
+/// (`fodderOnHand`, as [`crate::road::fodder`] finds them of the team's feed).
+pub fn provision(content: &Content, blocks: u32, mouths: f64, home_food: f64, far_food: f64, home_free: f64,
+        fodder: impl FnOnce(f64) -> f64) -> Provision {
     let d = &content.dials;
     let per_mouth = food_needed(content, blocks);
     let food = per_mouth * mouths;
@@ -50,7 +57,10 @@ pub fn provision(content: &Content, blocks: u32, mouths: f64, home_food: f64, fa
     };
     let road_purse = if provisions > 0.0 { 0.0 } else { food * ppfp };
     let from_home = food.min(home_food - provisions).max(0.0);
-    Provision { food, from_home, provisions, food_coin: (food - from_home) * ppfp, road_purse, cost: 2.0 * food * ppfp }
+    let team_feed = 2.0 * per_mouth * d.wagon_team as f64;
+    let fed = fodder(team_feed).min(team_feed);
+    Provision { food, from_home, provisions, food_coin: (food - from_home) * ppfp, road_purse, team_feed, fed,
+        team_coin: (team_feed - fed) * ppfp, cost: (2.0 * food + team_feed) * ppfp }
 }
 
 /// At the far end, before it turns for home: a wagon that packed the road home's food eats it; one that didn't eats

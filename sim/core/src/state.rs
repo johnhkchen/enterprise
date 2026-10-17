@@ -208,7 +208,7 @@ pub struct RouteState {
     pub trips: u32,
     pub sold: f64,
     pub carried: f64,
-    /// Road food (`road.rs`): trips home on short rations, food points eaten for the road home (`foodEaten`), money
+    /// Road food (`road.rs`): trips home on short rations, food points eaten both ways (`foodEaten`), money
     /// paid far ends for it (`foodSpurs`), and why the wagon last stayed home.
     pub short_rations: u32,
     pub food_eaten: f64,

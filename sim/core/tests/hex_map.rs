@@ -299,9 +299,11 @@ fn farm_and_mill_by_road(bridged: bool) -> (Society, Option<usize>) {
     let mut s = Society::new(Content::new(goods, DAY));
     s.content_mut().dials.standing_orders = false;
     let farm = s.add_town("Wheatfield", 20.0);
-    let mill = s.add_town("Hayford", 10.0);
+    let mill = s.add_town("Hayford", 40.0);
     s.set_trade(farm, 0, 128.0, 0.0);
-    s.set_trade(mill, 0, 0.0, 64.0);
+    // The mill uses enough wheat that a load is worth the road's food and the team's fodder (`road.rs`: 96 points a
+    // leg, 384 points at 0.05 for the trip, the team fed on the farm's wheat), and has the money for it.
+    s.set_trade(mill, 0, 0.0, 128.0);
     s.place_town(farm, START.center_x() + 3.0, START.center_z() - 2.0);
     s.place_town(mill, GOAL.center_x(), GOAL.center_z());
     for r in -20..=20 {

@@ -253,7 +253,8 @@ fn a_wagon_home_pays_the_posts_on_its_road_out_of_its_purse() {
     s.place_town(farm, 0.0, 0.0);
     s.place_town(mill, 1000.0, 0.0);
     s.set_trade(farm, 0, 128.0, 0.0);
-    s.set_trade(mill, 0, 0.0, 64.0);
+    // Enough wheat that a load pays the road's food and the team's fodder (100 points a leg: 400 at 0.05 a trip).
+    s.set_trade(mill, 0, 0.0, 128.0);
     let route = s.add_road(farm, mill, 2.0).expect("a road");
     let path = s.route_path(route).unwrap();
     // The keeper holds two hexes on the road, guarded and fed.

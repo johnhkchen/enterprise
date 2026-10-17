@@ -15,7 +15,9 @@
 //! Only for content that has food (a good with food points that isn't a comfort, [`road_food`]): without, the road's
 //! cost is the route's `road_cost` in money, as before.
 //!
-//! Not yet: the crew's mouths (one until `squads` lands), the team's fodder (`fodderOnHand`/`eatFodder`), the crown's
+//! The wagon's team eats a mouth's food in fodder each leg, from home's hay and wheat it doesn't keep, else bought on the
+//! road (`teamFeed`, `fodderOnHand`, `eatFodder`, `teamCoin`). Not yet: the crew's mouths (one until `squads` lands),
+//! the wheat kept for a contract's inputs or a realm (`wantedAt`: here only its trades and its workshop), the crown's
 //! food reserve (`spareFoodAt`), buying food at the far end's shops (`buyFoodAtShops`), stocktakes (the far end's food
 //! is read off its warehouse now; the mod's unknown stocktake counts as plenty).
 
@@ -31,6 +33,36 @@ use crate::state::*;
 pub const FOOD_PAR_POINTS: f64 = 320.0;
 /// Ticks a wagon takes a block (`Caravans.TICKS_PER_BLOCK`): 1,200 blocks a 24,000-tick day.
 pub const TICKS_PER_BLOCK: u64 = 20;
+
+/// Fodder points a bale of hay is worth to a wagon's team (`Caravans.HAY_POINTS`); a wheat is one.
+pub const HAY_POINTS: f64 = 9.0;
+
+/// Does home keep its wheat from the team (`keepWheat`: `wantedAt` holds it, its trades' or its workshop's)?
+pub fn keep_wheat(content: &Content, trades: &Trades, roster: Option<&crate::roster::Roster>) -> bool {
+    let Some(wheat) = content.good("wheat") else { return false };
+    trades.uses[wheat] > 0.0 || content.conversions.iter().any(|c| c.inputs.iter().any(|&(g, _)| g == wheat)
+        && roster.is_some_and(|r| crate::workshop::can_do(c, r)))
+}
+
+/// What the team finds of `points` of fodder at home, hay first, whole bales and whole wheat (`eatFodder`): bales and
+/// wheat taken, and the points.
+pub fn fodder(content: &Content, stock: &[f64], points: f64, keep_wheat: bool) -> (f64, f64, f64) {
+    let whole = |g: Option<GoodId>| g.map_or(0.0, |g| stock[g].floor().max(0.0));
+    let bales = (points / HAY_POINTS).floor().min(whole(content.good("hay_block")));
+    let wheat = if keep_wheat { 0.0 } else { (points - bales * HAY_POINTS).min(whole(content.good("wheat"))).max(0.0) };
+    (bales, wheat, bales * HAY_POINTS + wheat)
+}
+
+/// The team eats its fodder from home's warehouse (as [`fodder`] found it), into the ledger's `used`.
+pub fn eat_fodder(content: &Content, ledger: &mut Ledger, stock: &mut [f64], points: f64, keep_wheat: bool) {
+    let (bales, wheat, _) = fodder(content, stock, points, keep_wheat);
+    for (g, n) in [(content.good("hay_block"), bales), (content.good("wheat"), wheat)] {
+        if let (Some(g), true) = (g, n > 0.0) {
+            stock[g] -= n;
+            ledger.used[g] += n;
+        }
+    }
+}
 
 /// Why a wagon stayed home this look.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -109,6 +141,31 @@ pub fn eat(content: &Content, ledger: &mut Ledger, stock: &mut [f64], points: f6
         eaten.push((g, n));
     }
     eaten
+}
+
+/// What a wagon's road takes from home's money as it leaves, for the plan to leave room for it (the mod's `spare`
+/// less `roadPurse`; and the food and fodder bought on the road, which the mod's leaves out, so a plan that fills the
+/// purse never keeps the wagon home): where content has food, the road home's purse, the way out's food home hasn't
+/// got and the team's fodder it hasn't; else the route's `road_cost`.
+pub fn road_money(content: &Content, route: &Route, home_stock: &[f64], keep_wheat: bool) -> f64 {
+    if !road_food(content) {
+        return route.road_cost;
+    }
+    let ppfp = content.dials.purse_per_food_point;
+    let food = food_needed(content, route.blocks) * mouths(None);
+    let team = 2.0 * food_needed(content, route.blocks) * content.dials.wagon_team as f64;
+    let fed = fodder(content, home_stock, team, keep_wheat).2;
+    (food + (food - held(content, home_stock)).max(0.0) + team - fed) * ppfp
+}
+
+/// What a wagon at the far end keeps of its purse for the road home's food, paying advances there (`payAdvances`'s
+/// `keep`): none where content has no road food.
+pub fn purse_keep(content: &Content, route: &Route) -> f64 {
+    if road_food(content) {
+        food_needed(content, route.blocks) * mouths(None) * content.dials.purse_per_food_point
+    } else {
+        0.0
+    }
 }
 
 /// A route's road food as a host sees it.

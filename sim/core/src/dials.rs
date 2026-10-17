@@ -207,4 +207,6 @@ dials! {
     purse_per_food_point: f64 = 1.5 / 30.0,
     /// Ticks a wagon waits at the far end for food before it sets off home on short rations (`MAX_WAIT_TICKS`).
     max_wait_ticks: u64 = 12000,
+    /// Animals in a wagon's team, each eating a mouth's food in fodder there and back (`WAGON_TEAM`).
+    wagon_team: u32 = 1,
 }

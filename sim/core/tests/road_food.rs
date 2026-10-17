@@ -66,7 +66,9 @@ fn a_wagon_sells_its_cargo_and_buys_its_food_at_the_far_end() {
     assert_eq!(s.route(0).carried, 64.0, "with the 64 paper the far end will take (its par, one stack)");
     let out = purse(&s);
     assert!((out - 0.05).abs() < 1e-12, "and a purse for the road home's food, a point at 0.05: {out}");
-    assert!((hub_money - s.town(HUB).money - out).abs() < 1e-12, "out of the hub's money, nothing else: its bread");
+    let fodder = 2.0 * 0.05; // the team's, a point each way, bought on the road (the hub has no hay or wheat)
+    assert!((hub_money - s.town(HUB).money - out - fodder).abs() < 1e-12,
+        "out of the hub's money, the purse and the team's fodder: the way out's food is its bread");
     assert_eq!(s.town(HUB).stock[PAPER], 64.0, "the rest of the paper stays home");
     assert_eq!(s.food_points(HUB), 5.0, "one bread eaten");
 
@@ -96,7 +98,7 @@ fn a_wagon_sells_its_cargo_and_buys_its_food_at_the_far_end() {
     assert!((s.town(HUB).money - before - back).abs() < 1e-12, "the hub banks what it carried");
     assert_eq!((s.route(0).trips, s.route(0).sold), (1, 64.0), "one trip, 64 sold");
     assert_eq!(s.town(HUB).stock[PAPER], 64.0, "the paper it didn't send is still at the hub");
-    assert_eq!(s.road_food(0).food_eaten, 1.0, "the road home's point (the way out's is home's own, as `foodEaten`)");
+    assert_eq!(s.road_food(0).food_eaten, 2.0, "a point each way (`foodEaten`)");
 }
 
 // parity: CaravanTests.aTownsWagonWaitsForALoadWorthItsRoadFood
@@ -142,9 +144,10 @@ fn without_bread_a_wagon_buys_its_road_food() {
     assert!(s.route(0).on_the_road, "no bread at home, but money: it goes");
     let spent = before - s.town(HUB).money;
     assert!(spent > purse(&s), "more than its purse went: its road food bought on the way, {spent}");
-    assert!((spent - 0.1).abs() < 1e-12, "a point bought (0.05) and the purse for the road home (0.05): {spent}");
+    assert!((spent - 0.2).abs() < 1e-9,
+        "a point bought (0.05), the team's two of fodder (0.1) and the purse for the road home (0.05): {spent}");
     let book = s.cash_book(HUB, 1);
-    assert!(book.iter().any(|(_, why, v)| why == "road food" && (*v + 0.05).abs() < 1e-12), "{book:?}");
+    assert!(book.iter().any(|(_, why, v)| why == "road food" && (*v + 0.15).abs() < 1e-9), "{book:?}");
 }
 
 // parity: CaravanTests.foodCapsALegAt3200Blocks
@@ -205,7 +208,8 @@ fn a_road_too_long_for_a_legs_food_isnt_built() {
     assert!(s.add_road(a, c, 1.0).is_some(), "no food in the content: no range");
 }
 
-// parity: CaravanTests.aCaravanGoesHomeOnShortRationsRatherThanWaitForDays
+// parity-partial: CaravanTests.aCaravanGoesHomeOnShortRationsRatherThanWaitForDays (the far end's bread eaten after
+// the wagon leaves: the mod's has none from the start, its unknown stocktake counting as plenty, `foodKnownAt`)
 #[test]
 fn a_wagon_goes_home_on_short_rations_rather_than_wait_for_days() {
     // The far end's two bread go a bread a look to its people: it had food when the wagon left (so the wagon packed
@@ -229,7 +233,7 @@ fn a_wagon_goes_home_on_short_rations_rather_than_wait_for_days() {
     let hungry = s.road_food(0);
     assert_eq!(hungry.short_rations, 1, "then goes home hungry: {hungry:?}");
     assert_eq!(hungry.home_at, Some(2 * LOOK + 12_000 + 160), "at half pace: twice its 80 ticks");
-    assert_eq!((hungry.food_paid, hungry.food_eaten), (0.0, 0.0), "nothing eaten for the road home");
+    assert_eq!((hungry.food_paid, hungry.food_eaten), (0.0, 1.0), "only the way out's eaten: none for the road home");
     s.advance(DAY);
     assert_eq!(s.route(0).trips, 1, "home");
 }
@@ -254,7 +258,7 @@ fn a_far_end_short_of_food_gets_wagons_that_pack_their_own() {
     bare.advance(2 * LOOK);
     let there = bare.road_food(0);
     assert!(there.home_at.is_some() && there.waiting_since.is_none(), "it ate its own and went home: {there:?}");
-    assert_eq!((there.food_paid, there.provisions, there.food_eaten), (0.0, 0.0, 1.0));
+    assert_eq!((there.food_paid, there.provisions, there.food_eaten), (0.0, 0.0, 2.0));
 }
 
 #[test]
@@ -282,8 +286,10 @@ fn wagons_bound_for_a_town_count_what_the_others_will_eat_there() {
 
 #[test]
 fn a_poor_town_rich_in_bread_packs_its_own_road_food() {
-    // No money, 66 bread (330 points: 10 beyond its 320 kept): it packs the road home's food and needs no purse.
+    // No money, 66 bread (330 points: 10 beyond its 320 kept): it packs the road home's food and needs no purse. No
+    // team: the mod's would eat home's hay or wheat (`fodderOnHand`), which the core doesn't feed it yet.
     let mut s = network(66.0, 0.0, 192.0);
+    s.content_mut().dials.wagon_team = 0;
     s.advance(LOOK);
     assert!(s.route(0).on_the_road, "it goes, though it holds no money");
     assert_eq!((s.road_food(0).provisions, purse(&s)), (1.0, 0.0));
@@ -365,4 +371,64 @@ fn without_food_in_the_content_the_road_costs_its_money() {
     assert!((5.0 - s.town(HUB).money - 0.5).abs() < 1e-12, "its road_cost paid");
     s.advance(DAY);
     assert_eq!(s.road_food(0).food_eaten, 0.0);
+}
+
+#[test]
+fn an_advance_leaves_room_for_the_road_food() {
+    // The buyer (3 emeralds, no bread) owes an advance of 8/3 it can't wholly cover, on a 40-block road: its purse
+    // takes what's left after the road's food, the team's fodder and the purse for the road home (`spare` less
+    // `roadPurse`), so the wagon goes; at the far end it pays the advance keeping its road food, the rest by a bill.
+    let mut s = Society::new(Content::new(vec![Good::new("paper", 1.0, 64), Good::new("bread", 1.0 / 6.0, 64).food(5.0)], DAY));
+    let (mill, scribes) = (s.add_town("Wheatfield", 5.0), s.add_town("Hayford", 3.0));
+    s.set_trade(mill, 0, 128.0, 0.0);
+    s.set_trade(scribes, 0, 0.0, 0.0);
+    s.deliver(mill, BREAD, 20.0);
+    s.add_route(scribes, mill, 40.0 / 1200.0, 0.0, 1.0);
+    s.add_route(mill, scribes, 40.0 / 1200.0, 0.0, 1.0);
+    let id = s.draft_advanced(0, 1, 0, 2.0, 1.0, 3 * DAY, DAY, 4, enterprise_core::Incoterm::Exw, false, false, true);
+    s.advance(DAY);
+    assert!(s.route(0).trips > 0, "the buyer's wagon went: {:?}", s.road_food(0).stayed);
+    let c = s.contract(id);
+    assert!((c.advanced - 8.0 / 3.0).abs() < 1e-9, "the advance paid, coin and a bill: {}", c.advanced);
+    assert!(s.road_food(0).food_paid > 0.0, "and the purse kept the road home's food: {:?}", s.road_food(0));
+}
+
+#[test]
+fn the_team_eats_home_s_hay_or_spare_wheat_else_its_fodder_is_bought() {
+    // The test network with wheat and hay: the team's two points (one a leg) come from home's wheat, not its money; a
+    // bale of hay (9 points) is too much for two; a town whose people use wheat keeps it and buys the fodder.
+    let goods = |content: &mut Content| {
+        content.goods.push(Good::new("wheat", 0.05, 64));
+        content.goods.push(Good::new("hay_block", 0.45, 64));
+    };
+    for keeps in [false, true] {
+        let mut c = content();
+        goods(&mut c);
+        let mut s = Society::new(c);
+        s.content_mut().dials.standing_orders = false;
+        let hub = s.add_town("Hub", 5.0);
+        let dest = s.add_town("Dest", 12.0);
+        s.record_capacity(dest, 1, &[(PAPER, 64.0 / 5.0)]);
+        s.set_trade(dest, PAPER, 0.0, 1e-9);
+        s.deliver(hub, PAPER, 128.0);
+        s.deliver(hub, BREAD, 2.0);
+        s.deliver(dest, BREAD, 2.0);
+        s.deliver(hub, 2, 10.0);
+        s.deliver(hub, 3, 3.0);
+        if keeps {
+            s.set_trade(hub, 2, 0.0, 1e-9);
+        }
+        s.add_route(hub, dest, 4.0 / 1200.0, 0.0, 4.0);
+        let before = s.town(hub).money;
+        s.advance(LOOK);
+        assert!(s.route(0).on_the_road);
+        let spent = before - s.town(hub).money - purse(&s);
+        let (wheat, hay) = (s.town(hub).stock[2], s.town(hub).stock[3]);
+        if keeps {
+            // (its people's use of a wheat in a billion a day aside)
+            assert!((wheat - 10.0).abs() < 1e-6 && hay == 3.0 && (spent - 0.1).abs() < 1e-6, "bought: {wheat} {hay} {spent}");
+        } else {
+            assert!((wheat, hay, spent.abs() < 1e-12) == (8.0, 3.0, true), "home's wheat: {wheat} {hay} {spent}");
+        }
+    }
 }

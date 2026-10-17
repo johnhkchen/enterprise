@@ -92,7 +92,7 @@ fn plan_sale(content: Res<Content>, mut routes: Query<(&Route, &mut RouteState)>
 #[allow(clippy::too_many_arguments)]
 fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut outbox: ResMut<Outbox>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
-        mut towns: Query<TownData>) {
+        mut towns: Query<TownData>, rosters: Query<&crate::roster::Roster>) {
     let now = clock.now;
     let d = &content.dials;
     // Road food (`road.rs`): what wagons on their way out will eat at each far end, if they packed none.
@@ -142,21 +142,25 @@ fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut 
         let on_its_day = state.last_departure.map_or(true, |t| now - t >= route.every_ticks);
         // The road's cost: its food where content has food (eaten from home, bought on the way, a purse for the road
         // home's), else its money; a load must be worth both legs' food, and home must pay for the road and the purse.
+        let keep_wheat = food_mode && crate::road::keep_wheat(&content, trades, rosters.get(route.from).ok());
         let provision = food_mode.then(|| {
             let after: Vec<f64> = stock.0.iter().zip(&plan.cargo).map(|(s, c)| s - c).collect();
             let home_free = free(&content, trades, &money, &bills, route.from_id, now);
             provision(&content, route.blocks, crate::road::mouths(None), crate::road::held(&content, &after), far_food,
-                home_free)
+                home_free, |feed| crate::road::fodder(&content, &after, feed, keep_wheat).2)
         });
         let (road_money, wagon_purse, cost) = match provision {
-            Some(p) => (p.food_coin, p.road_purse + plan.purse, p.cost),
+            Some(p) => (p.food_coin + p.team_coin, p.road_purse + plan.purse, p.cost),
             None => (route.road_cost, plan.purse, route.road_cost),
         };
         let pays = plan.worth >= cost;
-        if money.0 < road_money + wagon_purse {
+        // (Where content has food, a purse the plan filled to all home has beyond the road may sum an ulp over it.)
+        let slack = if provision.is_some() { 1e-9 } else { 0.0 };
+        if money.0 + slack < road_money + wagon_purse {
             state.stayed = Some(Stay::CantFund);
             continue;
         }
+        let wagon_purse = if provision.is_some() { wagon_purse.min(money.0 - road_money).max(0.0) } else { wagon_purse };
         if !(plan.pressing || (full || on_its_day) && pays) {
             state.stayed = Some(Stay::WaitingForALoad);
             continue;
@@ -169,13 +173,17 @@ fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut 
             book.ship(id, n);
         }
         if let Some(p) = provision {
+            // The team's fodder first, as it was found (the mod eats it after the food: the same, unless wheat is food).
+            crate::road::eat_fodder(&content, &mut ledger, &mut stock.0, p.team_feed, keep_wheat);
             // The way out's food and any packed for the road home, from home's warehouse: already paid for.
             crate::road::eat(&content, &mut ledger, &mut stock.0, p.from_home + p.provisions);
+            state.food_eaten += p.food; // the way out's (`foodEaten`, as the mod counts it at dispatch)
             if p.provisions <= 0.0 {
                 *promised.entry(route.to_id).or_insert(0.0) += p.food;
             }
         }
-        // Road food (or what it lacks of it, bought on the way) and the wagon's purse go out of the treasury as one sum.
+        // Road food (what it lacks of it, and the team's fodder, bought on the way) and the wagon's purse go out of the
+        // treasury as one sum.
         let mut purse = 0.0;
         post_legs(&mut ledger, &mut cash, Side::treasury(route.from_id, &mut money.0), vec![
             (Side::outside(), road_money, Reason::RoadFood),
