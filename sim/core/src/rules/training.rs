@@ -29,7 +29,7 @@ pub fn register(schedule: &mut Schedule) {
         lapse.in_set(Step::Review),
         judge.in_set(Step::Judge).after(super::harvest::review_rents),
         read_out.in_set(Step::Draft).after(super::arrive::draft),
-        read_home.in_set(Step::Turn).after(super::road::feed).before(super::arrive::turn),
+        read_home.in_set(Step::Turn).after(super::road::feed).before(super::squad::come_home).before(super::arrive::turn),
         copies.in_set(Step::Services).after(super::chokepoints::takings),
     ));
 }
