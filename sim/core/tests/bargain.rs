@@ -57,6 +57,8 @@ fn par_is_shelf_days_of_what_the_lockers_can_take() {
     assert_eq!(s.par(town, paper, true), days * 768.0, "shelf_days of 768");
     s.record_capacity(town, 2, &[]); // the cartographer's trade switched off
     assert_eq!(s.par(town, paper, true), days * 384.0, "a session replaces that locker's figure");
+    s.set_trade(town, paper, 0.0, 10.0);
+    assert_eq!(s.par(town, paper, true), days * 384.0, "once lockers record, a change of use leaves their figures");
     assert_eq!(bargain::par(s.content(), 0.3, false), 2.0, "rounded up: 1.5 of a day's capacity is 2");
 }
 

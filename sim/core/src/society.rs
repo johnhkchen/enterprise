@@ -132,12 +132,17 @@ impl Society {
         self.world.entity_mut(e).insert(roster);
     }
 
-    /// Sets what a town's people make and use of a good a day.
+    /// Sets what a town's people make and use of a good a day; until its lockers record what they can take, that use
+    /// is its capacity too (once they have, their figures stand).
     pub fn set_trade(&mut self, town: TownId, good: GoodId, makes: f64, uses: f64) {
-        let mut trades = self.world.get_mut::<Trades>(self.towns[town]).expect("a town");
+        let e = self.towns[town];
+        let recorded = !self.world.get::<crate::bargain::LockerCapacity>(e).expect("a town").0.is_empty();
+        let mut trades = self.world.get_mut::<Trades>(e).expect("a town");
         trades.makes[good] = makes;
         trades.uses[good] = uses;
-        trades.capacity[good] = uses;
+        if !recorded {
+            trades.capacity[good] = uses;
+        }
     }
 
     /// A run from one town to another, `days` each way, `road_cost` a round trip, every `every_days` on its timetable.
