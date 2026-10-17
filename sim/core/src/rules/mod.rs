@@ -23,6 +23,7 @@ pub mod plan;
 pub mod roster;
 pub mod territory;
 pub mod touch;
+pub mod workshop;
 
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::SingleThreadedExecutor;

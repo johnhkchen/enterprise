@@ -47,6 +47,8 @@ pub struct Content {
     pub dials: Dials,
     /// The trades a town's hands can have (`roster.rs`): the mod's sixteen by default.
     pub trades: Vec<crate::roster::Trade>,
+    /// What a town's trades convert (`workshop.rs`): the mod's seven by default, for the goods the host has.
+    pub conversions: Vec<crate::workshop::Conversion>,
 }
 
 impl Content {
@@ -54,8 +56,10 @@ impl Content {
     pub const COMFORTS: [&'static str; 5] = ["treats", "reading", "clothing", "furnishings", "leisure"];
 
     pub fn new(goods: Vec<Good>, day_ticks: u64) -> Self {
-        Content { goods, comforts: Self::COMFORTS.iter().map(|k| k.to_string()).collect(), day_ticks, dials: Dials::default(),
-            trades: crate::roster::trades() }
+        let mut content = Content { goods, comforts: Self::COMFORTS.iter().map(|k| k.to_string()).collect(), day_ticks,
+            dials: Dials::default(), trades: crate::roster::trades(), conversions: Vec::new() };
+        content.conversions = crate::workshop::mod_conversions(&content);
+        content
     }
 
     /// The kind of comfort called `name`.

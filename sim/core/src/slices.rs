@@ -36,6 +36,7 @@ crate::saved! {
         people: People,
         roster: crate::roster::Roster,
         locker_capacity: crate::bargain::LockerCapacity,
+        workshop: crate::workshop::Workshop,
     }
     route {
         route: Route,
@@ -55,4 +56,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::plan::register(schedule);
     crate::rules::roster::register(schedule);
     crate::rules::territory::register(schedule);
+    crate::rules::workshop::register(schedule);
 }

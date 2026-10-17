@@ -17,4 +17,5 @@ slices! {
     territory_growth,
     advances_and_refunds,
     bargain_and_par,
+    workshop,
 }

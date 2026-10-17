@@ -79,6 +79,8 @@ impl Society {
                 crate::bargain::LockerCapacity::default(),
             ))
             .id();
+        // Every town has a workshop's hooks, so towns share one archetype whether or not a hook is set.
+        self.world.entity_mut(e).insert(crate::workshop::Workshop::default());
         self.towns.push(e);
         self.world.resource_mut::<Towns>().0.push(e);
         self.towns.len() - 1
