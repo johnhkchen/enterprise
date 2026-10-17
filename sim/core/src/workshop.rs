@@ -13,6 +13,12 @@
 //! unit of output). What a town wants of its comforts is a demand vector `d`; the inputs it draws a day are `A d`, and
 //! what its own trades make of those, `A (A d)`: [`input_demand`] is that back-substitution, two steps deep, each row
 //! carrying the worth an item earns there.
+//!
+//! **Not yet as the mod:** a comfort's worth in the ranking is its plain value, not `Desires.reckon`; food wanted
+//! divides by the output's own food points (the mod hard-codes 5, bread's and cooked cod's); `run` has no warehouse
+//! room limit; the books' `made:` and `could make more: short of` notes aren't kept; and the workshop runs in
+//! `Step::Work`, after the touch's comforts and food are used, where the mod's farm touch converts before
+//! `enjoyComforts` and `householdsPay` (`Territory.java` 1416 vs 1430), so what it makes is used at the next touch.
 
 use bevy_ecs::prelude::*;
 use serde::{Deserialize, Serialize};

@@ -1,6 +1,7 @@
 //! The workshop's part of the random worlds: the first goods take the mod's names (wheat, cane, paper, bread, biscuits,
-//! books, leather) so its conversions exist, and some towns get farmers and librarians, a locker's par for paper, and
-//! forward sales that set wheat aside.
+//! books, leather) so its conversions exist, keeping the base world's comfort and food flags (so a conversion's output
+//! is a comfort, a food or neither as the seed falls, and every slice keeps the base world's comforts and food), and
+//! some towns get farmers and librarians, a locker's par for paper, and forward sales that set wheat aside.
 
 use super::super::*;
 
@@ -11,10 +12,7 @@ pub fn extend(s: &mut Society, r: &mut Rng) {
     {
         let mut content = s.content_mut();
         for (i, name) in NAMES.iter().enumerate().take(n) {
-            let g = &mut content.goods[i];
-            g.name = name.to_string();
-            g.comfort = match *name { "cookie" => Some(0), "book" => Some(1), _ => None };
-            g.food = if *name == "bread" { 5.0 } else { 0.0 };
+            content.goods[i].name = name.to_string();
         }
     }
     s.rebuild_conversions();
