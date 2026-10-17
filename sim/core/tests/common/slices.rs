@@ -20,4 +20,5 @@ slices! {
     workshop,
     settlers_rule,
     farms_and_wages,
+    herds,
 }

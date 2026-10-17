@@ -86,6 +86,7 @@ impl Society {
         self.world.entity_mut(e).insert(crate::workshop::Workshop::default());
         // And a farm not yet set up and its households' savings lent the treasury (none yet), for the same reason.
         self.world.entity_mut(e).insert((crate::farms::Farm::default(), crate::farms::Deposits::default()));
+        self.world.entity_mut(e).insert(crate::herds::Herds { last: now, ..Default::default() });
         self.towns.push(e);
         self.world.resource_mut::<Towns>().0.push(e);
         self.towns.len() - 1

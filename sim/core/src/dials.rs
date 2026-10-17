@@ -182,4 +182,19 @@ dials! {
     rotate_plots: u32 = 81,
     /// Times as many plots a review for a crop owed under contract.
     rotate_owed_fields: u32 = 2,
+    // herds (`territory/Husbandry.java`)
+    /// Animals a pasture holds.
+    pasture_animals: u32 = 16,
+    /// The share a fed herd grows by a day, while there's room.
+    breed_per_day: f64 = 0.15,
+    /// The share a hungry herd dwindles by a day.
+    starve_per_day: f64 = 0.1,
+    /// A Butcher culls a kind beyond this share of the room, divided among the kinds kept.
+    cull_share: f64 = 0.75,
+    /// A Butcher or Leatherworker always keeps this many of a kind to breed from.
+    breeding_stock: f64 = 4.0,
+    /// The share of the surplus a Butcher culls a day.
+    slaughter_per_day: f64 = 0.5,
+    /// Wool a shorn sheep gives a day.
+    wool_per_sheep_day: f64 = 0.5,
 }

@@ -17,6 +17,7 @@ pub mod content;
 pub mod dials;
 pub mod farms;
 pub mod contracts;
+pub mod herds;
 pub mod hex;
 pub mod map;
 pub mod messages;

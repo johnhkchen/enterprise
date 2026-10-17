@@ -40,6 +40,7 @@ crate::saved! {
         workshop: crate::workshop::Workshop,
         farm: crate::farms::Farm,
         deposits: crate::farms::Deposits,
+        herds: crate::herds::Herds,
     }
     route {
         route: Route,
@@ -62,4 +63,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::workshop::register(schedule);
     crate::rules::settlers::register(schedule);
     crate::rules::farms::register(schedule);
+    crate::rules::herds::register(schedule);
 }

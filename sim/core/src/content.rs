@@ -57,6 +57,8 @@ pub struct Content {
     pub trades: Vec<crate::roster::Trade>,
     /// What a town's trades convert (`workshop.rs`): the mod's seven by default, for the goods the host has.
     pub conversions: Vec<crate::workshop::Conversion>,
+    /// The animals a town keeps (`herds.rs`): the mod's four by default, for the goods the host has.
+    pub animals: Vec<crate::herds::Animal>,
 }
 
 impl Content {
@@ -65,8 +67,9 @@ impl Content {
 
     pub fn new(goods: Vec<Good>, day_ticks: u64) -> Self {
         let mut content = Content { goods, comforts: Self::COMFORTS.iter().map(|k| k.to_string()).collect(), day_ticks,
-            dials: Dials::default(), trades: crate::roster::trades(), conversions: Vec::new() };
+            dials: Dials::default(), trades: crate::roster::trades(), conversions: Vec::new(), animals: Vec::new() };
         content.conversions = crate::workshop::mod_conversions(&content);
+        content.animals = crate::herds::mod_animals(&content);
         content
     }
 
