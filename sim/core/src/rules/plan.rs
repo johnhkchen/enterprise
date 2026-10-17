@@ -153,7 +153,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             (true, Ok((home, ..)), Ok((_, _, far, ..))) => crate::squad::wanted_stacks(&content, &home.0, far),
             _ => 0,
         };
-        // A realm's wagon is its own people's: no squad, two mouths, no team, and it never counts on home's poverty.
+        // A realm's wagon is its own people's: no squad, two mouths' road food, no team, never home's poverty counted.
         // An off-map market that sells no food feeds no one (`OffMap.sells`): its wagons pack the road home's food.
         let far_sells = places.get(route.to).map_or(true, |(off, _)| off.map_or(true, |o| o.sells_food));
         let far_food = if food_mode && far_sells {
@@ -246,7 +246,15 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             continue;
         }
         let wagon_purse = if provision.is_some() { wagon_purse.min(money.0 - road_money).max(0.0) } else { wagon_purse };
-        if !(plan.pressing || (full || on_its_day) && pays) {
+        // A realm's wagon never waits for a load (`dispatch`'s waiting is `!foreign`): a day after the last it goes
+        // with anything aboard or any business there; only an empty trip stays home (`no empty trips`).
+        let goes = if foreign {
+            state.last_departure.map_or(true, |t| now - t >= content.day_ticks)
+                && (plan.stacks > 0 || plan.pressing || plan.purse > 0.0 || !plan.collecting.is_empty())
+        } else {
+            plan.pressing || (full || on_its_day) && pays
+        };
+        if !goes {
             state.stayed = Some(Stay::WaitingForALoad);
             continue;
         }
@@ -298,7 +306,6 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             porter,
             slots,
             saddled,
-            foreign_mouths: if foreign { crate::realms::crew(&content) as u32 } else { 0 },
             ..Default::default()
         });
         outbox.0.push(Output::WagonLeft { route: route.seq, stacks: plan.stacks, worth: plan.worth });

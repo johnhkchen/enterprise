@@ -14,8 +14,9 @@ use crate::state::*;
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
-        work.in_set(Step::Work),
-        customs.in_set(Step::Sell).after(super::arrive::sell),
+        work.in_set(Step::Work).before(super::farms::work),
+        // (as `arriveAtDestination` takes them, straight after the sale: before any of the wagon's purse is spent)
+        customs.in_set(Step::Sell).after(super::arrive::sell).before(super::harvest::redeem).before(super::cargo::relot),
     ));
 }
 

@@ -68,7 +68,7 @@ pub(crate) fn plan_redeem(content: Res<Content>, rents: Res<Rents>, mut routes: 
 
 /// At the far end, the wagon's town buys back the rents it owes here, paying the capital from its purse beyond what it
 /// keeps for the road home's food (`ForwardSales.offer`'s `keep`).
-fn redeem(clock: Res<Clock>, content: Res<Content>, mut rents: ResMut<Rents>, mut book: ResMut<Book>,
+pub(crate) fn redeem(clock: Res<Clock>, content: Res<Content>, mut rents: ResMut<Rents>, mut book: ResMut<Book>,
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<TownData>) {
     if rents.rents.is_empty() {

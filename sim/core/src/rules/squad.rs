@@ -78,7 +78,7 @@ pub fn call(content: &Content, roster: &Roster, home: &[usize], stacks: u32, wan
 /// its load fills (`plan_sale`) and the mouths its road feeds (`plan_advances`), trimmed to the mouths home's food
 /// feeds. Nobody's hired and nobody's kept back: the route musters its squad for good as it leaves ([`crew`]).
 pub fn size_up(content: Res<Content>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
-        homes: Query<(&Roster, Option<&Lockers>, &Stock)>, fars: Query<&Trades>) {
+        homes: Query<(&Roster, Option<&Lockers>, &Stock), Without<crate::realms::Realm>>, fars: Query<&Trades>) {
     let food_mode = road_food(&content);
     let mut idle: BTreeMap<usize, usize> = BTreeMap::new();
     for (_, route, state) in routes.iter() {

@@ -133,7 +133,8 @@ fn sold(outs: &[Output]) -> f64 {
 // parity: CaravanTests.aForeignRealmSendsItsOwnTraders
 #[test]
 fn a_foreign_realm_sends_its_own_traders() {
-    let (mut s, dest, march, route, _) = march(false, 20.0);
+    // The mod's network(2, 5, 640): two bread at the far end, too few to feed the March's wagon home.
+    let (mut s, dest, march, route, _) = march(false, 2.0);
     assert!(s.is_realm(march) && s.is_off_map(march));
     let mut takings = 0.0;
     let mut t = 0;
@@ -152,11 +153,11 @@ fn a_realm_sends_two_mouths_and_no_squad() {
     s.advance(LOOK);
     assert!(s.route(route).on_the_road, "it goes at once: no Merchant at a desk, no squad mustered");
     let food = s.road_food(route);
-    // 64 blocks: seven points a mouth a leg (`blocks_per_food`), two mouths.
-    assert_eq!(food.food_a_leg, 14.0, "two of its people eat: {food:?}");
+    // 64 blocks: seven points a mouth a leg (`blocks_per_food`); on the road its traders eat as one (`Caravan.mouths`).
+    assert_eq!(food.food_a_leg, 7.0, "they eat as one on the road: {food:?}");
     assert!(s.crew(route).crew.is_empty() && s.roster(march).hands.is_empty(), "never a hand of ours");
     assert_eq!(food.provisions, 0.0, "the far end holds 20 bread (100 points) to feed them home: {food:?}");
-    // With two bread (10 points) it can't feed two mouths, so they pack the road home's food as well.
+    // With two bread (10 points) it can't feed two mouths (14), so it packs two mouths' road home food as well.
     let (mut s, _, _, route, _) = self::march(false, 2.0);
     s.advance(LOOK);
     assert_eq!(s.road_food(route).provisions, 14.0, "{:?}", s.road_food(route));

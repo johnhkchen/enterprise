@@ -16,9 +16,11 @@
 //! under its own key), comfort or not (`Caravans.sell`: "a realm's people want some comforts as a country does"), from
 //! the money it holds with no Accountant to hold it back (`foreign ? Double.MAX_VALUE`).
 //!
-//! **Its wagons** need no squad (`dispatch`'s `foreign`: its Merchant and crew are its own, never seen): two mouths
-//! ([`Dials::foreign_crew`](crate::Dials)), no team to feed, no home food kept back to cover a town's poverty, and every
-//! bargain at `foreign_merchant_level` (4), its own market's as buyer too (`Warehouse.recordLevel(at, 4)`).
+//! **Its wagons** need no squad (`dispatch`'s `foreign`: its Merchant and crew are its own, never seen): road food for
+//! two mouths at dispatch ([`Dials::foreign_crew`](crate::Dials)), though on the road and at the far end they eat as one
+//! (`Caravan.mouths`, an empty crew); no team to feed, no home food kept back to cover a town's poverty, every bargain
+//! at `foreign_merchant_level` (4), its own market's as buyer too (`Warehouse.recordLevel(at, 4)`). It never waits for
+//! a load: a day after the last it goes with anything aboard (`dispatch`'s waiting is `!foreign`).
 //!
 //! **Customs** (`Realms.customs`, `arriveAtDestination` 694): a foreign wagon's takings at a town pay the crown
 //! `customs` (10%) into its treasury, if a capital is named ([`Crown`]; the crown slice will set it, a host can now).

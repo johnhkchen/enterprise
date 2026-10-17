@@ -374,7 +374,7 @@ fn unlot(mut routes: Query<&mut RouteState>) {
 }
 
 /// After the sale: a lot bought whole leaves its crate with the buyer; what's left of one stays crated aboard.
-fn relot(content: Res<Content>, mut routes: Query<(&Route, &mut RouteState)>, mut stores: Query<&mut Shipments>) {
+pub(crate) fn relot(content: Res<Content>, mut routes: Query<(&Route, &mut RouteState)>, mut stores: Query<&mut Shipments>) {
     for (route, mut state) in &mut routes {
         if state.arrived != Some(Leg::Out) {
             continue;
