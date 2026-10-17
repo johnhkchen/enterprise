@@ -17,7 +17,10 @@ use crate::contracts::{self, Book, State, ADVANCE_EPS};
 use crate::state::*;
 
 pub fn register(schedule: &mut Schedule) {
-    schedule.add_systems((advances_papers.in_set(Step::Papers), plan_advances.in_set(Step::PlanPapers)));
+    // As the mod: refunds and advances settled before the bills are presented (`Caravans.arrive`: `settleOwing`,
+    // `payAdvances`, then `presentBills`), so the money an advance brings can meet a bill.
+    schedule.add_systems((advances_papers.in_set(Step::Papers).before(super::bills::present),
+        plan_advances.in_set(Step::PlanPapers)));
 }
 
 fn advance_reason() -> Reason {
@@ -28,10 +31,11 @@ fn refund_reason() -> Reason {
     Reason::Other("advance refund".into())
 }
 
-/// At the far end: the buyer's wagon hands over the copy it carries; advances due to the town here are paid from the
-/// purse (and the rest by a bill on the buyer where trusted); advances the town here owes back are paid into the
-/// purse from what it can spare beyond its trading capital; and advances home owes the town here are paid from the
-/// purse.
+/// At the far end: the buyer's wagon hands over the copy it carries; then, in the mod's order (`settleOwing`, then
+/// `payAdvances`), advances the town here owes back are paid into the purse from what it can spare beyond its trading
+/// capital, and advances home owes back the town here from the purse; advances due to the town here are paid from the
+/// purse (the rest by a bill on the buyer where trusted); and advances the town here owes home are paid into the purse
+/// from what it can spare.
 #[allow(clippy::too_many_arguments)]
 fn advances_papers(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
@@ -51,6 +55,25 @@ fn advances_papers(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Bo
             let c = &book.contracts[id];
             if c.state == State::Drafted && c.advance_share > 0.0 && c.known_by_buyer && !c.known_by_seller {
                 book.deliver_copy(id, route.to_id);
+            }
+        }
+        // The advance the town here owes back to the wagon's town: what it can spare beyond its trading capital.
+        for id in book.refunds(route.to_id, route.from_id) {
+            let can = (money.0 - trading_capital(&content, trades)).max(0.0);
+            let pay = can.min(book.contracts[id].refund);
+            if pay > ADVANCE_EPS {
+                post(&mut ledger, &mut cash, Side::treasury(route.to_id, &mut money.0), Side::wagon(route.seq, &mut wagon.purse),
+                    pay, refund_reason(), now, day);
+                book.refunded(id, pay);
+            }
+        }
+        // The advance the wagon's town owes back to the town here: paid from the purse it brought.
+        for id in book.refunds(route.from_id, route.to_id) {
+            let pay = book.contracts[id].refund.min(wagon.purse.max(0.0));
+            if pay > 0.0 {
+                post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut money.0),
+                    pay, refund_reason(), now, day);
+                book.refunded(id, pay);
             }
         }
         // The advance the buyer (home) owes the town here.
@@ -74,23 +97,18 @@ fn advances_papers(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Bo
                 book.advanced(id, paid);
             }
         }
-        // The advance the town here owes back to the wagon's town: what it can spare beyond its trading capital.
-        for id in book.refunds(route.to_id, route.from_id) {
+        // The advance the town here owes the wagon's town, under contracts it buys from it whose copy it holds: paid
+        // into the purse from what it can spare beyond its trading capital.
+        for id in book.advances_due(route.from_id, route.to_id) {
+            if !book.contracts[id].known_by_buyer {
+                continue;
+            }
             let can = (money.0 - trading_capital(&content, trades)).max(0.0);
-            let pay = can.min(book.contracts[id].refund);
+            let pay = can.min(book.contracts[id].advance_due());
             if pay > ADVANCE_EPS {
                 post(&mut ledger, &mut cash, Side::treasury(route.to_id, &mut money.0), Side::wagon(route.seq, &mut wagon.purse),
-                    pay, refund_reason(), now, day);
-                book.refunded(id, pay);
-            }
-        }
-        // The advance the wagon's town owes back to the town here: paid from the purse it brought.
-        for id in book.refunds(route.from_id, route.to_id) {
-            let pay = book.contracts[id].refund.min(wagon.purse.max(0.0));
-            if pay > 0.0 {
-                post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut money.0),
-                    pay, refund_reason(), now, day);
-                book.refunded(id, pay);
+                    pay, advance_reason(), now, day);
+                book.advanced(id, pay);
             }
         }
     }

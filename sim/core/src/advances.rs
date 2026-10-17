@@ -1,9 +1,10 @@
 //! Money before the goods, as the mod keeps it (`contract/Advance.java`, `Contract.java` `worth`, `advanceDue`,
 //! `recoupFrom`, `contract/ContractBook.java` `advanced`, `recouped`, `refunds`, `broken`): a buyer pays a share of a
 //! contract's worth up front, carried by its wagon with the copy (coin as far as the purse goes, the rest a bill on the
-//! buyer where trusted); the seller works it off at the same share of each delivery's price, the last delivery taking
-//! what's left; if the contract breaks, what isn't worked off is owed back, and the next wagon between the two
-//! collects it from what the seller can spare beyond its trading capital (`Caravans.payAdvances`, `settleOwing`).
+//! buyer where trusted), or collected by the seller's wagon from what the buyer can spare; the seller works it off at
+//! the same share of each delivery's price, the last delivery taking what's left; if the contract breaks, what isn't
+//! worked off is owed back, and the next wagon between the two collects it from what the seller can spare beyond its
+//! trading capital (`Caravans.payAdvances`, `settleOwing`).
 //!
 //! The data lives on [`crate::contracts::Contract`] and [`crate::contracts::Book`]; the rules are in
 //! `rules/advances.rs`; this module is the host's calls.

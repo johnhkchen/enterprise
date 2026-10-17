@@ -19,7 +19,7 @@ pub fn register(schedule: &mut Schedule) {
 /// isn't its money manager's to hold back). Its grace runs from the day a bill is first put to it; unpaid past that,
 /// the bill is dishonoured and trust falls a whole miss; honoured, it counts half a kept installment.
 #[allow(clippy::too_many_arguments)]
-fn present(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
+pub(super) fn present(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<TownData>) {
     let now = clock.now;
     let day = content.day_ticks;

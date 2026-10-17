@@ -134,7 +134,7 @@ fn an_advance_is_worked_off_at_its_share_of_each_delivery_and_the_books_balance(
     assert!(s.town(1).money <= 100.0 - 64.0 + 1e-6, "the buyer paid for the goods: {}", s.town(1).money);
 }
 
-// parity-partial: ContractTests.aBrokenContractOwesBackItsUnearnedAdvance
+// Beyond the mod's game tests: `Caravans.settleOwing`, the next wagon between the two collecting the refund.
 #[test]
 fn a_broken_contract_is_paid_back_by_the_next_wagon_between_the_two() {
     // The mill makes nothing, so it never delivers; it holds the buyer's advance, and owes it back when it breaks.
@@ -182,4 +182,33 @@ fn the_random_worlds_pay_work_off_and_refund_advances() {
         }
     }
     assert!(paid > 20 && worked > 0 && broken > 5 && refunded > 0, "{paid} paid, {worked} worked off, {broken} broken, {refunded} refunded");
+}
+
+// Beyond the mod's game tests: `Caravans.payAdvances`' second half, a seller's wagon collecting the advance at the buyer.
+#[test]
+fn the_sellers_wagon_collects_the_advance_at_the_buyer() {
+    // Only the mill runs a wagon; both hold the copy, so the scribes pay up front when it comes, from what they spare.
+    let mut s = Society::new(Content::new(vec![Good::new("paper", 1.0, 64)], DAY));
+    let mill = s.add_town("Wheatfield", 5.0);
+    let scribes = s.add_town("Hayford", 50.0);
+    s.set_trade(mill, 0, 128.0, 0.0);
+    s.set_trade(scribes, 0, 0.0, 0.0);
+    s.add_route(mill, scribes, 1.0, 0.5, 1.0);
+    let id = s.draft_advanced(0, 1, 0, 2.0, 1.0, 3 * DAY, DAY, 4, Incoterm::Dap, true, true, true);
+    let start = s.totals();
+    let scribes_before = s.town(1).money;
+    let mut first = None;
+    for quarter in 1..=24 {
+        s.advance(quarter * DAY / 4);
+        s.conserved(&start).unwrap();
+        let c = s.contract(id);
+        if first.is_none() && c.advanced > 0.0 {
+            first = Some(quarter);
+            assert!((c.advanced - 8.0 / 3.0).abs() < 1e-9, "all of it, the scribes having it to spare: {c:?}");
+            assert!(c.recouped <= c.advanced);
+        }
+    }
+    assert!(first.is_some(), "the mill's wagon collected it: {:?}", s.contract(id));
+    assert!(s.town(1).money < scribes_before, "from the buyer's treasury: {}", s.town(1).money);
+    assert!(s.bills().is_empty());
 }
