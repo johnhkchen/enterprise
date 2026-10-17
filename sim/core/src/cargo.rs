@@ -18,8 +18,8 @@
 //!
 //! The rules are in `rules/cargo.rs`: contracted goods load as shipments, crated ones first (`PlanOwed`, then at
 //! departure); goods for sale go crated a good to a crate when there are two stacks or more; the consignee opens what's
-//! made out to it (`Settle`); a wagon fetches home what's made out to its home and takes the far end's spare empties
-//! (`Collect`); a farm crates what falls due under its forward sales in lots (`Work`); the buyer's wagon carries what
+//! made out to it (`Settle`); a wagon fetches home what's made out to its home and takes the far end's spare empties,
+//! first as it arrives (`Papers`); a farm crates what falls due under its forward sales in lots (`Work`); the buyer's wagon carries what
 //! it owes for goods a player brought (`Papers`).
 //!
 //! **Stood in for:** the crate's slots are Minecraft's; here a warehouse has room for `crate_room` crates of
@@ -267,7 +267,7 @@ pub fn reckon(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: 
         let owed = lacking.min(documents) * fee;
         let paid = owed.min(money.max(0.0));
         post(ledger, cash, Side::treasury(town, money), Side::outside(), paid, scribe_reason(), now, content.day_ticks);
-        paperwork.scribe_fees += paid;
+        paperwork.scribe_fees += owed; // the fee in full, paid or not, as the mod books it (`Paperwork.settle`)
     }
 }
 

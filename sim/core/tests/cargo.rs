@@ -84,7 +84,7 @@ fn a_scribe_is_paid_only_what_the_treasury_holds() {
     s.draw_papers(0, 10, LADING);
     look(&mut s);
     assert_eq!(s.town(0).money, 0.0, "it pays what it has");
-    assert!((s.paperwork(0).scribe_fees - 0.25).abs() < 1e-9);
+    assert!((s.paperwork(0).scribe_fees - 1.0).abs() < 1e-9, "the fee booked in full, as the mod's");
 }
 
 /// A hub and a town a day apart, the hub's wagon going every `every` days; paper and flint and axes.
@@ -224,10 +224,10 @@ fn a_shipper_uses_its_own_empties_first_and_has_spare_ones_back() {
     assert!((s.town(0).money - 5.0).abs() < 1e-9, "nothing paid for it: {}", s.town(0).money);
     assert!(until(&mut s, 30, |s| s.contract(id).delivered > 0.0));
     let (_, empties) = s.wagon_shipments(0);
-    assert_eq!(empties, 5, "the town keeps sixteen of its 21 and hands the rest back");
-    assert_eq!(s.shipments(1).empties, 16);
+    assert_eq!(empties, 4, "the town keeps sixteen of its 20 and hands the rest back, before the crate is opened");
+    assert_eq!(s.shipments(1).empties, 17, "then the opened crate's kept too");
     assert!(until(&mut s, 60, |s| s.route(0).trips >= 1));
-    assert_eq!(s.shipments(0).empties, 5, "returnable crates home");
+    assert_eq!(s.shipments(0).empties, 4, "returnable crates home");
 }
 
 #[test]

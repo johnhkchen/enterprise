@@ -10,12 +10,13 @@
 //! - `Decide`, as the wagon leaves: the crates planned taken from home's; the loose goods owed packed with a bill of
 //!   lading and a copy of the contract, made out to the far end; then each good for sale of two stacks or more packed
 //!   in crates of its own, with no papers (`Caravans.lots`); what can't be crated travels loose.
-//! - `Papers`: the buyer's wagon pays what its town owes the far end for goods delivered without a wagon
-//!   (`Caravans.settleOwing`; the seller's wagon collecting it is `rules/contracts.rs`'s `settle`).
+//! - `Papers`, first: the far end's empty crates beyond the stack it keeps go back, and crates there made out to the
+//!   wagon's home are fetched, as far as there's room, before anything is delivered, paid or collected (the mod's
+//!   order in `arriveAtDestination`: `spareEmpties` and the consigned crates before `settleOwing`). Then the buyer's
+//!   wagon pays what its town owes the far end for goods delivered without a wagon (`Caravans.settleOwing`; the
+//!   seller's wagon collecting it is `rules/contracts.rs`'s `settle`).
 //! - `Settle`: crates made out to the far end are opened by its Merchant: their copies filed, their goods delivered
 //!   under the contract (`rules/contracts.rs`) or for sale, the empty crates kept (`Crates.store`, `open`).
-//! - `Collect` (after the Ex Works collections): the far end's empty crates beyond the stack it keeps go back, and
-//!   crates there made out to the wagon's home are fetched, as far as there's room (`arriveAtDestination`).
 //! - `Sell`: lots for sale opened to sell; a lot bought whole leaves its crate with the buyer, the rest stays crated.
 //! - `Turn`, at home: crates made out home received (`Crates.receive`), lots that didn't sell back on the shelves, the
 //!   empty crates into home's.
@@ -38,9 +39,9 @@ pub fn register(schedule: &mut Schedule) {
         plan_crated.in_set(Step::PlanOwed).before(super::contracts::plan_owed),
         plan_owing.in_set(Step::PlanPapers).before(super::advances::plan_advances),
         ship.in_set(Step::Decide).after(super::plan::decide),
+        fetch.in_set(Step::Papers).before(pay_owing),
         pay_owing.in_set(Step::Papers).before(super::advances::advances_papers).before(super::bills::present),
         open.in_set(Step::Settle).before(super::contracts::settle),
-        fetch.in_set(Step::Collect).after(super::contracts::collect),
         unlot.in_set(Step::Sell).before(super::arrive::sell),
         relot.in_set(Step::Sell).after(super::arrive::sell),
         unload.in_set(Step::Turn).after(super::road::feed).before(super::arrive::turn),
@@ -306,9 +307,13 @@ fn open(content: Res<Content>, mut book: ResMut<Book>, mut routes: Query<(Entity
     }
 }
 
-/// At the far end, after its collections: its empty crates beyond the stack it keeps go back with the wagon, and the
-/// crates there made out to the wagon's home are fetched, as far as the wagon has room.
-fn fetch(content: Res<Content>, mut routes: Query<(Entity, &Route, &mut RouteState)>, mut stores: Query<&mut Shipments>) {
+/// At the far end, first of all (before the debts, the deliveries and the Ex Works collections, as the mod's
+/// `arriveAtDestination`): its empty crates beyond the stack it keeps go back with the wagon, and the crates there made
+/// out to the wagon's home are fetched, as far as the wagon, still loaded with what it brought, has room. Not a farm's
+/// unpaid earmark for an Ex Works contract: that's for the Ex Works collection to take first, paid for (as the mod's
+/// `collectExWorks` says it does; its fetch, coming first, would take it unpaid and the collection the loose goods too).
+fn fetch(content: Res<Content>, book: Res<Book>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
+        mut stores: Query<&mut Shipments>) {
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(entity).unwrap();
         if state.arrived != Some(Leg::Out) {
@@ -320,8 +325,10 @@ fn fetch(content: Res<Content>, mut routes: Query<(Entity, &Route, &mut RouteSta
         wagon.empties += store.spare_empties(content.dials.empties_kept);
         let mut i = 0;
         while i < store.held.len() {
-            if store.held[i].consigned_to(route.from_id) && stacks(&content, &wagon.cargo, &wagon.shipments)
-                    + store.held[i].stacks(&content) <= content.dials.wagon_slots {
+            let h = &store.held[i];
+            let collected = !h.settled && h.contract.is_some_and(|id| !book.contracts[id].incoterm.seller_carries());
+            if h.consigned_to(route.from_id) && !collected && stacks(&content, &wagon.cargo, &wagon.shipments)
+                    + h.stacks(&content) <= content.dials.wagon_slots {
                 wagon.shipments.push(store.held.remove(i));
             } else {
                 i += 1;
@@ -373,9 +380,11 @@ fn relot(content: Res<Content>, mut routes: Query<(&Route, &mut RouteState)>, mu
 /// Home again, before the cargo goes back on the shelves: crates made out home received (`Crates.receive`), lots that
 /// didn't sell back in stock, any other crate kept as it is; the empty crates it brought into home's.
 #[allow(clippy::type_complexity)]
-fn unload(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut routes: Query<(&Route, &mut RouteState)>,
-        mut towns: Query<(&mut Stock, &mut Shipments)>) {
-    for (route, mut state) in &mut routes {
+fn unload(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>,
+        mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<(&mut Stock, &mut Shipments)>) {
+    // In route order: receiving books deliveries and debts under contracts two wagons may share.
+    for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
+        let (_, route, mut state) = routes.get_mut(entity).unwrap();
         if state.arrived != Some(Leg::Home) {
             continue;
         }
