@@ -6,7 +6,7 @@ const DAY: u64 = 24_000;
 
 /// Paper from a mill town to a scribes' town a day away, the mill's wagon on a `every`-day timetable.
 fn mill_and_scribes(every: f64) -> Society {
-    let content = Content::new(vec![Good { name: "paper".into(), value: 0.04, stack: 64 }], DAY);
+    let content = Content::new(vec![Good::new("paper", 0.04, 64)], DAY);
     let mut s = Society::new(content);
     let mill = s.add_town("Wheatfield", 20.0);
     let scribes = s.add_town("Hayford", 40.0);
@@ -97,7 +97,7 @@ fn goods_owed_wait_till_they_cant_then_go() {
 
 #[test]
 fn ex_works_the_buyer_collects_in_time_and_pays_from_its_purse() {
-    let content = Content::new(vec![Good { name: "book".into(), value: 0.6, stack: 64 }], DAY);
+    let content = Content::new(vec![Good::new("book", 0.6, 64)], DAY);
     let mut s = Society::new(content);
     let hub = s.add_town("Haygate", 100.0);
     let town = s.add_town("Cloverby", 5.0);

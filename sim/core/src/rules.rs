@@ -10,13 +10,14 @@ use crate::bills::{self, BillState, Bills};
 use crate::content::Content;
 use crate::contracts::{self, Book, Incoterm};
 use crate::messages::Output;
+use crate::people::{comfort_held, comfort_keep, comfort_par, live};
 use crate::state::*;
 
 /// One look's systems, in order, on one thread: the same world always comes out the same.
 pub fn look_schedule() -> Schedule {
     let mut schedule = Schedule::default();
     schedule.set_executor(SingleThreadedExecutor::new());
-    schedule.add_systems((catch_up, review, arrivals, departures).chain());
+    schedule.add_systems((catch_up, live, review, arrivals, departures).chain());
     schedule
 }
 
@@ -109,7 +110,7 @@ fn in_order(routes: &Query<(Entity, &Route, &mut RouteState)>) -> Vec<Entity> {
 fn arrivals(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
         mut outbox: ResMut<Outbox>,
         mut routes: Query<(Entity, &Route, &mut RouteState)>,
-        mut towns: Query<(&mut Stock, &mut Money, &Trades, &mut Budget)>) {
+        mut towns: Query<(&mut Stock, &mut Money, &Trades, &mut Budget, &People)>) {
     let now = clock.now;
     let day = content.day_ticks;
     for entity in in_order(&routes) {
@@ -118,7 +119,7 @@ fn arrivals(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mu
         let Some(leg) = state.wagon.as_ref().filter(|w| w.arrives <= now).map(|w| w.leg) else { continue };
         if leg == Leg::Home {
             let wagon = state.wagon.take().unwrap();
-            let (mut stock, mut money, _, _) = towns.get_mut(route.from).expect("home");
+            let (mut stock, mut money, _, _, _) = towns.get_mut(route.from).expect("home");
             for (g, n) in wagon.cargo.iter().enumerate() {
                 stock.0[g] += n;
             }
@@ -131,7 +132,7 @@ fn arrivals(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mu
             outbox.0.push(Output::WagonHome { route: route.seq, takings: wagon.purse });
             continue;
         }
-        let (mut stock, mut money, trades, mut budget) = towns.get_mut(route.to).expect("the far end");
+        let (mut stock, mut money, trades, mut budget, people) = towns.get_mut(route.to).expect("the far end");
         let mut wagon = state.wagon.take().unwrap();
         // Bills the wagon carries on this town, presented: it pays the due ones it can, whole.
         let carried_bills = std::mem::take(&mut wagon.bills);
@@ -212,7 +213,12 @@ fn arrivals(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mu
                 continue;
             }
             let price = content.goods[g].value;
-            let room = (shelf(&content, trades, g) - stock.0[g]).max(0.0);
+            // A comfort, up to the kind's par in worth; any other good, up to its shelf.
+            let room = match content.goods[g].comfort {
+                Some(kind) => ((comfort_par(&content, people) - comfort_held(&content, &stock, kind)) / price).floor(),
+                None => shelf(&content, trades, g) - stock.0[g],
+            }
+            .max(0.0);
             let free_money = free(&content, trades, &money, &bills, route.to_id, now);
             let can = left_for(&content, now, free_money, &mut budget, days).min(money.0.max(0.0)); // never beyond what it holds
             let n = wagon.cargo[g].min(room).min((can / price).floor()).max(0.0);
@@ -261,7 +267,7 @@ fn arrivals(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mu
 fn departures(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
         mut ledger: ResMut<Ledger>,
         mut outbox: ResMut<Outbox>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
-        mut towns: Query<(&mut Stock, &mut Money, &Trades, &mut Budget)>) {
+        mut towns: Query<(&mut Stock, &mut Money, &Trades, &mut Budget, &People)>) {
     let now = clock.now;
     let d = &content.dials;
     let day = content.day_ticks;
@@ -272,7 +278,7 @@ fn departures(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, 
             continue;
         }
         let route = *route;
-        let Ok([(mut home_stock, mut home_money, home_trades, _), (far_stock, _, far_trades, _)]) =
+        let Ok([(mut home_stock, mut home_money, home_trades, _, home_people), (far_stock, _, far_trades, _, far_people)]) =
             towns.get_many_mut([route.from, route.to]) else { continue };
         let arrival = now + route.travel_ticks;
         let n = content.goods.len();
@@ -313,12 +319,26 @@ fn departures(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, 
                 stacks += (taken[g] / content.goods[g].stack as f64).ceil() as u32;
             }
         }
-        for g in 0..n {
-            if far_trades.uses[g] <= 0.0 || stacks >= d.wagon_slots {
-                continue;
+        // Comforts by kind, the cheapest first: up to the far end's par in worth, from what home holds beyond its keep.
+        let mut loaded_kind = vec![0.0; content.comforts.len()];
+        let mut order: Vec<usize> = (0..n).collect();
+        order.sort_by(|&a, &b| content.goods[a].value.total_cmp(&content.goods[b].value));
+        for g in order {
+            if stacks >= d.wagon_slots {
+                break;
             }
-            let spare = home_stock.0[g] - taken[g] - shelf(&content, home_trades, g);
-            let room = shelf(&content, far_trades, g) - far_stock.0[g];
+            let value = content.goods[g].value.max(1e-9);
+            let (spare, room) = match content.goods[g].comfort {
+                Some(kind) => {
+                    let room = comfort_par(&content, far_people) - comfort_held(&content, &far_stock, kind) - loaded_kind[kind];
+                    let spare = comfort_held(&content, &home_stock, kind) - comfort_keep(&content, home_people) - loaded_kind[kind];
+                    ((spare / value).min(home_stock.0[g] - taken[g]), room / value)
+                }
+                None if far_trades.uses[g] > 0.0 => {
+                    (home_stock.0[g] - taken[g] - shelf(&content, home_trades, g), shelf(&content, far_trades, g) - far_stock.0[g])
+                }
+                None => continue,
+            };
             let stack = content.goods[g].stack as f64;
             let going = spare.min(room).min((d.wagon_slots - stacks) as f64 * stack).floor();
             if going <= 0.0 {
@@ -327,6 +347,9 @@ fn departures(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, 
             cargo[g] += going;
             stacks += (going / stack).ceil() as u32;
             worth += going * content.goods[g].value;
+            if let Some(kind) = content.goods[g].comfort {
+                loaded_kind[kind] += going * value;
+            }
         }
         // Bills it holds on the far end, due by the time it's there: to present (collecting them is worth the trip).
         worth += bills.open.iter().map(|&id| &bills.bills[id])

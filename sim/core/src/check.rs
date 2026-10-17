@@ -20,12 +20,12 @@ impl Society {
         let n = self.content().goods.len();
         let mut goods = vec![0.0; n];
         let mut money = 0.0;
-        let mut towns = self.world.query::<(&Stock, &Money)>();
-        for (stock, m) in towns.iter(&self.world) {
+        let mut towns = self.world.query::<(&Stock, &Money, &People)>();
+        for (stock, m, people) in towns.iter(&self.world) {
             for g in 0..n {
                 goods[g] += stock.0[g];
             }
-            money += m.0;
+            money += m.0 + people.purse;
         }
         let mut routes = self.world.query::<&RouteState>();
         for state in routes.iter(&self.world) {
@@ -39,7 +39,8 @@ impl Society {
         Totals { goods, money, ledger: self.world.resource::<Ledger>().clone() }
     }
 
-    /// Since `before`: goods = before + made + delivered - used; money = before + people's payments - road food.
+    /// Since `before`: goods = before + made + delivered - used; money = before + money paid in - road food - money
+    /// spent out of the world (homes, children).
     pub fn conserved(&mut self, before: &Totals) -> Result<(), String> {
         let now = self.totals();
         let (a, b) = (&before.ledger, &now.ledger);
@@ -49,7 +50,7 @@ impl Society {
                 return Err(format!("{}: {} in the world, {} expected", self.content().goods[g].name, now.goods[g], expected));
             }
         }
-        let expected = before.money + (b.income - a.income) - (b.road - a.road);
+        let expected = before.money + (b.income - a.income) - (b.road - a.road) - (b.spent - a.spent);
         if (now.money - expected).abs() > 1e-6 * expected.abs().max(1.0) {
             return Err(format!("money: {} in the world, {} expected", now.money, expected));
         }

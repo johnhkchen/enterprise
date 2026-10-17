@@ -22,6 +22,7 @@ pub struct TownView {
     pub name: String,
     pub money: f64,
     pub stock: Vec<f64>,
+    pub people: People,
 }
 
 /// A route as a host sees it.
@@ -72,11 +73,20 @@ impl Society {
                 Trades { makes: vec![0.0; n], uses: vec![0.0; n] },
                 Touched(now),
                 Budget::default(),
+                People { last: now, paid_share: 1.0, ..Default::default() },
             ))
             .id();
         self.towns.push(e);
         self.world.resource_mut::<Towns>().0.push(e);
         self.towns.len() - 1
+    }
+
+    /// A town's people: how many villagers, how many beds, and the most beds its land holds.
+    pub fn set_people(&mut self, town: TownId, villagers: f64, beds: f64, land: f64) {
+        let mut p = self.world.get_mut::<People>(self.towns[town]).expect("a town");
+        p.villagers = villagers;
+        p.beds = beds;
+        p.land = land;
     }
 
     /// Sets what a town's people make and use of a good a day.
@@ -162,6 +172,7 @@ impl Society {
             name: e.get::<Town>().unwrap().name.clone(),
             money: e.get::<Money>().unwrap().0,
             stock: e.get::<Stock>().unwrap().0.clone(),
+            people: e.get::<People>().unwrap().clone(),
         }
     }
 

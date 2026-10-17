@@ -7,7 +7,7 @@ const DAY: u64 = 24_000;
 /// A farm town making wheat and a mill town whose people use it, a day apart: the farm's wagon runs every `every`
 /// days. The mill starts with `money`.
 fn farm_and_mill(every: f64, money: f64) -> Society {
-    let content = Content::new(vec![Good { name: "wheat".into(), value: 0.05, stack: 64 }], DAY);
+    let content = Content::new(vec![Good::new("wheat", 0.05, 64)], DAY);
     let mut s = Society::new(content);
     s.content_mut().dials.standing_orders = false; // the selling alone, no contracts
     let farm = s.add_town("Wheatfield", 20.0);

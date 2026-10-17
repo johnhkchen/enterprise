@@ -20,6 +20,8 @@ pub struct Ledger {
     pub delivered: Vec<f64>,
     pub income: f64,
     pub road: f64,
+    /// Money spent out of the world: homes built, children raised.
+    pub spent: f64,
 }
 
 /// What happened this look, for the host to show.
@@ -40,6 +42,26 @@ pub struct Towns(pub Vec<Entity>);
 /// A town's money.
 #[derive(Component, Clone, Copy, Debug, Default)]
 pub struct Money(pub f64);
+
+/// A town's people: how many, their beds and the most beds its land will hold, their mood, how well each kind of
+/// comfort was met last time and what's still owed of it (below 0: credit from a big item), progress toward the next
+/// home and child, the share of wages paid, and the households' purse (their wages, which pay for their comforts).
+#[derive(Component, Clone, Debug, Default)]
+pub struct People {
+    pub villagers: f64,
+    pub beds: f64,
+    pub land: f64,
+    pub mood: f64,
+    pub comfort_met: Vec<f64>,
+    pub comfort_owed: Vec<f64>,
+    pub home_progress: f64,
+    pub birth_progress: f64,
+    pub paid_share: f64,
+    pub purse: f64,
+    pub last: u64,
+    pub homes_built: u32,
+    pub born: u32,
+}
 
 /// What a town holds of each good.
 #[derive(Component, Clone, Debug, Default)]

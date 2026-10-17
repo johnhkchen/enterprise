@@ -28,7 +28,7 @@ fn main() {
     let goods = ["wheat", "bread", "paper", "book", "wool", "leather", "iron_ingot", "cookie"];
     let content = Content::new(
         goods.iter().zip([0.05, 0.2, 0.04, 0.6, 0.1, 0.25, 1.0, 0.055])
-            .map(|(name, value)| Good { name: name.to_string(), value, stack: 64 })
+            .map(|(name, value)| Good::new(name, value, 64))
             .collect(),
         DAY,
     );
