@@ -13,7 +13,7 @@
 A tree lives in .trees/NAME (ignored by git) on branch tree/NAME. Its .tree/ folder (not tracked) holds its task brief
 (TASK.md) and environment (env). The Rust core is built and vetted with no Java: a tree's gates are `cargo test` in
 sim/, and the Java mod is only read, as the reference (scripts/parity.py says which of its game tests the core's tests
-cover). With --java a tree is set up to run the mod too: it gets a slot (1 to 8) whose lanes are 10*slot+1 to
+cover). With --java a tree is set up to run the mod too: it gets a slot (1 to 20) whose lanes are 10*slot+1 to
 10*slot+9 (game port 25599+2N, RCON 25600+2N), so two trees' servers never meet, and the study checkpoints and server
 config linked from the main tree (they're 10 GB).
 
@@ -32,7 +32,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 
-MAX_SLOTS = 8
+MAX_SLOTS = 20  # a slot fixes a tree's lane ports (25599+2N, N up to 209): clear of 25565/25566/25575/25576
 
 
 def git(*args, cwd=None, check=True, capture=True):
