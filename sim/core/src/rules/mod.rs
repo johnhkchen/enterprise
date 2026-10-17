@@ -17,6 +17,7 @@
 
 pub mod advances;
 pub mod arrive;
+pub mod atlas;
 pub mod bank;
 pub mod bills;
 pub mod cargo;

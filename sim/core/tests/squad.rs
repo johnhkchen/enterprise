@@ -336,6 +336,11 @@ fn a_squad_with_fewer_slots_than_planned_leaves_the_last_of_the_sale_home() {
         s.record_capacity(t, 1, &[(PAPER, 40.0 * 64.0 / 5.0)]); // room on their shelves for 40 stacks each
     }
     s.deliver(HUB, PAPER, 100.0 * 64.0);
+    // Both far ends' books fresh (copied at 0, holding no paper, as they are): no trip wants the Librarian along
+    // (`atlas.rs`: stale books would take her as the first route's extra, before the Leatherworker).
+    for t in [DEST, far] {
+        s.record_stocktake(t, &[], Some(0));
+    }
     s.advance(LOOK);
     let (first, second) = (s.crew(0), s.crew(1));
     assert_eq!(first.slots, 36, "the first with her packs: {first:?}");

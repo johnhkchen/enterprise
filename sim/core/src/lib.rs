@@ -10,6 +10,7 @@
 
 pub mod advances;
 pub mod bank;
+pub mod atlas;
 pub mod bargain;
 pub mod bills;
 pub mod cash_book;

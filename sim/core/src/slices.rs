@@ -36,6 +36,10 @@ crate::saved! {
         squads: crate::squad::Squads = crate::squad::Squads::default(),
         banks: crate::bank::Banks = crate::bank::Banks::default(),
         crown: crate::realms::Crown = crate::realms::Crown::default(),
+        atlas: crate::atlas::Atlas = crate::atlas::Atlas::default(),
+        stocktakes: crate::atlas::Stocktakes = crate::atlas::Stocktakes::default(),
+        books: crate::atlas::Books = crate::atlas::Books::default(),
+        whys: crate::atlas::Whys = crate::atlas::Whys::default(),
     }
     town {
         town: Town,
@@ -91,4 +95,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::squad::register(schedule);
     crate::rules::bank::register(schedule);
     crate::rules::realms::register(schedule);
+    crate::rules::atlas::register(schedule);
 }

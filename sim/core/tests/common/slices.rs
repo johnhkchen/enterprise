@@ -33,4 +33,5 @@ slices! {
     squads,
     bank_and_discounts,
     realms,
+    atlas_and_books,
 }

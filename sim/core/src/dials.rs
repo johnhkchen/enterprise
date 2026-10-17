@@ -351,4 +351,11 @@ dials! {
     /// (`Caravans.FOREIGN_MERCHANT_LEVEL`, `FOREIGN_CREW`).
     foreign_merchant_level: u32 = 4,
     foreign_crew: u32 = 2,
+    // atlas-and-books (`atlas.rs`: `caravan/Atlas.java`, `Commissions.java`, `Caravans.STALE_BOOKS_TICKS`)
+    /// Markets this close (in blocks) know of each other without anyone travelling (`Atlas.WORD_OF_MOUTH`).
+    word_of_mouth: f64 = 400.0,
+    /// A town commissions a caravan of its own only with this much to spare beyond its reserve (`COMMISSION_SPARE`).
+    commission_spare: f64 = 8.0,
+    /// A far end's books are stale this many days after a Librarian last copied them (`STALE_BOOKS_TICKS`).
+    stale_books_days: f64 = 3.0,
 }

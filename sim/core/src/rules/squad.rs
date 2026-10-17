@@ -88,6 +88,7 @@ pub fn size_up(content: Res<Content>, mut routes: Query<(Entity, &Route, &mut Ro
         let (_, route, mut state) = routes.get_mut(e).unwrap();
         let route = *route;
         let state = &mut *state;
+        let wants = crate::atlas::trip_wants(&content, state); // the host's, and a Librarian for stale books
         let Some(plan) = state.plan.as_mut() else { continue };
         let Ok((roster, lockers, stock)) = homes.get(route.from) else { continue };
         if !crewed(Some(roster)) {
@@ -97,7 +98,7 @@ pub fn size_up(content: Res<Content>, mut routes: Query<(Entity, &Route, &mut Ro
         let home = available(&content, roster, lockers);
         let stacks = wanted_stacks(&content, &stock.0, far);
         let waiting = idle.get(&route.from_id).copied().unwrap_or(0);
-        let (needs, extras) = call(&content, roster, &home, stacks, &state.wanted_trades, waiting);
+        let (needs, extras) = call(&content, roster, &home, stacks, &wants, waiting);
         plan.crew = crate::squad::muster(&content, roster, &home, &needs, extras);
         plan.wanted = needs.wanted;
         plan.porters = needs.porters;

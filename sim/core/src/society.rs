@@ -258,6 +258,7 @@ impl Society {
             self.world.resource_mut::<Clock>().now = next;
             self.look.run(&mut self.world);
             self.land_parties();
+            self.open_commissions(); // routes towns commissioned at its reviews (`atlas.rs`)
         }
         std::mem::take(&mut self.world.resource_mut::<Outbox>().0)
     }

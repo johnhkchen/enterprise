@@ -174,6 +174,10 @@ pub struct Wagon {
     pub porter: bool,
     pub slots: u32,
     pub saddled: bool,
+    /// The atlas and books (`atlas.rs`): its log of its dealings at the far end and why the rest didn't sell, handed in
+    /// at home; and its takings for each good there this visit.
+    pub log: Vec<crate::atlas::Entry>,
+    pub paid_here: Vec<f64>,
 }
 
 /// A town's run to another: how long the road takes one way, what a round trip costs in road food, its timetable.
@@ -250,6 +254,10 @@ pub struct RouteState {
     pub last_home: Option<u32>,
     pub porters_sent: u32,
     pub wanted_trades: Vec<crate::roster::TradeId>,
+    /// The atlas and books (`atlas.rs`): why each good went or stayed in this look's plan, for the reasons' tally; and
+    /// whether the far end's books are stale this look (its trip wants a Librarian).
+    pub whys: Vec<(Option<usize>, crate::atlas::Why, f64)>,
+    pub books_stale: bool,
 }
 
 /// A route's ends, before a load links them to their towns' entities again (from `from_id` and `to_id`).

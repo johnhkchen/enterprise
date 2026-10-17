@@ -37,15 +37,34 @@ pub fn start(content: Res<Content>, mut routes: Query<&mut RouteState>) {
 /// from what home holds beyond its keep; any other good the far end's people use, what home can spare beyond its own
 /// shelf up to the room on theirs; all in the wagon's slots. The load is worth what the far end is expected to pay:
 /// the bargained price at the middle of each good's batch (`bargain.rs`), and a good it won't deal in stays home.
-fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut routes: Query<(&Route, &mut RouteState)>,
-        towns: Query<(&Stock, &Trades, &People)>, rosters: Query<&crate::roster::Roster>,
-        stores: Query<&crate::cargo::Shipments>, realms: Query<&Realm>) {
+///
+/// A home with a roster sizes the room on the far end's shelf by its last stocktake while it's fresh (`atlas.rs`), less
+/// what other wagons on their way there carry; with none, by its stock as it is. Why each good went or stayed goes
+/// with the route, for the reasons' tally (`Caravans.pickCargo`).
+#[allow(clippy::too_many_arguments)]
+fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktakes: Res<crate::atlas::Stocktakes>,
+        mut routes: Query<(&Route, &mut RouteState)>, towns: Query<(&Stock, &Trades, &People)>,
+        rosters: Query<&crate::roster::Roster>, stores: Query<&crate::cargo::Shipments>, realms: Query<&Realm>) {
+    use crate::atlas::{Want, Why};
     let d = &content.dials;
     let n = content.goods.len();
     let mut order: Vec<usize> = (0..n).collect();
     order.sort_by(|&a, &b| content.goods[a].value.total_cmp(&content.goods[b].value));
+    // What wagons on their way out carry to each far end.
+    let mut aboard: BTreeMap<usize, Vec<f64>> = BTreeMap::new();
+    for (route, state) in routes.iter() {
+        if let Some(w) = state.wagon.as_ref().filter(|w| w.leg == Leg::Out) {
+            let a = aboard.entry(route.to_id).or_insert_with(|| vec![0.0; n]);
+            for (g, c) in w.cargo.iter().enumerate().take(n) {
+                a[g] += c;
+            }
+        }
+    }
     for (route, mut state) in &mut routes {
+        let state = &mut *state;
+        state.whys.clear();
         let Some(plan) = state.plan.as_mut() else { continue };
+        let whys = &mut state.whys;
         // The squad's slots (`squad.rs`: packs and porters), a wagon's without one.
         let slots = if plan.slots > 0 { plan.slots } else { d.wagon_slots };
         let Ok([(home_stock, home_trades, home_people), (far_stock, far_trades, far_people)]) =
@@ -54,6 +73,16 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut rout
         let far_realm = realms.get(route.to).ok();
         let seller = crate::realms::level(&content, realms.get(route.from).ok(), rosters.get(route.from).ok());
         let buyer = crate::realms::level(&content, far_realm, rosters.get(route.to).ok());
+        // What the far end holds of a good, as home knows it (`atlas.rs`): a home with a roster reads its fresh
+        // stocktake, and counts what's on its way there; else its stock as it is.
+        // (A realm's wagons are never crewed from a roster: `realms.rs`.)
+        let rostered = realms.get(route.from).is_err() && crewed(rosters.get(route.from).ok());
+        let seen = if rostered { stocktakes.fresh(&content, route.to_id, clock.now) } else { None };
+        let on_the_way = if rostered { aboard.get(&route.to_id) } else { None };
+        let held = |g: usize| -> f64 {
+            seen.map_or(far_stock.0[g], |s| s.stock.get(g).copied().unwrap_or(0.0))
+                + on_the_way.map_or(0.0, |a| a[g])
+        };
         // What the town owes under harvest contracts by the end of the next window, beyond what this plan already
         // carries to the contract's buyer and what's crated for them, isn't for sale (`ForwardSales.setAside`).
         let mut aside = vec![0.0; n];
@@ -69,23 +98,51 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut rout
         let mut stacks: u32 = (0..n).map(|g| (plan.cargo[g] / content.goods[g].stack as f64).ceil() as u32).sum();
         stacks += plan.shipments.iter().map(|s| s.stacks(&content)).sum::<u32>(); // home's crates (`rules/cargo.rs`)
         let mut loaded_kind = vec![0.0; content.comforts.len()];
+        let mut kinds_told: Vec<usize> = Vec::new();
         for &g in &order {
-            if stacks >= slots {
-                break;
-            }
+            let full = stacks >= slots;
             let value = content.goods[g].value.max(1e-9);
             let planned = plan.cargo[g];
-            let (spare, room, par) = match content.goods[g].comfort.filter(|_| far_realm.is_none()) {
+            let (spare, room, par, want) = match content.goods[g].comfort.filter(|_| far_realm.is_none()) {
+                Some(_) if full => continue,
                 Some(kind) => {
                     let room = comfort_par(&content, far_people) - comfort_held(&content, far_stock, kind) - loaded_kind[kind];
-                    let spare = comfort_held(&content, home_stock, kind) - comfort_keep(&content, home_people) - loaded_kind[kind];
-                    ((spare / value).min(home_stock.0[g] - planned - aside[g]), room / value, far_stock.0[g] + (room / value).floor())
+                    let ours = comfort_held(&content, home_stock, kind) - comfort_keep(&content, home_people) - loaded_kind[kind];
+                    if room > 0.0 && ours <= 0.0 && !kinds_told.contains(&kind) {
+                        // They're short of it, and we keep our own par of it, or have none (`dispatch` 476–483).
+                        kinds_told.push(kind);
+                        let why = if comfort_held(&content, home_stock, kind) > 0.0 { Why::ShortKeepOurPar(kind) }
+                            else { Why::ShortHaveNone(kind) };
+                        whys.push((None, why, 0.0));
+                    }
+                    ((ours / value).min(home_stock.0[g] - planned - aside[g]), room / value,
+                        far_stock.0[g] + (room / value).floor(), None)
                 }
-                None if far_trades.uses[g] > 0.0 || far_realm.is_some_and(|r| r.wants.contains(&g)) => (
-                    home_stock.0[g] - planned - aside[g] - shelf(&content, home_trades, g),
-                    shelf(&content, far_trades, g) - far_stock.0[g],
-                    shelf(&content, far_trades, g),
-                ),
+                None if far_trades.uses[g] > 0.0 || far_realm.is_some_and(|r| r.wants.contains(&g)) => {
+                    let want = Want::of(far_trades, g);
+                    let room = shelf(&content, far_trades, g) - held(g);
+                    let have = home_stock.0[g] - planned;
+                    // Why it stays (`Caravans.pickCargo`): they hold their fill, we have none, it's set aside, it's
+                    // our own shelf, or there's no room aboard.
+                    let why = if room <= 0.0 {
+                        Some((Why::HoldTheirFill(want), held(g)))
+                    } else if have <= 0.0 {
+                        Some((Why::HaveNone(want), room))
+                    } else if have <= aside[g] {
+                        Some((Why::SetAside(want), room))
+                    } else if have - aside[g] - shelf(&content, home_trades, g) <= 0.0 {
+                        Some((Why::KeepOurShelf(want), room))
+                    } else if full {
+                        Some((Why::NoRoomAboard, room.min(have - aside[g])))
+                    } else {
+                        None
+                    };
+                    if let Some((why, count)) = why {
+                        whys.push((Some(g), why, count.max(0.0)));
+                        continue;
+                    }
+                    (have - aside[g] - shelf(&content, home_trades, g), room, shelf(&content, far_trades, g), Some(want))
+                }
                 None => continue,
             };
             let stack = content.goods[g].stack as f64;
@@ -93,15 +150,24 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut rout
             if going <= 0.0 {
                 continue;
             }
-            let Some(price) = crate::bargain::unit_price(&content, g, far_stock.0[g], going, par, seller, buyer) else {
+            let far_held = if want.is_some() { held(g) } else { far_stock.0[g] };
+            let Some(price) = crate::bargain::unit_price(&content, g, far_held, going, par, seller, buyer) else {
+                if let Some(want) = want {
+                    whys.push((Some(g), Why::NoDeal(want), going));
+                }
                 continue;
             };
             plan.cargo[g] += going;
             stacks += (going / stack).ceil() as u32;
             plan.worth += going * price;
             plan.sale.push((g, going, price));
-            if let Some(kind) = content.goods[g].comfort {
-                loaded_kind[kind] += going * value;
+            match (content.goods[g].comfort, want) {
+                (Some(kind), _) => {
+                    loaded_kind[kind] += going * value;
+                    whys.push((Some(g), Why::SentComfort(kind), going));
+                }
+                (None, Some(want)) => whys.push((Some(g), Why::Sent(want), going)),
+                _ => {}
             }
         }
         plan.stacks = stacks;
@@ -187,7 +253,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         let mut porter = false;
         if let Some(roster) = roster.as_deref_mut().filter(|_| rostered) {
             // The squad, mustered of the hands still at home (`squad.rs`); nobody to lead it, a hand taken on, or none.
-            let wanted_trades = state.wanted_trades.clone();
+            let wanted_trades = crate::atlas::trip_wants(&content, &state);
             let routes_here = routes_at.get(&route.from_id).copied().unwrap_or(0);
             let mustered = crate::rules::squad::crew(&content, &mut ledger, &mut cash, now, route.from_id, &mut plan,
                 roster, lockers.get_mut(route.from).ok().map(|l| l.into_inner()), stacks_wanted, &wanted_trades,

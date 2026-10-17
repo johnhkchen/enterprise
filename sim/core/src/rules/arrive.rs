@@ -33,6 +33,7 @@ pub fn mark(clock: Res<Clock>, mut routes: Query<&mut RouteState>) {
             let w = state.wagon.as_mut().unwrap();
             w.sold_here = vec![0.0; w.cargo.len()];
             w.takings_here = 0.0;
+            w.paid_here = vec![0.0; w.cargo.len()]; // each good's takings, for the books (`atlas.rs`)
         }
     }
 }
@@ -97,6 +98,7 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
             budget.spent += paid;
             wagon.sold_here[g] += n;
             wagon.takings_here += paid;
+            crate::atlas::paid(wagon, g, paid);
             sold_all += n;
         }
         state.sold += sold_all;
