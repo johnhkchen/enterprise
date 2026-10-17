@@ -12,6 +12,7 @@ pub mod advances;
 pub mod bargain;
 pub mod bills;
 pub mod cash_book;
+pub mod chokepoints;
 pub mod check;
 pub mod content;
 pub mod dials;

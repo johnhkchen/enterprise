@@ -18,6 +18,7 @@
 pub mod advances;
 pub mod arrive;
 pub mod bills;
+pub mod chokepoints;
 pub mod contracts;
 pub mod farms;
 pub mod harvest;

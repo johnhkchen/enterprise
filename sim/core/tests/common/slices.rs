@@ -25,4 +25,5 @@ slices! {
     road_food,
     harvest_and_rents,
     jobs,
+    chokepoints,
 }

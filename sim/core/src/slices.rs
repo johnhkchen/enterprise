@@ -30,6 +30,7 @@ crate::saved! {
         rents: crate::harvest::Rents = crate::harvest::Rents::default(),
         signals: crate::jobs::Signals = crate::jobs::Signals::default(),
         hiring: crate::jobs::Hiring = crate::jobs::Hiring::default(),
+        takings: crate::chokepoints::Takings = crate::chokepoints::Takings::default(),
     }
     town {
         town: Town,
@@ -73,4 +74,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::road::register(schedule);
     crate::rules::harvest::register(schedule);
     crate::rules::jobs::register(schedule);
+    crate::rules::chokepoints::register(schedule);
 }

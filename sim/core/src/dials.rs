@@ -245,4 +245,14 @@ dials! {
     slack_days: u32 = 5,
     /// Idle plots must yield at least this much a day, in emeralds, to put Farmers' marbles in the bag.
     farmer_idle_emeralds: f64 = 0.5,
+    /// Chokepoints (`chokepoints`): towns review their tolls and posts themselves (off: they keep what the host sets),
+    /// every so many days; they ask at most this share of a route's detour, at most this toll, and a passage fee of
+    /// at most so many emeralds; they try at most so many posts a route, and forget a route unseen for so many reviews.
+    toll_reviews: bool = true,
+    toll_review_days: f64 = 3.0,
+    detour_share: f64 = 0.8,
+    max_toll_rate: f64 = 0.25,
+    passage_fee_cap: f64 = 3.0,
+    max_posts_per_route: u32 = 6,
+    forget_after_reviews: u32 = 4,
 }

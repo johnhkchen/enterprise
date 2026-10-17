@@ -64,7 +64,7 @@ fn eat(content: &Content, ledger: &mut Ledger, stock: &mut Stock, mut points: f6
 /// to `guard_credit_days`; unfed or unpaid guards desert in proportion, the earliest posted staying.
 #[allow(clippy::too_many_arguments)]
 pub fn upkeep(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut territory: ResMut<Territory>,
-        mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
+        mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, mint: Res<crate::mint::Mint>,
         mut q: Query<(&Town, &mut Stock, &mut Money, Option<&Roster>)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let d = &content.dials;
@@ -109,7 +109,9 @@ pub fn upkeep(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut t
             // to come. Past that, unpaid, they go.
             let unpaid = pay * (1.0 - paid);
             let credit = d.guard_credit_days * posts as f64 * d.guard_pay;
-            let earning = h.toll_today + h.toll_before > 0.0;
+            // (tolls taken lately, or a toll plan that expects them: new guards wait for the first; `chokepoints.rs`)
+            let earning = h.toll_today + h.toll_before > 0.0
+                || h.toll_plan.income > posts as f64 * crate::chokepoints::guard_cost_per_day(d, mint.rate(now, day));
             if unpaid > 0.0 && earning && h.pay_owed + unpaid <= credit {
                 h.pay_owed += unpaid;
                 paid = 1.0;

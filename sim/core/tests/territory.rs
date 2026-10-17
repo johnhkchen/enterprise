@@ -22,6 +22,8 @@ fn town_of_five(s: &mut Society, name: &str, x: f64, z: f64) -> usize {
 fn society() -> Society {
     let mut s = Society::new(content());
     s.set_dial("villagers_per_want", 1e300).unwrap();
+    // The guards here are the host's: the towns don't review their posts (`chokepoints`).
+    s.set_dial("toll_reviews", 0.0).unwrap();
     s
 }
 
@@ -247,6 +249,7 @@ fn caravans_pay_tolls_only_to_land_they_cross() {
 fn a_wagon_home_pays_the_posts_on_its_road_out_of_its_purse() {
     let mut s = Society::new(Content::new(vec![Good::new("wheat", 0.05, 64), Good::new("bread", 0.2, 64).food(5.0)], DAY));
     s.content_mut().dials.standing_orders = false;
+    s.content_mut().dials.toll_reviews = false; // the keeper's posts are the host's (`chokepoints`)
     let farm = s.add_town("Wheatfield", 20.0);
     let mill = s.add_town("Hayford", 500.0);
     let keeper = s.add_town("Tollgate", 100.0);

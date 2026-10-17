@@ -78,6 +78,18 @@ pub struct Holding {
     pub toll_today: f64,
     pub toll_before: f64,
     pub tolls_taken: f64,
+    /// Chokepoints (`chokepoints.rs`): what the town has seen of the routes crossing its land, in the order first
+    /// seen; when it last reviewed its tolls; the plan it settled on; the coins carried across its land since the last
+    /// review and a day over the last period, in spurs.
+    pub crossings: Vec<crate::chokepoints::Crossing>,
+    pub last_toll_review: Option<u64>,
+    pub toll_plan: crate::chokepoints::TollPlan,
+    pub traffic_since: f64,
+    pub traffic_per_day: f64,
+    /// Shares of its guards armed and armoured (0 to 1): armed ones ask more of a detour, armoured ones a higher toll.
+    /// Hooks for `mines-and-kit`, which sets them; 0 until then.
+    pub armed: f64,
+    pub armoured: f64,
 }
 
 /// Whose every claimed hex is, and what each town holds.
@@ -148,6 +160,20 @@ impl Territory {
             self.claim(town, next);
             self.holdings.get_mut(&town).unwrap().culture -= cost;
         }
+    }
+
+    /// The toll posts as a wagon's planner sees them (`RoutePlanner.postToll` over `Territory.postOwner`): each town's
+    /// posts on hexes it holds, at its rate (the default until it sets one) and its passage fee.
+    pub fn toll_posts(&self, default_rate: f64) -> crate::map::Posts {
+        let mut posts = crate::map::Posts::new();
+        for (&town, h) in &self.holdings {
+            for &hex in &h.posts {
+                if self.owner(hex) == Some(town) {
+                    posts.insert(hex, crate::map::Post { owner: town, rate: h.toll_rate.unwrap_or(default_rate), fee: h.passage_fee });
+                }
+            }
+        }
+        posts
     }
 
     /// The toll each owner takes of a wagon carrying `carried` spurs over `path`, in the order it crosses their land

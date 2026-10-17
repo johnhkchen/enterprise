@@ -18,7 +18,7 @@ slice needs them; tick them here when they land.
 
 | | Trick | Where it fits | Status |
 |---|---|---|---|
-| 🔜 | **Spatial price equilibrium:** the price gap between two places settles at transport cost plus risk | A test target: once prices move, the gap between two towns should approach the road's cost a unit. A check that the economy prices distance right | Prices |
+| ✅ | **Spatial price equilibrium:** the price gap between two places settles at transport cost plus risk | Tolls: `chokepoints.rs` asks a route at most 80% of what going around its posts costs, so a toll settles at the detour's price; the random worlds check no town's plan asks a route more than its detour (toll and fee together). Still a test target for prices: once they move, the gap between two towns should approach the road's cost a unit | Tolls in use; prices |
 | 💭 | **Min-cost network flow:** optimal routing and allocation | Deciding what many haulers do at once (the forwarder's blocks, a hub's runs) without simulating each; or as a yardstick for how close wagons get to optimal | Freight hub, maybe |
 | 💭 | **Contraction hierarchies:** fast shortest paths on big graphs | Real terrain with 50+ villages: route costs over the hex graph | Maps from real worlds |
 | 🔜 | **Tâtonnement:** price moves in proportion to excess demand | A good's worth is a fixed value (seeded from the mod's table, `prices.rs`), but a per-town price now exists at the point of sale: the far end pays between half and all of it by its shortage below par at the middle of the batch, split by the Merchants' levels (`bargain.rs`, the mod's `Bargain`). Still to come: a per-good, per-town price that moves with excess demand each day, simple and stable | Prices |
