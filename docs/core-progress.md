@@ -6,9 +6,9 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `9d4f2d4`. 366 tests pass (`just core-test`, a few seconds). Parity: **131 covered, 25 partial, 46
-  skipped, 60 left of 262** (`just parity`). `just core-fingerprint`: `a060002d897972de` (unchanged by the banks: no
-  base world opens one).
+- **Main:** `ff18f19`. 378 tests pass (`just core-test`, a few seconds). Parity: **133 covered, 25 partial, 46
+  skipped, 58 left of 262** (`just parity`). `just core-fingerprint`: `8d6c87c4d9e75caf` (realms' random worlds add a
+  realm to a third of the base worlds; without that line it is still `a060002d897972de`).
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
 - **Paused 2026-10-17 21:05** (13 of 32 landed), with no landing under way. Four trees waited in `.trees/`
@@ -50,7 +50,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 30 | 4 | `post` | opus/high (sonnet/high) | `freight-hubs`, `bank-and-discounts` | — | over hubs, bills and the bank |
 | 31 | 4 | `training-and-tenders` | sonnet/medium (sonnet/medium) | `lockers`, `crates-and-papers`, `jobs` | `4839983` | Training as a contract judged on the roster, the Merchant's lessons, offtake crates with a bill, tenders read off boards by wagons (taken, carried on, lapsed and reposted +25%); 5 tags, none partial. Kept on purpose against the mod: a carried tender stays till its carrier's gone, uncollectable work stays in stock; Sovereign's shortfall repost is the crown's. At landing: its random worlds switched on (were commented out), free slots count crates, room as `hasRoomFor`, steps ordered |
 | 32 | 4 | `player-orders` | sonnet/medium (sonnet/medium) | `lockers`, `desires-and-backhauls`, `atlas-and-books` | — |  |
-| 33 | 4 | `realms` | sonnet/medium (sonnet/low) | `squads`, `road-food` | — |  |
+| 33 | 4 | `realms` | sonnet/medium (sonnet/low) | `squads`, `road-food` | `ff18f19` | Markets off the map (sell no food unless told), the Coast and the March (make, use 64 a day of what they want, buy by par, wagons at level 4, no squad), customs to a named capital; both tags pinned. Gaps: no warehouse slots, partners and Atlas the host's, `Crown` a stub for `crown`, demand in `Trades.capacity` (a later `record_capacity` wipes it), planners size a realm wagon's money on one mouth. At landing: a realm's wagon never waits for a load, two mouths' food at dispatch but eats as one (`Caravan.mouths`), no realm hands mustered, customs before redeem and relot, the foreign test on the mod's 2 bread, banks' random picks on the map, two Bevy orders pinned as main ran them |
 | 34 | 4 | `buildings-and-works` | sonnet/medium (sonnet/medium) | `chokepoints`, `crates-and-papers`, `cash-book` | `58b610c` | masons' wages and blocks, bridges that repay, walls, the ten halls (hired builders without a Mason), flower beds; wall, square, flowers, counting house, granary and libraries take effect; 6 tags, 1 partial (flower beds a flag). Gaps: hall sites always found, other halls' effects for later slices, `farms::reserve` lacks the guards' 3 days. At landing: bridge, wall and hired halls weighed at the toll reviews (first only starts the clock), masons paid after guards and before farm wages, `set_culture_extras` keeps the works' share |
 | 35 | 4 | `crown` | opus/high (opus/medium) | `war-army`, `mint-rate`, `sourcing-and-procurement`, `realms`, `training-and-tenders` | — |  |
 | 36 | 4 | `stranded-paper` | sonnet/medium (sonnet/medium) | `bank-and-discounts`, `freight-hubs`, `training-and-tenders` | — |  |
@@ -151,3 +151,8 @@ dependencies are the integrator's; `trees.py` locks its registry, so agents can 
   before `plan_owing` as its base ran them, and after `squads` landed main ran them the other way, so the rebased
   tree moved every world by an ulp. Fingerprint main and the tree after the rebase, before landing; a pin follows
   main's order then (one test per pin: drop it, see which way matches).
+- New systems can move other slices' ambiguous order with no edge to them: `realms` registered two systems of its own
+  and Bevy swapped lockers' and farms' reviews, so worlds without a realm changed. Fingerprint with the slice's line in
+  `tests/common/slices.rs` commented out (it must equal main's), and pin what moved; diff the order by printing
+  `look_schedule().systems()` after `initialize`. A slice that adds towns also moves other slices' random picks of a
+  town (banks repaid fell from 4 to 2): their picks go among the towns on the map.
