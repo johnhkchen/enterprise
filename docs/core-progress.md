@@ -6,9 +6,9 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `efbb559`. 578 tests pass (`just core-test`, a few seconds). Parity: **182 covered, 30 partial, 46
-  skipped, 4 left of 262** (`just parity`). `just core-fingerprint`: `abf27c93b6e74c28` (master desks now post their
-  lockers' shortfalls as signals, and the random worlds have players' shops).
+- **Main:** `67f4377`. 597 tests pass (`just core-test`, a few seconds). Parity: **183 covered, 30 partial, 46
+  skipped, 3 left of 262** (`just parity`). `just core-fingerprint`: `83efddd80ae7307b` (hubs now buy stranded paper
+  and carry freight on credit).
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
 - **Paused 2026-10-17 21:05** (13 of 32 landed), with no landing under way. Four trees waited in `.trees/`
@@ -53,7 +53,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 33 | 4 | `realms` | sonnet/medium (sonnet/low) | `squads`, `road-food` | `ff18f19` | Markets off the map (sell no food unless told), the Coast and the March (make, use 64 a day of what they want, buy by par, wagons at level 4, no squad), customs to a named capital; both tags pinned. Gaps: no warehouse slots, partners and Atlas the host's, `Crown` a stub for `crown`, demand in `Trades.capacity` (a later `record_capacity` wipes it), planners size a realm wagon's money on one mouth. At landing: a realm's wagon never waits for a load, two mouths' food at dispatch but eats as one (`Caravan.mouths`), no realm hands mustered, customs before redeem and relot, the foreign test on the mod's 2 bread, banks' random picks on the map, two Bevy orders pinned as main ran them |
 | 34 | 4 | `buildings-and-works` | sonnet/medium (sonnet/medium) | `chokepoints`, `crates-and-papers`, `cash-book` | `58b610c` | masons' wages and blocks, bridges that repay, walls, the ten halls (hired builders without a Mason), flower beds; wall, square, flowers, counting house, granary and libraries take effect; 6 tags, 1 partial (flower beds a flag). Gaps: hall sites always found, other halls' effects for later slices, `farms::reserve` lacks the guards' 3 days. At landing: bridge, wall and hired halls weighed at the toll reviews (first only starts the clock), masons paid after guards and before farm wages, `set_culture_extras` keeps the works' share |
 | 35 | 4 | `crown` | opus/high (opus/medium) | `war-army`, `mint-rate`, `sourcing-and-procurement`, `realms`, `training-and-tenders` | — |  |
-| 36 | 4 | `stranded-paper` | sonnet/medium (sonnet/medium) | `bank-and-discounts`, `freight-hubs`, `training-and-tenders` | — |  |
+| 36 | 4 | `stranded-paper` | sonnet/medium (sonnet/medium) | `bank-and-discounts`, `freight-hubs`, `training-and-tenders` | `67f4377` | the tagged test pinned; a hub buys stranded paper for coin and installments, freight on credit, the pupil's work waits for a hub; crates sold before the hand-over (desk first, then the stranded sale: declared); `Bills.tidy`, `Forwarder.collect` not ported; a longer bill's interest scaled by its terms (installments, 30-day credit at 15%), fixed at landing |
 | 37 | 4 | `settlers-rule` | sonnet/medium (haiku/low) | `roster`, `hex-map` | `5830058` | Parties to the nearest village or open ground, capital off the books on the road; ExpeditionTests settle partial. Gaps: spare is `rules::free` (no wage float), no `inRange`, road every 4 days the core's. At landing: Nitwits stay home, only a Merchant's town sends, only the nearest village (as `findNearestMapStructure`), new towns' land 40 not 4, claimed hexes not open |
 | 38 | 5 | `random-worlds-sweep` | opus/high (sonnet/medium) | everything above | — | reads every slice; finds what they broke together |
 | 39 | 5 | `fixed-point-money` | opus/xhigh (opus/high) | `random-worlds-sweep` | — |  |
