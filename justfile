@@ -81,3 +81,31 @@ rcon +commands:
 # The cartographer's map of the dev server's world: towns, hubs, and routes by trips (after the server stops).
 map out="world_map.html" title="The realm, by its cartographer":
     python3 dev/experiments/world_map.py core/run/world/data {{out}} "{{title}}"
+
+# Worktrees for agents side by side (docs/worktrees.md): `just tree-new NAME "brief"`, then work in .trees/NAME
+tree-new name brief="":
+    python3 scripts/trees.py new {{name}} --brief "{{brief}}"
+
+# Every tree: ahead/behind main, uncommitted changes, last commit
+trees:
+    python3 scripts/trees.py list
+
+# A tree's gates (the Rust core's tests; the Java mod isn't built in this phase)
+tree-check name="":
+    python3 scripts/trees.py check {{name}}
+
+# Rebase a tree onto main, check it, fast-forward main and push
+tree-land name:
+    python3 scripts/trees.py land {{name}}
+
+# Remove a landed tree (--force drops unlanded work)
+tree-rm name *flags:
+    python3 scripts/trees.py rm {{name}} {{flags}}
+
+# The Rust core's tests (seconds)
+core-test:
+    cd sim && cargo test --release -q
+
+# How far the core matches the mod's game tests: `just parity --left` lists what's not covered yet
+parity *flags:
+    python3 scripts/parity.py {{flags}}

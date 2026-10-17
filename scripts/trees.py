@@ -10,7 +10,7 @@
     python3 scripts/trees.py rm NAME [--force]
     python3 scripts/trees.py heavy [--slots K] -- CMD...   run CMD holding K of the machine's heavy-job slots
 
-A tree lives in ../enterprise-trees/NAME on branch tree/NAME. Its .tree/ folder (not tracked) holds its task brief
+A tree lives in .trees/NAME (ignored by git) on branch tree/NAME. Its .tree/ folder (not tracked) holds its task brief
 (TASK.md) and environment (env). The Rust core is built and vetted with no Java: a tree's gates are `cargo test` in
 sim/, and the Java mod is only read, as the reference (scripts/parity.py says which of its game tests the core's tests
 cover). With --java a tree is set up to run the mod too: it gets a slot (1 to 8) whose lanes are 10*slot+1 to
@@ -52,7 +52,8 @@ def main_tree():
 
 
 def trees_dir():
-    return main_tree().parent / f"{main_tree().name}-trees"
+    """Inside the main tree (ignored by git): agents keep the project's working directory, permissions and memory."""
+    return main_tree() / ".trees"
 
 
 def registry_path():

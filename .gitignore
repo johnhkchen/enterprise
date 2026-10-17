@@ -32,3 +32,4 @@ __pycache__/
 
 # A worktree's own notes (task brief, slot, env): see scripts/trees.py
 /.tree/
+/.trees/
