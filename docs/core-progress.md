@@ -6,9 +6,9 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `6a4e7e0`. 265 tests pass (`just core-test`, a few seconds). Parity: **100 covered, 20 partial, 46
-  skipped, 96 left of 262** (`just parity`). `just core-fingerprint`: `f9fa99c2e718069a` (trading pairs across other
-  towns' land, and towns reviewing their tolls).
+- **Main:** `54d36bc`. 283 tests pass (`just core-test`, a few seconds). Parity: **106 covered, 24 partial, 46
+  skipped, 86 left of 262** (`just parity`). `just core-fingerprint`: `c30da415d9bb74ff` (crates bought and scribes
+  paid, owed goods crated, the buyer's wagon carrying what its town owes).
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
 
@@ -35,7 +35,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 22 | 3 | `services` | opus/high (sonnet/high) | `squads`, `herds`, `farms-and-wages`, `atlas-and-books` | — | a registry over seven Java files that later tasks read |
 | 23 | 3 | `mines-and-kit` | sonnet/medium (sonnet/medium) | `territory-growth`, `services` | — |  |
 | 24 | 3 | `desires-and-backhauls` | sonnet/high (sonnet/medium) | `bargain-and-par`, `atlas-and-books` | — |  |
-| 25 | 3 | `crates-and-papers` | opus/high (sonnet/medium) | `harvest-and-rents`, `advances-and-refunds` | — | changes what cargo is, through arrive and plan |
+| 25 | 3 | `crates-and-papers` | opus/high (sonnet/medium) | `harvest-and-rents`, `advances-and-refunds` | `54d36bc` | changes what cargo is, through arrive and plan. Shipments with bills of lading, empties, earmarks, paperwork and scribes, `settleOwing` both ways; 6 tags, 4 partial (one good a crate, `crate_room` for chest slots, clerks are buildings-and-works'). Gaps: no paperwork for drafts or bills, empties take no slots, stored goods plain stock. At landing: spare empties and crates made out home first at the far end (the mod's order), Ex Works earmarks left to the paid collection, scribes' fees booked in full |
 | 26 | 3 | `freight-hubs` | opus/xhigh (opus/high) | `crates-and-papers`, `atlas-and-books`, `territory-growth` | — |  |
 | 27 | 3 | `sourcing-and-procurement` | sonnet/high (sonnet/high) | `lockers`, `atlas-and-books`, `services` | — |  |
 | 28 | 3 | `war-army` | opus/xhigh (opus/high) | `roster`, `mines-and-kit` | — |  |
