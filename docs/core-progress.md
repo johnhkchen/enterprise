@@ -6,15 +6,13 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `4e37ea3`. 352 tests pass (`just core-test`, a few seconds). Parity: **127 covered, 25 partial, 46
-  skipped, 64 left of 262** (`just parity`). `just core-fingerprint`: `a060002d897972de` (squads crewing rostered
-  towns' wagons).
+- **Main:** `9d4f2d4`. 366 tests pass (`just core-test`, a few seconds). Parity: **131 covered, 25 partial, 46
+  skipped, 60 left of 262** (`just parity`). `just core-fingerprint`: `a060002d897972de` (unchanged by the banks: no
+  base world opens one).
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
 - **Paused 2026-10-17 21:05** (13 of 32 landed), with no landing under way. Four trees waited in `.trees/`
-  (`buildings-and-works` and `squads` have since landed):
-  - `bank-and-discounts`: its build was stopped partway, with the work uncommitted in the tree (`training-and-tenders`
-    has since landed).
+  (`buildings-and-works`, `squads` and `bank-and-discounts` have since landed).
 - **To resume:** `python3 <session>/waves/remaining.py` writes `waves/remaining.json`: the tasks not yet landed,
   read from the Landed column below. Then run the Workflow tool with `scriptPath: <session>/waves/waves.js` and those
   args. A task whose tree exists carries on from it. `<session>` is
@@ -48,7 +46,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 26 | 3 | `freight-hubs` | opus/xhigh (opus/high) | `crates-and-papers`, `atlas-and-books`, `territory-growth` | — |  |
 | 27 | 3 | `sourcing-and-procurement` | sonnet/high (sonnet/high) | `lockers`, `atlas-and-books`, `services` | — |  |
 | 28 | 3 | `war-army` | opus/xhigh (opus/high) | `roster`, `mines-and-kit` | — |  |
-| 29 | 3 | `bank-and-discounts` | opus/high (sonnet/high) | `advances-and-refunds`, `crates-and-papers` | — | finance hooks into Settle and Collect |
+| 29 | 3 | `bank-and-discounts` | opus/high (sonnet/high) | `advances-and-refunds`, `crates-and-papers` | `9d4f2d4` | Banks discount a town's bills, lend against its contracts and are repaid from the payment first; the hub's discount desk; grace scaled by debt; bills no one can carry lapse; all 4 tags pinned. Gaps: no spurs, Ex Works purse shrunk by the loan (mod draws a bill for the shortfall), hubs and realms hooks, float spare against every plan this look. At landing: training contracts lend on their bonus, the float counted spent at Decide without a second allow, the crew's mouths, `plan_papers` pinned as main runs it |
 | 30 | 4 | `post` | opus/high (sonnet/high) | `freight-hubs`, `bank-and-discounts` | — | over hubs, bills and the bank |
 | 31 | 4 | `training-and-tenders` | sonnet/medium (sonnet/medium) | `lockers`, `crates-and-papers`, `jobs` | `4839983` | Training as a contract judged on the roster, the Merchant's lessons, offtake crates with a bill, tenders read off boards by wagons (taken, carried on, lapsed and reposted +25%); 5 tags, none partial. Kept on purpose against the mod: a carried tender stays till its carrier's gone, uncollectable work stays in stock; Sovereign's shortfall repost is the crown's. At landing: its random worlds switched on (were commented out), free slots count crates, room as `hasRoomFor`, steps ordered |
 | 32 | 4 | `player-orders` | sonnet/medium (sonnet/medium) | `lockers`, `desires-and-backhauls`, `atlas-and-books` | — |  |
@@ -149,3 +147,7 @@ dependencies are the integrator's; `trees.py` locks its registry, so agents can 
   for anything that weighs a load: `cargo::stacks(content, &cargo, &shipments)`, as the mod's `Crates.stacks`.
 - Fixtures swap hands at their peril: `squads` traded a test town's Mason for a Librarian, and once `buildings-and-works`
   landed the town took a Mason on at a stall. Add the hands a slice needs to a shared fixture; don't swap out others.
+- Pins to ambiguous systems hold the order of the tree's base, not main's: `bank-and-discounts` pinned `plan_papers`
+  before `plan_owing` as its base ran them, and after `squads` landed main ran them the other way, so the rebased
+  tree moved every world by an ulp. Fingerprint main and the tree after the rebase, before landing; a pin follows
+  main's order then (one test per pin: drop it, see which way matches).
