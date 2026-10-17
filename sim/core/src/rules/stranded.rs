@@ -140,7 +140,7 @@ pub fn load(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, book: Res
 /// crates to its forwarder. What the hub won't buy rides home again (`sellStrandedAtHub`).
 #[allow(clippy::too_many_arguments)]
 fn sell_aboard(cx: &Cx, bills: &mut Bills, ledger: &mut Ledger, cash: &mut CashBook, freight: &mut Freight, route: &Route,
-        wagon: &mut Wagon, h: HubSide) {
+        wagon: &mut Wagon, mut h: HubSide, skip: &[TownId]) {
     let (now, day, rate) = (cx.now, cx.content.day_ticks, cx.rate);
     let t = Terms { content: cx.content, net: cx.net, book: cx.book, hub: h.id, town: route.from_id,
         counting: h.trades.counting_house, now, rate };
@@ -157,14 +157,25 @@ fn sell_aboard(cx: &Cx, bills: &mut Bills, ledger: &mut Ledger, cash: &mut CashB
     // Its households' savings count too: deposits the Merchant may lend on such paper.
     let means = cash_on_hand + on_call(cx.content, h.people.purse, h.deposits.owed);
     let deal = buy(&t, bills, &mut crates, &mut offered, means, means);
-    wagon.shipments.extend(crates);
     wagon.bills.extend(offered);
-    let Some(deal) = deal else { return };
+    let Some(deal) = deal else {
+        hand_leftovers(cx, ledger, cash, route, wagon, &mut h, skip, crates);
+        return;
+    };
     let coin = deal.coin(rate);
     if coin > cash_on_hand {
         borrow(cx.content, ledger, cash, h.id, &mut h.money.0, &mut h.people.purse, h.deposits, coin - cash_on_hand, now);
     }
     let paid = coin.min(h.money.0.max(0.0));
+    // What the treasury couldn't find in coin the hub owes in a bill of its own, as the rest of the price is.
+    let short = coin - paid;
+    if short > 0.01 {
+        let term = (crate::bills::TERM_DAYS * day as f64) as u64;
+        let id = bills.draw_term(h.id, route.from_id, short / (1.0 + crate::bills::INTEREST), now, term, None);
+        bills.bills[id].held = Paper::Wagon;
+        wagon.bills.push(id);
+        freight.stranded(h.id).promised += bills.bills[id].amount;
+    }
     post(ledger, cash, Side::treasury(h.id, &mut h.money.0), Side::wagon(route.seq, &mut wagon.purse), paid,
         stranded_reason(), now, day);
     for &id in &deal.hub_bills {
@@ -184,6 +195,18 @@ fn sell_aboard(cx: &Cx, bills: &mut Bills, ledger: &mut Ledger, cash: &mut CashB
     for s in deal.crates {
         h.hub.held.push(Held { shipment: s, carted: false, booked: None });
     }
+    hand_leftovers(cx, ledger, cash, route, wagon, &mut h, skip, crates);
+}
+
+/// The stranded crates the hub didn't buy go to its forwarder as any crate bound beyond, the forwarding from the wagon's
+/// purse: the mod's `handOver` ran after the stranded sale. Not those for the wagon's own ends (`skip`).
+#[allow(clippy::too_many_arguments)]
+fn hand_leftovers(cx: &Cx, ledger: &mut Ledger, cash: &mut CashBook, route: &Route, wagon: &mut Wagon, h: &mut HubSide,
+        skip: &[TownId], crates: Vec<Shipment>) {
+    let rest = std::mem::replace(&mut wagon.shipments, crates);
+    super::freight::hand_over(cx.content, cx.net, h.id, cx.now, cx.rate, route.seq, skip, ledger, cash, h.hub, h.money,
+        wagon, &|_| false);
+    wagon.shipments.extend(rest);
 }
 
 type HubQuery<'w, 's> = Query<'w, 's, (&'static Town, &'static mut Hub, &'static mut Money, &'static Trades,
@@ -215,7 +238,8 @@ pub fn sell_at_stop(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, b
         }
         let Ok((_, mut hub_side, mut money, trades, farm, mut people, mut deposits)) = hubs.get_mut(towns_list.0[hub]) else { continue };
         let side = HubSide { id: hub, hub: &mut hub_side, money: &mut money, trades, farm, people: &mut people, deposits: &mut deposits };
-        sell_aboard(&cx, &mut bills, &mut ledger, &mut cash, &mut freight, &route, wagon, side);
+        sell_aboard(&cx, &mut bills, &mut ledger, &mut cash, &mut freight, &route, wagon, side,
+            &[route.from_id, route.to_id]);
     }
 }
 
@@ -245,7 +269,7 @@ pub fn sell_at_hub(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, bo
         let Ok((_, mut hub_side, mut money, trades, farm, mut people, mut deposits)) = hubs.get_mut(towns_list.0[route.to_id]) else { continue };
         let side = HubSide { id: route.to_id, hub: &mut hub_side, money: &mut money, trades, farm, people: &mut people,
             deposits: &mut deposits };
-        sell_aboard(&cx, &mut bills, &mut ledger, &mut cash, &mut freight, &route, wagon, side);
+        sell_aboard(&cx, &mut bills, &mut ledger, &mut cash, &mut freight, &route, wagon, side, &[route.from_id]);
     }
 }
 

@@ -109,8 +109,7 @@ fn never_a_bill_on_the_hub_itself_nor_on_a_market_it_does_not_run_to() {
     let mut s = arena(100.0);
     let on_hub = s.draw_bill(hub, town, 10.0);
     let elsewhere = s.add_town("Far", 10.0);
-    let on_far = s.draw_bill(elsewhere, town, 10.0);
-    s.advance(10 * DAY);
+    let on_far = s.draw_bill(elsewhere, town, 10.0); // fresh: past its day the post would take it to its drawee
     let (mut crates, mut bills) = (Vec::new(), vec![on_hub, on_far]);
     assert!(s.buy_stranded(hub, town, &mut crates, &mut bills, 100.0).is_none(),
         "the town presents the hub's bill there, for its face; the hub runs nowhere to the other");
@@ -118,8 +117,7 @@ fn never_a_bill_on_the_hub_itself_nor_on_a_market_it_does_not_run_to() {
     // A crate not paid for by a bill isn't paper the hub buys either.
     let mut unpaid = leggings(town, capital);
     unpaid.settled = false;
-    let on_capital = s.draw_bill(capital, town, 10.0);
-    s.advance(20 * DAY);
+    let on_capital = s.draw_bill(capital, town, 10.0); // not yet due, the capital's wagons don't call
     let (mut crates, mut bills) = (vec![unpaid.clone()], vec![on_capital]);
     let deal = s.buy_stranded(hub, town, &mut crates, &mut bills, 100.0).unwrap();
     assert!(deal.crates.is_empty() && crates == vec![unpaid], "an unsettled crate stays");
@@ -248,28 +246,45 @@ fn the_goods_a_hubs_wagon_buys_with_a_bill_go_to_its_forwarder() {
 
 /// A town (0) whose wagon goes to the hub (1), which runs to the capital (2): the town holds a stranded bill and a crate.
 fn town_to_hub(hub_money: f64) -> Society {
+    town_to_hub_with(5.0, hub_money, true)
+}
+
+/// (`town_bread` false: the town sets out with no food of its own, and its wagon with a purse to buy the road home's at the hub.)
+fn town_to_hub_with(town_money: f64, hub_money: f64, town_bread: bool) -> Society {
     let mut s = Society::new(content());
     s.content_mut().dials.standing_orders = false;
-    let town = s.add_town("Town", 5.0);
+    let town = s.add_town("Town", town_money);
     let hub = s.add_town("Hub", hub_money);
     let capital = s.add_town("Capital", 50.0);
     s.add_route(town, hub, 0.01, 0.0, 1.0);
     s.add_route(hub, capital, 200.0 / 1200.0, 0.0, 4.0);
     s.make_hub(hub);
     s.set_trade(hub, PAPER, 0.0, 64.0);
-    s.deliver(town, BREAD, 128.0);
+    if town_bread {
+        s.deliver(town, BREAD, 128.0);
+    }
     s.deliver(hub, BREAD, 128.0);
     s.deliver(capital, BREAD, 128.0);
     s
+}
+
+/// A bill on `drawee` drawn mid-morning and let fall due later in a day, the town's wagon not yet gone: past its day, and the
+/// post (which mails a due bill at a town's first look of a day, to a drawee it has no regular road to) not yet by. The
+/// stranded sale then does what it is for within the day, before the post's daily send.
+fn past_its_day(s: &mut Society, drawee: usize, town: usize) -> usize {
+    s.advance(10 * LOOK);
+    let id = s.draw_bill(drawee, town, 20.0);
+    let due = s.bills()[id].due;
+    s.advance(due + LOOK);
+    id
 }
 
 #[test]
 fn a_towns_wagon_to_a_hub_carries_its_stranded_paper_and_sells_it_there() {
     let (town, hub, capital) = (0, 1, 2);
     let mut s = town_to_hub(100.0);
-    let id = s.draw_bill(capital, town, 20.0);
+    let id = past_its_day(&mut s, capital, town);
     s.deliver_shipment(town, leggings(town, capital));
-    s.advance(6 * DAY); // past its day; the town has nothing to sell
     assert!(s.bills()[id].due < s.now() && s.route(0).trips == 0);
     s.deliver(town, PAPER, 128.0); // now it has: the wagon goes
     let start = s.totals();
@@ -306,13 +321,55 @@ fn a_towns_wagon_to_a_hub_carries_its_stranded_paper_and_sells_it_there() {
     s.conserved(&start).unwrap_or_else(|e| panic!("{e}"));
 }
 
+/// The mod sells the stranded paper before it hands the forwarder the crates (`sellStrandedAtHub`, then `handOver`): a town's
+/// wagon with a purse that could pay the forwarding still sells the bill with its crate, and the forwarder is paid nothing.
+#[test]
+fn a_wagon_with_a_purse_sells_the_hub_the_crate_with_its_bill_not_hands_it_over_for_forwarding() {
+    let (town, hub, capital) = (0, 1, 2);
+    let mut s = town_to_hub_with(200.0, 100.0, true);
+    let id = past_its_day(&mut s, capital, town);
+    s.deliver_shipment(town, leggings(town, capital));
+    // The town owes the hub for cloth it collects there Ex Works, and the hub has none by it: the wagon goes with the purse
+    // for it (64 emeralds) and comes back with it.
+    s.draft(hub, town, CLOTH, 64.0, 1.0, s.now(), 7 * DAY, 4, Incoterm::Exw, true);
+    s.deliver(town, PAPER, 128.0);
+    let start = s.totals();
+    for _ in 0..(3 * DAY / LOOK) {
+        look(&mut s);
+        s.conserved(&start).and_then(|_| s.solvent()).unwrap_or_else(|e| panic!("{e}"));
+        if s.bills()[id].payee == hub {
+            break;
+        }
+    }
+    assert_eq!(s.bills()[id].payee, hub, "sold: {:?}", s.stranded_book(hub));
+    assert_eq!(s.stranded_book(hub).crates, 1, "the crate went with its bill: {:?}", s.stranded_book(hub));
+    assert_eq!(s.hub(hub).book.forwarded, 0, "and was not handed the forwarder for its fee: {:?}", s.hub(hub).book);
+}
+
+/// What the hub won't buy with the bill (it has no bill of the town's to buy it with) is handed the forwarder as any crate
+/// bound beyond, as the mod's later `handOver` does.
+#[test]
+fn a_stranded_crate_the_hub_does_not_buy_is_handed_the_forwarder_for_its_fee() {
+    let (town, hub, capital) = (0, 1, 2);
+    let mut s = town_to_hub_with(200.0, 100.0, true);
+    // (a purse for the forwarding, as above)
+    s.draft(hub, town, CLOTH, 64.0, 1.0, 0, 7 * DAY, 4, Incoterm::Exw, true);
+    s.deliver_shipment(town, leggings(town, capital));
+    s.deliver(town, PAPER, 128.0);
+    for _ in 0..(3 * DAY / LOOK) {
+        look(&mut s);
+    }
+    assert_eq!(s.stranded_book(hub).crates, 0);
+    assert!(s.hub(hub).book.forwarded >= 1 || !s.hub(hub).held.is_empty(), "the forwarder has it: {:?}", s.hub(hub).book);
+}
+
 #[test]
 fn a_hub_short_of_coin_borrows_its_households_savings_to_buy_stranded_paper() {
     let (town, hub, capital) = (0, 1, 2);
     let mut s = town_to_hub(0.0);
     s.post(Account::Outside, Account::Households(hub), 400.0, Reason::PaidIn);
-    let id = s.draw_bill(capital, town, 20.0);
-    s.advance(6 * DAY);
+    let id = past_its_day(&mut s, capital, town);
+    assert!(s.bills()[id].due < s.now() && s.route(0).trips == 0);
     s.deliver(town, PAPER, 128.0);
     let start = s.totals();
     for _ in 0..(3 * DAY / LOOK) {
@@ -428,15 +485,19 @@ fn the_pupils_work_is_crated_for_a_buyer_only_where_a_collector_comes() {
     assert!(!s.collectable(smithy, capital), "its wagons don't call any more");
 }
 
-/// A hub (0) that calls at the town (1), which owes the buyer (2) beyond the hub under a contract (three stacks of paper an
-/// installment) and has `town_money`: its reserve (an emerald) and a little over, to crate two stacks and not their fare.
+/// A hub (0) that calls at the town (1) every three days, which owes the buyer (2) beyond the hub under a contract (three
+/// stacks of paper an installment) and has `town_money`: its reserve and a little over. The post's postage comes out of that
+/// little; 1.26 leaves the town 0.16 to spare at the hub's first call, the fare of one stack (0.0993) and two crates at 0.02
+/// (the dial is set low so the crates are no obstacle: the credit is for the fare), so one stack goes for cash and two on
+/// credit.
 fn credit_world(town_money: f64) -> (Society, usize) {
     let mut s = Society::new(content());
     s.content_mut().dials.standing_orders = false;
+    s.content_mut().dials.crate_emeralds = 0.02; // a crate the town can afford where it can't afford the fare
     let hub = s.add_town("Hub", 100.0);
     let town = s.add_town("Town", town_money);
     let buyer = s.add_town("Buyer", 50.0);
-    s.add_route(hub, town, 0.01, 0.0, 1.0);
+    s.add_route(hub, town, 0.01, 0.0, 3.0);
     s.add_route(hub, buyer, 200.0 / 1200.0, 0.0, 4.0);
     s.make_hub(hub);
     s.set_trade(town, CLOTH, 0.0, 1.0);

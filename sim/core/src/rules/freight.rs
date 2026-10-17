@@ -500,22 +500,20 @@ fn land(at: &AtHub, territory: &Territory, ledger: &mut Ledger, cash: &mut CashB
     }
 }
 
-/// At the hub (`atHub`, `callAtStop`): the wagon hands the forwarder its crates bound for markets the hub serves (not
-/// those for `skip`: where it's bound, or its route's ends), paying the forwarding and drayage from its purse; the
-/// forwarder buys its bills on those markets; books what it holds; loads the crates booked on the wagon's run (their
-/// fares paid it); and pays for its block on the run.
+/// The wagon's crates bound for markets the hub serves (not those for `skip`, nor those on freight tickets or bought for its
+/// own forwarder, nor those `hold` keeps back) handed to the forwarder, the forwarding and drayage paid from its purse as
+/// far as it goes (`Forwarder.handOver`).
 #[allow(clippy::too_many_arguments)]
-fn deal(at: &AtHub, skip: &[TownId], book: &Book, bills: &mut Bills, ledger: &mut Ledger, cash: &mut CashBook,
-        hub: &mut Hub, money: &mut Money, stock: &Stock, trades: &Trades, farm: Option<&Farm>, wagon: &mut Wagon) {
-    let (content, net, id) = (at.content, at.net, at.hub);
-    let (now, day) = (at.now, content.day_ticks);
-    let seq = at.route.seq;
-    // Its crates bound on, handed over (those on freight tickets already are for its own run's end).
+pub(crate) fn hand_over(content: &Content, net: &Network, id: TownId, now: u64, rate: f64, seq: RouteId, skip: &[TownId],
+        ledger: &mut Ledger, cash: &mut CashBook, hub: &mut Hub, money: &mut Money, wagon: &mut Wagon,
+        hold: &dyn Fn(&Shipment) -> bool) {
+    let day = content.day_ticks;
     let (mut offered, mut rest): (Vec<Shipment>, Vec<Shipment>) = std::mem::take(&mut wagon.shipments).into_iter()
         .partition(|s| s.consignee.is_some_and(|c| c != id && !skip.contains(&c)) && !wagon.freight.booked.contains(s)
-            && !wagon.freight.forwarding.contains(s)); // (nor those it bought or collected for its own forwarder)
+            && !wagon.freight.forwarding.contains(s) // (nor those it bought or collected for its own forwarder)
+            && !hold(s));
     if !offered.is_empty() {
-        let taken = hub.hand_over(content, net, id, &mut offered, wagon.purse.max(0.0), at.rate, skip);
+        let taken = hub.hand_over(content, net, id, &mut offered, wagon.purse.max(0.0), rate, skip);
         if taken.stacks > 0 {
             post(ledger, cash, Side::wagon(seq, &mut wagon.purse), Side::treasury(id, &mut money.0),
                 taken.fee - taken.drayage, forwarding_reason(), now, day);
@@ -525,9 +523,28 @@ fn deal(at: &AtHub, skip: &[TownId], book: &Book, bills: &mut Bills, ledger: &mu
     }
     rest.extend(offered);
     wagon.shipments = rest;
+}
+
+/// At the hub (`atHub`, `callAtStop`): the wagon hands the forwarder its crates bound for markets the hub serves (not
+/// those for `skip`: where it's bound, or its route's ends), paying the forwarding and drayage from its purse; the
+/// forwarder buys its bills on those markets; books what it holds; loads the crates booked on the wagon's run (their
+/// fares paid it); and pays for its block on the run.
+#[allow(clippy::too_many_arguments)]
+fn deal(at: &AtHub, skip: &[TownId], book: &Book, bills: &mut Bills, ledger: &mut Ledger, cash: &mut CashBook,
+        hub: &mut Hub, money: &mut Money, stock: &Stock, trades: &Trades, farm: Option<&Farm>, wagon: &mut Wagon,
+        strand: Option<TownId>) {
+    let (content, net, id) = (at.content, at.net, at.hub);
+    let (now, day) = (at.now, content.day_ticks);
+    let seq = at.route.seq;
+    // Its crates bound on, handed over (those on freight tickets already are for its own run's end), but those a stranded
+    // sale takes (`strand`: the town whose paper the hub buys, for a wagon that sells it): the mod sells those first
+    // (`sellStrandedAtHub`), and the hub's bill for them is the forwarding, so they don't go to the forwarder for it.
+    let counting = trades.counting_house;
+    let hold = |s: &Shipment| strand.is_some_and(|town| crate::stranded::crate_ok(&crate::stranded::Terms {
+        content, net, book, hub: id, town, counting, now, rate: at.rate }, s));
+    hand_over(content, net, id, now, at.rate, at.route.seq, skip, ledger, cash, hub, money, wagon, &hold);
     // Its bills on markets the hub runs to, payable to the wagon's home and not yet due: bought for coin now.
     let mut can = spare(content, money.0, trades, farm);
-    let counting = trades.counting_house;
     let fill = fill(content, stock, hub);
     let means = can;
     let mut taking = 0.0;
@@ -609,7 +626,7 @@ pub fn call_at_stop(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, t
         towns_list: Res<Towns>, mut book: ResMut<Book>, mut bills: ResMut<Bills>, mut ledger: ResMut<Ledger>,
         mut cash: ResMut<CashBook>, mut atlas: ResMut<Atlas>,
         mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>,
-        mut towns: Query<(&Town, &mut Hub, &mut Money, &mut Stock, &Trades, Option<&Farm>)>) {
+        mut towns: Query<(&Town, &mut Hub, &mut Money, &mut Stock, &Trades, Option<&Farm>)>, realms: Query<&crate::realms::Realm>) {
     let (now, day) = (clock.now, content.day_ticks);
     let due: Vec<Entity> = routes.iter().filter(|(_, _, s, _)| s.wagon.as_ref().is_some_and(|w| w.arrives <= now
         && w.waiting_since.is_none() && w.freight.stop.is_some_and(|s| !s.called))).map(|(e, ..)| e).collect();
@@ -652,7 +669,9 @@ pub fn call_at_stop(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, t
                 }
             }
             let skip = [bound, route.from_id, route.to_id];
-            deal(&at, &skip, &book, &mut bills, &mut ledger, &mut cash, &mut hub, &mut money, &stock, trades, farm, wagon);
+            let strand = (realms.get(towns_list.0[route.from_id]).is_err() && route.from_id != stop.hub).then_some(route.from_id);
+            deal(&at, &skip, &book, &mut bills, &mut ledger, &mut cash, &mut hub, &mut money, &stock, trades, farm, wagon,
+                strand);
         }
         // The hub's copies of its contracts with where the wagon's bound ride on.
         let copies: Vec<usize> = book.open.iter().copied().filter(|&id| {
@@ -677,7 +696,7 @@ pub fn call_at_stop(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, t
 pub fn at_hub(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territory: Res<Territory>,
         towns_list: Res<Towns>, book: Res<Book>, mut bills: ResMut<Bills>, mut ledger: ResMut<Ledger>,
         mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>,
-        mut towns: Query<(&Town, &mut Hub, &mut Money, &Stock, &Trades, Option<&Farm>)>) {
+        mut towns: Query<(&Town, &mut Hub, &mut Money, &Stock, &Trades, Option<&Farm>)>, realms: Query<&crate::realms::Realm>) {
     let (now, day) = (clock.now, content.day_ticks);
     let hubs: BTreeSet<TownId> = towns.iter().filter(|(_, h, ..)| h.storehouse).map(|(t, ..)| t.id).collect();
     let here: Vec<Entity> = routes.iter().filter(|(_, r, s, _)| s.arrived == Some(Leg::Out) && hubs.contains(&r.to_id))
@@ -695,8 +714,9 @@ pub fn at_hub(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
         let at = AtHub { content: &content, net: &net, hub: route.to_id, route, leg: RunLeg::of(&route, false), now, rate };
         let (_, mut hub, mut money, stock, trades, farm) = towns.get_mut(towns_list.0[route.to_id]).unwrap();
         land(&at, &territory, &mut ledger, &mut cash, &mut hub, &mut money, wagon);
+        let strand = realms.get(towns_list.0[route.from_id]).is_err().then_some(route.from_id);
         deal(&at, &[route.from_id], &book, &mut bills, &mut ledger, &mut cash, &mut hub, &mut money, stock, trades, farm,
-            wagon);
+            wagon, strand);
     }
 }
 

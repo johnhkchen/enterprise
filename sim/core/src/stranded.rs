@@ -149,6 +149,7 @@ pub fn buy(t: &Terms, bills: &mut Bills, crates: &mut Vec<Shipment>, offered: &m
         -> Option<Deal> {
     let d = &t.content.dials;
     let day = t.content.day_ticks;
+    // At least one: a dial set to nothing would leave the hub no way to pay the part it can't in coin.
     let installments = d.stranded_installments.max(1);
     let mut bought: BTreeMap<TownId, Vec<usize>> = BTreeMap::new();
     let (mut face, mut price) = (0.0, 0.0);
@@ -238,8 +239,10 @@ impl Society {
         let mut ledger = self.world.resource_mut::<Bills>();
         let terms = Terms { content: &content, net: &net, book: &book, hub, town, counting, now, rate };
         let deal = buy(&terms, &mut ledger, crates, bills, coin, means)?;
+        let mut promised = 0.0;
         for &id in &deal.hub_bills {
             ledger.bills[id].held = crate::bills::Held::Town(town);
+            promised += ledger.bills[id].amount;
         }
         for &id in &deal.bills {
             ledger.bills[id].held = crate::bills::Held::Town(hub);
@@ -250,6 +253,7 @@ impl Society {
         book.bills += deal.bills.len() as u32;
         book.face += deal.face;
         book.coin += deal.coin(rate);
+        book.promised += promised;
         book.crates += deal.crates.len() as u32;
         Some(deal)
     }
