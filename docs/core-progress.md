@@ -6,8 +6,8 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `e57577f`. 129 tests pass (`just core-test`, a few seconds). Parity: **51 covered, 14 partial, 46
-  skipped, 151 left of 262** (`just parity`). `just core-fingerprint`: `b0a24be467e3f938`.
+- **Main:** `5830058`. 143 tests pass (`just core-test`, a few seconds). Parity: **51 covered, 15 partial, 46
+  skipped, 150 left of 262** (`just parity`). `just core-fingerprint`: `388d6dec232edbc0`.
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
 
@@ -46,7 +46,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 34 | 4 | `buildings-and-works` | sonnet/medium (sonnet/medium) | `chokepoints`, `crates-and-papers`, `cash-book` | — |  |
 | 35 | 4 | `crown` | opus/high (opus/medium) | `war-army`, `mint-rate`, `sourcing-and-procurement`, `realms`, `training-and-tenders` | — |  |
 | 36 | 4 | `stranded-paper` | sonnet/medium (sonnet/medium) | `bank-and-discounts`, `freight-hubs`, `training-and-tenders` | — |  |
-| 37 | 4 | `settlers-rule` | sonnet/medium (haiku/low) | `roster`, `hex-map` | — | haiku only for trivial edits |
+| 37 | 4 | `settlers-rule` | sonnet/medium (haiku/low) | `roster`, `hex-map` | `5830058` | Parties to the nearest village or open ground, capital off the books on the road; ExpeditionTests settle partial. Gaps: spare is `rules::free` (no wage float), no `inRange`, road every 4 days the core's. At landing: Nitwits stay home, only a Merchant's town sends, only the nearest village (as `findNearestMapStructure`), new towns' land 40 not 4, claimed hexes not open |
 | 38 | 5 | `random-worlds-sweep` | opus/high (sonnet/medium) | everything above | — | reads every slice; finds what they broke together |
 | 39 | 5 | `fixed-point-money` | opus/xhigh (opus/high) | `random-worlds-sweep` | — |  |
 | 40 | 5 | `parity-report` | sonnet/medium (haiku/low) | `fixed-point-money` | — | haiku only for trivial edits |
@@ -104,3 +104,9 @@ dependencies are the integrator's; `trees.py` locks its registry, so agents can 
 - A slice's random-world `extend` may rename the base goods (conversions match by name) but never rewrite their
   flags: `workshop` made every good plain but cookie, book and bread, and a third of the worlds lost all food and
   comforts for every slice. Briefs: rename, or add, never overwrite what the base world drew.
+- A slice that spawns towns or routes mid-run needs Bevy's `Schedules` resource made up front (`Society::new` and
+  `save::restore` now do, from `settlers-rule`): made at the first run, it took an entity index a load closes, and a
+  loaded world saved a different blob.
+- Briefs written before a neighbour lands go stale on it: `settlers-rule` left out the mod's territory check because
+  claims didn't exist when it was briefed, and they had landed by its landing. At landing, grep the brief's "not in the
+  core yet" against main.
