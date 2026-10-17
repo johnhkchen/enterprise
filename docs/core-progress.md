@@ -6,15 +6,15 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `54d36bc`. 283 tests pass (`just core-test`, a few seconds). Parity: **106 covered, 24 partial, 46
-  skipped, 86 left of 262** (`just parity`). `just core-fingerprint`: `c30da415d9bb74ff` (crates bought and scribes
-  paid, owed goods crated, the buyer's wagon carrying what its town owes).
+- **Main:** `58b610c`. 307 tests pass (`just core-test`, a few seconds). Parity: **112 covered, 24 partial, 46
+  skipped, 80 left of 262** (`just parity`). `just core-fingerprint`: `6bc41e70ef123e6a` (masons build bridges,
+  walls and halls for wages; the square, wall, flowers, counting house and libraries take effect).
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
-- **Paused 2026-10-17 21:05** (13 of 32 landed), with no landing under way. Four trees wait in `.trees/`:
+- **Paused 2026-10-17 21:05** (13 of 32 landed), with no landing under way. Four trees waited in `.trees/`
+  (`buildings-and-works` has since landed):
   - `squads`: the fix agent's commit `ca748fe` answers the integrator's fix request, which is at the end of its
     `.tree/TASK.md`. Audit it again, then land it.
-  - `buildings-and-works`: its build is committed (`53690de`); its summary and the audit are still to do.
   - `bank-and-discounts`, `training-and-tenders`: their builds were stopped partway, with the work uncommitted in the tree.
 - **To resume:** `python3 <session>/waves/remaining.py` writes `waves/remaining.json`: the tasks not yet landed,
   read from the Landed column below. Then run the Workflow tool with `scriptPath: <session>/waves/waves.js` and those
@@ -54,7 +54,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 31 | 4 | `training-and-tenders` | sonnet/medium (sonnet/medium) | `lockers`, `crates-and-papers`, `jobs` | — |  |
 | 32 | 4 | `player-orders` | sonnet/medium (sonnet/medium) | `lockers`, `desires-and-backhauls`, `atlas-and-books` | — |  |
 | 33 | 4 | `realms` | sonnet/medium (sonnet/low) | `squads`, `road-food` | — |  |
-| 34 | 4 | `buildings-and-works` | sonnet/medium (sonnet/medium) | `chokepoints`, `crates-and-papers`, `cash-book` | — |  |
+| 34 | 4 | `buildings-and-works` | sonnet/medium (sonnet/medium) | `chokepoints`, `crates-and-papers`, `cash-book` | `58b610c` | masons' wages and blocks, bridges that repay, walls, the ten halls (hired builders without a Mason), flower beds; wall, square, flowers, counting house, granary and libraries take effect; 6 tags, 1 partial (flower beds a flag). Gaps: hall sites always found, other halls' effects for later slices, `farms::reserve` lacks the guards' 3 days. At landing: bridge, wall and hired halls weighed at the toll reviews (first only starts the clock), masons paid after guards and before farm wages, `set_culture_extras` keeps the works' share |
 | 35 | 4 | `crown` | opus/high (opus/medium) | `war-army`, `mint-rate`, `sourcing-and-procurement`, `realms`, `training-and-tenders` | — |  |
 | 36 | 4 | `stranded-paper` | sonnet/medium (sonnet/medium) | `bank-and-discounts`, `freight-hubs`, `training-and-tenders` | — |  |
 | 37 | 4 | `settlers-rule` | sonnet/medium (haiku/low) | `roster`, `hex-map` | `5830058` | Parties to the nearest village or open ground, capital off the books on the road; ExpeditionTests settle partial. Gaps: spare is `rules::free` (no wage float), no `inRange`, road every 4 days the core's. At landing: Nitwits stay home, only a Merchant's town sends, only the nearest village (as `findNearestMapStructure`), new towns' land 40 not 4, claimed hexes not open |
