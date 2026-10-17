@@ -208,13 +208,7 @@ impl Society {
     /// Road food both ways across a hex of open ground (`Caravans.perHex`): 16 food points, at bread's worth a point
     /// (the mod's 1/30 of an emerald when the host has no bread with food points).
     pub fn per_hex(&self) -> f64 {
-        let content = self.content();
-        let point = content
-            .good("bread")
-            .map(|b| &content.goods[b])
-            .filter(|b| b.food > 0.0)
-            .map_or(crate::map::FOOD_POINT_VALUE, |b| b.value / b.food);
-        crate::map::per_hex(point)
+        crate::map::per_hex_at_bread(self.content())
     }
 
     /// The cheapest way between two placed towns over the map (no tolls yet), or `None` if either isn't placed or

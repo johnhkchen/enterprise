@@ -33,7 +33,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use bevy_ecs::prelude::Resource;
 use serde::{Deserialize, Serialize};
 
-use crate::content::{Content, Dials};
+use crate::content::Dials;
 use crate::hex::Hex;
 use crate::map::{Ground, Map, Path, Posts};
 use crate::messages::{RouteId, TownId};
@@ -324,17 +324,6 @@ impl Takings {
     }
 }
 
-/// Road food both ways across a hex of open ground, in emeralds, at bread's worth a food point (the mod's 1/30 of an
-/// emerald when the host has no bread): as [`Society::per_hex`].
-pub fn per_hex(content: &Content) -> f64 {
-    let point = content
-        .good("bread")
-        .map(|b| &content.goods[b])
-        .filter(|b| b.food > 0.0)
-        .map_or(crate::map::FOOD_POINT_VALUE, |b| b.value / b.food);
-    crate::map::per_hex(point)
-}
-
 /// A wagon on route `route` between `ends`, carrying `carried` spurs over `path` from `start` to `goal`: each town
 /// whose land it crosses (the ends excepted), in path order, sees it go by with what it still carries after the tolls
 /// before, and what going around ever larger sets of posts on its land would cost it (`Caravans.payTolls`). Returns
@@ -492,7 +481,7 @@ impl Society {
                 value: takings.expected_value(r.seq) })
         }).collect();
         let d = &self.content().dials;
-        bridge_value(self.map(), &self.toll_posts(), &routes, town, hex, per_hex(self.content()) * spurs, d.max_toll_rate,
+        bridge_value(self.map(), &self.toll_posts(), &routes, town, hex, crate::map::per_hex_at_bread(self.content()) * spurs, d.max_toll_rate,
             d.detour_share)
     }
 }

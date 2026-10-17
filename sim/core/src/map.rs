@@ -57,6 +57,17 @@ pub fn per_hex(point: f64) -> f64 {
     food_per_hex() * point
 }
 
+/// Road food both ways across a hex of open ground, in emeralds, at bread's worth a food point (the mod's 1/30 of an
+/// emerald when the host has no bread with food points): what `Caravans.perHex` prices a hex at.
+pub fn per_hex_at_bread(content: &crate::content::Content) -> f64 {
+    let point = content
+        .good("bread")
+        .map(|b| &content.goods[b])
+        .filter(|b| b.food > 0.0)
+        .map_or(FOOD_POINT_VALUE, |b| b.value / b.food);
+    per_hex(point)
+}
+
 /// A hex's ground: its share under water (0 to 1), its relief in blocks (highest surface less lowest), and whether a
 /// finished bridge stands on it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]

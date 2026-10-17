@@ -43,7 +43,7 @@ pub fn observe_crossings(clock: Res<Clock>, content: Res<Content>, towns: Res<To
         takings: Res<Takings>, mut territory: ResMut<Territory>, places: Query<&Town>,
         routes: Query<(Entity, &Route, &RouteState, Option<&RoutePath>)>) {
     let spurs = mint.rate(clock.now, content.day_ticks);
-    let per_hex = per_hex(&content) * spurs;
+    let per_hex = crate::map::per_hex_at_bread(&content) * spurs;
     let home = |t: usize| towns.0.get(t).and_then(|&e| places.get(e).ok()).and_then(|town| town.hex);
     for entity in in_order(routes.iter().map(|(e, r, _, _)| (e, r))) {
         let (_, route, state, path) = routes.get(entity).unwrap();
