@@ -79,6 +79,10 @@ public final class Contract {
         return terms;
     }
 
+    public long drafted() {
+        return drafted;
+    }
+
     public State state() {
         return state;
     }
@@ -219,6 +223,31 @@ public final class Contract {
     /** Items owed under the delivery term by {@code at}, not yet delivered. */
     public int owed(long at) {
         return delivery().map(d -> Math.max(0, dueBy(at) * d.quantity() - delivered)).orElse(0);
+    }
+
+    /**
+     * The last moment the next installment not yet counted (delivered; or on the road, where the buyer bears it) can
+     * be, before it's judged: its day and the grace (a harvest's window). Never, if there's none left.
+     */
+    public long nextDeadline() {
+        var d = delivery();
+        if (d.isEmpty() || d.get().quantity() <= 0) {
+            return Long.MAX_VALUE;
+        }
+        int counted = delivered + (incoterm.sellerBearsRoad ? 0 : shipped);
+        int n = Math.max(missesCounted, counted / d.get().quantity()); // the first not judged nor counted in full
+        if (n >= installments) {
+            return Long.MAX_VALUE;
+        }
+        return start + n * every + harvest().map(Harvest::windowTicks).orElse(GRACE_TICKS);
+    }
+
+    /** When the installment before the next one not yet counted fell due (before the first: when it was drafted). */
+    public long previousDue() {
+        var d = delivery();
+        int counted = delivered + (incoterm.sellerBearsRoad ? 0 : shipped);
+        int n = d.isEmpty() || d.get().quantity() <= 0 ? 0 : Math.max(missesCounted, counted / d.get().quantity());
+        return Math.max(drafted, start + (long) (n - 1) * every);
     }
 
     public boolean inForce() {

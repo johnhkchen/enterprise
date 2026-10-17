@@ -16,7 +16,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 /**
  * Each Merchant's chest as the town's warehouse, run on pars. Each locker session records what its switched-on
  * trades could take in a day (price times uses per restock; vanilla trades about once a day, the restock after a
- * busy one being inflated). Par is {@link #PAR_DAYS} days of that capacity across the town's lockers, at least
+ * busy one being inflated). Par is {@code shelf_days} days of that capacity across the town's lockers, at least
  * {@link #MIN_PAR} for a good a switched-on trade takes. Capacity, not past use: a town short of stock would
  * otherwise learn a small par and stay short. Below par the Merchant buys; above par is surplus it will sell. It also
  * keeps {@link #FOOD_PAR_POINTS} of food for caravans' road food, and its level for bargaining.
@@ -136,7 +136,7 @@ public final class Warehouse extends SavedData {
      * the town needs to make what it has contracted to sell.
      */
     public int par(GlobalPos desk, Item item, boolean wanted, long now) {
-        int days = (int) Math.ceil(capacity(desk, item) * PAR_DAYS);
+        int days = (int) Math.ceil(capacity(desk, item) * dev.b28.enterprise.Dials.SHELF_DAYS.get());
         return Math.max(wanted ? Math.max(MIN_PAR, days) : days, inputs(desk).getOrDefault(item, 0));
     }
 

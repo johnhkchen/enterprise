@@ -29,6 +29,7 @@ public final class Caravan {
     final List<Integer> drafts = new ArrayList<>(); // contracts drafted on this trip: their copies ride home
     final List<net.minecraft.core.GlobalPos> news = new ArrayList<>(); // markets the squad learned of, told at home
     double pace = 1; // saddled: faster
+    boolean porter; // a porter run: one hand on foot with a pack, no wagon
     final List<CompoundTag> recruits = new ArrayList<>(); // soldiers raised by a levy, on their way to the army
     int provisions; // food points carried for the road home, where the far end can't sell any
     long waitingSince = -1; // when it began waiting at the far end for food
@@ -46,8 +47,24 @@ public final class Caravan {
         this.merchantLevel = merchantLevel;
     }
 
+    /** A porter run: one hand on foot with a pack. */
+    public boolean porter() {
+        return porter;
+    }
+
+    /**
+     * Who eats on the road: the crew, and a wagon's team (see {@code wagon_team}); a porter run, just the porter. (A
+     * foreign realm's traders, no crew of ours, feed themselves as one.)
+     */
+    public int mouths() {
+        return Math.max(1, crew.size()) + (porter || crew.isEmpty() ? 0 : dev.b28.enterprise.Dials.WAGON_TEAM.getInt());
+    }
+
     /** Stacks the caravan carries: a wagon's, and more for each Leatherworker's packs and each porter. */
     public int capacity() {
+        if (porter) {
+            return Squad.PACK_STACKS;
+        }
         return Caravans.CARGO_SLOTS + Squad.PACK_STACKS
                 * (int) crew.stream().filter(m -> Squad.carries(Squad.trade(m))).count()
                 + Squad.LLAMA_STACKS * pack.size();
@@ -141,6 +158,7 @@ public final class Caravan {
                 .ifSuccess(heard::add));
         tag.put("news", heard);
         tag.putDouble("pace", pace);
+        tag.putBoolean("porter", porter);
         ListTag raised = new ListTag();
         raised.addAll(recruits);
         tag.put("recruits", raised);
@@ -168,6 +186,7 @@ public final class Caravan {
         tag.getList("crew", Tag.TAG_COMPOUND).forEach(t -> caravan.crew.add((CompoundTag) t));
         tag.getList("herd", Tag.TAG_COMPOUND).forEach(t -> caravan.herd.add((CompoundTag) t));
         tag.getList("pack", Tag.TAG_COMPOUND).forEach(t -> caravan.pack.add((CompoundTag) t));
+        caravan.porter = tag.getBoolean("porter");
         CompoundTag list = tag.getCompound("shopping");
         list.getAllKeys().forEach(kind -> caravan.shopping.put(kind, list.getDouble(kind)));
         CompoundTag carried = tag.getCompound("contracted");

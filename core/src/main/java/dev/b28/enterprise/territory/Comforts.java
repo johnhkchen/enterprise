@@ -28,8 +28,7 @@ public final class Comforts {
     /** Each villager uses this much of each kind a day, in emeralds' worth at local prices. */
     public static final double RATION_EMERALDS = 0.1;
 
-    /** A town keeps this many days of rations of each kind in its warehouse. */
-    public static final double PAR_DAYS = 4;
+    // A town keeps comfort_days of rations of each kind in its warehouse (see Dials).
 
     private Comforts() {}
 

@@ -132,6 +132,19 @@ public final class Crates {
         return load.stream().mapToInt(s -> isCrate(s) ? Math.max(1, goods(s).size()) : 1).sum();
     }
 
+    /** The goods in a load, in full stacks (a crate's contents counted, papers not): how full a wagon really is. */
+    public static double fullStacks(List<ItemStack> load) {
+        double out = 0;
+        for (ItemStack s : load) {
+            if (isCrate(s)) {
+                out += fullStacks(goods(s));
+            } else if (!s.is(Cargo.DOCUMENTS.get())) {
+                out += s.getCount() / (double) s.getMaxStackSize();
+            }
+        }
+        return out;
+    }
+
     /** A line of what's in a shipment, for its bill of lading. */
     public static String describe(List<ItemStack> goods) {
         return goods.stream().collect(Collectors.groupingBy(s -> BuiltInRegistries.ITEM.getKey(s.getItem()).getPath(),

@@ -1745,7 +1745,8 @@ public final class Territory extends SavedData {
 
     /** What the warehouse at {@code desk} aims to hold of each kind of comfort, in emeralds' worth. */
     public double comfortPar(GlobalPos desk) {
-        return bellOf(desk).map(bell -> holdings.get(bell).villagers * Comforts.RATION_EMERALDS * Comforts.PAR_DAYS)
+        return bellOf(desk).map(bell -> holdings.get(bell).villagers * Comforts.RATION_EMERALDS
+                * dev.b28.enterprise.Dials.COMFORT_DAYS.get())
                 .orElse(0.0);
     }
 

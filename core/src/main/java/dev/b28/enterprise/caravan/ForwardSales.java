@@ -45,7 +45,7 @@ public final class ForwardSales {
             dev.b28.enterprise.merchant.MerchantStock stock, Caravan caravan, dev.b28.enterprise.money.Mint mint,
             double rate, long now) {
         Rents rents = Rents.get(server);
-        int keep = (int) Math.ceil(Caravans.foodNeeded(route.distance()) * Math.max(1, caravan.crew.size())
+        int keep = (int) Math.ceil(Caravans.foodNeeded(route.distance()) * caravan.mouths()
                 * Caravans.PURSE_PER_FOOD_POINT * rate);
         for (Rents.Rent rent : rents.owed(route.from(), route.to())) {
             int spurs = (int) Math.ceil(rent.capital() * rate);

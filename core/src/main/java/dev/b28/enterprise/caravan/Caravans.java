@@ -95,6 +95,10 @@ public final class Caravans {
 
     /** At most one departure per route per in-game day. */
     public static final long DEPARTURE_INTERVAL = 24000;
+    /** A buyer allows a seller who's been away at most this many days' budget at once. */
+    static final double MAX_BUDGET_DAYS = 6;
+        /** A run waiting for a fuller load looks again this often (a quarter day), not every poll. */
+    static final long RECHECK_TICKS = 6000;
 
     private static final long POLL_TICKS = 100;
     private static final int TICKET_TICKS = 200;
@@ -162,7 +166,7 @@ public final class Caravans {
             if (caravan.isEmpty()) {
                 if (route.stopping) {
                     ledger.retire(route);
-                } else if (now - route.lastDeparture >= DEPARTURE_INTERVAL) {
+                } else if (now - route.lastDeparture >= DEPARTURE_INTERVAL && now >= route.recheckAt) {
                     var post = dev.b28.enterprise.market.Post.get(server);
                     if (route.onCall && !post.due(route.from, route.to, now)) {
                         route.status = "on call: waiting for the town to write"; // a run on call goes when it's booked
@@ -255,6 +259,17 @@ public final class Caravans {
             ledger.setDirty();
             return false;
         }
+        // A small load goes on a porter's back: one hand on foot with a pack, no wagon and no team to feed.
+        // Not where the trip wants more than one hand's trade, or porters, or a Shepherd's herd to drive: the one who
+        // goes is the hand whose trade is wanted there, if any.
+        boolean porter = !foreign && wanted.size() <= 1 && porters == 0
+                && mustered.stream().noneMatch(v -> Squad.trade(v).equals("minecraft:shepherd"))
+                && porterRun(server, territory, ledger, route, stock, now);
+        if (porter) {
+            mustered = List.of(mustered.stream().filter(v -> wanted.contains(Squad.trade(v))).findFirst()
+                    .orElse(mustered.get(0)));
+            water = false;
+        }
         boolean boat = (foreign || mustered.stream().anyMatch(v -> Squad.trade(v).equals(Squad.FISHERMAN))) && water;
         if (captain || waterHexes(server, route.from.dimension(), byLand.path()) > 0 || !byLand.found()) {
             Enterprise.LOGGER.debug("Route {}: by land {} ({} hexes, {}), by boat {} ({} hexes, {}); captain {}, mustered {}",
@@ -275,11 +290,13 @@ public final class Caravans {
         }
         // Each member eats; one more goes only if the town can spare its food beyond the caravans' par.
         int members = mustered.size();
-        while (members > 1 && stock.foodNutrition() - Warehouse.FOOD_PAR_POINTS < foodNeeded(route.distance()) * members) {
+        int team = porter || foreign ? 0 : dev.b28.enterprise.Dials.WAGON_TEAM.getInt(); // a wagon's team eats too
+        while (members > 1
+                && stock.foodNutrition() - Warehouse.FOOD_PAR_POINTS < foodNeeded(route.distance()) * (members + team)) {
             members--;
         }
         List<net.minecraft.world.entity.npc.Villager> squad = List.copyOf(mustered.subList(0, members));
-        int food = foodNeeded(route.distance()) * (foreign ? FOREIGN_CREW : squad.size());
+        int food = foodNeeded(route.distance()) * ((foreign ? FOREIGN_CREW : squad.size()) + team);
         // Where the far end won't or can't feed the squad for the road home (the front sells nothing; a town may be
         // short), it takes that food along too, if a caravan can carry both legs'.
         // (what other caravans on their way there will buy of its food first doesn't count)
@@ -339,11 +356,11 @@ public final class Caravans {
             return false;
         }
         // Llamas from the pen carry packs too: the town's own, home with the caravan.
-        var llamas = Squad.llamas(level, route.from.pos());
-        int slots = CARGO_SLOTS + Squad.PACK_STACKS * (int) squad.stream()
+        var llamas = porter ? List.<net.minecraft.world.entity.animal.Animal>of() : Squad.llamas(level, route.from.pos());
+        int slots = porter ? Squad.PACK_STACKS : CARGO_SLOTS + Squad.PACK_STACKS * (int) squad.stream()
                 .filter(v -> Squad.carries(Squad.trade(v))).count() // Leatherworkers' packs, porters' backs
                 + Squad.LLAMA_STACKS * llamas.size();
-        boolean shepherd = squad.stream().anyMatch(v -> Squad.trade(v).equals("minecraft:shepherd"));
+        boolean shepherd = !porter && squad.stream().anyMatch(v -> Squad.trade(v).equals("minecraft:shepherd"));
         var herd = shepherd ? Squad.herd(level, route.from.pos()) : List.<net.minecraft.world.entity.animal.Animal>of();
         // Goods owed under contracts go first, then comforts, then what the destination's trades want.
         java.util.Map<Integer, Integer> contracted = new LinkedHashMap<>();
@@ -355,6 +372,58 @@ public final class Caravans {
                         new dev.b28.enterprise.market.Freight.Leg(route, true), slots)
                 : List.of());
         int bookedCrates = cargo.size(); // shippers' crates, their space bought: they ride, but don't make the run due
+        // Full or due: a wagon goes when it must, to deliver or collect in time what's owed under contract (an
+        // installment that waiting a day would miss); otherwise only with a load worth its road food there and back,
+        // and full, or on its day: a town's after a long wait where no hub's wagon calls, a hub's on its timetable
+        // (every {@code liner_days}, so shippers can plan on it). What's owed and not pressing rides with it, and
+        // counts toward its load. Reckoned before anything is packed, so a wagon that waits costs nothing.
+        String goesFor = foreign ? "a foreign realm's" : route.onCall ? "on call" : "to the front"; // why it goes
+        if (!foreign && !route.onCall && !dev.b28.enterprise.army.Army.get(server).front().filter(route.to::equals).isPresent()) {
+            boolean hub = dev.b28.enterprise.market.Freight.isHub(server, route.from);
+            long arrival = now + travelTicks(route.distance());
+            double[] owed = owedOn(server, route, stock, arrival, now); // {stacks, worth, pressing}
+            goesFor = owed[2] > 0 ? (porter ? "goods owed, by porter" : "goods owed") : collectPressing(server, route, stock, arrival, now) ? "goods to collect"
+                    : hub && dev.b28.enterprise.market.Forwarder.get(server).collecting(route.from, route.to) ? "a collection"
+                    : recruitsOwedAt(server, route) ? "recruits owed" : null; // copies and bills can go by post
+            boolean due = goesFor != null;
+            // The forwarder's bought space on this run's way home from the hub: sold space, so it runs on its day.
+            var homeLeg = new dev.b28.enterprise.market.Freight.Leg(route, false);
+            boolean sold = !hub && dev.b28.enterprise.market.Freight.isHub(server, route.to)
+                    && dev.b28.enterprise.market.Freight.get(server).hasBlock(homeLeg);
+            if (!due && sold && now - route.lastDeparture >= dev.b28.enterprise.Dials.LINER_DAYS.ticks()) {
+                due = true;
+                goesFor = "space sold, on its day";
+            }
+            if (!due) {
+                int booked = Crates.stacks(cargo);
+                double[] load = saleLoad(server, territory, route, stock, slots - booked - (int) owed[0], now);
+                double fares = booked * dev.b28.enterprise.market.Freight.legPrice(
+                        new dev.b28.enterprise.market.Freight.Leg(route, true))
+                        + (sold ? dev.b28.enterprise.market.Freight.get(server).blockFares(homeLeg) : 0);
+                double worth = load[1] + owed[1] + exWorks + shoppingMoney + fares;
+                double cost = 2 * food * PURSE_PER_FOOD_POINT;
+                boolean full = load[0] + owed[0] + booked >= dev.b28.enterprise.Dials.WAGON_FULL.get() * slots;
+                boolean served = !hub && ledger.routes().stream().anyMatch(r -> r.to.equals(route.from) && !r.stopping
+                        && dev.b28.enterprise.market.Freight.isHub(server, r.from));
+                boolean onItsDay = now - route.lastDeparture >= (hub ? dev.b28.enterprise.Dials.LINER_DAYS.ticks()
+                        : dev.b28.enterprise.Dials.WAGON_WAIT_DAYS.ticks());
+                // On its day it goes with what pays its road, or with business there: goods there its home's other towns
+                // want, or money owed there (what it brings home counts, not just what it sells).
+                boolean business = onItsDay && (exWorks > 0 || hasBusinessAt(server, ledger, route, now));
+                if (!(worth >= cost && (full || onItsDay) || business)) {
+                    route.status = "waiting for a fuller load: %d of %d stacks, worth %.1f against %.1f of road food"
+                            .formatted((int) (load[0] + owed[0]) + booked, slots, worth, cost)
+                            + (served ? " (a hub's wagon calls here)" : hub ? " (it runs every few days)" : "");
+                    cargo.forEach(stock::insert); // the booked crates wait for its day
+                    route.recheckAt = now + RECHECK_TICKS; // it looks again in a while
+                    dev.b28.enterprise.money.Accountant.spent(route.from, -(shoppingMoney + callPurse), now); // unspent
+                    ledger.setDirty();
+                    return false;
+                }
+                goesFor = (full ? "full" : "on its day") + (worth < cost ? ", for business there" : "")
+                        + (porter ? ", by porter" : "");
+            }
+        }
         cargo.addAll(pickContracted(server, level, route, stock, now + travelTicks(route.distance()),
                 slots - Crates.stacks(cargo), contracted, now));
         cargo.addAll(pickForwarded(server, level, route, stock, now + travelTicks(route.distance()),
@@ -379,51 +448,6 @@ public final class Caravans {
         // A hub short of money sends its best bills to its correspondent at the capital (see Correspondent).
         if (!foreign) {
             cargo.addAll(dev.b28.enterprise.market.Correspondent.send(level, route, stock, now));
-        }
-        // Full or due: a wagon goes with what it owes; otherwise only with a load worth its road food there and back,
-        // and full, or on its day: a town's after a long wait where no hub's wagon calls, a hub's on its timetable
-        // (every {@code liner_days}, so shippers can plan on it), or any day with a load worth thrice the food. Booked
-        // crates fill the wagon and their fares count, but wait for its day. Reckoned before anything else is packed,
-        // so a wagon that waits costs nothing.
-        if (!foreign && !route.onCall && !dev.b28.enterprise.army.Army.get(server).front().filter(route.to::equals).isPresent()) {
-            boolean hub = dev.b28.enterprise.market.Freight.isHub(server, route.from);
-            boolean due = cargo.size() > bookedCrates || exWorks > 0 || buyBack > 0 || bankFloat > 0
-                    || hub && dev.b28.enterprise.market.Forwarder.get(server).collecting(route.from, route.to)
-                    || recruitsOwedAt(server, route)
-                    || !dev.b28.enterprise.contract.ContractBook.get(server).copiesFor(route.from, route.to).isEmpty();
-            // The forwarder's bought space on this run's way home from the hub: sold space, so it runs on its day.
-            var homeLeg = new dev.b28.enterprise.market.Freight.Leg(route, false);
-            boolean sold = !hub && dev.b28.enterprise.market.Freight.isHub(server, route.to)
-                    && dev.b28.enterprise.market.Freight.get(server).hasBlock(homeLeg);
-            if (sold && now - route.lastDeparture >= dev.b28.enterprise.Dials.LINER_DAYS.ticks()) {
-                due = true;
-            }
-            if (!due) {
-                double[] load = saleLoad(server, territory, route, stock, slots - Crates.stacks(cargo), now);
-                int booked = Crates.stacks(cargo);
-                double fares = booked * dev.b28.enterprise.market.Freight.legPrice(
-                        new dev.b28.enterprise.market.Freight.Leg(route, true))
-                        + (sold ? dev.b28.enterprise.market.Freight.get(server).blockFares(homeLeg) : 0);
-                double worth = load[1] + shoppingMoney + fares;
-                double cost = 2 * food * PURSE_PER_FOOD_POINT;
-                boolean full = load[0] + booked >= dev.b28.enterprise.Dials.WAGON_FULL.get() * slots;
-                boolean served = !hub && ledger.routes().stream().anyMatch(r -> r.to.equals(route.from) && !r.stopping
-                        && dev.b28.enterprise.market.Freight.isHub(server, r.from));
-                boolean onItsDay = now - route.lastDeparture >= (hub ? dev.b28.enterprise.Dials.LINER_DAYS.ticks()
-                        : dev.b28.enterprise.Dials.WAGON_WAIT_DAYS.ticks()) && !served;
-                // A hub's runs keep their timetable (the forwarder fills them); a town's may go any day with a rich load.
-                boolean go = worth >= cost && (full || onItsDay)
-                        || !hub && worth >= dev.b28.enterprise.Dials.WAGON_PAYS.get() * cost;
-                if (!go) {
-                    route.status = "waiting for a fuller load: %d of %d stacks, worth %.1f against %.1f of road food"
-                            .formatted((int) load[0] + booked, slots, worth, cost)
-                            + (served ? " (a hub's wagon calls here)" : hub ? " (it runs every few days)" : "");
-                    cargo.forEach(stock::insert); // the booked crates wait for its day
-                    dev.b28.enterprise.money.Accountant.spent(route.from, -(shoppingMoney + callPurse), now); // unspent
-                    ledger.setDirty();
-                    return false;
-                }
-            }
         }
         // Comforts the far end wants, out of what this town can spare beyond its own par of each kind.
         Map<String, Double> wantedThereNow = new LinkedHashMap<>(
@@ -463,6 +487,9 @@ public final class Caravans {
             ledger.setDirty();
             return false; // no empty trips: the road food would be wasted
         }
+        dev.b28.enterprise.merchant.Books.get(server).why(route.from, now, route.to, Items.AIR, "went: " + goesFor,
+                (int) Math.round(Crates.fullStacks(cargo)));
+        noteLoad(route, cargo, true);
         stock.eat(food + provisions); // the hub's own food: already paid for
         Treasury.Withdrawal taken = Treasury.withdraw(level, route.from.pos(), stock, purse, mint, now);
         int spurs = taken.spurs() + mint.sell(Mint.DEFAULT_FACTION, taken.emeralds(), now);
@@ -486,6 +513,7 @@ public final class Caravans {
         Caravan leaving = new Caravan(route.id, Caravan.Leg.OUTBOUND, now + (long) (travelTicks(route.distance()) / pace),
                 cargo, spurs, foreign ? FOREIGN_MERCHANT_LEVEL : Squad.haggleLevel(crew));
         leaving.pace = pace;
+        leaving.porter = porter;
         leaving.crew.addAll(crew);
         // Fishermen fish the water they cross: a catch for each on each water hex, sold where food is short.
         long fishermen = crew.stream().filter(m -> Squad.trade(m).equals(Squad.FISHERMAN)).count();
@@ -508,7 +536,7 @@ public final class Caravans {
         herd.forEach(animal -> leaving.herd.add(Squad.stow(animal)));
         llamas.forEach(llama -> leaving.pack.add(Squad.stow(llama)));
         route.lastCapacity = slots;
-        route.lastCrew = Math.max(1, crew.size());
+        route.lastCrew = leaving.mouths();
         setStop(server, route, leaving, now, true, 1);
         ledger.put(leaving);
         // Into the books: what went out, and where to.
@@ -549,7 +577,7 @@ public final class Caravans {
         territory.touch(level, route.to.pos(), stock);
         Mint mint = Mint.get(server);
         double rate = mint.rate(Mint.DEFAULT_FACTION, now);
-        int food = foodNeeded(route.distance()) * Math.max(1, caravan.crew.size());
+        int food = foodNeeded(route.distance()) * caravan.mouths();
         if (caravan.leg == Caravan.Leg.OUTBOUND) {
             int residentLevel = Merchant.workingAt(level, route.to.pos(), Lockers.MERCHANT_RANGE)
                     .map(m -> m.getVillagerData().getLevel())
@@ -655,7 +683,7 @@ public final class Caravans {
             caravan.spurs += paid;
             route.serviceSpurs += paid;
             sendPortersHome(ledger, route, caravan, now);
-            food = foodNeeded(route.distance()) * Math.max(1, caravan.crew.size());
+            food = foodNeeded(route.distance()) * caravan.mouths();
             int keepForFood = caravan.provisions >= food ? 0 : (int) Math.ceil(food * PURSE_PER_FOOD_POINT * rate);
             buyForHome(level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
             buySurplus(server, ledger, level, route, stock, caravan, residentLevel, keepForFood, territory, mint, rate, now);
@@ -666,6 +694,7 @@ public final class Caravans {
             caravan.provisions = 0;
             route.foodEaten += food;
             caravan.leg = Caravan.Leg.RETURNING;
+            noteLoad(route, caravan.cargo, false);
             caravan.arrives = now + (long) (travelTicks(route.distance()) / caravan.pace);
             setStop(server, route, caravan, now, false, 1);
             route.status = "on the way home";
@@ -684,6 +713,7 @@ public final class Caravans {
                 // It won't sit there for days: home on short rations, foraging, at half the pace.
                 caravan.waitingSince = -1;
                 caravan.leg = Caravan.Leg.RETURNING;
+                noteLoad(route, caravan.cargo, false);
                 caravan.arrives = now + (long) (travelTicks(route.distance()) / caravan.pace * 2);
                 setStop(server, route, caravan, now, false, 2);
                 route.shortRations++;
@@ -705,6 +735,7 @@ public final class Caravans {
             route.foodSpurs += price;
             route.foodEaten += food;
             caravan.leg = Caravan.Leg.RETURNING;
+            noteLoad(route, caravan.cargo, false);
             caravan.arrives = now + (long) (travelTicks(route.distance()) / caravan.pace);
             setStop(server, route, caravan, now, false, 1);
             route.status = "on the way home";
@@ -811,7 +842,7 @@ public final class Caravans {
         if (crates.isEmpty() && bundles.isEmpty()) {
             return;
         }
-        int keep = (int) Math.ceil(foodNeeded(route.distance()) * Math.max(1, caravan.crew.size()) * PURSE_PER_FOOD_POINT
+        int keep = (int) Math.ceil(foodNeeded(route.distance()) * caravan.mouths() * PURSE_PER_FOOD_POINT
                 * rate);
         double means = Territory.get(server).bellOf(hub).map(b -> Territory.get(server).treasury(b)).orElse(0.0)
                 - Territory.get(server).reserve(hub) + Territory.get(server).depositsOnCall(hub); // at home, last counted
@@ -987,7 +1018,7 @@ public final class Caravans {
         sellStrandedAtHub(server, level, hub, route.from, stock, caravan, now); // and buys its stranded paper
         // Food: outbound, for the road home too where the far end may not feed it; it buys here, where it can.
         if (outbound && caravan.provisions == 0) {
-            int food = foodNeeded(route.distance()) * Math.max(1, caravan.crew.size());
+            int food = foodNeeded(route.distance()) * caravan.mouths();
             if (foodKnownAt(server, level, route.to) - ledger.foodPromisedAt(route.to) < food
                     && stock.foodNutrition() >= food + Warehouse.FOOD_PAR_POINTS) {
                 Map<Item, Integer> meal = stock.eat(food);
@@ -1149,6 +1180,126 @@ public final class Caravans {
     /** A standing order runs this many installments, or as many as the seller can cover, but at least the minimum. */
     public static final int CONTRACT_INSTALLMENTS = 10;
     public static final int CONTRACT_MIN_INSTALLMENTS = 3;
+
+    /**
+     * What's owed under contract on this run by the time it'd arrive, as far as the town has the goods: its own
+     * contracts with the far end, and those it sends on through a hub there. {stacks, worth in emeralds, pressing}:
+     * pressing (1) if an installment would be judged before the goods count, were the wagon to wait a day.
+     */
+    static double[] owedOn(MinecraftServer server, Route route, MerchantStock stock, long arrival, long now) {
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        List<dev.b28.enterprise.contract.Contract> on = new ArrayList<>(book.inForce(route.from, route.to));
+        boolean viaHub = dev.b28.enterprise.market.Freight.isHub(server, route.to);
+        if (viaHub) {
+            for (var c : book.of(route.from)) {
+                if (c.inForce() && c.seller().equals(route.from) && !c.buyer().equals(route.to)
+                        && !dev.b28.enterprise.market.Freight.legs(server, route.to, c.buyer()).isEmpty()) {
+                    on.add(c);
+                }
+            }
+        }
+        double stacks = 0;
+        double worth = 0;
+        boolean pressing = false;
+        for (var c : on) {
+            var delivery = c.delivery();
+            if (delivery.isEmpty() || !c.incoterm().sellerCarries) {
+                continue;
+            }
+            boolean onward = !c.buyer().equals(route.to); // sent on from the hub: the road beyond takes time
+            long there = arrival + (onward ? FORWARD_LEAD : 0);
+            int owed = c.owed(there) - c.shipped();
+            if (owed <= 0) {
+                continue;
+            }
+            int have = stock.count(delivery.get().cost(server.registryAccess()))
+                    + stock.looseStacks().stream().filter(s -> ForwardSales.earmarkedFor(s, c.id()))
+                            .mapToInt(ForwardSales::goodsIn).sum();
+            int going = Math.min(owed, have);
+            if (going <= 0) {
+                continue;
+            }
+            stacks += Math.ceil(going / (double) delivery.get().item().getDefaultMaxStackSize());
+            worth += going * delivery.get().unitPrice();
+            long counts = c.incoterm().sellerBearsRoad ? there + 24000L : now + 24000L; // if it waited a day
+            pressing |= counts > c.nextDeadline();
+        }
+        return new double[] {stacks, worth, pressing ? 1 : 0};
+    }
+
+    /**
+     * Must this run go to collect, in time, what the town buys there Ex Works (an installment that waiting a day would
+     * miss: the seller's shelves were counted a while ago, the goods may be made since), to pay what it owes up front with the contract's copies, or to take the far
+     * end the inputs it's short of for what it makes this town (once an installment)?
+     */
+    static boolean collectPressing(MinecraftServer server, Route route, MerchantStock stock, long arrival, long now) {
+        var book = dev.b28.enterprise.contract.ContractBook.get(server);
+        if (!book.advancesDue(route.to, route.from).isEmpty()) {
+            return true;
+        }
+        for (var c : book.inForce(route.to, route.from)) {
+            var delivery = c.delivery();
+            if (delivery.isEmpty() || c.incoterm().sellerCarries || c.owed(arrival) <= 0) {
+                continue;
+            }
+            if (arrival + 24000L > c.nextDeadline()) {
+                return true;
+            }
+        }
+        var inputs = Warehouse.get(server).inputs(route.to);
+        boolean short_ = inputs.entrySet().stream().anyMatch(e -> Warehouse.get(server).onHand(route.to, e.getKey())
+                < e.getValue() && stock.count(new ItemCost(e.getKey(), 1)) > 0);
+        return short_ && book.inForce(route.to, route.from).stream().anyMatch(c -> route.lastDeparture < c.previousDue());
+    }
+
+    /**
+     * Is this run's load small enough for a porter (and must it go, or is it its day)? What's owed under contract and
+     * what would sell there fit one pack, nothing bigger rides on the run (booked crates, a collection, the
+     * forwarder's space either way, a herd), and either something can't wait or it's the run's day. Its own wagon
+     * costs a team's food as well as the crew's: for a pack's worth, a porter is cheaper.
+     */
+    static boolean porterRun(MinecraftServer server, Territory territory, CaravanLedger ledger, Route route,
+            MerchantStock stock, long now) {
+        // (and the load home fit one last time: a run never seen home goes by wagon)
+        if (route.onCall || dev.b28.enterprise.army.Army.get(server).front().filter(route.to::equals).isPresent()
+                || dev.b28.enterprise.Dials.WAGON_TEAM.getInt() <= 0 || route.lastHome < 0
+                || route.lastHome > Squad.PACK_STACKS) {
+            return false;
+        }
+        var freight = dev.b28.enterprise.market.Freight.get(server);
+        boolean hub = dev.b28.enterprise.market.Freight.isHub(server, route.from);
+        var out = new dev.b28.enterprise.market.Freight.Leg(route, true);
+        if (hub && dev.b28.enterprise.market.Forwarder.get(server).collecting(route.from, route.to)
+                || freight.hasBlock(out) || freight.hasBlock(new dev.b28.enterprise.market.Freight.Leg(route, false))
+                || stock.looseStacks().stream().anyMatch(s -> dev.b28.enterprise.market.Freight.booked(s, out) > 0)
+                || recruitsOwedAt(server, route)) {
+            return false;
+        }
+        long arrival = now + travelTicks(route.distance());
+        double[] owed = owedOn(server, route, stock, arrival, now);
+        if (owed[0] > Squad.PACK_STACKS) {
+            return false;
+        }
+        double[] load = saleLoad(server, territory, route, stock, CARGO_SLOTS - (int) owed[0], now);
+        if (owed[0] + load[0] > Squad.PACK_STACKS) {
+            return false;
+        }
+        boolean onItsDay = now - route.lastDeparture >= (hub ? dev.b28.enterprise.Dials.LINER_DAYS.ticks()
+                : dev.b28.enterprise.Dials.WAGON_WAIT_DAYS.ticks());
+        return owed[2] > 0 || collectPressing(server, route, stock, arrival, now) || onItsDay;
+    }
+
+    /** A caravan's load as it sets out (or turns for home), in the route's tally of how full its wagons run. */
+    static void noteLoad(Route route, List<ItemStack> cargo, boolean out) {
+        if (out) {
+            route.loadOut += Crates.fullStacks(cargo);
+            route.slotsOut += Crates.stacks(cargo);
+        } else {
+            route.loadHome += Crates.fullStacks(cargo);
+            route.slotsHome += Crates.stacks(cargo);
+            route.lastHome = Crates.stacks(cargo);
+        }
+    }
 
     /** A good is worth a standing order once a caravan has sold at least this many of it in one visit. */
     public static final int CONTRACT_MIN_ITEMS = 16;
@@ -1407,7 +1558,7 @@ public final class Caravans {
     static void payAdvances(MinecraftServer server, ServerLevel level, Route route, MerchantStock stock, Caravan caravan,
             Mint mint, double rate, long now) {
         var book = dev.b28.enterprise.contract.ContractBook.get(server);
-        int keep = (int) Math.ceil(foodNeeded(route.distance()) * Math.max(1, caravan.crew.size()) * PURSE_PER_FOOD_POINT
+        int keep = (int) Math.ceil(foodNeeded(route.distance()) * caravan.mouths() * PURSE_PER_FOOD_POINT
                 * rate);
         for (var contract : book.advancesDue(route.to, route.from)) { // the caravan's town buys from the town here
             if (!contract.knownBy(route.to)) {
@@ -1959,6 +2110,9 @@ public final class Caravans {
         Warehouse warehouse = Warehouse.get(server);
         double stacks = 0;
         double worth = 0;
+        // The stacks it'd sell, as far as they could pay last time (what makes a wagon full); the worth of all it'd send.
+        double purse = route.farPurse < 0 ? Double.MAX_VALUE : route.farPurse;
+        double paid = 0;
         for (Item item : wantsThere(server, route.to).keySet()) {
             int room = warehouse.par(route.to, item, true, now) - warehouse.onHand(route.to, item);
             int have = stock.count(new ItemCost(item, 1)) - ForwardSales.setAside(server, route.from, item, stock, now);
@@ -1967,8 +2121,11 @@ public final class Caravans {
                 continue;
             }
             going = (int) Math.min(going, (slots - stacks) * item.getDefaultMaxStackSize());
-            stacks += Math.ceil(going / (double) item.getDefaultMaxStackSize());
-            worth += going * Prices.emeraldsEach(item);
+            double each = Prices.emeraldsEach(item);
+            int sells = each <= 0 ? going : (int) Math.min(going, Math.max(0, purse - paid) / each);
+            stacks += Math.ceil(sells / (double) item.getDefaultMaxStackSize());
+            paid += sells * each;
+            worth += going * each;
         }
         Map<String, Double> held = Comforts.onHand(stock);
         double ownPar = territory.comfortPar(route.from);
@@ -2216,6 +2373,18 @@ public final class Caravans {
         Set<Item> wanted = wantedAt(server, desk);
         boolean foreign = dev.b28.enterprise.trade.Realms.get(server).isForeign(desk);
         int earned = 0;
+        // Days since this run last sold here: the budget a buyer allows a seller who comes every few days is what it'd
+        // have allowed daily ones (see Accountant#leftFor).
+        double days = route.to.equals(desk) && route.lastSold >= 0
+                ? Math.min(MAX_BUDGET_DAYS, Math.max(1, (now - route.lastSold) / 24000.0)) : 1;
+        if (route.to.equals(desk)) {
+            route.lastSold = now;
+        }
+        if (!foreign && route.to.equals(desk)) {
+            // What it can spend on goods, as the travelling Merchant sees it: the next load is sized to it.
+            route.farPurse = Math.max(0, Math.min(Treasury.available(level, desk.pos(), stock, rate) - territory.payroll(desk),
+                    dev.b28.enterprise.money.Accountant.leftFor(level, desk, stock, days, now)));
+        }
         for (java.util.ListIterator<ItemStack> it = caravan.cargo.listIterator(); it.hasNext(); ) {
             ItemStack entry = it.next();
             // A crate of one good for sale is sold as its goods: whole if wanted whole, kept crated.
@@ -2245,7 +2414,7 @@ public final class Caravans {
                     par += outlet.get().units();
                 }
                 money = Math.min(money - territory.reserve(desk),
-                        foreign ? Double.MAX_VALUE : dev.b28.enterprise.money.Accountant.left(level, desk, stock, now));
+                        foreign ? Double.MAX_VALUE : dev.b28.enterprise.money.Accountant.leftFor(level, desk, stock, days, now));
             } else {
                 money -= territory.payroll(desk); // never the farmers' wages or the guards' pay
                 par = Math.min(warehouse.par(desk, item, wanted.contains(item), now), roomFor(stock, wanted.size(), item));
@@ -2257,7 +2426,7 @@ public final class Caravans {
                 // Food it's short of it buys as far as it can; any other goods, out of the accountant's budget.
                 boolean shortOfFood = nutrition > 0 && stock.foodNutrition() < 2 * Warehouse.FOOD_PAR_POINTS;
                 if (!foreign && !shortOfFood) {
-                    money = Math.min(money, dev.b28.enterprise.money.Accountant.left(level, desk, stock, now));
+                    money = Math.min(money, dev.b28.enterprise.money.Accountant.leftFor(level, desk, stock, days, now));
                 }
             }
             int quantity = Math.min(stack.getCount(), par - onHand);

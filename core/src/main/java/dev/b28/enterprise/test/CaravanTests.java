@@ -228,8 +228,9 @@ public final class CaravanTests {
         net.poll(t + 80);
         net.poll(t + 160);
         int cookies = net.hub().count(new ItemCost(Items.COOKIE, 1));
-        // Its par of treats is 5 x 0.1 x 4 = 2 emeralds' worth: 36 cookies.
-        helper.assertTrue(cookies == 36, "it brought home its par of treats: " + cookies);
+        // Its par of treats is 5 x 0.1 x comfort_days emeralds' worth, at 18 cookies an emerald.
+        int par = (int) Math.round(5 * 0.1 * dev.b28.enterprise.Dials.COMFORT_DAYS.get() * 18);
+        helper.assertTrue(cookies == par, "it brought home its par of treats, " + par + ": " + cookies);
         helper.succeed();
     }
 
@@ -513,11 +514,12 @@ public final class CaravanTests {
         helper.assertTrue(!bills.isEmpty(), "the rest on a bill drawn on the hub, left with the town");
         net.poll(t + 160);
         net.hub().insert(new ItemStack(Items.EMERALD, 30)); // the hub has money again
-        long later = t + dev.b28.enterprise.contract.Bills.TERM_TICKS + 24000;
+        long later = t + Math.max(dev.b28.enterprise.contract.Bills.TERM_TICKS + 24000,
+                dev.b28.enterprise.Dials.WAGON_WAIT_DAYS.ticks()); // its wagon's day, after the bill fell due
         net.poll(later);
         net.poll(later + 80);
         helper.assertTrue(bills.stream().allMatch(b -> b.state() == dev.b28.enterprise.contract.Bills.State.PAID),
-                "the hub's next caravan, once it was due, paid it");
+                "the hub's next caravan, on its day after the bill fell due, paid it");
         helper.succeed();
     }
 
@@ -593,12 +595,59 @@ public final class CaravanTests {
         net.poll(t + 160);
         var contract = contractsBetween(helper, net).get(0);
         double price = contract.delivery().orElseThrow().unitPrice();
-        // A day on, the next caravan: the town holds its par of paper already, but the contract delivers anyway.
-        long next = t + 24000;
+        // The day the installment can't wait, the next caravan: the town holds its par of paper already, but the
+        // contract delivers anyway.
+        long next = contract.nextDeadline() - 24000;
         net.poll(next);
         net.poll(next + 80);
-        helper.assertTrue(contract.delivered() == 64, "64 paper delivered under contract: " + contract.delivered());
-        helper.assertTrue(Math.abs(contract.paid() - 64 * price) < 0.1, "paid at the locked price: " + contract.paid());
+        helper.assertTrue(contract.delivered() >= 64 && contract.delivered() % 64 == 0,
+                "what's owed of the paper, 64 an installment, delivered under contract: " + contract.delivered());
+        helper.assertTrue(Math.abs(contract.paid() - contract.delivered() * price) < 0.1,
+                "paid at the locked price: " + contract.paid());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void goodsOwedWaitTillTheyCantAndASmallLoadGoesByPorter(GameTestHelper helper) {
+        Network net = network(helper, 8, 5, 192);
+        var book = dev.b28.enterprise.contract.ContractBook.get(helper.getLevel().getServer());
+        long t = helper.getLevel().getGameTime();
+        net.poll(t);
+        net.poll(t + 80);
+        net.poll(t + 160);
+        helper.assertTrue(net.ledger().caravan(net.route().id()).isEmpty(), "its first trip done");
+        // 32 paper owed in two days, delivered to the town (before its wagon's next day).
+        var contract = book.draft(net.route().from(), net.route().to(),
+                new dev.b28.enterprise.contract.Delivery(Items.PAPER, 32, 0.5), dev.b28.enterprise.contract.Incoterm.DAP,
+                t + 2 * 24000L, 24000, 1, t, net.route().from(), true);
+        net.poll(t + 2 * 24000L);
+        helper.assertTrue(net.ledger().caravan(net.route().id()).isEmpty() && contract.delivered() == 0,
+                "due, but with days of grace yet: it waits for a fuller load, " + net.route().status());
+        long last = contract.nextDeadline() - 24000; // the day it can't wait
+        net.poll(last);
+        var out = net.ledger().caravan(net.route().id()).orElseThrow();
+        helper.assertTrue(out.porter() && out.capacity() == dev.b28.enterprise.caravan.Squad.PACK_STACKS,
+                "the day it can't wait, it goes; half a stack goes on a porter's back, not a wagon");
+        net.poll(last + 80);
+        helper.assertTrue(contract.delivered() == 32, "delivered in time: " + contract.history());
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aContractsCopyGoesByPost(GameTestHelper helper) {
+        Network net = network(helper, 8, 5, 192);
+        var level = helper.getLevel();
+        var book = dev.b28.enterprise.contract.ContractBook.get(level.getServer());
+        long t = level.getGameTime();
+        var contract = book.draft(net.route().from(), net.route().to(),
+                new dev.b28.enterprise.contract.Delivery(Items.PAPER, 32, 0.5), dev.b28.enterprise.contract.Incoterm.DAP,
+                t + 20 * 24000L, 24000, 1, t, net.route().from(), false);
+        helper.assertTrue(!contract.inForce(), "only the hub holds it");
+        dev.b28.enterprise.market.Post.atDesk(level, net.route().from(), net.hub(), t + 24000 + 10);
+        helper.assertTrue(dev.b28.enterprise.market.Post.get(level.getServer()).onTheRoad(net.route().to(),
+                dev.b28.enterprise.market.Post.Kind.COPY, net.route().from()) > 0, "a day on, the copy goes by post");
+        dev.b28.enterprise.market.Post.atDesk(level, net.route().to(), net.dest(), t + 12 * 24000L);
+        helper.assertTrue(contract.inForce(), "read at the town: in force, no wagon sent");
         helper.succeed();
     }
 
@@ -693,8 +742,9 @@ public final class CaravanTests {
         helper.assertTrue(warehouse.stocktakeTime(net.route().to()) < 0, "no Librarian: nobody counted their shelves");
         net.poll(t + 160);
         Villager librarian = squadMember(helper, VillagerProfession.LIBRARIAN, new BlockPos(0, 2, 5));
-        net.poll(t + 160 + 24000);
-        net.poll(t + 240 + 24000);
+        long day = t + dev.b28.enterprise.Dials.WAGON_WAIT_DAYS.ticks(); // the wagon's next day
+        net.poll(day);
+        net.poll(day + 80);
         helper.assertTrue(warehouse.stocktakeTime(net.route().to()) >= 0, "with one, the books come home");
         helper.succeed();
     }
@@ -741,18 +791,20 @@ public final class CaravanTests {
     @GameTest(template = "floor")
     public static void townsBuyComfortsUpToTheirPar(GameTestHelper helper) {
         Network net = network(helper, 2, 5, 192);
-        // The destination is a town of five: it wants 4 days of treats, 5 x 0.1 x 4 = 2 emeralds' worth (36 cookies).
+        // The destination is a town of five: it wants comfort_days of treats, 5 x 0.1 a day, at 18 cookies an emerald.
+        int par = (int) Math.round(5 * 0.1 * dev.b28.enterprise.Dials.COMFORT_DAYS.get() * 18);
         net.territory().afterCensus(helper.getLevel(), helper.absolutePos(new BlockPos(6, 2, 4)),
                 new dev.b28.enterprise.settlement.Census(5, 5, 5, 5, 0), 1, java.util.List.of());
+        net.hub().insert(new ItemStack(Items.COOKIE, 64));
         net.hub().insert(new ItemStack(Items.COOKIE, 64));
         long t = helper.getLevel().getGameTime();
         net.poll(t);
         int aboard = net.ledger().caravan(net.route().id()).orElseThrow().cargo().stream()
                 .filter(stack -> stack.is(Items.COOKIE)).mapToInt(ItemStack::getCount).sum();
-        helper.assertTrue(aboard == 54, "the caravan takes half again what the town wants: " + aboard);
+        helper.assertTrue(aboard == par * 3 / 2, "the caravan takes half again what the town wants: " + aboard);
         net.poll(t + 80);
-        helper.assertTrue(net.dest().count(new ItemCost(Items.COOKIE, 1)) == 36,
-                "the town buys 36 cookies: " + net.dest().count(new ItemCost(Items.COOKIE, 1)));
+        helper.assertTrue(net.dest().count(new ItemCost(Items.COOKIE, 1)) == par,
+                "the town buys its par of cookies, " + par + ": " + net.dest().count(new ItemCost(Items.COOKIE, 1)));
         helper.succeed();
     }
 
@@ -764,9 +816,10 @@ public final class CaravanTests {
                 new dev.b28.enterprise.settlement.Census(5, 5, 5, 5, 0), 1, java.util.List.of());
         var dest = net.route().to();
         long t = helper.getLevel().getGameTime();
-        // At the last visit the town was full: 36 cookies, its whole 2-emerald par of treats.
+        // At the last visit the town was full: its whole par of treats, in cookies at 18 an emerald.
+        int par = (int) Math.round(5 * 0.1 * dev.b28.enterprise.Dials.COMFORT_DAYS.get() * 18);
         dev.b28.enterprise.merchant.Warehouse.get(helper.getLevel().getServer())
-                .recordStocktake(dest, java.util.Map.of("minecraft:cookie", 36), t);
+                .recordStocktake(dest, java.util.Map.of("minecraft:cookie", par), t);
         var now = Caravans.comfortWantsForTest(helper.getLevel().getServer(), territory, dest, t);
         helper.assertTrue(!now.containsKey("treats"), "just after: it wants no treats " + now);
         var later = Caravans.comfortWantsForTest(helper.getLevel().getServer(), territory, dest, t + 2 * 24000L);
@@ -1231,8 +1284,9 @@ public final class CaravanTests {
         helper.assertTrue(lent > 5, "lent against the books to come: " + lent);
         net.poll(t + 160);
         net.dest().insert(new ItemStack(Items.BOOK, 64)); // made, with the money
-        net.poll(t + 2 * 24000L);
-        net.poll(t + 2 * 24000L + 80);
+        long collect = contract.nextDeadline() - 24000; // the hub's wagon goes the day it can't wait
+        net.poll(collect);
+        net.poll(collect + 80);
         double owed = bank.owedOn(contract.id());
         bank.close(hub);
         helper.assertTrue(contract.delivered() == 64, "collected: " + contract.history());

@@ -51,7 +51,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 public final class Post extends SavedData {
     private static final String NAME = "enterprise_post";
 
-    public enum Kind { CALL, REPLY, BILLS, REMIT, BOOK }
+    public enum Kind { CALL, REPLY, BILLS, REMIT, BOOK, COPY }
 
     /** A letter: what it is, from and to, when it arrives, and what it carries. */
     static final class Letter {
@@ -62,7 +62,7 @@ public final class Post extends SavedData {
         long arrives;
         double value; // a call: what the goods offered are worth; a remittance: spurs paid
         long day = -1; // a reply: the day booked (or -1, declined)
-        int stacks; // a booking: stacks to collect
+        int stacks; // a booking: stacks to collect; a copy: the contract's id
         List<ItemStack> papers = new ArrayList<>(); // bills sent, or returned
     }
 
@@ -124,6 +124,7 @@ public final class Post extends SavedData {
                 }
                 case REPLY -> { } // the town knows when to have its goods ready
                 case BOOK -> Forwarder.get(level.getServer()).booked(desk, letter.from, letter.stacks, letter.value, now);
+                case COPY -> ContractBook.get(level.getServer()).deliverCopy(letter.stacks, desk);
             }
             setDirty();
         }
@@ -132,6 +133,32 @@ public final class Post extends SavedData {
     private void write(ServerLevel level, GlobalPos desk, MerchantStock stock, long now) {
         Forwarder.get(level.getServer()).considerBooking(level, desk, stock, now);
         mailBills(level, desk, stock, now);
+        mailCopies(level, desk, stock, now);
+    }
+
+    /**
+     * Copies of contracts the town holds that the other party hasn't seen, a day after they were drafted (a caravan
+     * going there that day takes one sooner): by post, so no wagon need go just to carry a contract.
+     */
+    private void mailCopies(ServerLevel level, GlobalPos town, MerchantStock stock, long now) {
+        MinecraftServer server = level.getServer();
+        for (var c : ContractBook.get(server).of(town)) {
+            if (c.state() != dev.b28.enterprise.contract.Contract.State.DRAFTED && !c.inForce()) {
+                continue;
+            }
+            GlobalPos other = c.seller().equals(town) ? c.buyer() : c.seller();
+            if (other.equals(town) || !c.knownBy(town) || c.knownBy(other) || now - c.drafted() < 24000L
+                    || OffMap.get(server).is(other) || dev.b28.enterprise.trade.Realms.get(server).isForeign(other)
+                    || letters.stream().anyMatch(l -> l.kind == Kind.COPY && l.stacks == c.id() && l.to.equals(other))) {
+                continue;
+            }
+            Letter letter = new Letter();
+            letter.kind = Kind.COPY;
+            letter.from = town;
+            letter.to = other;
+            letter.stacks = c.id();
+            post(level, stock, letter, now);
+        }
     }
 
     /** A town books {@code stacks} with its hub's forwarder, its goods for sale worth {@code worth}. */
@@ -287,8 +314,8 @@ public final class Post extends SavedData {
     }
 
     /**
-     * Bills the town holds on markets none of its caravans go to (and none of theirs come from), once due: sent by post
-     * to their drawee.
+     * Bills the town holds on markets none of its caravans go to (and none of theirs come from), once due; or that have
+     * been due a post round ({@code post_days}) with no caravan taking them: sent by post to their drawee.
      */
     private void mailBills(ServerLevel level, GlobalPos town, MerchantStock stock, long now) {
         MinecraftServer server = level.getServer();
@@ -304,8 +331,9 @@ public final class Post extends SavedData {
                     && !drawee.get().equals(town)
                     && !OffMap.get(server).is(drawee.get())
                     && !dev.b28.enterprise.trade.Realms.get(server).isForeign(drawee.get())
-                    && routes.route(town, drawee.get()).isEmpty() && routes.route(drawee.get(), town).isEmpty()
-                    && in.stream().anyMatch(b -> b.due() <= now); // due: till then a bank may still buy it
+                    && (routes.route(town, drawee.get()).isEmpty() && routes.route(drawee.get(), town).isEmpty()
+                            && in.stream().anyMatch(b -> b.due() <= now) // due: till then a bank may still buy it
+                        || in.stream().anyMatch(b -> b.due() <= now - Dials.POST_DAYS.ticks()));
             if (mail) {
                 byDrawee.computeIfAbsent(drawee.get(), d -> new ArrayList<>()).add(bundle);
             } else {

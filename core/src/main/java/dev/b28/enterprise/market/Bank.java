@@ -199,7 +199,7 @@ public final class Bank extends SavedData {
             return;
         }
         int keep = (int) Math.ceil(dev.b28.enterprise.caravan.Caravans.foodNeeded(route.distance())
-                * Math.max(1, caravan.crew().size()) * dev.b28.enterprise.caravan.Caravans.PURSE_PER_FOOD_POINT * rate);
+                * caravan.mouths() * dev.b28.enterprise.caravan.Caravans.PURSE_PER_FOOD_POINT * rate);
         bank.collect(level, route, stock, caravan, mint, rate, now);
         bank.discount(server, level, route, stock, caravan, keep, rate, now);
         bank.lend(server, level, route, stock, caravan, keep, rate, now);

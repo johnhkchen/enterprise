@@ -136,7 +136,7 @@ public final class CaravanLedger extends SavedData {
         for (Caravan c : caravans.values()) {
             Route route = routes.get(c.route);
             if (route != null && route.to.equals(desk) && c.leg != Caravan.Leg.RETURNING && c.provisions == 0) {
-                promised += Caravans.foodNeeded(route.distance()) * Math.max(1, c.crew.size());
+                promised += Caravans.foodNeeded(route.distance()) * c.mouths();
             }
         }
         return promised;

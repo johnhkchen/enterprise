@@ -42,14 +42,28 @@ public final class Accountant {
         return Math.max(0, day[1] - day[2]);
     }
 
-    /** {day, budget, spent} for the market today. */
+    /**
+     * What's left of today's budget for a seller who last came {@code days} days ago: what the daily looks it missed
+     * would have allowed, one after another ({@code 1 - (1 - share)^days} of the free money), less what's spent today.
+     * A wagon every few days sells what daily ones would have.
+     */
+    public static double leftFor(ServerLevel level, GlobalPos desk, MerchantStock stock, double days, long now) {
+        double[] day = today(level, desk, stock, now);
+        double share = day[3];
+        if (days <= 1 || share <= 0 || share >= 1) {
+            return Math.max(0, day[1] - day[2]);
+        }
+        return Math.max(0, day[1] / share * (1 - Math.pow(1 - share, days)) - day[2]);
+    }
+
+    /** {day, budget, spent, share} for the market today. */
     private static double[] today(ServerLevel level, GlobalPos desk, MerchantStock stock, long now) {
         double[] day = SPENT.get(desk);
         if (day == null || day[0] != now / 24000) {
             boolean counting = dev.b28.enterprise.territory.Buildings.has(level.getServer(), desk,
                     dev.b28.enterprise.territory.Buildings.COUNTING_HOUSE);
             double share = Math.min(1, Dials.BUDGET_SHARE.get() * (counting ? 1.5 : 1));
-            day = new double[] {now / 24000, Math.max(0, share * free(level, desk, stock, now)), 0};
+            day = new double[] {now / 24000, Math.max(0, share * free(level, desk, stock, now)), 0, share};
             SPENT.put(desk, day);
         }
         return day;

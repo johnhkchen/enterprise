@@ -38,6 +38,14 @@ public final class Route {
     boolean onCall; // a hub's run to a town that leaves only on a day the town's booked it for, by post
     int townsMapped; // towns a Cartographer has seen along it
     long fishCaught; // by Fishermen sailing it
+    double loadOut; // full stacks of goods its caravans set out with, all trips told
+    double loadHome; // and came home with
+    long slotsOut; // slots its caravans' loads took, out
+    long slotsHome; // and home
+    int lastHome = -1; // slots its last caravan's load home took (-1: none home yet)
+    double farPurse = -1; // what the far end could spend on goods at the last visit, in emeralds (-1: not seen yet)
+    long recheckAt; // a run waiting for a fuller load looks again then, not every poll (not saved)
+    long lastSold = -1; // when its caravan last sold at the far end
     String status = "new";
     List<Hex> path = List.of(); // the planned hex path, from the last departure
 
@@ -156,6 +164,11 @@ public final class Route {
         return townsMapped;
     }
 
+    /** Full stacks of goods carried, all trips told: {out, home}; and the slots they took: {out, home}. */
+    public double[] loads() {
+        return new double[] {loadOut, loadHome, slotsOut, slotsHome};
+    }
+
     public long fishCaught() {
         return fishCaught;
     }
@@ -238,6 +251,13 @@ public final class Route {
         tag.putBoolean("onCall", onCall);
         tag.putInt("townsMapped", townsMapped);
         tag.putLong("fishCaught", fishCaught);
+        tag.putDouble("loadOut", loadOut);
+        tag.putDouble("loadHome", loadHome);
+        tag.putLong("slotsOut", slotsOut);
+        tag.putLong("slotsHome", slotsHome);
+        tag.putDouble("farPurse", farPurse);
+        tag.putInt("lastHome", lastHome);
+        tag.putLong("lastSold", lastSold);
         tag.putString("status", status);
         int[] hexes = new int[path.size() * 2];
         for (int i = 0; i < path.size(); i++) {
@@ -279,6 +299,13 @@ public final class Route {
         route.onCall = tag.getBoolean("onCall");
         route.townsMapped = tag.getInt("townsMapped");
         route.fishCaught = tag.getLong("fishCaught");
+        route.loadOut = tag.getDouble("loadOut");
+        route.loadHome = tag.getDouble("loadHome");
+        route.slotsOut = tag.getLong("slotsOut");
+        route.slotsHome = tag.getLong("slotsHome");
+        route.farPurse = tag.contains("farPurse") ? tag.getDouble("farPurse") : -1;
+        route.lastHome = tag.contains("lastHome") ? tag.getInt("lastHome") : -1;
+        route.lastSold = tag.contains("lastSold") ? tag.getLong("lastSold") : -1;
         route.status = tag.getString("status");
         int[] hexes = tag.getIntArray("path");
         List<Hex> path = new java.util.ArrayList<>();

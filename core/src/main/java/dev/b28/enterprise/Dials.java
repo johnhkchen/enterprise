@@ -132,10 +132,15 @@ public final class Dials extends SavedData {
             "emeralds beyond its reserve below which a hub with a counting house rediscounts bills at the capital");
     // A town's own wagon: full or due (see caravan.Caravans#dispatch).
     public static final Dial WAGON_FULL = dial("wagon_full", 0.75, "share of its space a town's wagon fills before it goes");
-    public static final Dial WAGON_WAIT_DAYS = dial("wagon_wait_days", 6,
-            "days a town's wagon waits for a full load before it goes with less (where no hub's wagon calls)");
+    public static final Dial WAGON_WAIT_DAYS = dial("wagon_wait_days", 4,
+            "a town's wagon runs on a timetable too, every so many days (or when full, or with something that can't wait)");
     public static final Dial WAGON_PAYS = dial("wagon_pays", 3,
             "times its road food a load must be worth to go however full");
+    public static final Dial SHELF_DAYS = dial("shelf_days", 5,
+            "days of what its lockers can sell a town's warehouse aims to hold of each good (its par)");
+    public static final Dial COMFORT_DAYS = dial("comfort_days", 6, "days of its people's comforts a town aims to hold");
+    public static final Dial WAGON_TEAM = dial("wagon_team", 1,
+            "mouths a wagon's team adds to its crew on the road (a porter, on foot with a pack, has none)");
     public static final Dial LINER_DAYS = dial("liner_days", 4,
             "a hub's wagon runs on a timetable, every so many days (or when full, or with something due)");
     // The crown's post (see market.Post).

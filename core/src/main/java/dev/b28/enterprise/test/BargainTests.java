@@ -41,7 +41,7 @@ public final class BargainTests {
     }
 
     @GameTest(template = "floor")
-    public static void parIsTwoDaysOfWhatTheLockersCanTake(GameTestHelper helper) {
+    public static void parIsShelfDaysOfWhatTheLockersCanTake(GameTestHelper helper) {
         Warehouse warehouse = new Warehouse();
         GlobalPos desk = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(new BlockPos(3, 2, 3)));
         long t = helper.getLevel().getGameTime();
@@ -50,9 +50,11 @@ public final class BargainTests {
         // A librarian and a cartographer each buy 24 paper 16 times a restock.
         warehouse.recordCapacity(desk, 1L, java.util.Map.of(Items.PAPER, 384));
         warehouse.recordCapacity(desk, 2L, java.util.Map.of(Items.PAPER, 384));
-        helper.assertTrue(warehouse.par(desk, Items.PAPER, true, t) == 1536, "two days of 768: " + warehouse.par(desk, Items.PAPER, true, t));
+        int days = (int) dev.b28.enterprise.Dials.SHELF_DAYS.get();
+        helper.assertTrue(warehouse.par(desk, Items.PAPER, true, t) == days * 768,
+                "shelf_days of 768: " + warehouse.par(desk, Items.PAPER, true, t));
         warehouse.recordCapacity(desk, 2L, java.util.Map.of()); // the cartographer's trade switched off
-        helper.assertTrue(warehouse.par(desk, Items.PAPER, true, t) == 768, "a session replaces that locker's figure");
+        helper.assertTrue(warehouse.par(desk, Items.PAPER, true, t) == days * 384, "a session replaces that locker's figure");
         helper.succeed();
     }
 }
