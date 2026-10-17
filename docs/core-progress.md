@@ -6,8 +6,8 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `fab3ed5`. 181 tests pass (`just core-test`, a few seconds). Parity: **70 covered, 17 partial, 46
-  skipped, 129 left of 262** (`just parity`). `just core-fingerprint`: `bbc840b2b02a5483`.
+- **Main:** `cead554`. 203 tests pass (`just core-test`, a few seconds). Parity: **81 covered, 19 partial, 46
+  skipped, 116 left of 262** (`just parity`). `just core-fingerprint`: `880253a62aa34eb2`.
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
 
@@ -21,7 +21,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 9 | 1b | `bargain-and-par` | opus/high (sonnet/high) | `cash-book` | `fe48704` | 4 BargainTests pinned; `Prices` table; wagons sell at the bargained mid-batch price (dial `bargain`). Gaps: the sale's par is `shelf` (no 64 floor, no inputs term), seller level the home Merchant's (not the crew's). At landing: `set_trade` leaves recorded locker capacity alone |
 | 10 | 1b | `advances-and-refunds` | sonnet/medium (sonnet/medium) | `cash-book`, `save-load` | `66af5d0` | 2 ContractTests pinned; CaravanTests advance partial (inputs follow is sourcing's). At landing: refunds before advances (mod's order), the seller's wagon collects at the buyer (was missing), both before bills |
 | 11 | 1b | `road-food` | opus/high (opus/medium) | `cash-book`, `bargain-and-par` | — |  |
-| 12 | 2 | `lockers` | opus/high (sonnet/high) | `roster`, `cash-book` | — | structural: rostered towns' income; five later tasks build on it |
+| 12 | 2 | `lockers` | opus/high (sonnet/high) | `roster`, `cash-book` | `cead554` | structural: rostered towns' income; five later tasks build on it. 11 tags, 3 partial (shulker stock, nearest by hand index, `needed` set by hand). At landing: capacity one restock's worth a day as the mod (384 paper, was 768), a hand leaving takes its locker, restock after the farm, review after settlers |
 | 13 | 2 | `squads` | opus/high (sonnet/high) | `roster`, `road-food` | — | threads a crew through Plan, Decide and Turn beside road-food |
 | 14 | 2 | `farms-and-wages` | opus/high (sonnet/high) | `roster`, `cash-book` | `026b50d` | the largest port. Plan, wages, credit, sharecropping, labour market, fields, stores, deposits; 11 tags, 2 partial (block scan, tolls). Hooks: `Farm.needs`, `draws`, `stores_wanted`. At landing: every town spawns a farm (inert till set up), paid share back to 1 with no wage running, sales from the farm's start |
 | 15 | 2 | `jobs` | sonnet/medium (sonnet/medium) | `roster`, `lockers` | — |  |
@@ -113,3 +113,9 @@ dependencies are the integrator's; `trees.py` locks its registry, so agents can 
 - Briefs written before a neighbour lands go stale on it: `settlers-rule` left out the mod's territory check because
   claims didn't exist when it was briefed, and they had landed by its landing. At landing, grep the brief's "not in the
   core yet" against main.
+- A brief's formula can be wrong against the mod: `lockers`' said capacity is count × uses × 2 restocks, the mod's
+  `canTake` counts one restock as a day (decisions.md: a Librarian's 384 paper), and the slice ported the brief. At
+  landing, check a brief's numbers against the Java and `docs/decisions.md`, not only the tests against the brief.
+- State kept by roster index must follow `settlers::take_hand` (it shifts every later hand): `lockers` now has
+  `Lockers::take_hand`, called beside it. Briefs for `jobs`, `training-and-tenders` and anything else keyed by hand:
+  either the same, or a stable hand id.
