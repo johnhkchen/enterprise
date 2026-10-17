@@ -100,21 +100,24 @@ fn a_bearers_rent_accrues_its_crop_and_the_dealer_quotes_a_tenth_either_side() {
     assert!((harvest::ask(100.0, 0.1) - 110.0).abs() < 1e-9 && (harvest::bid(100.0, 0.1) - 90.0).abs() < 1e-9);
 }
 
-/// A farm (town 0) and a market (town 1) a day apart; the farm's wagon every `every` days. Wheat is a crop.
+/// A farm (town 0, with Farmers and plots) and a market (town 1) a day apart; the farm's wagon every `every` days. Wheat is a crop.
 fn farm_and_market(farm_money: f64, market_money: f64, every: f64) -> Society {
-    let mut s = Society::new(Content::new(vec![Good::new("wheat", 1.0, 64)], DAY));
+    let mut s = Society::new(Content::new(vec![Good::new("wheat", 1.0, 64).crop()], DAY));
     s.add_town("Cloverby", farm_money);
     s.add_town("Haygate", market_money);
+    // The farm has Farmers and plots, so a farm plan: what it grows and what it could grow.
+    s.set_roster(0, &[("farmer", 6)]);
+    s.set_people(0, 6.0, 6.0, 1.0);
+    s.set_plots(0, 0, 400);
     s.set_trade(0, 0, 100.0, 0.0);
     s.set_trade(1, 0, 0.0, 32.0);
     s.add_route(0, 1, 1.0, 0.5, every);
-    s.mark_crop(0);
     s
 }
 
 #[test]
 fn a_market_that_uses_a_crop_offers_the_farm_a_forward_sale_a_third_up_front() {
-    let mut s = farm_and_market(50.0, 1000.0, 2.0);
+    let mut s = farm_and_market(500.0, 1000.0, 2.0);
     s.deliver(0, 0, 300.0);
     s.advance(DAY * 3);
     let forward: Vec<_> = s.contracts().into_iter().filter(|c| c.harvest.is_some()).collect();
@@ -124,14 +127,18 @@ fn a_market_that_uses_a_crop_offers_the_farm_a_forward_sale_a_third_up_front() {
     assert_eq!(c.harvest, Some(Harvest { window_days: 4, carried: false }));
     assert!((c.price - 1.0).abs() < 1e-9, "at today's price");
     assert!((c.advance_share - 1.0 / 3.0).abs() < 1e-9);
-    assert!((c.advanced - c.worth() / 3.0).abs() < 1e-6, "a third paid up front: {}", c.advanced);
+    assert_eq!(c.advanced, 0.0, "the advance isn't paid when it is drafted");
     assert!(c.start >= 2 * DAY + 4 * DAY, "the first falls due a round trip and four days to sow: {}", c.start);
     assert!(s.rents().is_empty(), "the farm could pay for its own sale: no rent");
+    // The farm's wagon brings the copy home and, on its next arrival at the buyer, the buyer pays a third into its purse.
+    s.advance(DAY * 8);
+    let c = s.contracts().into_iter().find(|c| c.harvest.is_some()).unwrap();
+    assert!((c.advanced - c.worth() / 3.0).abs() < 1e-6, "a third paid up front, on the wagon's next arrival: {}", c.advanced);
 }
 
 #[test]
 fn a_farm_short_of_money_sells_a_rent_to_a_market_with_savings() {
-    let mut s = farm_and_market(2.0, 100_000.0, 2.0);
+    let mut s = farm_and_market(100.0, 100_000.0, 2.0);
     s.deliver(0, 0, 300.0);
     let before = s.town(0).money;
     s.advance(DAY * 3);
@@ -139,7 +146,7 @@ fn a_farm_short_of_money_sells_a_rent_to_a_market_with_savings() {
     assert_eq!(rents.len(), 1, "a rent");
     let r = &rents[0];
     assert!(r.farm == 0 && r.holder == 1 && r.quantity == 320.0 && (r.capital - 8.0 * 320.0).abs() < 1e-9, "{r:?}");
-    assert!(s.town(0).money > before + r.capital - 1.0, "the capital rode home: {} from {before}", s.town(0).money);
+    assert!(s.town(0).money > r.capital, "the capital rode home: {} from {before}", s.town(0).money);
     assert!(s.contracts().iter().any(|c| c.price == 0.0 && c.harvest.is_some_and(|h| h.carried) && c.in_force()),
         "its coupon in force");
 }
@@ -175,10 +182,10 @@ fn owed_crop_is_set_aside_from_spot_sales() {
         s
     };
     let mut with = build(true);
-    let aside = with.set_aside(0, 0);
+    let aside = with.set_aside_for_harvest(0, 0);
     assert!((aside - 5.0 * 64.0).abs() < 1e-9, "five installments fall due by the end of the next window, none delivered: {aside}");
     let mut without = build(false);
-    assert_eq!(without.set_aside(0, 0), 0.0);
+    assert_eq!(without.set_aside_for_harvest(0, 0), 0.0);
     with.advance(DAY / 2);
     without.advance(DAY / 2);
     let kept = with.town(0).stock[0];

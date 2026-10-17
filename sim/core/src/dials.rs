@@ -221,8 +221,12 @@ dials! {
     /// At most this many of a crop an installment; installments in a forward sale.
     forward_max_quantity: f64 = 256.0,
     forward_installments: u32 = 10,
+    /// Markets offer farm towns forward sales and rents of the crops they lack (`ForwardSales.offer`).
+    forward_sales: bool = true,
     /// Share of what a farm grows of a crop it may promise more of.
     could_grow_own_share: f64 = 0.5,
+    /// Share of what it grows of its other field crops it may promise of one (they can be turned over).
+    could_grow_other_share: f64 = 0.25,
     /// A rent's season (a coupon falls due each), the seasons' crop it sells for, and the arrears (in seasons' crop)
     /// past which it is a default.
     rent_season_days: u32 = 10,

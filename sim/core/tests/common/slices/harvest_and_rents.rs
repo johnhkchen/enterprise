@@ -7,12 +7,8 @@ use enterprise_core::harvest::RentState;
 use enterprise_core::State;
 
 pub fn extend(s: &mut Society, r: &mut Rng) {
+    s.content_mut().dials.forward_sales = true;
     let (n_towns, n_goods) = (s.town_count(), s.content().goods.len());
-    for g in 0..n_goods {
-        if r.below(3) == 0 {
-            s.mark_crop(g);
-        }
-    }
     if n_towns < 2 {
         return;
     }
@@ -97,7 +93,7 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
     }
     for t in 0..s.town_count() {
         for g in 0..s.content().goods.len() {
-            if s.set_aside(t, g) < 0.0 {
+            if s.set_aside_for_harvest(t, g) < 0.0 {
                 return Err(format!("town {t}: a negative amount set aside of good {g}"));
             }
         }

@@ -3,6 +3,7 @@
 use bevy_ecs::prelude::*;
 
 use super::Step;
+use crate::contracts::Book;
 use crate::content::Content;
 use crate::roster::Roster;
 use crate::state::*;
@@ -13,7 +14,7 @@ pub fn register(schedule: &mut Schedule) {
 }
 
 /// Every town with a roster runs the conversions its trades can do, as far as their outputs are wanted.
-pub fn work(content: Res<Content>, mut ledger: ResMut<Ledger>, routes: Query<&Route>,
+pub fn work(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut ledger: ResMut<Ledger>, routes: Query<&Route>,
         mut towns: Query<(&Town, &mut Stock, &People, &Roster, Option<&Workshop>)>) {
     if content.conversions.is_empty() {
         return;
@@ -24,6 +25,18 @@ pub fn work(content: Res<Content>, mut ledger: ResMut<Ledger>, routes: Query<&Ro
     order.sort_by_key(|(town, ..)| town.id);
     for (town, mut stock, people, roster, hooks) in order {
         let routes_out = routes.iter().filter(|r| r.from_id == town.id).count();
-        convert(&content, roster, people, &mut stock, &mut ledger, routes_out, hooks);
+        // Its bakers leave alone the crop it owes under harvest contracts (`ForwardSales.setAside`), or what the hook
+        // says is set aside if that is more.
+        let mut merged: Option<Workshop> = None;
+        for c in &content.conversions {
+            let g = c.inputs[0].0;
+            let owed = crate::harvest::set_aside(&book, town.id, g, clock.now, content.day_ticks);
+            if owed > 0.0 {
+                let h = merged.get_or_insert_with(|| hooks.cloned().unwrap_or_default());
+                h.aside.resize(content.goods.len(), 0.0);
+                h.aside[g] = h.aside[g].max(owed);
+            }
+        }
+        convert(&content, roster, people, &mut stock, &mut ledger, routes_out, merged.as_ref().or(hooks));
     }
 }

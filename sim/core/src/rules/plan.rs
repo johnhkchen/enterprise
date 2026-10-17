@@ -32,6 +32,7 @@ fn start(content: Res<Content>, mut routes: Query<&mut RouteState>) {
 
 /// For sale, on top of what's planned already: comforts by kind, the cheapest first, up to the far end's par in worth
 /// from what home holds beyond its keep; any other good the far end's people use, what home can spare beyond its own
+/// shelf up to the room on theirs; all in the wagon's slots. The load is worth what the far end is expected to pay:
 /// the bargained price at the middle of each good's batch (`bargain.rs`), and a good it won't deal in stays home.
 fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut routes: Query<(&Route, &mut RouteState)>,
         towns: Query<(&Stock, &Trades, &People)>, rosters: Query<&crate::roster::Roster>) {

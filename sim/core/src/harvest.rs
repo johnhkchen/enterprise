@@ -10,20 +10,21 @@
 //! holder pays the farm eight seasons' crop once, the farm owes a coupon (a one-installment contract already paid
 //! for) each season, a season's shortfall rides on the next coupon, and arrears past two seasons are a default.
 //!
-//! Not yet in the core, and stood in for: the farm's plots and hands (`farms-and-wages`): what a farm "could grow" is
-//! `could_grow_own_share` of what it makes of the crop now; which goods are crops is the host's to say
-//! ([`Society::mark_crop`]); a market's wants are what its people use beyond what it makes. The dealer's deals in
-//! rents between towns, the crates a farm earmarks its harvest in, and the player's deed at a vendor (Numismatics)
-//! are left to later slices; the dealer's price, ask and bid are here.
+//! The farms are the core's own (`farms.rs`): the crops are [`farms::field_crops`], a farm sells forward only with a
+//! farm plan, what it could grow is [`could_grow`], and what it has sold forward is its Farmers' first need ([`sold`]).
+//! Stood in for: a market's wants for the dealer's price are what its people use beyond what it makes. The dealer's
+//! deals in rents between towns, the crates a farm earmarks its harvest in, and the player's deed at a vendor
+//! (Numismatics) are left to later slices; the dealer's price, ask and bid are here.
 
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 
 use bevy_ecs::prelude::Resource;
 use serde::{Deserialize, Serialize};
 
 use crate::contracts::{Book, Contract, Incoterm, State};
 use crate::dials::Dials;
-use crate::content::GoodId;
+use crate::farms::{Farm, YIELD_PER_PLOT_PER_DAY};
+use crate::content::{Content, GoodId};
 use crate::messages::TownId;
 
 /// A harvest term (`Harvest.java`): installments delivered within `window_days` of their day, shortfalls rolled over.
@@ -127,12 +128,10 @@ pub struct Rent {
     pub traded: u64,
 }
 
-/// Every rent, and the goods the host says are crops (the stand-in for the farms' own crop list until
-/// `farms-and-wages`).
+/// Every rent.
 #[derive(Resource, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Rents {
     pub rents: Vec<Rent>,
-    pub crops: BTreeSet<GoodId>,
 }
 
 impl Rents {
@@ -154,7 +153,7 @@ impl Rents {
     pub fn review(&mut self, book: &mut Book, now: u64, terms: &RentTerms) {
         for i in 0..self.rents.len() {
             if self.rents[i].state != RentState::Active {
-                if let Some(c) = self.rents[i].coupon {
+                if let Some(c) = self.rents[i].coupon.filter(|&c| book.contracts[c].in_force()) {
                     book.close(c);
                 }
                 continue;
@@ -240,6 +239,31 @@ pub fn set_aside(book: &Book, farm: TownId, crop: GoodId, now: u64, day: u64) ->
         .sum()
 }
 
+/// What a farm could add of a crop to what it grows now, items a day: its spare plots at a plot's yield, its own share
+/// of what it grows of the crop, and the other share of its other field crops (`Territory.couldGrow`).
+pub fn could_grow(content: &Content, farm: &Farm, crop: GoodId) -> f64 {
+    let d = &content.dials;
+    let at = |g: GoodId| farm.per_day.get(&g).copied().unwrap_or(0.0);
+    let others: f64 = crate::farms::field_crops(content).into_iter().filter(|&c| c != crop).map(at).sum();
+    farm.spare_plots as f64 * YIELD_PER_PLOT_PER_DAY + d.could_grow_own_share * at(crop) + d.could_grow_other_share * others
+}
+
+/// What a town has sold forward, in force: by crop, items a day and what an item is worth there (`ForwardSales.sold`).
+/// Its Farmers sow for these first.
+pub fn sold(content: &Content, book: &Book, seller: TownId) -> BTreeMap<GoodId, (f64, f64)> {
+    let mut sold: BTreeMap<GoodId, (f64, f64)> = BTreeMap::new();
+    for c in book.open.iter().map(|&id| &book.contracts[id]) {
+        if c.seller != seller || c.harvest.is_none() || !c.in_force() {
+            continue;
+        }
+        let per_day = c.quantity * content.day_ticks as f64 / c.every.max(1) as f64;
+        let each = c.price.max(content.goods[c.good].value);
+        let e = sold.entry(c.good).or_insert((0.0, 0.0));
+        *e = (e.0 + per_day, e.1.max(each));
+    }
+    sold
+}
+
 /// Items a day of every crop the farm has sold forward, drafted or in force (contracts and rents' coupons):
 /// `ForwardSales.promised`.
 pub fn promised(book: &Book, farm: TownId, day: u64) -> f64 {
@@ -284,11 +308,6 @@ use crate::society::Society;
 use crate::state::{Route, Trades};
 
 impl Society {
-    /// Says which goods are crops (a farm town sells them forward; see the module doc).
-    pub fn mark_crop(&mut self, good: GoodId) {
-        self.world.resource_mut::<Rents>().crops.insert(good);
-    }
-
     /// A contract with a harvest term, as [`Society::draft`] drafts one.
     #[allow(clippy::too_many_arguments)]
     pub fn draft_harvest(&mut self, seller: TownId, buyer: TownId, good: GoodId, quantity: f64, price: f64, start: u64,
@@ -354,9 +373,9 @@ impl Society {
         *self.world.resource_mut::<Rents>() = rents;
     }
 
-    /// What the town keeps back of a good for what it owes under harvest contracts: kept from its spot sales (and its
-    /// workshop, once there is one).
-    pub fn set_aside(&self, town: TownId, good: GoodId) -> f64 {
+    /// What the town keeps back of a good for what it owes under harvest contracts: kept from its spot sales and its
+    /// workshop (the workshop's own hook is [`Society::set_aside`]).
+    pub fn set_aside_for_harvest(&self, town: TownId, good: GoodId) -> f64 {
         set_aside(self.world.resource::<Book>(), town, good, self.now(), self.content().day_ticks)
     }
 
@@ -365,6 +384,7 @@ impl Society {
     pub fn rent_price(&self, hub: TownId, id: usize) -> f64 {
         let rents = self.world.resource::<Rents>();
         let rent = &rents.rents[id];
+        let capital = self.rent_terms().capital(rent.quantity, self.content().goods[rent.crop].value);
         let mut markets = vec![hub];
         for &e in &self.routes {
             let r = self.world.get::<Route>(e).expect("a route");
@@ -378,7 +398,7 @@ impl Society {
         }).sum();
         let ahead: f64 = rents.rents.iter().filter(|r| r.state == RentState::Active && r.crop == rent.crop)
             .map(|r| r.quantity / self.rent_terms().season_days as f64).sum();
-        dealer_price(rent.capital, wanted, ahead)
+        dealer_price(capital, wanted, ahead)
     }
 
     /// What the dealer at `hub` sells the rent's deed for, and buys it back for.

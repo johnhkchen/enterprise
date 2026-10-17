@@ -12,7 +12,7 @@
 //! **Not yet as the mod:** a household's freehold crop is chosen from all the town's wants (demand, trades' use,
 //! draws) where `Fields.freehold` reads the villagers' demand with the herds' feed; and `Fields.consider` reads only the
 //! feed as needs where this reads [`Farm::needs`] with [`Farm::feed`] (forward sales and feed). The herds fill
-//! `feed`; `needs` is empty until the forward sales fill it. Share-cropping cuts each look's crop by the share paid at the last settlement, so it lags
+//! `feed`; the review sets `needs` to what the town has sold forward (`ForwardSales.sold`, `harvest.rs`). Share-cropping cuts each look's crop by the share paid at the last settlement, so it lags
 //! a recovery by up to one settlement.
 
 use std::collections::BTreeMap;
@@ -145,7 +145,8 @@ fn settle_deposits(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<
 /// Each day's first look, the farm's census (`Territory.afterCensus`): rotation, the plan again, the focus, the
 /// stores it would build, a new field (`Fields.consider`) and a household's own (`buyLand`).
 #[allow(clippy::type_complexity)]
-fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut ledger: ResMut<Ledger>,
+fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contracts: Res<crate::contracts::Book>,
+        mut ledger: ResMut<Ledger>,
         mut book: ResMut<CashBook>,
         mut farms: Query<(&Town, &mut Farm, &mut Money, &mut People, &Stock, &Trades, &mut Budget, Option<&Roster>)>) {
     let (now, day) = (clock.now, content.day_ticks);
@@ -157,6 +158,9 @@ fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut ledge
         farm.reviewed = Some(today);
         let t = town.id;
         let farm = &mut *farm;
+        // What it has sold forward comes first: a contract to keep (`Territory.afterCensus`; the herds' feed is not
+        // here yet).
+        farm.needs = crate::harvest::sold(&content, &contracts, t).into_iter().map(|(g, (n, _))| (g, n)).collect();
         let farmers = farmers(&content, roster);
         let food = food_points(&content, stock);
         let fed = food >= 2.0 * FOOD_PAR_POINTS;

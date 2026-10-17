@@ -143,6 +143,8 @@ pub fn world(seed: u64) -> Society {
             s.add_road(a, b, r.range(1.0, 8.0));
         }
     }
+    // Markets' forward sales are the harvest slice's to switch on, so worlds without it are as they were.
+    s.content_mut().dials.forward_sales = false;
     slices::extend(&mut s, seed);
     s
 }
