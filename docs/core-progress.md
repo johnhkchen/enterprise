@@ -6,9 +6,9 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `fee3be2`. 252 tests pass (`just core-test`, a few seconds). Parity: **92 covered, 20 partial, 46
-  skipped, 104 left of 262** (`just parity`). `just core-fingerprint`: `79c37cbf3266deeb` (grown children in a
-  Merchant's town take stalls).
+- **Main:** `6a4e7e0`. 265 tests pass (`just core-test`, a few seconds). Parity: **100 covered, 20 partial, 46
+  skipped, 96 left of 262** (`just parity`). `just core-fingerprint`: `f9fa99c2e718069a` (trading pairs across other
+  towns' land, and towns reviewing their tolls).
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
 
@@ -31,7 +31,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 18 | 2 | `harvest-and-rents` | sonnet/medium (sonnet/medium) | `advances-and-refunds` | `e714595` | Harvest term judged on a window with shortfalls rolled, rents with coupons, `ForwardSales.offer`, set-aside from sales and the workshop; 2 ContractTests pinned, the rents deed partial (no Numismatics vendor, dealer on synthetic inputs). Gaps: no crates/earmarks, `RentDealer.deal`, `Accountant.approve`. At landing: rotation crops only (was cane and berries too), both towns' money beyond `reserve` (was trading capital), buy-back keeps the road home's food, `forward_advance_share` dial, base generator left alone |
 | 19 | 2 | `atlas-and-books` | opus/high (sonnet/medium) | `hex-map`, `squads` | — | stocktakes change what every plan reads |
 | 20 | 2 | `herds` | sonnet/medium (sonnet/medium) | `roster`, `workshop` | `fab3ed5` | All 8 HusbandryTests pinned; seed, feed owed whole, growth to the pasture, hunger, shearing, culls. Gaps: no fence or entities, first tending not skipped; random worlds' sheep goods replace cookie and book in half the seeds. At landing: products to `Farm.pending`, feed to `Farm.feed` (demand and needs), after the farm accrues, `MAX_DAYS` cap, rosterless towns tended, cows culled by kind |
-| 21 | 3 | `chokepoints` | opus/high (opus/medium) | `territory-growth` | — |  |
+| 21 | 3 | `chokepoints` | opus/high (opus/medium) | `territory-growth` | `0d833c2` | Crossings and their post options, `best_plan` every 3 days (80%/95% of the detour, 25%/35% caps, a fee to 3 emeralds), one guard hired a review, `bridge_value`, `Takings`; all 8 TollTests tags pinned. Gaps: bare routes unseen, fractional spurs, `set_toll` still clamps to the constant (mines-and-kit: armour needs territory_growth's check raised to `ARMOURED_TOLL_RATE`). At landing: one road-food price (`map::per_hex_at_bread`), the wagon test fed as main's road-food asks |
 | 22 | 3 | `services` | opus/high (sonnet/high) | `squads`, `herds`, `farms-and-wages`, `atlas-and-books` | — | a registry over seven Java files that later tasks read |
 | 23 | 3 | `mines-and-kit` | sonnet/medium (sonnet/medium) | `territory-growth`, `services` | — |  |
 | 24 | 3 | `desires-and-backhauls` | sonnet/high (sonnet/medium) | `bargain-and-par`, `atlas-and-books` | — |  |
