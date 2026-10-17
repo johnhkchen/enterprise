@@ -25,3 +25,10 @@ bin/
 
 # OS
 .DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# A worktree's own notes (task brief, slot, env): see scripts/trees.py
+/.tree/
