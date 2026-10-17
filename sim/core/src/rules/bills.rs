@@ -12,7 +12,8 @@ use crate::contracts::Book;
 use crate::state::*;
 
 pub fn register(schedule: &mut Schedule) {
-    schedule.add_systems((present.in_set(Step::Papers), plan_papers.in_set(Step::PlanPapers)));
+    // `plan_papers` before what's owed for goods a player brought, as it ran unpinned (both add to the plan's worth).
+    schedule.add_systems((present.in_set(Step::Papers), plan_papers.in_set(Step::PlanPapers).before(super::cargo::plan_owing)));
 }
 
 /// Bills the wagon carries on this town, presented: it pays whole the due ones it can, from its money (what it owes
@@ -47,7 +48,9 @@ pub(super) fn present(clock: Res<Clock>, content: Res<Content>, mut book: ResMut
                 continue;
             }
             let presented = *b.presented.get_or_insert(now);
-            if b.state == BillState::Outstanding && now > b.due.max(presented) + Bills::grace(b, day) {
+            let grace = bills.grace(&bills.bills[id], day, content.dials.bill_grace_days, content.dials.bill_grace_emeralds_per_day);
+            let b = &mut bills.bills[id];
+            if b.state == BillState::Outstanding && now > b.due.max(presented) + grace {
                 b.state = BillState::Dishonoured;
                 book.missed(b.drawee, b.payee, 1.0, now, day);
             }

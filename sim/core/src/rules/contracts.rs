@@ -82,11 +82,13 @@ pub(crate) fn settle(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
 }
 
 /// Ex Works: what the buyer's wagon collects at the seller's, paid from the purse it brought: what the seller crated
-/// for it first, then loose; the seller crates it, made out to the buyer and paid for (`rules/cargo.rs`).
+/// for it first, then loose; the seller crates it, made out to the buyer and paid for (`rules/cargo.rs`). A loan the
+/// wagon's bank made the seller on the contract comes out of the payment first (`Caravans.collectExWorks`).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn collect(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut ledger: ResMut<Ledger>,
         mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<TownData>,
-        mut stores: Query<(&mut crate::cargo::Shipments, &mut crate::cargo::Paperwork)>, farms: Query<&crate::farms::Farm>) {
+        mut stores: Query<(&mut crate::cargo::Shipments, &mut crate::cargo::Paperwork)>, farms: Query<&crate::farms::Farm>,
+        mut banks: ResMut<crate::bank::Banks>) {
     let now = clock.now;
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(entity).unwrap();
@@ -102,7 +104,9 @@ pub(crate) fn collect(clock: Res<Clock>, content: Res<Content>, mut book: ResMut
             let c = &book.contracts[id];
             let crated: f64 = store.held.iter().filter(|s| s.contract == Some(id) && s.consigned_to(c.buyer))
                 .map(|s| s.count).sum();
-            let n = c.owed(now).min(stock.0[c.good] + crated).min((wagon.purse / c.price.max(1e-9)).floor());
+            // (What its bank lent on the contract is paid out of the goods, not the purse.)
+            let lent = banks.owed_to(route.from_id, id);
+            let n = c.owed(now).min(stock.0[c.good] + crated).min(((wagon.purse + lent) / c.price.max(1e-9)).floor());
             if n <= 0.0 {
                 continue;
             }
@@ -115,8 +119,10 @@ pub(crate) fn collect(clock: Res<Clock>, content: Res<Content>, mut book: ResMut
                 trades, farm, &mut store, &mut paperwork, c, n);
             wagon.cargo[c.good] += n - packed.as_ref().map_or(0.0, |s| s.count);
             wagon.shipments.extend(packed);
+            // A loan from this wagon's bank on the contract comes out of the payment first (`bank.rs`).
+            let repaid = banks.repay_from(route.from_id, id, paid);
             post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut money.0),
-                paid, Reason::Contract, now, content.day_ticks);
+                paid - repaid, Reason::Contract, now, content.day_ticks);
             book.recouped(id, recoup);
             book.settle(id, 0.0, n, paid + recoup, 0.0);
         }
@@ -153,7 +159,7 @@ pub(crate) fn plan_owed(clock: Res<Clock>, content: Res<Content>, book: Res<Book
 
 /// In the plan: what the town buys at the far end Ex Works, owed by the time it would arrive, with the money for it.
 /// Pressing if waiting a day would miss an installment.
-fn plan_collect(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut routes: Query<(&Route, &mut RouteState)>) {
+pub(crate) fn plan_collect(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut routes: Query<(&Route, &mut RouteState)>) {
     let now = clock.now;
     let day = content.day_ticks;
     let grace = (contracts::GRACE_DAYS * day as f64) as u64;

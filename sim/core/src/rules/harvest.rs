@@ -44,7 +44,7 @@ pub(crate) fn review_rents(clock: Res<Clock>, content: Res<Content>, mut rents: 
 /// money and what the plan's purse holds already (`Caravans.plan`: bought back "with the capital it brought"). Money
 /// only: the purse is no goods' worth.
 #[allow(clippy::type_complexity)]
-fn plan_redeem(content: Res<Content>, rents: Res<Rents>, mut routes: Query<(&Route, &mut RouteState)>,
+pub(crate) fn plan_redeem(content: Res<Content>, rents: Res<Rents>, mut routes: Query<(&Route, &mut RouteState)>,
         towns: Query<(&Money, &Stock, &Trades, Option<&crate::roster::Roster>, Option<&Farm>)>) {
     if rents.rents.is_empty() {
         return;

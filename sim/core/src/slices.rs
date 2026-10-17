@@ -34,6 +34,7 @@ crate::saved! {
         tenders: crate::training::Tenders = crate::training::Tenders::default(),
         apprenticeships: crate::training::Apprenticeships = crate::training::Apprenticeships::default(),
         squads: crate::squad::Squads = crate::squad::Squads::default(),
+        banks: crate::bank::Banks = crate::bank::Banks::default(),
     }
     town {
         town: Town,
@@ -85,4 +86,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::works::register(schedule);
     crate::rules::training::register(schedule);
     crate::rules::squad::register(schedule);
+    crate::rules::bank::register(schedule);
 }

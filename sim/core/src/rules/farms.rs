@@ -33,7 +33,9 @@ pub fn register(schedule: &mut Schedule) {
         work.in_set(Step::Work),
         pay.in_set(Step::Pay),
         settle_deposits.in_set(Step::Pay).after(pay),
-        review.in_set(Step::Review),
+        // In the order it ran unpinned: it and the settlers' review both spend the treasury, territory's reads its
+        // people (a new system elsewhere could reorder them: bank-and-discounts pinned it).
+        review.in_set(Step::Review).after(super::settlers::review).before(super::territory::review),
     ));
 }
 

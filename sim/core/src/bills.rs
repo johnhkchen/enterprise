@@ -2,7 +2,10 @@
 //! drawn on itself, due in four days with 2% for the wait. It rides home with the seller's wagon; the seller's next
 //! wagon to the drawee presents it once due, and the drawee pays whole bills as far as its money goes (what it owes
 //! isn't its money manager's to hold back). Its grace runs from the day it's first put to it: unpaid past that, the
-//! bill is dishonoured and trust falls a whole miss; honoured, it counts half a kept installment.
+//! bill is dishonoured and trust falls a whole miss; honoured, it counts half a kept installment. A bank sells it on
+//! (`endorse`: the payee changes) or its drawee buys it back early (`redeem`); its grace grows with what the drawee
+//! owes the same holder (`grace`); one no one can carry to its drawee lapses (`lapse`). Java: `Bills.endorse`, `redeem`,
+//! `grace`, `lapse`, `LAPSE_TICKS`.
 
 use serde::{Deserialize, Serialize};
 use bevy_ecs::prelude::Resource;
@@ -17,6 +20,9 @@ pub const GRACE_DAYS: f64 = 8.0;
 pub const GRACE_EMERALDS_PER_DAY: f64 = 100.0;
 /// A bill paid when presented counts this much of a kept installment toward trust; a dishonoured one, a whole miss.
 pub const HONOURED_WEIGHT: f64 = 0.5;
+/// Never paid this many days past its day, a bill no one can carry to its drawee lapses (`LAPSE_TICKS`: three times
+/// `DISHONOUR_TICKS`, 4 days); the dial `lapse_days`.
+pub const LAPSE_DAYS: f64 = 12.0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BillState {
@@ -44,6 +50,8 @@ pub struct Bill {
     pub presented: Option<u64>,
     pub state: BillState,
     pub held: Held,
+    /// The contract it pays for, if any (goods crated for the drawee: their title; `Bill.contract`).
+    pub contract: Option<usize>,
 }
 
 /// Every bill, and the ones still to be paid.
@@ -56,6 +64,11 @@ pub struct Bills {
 impl Bills {
     /// A bill on `drawee` for a debt, payable to `payee`, due in a term: its paper rides with the wagon.
     pub fn draw(&mut self, drawee: TownId, payee: TownId, debt: f64, now: u64, day: u64) -> usize {
+        self.draw_for(drawee, payee, debt, now, day, None)
+    }
+
+    /// As [`Bills::draw`], paying for goods under `contract`.
+    pub fn draw_for(&mut self, drawee: TownId, payee: TownId, debt: f64, now: u64, day: u64, contract: Option<usize>) -> usize {
         let id = self.bills.len();
         self.bills.push(Bill {
             id,
@@ -67,14 +80,56 @@ impl Bills {
             presented: None,
             state: BillState::Outstanding,
             held: Held::Wagon,
+            contract,
         });
         self.open.push(id);
         id
     }
 
-    /// The grace a drawee has to pay a bill, in ticks.
-    pub fn grace(bill: &Bill, day: u64) -> u64 {
-        ((GRACE_DAYS + bill.amount / GRACE_EMERALDS_PER_DAY) * day as f64) as u64
+    /// The grace a drawee has to pay a bill put to it, in ticks: `grace_days` (the dial `bill_grace_days`), and a day
+    /// more for every `per` emeralds (`bill_grace_emeralds_per_day`; 0: none) it owes the same holder on bills
+    /// outstanding (a capital owing a town a fortune needs longer to find it): `Bills.grace`.
+    pub fn grace(&self, bill: &Bill, day: u64, grace_days: f64, per: f64) -> u64 {
+        let owed = self.owed_to(bill.drawee, bill.payee);
+        let more = if per > 0.0 { (owed / per * day as f64).round() as u64 } else { 0 };
+        (grace_days * day as f64) as u64 + more
+    }
+
+    /// Emeralds outstanding on bills `drawee` owes `payee`.
+    pub fn owed_to(&self, drawee: TownId, payee: TownId) -> f64 {
+        self.open.iter().map(|&id| &self.bills[id])
+            .filter(|b| b.state == BillState::Outstanding && b.drawee == drawee && b.payee == payee)
+            .map(|b| b.amount).sum()
+    }
+
+    /// The bill is sold on (to a bank): it's paid to `holder` now (`Bills.endorse`).
+    pub fn endorse(&mut self, id: usize, holder: TownId) {
+        self.bills[id].payee = holder;
+    }
+
+    /// The drawee buys back its own bill early (a bank at the drawee's market discounted it): it's settled
+    /// (`Bills.redeem`).
+    pub fn redeem(&mut self, id: usize) {
+        self.bills[id].state = BillState::Paid;
+    }
+
+    /// Bills outstanding more than `lapse_days` past their day that no one can carry to their drawee (`carried(payee,
+    /// drawee)` false: no road between the two either way, and no freight hub the holder reaches that runs there to buy
+    /// them) lapse: dishonoured, the drawee's miss. A bill someone could still carry stands (`Bills.lapse`). Returns the
+    /// bills lapsed.
+    pub fn lapse(&mut self, book: &mut crate::contracts::Book, now: u64, day: u64, lapse_days: f64,
+            carried: impl Fn(TownId, TownId) -> bool) -> Vec<usize> {
+        let after = (lapse_days * day as f64) as u64;
+        let mut lapsed = Vec::new();
+        for &id in &self.open {
+            let b = &mut self.bills[id];
+            if b.state == BillState::Outstanding && now > b.due + after && !carried(b.payee, b.drawee) {
+                b.state = BillState::Dishonoured;
+                book.missed(b.drawee, b.payee, 1.0, now, day);
+                lapsed.push(id);
+            }
+        }
+        lapsed
     }
 
     /// Outstanding bills on `drawee` falling due by `by`: money its money manager can't count as free.

@@ -31,4 +31,5 @@ slices! {
     //training_and_tenders,
     training_and_tenders,
     squads,
+    bank_and_discounts,
 }

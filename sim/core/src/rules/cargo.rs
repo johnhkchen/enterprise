@@ -173,7 +173,7 @@ fn plan_crated(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut ro
 
 /// In the plan: what home owes the far end for goods delivered without a wagon (a player brought them) goes in the
 /// purse, as far as the town can pay for the road and its purse (`Caravans.exWorksPurse`).
-fn plan_owing(content: Res<Content>, book: Res<Book>, mut routes: Query<(&Route, &mut RouteState)>,
+pub(crate) fn plan_owing(content: Res<Content>, book: Res<Book>, mut routes: Query<(&Route, &mut RouteState)>,
         towns: Query<(&Money, &Stock, &Trades, Option<&crate::roster::Roster>)>) {
     for (route, mut state) in &mut routes {
         let Some(plan) = state.plan.as_mut() else { continue };
@@ -261,9 +261,11 @@ fn ship(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut le
 }
 
 /// At the far end: the buyer's wagon pays what its town owes there for goods delivered without a wagon, from its
-/// purse beyond the road home's food (`Caravans.settleOwing`).
+/// purse beyond the road home's food (`Caravans.settleOwing`); a loan its bank made the seller on the contract comes out
+/// first.
 fn pay_owing(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut ledger: ResMut<Ledger>,
-        mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<&mut Money>) {
+        mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<&mut Money>,
+        mut banks: ResMut<crate::bank::Banks>) {
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(entity).unwrap();
         if state.arrived != Some(Leg::Out) {
@@ -278,6 +280,11 @@ fn pay_owing(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, m
         let wagon = state.wagon.as_mut().unwrap();
         let keep = crate::road::purse_keep(&content, &route, crate::road::mouths(Some(wagon)));
         for id in owing {
+            // A loan from this wagon's bank on the contract comes out first (`bank.rs`).
+            let repaid = banks.repay_from(route.from_id, id, book.contracts[id].owing);
+            if repaid > 0.0 {
+                book.paid_owing(id, repaid);
+            }
             let pay = book.contracts[id].owing.min((wagon.purse - keep).max(0.0));
             if pay > 0.0 {
                 post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut money.0),

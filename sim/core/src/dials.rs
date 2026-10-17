@@ -313,4 +313,33 @@ dials! {
     saddled_pace: f64 = 4.0 / 3.0,
     /// The share of a saddle a trip wears out (`Caravans.SADDLE_WEAR_PER_TRIP`).
     saddle_wear: f64 = 0.1,
+    // bank-and-discounts (`bank.rs`: `market/Bank.java`, `market/Discounts.java`, `contract/Bills.java`)
+    /// A bank buys a bill not yet due for its face less this, and so much a day to its due day (`Bank.DISCOUNT_FEE`,
+    /// `DISCOUNT_PER_DAY`).
+    discount_fee: f64 = 0.01,
+    discount_per_day: f64 = 0.01,
+    /// A bank lends a town up to this share of what the goods still to come under a contract are worth, at this much
+    /// over the principal (`Bank.LOAN_SHARE`, `LOAN_INTEREST`).
+    loan_share: f64 = 0.5,
+    loan_interest: f64 = 0.03,
+    /// A bank's wagon carries this much more for its dealings, as far as its market can spare (`Bank.FLOAT`).
+    bank_float: f64 = 48.0,
+    /// Days a drawee has to pay a bill from when it's first put to it, and a day more for every so many emeralds it
+    /// owes the same holder (0: none) (`bill_grace_days`, `bill_grace_emeralds_per_day`).
+    bill_grace_days: f64 = 8.0,
+    bill_grace_emeralds_per_day: f64 = 100.0,
+    /// Days past its day a bill no one can carry to its drawee lapses (`Bills.LAPSE_TICKS`).
+    lapse_days: f64 = 12.0,
+    /// A hub's discount desk: the most paper it holds as a share of its spare money; the most of that on one market's
+    /// paper, and on foreign markets'; more off a bill whose goods it can't see yet; a bill due further out than so many
+    /// days is past its season, and costs so much more; more off at a full warehouse, and again at a full book; more
+    /// off a bill past its day (`Dials.java`).
+    discount_book_share: f64 = 1.0,
+    discount_drawee_share: f64 = 0.35,
+    discount_foreign_share: f64 = 0.5,
+    discount_unbacked: f64 = 0.04,
+    discount_long_days: f64 = 12.0,
+    discount_long: f64 = 0.05,
+    discount_throttle: f64 = 0.03,
+    stale_bill_discount: f64 = 0.1,
 }
