@@ -28,11 +28,12 @@ use crate::works::Works;
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
-        consider.in_set(Step::Review).after(super::works::review),
-        log_sales.in_set(Step::Sell).after(super::arrive::sell).before(super::cargo::relot),
-        copy_books.in_set(Step::Services).after(super::territory::tolls),
+        consider.in_set(Step::Review).after(super::works::review).after(super::squad::train).after(super::training::lapse)
+            .before(super::jobs::review),
+        log_sales.in_set(Step::Sell).after(super::arrive::sell).after(super::harvest::offer).before(super::cargo::relot),
+        copy_books.in_set(Step::Services).after(super::territory::tolls).after(super::training::copies),
         // Before the crew are home and the crates unloaded (`rules/cargo.rs` unloads after the crew).
-        hand_in.in_set(Step::Turn).after(super::road::feed).before(super::squad::come_home),
+        hand_in.in_set(Step::Turn).after(super::road::feed).after(super::training::read_home).before(super::squad::come_home),
         want_books.in_set(Step::Plan).after(super::plan::start).before(super::squad::size_up),
         depart.in_set(Step::Decide).after(super::plan::decide).after(super::cargo::ship),
     ));

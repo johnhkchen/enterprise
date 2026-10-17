@@ -32,7 +32,8 @@ use crate::state::*;
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
         train.in_set(Step::Review).after(super::settlers::review).after(super::lockers::review)
-            .after(super::farms::review).before(super::jobs::review),
+            .after(super::farms::review).before(super::jobs::review)
+            .after(super::works::review), // pinned as main ran it before atlas-and-books' `consider` moved it
         walk_home.in_set(Step::Arrive).after(super::arrive::mark),
         send_porters_home.in_set(Step::Buy),
         come_home.in_set(Step::Turn).after(super::road::feed).before(super::arrive::turn),

@@ -26,7 +26,8 @@ pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
         lessons.in_set(Step::Work).after(super::cargo::earmark).after(super::workshop::work).before(super::lockers::restock),
         crate_work.in_set(Step::Work).after(super::lockers::restock),
-        lapse.in_set(Step::Review),
+        // Pinned as main ran it before atlas-and-books' `consider` moved Bevy's ambiguous order.
+        lapse.in_set(Step::Review).after(super::works::culture).before(super::farms::review),
         judge.in_set(Step::Judge).after(super::harvest::review_rents),
         read_out.in_set(Step::Draft).after(super::arrive::draft),
         read_home.in_set(Step::Turn).after(super::road::feed).before(super::squad::come_home).before(super::arrive::turn),
@@ -65,7 +66,7 @@ fn crate_work(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut bil
 }
 
 /// Tenders past their day lapse, those reposted raised.
-fn lapse(clock: Res<Clock>, content: Res<Content>, mut tenders: ResMut<Tenders>) {
+pub(crate) fn lapse(clock: Res<Clock>, content: Res<Content>, mut tenders: ResMut<Tenders>) {
     if tenders.tenders.is_empty() {
         return;
     }
@@ -116,7 +117,7 @@ fn read_out(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mu
 
 /// A wagon home: the Merchant there reads the far end's board.
 #[allow(clippy::too_many_arguments)]
-fn read_home(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut tenders: ResMut<Tenders>, order: Res<Towns>,
+pub(crate) fn read_home(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut tenders: ResMut<Tenders>, order: Res<Towns>,
         desks: Desks, routes: Query<(Entity, &Route, &RouteState)>) {
     if tenders.tenders.is_empty() {
         return;
@@ -132,7 +133,7 @@ fn read_home(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, m
 
 /// A wagon at the far end carries the copies of drafted training contracts between its home and the far end: the home's
 /// is handed over, the far end's rides home with the wagon (and is its home's once it is there).
-fn copies(mut book: ResMut<Book>, mut routes: Query<(Entity, &Route, &mut RouteState)>) {
+pub(crate) fn copies(mut book: ResMut<Book>, mut routes: Query<(Entity, &Route, &mut RouteState)>) {
     if book.contracts.iter().all(|c| c.training.is_none()) {
         return;
     }

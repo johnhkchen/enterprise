@@ -50,13 +50,17 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
     let n = content.goods.len();
     let mut order: Vec<usize> = (0..n).collect();
     order.sort_by(|&a, &b| content.goods[a].value.total_cmp(&content.goods[b].value));
-    // What wagons on their way out carry to each far end.
+    // What wagons on their way out carry to each far end: loose, and crated (`rules/cargo.rs::ship` crates a good for
+    // sale of two stacks or more; a lot has no consignee, a contract's crate is made out to the far end).
     let mut aboard: BTreeMap<usize, Vec<f64>> = BTreeMap::new();
     for (route, state) in routes.iter() {
         if let Some(w) = state.wagon.as_ref().filter(|w| w.leg == Leg::Out) {
             let a = aboard.entry(route.to_id).or_insert_with(|| vec![0.0; n]);
             for (g, c) in w.cargo.iter().enumerate().take(n) {
                 a[g] += c;
+            }
+            for s in w.shipments.iter().filter(|s| s.good < n && s.consignee.is_none_or(|c| c == route.to_id)) {
+                a[s.good] += s.count;
             }
         }
     }

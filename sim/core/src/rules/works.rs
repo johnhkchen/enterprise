@@ -29,7 +29,9 @@ use crate::works::*;
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
         pay.in_set(Step::Pay).after(super::territory::upkeep).before(super::farms::pay),
-        culture.in_set(Step::Review).before(super::territory::review),
+        // Pinned as main ran it before atlas-and-books' `consider` moved Bevy's ambiguous order.
+        culture.in_set(Step::Review).after(super::settlers::review).before(super::farms::review)
+            .before(super::territory::review),
         review.in_set(Step::Review).after(super::territory::review).after(super::farms::review)
             .after(super::chokepoints::review).before(super::jobs::review),
     ));

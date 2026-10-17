@@ -358,4 +358,6 @@ dials! {
     commission_spare: f64 = 8.0,
     /// A far end's books are stale this many days after a Librarian last copied them (`STALE_BOOKS_TICKS`).
     stale_books_days: f64 = 3.0,
+    /// A commissioned route's wagon goes every so many days, or full (`Dials.WAGON_WAIT_DAYS`).
+    wagon_wait_days: f64 = 4.0,
 }

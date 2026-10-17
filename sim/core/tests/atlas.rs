@@ -249,6 +249,34 @@ fn a_wagon_counts_what_others_carry_to_the_far_end() {
 }
 
 #[test]
+fn a_wagon_counts_what_others_carry_crated_to_the_far_end() {
+    // As above, with a far-end par of three stacks: the first wagon's paper goes crated (`rules/cargo.rs::ship`
+    // crates a good for sale of two stacks or more), and the second counts the crates too.
+    let mut c = content();
+    c.goods[BREAD].food = 0.0;
+    let mut s = Society::new(c);
+    s.content_mut().dials.standing_orders = false;
+    let hub = s.add_town("Hub", 50.0);
+    let dest = s.add_town("Dest", 12.0);
+    s.record_capacity(dest, 1, &[(PAPER, 192.0 / 5.0)]);
+    s.set_trade(dest, PAPER, 0.0, 1e-9);
+    s.deliver(hub, PAPER, 1024.0);
+    s.set_roster(hub, &[("merchant", 1), ("librarian", 2), ("cartographer", 2), ("cartographer", 2)]);
+    for i in 1..4 {
+        s.set_offers(hub, i, Vec::new());
+    }
+    s.add_route(hub, dest, 2.0, 0.0, 4.0);
+    s.advance(LOOK);
+    assert_eq!(s.route(0).carried, 192.0, "the first takes the far end's par");
+    assert_eq!(s.town(hub).stock[PAPER], 1024.0 - 192.0, "gone aboard");
+    s.add_route(hub, dest, 2.0, 0.0, 4.0);
+    s.advance(2 * LOOK);
+    assert_eq!(s.route(1).carried, 0.0, "the second counts the first's crates on their way there");
+    assert_eq!(tally(&s, hub, "Dest | paper | not sent: they hold their fill (a trade it has switched on takes it)")
+        .map(|t| t.1), Some(192.0), "{}", whys(&s, hub));
+}
+
+#[test]
 fn a_wagon_leaving_takes_home_s_stocktake_and_both_ends_learn_each_other() {
     let mut s = network(70.0, 5.0, 192.0, &["librarian"]);
     assert!(s.known(HUB).is_empty() && s.known(DEST).is_empty(), "unplaced and never travelled: they know nobody");

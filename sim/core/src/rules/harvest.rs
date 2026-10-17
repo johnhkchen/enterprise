@@ -103,7 +103,7 @@ pub(crate) fn redeem(clock: Res<Clock>, content: Res<Content>, mut rents: ResMut
 /// next arrives here. Both towns' money is reckoned beyond their reserve (trading capital and wage float). The buyer
 /// holds the copy; the seller's rides home with the wagon.
 #[allow(clippy::too_many_arguments)]
-fn offer(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut rents: ResMut<Rents>,
+pub(crate) fn offer(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut rents: ResMut<Rents>,
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<TownData>, farms: Query<&Farm>) {
     if !content.dials.forward_sales {

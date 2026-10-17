@@ -64,8 +64,6 @@ pub const CARAVANSERAI_REACH: f64 = 800.0;
 pub const MERCHANT_DAYS: u64 = 10;
 pub const LIBRARIAN_DAYS: u64 = 60;
 pub const LIBRARY_DAYS: u64 = 365;
-/// A commissioned route's wagon goes every so many days, or full (`Dials.WAGON_WAIT_DAYS`).
-pub const WAGON_WAIT_DAYS: f64 = 4.0;
 /// The trade that copies the far end's books.
 pub const LIBRARIAN: &str = "librarian";
 
@@ -580,19 +578,20 @@ impl Society {
             .any(|r| r.from_id == from && to.is_none_or(|t| r.to_id == t))
     }
 
-    /// A route from one town to another, a wagon every [`WAGON_WAIT_DAYS`]: a road over the map if both are placed and
+    /// A route from one town to another, a wagon every `wagon_wait_days` (a dial): a road over the map if both are placed and
     /// there's a way; else a bare road at their distance (straight, or a route's between them), its food a hex's for
     /// each hex of it.
     pub fn open_route(&mut self, from: TownId, to: TownId) -> Option<RouteId> {
+        let every = self.content().dials.wagon_wait_days;
         if self.town_hex(from).is_some() && self.town_hex(to).is_some() {
-            if let Some(id) = self.add_road(from, to, WAGON_WAIT_DAYS) {
+            if let Some(id) = self.add_road(from, to, every) {
                 return Some(id);
             }
         }
         let blocks = self.places().distance(from, to)?;
         let hexes = (blocks as f64 / crate::hex::ACROSS).ceil().max(1.0);
         let cost = self.per_hex() * hexes;
-        Some(self.add_route(from, to, blocks.max(1) as f64 / crate::map::BLOCKS_PER_DAY, cost, WAGON_WAIT_DAYS))
+        Some(self.add_route(from, to, blocks.max(1) as f64 / crate::map::BLOCKS_PER_DAY, cost, every))
     }
 
     /// The routes towns commissioned at this look's reviews, opened (a town that has a route by now opens none).
