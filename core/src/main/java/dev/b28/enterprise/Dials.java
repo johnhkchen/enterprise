@@ -139,8 +139,10 @@ public final class Dials extends SavedData {
     public static final Dial SHELF_DAYS = dial("shelf_days", 5,
             "days of what its lockers can sell a town's warehouse aims to hold of each good (its par)");
     public static final Dial COMFORT_DAYS = dial("comfort_days", 6, "days of its people's comforts a town aims to hold");
+    public static final Dial COMFORT_KEEP_DAYS = dial("comfort_keep_days", 4,
+            "days of its people's comforts a town keeps when others would buy them (it spares the rest)");
     public static final Dial WAGON_TEAM = dial("wagon_team", 1,
-            "mouths a wagon's team adds to its crew on the road (a porter, on foot with a pack, has none)");
+            "a wagon's team eats as so many hands, in fodder (wheat or hay, carried there and back; a porter has none)");
     public static final Dial LINER_DAYS = dial("liner_days", 4,
             "a hub's wagon runs on a timetable, every so many days (or when full, or with something due)");
     // The crown's post (see market.Post).

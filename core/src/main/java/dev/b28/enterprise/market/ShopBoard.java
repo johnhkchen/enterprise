@@ -181,7 +181,7 @@ public final class ShopBoard extends SavedData {
         if (Comforts.kindOf(item).isEmpty()) {
             return Integer.MAX_VALUE; // a good its lockers use: none for sale
         }
-        return (int) Math.ceil(territory.comfortPar(desk) / Math.max(1e-9, Prices.emeraldsEach(item)));
+        return (int) Math.ceil(territory.comfortSpare(desk) / Math.max(1e-9, Prices.emeraldsEach(item)));
     }
 
     /**

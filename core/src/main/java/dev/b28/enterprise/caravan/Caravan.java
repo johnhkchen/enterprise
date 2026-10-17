@@ -52,12 +52,9 @@ public final class Caravan {
         return porter;
     }
 
-    /**
-     * Who eats on the road: the crew, and a wagon's team (see {@code wagon_team}); a porter run, just the porter. (A
-     * foreign realm's traders, no crew of ours, feed themselves as one.)
-     */
+    /** Who eats bread on the road: the crew (a wagon's team brings its own fodder; a foreign realm's traders eat as one). */
     public int mouths() {
-        return Math.max(1, crew.size()) + (porter || crew.isEmpty() ? 0 : dev.b28.enterprise.Dials.WAGON_TEAM.getInt());
+        return Math.max(1, crew.size());
     }
 
     /** Stacks the caravan carries: a wagon's, and more for each Leatherworker's packs and each porter. */

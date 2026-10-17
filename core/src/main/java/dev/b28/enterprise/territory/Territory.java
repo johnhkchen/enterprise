@@ -1744,6 +1744,16 @@ public final class Territory extends SavedData {
     }
 
     /** What the warehouse at {@code desk} aims to hold of each kind of comfort, in emeralds' worth. */
+    /**
+     * What the town keeps of each comfort when others ask for it, in emeralds: {@code comfort_keep_days} of rations.
+     * It buys up to its par, deeper, so a wagon every few days keeps it stocked; beyond this it spares to neighbours.
+     */
+    public double comfortSpare(GlobalPos desk) {
+        return bellOf(desk).map(bell -> holdings.get(bell).villagers * Comforts.RATION_EMERALDS
+                * Math.min(dev.b28.enterprise.Dials.COMFORT_KEEP_DAYS.get(), dev.b28.enterprise.Dials.COMFORT_DAYS.get()))
+                .orElse(0.0);
+    }
+
     public double comfortPar(GlobalPos desk) {
         return bellOf(desk).map(bell -> holdings.get(bell).villagers * Comforts.RATION_EMERALDS
                 * dev.b28.enterprise.Dials.COMFORT_DAYS.get())

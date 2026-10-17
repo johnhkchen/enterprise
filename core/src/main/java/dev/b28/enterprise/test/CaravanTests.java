@@ -499,6 +499,7 @@ public final class CaravanTests {
     @GameTest(template = "floor")
     public static void shortOfCoinTheBuyerPaysWithABill(GameTestHelper helper) {
         Network net = network(helper, 2, 1, 192);
+        net.hub().insert(new ItemStack(Items.WHEAT, 32)); // fodder for the wagon's team: no coin to buy it
         net.dest().insert(new ItemStack(Items.FLINT, 32));
         var server = helper.getLevel().getServer();
         var book = dev.b28.enterprise.contract.ContractBook.get(server);

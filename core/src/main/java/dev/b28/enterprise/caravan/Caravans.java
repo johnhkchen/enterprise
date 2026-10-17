@@ -294,13 +294,15 @@ public final class Caravans {
         }
         // Each member eats; one more goes only if the town can spare its food beyond the caravans' par.
         int members = mustered.size();
-        int team = porter || foreign ? 0 : dev.b28.enterprise.Dials.WAGON_TEAM.getInt(); // a wagon's team eats too
-        while (members > 1
-                && stock.foodNutrition() - Warehouse.FOOD_PAR_POINTS < foodNeeded(route.distance()) * (members + team)) {
+        while (members > 1 && stock.foodNutrition() - Warehouse.FOOD_PAR_POINTS < foodNeeded(route.distance()) * members) {
             members--;
         }
         List<net.minecraft.world.entity.npc.Villager> squad = List.copyOf(mustered.subList(0, members));
-        int food = foodNeeded(route.distance()) * ((foreign ? FOREIGN_CREW : squad.size()) + team);
+        int food = foodNeeded(route.distance()) * (foreign ? FOREIGN_CREW : squad.size());
+        // A wagon's team eats fodder, there and back, carried from home: wheat or hay, or bought on the road.
+        int team = porter || foreign ? 0 : dev.b28.enterprise.Dials.WAGON_TEAM.getInt();
+        int teamFeed = 2 * foodNeeded(route.distance()) * team;
+        double teamCoin = Math.max(0, teamFeed - fodderOnHand(stock)) * PURSE_PER_FOOD_POINT;
         // Where the far end won't or can't feed the squad for the road home (the front sells nothing; a town may be
         // short), it takes that food along too, if a caravan can carry both legs'.
         // (what other caravans on their way there will buy of its food first doesn't count)
@@ -354,7 +356,7 @@ public final class Caravans {
             ledger.setDirty();
             return false;
         }
-        if (Treasury.available(level, route.from.pos(), stock, rate) < purse) {
+        if (Treasury.available(level, route.from.pos(), stock, rate) < purse + teamCoin) {
             route.status = "the hub can't fund the trip";
             ledger.setDirty();
             return false;
@@ -405,7 +407,7 @@ public final class Caravans {
                         new dev.b28.enterprise.market.Freight.Leg(route, true))
                         + (sold ? dev.b28.enterprise.market.Freight.get(server).blockFares(homeLeg) : 0);
                 double worth = load[1] + owed[1] + exWorks + shoppingMoney + fares;
-                double cost = 2 * food * PURSE_PER_FOOD_POINT;
+                double cost = (2 * food + teamFeed) * PURSE_PER_FOOD_POINT;
                 boolean full = load[0] + owed[0] + booked >= dev.b28.enterprise.Dials.WAGON_FULL.get() * slots;
                 boolean served = !hub && ledger.routes().stream().anyMatch(r -> r.to.equals(route.from) && !r.stopping
                         && dev.b28.enterprise.market.Freight.isHub(server, r.from));
@@ -456,7 +458,7 @@ public final class Caravans {
         // Comforts the far end wants, out of what this town can spare beyond its own par of each kind.
         Map<String, Double> wantedThereNow = new LinkedHashMap<>(
                 comfortWants(server, territory, route.to, now + travelTicks(route.distance())));
-        double ownPar = territory.comfortPar(route.from);
+        double ownPar = territory.comfortSpare(route.from);
         Map<String, Double> heldHere = Comforts.onHand(stock);
         var books = dev.b28.enterprise.merchant.Books.get(server);
         wantedThereNow.forEach((kind, want) -> {
@@ -495,6 +497,10 @@ public final class Caravans {
                 (int) Math.round(Crates.fullStacks(cargo)));
         noteLoad(route, cargo, true);
         stock.eat(food + provisions); // the hub's own food: already paid for
+        int fed = eatFodder(stock, teamFeed);
+        if (fed < teamFeed) {
+            Treasury.withdraw(level, route.from.pos(), stock, (teamFeed - fed) * PURSE_PER_FOOD_POINT, mint, now); // bought on the road
+        }
         Treasury.Withdrawal taken = Treasury.withdraw(level, route.from.pos(), stock, purse, mint, now);
         int spurs = taken.spurs() + mint.sell(Mint.DEFAULT_FACTION, taken.emeralds(), now);
         List<CompoundTag> crew = new ArrayList<>();
@@ -540,7 +546,7 @@ public final class Caravans {
         herd.forEach(animal -> leaving.herd.add(Squad.stow(animal)));
         llamas.forEach(llama -> leaving.pack.add(Squad.stow(llama)));
         route.lastCapacity = slots;
-        route.lastCrew = leaving.mouths();
+        route.lastCrew = leaving.mouths() + team; // the team's fodder costs like a hand's food
         setStop(server, route, leaving, now, true, 1);
         ledger.put(leaving);
         // Into the books: what went out, and where to.
@@ -1304,6 +1310,27 @@ public final class Caravans {
         return owed[2] > 0 || collectPressing(server, route, stock, arrival, now) || onItsDay;
     }
 
+    /** A wagon team's fodder: a wheat a point, a hay bale nine. */
+    static final int HAY_POINTS = 9;
+
+    /** Fodder points in the warehouse for a wagon's team. */
+    static int fodderOnHand(MerchantStock stock) {
+        return stock.count(new ItemCost(Items.WHEAT, 1)) + HAY_POINTS * stock.count(new ItemCost(Items.HAY_BLOCK, 1));
+    }
+
+    /** The team takes {@code points} of fodder from the warehouse, hay first; returns the points it found. */
+    static int eatFodder(MerchantStock stock, int points) {
+        int fed = 0;
+        int bales = Math.min(points / HAY_POINTS, stock.count(new ItemCost(Items.HAY_BLOCK, 1)));
+        if (bales > 0) {
+            fed += HAY_POINTS * stock.take(new ItemCost(Items.HAY_BLOCK, 1), bales).stream().mapToInt(ItemStack::getCount).sum();
+        }
+        if (fed < points) {
+            fed += stock.take(new ItemCost(Items.WHEAT, 1), points - fed).stream().mapToInt(ItemStack::getCount).sum();
+        }
+        return fed;
+    }
+
     /** A caravan's load as it sets out (or turns for home), in the route's tally of how full its wagons run. */
     static void noteLoad(Route route, List<ItemStack> cargo, boolean out) {
         if (out) {
@@ -1826,7 +1853,7 @@ public final class Caravans {
             return;
         }
         Map<String, Double> theirs = Comforts.onHand(stock);
-        double theirPar = territory.comfortPar(route.to);
+        double theirPar = territory.comfortSpare(route.to);
         for (Map.Entry<String, Double> want : caravan.shopping.entrySet()) {
             var kind = Comforts.kind(want.getKey()).orElseThrow();
             double spareWorth = theirs.getOrDefault(want.getKey(), 0.0) - theirPar;
@@ -2145,7 +2172,7 @@ public final class Caravans {
             worth += going * each;
         }
         Map<String, Double> held = Comforts.onHand(stock);
-        double ownPar = territory.comfortPar(route.from);
+        double ownPar = territory.comfortSpare(route.from);
         for (var want : comfortWants(server, territory, route.to, now + travelTicks(route.distance())).entrySet()) {
             double spare = Math.max(0, held.getOrDefault(want.getKey(), 0.0) - ownPar);
             worth += Math.min(want.getValue(), spare);
@@ -2714,7 +2741,7 @@ public final class Caravans {
             if (outlet.isPresent()) {
                 int inCargo = Crates.contents(caravan.cargo).stream().filter(st -> st.is(item)).mapToInt(ItemStack::getCount).sum();
                 network = Math.max(network, outlet.get().units() - warehouse.onHand(route.from, item) - inCargo);
-                theirPar = (int) Math.ceil(territory.comfortPar(desk) / Math.max(1e-9, Prices.emeraldsEach(item))); // they keep their own
+                theirPar = (int) Math.ceil(territory.comfortSpare(desk) / Math.max(1e-9, Prices.emeraldsEach(item))); // they keep their own
             }
             int surplus = Math.min(held.getValue() - theirPar, network);
             var food = item.getDefaultInstance().get(net.minecraft.core.component.DataComponents.FOOD);
