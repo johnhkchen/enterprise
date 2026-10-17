@@ -2,11 +2,14 @@
 //! thread, so the same world always comes out the same:
 //!
 //! 1. **Touch:** towns brought up to date (their people make and use goods, live, grow).
-//! 2. **Judge:** contracts' installments and bills judged once a day.
-//! 3. **Arrive:** wagons that got where they were going. At the far end, in turn: `Papers` (bills presented),
-//!    `Settle` (goods owed delivered), `Collect` (Ex Works), `Freight`, `Sell`, `Buy` (for home), `Draft` (standing
-//!    orders), `Services`; then `Turn` (home again, or unloaded at home).
-//! 4. **Plan:** each idle route's plan for a wagon, built up in turn: `PlanOwed`, `PlanCollect`, `PlanPapers`,
+//! 2. **Work:** towns' people make goods: farms, herds, mines, gathering, the workshop.
+//! 3. **Pay:** wages, guards' upkeep and rents' coupons paid out of a town's money.
+//! 4. **Review:** a town's daily decisions: jobs, fields, tolls, buildings, commissions.
+//! 5. **Judge:** contracts' installments and bills judged once a day.
+//! 6. **Arrive:** wagons that got where they were going. Letters arrive (`Mail`) first. At the far end, in turn:
+//!    `Papers` (bills presented), `Settle` (goods owed delivered), `Collect` (Ex Works), `Freight`, `Sell`, `Buy` (for
+//!    home), `Draft` (standing orders), `Services`; then `Turn` (home again, or unloaded at home).
+//! 7. **Plan:** each idle route's plan for a wagon, built up in turn: `PlanOwed`, `PlanCollect`, `PlanPapers`,
 //!    `PlanFreight`, `PlanSale`, `PlanBuy`; then `Decide` (it goes, or waits).
 //!
 //! A module joins a step with its own systems in its own file (`register`), so slices don't edit each other's.
@@ -28,8 +31,12 @@ use crate::state::*;
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Step {
     Touch,
+    Work,
+    Pay,
+    Review,
     Judge,
     Arrive,
+    Mail,
     Papers,
     Settle,
     Collect,
@@ -54,11 +61,9 @@ pub fn look_schedule() -> Schedule {
     use Step::*;
     let mut schedule = Schedule::default();
     schedule.set_executor(SingleThreadedExecutor::new());
-    schedule.configure_sets(
-        (Touch, Judge, Arrive, Papers, Settle, Collect, Freight, Sell, Buy, Draft, Services, Turn, Plan, PlanOwed,
-            PlanCollect, PlanPapers, PlanFreight, PlanSale, PlanBuy, Decide)
-            .chain(),
-    );
+    // Two chains, joined at Sell, since a tuple of this length isn't an ordered set.
+    schedule.configure_sets((Touch, Work, Pay, Review, Judge, Arrive, Mail, Papers, Settle, Collect, Freight, Sell).chain());
+    schedule.configure_sets((Sell, Buy, Draft, Services, Turn, Plan, PlanOwed, PlanCollect, PlanPapers, PlanFreight, PlanSale, PlanBuy, Decide).chain());
     touch::register(&mut schedule);
     crate::people::register(&mut schedule);
     contracts::register(&mut schedule);
