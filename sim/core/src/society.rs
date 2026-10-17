@@ -96,9 +96,11 @@ impl Society {
         self.world.entity_mut(e).insert(crate::lockers::Lockers::default());
         // And its crates and paperwork (`cargo.rs`), none yet.
         self.world.entity_mut(e).insert((crate::cargo::Shipments::default(), crate::cargo::Paperwork::default()));
-        // And its public works (`works.rs`), none yet; and its storehouse and forwarder (`freight.rs`), inert until it's
-        // a hub: in the works' insert, as an insert of its own moved the towns' archetypes and the order queries meet them.
-        self.world.entity_mut(e).insert((crate::works::Works::default(), crate::freight::Hub::default()));
+        // And its public works (`works.rs`), none yet; its storehouse and forwarder (`freight.rs`), inert until it's a
+        // hub; and its kit (`kit.rs`), none yet and worked from now on: in the works' insert, as an insert of its own
+        // moved the towns' archetypes and the order queries meet them.
+        self.world.entity_mut(e).insert((crate::works::Works::default(), crate::freight::Hub::default(),
+            crate::kit::Kits { last: now, ..Default::default() }));
         self.towns.push(e);
         self.world.resource_mut::<Towns>().0.push(e);
         self.towns.len() - 1

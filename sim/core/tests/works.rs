@@ -378,6 +378,12 @@ fn logs_in_the_warehouse_stand_in_for_materials() {
     roster.push(("mason", 2));
     let mut s = content_town(1000.0, 4, &roster);
     s.content_mut().dials.wall_start_emeralds = 1e9;
+    // (Its idle hands gather what their land gives, logs on plains (`kit.rs`): here the land is water, which gives none.)
+    for q in -3..4 {
+        for r in -3..4 {
+            s.set_land(Hex::new(q, r), enterprise_core::map::Land::Water);
+        }
+    }
     s.deliver(0, 5, 32.0); // 32 logs at an eighth: 4 emeralds of the 8
     s.advance(25 * DAY);
     let book = s.cash_book(0, 30);

@@ -67,6 +67,7 @@ crate::saved! {
         off_map: crate::realms::OffMap,
         realm: crate::realms::Realm,
         hub: crate::freight::Hub,
+        kits: crate::kit::Kits,
     }
     route {
         route: Route,
@@ -106,4 +107,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::services::register(schedule);
     crate::rules::freight::register(schedule);
     crate::rules::sourcing::register(schedule);
+    crate::rules::kit::register(schedule);
 }

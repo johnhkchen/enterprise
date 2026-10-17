@@ -257,6 +257,8 @@ pub struct Farm {
     /// The day of the cash book's crop sales last read, and what of them was read.
     pub sales_day: u64,
     pub sales_seen: f64,
+    /// How many plots a Farmer tends as many as its level gives: half again with hoes for all (`kit.rs` sets it).
+    pub hands: f64,
 }
 
 impl Default for Farm {
@@ -296,6 +298,7 @@ impl Default for Farm {
             reviewed: None,
             sales_day: 0,
             sales_seen: 0.0,
+            hands: 1.0,
         }
     }
 }
@@ -700,9 +703,9 @@ pub fn accrue(content: &Content, farm: &mut Farm, mood: f64, now: u64) {
 pub fn replan(content: &Content, farm: &mut Farm, farmers: &[u8], uses: &[f64], fed: bool) {
     let wants = Wants::of(farm, uses);
     let mut idle = BTreeMap::new();
-    let (per_day, fallow) = plan(content, &plots(farm), farmers, &wants, 1.0, fed, &mut idle);
+    let (per_day, fallow) = plan(content, &plots(farm), farmers, &wants, farm.hands, fed, &mut idle);
     let tended = per_day.values().sum::<f64>() / YIELD_PER_PLOT_PER_DAY;
-    let capacity = capacity(farmers, 1.0);
+    let capacity = capacity(farmers, farm.hands);
     let untended = idle.values().sum::<f64>() / YIELD_PER_PLOT_PER_DAY;
     farm.spare_plots = (capacity - tended.round()).max(0.0) as u32;
     farm.tightness = tightness(capacity, tended, untended);

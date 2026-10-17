@@ -421,4 +421,20 @@ dials! {
     maker_lot: u32 = 16,
     maker_lead_days: f64 = 3.0,
     maker_installments: u32 = 4,
+    // mines-and-kit (`kit.rs`: `territory/Mines.java`, `Labour.java`, `Smithing.java`, `MasterServices.java`)
+    /// A Toolsmith brings up so much a day a level (half again with pickaxes, and with a smithy): raw iron, coal, raw
+    /// gold, and lapis too once the mine is sunk deep (`Mines.RAW_IRON_PER_LEVEL_DAY`, `COAL_PER_LEVEL_DAY`,
+    /// `RAW_GOLD_PER_LEVEL_DAY`, `LAPIS_PER_LEVEL_DAY`).
+    raw_iron_per_level_day: f64 = 2.0,
+    coal_per_level_day: f64 = 0.5,
+    raw_gold_per_level_day: f64 = 0.25,
+    lapis_per_level_day: f64 = 0.5,
+    /// With tools for all, farmers, miners and hands do this much more (`Smithing.TOOL_BONUS`); a tool given a hand
+    /// lasts so many days of work (`Territory.HAND_TOOL_DAYS`).
+    tool_bonus: f64 = 0.5,
+    hand_tool_days: f64 = 16.0,
+    /// A mine head costs this much beyond the town's reserve, and sinking it deep this much (`Mines.MINE_EMERALDS`,
+    /// `DEEP_EMERALDS`).
+    mine_emeralds: f64 = 6.0,
+    deep_mine_emeralds: f64 = 8.0,
 }

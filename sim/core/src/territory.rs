@@ -87,9 +87,14 @@ pub struct Holding {
     pub traffic_since: f64,
     pub traffic_per_day: f64,
     /// Shares of its guards armed and armoured (0 to 1): armed ones ask more of a detour, armoured ones a higher toll.
-    /// Hooks for `mines-and-kit`, which sets them; 0 until then.
+    /// Set at each look from the kit in the warehouse (`kit.rs`, `Smithing.armed` and the armour share); a host with
+    /// none of the guards' kit goods sets them itself (`Society::set_guard_kit`).
     pub armed: f64,
     pub armoured: f64,
+    /// Share of its hunters (Fletchers) with a bow (`Smithing.hunting`, `kit.rs`).
+    pub hunting: f64,
+    /// Its mine, once a Toolsmith has dug one (`Territory.mine`), and whether it is sunk deep.
+    pub mine: Option<crate::kit::Mine>,
 }
 
 /// Whose every claimed hex is, and what each town holds.

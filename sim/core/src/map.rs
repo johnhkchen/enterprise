@@ -68,13 +68,35 @@ pub fn per_hex_at_bread(content: &crate::content::Content) -> f64 {
     per_hex(point)
 }
 
-/// A hex's ground: its share under water (0 to 1), its relief in blocks (highest surface less lowest), and whether a
-/// finished bridge stands on it.
+/// What a hex's ground gives a town's hands: the mod's biome tags (`Labour.hauls`, `Hunting.game`) as one kind a hex
+/// (`kit.rs` holds the gathering tables by kind). A hex nobody described is plains.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Land {
+    /// Open ground: plains, meadows and the like (`Labour.hauls`' last case).
+    #[default]
+    Plains,
+    /// Forest, swamp, jungle and savanna (the mod gives each its own haul; here they share the forest's logs).
+    Woods,
+    /// Taiga and snow.
+    Taiga,
+    /// Desert and badlands.
+    Desert,
+    /// Beach.
+    Shore,
+    /// Hills and mountains.
+    Hills,
+    /// Ocean and river.
+    Water,
+}
+
+/// A hex's ground: its share under water (0 to 1), its relief in blocks (highest surface less lowest), whether a
+/// finished bridge stands on it, and what its land gives (`Land`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Ground {
     pub water_share: f64,
     pub relief: f64,
     pub bridged: bool,
+    pub land: Land,
 }
 
 impl Ground {
@@ -171,6 +193,16 @@ impl Map {
         let g = self.ground.entry(hex).or_default();
         g.water_share = water_share.clamp(0.0, 1.0);
         g.relief = relief.max(0.0);
+    }
+
+    /// What the hex's land gives its town's hands, keeping the rest of its ground.
+    pub fn set_land(&mut self, hex: Hex, land: Land) {
+        self.ground.entry(hex).or_default().land = land;
+    }
+
+    /// What a hex's land gives (plains if never set).
+    pub fn land(&self, hex: Hex) -> Land {
+        self.ground.get(&hex).map_or(Land::Plains, |g| g.land)
     }
 
     /// A finished bridge on the hex.

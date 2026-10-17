@@ -38,4 +38,5 @@ slices! {
     services,
     freight_hubs,
     sourcing_and_procurement,
+    mines_and_kit,
 }

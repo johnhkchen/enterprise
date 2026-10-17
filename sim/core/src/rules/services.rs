@@ -106,7 +106,8 @@ pub fn home(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, territory
             let done = {
                 let t = towns.get(e).unwrap();
                 let town = Served { id, settlement: true, stock: &t.2.0, trades: t.3,
-                    people: t.4, roster: t.5, farm: t.6, herds: t.7, guards, routes_out: out };
+                    people: t.4, roster: t.5, farm: t.6, herds: t.7, guards, routes_out: out,
+                    miners: crate::kit::miners(&content, &territory, id, t.5) };
                 let visit = Visit { content: &content, from: id, at: id, skill, now, planning: false, budget: 0.0, town,
                     trip: None, book: &book, atlas: &atlas, places: &places, ledger: &services, recipes: &recipes };
                 if !wanted(service, &visit) {
@@ -159,6 +160,7 @@ pub fn plan(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, territory
         let held: Vec<f64> = (0..content.goods.len()).map(|g| stocktakes.on_hand(route.to_id, g)).collect();
         let town = Served { id: route.to_id, settlement: !far.9 && !far.10, stock: &held,
             trades: far.3, people: far.4, roster: far.5, farm: far.6, herds: far.7, guards: guards(&territory, route.to_id),
+            miners: crate::kit::miners(&content, &territory, route.to_id, far.5),
             routes_out: routes_out(all_routes.iter(), route.to_id) };
         let trip = Trip {
             route: route.seq,
@@ -284,7 +286,8 @@ pub fn abroad(clock: Res<Clock>, content: Res<Content>, territory: Res<Territory
                 let Ok(t) = towns.get(route.to) else { break };
                 let reserve = super::farms::reserve(&content, t.3, t.6);
                 let town = Served { id: route.to_id, settlement: !t.9 && !t.10, stock: &t.2.0,
-                    trades: t.3, people: t.4, roster: t.5, farm: t.6, herds: t.7, guards, routes_out: out };
+                    trades: t.3, people: t.4, roster: t.5, farm: t.6, herds: t.7, guards, routes_out: out,
+                    miners: crate::kit::miners(&content, &territory, route.to_id, t.5) };
                 let trip = Trip { route: route.seq, mapped_at: state.mapped_at, path: &path, home_spare_plots: None,
                     home_animals: 0, herd: &wagon.herd, seller_level, buyer_level: crate::bargain::merchant_level(t.5) };
                 let budget = (t.1.0 - reserve).max(0.0);

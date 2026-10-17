@@ -29,6 +29,7 @@ pub mod freight;
 pub mod harvest;
 pub mod herds;
 pub mod jobs;
+pub mod kit;
 pub mod lockers;
 pub mod plan;
 pub mod realms;

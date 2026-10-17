@@ -362,6 +362,8 @@ pub struct Served<'a> {
     pub farm: Option<&'a Farm>,
     pub herds: Option<&'a Herds>,
     pub guards: usize,
+    /// Its Toolsmiths at home, once it has a mine (`Territory.miners`, `kit.rs`).
+    pub miners: usize,
     pub routes_out: usize,
 }
 
@@ -606,10 +608,9 @@ pub fn want(recipe: &Recipe, visit: &Visit) -> f64 {
         Want::Ore(name) => c.good(name).map_or(0.0, |g| visit.count(g)),
         Want::Contracted => visit.contracted(output),
         Want::Kit(wearer) => {
-            // No mines yet (`mines-and-kit`): a town has no miners.
             let farmers = visit.town.workers(c.trade("farmer"));
             let hunters = visit.town.workers(c.trade("fletcher"));
-            let n = wearers(wearer, farmers, 0, visit.town.guards, hunters) as f64;
+            let n = wearers(wearer, farmers, visit.town.miners, visit.town.guards, hunters) as f64;
             (n + visit.contracted(output) - visit.count(output)).max(0.0)
         }
         Want::Comfort(kind) => visit.comfort_wanted(c.comfort(kind), output, 4.0),
@@ -994,6 +995,7 @@ impl Society {
             farm,
             herds: e.get::<Herds>(),
             guards,
+            miners: crate::kit::miners(&content, self.world.resource::<crate::territory::Territory>(), at, e.get::<Roster>()),
             routes_out,
         };
         let state = route.and_then(|r| w.get::<RouteState>(self.routes[r]));
