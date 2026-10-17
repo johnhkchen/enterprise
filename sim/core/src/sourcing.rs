@@ -33,7 +33,8 @@
 //! [`Society::source`] and adds to [`wanted`] when it lands. A player's order is a seller contract of the desk's own
 //! (`orders.rs`), which [`wanted`] reads like any other, so the core sources it as the mod's `Broker.fill` does; the
 //! mod asks for `remaining - spare` (what it can't spare beyond its par and what is set aside), where [`wanted`] nets
-//! the whole stock, so a desk's open orders (`Orders::wanted`) are added to the town's wants, the larger of the two.
+//! the whole stock, so each open order at a desk stands beside the town's wants, the largest counting (the mod sources
+//! shop by shop, each call done once what's coming covers it).
 //! The mod only sources for orders, the crown and the exchange; the core's towns with a master Merchant also source
 //! what their contracts want and can't be made at home, once a day (and skip, as for any contract, a good its own
 //! people make or sell: its Merchant buys that of them, even for an order). What none of the markets with a road can

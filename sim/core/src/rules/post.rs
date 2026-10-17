@@ -554,15 +554,15 @@ fn room_at(content: &Content, hub: TownId, town: TownId, roads: &Roads, trades: 
 
 /// A town's wagon at a hub with goods it couldn't sell (`Caravans` 711): what the hub's network wants the forwarder
 /// takes on consignment, into the hub's warehouse as the town's lots (`consignUnsold`); the rest rides home. Not a
-/// hub's wagon, nor a foreign realm's.
+/// hub's wagon, nor a foreign realm's, nor a market's off the map (no post goes there to remit its proceeds by).
 #[allow(clippy::type_complexity)]
 pub fn consign(clock: Res<Clock>, content: Res<Content>, mut forwarder: ResMut<Forwarder>,
         mut routes: Query<(Entity, &Route, &mut RouteState)>,
-        mut towns: Query<(&Town, &mut Stock, &Trades, &Hub, Option<&Realm>)>) {
+        mut towns: Query<(&Town, &mut Stock, &Trades, &Hub, Option<&Realm>, Option<&OffMap>)>) {
     let arriving: Vec<Entity> = in_order(routes.iter().map(|(e, r, _)| (e, r))).into_iter().filter(|&e| {
         let (_, r, s) = routes.get(e).unwrap();
         s.arrived == Some(Leg::Out) && towns.get(r.to).is_ok_and(|t| t.3.storehouse)
-            && towns.get(r.from).is_ok_and(|t| !t.3.storehouse && t.4.is_none())
+            && towns.get(r.from).is_ok_and(|t| !t.3.storehouse && t.4.is_none() && t.5.is_none())
     }).collect();
     if arriving.is_empty() {
         return;

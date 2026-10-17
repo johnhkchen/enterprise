@@ -21,18 +21,17 @@
 //!   and the purse is the player's, outside the society: what it pays comes in from the outside).
 //! - Trust is per shop, as `contractFor` keys it by the desk and the shop's position: each [`Order`] keeps its own record
 //!   of installments kept and missed, taken in from how its contract was judged, and the `MIN_TRUST` check reads that,
-//!   never the desk's pooled record in the book. A shop relisted at another lot or price gets a new contract
-//!   (`book.open(desk, buyer, delivery)` matches the delivery).
+//!   never the desk's pooled record in the book.
 //! - A far end's order adds its good to the wanted set; the room it gives is `Warehouse.par(to, item, true)` (a stack at
 //!   least) less what's held, and a good it wants anyway keeps its usual shelf (`rules/plan.rs`, `rules/arrive.rs`).
 //! - `source` for what the desk can't fill is sourcing's (`rules/sourcing.rs`): the shop's contract is a seller contract
-//!   of the desk's, which sourcing reads for its wants, and the desk's open orders are added to them (`remaining - spare`
-//!   as the mod asks, where sourcing nets the whole stock). Sourcing skips a good the desk's own people make or sell
+//!   of the desk's, which sourcing reads for its wants, and the largest of the desk's open orders for a good stands
+//!   beside them (`remaining - spare` as the mod asks shop by shop, where sourcing nets the whole stock). Sourcing skips a good the desk's own people make or sell
 //!   (their Merchant buys of them), even for an order; the mod doesn't.
 //! - The desk's signals are one list, and the only stream to the jobs (see `rules/orders.rs`). The war's unmet wants
 //!   aren't here (the crown's); sourcing's unmet contract wants stand in their place.
-//! - Which goods the desk wants (`wantedAt`) is the lockers' capacity or use, not the mod's inputs, conversions and
-//!   trades. Spare stock also leaves what the workshop sets aside.
+//! - Which goods the desk wants (`wantedAt`) is what its lockers take and the inputs to what it has contracted to sell,
+//!   not the mod's workshop conversions or a realm's wants. Spare stock also leaves what the workshop sets aside.
 //! - `Shops.roomFor`, enchanted-goods commissions and the metal and ore chains of `Jobs.tradeFor` are not ported: the
 //!   first two have no counterpart in the core. Spurs are the host's coin: money in the core is emeralds, at the mint's rate.
 
@@ -68,10 +67,6 @@ pub struct Order {
     /// shop's position): the trust a contract with it needs is read here, never from the desk's pooled record.
     #[serde(default)]
     pub record: crate::contracts::Record,
-    /// The lot and spurs a lot the contract was drafted at: a shop relisted at another lot or price gets a new one
-    /// (`book.open(desk, buyer, delivery)` matches the delivery).
-    #[serde(default)]
-    pub drafted_at: (f64, f64),
     /// How much of the contract's judging the record has taken in: installments judged, and misses counted.
     #[serde(default)]
     pub seen: (u32, u32),
@@ -246,19 +241,18 @@ impl Society {
         id
     }
 
-    /// A player buys `count` of `good` from a town's own shop that lists it, at the price it lists: the goods leave
-    /// its shelf and the spurs drop in its coin box for the Merchant to bank. Returns the spurs paid.
+    /// A player buys `count` of `good` from a town's own shop that lists it, in its whole lots (a vendor sells a lot at
+    /// a time: what's short of one is left) at the price it lists: the goods leave its shelf and the spurs drop in its
+    /// coin box for the Merchant to bank. Returns the spurs paid.
     pub fn buy(&mut self, town: TownId, good: GoodId, count: f64) -> Result<f64, String> {
-        let count = count.floor();
-        if count < 1.0 {
-            return Err("nothing asked".into());
-        }
         let orders = self.world.resource::<Orders>();
-        let Some(i) = orders.shops.iter().position(|s| s.town == town && s.good == Some(good) && s.shelf >= count) else {
-            return Err(format!("no shop of town {town} has {count} of good {good} on its shelf"));
+        let Some(i) = orders.shops.iter().position(|s| s.town == town && s.good == Some(good) && s.lot >= 1.0
+            && (count / s.lot).floor() >= 1.0 && s.shelf >= (count / s.lot).floor() * s.lot) else {
+            return Err(format!("no shop of town {town} has a whole lot of {count} of good {good} on its shelf"));
         };
         let s = &mut self.world.resource_mut::<Orders>().shops[i];
-        let spurs = (s.price * count / s.lot.max(1.0)).floor();
+        let lots = (count / s.lot).floor();
+        let (count, spurs) = (lots * s.lot, lots * s.price);
         s.shelf -= count;
         s.takings += spurs;
         self.world.resource_mut::<crate::state::Ledger>().used[good] += count;

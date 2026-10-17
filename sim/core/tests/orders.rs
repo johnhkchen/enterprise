@@ -336,9 +336,12 @@ fn a_player_cant_buy_what_isnt_on_the_shelf() {
     s.own_shop(DESK);
     assert!(s.buy(DESK, STICK, 16.0).is_err(), "nothing listed yet");
     s.advance(LOOK);
-    assert!(s.buy(DESK, STICK, 65.0).is_err(), "more than the shelf holds");
+    assert!(s.buy(DESK, STICK, 80.0).is_err(), "more than the shelf holds");
     assert!(s.buy(DESK, PAPER, 1.0).is_err(), "not what it lists");
+    assert!(s.buy(DESK, STICK, 1.0).is_err(), "less than a lot");
     assert_eq!(s.buy(DESK, STICK, 32.0), Ok(18.0));
+    assert_eq!(s.buy(DESK, STICK, 20.0), Ok(9.0), "whole lots only");
+    assert_eq!(s.own_shops(DESK)[0].shelf, 16.0);
 }
 
 #[test]
@@ -398,10 +401,11 @@ fn what_a_known_market_posts_as_wanted_is_work_for_a_towns_idle_hands() {
     assert!(s.job_bag(idle).is_empty(), "a town that hasn't heard of the market sees nothing");
     s.learn(idle, DESK);
     s.advance(DAY + LOOK); // (who hears of a desk is looked at again with the day's sourcing)
-    // A Fletcher's villagers sell arrows: 160 arrows at a sixteenth of an emerald and half again, is worth 15 to its idle hands (once, not by two streams).
+    // A Fletcher's villagers sell arrows: 160 arrows at the signal's 2 spurs each, 16 spurs an emerald, is worth 20 to its
+    // idle hands (`count * spursEach / rate`; once, not by two streams).
     let bag = s.job_bag(idle);
     let fletcher = bag.iter().find(|(t, _)| t == "fletcher").expect("a Fletcher would supply it");
-    assert!(close(fletcher.1, 15.0), "{bag:?}");
+    assert!(close(fletcher.1, 20.0), "{bag:?}");
     // Once the desk has them, the want is met and the marbles go.
     s.deliver(DESK, ARROW, 200.0);
     s.advance(3 * DAY); // (sourcing's unmet wants are judged once a day)
@@ -465,19 +469,24 @@ fn one_bad_shops_misses_do_not_block_another_shops_contract() {
     assert!(g.contract.is_some() && g.delivered == 16.0, "the other is filled: {g:?}");
 }
 
-// A repriced shop gets a new contract (`book.open(desk, buyer, delivery)` matches the delivery).
+// A repriced shop keeps its contract (`book.open(desk, buyer, delivery)` matches the good alone): each lot at the lower
+// of the locked price and what the shop now asks (`Broker.deliver`).
 #[test]
-fn a_repriced_shop_gets_a_new_contract() {
+fn a_repriced_shop_keeps_its_contract_at_the_lower_price() {
     let mut s = desk(5, 10.0);
     s.deliver(DESK, PAPER, 128.0);
     let id = s.order(DESK, PAPER, 16.0, 16.0, 80.0);
     s.advance(LOOK);
     let first = s.orders(DESK)[0].contract.unwrap();
+    assert_eq!(s.orders(DESK)[0].paid, 16.0);
+    s.world.resource_mut::<Orders>().orders.iter_mut().find(|o| o.id == id).unwrap().price = 12.0;
+    s.advance(LOOK + DAY);
+    assert_eq!(s.orders(DESK)[0].contract, Some(first), "the same contract");
+    assert_eq!((s.orders(DESK)[0].delivered, s.orders(DESK)[0].paid), (32.0, 28.0), "a lot at the shop's 12");
     s.world.resource_mut::<Orders>().orders.iter_mut().find(|o| o.id == id).unwrap().price = 20.0;
-    s.advance(2 * LOOK);
-    let now = s.orders(DESK)[0].contract.unwrap();
-    assert_ne!(first, now, "the old contract is closed and a new one drafted at the new price");
-    assert_eq!(s.contract(first).state, State::Completed);
+    s.advance(LOOK + 2 * DAY);
+    assert_eq!(s.orders(DESK)[0].contract, Some(first));
+    assert_eq!((s.orders(DESK)[0].delivered, s.orders(DESK)[0].paid), (48.0, 44.0), "and at the locked 16, not 20");
 }
 
 // Without any shop a master desk still posts its lockers' wants.
@@ -514,4 +523,40 @@ fn the_same_good_relisted_at_another_lot_keeps_its_shelf() {
     assert_eq!((own.good, own.lot), (Some(STICK), 8.0), "{own:?}");
     assert_eq!(own.shelf, 64.0, "the whole shelf stays: {own:?}");
     assert_eq!(s.town(DESK).stock[STICK], 8.0, "nothing went home but what was delivered");
+}
+
+// An input to what the desk has contracted to sell is a good it wants (`Caravans.wantedAt`), so its par is a stack at
+// least, and never under the inputs (`Warehouse.par`): it spares none of it for a player's order.
+#[test]
+fn a_contracts_inputs_are_not_spared_for_an_order() {
+    let mut s = Society::new(Content::new(vec![Good::new("iron_ingot", 0.25, 64), Good::new("iron_sword", 1.5, 1)], DAY));
+    s.content_mut().dials.standing_orders = false;
+    let (desk, buyer) = (s.add_town("Desk", 0.0), s.add_town("Buyer", 50.0));
+    s.set_roster(desk, &[("merchant", 5)]);
+    s.deliver(desk, 0, 24.0);
+    // Eight swords owed, from the third day: sixteen iron for them.
+    s.draft(desk, buyer, 1, 2.0, 1.5, 3 * DAY, DAY, 4, Incoterm::Exw, true);
+    s.advance(LOOK);
+    assert_eq!(s.inputs(desk)[0], 16.0);
+    s.order(desk, 0, 16.0, 64.0, 128.0);
+    s.advance(2 * LOOK);
+    assert_eq!(s.orders(desk)[0].delivered, 0.0, "24 held, all within its par of a stack");
+    assert_eq!(s.town(desk).stock[0], 24.0);
+    assert_eq!(s.order_wants(desk).get(&0), Some(&32.0), "both lots open: {:?}", s.order_wants(desk));
+}
+
+// `Shops.offer` sets a listing's price only when its good or lot changes: the mint's rate moving leaves it.
+#[test]
+fn the_towns_shop_keeps_its_price_as_the_rate_moves() {
+    let mut s = desk(5, 0.0);
+    s.deliver(DESK, STICK, 64.0);
+    s.own_shop(DESK);
+    s.advance(LOOK);
+    assert_eq!(s.own_shops(DESK)[0].price, 9.0);
+    s.sell_emeralds(2_000);
+    let rate = s.mint_rate();
+    assert!((1.0 / 32.0 * 16.0 * rate * 1.1).ceil() < 9.0, "the rate has fallen far enough to price it lower: {rate}");
+    s.deliver(DESK, STICK, 32.0);
+    s.advance(2 * LOOK);
+    assert_eq!(s.own_shops(DESK)[0].price, 9.0, "listed at 9, still 9");
 }

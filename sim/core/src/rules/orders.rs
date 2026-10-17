@@ -74,15 +74,21 @@ fn reason(what: &str) -> Reason {
     Reason::Other(what.to_string())
 }
 
-/// What a desk's warehouse aims to hold of a good if a locker takes it (`Warehouse.par`): none if none does.
-fn par_of(content: &Content, trades: &Trades, good: GoodId) -> f64 {
-    let per_day = want_per_day(trades, good);
-    bargain::par(content, per_day, per_day > 0.0)
+/// The goods the desk wants (`Caravans.wantedAt`, as far as the core has it): what its lockers take, and the inputs
+/// to what it has contracted to sell.
+fn is_wanted(trades: &Trades, good: GoodId) -> bool {
+    want_per_day(trades, good) > 0.0 || trades.inputs.get(good).copied().unwrap_or(0.0) > 0.0
+}
+
+/// What a desk's warehouse aims to hold of a good (`Warehouse.par`): `shelf_days` of what its lockers take, a stack at
+/// least if it's `wanted`, and at least the inputs it needs to make what it has contracted to sell.
+fn par_of(content: &Content, trades: &Trades, good: GoodId, wanted: bool) -> f64 {
+    bargain::par(content, want_per_day(trades, good), wanted).max(trades.inputs.get(good).copied().unwrap_or(0.0))
 }
 
 /// What the warehouse can spare of a good: beyond its par, and what's set aside for a forward sale (`Broker.spare`).
 fn spare(content: &Content, trades: &Trades, workshop: &Workshop, stock: &Stock, good: GoodId) -> f64 {
-    (stock.0[good].floor() - workshop.aside_of(good) - par_of(content, trades, good)).max(0.0)
+    (stock.0[good].floor() - workshop.aside_of(good) - par_of(content, trades, good, is_wanted(trades, good))).max(0.0)
 }
 
 /// What the world looks like to the atlas: where each town stands, how far word of it carries, the routes' lengths.
@@ -172,7 +178,7 @@ pub fn broker(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, atlas: 
 
         // Signals: what it wants that no market it knows holds, nor a stall here sells.
         let unmet = sourcing.unmet.get(&t).map_or(&[][..], |u| u.as_slice());
-        let markets = if open.is_empty() && unmet.is_empty() && (0..n).all(|g| want_per_day(trades, g) <= 0.0) {
+        let markets = if open.is_empty() && unmet.is_empty() && (0..n).all(|g| !is_wanted(trades, g)) {
             Vec::new()
         } else {
             let places = places.get_or_insert_with(|| places_of(&content, &sites, &routes));
@@ -184,8 +190,8 @@ pub fn broker(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, atlas: 
         for s in signalled.iter().filter(|s| s.why != UNMET && !before.iter().any(|b| b.good == s.good)) {
             outbox.0.push(Output::Signal { town: t, good: s.good, count: s.count, spurs_each: s.spurs_each });
         }
-        // (The jobs' marbles are in emeralds: a price moving with the mint's rate alone changes nothing for them.)
-        let wants = |l: &[Signal]| l.iter().map(|s| (s.good, s.count)).collect::<Vec<_>>();
+        // (The jobs' marbles are what each signal pays, in emeralds: made again when a good, a count or its spurs move.)
+        let wants = |l: &[Signal]| l.iter().map(|s| (s.good, s.count, s.spurs_each)).collect::<Vec<_>>();
         if wants(&signalled) != wants(&before) {
             posted.changed = true;
         }
@@ -234,16 +240,14 @@ fn take_in(content: &Content, book: &Book, now: u64, o: &mut Order) {
 
 /// The contract with a player's shop for what it orders (`Broker.contractFor`): drafted in person at the shop, so in
 /// force at once; Ex Works; as many daily lots as its purse would pay for, up to `shop_installments`, at the shop's
-/// price, which is then locked. One in force is kept only while the shop still asks the lot and price it was drafted
-/// at: relisted, it gets a new one (`book.open(desk, buyer, delivery)` matches the delivery). None if the shop offers
-/// less than `agent_floor` of the goods' worth, can't pay a lot, or its own record has run out of trust.
+/// price, which is then locked. One in force is kept while it runs, the shop repriced or not (`book.open(desk, buyer,
+/// delivery)` matches the good alone): a lot is then charged the lower of the locked price and what the shop asks.
+/// None if the shop offers less than `agent_floor` of the goods' worth, can't pay a lot, or its own record has run out
+/// of trust.
 fn contract_for(content: &Content, book: &mut Book, rate: f64, now: u64, o: &mut Order) -> Option<usize> {
     take_in(content, book, now, o);
     if let Some(id) = o.contract.filter(|&id| book.contracts[id].in_force()) {
-        if o.drafted_at == (o.lot, o.price) {
-            return Some(id);
-        }
-        book.close(id);
+        return Some(id);
     }
     let day = content.day_ticks;
     let worth = worth_of(content, o.good, o.lot, rate);
@@ -254,7 +258,6 @@ fn contract_for(content: &Content, book: &mut Book, rate: f64, now: u64, o: &mut
     let installments = lots.min(content.dials.shop_installments as f64) as u32;
     let id = book.draft(o.town, o.town, o.good, o.lot, o.price / o.lot / rate, now, day, installments, Incoterm::Exw, true, true);
     o.contract = Some(id);
-    o.drafted_at = (o.lot, o.price);
     o.seen = (0, 0);
     Some(id)
 }
@@ -284,7 +287,7 @@ fn fill(content: &Content, book: &mut Book, ledger: &mut Ledger, cash: &mut Cash
         // above its own posted price.
         let price = o.price.min((c.price * lot * rate).round());
         if o.purse < price {
-            unpaid(content, book, id, now);
+            unpaid(book, id);
             break;
         }
         stock.0[g] -= lot;
@@ -306,16 +309,15 @@ fn fill(content: &Content, book: &mut Book, ledger: &mut Ledger, cash: &mut Cash
     filled
 }
 
-/// The buyer couldn't pay for goods it was handed: its miss (`ContractBook.unpaid`).
-fn unpaid(content: &Content, book: &mut Book, id: usize, now: u64) {
-    let (town, day) = (book.contracts[id].seller, content.day_ticks);
+/// The buyer couldn't pay for goods it was handed: its miss (`ContractBook.unpaid`), which the shop's own record takes
+/// in at its next look ([`take_in`]).
+fn unpaid(book: &mut Book, id: usize) {
     let c = &mut book.contracts[id];
     c.buyer_missed += 1;
     let broken = c.buyer_missed >= contracts::MISSES_TO_BREAK;
     if broken {
         c.state = contracts::State::Broken;
     }
-    book.missed(town, town, 1.0, now, day);
     if broken {
         book.broken(id);
         book.tidy();
@@ -337,8 +339,8 @@ fn signals(content: &Content, trades: &Trades, stock: &Stock, open: &BTreeMap<Go
         want(g, (count - stock.0[g].floor()).max(0.0), "a player's order");
     }
     for g in 0..content.goods.len() {
-        if want_per_day(trades, g) > 0.0 {
-            let short = bargain::par(content, want_per_day(trades, g), true) - stock.0[g].floor();
+        if is_wanted(trades, g) {
+            let short = par_of(content, trades, g, true) - stock.0[g].floor();
             if short > 0.0 {
                 want(g, short, "its lockers' trade");
             }
@@ -375,7 +377,7 @@ fn buy(content: &Content, rate: f64, now: u64, trades: &Trades, farm: Option<&Fa
         signalled: &[Signal], tally: &mut Tally) {
     let (g, lot, day) = (stall.good, stall.lot, content.day_ticks);
     let signal = signalled.iter().find(|s| s.good == g);
-    let par = if want_per_day(trades, g) > 0.0 { bargain::par(content, want_per_day(trades, g), true) } else { 0.0 };
+    let par = if is_wanted(trades, g) { par_of(content, trades, g, true) } else { 0.0 };
     let held = stock.0[g].floor();
     let mut want = (open.get(&g).copied().unwrap_or(0.0) + par - held).max(0.0) + signal.map_or(0.0, |s| s.count);
     let ceiling = signal.map_or(worth_of(content, g, lot, rate) * content.dials.maker_ceiling, |s| s.spurs_each * lot);
@@ -432,8 +434,9 @@ fn sell_surplus(content: &Content, rate: f64, now: u64, trades: &Trades, worksho
                 stock.0[old] += shop.shelf; // what's on the shelf of the old listing goes back to the warehouse
             }
             *shop = OwnShop { good: Some(g), lot, price, shelf: 0.0, ..shop.clone() };
-        } else if shop.lot != lot || shop.price != price {
-            // The same good relisted at another lot or price: its shelf stays.
+        } else if shop.lot != lot {
+            // The same good relisted at another lot: its shelf stays. (At the same lot it keeps the price it was listed
+            // at, the mint's rate moving or not: `Shops.offer` sets it only on a new listing.)
             shop.lot = lot;
             shop.price = price;
         }
@@ -448,10 +451,11 @@ fn sell_surplus(content: &Content, rate: f64, now: u64, trades: &Trades, worksho
 
 /// What the markets a town knows have posted as wanted are marbles for its idle hands, by the trade that would supply
 /// them, in emeralds (`Jobs.signals`). The one stream into `jobs::Signals.trades`: what was added last time
-/// (`Sourcing::signalled`) comes off and what is posted now goes on. Made again when a desk's list changed or sourcing
-/// ran this look (its unmet wants moved), as sourcing made them when it was the only poster.
+/// (`Sourcing::signalled`) comes off and what is posted now goes on. Made again when a desk's list changed (a good, a
+/// count, or its spurs each as the mint's rate moves them) or sourcing ran this look (its unmet wants moved), at the
+/// rate then; the mod makes them afresh each time the jobs ask.
 #[allow(clippy::too_many_arguments)]
-pub fn post_signals(clock: Res<Clock>, content: Res<Content>, atlas: Res<Atlas>, mut posted: ResMut<Signals>,
+pub fn post_signals(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, atlas: Res<Atlas>, mut posted: ResMut<Signals>,
         order: Res<Towns>, routes: Query<&Route>, sites: Query<(&Town, Option<&Works>)>,
         rosters: Query<&Town>, mut jobs: ResMut<crate::jobs::Signals>, mut sourcing: ResMut<Sourcing>) {
     if !(posted.changed || sourcing.ran == Some(clock.now)) {
@@ -460,10 +464,11 @@ pub fn post_signals(clock: Res<Clock>, content: Res<Content>, atlas: Res<Atlas>,
     if posted.changed {
         posted.changed = false;
     }
+    let rate = mint.rate(clock.now, content.day_ticks);
     let mut now: BTreeMap<(usize, usize), f64> = BTreeMap::new();
     if !posted.desks.is_empty() {
         // Desk by desk, a good at a time, each town that knows the desk hears of it: the trade that would supply it,
-        // at the good's worth and the premium, in emeralds.
+        // at the spurs the signal pays, in emeralds (`count * spursEach / rate`).
         let places = places_of(&content, &sites, &routes);
         let readers: Vec<usize> = order.0.iter().filter_map(|&e| rosters.get(e).ok().map(|t| t.id)).collect();
         for (&desk, list) in &posted.desks {
@@ -473,8 +478,7 @@ pub fn post_signals(clock: Res<Clock>, content: Res<Content>, atlas: Res<Atlas>,
                 let Some(trade) = crate::rules::sourcing::supplier_trade(&content, s.good) else { continue };
                 for &reader in &readers {
                     if reader != desk && places.known(&content, &atlas, reader).contains(&desk) {
-                        *now.entry((reader, trade)).or_insert(0.0) += s.count * content.goods[s.good].value
-                            * content.dials.signal_premium;
+                        *now.entry((reader, trade)).or_insert(0.0) += s.count * s.spurs_each / rate;
                     }
                 }
             }

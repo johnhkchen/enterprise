@@ -213,11 +213,11 @@ impl Record {
     }
 
     /// `kept` installments kept and `missed` missed, as of `now` (a miss weighs a quarter while they're new, as in
-    /// [`Book::missed`]).
+    /// [`Book::missed`]: new as of the record before these).
     pub fn add(&mut self, kept: f64, missed: f64, now: u64, day: u64) {
         *self = self.at(now, day);
-        self.kept += kept;
         self.missed += missed * if self.kept < TEETHING { TEETHING_WEIGHT } else { 1.0 };
+        self.kept += kept;
     }
 
     /// The record as it stands at `now`: misses forgiven, kept installments a little forgotten.

@@ -58,7 +58,7 @@ pub fn daily(s: &mut Society, r: &mut Rng, _day: u64) {
         }
         3 => {
             if let Some(shop) = s.own_shops(t).iter().find(|o| o.good.is_some()) {
-                let _ = s.buy(t, shop.good.unwrap(), (1 + r.below(16)) as f64);
+                let _ = s.buy(t, shop.good.unwrap(), (1 + r.below(48)) as f64);
             }
         }
         4 if r.below(4) == 0 => {

@@ -220,13 +220,12 @@ pub fn review(world: &mut World) {
             let mut left = Vec::new();
             // What its contracts want, and what a player's order at its desk still wants of what it can spare (the
             // shop's contract is one of the seller contracts `wanted` reads, but nets the whole stock, where the mod's
-            // `fill` asks for what it can't spare beyond the par: the larger of the two).
+            // `fill` asks for what it can't spare beyond the par: the larger of the two). The mod sources shop by shop,
+            // each call done once what's coming covers it, so the largest shop's shortfall, not their sum.
             let mut wants = wanted(env.content, env.book, t, &stock.0);
-            if let Some(open) = world.resource::<crate::orders::Orders>().wanted.get(&t) {
-                for (&good, &n) in open {
-                    let w = wants.entry(good).or_insert(0.0);
-                    *w = w.max(n);
-                }
+            for o in world.resource::<crate::orders::Orders>().orders.iter().filter(|o| o.town == t && o.open > 0.0) {
+                let w = wants.entry(o.good).or_insert(0.0);
+                *w = w.max(o.open);
             }
             for (good, need) in wants {
                 // What its own people make or sell, its Merchant buys of them (`procure`).
