@@ -75,6 +75,12 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
             *n += 1;
         }
     }
+    // Or riding with a wagon as a recruit (`crown.rs`): a levy's to the capital, the barracks' to the front.
+    for x in s.recruits_on_the_road().iter().filter(|x| x.hand.is_some()) {
+        if let Some(n) = out.get_mut(x.home) {
+            *n += 1;
+        }
+    }
     for (t, n) in out.iter().enumerate() {
         let away = s.roster(t).hands.iter().filter(|h| h.away).count();
         if away != *n {

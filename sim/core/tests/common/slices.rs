@@ -43,4 +43,5 @@ slices! {
     war_army,
     player_orders,
     stranded_paper,
+    crown,
 }

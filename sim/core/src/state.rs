@@ -196,6 +196,9 @@ pub struct Wagon {
     /// Freight hubs (`freight.rs`): the hub it calls at on this leg, and the crates aboard on freight tickets (copies of
     /// those in `shipments`), received at their consignee as the mod's `Crates.receive` takes them.
     pub freight: crate::freight::Aboard,
+    /// The crown (`crown.rs`): the recruits it carries (`Caravan.recruits`): a levy's to the capital's barracks, the
+    /// barracks' to the front.
+    pub recruits: Vec<crate::army::Recruit>,
 }
 
 /// A town's run to another: how long the road takes one way, what a round trip costs in road food, its timetable.

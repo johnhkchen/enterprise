@@ -498,4 +498,34 @@ dials! {
     /// `FREIGHT_LIEN`).
     freight_credit_days: f64 = 30.0,
     freight_lien: f64 = 0.5,
+    // crown (`crown.rs`: `market/Sovereign.java`, `market/Requisitions.java`)
+    /// The crown pays half again over worth while it mobilises, two and a half times at war; gold at three times
+    /// (`Sovereign.MOBILISING_PREMIUM`, `WAR_PREMIUM`, `GOLD_PREMIUM`).
+    mobilising_premium: f64 = 1.5,
+    war_premium: f64 = 2.5,
+    gold_premium: f64 = 3.0,
+    /// A mercenary's pay a day, owed to the market across the sea; at most so many hired a contract
+    /// (`Sovereign.MERCENARY_PAY`, `MERCENARIES_MOST`).
+    mercenary_pay: f64 = 1.0,
+    mercenaries_most: u32 = 8,
+    /// A town sends its idle hands and this share of the rest, at least one and at most so many
+    /// (`Sovereign.LEVY_SHARE`, `LEVY_MOST`).
+    levy_share: f64 = 0.2,
+    levy_most: u32 = 4,
+    /// The army the stockpile is for, and the days of its food put by while mobilising, half of it as meat, in food
+    /// points (`Sovereign.PLANNED_ARMY`, `RATION_STORE_DAYS`, `MEAT_POINTS`).
+    planned_army: u32 = 24,
+    ration_store_days: u32 = 20,
+    meat_points: f64 = 1920.0,
+    /// A requisition is for so many days' wants, taking bids so many days (`Requisitions.PERIOD_DAYS`, `BID_DAYS`).
+    period_days: u32 = 5,
+    bid_days: u32 = 2,
+    /// A Merchant bids its cost and this share of the way to the crown's price, a quarter more for what's made to order;
+    /// the crown's price is the worth, the suppliers' margin and this for carriage, times the phase's premium
+    /// (`Requisitions.BID_SHARE`, `MAKE_MARKUP`, `CEILING_CARRIAGE`).
+    bid_share: f64 = 0.5,
+    make_markup: f64 = 0.25,
+    ceiling_carriage: f64 = 1.1,
+    /// The front lies this many blocks north of the capital (`Sovereign.FRONT_DISTANCE`).
+    front_distance: f64 = 1500.0,
 }

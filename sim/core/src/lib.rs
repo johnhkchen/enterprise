@@ -23,6 +23,7 @@ pub mod dials;
 pub mod farms;
 pub mod freight;
 pub mod contracts;
+pub mod crown;
 pub mod desires;
 pub mod herds;
 pub mod harvest;

@@ -50,6 +50,7 @@ crate::saved! {
         army: crate::army::Army = crate::army::Army::default(),
         orders: crate::orders::Orders = crate::orders::Orders::default(),
         posted: crate::orders::Signals = crate::orders::Signals::default(),
+        sovereign: crate::crown::Sovereign = crate::crown::Sovereign::default(),
     }
     town {
         town: Town,
@@ -117,4 +118,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::army::register(schedule);
     crate::rules::orders::register(schedule);
     crate::rules::stranded::register(schedule);
+    crate::rules::crown::register(schedule);
 }

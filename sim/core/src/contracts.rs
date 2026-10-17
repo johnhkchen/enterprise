@@ -121,6 +121,14 @@ pub struct Contract {
     /// When it was drafted (`Contract.drafted`; 0 for one a host drafted without saying), for `previous_due` before the
     /// first installment.
     pub drafted: u64,
+    /// The crown's bonus clauses (`contract/Bonus.java`, `Contract.bonuses`): goods delivered enchanted at least so well
+    /// are paid so much more; they count whatever their enchantments ([`Contract::price_of`], `crown.rs`).
+    #[serde(default)]
+    pub bonuses: Vec<crate::crown::Bonus>,
+    /// The levy term (`contract/Levy.java`, `Contract.levy`), if any: the contract is for soldiers, not goods (quantity
+    /// 0), raised when the buyer's wagon calls at the seller's (`crown.rs`).
+    #[serde(default)]
+    pub levy: Option<crate::crown::Levy>,
 }
 
 /// Sums under this are nothing (`Contract.advanceDue` and `refunds` list above 0.01; `recoupFrom` stops at 0.001).
@@ -157,6 +165,13 @@ impl Contract {
 
     pub fn in_force(&self) -> bool {
         self.state == State::Active
+    }
+
+    /// The price for one piece delivered with these enchantments: the locked price, and each bonus clause it meets on
+    /// top (`Contract.priceOf`).
+    pub fn price_of(&self, piece: &[(crate::crown::Enchant, u8)]) -> f64 {
+        let bonus: f64 = self.bonuses.iter().filter(|b| b.met(piece)).map(|b| b.percent).sum();
+        self.price * (1.0 + bonus / 100.0)
     }
 
     /// Installments due by `at`.
@@ -261,6 +276,8 @@ impl Book {
             harvest: None,
             training: None,
             drafted: 0,
+            bonuses: Vec::new(),
+            levy: None,
             id,
             seller,
             buyer,
@@ -421,7 +438,7 @@ impl Book {
     /// Is there a contract drafted or in force between them for this good?
     pub fn covers(&self, seller: TownId, buyer: TownId, good: GoodId) -> bool {
         self.open.iter().map(|&id| &self.contracts[id]).any(|c| matches!(c.state, State::Drafted | State::Active)
-            && c.training.is_none() && c.seller == seller && c.buyer == buyer && c.good == good)
+            && c.training.is_none() && c.levy.is_none() && c.seller == seller && c.buyer == buyer && c.good == good)
     }
 
     pub fn trust(&self, a: TownId, b: TownId, now: u64, day: u64) -> f64 {
@@ -479,8 +496,9 @@ impl Book {
     pub fn review_with(&mut self, now: u64, day: u64, dials: &HarvestDials, seller_holds: impl Fn(&Contract) -> bool) {
         let grace = (GRACE_DAYS * day as f64) as u64;
         for i in self.open.clone() {
-            // A training contract is judged on the census, not on installments (`Book::review_training`).
-            if !self.contracts[i].in_force() || self.contracts[i].training.is_some() {
+            // A training contract is judged on the census, not on installments (`Book::review_training`); a levy has no
+            // delivery term to judge (`ContractBook.review`'s `delivery.isPresent()`).
+            if !self.contracts[i].in_force() || self.contracts[i].training.is_some() || self.contracts[i].levy.is_some() {
                 continue;
             }
             loop {
