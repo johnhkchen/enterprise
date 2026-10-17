@@ -123,7 +123,7 @@ fn a_buyer_keeps_its_trading_capital_and_buys_only_the_excess() {
     assert!(excess.town(1).money >= 6.4 - 1e-9, "and the mill keeps its trading capital");
 }
 
-// parity: CaravanTests.aDestinationThatCantPayGetsNothing
+// parity-partial: CaravanTests.aDestinationThatCantPayGetsNothing (no crates in the core yet: the Java test also checks the crated paper rides home)
 #[test]
 fn a_buyer_with_no_money_buys_nothing_and_the_wagon_brings_it_all_home() {
     let mut s = farm_and_mill(2.0, 0.0);
