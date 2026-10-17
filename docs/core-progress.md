@@ -6,9 +6,9 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `7ba9c64`. 395 tests pass (`just core-test`, a few seconds). Parity: **136 covered, 27 partial, 46
-  skipped, 53 left of 262** (`just parity`). `just core-fingerprint`: `71d781d2f6614010` (atlas-and-books changes what
-  rostered towns plan and commissions routes, so every world moved; was `8d6c87c4d9e75caf`).
+- **Main:** `3464146`. 420 tests pass (`just core-test`, a few seconds). Parity: **142 covered, 28 partial, 46
+  skipped, 46 left of 262** (`just parity`). `just core-fingerprint`: `ca7842aa7dc277c5` (desires-and-backhauls sells
+  whole comforts, loads them first and sends shopping wagons, so every world moved; was `71d781d2f6614010`).
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
 - **Paused 2026-10-17 21:05** (13 of 32 landed), with no landing under way. Four trees waited in `.trees/`
@@ -41,7 +41,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 21 | 3 | `chokepoints` | opus/high (opus/medium) | `territory-growth` | `6a4e7e0` | Crossings and their post options, `best_plan` every 3 days (80%/95% of the detour, 25%/35% caps, a fee to 3 emeralds), one guard hired a review, `bridge_value`, `Takings`; all 8 TollTests tags pinned. Gaps: bare routes unseen, fractional spurs, `set_toll` still clamps to the constant (mines-and-kit: armour needs territory_growth's check raised to `ARMOURED_TOLL_RATE`). At landing: one road-food price (`map::per_hex_at_bread`), the wagon test fed as main's road-food asks |
 | 22 | 3 | `services` | opus/high (sonnet/high) | `squads`, `herds`, `farms-and-wages`, `atlas-and-books` | — | a registry over seven Java files that later tasks read |
 | 23 | 3 | `mines-and-kit` | sonnet/medium (sonnet/medium) | `territory-growth`, `services` | — |  |
-| 24 | 3 | `desires-and-backhauls` | sonnet/high (sonnet/medium) | `bargain-and-par`, `atlas-and-books` | — |  |
+| 24 | 3 | `desires-and-backhauls` | sonnet/high (sonnet/medium) | `bargain-and-par`, `atlas-and-books` | `3464146` | `will_pay`/`reckon`, outlets and `worth_buying`, whole comforts paid from beyond the reserve, comforts loaded first at half again the stocktake's want less use since, shopping purses, surplus and glut bought for the trip home, shop listings as news; 7 tags pinned, the shop partial (vendor's Minecraft's). Gaps: ex-works funded before shopping (the mod: shopping first), shopping money counts toward worth only where the far end holds the kind, an uncounted market read live (mod: whole par wanted), listings only for locker goods, no crown reserve, bought goods loose. At landing: a glut bought for home's food only where home's food is known short (`foodKnownAt`: an untimed stocktake is plenty), the bank's float sees the shopping allowance, shop kept after the last reviews and buying after porters go home |
 | 25 | 3 | `crates-and-papers` | opus/high (sonnet/medium) | `harvest-and-rents`, `advances-and-refunds` | `54d36bc` | changes what cargo is, through arrive and plan. Shipments with bills of lading, empties, earmarks, paperwork and scribes, `settleOwing` both ways; 6 tags, 4 partial (one good a crate, `crate_room` for chest slots, clerks are buildings-and-works'). Gaps: no paperwork for drafts or bills, empties take no slots, stored goods plain stock. At landing: spare empties and crates made out home first at the far end (the mod's order), Ex Works earmarks left to the paid collection, scribes' fees booked in full |
 | 26 | 3 | `freight-hubs` | opus/xhigh (opus/high) | `crates-and-papers`, `atlas-and-books`, `territory-growth` | — |  |
 | 27 | 3 | `sourcing-and-procurement` | sonnet/high (sonnet/high) | `lockers`, `atlas-and-books`, `services` | — |  |
