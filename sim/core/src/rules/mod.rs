@@ -12,7 +12,8 @@
 //! 7. **Plan:** each idle route's plan for a wagon, built up in turn: `PlanOwed`, `PlanCollect`, `PlanPapers`,
 //!    `PlanFreight`, `PlanSale`, `PlanBuy`; then `Decide` (it goes, or waits).
 //!
-//! A module joins a step with its own systems in its own file (`register`), so slices don't edit each other's.
+//! A module joins a step with its own systems in its own file (`register`), listed in `slices.rs`, so slices don't edit
+//! each other's.
 
 pub mod arrive;
 pub mod bills;
@@ -65,13 +66,7 @@ pub fn look_schedule() -> Schedule {
     // Two chains, joined at Sell, since a tuple of this length isn't an ordered set.
     schedule.configure_sets((Touch, Work, Pay, Review, Judge, Arrive, Mail, Papers, Settle, Collect, Freight, Sell).chain());
     schedule.configure_sets((Sell, Buy, Draft, Services, Turn, Plan, PlanOwed, PlanCollect, PlanPapers, PlanFreight, PlanSale, PlanBuy, Decide).chain());
-    touch::register(&mut schedule);
-    crate::people::register(&mut schedule);
-    contracts::register(&mut schedule);
-    bills::register(&mut schedule);
-    arrive::register(&mut schedule);
-    plan::register(&mut schedule);
-    roster::register(&mut schedule);
+    crate::slices::register(&mut schedule);
     schedule
 }
 

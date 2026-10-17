@@ -1,4 +1,5 @@
-//! The random worlds' generator, shared by the tests that run them (`random_worlds.rs`, `save.rs`).
+//! The random worlds' generator, shared by the tests that run them (`random_worlds.rs`, `save.rs`...): the base world
+//! below, then each slice's part of it, a file of its own in `slices/` listed in `slices.rs` (see there).
 #![allow(dead_code)]
 
 use enterprise_core::{Content, Good, Hex, Incoterm, Society};
@@ -24,7 +25,46 @@ impl Rng {
     pub fn range(&mut self, lo: f64, hi: f64) -> f64 {
         lo + (hi - lo) * self.unit()
     }
+
+    /// A stream of its own for a slice (by its name) in a world (by its seed), on a day (0: making the world): a slice
+    /// added or changed leaves every other's draws as they were.
+    pub fn of(seed: u64, slice: &str, day: u64) -> Rng {
+        // FNV-1a over the name, then mixed with the seed and the day.
+        let mut h: u64 = 0xCBF2_9CE4_8422_2325;
+        for b in slice.bytes() {
+            h = (h ^ b as u64).wrapping_mul(0x0100_0000_01B3);
+        }
+        let mut r = Rng((h ^ seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ day.wrapping_mul(0xC2B2_AE3D_27D4_EB4F)) | 1);
+        r.next();
+        r
+    }
 }
+
+/// The list of slices (`slices.rs`) made into calls: each slice's `extend` when a world is made, its `daily` each day
+/// (the host's doings, after the day's run) and its `check` after it (its invariants), each with a stream of its own.
+macro_rules! slices {
+    ($($name:ident),* $(,)?) => {
+        $(pub mod $name;)*
+
+        /// Every slice's part of a new world, in the list's order.
+        pub fn extend(s: &mut Society, seed: u64) {
+            $($name::extend(s, &mut Rng::of(seed, stringify!($name), 0));)*
+        }
+
+        /// Every slice's doings for a day, after the day has run.
+        pub fn daily(s: &mut Society, seed: u64, day: u64) {
+            $($name::daily(s, &mut Rng::of(seed, stringify!($name), day), day);)*
+        }
+
+        /// Every slice's invariants, checked at the end of a day.
+        pub fn check(s: &Society, day: u64) -> Result<(), String> {
+            $($name::check(s, day).map_err(|e| format!("{}: {e}", stringify!($name)))?;)*
+            Ok(())
+        }
+    };
+}
+
+pub mod slices;
 
 pub fn world(seed: u64) -> Society {
     let mut r = Rng(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1);
@@ -103,5 +143,6 @@ pub fn world(seed: u64) -> Society {
             s.add_road(a, b, r.range(1.0, 8.0));
         }
     }
+    slices::extend(&mut s, seed);
     s
 }

@@ -1,0 +1,6 @@
+# Lists every slice adds a line to: merged by union, so two trees' additions never conflict (add lines only).
+sim/core/src/slices.rs merge=union
+sim/core/src/dials.rs merge=union
+sim/core/src/lib.rs merge=union
+sim/core/tests/common/slices.rs merge=union
+scripts/parity-skip.txt merge=union

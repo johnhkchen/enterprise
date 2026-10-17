@@ -111,18 +111,28 @@ builds for WebAssembly), without Java. Read, in order: docs/worktrees.md (the ru
 docs/core-plan.md (your task's section, and section 2's decisions), docs/core-math.md, and the parts of docs/decisions.md
 your task names. Read the Java it names as the reference: core/src/main/java/dev/b28/enterprise/. Never build or run Java.
 
-Rules (docs/worktrees.md): stay in your tree; shared files (sim/core/src/rules/mod.rs, state.rs, content.rs, society.rs,
-lib.rs) take additions only, in your own lines; your slice's data goes in sim/core/src/SLICE.rs and its systems in
-sim/core/src/rules/SLICE.rs with a `register(&mut Schedule)`; order your systems with `.after(...)`; no clock, no
-HashMap iteration, no randomness but the world's seeded Rng; every new component/resource derives
-serde::{Serialize, Deserialize} and Default; every money transfer goes through cash_book::post (once it has landed:
-until then, through the Ledger as today); cite the Java file and methods in your module's doc comment; port the
-mod's constants as `pub const` or dials (content.rs) with the mod's defaults.
+Rules (docs/worktrees.md): stay in your tree. Your slice lives in its own files: data and components in
+sim/core/src/SLICE.rs, systems in sim/core/src/rules/SLICE.rs with a `register(&mut Schedule)`, host calls in an
+`impl Society` block in your module (Society's fields are pub(crate)), tests in sim/core/tests/SLICE.rs. Then one line
+each in the shared lists, which git merges by union (add lines only, never change or remove one):
+sim/core/src/slices.rs (your state in `saved!`, your `register` call), sim/core/src/dials.rs (your dials, one line each,
+`name: type = default,` with the mod's defaults, as a block under a comment naming your slice at the end of the list),
+sim/core/src/lib.rs (`pub mod`), sim/core/tests/common/slices.rs (your generator's name). Other shared files
+(state.rs, rules/mod.rs, society.rs, arrive.rs, plan.rs) take additions only, in your own lines. Order your systems
+with `.after(...)`; no clock, no HashMap iteration, no randomness but the world's seeded Rng. Every new component or
+resource derives serde::{Serialize, Deserialize} and Default and is listed in `saved!` (tests/save.rs fails while a
+world holds unlisted state). Every money transfer goes through cash_book::post (post_legs for one payment in several
+legs), never `money.0 -=`. No new dependencies: Cargo.toml and Cargo.lock are the integrator's (serde, postcard and
+bevy_ecs are there); if you need a crate, say so in your summary. Cite the Java file and methods in your module's doc
+comment; port the mod's constants as `pub const` or dials with the mod's defaults.
 
 Every behaviour gets a test in sim/core/tests/SLICE.rs. A test that matches a Java game test says so on the line above:
-`// parity: File.method` (or `parity-partial:` when the Java test asserts more than the rule). Add your mechanism to
-tests/random_worlds.rs so 300 seeds exercise it; conservation and solvency (check.rs) must hold every day and
-the_same_seed_gives_the_same_world must pass.
+`// parity: File.method` (or `parity-partial:` when the Java test asserts more than the rule, or the Rust test pins
+less than it does). Add your mechanism to the random worlds in sim/core/tests/common/slices/SLICE.rs (`extend` for a
+new world, `daily` for a host's doings, `check` for your invariants; each gets a random stream of its own) so 300
+seeds exercise it; don't edit tests/random_worlds.rs or the base generator. Conservation and solvency (check.rs) must
+hold every day and the_same_seed_gives_the_same_world must pass. A refactor that mustn't change behaviour shows
+`just core-fingerprint` the same as main's.
 
 Gates: `cd sim && cargo test --release` passes; `python3 scripts/parity.py` shows your tags. Commit in your tree with
 messages in the repo's style (what changed and why, measured), ending with the two attribution lines. Don't push,

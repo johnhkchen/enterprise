@@ -12,6 +12,7 @@ pub mod bills;
 pub mod cash_book;
 pub mod check;
 pub mod content;
+pub mod dials;
 pub mod contracts;
 pub mod hex;
 pub mod map;
@@ -21,6 +22,7 @@ pub mod people;
 pub mod roster;
 pub mod rules;
 pub mod save;
+pub mod slices;
 pub mod society;
 pub mod state;
 

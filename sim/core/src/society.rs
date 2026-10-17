@@ -10,11 +10,12 @@ use crate::messages::{Input, Output, RouteId, TownId};
 use crate::rules::{look_schedule, touch::catch_up_town};
 use crate::state::*;
 
+/// A society and its look. A slice's own host calls go in an `impl Society` block in its own module, not here.
 pub struct Society {
     pub world: World,
-    look: Schedule,
-    towns: Vec<Entity>,
-    routes: Vec<Entity>,
+    pub(crate) look: Schedule,
+    pub(crate) towns: Vec<Entity>,
+    pub(crate) routes: Vec<Entity>,
 }
 
 /// A town as a host sees it.
@@ -44,11 +45,8 @@ impl Society {
         world.insert_resource(Clock::default());
         world.insert_resource(Outbox::default());
         world.insert_resource(Towns::default());
-        world.insert_resource(Book::default());
-        world.insert_resource(crate::bills::Bills::default());
-        world.insert_resource(crate::mint::Mint::default());
-        world.insert_resource(crate::map::Map::default());
-        world.insert_resource(CashBook::default());
+        // The rest a new society starts with, as `slices.rs` lists them.
+        crate::slices::Resources::seed(&mut world);
         Society { world, look: look_schedule(), towns: Vec::new(), routes: Vec::new() }
     }
 
@@ -476,6 +474,12 @@ impl Society {
     }
 
     /// A society from a blob [`Society::save`] made: run on, it comes out as the saved one would have.
+    /// What in the world a save would lose (see [`crate::save::unsaved`]): empty when every piece of state is in
+    /// `saved!`.
+    pub fn unsaved(&self) -> Vec<String> {
+        crate::save::unsaved(&self.world)
+    }
+
     pub fn load(bytes: &[u8]) -> Result<Society, String> {
         let (world, towns, routes) = crate::save::load(bytes)?;
         Ok(Society { world, look: look_schedule(), towns, routes })

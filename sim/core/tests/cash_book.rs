@@ -1,6 +1,8 @@
 //! The cash book and the Accountant: every transfer a posting between accounts, noted on both sides by day and by
 //! what for, and the town's day's budget shared by all its spenders.
 
+mod common;
+
 use enterprise_core::cash_book::{Account, Reason, KEPT_DAYS};
 use enterprise_core::state::Money;
 use enterprise_core::{Content, Good, Society};
@@ -160,4 +162,28 @@ fn households_are_paid_wages_and_pay_for_comforts() {
     let t = s.cash_book(town, 10);
     assert!((by_label(&t, "wages") + by_label(&h, "wages")).abs() < 1e-9, "both sides of the wages");
     assert!((by_label(&t, "comforts") + by_label(&h, "comforts")).abs() < 1e-9, "both sides of the comforts");
+}
+
+#[test]
+fn each_towns_book_explains_its_treasury_in_random_worlds() {
+    use common::{world, DAY};
+    for seed in 0..100 {
+        let mut s = world(seed);
+        let mut at_90 = Vec::new();
+        for day in 1..=120 {
+            if day == 90 {
+                // The last look of day 89 (a look is every 1,200 ticks, so this adds none).
+                s.advance(day * DAY - 1200);
+                at_90 = (0..s.town_count()).map(|t| s.town(t).money).collect();
+            }
+            s.advance(day * DAY);
+            common::slices::daily(&mut s, seed, day);
+        }
+        // Days 90 to 120's entries are what each town's money moved since day 89.
+        for t in 0..s.town_count() {
+            let booked: f64 = s.cash_book(t, 31).iter().map(|(_, _, v)| v).sum();
+            let moved = s.town(t).money - at_90[t];
+            assert!((booked - moved).abs() < 1e-6 * moved.abs().max(1.0), "seed {seed}, town {t}: {booked} {moved}");
+        }
+    }
 }

@@ -106,6 +106,10 @@ tree-rm name *flags:
 core-test:
     cd sim && cargo test --release -q
 
+# One hash of 300 random worlds' 120 days: a refactor that mustn't change behaviour compares it before and after.
+core-fingerprint:
+    cd sim && cargo test --release -q --test fingerprint -- --ignored --nocapture 2>&1 | grep '^fingerprint'
+
 # How far the core matches the mod's game tests: `just parity --left` lists what's not covered yet
 parity *flags:
     python3 scripts/parity.py {{flags}}

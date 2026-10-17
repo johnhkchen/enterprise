@@ -15,3 +15,5 @@ serde = { version = "1.0.229", features = ["derive"] }
 [dev-dependencies]
 # Tests only: reads a struct's field names (every dial has a name).
 serde_json = "1.0.154"
+# Tests only: the ECS with type names, so a test naming state the save misses can say which.
+bevy_ecs = { version = "0.20", default-features = false, features = ["std", "debug"] }

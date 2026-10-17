@@ -9,21 +9,20 @@
 //! their towns' entities again from `from_id` and `to_id`, so nothing saved depends on an entity id.
 //!
 //! **Every type that's state derives `serde::{Serialize, Deserialize}`** (and `Default`): components, resources and
-//! what they hold. A slice that adds one adds a line to `saved!` below: a resource under `resources`, a town's
-//! component under `town`, a route's under `route`. Each is optional, so a component only some towns have (or a
+//! what they hold. A slice that adds one adds a line to the `saved!` list in `slices.rs`: a resource under `resources`
+//! (with `= value` if a new society starts with it), a town's component under `town`, a route's under `route`; a test
+//! (`tests/save.rs`) fails while any state in a world isn't listed. Each is optional, so a component only some towns have (or a
 //! resource only some worlds have) saves as it is. An `Entity` held in state is `#[serde(skip)]` and linked again in
-//! [`load`], from a number that is saved. A new kind of entity gets its own list here, like towns and routes.
+//! [`load`], from a number that is saved. A new kind of entity gets its own list in the macro, like towns and routes.
 //!
 //! The format is postcard (compact, no schema, builds for `wasm32-wasip1`), after a magic and a [`FORMAT`] number.
 //! Postcard isn't self-describing: a blob saved before a field was added won't load after it. Bump [`FORMAT`] when the
-//! state changes shape; a load of another format is refused, not misread.
+//! state changes shape after a release (the integrator's job; until the first, it stays 1); a load of another format is
+//! refused, not misread.
 
 use bevy_ecs::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::bills::Bills;
-use crate::content::Content;
-use crate::contracts::Book;
 use crate::state::*;
 
 /// The blob's first bytes.
@@ -32,9 +31,11 @@ pub const MAGIC: [u8; 4] = *b"ENTS";
 pub const FORMAT: u32 = 1;
 
 /// What's saved: resources, and a town's and a route's components, each by a name of its own.
+#[doc(hidden)]
+#[macro_export]
 macro_rules! saved {
     (
-        resources { $($r:ident: $R:ty),* $(,)? }
+        resources { $($r:ident: $R:ty $(= $init:expr)?),* $(,)? }
         town { $($t:ident: $T:ty),* $(,)? }
         route { $($q:ident: $Q:ty),* $(,)? }
     ) => {
@@ -60,65 +61,51 @@ macro_rules! saved {
         }
 
         impl Resources {
-            fn take(world: &World) -> Self {
+            pub(crate) fn take(world: &World) -> Self {
                 Resources { $($r: world.get_resource::<$R>().cloned(),)* }
             }
 
-            fn put(self, world: &mut World) {
+            pub(crate) fn put(self, world: &mut World) {
                 $(if let Some(r) = self.$r { world.insert_resource(r); })*
+            }
+
+            /// Puts every resource listed with `= value` that the world hasn't yet into it, in the list's order: what
+            /// a new society starts with.
+            pub(crate) fn seed(world: &mut World) {
+                $($(if !world.contains_resource::<$R>() { world.insert_resource::<$R>($init); })?)*
             }
         }
 
+        /// The types `saved!` lists: resources, a town's components, a route's.
+        pub(crate) fn saved_types() -> [Vec<core::any::TypeId>; 3] {
+            use core::any::TypeId;
+            [vec![$(TypeId::of::<$R>()),*], vec![$(TypeId::of::<$T>()),*], vec![$(TypeId::of::<$Q>()),*]]
+        }
+
         impl SavedTown {
-            fn take(e: EntityRef) -> Self {
+            pub(crate) fn take(e: EntityRef) -> Self {
                 SavedTown { spawned: e.id().index_u32(), $($t: e.get::<$T>().cloned(),)* }
             }
 
-            fn put(self, e: &mut EntityWorldMut) {
+            pub(crate) fn put(self, e: &mut EntityWorldMut) {
                 $(if let Some(c) = self.$t { e.insert(c); })*
             }
         }
 
         impl SavedRoute {
-            fn take(e: EntityRef) -> Self {
+            pub(crate) fn take(e: EntityRef) -> Self {
                 SavedRoute { spawned: e.id().index_u32(), $($q: e.get::<$Q>().cloned(),)* }
             }
 
-            fn put(self, e: &mut EntityWorldMut) {
+            pub(crate) fn put(self, e: &mut EntityWorldMut) {
                 $(if let Some(c) = self.$q { e.insert(c); })*
             }
         }
     };
 }
 
-saved! {
-    resources {
-        content: Content,
-        clock: Clock,
-        ledger: Ledger,
-        outbox: Outbox,
-        book: Book,
-        bills: Bills,
-        mint: crate::mint::Mint,
-        map: crate::map::Map,
-        cash_book: crate::cash_book::CashBook,
-    }
-    town {
-        town: Town,
-        money: Money,
-        stock: Stock,
-        trades: Trades,
-        touched: Touched,
-        budget: Budget,
-        people: People,
-        roster: crate::roster::Roster,
-    }
-    route {
-        route: Route,
-        state: RouteState,
-        path: RoutePath,
-    }
-}
+pub use crate::slices::{Resources, SavedRoute, SavedTown};
+use crate::slices::saved_types;
 
 /// The whole society: its resources, its towns in `Town.id` order and its routes in `Route.seq` order.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -209,4 +196,46 @@ pub fn restore(saved: Saved) -> Result<(World, Vec<Entity>, Vec<Entity>), String
     }
     world.resource_mut::<Towns>().0 = town_entities.clone();
     Ok((world, town_entities, route_entities))
+}
+
+/// What in `world` isn't in `saved!`, in words: a resource, or a town's or a route's component, that a save would lose,
+/// or an entity that is neither a town nor a route. Empty when everything is kept.
+pub fn unsaved(world: &World) -> Vec<String> {
+    use core::any::TypeId;
+    let [resources, town, route] = saved_types();
+    // Rebuilt by a load, or Bevy's own.
+    let rebuilt = [TypeId::of::<Towns>(), TypeId::of::<bevy_ecs::entity_disabling::DefaultQueryFilters>(),
+        TypeId::of::<bevy_ecs::schedule::Schedules>()];
+    let name = |id| world.components().get_info(id).map_or_else(|| format!("{id:?}"), |i| i.name().to_string());
+    let type_of = |id| world.components().get_info(id).and_then(|i| i.type_id());
+    let mut out = Vec::new();
+    let mut holders = Vec::new();
+    for (id, e) in world.resource_entities().iter() {
+        holders.push(e);
+        if !type_of(id).is_some_and(|t| resources.contains(&t) || rebuilt.contains(&t)) {
+            out.push(format!("the resource {}", name(id)));
+        }
+    }
+    for e in world.iter_entities() {
+        if holders.contains(&e.id()) {
+            continue;
+        }
+        let (kind, kept) = if e.contains::<Town>() {
+            ("a town's", &town)
+        } else if e.contains::<Route>() {
+            ("a route's", &route)
+        } else {
+            let all: Vec<String> = e.archetype().components().iter().map(|&id| name(id)).collect();
+            out.push(format!("an entity neither a town nor a route ({})", all.join(", ")));
+            continue;
+        };
+        for &id in e.archetype().components() {
+            if !type_of(id).is_some_and(|t| kept.contains(&t)) {
+                out.push(format!("{kind} component {}", name(id)));
+            }
+        }
+    }
+    out.sort();
+    out.dedup();
+    out
 }

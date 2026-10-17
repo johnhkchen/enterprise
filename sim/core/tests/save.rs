@@ -35,6 +35,20 @@ fn load_then_run_equals_never_saved_to_the_bit() {
     }
 }
 
+#[test]
+fn every_piece_of_state_in_a_world_is_in_saved() {
+    // Every slice's state, as the random worlds make and run it: a component or resource not in `slices.rs`'s
+    // `saved!` would be lost by a save.
+    for seed in 0..60 {
+        let mut s = world(seed);
+        for day in 1..=40 {
+            s.advance(day * DAY);
+            common::slices::daily(&mut s, seed, day);
+        }
+        assert_eq!(s.unsaved(), Vec::<String>::new(), "seed {seed}: add these to `saved!` in sim/core/src/slices.rs");
+    }
+}
+
 // parity: ContractTests.aDialIsSetForTheWorldAndSavedWithIt
 #[test]
 fn a_dial_is_set_for_the_world_and_saved_with_it() {
