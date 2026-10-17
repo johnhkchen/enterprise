@@ -2,12 +2,12 @@
 
 The live to-do list for building the Rust core to parity (the plan is `docs/core-plan.md`; how trees work is
 `docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-17, wave 1a landed and the
-conflict magnets fixed; waves 1b to 5 starting as one workflow.
+conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `66af5d0`. 107 tests pass (`just core-test`, a few seconds). Parity: **46 covered, 13 partial, 46
-  skipped, 157 left of 262** (`just parity`). `just core-fingerprint`: `98348d1c9b26721a`.
+- **Main:** `fe48704`. 117 tests pass (`just core-test`, a few seconds). Parity: **50 covered, 13 partial, 46
+  skipped, 153 left of 262** (`just parity`). `just core-fingerprint`: `078567edb645ea86`.
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
 
@@ -18,7 +18,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 
 | Order | Wave | Task | Model / effort (plan's) | Waits for | Landed | Notes |
 |---|---|---|---|---|---|---|
-| 9 | 1b | `bargain-and-par` | opus/high (sonnet/high) | `cash-book` | — | edits sell and plan_sale, the busiest rules, and moves measured ratios |
+| 9 | 1b | `bargain-and-par` | opus/high (sonnet/high) | `cash-book` | `fe48704` | 4 BargainTests pinned; `Prices` table; wagons sell at the bargained mid-batch price (dial `bargain`). Gaps: the sale's par is `shelf` (no 64 floor, no inputs term), seller level the home Merchant's (not the crew's). At landing: `set_trade` leaves recorded locker capacity alone |
 | 10 | 1b | `advances-and-refunds` | sonnet/medium (sonnet/medium) | `cash-book`, `save-load` | `66af5d0` | 2 ContractTests pinned; CaravanTests advance partial (inputs follow is sourcing's). At landing: refunds before advances (mod's order), the seller's wagon collects at the buyer (was missing), both before bills |
 | 11 | 1b | `road-food` | opus/high (opus/medium) | `cash-book`, `bargain-and-par` | — |  |
 | 12 | 2 | `lockers` | opus/high (sonnet/high) | `roster`, `cash-book` | — | structural: rostered towns' income; five later tasks build on it |
@@ -97,3 +97,7 @@ dependencies are the integrator's; `trees.py` locks its registry, so agents can 
 - A brief that names a Java method as the reference gets ported a half at a time: `payAdvances` has two loops (the
   buyer's wagon pays, the seller's wagon collects) and the second was missing. Briefs list each branch of the
   reference, and its call order against its neighbours in the step (`settleOwing`, `payAdvances`, `presentBills`).
+- Iterate towns in `Town.id` order where floats add into shared totals: the look's queries go in archetype order, so a
+  component inserted on some towns mid-run reorders them against a loaded world and load-then-run differs in the last
+  bit (`bargain-and-par` gave every town `LockerCapacity` from `add_town` to dodge it). Briefs: spawn a town's
+  components in `add_town`, never insert one later.
