@@ -86,7 +86,9 @@ pub struct Holding {
     pub toll_plan: crate::chokepoints::TollPlan,
     pub traffic_since: f64,
     pub traffic_per_day: f64,
-    /// Shares of its guards armed and armoured (0 to 1): armed ones ask more of a detour, armoured ones a higher toll.
+    /// Shares of its guards armed (0 to 1) and armoured (the chestplates' kit share: to 1.5 with enchanted plates, as the
+    /// mod's, so an armoured toll's cap may pass `ARMOURED_TOLL_RATE`): armed ones ask more of a detour, armoured ones a
+    /// higher toll.
     /// Set at each look from the kit in the warehouse (`kit.rs`, `Smithing.armed` and the armour share); a host with
     /// none of the guards' kit goods sets them itself (`Society::set_guard_kit`).
     pub armed: f64,

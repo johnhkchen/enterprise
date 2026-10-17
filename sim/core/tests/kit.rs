@@ -231,6 +231,21 @@ fn another_idle_hand_gathers_a_third_less_and_each_works_a_hex() {
 }
 
 #[test]
+fn hands_work_the_hexes_by_q_then_r_not_as_claimed() {
+    // Home (3, 3) on plains is claimed first, then (2, 3) on hills: the one Nitwit works (2, 3), the first by q.
+    let mut s = Society::new(content());
+    let t = town(&mut s, &[("nitwit", 1)]);
+    let home = s.town_hex(t).unwrap();
+    assert!(s.claim(t));
+    assert!(s.claim_hex(t, Hex::new(2, 3)));
+    s.set_land(Hex::new(2, 3), Land::Hills);
+    assert_eq!(s.holding(t).hexes[0], home, "(claimed first)");
+    s.advance(DAY);
+    assert_eq!(stock(&s, t, "cobblestone"), 24.0, "the hills' 16, by 1.5");
+    assert_eq!(stock(&s, t, "wheat_seeds"), 0.0, "and none of the plains'");
+}
+
+#[test]
 fn hands_stop_gathering_at_sixteen_of_a_good_the_town_does_not_use_and_sixty_four_of_one_it_does() {
     let c = content();
     let sticks = good(&c, "stick");
@@ -292,6 +307,18 @@ fn hands_without_a_tool_are_given_an_axe_from_the_warehouse() {
 // parity: BuildingTests.aFletcherHuntsWithABow
 #[test]
 fn a_fletcher_hunts_with_a_bow() {
+    // As the mod's: `LabourTests.town`'s Fletcher is a Novice, and the bow a plain one in the warehouse.
+    let mut s = Society::new(content());
+    let t = town(&mut s, &[("fletcher", 1)]);
+    s.deliver(t, good(s.content(), "bow"), 1.0);
+    s.advance(DAY);
+    let feathers = stock(&s, t, "feather");
+    assert!(s.hunting(t) == 1.0 && feathers >= 1.0, "a day's hunt with a bow: {feathers} feathers");
+    assert_eq!(feathers, 2.0, "on plains, 2 feathers a level");
+}
+
+#[test]
+fn a_journeyman_fletcher_hunts_a_level_each() {
     let mut s = Society::new(content());
     let t = town(&mut s, &[("fletcher", 2)]);
     s.add_kit(t, "bow", 1, 0.0, 0);

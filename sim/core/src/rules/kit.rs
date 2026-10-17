@@ -119,8 +119,11 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
         let with_tools = if hands.is_empty() { 0.0 } else { tooled / hands.len() as f64 };
         if let Some(h) = holding.filter(|h| !h.hexes.is_empty()) {
             let militia = (h.militia as usize).min(h.posts.len());
+            // Each hand works the next of the town's hexes by q, then r (`Territory.hexes`), not as they were claimed.
+            let mut hexes = h.hexes.clone();
+            hexes.sort_by_key(|x| (x.q, x.r));
             for (i, weight) in hands.iter().enumerate().take(hands.len().saturating_sub(militia)) {
-                let land = map.land(h.hexes[i % h.hexes.len()]);
+                let land = map.land(hexes[i % hexes.len()]);
                 for &(name, per_day) in hauls(land) {
                     let Some(g) = content.good(name) else { continue };
                     let owed = kits.pending.get(&g).copied().unwrap_or(0.0);
