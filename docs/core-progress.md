@@ -11,6 +11,16 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
   paid, owed goods crated, the buyer's wagon carrying what its town owes).
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
+- **Paused 2026-10-17 21:05** (13 of 32 landed), with no landing under way. Four trees wait in `.trees/`:
+  - `squads`: the fix agent's commit `ca748fe` answers the integrator's fix request, which is at the end of its
+    `.tree/TASK.md`. Audit it again, then land it.
+  - `buildings-and-works`: its build is committed (`53690de`); its summary and the audit are still to do.
+  - `bank-and-discounts`, `training-and-tenders`: their builds were stopped partway, with the work uncommitted in the tree.
+- **To resume:** `python3 <session>/waves/remaining.py` writes `waves/remaining.json`: the tasks not yet landed,
+  read from the Landed column below. Then run the Workflow tool with `scriptPath: <session>/waves/waves.js` and those
+  args. A task whose tree exists carries on from it. `<session>` is
+  `~/.claude/projects/-Users-johnchen-swe-repos-enterprise/a9a4c99b-22a4-41ca-a785-1537d11d84db`; the briefs are
+  copied there, so they survive a reboot.
 
 ## Waves 1b to 5
 
