@@ -88,11 +88,14 @@ pub(crate) fn plan_float(clock: Res<Clock>, content: Res<Content>, bills: Res<Bi
     let now = clock.now;
     // What every plan from a bank's market carries and its road costs, this look.
     let mut committed: BTreeMap<usize, f64> = BTreeMap::new();
+    // And the shopping money the Accountant allowed them already (`rules/desires.rs::plan_shopping`, before this).
+    let mut shopping: BTreeMap<usize, f64> = BTreeMap::new();
     for (_, route, state) in routes.iter() {
         let Some(plan) = state.plan.as_ref() else { continue };
         if !banks.is(route.from_id) {
             continue;
         }
+        *shopping.entry(route.from_id).or_insert(0.0) += plan.shopping_money;
         let (_, stock, trades, _, roster, _) = towns.get(route.from).expect("home");
         let keep_wheat = crate::road::keep_wheat(&content, trades, roster);
         // (for the crew it has mustered, `squad.rs`: one without)
@@ -119,7 +122,8 @@ pub(crate) fn plan_float(clock: Res<Clock>, content: Res<Content>, bills: Res<Bi
         }
         let budget = budgets.entry(route.from_id).or_insert(*budget);
         let free_money = free(&content, trades, money, &bills, route.from_id, now);
-        let float = wanted.min(Accountant::left(&content, now, free_money, budget));
+        let left = Accountant::left(&content, now, free_money, budget) - shopping.get(&route.from_id).copied().unwrap_or(0.0);
+        let float = wanted.min(left);
         if float <= 0.0 {
             continue;
         }

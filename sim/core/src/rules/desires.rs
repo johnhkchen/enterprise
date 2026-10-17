@@ -36,10 +36,13 @@ use crate::works::Works;
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
-        keep_shops.in_set(Step::Review),
+        // (last of the reviews, as the mod's `Territory.touch` keeps the shop at its end)
+        keep_shops.in_set(Step::Review).after(super::works::review).after(super::chokepoints::review)
+            .after(super::jobs::review).after(super::atlas::consider),
         sight.in_set(Step::Settle),
         plan_shopping.in_set(Step::PlanBuy).before(super::bank::plan_float),
-        buy_for_home.in_set(Step::Buy),
+        // (porters gone home first, as the mod's `sendPortersHome` before the buying: the mouths the road home feeds)
+        buy_for_home.in_set(Step::Buy).after(super::squad::send_porters_home),
         buy_surplus.in_set(Step::Buy).after(buy_for_home),
         buy_backhaul.in_set(Step::Buy).after(buy_surplus),
     ));
@@ -419,11 +422,17 @@ pub fn buy_backhaul(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<St
         }
         let state = &mut *state;
         let wagon = state.wagon.as_mut().unwrap();
-        // What home uses, how short of food it is (by its last stocktake, else as it stands) and of which comforts.
+        // What home uses, how short of food it is and of which comforts. Its food as known (`foodKnownAt`): an off-map
+        // market's as it stands, else a stocktake taken at a known time (a Librarian's); one a wagon took as it left
+        // has none, and with none the Merchant reckons plenty.
         let (home_trades, home_food, short_at_home) = match towns.get(route.from) {
             Ok((stock, _, trades, people, ..)) => {
-                let food = stocktakes.0.get(&route.from_id).map_or_else(|| crate::road::held(&content, &stock.0),
-                    |s| crate::road::held(&content, &s.stock));
+                let food = if offmap.get(route.from).is_ok() {
+                    crate::road::held(&content, &stock.0)
+                } else {
+                    stocktakes.0.get(&route.from_id).filter(|s| s.when.is_some())
+                        .map_or(f64::INFINITY, |s| crate::road::held(&content, &s.stock))
+                };
                 let short: Vec<bool> = (0..content.comforts.len())
                     .map(|k| people.villagers > 0.0 && people.comfort_met.get(k).copied().unwrap_or(0.0) < 1.0).collect();
                 (trades.clone(), food, short)

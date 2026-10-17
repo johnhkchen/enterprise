@@ -487,7 +487,7 @@ fn a_shop_lists_only_with_a_road_and_money_for_a_lot() {
     s.advance(LOOK);
     assert!(s.listings(alone).is_empty(), "no road for it to come by");
     assert!(s.listings(poor).is_empty(), "no money for a lot");
-    // A good its lockers take and it holds none of is listed at its worth.
+    // And a town with a road and money but no people keeps no shop, even for a good its lockers take.
     s.advance(2 * LOOK);
     assert!(s.listings(DEST).is_empty(), "(no people there: no shop)");
 }
