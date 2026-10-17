@@ -242,10 +242,10 @@ pub fn wanted_there(content: &Content, far: &Trades) -> Vec<GoodId> {
         .collect()
 }
 
-/// Stacks of the goods the far end wants that home holds (`Caravans.wantedStacks`).
+/// Stacks of the goods the far end wants that home holds (`Caravans.wantedStacks`: 64 to a stack, whatever the good).
 pub fn wanted_stacks(content: &Content, home: &[f64], far: &Trades) -> u32 {
     wanted_there(content, far).into_iter()
-        .map(|g| (home[g].max(0.0).floor() / content.goods[g].stack.max(1) as f64).ceil() as u32).sum()
+        .map(|g| (home[g].max(0.0).floor() / 64.0).ceil() as u32).sum()
 }
 
 /// The hand a town with routes and nobody to lead them takes on as a travelling Merchant (`Squad.hire`): the first

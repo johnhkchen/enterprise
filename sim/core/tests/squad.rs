@@ -367,6 +367,24 @@ fn a_porter_carries_out_and_walks_home() {
     assert_eq!(s.road_food(0).food_eaten, 3.0, "two mouths out, one home");
 }
 
+#[test]
+fn a_porter_whose_load_is_still_crated_aboard_stays() {
+    // What's aboard counts its crates (`Crates.stacks`): a far end too poor to buy leaves the load crated as lots
+    // (`rules/cargo.rs`), more than the wagon holds without the porter's pack, so the porter stays with it; home
+    // again, the stacks it brought back count the crates too (`lastHome`).
+    let mut s = network(70.0, 5.0, 16.0, &["librarian", "nitwit"]);
+    s.record_capacity(DEST, 1, &[(PAPER, 40.0 * 64.0 / 5.0)]); // shelf room for 40 stacks, one emerald to pay
+    s.deliver(HUB, PAPER, 30.0 * 64.0);
+    s.advance(LOOK);
+    assert_eq!(s.crew(0).crew.len(), 2);
+    s.advance(2 * LOOK); // there
+    let crew = s.crew(0);
+    assert_eq!((crew.crew.len(), crew.walkers, crew.slots), (2, 0, 36), "the porter's back still needed: {crew:?}");
+    s.advance(3 * LOOK); // home, and off again
+    let crew = s.crew(0);
+    assert!(crew.last_home.is_some_and(|h| h > 27), "the crates it brought home counted: {crew:?}");
+}
+
 // parity: CaravanTests.aSaddledCaravanRidesFaster
 #[test]
 fn a_saddled_caravan_rides_faster() {

@@ -299,7 +299,8 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
 /// it put aboard first, whole stacks, never below what's `owed`; its worth goes with it.
 fn clip(content: &Content, plan: &mut Plan, owed: &[f64], slots: u32) {
     let stacks_of = |plan: &Plan| -> u32 {
-        (0..plan.cargo.len()).map(|g| (plan.cargo[g] / content.goods[g].stack as f64).ceil() as u32).sum()
+        (0..plan.cargo.len()).map(|g| (plan.cargo[g] / content.goods[g].stack as f64).ceil() as u32).sum::<u32>()
+            + plan.shipments.iter().map(|s| s.stacks(content)).sum::<u32>() // home's crates it takes
     };
     let sale = std::mem::take(&mut plan.sale);
     for &(g, n, price) in sale.iter().rev() {

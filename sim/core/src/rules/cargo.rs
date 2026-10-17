@@ -44,7 +44,7 @@ pub fn register(schedule: &mut Schedule) {
         open.in_set(Step::Settle).before(super::contracts::settle),
         unlot.in_set(Step::Sell).before(super::arrive::sell),
         relot.in_set(Step::Sell).after(super::arrive::sell),
-        unload.in_set(Step::Turn).after(super::road::feed).before(super::arrive::turn),
+        unload.in_set(Step::Turn).after(super::road::feed).after(super::squad::come_home).before(super::arrive::turn),
     ));
 }
 
@@ -332,13 +332,15 @@ fn fetch(content: Res<Content>, book: Res<Book>, mut routes: Query<(Entity, &Rou
         let route = *route;
         let Ok(mut store) = stores.get_mut(route.to) else { continue };
         let wagon = state.wagon.as_mut().unwrap();
+        // As far as its crew carries (`caravan.capacity()`: a squad's packs, a porter's one; 0, a plain wagon's).
+        let slots = if wagon.slots > 0 { wagon.slots } else { content.dials.wagon_slots };
         wagon.empties += store.spare_empties(content.dials.empties_kept);
         let mut i = 0;
         while i < store.held.len() {
             let h = &store.held[i];
             let collected = !h.settled && h.contract.is_some_and(|id| !book.contracts[id].incoterm.seller_carries());
             if h.consigned_to(route.from_id) && !collected && stacks(&content, &wagon.cargo, &wagon.shipments)
-                    + h.stacks(&content) <= content.dials.wagon_slots {
+                    + h.stacks(&content) <= slots {
                 wagon.shipments.push(store.held.remove(i));
             } else {
                 i += 1;

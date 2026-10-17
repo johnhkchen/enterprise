@@ -128,6 +128,7 @@ pub fn crew(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u6
                 post(ledger, cash, Side::treasury(town, &mut money.0), Side::outside(), d.signing_emeralds, signing(),
                     now, content.day_ticks);
                 sign_on(content, roster, lockers.as_deref_mut(), i, merchant);
+                roster.hands[i].xp = 1; // `Squad.hire`: `setVillagerXp(1)`, whatever it had
                 home = available(content, roster, lockers.as_deref());
                 squad = crate::squad::muster(content, roster, &home, &needs, extras);
             }
@@ -227,8 +228,8 @@ pub fn send_porters_home(clock: Res<Clock>, content: Res<Content>, mut routes: Q
             continue;
         }
         let capacity = capacity(&content, wagon.crew.iter().map(|h| h.trade), wagon.porter);
-        let stacks: u32 = wagon.cargo.iter().enumerate()
-            .map(|(g, n)| (n.max(0.0) / content.goods[g].stack.max(1) as f64).ceil() as u32).sum();
+        // What's aboard, crates too (`Crates.stacks`): unsold lots crated again, crates fetched for home.
+        let stacks = crate::cargo::stacks(&content, &wagon.cargo, &wagon.shipments);
         if stacks as i64 > capacity as i64 - (d.pack_stacks as usize * porters) as i64 {
             continue;
         }
@@ -265,8 +266,9 @@ pub fn come_home(content: Res<Content>, mut routes: Query<(Entity, &Route, &mut 
             continue;
         }
         let Some(wagon) = state.wagon.as_ref() else { continue };
-        let stacks: u32 = wagon.cargo.iter().enumerate()
-            .map(|(g, n)| (n.max(0.0) / content.goods[g].stack.max(1) as f64).ceil() as u32).sum();
+        // What it brought home, crates too (`Crates.stacks`), before they're unloaded (`rules/cargo.rs`). The mod notes
+        // it as the caravan turns for home; the core as it gets there, after the road home's food.
+        let stacks = crate::cargo::stacks(&content, &wagon.cargo, &wagon.shipments);
         if let Ok(mut roster) = rosters.get_mut(route.from) {
             release(&mut roster, &wagon.crew);
         }
