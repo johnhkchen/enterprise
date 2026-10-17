@@ -239,8 +239,11 @@ pub struct Farm {
     pub focus: Focus,
     /// What its villagers would buy of each crop, items a day, beyond what its trades use (`recordDemand`).
     pub demand: BTreeMap<GoodId, f64>,
-    /// What must be grown first, items a day: the herds' feed and what's sold forward (other slices fill it).
+    /// What must be grown first, items a day: what's sold forward (other slices fill it); the herds' feed is `feed`.
     pub needs: BTreeMap<GoodId, f64>,
+    /// What the herds eat, items a day (`herds` fills it): part of the villagers' demand and grown first
+    /// (`recordDemand`, `afterCensus`'s needs).
+    pub feed: BTreeMap<GoodId, f64>,
     /// Other uses of a crop: {items a day, emeralds an item} (the workshop's input, the markets its caravans reach).
     pub draws: BTreeMap<GoodId, (f64, f64)>,
     /// Stores built, and stores it would build (its crops pile up).
@@ -284,6 +287,7 @@ impl Default for Farm {
             focus: Focus::Grow,
             demand: BTreeMap::new(),
             needs: BTreeMap::new(),
+            feed: BTreeMap::new(),
             draws: BTreeMap::new(),
             stores: Vec::new(),
             stores_wanted: Vec::new(),
@@ -314,7 +318,8 @@ pub struct Wants {
 }
 
 impl Wants {
-    /// A town's wants: its trades' use of each good and its villagers' demand, its farm's draws and needs.
+    /// A town's wants: its trades' use of each good and its villagers' demand, its farm's draws and needs, and the
+    /// herds' feed in both demand and needs.
     pub fn of(farm: &Farm, uses: &[f64]) -> Wants {
         let mut demand = farm.demand.clone();
         for (g, u) in uses.iter().enumerate() {
@@ -322,7 +327,12 @@ impl Wants {
                 *demand.entry(g).or_insert(0.0) += u;
             }
         }
-        Wants { demand, draws: farm.draws.clone(), needs: farm.needs.clone() }
+        let mut needs = farm.needs.clone();
+        for (&g, &n) in &farm.feed {
+            *demand.entry(g).or_insert(0.0) += n;
+            *needs.entry(g).or_insert(0.0) += n;
+        }
+        Wants { demand, draws: farm.draws.clone(), needs }
     }
 
     /// What the town would buy of a good, items a day.

@@ -240,3 +240,34 @@ fn a_town_with_the_trades_keeps_herds_that_follow_the_clock() {
     let loaded = Society::load(&s.save()).unwrap();
     assert_eq!(loaded.herds(t), after, "the herds are saved");
 }
+
+#[test]
+fn a_town_with_a_farm_owes_the_products_with_its_harvest_and_asks_it_for_feed() {
+    let mut s = Society::new(content());
+    let t = s.add_town("Alder", 100.0);
+    s.set_people(t, 3.0, 3.0, 10.0);
+    s.set_roster(t, &[("shepherd", 1), ("farmer", 1)]);
+    s.set_plots(t, WHEAT, 0);
+    s.deliver(t, WHEAT, 64.0);
+    s.advance(1);
+    assert_eq!(s.herds(t).count_of(0), 3.0, "the sheep came");
+    s.advance(4 * DAY);
+    let farm = s.farm(t).expect("a farm").farm;
+    let feed = s.feed_demand(t)[WHEAT];
+    assert!(feed > 0.75, "a growing flock: {feed}");
+    assert_eq!(farm.feed.get(&WHEAT).copied(), Some(feed), "the herds' feed is the farm's to grow");
+    let wool = s.town(t).stock[WOOL];
+    assert!(wool >= 5.0 && wool == wool.floor(), "the wool handed over whole, with the harvest: {wool}");
+    let owed = farm.pending.get(&WOOL).copied().unwrap_or(0.0);
+    assert!((0.0..1.0).contains(&owed), "and the fraction still owed: {owed}");
+}
+
+#[test]
+fn a_leatherworker_culls_cows_for_beef_where_the_host_has_no_leather() {
+    let c = Content::new(vec![Good::new("wheat", 0.05, 64), Good::new("beef", 0.2, 64)], DAY);
+    let mut led = Ledger { made: vec![0.0; 2], used: vec![0.0; 2], delivered: vec![0.0; 2], ..Default::default() };
+    let mut stock = Stock(vec![64.0, 0.0]);
+    let mut h = herd_of(&c, "cow", 16.0);
+    tend(&c, &mut h, LEATHERWORKER, 2.0, &mut stock, &mut led);
+    assert!(stock.0[1] > 4.0, "culled for beef, as the mod's `kind == cow`: {:?}", stock.0);
+}

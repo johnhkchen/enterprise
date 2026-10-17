@@ -12,13 +12,19 @@
 //! day, but never beyond the room its pastures hold (`pasture_animals` each, and a herd not yet fenced has one's room);
 //! the cull keeps `cull_share` of the room for the kinds present.
 //!
-//! **Not yet as the mod:** the pasture's fence and the entities that show the ledger (the host's); the mod's products
-//! are "owed to the warehouse with the farms' harvest", here they go straight into stock (`Ledger.made`).
+//! The products are owed with the farms' harvest (`Farm.pending`) and the feed joins the farm's demand and needs
+//! (`Farm.feed`), where the town's farm is set up; a town without one has its products straight into stock.
+//!
+//! **Not yet as the mod:** the pasture's fence and the entities that show the ledger (the host's); the mod skips a
+//! holding's first tending (`lastTend` -1), here the herds are tended from the town's founding.
+
+use std::collections::BTreeMap;
 
 use bevy_ecs::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::content::{Content, GoodId};
+use crate::farms::{Farm, MAX_DAYS};
 use crate::roster::Roster;
 use crate::society::Society;
 use crate::state::{Clock, Ledger, Stock, Town};
@@ -164,10 +170,21 @@ fn whole(x: f64) -> f64 {
 /// shorn and culled (`Husbandry.tend`). Feed is eaten whole: `owed` carries what each kind has eaten less than its
 /// share, between tendings (a herd tended many times a day eats no more for it). A Butcher (a Leatherworker its cows)
 /// culls only once a kind exceeds its share of the room the cull leaves, so a culled herd grows to its pastures first.
-/// Feed is `used` and wool, meat and leather `made` in the ledger.
+/// Feed is `used` and wool, meat and leather `made` in the ledger, straight into stock.
 pub fn tend(content: &Content, herds: &mut Herds, keepers: Keepers, days: f64, stock: &mut Stock, ledger: &mut Ledger) {
+    for (g, n) in tend_for(content, herds, keepers, days, stock, ledger) {
+        stock.0[g] += n;
+        ledger.made[g] += n;
+    }
+}
+
+/// [`tend`], the products returned (wool, meat and leather, in the order made) rather than put in stock: what the mod
+/// adds to `produce`, owed to the warehouse with the farms' harvest. Feed is taken from stock and `used`.
+pub fn tend_for(content: &Content, herds: &mut Herds, keepers: Keepers, days: f64, stock: &mut Stock,
+        ledger: &mut Ledger) -> Vec<(GoodId, f64)> {
+    let mut produce = Vec::new();
     if days <= 0.0 {
-        return;
+        return produce;
     }
     let d = &content.dials;
     herds.fit(content.animals.len());
@@ -211,48 +228,65 @@ pub fn tend(content: &Content, herds: &mut Herds, keepers: Keepers, days: f64, s
         }
         herds.owed[k] = due;
         if let (Some(wool), true) = (a.wool, keepers.shepherd) {
-            let made = count * d.wool_per_sheep_day * days;
-            stock.0[wool] += made;
-            ledger.made[wool] += made;
+            produce.push((wool, count * d.wool_per_sheep_day * days));
         }
         // A Butcher culls any herd for meat; a Leatherworker culls cows for their hides (and beef).
-        let culls = keepers.butcher || a.hide.is_some() && keepers.leatherworker;
+        let culls = keepers.butcher || a.name == "cow" && keepers.leatherworker;
         if culls && count > keep {
             let surplus = count - keep;
             let slaughtered = surplus.min(surplus * d.slaughter_per_day * days);
             count -= slaughtered;
             total -= slaughtered;
             if let Some(meat) = a.meat {
-                let made = slaughtered * a.meat_each;
-                stock.0[meat] += made;
-                ledger.made[meat] += made;
+                produce.push((meat, slaughtered * a.meat_each));
             }
             if let Some(hide) = a.hide {
-                let made = slaughtered * LEATHER_PER_COW;
-                stock.0[hide] += made;
-                ledger.made[hide] += made;
+                produce.push((hide, slaughtered * LEATHER_PER_COW));
             }
         }
         herds.count[k] = count.max(0.0);
     }
+    produce
 }
 
-/// Every town with a roster: its herds tended for the time since, then a new Shepherd, Butcher or Leatherworker
-/// seeds its kinds. Seeding follows tending so new animals aren't tended for time before they came.
+/// Every town: its herds tended for the time since (at most [`MAX_DAYS`], as `Territory.touch` caps it), then a new
+/// Shepherd, Butcher or Leatherworker on its roster seeds its kinds (a town with no roster has no keepers, and its
+/// herds are still fed, grown and starved). Seeding follows tending so new animals aren't tended for time before they
+/// came. Where the town's farm is set up, the products are owed with its harvest (`Farm.pending`, handed over in Pay
+/// as whole items) and the herds' feed is the farm's to grow (`Farm.feed`); otherwise they go straight into stock.
+#[allow(clippy::type_complexity)]
 pub fn tend_towns(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>,
-        mut towns: Query<(&Town, &mut Herds, &mut Stock, &Roster)>) {
+        mut towns: Query<(&Town, &mut Herds, &mut Stock, Option<&Roster>, Option<&mut Farm>)>) {
     if content.animals.is_empty() {
         return;
     }
     // In town order, so the ledger's sums come out the same however the archetypes lie.
     let mut order: Vec<_> = towns.iter_mut().collect();
     order.sort_by_key(|(town, ..)| town.id);
-    for (_, mut herds, mut stock, roster) in order {
-        let days = clock.now.saturating_sub(herds.last) as f64 / content.day_ticks as f64;
+    for (_, mut herds, mut stock, roster, farm) in order {
+        let days = MAX_DAYS.min(clock.now.saturating_sub(herds.last) as f64 / content.day_ticks as f64);
         herds.last = clock.now;
-        let keepers = Keepers::of(&content, roster);
-        tend(&content, &mut herds, keepers, days, &mut stock, &mut ledger);
+        let keepers = roster.map(|r| Keepers::of(&content, r)).unwrap_or_default();
+        let produce = tend_for(&content, &mut herds, keepers, days, &mut stock, &mut ledger);
         seed(&content, &mut herds, keepers);
+        match farm.filter(|f| f.set_up) {
+            Some(mut farm) => {
+                for (g, n) in produce {
+                    *farm.pending.entry(g).or_insert(0.0) += n;
+                }
+                let feed: BTreeMap<GoodId, f64> = feed_demand(&content, &herds).into_iter().enumerate()
+                    .filter(|&(_, n)| n > 0.0).collect();
+                if farm.feed != feed {
+                    farm.feed = feed;
+                }
+            }
+            None => {
+                for (g, n) in produce {
+                    stock.0[g] += n;
+                    ledger.made[g] += n;
+                }
+            }
+        }
     }
 }
 

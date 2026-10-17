@@ -11,8 +11,8 @@
 //!
 //! **Not yet as the mod:** a household's freehold crop is chosen from all the town's wants (demand, trades' use,
 //! draws) where `Fields.freehold` reads the villagers' demand with the herds' feed; and `Fields.consider` reads only the
-//! feed as needs where this reads [`Farm::needs`] (feed and forward sales). Both hooks are empty until `herds` and the
-//! forward sales fill them. Share-cropping cuts each look's crop by the share paid at the last settlement, so it lags
+//! feed as needs where this reads [`Farm::needs`] with [`Farm::feed`] (forward sales and feed). The herds fill
+//! `feed`; `needs` is empty until the forward sales fill it. Share-cropping cuts each look's crop by the share paid at the last settlement, so it lags
 //! a recovery by up to one settlement.
 
 use std::collections::BTreeMap;
@@ -38,7 +38,7 @@ pub fn register(schedule: &mut Schedule) {
 }
 
 /// Each farm accrues for the time since, with the crop sales its cash book shows since it last looked.
-fn work(clock: Res<Clock>, content: Res<Content>, book: Res<CashBook>, mut farms: Query<(&Town, &mut Farm, &People)>) {
+pub fn work(clock: Res<Clock>, content: Res<Content>, book: Res<CashBook>, mut farms: Query<(&Town, &mut Farm, &People)>) {
     for (town, mut farm, people) in &mut farms {
         if !farm.set_up {
             continue;
