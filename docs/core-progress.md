@@ -6,15 +6,13 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `4839983`. 326 tests pass (`just core-test`, a few seconds). Parity: **117 covered, 24 partial, 46
-  skipped, 75 left of 262** (`just parity`). `just core-fingerprint`: `bc2d144fe4460ff6` (training as a contract,
-  tenders on boards, and their random worlds).
+- **Main:** `4e37ea3`. 352 tests pass (`just core-test`, a few seconds). Parity: **127 covered, 25 partial, 46
+  skipped, 64 left of 262** (`just parity`). `just core-fingerprint`: `a060002d897972de` (squads crewing rostered
+  towns' wagons).
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
 - **Paused 2026-10-17 21:05** (13 of 32 landed), with no landing under way. Four trees waited in `.trees/`
-  (`buildings-and-works` has since landed):
-  - `squads`: the fix agent's commit `ca748fe` answers the integrator's fix request, which is at the end of its
-    `.tree/TASK.md`. Audit it again, then land it.
+  (`buildings-and-works` and `squads` have since landed):
   - `bank-and-discounts`: its build was stopped partway, with the work uncommitted in the tree (`training-and-tenders`
     has since landed).
 - **To resume:** `python3 <session>/waves/remaining.py` writes `waves/remaining.json`: the tasks not yet landed,
@@ -34,7 +32,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 10 | 1b | `advances-and-refunds` | sonnet/medium (sonnet/medium) | `cash-book`, `save-load` | `66af5d0` | 2 ContractTests pinned; CaravanTests advance partial (inputs follow is sourcing's). At landing: refunds before advances (mod's order), the seller's wagon collects at the buyer (was missing), both before bills |
 | 11 | 1b | `road-food` | opus/high (opus/medium) | `cash-book`, `bargain-and-par` | `264e1fe` | Food is the road's cost where content has food: eaten from home, bought on the way, a purse for the far end's, packed where short, waits then short rations; 8 tags, short rations partial (no stocktakes). Gaps: one mouth, no crown reserve or shop buying, `keepForFood`. At landing: advances leave room for the road's food (they kept wagons home for good), the purse keeps it paying advances, the team's fodder (hay, spare wheat, else bought), `foodEaten` both ways |
 | 12 | 2 | `lockers` | opus/high (sonnet/high) | `roster`, `cash-book` | `cead554` | structural: rostered towns' income; five later tasks build on it. 11 tags, 3 partial (shulker stock, nearest by hand index, `needed` set by hand). At landing: capacity one restock's worth a day as the mod (384 paper, was 768), a hand leaving takes its locker, restock after the farm, review after settlers |
-| 13 | 2 | `squads` | opus/high (sonnet/high) | `roster`, `road-food` | — | threads a crew through Plan, Decide and Turn beside road-food |
+| 13 | 2 | `squads` | opus/high (sonnet/high) | `roster`, `road-food` | `4e37ea3` | Squads crew rostered towns' wagons: mustered route by route at Decide as `dispatch`, hire and training, porters, Leatherworker packs, saddles, no desk Merchant no wagon; 12 tags, 2 partial (`wantedAbroad` a host hook; the porter day looped). Water, fleet, herds, crew haggle not here. At landing: crates counted aboard for porters and `lastHome`, clip keeps crates' stacks, fetch by the crew's slots, hire at 1 xp, wanted stacks at 64, settlers' home keeps its Mason (works) |
 | 14 | 2 | `farms-and-wages` | opus/high (sonnet/high) | `roster`, `cash-book` | `026b50d` | the largest port. Plan, wages, credit, sharecropping, labour market, fields, stores, deposits; 11 tags, 2 partial (block scan, tolls). Hooks: `Farm.needs`, `draws`, `stores_wanted`. At landing: every town spawns a farm (inert till set up), paid share back to 1 with no wage running, sales from the farm's start |
 | 15 | 2 | `jobs` | sonnet/medium (sonnet/medium) | `roster`, `lockers` | `fee3be2` | The bag of marbles (supply, signals, idle plots, halls, comforts), the seeded draw, a 6-emerald stall beyond the reserve or on the households' savings, slack hands retrain where no road comes; both JobsTests tags pinned. Gaps: no site, a Merchant stands for the desk, `forContracts` is `Lockers::needed`, no training or squad gates yet. At landing: no stall while the town raises settlers or on a party's day (`Territory.grow`), after the farm and the census, `rules::free`; herds' bound +9 (late keepers' seeds) confirmed |
 | 16 | 2 | `territory-growth` | sonnet/medium (sonnet/medium) | `hex-map`, `cash-book` | `4aa28bd` | Claims, culture to two rings, guards, militia, tolls; 7 tags. At landing: food all or nothing, tolls floored in spurs, posts by q then r, a first count a day's culture |
@@ -146,3 +144,8 @@ dependencies are the integrator's; `trees.py` locks its registry, so agents can 
 - A stopped and resumed build can leave its random worlds switched off: `training-and-tenders` landed its generator
   with its line in `tests/common/slices.rs` commented out, so 300 worlds never drew a tender, and its summary said
   nothing. At landing, check the slice's line there is live (and that its `check` runs).
+- Once crates landed, a wagon's load is loose cargo *and* `shipments`: `squads`, synced onto `crates-and-papers`,
+  still counted only `wagon.cargo` for its porters and `lastHome`, so porters walked home from a crated load. Briefs
+  for anything that weighs a load: `cargo::stacks(content, &cargo, &shipments)`, as the mod's `Crates.stacks`.
+- Fixtures swap hands at their peril: `squads` traded a test town's Mason for a Librarian, and once `buildings-and-works`
+  landed the town took a Mason on at a stall. Add the hands a slice needs to a shared fixture; don't swap out others.
