@@ -69,6 +69,17 @@ def save(reg):
     registry_path().write_text(json.dumps(reg, indent=2) + "\n")
 
 
+@contextmanager
+def registry_lock():
+    """Holds the registry for one command's read, change and write: agents make and clear trees at the same time."""
+    with open(common_dir() / "trees.lock", "w") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
+
+
 def current_name():
     here = Path.cwd().resolve()
     for name, t in load().items():
@@ -144,6 +155,11 @@ def heavy_slots(count=1, label=""):
 
 
 def cmd_new(args):
+    with registry_lock():
+        new(args)
+
+
+def new(args):
     reg = load()
     if args.name in reg:
         sys.exit(f"tree {args.name!r} exists at {reg[args.name]['path']}")
@@ -283,6 +299,11 @@ def cmd_land(args):
 
 
 def cmd_rm(args):
+    with registry_lock():
+        rm(args)
+
+
+def rm(args):
     reg = load()
     if args.name not in reg:
         sys.exit(f"no tree {args.name!r}")
