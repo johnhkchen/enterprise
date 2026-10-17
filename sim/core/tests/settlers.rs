@@ -330,3 +330,12 @@ fn settle_looks_at_one_town_now() {
     assert!(s.settle(home));
     assert!(!s.settle(home), "not again while the party is on the road");
 }
+
+#[test]
+fn claimed_ground_is_not_open() {
+    // `openGround` passes over a hex someone holds: east 5 out is claimed, so the party goes the next way, 5 out.
+    let (mut s, home) = world(100.0);
+    assert!(s.claim_hex(home, Hex::new(5, 0)));
+    s.advance(DAY / 4);
+    assert_eq!(s.parties()[0].target, Hex::new(5, -5), "{:?}", s.parties());
+}

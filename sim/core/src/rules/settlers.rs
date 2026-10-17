@@ -15,6 +15,7 @@ use crate::map::{Map, RELIEF_PER_FACTOR};
 use crate::roster::{Roster, MERCHANT};
 use crate::settlers::*;
 use crate::state::*;
+use crate::territory::Territory;
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems(review.in_set(Step::Review));
@@ -49,14 +50,15 @@ fn unclaimed_village(sites: &[Site], settlers: &Settlers, home: Hex, min: i32, m
         .map(|s| (s.id, s.hex))
 }
 
-/// The best open ground 4 to 8 hexes out (`openGround`): along the six directions at 5 and 7 hexes, clear, dry and
-/// flat enough, the flattest, driest and nearest.
-fn open_ground(sites: &[Site], settlers: &Settlers, map: &Map, home: Hex, min: i32, max: i32) -> Option<Hex> {
+/// The best open ground 4 to 8 hexes out (`openGround`): along the six directions at 5 and 7 hexes, clear, unclaimed,
+/// dry and flat enough, the flattest, driest and nearest.
+fn open_ground(sites: &[Site], settlers: &Settlers, territory: &Territory, map: &Map, home: Hex, min: i32, max: i32)
+        -> Option<Hex> {
     let mut best: Option<(f64, Hex)> = None;
     for (dq, dr) in crate::hex::DIRECTIONS {
         for d in (min + 1..=max - 1).step_by(2) {
             let hex = Hex::new(home.q + d * dq, home.r + d * dr);
-            if !clear(sites, settlers, min, hex, None) {
+            if !clear(sites, settlers, min, hex, None) || territory.owner(hex).is_some() {
                 continue;
             }
             let ground = map.ground(hex);
@@ -74,7 +76,8 @@ fn open_ground(sites: &[Site], settlers: &Settlers, map: &Map, home: Hex, min: i
 }
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
-pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: Res<Map>, order: Res<Towns>,
+pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: Res<Map>, territory: Res<Territory>,
+        order: Res<Towns>,
         mut settlers: ResMut<Settlers>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, routes: Query<&Route>,
         mut towns: Query<(&Town, &mut Money, &mut Stock, &mut People, &Trades, &mut Budget, Option<&mut Roster>)>) {
     let (now, day) = (clock.now, content.day_ticks);
@@ -124,7 +127,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: 
             (Kind::Village, Some(v), hex)
         } else {
             let site = if hands.len() >= 2 && spare >= FOUNDING_EMERALDS {
-                open_ground(&sites, &settlers, &map, home, min, max)
+                open_ground(&sites, &settlers, &territory, &map, home, min, max)
             } else {
                 None
             };
