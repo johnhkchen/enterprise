@@ -286,7 +286,8 @@ fn a_wagon_home_shows_the_towns_its_road_crosses_what_its_posts_would_cost() {
     s.place_town(farm, 0.0, 0.0);
     s.place_town(mill, 1000.0, 0.0);
     s.set_trade(farm, 0, 128.0, 0.0);
-    s.set_trade(mill, 0, 0.0, 64.0);
+    // Enough wheat that a load pays the road's food and the team's fodder (as `territory.rs`'s wagon-pays-tolls test).
+    s.set_trade(mill, 0, 0.0, 128.0);
     let road = s.add_road(farm, mill, 2.0).expect("a road");
     let path = s.route_path(road).unwrap();
     for x in [path[4], path[5]] {
@@ -294,7 +295,7 @@ fn a_wagon_home_shows_the_towns_its_road_crosses_what_its_posts_would_cost() {
     }
     s.deliver(keeper, 1, 1000.0);
     let start = s.totals();
-    for day in 1..=30 {
+    for day in 1..=60 {
         s.advance(day * DAY);
         s.conserved(&start).unwrap_or_else(|e| panic!("day {day}: {e}"));
         s.solvent().unwrap_or_else(|e| panic!("day {day}: {e}"));
