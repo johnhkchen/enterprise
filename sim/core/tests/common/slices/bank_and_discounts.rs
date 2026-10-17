@@ -9,15 +9,18 @@ use super::super::*;
 pub fn extend(_s: &mut Society, _r: &mut Rng) {}
 
 pub fn daily(s: &mut Society, r: &mut Rng, day: u64) {
-    let n_towns = s.town_count();
+    // Towns on the map only (`realms.rs`: no one keeps a bank or draws a host's bill off the map), so a world with
+    // a realm draws its banks and bills as it would without one.
+    let towns: Vec<usize> = (0..s.town_count()).filter(|&t| !s.is_off_map(t)).collect();
+    let n_towns = towns.len();
     if n_towns < 2 {
         return;
     }
     if day == 1 && r.below(2) == 0 {
-        s.open_bank(r.below(n_towns as u64) as usize);
+        s.open_bank(towns[r.below(n_towns as u64) as usize]);
     }
     if r.below(8) == 0 {
-        let (drawee, payee) = (r.below(n_towns as u64) as usize, r.below(n_towns as u64) as usize);
+        let (drawee, payee) = (towns[r.below(n_towns as u64) as usize], towns[r.below(n_towns as u64) as usize]);
         if drawee != payee {
             s.draw_bill(drawee, payee, r.range(1.0, 30.0));
         }
