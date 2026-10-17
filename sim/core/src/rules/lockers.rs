@@ -15,9 +15,11 @@ use crate::workshop::Workshop;
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
         follow.in_set(Step::Touch).before(super::touch::catch_up),
-        // After the workshop: the Merchant touches the town's stock before its lockers trade (`LockerTrading.trade`).
-        restock.in_set(Step::Work).after(super::workshop::work),
-        review.in_set(Step::Review),
+        // After the farm and the workshop: the Merchant touches the town's stock (its harvest in) before its lockers trade
+        // (`LockerTrading.trade`).
+        restock.in_set(Step::Work).after(super::farms::work).after(super::workshop::work),
+        // After settlers: the hands that left are off its roster, and the stock they took gone, before it reviews.
+        review.in_set(Step::Review).after(super::settlers::review),
     ));
 }
 

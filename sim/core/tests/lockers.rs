@@ -77,7 +77,7 @@ fn a_switched_off_trade_does_not_run() {
     assert_eq!((paper(&s), s.town(0).money), (64.0, 0.0));
 }
 
-// parity-partial: LockerTradingTests.noMerchantNoTrading
+// parity: LockerTradingTests.noMerchantNoTrading
 #[test]
 fn no_merchant_no_trading() {
     // No Merchant hand: no income from lockers (the mod's: no desk's Merchant loaded in reach).
@@ -245,7 +245,7 @@ fn trades(s: &Society, t: usize) -> Trades {
 #[test]
 fn a_towns_income_from_a_good_its_lockers_buy_is_its_lockers() {
     // Its people's 10 paper a day at its worth are set aside while a switched-on offer buys paper, and come back
-    // when none does; what its lockers can take a day is for the warehouse's par: 24 x 16 uses x 2 restocks.
+    // when none does; what its lockers can take a day is for the warehouse's par: 24 x 16 uses (the mod counts a restock's worth as a day's).
     let mut s = market(Some(1), 0, false, 0.0);
     s.set_trade(0, PAPER, 0.0, 10.0);
     s.advance(1200);
@@ -254,11 +254,11 @@ fn a_towns_income_from_a_good_its_lockers_buy_is_its_lockers() {
     s.advance(2400);
     assert_eq!(trades(&s, 0).uses[PAPER], 0.0, "switched on: its lockers do");
     let lockers = s.lockers(0).unwrap();
-    assert_eq!((lockers.kept[PAPER], lockers.capacity[PAPER]), (Some(10.0), 768.0));
-    assert_eq!(trades(&s, 0).capacity[PAPER], 768.0, "its par follows its lockers");
-    assert_eq!(s.par(0, PAPER, true), 768.0 * 5.0);
+    assert_eq!((lockers.kept[PAPER], lockers.capacity[PAPER]), (Some(10.0), 384.0));
+    assert_eq!(trades(&s, 0).capacity[PAPER], 384.0, "its par follows its lockers");
+    assert_eq!(s.par(0, PAPER, true), 384.0 * 5.0);
     let workshop = s.world.get::<enterprise_core::workshop::Workshop>(s.world.resource::<Towns>().0[0]).unwrap();
-    assert_eq!(workshop.par_of(PAPER), 768.0 * 5.0, "and its workshop makes it up to that");
+    assert_eq!(workshop.par_of(PAPER), 384.0 * 5.0, "and its workshop makes it up to that");
     s.switch(0, 0, 0, false);
     s.advance(3600);
     assert_eq!(trades(&s, 0).uses[PAPER], 10.0, "and back");
@@ -350,4 +350,18 @@ fn lockers_are_saved_with_the_world() {
     assert_eq!(loaded.lockers(0), s.lockers(0));
     assert_eq!(loaded.roster(0), s.roster(0), "the Merchant's rolls the same");
     assert_eq!(loaded.town(0).money.to_bits(), s.town(0).money.to_bits());
+}
+
+#[test]
+fn a_hand_that_leaves_takes_its_locker() {
+    // Settlers take a hand off the roster: the hands after it keep their own lockers, clients and managed.
+    let c = content();
+    let mut l = enterprise_core::Lockers::default();
+    l.hands = (0..4).map(|t| enterprise_core::lockers::Locker::new(&c, t % c.trades.len())).collect();
+    l.hands[3].worth = 7.0;
+    (l.clients, l.managed) = (vec![1, 3], vec![3, 1, 0]);
+    l.take_hand(1);
+    assert_eq!(l.hands.len(), 3);
+    assert_eq!(l.hands[2].worth, 7.0, "the last hand's locker moved down with it");
+    assert_eq!((l.clients, l.managed), (vec![2], vec![2, 0]));
 }

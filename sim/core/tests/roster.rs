@@ -77,7 +77,6 @@ fn the_merchant_levels_at_a_players_thresholds() {
     assert_eq!(Hand::new(&c, 0, 3).xp, 1395);
 }
 
-// parity-partial: LockerTradingTests.aVillagerLevelsUpAtOnceFromLockerTrades
 #[test]
 fn a_villager_levels_up_at_once_from_its_trades() {
     assert_eq!([1, 2, 3, 4, 5].map(villager_xp_for_next_level), [10, 70, 150, 250, 0]);

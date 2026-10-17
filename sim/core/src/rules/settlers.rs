@@ -79,7 +79,8 @@ fn open_ground(sites: &[Site], settlers: &Settlers, territory: &Territory, map: 
 pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: Res<Map>, territory: Res<Territory>,
         order: Res<Towns>,
         mut settlers: ResMut<Settlers>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, routes: Query<&Route>,
-        mut towns: Query<(&Town, &mut Money, &mut Stock, &mut People, &Trades, &mut Budget, Option<&mut Roster>)>) {
+        mut towns: Query<(&Town, &mut Money, &mut Stock, &mut People, &Trades, &mut Budget, Option<&mut Roster>,
+            Option<&mut crate::lockers::Lockers>)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let today = now / day;
     let forced = settlers.force;
@@ -93,7 +94,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: 
     let (min, max) = (d.min_hexes as i32, d.max_hexes as i32);
     let roads: std::collections::BTreeSet<usize> = routes.iter().flat_map(|r| [r.from_id, r.to_id]).collect();
     let sites: Vec<Site> = towns.iter()
-        .filter_map(|(town, _, _, _, _, _, roster)| {
+        .filter_map(|(town, _, _, _, _, _, roster, _)| {
             let village = roster.is_some_and(|r| r.merchant.is_none()) && !roads.contains(&town.id);
             town.hex.map(|hex| Site { id: town.id, hex, village,
                 structure: village || settlers.villages.contains(&town.id) })
@@ -102,7 +103,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: 
     let merchant = content.trade(MERCHANT);
     let farmer = content.trade("farmer");
     for &e in order.0.iter() {
-        let Ok((town, mut money, mut stock, mut people, trades, mut budget, roster)) = towns.get_mut(e) else { continue };
+        let Ok((town, mut money, mut stock, mut people, trades, mut budget, roster, mut lockers)) = towns.get_mut(e) else { continue };
         let t = town.id;
         if forced.is_some_and(|f| f != t) {
             continue;
@@ -151,7 +152,13 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: 
         let mut high_first = picked.clone();
         high_first.sort_unstable_by(|a, b| b.cmp(a));
         let mut got: std::collections::BTreeMap<usize, crate::roster::Hand> =
-            high_first.into_iter().map(|i| (i, take_hand(&mut roster, i))).collect();
+            high_first.into_iter().map(|i| {
+                // Its locker goes with it, so the hands after it keep theirs (`lockers.rs`).
+                if let Some(l) = lockers.as_deref_mut() {
+                    l.take_hand(i);
+                }
+                (i, take_hand(&mut roster, i))
+            }).collect();
         let mut party_hands: Vec<crate::roster::Hand> = picked.iter().map(|i| got.remove(i).expect("a hand")).collect();
         party_hands[0].trade = merchant;
         party_hands[0].level = 1;

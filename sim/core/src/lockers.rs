@@ -29,6 +29,9 @@
 //! Not here yet: the Merchant buying what its contracts want (`Procurement`, its runs capped by what's due soon), a
 //! pupil's lessons (`Apprentices.review`), herds' feed kept back from crop sales (`feedKept`), the payroll held back
 //! from the emeralds a locker pays out; the offers a villager rolls at random (here a trade offers all of its level's).
+//! Simplified: one restock clock a town, not one a villager (a hand added later shares it); what a town wants, for a
+//! selling offer's worth, is what its people use (`Trades.uses > 0`, where `Caravans.wantedAt` also counts the
+//! warehouse's, the realm's and the workshop's inputs); the host's `Society::restock` leaves the clock where it is.
 
 use bevy_ecs::prelude::Component;
 use serde::{Deserialize, Serialize};
@@ -215,6 +218,22 @@ impl Lockers {
         lockers
     }
 
+    /// The hand at `i` left the roster (`settlers::take_hand`): its locker goes with it, and the later hands' lockers,
+    /// clients and managed move down one, as the roster's do (the mod keys a locker by its workstation, which stays).
+    pub fn take_hand(&mut self, i: usize) {
+        if i < self.hands.len() {
+            self.hands.remove(i);
+        }
+        for list in [&mut self.clients, &mut self.managed] {
+            list.retain(|&c| c != i);
+            for c in list.iter_mut() {
+                if *c > i {
+                    *c -= 1;
+                }
+            }
+        }
+    }
+
     /// Follows the roster: a locker for every hand (a new hand's, or a hand that took another trade, starts afresh),
     /// none for hands gone; the clients and managed among those still there.
     pub fn sync(&mut self, content: &Content, roster: &Roster) {
@@ -261,7 +280,8 @@ impl Lockers {
     }
 
     /// What the managed lockers' switched-on buying offers can take of each good a day: their price times their
-    /// uses, two restocks a day (`LockerTrading.trade`'s `canTake`, for the warehouse's par).
+    /// uses (`LockerTrading.trade`'s `canTake`, recorded at each restock, for the warehouse's par: the mod counts one
+    /// restock's worth as a day's, so a Librarian's 24 paper x 16 uses is 384 a day, as `docs/decisions.md` has it).
     fn capacity(&self, content: &Content, roster: &Roster) -> Vec<f64> {
         let mut out = vec![0.0; content.goods.len()];
         let rep = merchant_reputation(roster.merchant_level().unwrap_or(1) as i32);
@@ -269,7 +289,7 @@ impl Lockers {
             let level = roster.hands[i].level;
             for o in self.hands[i].offers.iter().filter(|o| o.on && !o.sells && o.level <= level) {
                 if let Some(c) = out.get_mut(o.good) {
-                    *c += (o.price(rep, content.goods[o.good].stack) as u64 * o.uses as u64 * RESTOCKS_PER_DAY) as f64;
+                    *c += (o.price(rep, content.goods[o.good].stack) as u64 * o.uses as u64) as f64;
                 }
             }
         }
@@ -401,7 +421,8 @@ fn trade(content: &Content, books: &mut Books, now: u64, town: usize, roster: &m
         }
         if ran > 0 {
             if o.sells {
-                let name = content.goods[g].name.rsplit(':').next().unwrap_or("").to_string();
+                // Named as `Reason::Sold` names its good, so a book's lines read alike.
+                let name = &content.goods[g].name;
                 post(books.ledger, books.book, Side::treasury(town, &mut money.0), Side::outside(),
                     (price * ran) as f64, Reason::Other(format!("lockers: bought {name}")), now, content.day_ticks);
             } else {
