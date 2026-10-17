@@ -6,8 +6,8 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `026b50d`. 167 tests pass (`just core-test`, a few seconds). Parity: **62 covered, 17 partial, 46
-  skipped, 137 left of 262** (`just parity`). `just core-fingerprint`: `b6b588b2af7f4d3c`.
+- **Main:** `fab3ed5`. 181 tests pass (`just core-test`, a few seconds). Parity: **70 covered, 17 partial, 46
+  skipped, 129 left of 262** (`just parity`). `just core-fingerprint`: `bbc840b2b02a5483`.
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
 
@@ -29,7 +29,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 17 | 2 | `workshop` | sonnet/medium (sonnet/medium) | `roster` | `e57577f` | The mod's seven conversions by name, gain order, whole batches, `input_demand` two steps back; JobsTests paper pinned, comforts partial. Gaps: comfort worth not `Desires.reckon`, no room limit, runs after the touch's use. At landing: random worlds keep the base goods' comfort and food flags |
 | 18 | 2 | `harvest-and-rents` | sonnet/medium (sonnet/medium) | `advances-and-refunds` | — |  |
 | 19 | 2 | `atlas-and-books` | opus/high (sonnet/medium) | `hex-map`, `squads` | — | stocktakes change what every plan reads |
-| 20 | 2 | `herds` | sonnet/medium (sonnet/medium) | `roster`, `workshop` | — |  |
+| 20 | 2 | `herds` | sonnet/medium (sonnet/medium) | `roster`, `workshop` | `fab3ed5` | All 8 HusbandryTests pinned; seed, feed owed whole, growth to the pasture, hunger, shearing, culls. Gaps: no fence or entities, first tending not skipped; random worlds' sheep goods replace cookie and book in half the seeds. At landing: products to `Farm.pending`, feed to `Farm.feed` (demand and needs), after the farm accrues, `MAX_DAYS` cap, rosterless towns tended, cows culled by kind |
 | 21 | 3 | `chokepoints` | opus/high (opus/medium) | `territory-growth` | — |  |
 | 22 | 3 | `services` | opus/high (sonnet/high) | `squads`, `herds`, `farms-and-wages`, `atlas-and-books` | — | a registry over seven Java files that later tasks read |
 | 23 | 3 | `mines-and-kit` | sonnet/medium (sonnet/medium) | `territory-growth`, `services` | — |  |
