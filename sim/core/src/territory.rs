@@ -307,9 +307,12 @@ impl Society {
         self.world.resource_mut::<Territory>().holdings.entry(town).or_default().confined = confined;
     }
 
-    /// Culture a day the town's works add beyond its people's: a wall 2, a library 3, a caravanserai 1.
+    /// Culture a day the host's own works add beyond its people's and beyond the core's works (`works.rs`: a wall 2, a
+    /// library 3, a caravanserai 1), which stay counted.
     pub fn set_culture_extras(&mut self, town: TownId, per_day: f64) {
-        self.world.resource_mut::<Territory>().holdings.entry(town).or_default().extra_culture = per_day.max(0.0);
+        let works = self.towns.get(town).and_then(|&e| self.world.get::<crate::works::Works>(e))
+            .map_or(0.0, |w| w.culture_applied);
+        self.world.resource_mut::<Territory>().holdings.entry(town).or_default().extra_culture = per_day.max(0.0) + works;
     }
 
     /// The tolls, in spurs, a wagon carrying `carried` spurs over `path` between two towns would pay.

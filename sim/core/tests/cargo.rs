@@ -66,10 +66,9 @@ fn documents_use_stationery_or_a_scribe() {
     assert_eq!(s.paperwork(0).by_kind.get(LADING), Some(&16));
 }
 
-// parity-partial: CountingHouseTests.aCountingHousesClerksDrawUpPapersCheaply
 #[test]
 fn with_no_stationery_a_scribe_draws_up_each_document_for_a_tenth() {
-    // (The counting house's clerks at 0.02 a document are `buildings-and-works`'; the scribe's half is here.)
+    // (The scribe's half of `CountingHouseTests.aCountingHousesClerksDrawUpPapersCheaply`; `tests/works.rs` has it whole.)
     let mut s = desk(0.0, 0.0, 10.0);
     s.draw_papers(0, 10, LADING);
     look(&mut s);

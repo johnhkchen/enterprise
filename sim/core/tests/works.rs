@@ -436,6 +436,9 @@ fn a_library_and_a_caravanserai_bring_culture() {
     s.finish_project(t, What::Hall(Kind::Caravanserai));
     look(&mut s);
     assert_eq!(s.holding(t).extra_culture, 5.0 + 3.0 + 1.0, "3 and 1 a day beside the host's 5");
+    s.set_culture_extras(t, 2.0); // and the works' stay when the host's figure changes after
+    look(&mut s);
+    assert_eq!(s.holding(t).extra_culture, 2.0 + 3.0 + 1.0, "3 and 1 a day beside the host's 2");
 }
 
 #[test]

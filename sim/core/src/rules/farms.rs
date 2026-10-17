@@ -57,7 +57,7 @@ pub fn reserve(content: &Content, trades: &Trades, farm: Option<&Farm>) -> f64 {
 
 /// Wages settled, produce handed over, stores banking (`Territory.payWages`, `touch`, `bank`).
 #[allow(clippy::type_complexity)]
-fn pay(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
+pub fn pay(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
         mut farms: Query<(&Town, &mut Farm, &mut Money, &mut People, &mut Stock, &Trades)>) {
     let (now, day) = (clock.now, content.day_ticks);
     for (town, mut farm, mut money, mut people, mut stock, trades) in &mut farms {

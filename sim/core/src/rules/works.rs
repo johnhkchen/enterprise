@@ -4,9 +4,10 @@
 //!   blocks in proportion (`Works.work`); a project finished marks the world (a bridge on the map, a store on the farm,
 //!   a counting house on the budget) once.
 //! - **Review:** the culture its works add is set on its holding before the census counts it; then each day the town
-//!   tells the job draw what its halls would cost (`BuildServices.work`), and, with nothing under way, starts a bridge
-//!   that repays its wages, else a wall, else the next hall it wants and can pay twice over (`Works.consider`,
-//!   `BuildServices.next`, `hire`); a master Farmer plants the square's flower beds.
+//!   tells the job draw what its halls would cost (`BuildServices.work`), and, with nothing under way, at its toll
+//!   reviews starts a bridge that repays its wages, else a wall (`Works.consider`); else the next hall it wants and can
+//!   pay twice over, each day by its own Mason, at a toll review by hired builders (`BuildServices.next`, `hire`); a
+//!   master Farmer plants the square's flower beds.
 
 use bevy_ecs::prelude::*;
 
@@ -27,7 +28,7 @@ use crate::works::*;
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
-        pay.in_set(Step::Pay),
+        pay.in_set(Step::Pay).after(super::territory::upkeep).before(super::farms::pay),
         culture.in_set(Step::Review).before(super::territory::review),
         review.in_set(Step::Review).after(super::territory::review).after(super::farms::review)
             .after(super::chokepoints::review).before(super::jobs::review),
@@ -35,8 +36,8 @@ pub fn register(schedule: &mut Schedule) {
 }
 
 /// The masons are paid and lay their blocks, towns in their order, once a day each (`Works.work`, at each touch in the
-/// mod). The first look at a project only starts its clock.
-#[allow(clippy::type_complexity)]
+/// mod: after the guards' upkeep, before the farm's wages). The first look at a project only starts its clock.
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub fn pay(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, territory: Res<Territory>, mut map: ResMut<Map>,
         mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
         mut q: Query<(&Town, &mut Works, &mut Money, &mut Trades, &mut Budget, Option<&mut Farm>)>) {
@@ -96,7 +97,8 @@ fn buildable(content: &Content, works: &Works, roster: Option<&Roster>, farm: Op
     kind.partnered(&skills, merchant) && (kind != Kind::StoneDocks || works.dock) && wanted(content, farm, paperwork, now, kind)
 }
 
-/// Each town reviews what to build, once a day.
+/// Each town reviews what to build, once a day: its own Mason's next hall; at its toll reviews a bridge, a wall, or
+/// hired builders' hall.
 #[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills: Res<Bills>, map: Res<Map>,
         mint: Res<Mint>, takings: Res<Takings>, territory: Res<Territory>, mut signals: ResMut<Signals>,
@@ -133,6 +135,20 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
         }
         // A master Farmer plants the square's flower beds (`MasterServices.plantFlowers`).
         plant_flowers(&content, &mut works, &mut stock, &mut ledger, roster);
+        // A bridge, a wall and hired builders are weighed at the town's toll reviews, every `toll_review_days`, the
+        // first look only starting the clock (`Territory.touch`: `consider` and `hire` when `reviewTolls` reviewed); its
+        // own Mason's building service each day.
+        let toll_review = match works.bridges_looked {
+            None => {
+                works.bridges_looked = Some(now);
+                false
+            }
+            Some(l) if now >= l + (d.toll_review_days * day as f64) as u64 => {
+                works.bridges_looked = Some(now);
+                true
+            }
+            Some(_) => false,
+        };
         let hexes = territory.holding(t).map_or(0, |h| h.hexes.len());
         // A town without land has no stone: it starts nothing.
         if works.busy() || hexes == 0 {
@@ -141,8 +157,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
         let spurs = mint.rate(now, day);
         let per_day = per_day(d, hexes);
         // A bridge whose tolls repay its wages soonest, within `payback_days`, if the town can pay half of them now.
-        if works.bridges_looked.is_none_or(|l| now >= l + (d.toll_review_days * day as f64) as u64) {
-            works.bridges_looked = Some(now);
+        if toll_review {
             let ends: Vec<RouteEnds> = routes.iter().filter_map(|r| {
                 let hex = |id: usize| towns.0.get(id).and_then(|&x| places.get(x).ok()).and_then(|p| p.hex);
                 Some(RouteEnds { ends: [r.from_id, r.to_id], start: hex(r.from_id)?, goal: hex(r.to_id)?,
@@ -177,13 +192,15 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
             }
         }
         // Nothing that pays: a content town with money to spare walls itself in.
-        if works.wall().is_none() && people.mood >= MOOD_TO_START && spare >= d.wall_start_emeralds {
+        if toll_review && works.wall().is_none() && people.mood >= MOOD_TO_START && spare >= d.wall_start_emeralds {
             works.start(What::Wall, d.wall_blocks);
             continue;
         }
-        // Else the next hall it wants, with its Mason's skill or hired builders' (`BuildServices.next`, `hire`).
+        // Else the next hall it wants, with its Mason's skill each day or hired builders' at a toll review
+        // (`BuildServices.next`, `hire`).
         let skill = match mason(&content, roster) {
-            None => d.hired_skill as u8,
+            None if toll_review => d.hired_skill as u8,
+            None => continue,
             Some(None) => continue, // its Masons are away
             Some(Some(level)) => level,
         };

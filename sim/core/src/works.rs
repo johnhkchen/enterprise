@@ -22,7 +22,8 @@
 //!   from the free money and widens the budget share by half.
 //!
 //! **Where the core differs.** The mod's masons are paid at each touch of the desk and the town reviews its toll for a
-//! bridge at its toll reviews; the core pays and reviews once a day (a pay step, a review step). A project's blocks
+//! bridge and a wall (and hired builders a hall) at its toll reviews; the core pays once a day and weighs those every
+//! `toll_review_days`, the first look only starting the clock, on a clock of its own. A project's blocks
 //! are numbers: a bridge's deck and a wall's ring are counted from the same geometry as the mod's ([`deck_size`],
 //! [`ring_size`]) and nothing is laid in a world; a hall's site is always found (a stone dock needs the host to say
 //! there is a pier: [`Works::dock`]). A town without land holds no stone and starts nothing. The effects that belong
