@@ -187,6 +187,9 @@ pub struct Wagon {
     /// markets the crew learned of at the far end, which its town hears of once it's home (`Caravan.news`).
     pub herd: Vec<usize>,
     pub news: Vec<usize>,
+    /// Freight hubs (`freight.rs`): the hub it calls at on this leg, and the crates aboard on freight tickets (copies of
+    /// those in `shipments`), received at their consignee as the mod's `Crates.receive` takes them.
+    pub freight: crate::freight::Aboard,
 }
 
 /// A town's run to another: how long the road takes one way, what a round trip costs in road food, its timetable.
@@ -239,6 +242,9 @@ pub struct Plan {
     /// comfort it holds less than its par of), and the money in the purse for it.
     pub shopping: Vec<f64>,
     pub shopping_money: f64,
+    /// Freight hubs (`freight.rs`): stacks kept for what loads first as it leaves: the crates booked on this run at its
+    /// hub, or its town's goods sent on through the hub it's bound for.
+    pub booked: u32,
 }
 
 /// What a route has done, its wagon if one's on the road, the leg its wagon finished this look (the arriving steps
@@ -289,6 +295,9 @@ pub struct RouteState {
     pub towns_mapped: u32,
     pub animals_sold: u32,
     pub service_paid: f64,
+    /// Freight hubs (`freight.rs`): its calls at hubs, its last wagon's crew and space (for its freight's price), and
+    /// whether its owner wound it down for a run by a hub.
+    pub freight: crate::freight::RouteFreight,
 }
 
 /// A route's ends, before a load links them to their towns' entities again (from `from_id` and `to_id`).

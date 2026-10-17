@@ -383,4 +383,28 @@ dials! {
     map_emeralds: f64 = 0.25,
     /// Each paid service abroad counts this much of a kept installment toward the two towns' trust (`TRUST_PER_SERVICE`).
     trust_per_service: f64 = 0.1,
+    // freight-hubs (`freight.rs`: `market/Freight.java`, `Caravans.atHub`, `callAtStop`, `Dials.java`)
+    /// Carriers ask this much over the road's food a stack (`Freight.MARGIN`).
+    freight_margin: f64 = 0.25,
+    /// And sell at most this share of a wagon's space: the rest is their own trade's (`Freight.SHARE`).
+    freight_share: f64 = 0.5,
+    /// A forwarder charges this much over the freight it buys (`Freight.FORWARD_MARGIN`).
+    forward_margin: f64 = 0.2,
+    /// Space on a run going home sells at this share of the price: a backhaul (`Freight.BACKHAUL_SHARE`).
+    backhaul_share: f64 = 0.25,
+    /// Runs a block of space the forwarder buys covers, and its price as a share of the shop's (`Dials.BLOCK_RUNS`,
+    /// `BLOCK_PRICE`).
+    block_runs: u32 = 5,
+    block_price: f64 = 0.8,
+    /// A hub's drayman carts this many stacks a day for this wage (`Freight.DRAY_STACKS`, `DRAY_WAGE`).
+    dray_stacks: u32 = 16,
+    dray_wage: f64 = 0.5,
+    /// A market becomes a hub where this many routes pass or end on its land (`Freight.HUB_ROUTES`), and builds its
+    /// storehouse for so many emeralds beyond its reserve (`STOREHOUSE_EMERALDS`).
+    hub_routes: u32 = 3,
+    storehouse_emeralds: f64 = 4.0,
+    /// A caravan landing at a hub pays this share of what passing its posts costs (`Freight.STOP_FEE_SHARE`).
+    stop_fee_share: f64 = 0.25,
+    /// A carrier with space sold to a forwarder on its way home from a hub runs every so many days (`Dials.LINER_DAYS`).
+    liner_days: f64 = 4.0,
 }

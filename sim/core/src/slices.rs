@@ -42,6 +42,7 @@ crate::saved! {
         whys: crate::atlas::Whys = crate::atlas::Whys::default(),
         listings: crate::desires::Listings = crate::desires::Listings::default(),
         service_ledger: crate::services::ServiceLedger = crate::services::ServiceLedger::default(),
+        freight: crate::freight::Freight = crate::freight::Freight::default(),
     }
     town {
         town: Town,
@@ -63,6 +64,7 @@ crate::saved! {
         works: crate::works::Works,
         off_map: crate::realms::OffMap,
         realm: crate::realms::Realm,
+        hub: crate::freight::Hub,
     }
     route {
         route: Route,
@@ -100,4 +102,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::atlas::register(schedule);
     crate::rules::desires::register(schedule);
     crate::rules::services::register(schedule);
+    crate::rules::freight::register(schedule);
 }

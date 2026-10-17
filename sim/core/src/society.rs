@@ -98,6 +98,8 @@ impl Society {
         self.world.entity_mut(e).insert((crate::cargo::Shipments::default(), crate::cargo::Paperwork::default()));
         // And its public works (`works.rs`), none yet.
         self.world.entity_mut(e).insert(crate::works::Works::default());
+        // And its storehouse and forwarder (`freight.rs`), inert until it's a hub.
+        self.world.entity_mut(e).insert(crate::freight::Hub::default());
         self.towns.push(e);
         self.world.resource_mut::<Towns>().0.push(e);
         self.towns.len() - 1
@@ -259,6 +261,7 @@ impl Society {
             self.look.run(&mut self.world);
             self.land_parties();
             self.open_commissions(); // routes towns commissioned at its reviews (`atlas.rs`)
+            self.open_freight_runs(); // runs the hubs and route owners opened at its reviews (`freight.rs`)
         }
         std::mem::take(&mut self.world.resource_mut::<Outbox>().0)
     }

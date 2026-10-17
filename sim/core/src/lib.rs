@@ -20,6 +20,7 @@ pub mod check;
 pub mod content;
 pub mod dials;
 pub mod farms;
+pub mod freight;
 pub mod contracts;
 pub mod desires;
 pub mod herds;

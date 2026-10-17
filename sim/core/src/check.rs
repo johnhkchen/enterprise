@@ -55,6 +55,13 @@ impl Society {
                 goods[s.good] += s.count;
             }
         }
+        // Crates in the forwarders' hands at the freight hubs (`freight.rs`).
+        let mut hubs = self.world.query::<&crate::freight::Hub>();
+        for hub in hubs.iter(&self.world) {
+            for h in &hub.held {
+                goods[h.shipment.good] += h.shipment.count;
+            }
+        }
         let mut routes = self.world.query::<(&Route, &RouteState)>();
         for (route, state) in routes.iter(&self.world) {
             let purse = state.wagon.as_ref().map_or(0.0, |w| w.purse);

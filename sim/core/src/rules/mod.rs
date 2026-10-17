@@ -25,6 +25,7 @@ pub mod chokepoints;
 pub mod contracts;
 pub mod desires;
 pub mod farms;
+pub mod freight;
 pub mod harvest;
 pub mod herds;
 pub mod jobs;

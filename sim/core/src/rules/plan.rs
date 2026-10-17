@@ -101,6 +101,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
         }
         let mut stacks: u32 = (0..n).map(|g| (plan.cargo[g] / content.goods[g].stack as f64).ceil() as u32).sum();
         stacks += plan.shipments.iter().map(|s| s.stacks(&content)).sum::<u32>(); // home's crates (`rules/cargo.rs`)
+        stacks += plan.booked; // what loads first: crates booked on its run, goods sent on through a hub (`freight.rs`)
         // Comforts first, out of what home holds beyond its own par of each kind: half again what the far end is short
         // of (`comfort_margin`), the cheapest goods of a kind first, whole items (`Caravans.dispatch` 468–492,
         // `pickComforts`). What the far end is short of is its par less what its last stocktake held while that's fresh
@@ -278,6 +279,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         }
         // Home's crates it takes (`rules/cargo.rs`).
         stacks += plan.shipments.iter().map(|s| s.stacks(&content)).sum::<u32>();
+        stacks += plan.booked; // what loads first at a hub (`freight.rs`)
         plan.stacks = stacks;
         let on_its_day = state.last_departure.map_or(true, |t| now - t >= route.every_ticks);
         let waiting_here = waiting.get(&route.from_id).copied().unwrap_or(0);
@@ -422,6 +424,7 @@ fn clip(content: &Content, plan: &mut Plan, owed: &[f64], slots: u32) {
     let stacks_of = |plan: &Plan| -> u32 {
         (0..plan.cargo.len()).map(|g| (plan.cargo[g] / content.goods[g].stack as f64).ceil() as u32).sum::<u32>()
             + plan.shipments.iter().map(|s| s.stacks(content)).sum::<u32>() // home's crates it takes
+            + plan.booked // what loads first at a hub (`freight.rs`)
     };
     let sale = std::mem::take(&mut plan.sale);
     for &(g, n, price) in sale.iter().rev() {
