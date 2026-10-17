@@ -25,6 +25,7 @@ pub mod prices;
 pub mod roster;
 pub mod rules;
 pub mod save;
+pub mod settlers;
 pub mod slices;
 pub mod society;
 pub mod state;

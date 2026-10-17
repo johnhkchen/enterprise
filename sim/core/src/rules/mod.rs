@@ -21,6 +21,7 @@ pub mod bills;
 pub mod contracts;
 pub mod plan;
 pub mod roster;
+pub mod settlers;
 pub mod territory;
 pub mod touch;
 pub mod workshop;

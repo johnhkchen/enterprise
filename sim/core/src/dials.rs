@@ -161,4 +161,14 @@ dials! {
     // bargain-and-par
     /// Merchants bargain by level at the far end (`Bargain.java`); off, every good sells at its full value.
     bargain: bool = true,
+    // Settlers (`caravan/Expeditions.java`, `Dials.java`).
+    /// Emeralds a travelling Merchant carries at most to start a market in a village nobody trades with; and the
+    /// settlers' to start a new town, if their town can spare twice that.
+    settling_capital: f64 = 30.0,
+    founding_capital: f64 = 42.0,
+    /// Days between a town's parties of settlers, and the hexes out a village or open ground must be (from every
+    /// market, and at most from home).
+    days_between: f64 = 8.0,
+    min_hexes: u32 = 4,
+    max_hexes: u32 = 8,
 }

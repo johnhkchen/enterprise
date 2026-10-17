@@ -47,6 +47,9 @@ impl Society {
         world.insert_resource(Towns::default());
         // The rest a new society starts with, as `slices.rs` lists them.
         crate::slices::Resources::seed(&mut world);
+        // Bevy makes its schedules resource (an entity) at the first run; make it now, as a load does, so a town spawned
+        // after the first look gets the same place in the spawning as in a world loaded from a save.
+        world.init_resource::<bevy_ecs::schedule::Schedules>();
         Society { world, look: look_schedule(), towns: Vec::new(), routes: Vec::new() }
     }
 
@@ -238,6 +241,7 @@ impl Society {
             let next = ((self.now() / look + 1) * look).min(to);
             self.world.resource_mut::<Clock>().now = next;
             self.look.run(&mut self.world);
+            self.land_parties();
         }
         std::mem::take(&mut self.world.resource_mut::<Outbox>().0)
     }

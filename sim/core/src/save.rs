@@ -156,6 +156,7 @@ pub fn load(bytes: &[u8]) -> Result<(World, Vec<Entity>, Vec<Entity>), String> {
 pub fn restore(saved: Saved) -> Result<(World, Vec<Entity>, Vec<Entity>), String> {
     let mut world = World::new();
     saved.resources.put(&mut world);
+    world.init_resource::<bevy_ecs::schedule::Schedules>(); // as `Society::new` does: the same places in the spawning
     if !world.contains_resource::<Towns>() {
         world.insert_resource(Towns::default());
     }

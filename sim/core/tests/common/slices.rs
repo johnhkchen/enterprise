@@ -18,4 +18,5 @@ slices! {
     advances_and_refunds,
     bargain_and_par,
     workshop,
+    settlers_rule,
 }
