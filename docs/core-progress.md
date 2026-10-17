@@ -6,9 +6,9 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `264e1fe`. 222 tests pass (`just core-test`, a few seconds). Parity: **88 covered, 19 partial, 46
-  skipped, 109 left of 262** (`just parity`). `just core-fingerprint`: `9e39c286386a79a9` (road food changes every
-  world with a food good; the 65 without stay bit for bit).
+- **Main:** `e714595`. 232 tests pass (`just core-test`, a few seconds). Parity: **90 covered, 20 partial, 46
+  skipped, 106 left of 262** (`just parity`). `just core-fingerprint`: `9ee54991e64ba313` (forward sales change the
+  farm worlds).
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
 
@@ -28,7 +28,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 15 | 2 | `jobs` | sonnet/medium (sonnet/medium) | `roster`, `lockers` | — |  |
 | 16 | 2 | `territory-growth` | sonnet/medium (sonnet/medium) | `hex-map`, `cash-book` | `4aa28bd` | Claims, culture to two rings, guards, militia, tolls; 7 tags. At landing: food all or nothing, tolls floored in spurs, posts by q then r, a first count a day's culture |
 | 17 | 2 | `workshop` | sonnet/medium (sonnet/medium) | `roster` | `e57577f` | The mod's seven conversions by name, gain order, whole batches, `input_demand` two steps back; JobsTests paper pinned, comforts partial. Gaps: comfort worth not `Desires.reckon`, no room limit, runs after the touch's use. At landing: random worlds keep the base goods' comfort and food flags |
-| 18 | 2 | `harvest-and-rents` | sonnet/medium (sonnet/medium) | `advances-and-refunds` | — |  |
+| 18 | 2 | `harvest-and-rents` | sonnet/medium (sonnet/medium) | `advances-and-refunds` | `e714595` | Harvest term judged on a window with shortfalls rolled, rents with coupons, `ForwardSales.offer`, set-aside from sales and the workshop; 2 ContractTests pinned, the rents deed partial (no Numismatics vendor, dealer on synthetic inputs). Gaps: no crates/earmarks, `RentDealer.deal`, `Accountant.approve`. At landing: rotation crops only (was cane and berries too), both towns' money beyond `reserve` (was trading capital), buy-back keeps the road home's food, `forward_advance_share` dial, base generator left alone |
 | 19 | 2 | `atlas-and-books` | opus/high (sonnet/medium) | `hex-map`, `squads` | — | stocktakes change what every plan reads |
 | 20 | 2 | `herds` | sonnet/medium (sonnet/medium) | `roster`, `workshop` | `fab3ed5` | All 8 HusbandryTests pinned; seed, feed owed whole, growth to the pasture, hunger, shearing, culls. Gaps: no fence or entities, first tending not skipped; random worlds' sheep goods replace cookie and book in half the seeds. At landing: products to `Farm.pending`, feed to `Farm.feed` (demand and needs), after the farm accrues, `MAX_DAYS` cap, rosterless towns tended, cows culled by kind |
 | 21 | 3 | `chokepoints` | opus/high (opus/medium) | `territory-growth` | — |  |
@@ -124,3 +124,8 @@ dependencies are the integrator's; `trees.py` locks its registry, so agents can 
 - State kept by roster index must follow `settlers::take_hand` (it shifts every later hand): `lockers` now has
   `Lockers::take_hand`, called beside it. Briefs for `jobs`, `training-and-tenders` and anything else keyed by hand:
   either the same, or a stable hand id.
+- Agents reach for the nearest helper, not the mod's: `harvest-and-rents` reckoned `territory.reserve` as trading
+  capital alone (the core has `rules::farms::reserve`, with the wage float) and `Territory.ROTATION` as all field
+  crops (cane and berries too; now `farms::rotation`). Briefs name the core's counterpart of each Java helper they
+  cite. And a slice whose rule changes other slices' worlds changes the fingerprint: it doesn't add a switch to the
+  base generator to hide it.
