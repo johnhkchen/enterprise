@@ -39,4 +39,5 @@ slices! {
     freight_hubs,
     sourcing_and_procurement,
     mines_and_kit,
+    post,
 }

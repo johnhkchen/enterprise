@@ -182,6 +182,7 @@ impl Society {
             road_cost,
             every_ticks: (every_days * day).round() as u64,
             blocks: (days * crate::map::BLOCKS_PER_DAY).round().max(0.0) as u32,
+            on_call: false,
         };
         let e = self.world.spawn((route, RouteState::default())).id();
         self.routes.push(e);
@@ -263,6 +264,7 @@ impl Society {
             self.land_parties();
             self.open_commissions(); // routes towns commissioned at its reviews (`atlas.rs`)
             self.open_freight_runs(); // runs the hubs and route owners opened at its reviews (`freight.rs`)
+            self.open_call_runs(); // runs on call the hubs booked by post (`post.rs`)
         }
         std::mem::take(&mut self.world.resource_mut::<Outbox>().0)
     }

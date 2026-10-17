@@ -33,6 +33,7 @@ pub mod map;
 pub mod messages;
 pub mod mint;
 pub mod people;
+pub mod post;
 pub mod prices;
 pub mod realms;
 pub mod road;

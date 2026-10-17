@@ -211,6 +211,10 @@ pub struct Route {
     pub every_ticks: u64,
     /// How long the road is in blocks, for its food (`road.rs`): the path's, or a bare route's days at 1,200 a day.
     pub blocks: u32,
+    /// The post (`post.rs`): a hub's run to a town that leaves only on a day a call or a collection is booked
+    /// (`Route.onCall`).
+    #[serde(default)]
+    pub on_call: bool,
 }
 
 /// The hexes a route's wagons cross, start to goal: on a road planned over the map (`Society::add_road`), not on a

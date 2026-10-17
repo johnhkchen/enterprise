@@ -45,6 +45,8 @@ crate::saved! {
         freight: crate::freight::Freight = crate::freight::Freight::default(),
         sourcing: crate::sourcing::Sourcing = crate::sourcing::Sourcing::default(),
         exchange: crate::sourcing::MetalExchange = crate::sourcing::MetalExchange::default(),
+        mail: crate::post::Mail = crate::post::Mail::default(),
+        forwarder: crate::post::Forwarder = crate::post::Forwarder::default(),
     }
     town {
         town: Town,
@@ -108,4 +110,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::freight::register(schedule);
     crate::rules::sourcing::register(schedule);
     crate::rules::kit::register(schedule);
+    crate::rules::post::register(schedule);
 }

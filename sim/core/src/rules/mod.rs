@@ -32,6 +32,7 @@ pub mod jobs;
 pub mod kit;
 pub mod lockers;
 pub mod plan;
+pub mod post;
 pub mod realms;
 pub mod road;
 pub mod roster;

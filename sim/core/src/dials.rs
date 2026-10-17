@@ -437,4 +437,25 @@ dials! {
     /// `DEEP_EMERALDS`).
     mine_emeralds: f64 = 6.0,
     deep_mine_emeralds: f64 = 8.0,
+    // post (`post.rs`: `market/Post.java`, `market/Forwarder.java`, `Dials.java`)
+    /// The crown's riders leave every so many days, and cover so many blocks a day (`POST_DAYS`, `POST_SPEED`).
+    post_days: u32 = 3,
+    post_speed: f64 = 2000.0,
+    /// Emeralds a letter costs its sender (`POSTAGE`).
+    postage: f64 = 0.1,
+    /// A hub books a call when this share of the goods offered covers `call_stop` of its trip's cost (`CALL_MARGIN`,
+    /// `CALL_STOP`), and books at most so many calls a day (`CALLS_PER_DAY`).
+    call_margin: f64 = 0.25,
+    call_stop: f64 = 1.0,
+    calls_per_day: u32 = 1,
+    /// The crown pays this share of a hub's trip on its first visit to a town (`CROWN_AID`).
+    crown_aid: f64 = 0.5,
+    /// The forwarder collects once a town's bookings fill so many stacks, or have waited so many days (`COLLECT_STACKS`,
+    /// `COLLECT_DAYS`).
+    collect_stacks: u32 = 8,
+    collect_days: f64 = 6.0,
+    /// The share of what goods on consignment sell for the forwarder keeps, and the days it holds them before it buys
+    /// what's left itself (`CONSIGN_COMMISSION`, `CONSIGN_DAYS`).
+    consign_commission: f64 = 0.1,
+    consign_days: f64 = 20.0,
 }
