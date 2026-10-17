@@ -161,6 +161,8 @@ impl Society {
     }
 
     /// A run from one town to another, `days` each way, `road_cost` a round trip, every `every_days` on its timetable.
+    /// Its road is `days` at 1,200 blocks a day long, for its food (`road.rs`): a leg too long for a wagon's food
+    /// is added, but its wagons stay home ([`Society::try_add_route`] refuses one).
     pub fn add_route(&mut self, from: TownId, to: TownId, days: f64, road_cost: f64, every_days: f64) -> RouteId {
         let day = self.content().day_ticks as f64;
         let route = Route {
@@ -172,6 +174,7 @@ impl Society {
             travel_ticks: (days * day).round().max(1.0) as u64,
             road_cost,
             every_ticks: (every_days * day).round() as u64,
+            blocks: (days * crate::map::BLOCKS_PER_DAY).round().max(0.0) as u32,
         };
         let e = self.world.spawn((route, RouteState::default())).id();
         self.routes.push(e);
@@ -224,9 +227,14 @@ impl Society {
 
     /// A road from one placed town to another over the map, a wagon every `every_days` on its timetable: its path is
     /// the cheapest way (`plan_road`), its time the path's blocks (80 a hex) at 1,200 blocks a day (20 ticks a block),
-    /// its road food the path's cost. `None` when there's no way through (or a town isn't placed).
+    /// its road food the path's cost. `None` when there's no way through (or a town isn't placed), or where content has
+    /// road food, when the way is too long for one leg's food (`road.rs`).
     pub fn add_road(&mut self, from: TownId, to: TownId, every_days: f64) -> Option<RouteId> {
         let path = self.plan_road(from, to)?;
+        // Too long for one leg's food: no road (`road.rs`).
+        if crate::road::road_food(self.content()) && !crate::road::in_range(self.content(), path.blocks().round() as u32) {
+            return None;
+        }
         let days = path.blocks().max(1.0) / crate::map::BLOCKS_PER_DAY;
         let id = self.add_route(from, to, days, path.cost, every_days);
         self.world.entity_mut(self.routes[id]).insert(RoutePath(path.hexes));

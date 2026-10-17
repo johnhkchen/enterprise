@@ -153,6 +153,10 @@ pub struct Wagon {
     /// What it sold of each good at the far end this visit, and its takings.
     pub sold_here: Vec<f64>,
     pub takings_here: f64,
+    /// Road food (`road.rs`): the food points it carries for the road home, packed at home where the far end may not
+    /// feed it; and since when it has waited at the far end for food it couldn't get (the arriving steps leave it be).
+    pub provisions: f64,
+    pub waiting_since: Option<u64>,
 }
 
 /// A town's run to another: how long the road takes one way, what a round trip costs in road food, its timetable.
@@ -169,6 +173,8 @@ pub struct Route {
     pub travel_ticks: u64,
     pub road_cost: f64,
     pub every_ticks: u64,
+    /// How long the road is in blocks, for its food (`road.rs`): the path's, or a bare route's days at 1,200 a day.
+    pub blocks: u32,
 }
 
 /// The hexes a route's wagons cross, start to goal: on a road planned over the map (`Society::add_road`), not on a
@@ -202,6 +208,12 @@ pub struct RouteState {
     pub trips: u32,
     pub sold: f64,
     pub carried: f64,
+    /// Road food (`road.rs`): trips home on short rations, food points eaten for the road home (`foodEaten`), money
+    /// paid far ends for it (`foodSpurs`), and why the wagon last stayed home.
+    pub short_rations: u32,
+    pub food_eaten: f64,
+    pub food_paid: f64,
+    pub stayed: Option<crate::road::Stay>,
 }
 
 /// A route's ends, before a load links them to their towns' entities again (from `from_id` and `to_id`).

@@ -67,4 +67,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::farms::register(schedule);
     crate::rules::herds::register(schedule);
     crate::rules::lockers::register(schedule);
+    crate::rules::road::register(schedule);
 }

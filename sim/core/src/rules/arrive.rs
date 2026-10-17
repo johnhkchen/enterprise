@@ -25,7 +25,8 @@ pub fn register(schedule: &mut Schedule) {
 /// The wagons that have got where they were going: the leg each finished, for the arriving steps.
 fn mark(clock: Res<Clock>, mut routes: Query<&mut RouteState>) {
     for mut state in &mut routes {
-        let arrived = state.wagon.as_ref().filter(|w| w.arrives <= clock.now).map(|w| w.leg);
+        // A wagon waiting at the far end for its road food has done its business there (`road.rs`).
+        let arrived = state.wagon.as_ref().filter(|w| w.arrives <= clock.now && w.waiting_since.is_none()).map(|w| w.leg);
         state.arrived = arrived;
         if arrived == Some(Leg::Out) {
             let w = state.wagon.as_mut().unwrap();
@@ -130,10 +131,10 @@ fn draft(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>,
     }
 }
 
-/// At the far end, the wagon turns for home. At home, what didn't sell goes back on the shelves, the purse into the
+/// At the far end, the wagon turns for home (where content has road food, once fed: `rules/road.rs`). At home, what didn't sell goes back on the shelves, the purse into the
 /// town's money, the copies to the town (in force once both hold one) and the bills into its keeping.
 #[allow(clippy::too_many_arguments)]
-fn turn(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
+pub fn turn(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
         mut book: ResMut<Book>, mut bills: ResMut<Bills>, mut outbox: ResMut<Outbox>,
         mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<TownData>) {
     let now = clock.now;
@@ -144,8 +145,11 @@ fn turn(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mu
             Some(Leg::Out) => {
                 state.last_sold = Some(now);
                 let w = state.wagon.as_mut().unwrap();
-                w.leg = Leg::Home;
-                w.arrives = now + route.travel_ticks;
+                // Where content has road food, its food turned it already, or it waits for food (`rules/road.rs`).
+                if w.leg == Leg::Out && w.waiting_since.is_none() {
+                    w.leg = Leg::Home;
+                    w.arrives = now + route.travel_ticks;
+                }
                 let sold = w.sold_here.iter().sum();
                 outbox.0.push(Output::WagonSold { route: route.seq, sold, takings: w.takings_here });
             }

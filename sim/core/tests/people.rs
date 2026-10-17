@@ -104,7 +104,9 @@ fn wagons_bring_comforts_where_they_are_short() {
     s.set_people(maker, 4.0, 4.0, 4.0);
     s.set_people(short, 8.0, 8.0, 8.0);
     s.set_trade(maker, 0, 64.0, 0.0); // it makes treats
-    s.add_route(maker, short, 1.0, 0.2, 2.0);
+    // Four blocks apart, as the mod's test network: with bread in the content the road's cost is its food, and a
+    // day's road (1,200 blocks) would cost 12 emeralds of it, more than the treats are worth (`road.rs`).
+    s.add_route(maker, short, 4.0 / 1200.0, 0.2, 2.0);
     s.advance(20 * DAY);
     let p = s.town(short).people;
     assert!(p.comfort_met[0] > 0.5, "treats reached the town that makes none: {:?}", p.comfort_met);

@@ -197,4 +197,14 @@ dials! {
     slaughter_per_day: f64 = 0.5,
     /// Wool a shorn sheep gives a day.
     wool_per_sheep_day: f64 = 0.5,
+    // road-food (`road.rs`, `Caravans.java`)
+    /// The most food points a wagon carries a leg (`FOOD_CAPACITY`, a stack of bread): its longest leg.
+    food_capacity: u32 = 320,
+    /// A mouth eats a food point every so many blocks (`BLOCKS_PER_FOOD`).
+    blocks_per_food: u32 = 10,
+    /// Money a wagon takes per food point of the road home, to buy it at the far end; and what a point bought on the
+    /// way costs (`PURSE_PER_FOOD_POINT`: bread is 30 points to the emerald, half again for dearer food).
+    purse_per_food_point: f64 = 1.5 / 30.0,
+    /// Ticks a wagon waits at the far end for food before it sets off home on short rations (`MAX_WAIT_TICKS`).
+    max_wait_ticks: u64 = 12000,
 }

@@ -3,7 +3,9 @@
 
 use bevy_ecs::prelude::*;
 
-use super::{in_order, shelf, Step, TownData};
+use super::{free, in_order, shelf, Step, TownData};
+use super::road::provision;
+use crate::road::Stay;
 use crate::bills::Bills;
 use crate::cash_book::{post_legs, CashBook, Reason, Side};
 use crate::content::Content;
@@ -85,19 +87,40 @@ fn plan_sale(content: Res<Content>, mut routes: Query<(&Route, &mut RouteState)>
 }
 
 /// The wagon goes when something can't wait, or when full or on its day with a load worth its road food, if the town
-/// can pay for the road and what it collects. Leaving, it takes its cargo, the money for its collections and the bills
-/// home holds on the far end.
+/// can pay for the road and what it collects (where content has food, the road's food: `rules/road.rs`). Leaving, it
+/// takes its cargo, the money for its collections and the bills home holds on the far end.
 #[allow(clippy::too_many_arguments)]
 fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut outbox: ResMut<Outbox>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<TownData>) {
     let now = clock.now;
     let d = &content.dials;
+    // Road food (`road.rs`): what wagons on their way out will eat at each far end, if they packed none.
+    let food_mode = crate::road::road_food(&content);
+    let mut promised: std::collections::BTreeMap<usize, f64> = std::collections::BTreeMap::new();
+    if food_mode {
+        for (_, route, state) in routes.iter() {
+            if let Some(w) = state.wagon.as_ref().filter(|w| w.leg == Leg::Out && w.provisions <= 0.0) {
+                *promised.entry(route.to_id).or_insert(0.0) += crate::road::food_needed(&content, route.blocks)
+                    * crate::road::mouths(Some(w));
+            }
+        }
+    }
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(entity).unwrap();
         let route = *route;
         let Some(mut plan) = state.plan.take() else { continue };
-        let (mut stock, mut money, _, _, _) = towns.get_mut(route.from).expect("home");
+        if food_mode && !crate::road::in_range(&content, route.blocks) {
+            state.stayed = Some(Stay::OutOfRange);
+            continue;
+        }
+        let far_food = if food_mode {
+            towns.get(route.to).map_or(0.0, |(far, ..)| crate::road::held(&content, &far.0))
+                - promised.get(&route.to_id).copied().unwrap_or(0.0)
+        } else {
+            0.0
+        };
+        let (mut stock, mut money, trades, _, _) = towns.get_mut(route.from).expect("home");
         // Every route planned on the warehouse as it was at the look's start: another wagon from here may have left
         // with some of it since. What's owed first, then the rest, as far as the shelves still hold.
         let mut left = stock.0.clone();
@@ -117,21 +140,46 @@ fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut 
         plan.stacks = stacks;
         let full = plan.stacks as f64 >= d.wagon_full * d.wagon_slots as f64;
         let on_its_day = state.last_departure.map_or(true, |t| now - t >= route.every_ticks);
-        let pays = plan.worth >= route.road_cost;
-        if !(plan.pressing || (full || on_its_day) && pays) || money.0 < route.road_cost + plan.purse {
+        // The road's cost: its food where content has food (eaten from home, bought on the way, a purse for the road
+        // home's), else its money; a load must be worth both legs' food, and home must pay for the road and the purse.
+        let provision = food_mode.then(|| {
+            let after: Vec<f64> = stock.0.iter().zip(&plan.cargo).map(|(s, c)| s - c).collect();
+            let home_free = free(&content, trades, &money, &bills, route.from_id, now);
+            provision(&content, route.blocks, crate::road::mouths(None), crate::road::held(&content, &after), far_food,
+                home_free)
+        });
+        let (road_money, wagon_purse, cost) = match provision {
+            Some(p) => (p.food_coin, p.road_purse + plan.purse, p.cost),
+            None => (route.road_cost, plan.purse, route.road_cost),
+        };
+        let pays = plan.worth >= cost;
+        if money.0 < road_money + wagon_purse {
+            state.stayed = Some(Stay::CantFund);
             continue;
         }
+        if !(plan.pressing || (full || on_its_day) && pays) {
+            state.stayed = Some(Stay::WaitingForALoad);
+            continue;
+        }
+        state.stayed = None;
         for (g, n) in plan.cargo.iter().enumerate() {
             stock.0[g] -= n;
         }
         for &(id, n) in &plan.contracted {
             book.ship(id, n);
         }
-        // Road food and the wagon's purse go out of the treasury as one sum.
+        if let Some(p) = provision {
+            // The way out's food and any packed for the road home, from home's warehouse: already paid for.
+            crate::road::eat(&content, &mut ledger, &mut stock.0, p.from_home + p.provisions);
+            if p.provisions <= 0.0 {
+                *promised.entry(route.to_id).or_insert(0.0) += p.food;
+            }
+        }
+        // Road food (or what it lacks of it, bought on the way) and the wagon's purse go out of the treasury as one sum.
         let mut purse = 0.0;
         post_legs(&mut ledger, &mut cash, Side::treasury(route.from_id, &mut money.0), vec![
-            (Side::outside(), route.road_cost, Reason::RoadFood),
-            (Side::wagon(route.seq, &mut purse), plan.purse, Reason::WagonPurse),
+            (Side::outside(), road_money, Reason::RoadFood),
+            (Side::wagon(route.seq, &mut purse), wagon_purse, Reason::WagonPurse),
         ], now, content.day_ticks);
         let arrival = now + route.travel_ticks;
         state.last_departure = Some(now);
@@ -145,6 +193,7 @@ fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut 
             contracted: plan.contracted,
             collecting: plan.collecting,
             bills: papers,
+            provisions: provision.map_or(0.0, |p| p.provisions),
             ..Default::default()
         });
         outbox.0.push(Output::WagonLeft { route: route.seq, stacks: plan.stacks, worth: plan.worth });

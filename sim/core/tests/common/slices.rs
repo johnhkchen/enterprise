@@ -22,4 +22,5 @@ slices! {
     farms_and_wages,
     herds,
     lockers,
+    road_food,
 }

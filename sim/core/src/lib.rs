@@ -25,6 +25,7 @@ pub mod messages;
 pub mod mint;
 pub mod people;
 pub mod prices;
+pub mod road;
 pub mod roster;
 pub mod rules;
 pub mod save;

@@ -23,6 +23,7 @@ pub mod farms;
 pub mod herds;
 pub mod lockers;
 pub mod plan;
+pub mod road;
 pub mod roster;
 pub mod settlers;
 pub mod territory;
