@@ -6,16 +6,17 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `58b610c`. 307 tests pass (`just core-test`, a few seconds). Parity: **112 covered, 24 partial, 46
-  skipped, 80 left of 262** (`just parity`). `just core-fingerprint`: `6bc41e70ef123e6a` (masons build bridges,
-  walls and halls for wages; the square, wall, flowers, counting house and libraries take effect).
+- **Main:** `4839983`. 326 tests pass (`just core-test`, a few seconds). Parity: **117 covered, 24 partial, 46
+  skipped, 75 left of 262** (`just parity`). `just core-fingerprint`: `bc2d144fe4460ff6` (training as a contract,
+  tenders on boards, and their random worlds).
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
 - **Paused 2026-10-17 21:05** (13 of 32 landed), with no landing under way. Four trees waited in `.trees/`
   (`buildings-and-works` has since landed):
   - `squads`: the fix agent's commit `ca748fe` answers the integrator's fix request, which is at the end of its
     `.tree/TASK.md`. Audit it again, then land it.
-  - `bank-and-discounts`, `training-and-tenders`: their builds were stopped partway, with the work uncommitted in the tree.
+  - `bank-and-discounts`: its build was stopped partway, with the work uncommitted in the tree (`training-and-tenders`
+    has since landed).
 - **To resume:** `python3 <session>/waves/remaining.py` writes `waves/remaining.json`: the tasks not yet landed,
   read from the Landed column below. Then run the Workflow tool with `scriptPath: <session>/waves/waves.js` and those
   args. A task whose tree exists carries on from it. `<session>` is
@@ -51,7 +52,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 28 | 3 | `war-army` | opus/xhigh (opus/high) | `roster`, `mines-and-kit` | — |  |
 | 29 | 3 | `bank-and-discounts` | opus/high (sonnet/high) | `advances-and-refunds`, `crates-and-papers` | — | finance hooks into Settle and Collect |
 | 30 | 4 | `post` | opus/high (sonnet/high) | `freight-hubs`, `bank-and-discounts` | — | over hubs, bills and the bank |
-| 31 | 4 | `training-and-tenders` | sonnet/medium (sonnet/medium) | `lockers`, `crates-and-papers`, `jobs` | — |  |
+| 31 | 4 | `training-and-tenders` | sonnet/medium (sonnet/medium) | `lockers`, `crates-and-papers`, `jobs` | `4839983` | Training as a contract judged on the roster, the Merchant's lessons, offtake crates with a bill, tenders read off boards by wagons (taken, carried on, lapsed and reposted +25%); 5 tags, none partial. Kept on purpose against the mod: a carried tender stays till its carrier's gone, uncollectable work stays in stock; Sovereign's shortfall repost is the crown's. At landing: its random worlds switched on (were commented out), free slots count crates, room as `hasRoomFor`, steps ordered |
 | 32 | 4 | `player-orders` | sonnet/medium (sonnet/medium) | `lockers`, `desires-and-backhauls`, `atlas-and-books` | — |  |
 | 33 | 4 | `realms` | sonnet/medium (sonnet/low) | `squads`, `road-food` | — |  |
 | 34 | 4 | `buildings-and-works` | sonnet/medium (sonnet/medium) | `chokepoints`, `crates-and-papers`, `cash-book` | `58b610c` | masons' wages and blocks, bridges that repay, walls, the ten halls (hired builders without a Mason), flower beds; wall, square, flowers, counting house, granary and libraries take effect; 6 tags, 1 partial (flower beds a flag). Gaps: hall sites always found, other halls' effects for later slices, `farms::reserve` lacks the guards' 3 days. At landing: bridge, wall and hired halls weighed at the toll reviews (first only starts the clock), masons paid after guards and before farm wages, `set_culture_extras` keeps the works' share |
@@ -142,3 +143,6 @@ dependencies are the integrator's; `trees.py` locks its registry, so agents can 
 - Agents port the Java method and miss its caller's gates: `Jobs.employ` is called from `Territory.grow` only when the
   town isn't raising settlers, has no hand to train and no squad short, and `jobs` hired the hands a party was waiting
   for. Briefs name the reference's call site and each condition around it.
+- A stopped and resumed build can leave its random worlds switched off: `training-and-tenders` landed its generator
+  with its line in `tests/common/slices.rs` commented out, so 300 worlds never drew a tender, and its summary said
+  nothing. At landing, check the slice's line there is live (and that its `check` runs).
