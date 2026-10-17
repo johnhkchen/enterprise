@@ -105,20 +105,25 @@ fn a_merchant_settles_a_village_nobody_trades_with() {
 fn a_party_goes_once_in_eight_days_at_most() {
     let (mut s, home) = world(200.0);
     let v1 = village(&mut s, Hex::new(5, 0));
-    let v2 = village(&mut s, Hex::new(-5, 0));
+    let v2 = village(&mut s, Hex::new(-6, 0));
     s.deliver(home, BREAD, 150.0); // enough bread for two parties to take 64 each and still be fed
     let before = s.totals();
     s.advance(8 * DAY - 1);
-    assert_eq!(s.settled(), vec![v1], "one in the first eight days: the nearest (ties by number)");
+    assert_eq!(s.settled(), vec![v1], "one in the first eight days: the nearest village");
     assert_eq!(s.last_party(home), Some(1200));
-        s.advance(8 * DAY);
+    assert!((s.town(home).money - (200.0 - 34.0)).abs() < 1e-9, "4 for the desk, the jumpstart's 30");
+    s.advance(8 * DAY);
     assert_eq!(s.parties().len(), 1, "the second left on day 8");
     assert_eq!(s.last_party(home), Some(8 * DAY));
+    // The nearest village is a market now (`findNearestMapStructure` finds it still): the second party founds a town,
+    // and the farther village stays nobody's.
+    assert_eq!(s.parties()[0].kind, Kind::Found);
     s.advance(10 * DAY);
-    assert_eq!(s.settled(), vec![v1, v2]);
-    // 200 less the 14 + 30 jumpstart... 4 and 30 each way: 34 apiece.
-    assert!((s.town(home).money - (200.0 - 68.0)).abs() < 1e-9, "{}", s.town(home).money);
-    assert!((s.town(v1).money - 30.0).abs() < 1e-9 && (s.town(v2).money - 30.0).abs() < 1e-9);
+    let settled = s.settled();
+    assert_eq!(settled.len(), 2);
+    assert_eq!(settled[0], v1);
+    assert!(settled[1] != v2 && s.roster(v2).merchant.is_none(), "{settled:?}");
+    assert!((s.town(v1).money - 30.0).abs() < 1e-9);
     conserved(&mut s, &before);
 }
 
@@ -133,9 +138,6 @@ fn a_town_not_grown_or_not_fed_or_without_hands_or_money_sends_nobody() {
     s.add_hand(t, "none", 1);
     assert!(s.raising(t), "8 is grown");
     // Short of food: under twice the par of 320.
-    let (mut s, _) = world(100.0);
-    village(&mut s, Hex::new(5, 0));
-    s.set_trade(0, BREAD, 0.0, 0.0);
     let mut s2 = Society::new(content());
     let t2 = home(&mut s2, 100.0);
     s2.world.get_mut::<enterprise_core::state::Stock>(s2.world.resource::<enterprise_core::state::Towns>().0[t2]).unwrap().0[BREAD] = 127.0;
@@ -149,6 +151,27 @@ fn a_town_not_grown_or_not_fed_or_without_hands_or_money_sends_nobody() {
         ("cleric", 1), ("farmer", 1)]);
     s.advance(3 * DAY);
     assert!(s.parties().is_empty(), "nobody waiting for work");
+    // Only Nitwits idle: they never go (`Labour.NONE` only).
+    let (mut s, t) = world(100.0);
+    village(&mut s, Hex::new(5, 0));
+    s.set_roster(t, &[("merchant", 1), ("farmer", 1), ("farmer", 1), ("cleric", 1), ("mason", 1), ("mason", 1),
+        ("cleric", 1), ("nitwit", 1), ("nitwit", 1)]);
+    s.advance(3 * DAY);
+    assert!(s.parties().is_empty(), "Nitwits don't settle");
+    // The lead is the first hand of no trade, never a Nitwit before it.
+    let (mut s, t) = world(100.0);
+    village(&mut s, Hex::new(5, 0));
+    s.advance(DAY / 4);
+    assert_eq!(s.parties().len(), 1);
+    let names: Vec<&str> = s.roster(t).hands.iter().map(|h| s.content().trades[h.trade].name.as_str()).collect();
+    assert_eq!(names.iter().filter(|n| **n == "nitwit").count(), 1, "the Nitwit stays home: {names:?}");
+    // No Merchant: a grown, fed village sends nobody (only a market does).
+    let (mut s, t) = world(100.0);
+    village(&mut s, Hex::new(5, 0));
+    s.set_roster(t, &[("farmer", 1), ("farmer", 1), ("cleric", 1), ("mason", 1), ("none", 1), ("none", 1), ("none", 1),
+        ("none", 1), ("none", 1)]);
+    s.advance(3 * DAY);
+    assert!(s.parties().is_empty(), "no Merchant, no market, no settlers");
     // Money short of 14.
     let (mut s, _) = world(13.0);
     village(&mut s, Hex::new(5, 0));
@@ -211,6 +234,7 @@ fn with_no_village_a_town_is_founded_on_open_ground() {
     assert_eq!(names, ["merchant", "farmer"], "a Merchant and its Farmer");
     assert_eq!(r.merchant, Some(0));
     assert_eq!(s.town(new).people.beds, 4.0, "two cottages");
+    assert!(s.town(new).people.land > 4.0, "and room for more: open ground");
     assert_eq!(s.route_count(), 1);
     conserved(&mut s, &before);
 }

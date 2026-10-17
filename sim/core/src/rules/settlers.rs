@@ -20,11 +20,13 @@ pub fn register(schedule: &mut Schedule) {
     schedule.add_systems(review.in_set(Step::Review));
 }
 
-/// A town's place for the review: where it stands, and whether it is a village nobody trades with.
+/// A town's place for the review: where it stands, whether it is a village nobody trades with, and whether it stands
+/// on a village (one now, or one settlers made a market of: the mod's village structure stays).
 struct Site {
     id: usize,
     hex: Hex,
     village: bool,
+    structure: bool,
 }
 
 /// No other town (a market, a settlement or a village) and no party's goal within `min_hexes` hexes of this one
@@ -34,14 +36,16 @@ fn clear(sites: &[Site], settlers: &Settlers, min_hexes: i32, hex: Hex, except: 
         && settlers.parties.iter().all(|p| p.target.distance(hex) >= min_hexes)
 }
 
-/// The nearest village in reach with no other town within `min_hexes` hexes, and no party already bound there
-/// (`unclaimedVillage`): its town and hex.
+/// The nearest village, if it is in reach, still nobody's market, with no other town within `min_hexes` hexes and no
+/// party already bound there (`unclaimedVillage`): its town and hex. Only the nearest, as the mod's
+/// `findNearestMapStructure`: once a town's settlers have made a market of it, the town founds towns instead.
 fn unclaimed_village(sites: &[Site], settlers: &Settlers, home: Hex, min: i32, max: i32) -> Option<(usize, Hex)> {
     sites.iter()
+        .filter(|s| s.structure)
+        .min_by_key(|s| (s.hex.distance(home), s.id))
         .filter(|s| s.village && s.hex.distance(home) <= max)
         .filter(|s| !settlers.parties.iter().any(|p| p.village == Some(s.id)))
         .filter(|s| clear(sites, settlers, min, s.hex, Some(s.id)))
-        .min_by_key(|s| (s.hex.distance(home), s.id))
         .map(|s| (s.id, s.hex))
 }
 
@@ -87,8 +91,9 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: 
     let roads: std::collections::BTreeSet<usize> = routes.iter().flat_map(|r| [r.from_id, r.to_id]).collect();
     let sites: Vec<Site> = towns.iter()
         .filter_map(|(town, _, _, _, _, _, roster)| {
-            town.hex.map(|hex| Site { id: town.id, hex,
-                village: roster.is_some_and(|r| r.merchant.is_none()) && !roads.contains(&town.id) })
+            let village = roster.is_some_and(|r| r.merchant.is_none()) && !roads.contains(&town.id);
+            town.hex.map(|hex| Site { id: town.id, hex, village,
+                structure: village || settlers.villages.contains(&town.id) })
         })
         .collect();
     let merchant = content.trade(MERCHANT);
@@ -100,11 +105,17 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: 
             continue;
         }
         let (Some(home), Some(mut roster), Some(merchant)) = (town.hex, roster, merchant) else { continue };
+        // Only a market sends settlers (`consider` runs for a Merchant's desk): a village has no Merchant to send.
+        if roster.merchant.is_none() {
+            continue;
+        }
         if !raising(&content, &settlers, t, &people, &stock, now) {
             continue;
         }
         let spare = crate::rules::free(&content, trades, &money, &bills, t, now);
-        let hands = roster.idle(&content);
+        // The hands waiting for work: no trade at all (`Labour.NONE`); Nitwits never go.
+        let hands: Vec<usize> =
+            roster.idle(&content).into_iter().filter(|&i| !content.trades[roster.hands[i].trade].nitwit).collect();
         if hands.is_empty() || spare < SETTLING_EMERALDS {
             continue;
         }

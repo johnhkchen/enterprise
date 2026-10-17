@@ -42,6 +42,10 @@ pub const SETTLING_CAPITAL: f64 = 10.0;
 /// What founding a town costs in all, and the capital in it at the least (`FOUNDING_EMERALDS`, `FOUNDING_CAPITAL`).
 pub const FOUNDING_EMERALDS: f64 = 34.0;
 pub const FOUNDING_CAPITAL: f64 = 16.0;
+/// The beds a village's or a new town's ground holds: the mod builds cottages (5 by 5 with a block round) wherever they
+/// fit 8 to 32 blocks from the bell (`Growth.homeSite`), room for some sixty; with fields and works, the core counts
+/// twenty cottages of two beds (its own estimate: the mod has no cap).
+pub const OPEN_LAND: f64 = 40.0;
 /// Bread a party carries (`BREAD`).
 pub const BREAD: f64 = 64.0;
 /// How often a wagon runs on the road home from the new market (the core's own choice: the mod opens a route and its
@@ -89,6 +93,8 @@ pub struct Settlers {
     pub force: Option<TownId>,
     /// Towns that settlers made a market of or founded, in order.
     pub settled: Vec<TownId>,
+    /// The villages among them: the search for the nearest village still finds them (and, a market now, passes on).
+    pub villages: Vec<TownId>,
     pub came_home: u32,
 }
 
@@ -165,7 +171,7 @@ impl Society {
         let t = self.add_town(&format!("Village {n}"), 0.0);
         self.place_town(t, x, z);
         self.set_roster(t, &[("none", 1), ("none", 1), ("none", 1)]);
-        self.set_people(t, 3.0, 3.0, 3.0);
+        self.set_people(t, 3.0, 3.0, OPEN_LAND);
         t
     }
 
@@ -268,7 +274,7 @@ impl Society {
             people.villagers = residents;
             if party.kind == Kind::Found {
                 people.beds = 4.0; // two family cottages
-                people.land = 4.0;
+                people.land = OPEN_LAND;
             }
         }
         if let Some(bread) = content.good("bread") {
@@ -277,7 +283,11 @@ impl Society {
         }
         self.post(Account::Outside, Account::Treasury(town), party.capital, reason());
         self.add_road(party.from, town, ROAD_EVERY_DAYS);
-        self.world.resource_mut::<Settlers>().settled.push(town);
+        let mut settlers = self.world.resource_mut::<Settlers>();
+        settlers.settled.push(town);
+        if party.kind == Kind::Village {
+            settlers.villages.push(town);
+        }
     }
 
     /// No place to settle: they come home with the capital and the bread (`Expeditions.homeAgain`).
