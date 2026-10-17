@@ -36,11 +36,13 @@ fn mark(clock: Res<Clock>, mut routes: Query<&mut RouteState>) {
 }
 
 /// At the far end, what's left for sale sold up to the room on the buyer's shelf (a comfort, up to the kind's par
-/// in worth), within its budget for a seller away so long, and never beyond what it holds.
+/// in worth), within its budget for a seller away so long, and never beyond what it holds. Each good at the price
+/// the two Merchants settle at the middle of the batch (`bargain.rs`; `Caravans.sell`), priced again once what the
+/// buyer can pay has cut the batch; no deal, no sale.
 #[allow(clippy::too_many_arguments)]
 fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut ledger: ResMut<Ledger>,
         mut book: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
-        mut towns: Query<TownData>) {
+        mut towns: Query<TownData>, rosters: Query<&crate::roster::Roster>) {
     let now = clock.now;
     let day = content.day_ticks;
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
@@ -50,6 +52,9 @@ fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut ledger:
         }
         let route = *route;
         let days = state.last_sold.map_or(1.0, |t| ((now - t) as f64 / day as f64).clamp(1.0, content.dials.max_budget_days));
+        // The travelling Merchant is its home's Merchant; the buyer, the far end's.
+        let seller = crate::bargain::merchant_level(rosters.get(route.from).ok());
+        let buyer = crate::bargain::merchant_level(rosters.get(route.to).ok());
         let (mut stock, mut money, trades, mut budget, people) = towns.get_mut(route.to).expect("the far end");
         let wagon = state.wagon.as_mut().unwrap();
         let mut sold_all = 0.0;
@@ -57,15 +62,26 @@ fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut ledger:
             if wagon.cargo[g] <= 0.0 {
                 continue;
             }
-            let price = content.goods[g].value;
+            let value = content.goods[g].value;
             let room = match content.goods[g].comfort {
-                Some(kind) => ((comfort_par(&content, people) - comfort_held(&content, &stock, kind)) / price).floor(),
+                Some(kind) => ((comfort_par(&content, people) - comfort_held(&content, &stock, kind)) / value).floor(),
                 None => shelf(&content, trades, g) - stock.0[g],
             }
             .max(0.0);
+            let par = stock.0[g] + room;
             let free_money = free(&content, trades, &money, &bills, route.to_id, now);
             let can = left_for(&content, now, free_money, &mut budget, days).min(money.0.max(0.0));
-            let n = wagon.cargo[g].min(room).min((can / price).floor()).max(0.0);
+            let mut n = wagon.cargo[g].min(room);
+            let mut price = value;
+            for _ in 0..2 {
+                if n <= 0.0 {
+                    break;
+                }
+                let each = crate::bargain::unit_price(&content, g, stock.0[g], n, par, seller, buyer);
+                price = each.unwrap_or(0.0);
+                n = n.min(each.map_or(0.0, |each| (can / each).floor()));
+            }
+            let n = n.max(0.0);
             if n <= 0.0 {
                 continue;
             }

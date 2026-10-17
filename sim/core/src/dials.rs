@@ -158,4 +158,7 @@ dials! {
     // Advances and refunds (`contract/Advance.java`).
     /// The share of a contract's worth the buyer pays up front, for a draft that asks for an advance (a third).
     advance_share: f64 = 1.0 / 3.0,
+    // bargain-and-par
+    /// Merchants bargain by level at the far end (`Bargain.java`); off, every good sells at its full value.
+    bargain: bool = true,
 }

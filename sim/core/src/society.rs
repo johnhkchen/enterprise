@@ -72,10 +72,11 @@ impl Society {
                 Town { name: name.to_string(), id: self.towns.len(), hex: None },
                 Money(money),
                 Stock(vec![0.0; n]),
-                Trades { makes: vec![0.0; n], uses: vec![0.0; n] },
+                Trades { makes: vec![0.0; n], uses: vec![0.0; n], capacity: vec![0.0; n] },
                 Touched(now),
                 Budget::default(),
                 People { last: now, paid_share: 1.0, ..Default::default() },
+                crate::bargain::LockerCapacity::default(),
             ))
             .id();
         self.towns.push(e);
@@ -136,6 +137,7 @@ impl Society {
         let mut trades = self.world.get_mut::<Trades>(self.towns[town]).expect("a town");
         trades.makes[good] = makes;
         trades.uses[good] = uses;
+        trades.capacity[good] = uses;
     }
 
     /// A run from one town to another, `days` each way, `road_cost` a round trip, every `every_days` on its timetable.

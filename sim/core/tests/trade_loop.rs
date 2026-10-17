@@ -30,9 +30,17 @@ fn goods_and_money_are_conserved_every_day() {
 }
 
 /// Wheat a farm sells its mill in 120 days, its wagon every `every` days, the mill starting with `money`;
-/// `compounding`: a buyer allows a seller who's been away what the daily looks it missed would have.
+/// `compounding`: a buyer allows a seller who's been away what the daily looks it missed would have. At the flat
+/// price (the dial `bargain` off): the mill pays the wagon what its people pay it, so its money only goes round, and
+/// these tests measure the budget alone. With the bargain the mill keeps a margin and its money grows
+/// (`a_bargain_leaves_the_buyer_a_margin_that_loosens_its_cash`).
 fn sold(every: f64, money: f64, compounding: bool) -> f64 {
+    sold_at(every, money, compounding, false)
+}
+
+fn sold_at(every: f64, money: f64, compounding: bool, bargain: bool) -> f64 {
     let mut s = farm_and_mill(every, money);
+    s.content_mut().dials.bargain = bargain;
     if !compounding {
         s.content_mut().dials.max_budget_days = 1.0;
     }
@@ -61,6 +69,19 @@ fn a_buyer_short_of_cash_takes_less_from_fewer_wagons() {
     let four = sold(4.0, 8.4, true);
     assert!(four < 0.7 * daily, "four-day wagons sell {four}, daily ones {daily}");
     assert!(four > sold(4.0, 8.4, false), "though the compounding still helps");
+}
+
+#[test]
+fn a_bargain_leaves_the_buyer_a_margin_that_loosens_its_cash() {
+    // Buying at the bargained price (between half and the whole of its worth) and selling to its people at its worth,
+    // the mill holding 8.4 emeralds grows its money, so four-day wagons sell it nearly what daily ones do: 6,799
+    // against 7,469 wheat in 120 days (at the flat price, 1,085 against 1,782).
+    let daily = sold_at(1.0, 8.4, true, true);
+    let four = sold_at(4.0, 8.4, true, true);
+    assert!(four > 0.85 * daily && four > 4.0 * sold(4.0, 8.4, true), "four-day wagons sell {four}, daily ones {daily}");
+    let mut s = farm_and_mill(4.0, 8.4);
+    s.advance(120 * DAY);
+    assert!(s.town(1).money > 50.0, "the mill's margin: {} emeralds", s.town(1).money);
 }
 
 // parity-partial: CaravanTests.aTownsWagonWaitsForALoadWorthItsRoadFood

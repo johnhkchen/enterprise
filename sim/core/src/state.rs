@@ -78,6 +78,9 @@ pub struct Stock(pub Vec<f64>);
 pub struct Trades {
     pub makes: Vec<f64>,
     pub uses: Vec<f64>,
+    /// What the town's lockers can take of each good a day (`Warehouse.capacity`, `bargain.rs`): its par is
+    /// `shelf_days` of it. `set_trade` sets it to what its people use; a host with lockers records it per locker.
+    pub capacity: Vec<f64>,
 }
 
 /// When a town was last brought up to date.

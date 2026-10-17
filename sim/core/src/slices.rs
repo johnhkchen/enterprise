@@ -35,6 +35,7 @@ crate::saved! {
         budget: Budget,
         people: People,
         roster: crate::roster::Roster,
+        locker_capacity: crate::bargain::LockerCapacity,
     }
     route {
         route: Route,

@@ -82,9 +82,11 @@ pub fn in_order<'a>(routes: impl Iterator<Item = (Entity, &'a Route)>) -> Vec<En
     order.into_iter().map(|(_, e)| e).collect()
 }
 
-/// What a town's warehouse aims to hold of a good: `shelf_days` of what its people use.
+/// What a town's warehouse aims to hold of a good: `shelf_days` of what its lockers can take a day (`Trades.capacity`),
+/// or of what its people use where it has no capacity.
 pub fn shelf(content: &Content, trades: &Trades, good: usize) -> f64 {
-    content.dials.shelf_days * trades.uses[good]
+    let capacity = trades.capacity.get(good).copied().unwrap_or(0.0);
+    content.dials.shelf_days * if capacity > 0.0 { capacity } else { trades.uses[good] }
 }
 
 /// The town's trading capital: `reserve_days` of what its people use, at its worth. Spend it on anything else and it

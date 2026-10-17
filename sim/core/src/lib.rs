@@ -9,6 +9,7 @@
 //! The first slice is the trade loop: see `docs/architecture.md` for the whole plan.
 
 pub mod advances;
+pub mod bargain;
 pub mod bills;
 pub mod cash_book;
 pub mod check;
@@ -20,6 +21,7 @@ pub mod map;
 pub mod messages;
 pub mod mint;
 pub mod people;
+pub mod prices;
 pub mod roster;
 pub mod rules;
 pub mod save;
