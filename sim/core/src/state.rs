@@ -296,8 +296,10 @@ pub struct RouteState {
     pub animals_sold: u32,
     pub service_paid: f64,
     /// Freight hubs (`freight.rs`): its calls at hubs, its last wagon's crew and space (for its freight's price), and
-    /// whether its owner wound it down for a run by a hub.
+    /// whether its owner wound it down for a run by a hub; and the items its wagons delivered under contract at the far
+    /// end (with `sold`, the mod's `itemsDelivered`: a long run's usual load, as the hub reorganises).
     pub freight: crate::freight::RouteFreight,
+    pub delivered: f64,
 }
 
 /// A route's ends, before a load links them to their towns' entities again (from `from_id` and `to_id`).

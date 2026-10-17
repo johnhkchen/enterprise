@@ -229,12 +229,13 @@ pub fn reorganise(content: &Content, net: &Network, territory: &Territory, takin
             continue; // the hub doesn't run there yet (or not reliably)
         }
         let Some(to_hub) = net.distance(r.from, hub) else { continue };
-        let per_trip = r.carried / r.trips.max(1) as f64;
+        let per_trip = r.traded / r.trips.max(1) as f64;
         let stacks = (per_trip / STACK_ITEMS).ceil().max(1.0);
-        // The long run pays the posts on its way (a share of its coins, and the handling fee).
-        let tolls: f64 = territory.tolls_due(&[r.from, r.to], &r.path, takings.expected_value(r.route), d.default_toll_rate)
-            .iter().map(|(_, t)| t).sum::<f64>() / rate;
-        let landing = stop_fee(content, passage(territory, hub), rate); // both land at the hub: the long run calls there
+        // The long run pays the posts on its way (a share of its coins, and the handling fee), as the mod reckons it
+        // ahead: unrounded, every post's share of the whole (`Caravans.tollShare`, `passageFees`).
+        let (share, fees) = toll_terms(territory, &[r.from, r.to], &r.path, d.default_toll_rate);
+        let tolls = (share * takings.expected_value(r.route) + fees) / rate;
+        let landing = stop_price(content, passage(territory, hub), rate) / rate; // both land at the hub: the long run calls there
         let direct = run_cost(content, r.blocks) + tolls + landing;
         let onward_leg = RunLeg { route: onward.route, home: onward.from, far: onward.to, outbound: true, at: onward.from };
         let cheapest = net.legs(hub, r.to).iter().map(|l| forwarding_price(content, net, l)).fold(f64::INFINITY, f64::min);
@@ -247,6 +248,20 @@ pub fn reorganise(content: &Content, net: &Network, territory: &Territory, takin
         }
     }
     None
+}
+
+/// What a run pays the posts on its path, reckoned ahead (`Caravans.tollShare`, `passageFees`): the share of its coins
+/// the posted towns take between them (one less what each leaves of the rest) and their passage fees summed, in spurs;
+/// the ends' own posts free, each posted town once, in the order the path meets them.
+fn toll_terms(territory: &Territory, ends: &[TownId], path: &[crate::hex::Hex], default_rate: f64) -> (f64, f64) {
+    let mut posted: Vec<TownId> = Vec::new();
+    for &hex in path {
+        let owner = territory.owner(hex).filter(|o| !ends.contains(o) && !posted.contains(o)
+            && territory.holding(*o).is_some_and(|h| h.posts.contains(&hex)));
+        posted.extend(owner);
+    }
+    let kept: f64 = posted.iter().map(|&o| 1.0 - territory.holding(o).and_then(|h| h.toll_rate).unwrap_or(default_rate)).product();
+    (1.0 - kept, posted.iter().map(|&o| passage(territory, o)).sum())
 }
 
 /// A wound-down route plans no more wagons (the mod's `removeRoute`): its wagon on the road comes home, and stays.

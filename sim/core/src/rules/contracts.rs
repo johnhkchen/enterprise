@@ -47,6 +47,7 @@ pub(crate) fn settle(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         let route = *route;
         let (mut stock, mut money, _, _, _) = towns.get_mut(route.to).expect("the far end");
         let wagon = state.wagon.as_mut().unwrap();
+        let mut delivered = 0.0;
         for (id, carried) in std::mem::take(&mut wagon.contracted) {
             let c = &book.contracts[id];
             let n = carried.min(c.owed(now)).min(wagon.cargo[c.good]);
@@ -66,6 +67,7 @@ pub(crate) fn settle(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             }
             book.recouped(id, recoup);
             book.settle(id, carried, n, paid + if by_bill { short } else { 0.0 } + recoup, if by_bill { 0.0 } else { short });
+            delivered += n;
         }
         for id in book.open_between(route.from_id, route.to_id) {
             let c = &mut book.contracts[id];
@@ -78,6 +80,7 @@ pub(crate) fn settle(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             post(&mut ledger, &mut cash, Side::treasury(route.to_id, &mut money.0), Side::wagon(route.seq, &mut wagon.purse),
                 paid, Reason::Contract, now, day);
         }
+        state.delivered += delivered; // `itemsDelivered`
     }
 }
 
@@ -100,6 +103,7 @@ pub(crate) fn collect(clock: Res<Clock>, content: Res<Content>, mut book: ResMut
         let (mut store, mut paperwork) = stores.get_mut(route.to).expect("the seller");
         let farm = farms.get(route.to).ok();
         let wagon = state.wagon.as_mut().unwrap();
+        let mut collected = 0.0;
         for id in std::mem::take(&mut wagon.collecting) {
             let c = &book.contracts[id];
             let crated: f64 = store.held.iter().filter(|s| s.contract == Some(id) && s.consigned_to(c.buyer))
@@ -125,7 +129,9 @@ pub(crate) fn collect(clock: Res<Clock>, content: Res<Content>, mut book: ResMut
                 paid - repaid, Reason::Contract, now, content.day_ticks);
             book.recouped(id, recoup);
             book.settle(id, 0.0, n, paid + recoup, 0.0);
+            collected += n;
         }
+        state.bought += collected; // `itemsBought`, as `collectExWorks` counts it
     }
 }
 

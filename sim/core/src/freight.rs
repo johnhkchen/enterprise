@@ -137,8 +137,9 @@ impl Leg {
     }
 }
 
-/// A route as the freight rules see it: its ends, its road, its timetable and trips, its last wagon's crew and space,
-/// its wagon on the road (which way, and when it gets there), and the hub it calls at on its way, if any (with how far
+/// A route as the freight rules see it: its ends, its road, its timetable and trips, the items its wagons sold or
+/// delivered at the far end and bought there, all trips told (`traded`: the mod's `itemsDelivered + itemsBought`), its
+/// last wagon's crew and space, its wagon on the road (which way, and when it gets there), and the hub it calls at on its way, if any (with how far
 /// along its path).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Run {
@@ -152,7 +153,7 @@ pub struct Run {
     pub last_departure: Option<u64>,
     pub path: Vec<Hex>,
     pub trips: u32,
-    pub carried: f64,
+    pub traded: f64,
     pub crew: f64,
     pub capacity: u32,
     pub wagon: Option<(crate::state::Leg, u64)>,
@@ -173,7 +174,7 @@ impl Run {
             last_departure: state.last_departure,
             path: path.map(|p| p.0.clone()).unwrap_or_default(),
             trips: state.trips,
-            carried: state.carried,
+            traded: state.sold + state.delivered + state.bought,
             crew: state.freight.crew.unwrap_or(1.0),
             capacity: state.freight.capacity.unwrap_or(content.dials.wagon_slots),
             wagon: state.wagon.as_ref().map(|w| (w.leg, w.arrives)),
@@ -396,7 +397,12 @@ pub fn forwarding_fee(content: &Content, net: &Network, hub: TownId, to: TownId,
 /// A caravan's landing fee at a hub, in emeralds (`Freight.stopFee`, `land`): a quarter of what passing its posts costs
 /// (`passage`, in spurs), at least a quarter emerald, in whole spurs.
 pub fn stop_fee(content: &Content, passage: f64, rate: f64) -> f64 {
-    (BASE_STOP_FEE * rate).max(passage * content.dials.stop_fee_share).ceil() / rate
+    stop_price(content, passage, rate).ceil() / rate
+}
+
+/// The landing fee as the mod prices it, in spurs, unrounded (`Freight.stopFee`; [`stop_fee`] is what a caravan pays).
+pub fn stop_price(content: &Content, passage: f64, rate: f64) -> f64 {
+    (BASE_STOP_FEE * rate).max(passage * content.dials.stop_fee_share)
 }
 
 /// The forwarder's block of space on a carrier's run (`Freight.SpaceBlock`): `stacks` on each of its next `runs` runs

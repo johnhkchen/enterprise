@@ -324,11 +324,11 @@ fn routes_crossing_a_pass_town_make_it_a_hub_and_it_opens_its_own_runs() {
 }
 
 /// A long run A→B calling at the hub H, which runs on to B: weighed against a short run to H and freight from there.
-fn reorganising(long_blocks: u32, short_blocks: u32, trips: u32, onward_trips: u32, carried: f64) -> Network {
+fn reorganising(long_blocks: u32, short_blocks: u32, trips: u32, onward_trips: u32, traded: f64) -> Network {
     let (a, h, b) = (0, 1, 2);
     let run = |route, from, to, blocks: u32, trips, path: Vec<Hex>| Run {
         route, from, to, blocks, travel_ticks: blocks as u64 * 20, road_cost: 0.0, every_ticks: DAY, last_departure: None,
-        path, trips, carried, crew: 2.0, capacity: 27, wagon: None, stop: None,
+        path, trips, traded, crew: 2.0, capacity: 27, wagon: None, stop: None,
     };
     let hexes = [(a, Hex::new(0, 0)), (h, Hex::new((short_blocks / 80) as i32, 0)), (b, Hex::new((long_blocks / 80) as i32, 0))];
     let path = Hex::line(hexes[0].1, hexes[2].1);
