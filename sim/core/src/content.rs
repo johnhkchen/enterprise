@@ -18,16 +18,24 @@ pub struct Good {
     pub stack: u32,
     pub comfort: Option<usize>,
     pub food: f64,
+    /// A crop farmers grow (`Territory.isCrop`): its sales at the town's lockers count as farm sales (`farms.rs`).
+    pub crop: bool,
 }
 
 impl Good {
     pub fn new(name: &str, value: f64, stack: u32) -> Self {
-        Good { name: name.to_string(), value, stack, comfort: None, food: 0.0 }
+        Good { name: name.to_string(), value, stack, comfort: None, food: 0.0, crop: false }
     }
 
     /// A comfort of the kind at `kind` in [`Content::comforts`].
     pub fn comfort(mut self, kind: usize) -> Self {
         self.comfort = Some(kind);
+        self
+    }
+
+    /// A crop farmers grow.
+    pub fn crop(mut self) -> Self {
+        self.crop = true;
         self
     }
 

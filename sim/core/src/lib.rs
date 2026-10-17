@@ -15,6 +15,7 @@ pub mod cash_book;
 pub mod check;
 pub mod content;
 pub mod dials;
+pub mod farms;
 pub mod contracts;
 pub mod hex;
 pub mod map;

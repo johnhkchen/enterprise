@@ -171,4 +171,15 @@ dials! {
     days_between: f64 = 8.0,
     min_hexes: u32 = 4,
     max_hexes: u32 = 8,
+    // farms-and-wages (`farms.rs`)
+    /// Share of its households' savings a town's treasury may borrow, to honour its bills or buy paper.
+    deposit_share: f64 = 0.5,
+    /// What the treasury pays its households a day on what it has borrowed of their savings.
+    deposit_interest_per_day: f64 = 0.002,
+    /// Emeralds beyond its reserve the treasury keeps before it repays its households.
+    deposit_keep: f64 = 10.0,
+    /// Plots turned over to another crop a review.
+    rotate_plots: u32 = 81,
+    /// Times as many plots a review for a crop owed under contract.
+    rotate_owed_fields: u32 = 2,
 }

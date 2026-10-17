@@ -55,11 +55,11 @@ pub fn register(schedule: &mut Schedule) {
 /// The town's people live the time since they were last counted: wages, comforts, mood, a home, a child.
 #[allow(clippy::type_complexity)]
 pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
-        mut towns: Query<(&Town, &mut People, &mut Stock, &mut Money, &Trades, Option<&mut Roster>)>) {
+        mut towns: Query<(&Town, &mut People, &mut Stock, &mut Money, &Trades, Option<&mut Roster>, Option<&crate::farms::Farm>)>) {
     let d = &content.dials;
     let k = content.comforts.len();
     let (now, day) = (clock.now, content.day_ticks);
-    for (town, mut people, mut stock, mut money, trades, mut roster) in &mut towns {
+    for (town, mut people, mut stock, mut money, trades, mut roster, farm) in &mut towns {
         let t = town.id;
         let people = &mut *people;
         let days = clock.now.saturating_sub(people.last) as f64 / content.day_ticks as f64;
@@ -77,6 +77,10 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
         post(&mut ledger, &mut book, Side::treasury(t, &mut money.0), Side::households(t, &mut people.purse), paid,
             Reason::Wages, now, day);
         people.paid_share = if due > 0.0 { paid / due } else { 1.0 };
+        // And of the Farmers' wages at their last settlement (`farms.rs`).
+        if let Some(farm) = farm {
+            people.paid_share = people.paid_share.min(farm.paid_share);
+        }
         // Comforts: each villager a ration of each kind a day, the cheapest goods of the kind first, whole ones (a big
         // one leaves credit); the households pay the town for what they use, as far as their purse goes.
         for kind in 0..k {

@@ -19,4 +19,5 @@ slices! {
     bargain_and_par,
     workshop,
     settlers_rule,
+    farms_and_wages,
 }

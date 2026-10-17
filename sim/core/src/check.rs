@@ -41,6 +41,13 @@ impl Society {
             balances.insert(Account::Treasury(town.id), m.0);
             balances.insert(Account::Households(town.id), people.purse);
         }
+        // Crops banked in the farms' stores (`farms.rs`).
+        let mut farms = self.world.query::<&crate::farms::Farm>();
+        for farm in farms.iter(&self.world) {
+            for (g, n) in &farm.banked {
+                goods[*g] += n;
+            }
+        }
         let mut routes = self.world.query::<(&Route, &RouteState)>();
         for (route, state) in routes.iter(&self.world) {
             let purse = state.wagon.as_ref().map_or(0.0, |w| w.purse);
