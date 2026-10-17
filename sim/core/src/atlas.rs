@@ -151,6 +151,8 @@ pub enum Want {
     Locker,
     /// It's an input to goods the town has contracted to sell (`Trades.inputs`; `Caravans.wantsAt`'s first reason).
     Inputs,
+    /// A player's shop there ordered it (`Caravans.wantsThere`, `orders.rs`).
+    Ordered,
 }
 
 impl Want {
@@ -165,6 +167,7 @@ impl Want {
             Want::Uses => "its people use it",
             Want::Locker => "a trade it has switched on takes it",
             Want::Inputs => "an input to goods it's contracted to sell",
+            Want::Ordered => "a player's shop there ordered it",
         }
     }
 }

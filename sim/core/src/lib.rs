@@ -32,6 +32,7 @@ pub mod kit;
 pub mod lockers;
 pub mod map;
 pub mod messages;
+pub mod orders;
 pub mod mint;
 pub mod people;
 pub mod post;

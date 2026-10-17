@@ -62,6 +62,12 @@ impl Society {
                 goods[h.shipment.good] += h.shipment.count;
             }
         }
+        // Goods on the town's own shops' shelves (`orders.rs`).
+        for shop in &self.world.resource::<crate::orders::Orders>().shops {
+            if let Some(g) = shop.good {
+                goods[g] += shop.shelf;
+            }
+        }
         let mut routes = self.world.query::<(&Route, &RouteState)>();
         for (route, state) in routes.iter(&self.world) {
             let purse = state.wagon.as_ref().map_or(0.0, |w| w.purse);

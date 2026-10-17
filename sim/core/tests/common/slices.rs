@@ -41,4 +41,5 @@ slices! {
     mines_and_kit,
     post,
     war_army,
+    player_orders,
 }

@@ -29,11 +29,17 @@
 //!   short, nearest holder first: a town with a mine, then the market across the sea.
 //!
 //! **Where the core differs.** No way by a freight hub (`Broker.means(.., viaHub)`, `Freight.via`), no armoury (a town
-//! keeps half its kit always), no player shops or orders (the mod's `Exchange.wanted`) or crown shortfall
-//! (`Sovereign.shortfall`) among a town's wants: those slices call [`Society::source`] and add to [`wanted`] when they
-//! land. The mod only sources for orders, the crown and the exchange; the core's towns with a master Merchant also
-//! source what their contracts want and can't be made at home, once a day; what none of the markets with a road can
-//! supply is its signal (the mod's `Broker.signals`: what no known market holds, road or not). The shops of the
+//! keeps half its kit always), no crown shortfall (`Sovereign.shortfall`) among a town's wants: that slice calls
+//! [`Society::source`] and adds to [`wanted`] when it lands. A player's order is a seller contract of the desk's own
+//! (`orders.rs`), which [`wanted`] reads like any other, so the core sources it as the mod's `Broker.fill` does; the
+//! mod asks for `remaining - spare` (what it can't spare beyond its par and what is set aside), where [`wanted`] nets
+//! the whole stock, so a desk's open orders (`Orders::wanted`) are added to the town's wants, the larger of the two.
+//! The mod only sources for orders, the crown and the exchange; the core's towns with a master Merchant also source
+//! what their contracts want and can't be made at home, once a day (and skip, as for any contract, a good its own
+//! people make or sell: its Merchant buys that of them, even for an order). What none of the markets with a road can
+//! supply is [`Sourcing::unmet`]; it is not posted from here but folded into the desk's one list of signals
+//! (`Broker.signals`: its open orders, its lockers' wants and these, where the mod has the war's), and that list is the
+//! only thing that reaches the jobs' marbles (`rules/orders.rs`), so a good is never counted by two streams. The shops of the
 //! exchange (Numismatics vendors) and the players' sales to it are the binding's. Overseas, the exchange's market makes
 //! its metals and bread up to what it keeps, once a day.
 
@@ -148,23 +154,49 @@ impl MetalExchange {
     }
 }
 
-/// Sourcing's books: the contracts it drafted whose copies still ride with the wagons between the two towns, what it
-/// has added to the jobs' signals (by town that reads it and trade) and what each town wanted that nobody supplies, the
-/// day each town last sourced.
+/// Sourcing's books: the contracts it drafted whose copies still ride with the wagons between the two towns, what the
+/// desks' signals have added to the jobs' (by town that reads it and trade: `rules/orders.rs` posts and takes it off
+/// again) and what each town wanted that no market with a road supplies, the day each town last sourced.
 #[derive(Resource, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Sourcing {
     pub copies: BTreeSet<usize>,
     pub signalled: BTreeMap<(TownId, TradeId), f64>,
     pub unmet: BTreeMap<TownId, Vec<(GoodId, f64)>>,
     pub reviewed: BTreeMap<TownId, u64>,
+    /// The look at which the review last ran (the desks' signals are made again then).
+    #[serde(default)]
+    pub ran: Option<u64>,
+}
+
+/// Puts the trades the desks' signals call for onto the jobs' signals (by town that reads it and trade), taking off
+/// what `old` had put there.
+pub fn post_trades(signals: &mut crate::jobs::Signals, old: &BTreeMap<(TownId, TradeId), f64>,
+        new: &BTreeMap<(TownId, TradeId), f64>) {
+    for (&(reader, trade), &n) in old {
+        *signals.trades.entry(reader).or_default().entry(trade).or_insert(0.0) -= n;
+    }
+    for (&(reader, trade), &n) in new {
+        *signals.trades.entry(reader).or_default().entry(trade).or_insert(0.0) += n;
+    }
+    for &(reader, trade) in old.keys().chain(new.keys()) {
+        let gone = signals.trades.get(&reader).and_then(|m| m.get(&trade)).is_some_and(|n| *n <= 1e-9);
+        if gone {
+            if let Some(m) = signals.trades.get_mut(&reader) {
+                m.remove(&trade);
+            }
+        }
+        if signals.trades.get(&reader).is_some_and(|m| m.is_empty()) {
+            signals.trades.remove(&reader);
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Procurement: what a town's contracts want of it
 
 /// What a town still has to deliver under its contracts in force, of each good, beyond what it holds
-/// (`Procurement.wanted`; the mod's orders and the crown's shortfall are other slices'): its Merchant buys it from its
-/// villagers, or sources it.
+/// (`Procurement.wanted`; a player's order is one of them, the crown's shortfall is another slice's): its Merchant buys
+/// it from its villagers, or sources it.
 pub fn wanted(content: &Content, book: &Book, town: TownId, stock: &[f64]) -> BTreeMap<GoodId, f64> {
     let mut wanted = BTreeMap::new();
     for c in book.open.iter().filter_map(|&id| book.contracts.get(id)) {

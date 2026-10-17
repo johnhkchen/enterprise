@@ -48,6 +48,8 @@ crate::saved! {
         mail: crate::post::Mail = crate::post::Mail::default(),
         forwarder: crate::post::Forwarder = crate::post::Forwarder::default(),
         army: crate::army::Army = crate::army::Army::default(),
+        orders: crate::orders::Orders = crate::orders::Orders::default(),
+        posted: crate::orders::Signals = crate::orders::Signals::default(),
     }
     town {
         town: Town,
@@ -113,4 +115,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::kit::register(schedule);
     crate::rules::post::register(schedule);
     crate::rules::army::register(schedule);
+    crate::rules::orders::register(schedule);
 }

@@ -50,7 +50,7 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
         mut book: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<TownData>, rosters: Query<&crate::roster::Roster>, realms: Query<&Realm>,
         stocktakes: Res<crate::atlas::Stocktakes>, books: Res<crate::atlas::Books>, listings: Res<crate::desires::Listings>,
-        farms: Query<&crate::farms::Farm>) {
+        farms: Query<&crate::farms::Farm>, orders: Res<crate::orders::Orders>) {
     let now = clock.now;
     let day = content.day_ticks;
     let n_goods = content.goods.len();
@@ -92,7 +92,17 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
                     let own = ((comfort_par(&content, people) - comfort_held(&content, &stock, kind)) / value).ceil().max(0.0);
                     (own, own + outlet.filter(|o| crate::desires::worth_buying(&content, value, o)).map_or(0.0, |o| o.units))
                 }
-                None => (0.0, (shelf(&content, trades, g) - stock.0[g]).max(0.0)),
+                None => {
+                    // A good wanted only because a player's shop here ordered it has a stack's room (`Warehouse.par`
+                    // with `wanted`), not its order's count on top of a shelf.
+                    let aim = shelf(&content, trades, g);
+                    let aim = if aim <= 0.0 && !realm_buys && orders.wanted_of(route.to_id, g) > 0.0 {
+                        crate::bargain::par(&content, 0.0, true)
+                    } else {
+                        aim
+                    };
+                    (0.0, (aim - stock.0[g]).max(0.0))
+                }
             };
             let par = stock.0[g] + room;
             let free_money = free(&content, trades, &money, &bills, route.to_id, now);

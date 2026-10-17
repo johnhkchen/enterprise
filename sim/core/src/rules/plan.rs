@@ -44,7 +44,8 @@ pub fn start(content: Res<Content>, mut routes: Query<&mut RouteState>) {
 #[allow(clippy::too_many_arguments)]
 fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktakes: Res<crate::atlas::Stocktakes>,
         mut routes: Query<(&Route, &mut RouteState)>, towns: Query<(&Stock, &Trades, &People)>,
-        rosters: Query<&crate::roster::Roster>, stores: Query<&crate::cargo::Shipments>, realms: Query<&Realm>) {
+        rosters: Query<&crate::roster::Roster>, stores: Query<&crate::cargo::Shipments>, realms: Query<&Realm>,
+        orders: Res<crate::orders::Orders>) {
     use crate::atlas::{Want, Why};
     let d = &content.dials;
     let n = content.goods.len();
@@ -159,9 +160,19 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
             let planned = plan.cargo[g];
             let (spare, room, par, want) = match content.goods[g].comfort.filter(|_| far_realm.is_none()) {
                 Some(_) => continue, // (the comforts went first)
-                None if far_trades.uses[g] > 0.0 || needs_input(g) || far_realm.is_some_and(|r| r.wants.contains(&g)) => {
-                    let want = Want::of(far_trades, g);
-                    let room = shelf(&content, far_trades, g) - held(g);
+                None if far_trades.uses[g] > 0.0 || needs_input(g) || far_realm.is_some_and(|r| r.wants.contains(&g))
+                    || orders.wanted_of(route.to_id, g) > 0.0 => {
+                    // A good the far end wants for its own reasons has its usual shelf, whatever it has ordered. One
+                    // wanted only because a player's shop there ordered it has the room `Warehouse.par(to, item, true)`
+                    // gives it (a stack at least), less what's held: an order only adds the good to the wanted set
+                    // (`wantsThere`, `pickCargo`).
+                    let usual = far_trades.uses[g] > 0.0 || needs_input(g) || far_realm.is_some_and(|r| r.wants.contains(&g));
+                    let (want, par) = if usual {
+                        (Want::of(far_trades, g), shelf(&content, far_trades, g))
+                    } else {
+                        (Want::Ordered, crate::bargain::par(&content, 0.0, true))
+                    };
+                    let room = par - held(g);
                     let have = home_stock.0[g] - planned;
                     // Why it stays (`Caravans.pickCargo`): they hold their fill, we have none, it's set aside, it's
                     // our own shelf, or there's no room aboard.
@@ -182,7 +193,8 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
                         whys.push((Some(g), why, count.max(0.0)));
                         continue;
                     }
-                    (have - aside[g] - shelf(&content, home_trades, g), room, shelf(&content, far_trades, g), Some(want))
+                    (have - aside[g] - shelf(&content, home_trades, g), room,
+                        par, Some(want))
                 }
                 None => continue,
             };

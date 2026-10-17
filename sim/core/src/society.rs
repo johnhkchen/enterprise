@@ -445,6 +445,10 @@ impl Society {
                 self.pay(town, money);
                 Vec::new()
             }
+            Input::Order { .. } | Input::Stall { .. } | Input::OwnShop { .. } | Input::Buy { .. } => {
+                self.apply_shop(input);
+                Vec::new()
+            }
         }
     }
 

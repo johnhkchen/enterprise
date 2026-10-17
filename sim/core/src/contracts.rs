@@ -195,7 +195,7 @@ impl Contract {
 }
 
 /// Two towns' record: installments kept and missed (weighted, fading), as of `touched`.
-#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Record {
     pub kept: f64,
     pub missed: f64,
@@ -205,6 +205,19 @@ pub struct Record {
 impl Record {
     pub fn trust(&self) -> f64 {
         (self.kept + PRIOR) / (self.kept + self.missed + 2.0 * PRIOR)
+    }
+
+    /// The trust the record gives at `now`.
+    pub fn trust_at(&self, now: u64, day: u64) -> f64 {
+        self.at(now, day).trust()
+    }
+
+    /// `kept` installments kept and `missed` missed, as of `now` (a miss weighs a quarter while they're new, as in
+    /// [`Book::missed`]).
+    pub fn add(&mut self, kept: f64, missed: f64, now: u64, day: u64) {
+        *self = self.at(now, day);
+        self.kept += kept;
+        self.missed += missed * if self.kept < TEETHING { TEETHING_WEIGHT } else { 1.0 };
     }
 
     /// The record as it stands at `now`: misses forgiven, kept installments a little forgotten.

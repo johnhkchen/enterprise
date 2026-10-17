@@ -477,4 +477,16 @@ dials! {
     grief_mood: f64 = 0.5,
     grief_most: f64 = 2.0,
     grief_days: f64 = 10.0,
+    // player-orders (`orders.rs`: `market/Broker.java`)
+    /// The Merchant fills a player's order priced at no less than this share of the goods' worth (`Broker.AGENT_FLOOR`).
+    agent_floor: f64 = 0.9,
+    /// It buys from players' shops at up to this share of the goods' worth (`Broker.MAKER_CEILING`).
+    maker_ceiling: f64 = 1.0,
+    /// And at this much of their worth for goods it has posted as wanted (`Broker.SIGNAL_PREMIUM`).
+    signal_premium: f64 = 1.5,
+    /// Its own shop sells surplus at this much over its worth, in lots of up to this many (`OWN_MARKUP`, `OWN_LOT`).
+    own_markup: f64 = 1.1,
+    own_lot: u32 = 16,
+    /// A contract with a player's shop runs this many daily lots at most (`Broker.SHOP_INSTALLMENTS`).
+    shop_installments: u32 = 10,
 }

@@ -21,8 +21,9 @@ pub fn register(schedule: &mut Schedule) {
         // After settlers: the hands that left are off its roster, and the stock they took gone, before it reviews.
         // (After the farm's review too, as main ran them before `realms` registered systems and moved an ambiguous order.)
         // Before the works' review, as main ran them before `post` registered systems and moved an ambiguous order.
+        // (After the territory's, as main ran them before `orders` registered systems and moved an ambiguous order.)
         review.in_set(Step::Review).after(super::settlers::review).after(super::farms::review)
-            .before(super::works::review),
+            .after(super::territory::review).before(super::works::review),
     ));
 }
 

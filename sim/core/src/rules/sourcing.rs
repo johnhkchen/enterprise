@@ -5,7 +5,7 @@
 //!   its contracts want, and tells them what's due soon, to cap their runs ([`procure`]).
 //! - **Review**, once a day: the capital's exchange makes its overseas market's metals, counts its own and sources the
 //!   shortfall nearest holder first; each town with a master Merchant sources what its contracts want and its people
-//!   can't make; what no market supplies is a signal for the jobs' draw ([`review`]).
+//!   can't make; what no market supplies is left for the desk's signals (`rules/orders.rs`) ([`review`]).
 //! - **Judge**: a seller's contracts in force set what it needs to make what it still owes ([`inputs`]).
 //! - **Papers**, at the far end: the copy of a contract sourcing drafted, held by one of the two towns, goes to the other
 //!   with the wagon, or rides home with it ([`copies`]).
@@ -20,7 +20,6 @@ use super::{in_order, Step};
 use crate::atlas::Stocktakes;
 use crate::content::{Content, GoodId};
 use crate::contracts::{Book, State};
-use crate::jobs::Signals;
 use crate::lockers::Lockers;
 use crate::messages::TownId;
 use crate::realms::{Crown, OffMap};
@@ -157,7 +156,7 @@ pub fn plan_inputs(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, st
 
 /// The trade that would supply a good: the first whose people sell it for emeralds, else the first that makes it
 /// (`Procurement.suppliers`).
-fn supplier_trade(content: &Content, good: GoodId) -> Option<TradeId> {
+pub(crate) fn supplier_trade(content: &Content, good: GoodId) -> Option<TradeId> {
     (0..content.trades.len()).find(|&t| content.trades[t].offers.iter().any(|o| o.sells && o.good == good))
         .or_else(|| crate::services::recipes(content).iter().find(|r| r.output == good).map(|r| r.trade))
 }
@@ -176,7 +175,8 @@ fn review_due(world: &World, today: u64) -> bool {
     })
 }
 
-/// Once a day: the exchange, then each town's sourcing, then the jobs' signals.
+/// Once a day: the exchange, then each town's sourcing. What no market with a road supplies is left in
+/// [`Sourcing::unmet`] for the desk's signals (`rules/orders.rs`), the one stream to the jobs.
 pub fn review(world: &mut World) {
     let (now, day) = {
         let c = world.resource::<Content>();
@@ -186,13 +186,13 @@ pub fn review(world: &mut World) {
     if !review_due(world, today) {
         return;
     }
+    world.resource_mut::<Sourcing>().ran = Some(now);
     let exchange_needs = exchange_day(world, today, now);
     let routes = route_facts(world);
     // What each part would do, read from the world as it stands.
     let mut drafts: Vec<(TownId, Vec<Draft>)> = Vec::new();
     let mut reviewed: Vec<TownId> = Vec::new();
     let mut unmet: BTreeMap<TownId, Vec<(GoodId, f64)>> = world.resource::<Sourcing>().unmet.clone();
-    let want_now: BTreeMap<(TownId, TradeId), f64>;
     {
         let env = Env::gather(world, routes);
         if let Some((desk, needs)) = &exchange_needs {
@@ -218,7 +218,17 @@ pub fn review(world: &mut World) {
             let stock = world.get::<Stock>(e).expect("a town");
             let mut ds = Vec::new();
             let mut left = Vec::new();
-            for (good, need) in wanted(env.content, env.book, t, &stock.0) {
+            // What its contracts want, and what a player's order at its desk still wants of what it can spare (the
+            // shop's contract is one of the seller contracts `wanted` reads, but nets the whole stock, where the mod's
+            // `fill` asks for what it can't spare beyond the par: the larger of the two).
+            let mut wants = wanted(env.content, env.book, t, &stock.0);
+            if let Some(open) = world.resource::<crate::orders::Orders>().wanted.get(&t) {
+                for (&good, &n) in open {
+                    let w = wants.entry(good).or_insert(0.0);
+                    *w = w.max(n);
+                }
+            }
+            for (good, need) in wants {
                 // What its own people make or sell, its Merchant buys of them (`procure`).
                 if env.makes(t, t, good) {
                     continue;
@@ -236,44 +246,9 @@ pub fn review(world: &mut World) {
             }
             drafts.push((t, ds));
         }
-        // What nobody supplies is posted for the idle hands of the towns that know the market: the trade that would
-        // supply it, at half again its worth (`Broker.signals`, `Jobs.signals`).
-        let mut want = BTreeMap::new();
-        for (&desk, list) in &unmet {
-            for &(good, count) in list {
-                let Some(trade) = supplier_trade(env.content, good) else { continue };
-                for reader in 0..env.towns.len() {
-                    if reader != desk && env.places.known(env.content, env.atlas, reader).contains(&desk) {
-                        *want.entry((reader, trade)).or_insert(0.0) += count * env.content.goods[good].value * SIGNAL_PREMIUM;
-                    }
-                }
-            }
-        }
-        want_now = want;
     }
     for (desk, ds) in &drafts {
         apply(world, *desk, ds);
-    }
-    let old = std::mem::replace(&mut world.resource_mut::<Sourcing>().signalled, want_now.clone());
-    {
-        let mut signals = world.resource_mut::<Signals>();
-        for (&(reader, trade), &n) in &old {
-            *signals.trades.entry(reader).or_default().entry(trade).or_insert(0.0) -= n;
-        }
-        for (&(reader, trade), &n) in &want_now {
-            *signals.trades.entry(reader).or_default().entry(trade).or_insert(0.0) += n;
-        }
-        for &(reader, trade) in old.keys().chain(want_now.keys()) {
-            let gone = signals.trades.get(&reader).and_then(|m| m.get(&trade)).is_some_and(|n| *n <= 1e-9);
-            if gone {
-                if let Some(m) = signals.trades.get_mut(&reader) {
-                    m.remove(&trade);
-                }
-            }
-            if signals.trades.get(&reader).is_some_and(|m| m.is_empty()) {
-                signals.trades.remove(&reader);
-            }
-        }
     }
     let mut sourcing = world.resource_mut::<Sourcing>();
     sourcing.unmet = unmet;

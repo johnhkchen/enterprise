@@ -312,7 +312,7 @@ fn market<'a>(content: &Content, towns: &'a Query<BuyTown>, farms: &'a Query<&mu
 pub fn buy_surplus(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<Stocktakes>, listings: Res<Listings>,
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut books: ResMut<Books>, mut whys: ResMut<Whys>,
         mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<BuyTown>, mut farms: Query<&mut Farm>,
-        rosters: Query<&Roster>, realms: Query<&Realm>, offmap: Query<&OffMap>) {
+        rosters: Query<&Roster>, realms: Query<&Realm>, offmap: Query<&OffMap>, orders: Res<crate::orders::Orders>) {
     let (now, day) = (clock.now, content.day_ticks);
     let n = content.goods.len();
     let all = infos(&routes);
@@ -340,6 +340,8 @@ pub fn buy_surplus(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<Sto
             }
             for g in 0..n {
                 let aboard = wagon.cargo[g] + wagon.shipments.iter().filter(|s| s.good == g).map(|s| s.count).sum::<f64>();
+                // And what players' shops at home have ordered: the caravan buys it up on its way (`networkWants`).
+                network[g] += orders.wanted_of(route.from_id, g);
                 network[g] = (network[g] - stocktakes.on_hand(route.from_id, g) - aboard).max(0.0);
                 outlets[g] = known.outlet(&all, route.from_id, Some(route.to_id), g, &|e| market(&content, &towns, &farms, e));
             }

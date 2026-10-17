@@ -32,6 +32,7 @@ pub mod herds;
 pub mod jobs;
 pub mod kit;
 pub mod lockers;
+pub mod orders;
 pub mod plan;
 pub mod post;
 pub mod realms;
