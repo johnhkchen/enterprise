@@ -90,7 +90,8 @@ pub fn depart(clock: Res<Clock>, content: Res<Content>, mut atlas: ResMut<Atlas>
             let stacks = crate::cargo::stacks(&content, &w.cargo, &w.shipments);
             // Full as the wagon was judged leaving: of what the far end could pay for (`saleLoad`).
             whys.why(route.from_id, Some(route.to_id), None, Why::Went { full: w.full, porter: w.porter }, stacks as f64, today);
-        } else if let Some(stay) = state.stayed.filter(|_| state.wagon.is_none()) {
+        } else if let Some(stay) = state.stayed.filter(|s| state.wagon.is_none() && *s != crate::road::Stay::Home) {
+            // (Home within the day, a route isn't dispatched at all: the mod notes no "no trip" then, `poll` 172.)
             if whys.noted.get(&route.seq) == Some(&today) {
                 continue;
             }

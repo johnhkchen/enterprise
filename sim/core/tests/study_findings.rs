@@ -173,6 +173,7 @@ fn a_route_sends_one_wagon_a_day() {
     s.advance(DAY - LOOK);
     assert_eq!(s.route(0).trips, 1, "home within the day, and no second wagon that day");
     assert!(!s.route(0).on_the_road);
+    assert_eq!(s.route_state(0).1.stayed, Some(enterprise_core::road::Stay::Home), "home, as the mod's route says");
     s.advance(DAY + LOOK);
     assert!(s.route(0).on_the_road, "the next goes a day after the first left");
 }

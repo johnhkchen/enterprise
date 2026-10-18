@@ -242,6 +242,7 @@ pub fn stay_label(stay: crate::road::Stay) -> &'static str {
         WaitingForALoad => "waiting for a fuller load",
         NoSquad => "no squad at home",
         NoMerchant => "no Merchant at the hub",
+        Home => "home",
     }
 }
 

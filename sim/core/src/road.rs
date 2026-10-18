@@ -78,6 +78,9 @@ pub enum Stay {
     NoSquad,
     /// A town with a roster and no Merchant at its desk sends no wagon (`squad.rs`: "no Merchant at the hub").
     NoMerchant,
+    /// Home within a day of its last wagon's leaving: it plans again once the day is out (`Caravans.poll` 172,
+    /// `DEPARTURE_INTERVAL`; `arriveHome` 1212: "home").
+    Home,
 }
 
 /// The food points one of a good is worth on the road: none for a comfort (`MerchantStock.nutrition`: treats aren't

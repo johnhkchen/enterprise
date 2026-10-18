@@ -37,6 +37,9 @@ pub fn start(clock: Res<Clock>, content: Res<Content>, mut routes: Query<&mut Ro
     for mut state in &mut routes {
         let rested = state.last_departure.is_none_or(|t| clock.now.saturating_sub(t) >= content.day_ticks);
         state.plan = (state.wagon.is_none() && rested).then(|| Plan { cargo: vec![0.0; n], ..Default::default() });
+        if state.wagon.is_none() && !rested {
+            state.stayed = Some(Stay::Home);
+        }
     }
 }
 
