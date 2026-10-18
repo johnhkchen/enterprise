@@ -4,7 +4,7 @@ package dev.b28.enterprise.wire;
 /**
  * A question for the core.
  */
-public sealed interface Query permits Query.Stock, Query.Points {
+public sealed interface Query permits Query.Stock, Query.Points, Query.Goods {
     void encode(PostcardOut out);
 
     static Query decode(PostcardIn in) {
@@ -12,6 +12,7 @@ public sealed interface Query permits Query.Stock, Query.Points {
         return switch (at) {
             case 0 -> new Stock(in.u32());
             case 1 -> new Points();
+            case 2 -> new Goods();
             default -> throw in.unknownVariant("Query", at);
         };
     }
@@ -43,6 +44,18 @@ public sealed interface Query permits Query.Stock, Query.Points {
         @Override
         public void encode(PostcardOut out) {
             out.variant(1);
+        }
+    }
+
+    /**
+     * The goods of the society's content, by their place: what a good's number means. A host that loads a save asks
+     * it to map its items to numbers again, since the content is the save's (a pack given at {@code Create} is kept with
+     * the society), not whatever pack the host would build today.
+     */
+    record Goods() implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(2);
         }
     }
 }

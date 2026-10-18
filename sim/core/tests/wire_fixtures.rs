@@ -180,7 +180,7 @@ fn outputs() -> Vec<Output> {
 }
 
 fn queries() -> Vec<Query> {
-    vec![Query::Stock { town: 0 }, Query::Stock { town: BIGGEST_ID }, Query::Points]
+    vec![Query::Stock { town: 0 }, Query::Stock { town: BIGGEST_ID }, Query::Points, Query::Goods]
 }
 
 fn answers() -> Vec<Answer> {
@@ -192,6 +192,9 @@ fn answers() -> Vec<Answer> {
         Answer::Points { points: vec![] },
         Answer::Points { points: points().into_iter().enumerate().map(|(i, point)| TownPoint { point, town: i as TownNo }).collect() },
         Answer::Points { points: (0..150).map(|i| TownPoint { point: point(PointKind::Locker, i, 0, -i), town: i as u32 % 4 }).collect() },
+        Answer::Goods { goods: vec![] },
+        Answer::Goods { goods: vec!["minecraft:wheat".into(), "".into(), "Br\u{f6}ly \u{1f33e}".into()] },
+        Answer::Goods { goods: (0..200).map(|i| format!("enterprise:good_{i}")).collect() },
     ]
 }
 
@@ -314,6 +317,7 @@ fn query_place(q: &Query) -> usize {
     match q {
         Query::Stock { .. } => 0,
         Query::Points => 1,
+        Query::Goods => 2,
     }
 }
 
@@ -321,6 +325,7 @@ fn answer_place(a: &Answer) -> usize {
     match a {
         Answer::Stock { .. } => 0,
         Answer::Points { .. } => 1,
+        Answer::Goods { .. } => 2,
     }
 }
 
@@ -369,8 +374,8 @@ fn covers<T>(what: &str, samples: &[T], variants: usize, place: fn(&T) -> usize)
 fn every_variant_of_every_wire_enum_has_a_sample() {
     covers("Input", &inputs(), 14, input_place);
     covers("Output", &outputs(), 8, output_place);
-    covers("Query", &queries(), 2, query_place);
-    covers("Answer", &answers(), 2, answer_place);
+    covers("Query", &queries(), 3, query_place);
+    covers("Answer", &answers(), 3, answer_place);
     covers("Command", &commands(), 5, command_place);
     covers("Response", &responses(), 3, response_place);
     covers("Refusal", &refusals(), 9, refusal_place);

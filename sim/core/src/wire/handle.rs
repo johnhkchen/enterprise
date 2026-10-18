@@ -109,6 +109,7 @@ fn answer(s: &Society, query: &Query) -> Result<Answer, String> {
             points: s.points().0.iter().map(|(spot, p)| TownPoint { point: Point::of(spot, p.kind), town: super::no(p.town) })
                 .collect(),
         },
+        Query::Goods => Answer::Goods { goods: s.content().goods.iter().map(|g| g.name.clone()).collect() },
     })
 }
 

@@ -306,6 +306,7 @@ fn stocktake() -> Scenario {
     s.load("loaded");
     let after = s.ask("asked again after the load", stock_of(0));
     assert_eq!(before, after, "a society loaded answers as the one saved did");
+    s.ask("the goods by number, as the save keeps them (what a host maps its items by after a load)", vec![Query::Goods]);
     s.apply("it runs on: five more days", vec![Input::Advance { to: 8 * DAY }]);
     s.ask("and answers", stock_of(0));
     s.scenario
@@ -539,7 +540,7 @@ fn every_message_appears_in_a_scenario() {
     let set = |names: &[&str]| names.iter().map(|s| s.to_string()).collect::<std::collections::BTreeSet<_>>();
     assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "Stall", "Stocktake"]));
     assert_eq!(commands, set(&["Apply", "Ask", "Create", "Load", "Save"]));
-    assert_eq!(queries, set(&["Points", "Stock"]));
+    assert_eq!(queries, set(&["Goods", "Points", "Stock"]));
     assert_eq!(refusals, set(&["Abi", "Input", "NoSociety", "Pack", "Query", "Save", "SaveFormat", "Schema", "Unreadable"]));
     // None yet: an Output needs a master Merchant (OrderFilled, Signal), a route (the wagon's three) or a pallet (the
     // pallets' three: only a wagon packs one), and no wire input makes any. When one does, a scenario shows each and its name goes here.

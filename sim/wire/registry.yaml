@@ -15,6 +15,11 @@ Answer:
           - points:
               SEQ:
                 TYPENAME: TownPoint
+    2:
+      Goods:
+        STRUCT:
+          - goods:
+              SEQ: STR
 Command:
   ENUM:
     0:
@@ -261,6 +266,8 @@ Query:
           - town: U32
     1:
       Points: UNIT
+    2:
+      Goods: UNIT
 Refusal:
   ENUM:
     0:

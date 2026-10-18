@@ -7,7 +7,7 @@ import java.util.Objects;
 /**
  * An answer, in the place of its question.
  */
-public sealed interface Answer permits Answer.Stock, Answer.Points {
+public sealed interface Answer permits Answer.Stock, Answer.Points, Answer.Goods {
     void encode(PostcardOut out);
 
     static Answer decode(PostcardIn in) {
@@ -15,6 +15,7 @@ public sealed interface Answer permits Answer.Stock, Answer.Points {
         return switch (at) {
             case 0 -> new Stock(in.u32(), in.list(8, PostcardIn::f64));
             case 1 -> new Points(in.list(6, TownPoint::decode));
+            case 2 -> new Goods(in.list(1, PostcardIn::string));
             default -> throw in.unknownVariant("Answer", at);
         };
     }
@@ -59,6 +60,22 @@ public sealed interface Answer permits Answer.Stock, Answer.Points {
         public void encode(PostcardOut out) {
             out.variant(1);
             out.list(this.points, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * Every good's name, in the order of their numbers (a {@code GoodNo} is a place here).
+     */
+    record Goods(List<String> goods) implements Answer {
+        public Goods {
+            Objects.requireNonNull(goods, "goods");
+            goods = List.copyOf(goods);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(2);
+            out.list(this.goods, PostcardOut::string);
         }
     }
 }

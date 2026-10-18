@@ -146,6 +146,11 @@ public final class Prices {
         return 1 / itemsPerEmerald(item);
     }
 
+    /** Every item listed, by id, sorted: the goods of the content pack the mod gives the core (binding/ModPack). */
+    public static java.util.List<String> listed() {
+        return ITEMS_PER_EMERALD.keySet().stream().sorted().toList();
+    }
+
     public static boolean isListed(String itemId) {
         return ITEMS_PER_EMERALD.containsKey(itemId);
     }

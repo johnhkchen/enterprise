@@ -11,6 +11,10 @@ pub enum Query {
     Stock { town: TownNo },
     /// Every trade point and its town.
     Points,
+    /// The goods of the society's content, by their place: what a good's number means. A host that loads a save asks
+    /// it to map its items to numbers again, since the content is the save's (a pack given at `Create` is kept with
+    /// the society), not whatever pack the host would build today.
+    Goods,
 }
 
 /// An answer, in the place of its question.
@@ -21,6 +25,8 @@ pub enum Answer {
     Stock { town: TownNo, stock: Vec<f64> },
     /// Every trade point, in the order of their places (dimension, then x, y, z), with its town.
     Points { points: Vec<TownPoint> },
+    /// Every good's name, in the order of their numbers (a `GoodNo` is a place here).
+    Goods { goods: Vec<String> },
 }
 
 /// A trade point and the town it's for.

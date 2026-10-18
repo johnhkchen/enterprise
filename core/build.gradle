@@ -93,6 +93,19 @@ dependencies {
     compileOnly "maven.modrinth:numismatics:${numismatics_version}"
     localRuntime "maven.modrinth:create:${create_version}"
     localRuntime "maven.modrinth:numismatics:${numismatics_version}"
+
+    // The Rust core, run in the JVM (binding/: the module compiled to classes, Chicory, the generated wire;
+    // docs/binding-plan.md 1.5). On the compile classpath and, as a library FML loads beside the mod rather than a boot
+    // module, on the dev runs' (game tests included); shipped inside the mod's jar (jar-in-jar) with
+    // what it brings: Chicory's runtime, wasi, wasm and log, at the binding's version (`chicory_version`).
+    implementation project(':binding')
+    additionalRuntimeClasspath project(':binding')
+    jarJar(project(':binding'))
+    ['runtime', 'wasi', 'wasm', 'log'].each { name ->
+        jarJar("com.dylibso.chicory:${name}") {
+            version { strictly "[${chicory_version}]"; prefer chicory_version }
+        }
+    }
 }
 
 var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {

@@ -47,6 +47,10 @@ final class EnterpriseCommands {
                 .then(Commands.literal("stock")
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .executes(EnterpriseCommands::stock)))
+                .then(Commands.literal("core")
+                        .then(Commands.literal("stock")
+                                .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                        .executes(EnterpriseCommands::coreStock))))
                 .then(Commands.literal("mint").executes(EnterpriseCommands::mint))
                 .then(Commands.literal("census")
                         .then(Commands.argument("bell", BlockPosArgument.blockPos())
@@ -400,6 +404,38 @@ final class EnterpriseCommands {
                                         .then(Commands.argument("trade", StringArgumentType.string())
                                                 .then(Commands.argument("on", BoolArgumentType.bool())
                                                         .executes(EnterpriseCommands::switchTrade)))))));
+    }
+
+    /**
+     * What the core says a desk's town holds ({@code /enterprise core stock <desk>}), answered by the Rust core through
+     * the binding, not the Java rules. A desk the core doesn't keep yet is registered first (a town at its desk) and its
+     * chests counted: a world from before the core, or a desk placed by a command, has none.
+     */
+    private static int coreStock(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        ServerLevel level = source.getLevel();
+        BlockPos desk = BlockPosArgument.getLoadedBlockPos(context, "desk");
+        var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+        if (host == null || host.pausedWhy() != null) {
+            source.sendFailure(Component.literal(host == null ? "The core isn't running" : host.pausedWhy()));
+            return 0;
+        }
+        GlobalPos at = GlobalPos.of(level.dimension(), desk);
+        Long town = host.stock().townAt(at);
+        if (town == null) {
+            if (!level.getBlockState(desk).is(Merchant.DESK.get())) {
+                source.sendFailure(Component.literal("No Merchant's Desk at " + desk.toShortString()));
+                return 0;
+            }
+            town = host.stock().found(level, desk, dev.b28.enterprise.settlement.Names.of(source.getServer(), at));
+        }
+        Map<String, Double> held = host.stock().stockAt(at);
+        long t = town;
+        StringBuilder out = new StringBuilder("The core's town %d at %s holds %d goods".formatted(t, desk.toShortString(), held.size()));
+        held.forEach((good, n) -> out.append("\n  %s: %s".formatted(good, n == Math.rint(n) ? Long.toString((long) (double) n)
+                : "%.3f".formatted(n))));
+        source.sendSuccess(() -> Component.literal(out.toString()), false);
+        return held.size();
     }
 
     /** Lists what the Merchant at a desk sees: its stock containers and the lockers it manages. */

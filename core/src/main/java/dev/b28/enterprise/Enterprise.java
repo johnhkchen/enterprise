@@ -41,6 +41,10 @@ public final class Enterprise {
         NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.territory.Works::onServerTick);
         NeoForge.EVENT_BUS.addListener(net.neoforged.neoforge.event.level.ChunkEvent.Load.class, Terrain::onChunk);
         NeoForge.EVENT_BUS.addListener(net.neoforged.neoforge.event.level.ChunkEvent.Unload.class, Terrain::onChunk);
+        // The Rust core beside the Java rules (docs/binding-plan.md B2.1): started, saved and stopped with the server,
+        // and a look handed to it each game minute.
+        dev.b28.enterprise.binding.CoreHost.register(NeoForge.EVENT_BUS);
+        NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.binding.CoreClock::onServerTick);
     }
 
     public static ResourceLocation id(String path) {

@@ -161,6 +161,25 @@ fn points_are_answered_in_their_places_order_with_their_towns() {
     ]);
 }
 
+/// A host that loads a save maps its items to good numbers from the society's own content, not from the pack it would
+/// build today: the goods come back by name in the pack's order, before and after a save and load (`proof-in-mod`'s
+/// `StockAdapter` reads them so).
+#[test]
+fn the_goods_are_named_in_their_numbers_order_and_kept_by_a_save() {
+    let mut s = created();
+    let names: Vec<String> = pack().goods.iter().map(|g| g.name.clone()).collect();
+    assert_eq!(ask(&mut s, vec![Query::Goods]), vec![Answer::Goods { goods: names.clone() }]);
+    apply(&mut s, vec![Input::AddTown { name: "Ashford".into(), desk: desk(27, 27) }]);
+    let Response::Saved { save } = call(&mut s, Command::Save) else { panic!("saved") };
+    let mut loaded = None;
+    assert_eq!(call(&mut loaded, Command::Load { save }), Response::Done { outputs: vec![], answers: vec![] });
+    assert_eq!(ask(&mut loaded, vec![Query::Goods, Query::Stock { town: 0 }]), vec![
+        Answer::Goods { goods: names },
+        Answer::Stock { town: 0, stock: vec![0.0; 4] },
+    ]);
+    assert_eq!(refusal(call(&mut None, Command::Ask { queries: vec![Query::Goods] })), Refusal::NoSociety);
+}
+
 /// A world saved and loaded through the wire runs on as the one kept, to the bit.
 fn saved_and_loaded_runs_on_alike(mut kept: Option<Society>, days: std::ops::RangeInclusive<u64>) {
     let Response::Saved { save } = call(&mut kept, Command::Save) else { panic!("saved") };

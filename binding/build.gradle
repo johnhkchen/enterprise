@@ -19,7 +19,7 @@ repositories {
     mavenCentral()
 }
 
-def chicoryVersion = '1.7.5'
+def chicoryVersion = chicory_version // gradle.properties: the mod's jar-in-jar ships the same
 def sim = rootProject.file('sim')
 // The module as `just wasm` builds it (release, panic = abort, stripped, linked whole), and the same with its names
 // kept (for the spike's report of what wouldn't compile: function indexes are the same, only the name section differs).
@@ -56,6 +56,12 @@ dependencies {
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// A module name of its own in the mod's runtime (FML loads it as a library beside the mod), not one guessed from the
+// jar's file name.
+tasks.named('jar', Jar) {
+    manifest.attributes('Automatic-Module-Name': 'dev.b28.enterprise.binding')
 }
 
 tasks.withType(JavaCompile).configureEach {

@@ -381,6 +381,26 @@ measurements your task asks for, and how long an upgrade through your part would
 | Java | **yes**: `just build`, `just gametest`: "All 264 required tests passed" (262 and the two new) |
 | Model | **opus / high**: the first contact with NeoForge's lifecycle (server start, world save, stop) |
 
+**Built (B2.1 `proof-in-mod`).** `core/` depends on `binding` (`implementation`, `additionalRuntimeClasspath` so FML
+loads it beside the mod in dev runs and game tests, `jarJar` with Chicory's runtime, wasi, wasm and log at
+`chicory_version` in `gradle.properties`: the jar grows 2.3 MB). In `dev.b28.enterprise.binding`: `CoreHost` (made at
+`ServerStartedEvent`, the world's seed and `ModPack` at a new world, else the save loaded; saved on the overworld's
+`LevelEvent.Save`; closed at `ServerStoppedEvent`; the core on a `CoreWorker`, looks sent and their outputs shown a tick
+later, questions and registrations waited for), `CoreClock` (the one tick listener: a look every 1,200 ticks of game
+time, outputs polled each tick), `Outcomes` (the exhaustive switch; every variant today routed to "unshown" until its
+adapter lands), `ModPack` (the goods `Prices` lists, by id, worth and stack and food: B4.1 adds the rest), and
+`adapters/StockAdapter` (desks as towns and points, registered when a player places one, forgotten when one is broken,
+or registered by `/enterprise core stock <desk>`; touching chests counted at each look; the desks and the goods' numbers
+read back from the core, never kept in Java). **The save is `SaveStore`'s plain file**, `enterprise_core.dat` in the
+world's folder beside `level.dat`, not a SavedData: the same bytes, with `SaveStore`'s rules (whole through a temporary
+file, prev.dat, the refusal that pauses) kept in one place; a world's folder copied copies its society. One addition to
+the core: `Query::Goods` (the goods' names by number), since a loaded society keeps the pack it was made with and the
+host must map items by that, not by the pack it would build today. Measured in the game-test server (no dev server:
+`ENTERPRISE_CORE_MEASURE=1 just gametest`), four desks with 540 full stacks: a look costs the server's tick 0.05 to
+0.07 ms mean (p99 0.2, the worst 1.7: counting the chests and handing over the `Apply`; without the core, nothing), the
+core's thread 2.4 to 2.6 ms a look (empty towns, the mod's 135 priced goods; a machine at load 11); a save of the 39 KB blob
+2.2 ms p50 (8.6 the worst) on the tick that saves the world.
+
 ### 3.4 Wave B3: the switch (start beside B1/B2: `gametest-triage` reads only)
 
 #### B3.1 `gametest-triage`
