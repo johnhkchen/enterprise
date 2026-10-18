@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{Count, GoodNo, GroundView, HandNo, HexAt, Point, TownNo, WorkView};
+use super::{Count, GoodNo, GroundView, HandNo, HexAt, MarketLine, Point, RouteLine, TownNo, WorkView};
 use crate::fixed::Fixed;
 
 /// A question for the core.
@@ -33,6 +33,9 @@ pub enum Query {
     /// A town's lockers: which its Merchant manages, where each stands, and each one's offers with their switches (what
     /// the Merchant's screen shows).
     Lockers { town: TownNo },
+    /// A town's routes (from it and to it), the markets it knows and its squad at home: what the Merchant's screen shows
+    /// of its caravans, and the route commands.
+    Routes { town: TownNo },
 }
 
 /// An answer, in the place of its question.
@@ -72,6 +75,10 @@ pub enum Answer {
     /// them (`placed`: a hand has one only where `Input::Locker` put it), and every hand with a trade a locker serves
     /// (grown, not the Merchant, not idle), in the roster's order. Empty for a town that keeps no roster.
     Lockers { town: TownNo, limit: u32, placed: bool, lockers: Vec<LockerView> },
+    /// A town's routes, from it and to it, in the order they were opened; the markets it knows, nearest first (as its
+    /// atlas has them); and the trades of the hands at home who could go with its wagons (`squad`, in the squad's order:
+    /// the core's names).
+    Routes { town: TownNo, routes: Vec<RouteLine>, markets: Vec<MarketLine>, squad: Vec<String> },
 }
 
 /// A hand's locker as the Merchant's screen shows it: the hand, whether the Merchant manages it now and has taken it on

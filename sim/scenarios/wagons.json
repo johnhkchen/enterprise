@@ -1,0 +1,1299 @@
+{
+  "name": "wagons",
+  "about": "A town's wagons, started and stopped by its host (the Merchant's screen, the route commands): Hub's host starts wagons to Far, forty blocks off, which holds books Hub's people are short of. At the next look its wagon leaves (WagonLeft) and the hand that leads it, the villager with no trade Hub's Merchant takes on as its travelling Merchant, goes away with it (HandAway: the host stows its villager). The route shows the wagon on its way out with its crew by hand; on its way home; and home, its crew back (HandBack, with the trade it was taken on for, for the host's villager let out by the desk). Stopped, the route is wound down and no wagon leaves; started again, it's the same route, open. A route to itself, or from a town that isn't there, is refused; one to a far end beyond a leg's food opens nothing. Saved and loaded, the routes are as they were.",
+  "steps": [
+    {
+      "note": "a society from a pack with books and Merchants",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Create": {
+            "pack": {
+              "day_ticks": 24000,
+              "goods": [
+                {
+                  "name": "minecraft:wheat",
+                  "worth": 0.05,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [
+                    "Crop"
+                  ],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:bread",
+                  "worth": 0.2,
+                  "stack": 64,
+                  "food": 5.0,
+                  "saturation": 6.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:book",
+                  "worth": 0.5,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": "reading",
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:cooked_beef",
+                  "worth": 0.3,
+                  "stack": 64,
+                  "food": 8.0,
+                  "saturation": 12.8,
+                  "comfort": null,
+                  "flags": [
+                    "Meat"
+                  ],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:iron_ingot",
+                  "worth": 0.25,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 4.0
+                },
+                {
+                  "name": "minecraft:sugar_cane",
+                  "worth": 0.04,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 0.5
+                },
+                {
+                  "name": "minecraft:paper",
+                  "worth": 0.04,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 1.0
+                }
+              ],
+              "comforts": [
+                "clothing",
+                "reading"
+              ],
+              "trades": [
+                "merchant",
+                "farmer",
+                "librarian",
+                "shepherd",
+                "none",
+                "nitwit"
+              ],
+              "recipes": [
+                {
+                  "trades": [
+                    "farmer"
+                  ],
+                  "inputs": [
+                    {
+                      "good": "minecraft:wheat",
+                      "count": 3.0
+                    }
+                  ],
+                  "output": "minecraft:bread",
+                  "makes": 1.0
+                },
+                {
+                  "trades": [
+                    "librarian"
+                  ],
+                  "inputs": [
+                    {
+                      "good": "minecraft:sugar_cane",
+                      "count": 1.0
+                    }
+                  ],
+                  "output": "minecraft:paper",
+                  "makes": 1.0
+                }
+              ],
+              "animals": [
+                {
+                  "name": "cow",
+                  "feed": [
+                    "minecraft:wheat"
+                  ],
+                  "feed_per_day": 0.25,
+                  "meat": "minecraft:cooked_beef",
+                  "meat_each": 2.0,
+                  "wool": null,
+                  "hide": null
+                }
+              ],
+              "dials": [
+                {
+                  "name": "birth_mood",
+                  "value": 0.5
+                },
+                {
+                  "name": "wagon_slots",
+                  "value": 30.0
+                }
+              ]
+            },
+            "seed": 7
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac0100c0bb01070f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f146d696e6563726166743a69726f6e5f696e676f74000000000000d03f400000000000000000000000000000000000000000000000001040146d696e6563726166743a73756761725f63616e657b14ae47e17aa43f40000000000000000000000000000000000000000000000000e03f0f6d696e6563726166743a70617065727b14ae47e17aa43f40000000000000000000000000000000000000000000000000f03f0208636c6f7468696e670772656164696e6706086d65726368616e74066661726d6572096c696272617269616e087368657068657264046e6f6e65066e69747769740201066661726d6572010f6d696e6563726166743a776865617400000000000008400f6d696e6563726166743a6272656164000000000000f03f01096c696272617269616e01146d696e6563726166743a73756761725f63616e65000000000000f03f0f6d696e6563726166743a7061706572000000000000f03f0103636f77010f6d696e6563726166743a7768656174000000000000d03f01156d696e6563726166743a636f6f6b65645f6265656600000000000000400000020a62697274685f6d6f6f64000000000000e03f0b7761676f6e5f736c6f74730000000000003e4007",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "two towns forty blocks apart, Hub with its Merchant and a villager of no trade, Far with its Merchant and books; bread and money in both",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "AddTown": {
+                  "name": "Hub",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "AddTown": {
+                  "name": "Far",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 67,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "AddTown": {
+                  "name": "Distant",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 9027
+                  }
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 0,
+                  "trade": "merchant",
+                  "level": 1,
+                  "tag": "villager-hub"
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 0,
+                  "trade": "none",
+                  "level": 1,
+                  "tag": "villager-lead"
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 1,
+                  "trade": "merchant",
+                  "level": 1,
+                  "tag": "villager-far"
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 0,
+                  "good": 1,
+                  "count": 128.0
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 1,
+                  "good": 1,
+                  "count": 128.0
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 1,
+                  "good": 2,
+                  "count": 64.0
+                }
+              },
+              {
+                "Pay": {
+                  "town": 0,
+                  "money": 50000
+                }
+              },
+              {
+                "Pay": {
+                  "town": 1,
+                  "money": 50000
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac01030b070348756200136d696e6563726166743a6f766572776f726c64367736070346617200136d696e6563726166743a6f766572776f726c6486017736070744697374616e7400136d696e6563726166743a6f766572776f726c643677868d010f00086d65726368616e74010c76696c6c616765722d6875620f00046e6f6e65010d76696c6c616765722d6c6561640f01086d65726368616e74010c76696c6c616765722d6661720100010000000000006040010101000000000000604001010200000000000050400200a08d060201a08d06",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "Hub's hands",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Hands": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac0104010400",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Hands": {
+                "town": 0,
+                "lockers": 2,
+                "hands": [
+                  {
+                    "hand": 1,
+                    "tag": "villager-hub",
+                    "trade": "merchant",
+                    "level": 1,
+                    "xp": 0,
+                    "baby": false,
+                    "away": false,
+                    "merchant": true
+                  },
+                  {
+                    "hand": 2,
+                    "tag": "villager-lead",
+                    "trade": "none",
+                    "level": 1,
+                    "xp": 0,
+                    "baby": false,
+                    "away": false,
+                    "merchant": false
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "00000104000202010c76696c6c616765722d687562086d65726368616e740100000001020d76696c6c616765722d6c656164046e6f6e650100000000"
+    },
+    {
+      "note": "Hub has no route yet, and knows Far (Distant is beyond word of mouth); its squad at home",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Routes": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac0104010b00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Routes": {
+                "town": 0,
+                "routes": [],
+                "markets": [
+                  {
+                    "town": 1,
+                    "desk": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 67,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "blocks": 40,
+                    "settlement": false,
+                    "reachable": true,
+                    "routed": false
+                  }
+                ],
+                "squad": [
+                  "none"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010b000001010100136d696e6563726166743a6f766572776f726c6486017736012800010001046e6f6e65"
+    },
+    {
+      "note": "Hub's host starts wagons to Far, and to Distant (nine thousand blocks: beyond a leg's food)",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Route": {
+                  "from": 0,
+                  "to": 1,
+                  "send": true
+                }
+              },
+              {
+                "Route": {
+                  "from": 0,
+                  "to": 2,
+                  "send": true
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac0103021c0001011c000201",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "a route to Far, home; none to Distant",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Routes": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac0104010b00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Routes": {
+                "town": 0,
+                "routes": [
+                  {
+                    "route": 0,
+                    "from": 0,
+                    "to": 1,
+                    "blocks": 40,
+                    "days": 0.03333333333333333,
+                    "every_days": 4.0,
+                    "open": true,
+                    "on_call": false,
+                    "trips": 0,
+                    "sold": 0.0,
+                    "wagon": null,
+                    "status": "home"
+                  }
+                ],
+                "markets": [
+                  {
+                    "town": 1,
+                    "desk": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 67,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "blocks": 40,
+                    "settlement": false,
+                    "reachable": true,
+                    "routed": true
+                  }
+                ],
+                "squad": [
+                  "none"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010b000100000128111111111111a13f000000000000104001000000000000000000000004686f6d6501010100136d696e6563726166743a6f766572776f726c6486017736012800010101046e6f6e65"
+    },
+    {
+      "note": "a look: the wagon leaves to shop for books, led by the hand taken on as its Merchant",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Advance": {
+                  "to": 1200
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac01030100b009",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "WagonLeft": {
+                "route": 0,
+                "stacks": 0,
+                "worth": 2.4
+              }
+            },
+            {
+              "HandAway": {
+                "town": 0,
+                "hand": 2,
+                "tag": "villager-lead"
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "000200000033333333333303401000020d76696c6c616765722d6c65616400"
+    },
+    {
+      "note": "its wagon on the way out, its crew the lead",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Routes": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac0104010b00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Routes": {
+                "town": 0,
+                "routes": [
+                  {
+                    "route": 0,
+                    "from": 0,
+                    "to": 1,
+                    "blocks": 40,
+                    "days": 0.03333333333333333,
+                    "every_days": 4.0,
+                    "open": true,
+                    "on_call": false,
+                    "trips": 0,
+                    "sold": 0.0,
+                    "wagon": {
+                      "out": true,
+                      "arrives": 2000,
+                      "crew": [
+                        2
+                      ],
+                      "stacks": 30,
+                      "porter": false
+                    },
+                    "status": "on the way out"
+                  }
+                ],
+                "markets": [
+                  {
+                    "town": 1,
+                    "desk": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 67,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "blocks": 40,
+                    "settlement": false,
+                    "reachable": true,
+                    "routed": true
+                  }
+                ],
+                "squad": []
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010b000100000128111111111111a13f000000000000104001000000000000000000000101d00f01021e000e6f6e2074686520776179206f757401010100136d696e6563726166743a6f766572776f726c6486017736012800010100"
+    },
+    {
+      "note": "a look: at the far end, and on its way home",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Advance": {
+                  "to": 2400
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac01030100e012",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "WagonSold": {
+                "route": 0,
+                "sold": 0.0,
+                "takings": 0
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "0001010000000000000000000000"
+    },
+    {
+      "note": "on its way home",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Routes": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac0104010b00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Routes": {
+                "town": 0,
+                "routes": [
+                  {
+                    "route": 0,
+                    "from": 0,
+                    "to": 1,
+                    "blocks": 40,
+                    "days": 0.03333333333333333,
+                    "every_days": 4.0,
+                    "open": true,
+                    "on_call": false,
+                    "trips": 0,
+                    "sold": 0.0,
+                    "wagon": {
+                      "out": false,
+                      "arrives": 3200,
+                      "crew": [
+                        2
+                      ],
+                      "stacks": 30,
+                      "porter": false
+                    },
+                    "status": "on the way home"
+                  }
+                ],
+                "markets": [
+                  {
+                    "town": 1,
+                    "desk": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 67,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "blocks": 40,
+                    "settlement": false,
+                    "reachable": true,
+                    "routed": true
+                  }
+                ],
+                "squad": []
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010b000100000128111111111111a13f000000000000104001000000000000000000000100801901021e000f6f6e207468652077617920686f6d6501010100136d696e6563726166743a6f766572776f726c6486017736012800010100"
+    },
+    {
+      "note": "a look: home, its crew back as Hub's Merchant on the road",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Advance": {
+                  "to": 3600
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac01030100901c",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "WagonHome": {
+                "route": 0,
+                "takings": 1225
+              }
+            },
+            {
+              "HandBack": {
+                "town": 0,
+                "hand": 2,
+                "tag": "villager-lead",
+                "trade": "merchant",
+                "level": 1,
+                "xp": 1
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "0002020092131100020d76696c6c616765722d6c656164086d65726368616e74010100"
+    },
+    {
+      "note": "home, one trip made",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Routes": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac0104010b00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Routes": {
+                "town": 0,
+                "routes": [
+                  {
+                    "route": 0,
+                    "from": 0,
+                    "to": 1,
+                    "blocks": 40,
+                    "days": 0.03333333333333333,
+                    "every_days": 4.0,
+                    "open": true,
+                    "on_call": false,
+                    "trips": 1,
+                    "sold": 0.0,
+                    "wagon": null,
+                    "status": "home"
+                  }
+                ],
+                "markets": [
+                  {
+                    "town": 1,
+                    "desk": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 67,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "blocks": 40,
+                    "settlement": false,
+                    "reachable": true,
+                    "routed": true
+                  }
+                ],
+                "squad": [
+                  "merchant"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010b000100000128111111111111a13f000000000000104001000100000000000000000004686f6d6501010100136d696e6563726166743a6f766572776f726c6486017736012800010101086d65726368616e74"
+    },
+    {
+      "note": "the host stops Hub's wagons to Far",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Route": {
+                  "from": 0,
+                  "to": 1,
+                  "send": false
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac0103011c000100",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "the route wound down",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Routes": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac0104010b00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Routes": {
+                "town": 0,
+                "routes": [
+                  {
+                    "route": 0,
+                    "from": 0,
+                    "to": 1,
+                    "blocks": 40,
+                    "days": 0.03333333333333333,
+                    "every_days": 4.0,
+                    "open": false,
+                    "on_call": false,
+                    "trips": 1,
+                    "sold": 0.0,
+                    "wagon": null,
+                    "status": "wound down"
+                  }
+                ],
+                "markets": [
+                  {
+                    "town": 1,
+                    "desk": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 67,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "blocks": 40,
+                    "settlement": false,
+                    "reachable": true,
+                    "routed": false
+                  }
+                ],
+                "squad": [
+                  "merchant"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010b000100000128111111111111a13f00000000000010400000010000000000000000000a776f756e6420646f776e01010100136d696e6563726166743a6f766572776f726c6486017736012800010001086d65726368616e74"
+    },
+    {
+      "note": "five days: no wagon leaves",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Advance": {
+                  "to": 120000
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac01030100c0a907",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "started again",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Route": {
+                  "from": 0,
+                  "to": 1,
+                  "send": true
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac0103011c000101",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "the same route, open",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Routes": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac0104010b00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Routes": {
+                "town": 0,
+                "routes": [
+                  {
+                    "route": 0,
+                    "from": 0,
+                    "to": 1,
+                    "blocks": 40,
+                    "days": 0.03333333333333333,
+                    "every_days": 4.0,
+                    "open": true,
+                    "on_call": false,
+                    "trips": 1,
+                    "sold": 0.0,
+                    "wagon": null,
+                    "status": "home"
+                  }
+                ],
+                "markets": [
+                  {
+                    "town": 1,
+                    "desk": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 67,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "blocks": 40,
+                    "settlement": false,
+                    "reachable": true,
+                    "routed": true
+                  }
+                ],
+                "squad": [
+                  "merchant"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010b000100000128111111111111a13f000000000000104001000100000000000000000004686f6d6501010100136d696e6563726166743a6f766572776f726c6486017736012800010101086d65726368616e74"
+    },
+    {
+      "note": "saved",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": "Save"
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac0102",
+      "saved": {
+        "format": 1,
+        "schema": 12432014802387144748,
+        "blob_len": 7287,
+        "blob_fnv": "7f2176c6ffacf6ae"
+      }
+    },
+    {
+      "note": "loaded",
+      "load": "saved",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "the same after the load",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Routes": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac0104010b00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Routes": {
+                "town": 0,
+                "routes": [
+                  {
+                    "route": 0,
+                    "from": 0,
+                    "to": 1,
+                    "blocks": 40,
+                    "days": 0.03333333333333333,
+                    "every_days": 4.0,
+                    "open": true,
+                    "on_call": false,
+                    "trips": 1,
+                    "sold": 0.0,
+                    "wagon": null,
+                    "status": "home"
+                  }
+                ],
+                "markets": [
+                  {
+                    "town": 1,
+                    "desk": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 67,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "blocks": 40,
+                    "settlement": false,
+                    "reachable": true,
+                    "routed": true
+                  }
+                ],
+                "squad": [
+                  "merchant"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010b000100000128111111111111a13f000000000000104001000100000000000000000004686f6d6501010100136d696e6563726166743a6f766572776f726c6486017736012800010101086d65726368616e74"
+    },
+    {
+      "note": "a route from Hub to itself: refused",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Route": {
+                  "from": 0,
+                  "to": 0,
+                  "send": true
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac0103011c000001",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "a route from town 0 to itself"
+            }
+          }
+        }
+      },
+      "response_postcard": "0207001d6120726f7574652066726f6d20746f776e203020746f20697473656c66"
+    },
+    {
+      "note": "a route to a town that isn't there: refused",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Route": {
+                  "from": 0,
+                  "to": 1,
+                  "send": false
+                }
+              },
+              {
+                "Route": {
+                  "from": 0,
+                  "to": 9,
+                  "send": true
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac0103021c0001001c000901",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 1,
+              "why": "no town 9"
+            }
+          }
+        }
+      },
+      "response_postcard": "020701096e6f20746f776e2039"
+    },
+    {
+      "note": "nothing of the refused look applied: the route still open",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Routes": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac0104010b00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Routes": {
+                "town": 0,
+                "routes": [
+                  {
+                    "route": 0,
+                    "from": 0,
+                    "to": 1,
+                    "blocks": 40,
+                    "days": 0.03333333333333333,
+                    "every_days": 4.0,
+                    "open": true,
+                    "on_call": false,
+                    "trips": 1,
+                    "sold": 0.0,
+                    "wagon": null,
+                    "status": "home"
+                  }
+                ],
+                "markets": [
+                  {
+                    "town": 1,
+                    "desk": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 67,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "blocks": 40,
+                    "settlement": false,
+                    "reachable": true,
+                    "routed": true
+                  }
+                ],
+                "squad": [
+                  "merchant"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010b000100000128111111111111a13f000000000000104001000100000000000000000004686f6d6501010100136d696e6563726166743a6f766572776f726c6486017736012800010101086d65726368616e74"
+    },
+    {
+      "note": "the routes of a town that isn't there",
+      "request": {
+        "abi": 1,
+        "schema": 12432014802387144748,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Routes": {
+                  "town": 9
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01aca0bcd585f3d8c3ac0104010b09",
+      "response": {
+        "Refused": {
+          "why": {
+            "Query": {
+              "at": 0,
+              "why": "no town 9"
+            }
+          }
+        }
+      },
+      "response_postcard": "020800096e6f20746f776e2039"
+    }
+  ]
+}

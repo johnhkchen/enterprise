@@ -36,7 +36,8 @@ public sealed interface Input
                 Input.Survey,
                 Input.Built,
                 Input.Switch,
-                Input.Locker {
+                Input.Locker,
+                Input.Route {
     void encode(PostcardOut out);
 
     static Input decode(PostcardIn in) {
@@ -70,6 +71,7 @@ public sealed interface Input
             case 25 -> new Built(in.u32(), Work.decode(in), in.f64());
             case 26 -> new Switch(in.u32(), in.u32(), in.u32(), in.bool());
             case 27 -> new Locker(in.u32(), in.option(Point::decode));
+            case 28 -> new Route(in.u32(), in.u32(), in.bool());
             default -> throw in.unknownVariant("Input", at);
         };
     }
@@ -574,6 +576,23 @@ public sealed interface Input
             out.variant(27);
             out.u32(this.hand);
             out.option(this.at, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * Wagons from one town's market to another's, started ({@code send}) or stopped (the Merchant's screen,
+     * {@code CommissionPayload}; {@code /enterprise route add} and {@code remove}): started, a route opens if the far end is within a leg's
+     * food and there's a way there (a route wound down is opened again), and nothing happens if one is open already or
+     * none can be; stopped, an open route is wound down (its wagon on the road comes home and stays). {@code Answer::Routes}
+     * says what came of it. Refused for a town that isn't there, or a town to itself.
+     */
+    record Route(long from, long to, boolean send) implements Input {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(28);
+            out.u32(this.from);
+            out.u32(this.to);
+            out.bool(this.send);
         }
     }
 }

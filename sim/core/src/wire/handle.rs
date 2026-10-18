@@ -188,6 +188,12 @@ fn answer(s: &Society, query: &Query) -> Result<Answer, String> {
             let (limit, placed, lockers) = s.locker_views(town as usize);
             Answer::Lockers { town, limit, placed, lockers }
         }
+        &Query::Routes { town } => {
+            if town as usize >= s.town_count() {
+                return Err(format!("no town {town}"));
+            }
+            s.route_lines(town as usize)
+        }
     })
 }
 
@@ -363,6 +369,13 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
             }
             // A hand gone, or an offer changed, by the time a switch applies is a stale view (`locker_host.rs`).
             Input::Switch { good: g, .. } => good(*g)?,
+            Input::Route { from, to, .. } => {
+                town(*from)?;
+                town(*to)?;
+                if from == to {
+                    return Err(wrong(format!("a route from town {from} to itself")));
+                }
+            }
             Input::Locker { at, .. } => {
                 if let Some(point) = at {
                     if point.kind() != Kind::Locker {

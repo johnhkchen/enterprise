@@ -6936,5 +6936,651 @@
         }
       ]
     }
+  },
+  {
+    "Routes": {
+      "town": 0,
+      "routes": [],
+      "markets": [],
+      "squad": []
+    }
+  },
+  {
+    "Routes": {
+      "town": 1,
+      "routes": [
+        {
+          "route": 0,
+          "from": 1,
+          "to": 2,
+          "blocks": 40,
+          "days": 0.03333333333333333,
+          "every_days": 4.0,
+          "open": true,
+          "on_call": false,
+          "trips": 3,
+          "sold": 12.5,
+          "wagon": {
+            "out": true,
+            "arrives": 2000,
+            "crew": [
+              2,
+              5
+            ],
+            "stacks": 27,
+            "porter": false
+          },
+          "status": "on the way out"
+        },
+        {
+          "route": 1,
+          "from": 0,
+          "to": 1,
+          "blocks": 0,
+          "days": 0.0,
+          "every_days": 0.0,
+          "open": false,
+          "on_call": true,
+          "trips": 0,
+          "sold": 0.0,
+          "wagon": null,
+          "status": ""
+        },
+        {
+          "route": 4294967295,
+          "from": 4294967295,
+          "to": 4294967295,
+          "blocks": 4294967295,
+          "days": 1.7976931348623157e+308,
+          "every_days": 2.2250738585072014e-308,
+          "open": true,
+          "on_call": false,
+          "trips": 4294967295,
+          "sold": 1.7976931348623157e+308,
+          "wagon": {
+            "out": false,
+            "arrives": 18446744073709551615,
+            "crew": [
+              4294967295,
+              4294967294,
+              4294967293,
+              4294967292,
+              4294967291,
+              4294967290,
+              4294967289,
+              4294967288,
+              4294967287,
+              4294967286,
+              4294967285,
+              4294967284,
+              4294967283,
+              4294967282,
+              4294967281,
+              4294967280,
+              4294967279,
+              4294967278,
+              4294967277,
+              4294967276,
+              4294967275,
+              4294967274,
+              4294967273,
+              4294967272,
+              4294967271,
+              4294967270,
+              4294967269,
+              4294967268,
+              4294967267,
+              4294967266,
+              4294967265,
+              4294967264,
+              4294967263,
+              4294967262,
+              4294967261,
+              4294967260,
+              4294967259,
+              4294967258,
+              4294967257,
+              4294967256
+            ],
+            "stacks": 4294967295,
+            "porter": false
+          },
+          "status": "home: no trip: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ],
+      "markets": [
+        {
+          "town": 2,
+          "desk": {
+            "kind": "Desk",
+            "dim": "minecraft:overworld",
+            "x": 67,
+            "y": -60,
+            "z": 27
+          },
+          "blocks": 40,
+          "settlement": true,
+          "reachable": true,
+          "routed": true
+        },
+        {
+          "town": 0,
+          "desk": null,
+          "blocks": null,
+          "settlement": false,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 4294967295,
+          "desk": {
+            "kind": "Desk",
+            "dim": "minecraft:overworld",
+            "x": -2147483648,
+            "y": 2147483647,
+            "z": -2147483648
+          },
+          "blocks": 4294967295,
+          "settlement": false,
+          "reachable": false,
+          "routed": true
+        }
+      ],
+      "squad": [
+        "merchant",
+        "librarian"
+      ]
+    }
+  },
+  {
+    "Routes": {
+      "town": 4294967295,
+      "routes": [],
+      "markets": [
+        {
+          "town": 0,
+          "desk": null,
+          "blocks": 0,
+          "settlement": true,
+          "reachable": true,
+          "routed": true
+        },
+        {
+          "town": 1,
+          "desk": null,
+          "blocks": 40,
+          "settlement": false,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 2,
+          "desk": null,
+          "blocks": 80,
+          "settlement": true,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 3,
+          "desk": null,
+          "blocks": 120,
+          "settlement": false,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 4,
+          "desk": null,
+          "blocks": 160,
+          "settlement": true,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 5,
+          "desk": null,
+          "blocks": 200,
+          "settlement": false,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 6,
+          "desk": null,
+          "blocks": 240,
+          "settlement": true,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 7,
+          "desk": null,
+          "blocks": 280,
+          "settlement": false,
+          "reachable": true,
+          "routed": true
+        },
+        {
+          "town": 8,
+          "desk": null,
+          "blocks": 320,
+          "settlement": true,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 9,
+          "desk": null,
+          "blocks": 360,
+          "settlement": false,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 10,
+          "desk": null,
+          "blocks": 400,
+          "settlement": true,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 11,
+          "desk": null,
+          "blocks": 440,
+          "settlement": false,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 12,
+          "desk": null,
+          "blocks": 480,
+          "settlement": true,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 13,
+          "desk": null,
+          "blocks": 520,
+          "settlement": false,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 14,
+          "desk": null,
+          "blocks": 560,
+          "settlement": true,
+          "reachable": true,
+          "routed": true
+        },
+        {
+          "town": 15,
+          "desk": null,
+          "blocks": 600,
+          "settlement": false,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 16,
+          "desk": null,
+          "blocks": 640,
+          "settlement": true,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 17,
+          "desk": null,
+          "blocks": 680,
+          "settlement": false,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 18,
+          "desk": null,
+          "blocks": 720,
+          "settlement": true,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 19,
+          "desk": null,
+          "blocks": 760,
+          "settlement": false,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 20,
+          "desk": null,
+          "blocks": 800,
+          "settlement": true,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 21,
+          "desk": null,
+          "blocks": 840,
+          "settlement": false,
+          "reachable": true,
+          "routed": true
+        },
+        {
+          "town": 22,
+          "desk": null,
+          "blocks": 880,
+          "settlement": true,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 23,
+          "desk": null,
+          "blocks": 920,
+          "settlement": false,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 24,
+          "desk": null,
+          "blocks": 960,
+          "settlement": true,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 25,
+          "desk": null,
+          "blocks": 1000,
+          "settlement": false,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 26,
+          "desk": null,
+          "blocks": 1040,
+          "settlement": true,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 27,
+          "desk": null,
+          "blocks": 1080,
+          "settlement": false,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 28,
+          "desk": null,
+          "blocks": 1120,
+          "settlement": true,
+          "reachable": true,
+          "routed": true
+        },
+        {
+          "town": 29,
+          "desk": null,
+          "blocks": 1160,
+          "settlement": false,
+          "reachable": true,
+          "routed": false
+        },
+        {
+          "town": 30,
+          "desk": null,
+          "blocks": 1200,
+          "settlement": true,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 31,
+          "desk": null,
+          "blocks": 1240,
+          "settlement": false,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 32,
+          "desk": null,
+          "blocks": 1280,
+          "settlement": true,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 33,
+          "desk": null,
+          "blocks": 1320,
+          "settlement": false,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 34,
+          "desk": null,
+          "blocks": 1360,
+          "settlement": true,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 35,
+          "desk": null,
+          "blocks": 1400,
+          "settlement": false,
+          "reachable": false,
+          "routed": true
+        },
+        {
+          "town": 36,
+          "desk": null,
+          "blocks": 1440,
+          "settlement": true,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 37,
+          "desk": null,
+          "blocks": 1480,
+          "settlement": false,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 38,
+          "desk": null,
+          "blocks": 1520,
+          "settlement": true,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 39,
+          "desk": null,
+          "blocks": 1560,
+          "settlement": false,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 40,
+          "desk": null,
+          "blocks": 1600,
+          "settlement": true,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 41,
+          "desk": null,
+          "blocks": 1640,
+          "settlement": false,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 42,
+          "desk": null,
+          "blocks": 1680,
+          "settlement": true,
+          "reachable": false,
+          "routed": true
+        },
+        {
+          "town": 43,
+          "desk": null,
+          "blocks": 1720,
+          "settlement": false,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 44,
+          "desk": null,
+          "blocks": 1760,
+          "settlement": true,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 45,
+          "desk": null,
+          "blocks": 1800,
+          "settlement": false,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 46,
+          "desk": null,
+          "blocks": 1840,
+          "settlement": true,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 47,
+          "desk": null,
+          "blocks": 1880,
+          "settlement": false,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 48,
+          "desk": null,
+          "blocks": 1920,
+          "settlement": true,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 49,
+          "desk": null,
+          "blocks": 1960,
+          "settlement": false,
+          "reachable": false,
+          "routed": true
+        },
+        {
+          "town": 50,
+          "desk": null,
+          "blocks": 2000,
+          "settlement": true,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 51,
+          "desk": null,
+          "blocks": 2040,
+          "settlement": false,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 52,
+          "desk": null,
+          "blocks": 2080,
+          "settlement": true,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 53,
+          "desk": null,
+          "blocks": 2120,
+          "settlement": false,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 54,
+          "desk": null,
+          "blocks": 2160,
+          "settlement": true,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 55,
+          "desk": null,
+          "blocks": 2200,
+          "settlement": false,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 56,
+          "desk": null,
+          "blocks": 2240,
+          "settlement": true,
+          "reachable": false,
+          "routed": true
+        },
+        {
+          "town": 57,
+          "desk": null,
+          "blocks": 2280,
+          "settlement": false,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 58,
+          "desk": null,
+          "blocks": 2320,
+          "settlement": true,
+          "reachable": false,
+          "routed": false
+        },
+        {
+          "town": 59,
+          "desk": null,
+          "blocks": 2360,
+          "settlement": false,
+          "reachable": false,
+          "routed": false
+        }
+      ],
+      "squad": [
+        "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      ]
+    }
   }
 ]

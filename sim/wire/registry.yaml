@@ -96,6 +96,18 @@ Answer:
           - lockers:
               SEQ:
                 TYPENAME: LockerView
+    11:
+      Routes:
+        STRUCT:
+          - town: U32
+          - routes:
+              SEQ:
+                TYPENAME: RouteLine
+          - markets:
+              SEQ:
+                TYPENAME: MarketLine
+          - squad:
+              SEQ: STR
 Command:
   ENUM:
     0:
@@ -368,6 +380,12 @@ Input:
           - at:
               OPTION:
                 TYPENAME: Point
+    28:
+      Route:
+        STRUCT:
+          - from: U32
+          - to: U32
+          - send: BOOL
 LandKind:
   ENUM:
     0:
@@ -396,6 +414,17 @@ LockerView:
     - offers:
         SEQ:
           TYPENAME: OfferView
+MarketLine:
+  STRUCT:
+    - town: U32
+    - desk:
+        OPTION:
+          TYPENAME: Point
+    - blocks:
+        OPTION: U32
+    - settlement: BOOL
+    - reachable: BOOL
+    - routed: BOOL
 OfferView:
   STRUCT:
     - offer: U32
@@ -520,6 +549,21 @@ Output:
           - work:
               TYPENAME: Work
           - share: F64
+    16:
+      HandAway:
+        STRUCT:
+          - town: U32
+          - hand: U32
+          - tag: STR
+    17:
+      HandBack:
+        STRUCT:
+          - town: U32
+          - hand: U32
+          - tag: STR
+          - trade: STR
+          - level: U8
+          - xp: U32
 PackAmount:
   STRUCT:
     - good: STR
@@ -648,6 +692,10 @@ Query:
       Lockers:
         STRUCT:
           - town: U32
+    11:
+      Routes:
+        STRUCT:
+          - town: U32
 Refusal:
   ENUM:
     0:
@@ -722,6 +770,22 @@ Response:
         STRUCT:
           - why:
               TYPENAME: Refusal
+RouteLine:
+  STRUCT:
+    - route: U32
+    - from: U32
+    - to: U32
+    - blocks: U32
+    - days: F64
+    - every_days: F64
+    - open: BOOL
+    - on_call: BOOL
+    - trips: U32
+    - sold: F64
+    - wagon:
+        OPTION:
+          TYPENAME: WagonLine
+    - status: STR
 SaveFile:
   STRUCT:
     - format: U32
@@ -734,6 +798,14 @@ TownPoint:
     - point:
         TYPENAME: Point
     - town: U32
+WagonLine:
+  STRUCT:
+    - out: BOOL
+    - arrives: U64
+    - crew:
+        SEQ: U32
+    - stacks: U32
+    - porter: BOOL
 Work:
   ENUM:
     0:

@@ -23,7 +23,9 @@ public sealed interface Output
                 Output.HandLevel,
                 Output.Moved,
                 Output.Cash,
-                Output.Build {
+                Output.Build,
+                Output.HandAway,
+                Output.HandBack {
     void encode(PostcardOut out);
 
     static Output decode(PostcardIn in) {
@@ -45,6 +47,8 @@ public sealed interface Output
             case 13 -> new Moved(Point.decode(in), in.u32(), in.i64());
             case 14 -> new Cash(Point.decode(in), in.i64(), in.i64(), in.i64());
             case 15 -> new Build(in.u32(), Work.decode(in), in.f64());
+            case 16 -> new HandAway(in.u32(), in.u32(), in.string());
+            case 17 -> new HandBack(in.u32(), in.u32(), in.string(), in.string(), in.u8(), in.u32());
             default -> throw in.unknownVariant("Output", at);
         };
     }
@@ -309,6 +313,47 @@ public sealed interface Output
             out.u32(this.town);
             this.work.encode(out);
             out.f64(this.share);
+        }
+    }
+
+    /**
+     * A hand of a town went away (a wagon's crew or a porter leaving, a soldier to the war): its villager (the host's
+     * {@code tag}) is off the world until it's back ({@code HandBack}), kept by the host as it left. Only for a hand the host named.
+     */
+    record HandAway(long town, long hand, String tag) implements Output {
+        public HandAway {
+            Objects.requireNonNull(tag, "tag");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(16);
+            out.u32(this.town);
+            out.u32(this.hand);
+            out.string(this.tag);
+        }
+    }
+
+    /**
+     * A hand away is home again (its wagon home, a porter walked back, a soldier from the war): its villager ({@code tag}; empty
+     * if the host never named it) back in the world by its town's desk, with the trade, level and XP the core has for it
+     * now (it may have earned some on the road). A host with no villager kept for it spawns one and names it ({@code TagHand}).
+     */
+    record HandBack(long town, long hand, String tag, String trade, int level, long xp) implements Output {
+        public HandBack {
+            Objects.requireNonNull(tag, "tag");
+            Objects.requireNonNull(trade, "trade");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(17);
+            out.u32(this.town);
+            out.u32(this.hand);
+            out.string(this.tag);
+            out.string(this.trade);
+            out.u8(this.level);
+            out.u32(this.xp);
         }
     }
 }

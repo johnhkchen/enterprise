@@ -477,6 +477,7 @@ impl Society {
                 let plots = self.plots_now(); // the fields the rules plant, for the host to lay (`land.rs`)
                 let mut out = self.advance(to);
                 out.extend(self.hand_outputs(&before));
+                out.extend(self.away_outputs(&before)); // hands gone with wagons or to war, and back (`wagon_host.rs`)
                 self.note_fields(&plots);
                 out
             }
@@ -520,6 +521,10 @@ impl Society {
             }
             Input::Switch { .. } | Input::Locker { .. } => {
                 self.apply_lockers(input);
+                Vec::new()
+            }
+            Input::Route { from, to, send } => {
+                self.host_route(from as TownId, to as TownId, send);
                 Vec::new()
             }
             Input::SetDial { ref name, value } => {

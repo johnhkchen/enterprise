@@ -2279,6 +2279,20 @@
     }
   },
   {
+    "Route": {
+      "from": 0,
+      "to": 1,
+      "send": true
+    }
+  },
+  {
+    "Route": {
+      "from": 4294967295,
+      "to": 0,
+      "send": false
+    }
+  },
+  {
     "Built": {
       "town": 0,
       "work": {

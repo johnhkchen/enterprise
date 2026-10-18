@@ -1,0 +1,38 @@
+[
+  {
+    "town": 2,
+    "desk": {
+      "kind": "Desk",
+      "dim": "minecraft:overworld",
+      "x": 67,
+      "y": -60,
+      "z": 27
+    },
+    "blocks": 40,
+    "settlement": true,
+    "reachable": true,
+    "routed": true
+  },
+  {
+    "town": 0,
+    "desk": null,
+    "blocks": null,
+    "settlement": false,
+    "reachable": false,
+    "routed": false
+  },
+  {
+    "town": 4294967295,
+    "desk": {
+      "kind": "Desk",
+      "dim": "minecraft:overworld",
+      "x": -2147483648,
+      "y": 2147483647,
+      "z": -2147483648
+    },
+    "blocks": 4294967295,
+    "settlement": false,
+    "reachable": false,
+    "routed": true
+  }
+]

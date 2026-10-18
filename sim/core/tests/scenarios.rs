@@ -22,8 +22,9 @@
 //! A refusal matches by its kind and numbers; its `why` is prose and isn't compared ([`without_prose`]).
 //!
 //! `people` shows a child born (`Born`), `chests` the chests' moves (`Moved`), `money` the till's (`Cash`) and
-//! `lockers` a locker's trades levelling its villager (`HandLevel`); the others need a master Merchant,
-//! a route or a party of settlers, and the wire has no input that makes any of them. Their bytes are pinned by the
+//! `lockers` a locker's trades levelling its villager (`HandLevel`), `wagons` a route started by its host and its crew
+//! away and back (`WagonLeft`, `HandAway`, `HandBack`); the others need a master Merchant or a party of settlers, and
+//! the wire has no input that makes either. Their bytes are pinned by the
 //! golden files meanwhile
 //! (`tests/wire_fixtures.rs`).
 //!
@@ -873,6 +874,86 @@ fn lockers() -> Scenario {
     s.scenario
 }
 
+/// A town's wagons through the wire (`wagon_host.rs`): a route started and stopped by its host, its crew away and back.
+fn wagons() -> Scenario {
+    let mut s = Script::new("wagons", "A town's wagons, started and stopped by its host (the Merchant's screen, the route \
+        commands): Hub's host starts wagons to Far, forty blocks off, which holds books Hub's people are short of. At the \
+        next look its wagon leaves (WagonLeft) and the hand that leads it, the villager with no trade Hub's Merchant takes \
+        on as its travelling Merchant, goes away with it (HandAway: the host stows its villager). The route shows the \
+        wagon on its way out with its crew by hand; on its way home; and home, its crew back (HandBack, with the trade it \
+        was taken on for, for the host's villager let out by the desk). Stopped, the route is wound down and no wagon \
+        leaves; started again, it's the same route, open. A route to itself, or from a town that isn't there, is \
+        refused; one to a far end beyond a leg's food opens nothing. Saved and loaded, the routes are as they were.");
+    const BREAD: GoodNo = 1;
+    let hub = at(PointKind::Desk, 27, 27);
+    let far = at(PointKind::Desk, 67, 27);
+    let distant = at(PointKind::Desk, 27, 9_027);
+    let routes_of = |s: &mut Script, note: &str| s.ask(note, vec![Query::Routes { town: 0 }]);
+    let r = s.say("a society from a pack with books and Merchants", Command::Create { pack: full_pack(), seed: 7 });
+    assert_eq!(r, Response::Done { outputs: vec![], answers: vec![] });
+    s.apply("two towns forty blocks apart, Hub with its Merchant and a villager of no trade, Far with its Merchant and \
+        books; bread and money in both", vec![
+        Input::AddTown { name: "Hub".into(), desk: hub },
+        Input::AddTown { name: "Far".into(), desk: far },
+        Input::AddTown { name: "Distant".into(), desk: distant },
+        Input::AddHand { town: 0, trade: "merchant".into(), level: 1, tag: "villager-hub".into() },
+        Input::AddHand { town: 0, trade: "none".into(), level: 1, tag: "villager-lead".into() },
+        Input::AddHand { town: 1, trade: "merchant".into(), level: 1, tag: "villager-far".into() },
+        Input::Deliver { town: 0, good: BREAD, count: 128.0 },
+        Input::Deliver { town: 1, good: BREAD, count: 128.0 },
+        Input::Deliver { town: 1, good: BOOK, count: 64.0 },
+        Input::Pay { town: 0, money: Fixed::from(50.0) },
+        Input::Pay { town: 1, money: Fixed::from(50.0) },
+    ]);
+    let lead = ids(&s.ask("Hub's hands", hands_of(0)))[1];
+    let a = routes_of(&mut s, "Hub has no route yet, and knows Far (Distant is beyond word of mouth); its squad at home");
+    assert!(matches!(&a[0], Answer::Routes { routes, markets, .. } if routes.is_empty() && markets.len() == 1 && markets[0].routed == false), "{a:?}");
+    s.apply("Hub's host starts wagons to Far, and to Distant (nine thousand blocks: beyond a leg's food)", vec![
+        Input::Route { from: 0, to: 1, send: true },
+        Input::Route { from: 0, to: 2, send: true },
+    ]);
+    let a = routes_of(&mut s, "a route to Far, home; none to Distant");
+    assert!(matches!(&a[0], Answer::Routes { routes, markets, .. } if routes.len() == 1 && routes[0].to == 1
+        && routes[0].open && routes[0].wagon.is_none() && markets[0].routed), "{a:?}");
+    let out = s.apply("a look: the wagon leaves to shop for books, led by the hand taken on as its Merchant", vec![
+        Input::Advance { to: 1_200 },
+    ]);
+    assert!(out.iter().any(|o| matches!(o, Output::WagonLeft { route: 0, .. })), "{out:?}");
+    assert!(out.contains(&Output::HandAway { town: 0, hand: lead, tag: "villager-lead".into() }), "{out:?}");
+    let a = routes_of(&mut s, "its wagon on the way out, its crew the lead");
+    assert!(matches!(&a[0], Answer::Routes { routes, .. } if routes[0].wagon.as_ref().is_some_and(|w| w.out && w.crew == vec![lead])), "{a:?}");
+    s.apply("a look: at the far end, and on its way home", vec![Input::Advance { to: 2_400 }]);
+    routes_of(&mut s, "on its way home");
+    let out = s.apply("a look: home, its crew back as Hub's Merchant on the road", vec![Input::Advance { to: 3_600 }]);
+    assert!(out.iter().any(|o| matches!(o, Output::WagonHome { route: 0, .. })), "{out:?}");
+    assert!(out.iter().any(|o| matches!(o, Output::HandBack { town: 0, hand, tag, trade, .. }
+        if *hand == lead && tag == "villager-lead" && trade == "merchant")), "{out:?}");
+    routes_of(&mut s, "home, one trip made");
+    s.apply("the host stops Hub's wagons to Far", vec![Input::Route { from: 0, to: 1, send: false }]);
+    let a = routes_of(&mut s, "the route wound down");
+    assert!(matches!(&a[0], Answer::Routes { routes, markets, .. } if !routes[0].open && !markets[0].routed), "{a:?}");
+    let out = s.apply("five days: no wagon leaves", vec![Input::Advance { to: 5 * DAY }]);
+    assert!(!out.iter().any(|o| matches!(o, Output::WagonLeft { .. } | Output::HandAway { .. })), "{out:?}");
+    s.apply("started again", vec![Input::Route { from: 0, to: 1, send: true }]);
+    let a = routes_of(&mut s, "the same route, open");
+    assert!(matches!(&a[0], Answer::Routes { routes, .. } if routes.len() == 1 && routes[0].open), "{a:?}");
+    s.save("saved");
+    s.load("loaded");
+    routes_of(&mut s, "the same after the load");
+    let r = s.say("a route from Hub to itself: refused", Command::Apply { inputs: vec![Input::Route { from: 0, to: 0, send: true }] });
+    assert!(matches!(s.refused("to itself", r), Refusal::Input { at: 0, .. }));
+    let r = s.say("a route to a town that isn't there: refused", Command::Apply { inputs: vec![
+        Input::Route { from: 0, to: 1, send: false },
+        Input::Route { from: 0, to: 9, send: true },
+    ] });
+    assert!(matches!(s.refused("no town", r), Refusal::Input { at: 1, .. }));
+    let a = routes_of(&mut s, "nothing of the refused look applied: the route still open");
+    assert!(matches!(&a[0], Answer::Routes { routes, .. } if routes[0].open), "{a:?}");
+    let r = s.say("the routes of a town that isn't there", Command::Ask { queries: vec![Query::Routes { town: 9 }] });
+    assert!(matches!(s.refused("no town", r), Refusal::Query { at: 0, .. }));
+    s.scenario
+}
+
 /// Every way the core refuses, each leaving the society as it was.
 fn refusals() -> Scenario {
     let mut s = Script::new("refusals", "Every refusal, each a message and nothing applied.");
@@ -980,7 +1061,7 @@ fn refusals() -> Scenario {
 }
 
 fn scenarios() -> Vec<Scenario> {
-    vec![stocktake(), inputs(), content(), refusals(), hands(), people(), chests(), money(), land(), lockers()]
+    vec![stocktake(), inputs(), content(), refusals(), hands(), people(), chests(), money(), land(), lockers(), wagons()]
 }
 
 fn text(scenario: &Scenario) -> String {
@@ -1007,7 +1088,7 @@ fn the_scenarios_play_as_their_files_say() {
         return;
     }
     let mut wrong = Vec::new();
-    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people", "chests", "money", "land", "lockers"] {
+    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people", "chests", "money", "land", "lockers", "wagons"] {
         let scenario = read(name);
         assert!(!scenario.steps.is_empty(), "{name}: no steps");
         wrong.extend(play(&scenario));
@@ -1065,13 +1146,15 @@ fn every_message_appears_in_a_scenario() {
         }
     }
     let set = |names: &[&str]| names.iter().map(|s| s.to_string()).collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost", "Census", "TagHand", "Unmoved", "Cashcount", "CashUnmoved", "Ground", "Crops", "Survey", "Built", "Switch", "Locker"]));
+    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost", "Census", "TagHand", "Unmoved", "Cashcount", "CashUnmoved", "Ground", "Crops", "Survey", "Built", "Switch", "Locker", "Route"]));
     assert_eq!(commands, set(&["Apply", "Ask", "Create", "Load", "Save"]));
-    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands", "Chests", "Cash", "Mint", "Land", "Ground", "Lockers"]));
+    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands", "Chests", "Cash", "Mint", "Land", "Ground", "Lockers", "Routes"]));
     assert_eq!(refusals, set(&["Abi", "Input", "NoSociety", "Pack", "Query", "Save", "SaveFormat", "Schema", "Unreadable"]));
-    // A child born, the chests' moves, the till's, a field to lay and a locker's trades levelling its villager and the
-    // Merchant: the others need a master Merchant (OrderFilled, Signal), a route (the wagon's three), a pallet (the
-    // pallets' three: only a wagon packs one) or a party of settlers or the rules taking a hand (Settled, Departed,
-    // HandGone), and no wire input makes any. When one does, a scenario shows each and its name goes here.
-    assert_eq!(outputs, set(&["Born", "Cash", "Moved", "Build", "HandLevel"]));
+    // A child born, the chests' moves, the till's, a field to lay, a locker's trades levelling its villager and the
+    // Merchant, and a wagon's trip with its crew away and back: the others need a master Merchant (OrderFilled, Signal),
+    // a pallet (the pallets' three: a wagon packs one only for a sale it ships crated, which the scenario's shopping trip
+    // isn't) or a party of settlers or the rules taking a hand (Settled, Departed, HandGone), and no wire input makes
+    // any. When one does, a scenario shows each and its name goes here.
+    assert_eq!(outputs, set(&["Born", "Cash", "Moved", "Build", "HandLevel", "WagonLeft", "WagonSold", "WagonHome",
+        "HandAway", "HandBack"]));
 }

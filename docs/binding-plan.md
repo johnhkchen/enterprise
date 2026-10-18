@@ -597,6 +597,33 @@ the Merchant's screen built from `Query::Lockers` with keys the screen sends bac
 lockers loaded or not; their listeners were already off there); they and `LockerTrading` stay for Java mode until
 `delete-java-rules`.
 
+**Built (B4.8 `wagon-adapter`).** The caravans are the core's; what the world shows of a wagon is its crew. In the core
+(`wagon_host.rs`, no new saved state): `Input::Route { from, to, send }` starts a town's wagons to another (the
+Merchant's screen, `/enterprise route add`): a route opens as a commissioned one does, if the far end is within a leg's
+food desk to desk and there's a way, and one wound down opens again (its number, books and road kept); stopped, it's
+wound down (`close_route`: its wagon comes home and stays). Refused for a town that isn't there or a town to itself;
+too far opens nothing. Around a wire `Advance`, beside `hand_outputs`: `Output::HandAway { town, hand, tag }` for a
+named hand that went away (a wagon's crew or porter, a soldier) and `Output::HandBack { town, hand, tag, trade, level,
+xp }` for one home again, with what it is now (a hand taken on as a travelling Merchant comes home one: no `HandLevel`
+comes while a hand is away), and a hand back counts as seen by the census from then. `Query::Routes { town }` /
+`Answer::Routes { routes: Vec<RouteLine>, markets: Vec<MarketLine>, squad }`: its routes from and to it with their wagons
+on the road and crews by hand and a word on where each stands, the markets it knows (desk, blocks, settlement, within a
+leg's food, routed) and its squad at home. Schema `ac8763985aaf102c`, FORMAT 1 (the save's shape didn't change);
+`just core-fingerprint` unmoved (`5e6b6d51a3b4061e`); the replay digest written again for the new random-worlds slice
+(`wagon_host`: hosts starting and stopping routes, every wagon's crew away from its home, every routed market an open
+route). `sim/scenarios/wagons.json`, the first to show the wagon's three outputs. In the mod: `adapters/WagonAdapter`
+(a `HandAway` stows the villager with `Squad.stow`, kept by hand id, one not loaded then stowed at a look once it is; a
+`HandBack` lets it out by its town's desk with `Squad.release` and writes its trade, level and XP, a desk not loaded
+keeping it until it is; the stowed villagers are the view's own file, `enterprise_core_stowed.dat` beside the core's,
+written when the host saves; a hand gone while away forgets its record), the Merchant's screen's caravans and its
+"Send caravans"/"Stop" from `Query::Routes` and `Input::Route` in core mode (`MerchantView.of`, the packet's handler;
+`MerchantView.TownView.reachable` is the core's word, `Caravans.inRange` only in Java mode), `/enterprise route
+add`/`remove`/`routes` on the core in core mode and `/enterprise core routes <desk>`. Three game tests. **Crates and
+papers are not here** (John, 2026-10-18: pallets live in the core only): the crates a wagon carries and their bills of
+lading are the core's pallets; the mod's crate items, blocks and documents are drawn from the pallet outputs in
+`pallet-views`, with no crate or paper rules in Java, so `cargo/Crates`, `Papers` and `Paperwork` stay Java mode's
+until `delete-java-rules` and the row's crate and paper views go to `pallet-views`.
+
 ### 3.6 Wave B5: closing
 
 | Order | Task | Goal | Waits for | Java | Model / effort |

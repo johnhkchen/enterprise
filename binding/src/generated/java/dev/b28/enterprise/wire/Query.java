@@ -18,7 +18,8 @@ public sealed interface Query
                 Query.Mint,
                 Query.Land,
                 Query.Ground,
-                Query.Lockers {
+                Query.Lockers,
+                Query.Routes {
     void encode(PostcardOut out);
 
     static Query decode(PostcardIn in) {
@@ -35,6 +36,7 @@ public sealed interface Query
             case 8 -> new Land(in.u32());
             case 9 -> new Ground(in.list(2, HexAt::decode));
             case 10 -> new Lockers(in.u32());
+            case 11 -> new Routes(in.u32());
             default -> throw in.unknownVariant("Query", at);
         };
     }
@@ -177,6 +179,18 @@ public sealed interface Query
         @Override
         public void encode(PostcardOut out) {
             out.variant(10);
+            out.u32(this.town);
+        }
+    }
+
+    /**
+     * A town's routes (from it and to it), the markets it knows and its squad at home: what the Merchant's screen shows
+     * of its caravans, and the route commands.
+     */
+    record Routes(long town) implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(11);
             out.u32(this.town);
         }
     }

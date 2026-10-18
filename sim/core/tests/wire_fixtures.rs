@@ -250,6 +250,8 @@ fn inputs() -> Vec<Input> {
         Input::Locker { hand: 3, at: Some(point(PointKind::Locker, 30, -60, 27)) },
         Input::Locker { hand: 3, at: None },
         Input::Locker { hand: u32::MAX, at: Some(point(PointKind::Locker, i32::MIN, i32::MAX, i32::MIN)) },
+        Input::Route { from: 0, to: 1, send: true },
+        Input::Route { from: BIGGEST_ID, to: 0, send: false },
     ]);
     all.extend(works().into_iter().enumerate().map(|(i, work)| Input::Built { town: i as TownNo, work, share: 0.25 * i as f64 }));
     all.push(Input::Built { town: BIGGEST_ID, work: Work::Wall, share: 1.0 });
@@ -328,6 +330,12 @@ fn outputs() -> Vec<Output> {
         Output::Build { town: BIGGEST_ID, work: works().remove(1), share: 1.0 },
         Output::Build { town: 2, work: Work::Hall { kind: "caravanserai".into() }, share: 0.0 },
         Output::Build { town: 1, work: Work::Field { crop: 4 }, share: 1.0 },
+        Output::HandAway { town: 0, hand: 2, tag: "6f1c2a3e-0000-4000-8000-00000000002a".into() },
+        Output::HandAway { town: BIGGEST_ID, hand: u32::MAX, tag: "\u{1f33e}".repeat(40) },
+        Output::HandBack { town: 0, hand: 2, tag: "6f1c2a3e-0000-4000-8000-00000000002a".into(), trade: "merchant".into(),
+            level: 1, xp: 1 },
+        Output::HandBack { town: BIGGEST_ID, hand: u32::MAX, tag: String::new(), trade: "x".repeat(300), level: u8::MAX,
+            xp: u32::MAX },
     ]
 }
 
@@ -348,7 +356,8 @@ fn queries() -> Vec<Query> {
         Query::Land { town: 0 },
         Query::Land { town: BIGGEST_ID }, Query::Ground { hexes: vec![] },
         Query::Ground { hexes: (0..60).map(|i| hex(i - 30, 30 - i)).collect() },
-        Query::Lockers { town: 0 }, Query::Lockers { town: BIGGEST_ID }]
+        Query::Lockers { town: 0 }, Query::Lockers { town: BIGGEST_ID }, Query::Routes { town: 0 },
+        Query::Routes { town: BIGGEST_ID }]
 }
 
 fn offer_views() -> Vec<OfferView> {
@@ -432,6 +441,39 @@ fn answers() -> Vec<Answer> {
         Answer::Lockers { town: 1, limit: 4, placed: true, lockers: locker_views() },
         Answer::Lockers { town: BIGGEST_ID, limit: u32::MAX, placed: true, lockers: (0..60).map(|i| LockerView { hand: 1 + i,
             managed: i < 10, client: i < 4, at: None, worth: i as f64 * 0.25, offers: vec![] }).collect() },
+        Answer::Routes { town: 0, routes: vec![], markets: vec![], squad: vec![] },
+        Answer::Routes { town: 1, routes: route_lines(), markets: market_lines(), squad: vec!["merchant".into(), "librarian".into()] },
+        Answer::Routes { town: BIGGEST_ID, routes: vec![], markets: (0..60).map(|i| MarketLine { town: i, desk: None,
+            blocks: Some(i * 40), settlement: i % 2 == 0, reachable: i < 30, routed: i % 7 == 0 }).collect(), squad: vec!["x".repeat(300)] },
+    ]
+}
+
+fn wagon_lines() -> Vec<WagonLine> {
+    vec![
+        WagonLine { out: true, arrives: 2000, crew: vec![2, 5], stacks: 27, porter: false },
+        WagonLine { out: false, arrives: 0, crew: vec![], stacks: 0, porter: true },
+        WagonLine { out: false, arrives: u64::MAX, crew: (0..40).map(|i| u32::MAX - i).collect(), stacks: u32::MAX, porter: false },
+    ]
+}
+
+fn route_lines() -> Vec<RouteLine> {
+    vec![
+        RouteLine { route: 0, from: 1, to: 2, blocks: 40, days: 1.0 / 30.0, every_days: 4.0, open: true, on_call: false,
+            trips: 3, sold: 12.5, wagon: wagon_lines().into_iter().next(), status: "on the way out".into() },
+        RouteLine { route: 1, from: 0, to: 1, blocks: 0, days: 0.0, every_days: 0.0, open: false, on_call: true, trips: 0,
+            sold: 0.0, wagon: None, status: String::new() },
+        RouteLine { route: BIGGEST_ID, from: BIGGEST_ID, to: BIGGEST_ID, blocks: u32::MAX, days: f64::MAX,
+            every_days: f64::MIN_POSITIVE, open: true, on_call: false, trips: u32::MAX, sold: f64::MAX,
+            wagon: wagon_lines().pop(), status: "home: no trip: ".to_string() + &"x".repeat(300) },
+    ]
+}
+
+fn market_lines() -> Vec<MarketLine> {
+    vec![
+        MarketLine { town: 2, desk: Some(point(PointKind::Desk, 67, -60, 27)), blocks: Some(40), settlement: true, reachable: true, routed: true },
+        MarketLine { town: 0, desk: None, blocks: None, settlement: false, reachable: false, routed: false },
+        MarketLine { town: BIGGEST_ID, desk: Some(point(PointKind::Desk, i32::MIN, i32::MAX, i32::MIN)), blocks: Some(u32::MAX),
+            settlement: false, reachable: false, routed: true },
     ]
 }
 
@@ -524,6 +566,9 @@ fixtures! {
     fixed_fixtures: Fixed = fixeds();
     hex_at_fixtures: HexAt = vec![hex(0, 0), hex(-1, 1), hex(i32::MIN, i32::MAX)];
     land_kind_fixtures: LandKind = LANDS.to_vec();
+    route_line_fixtures: RouteLine = route_lines();
+    wagon_line_fixtures: WagonLine = wagon_lines();
+    market_line_fixtures: MarketLine = market_lines();
     work_fixtures: Work = works();
     work_view_fixtures: WorkView = work_views();
     ground_view_fixtures: GroundView = ground_views();
@@ -562,6 +607,7 @@ fn input_place(i: &Input) -> usize {
         Input::Built { .. } => 25,
         Input::Switch { .. } => 26,
         Input::Locker { .. } => 27,
+        Input::Route { .. } => 28,
     }
 }
 
@@ -583,6 +629,8 @@ fn output_place(o: &Output) -> usize {
         Output::Moved { .. } => 13,
         Output::Cash { .. } => 14,
         Output::Build { .. } => 15,
+        Output::HandAway { .. } => 16,
+        Output::HandBack { .. } => 17,
     }
 }
 
@@ -599,6 +647,7 @@ fn query_place(q: &Query) -> usize {
         Query::Land { .. } => 8,
         Query::Ground { .. } => 9,
         Query::Lockers { .. } => 10,
+        Query::Routes { .. } => 11,
     }
 }
 
@@ -615,6 +664,7 @@ fn answer_place(a: &Answer) -> usize {
         Answer::Land { .. } => 8,
         Answer::Ground { .. } => 9,
         Answer::Lockers { .. } => 10,
+        Answer::Routes { .. } => 11,
     }
 }
 
@@ -661,10 +711,10 @@ fn covers<T>(what: &str, samples: &[T], variants: usize, place: fn(&T) -> usize)
 
 #[test]
 fn every_variant_of_every_wire_enum_has_a_sample() {
-    covers("Input", &inputs(), 28, input_place);
-    covers("Output", &outputs(), 16, output_place);
-    covers("Query", &queries(), 11, query_place);
-    covers("Answer", &answers(), 11, answer_place);
+    covers("Input", &inputs(), 29, input_place);
+    covers("Output", &outputs(), 18, output_place);
+    covers("Query", &queries(), 12, query_place);
+    covers("Answer", &answers(), 12, answer_place);
     covers("Command", &commands(), 5, command_place);
     covers("Response", &responses(), 3, response_place);
     covers("Refusal", &refusals(), 9, refusal_place);

@@ -52,4 +52,11 @@ pub enum Output {
     /// surveyed the town, until the host says it's laid (`Built`), so a town whose ground wasn't loaded is shown its works
     /// when it is. Where it goes (a hall's site, a field's) is the host's to find.
     Build { town: TownNo, work: Work, share: f64 },
+    /// A hand of a town went away (a wagon's crew or a porter leaving, a soldier to the war): its villager (the host's
+    /// `tag`) is off the world until it's back (`HandBack`), kept by the host as it left. Only for a hand the host named.
+    HandAway { town: TownNo, hand: HandNo, tag: String },
+    /// A hand away is home again (its wagon home, a porter walked back, a soldier from the war): its villager (`tag`; empty
+    /// if the host never named it) back in the world by its town's desk, with the trade, level and XP the core has for it
+    /// now (it may have earned some on the road). A host with no villager kept for it spawns one and names it (`TagHand`).
+    HandBack { town: TownNo, hand: HandNo, tag: String, trade: String, level: u8, xp: u32 },
 }

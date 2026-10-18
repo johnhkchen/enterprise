@@ -776,6 +776,220 @@ public final class CoreBindingTests {
         }
     }
 
+    // Two markets four blocks apart in one arena: a wagon's leg is 80 ticks, a trip three looks.
+    private static final BlockPos HUB_DESK = new BlockPos(1, 2, 3);
+    private static final BlockPos FAR_DESK = new BlockPos(5, 2, 3);
+
+    /** The two markets' towns, the hub's Merchant and Librarian and the far end's Merchant, joined as their hands. */
+    private record Wagons(long hub, long far, Villager merchant, Villager librarian, Villager farMerchant) {
+        void discard() {
+            merchant.discard();
+            librarian.discard();
+            farMerchant.discard();
+        }
+    }
+
+    /**
+     * A hub whose people are short of books, with bread, money, its Merchant and a trained Librarian to lead its
+     * wagon; a far end with books, bread, money and its Merchant. Founded in the core and joined as its hands.
+     */
+    private static Wagons wagons(GameTestHelper helper, CoreHost host) {
+        var level = helper.getLevel();
+        helper.setBlock(HUB_DESK, Merchant.DESK.get());
+        helper.setBlock(FAR_DESK, Merchant.DESK.get());
+        Villager merchant = villager(helper, Merchant.PROFESSION.get(), 1, new BlockPos(1, 2, 1));
+        Villager librarian = villager(helper, VillagerProfession.LIBRARIAN, 2, new BlockPos(2, 2, 5));
+        Villager farMerchant = villager(helper, Merchant.PROFESSION.get(), 1, new BlockPos(5, 2, 5));
+        long hub = host.stock().found(level, helper.absolutePos(HUB_DESK), "Hubford");
+        long far = host.stock().found(level, helper.absolutePos(FAR_DESK), "Farley");
+        host.hands().join(hub, merchant);
+        host.hands().join(hub, librarian);
+        host.hands().join(far, farMerchant);
+        long bread = good(host, "minecraft:bread");
+        Response r = host.apply(List.of(new Input.Deliver(hub, bread, 128), new Input.Deliver(far, bread, 128),
+                new Input.Deliver(far, good(host, "minecraft:book"), 64), new Input.Pay(hub, 50_000), new Input.Pay(far, 50_000)));
+        helper.assertTrue(r instanceof Response.Done, "the markets weren't stocked: " + r);
+        return new Wagons(hub, far, merchant, librarian, farMerchant);
+    }
+
+    /**
+     * What a wagon's crew costs the server's tick, logged: a villager stowed and let out by the desk (a {@code HandAway}
+     * and a {@code HandBack} shown), the look's catch-up with nothing waiting, and the screen's question of a town's routes.
+     */
+    private static void measureAWagon(GameTestHelper helper, CoreHost host, long hub) {
+        var server = helper.getLevel().getServer();
+        int n = 20;
+        long stowed = 0;
+        long released = 0;
+        for (int i = 0; i < n; i++) {
+            Villager v = villager(helper, VillagerProfession.LIBRARIAN, 2, new BlockPos(3, 2, 1));
+            String tag = v.getUUID().toString();
+            long a = System.nanoTime();
+            host.wagons().show(new Output.HandAway(hub, 1_000_000 + i, tag));
+            long b = System.nanoTime();
+            host.wagons().show(new Output.HandBack(hub, 1_000_000 + i, tag, "librarian", 2, 1));
+            long c = System.nanoTime();
+            stowed += b - a;
+            released += c - b;
+            if (helper.getLevel().getEntity(v.getUUID()) != null) {
+                helper.getLevel().getEntity(v.getUUID()).discard();
+            }
+        }
+        long a = System.nanoTime();
+        for (int i = 0; i < 1000; i++) {
+            host.wagons().catchUp(server);
+        }
+        long caught = System.nanoTime() - a;
+        a = System.nanoTime();
+        for (int i = 0; i < n; i++) {
+            host.wagons().town(hub);
+        }
+        long asked = System.nanoTime() - a;
+        Enterprise.LOGGER.info("wagons: a villager stowed {} ms, let out by the desk {} ms; a look's catch-up with nothing "
+                + "waiting {} ms; a town's routes asked {} ms", "%.3f".formatted(stowed / 1e6 / n),
+                "%.3f".formatted(released / 1e6 / n), "%.4f".formatted(caught / 1e6 / 1000), "%.3f".formatted(asked / 1e6 / n));
+    }
+
+    /** Looks one at a time from now until {@code until} holds (at most {@code looks}): whether it did. */
+    private static boolean looksUntil(CoreHost host, net.minecraft.server.level.ServerLevel level, int looks,
+            java.util.function.BooleanSupplier until) {
+        long t = level.getGameTime();
+        for (int i = 1; i <= looks && !until.getAsBoolean(); i++) {
+            advance(host, t + i * 1200L);
+        }
+        return until.getAsBoolean();
+    }
+
+    private static boolean away(CoreHost host, long town, Villager v) {
+        return host.hands().roster(town).hands().stream().anyMatch(h -> v.getUUID().equals(h.villager()) && h.away());
+    }
+
+    /**
+     * A wagon's crew leaves the world with it and comes home by the desk (B4.8; the core-mode twin of
+     * CaravanTests.theSquadLeavesTheWorldAndComesBack): a route started from the hub to the far end (the Merchant's
+     * screen's "Send caravans", here the adapter's), the core sends a wagon shopping for the books the hub's people lack,
+     * led by its Librarian; the core's {@code HandAway} has the villager stowed (off the world, kept by its hand's id), and
+     * its {@code HandBack} three looks later lets it out by the hub's desk, the same villager, still a Librarian.
+     */
+    @GameTest(template = "floor")
+    public static void aWagonsCrewLeavesTheWorldWithItAndComesHomeByTheDesk(GameTestHelper helper) {
+        var level = helper.getLevel();
+        Path dir = folder();
+        Wagons w = null;
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            w = wagons(helper, host);
+            var started = host.wagons().send(w.hub(), w.far(), true);
+            helper.assertTrue(started.isPresent(), "no route from the hub to the far end: " + host.wagons().lines(w.hub()));
+            java.util.UUID librarian = w.librarian().getUUID();
+            Wagons m = w;
+            helper.assertTrue(looksUntil(host, level, 3, () -> away(host, m.hub(), m.librarian())),
+                    "no wagon left with the Librarian: " + host.wagons().lines(w.hub()));
+            helper.assertTrue(level.getEntity(librarian) == null && w.librarian().isRemoved(),
+                    "the Librarian is in the world while its wagon is on the road");
+            helper.assertTrue(host.wagons().kept()[0] == 1, "the Librarian isn't kept while away");
+            helper.assertTrue(host.wagons().town(w.hub()).routes().get(0).wagon()
+                    .filter(x -> x.crew().size() == 1).isPresent(), "the route shows no crew: " + host.wagons().lines(w.hub()));
+            helper.assertTrue(looksUntil(host, level, 4, () -> level.getEntity(librarian) != null),
+                    "the Librarian isn't back: " + host.wagons().lines(w.hub()));
+            helper.assertTrue(level.getEntity(librarian) instanceof Villager back
+                            && back.getVillagerData().getProfession() == VillagerProfession.LIBRARIAN
+                            && back.blockPosition().distManhattan(helper.absolutePos(HUB_DESK)) <= 6,
+                    "home again, still a Librarian, by the desk: " + level.getEntity(librarian));
+            helper.assertTrue(!away(host, w.hub(), (Villager) level.getEntity(librarian)) && host.wagons().kept()[0] == 0,
+                    "the core still has it away");
+            measureAWagon(helper, host, w.hub());
+        } finally {
+            delete(dir);
+            if (w != null) {
+                w.discard();
+                if (level.getEntity(w.librarian().getUUID()) != null) {
+                    level.getEntity(w.librarian().getUUID()).discard();
+                }
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A crew on the road is kept through a save (B4.8): the hub's Librarian away with its wagon when the world saves is
+     * in the view's file beside the core's ({@value dev.b28.enterprise.binding.adapters.WagonAdapter#FILE}), and a host
+     * loaded from them lets it out by the desk when the core brings its wagon home.
+     */
+    @GameTest(template = "floor")
+    public static void aCrewOnTheRoadIsKeptThroughASaveAndLetOutWhenItsHome(GameTestHelper helper) {
+        var level = helper.getLevel();
+        Path dir = folder();
+        Wagons w = null;
+        try {
+            java.util.UUID librarian;
+            long hub;
+            try (CoreHost host = CoreHost.open(dir, 7)) {
+                w = wagons(helper, host);
+                host.wagons().send(w.hub(), w.far(), true);
+                Wagons m = w;
+                helper.assertTrue(looksUntil(host, level, 3, () -> away(host, m.hub(), m.librarian())), "no wagon left");
+                librarian = w.librarian().getUUID();
+                hub = w.hub();
+                helper.assertTrue(host.save(), "the core didn't save");
+            }
+            helper.assertTrue(Files.exists(dir.resolve(dev.b28.enterprise.binding.adapters.WagonAdapter.FILE)),
+                    "no stowed villagers saved");
+            try (CoreHost loaded = CoreHost.open(dir, 8)) {
+                helper.assertTrue(loaded.wagons().kept()[0] == 1, "the loaded host doesn't keep the Librarian");
+                helper.assertTrue(looksUntil(loaded, level, 4, () -> level.getEntity(librarian) != null),
+                        "the Librarian isn't back after the load: " + loaded.wagons().lines(hub));
+                helper.assertTrue(loaded.hands().of(librarian) != null && loaded.hands().of(librarian).town() == hub,
+                        "the Librarian back isn't the hub's hand");
+            }
+        } finally {
+            delete(dir);
+            if (w != null) {
+                w.discard();
+                if (level.getEntity(w.librarian().getUUID()) != null) {
+                    level.getEntity(w.librarian().getUUID()).discard();
+                }
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Caravans are commissioned at the desk through the core (B4.8; the core-mode twin of
+     * CaravanTests.caravansAreCommissionedAtTheDesk): the screen shows the far end (a market the core says the hub
+     * knows, within a leg's food) and the Librarian at home to send; "Send caravans" starts the core's route, "Stop"
+     * winds it down, and a market the screen didn't show is refused.
+     */
+    @GameTest(template = "floor")
+    public static void caravansAreCommissionedAtTheDeskThroughTheCore(GameTestHelper helper) {
+        var level = helper.getLevel();
+        Path dir = folder();
+        Wagons w = null;
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            w = wagons(helper, host);
+            BlockPos hub = helper.absolutePos(HUB_DESK);
+            BlockPos far = helper.absolutePos(FAR_DESK);
+            var view = host.wagons().caravans(level, hub);
+            helper.assertTrue(view.towns().stream().anyMatch(t -> t.desk().equals(far) && t.inRange() && !t.routed()),
+                    "the desk doesn't know its neighbour: " + view);
+            helper.assertTrue(view.squad().equals(List.of("minecraft:librarian")), "a Librarian at home to send: " + view.squad());
+            var wagons = host.wagons();
+            long farTown = w.far();
+            helper.assertTrue(wagons.commission(level, hub, far, true)
+                    && wagons.town(w.hub()).routes().stream().anyMatch(l -> l.to() == farTown && l.open()), "Send caravans: no route");
+            helper.assertTrue(wagons.caravans(level, hub).towns().stream().anyMatch(t -> t.desk().equals(far) && t.routed()),
+                    "the screen doesn't show it sending");
+            helper.assertTrue(wagons.commission(level, hub, far, false)
+                    && wagons.town(w.hub()).routes().stream().noneMatch(l -> l.open()), "Stop caravans: still open");
+            helper.assertFalse(wagons.commission(level, hub, far.offset(500, 0, 0), true), "only markets the screen showed");
+        } finally {
+            delete(dir);
+            if (w != null) {
+                w.discard();
+            }
+        }
+        helper.succeed();
+    }
+
     /** The core's number for the good called {@code name}. */
     private static long good(CoreHost host, String name) {
         List<String> goods = ((Answer.Goods) host.ask(List.of(new Query.Goods())).get(0)).goods();

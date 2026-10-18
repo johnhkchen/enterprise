@@ -565,5 +565,39 @@
       },
       "share": 1.0
     }
+  },
+  {
+    "HandAway": {
+      "town": 0,
+      "hand": 2,
+      "tag": "6f1c2a3e-0000-4000-8000-00000000002a"
+    }
+  },
+  {
+    "HandAway": {
+      "town": 4294967295,
+      "hand": 4294967295,
+      "tag": "🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾"
+    }
+  },
+  {
+    "HandBack": {
+      "town": 0,
+      "hand": 2,
+      "tag": "6f1c2a3e-0000-4000-8000-00000000002a",
+      "trade": "merchant",
+      "level": 1,
+      "xp": 1
+    }
+  },
+  {
+    "HandBack": {
+      "town": 4294967295,
+      "hand": 4294967295,
+      "tag": "",
+      "trade": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "level": 255,
+      "xp": 4294967295
+    }
   }
 ]

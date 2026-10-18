@@ -8,6 +8,7 @@ import dev.b28.enterprise.binding.adapters.MoneyAdapter;
 import dev.b28.enterprise.binding.adapters.PeopleAdapter;
 import dev.b28.enterprise.binding.adapters.PointsAdapter;
 import dev.b28.enterprise.binding.adapters.StockAdapter;
+import dev.b28.enterprise.binding.adapters.WagonAdapter;
 import dev.b28.enterprise.core.CoreModule;
 import dev.b28.enterprise.core.CoreTrap;
 import dev.b28.enterprise.core.CoreWorker;
@@ -41,7 +42,7 @@ import net.neoforged.neoforge.event.server.ServerStoppedEvent;
  * ({@link CoreWorker}), saved with the world. The host makes the society from the mod's content pack at a new world
  * ({@link ModPack}, seeded with the world's seed) or loads the world's {@value SaveStore#FILE}, saves it when the world
  * saves, and drops it when the server stops. Its adapters ({@link PointsAdapter}, {@link HandsAdapter}, {@link
- * PeopleAdapter}, {@link StockAdapter}, {@link MoneyAdapter}, {@link LandAdapter}, {@link LockerAdapter}) turn Minecraft's happenings into the core's inputs and its outputs into things
+ * PeopleAdapter}, {@link StockAdapter}, {@link MoneyAdapter}, {@link LandAdapter}, {@link LockerAdapter}, {@link WagonAdapter}) turn Minecraft's happenings into the core's inputs and its outputs into things
  * in the world; {@link CoreClock} hands them a look at a time. The host keeps no society ids: which block is which town's and which villager
  * is which hand are the core's, read back by the adapters when it starts.
  *
@@ -74,6 +75,7 @@ public final class CoreHost implements AutoCloseable {
     private final MoneyAdapter money;
     private final LandAdapter land;
     private final LockerAdapter lockers;
+    private final WagonAdapter wagons;
     private final Outcomes outcomes;
     private final List<CompletableFuture<Response>> looks = new ArrayList<>();
     private String pausedWhy;
@@ -89,7 +91,8 @@ public final class CoreHost implements AutoCloseable {
         this.money = new MoneyAdapter(this, ownsChests);
         this.land = new LandAdapter(this, ownsChests);
         this.lockers = new LockerAdapter(this, ownsChests);
-        this.outcomes = new Outcomes(people, stock, money, land);
+        this.wagons = new WagonAdapter(this, ownsChests, dir);
+        this.outcomes = new Outcomes(people, stock, money, land, wagons);
         try {
             switch (store.open()) {
                 case SaveStore.Opened.Fresh fresh -> {
@@ -238,6 +241,11 @@ public final class CoreHost implements AutoCloseable {
         return lockers;
     }
 
+    /** The wagon adapter: the core's routes started and stopped, its wagons' crews stowed and let out by hand. */
+    public WagonAdapter wagons() {
+        return wagons;
+    }
+
     /** Why the host is paused (the save refused, the core stuck), or null while it runs. */
     public String pausedWhy() {
         return pausedWhy;
@@ -259,6 +267,7 @@ public final class CoreHost implements AutoCloseable {
             stock.joinDepots(server); // a building's containers the core doesn't keep yet, its depots now (counted as they join)
             lockers.place(server); // where the loaded villagers' lockers stand (core mode), before their chests are counted
         }
+        wagons.catchUp(server); // crews stowed and let out whose chunks loaded since, before the census counts them
         List<Input> inputs = pending();
         // A census only in core mode: in Java mode the Java rules' census keeps the people (CensusTaker).
         inputs.addAll(people.happenings(server, Society.isCore()));
@@ -379,7 +388,11 @@ public final class CoreHost implements AutoCloseable {
         people.nameNow();
         land.sayNow(); // what was laid, said before the save: a stop before the next look would have it laid twice
         try {
-            return store.save();
+            boolean saved = store.save();
+            if (saved) {
+                wagons.save(); // the stowed villagers beside the core that has them away
+            }
+            return saved;
         } catch (RuntimeException e) {
             Enterprise.LOGGER.error("The core's save failed; the world's last save of it stands", e);
             return false;

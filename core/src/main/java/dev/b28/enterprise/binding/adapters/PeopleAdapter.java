@@ -244,8 +244,25 @@ public final class PeopleAdapter {
         v.setVillagerData(v.getVillagerData().setType(VillagerType.byBiome(level.getBiome(at))).setProfession(profession)
                 .setLevel(Math.clamp(h.level(), 1, 5)));
         v.setVillagerXp((int) Math.min(Integer.MAX_VALUE, h.xp()));
+        if (h.villager() != null) {
+            v.setUUID(h.villager()); // the hand's own villager made again (its record lost): the core knows it by this
+        }
         level.addFreshEntity(v);
         return v;
+    }
+
+    /**
+     * A villager for a hand the core names {@code tag} (its UUID) whose villager is nowhere (a stowed record lost), by
+     * {@code at}, of its trade, level and XP. Null when the tag isn't a UUID or the trade no profession here.
+     */
+    Villager spawnFor(ServerLevel level, BlockPos at, long hand, String tag, String trade, int lvl, long xp) {
+        UUID id;
+        try {
+            id = UUID.fromString(tag);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+        return spawn(level, at, new HandsAdapter.Hand(hand, id, trade, lvl, xp, false, false, false));
     }
 
     /** Open ground beside {@code centre} (two blocks of air over something solid), or on top of it. */
@@ -261,7 +278,7 @@ public final class PeopleAdapter {
     }
 
     /** The profession the core calls {@code trade} (a registry path), the vanilla one first. */
-    private VillagerProfession profession(String trade) {
+    VillagerProfession profession(String trade) {
         if (professions == null) {
             Map<String, VillagerProfession> byName = new HashMap<>();
             for (var entry : BuiltInRegistries.VILLAGER_PROFESSION.entrySet()) {
@@ -289,7 +306,10 @@ public final class PeopleAdapter {
             case Output.Born o -> arrive(server, o.town());
             case Output.Settled o -> arrive(server, o.town());
             case Output.Departed o -> remove(server, o.tag());
-            case Output.HandGone o -> remove(server, o.tag());
+            case Output.HandGone o -> {
+                remove(server, o.tag());
+                host.wagons().forget(o.hand()); // a hand gone while away (a soldier fallen) takes its stowed villager
+            }
             case Output.HandLevel o -> write(server, o);
             default -> {}
         }
@@ -320,16 +340,20 @@ public final class PeopleAdapter {
 
     /** The core's word on a hand's trade, level and XP, written to its villager if it's loaded. */
     private void write(MinecraftServer server, Output.HandLevel o) {
-        if (!(find(server, o.tag()) instanceof Villager v)) {
-            return;
+        if (find(server, o.tag()) instanceof Villager v) {
+            writeTo(v, o.trade(), o.level(), o.xp());
         }
-        VillagerProfession profession = profession(o.trade());
+    }
+
+    /** A hand's trade (the core's name), level and XP written to its villager. */
+    void writeTo(Villager v, String trade, int lvl, long xp) {
+        VillagerProfession profession = profession(trade);
         var data = v.getVillagerData();
         if (profession != null && profession != data.getProfession()) {
             data = data.setProfession(profession);
         }
-        v.setVillagerData(data.setLevel(Math.clamp(o.level(), 1, 5)));
-        v.setVillagerXp((int) Math.min(Integer.MAX_VALUE, o.xp()));
+        v.setVillagerData(data.setLevel(Math.clamp(lvl, 1, 5)));
+        v.setVillagerXp((int) Math.min(Integer.MAX_VALUE, xp));
     }
 
     private static Entity find(MinecraftServer server, String tag) {

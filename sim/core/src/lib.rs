@@ -67,6 +67,7 @@ pub mod chests;
 pub mod till;
 pub mod land;
 pub mod locker_host;
+pub mod wagon_host;
 pub mod wire;
 
 pub use content::{Content, Dials, Good, GoodId};

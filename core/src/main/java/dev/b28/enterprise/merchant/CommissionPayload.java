@@ -30,6 +30,15 @@ public record CommissionPayload(BlockPos destination, boolean send) implements C
             if (context.player() instanceof ServerPlayer player
                     && player.containerMenu instanceof MerchantMenu menu
                     && menu.stillValid(player)) {
+                if (dev.b28.enterprise.binding.Society.isCore()) {
+                    // The core's routes (binding/adapters/WagonAdapter): only a market it says the town knows, within a
+                    // leg's food; never the Java rules' ledger.
+                    var host = dev.b28.enterprise.binding.CoreHost.of(player.server);
+                    if (host != null && host.pausedWhy() == null) {
+                        host.wagons().commission(player.serverLevel(), menu.view().desk(), payload.destination(), payload.send());
+                    }
+                    return;
+                }
                 commission(player.server, GlobalPos.of(player.level().dimension(), menu.view().desk()), menu.view(),
                         payload.destination(), payload.send());
             }
@@ -38,7 +47,8 @@ public record CommissionPayload(BlockPos destination, boolean send) implements C
 
     /**
      * Starts (or stops) caravans from {@code desk} to {@code destination}, if the screen showed that market and a
-     * caravan can reach it. Returns true if anything changed.
+     * caravan can reach it (the Java rules' ledger: in core mode the screen's packet goes to the core instead). Returns
+     * true if anything changed.
      */
     public static boolean commission(net.minecraft.server.MinecraftServer server, GlobalPos desk, MerchantView view,
             BlockPos destination, boolean send) {

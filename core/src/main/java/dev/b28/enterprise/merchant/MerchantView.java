@@ -45,23 +45,30 @@ public record MerchantView(BlockPos desk, int limit, List<LockerView> lockers, d
 
     /**
      * A market this desk knows: its desk, blocks away and which way (N, NE, ...), whether it's a settlement, whether
-     * this desk sends caravans there, and the route's status.
+     * this desk sends caravans there, the route's status, and whether a caravan carries the food to get there (the
+     * Java rules' {@code Caravans.inRange}, or in core mode the core's word: {@code binding/adapters/WagonAdapter}).
      */
     public record TownView(BlockPos desk, int distance, String direction, boolean settlement, boolean routed,
-            String status) {
+            String status, boolean reachable) {
         /** Can a caravan carry the food to get there? */
         public boolean inRange() {
-            return dev.b28.enterprise.caravan.Caravans.inRange(distance);
+            return reachable;
         }
 
-        public static final StreamCodec<RegistryFriendlyByteBuf, TownView> STREAM_CODEC = StreamCodec.composite(
-                BlockPos.STREAM_CODEC, TownView::desk,
-                ByteBufCodecs.VAR_INT, TownView::distance,
-                ByteBufCodecs.STRING_UTF8, TownView::direction,
-                ByteBufCodecs.BOOL, TownView::settlement,
-                ByteBufCodecs.BOOL, TownView::routed,
-                ByteBufCodecs.STRING_UTF8, TownView::status,
-                TownView::new);
+        // Seven fields: one more than StreamCodec.composite takes.
+        public static final StreamCodec<RegistryFriendlyByteBuf, TownView> STREAM_CODEC = StreamCodec.of(
+                (buf, v) -> {
+                    BlockPos.STREAM_CODEC.encode(buf, v.desk());
+                    ByteBufCodecs.VAR_INT.encode(buf, v.distance());
+                    ByteBufCodecs.STRING_UTF8.encode(buf, v.direction());
+                    ByteBufCodecs.BOOL.encode(buf, v.settlement());
+                    ByteBufCodecs.BOOL.encode(buf, v.routed());
+                    ByteBufCodecs.STRING_UTF8.encode(buf, v.status());
+                    ByteBufCodecs.BOOL.encode(buf, v.reachable());
+                },
+                buf -> new TownView(BlockPos.STREAM_CODEC.decode(buf), ByteBufCodecs.VAR_INT.decode(buf),
+                        ByteBufCodecs.STRING_UTF8.decode(buf), ByteBufCodecs.BOOL.decode(buf), ByteBufCodecs.BOOL.decode(buf),
+                        ByteBufCodecs.STRING_UTF8.decode(buf), ByteBufCodecs.BOOL.decode(buf)));
     }
 
     public record LockerView(BlockPos workstation, Component worker, List<TradeView> trades) {
@@ -89,9 +96,12 @@ public record MerchantView(BlockPos desk, int limit, List<LockerView> lockers, d
     public static MerchantView of(ServerLevel level, BlockPos desk, int limit) {
         if (dev.b28.enterprise.binding.Society.isCore()) {
             var host = dev.b28.enterprise.binding.CoreHost.of(level.getServer());
-            List<LockerView> lockers = host == null || host.pausedWhy() != null ? null : host.lockers().view(level, desk);
-            // No core town here (or no core running): no lockers, never the Java rules' (their switches the core never reads).
-            return build(level, desk, limit, Lockers.MERCHANT_RANGE, lockers == null ? List.of() : lockers);
+            boolean running = host != null && host.pausedWhy() == null;
+            List<LockerView> lockers = running ? host.lockers().view(level, desk) : null;
+            // No core town here (or no core running): no lockers and no caravans, never the Java rules' (their switches
+            // and routes the core never reads); the caravans are the core's (binding/adapters/WagonAdapter).
+            CaravanView caravans = running ? host.wagons().caravans(level, desk) : new CaravanView(List.of(), List.of());
+            return build(level, desk, limit, lockers == null ? List.of() : lockers, caravans);
         }
         return build(level, desk, limit);
     }
@@ -125,15 +135,15 @@ public record MerchantView(BlockPos desk, int limit, List<LockerView> lockers, d
                     return new LockerView(locker.workstation(), label, trades);
                 })
                 .toList();
-        return build(level, desk, limit, range, lockers);
+        return build(level, desk, limit, lockers, caravans(level, GlobalPos.of(level.dimension(), desk), range));
     }
 
-    /** The view with these lockers, and the rest of the screen (the rate, the bank, the caravans) the other concerns'. */
-    private static MerchantView build(ServerLevel level, BlockPos desk, int limit, int range, List<LockerView> lockers) {
-        GlobalPos deskPos = GlobalPos.of(level.dimension(), desk);
+    /** The view with these lockers and caravans, and the rest of the screen (the rate, the bank) the other concerns'. */
+    private static MerchantView build(ServerLevel level, BlockPos desk, int limit, List<LockerView> lockers,
+            CaravanView caravans) {
         double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, level.getGameTime());
         int bankSpurs = MoneyChanger.bankAt(level, desk).map(BankAccount::getBalance).orElse(NO_BANK);
-        return new MerchantView(desk, limit, lockers, rate, bankSpurs, caravans(level, deskPos, range));
+        return new MerchantView(desk, limit, lockers, rate, bankSpurs, caravans);
     }
 
     /** The markets this desk knows, nearest first, with its routes to them; and its squad at home. */
@@ -149,7 +159,8 @@ public record MerchantView(BlockPos desk, int limit, List<LockerView> lockers, d
                     var route = ledger.route(desk, other);
                     return new TownView(other.pos(), distance, direction(dx, dz), territory.bellOf(other).isPresent(),
                             route.isPresent(), route.map(r -> r.status() + (r.mappedAt() >= 0
-                                    ? "; road mapped, " + r.townsMapped() + " town(s) seen on the way" : "")).orElse(""));
+                                    ? "; road mapped, " + r.townsMapped() + " town(s) seen on the way" : "")).orElse(""),
+                            dev.b28.enterprise.caravan.Caravans.inRange(distance));
                 })
                 .toList();
         List<String> squad = dev.b28.enterprise.caravan.Squad.available(level, desk, Math.min(range, dev.b28.enterprise.caravan.Squad.reach())).stream()
@@ -159,7 +170,7 @@ public record MerchantView(BlockPos desk, int limit, List<LockerView> lockers, d
     }
 
     /** Which way, on the eight points of the compass (north is -z). */
-    static String direction(int dx, int dz) {
+    public static String direction(int dx, int dz) {
         String[] points = {"E", "SE", "S", "SW", "W", "NW", "N", "NE"};
         double angle = Math.toDegrees(Math.atan2(dz, dx));
         return points[(int) Math.floorMod(Math.round(angle / 45), 8)];

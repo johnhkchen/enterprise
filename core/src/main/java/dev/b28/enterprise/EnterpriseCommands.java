@@ -70,7 +70,10 @@ final class EnterpriseCommands {
                                         .executes(EnterpriseCommands::coreLand)))
                         .then(Commands.literal("lockers")
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos())
-                                        .executes(EnterpriseCommands::coreLockers))))
+                                        .executes(EnterpriseCommands::coreLockers)))
+                        .then(Commands.literal("routes")
+                                .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                        .executes(EnterpriseCommands::coreRoutes))))
                 .then(Commands.literal("mint").executes(EnterpriseCommands::mint))
                 .then(Commands.literal("census")
                         .then(Commands.argument("bell", BlockPosArgument.blockPos())
@@ -656,6 +659,26 @@ final class EnterpriseCommands {
         return land.hexes().size();
     }
 
+    /** A desk's town's routes in the core ({@code /enterprise core routes <desk>}): its wagons, the markets it knows, its squad. */
+    private static int coreRoutes(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        ServerLevel level = source.getLevel();
+        BlockPos desk = BlockPosArgument.getBlockPos(context, "desk");
+        var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+        if (host == null || host.pausedWhy() != null) {
+            source.sendFailure(Component.literal(host == null ? "The core isn't running" : host.pausedWhy()));
+            return 0;
+        }
+        Long town = host.stock().townAt(GlobalPos.of(level.dimension(), desk));
+        if (town == null) {
+            source.sendFailure(Component.literal("The core keeps no town at " + desk.toShortString()));
+            return 0;
+        }
+        List<String> lines = host.wagons().lines(town);
+        source.sendSuccess(() -> Component.literal(String.join("\n", lines)), false);
+        return lines.size() - 1;
+    }
+
     /**
      * A desk's town's lockers in the core ({@code /enterprise core lockers <desk>}, and {@code /enterprise lockers} in
      * core mode): where each loaded villager's stands told the core first, then each hand's, managed or waiting, where it
@@ -884,12 +907,35 @@ final class EnterpriseCommands {
                 .collect(java.util.stream.Collectors.joining("; "));
     }
 
-    /** A caravan route from a hub Merchant's Desk to a settlement's Merchant's Desk, if food allows the distance. */
+    /**
+     * A caravan route from a hub Merchant's Desk to a settlement's Merchant's Desk, if food allows the distance: the
+     * Java rules' ledger, or in core mode the core's (whether a leg's food reaches is the core's word).
+     */
     private static int addRoute(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         CommandSourceStack source = context.getSource();
         ServerLevel level = source.getLevel();
         BlockPos from = BlockPosArgument.getBlockPos(context, "from");
         BlockPos to = BlockPosArgument.getBlockPos(context, "to");
+        if (dev.b28.enterprise.binding.Society.isCore()) {
+            var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+            if (host == null || host.pausedWhy() != null) {
+                source.sendFailure(Component.literal(host == null ? "The core isn't running" : host.pausedWhy()));
+                return 0;
+            }
+            Long a = host.stock().townAt(GlobalPos.of(level.dimension(), from));
+            Long b = host.stock().townAt(GlobalPos.of(level.dimension(), to));
+            if (a == null || b == null) {
+                source.sendFailure(Component.literal("The core keeps no town at " + (a == null ? from : to).toShortString()));
+                return 0;
+            }
+            var made = host.wagons().addRoute(a, b);
+            if (made.getKey() < 0) {
+                source.sendFailure(Component.literal(made.getValue()));
+                return 0;
+            }
+            source.sendSuccess(() -> Component.literal(made.getValue()), true);
+            return (int) (long) made.getKey();
+        }
         for (BlockPos desk : List.of(from, to)) {
             if (level.isLoaded(desk) && !level.getBlockState(desk).is(Merchant.DESK.get())) {
                 source.sendFailure(Component.literal("No Merchant's Desk at " + desk.toShortString()));
@@ -915,6 +961,13 @@ final class EnterpriseCommands {
 
     private static int removeRoute(CommandContext<CommandSourceStack> context) {
         int id = IntegerArgumentType.getInteger(context, "id");
+        if (dev.b28.enterprise.binding.Society.isCore()) {
+            var host = dev.b28.enterprise.binding.CoreHost.of(context.getSource().getServer());
+            boolean stopped = host != null && host.pausedWhy() == null && host.wagons().removeRoute(id);
+            context.getSource().sendSuccess(() -> Component.literal(stopped ? "Stopped route " + id + " (its wagon comes home)"
+                    : "No route " + id + " open"), true);
+            return stopped ? 1 : 0;
+        }
         boolean removed = CaravanLedger.get(context.getSource().getServer()).removeRoute(id);
         context.getSource().sendSuccess(() -> Component.literal(removed ? "Removed route " + id : "No route " + id), true);
         return removed ? 1 : 0;
@@ -1363,6 +1416,18 @@ final class EnterpriseCommands {
     /** Every route with its totals and where its caravan is. */
     private static int routes(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
+        if (dev.b28.enterprise.binding.Society.isCore()) {
+            var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+            if (host == null || host.pausedWhy() != null) {
+                source.sendFailure(Component.literal(host == null ? "The core isn't running" : host.pausedWhy()));
+                return 0;
+            }
+            var all = host.wagons().routes();
+            source.sendSuccess(() -> Component.literal("%d route(s), the core's".formatted(all.size())), false);
+            all.forEach(l -> source.sendSuccess(() -> Component.literal("  " + dev.b28.enterprise.binding.adapters.WagonAdapter
+                    .describe(l)), false));
+            return all.size();
+        }
         CaravanLedger ledger = CaravanLedger.get(source.getServer());
         source.sendSuccess(() -> Component.literal("%d route(s)".formatted(ledger.routes().size())), false);
         for (Route route : ledger.routes()) {

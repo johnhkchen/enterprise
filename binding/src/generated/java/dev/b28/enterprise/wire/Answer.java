@@ -19,7 +19,8 @@ public sealed interface Answer
                 Answer.Mint,
                 Answer.Land,
                 Answer.Ground,
-                Answer.Lockers {
+                Answer.Lockers,
+                Answer.Routes {
     void encode(PostcardOut out);
 
     static Answer decode(PostcardIn in) {
@@ -36,6 +37,7 @@ public sealed interface Answer
             case 8 -> new Land(in.u32(), in.list(2, HexAt::decode), in.f64(), in.f64(), in.list(9, Count::decode), in.list(18, WorkView::decode));
             case 9 -> new Ground(in.list(20, GroundView::decode));
             case 10 -> new Lockers(in.u32(), in.u32(), in.bool(), in.list(13, LockerView::decode));
+            case 11 -> new Routes(in.u32(), in.list(33, RouteLine::decode), in.list(6, MarketLine::decode), in.list(1, PostcardIn::string));
             default -> throw in.unknownVariant("Answer", at);
         };
     }
@@ -261,6 +263,31 @@ public sealed interface Answer
             out.u32(this.limit);
             out.bool(this.placed);
             out.list(this.lockers, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * A town's routes, from it and to it, in the order they were opened; the markets it knows, nearest first (as its
+     * atlas has them); and the trades of the hands at home who could go with its wagons ({@code squad}, in the squad's order:
+     * the core's names).
+     */
+    record Routes(long town, List<RouteLine> routes, List<MarketLine> markets, List<String> squad) implements Answer {
+        public Routes {
+            Objects.requireNonNull(routes, "routes");
+            routes = List.copyOf(routes);
+            Objects.requireNonNull(markets, "markets");
+            markets = List.copyOf(markets);
+            Objects.requireNonNull(squad, "squad");
+            squad = List.copyOf(squad);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(11);
+            out.u32(this.town);
+            out.list(this.routes, (o1, e1) -> e1.encode(o1));
+            out.list(this.markets, (o1, e1) -> e1.encode(o1));
+            out.list(this.squad, PostcardOut::string);
         }
     }
 }

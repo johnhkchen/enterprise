@@ -128,6 +128,12 @@ pub enum Input {
     /// hand put where another's stood takes it. Ignored for a hand that isn't on a roster by the time it applies, or a
     /// point of another town's. Refused for a point that isn't a locker standing there.
     Locker { hand: HandNo, at: Option<Point> },
+    /// Wagons from one town's market to another's, started (`send`) or stopped (the Merchant's screen,
+    /// `CommissionPayload`; `/enterprise route add` and `remove`): started, a route opens if the far end is within a leg's
+    /// food and there's a way there (a route wound down is opened again), and nothing happens if one is open already or
+    /// none can be; stopped, an open route is wound down (its wagon on the road comes home and stays). `Answer::Routes`
+    /// says what came of it. Refused for a town that isn't there, or a town to itself.
+    Route { from: TownNo, to: TownNo, send: bool },
 }
 
 /// A villager a census saw: the host's tag for it (its UUID), its trade by the host's name (with or without the host's

@@ -29,6 +29,7 @@ mod pallet;
 mod point;
 mod query;
 mod save_file;
+mod wagon;
 
 pub use crate::content::GoodId;
 pub use handle::{handle, handle_bytes};
@@ -40,6 +41,7 @@ pub use pallet::{PackageLine, Place};
 pub use point::{Point, PointKind};
 pub use query::{Answer, DialView, HandView, LockerView, OfferView, Query, TownPoint};
 pub use save_file::SaveFile;
+pub use wagon::{MarketLine, RouteLine, WagonLine};
 
 /// A town, by its place in the order towns were added: stable across saves and hosts, unlike an ECS entity.
 pub type TownId = usize;
