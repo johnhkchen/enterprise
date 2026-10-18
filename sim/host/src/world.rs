@@ -2,7 +2,7 @@
 //! `build_coast`, and the testbench's `network/hub`, `network/settlement`, `network/squad` and `network/spring`), built
 //! through the core's host calls only, and the host's doings each day (the spring's refill, the war's days).
 
-use enterprise_core::sourcing::Phase;
+use enterprise_core::crown::Theatre;
 use enterprise_core::{Hex, Society, TownId};
 
 use crate::flags::Flags;
@@ -477,18 +477,16 @@ impl Study {
     }
 
     /// The sovereign's capital at the hub (`--war`): its court (a master Merchant, Librarian and Cleric, in the
-    /// hub's roster), named the capital, its metal exchange and the market across the sea; S2 promoted with a barracks
-    /// (four beds); the front, off the map, where the levies go.
+    /// hub's roster), its metal exchange with the market across the sea, named the capital with 500 spurs a day of
+    /// peacetime revenue (`enterprise war capital <desk> 500`: the crown, `crown.rs`); S2 promoted with a barracks (four
+    /// beds). The crown opens its own front when it declares war.
     fn build_capital(&mut self, _war: (u64, u64, u64)) {
         let hub = self.hub;
-        self.s.set_capital(Some(hub));
         self.overseas = self.s.open_exchange_overseas(hub, REALM_MONEY);
+        self.s.name_capital(hub, 500);
         let s2 = self.town("S2").unwrap();
         let beds = self.s.town(s2).people.beds + 4.0;
         self.house(s2, beds);
-        let (hx, hz) = hub_desk();
-        let front = self.s.add_off_map("the front", hx + 6000.0, hz, 0.0);
-        self.front = Some(front);
     }
 
     /// What the flags ask for that the core can't do yet: one line each.
@@ -512,7 +510,7 @@ impl Study {
             m.push("--master: the hub's Merchant is a master, but the study puts no players' shops round its desk, so it brokers nothing".into());
         }
         if f.war.is_some() {
-            m.push("--war: the crown isn't in the core: no peacetime revenue (500 spurs a day), no minting, tenders, requisitions or levy contracts; the host names the capital, opens its exchange, sets its phase, musters levies by the mod's rule straight to an off-map front and demobilises".into());
+            m.push("--war: the crown runs it (`crown.rs`): the binding's gold shop and the requisitions' buying vendors aren't the core's (Numismatics blocks)".into());
         }
         if f.ridge {
             m.push("--ridge: llamas (the pass town's pen) aren't among the core's animals; the ridge is relief 40 on each hex, the pass a ravine (60% water) with a map bridge".into());
@@ -537,49 +535,22 @@ impl Study {
             }
         }
         if let Some((m, w, p)) = f.war {
+            let hub = self.hub;
             if day == m {
-                self.s.set_phase(Phase::Mobilising);
+                // `enterprise war mobilise`: 1,000 spurs a day minted, the stockpile requisitioned.
+                self.s.mobilise(hub, 1000);
                 self.setup_log.push(format!("day {day}: mobilised"));
             }
             if day == w {
-                self.declare_war(day);
+                let levies = self.s.declare(Theatre::Faction);
+                self.front = self.s.sovereign().front;
+                self.setup_log.push(format!("day {day}: war declared on a rival faction, {levies} towns levied"));
             }
             if day == p {
-                let home = self.s.demobilise();
-                self.s.set_phase(Phase::Peace);
-                self.setup_log.push(format!("day {day}: peace, {home} walk home"));
+                let home = self.s.peace();
+                self.setup_log.push(format!("day {day}: peace, {home} sent home"));
             }
         }
-    }
-
-    /// War declared (`Sovereign.declare`): the front opened, and a levy from each town the capital has a route to,
-    /// `max(1, min(4 + barracks beds, idle + 20% of the rest))`, mustered and sent straight to the front.
-    fn declare_war(&mut self, day: u64) {
-        let Some(front) = self.front else { return };
-        self.s.set_front(front);
-        self.s.set_phase(Phase::War);
-        let hub = self.hub;
-        let mut towns: Vec<TownId> = (0..self.s.route_count()).map(|r| self.s.route_ends(r))
-            .filter(|&(from, _)| from == hub).map(|(_, to)| to).collect();
-        towns.sort();
-        towns.dedup();
-        let s2 = self.town("S2");
-        let mut levied = 0;
-        for town in towns {
-            if self.s.is_off_map(town) {
-                continue;
-            }
-            let roster = self.s.roster(town);
-            let content = self.s.content();
-            let grown: Vec<_> = roster.hands.iter().filter(|h| !h.is_baby()).collect();
-            let idle = grown.iter().filter(|h| content.trades[h.trade].name == "none" || content.trades[h.trade].name == "nitwit").count();
-            let rest = grown.len() - idle;
-            let most = 4 + if Some(town) == s2 { 4 } else { 0 };
-            let n = (idle + (rest as f64 * 0.2).round() as usize).min(most).max(1);
-            levied += self.s.muster(town, n);
-        }
-        let joined = self.s.embark(levied);
-        self.setup_log.push(format!("day {day}: war declared, {levied} levied, {joined} at the front"));
     }
 
     /// The spring opens (`open_spring`): a desk with its Merchant and squad behind the hub, 64 emeralds, its
