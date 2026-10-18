@@ -78,7 +78,7 @@ fn reckon(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, 
 }
 
 /// What a town can spare beyond its reserve (trading capital and wage float), for crates.
-fn spare(content: &Content, money: crate::fixed::Fixed, trades: &Trades, farm: Option<&Farm>) -> crate::fixed::Fixed {
+pub(super) fn spare(content: &Content, money: crate::fixed::Fixed, trades: &Trades, farm: Option<&Farm>) -> crate::fixed::Fixed {
     money - super::farms::reserve(content, trades, farm)
 }
 

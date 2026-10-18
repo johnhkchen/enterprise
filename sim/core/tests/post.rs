@@ -319,6 +319,54 @@ fn a_town_books_by_post_and_its_goods_are_collected_on_consignment() {
     assert!(s.town(town).money > before, "and come home by post: {before} -> {}", s.town(town).money);
 }
 
+/// Steps the look until the forwarder holds a lot, then until the hub's collecting wagon is loaded: the pallets it carries.
+fn collected(s: &mut Society, hub: usize, town: usize) -> Vec<enterprise_core::pallet::Pallet> {
+    let run = loop {
+        look(s);
+        assert!(s.now() < 8 * DAY, "the hub never collected");
+        if !s.forwarder().lots.is_empty() {
+            break route(s, hub, town).unwrap();
+        }
+    };
+    s.wagon_pallets(run).0
+}
+
+// consignment-pallets: the town's booked goods go to the hub as pallets made out to it, paid, sealed aboard
+#[test]
+fn a_collection_carries_the_towns_goods_as_pallets_made_out_to_the_hub() {
+    let mut s = forwarding();
+    let (hub, town) = (0, 1);
+    let aboard = collected(&mut s, hub, town);
+    let lot = *s.forwarder().lots.first().unwrap();
+    assert!(!aboard.is_empty(), "the goods ride as pallets, not loose");
+    for p in &aboard {
+        assert!(p.lading.shipper == town && p.lading.consignee == hub && p.lading.contract.is_none(), "{p:?}");
+        assert!(p.lading.payment == enterprise_core::pallet::Payment::Paid, "nobody owes for them: {p:?}");
+        assert!(p.seal.is_some(), "sealed as the wagon loaded them");
+        assert!(p.packages.iter().all(|k| k.good == LEATHER));
+    }
+    let carried: f64 = aboard.iter().map(|p| p.count()).sum();
+    assert!(close(carried, lot.count), "the lot is what the pallets hold: {carried} vs {lot:?}");
+    assert!(aboard.iter().any(|p| p.packages.iter().any(|k| k.kind != enterprise_core::pallet::LOOSE)), "crated where it can");
+    // At the hub they're opened into its stock; none left in the registry for the lot.
+    run(&mut s, 6 * DAY);
+    assert!(s.pallets_at(enterprise_core::pallet::At::Town(hub)).iter().all(|p| p.lading.shipper != town),
+        "no consignment pallet is left unopened at the hub");
+}
+
+// consignment-pallets: a town that can't pay for crates still consigns, loose on its pallets
+#[test]
+fn a_town_that_cant_pay_for_crates_still_consigns_loose() {
+    let mut s = forwarding();
+    s.content_mut().dials.crate_emeralds = 1000.0;
+    let (hub, town) = (0, 1);
+    let aboard = collected(&mut s, hub, town);
+    let lot = *s.forwarder().lots.first().unwrap();
+    assert!(!aboard.is_empty() && close(aboard.iter().map(|p| p.count()).sum::<f64>(), lot.count));
+    assert!(aboard.iter().flat_map(|p| &p.packages).all(|k| k.kind == enterprise_core::pallet::LOOSE),
+        "no crates to be had: loose packages");
+}
+
 // parity: PostTests.goodsOnConsignmentSellAndTheMoneyComesBackByPost
 #[test]
 fn goods_on_consignment_sell_and_the_money_comes_back_by_post() {

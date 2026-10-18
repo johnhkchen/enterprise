@@ -11,7 +11,8 @@
 //!   a purse for the call's goods ([`go_on_call`]); once it's gone, its calls are made ([`made`]).
 //! - **Sell:** a hub's wagon's sales credited to the towns' lots ([`credit_sold`]); a town's wagon at a hub leaves what
 //!   it couldn't sell on consignment ([`consign`]).
-//! - **Buy:** the hub's wagon at a booked town collects its goods for sale, the town's lots ([`collect`]); a wagon's
+//! - **Buy:** the hub's wagon at a booked town collects its goods for sale, the town's lots, as pallets made out to the hub
+//!   (`consignment-pallets`; [`collect`]); a wagon's
 //!   purchases at a hub credited to the lots ([`credit_bought`]).
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -21,7 +22,7 @@ use bevy_ecs::prelude::*;
 use super::{free, in_order, shelf, Step};
 use crate::bills::{self, BillState, Bills, Held};
 use crate::cash_book::{post, Accountant, CashBook, Reason, Side};
-use crate::pallet::Pallets;
+use crate::pallet::{At, Lading, Line, Pallets, Payment};
 use crate::content::{Content, GoodId};
 use crate::contracts::{Book, State};
 use crate::farms::{Deposits, Farm};
@@ -607,12 +608,17 @@ pub fn consign_host(In((hub, town, mut cargo)): In<(TownId, TownId, Vec<f64>)>, 
     taken
 }
 
-/// The hub's wagon at a booked town (`Forwarder.collect`): its goods for sale taken on consignment as the town's lots,
-/// as far as the wagon has room, each lot owing its stacks' collection fare; the booking is done.
-#[allow(clippy::type_complexity)]
+/// The hub's wagon at a booked town (`Forwarder.collect`): its goods for sale taken on consignment, as far as the wagon has
+/// room, each lot owing its stacks' collection fare; the booking is done. Since `consignment-pallets` the goods go packed as
+/// pallets made out to the hub (shipper the town, no contract, [`Payment::Paid`]: the goods are the town's and nobody
+/// owes for them), crated at the town's cost where it can spare crates and loose on their pallet where it can't, sealed as
+/// the wagon loads them, a superbill for two or more; the hub opens them at home into its stock (`rules/cargo.rs`
+/// `unload`), where the lots they stand for are sold from. The lots are told as before, at collection.
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub fn collect(clock: Res<Clock>, content: Res<Content>, list: Res<Towns>, book: Res<Book>,
         mut forwarder: ResMut<Forwarder>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
-        mut towns: Query<Place>, pallets: Res<Pallets>) {
+        mut towns: Query<Place>, mut premises: Query<(&mut crate::cargo::Shipments, &mut crate::cargo::Paperwork)>,
+        mut pallets: ResMut<Pallets>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>) {
     if forwarder.collecting.is_empty() {
         return;
     }
@@ -633,19 +639,33 @@ pub fn collect(clock: Res<Clock>, content: Res<Content>, list: Res<Towns>, book:
         let fare = fare(&content, blocks, !route.on_call);
         let (_, _, mut state) = routes.get_mut(e).unwrap();
         let wagon = state.wagon.as_mut().unwrap();
-        let (_, _, _, mut stock, ..) = towns.get_mut(route.to).unwrap();
+        let entity = route.to;
+        let (_, mut money, _, mut stock, trades, farm, ..) = towns.get_mut(entity).unwrap();
+        let Ok((mut store, mut paperwork)) = premises.get_mut(entity) else { continue };
         let (goods, _) = sale_goods(&content, now, route.to_id, route.from_id, &book, &roads, &known, &stock.0, &pallets);
+        let spare = super::cargo::spare(&content, money.0, trades, farm);
+        let mut shipper = crate::cargo::Shipper { town: route.to_id, money: &mut money.0, spare, store: &mut store,
+            paperwork: &mut paperwork };
+        let lading = Lading { payment: Payment::Paid, ..Lading::new(route.to_id, route.from_id, now) };
         for (g, n) in goods {
             let stack = content.goods[g].stack.max(1) as f64;
-            // The room left: slots, weight and pallets (`pallet-caps`).
-            let room = crate::cargo::wagon_room(&content, &pallets, route.seq, wagon).loose(&content, g);
+            // The room left: slots, weight and pallets (`pallet-caps`), as pallets of the good would take them.
+            let room = crate::cargo::wagon_room(&content, &pallets, route.seq, wagon).palleted(&content, g);
             let going = n.min(room).min(stock.0[g]).floor();
             if going <= 0.0 {
                 continue;
             }
-            stock.0[g] -= going;
-            wagon.cargo[g] += going;
-            forwarder.lot(route.from_id, route.to_id, g, going, Fixed::ceil(fare * (going / stack).ceil()), now);
+            let packed = crate::cargo::pack_lines(&content, &mut ledger, &mut cash, now, &mut shipper, &mut pallets, &lading,
+                &[(g, going)], At::Town(route.to_id), crate::cargo::How::OWED);
+            let taken = packed.of(g);
+            if taken <= 0.0 {
+                continue;
+            }
+            stock.0[g] -= taken;
+            for id in packed.ids {
+                crate::cargo::put_aboard(&mut pallets, wagon, route.seq, Line { pallet: id, ..Default::default() }, route.to_id, now);
+            }
+            forwarder.lot(route.from_id, route.to_id, g, taken, Fixed::ceil(fare * (taken / stack).ceil()), now);
         }
     }
 }
