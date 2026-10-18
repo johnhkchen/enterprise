@@ -469,8 +469,11 @@ fn pick_forwarded(content: &Content, net: &Network, book: &mut Book, bills: &mut
             continue;
         }
         let (buyer, price) = (c.buyer, c.price);
-        let Some(fee) = forwarding_fee(content, net, hub, buyer, crate::cargo::stacks_of(content, g, n).max(1), rate)
-            .map(|f| f.0).filter(|f| shipper.spare >= *f) else { continue };
+        // The forwarding as it will be charged: each pallet's, as packing will pallet it (each rounds its own carts up).
+        let Some(fee) = crate::cargo::pallet_loads(content, g, n).iter()
+            .map(|load| forwarding_fee(content, net, hub, buyer, load.iter().map(|pk| pk.slots(content)).sum::<u32>().max(1), rate)
+                .map(|f| f.0))
+            .sum::<Option<Fixed>>().filter(|f| shipper.spare >= *f) else { continue };
         // Only what can be crated goes: loose goods for a market beyond would be sold at the hub as the wagon's own.
         // A pallet each pallet's worth, a bill of lading each (`pallet-caps`); the forwarding each pallet's, as the hub
         // takes them one by one (`Hub::hand_over`).

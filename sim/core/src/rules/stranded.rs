@@ -335,6 +335,11 @@ pub fn buy_at_town(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, bo
             }
             fits
         });
+        // A bill goes only with all its goods: one naming a pallet left for want of room stays with the town, so no
+        // pallet stays on its shelf under a bill the hub took (`pick` draws one bill over several pallets).
+        if !skipped.is_empty() {
+            offered.retain(|&b| !bills.bills[b].pallets.iter().any(|p| skipped.contains(p)));
+        }
         let deal = buy(&t, &mut bills, &pallets, &mut crates, &mut offered, coin.to_f64(), means.to_f64());
         // The pallets bought ride home in the forwarder's name; those it left go back on the shelf behind the rest.
         for &id in deal.iter().flat_map(|d| &d.crates) {
