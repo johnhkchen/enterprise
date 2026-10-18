@@ -246,6 +246,9 @@ pub struct Farm {
     /// What the herds eat, items a day (`herds` fills it): part of the villagers' demand and grown first
     /// (`recordDemand`, `afterCensus`'s needs).
     pub feed: BTreeMap<GoodId, f64>,
+    /// What its villagers at the lockers its Merchant manages would buy of each good a day, as its last census counted
+    /// them (`CensusTaker.noteDemand`, `recordDemand`: the review sets it, `lockers::census_demand`): part of its demand.
+    pub census: BTreeMap<GoodId, f64>,
     /// Other uses of a crop: {items a day, emeralds an item} (the workshop's input, the markets its caravans reach).
     pub draws: BTreeMap<GoodId, (f64, f64)>,
     /// Stores built, and stores it would build (its crops pile up).
@@ -292,6 +295,7 @@ impl Default for Farm {
             demand: BTreeMap::new(),
             needs: BTreeMap::new(),
             feed: BTreeMap::new(),
+            census: BTreeMap::new(),
             draws: BTreeMap::new(),
             stores: Vec::new(),
             stores_wanted: Vec::new(),
@@ -325,10 +329,13 @@ pub struct Wants {
 }
 
 impl Wants {
-    /// A town's wants: its trades' use of each good and its villagers' demand, its farm's draws and needs, and the
-    /// herds' feed in both demand and needs.
+    /// A town's wants: its trades' use of each good and its villagers' demand (the host's and its census's), its
+    /// farm's draws and needs, and the herds' feed in both demand and needs.
     pub fn of(farm: &Farm, uses: &[f64]) -> Wants {
         let mut demand = farm.demand.clone();
+        for (&g, &n) in &farm.census {
+            *demand.entry(g).or_insert(0.0) += n;
+        }
         for (g, u) in uses.iter().enumerate() {
             if *u > 0.0 {
                 *demand.entry(g).or_insert(0.0) += u;

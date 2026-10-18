@@ -374,6 +374,24 @@ pub fn wanted_par(content: &Content, trades: &Trades, lockers: Option<(&Lockers,
     takes.then(|| crate::bargain::par(content, capacity, true).max(trades.inputs.get(good).copied().unwrap_or(0.0)))
 }
 
+/// What a town's villagers at the lockers its Merchant manages would buy a day, by good (`CensusTaker.noteDemand`
+/// 247–263, as the census counts it for the farm, `Territory.recordDemand`): each buying trade a managed hand has (of
+/// its level or below), switched on or not, twice its cost times its uses (vanilla restocks twice a day). Only a villager
+/// at a locker the Merchant manages buys from the town.
+pub fn census_demand(roster: &Roster, lockers: &Lockers) -> std::collections::BTreeMap<GoodId, f64> {
+    let mut out = std::collections::BTreeMap::new();
+    for &i in &lockers.managed {
+        let (Some(h), Some(l)) = (roster.hands.get(i), lockers.hands.get(i)) else { continue };
+        if l.trade != h.trade || h.is_baby() {
+            continue;
+        }
+        for o in l.offers.iter().filter(|o| !o.sells && o.level <= h.level && o.count > 0) {
+            *out.entry(o.good).or_insert(0.0) += 2.0 * o.count as f64 * o.uses as f64;
+        }
+    }
+    out
+}
+
 /// One restock of every hand with a locker (vanilla's `Villager.restock`, with the mod's hooks): demand moves by the
 /// uses since the last, and cools no lower than zero if nobody traded since (`floorCooling`); then the lockers the
 /// Merchant manages trade. Hands away don't restock. Returns the trades made.

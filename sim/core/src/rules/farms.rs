@@ -161,10 +161,11 @@ fn settle_deposits(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<
 pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contracts: Res<crate::contracts::Book>,
         mut ledger: ResMut<Ledger>,
         mut book: ResMut<CashBook>,
-        mut farms: Query<(&Town, &mut Farm, &mut Money, &mut People, &Stock, &Trades, &mut Budget, Option<&Roster>)>) {
+        mut farms: Query<(&Town, &mut Farm, &mut Money, &mut People, &Stock, &Trades, &mut Budget, Option<&Roster>,
+            Option<&crate::lockers::Lockers>)>, routes: Query<&Route>) {
     let (now, day) = (clock.now, content.day_ticks);
     let today = now / day;
-    for (town, mut farm, mut money, mut people, stock, trades, mut budget, roster) in &mut farms {
+    for (town, mut farm, mut money, mut people, stock, trades, mut budget, roster, lockers) in &mut farms {
         if !farm.set_up || farm.reviewed == Some(today) {
             continue;
         }
@@ -174,6 +175,22 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
         // What it has sold forward comes first: a contract to keep (`Territory.afterCensus`; the herds' feed is not
         // here yet).
         farm.needs = crate::harvest::sold(&content, &contracts, t).into_iter().map(|(g, (n, _))| (g, n)).collect();
+        // What its villagers at the lockers its Merchant manages would buy (`CensusTaker.noteDemand`, `recordDemand`:
+        // the census before this one's review of its clients, as the mod counts them), and what its own workshop would
+        // draw to make its people's comforts (`Workshop.inputDemand`, `afterCensus` 757–759: a town with a desk, as many
+        // again for each route out): the farm's potential, which its plan, rotation and fields read.
+        farm.census = match (roster, lockers) {
+            (Some(r), Some(l)) => crate::lockers::census_demand(r, l),
+            _ => BTreeMap::new(),
+        };
+        farm.draws = match roster {
+            Some(r) => {
+                let out = routes.iter().filter(|r| r.from_id == t).count();
+                crate::workshop::input_demand(&content, r, people.villagers, out).into_iter()
+                    .map(|d| (d.good, (d.per_day, d.each))).collect()
+            }
+            None => BTreeMap::new(),
+        };
         let farmers = farmers(&content, roster);
         let food = food_points(&content, stock);
         let fed = food >= 2.0 * FOOD_PAR_POINTS;

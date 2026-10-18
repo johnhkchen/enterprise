@@ -190,3 +190,80 @@ fn a_load_is_weighed_against_its_road_food_at_its_goods_worth() {
     assert!(!s.route(0).on_the_road, "four don't pay their road");
     assert_eq!(s.route_state(0).1.stayed, Some(enterprise_core::road::Stay::WaitingForALoad));
 }
+
+/// Crops at their locker prices, bread, cookies (a treat) the Farmer's workshop makes of wheat and cane, and paper
+/// (the Librarian's and Cartographer's trades).
+fn farm_content() -> Content {
+    Content::new(vec![
+        Good::new("wheat", 1.0 / 20.0, 64).crop(),
+        Good::new("carrot", 1.0 / 22.0, 64).crop().food(3.0),
+        Good::new("sugar_cane", 1.0 / 24.0, 64).crop(),
+        Good::new("bread", 1.0 / 6.0, 64).food(5.0),
+        Good::new("cookie", 1.0 / 18.0, 64).comfort(0),
+        Good::new("paper", 1.0 / 24.0, 64),
+    ], DAY)
+}
+const F_WHEAT: usize = 0;
+const F_CARROT: usize = 1;
+const F_CANE: usize = 2;
+const F_BREAD: usize = 3;
+
+/// A settlement like the study's: `hands`, 81 plots of `crop`, a shulker of bread (fed: its fields of a crop nobody
+/// wants lie fallow), 64 emeralds, every buying trade of its lockers switched on; a day run.
+fn farm_town(hands: &[(&str, u8)], crop: usize) -> Society {
+    let mut s = Society::new(farm_content());
+    let t = s.add_town("Furrow", 64.0);
+    s.set_roster(t, hands);
+    let villagers = s.roster(t).residents() as f64;
+    s.set_people(t, villagers, villagers + 1.0, villagers + 1.0);
+    s.deliver(t, F_BREAD, 27.0 * 64.0);
+    s.set_plots(t, crop, 81);
+    let roster = s.roster(t);
+    let lockers = s.lockers(t).unwrap();
+    for (h, locker) in lockers.hands.iter().enumerate() {
+        for (o, offer) in locker.offers.iter().enumerate() {
+            if !offer.sells && offer.level <= roster.hands[h].level {
+                s.switch(t, h, o, true);
+            }
+        }
+    }
+    s.advance(DAY + LOOK);
+    s
+}
+
+fn fallow(s: &Society) -> u32 {
+    s.farm(0).expect("a farm").farm.fallow
+}
+
+#[test]
+fn a_farm_grows_what_the_lockers_its_merchant_manages_would_buy() {
+    // `CensusTaker.noteDemand`: each buying trade of a villager at a locker the Merchant manages, switched on or not,
+    // twice its cost times its uses a day, is the village's demand, and the Farmers tend what it wants
+    // (`Territory.afterCensus`). A level-1 Farmer the Merchant manages buys carrots, 22 for an emerald 16 times a
+    // restock (704 a day), and wheat, 20 for an emerald (640): wanted, its Novice's 32 plots are all worked, the wheat
+    // it plants a field of first (it earns more an item).
+    let s = farm_town(&[("merchant", 1), ("farmer", 1)], F_CARROT);
+    let farm = s.farm(0).unwrap().farm;
+    assert_eq!((farm.census.get(&F_CARROT), farm.census.get(&F_WHEAT)), (Some(&704.0), Some(&640.0)),
+        "the census's demand: {:?}", farm.census);
+    assert_eq!(farm.per_day.values().sum::<f64>(), 16.0, "a Novice's 32 plots worked: {:?}", farm.per_day);
+    // A Merchant of level 1 manages two lockers, the Librarian's and the Cartographer's: the Farmer's carrots aren't
+    // the village's demand, and its plots lie fallow, the town fed (`Territory.plan` 1066: "no one wants it").
+    let s = farm_town(&[("merchant", 1), ("librarian", 1), ("cartographer", 1), ("farmer", 1)], F_CARROT);
+    let farm = s.farm(0).unwrap().farm;
+    assert_eq!(farm.census.get(&F_CARROT), None, "the Farmer's locker isn't managed: {:?}", farm.census);
+    assert_eq!(farm.per_day.get(&F_CARROT), None, "no carrots grown: {:?}", farm.per_day);
+    assert!(fallow(&s) > 0, "its carrot plots lie fallow (but those its workshop's wheat turned over)");
+}
+
+#[test]
+fn a_farm_grows_what_its_own_workshop_would_draw() {
+    // `Workshop.inputDemand` (`afterCensus` 757-759): the Farmer bakes cookies of wheat and cane for its people's
+    // treats, so the town wants wheat for them though no locker it manages buys any; its wheat plots are worked.
+    // (Its Librarian and Cartographer fill the Merchant's two lockers.)
+    let s = farm_town(&[("merchant", 1), ("librarian", 1), ("cartographer", 1), ("farmer", 1)], F_WHEAT);
+    let farm = s.farm(0).unwrap().farm;
+    assert!(farm.draws.get(&F_WHEAT).is_some_and(|d| d.0 > 0.0), "the workshop draws wheat: {:?}", farm.draws);
+    assert!(farm.draws.get(&F_CANE).is_some_and(|d| d.0 > 0.0), "and cane");
+    assert!(farm.per_day.get(&F_WHEAT).is_some_and(|n| *n > 0.0), "its wheat plots are worked: {:?}", farm.per_day);
+}
