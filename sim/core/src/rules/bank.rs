@@ -34,7 +34,8 @@ use crate::state::*;
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
-        lapse.in_set(Step::Judge).after(super::contracts::review).after(super::harvest::review_rents),
+        lapse.in_set(Step::Judge).after(super::contracts::review).after(super::harvest::review_rents)
+            .before(super::training::judge),
         plan_loans.in_set(Step::PlanCollect).after(super::contracts::plan_collect).before(super::sourcing::plan_inputs),
         plan_float.in_set(Step::PlanBuy).before(super::harvest::plan_redeem),
         spend_float.in_set(Step::Decide).after(super::plan::decide).before(super::cargo::ship),
@@ -144,7 +145,7 @@ pub(crate) fn plan_float(clock: Res<Clock>, content: Res<Content>, bills: Res<Bi
 /// The floats of the banks' wagons that left this look, spent off their market's day's budget: the Accountant allowed
 /// them when they were planned (`Caravans.dispatch`: `accountant.allow` on the `bankFloat`), so they're only counted
 /// spent here, after the wagons are sent and their purses taken (`cargo::ship` after it: neither reads the other).
-fn spend_float(clock: Res<Clock>, mut banks: ResMut<Banks>, routes: Query<(Entity, &Route, &RouteState)>,
+pub(crate) fn spend_float(clock: Res<Clock>, mut banks: ResMut<Banks>, routes: Query<(Entity, &Route, &RouteState)>,
         mut budgets: Query<&mut Budget>) {
     if banks.floats.is_empty() {
         return;

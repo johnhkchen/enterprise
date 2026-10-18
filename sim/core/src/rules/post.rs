@@ -39,7 +39,8 @@ pub fn register(schedule: &mut Schedule) {
         stay_on_call.in_set(Step::Plan).after(super::plan::start).after(super::freight::retire)
             .before(super::squad::size_up).before(super::atlas::want_books).before(super::services::plan),
         go_on_call.in_set(Step::PlanFreight).after(super::freight::plan_freight),
-        made.in_set(Step::Decide).after(super::plan::decide),
+        // (before the wagon's loaded: it reads only who left; pinned as it ran natively)
+        made.in_set(Step::Decide).after(super::plan::decide).before(super::cargo::ship),
         credit_sold.in_set(Step::Sell).after(super::arrive::sell).after(super::atlas::log_sales).before(super::cargo::relot),
         consign.in_set(Step::Sell).after(super::arrive::sell).after(super::atlas::log_sales).after(super::harvest::offer)
             .after(super::realms::customs).after(credit_sold).before(super::cargo::relot),

@@ -71,7 +71,7 @@ pub(super) fn present(clock: Res<Clock>, content: Res<Content>, mut book: ResMut
 }
 
 /// In the plan: bills home holds on the far end, due by the time it'd be there, count toward the trip's worth.
-fn plan_papers(clock: Res<Clock>, bills: Res<Bills>, mut routes: Query<(&Route, &mut RouteState)>) {
+pub(crate) fn plan_papers(clock: Res<Clock>, bills: Res<Bills>, mut routes: Query<(&Route, &mut RouteState)>) {
     for (route, mut state) in &mut routes {
         let Some(plan) = state.plan.as_mut() else { continue };
         let arrival = clock.now + route.travel_ticks;

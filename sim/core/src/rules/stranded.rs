@@ -37,7 +37,9 @@ use crate::stranded::{bill_ok, buy, crate_ok, Terms};
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
-        load.in_set(Step::Decide).after(super::freight::depart),
+        // Aboard before the books and tally count what went out (`Caravans.dispatch` 451–466, then the SENT lines at
+        // 570): unpinned, the order fell to Bevy's tie-break, which wasm32 broke the other way.
+        load.in_set(Step::Decide).after(super::freight::depart).before(super::atlas::depart),
         sell_at_stop.in_set(Step::Arrive).after(super::freight::call_at_stop).before(super::arrive::mark),
         sell_at_hub.in_set(Step::Freight).after(super::freight::at_hub),
         buy_at_town.in_set(Step::Papers).after(super::bank::deal).before(super::bills::present),

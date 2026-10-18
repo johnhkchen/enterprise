@@ -20,7 +20,7 @@ pub fn register(schedule: &mut Schedule) {
     // As the mod: refunds and advances settled before the bills are presented (`Caravans.arrive`: `settleOwing`,
     // `payAdvances`, then `presentBills`), so the money an advance brings can meet a bill.
     schedule.add_systems((advances_papers.in_set(Step::Papers).before(super::bills::present),
-        plan_advances.in_set(Step::PlanPapers)));
+        plan_advances.in_set(Step::PlanPapers).before(super::bills::plan_papers)));
 }
 
 fn advance_reason() -> Reason {

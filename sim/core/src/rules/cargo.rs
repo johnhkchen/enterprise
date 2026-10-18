@@ -405,7 +405,7 @@ pub(crate) fn relot(content: Res<Content>, mut routes: Query<(&Route, &mut Route
 /// Home again, before the cargo goes back on the shelves: crates made out home received (`Crates.receive`), lots that
 /// didn't sell back in stock, any other crate kept as it is; the empty crates it brought into home's.
 #[allow(clippy::type_complexity)]
-fn unload(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>,
+pub(crate) fn unload(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>,
         mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<(&mut Stock, &mut Shipments)>) {
     // In route order: receiving books deliveries and debts under contracts two wagons may share.
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {

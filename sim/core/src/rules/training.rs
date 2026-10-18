@@ -80,7 +80,7 @@ pub(crate) fn lapse(clock: Res<Clock>, content: Res<Content>, mut tenders: ResMu
 }
 
 /// Training contracts in force judged on the sellers' rosters.
-fn judge(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, order: Res<Towns>, rosters: Query<&Roster>) {
+pub(crate) fn judge(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, order: Res<Towns>, rosters: Query<&Roster>) {
     if book.contracts.iter().all(|c| c.training.is_none()) {
         return;
     }
@@ -107,7 +107,7 @@ fn read(clock: &Clock, content: &Content, book: &mut Book, tenders: &mut Tenders
 
 /// A wagon at the far end: the Merchant there reads its home's board.
 #[allow(clippy::too_many_arguments)]
-fn read_out(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut tenders: ResMut<Tenders>, order: Res<Towns>,
+pub(crate) fn read_out(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut tenders: ResMut<Tenders>, order: Res<Towns>,
         desks: Desks, routes: Query<(Entity, &Route, &RouteState)>) {
     if tenders.tenders.is_empty() {
         return;

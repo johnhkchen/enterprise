@@ -37,13 +37,21 @@ use crate::training::{Tenders, Training};
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
         // (before the tenders lapse: the crown sees its own that lapsed untaken, `offerTraining`)
-        review.in_set(Step::Review).before(super::training::lapse),
+        // The crown's own steps, pinned as they ran natively, after what else at their step touches the same (the
+        // schedule has no ambiguous pair: `tests/schedule.rs`).
+        review.in_set(Step::Review).before(super::training::lapse).after(super::settlers::review)
+            .after(super::works::culture),
         // (once the copies have come and the goods owed are delivered: `raiseLevy` after `settleOwing`)
         raise.in_set(Step::Settle).after(super::contracts::settle),
-        read_boards.in_set(Step::Draft).after(super::arrive::draft),
-        muster.in_set(Step::Turn).before(super::arrive::turn),
-        plan.in_set(Step::PlanBuy),
-        embark.in_set(Step::Decide).after(super::plan::decide),
+        read_boards.in_set(Step::Draft).after(super::arrive::draft).after(super::training::read_out),
+        muster.in_set(Step::Turn).before(super::arrive::turn).after(super::road::feed).after(super::atlas::hand_in)
+            .after(super::training::read_home).after(super::services::home_again).after(super::freight::deliver_home)
+            .after(super::stranded::home_forwarding).after(super::squad::come_home).after(super::cargo::unload),
+        plan.in_set(Step::PlanBuy).after(super::desires::plan_shopping).after(super::bank::plan_float)
+            .before(super::harvest::plan_redeem),
+        embark.in_set(Step::Decide).after(super::plan::decide).after(super::bank::spend_float).after(super::cargo::ship)
+            .after(super::freight::depart).after(super::stranded::load).after(super::atlas::depart)
+            .after(super::services::drive).after(super::post::made),
     ));
 }
 
