@@ -29,11 +29,14 @@ pub fn register(schedule: &mut Schedule) {
     ));
 }
 
-/// An idle route starts a plan; a route with its wagon out has none.
-pub fn start(content: Res<Content>, mut routes: Query<&mut RouteState>) {
+/// An idle route starts a plan, a day at least after its last wagon left (`Caravans.poll` 172: a route dispatches
+/// once `DEPARTURE_INTERVAL`, a day, has passed since its last departure); a route with its wagon out, or whose last
+/// wagon left within the day, has none.
+pub fn start(clock: Res<Clock>, content: Res<Content>, mut routes: Query<&mut RouteState>) {
     let n = content.goods.len();
     for mut state in &mut routes {
-        state.plan = state.wagon.is_none().then(|| Plan { cargo: vec![0.0; n], ..Default::default() });
+        let rested = state.last_departure.is_none_or(|t| clock.now.saturating_sub(t) >= content.day_ticks);
+        state.plan = (state.wagon.is_none() && rested).then(|| Plan { cargo: vec![0.0; n], ..Default::default() });
     }
 }
 

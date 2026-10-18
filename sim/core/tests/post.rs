@@ -399,7 +399,10 @@ fn a_towns_wagon_leaves_what_the_hub_cant_buy_on_consignment_and_is_paid_by_post
     s.set_trade(hub, LEATHER, 0.0, 32.0);
     s.set_trade(buyer, LEATHER, 0.0, 64.0);
     s.deliver(town, LEATHER, 600.0);
-    s.add_route(town, hub, 0.25, 0.0, 1.0);
+    // The town's own wagon on a four-day timetable: waiting for a fuller load between, it books carriage by post
+    // (`Forwarder.considerBooking`: a town whose wagon to the hub is waiting doesn't ship for itself). (A route
+    // plans once a day after its wagon left, `DEPARTURE_INTERVAL`: a daily wagon of its own never waits.)
+    s.add_route(town, hub, 0.25, 0.0, 4.0);
     s.add_route(hub, buyer, 0.25, 0.0, 1.0);
     run(&mut s, 2 * DAY);
     let f = s.forwarder().clone();
@@ -421,3 +424,4 @@ fn the_post_is_saved_whole() {
     assert_eq!(loaded.forwarder().lots, s.forwarder().lots);
     assert_eq!(loaded.forwarder().bookings, s.forwarder().bookings);
 }
+

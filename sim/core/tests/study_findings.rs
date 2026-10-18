@@ -148,7 +148,7 @@ fn a_wagon_is_full_only_of_what_the_far_end_could_pay_for() {
         s.advance(3 * LOOK);
         assert!(s.route(0).sold > 0.0, "it sold there");
         let purse = s.route_state(0).1.far_purse.expect("the far end's purse, as its wagon saw it");
-        s.advance(DAY + LOOK);
+        s.advance(DAY + 3 * LOOK); // the next day's wagon there and home again, if one went
         (purse, s.route(0).trips, s.route_state(0).1.stayed)
     };
     let (purse, trips, stayed) = run(2.0);
@@ -157,7 +157,24 @@ fn a_wagon_is_full_only_of_what_the_far_end_could_pay_for() {
     assert_eq!(stayed, Some(enterprise_core::road::Stay::WaitingForALoad));
     let (purse, trips, _) = run(500.0);
     assert!(purse.to_f64() > 100.0, "a far end with money: {purse}");
-    assert!(trips >= 2, "the next wagon, full of what it can pay for, goes: {trips} trips");
+    assert_eq!(trips, 2, "the next day's wagon, full of what it can pay for, goes");
+}
+
+#[test]
+fn a_route_sends_one_wagon_a_day() {
+    // `Caravans.poll` 172: a route dispatches once `DEPARTURE_INTERVAL` (a day) has passed since its last wagon left.
+    // Four blocks away, the wagon is home within three looks, full again (a far end with money), and waits out the
+    // day all the same.
+    let mut s = network(5000.0, 500.0, &[("merchant", 1), ("librarian", 1), ("cartographer", 1)], &[]);
+    s.content_mut().dials.wagon_slots = 8;
+    s.deliver(DEST, BREAD, 64.0);
+    s.advance(LOOK);
+    assert!(s.route(0).on_the_road, "the first wagon goes");
+    s.advance(DAY - LOOK);
+    assert_eq!(s.route(0).trips, 1, "home within the day, and no second wagon that day");
+    assert!(!s.route(0).on_the_road);
+    s.advance(DAY + LOOK);
+    assert!(s.route(0).on_the_road, "the next goes a day after the first left");
 }
 
 #[test]
