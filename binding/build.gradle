@@ -118,7 +118,10 @@ tasks.register('compileCoreWasm', JavaExec) {
     description = 'The module compiled to JVM classes (Chicory build-time compiler, interpreterFallback = WARN), with its meta module'
     group = 'build'
     dependsOn coreWasm
+    // The named module only names what the report lists: built first when both run (the spike), never required.
+    mustRunAfter 'coreWasmNamed'
     inputs.file(coreWasmFile).withPropertyName('wasm').withPathSensitivity(PathSensitivity.NONE)
+    inputs.files(namedWasmFile).withPropertyName('namedWasm').withPathSensitivity(PathSensitivity.NONE)
     inputs.files(sourceSets.tool.runtimeClasspath).withPropertyName('compiler')
     outputs.dir(machineClasses)
     outputs.dir(machineMeta)

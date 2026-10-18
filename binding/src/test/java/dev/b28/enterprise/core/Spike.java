@@ -33,102 +33,132 @@ public final class Spike {
 
     private Spike() {}
 
+    /** The sections, in the report's order; each can be run (again) on its own: {@code -Pspike=looks,saveload}. */
+    private static final List<String> SECTIONS =
+            List.of("instantiation", "call", "looks", "scenario", "saveload", "heap", "compiler");
+
     public static void main(String[] args) throws Exception {
         Locale.setDefault(Locale.ROOT);
         Path spike = Sim.sim().resolve("target/spike");
-        if (args.length > 0 && args[0].equals("heap")) {
-            heap(spike);
-            return;
+        Path parts = Path.of("build/spike");
+        Files.createDirectories(parts);
+        String asked = args.length == 0 ? "all" : args[0];
+        // The heap wants a JVM of its own (nothing else loaded first): `all` leaves it to its own run.
+        List<String> run = asked.equals("all")
+                ? SECTIONS.stream().filter(x -> !x.equals("heap")).toList()
+                : List.of(asked.split(","));
+        for (String section : run) {
+            if (!SECTIONS.contains(section)) {
+                throw new IllegalArgumentException("no section " + section + ": " + SECTIONS);
+            }
+            md.setLength(0);
+            section(section, spike);
+            Files.writeString(parts.resolve(section + ".md"), md.toString());
         }
-        say("# Spike: the core in the JVM through Chicory 1.7.5");
-        say("");
-        say("JVM " + System.getProperty("java.vm.name") + " " + Runtime.version() + ", " + System.getProperty("os.arch")
-                + ", " + Runtime.getRuntime().availableProcessors() + " cores, -Xmx"
-                + Runtime.getRuntime().maxMemory() / (1 << 20) + "m; the machine's load average as it began "
-                + String.format("%.1f", ManagementFactory.getOperatingSystemMXBean().getSystemLoadAverage())
-                + " (other trees' builds and tests share it: wall times swing with it, a thread's CPU time much less)");
-        say("");
-
-        // ---- instantiation ----
-        say("## Instantiation");
-        say("");
-        say("| Engine | Module ready (parse, load classes or compile) | First instance | Another instance (a trap's recovery) |");
-        say("|---|---|---|---|");
-        instantiation("compiled at build time (what the mod ships)", Sim::compiled);
-        instantiation("interpreted", Sim::interpreted);
-        instantiation("compiled at load (runtime compiler)", Sim::runtimeCompiled);
-        say("");
-
-        // ---- an empty call ----
-        say("## A call's round trip");
-        say("");
-        say("| Engine | Ask with no questions | Ask for one town's stock |");
-        say("|---|---|---|");
-        emptyCall(Sim.compiled(), 20_000);
-        emptyCall(Sim.interpreted(), 2_000);
-        say("");
-
-        // ---- looks ----
-        say("## Looks (an Apply advancing a minute: `look_ticks` 1,200, twenty a day)");
-        say("");
-        say("Each script is a Load of a world's save, 7,300 looks (a year) and a Save, played natively (release build, the"
-                + " module's own framing), under Node's V8 (the module itself) and here; every response is compared, byte"
-                + " for byte, with the native one. A look's mean counts the looks that cross a day (where the day's work"
-                + " runs) and those that don't; *a day* is twenty looks.");
-        say("");
-        say("| World | Host | Load | A look (mean) | Its CPU (the thread's) | p50 | p99 | Slowest | A day | Save | Same bytes as native |");
-        say("|---|---|---|---|---|---|---|---|---|---|---|");
-        Path study = spike.resolve("study.looks");
-        Path world = spike.resolve("world.looks");
-        String studyName = "study (9 towns, 14 routes, day 30; save " + kb(loadSize(study)) + ")";
-        String worldName = "random world 1234 (25 towns, 80 routes, day 150; save " + kb(loadSize(world)) + ")";
-        external(studyName, "native", spike.resolve("study.native.times"));
-        external(studyName, "Node", spike.resolve("study.node.times"));
-        play(studyName, "JVM, compiled", Sim::compiled, study, spike.resolve("study.native.out"), Integer.MAX_VALUE);
-        play(studyName, "JVM, compiled at load", Sim::runtimeCompiled, study, spike.resolve("study.native.out"), 30 * LOOKS_A_DAY);
-        play(studyName, "JVM, interpreted", Sim::interpreted, study, spike.resolve("study.native.out"), 3 * LOOKS_A_DAY);
-        external(worldName, "native", spike.resolve("world.native.times"));
-        external(worldName, "Node", spike.resolve("world.node.times"));
-        play(worldName, "JVM, compiled", Sim::compiled, world, spike.resolve("world.native.out"), Integer.MAX_VALUE);
-        play(worldName, "JVM, interpreted", Sim::interpreted, world, spike.resolve("world.native.out"), LOOKS_A_DAY);
-        say("");
-        say("(The JVM's runs that stop early play the Load, that many looks and the Save; their columns are over those.)");
-        say("");
-
-        // ---- the scenario world ----
-        say("## A look on the scenario world (stocktake.json's one town, then looks)");
-        say("");
-        scenarioWorld(Sim.compiled(), 2_000);
-        scenarioWorld(Sim.interpreted(), 200);
-        say("");
-
-        // ---- save and load ----
-        say("## Save and load of the random world's " + kb(loadSize(world)) + " blob (compiled, mean of 50 after 10)");
-        say("");
-        saveAndLoad(world);
-        say("");
-
-        // ---- heap (measured in a JVM of its own first: `spike heap`) ----
-        Path heap = Path.of("build/spike-heap.md");
-        if (Files.exists(heap)) {
-            for (String line : Files.readAllLines(heap)) {
-                say(line);
+        // The report: every section's latest run, each with the load the machine had as it began.
+        StringBuilder all = new StringBuilder();
+        all.append("# Spike: the core in the JVM through Chicory 1.7.5\n\n");
+        all.append("JVM ").append(System.getProperty("java.vm.name")).append(' ').append(Runtime.version()).append(", ")
+                .append(System.getProperty("os.arch")).append(", ").append(Runtime.getRuntime().availableProcessors())
+                .append(" cores, -Xmx").append(Runtime.getRuntime().maxMemory() / (1 << 20)).append("m. Other trees'"
+                + " builds and tests share the machine: wall times swing with its load (given for each section),"
+                + " a thread's CPU time much less.\n\n");
+        for (String section : SECTIONS) {
+            Path part = parts.resolve(section + ".md");
+            if (Files.exists(part)) {
+                all.append(Files.readString(part));
             }
         }
-
-        // ---- the compiler and the jar ----
-        say("## What the build-time compiler left to the interpreter, and the jar");
-        say("");
-        Path report = Path.of(System.getProperty("enterprise.report"));
-        for (String line : Files.readAllLines(report)) {
-            say("    " + line);
-        }
-        say("");
-        jar();
-
         Path out = Path.of("build/spike.md");
-        Files.writeString(out, md.toString());
+        Files.writeString(out, all.toString());
         System.out.println("\nwrote " + out.toAbsolutePath());
+    }
+
+    private static String load() {
+        return String.format("load average %.1f as it began", ManagementFactory.getOperatingSystemMXBean().getSystemLoadAverage());
+    }
+
+    private static void section(String section, Path spike) throws IOException {
+        Path study = spike.resolve("study.looks");
+        Path world = spike.resolve("world.looks");
+        switch (section) {
+            case "instantiation" -> {
+                say("## Instantiation (" + load() + ")");
+                say("");
+                say("| Engine | Module ready (parse, load classes or compile) | First instance | Another instance (a trap's recovery) |");
+                say("|---|---|---|---|");
+                instantiation("compiled at build time (what the mod ships)", Sim::compiled);
+                instantiation("interpreted", Sim::interpreted);
+                instantiation("compiled at load (runtime compiler)", Sim::runtimeCompiled);
+                say("");
+            }
+            case "call" -> {
+                say("## A call's round trip (" + load() + ")");
+                say("");
+                say("| Engine | Ask with no questions | Ask for one town's stock |");
+                say("|---|---|---|");
+                emptyCall(Sim.compiled(), 20_000);
+                emptyCall(Sim.interpreted(), 2_000);
+                say("");
+            }
+            case "looks" -> {
+                say("## Looks (an Apply advancing a minute: `look_ticks` 1,200, twenty a day; " + load() + ")");
+                say("");
+                say("Each script is a Load of a world's save, 7,300 looks (a year) and a Save, played natively (release"
+                        + " build, the module's own framing), under Node's V8 (the module itself) and here; every response"
+                        + " is compared, byte for byte, with the native one. A look's mean counts the looks that cross a"
+                        + " day (where the day's work runs) and those that don't; *a day* is twenty looks. *Its CPU* is the"
+                        + " calling thread's CPU time a look (Node's: the process's, its compiler and collector threads"
+                        + " too), which a busy machine stretches far less than the wall time.");
+                say("");
+                say("| World | Host | Load | A look (mean) | Its CPU | p50 | p99 | Slowest | A day | Save | Same bytes as native |");
+                say("|---|---|---|---|---|---|---|---|---|---|---|");
+                String studyName = "study (9 towns, 14 routes, day 30; save " + kb(loadSize(study)) + ")";
+                String worldName = "random world 1234 (25 towns, 80 routes, day 150; save " + kb(loadSize(world)) + ")";
+                external(studyName, "native", spike.resolve("study.native.times"));
+                external(studyName, "Node", spike.resolve("study.node.times"));
+                play(studyName, "JVM, compiled", Sim::compiled, study, spike.resolve("study.native.out"), Integer.MAX_VALUE);
+                play(studyName, "JVM, compiled at load", Sim::runtimeCompiled, study, spike.resolve("study.native.out"),
+                        30 * LOOKS_A_DAY);
+                play(studyName, "JVM, interpreted", Sim::interpreted, study, spike.resolve("study.native.out"),
+                        3 * LOOKS_A_DAY);
+                external(worldName, "native", spike.resolve("world.native.times"));
+                external(worldName, "Node", spike.resolve("world.node.times"));
+                play(worldName, "JVM, compiled", Sim::compiled, world, spike.resolve("world.native.out"), Integer.MAX_VALUE);
+                play(worldName, "JVM, interpreted", Sim::interpreted, world, spike.resolve("world.native.out"), LOOKS_A_DAY);
+                say("");
+                say("(The JVM's runs that stop early play the Load, that many looks and the Save; their columns are"
+                        + " over those. The native and Node rows were timed by `just binding-spike` before the JVM's.)");
+                say("");
+            }
+            case "scenario" -> {
+                say("## A look on the scenario world (stocktake.json's one town, then looks; " + load() + ")");
+                say("");
+                scenarioWorld(Sim.compiled(), 2_000);
+                scenarioWorld(Sim.interpreted(), 200);
+                say("");
+            }
+            case "saveload" -> {
+                say("## Save and load of the random world's " + kb(loadSize(world)) + " blob (compiled, 50 after 10; "
+                        + load() + ")");
+                say("");
+                saveAndLoad(world);
+                say("");
+            }
+            case "heap" -> heap(spike);
+            case "compiler" -> {
+                say("## What the build-time compiler left to the interpreter, and the jar");
+                say("");
+                Path report = Path.of(System.getProperty("enterprise.report"));
+                for (String line : Files.readAllLines(report)) {
+                    say("    " + line);
+                }
+                say("");
+                jar();
+                say("");
+            }
+            default -> throw new IllegalArgumentException(section);
+        }
     }
 
     // ---- measurements ----
@@ -137,16 +167,16 @@ public final class Spike {
     private static void heap(Path spike) throws IOException {
         long before = usedHeap();
         heapBefore = before;
+        String began = load();
         long[] heap = play("study", "JVM, compiled", Sim::compiled, spike.resolve("study.looks"),
                 spike.resolve("study.native.out"), Integer.MAX_VALUE);
         md.setLength(0);
-        say("## Heap after the study's 365-day run (compiled, a JVM of its own)");
+        say("## Heap after the study's 365-day run (compiled, a JVM of its own; " + began + ")");
         say("");
         say("Used heap after a full GC with the core's instance live, the year played: **" + mb(heap[0]) + "**, of which"
                 + " the module's linear memory " + mb(heap[1]) + "; the JVM held " + mb(before) + " before the module"
                 + " loaded. So the core costs about " + mb(heap[0] - before) + ".");
         say("");
-        Files.writeString(Path.of("build/spike-heap.md"), md.toString());
     }
 
     private static long heapBefore = -1;
@@ -214,15 +244,20 @@ public final class Spike {
             }
             long now = 240_000; // the scenario's last advance: day 10
             long[] took = new long[looks];
+            long[] cpu = new long[looks];
+            java.lang.management.ThreadMXBean threads = ManagementFactory.getThreadMXBean();
             for (int i = 0; i < looks; i++) {
                 byte[] look = Sim.bytes(new Command.Apply(List.of(new Input.Advance(now + (i + 1) * 1_200L))));
+                long c = threads.getCurrentThreadCpuTime();
                 long t = System.nanoTime();
                 core.callBytes(look);
                 took[i] = System.nanoTime() - t;
+                cpu[i] = threads.getCurrentThreadCpuTime() - c;
             }
             long[] steady = Arrays.copyOfRange(took, looks / 2, looks);
-            say("- " + module.name() + ": " + ms(mean(steady)) + " a look (mean of the last " + steady.length + " of "
-                    + looks + "), " + ms(mean(took)) + " over all of them");
+            long[] steadyCpu = Arrays.copyOfRange(cpu, looks / 2, looks);
+            say("- " + module.name() + ": " + ms(mean(steady)) + " a look, " + ms(mean(steadyCpu)) + " of CPU (the"
+                    + " last " + steady.length + " of " + looks + "), " + ms(mean(took)) + " over all of them");
         }
     }
 
@@ -233,22 +268,33 @@ public final class Spike {
         try (Core core = Core.start(Sim.compiled())) {
             long[] loads = new long[50];
             long[] saves = new long[50];
+            long[] loadCpu = new long[50];
+            long[] saveCpu = new long[50];
+            java.lang.management.ThreadMXBean threads = ManagementFactory.getThreadMXBean();
             int blob = 0;
             for (int i = -10; i < 50; i++) {
+                long c = threads.getCurrentThreadCpuTime();
                 long t = System.nanoTime();
                 core.callBytes(load);
                 long l = System.nanoTime() - t;
+                long lc = threads.getCurrentThreadCpuTime() - c;
+                c = threads.getCurrentThreadCpuTime();
                 t = System.nanoTime();
                 Response r = Response.fromBytes(core.callBytes(save));
                 long s = System.nanoTime() - t;
+                long sc = threads.getCurrentThreadCpuTime() - c;
                 blob = ((Response.Saved) r).save().blob().length();
                 if (i >= 0) {
                     loads[i] = l;
                     saves[i] = s;
+                    loadCpu[i] = lc;
+                    saveCpu[i] = sc;
                 }
             }
-            say("- Load: " + ms(mean(loads)) + " (p99 " + ms(pct(loads, 0.99)) + "); Save: " + ms(mean(saves))
-                    + " (p99 " + ms(pct(saves, 0.99)) + "), its blob " + kb(blob) + ", the Request's bytes "
+            say("- Load: " + ms(mean(loads)) + " mean, " + ms(pct(loads, 0.5)) + " p50, " + ms(pct(loads, 0.99))
+                    + " p99; Save: " + ms(mean(saves)) + " mean, " + ms(pct(saves, 0.5)) + " p50, "
+                    + ms(pct(saves, 0.99)) + " p99; of CPU, Load " + ms(pct(loadCpu, 0.5)) + " and Save "
+                    + ms(pct(saveCpu, 0.5)) + " p50; its blob " + kb(blob) + ", the Request's bytes "
                     + kb(load.length) + ". Both include the copy across the boundary and the Java-side postcard decoding.");
         }
     }
@@ -297,9 +343,13 @@ public final class Spike {
         return heap;
     }
 
+    /** A host's times (a line a request: wall nanoseconds, then CPU nanoseconds), from the native player or Node. */
     private static void external(String world, String host, Path times) throws IOException {
-        long[] t = Files.readAllLines(times).stream().filter(l -> !l.isBlank()).mapToLong(Long::parseLong).toArray();
-        row(world, host, t[0], Arrays.copyOfRange(t, 1, t.length - 1), -1, t[t.length - 1], "");
+        List<String> lines = Files.readAllLines(times).stream().filter(l -> !l.isBlank()).toList();
+        long[] t = lines.stream().mapToLong(l -> Long.parseLong(l.split(" ")[0])).toArray();
+        long[] cpu = lines.stream().mapToLong(l -> l.contains(" ") ? Long.parseLong(l.split(" ")[1]) : 0).toArray();
+        long looksCpu = Arrays.stream(cpu, 1, cpu.length - 1).sum() / Math.max(1, cpu.length - 2);
+        row(world, host, t[0], Arrays.copyOfRange(t, 1, t.length - 1), looksCpu, t[t.length - 1], "");
     }
 
     private static void row(String world, String host, long load, long[] looks, long cpu, long save, String same) {

@@ -15,7 +15,7 @@ says how an upgrade goes and how long it should take.
 | Fact | Checked how | What it means |
 |---|---|---|
 | **Chicory 1.7.5** (24 Mar 2026) is current: a pure-JVM WebAssembly runtime, no native code, no JNI. It has an interpreter, a runtime compiler and a **build-time compiler** that turns wasm into JVM bytecode (Maven plugin official; Gradle through the community `at.released.wasm2class.plugin` 0.5.0, marked experimental). WASI preview 1 (`com.dylibso.chicory:wasi`) is supported except sockets, `fd_fdstat_set_rights`, and per-process/thread CPU clocks | [releases](https://github.com/dylibso/chicory/releases), [build-time compiler](https://chicory.dev/docs/usage/build-time-compiler), [WASI](https://chicory.dev/docs/usage/wasi), [wasm2class](https://github.com/illarionov/wasm2class-gradle-plugin) | One jar, nothing native, as `architecture.md` says. A wasm function too big for one JVM method (64 KB of bytecode) makes the build-time compiler **fail by default**; `interpreterFallback = WARN` runs those functions in the interpreter. Bevy's schedule and our large `match`es may hit it: the spike lists them |
-| Chicory's speed: the project says performance isn't a primary goal and publishes no benchmarks | its README; no third-party numbers found | Measured in task `chicory-host`, not assumed. Estimates below |
+| Chicory's speed: the project says performance isn't a primary goal and publishes no benchmarks | its README; no third-party numbers found | Measured in task `chicory-host`, not assumed. Estimates below **Measured (section 4): compiled, 38x native on the study world (2.3 ms a look), 17x on a 25-town world; the look runs on a thread of its own** |
 | The core builds for `wasm32-wasip1`; the study host does too (`enterprise-sim.wasm`, 6.7 MB; the replay test binary 7.3 MB, release, unstripped) | built here | The cdylib with only the exports will be smaller; measured in `wasm-exports` |
 | **Study world: native 1.16 ms a day, Node's V8 on the same wasm 1.79 ms a day (1.54x), identical output** (365 days, 9 towns, 14 routes; main at `37f56f9`) | `enterprise-sim 365` native and under `wasi-run.mjs` | A JIT on this wasm costs about half again. Chicory's build-time compiler goes through the JVM's JIT: estimate 2 to 5x native, 2.5 to 6 ms a day, **0.13 to 0.3 ms a look** (20 looks a day). Its interpreter: estimate 20 to 100x, 1.2 to 6 ms a look. Either fits a game: one look a minute of play |
 | **`just core-wasm-replay` fails on main.** At `37f56f9` (plan-on-departure) the WebAssembly digest differs from the native one for seeds 77, 1234 and 2026 (seed 3 and the curves match). `76ea783`, `f92903b` and `cb8b2e3` pass; the commit's message says it matched. The wasm result is the same run to run: one build is deterministic, the two builds disagree | bisected here, both builds | Every contract test below compares native and wasm. Fix first (task `wasm-digest`). Likeliest cause: the new `squad::unmanned` system left an order Bevy resolves differently in the two builds (the lessons in `core-progress.md` met ambiguous orders before); else something that depends on `usize` being 32 bits |
@@ -187,7 +187,12 @@ takes a fresh stocktake, never a blind write. Room is a number the adapter repor
 gives 0.13 to 0.3 ms a look for the study world compiled, 1.2 to 6 ms interpreted; a crossing is a few KB. Catching up
 (a server down for days, a time warp) runs looks in a loop: 30 days is 600 looks, 0.1 to 0.2 s compiled, spread over
 ticks at 2 ms each like the mod's catch-up today. A save is 200 to 300 KB at the world's autosave. The spike measures
-each of these; if compiled looks exceed 1 ms, the look stays as is and the clock spreads it.
+each of these; if compiled looks exceed 1 ms, the look stays as is and the clock spreads it. **Measured** (section 4):
+compiled looks are ten times the estimate, 2.3 ms on the study world and 9 ms on a 25-town one, the slowest (a day's
+work in one look) 0.1 to 0.7 s; a look can't be spread over ticks, as it's one call. So the core runs on a thread of its
+own (`CoreWorker` in `binding/`): the server thread hands it a look's `Apply` and shows the outputs a tick or so later.
+The tick keeps only the crossing (a few KB); a 30-day catch-up is 1.4 s (study) to 5.5 s (25 towns) on the core's thread
+while the game runs.
 
 ## 2. The migration order
 
@@ -432,6 +437,40 @@ daemon and a game-test server each), through `trees.py heavy`; the B1 tasks run 
 | Module size, jar growth | under 10 MB jar growth | strip names; `opt-level = "s"` for the wasm crate only |
 | Heap | under 200 MB for a 365-day world | the core's own caches (`Local`s) sized down |
 | Save at autosave | under 50 ms | save every few autosaves, keep the input log between |
+
+**Measured** (`chicory-host`, 2026-10-18: `just binding-spike`; its tables in `binding/build/spike.md`). Chicory 1.7.5 on
+JDK 21 (Temurin 21.0.7, aarch64, Apple silicon with 10 cores, load average about 4 as each part began: other trees'
+tests share it), the module as `just wasm` builds it. A world through the wire: the study host writes the world as a
+`Load` of its save, a year of looks (an `Apply` advancing 1,200 ticks: 7,300) and a `Save` (`--wire-looks`, `--world`),
+and native (the module's own framing), Node's V8 and the JVM play the same script. The wire has no inputs that make routes
+or people yet, so `Create` and setup inputs can't build a study world; a `Load` of one is the same society. **Every response
+in every JVM run (and Node's) was the native core's, byte for byte.**
+
+| Measurement | Bar | Measured | |
+|---|---|---|---|
+| A look, compiled | under 1 ms | **study world** (9 towns, 14 routes, day 30, 75 KB save): 2.34 ms a look (its thread's CPU the same) against native's 0.062 and Node's 0.088: **38x native**, 27x Node; p50 2.2, p99 5.6, the slowest 107 ms; a day 47 ms. **Random world 1234** (25 towns, 80 routes, day 150, 254 KB save): 9.1 ms against 0.52 (17x), the slowest 0.7 s, a day 183 ms. The scenario world (one town): 0.49 ms | **missed**, ten times the estimate (2-5x native) |
+| Interpreted, and compiled at load | | interpreted: study 27 ms a look (440x native), random world 0.67 s; Chicory's runtime compiler: study 3.7 ms (its first 600 looks) | out |
+| Functions the compiler refuses | none on the hot path | none of the 4,811 fell back to Chicory's interpreter. But **75 compiled methods (1.2 MB of bytecode) are over HotSpot's 8,000-byte limit**, and HotSpot doesn't JIT a method that big (`-XX:+DontCompileHugeMethods`, the default): the JVM interprets them. They're the hot ones: in a profile of the study's year 67% of samples are in JVM-interpreted frames, `people::live`, `rules::plan::decide` and `plan_sale`, `services::plan`, `desires::plan_shopping`, `herds::tend_towns`, `works::review`, `farms::pay` at the top; Chicory's `call_indirect` dispatch is one too. `CompileCore`'s report lists them all (named with `coreWasmNamed`) | **the cost** |
+| Instantiation | under 2 s | compiled: 76 ms to read the meta module and load the classes, 89 ms the first instance, **0.7 ms each after** (a trap's recovery); interpreted 0.56 s; compiled at load 1.8 s | met |
+| A call's round trip | | 1.9 µs (an `Ask` of nothing), 4.3 µs (one town's stock); interpreted 17 and 54 µs | |
+| Save and load, 254 KB | under 50 ms | `Save` 10 ms, `Load` 36 ms (p50; the crossing and the Java decoding in it) | met |
+| Jar growth | under 10 MB | **2.3 MB**: binding.jar 1.9 MB (the machine's 6.8 MB of classes compressed, the 162 KB meta module, the wire, `Core`) and chicory's runtime, wasm, wasi and log, 0.43 MB | met |
+| Heap | under 200 MB | **12 MB** after the study's year, the core's instance live (7 MB of it the module's memory) | met |
+
+**What was tried for the speed** (the study's year, the thread's CPU a look, three runs each on a busy machine): opt-level
+`z` (15 methods over the limit, not 75) and `s`, no better; `-C llvm-args=-inline-threshold=0` about 15% better (within
+the spread); Chicory's `ByteArrayMemory`, no better; `-XX:-DontCompileHugeMethods` (a flag the mod can't set on a
+player's JVM anyway): C2 compiles the big methods, then deoptimises them again and again, no better. With `z`, memory
+accesses through Chicory's paged memory are 40% of the samples: wasm keeps Rust's stack in linear memory, so every spill
+is a call the JIT must inline. The responses were native's in every variant.
+
+**What follows.** The look runs on the core's own thread (`CoreWorker`, in `binding/` now, for `proof-in-mod`'s `CoreClock`):
+2.3 ms of CPU a game minute is nothing, and the tick only crosses. To make it faster (not needed for the budget, wanted for
+catch-ups and bigger worlds), split the hot functions in Rust so each compiles under 8,000 bytes of bytecode (a step's
+loop body into functions of their own, a `match` into several): about two thirds of the time would then be JIT-compiled,
+an estimated three times faster (0.8 ms a look). That is a core task touching several slices' systems, for the
+integrator to place; `CompileCore`'s report is its checklist. Upstream, Chicory splitting a huge function into several JVM
+methods would do it for every module.
 
 **Risks:**
 

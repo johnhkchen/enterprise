@@ -159,6 +159,10 @@ binding-spike:
     ./gradlew :binding:spike -Pspike=heap --console=plain -q
     ./gradlew :binding:spike --console=plain -q
 
+# Sections of the spike again, on the scripts the last `just binding-spike` wrote (a busy machine stretches wall times): `just binding-spike-again looks,saveload`
+binding-spike-again sections:
+    ./gradlew :binding:spike -Pspike={{sections}} --console=plain -q
+
 # The network study's world in the fast host, no game: `just study 365 --csv /tmp/base.csv --river --people-use`
 study *args:
     cd sim && cargo run --release -q -p enterprise-sim -- {{args}}
