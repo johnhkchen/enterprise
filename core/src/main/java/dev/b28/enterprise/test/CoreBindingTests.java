@@ -761,6 +761,61 @@ public final class CoreBindingTests {
     }
 
     /**
+     * A storehouse's floorplan keeps its containers the town's depots (B4.3): a chest broken is gone from the town at the
+     * next look, put back it's a depot again, and a chest added to the building since joins it, each counted as it joins.
+     * The floorplan is the building's record ({@code merchant/Depots}); the core's depot points follow it.
+     */
+    @GameTest(template = "floor")
+    public static void aChestPutBackInAStorehouseIsItsTownsDepotAgain(GameTestHelper helper) {
+        var level = helper.getLevel();
+        BlockPos at = new BlockPos(1, 2, 1);
+        BlockPos first = new BlockPos(5, 2, 5);
+        BlockPos second = new BlockPos(5, 2, 3);
+        helper.setBlock(at, Merchant.DESK.get());
+        helper.setBlock(first, Blocks.CHEST);
+        chestAt(helper, first).setItem(0, new ItemStack(Items.WHEAT, 10));
+        GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(at));
+        var buildings = dev.b28.enterprise.merchant.Depots.get(level.getServer());
+        dev.b28.enterprise.merchant.Depots.Depot building = null;
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, desk.pos(), "Testford");
+            building = buildings.add(level, desk, dev.b28.enterprise.merchant.Depots.Kind.STOREHOUSE,
+                    helper.absolutePos(new BlockPos(4, 2, 3)), helper.absolutePos(new BlockPos(6, 3, 5)));
+            long t = level.getGameTime();
+            host.look(level.getServer(), t + 1);
+            host.settle();
+            helper.assertTrue(host.stock().depots().size() == 1 && held(host, town, "minecraft:wheat") == 10,
+                    "the storehouse's chest isn't the town's depot: " + host.stock().depots() + ", " + host.stock().stockAt(desk));
+            chestAt(helper, first).clearContent();
+            helper.setBlock(first, Blocks.AIR);
+            host.look(level.getServer(), t + 2);
+            host.settle();
+            helper.assertTrue(host.stock().depots().isEmpty() && held(host, town, "minecraft:wheat") == 0,
+                    "the chest broken is still the town's: " + host.stock().depots() + ", " + host.stock().stockAt(desk));
+            helper.setBlock(first, Blocks.CHEST);
+            chestAt(helper, first).setItem(0, new ItemStack(Items.WHEAT, 7));
+            helper.setBlock(second, Blocks.CHEST);
+            chestAt(helper, second).setItem(0, new ItemStack(Items.WHEAT, 3));
+            host.look(level.getServer(), t + 3);
+            host.settle();
+            helper.assertTrue(host.stock().depots().size() == 2 && held(host, town, "minecraft:wheat") == 10,
+                    "the chest put back and the one added aren't the town's depots: " + host.stock().depots() + ", "
+                            + host.stock().stockAt(desk));
+            host.look(level.getServer(), t + 4);
+            host.settle();
+            helper.assertTrue(host.stock().depots().size() == 2 && held(host, town, "minecraft:wheat") == 10,
+                    "a depot joined twice: " + host.stock().stockAt(desk));
+        } finally {
+            if (building != null) {
+                buildings.remove(building.id());
+            }
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /**
      * A desk broken takes its chests' goods with it, and put back where it stood is the same town (B4.3): its chests
      * counted in once, not on top of what the town held (binding-progress' double count, settled).
      */

@@ -219,6 +219,9 @@ public final class CoreHost implements AutoCloseable {
             return;
         }
         looked = now;
+        if (looks.isEmpty()) {
+            stock.joinDepots(server); // a building's containers the core doesn't keep yet, its depots now (counted as they join)
+        }
         List<Input> inputs = new ArrayList<>(stock.pending());
         // A census only in core mode: in Java mode the Java rules' census keeps the people (CensusTaker).
         inputs.addAll(people.happenings(server, Society.isCore()));

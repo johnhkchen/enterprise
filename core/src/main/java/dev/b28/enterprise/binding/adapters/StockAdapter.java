@@ -2,6 +2,7 @@ package dev.b28.enterprise.binding.adapters;
 
 import dev.b28.enterprise.Enterprise;
 import dev.b28.enterprise.binding.CoreHost;
+import dev.b28.enterprise.merchant.Depots;
 import dev.b28.enterprise.merchant.Merchant;
 import dev.b28.enterprise.settlement.Names;
 import dev.b28.enterprise.wire.Answer;
@@ -200,6 +201,27 @@ public final class StockAdapter {
         return added;
     }
 
+    /**
+     * Containers in a building's floorplan that the core doesn't keep as depots, registered as its town's and counted at
+     * once: a chest put back after it was broken (gone unseen, its point removed at a look), one added to the building
+     * since, a double chest's other half once the half its point was keyed by is gone. The floorplan is the building's
+     * record ({@code merchant/Depots}, what {@code /enterprise depot add} wrote, beside its kind, which the core doesn't
+     * keep yet); its containers are the core's points, so the two can't drift apart. Buildings not wholly loaded, or of a
+     * desk the core keeps no town at, are left for a later look.
+     *
+     * @return the depots added
+     */
+    public List<GlobalPos> joinDepots(MinecraftServer server) {
+        List<GlobalPos> added = new ArrayList<>();
+        for (Depots.Depot d : Depots.get(server).all()) {
+            ServerLevel level = server.getLevel(d.desk().dimension());
+            if (level != null && townAt(d.desk()) != null && d.loaded(level)) {
+                added.addAll(addDepots(level, d.desk().pos(), d.min(), d.max()));
+            }
+        }
+        return added;
+    }
+
     /** The depots between two corners removed, their goods gone from their towns with them. Returns how many. */
     public int removeDepots(ServerLevel level, BlockPos from, BlockPos to) {
         int removed = 0;
@@ -304,7 +326,10 @@ public final class StockAdapter {
         if (loading.isEmpty()) {
             return List.of();
         }
-        Set<Loaded> chunks = new HashSet<>();
+        // In a fixed order (dimension, then chunk), so desks found unseen in several chunks become towns in the same order
+        // every run of the same world.
+        Set<Loaded> chunks = new java.util.TreeSet<>(java.util.Comparator.comparing((Loaded l) -> l.dim().location().toString())
+                .thenComparingLong(Loaded::chunk));
         for (var it = loading.iterator(); it.hasNext(); ) {
             chunks.add(it.next());
             it.remove();

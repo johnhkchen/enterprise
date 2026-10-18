@@ -71,6 +71,7 @@ CoreBindingTests.theCoresWordOnAHandIsWrittenToItsVillager # the binding's own: 
 CoreBindingTests.theCoresMovesAreWrittenToADesksChestsAndItsShulkers # the binding's own: Moved written to chests and shulker boxes (Rust: tests/chests.rs, scenarios/chests.json)
 CoreBindingTests.aHopperFillingTheChestDuringAMoveLeavesWhatDidntFitOnTheTownsBooks # the binding's own: a real hopper racing the core's write, Unmoved (Rust: tests/chests.rs a_hopper_filling_a_chest_during_a_move...)
 CoreBindingTests.aDepotsChestsAreItsTownsStoreForWhatTheDeskHasNoRoomFor # the binding's own: depot points from a building's floorplan (Rust: tests/chests.rs what_has_no_room_at_the_desk_goes_to_a_depot...)
+CoreBindingTests.aChestPutBackInAStorehouseIsItsTownsDepotAgain # the binding's own: depot points following a building's floorplan (Rust: tests/chests.rs a_point_broken_takes_its_chests_goods...)
 CoreBindingTests.aDeskBrokenAndPutBackIsItsTownAgainWithItsGoodsCountedOnce # the binding's own: the desk listeners and the core's former desks (Rust: tests/chests.rs a_point_broken_takes_its_chests_goods...)
 CoreBindingTests.aChestChangedWhileItWasntCountedIsCountedBeforeItsWritten # the binding's own: the catch-up on a chunk's load (Rust: tests/chests.rs a_chest_changed_while_it_wasnt_counted...)
 CoreBindingTests.inJavaModeTheCoreCountsADesksChestsButNeverWritesThem # the binding's own: Java mode's chests are the Java rules'

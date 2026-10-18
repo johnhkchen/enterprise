@@ -510,7 +510,8 @@ own; goods counted loose and in shulker boxes, crates left shut as the pallets' 
 loose then out of boxes), `adapters/StockAdapter` (desks and depots counted at each look, a desk or depot gone unseen
 removed, `Moved` written in core mode and every one sent back unmoved in Java mode, where the Java rules own the chests;
 the chests in a chunk that loads counted at the next tick, and desks placed unseen there taken as towns by the server's
-host; depots from a building's floorplan, `/enterprise depot add` and `remove` registering the core's too), `CoreHost`
+host; depots from a building's floorplan, `/enterprise depot add` and `remove` registering the core's too, and at
+each look the floorplan's containers the core doesn't keep, a chest put back or one added, joining as depots), `CoreHost`
 (no stocktake while a look's moves are still to be shown; what wasn't moved told the core before the next count, a
 question or a save), `/enterprise core chests <point>`, the testbench's desk registered at load. Seven game tests.
 

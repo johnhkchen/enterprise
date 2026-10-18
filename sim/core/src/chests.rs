@@ -147,14 +147,14 @@ impl Society {
         moves
     }
 
-    /// What the host couldn't do of a move at the point at `at` (if it's still there, of `kind`): `count` of `good`
+    /// What the host couldn't do of a move at the point at `at` (if it's still there, of `kind`, a desk or a depot): `count` of `good`
     /// didn't fit (above nothing) or wasn't there to take (below), so its chests hold that much less (or more) than
     /// the core took them to (never below nothing). The goods that didn't fit are still the town's, moved in again when
     /// a stocktake shows room. False if there's no such point (a stale view, ignored).
     pub fn unmoved(&mut self, at: &Spot, kind: Kind, good: GoodId, count: i64) -> bool {
         let n = self.content().goods.len();
         let mut points = self.world.resource_mut::<Points>();
-        let Some(p) = points.0.get_mut(at).filter(|p| p.kind == kind) else {
+        let Some(p) = points.0.get_mut(at).filter(|p| p.kind == kind && holds_stock(p.kind)) else {
             return false;
         };
         p.counted.resize(n, 0.0);

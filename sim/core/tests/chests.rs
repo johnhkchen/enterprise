@@ -415,6 +415,10 @@ fn what_a_lockers_stocktake_counted_isnt_shown_again_at_the_desk() {
     s.as_mut().unwrap().withdraw(0, BREAD as usize, 3.0);
     let out = apply(&mut s, vec![Chests::new(27, &[(BREAD, 3)]).stocktake(&at(PointKind::Locker, 3))]);
     assert!(moved(&out).is_empty(), "a locker's chests aren't written to: {out:?}");
+    // Nor is an Unmoved there anything (the core never moved into it): what it counted stands.
+    let counted = held(&s, &at(PointKind::Locker, 3));
+    apply(&mut s, vec![Input::Unmoved { point: at(PointKind::Locker, 3), good: BREAD, count: 3 }]);
+    assert_eq!(held(&s, &at(PointKind::Locker, 3)), counted, "an Unmoved at a locker changed what it holds");
 }
 
 #[test]
