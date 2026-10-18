@@ -1,6 +1,8 @@
 package dev.b28.enterprise.binding.adapters;
 
 import dev.b28.enterprise.locker.Lockers;
+import dev.b28.enterprise.money.MoneyChanger;
+import dev.ithundxr.createnumismatics.content.coins.CoinItem;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -193,6 +195,72 @@ final class StockChests {
             }
         }
         return left;
+    }
+
+    /** Kinds of Numismatics coin (spur, bevel, sprocket, cog, crown, sun): a fresh set of coin is at most this many slots. */
+    private static final int COIN_KINDS = 6;
+
+    /** Spurs of Numismatics coin loose in the chests (coin in shulker boxes isn't counted, as the mod's money changer has it). */
+    long coinSpurs() {
+        long spurs = 0;
+        for (IItemHandlerModifiable h : handlers) {
+            for (int slot = 0; slot < h.getSlots(); slot++) {
+                if (h.getStackInSlot(slot).getItem() instanceof CoinItem coin) {
+                    spurs += coin.coin.toSpurs(h.getStackInSlot(slot).getCount());
+                }
+            }
+        }
+        return spurs;
+    }
+
+    /** Slots coin could take: those it holds now, and the empty ones. */
+    private int coinSlots() {
+        int slots = 0;
+        for (IItemHandlerModifiable h : handlers) {
+            for (int slot = 0; slot < h.getSlots(); slot++) {
+                ItemStack stack = h.getStackInSlot(slot);
+                if (stack.isEmpty() || stack.getItem() instanceof CoinItem) {
+                    slots++;
+                }
+            }
+        }
+        return slots;
+    }
+
+    /** Whether the chests could take a fresh set of coin, one stack of each kind. */
+    boolean coinRoom() {
+        return coinSlots() >= COIN_KINDS;
+    }
+
+    /**
+     * Changes the coin loose in the chests by {@code delta} spurs, minting all of it again as the fewest coins so it stays
+     * a few stacks. All or nothing for what fits: if the new coin needs more slots than coin and empty slots make, nothing
+     * is done. Returns what wasn't done: {@code delta} itself when it didn't fit, or (below nothing) the spurs there weren't
+     * to take, when the chests held less than {@code -delta}.
+     */
+    long mint(long delta) {
+        long held = coinSpurs();
+        long target = Math.max(0, held + delta);
+        List<ItemStack> coins = MoneyChanger.coins((int) Math.min(Integer.MAX_VALUE, target));
+        if (coins.size() > coinSlots()) {
+            return delta;
+        }
+        for (IItemHandlerModifiable h : handlers) {
+            for (int slot = 0; slot < h.getSlots(); slot++) {
+                if (h.getStackInSlot(slot).getItem() instanceof CoinItem) {
+                    h.setStackInSlot(slot, ItemStack.EMPTY);
+                }
+            }
+        }
+        for (ItemStack stack : coins) {
+            ItemStack rest = stack;
+            for (IItemHandlerModifiable h : handlers) {
+                if (!rest.isEmpty()) {
+                    rest = ItemHandlerHelper.insertItemStacked(h, rest, false);
+                }
+            }
+        }
+        return held + delta < 0 ? held + delta : 0;
     }
 
     /** A shulker box (one to a slot): the chests' goods in it are theirs. */

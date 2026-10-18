@@ -3,6 +3,7 @@ package dev.b28.enterprise.wire;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * An answer, in the place of its question.
@@ -13,7 +14,9 @@ public sealed interface Answer
                 Answer.Goods,
                 Answer.Dials,
                 Answer.Hands,
-                Answer.Chests {
+                Answer.Chests,
+                Answer.Cash,
+                Answer.Mint {
     void encode(PostcardOut out);
 
     static Answer decode(PostcardIn in) {
@@ -25,6 +28,8 @@ public sealed interface Answer
             case 3 -> new Dials(in.list(18, DialView::decode));
             case 4 -> new Hands(in.u32(), in.u32(), in.list(8, HandView::decode));
             case 5 -> new Chests(Point.decode(in), in.u32(), in.list(8, PostcardIn::f64), in.u32(), in.list(8, PostcardIn::f64));
+            case 6 -> new Cash(Point.decode(in), in.u32(), in.i64(), in.u64(), in.u64(), in.i64(), in.option(PostcardIn::u64), in.i64(), in.u64());
+            case 7 -> new Mint(in.f64(), in.f64(), in.f64(), in.f64());
             default -> throw in.unknownVariant("Answer", at);
         };
     }
@@ -144,6 +149,47 @@ public sealed interface Answer
             out.list(this.held, PostcardOut::f64);
             out.u32(this.free);
             out.list(this.short_, PostcardOut::f64);
+        }
+    }
+
+    /**
+     * A desk's till: its town's {@code treasury}, the whole {@code emeralds} the core takes its chests to hold, the {@code coins} spurs
+     * of coin in them and the worth they stand for ({@code coin_worth}), the Banker's balance in spurs ({@code None}: no Banker) and
+     * the worth of it ({@code bank_worth}), and the emeralds its town keeps in reserve.
+     */
+    record Cash(Point point, long town, long treasury, long emeralds, long coins, long coinWorth, Optional<Long> bank, long bankWorth, long reserve) implements Answer {
+        public Cash {
+            Objects.requireNonNull(point, "point");
+            Objects.requireNonNull(bank, "bank");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(6);
+            this.point.encode(out);
+            out.u32(this.town);
+            out.i64(this.treasury);
+            out.u64(this.emeralds);
+            out.u64(this.coins);
+            out.i64(this.coinWorth);
+            out.option(this.bank, PostcardOut::u64);
+            out.i64(this.bankWorth);
+            out.u64(this.reserve);
+        }
+    }
+
+    /**
+     * The mint: {@code rate} spurs an emerald now, the selling {@code pressure} (emeralds recently sold to it, decayed), the coin
+     * {@code minted} without backing (decayed) and how far the spur is {@code debased} (1: not at all).
+     */
+    record Mint(double rate, double pressure, double minted, double debased) implements Answer {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(7);
+            out.f64(this.rate);
+            out.f64(this.pressure);
+            out.f64(this.minted);
+            out.f64(this.debased);
         }
     }
 }

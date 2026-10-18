@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{HandNo, Point, TownNo};
+use crate::fixed::Fixed;
 
 /// A question for the core.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -21,6 +22,10 @@ pub enum Query {
     Hands { town: TownNo },
     /// A point's chests as the core takes them to be (what it counted there, with what it moved since).
     Chests { point: Point },
+    /// A desk's till as the core takes it to be: the town's treasury, and what its chests and Banker hold.
+    Cash { point: Point },
+    /// The mint: the spurs an emerald fetches now, and what moves it.
+    Mint,
 }
 
 /// An answer, in the place of its question.
@@ -41,6 +46,14 @@ pub enum Answer {
     /// A point's chests: its town, what the core takes them to hold by good (empty before their first stocktake), their
     /// empty slots at the last, and what they gave up beyond what the town held (`short`, by good; empty if never).
     Chests { point: Point, town: TownNo, held: Vec<f64>, free: u32, short: Vec<f64> },
+    /// A desk's till: its town's `treasury`, the whole `emeralds` the core takes its chests to hold, the `coins` spurs
+    /// of coin in them and the worth they stand for (`coin_worth`), the Banker's balance in spurs (`None`: no Banker) and
+    /// the worth of it (`bank_worth`), and the emeralds its town keeps in reserve.
+    Cash { point: Point, town: TownNo, treasury: Fixed, emeralds: u64, coins: u64, coin_worth: Fixed, bank: Option<u64>,
+        bank_worth: Fixed, reserve: u64 },
+    /// The mint: `rate` spurs an emerald now, the selling `pressure` (emeralds recently sold to it, decayed), the coin
+    /// `minted` without backing (decayed) and how far the spur is `debased` (1: not at all).
+    Mint { rate: f64, pressure: f64, minted: f64, debased: f64 },
 }
 
 /// One of a town's hands: its id (stable while it lives, wherever it goes: a place in the list isn't), the host's tag

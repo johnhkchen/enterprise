@@ -40,4 +40,11 @@ pub enum Output {
     /// counted, in whole items, after a stocktake there in the same look. The core takes the chests to hold it from now
     /// on; what the host can't do it sends back as `Unmoved`.
     Moved { point: Point, good: GoodNo, count: i64 },
+    /// Money for the host to put in a desk's chests and Banker (above nothing) or take out of them (below), after the
+    /// desk's `Cashcount` in the same look: whole `emeralds` in the chests, `coins` spurs of Numismatics coin in them
+    /// (the host mints the fewest coins for what the chests hold with it), and `bank` spurs in the Banker's account.
+    /// What the core's treasury, the mint and the town's reserve of emeralds worked out since the till was counted (a
+    /// wagon's takings, wages paid, surplus emeralds sold to the mint for coin). The core takes the till to hold it from
+    /// now on; what the host can't do it sends back as `CashUnmoved`.
+    Cash { point: Point, emeralds: i64, coins: i64, bank: i64 },
 }

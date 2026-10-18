@@ -84,6 +84,18 @@ pub enum Input {
     /// nothing: a player or a hopper took it first, which the next stocktake books). Sent before the point's next
     /// stocktake. Ignored for a point that isn't there any more, or is another kind (the host's view was stale).
     Unmoved { point: Point, good: GoodNo, count: i64 },
+    /// What a desk's chests and Blaze Banker hold of money now (`till.rs`): `emeralds` whole emeralds in the chests
+    /// (loose and in shulker boxes), `coins` spurs of Numismatics coin loose in them, and the Banker's balance in spurs
+    /// (`None`: no Banker touches the desk). What's more than the core took them to hold is money paid into the town from
+    /// outside the society, what's less is money taken out; spurs count at the mint's rate now, and from then on for
+    /// the worth they came in at. `coin_room` is whether the chests could take more coin, `writes` whether the host
+    /// writes the core's `Cash` moves to them (false: it only counts, and the core sells nothing to the mint and moves
+    /// nothing). Sent beside the desk's `Stocktake`, after it. Refused for a point that isn't a desk.
+    Cashcount { point: Point, emeralds: u64, coins: u64, bank: Option<u64>, coin_room: bool, writes: bool },
+    /// What the host couldn't do of a `Cash` move at a desk: `emeralds` didn't fit (above nothing) or weren't there to
+    /// take (below), and the same for `coins` loose in the chests and the Banker's `bank` spurs. Sent before the desk's
+    /// next `Cashcount`. Ignored for a desk that isn't there any more (the host's view was stale).
+    CashUnmoved { point: Point, emeralds: i64, coins: i64, bank: i64 },
 }
 
 /// A villager a census saw: the host's tag for it (its UUID), its trade by the host's name (with or without the host's

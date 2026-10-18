@@ -491,7 +491,7 @@ impl Society {
                 Vec::new()
             }
             Input::AddTown { .. } | Input::AddPoint { .. } | Input::RemovePoint { .. } | Input::Stocktake { .. }
-            | Input::Unmoved { .. } => {
+            | Input::Unmoved { .. } | Input::Cashcount { .. } | Input::CashUnmoved { .. } => {
                 self.apply_points(input);
                 Vec::new()
             }

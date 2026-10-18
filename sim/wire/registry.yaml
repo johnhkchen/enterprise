@@ -45,6 +45,27 @@ Answer:
           - free: U32
           - short:
               SEQ: F64
+    6:
+      Cash:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+          - town: U32
+          - treasury: I64
+          - emeralds: U64
+          - coins: U64
+          - coin_worth: I64
+          - bank:
+              OPTION: U64
+          - bank_worth: I64
+          - reserve: U64
+    7:
+      Mint:
+        STRUCT:
+          - rate: F64
+          - pressure: F64
+          - minted: F64
+          - debased: F64
 Command:
   ENUM:
     0:
@@ -239,6 +260,25 @@ Input:
               TYPENAME: Point
           - good: U32
           - count: I64
+    20:
+      Cashcount:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+          - emeralds: U64
+          - coins: U64
+          - bank:
+              OPTION: U64
+          - coin_room: BOOL
+          - writes: BOOL
+    21:
+      CashUnmoved:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+          - emeralds: I64
+          - coins: I64
+          - bank: I64
 Output:
   ENUM:
     0:
@@ -331,6 +371,14 @@ Output:
               TYPENAME: Point
           - good: U32
           - count: I64
+    14:
+      Cash:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+          - emeralds: I64
+          - coins: I64
+          - bank: I64
 PackAmount:
   STRUCT:
     - good: STR
@@ -438,6 +486,13 @@ Query:
         STRUCT:
           - point:
               TYPENAME: Point
+    6:
+      Cash:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+    7:
+      Mint: UNIT
 Refusal:
   ENUM:
     0:

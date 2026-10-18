@@ -21,7 +21,8 @@ public sealed interface Output
                 Output.Departed,
                 Output.HandGone,
                 Output.HandLevel,
-                Output.Moved {
+                Output.Moved,
+                Output.Cash {
     void encode(PostcardOut out);
 
     static Output decode(PostcardIn in) {
@@ -41,6 +42,7 @@ public sealed interface Output
             case 11 -> new HandGone(in.u32(), in.string());
             case 12 -> new HandLevel(in.u32(), in.string(), in.string(), in.u8(), in.u32());
             case 13 -> new Moved(Point.decode(in), in.u32(), in.i64());
+            case 14 -> new Cash(Point.decode(in), in.i64(), in.i64(), in.i64());
             default -> throw in.unknownVariant("Output", at);
         };
     }
@@ -262,6 +264,29 @@ public sealed interface Output
             this.point.encode(out);
             out.u32(this.good);
             out.i64(this.count);
+        }
+    }
+
+    /**
+     * Money for the host to put in a desk's chests and Banker (above nothing) or take out of them (below), after the
+     * desk's {@code Cashcount} in the same look: whole {@code emeralds} in the chests, {@code coins} spurs of Numismatics coin in them
+     * (the host mints the fewest coins for what the chests hold with it), and {@code bank} spurs in the Banker's account.
+     * What the core's treasury, the mint and the town's reserve of emeralds worked out since the till was counted (a
+     * wagon's takings, wages paid, surplus emeralds sold to the mint for coin). The core takes the till to hold it from
+     * now on; what the host can't do it sends back as {@code CashUnmoved}.
+     */
+    record Cash(Point point, long emeralds, long coins, long bank) implements Output {
+        public Cash {
+            Objects.requireNonNull(point, "point");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(14);
+            this.point.encode(out);
+            out.i64(this.emeralds);
+            out.i64(this.coins);
+            out.i64(this.bank);
         }
     }
 }

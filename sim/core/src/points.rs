@@ -118,6 +118,8 @@ impl Society {
             }
         }
         if placed.kind == Kind::Desk {
+            // Its money goes with its chests (`till.rs`), and its place is remembered.
+            self.forget_till(at, placed.town);
             self.world.resource_mut::<crate::chests::FormerDesks>().0.insert(at.clone(), placed.town);
         }
         Ok(placed)
@@ -202,7 +204,7 @@ impl Society {
         })
     }
 
-    /// Applies a point's happening (`Input::AddTown`, `AddPoint`, `RemovePoint`, `Stocktake`, `Unmoved`); false for any
+    /// Applies a point's happening (`Input::AddTown`, `AddPoint`, `RemovePoint`, `Stocktake`, `Unmoved`, `Cashcount`, `CashUnmoved`); false for any
     /// other.
     /// Panics on one naming what isn't there: the wire checks them first (`wire::handle`).
     pub(crate) fn apply_points(&mut self, input: &crate::wire::Input) -> bool {
@@ -223,6 +225,12 @@ impl Society {
             }
             Input::Unmoved { point, good, count } => {
                 self.unmoved(&point.spot(), point.kind(), *good as GoodId, *count);
+            }
+            Input::Cashcount { point, emeralds, coins, bank, coin_room, writes } => {
+                self.count_cash(&point.spot(), *emeralds, *coins, *bank, *coin_room, *writes).expect("a cash count at a desk that stands");
+            }
+            Input::CashUnmoved { point, emeralds, coins, bank } => {
+                self.cash_unmoved(&point.spot(), *emeralds, *coins, *bank);
             }
             _ => return false,
         }

@@ -458,5 +458,61 @@
       "good": 1,
       "count": -9223372036854775808
     }
+  },
+  {
+    "Cash": {
+      "point": {
+        "kind": "Desk",
+        "dim": "minecraft:overworld",
+        "x": 27,
+        "y": -60,
+        "z": 27
+      },
+      "emeralds": 12,
+      "coins": 0,
+      "bank": 0
+    }
+  },
+  {
+    "Cash": {
+      "point": {
+        "kind": "Desk",
+        "dim": "minecraft:overworld",
+        "x": 27,
+        "y": -60,
+        "z": 27
+      },
+      "emeralds": -36,
+      "coins": 574,
+      "bank": 0
+    }
+  },
+  {
+    "Cash": {
+      "point": {
+        "kind": "Desk",
+        "dim": "minecraft:overworld",
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "emeralds": -100,
+      "coins": 0,
+      "bank": 19164
+    }
+  },
+  {
+    "Cash": {
+      "point": {
+        "kind": "Desk",
+        "dim": "minecraft:overworld",
+        "x": 2147483647,
+        "y": 2147483647,
+        "z": 2147483647
+      },
+      "emeralds": -9223372036854775808,
+      "coins": 9223372036854775807,
+      "bank": -9223372036854775808
+    }
   }
 ]

@@ -77,3 +77,9 @@ CoreBindingTests.aDeskBrokenAndPutBackIsItsTownAgainWithItsGoodsCountedOnce # th
 CoreBindingTests.aChestChangedWhileItWasntCountedIsCountedBeforeItsWritten # the binding's own: the catch-up on a chunk's load (Rust: tests/chests.rs a_chest_changed_while_it_wasnt_counted...)
 CoreBindingTests.inJavaModeTheCoreCountsADesksChestsButNeverWritesThem # the binding's own: Java mode's chests are the Java rules'
 CoreBindingTests.aDeskPlacedUnseenIsTakenWhenItsChunkLoads # the binding's own: a desk's point of interest found as its chunk loads
+CoreBindingTests.aDesksEmeraldsAreSoldToTheMintForCoinsInItsChest # the binding's own: emeralds sold, coin minted into the chest's few stacks, a save (Rust: tests/till.rs emeralds_above_the_reserve_are_sold_to_the_mint_for_coins_in_the_chest, scenarios/money.json)
+CoreBindingTests.aBlazeBankersAccountTakesTheCoinTheMintPays # the binding's own: a Blaze Banker's account is Numismatics' (Rust: tests/till.rs a_blaze_bankers_account_takes_the_coin_and_the_chest_gets_none)
+CoreBindingTests.inJavaModeTheCoreCountsADesksMoneyButMovesNone # the binding's own: Java mode's chests and Banker are the Java rules' (Rust: tests/till.rs a_host_that_doesnt_write_is_only_counted_and_the_mint_is_left_alone)
+CoreBindingTests.theTownsEarningsAreShownInItsChestAsCoin # the binding's own: Input.Pay's money written to the chest (Rust: tests/till.rs income_is_put_in_as_whole_emeralds_and_fractions_wait_on_the_books)
+CoreBindingTests.moneyWithNoRoomInTheChestWaitsOnTheTownsBooks # the binding's own: a full chest (Rust: tests/till.rs what_the_host_couldnt_write_is_the_treasurys_still_and_is_shown_again)
+CoreBindingTests.aDeskBrokenTakesItsMoneyAndOnePutBackCountsItOnce # the binding's own: the desk listeners (Rust: tests/till.rs a_desk_broken_takes_its_money_and_one_put_back_counts_it_afresh)

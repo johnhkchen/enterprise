@@ -5227,5 +5227,86 @@
         199.0
       ]
     }
+  },
+  {
+    "Cash": {
+      "point": {
+        "kind": "Desk",
+        "dim": "minecraft:overworld",
+        "x": 27,
+        "y": -60,
+        "z": 27
+      },
+      "town": 0,
+      "treasury": 0,
+      "emeralds": 0,
+      "coins": 0,
+      "coin_worth": 0,
+      "bank": null,
+      "bank_worth": 0,
+      "reserve": 0
+    }
+  },
+  {
+    "Cash": {
+      "point": {
+        "kind": "Desk",
+        "dim": "minecraft:overworld",
+        "x": 27,
+        "y": -60,
+        "z": 27
+      },
+      "town": 2,
+      "treasury": 1234567,
+      "emeralds": 64,
+      "coins": 4096,
+      "coin_worth": 256000,
+      "bank": 19164,
+      "bank_worth": 1728000,
+      "reserve": 64
+    }
+  },
+  {
+    "Cash": {
+      "point": {
+        "kind": "Desk",
+        "dim": "minecraft:overworld",
+        "x": 2147483647,
+        "y": 2147483647,
+        "z": 2147483647
+      },
+      "town": 4294967295,
+      "treasury": 9223372036854775807,
+      "emeralds": 18446744073709551615,
+      "coins": 18446744073709551615,
+      "coin_worth": -9223372036854775808,
+      "bank": 18446744073709551615,
+      "bank_worth": 9223372036854775807,
+      "reserve": 18446744073709551615
+    }
+  },
+  {
+    "Mint": {
+      "rate": 16.0,
+      "pressure": 0.0,
+      "minted": 0.0,
+      "debased": 1.0
+    }
+  },
+  {
+    "Mint": {
+      "rate": 8.0,
+      "pressure": 1728.0,
+      "minted": 27648.5,
+      "debased": 1.5
+    }
+  },
+  {
+    "Mint": {
+      "rate": 1.7976931348623157e+308,
+      "pressure": 2.2250738585072014e-308,
+      "minted": 0.1,
+      "debased": 1e-300
+    }
   }
 ]

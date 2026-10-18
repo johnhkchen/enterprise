@@ -147,7 +147,7 @@ public final class StockAdapter {
         // Founded at this tick (the points adapter brings the core to now), not at the last look's, nor at tick 0 of a
         // society new to an old world; its first stocktake booked then too.
         long town = host.points().found(level, desk, name);
-        Response r = host.apply(List.of(stocktake(level, PointsAdapter.Kind.DESK, at)));
+        Response r = host.apply(host.money().withCash(List.of(stocktake(level, PointsAdapter.Kind.DESK, at))));
         if (r instanceof Response.Refused refused) {
             throw new IllegalStateException("the core wouldn't count the desk at " + desk.toShortString() + ": " + refused.why());
         }

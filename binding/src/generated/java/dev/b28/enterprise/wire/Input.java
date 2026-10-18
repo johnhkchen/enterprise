@@ -28,7 +28,9 @@ public sealed interface Input
                 Input.HandLost,
                 Input.Census,
                 Input.TagHand,
-                Input.Unmoved {
+                Input.Unmoved,
+                Input.Cashcount,
+                Input.CashUnmoved {
     void encode(PostcardOut out);
 
     static Input decode(PostcardIn in) {
@@ -54,6 +56,8 @@ public sealed interface Input
             case 17 -> new Census(in.u32(), in.u32(), in.list(4, Resident::decode));
             case 18 -> new TagHand(in.u32(), in.string());
             case 19 -> new Unmoved(Point.decode(in), in.u32(), in.i64());
+            case 20 -> new Cashcount(Point.decode(in), in.u64(), in.u64(), in.option(PostcardIn::u64), in.bool(), in.bool());
+            case 21 -> new CashUnmoved(Point.decode(in), in.i64(), in.i64(), in.i64());
             default -> throw in.unknownVariant("Input", at);
         };
     }
@@ -392,6 +396,53 @@ public sealed interface Input
             this.point.encode(out);
             out.u32(this.good);
             out.i64(this.count);
+        }
+    }
+
+    /**
+     * What a desk's chests and Blaze Banker hold of money now ({@code till.rs}): {@code emeralds} whole emeralds in the chests
+     * (loose and in shulker boxes), {@code coins} spurs of Numismatics coin loose in them, and the Banker's balance in spurs
+     * ({@code None}: no Banker touches the desk). What's more than the core took them to hold is money paid into the town from
+     * outside the society, what's less is money taken out; spurs count at the mint's rate now, and from then on for
+     * the worth they came in at. {@code coin_room} is whether the chests could take more coin, {@code writes} whether the host
+     * writes the core's {@code Cash} moves to them (false: it only counts, and the core sells nothing to the mint and moves
+     * nothing). Sent beside the desk's {@code Stocktake}, after it. Refused for a point that isn't a desk.
+     */
+    record Cashcount(Point point, long emeralds, long coins, Optional<Long> bank, boolean coinRoom, boolean writes) implements Input {
+        public Cashcount {
+            Objects.requireNonNull(point, "point");
+            Objects.requireNonNull(bank, "bank");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(20);
+            this.point.encode(out);
+            out.u64(this.emeralds);
+            out.u64(this.coins);
+            out.option(this.bank, PostcardOut::u64);
+            out.bool(this.coinRoom);
+            out.bool(this.writes);
+        }
+    }
+
+    /**
+     * What the host couldn't do of a {@code Cash} move at a desk: {@code emeralds} didn't fit (above nothing) or weren't there to
+     * take (below), and the same for {@code coins} loose in the chests and the Banker's {@code bank} spurs. Sent before the desk's
+     * next {@code Cashcount}. Ignored for a desk that isn't there any more (the host's view was stale).
+     */
+    record CashUnmoved(Point point, long emeralds, long coins, long bank) implements Input {
+        public CashUnmoved {
+            Objects.requireNonNull(point, "point");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(21);
+            this.point.encode(out);
+            out.i64(this.emeralds);
+            out.i64(this.coins);
+            out.i64(this.bank);
         }
     }
 }

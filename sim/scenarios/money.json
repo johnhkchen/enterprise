@@ -1,0 +1,755 @@
+{
+  "name": "money",
+  "about": "A town's money in its desk's chests and its Blaze Banker. The host counts them with each look (Cashcount): what they hold beyond what the core took them to is money paid in, and a town with no trade that costs emeralds sells all its emeralds to the mint for coin, into the Banker's account if one touches the desk (Cash). The mint's rate falls with the selling and is asked (Mint). What the host couldn't write comes back as CashUnmoved and is shown again. A desk broken takes its money with it, and put back where it stood counts it in once. Saved and loaded, the till is as the core took it.",
+  "steps": [
+    {
+      "note": "a society from a pack of four goods",
+      "request": {
+        "abi": 1,
+        "schema": 14751825028575766415,
+        "command": {
+          "Create": {
+            "pack": {
+              "day_ticks": 24000,
+              "goods": [
+                {
+                  "name": "minecraft:wheat",
+                  "worth": 0.05,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [
+                    "Crop"
+                  ],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:bread",
+                  "worth": 0.2,
+                  "stack": 64,
+                  "food": 5.0,
+                  "saturation": 6.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:book",
+                  "worth": 0.5,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": "reading",
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:cooked_beef",
+                  "worth": 0.3,
+                  "stack": 64,
+                  "food": 8.0,
+                  "saturation": 12.8,
+                  "comfort": null,
+                  "flags": [
+                    "Meat"
+                  ],
+                  "weight": 1.0
+                }
+              ],
+              "comforts": [
+                "treats",
+                "reading",
+                "clothing",
+                "furnishings",
+                "leisure"
+              ],
+              "trades": [
+                "merchant",
+                "cartographer",
+                "librarian",
+                "shepherd",
+                "leatherworker",
+                "fisherman",
+                "cleric",
+                "farmer",
+                "toolsmith",
+                "armorer",
+                "weaponsmith",
+                "mason",
+                "fletcher",
+                "butcher",
+                "none",
+                "nitwit"
+              ],
+              "recipes": [],
+              "animals": [],
+              "dials": []
+            },
+            "seed": 7
+          }
+        }
+      },
+      "request_postcard": "018fcfe6c7c7d6c0dccc0100c0bb01040f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e697477697400000007",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "a town at its desk",
+      "request": {
+        "abi": 1,
+        "schema": 14751825028575766415,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "AddTown": {
+                  "name": "Ashford",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "018fcfe6c7c7d6c0dccc0103010707417368666f726400136d696e6563726166743a6f766572776f726c64367736",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "the desk's chests count 40 emeralds and 8 spurs of coin, its Banker's account 160, and the host only counts: the money is paid in, the mint untouched",
+      "request": {
+        "abi": 1,
+        "schema": 14751825028575766415,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [],
+                  "free": 20
+                }
+              },
+              {
+                "Cashcount": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "emeralds": 40,
+                  "coins": 8,
+                  "bank": 160,
+                  "coin_room": true,
+                  "writes": false
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "018fcfe6c7c7d6c0dccc0103020a00136d696e6563726166743a6f766572776f726c6436773600141400136d696e6563726166743a6f766572776f726c64367736280801a0010100",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "40 emeralds, 8 spurs worth half an emerald and 160 spurs worth ten: 50.5 in the treasury",
+      "request": {
+        "abi": 1,
+        "schema": 14751825028575766415,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Cash": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              "Mint"
+            ]
+          }
+        }
+      },
+      "request_postcard": "018fcfe6c7c7d6c0dccc0104020600136d696e6563726166743a6f766572776f726c6436773607",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Cash": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 27
+                },
+                "town": 0,
+                "treasury": 50500,
+                "emeralds": 40,
+                "coins": 8,
+                "coin_worth": 500,
+                "bank": 160,
+                "bank_worth": 10000,
+                "reserve": 0
+              }
+            },
+            {
+              "Mint": {
+                "rate": 16.0,
+                "pressure": 0.0,
+                "minted": 0.0,
+                "debased": 1.0
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000020600136d696e6563726166743a6f766572776f726c64367736008895062808e80701a001a09c010007000000000000304000000000000000000000000000000000000000000000f03f"
+    },
+    {
+      "note": "the host writes now: no trade of the town's costs emeralds, so all 40 are sold to the mint for coin, into the Banker's account",
+      "request": {
+        "abi": 1,
+        "schema": 14751825028575766415,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [],
+                  "free": 20
+                }
+              },
+              {
+                "Cashcount": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "emeralds": 40,
+                  "coins": 8,
+                  "bank": 160,
+                  "coin_room": true,
+                  "writes": true
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "018fcfe6c7c7d6c0dccc0103020a00136d696e6563726166743a6f766572776f726c6436773600141400136d696e6563726166743a6f766572776f726c64367736280801a0010101",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "Cash": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 27
+                },
+                "emeralds": -40,
+                "coins": 0,
+                "bank": 632
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "00010e00136d696e6563726166743a6f766572776f726c643677364f00f00900"
+    },
+    {
+      "note": "the Banker's account holds 792 spurs standing for 50 emeralds, and the mint's rate has fallen",
+      "request": {
+        "abi": 1,
+        "schema": 14751825028575766415,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Cash": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              "Mint"
+            ]
+          }
+        }
+      },
+      "request_postcard": "018fcfe6c7c7d6c0dccc0104020600136d696e6563726166743a6f766572776f726c6436773607",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Cash": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 27
+                },
+                "town": 0,
+                "treasury": 50500,
+                "emeralds": 0,
+                "coins": 8,
+                "coin_worth": 500,
+                "bank": 792,
+                "bank_worth": 50000,
+                "reserve": 0
+              }
+            },
+            {
+              "Mint": {
+                "rate": 15.638009049773755,
+                "pressure": 40.0,
+                "minted": 0.0,
+                "debased": 1.0
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000020600136d696e6563726166743a6f766572776f726c64367736008895060008e807019806a08d0600071fa9461fa9462f4000000000000044400000000000000000000000000000f03f"
+    },
+    {
+      "note": "the host could take only 30 of the 40 emeralds sold out of the chests (a hopper): it says so, and counts again; the ten left are the coin's already, so they are taken out once more",
+      "request": {
+        "abi": 1,
+        "schema": 14751825028575766415,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "CashUnmoved": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "emeralds": -10,
+                  "coins": 0,
+                  "bank": 0
+                }
+              },
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [],
+                  "free": 20
+                }
+              },
+              {
+                "Cashcount": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "emeralds": 10,
+                  "coins": 8,
+                  "bank": 792,
+                  "coin_room": true,
+                  "writes": true
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "018fcfe6c7c7d6c0dccc0103031500136d696e6563726166743a6f766572776f726c643677361300000a00136d696e6563726166743a6f766572776f726c6436773600141400136d696e6563726166743a6f766572776f726c643677360a080198060101",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "Cash": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 27
+                },
+                "emeralds": -10,
+                "coins": 0,
+                "bank": 0
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "00010e00136d696e6563726166743a6f766572776f726c6436773613000000"
+    },
+    {
+      "note": "the treasury is the same: nothing was paid in, and nothing is in the chests twice",
+      "request": {
+        "abi": 1,
+        "schema": 14751825028575766415,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Cash": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              "Mint"
+            ]
+          }
+        }
+      },
+      "request_postcard": "018fcfe6c7c7d6c0dccc0104020600136d696e6563726166743a6f766572776f726c6436773607",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Cash": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 27
+                },
+                "town": 0,
+                "treasury": 50500,
+                "emeralds": 0,
+                "coins": 8,
+                "coin_worth": 500,
+                "bank": 792,
+                "bank_worth": 50000,
+                "reserve": 0
+              }
+            },
+            {
+              "Mint": {
+                "rate": 15.638009049773755,
+                "pressure": 40.0,
+                "minted": 0.0,
+                "debased": 1.0
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000020600136d696e6563726166743a6f766572776f726c64367736008895060008e807019806a08d0600071fa9461fa9462f4000000000000044400000000000000000000000000000f03f"
+    },
+    {
+      "note": "the desk broken: its money goes with it",
+      "request": {
+        "abi": 1,
+        "schema": 14751825028575766415,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "RemovePoint": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "018fcfe6c7c7d6c0dccc0103010900136d696e6563726166743a6f766572776f726c64367736",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "and put back where it stood: the same town, its money counted in once",
+      "request": {
+        "abi": 1,
+        "schema": 14751825028575766415,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "AddTown": {
+                  "name": "Newton",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [],
+                  "free": 20
+                }
+              },
+              {
+                "Cashcount": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "emeralds": 5,
+                  "coins": 0,
+                  "bank": null,
+                  "coin_room": true,
+                  "writes": false
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "018fcfe6c7c7d6c0dccc01030307064e6577746f6e00136d696e6563726166743a6f766572776f726c643677360a00136d696e6563726166743a6f766572776f726c6436773600141400136d696e6563726166743a6f766572776f726c643677360500000100",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "five emeralds in the treasury",
+      "request": {
+        "abi": 1,
+        "schema": 14751825028575766415,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Cash": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              "Mint"
+            ]
+          }
+        }
+      },
+      "request_postcard": "018fcfe6c7c7d6c0dccc0104020600136d696e6563726166743a6f766572776f726c6436773607",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Cash": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 27
+                },
+                "town": 0,
+                "treasury": 5000,
+                "emeralds": 5,
+                "coins": 0,
+                "coin_worth": 0,
+                "bank": null,
+                "bank_worth": 0,
+                "reserve": 0
+              }
+            },
+            {
+              "Mint": {
+                "rate": 15.638009049773755,
+                "pressure": 40.0,
+                "minted": 0.0,
+                "debased": 1.0
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000020600136d696e6563726166743a6f766572776f726c6436773600904e050000000000071fa9461fa9462f4000000000000044400000000000000000000000000000f03f"
+    },
+    {
+      "note": "saved",
+      "request": {
+        "abi": 1,
+        "schema": 14751825028575766415,
+        "command": "Save"
+      },
+      "request_postcard": "018fcfe6c7c7d6c0dccc0102",
+      "saved": {
+        "format": 1,
+        "schema": 14751825028575766415,
+        "blob_len": 4406,
+        "blob_fnv": "c4739707bbef17e6"
+      }
+    },
+    {
+      "note": "loaded",
+      "load": "saved",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "asked again after the load",
+      "request": {
+        "abi": 1,
+        "schema": 14751825028575766415,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Cash": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              "Mint"
+            ]
+          }
+        }
+      },
+      "request_postcard": "018fcfe6c7c7d6c0dccc0104020600136d696e6563726166743a6f766572776f726c6436773607",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Cash": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 27
+                },
+                "town": 0,
+                "treasury": 5000,
+                "emeralds": 5,
+                "coins": 0,
+                "coin_worth": 0,
+                "bank": null,
+                "bank_worth": 0,
+                "reserve": 0
+              }
+            },
+            {
+              "Mint": {
+                "rate": 15.638009049773755,
+                "pressure": 40.0,
+                "minted": 0.0,
+                "debased": 1.0
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000020600136d696e6563726166743a6f766572776f726c6436773600904e050000000000071fa9461fa9462f4000000000000044400000000000000000000000000000f03f"
+    }
+  ]
+}

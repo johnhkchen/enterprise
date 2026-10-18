@@ -64,6 +64,7 @@ pub mod points;
 pub mod hands;
 pub mod census;
 pub mod chests;
+pub mod till;
 pub mod wire;
 
 pub use content::{Content, Dials, Good, GoodId};

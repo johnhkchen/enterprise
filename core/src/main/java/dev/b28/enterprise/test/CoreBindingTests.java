@@ -972,6 +972,267 @@ public final class CoreBindingTests {
         helper.succeed();
     }
 
+    // ------------------------------------------------------------------------------------------------ money (B4.4)
+
+    private static final BlockPos BANKER = new BlockPos(3, 2, 4);
+    private static final String COMMONS = dev.b28.enterprise.money.Mint.DEFAULT_FACTION;
+
+    /** A desk with a chest and nothing in it. */
+    private static ChestBlockEntity emptyDesk(GameTestHelper helper) {
+        helper.setBlock(DESK, Merchant.DESK.get());
+        helper.setBlock(DESK.east(), Blocks.CHEST);
+        return chestAt(helper, DESK.east());
+    }
+
+    /** Spurs of Numismatics coin loose in a container, and the stacks they take. */
+    private static int coinValue(ChestBlockEntity chest) {
+        List<ItemStack> stacks = new java.util.ArrayList<>();
+        for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+            stacks.add(chest.getItem(slot));
+        }
+        return dev.b28.enterprise.money.MoneyChanger.value(stacks);
+    }
+
+    private static long coinStacks(ChestBlockEntity chest) {
+        long n = 0;
+        for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+            if (chest.getItem(slot).getItem() instanceof dev.ithundxr.createnumismatics.content.coins.CoinItem) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /** {@code spurs} of coin put in the chest as the fewest coins, from {@code slot} on. */
+    private static void giveCoins(ChestBlockEntity chest, int spurs, int slot) {
+        for (ItemStack stack : dev.b28.enterprise.money.MoneyChanger.coins(spurs)) {
+            chest.setItem(slot++, stack);
+        }
+    }
+
+    private static void giveEmeralds(ChestBlockEntity chest, int count) {
+        for (int slot = 0; count > 0; slot++, count -= 64) {
+            chest.setItem(slot, new ItemStack(Items.EMERALD, Math.min(64, count)));
+        }
+    }
+
+    /**
+     * A desk's emeralds are its town's money, and with no trade of the town's that costs emeralds, all of them are sold
+     * to the mint for coin in the chest (B4.4; MoneyTests.surplusEmeraldsBecomeCoinsInStock and sellingOnlyMerchantsKeep
+     * NoReserve in core mode). The coin the core mints is the Java mint's quote for the same sale, loose coin already in the
+     * chest is minted again with it into a few stacks (MoneyTests.coinsAreRemintedIntoFewStacks), and the town's treasury
+     * is the same before and after: selling at the mint changes what its money is held in, not what it is worth.
+     */
+    @GameTest(template = "floor")
+    public static void aDesksEmeraldsAreSoldToTheMintForCoinsInItsChest(GameTestHelper helper) {
+        var level = helper.getLevel();
+        ChestBlockEntity chest = emptyDesk(helper);
+        giveEmeralds(chest, 100);
+        chest.setItem(5, dev.b28.enterprise.money.MoneyChanger.coins(64).get(0).copyWithCount(3)); // three loose cogs
+        chest.setItem(6, dev.b28.enterprise.money.MoneyChanger.coins(1).get(0).copyWithCount(40)); // forty loose spurs
+        GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            // The desk's first count is from nothing: 100 emeralds, 192 + 40 spurs of coin at 16 spurs an emerald make 114.5
+            // emeralds in the treasury, and the same look shows them: the emeralds are sold to the mint for coin.
+            int quote = new dev.b28.enterprise.money.Mint().quote(COMMONS, 100, level.getGameTime());
+            host.stock().found(level, desk.pos(), "Testford");
+            long t = level.getGameTime();
+            helper.assertTrue(inChest(chest, Items.EMERALD) == 0, "the emeralds are still in the chest: " + inChest(chest, Items.EMERALD));
+            helper.assertTrue(coinValue(chest) == 232 + quote, "coin worth " + (232 + quote) + " spurs in the chest, found "
+                    + coinValue(chest));
+            helper.assertTrue(coinStacks(chest) <= 6, "at most one stack of each coin, found " + coinStacks(chest));
+            var after = host.money().cashAt(desk);
+            helper.assertTrue(Math.abs(after.treasury() - 114.5) < 1e-9, "selling to the mint changed the treasury: " + after);
+            helper.assertTrue(after.emeralds() == 0 && after.coins() == 232 + quote && after.bank() == null
+                    && Math.abs(after.coinWorth() - 114.5) < 1e-9, "the core's till: " + after);
+            helper.assertTrue(host.money().mint().rate() < 16, "the rate didn't fall: " + host.money().mint());
+            helper.assertTrue(Math.abs(host.money().mint().pressure() - 100) < 1e-9, "the mint took no selling pressure: " + host.money().mint());
+            // The next look, the chest as written, books nothing and sells nothing.
+            host.look(level.getServer(), t + 2);
+            host.settle();
+            helper.assertTrue(coinValue(chest) == 232 + quote && Math.abs(host.money().cashAt(desk).treasury() - 114.5) < 1e-9,
+                    "a second look moved money: " + host.money().cashAt(desk));
+            // And the till survives a save and a load.
+            helper.assertTrue(host.save(), "the host didn't save");
+            try (CoreHost loaded = CoreHost.open(dir, 8)) {
+                helper.assertTrue(loaded.money().cashAt(desk).equals(host.money().cashAt(desk)), "the loaded core's till: "
+                        + loaded.money().cashAt(desk));
+            }
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A Blaze Banker touching the desk is the settlement's bank account (B4.4; MoneyTests.blazeBankerTakesTheDeposit and
+     * firstPlayerToOpenTheBankerOwnsTheEarnings in core mode): the coin the mint pays for the desk's emeralds is deposited
+     * there, none lands in the chests, and the first player to open the Banker owns the earnings.
+     */
+    @GameTest(template = "floor")
+    public static void aBlazeBankersAccountTakesTheCoinTheMintPays(GameTestHelper helper) {
+        var level = helper.getLevel();
+        ChestBlockEntity chest = emptyDesk(helper);
+        giveEmeralds(chest, 164);
+        helper.setBlock(BANKER, net.minecraft.core.registries.BuiltInRegistries.BLOCK.get(
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("numismatics", "blaze_banker")));
+        var banker = (dev.ithundxr.createnumismatics.content.bank.blaze_banker.BlazeBankerBlockEntity) helper.getBlockEntity(BANKER);
+        var account = dev.ithundxr.createnumismatics.Numismatics.BANK.getOrCreateAccount(banker.getAccountId(),
+                dev.ithundxr.createnumismatics.content.backend.BankAccount.Type.BLAZE_BANKER);
+        int before = account.getBalance();
+        GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            host.stock().found(level, desk.pos(), "Testford");
+            long t = level.getGameTime();
+            int quote = new dev.b28.enterprise.money.Mint().quote(COMMONS, 164, t + 1);
+            host.look(level.getServer(), t + 1);
+            host.settle();
+            helper.assertTrue(account.getBalance() - before == quote, "the balance grew by " + (account.getBalance() - before)
+                    + ", the mint's quote is " + quote);
+            helper.assertTrue(coinValue(chest) == 0 && inChest(chest, Items.EMERALD) == 0, "coin or emeralds left in the chest");
+            var till = host.money().cashAt(desk);
+            helper.assertTrue(till.bank() != null && till.bank() == account.getBalance() && till.coins() == 0,
+                    "the core's till: " + till);
+            helper.assertTrue(Math.abs(till.treasury() - 164) < 1e-9, "164 emeralds in the treasury: " + till);
+            var owner = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+            helper.assertTrue(banker.ensureOwned(owner), "the first player to use the Banker claims it");
+            helper.assertTrue(banker.getAccount() != null && banker.getAccount().getBalance() >= quote,
+                    "the Merchant's earnings are in that Banker's account");
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * What a player puts in the desk's chests or its Banker is money paid into the town and what they take out is money
+     * taken out, spurs counted at the mint's rate (B4.4). In Java mode the core only counts: nothing is sold to the mint
+     * and nothing is written to the chests.
+     */
+    @GameTest(template = "floor")
+    public static void inJavaModeTheCoreCountsADesksMoneyButMovesNone(GameTestHelper helper) {
+        var level = helper.getLevel();
+        ChestBlockEntity chest = emptyDesk(helper);
+        giveEmeralds(chest, 10);
+        giveCoins(chest, 160, 10);
+        GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7, false)) {
+            host.stock().found(level, desk.pos(), "Testford");
+            helper.assertTrue(Math.abs(host.money().cashAt(desk).treasury() - 20) < 1e-9, "10 emeralds and 160 spurs: " + host.money().cashAt(desk));
+            long t = level.getGameTime();
+            host.look(level.getServer(), t + 1);
+            host.settle();
+            helper.assertTrue(inChest(chest, Items.EMERALD) == 10 && coinValue(chest) == 160, "the core wrote to a Java-mode chest");
+            helper.assertTrue(host.money().mint().rate() == 16.0, "the core sold to the mint in Java mode: " + host.money().mint());
+            // A player takes four emeralds and pays in 80 spurs of coin.
+            chest.setItem(0, new ItemStack(Items.EMERALD, 6));
+            giveCoins(chest, 80, 20);
+            host.look(level.getServer(), t + 2);
+            host.settle();
+            var till = host.money().cashAt(desk);
+            helper.assertTrue(Math.abs(till.treasury() - 21) < 1e-9 && till.emeralds() == 6 && till.coins() == coinValue(chest),
+                    "four out, five in: " + till + ", the chest's coin " + coinValue(chest));
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The town's earnings reach the chest (B4.4): money paid into the town from outside the society (a player buying at its
+     * shops: Input.Pay) is put in the desk's chests as whole emeralds at the look that counts them, and sold to the mint for
+     * coin in turn, so the town's treasury is the money in its chest and Banker, to the last spur.
+     */
+    @GameTest(template = "floor")
+    public static void theTownsEarningsAreShownInItsChestAsCoin(GameTestHelper helper) {
+        var level = helper.getLevel();
+        ChestBlockEntity chest = emptyDesk(helper);
+        GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, desk.pos(), "Testford");
+            long t = level.getGameTime();
+            host.apply(List.of(new Input.Pay(town, 7_400))); // 7.4 emeralds, in thousandths
+            helper.assertTrue(coinValue(chest) == 0, "money reached the chest before it was counted");
+            int quote = new dev.b28.enterprise.money.Mint().quote(COMMONS, 7, t + 1);
+            host.look(level.getServer(), t + 1);
+            host.settle();
+            helper.assertTrue(inChest(chest, Items.EMERALD) == 0 && coinValue(chest) == quote,
+                    "seven emeralds put in and sold for " + quote + " spurs: " + inChest(chest, Items.EMERALD) + " emeralds, coin "
+                            + coinValue(chest));
+            var till = host.money().cashAt(desk);
+            helper.assertTrue(Math.abs(till.treasury() - 7.4) < 1e-9 && Math.abs(till.coinWorth() - 7) < 1e-9, "the till: " + till);
+            // The 0.4 left on the books and 0.6 more make the eighth emerald.
+            host.apply(List.of(new Input.Pay(town, 600)));
+            host.look(level.getServer(), t + 2);
+            host.settle();
+            helper.assertTrue(Math.abs(host.money().cashAt(desk).coinWorth() - 8) < 1e-9, "the eighth emerald: " + host.money().cashAt(desk));
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Money with no room waits on the town's books (B4.4): a chest full of dirt takes no emeralds and no coin, the town
+     * keeps the money, and the next look with a slot free puts the emeralds in (no room for a set of coin: they stay
+     * emeralds).
+     */
+    @GameTest(template = "floor")
+    public static void moneyWithNoRoomInTheChestWaitsOnTheTownsBooks(GameTestHelper helper) {
+        var level = helper.getLevel();
+        ChestBlockEntity chest = emptyDesk(helper);
+        for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+            chest.setItem(slot, new ItemStack(Items.DIRT, 64));
+        }
+        GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, desk.pos(), "Testford");
+            long t = level.getGameTime();
+            host.apply(List.of(new Input.Pay(town, 5_000)));
+            host.look(level.getServer(), t + 1);
+            host.settle();
+            helper.assertTrue(inChest(chest, Items.EMERALD) == 0 && coinValue(chest) == 0, "money written to a full chest");
+            helper.assertTrue(Math.abs(host.money().cashAt(desk).treasury() - 5) < 1e-9, "the town lost its money: " + host.money().cashAt(desk));
+            chest.setItem(26, ItemStack.EMPTY);
+            host.look(level.getServer(), t + 2);
+            host.settle();
+            helper.assertTrue(inChest(chest, Items.EMERALD) == 5 && coinValue(chest) == 0, "five emeralds in the one free slot: "
+                    + inChest(chest, Items.EMERALD) + " emeralds, coin " + coinValue(chest));
+            helper.assertTrue(host.money().mint().pressure() == 0, "sold to the mint with no room for the coin");
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /** A desk broken takes its chests' and Banker's money out of its town, and put back where it stood counts them in once (B4.4). */
+    @GameTest(template = "floor")
+    public static void aDeskBrokenTakesItsMoneyAndOnePutBackCountsItOnce(GameTestHelper helper) {
+        var level = helper.getLevel();
+        ChestBlockEntity chest = emptyDesk(helper);
+        giveEmeralds(chest, 30);
+        GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7, false)) {
+            long town = host.stock().found(level, desk.pos(), "Testford");
+            helper.assertTrue(Math.abs(host.money().cashAt(desk).treasury() - 30) < 1e-9, "30 emeralds: " + host.money().cashAt(desk));
+            host.stock().forget(level, desk.pos());
+            Answer.Stock gone = (Answer.Stock) host.ask(List.of(new Query.Stock(town))).get(0);
+            helper.assertTrue(host.money().cashAt(desk) == null && gone.stock().size() > 0, "the desk is still the core's");
+            long again = host.stock().found(level, desk.pos(), "Testford");
+            helper.assertTrue(again == town, "a desk put back is another town");
+            helper.assertTrue(Math.abs(host.money().cashAt(desk).treasury() - 30) < 1e-9, "counted in twice or not at all: " + host.money().cashAt(desk));
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
     /** A villager of {@code trade} at {@code level}, kept in it without a workstation (one XP). */
     private static Villager villager(GameTestHelper helper, VillagerProfession trade, int level, BlockPos at) {
         Villager v = helper.spawn(EntityType.VILLAGER, at);
@@ -1064,6 +1325,31 @@ public final class CoreBindingTests {
             out.append("\n  a move written (64 wheat in or out of a desk's 5 chests, 135 slots): %.3f ms mean, p50 %.3f, max %.3f"
                     .formatted(java.util.Arrays.stream(move).average().orElse(0) / 1e6, move[moves / 2] / 1e6, move[moves - 1] / 1e6));
             helper.assertTrue(host.stock().pending().isEmpty(), "a measured move didn't fit");
+            // Money written (money-adapter): 64 emeralds and 1,000 spurs of coin put into and taken out of the same desk's
+            // chests (the coin minted again as the fewest coins each time), as the core's Cash would have it.
+            var deskPoint = dev.b28.enterprise.binding.adapters.PointsAdapter.point(
+                    dev.b28.enterprise.binding.adapters.PointsAdapter.Kind.DESK, GlobalPos.of(level.dimension(), helper.absolutePos(desks.get(0))));
+            long[] cash = new long[moves];
+            for (int i = 0; i < moves; i++) {
+                int sign = i % 2 == 0 ? 1 : -1;
+                var paid = new dev.b28.enterprise.wire.Output.Cash(deskPoint, 64L * sign, 1000L * sign, 0);
+                long a = System.nanoTime();
+                host.money().show(paid);
+                cash[i] = System.nanoTime() - a;
+            }
+            java.util.Arrays.sort(cash);
+            out.append("\n  money written (64 emeralds and 1,000 spurs of coin in or out of a desk's 5 chests): %.3f ms mean, p50 %.3f, max %.3f"
+                    .formatted(java.util.Arrays.stream(cash).average().orElse(0) / 1e6, cash[moves / 2] / 1e6, cash[moves - 1] / 1e6));
+            helper.assertTrue(host.money().pending().isEmpty(), "a measured cash move didn't fit");
+            long[] counts = new long[moves];
+            for (int i = 0; i < moves; i++) {
+                long a = System.nanoTime();
+                host.money().cashcount(level, GlobalPos.of(level.dimension(), helper.absolutePos(desks.get(i % desks.size()))));
+                counts[i] = System.nanoTime() - a;
+            }
+            java.util.Arrays.sort(counts);
+            out.append("\n  a desk's money counted (emeralds, coin, the Banker: 5 chests, 135 slots): %.3f ms mean, p50 %.3f, max %.3f"
+                    .formatted(java.util.Arrays.stream(counts).average().orElse(0) / 1e6, counts[moves / 2] / 1e6, counts[moves - 1] / 1e6));
             long[] saves = new long[20];
             for (int i = 0; i < saves.length; i++) {
                 long a = System.nanoTime();

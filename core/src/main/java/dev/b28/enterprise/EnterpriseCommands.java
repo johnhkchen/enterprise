@@ -55,6 +55,10 @@ final class EnterpriseCommands {
                         .then(Commands.literal("chests")
                                 .then(Commands.argument("point", BlockPosArgument.blockPos())
                                         .executes(EnterpriseCommands::coreChests)))
+                        .then(Commands.literal("cash")
+                                .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                        .executes(EnterpriseCommands::coreCash)))
+                        .then(Commands.literal("mint").executes(EnterpriseCommands::coreMint))
                         .then(Commands.literal("hands")
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                         .executes(EnterpriseCommands::coreHands)))
@@ -491,6 +495,54 @@ final class EnterpriseCommands {
         chests.shortBy().forEach((good, n) -> out.append("\n  %s: %.0f given up that the town no longer had".formatted(good, n)));
         source.sendSuccess(() -> Component.literal(out.toString()), false);
         return goods.size();
+    }
+
+    /**
+     * A desk's money ({@code /enterprise core cash <desk>}): its town's treasury as the core has it, and what the core takes
+     * the desk's chests and Blaze Banker to hold of it, beside what they hold now.
+     */
+    private static int coreCash(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        ServerLevel level = source.getLevel();
+        BlockPos pos = BlockPosArgument.getBlockPos(context, "desk");
+        var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+        if (host == null || host.pausedWhy() != null) {
+            source.sendFailure(Component.literal(host == null ? "The core isn't running" : host.pausedWhy()));
+            return 0;
+        }
+        GlobalPos at = GlobalPos.of(level.dimension(), pos);
+        var cash = host.money().cashAt(at);
+        if (cash == null) {
+            source.sendFailure(Component.literal("The core keeps no desk at " + pos.toShortString()));
+            return 0;
+        }
+        var now = level.isLoaded(pos) ? host.money().cashcount(level, at) : null;
+        StringBuilder out = new StringBuilder("The desk at %s (town %d): a treasury of %.3f emeralds%s".formatted(pos.toShortString(),
+                cash.town(), cash.treasury(), host.money().writes() ? "" : " (Java mode: the core counts this till, the Java rules fill it)"));
+        out.append("\n  emeralds: the core takes the chests to hold %d%s".formatted(cash.emeralds(),
+                now == null ? "" : ", they hold " + now.emeralds()));
+        out.append("\n  coin: %d spurs standing for %.3f emeralds%s".formatted(cash.coins(), cash.coinWorth(),
+                now == null ? "" : ", the chests hold " + now.coins()));
+        out.append(cash.bank() == null ? "\n  no Blaze Banker" : "\n  the Banker's account: %d spurs standing for %.3f emeralds%s".formatted(
+                cash.bank(), cash.bankWorth(), now == null || now.bank().isEmpty() ? "" : ", it holds " + now.bank().get()));
+        out.append("\n  reserve: %d emeralds kept".formatted(cash.reserve()));
+        source.sendSuccess(() -> Component.literal(out.toString()), false);
+        return 1;
+    }
+
+    /** The mint as the core has it ({@code /enterprise core mint}): what an emerald fetches in spurs, and what moves it. */
+    private static int coreMint(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+        if (host == null || host.pausedWhy() != null) {
+            source.sendFailure(Component.literal(host == null ? "The core isn't running" : host.pausedWhy()));
+            return 0;
+        }
+        var mint = host.money().mint();
+        source.sendSuccess(() -> Component.literal(("The core's mint: %.2f spurs an emerald; %.0f emeralds of selling pressure, "
+                + "%.0f spurs minted without backing (the spur debased %.3fx)").formatted(mint.rate(), mint.pressure(),
+                mint.minted(), mint.debased())), false);
+        return 1;
     }
 
     /** Every trade point the core keeps ({@code /enterprise core points}): where, what, and whose town. */

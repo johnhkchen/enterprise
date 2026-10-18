@@ -2,6 +2,7 @@ package dev.b28.enterprise.binding;
 
 import dev.b28.enterprise.Enterprise;
 import dev.b28.enterprise.binding.adapters.HandsAdapter;
+import dev.b28.enterprise.binding.adapters.MoneyAdapter;
 import dev.b28.enterprise.binding.adapters.PeopleAdapter;
 import dev.b28.enterprise.binding.adapters.PointsAdapter;
 import dev.b28.enterprise.binding.adapters.StockAdapter;
@@ -38,7 +39,7 @@ import net.neoforged.neoforge.event.server.ServerStoppedEvent;
  * ({@link CoreWorker}), saved with the world. The host makes the society from the mod's content pack at a new world
  * ({@link ModPack}, seeded with the world's seed) or loads the world's {@value SaveStore#FILE}, saves it when the world
  * saves, and drops it when the server stops. Its adapters ({@link PointsAdapter}, {@link HandsAdapter}, {@link
- * PeopleAdapter}, {@link StockAdapter}) turn Minecraft's happenings into the core's inputs and its outputs into things
+ * PeopleAdapter}, {@link StockAdapter}, {@link MoneyAdapter}) turn Minecraft's happenings into the core's inputs and its outputs into things
  * in the world; {@link CoreClock} hands them a look at a time. The host keeps no society ids: which block is which town's and which villager
  * is which hand are the core's, read back by the adapters when it starts.
  *
@@ -68,6 +69,7 @@ public final class CoreHost implements AutoCloseable {
     private final HandsAdapter hands;
     private final PeopleAdapter people;
     private final StockAdapter stock;
+    private final MoneyAdapter money;
     private final Outcomes outcomes;
     private final List<CompletableFuture<Response>> looks = new ArrayList<>();
     private String pausedWhy;
@@ -80,7 +82,8 @@ public final class CoreHost implements AutoCloseable {
         this.hands = new HandsAdapter(this);
         this.people = new PeopleAdapter(this, ownsChests);
         this.stock = new StockAdapter(this, ownsChests);
-        this.outcomes = new Outcomes(people, stock);
+        this.money = new MoneyAdapter(this, ownsChests);
+        this.outcomes = new Outcomes(people, stock, money);
         try {
             switch (store.open()) {
                 case SaveStore.Opened.Fresh fresh -> {
@@ -203,13 +206,25 @@ public final class CoreHost implements AutoCloseable {
         return stock;
     }
 
+    /** The money adapter: the desks' chests and Blaze Bankers counted at each look, written the core's money. */
+    public MoneyAdapter money() {
+        return money;
+    }
+
+    /** What the host couldn't do of the core's moves (goods, then money) since the last look, for the next one. */
+    private List<Input> pending() {
+        List<Input> out = new ArrayList<>(stock.pending());
+        out.addAll(money.pending());
+        return out;
+    }
+
     /** Why the host is paused (the save refused, the core stuck), or null while it runs. */
     public String pausedWhy() {
         return pausedWhy;
     }
 
     /**
-     * A look: the adapters' happenings since the last (what the host couldn't move, then the stocktakes), then time
+     * A look: the adapters' happenings since the last (what the host couldn't move, then the stocktakes and money counts), then time
      * passed to {@code now} (the overworld's game time), in one {@code Apply} sent to the core's thread. Its outputs are
      * shown when it's done ({@link #poll}). While an earlier look's moves are still to be shown no chest is counted (a
      * count would miss them and book them again): that look sends only its time. Nothing is sent while paused, or twice
@@ -223,11 +238,11 @@ public final class CoreHost implements AutoCloseable {
         if (looks.isEmpty()) {
             stock.joinDepots(server); // a building's containers the core doesn't keep yet, its depots now (counted as they join)
         }
-        List<Input> inputs = new ArrayList<>(stock.pending());
+        List<Input> inputs = pending();
         // A census only in core mode: in Java mode the Java rules' census keeps the people (CensusTaker).
         inputs.addAll(people.happenings(server, Society.isCore()));
         if (looks.isEmpty()) {
-            inputs.addAll(stock.stocktakes(server));
+            inputs.addAll(money.withCash(stock.stocktakes(server)));
         }
         inputs.add(new Input.Advance(now));
         looks.add(worker.submit(Wire.request(new Command.Apply(inputs))));
@@ -242,9 +257,9 @@ public final class CoreHost implements AutoCloseable {
         if (pausedWhy != null || !looks.isEmpty()) {
             return;
         }
-        List<Input> counts = stock.catchUps(server);
+        List<Input> counts = money.withCash(stock.catchUps(server));
         if (!counts.isEmpty()) {
-            List<Input> inputs = new ArrayList<>(stock.pending());
+            List<Input> inputs = pending();
             inputs.addAll(counts);
             looks.add(worker.submit(Wire.request(new Command.Apply(inputs))));
         }
@@ -298,7 +313,7 @@ public final class CoreHost implements AutoCloseable {
             return null;
         }
         settle();
-        List<Input> all = new ArrayList<>(stock.pending());
+        List<Input> all = pending();
         all.addAll(inputs);
         Response r = callNow(Wire.request(new Command.Apply(all)));
         if (r instanceof Response.Done done) {
@@ -348,7 +363,7 @@ public final class CoreHost implements AutoCloseable {
 
     /** What the host couldn't move of the looks shown, told the core now (it has no stocktake: nothing moves back). */
     private void flush() {
-        List<Input> unmoved = stock.pending();
+        List<Input> unmoved = pending();
         if (!unmoved.isEmpty()) {
             apply(unmoved);
         }

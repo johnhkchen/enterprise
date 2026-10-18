@@ -4,6 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::{Answer, Command, Input, Point, Query, Refusal, Request, Response, SaveFile, TownPoint, ABI, SCHEMA};
 use crate::content::Content;
+use crate::fixed::Fixed;
 use crate::points::{Kind, Spot};
 use crate::society::Society;
 
@@ -74,6 +75,20 @@ pub fn handle(society: &mut Option<Society>, request: Request) -> Response {
                 good: super::no(m.good),
                 count: m.count,
             }));
+            // And each desk counted with its money shows its town's: the treasury put in or taken out of its chests and
+            // Banker, the surplus sold to the mint (`till.rs`).
+            let cashed: Vec<Spot> = inputs.iter()
+                .filter_map(|i| match i {
+                    Input::Cashcount { point, .. } => Some(point.spot()),
+                    _ => None,
+                })
+                .collect();
+            outputs.extend(s.show_cash(&cashed).into_iter().map(|m| super::Output::Cash {
+                point: Point::of(&m.at, Kind::Desk),
+                emeralds: m.emeralds,
+                coins: m.coins,
+                bank: m.bank,
+            }));
             done(outputs, Vec::new())
         }
         Command::Ask { queries } => {
@@ -130,6 +145,19 @@ fn answer(s: &Society, query: &Query) -> Result<Answer, String> {
             }
             let lockers = s.roster(town as usize).locker_limit();
             Answer::Hands { town, lockers, hands: s.hand_views(town as usize) }
+        }
+        Query::Cash { point } => {
+            let spot = point.spot();
+            same_kind(s.point(&spot).map(|p| p.kind), point)?;
+            let c = s.cash(&spot).ok_or_else(|| format!("{:?} at {spot:?} isn't a desk", point.kind))?;
+            let (bank, bank_worth) = c.till.bank.map_or((None, Fixed::ZERO), |b| (Some(b.spurs), b.worth));
+            Answer::Cash { point: point.clone(), town: super::no(c.town), treasury: c.treasury, emeralds: c.till.emeralds,
+                coins: c.till.coins.spurs, coin_worth: c.till.coins.worth, bank, bank_worth, reserve: c.reserve }
+        }
+        Query::Mint => {
+            let (mint, now, day) = (s.mint(), s.now(), s.content().day_ticks);
+            Answer::Mint { rate: mint.rate(now, day), pressure: mint.pressure(now, day), minted: mint.minted(now, day),
+                debased: mint.debasement(now, day) }
         }
         Query::Chests { point } => {
             let spot = point.spot();
@@ -280,6 +308,13 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
             }
             // A point gone (or another kind there) by the time the host says what it couldn't move is a stale view.
             Input::Unmoved { good: g, .. } => good(*g)?,
+            Input::Cashcount { point, .. } => {
+                if point.kind() != Kind::Desk {
+                    return Err(wrong(format!("a till counted at a {:?}", point.kind)));
+                }
+                same_kind(stands(&points, &point.spot()), point).map_err(wrong)?;
+            }
+            Input::CashUnmoved { .. } => {}
         }
     }
     Ok(())

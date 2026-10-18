@@ -6,7 +6,15 @@ import java.util.Objects;
 /**
  * A question for the core.
  */
-public sealed interface Query permits Query.Stock, Query.Points, Query.Goods, Query.Dials, Query.Hands, Query.Chests {
+public sealed interface Query
+        permits Query.Stock,
+                Query.Points,
+                Query.Goods,
+                Query.Dials,
+                Query.Hands,
+                Query.Chests,
+                Query.Cash,
+                Query.Mint {
     void encode(PostcardOut out);
 
     static Query decode(PostcardIn in) {
@@ -18,6 +26,8 @@ public sealed interface Query permits Query.Stock, Query.Points, Query.Goods, Qu
             case 3 -> new Dials();
             case 4 -> new Hands(in.u32());
             case 5 -> new Chests(Point.decode(in));
+            case 6 -> new Cash(Point.decode(in));
+            case 7 -> new Mint();
             default -> throw in.unknownVariant("Query", at);
         };
     }
@@ -97,6 +107,31 @@ public sealed interface Query permits Query.Stock, Query.Points, Query.Goods, Qu
         public void encode(PostcardOut out) {
             out.variant(5);
             this.point.encode(out);
+        }
+    }
+
+    /**
+     * A desk's till as the core takes it to be: the town's treasury, and what its chests and Banker hold.
+     */
+    record Cash(Point point) implements Query {
+        public Cash {
+            Objects.requireNonNull(point, "point");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(6);
+            this.point.encode(out);
+        }
+    }
+
+    /**
+     * The mint: the spurs an emerald fetches now, and what moves it.
+     */
+    record Mint() implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(7);
         }
     }
 }

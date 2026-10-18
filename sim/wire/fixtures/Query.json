@@ -43,5 +43,28 @@
         "z": 2147483647
       }
     }
-  }
+  },
+  {
+    "Cash": {
+      "point": {
+        "kind": "Desk",
+        "dim": "minecraft:overworld",
+        "x": 27,
+        "y": -60,
+        "z": 27
+      }
+    }
+  },
+  {
+    "Cash": {
+      "point": {
+        "kind": "Desk",
+        "dim": "minecraft:overworld",
+        "x": -2147483648,
+        "y": -2147483648,
+        "z": 2147483647
+      }
+    }
+  },
+  "Mint"
 ]

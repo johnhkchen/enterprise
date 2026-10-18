@@ -1,7 +1,7 @@
 [
   {
     "abi": 1,
-    "schema": 12070557182547866227,
+    "schema": 14751825028575766415,
     "command": {
       "Create": {
         "pack": {
@@ -128,7 +128,7 @@
   },
   {
     "abi": 1,
-    "schema": 12070557182547866227,
+    "schema": 14751825028575766415,
     "command": {
       "Create": {
         "pack": {
@@ -169,7 +169,7 @@
   },
   {
     "abi": 1,
-    "schema": 12070557182547866227,
+    "schema": 14751825028575766415,
     "command": {
       "Load": {
         "save": {
@@ -188,12 +188,12 @@
   },
   {
     "abi": 1,
-    "schema": 12070557182547866227,
+    "schema": 14751825028575766415,
     "command": "Save"
   },
   {
     "abi": 1,
-    "schema": 12070557182547866227,
+    "schema": 14751825028575766415,
     "command": {
       "Apply": {
         "inputs": []
@@ -202,7 +202,7 @@
   },
   {
     "abi": 1,
-    "schema": 12070557182547866227,
+    "schema": 14751825028575766415,
     "command": {
       "Apply": {
         "inputs": [
@@ -2254,6 +2254,112 @@
               "good": 1,
               "count": 9223372036854775807
             }
+          },
+          {
+            "Cashcount": {
+              "point": {
+                "kind": "Desk",
+                "dim": "minecraft:overworld",
+                "x": 27,
+                "y": -60,
+                "z": 27
+              },
+              "emeralds": 0,
+              "coins": 0,
+              "bank": null,
+              "coin_room": false,
+              "writes": false
+            }
+          },
+          {
+            "Cashcount": {
+              "point": {
+                "kind": "Desk",
+                "dim": "minecraft:overworld",
+                "x": 27,
+                "y": -60,
+                "z": 27
+              },
+              "emeralds": 100,
+              "coins": 4096,
+              "bank": 19164,
+              "coin_room": true,
+              "writes": true
+            }
+          },
+          {
+            "Cashcount": {
+              "point": {
+                "kind": "Desk",
+                "dim": "minecraft:overworld",
+                "x": -2147483648,
+                "y": -2147483648,
+                "z": -2147483648
+              },
+              "emeralds": 18446744073709551615,
+              "coins": 18446744073709551615,
+              "bank": 18446744073709551615,
+              "coin_room": true,
+              "writes": false
+            }
+          },
+          {
+            "Cashcount": {
+              "point": {
+                "kind": "Desk",
+                "dim": "minecraft:overworld",
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "emeralds": 3,
+              "coins": 1,
+              "bank": 0,
+              "coin_room": false,
+              "writes": true
+            }
+          },
+          {
+            "CashUnmoved": {
+              "point": {
+                "kind": "Desk",
+                "dim": "minecraft:overworld",
+                "x": 27,
+                "y": -60,
+                "z": 27
+              },
+              "emeralds": 64,
+              "coins": 0,
+              "bank": 0
+            }
+          },
+          {
+            "CashUnmoved": {
+              "point": {
+                "kind": "Desk",
+                "dim": "minecraft:overworld",
+                "x": 27,
+                "y": -60,
+                "z": 27
+              },
+              "emeralds": -2,
+              "coins": -4096,
+              "bank": -1
+            }
+          },
+          {
+            "CashUnmoved": {
+              "point": {
+                "kind": "Desk",
+                "dim": "minecraft:overworld",
+                "x": 2147483647,
+                "y": 2147483647,
+                "z": 2147483647
+              },
+              "emeralds": -9223372036854775808,
+              "coins": 9223372036854775807,
+              "bank": -9223372036854775808
+            }
           }
         ]
       }
@@ -2261,7 +2367,7 @@
   },
   {
     "abi": 1,
-    "schema": 12070557182547866227,
+    "schema": 14751825028575766415,
     "command": {
       "Ask": {
         "queries": []
@@ -2270,7 +2376,7 @@
   },
   {
     "abi": 1,
-    "schema": 12070557182547866227,
+    "schema": 14751825028575766415,
     "command": {
       "Ask": {
         "queries": [
@@ -2318,7 +2424,30 @@
                 "z": 2147483647
               }
             }
-          }
+          },
+          {
+            "Cash": {
+              "point": {
+                "kind": "Desk",
+                "dim": "minecraft:overworld",
+                "x": 27,
+                "y": -60,
+                "z": 27
+              }
+            }
+          },
+          {
+            "Cash": {
+              "point": {
+                "kind": "Desk",
+                "dim": "minecraft:overworld",
+                "x": -2147483648,
+                "y": -2147483648,
+                "z": 2147483647
+              }
+            }
+          },
+          "Mint"
         ]
       }
     }
@@ -2378,7 +2507,30 @@
                 "z": 2147483647
               }
             }
-          }
+          },
+          {
+            "Cash": {
+              "point": {
+                "kind": "Desk",
+                "dim": "minecraft:overworld",
+                "x": 27,
+                "y": -60,
+                "z": 27
+              }
+            }
+          },
+          {
+            "Cash": {
+              "point": {
+                "kind": "Desk",
+                "dim": "minecraft:overworld",
+                "x": -2147483648,
+                "y": -2147483648,
+                "z": 2147483647
+              }
+            }
+          },
+          "Mint"
         ]
       }
     }

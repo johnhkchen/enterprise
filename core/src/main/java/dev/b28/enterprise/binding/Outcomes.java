@@ -1,6 +1,7 @@
 package dev.b28.enterprise.binding;
 
 import dev.b28.enterprise.Enterprise;
+import dev.b28.enterprise.binding.adapters.MoneyAdapter;
 import dev.b28.enterprise.binding.adapters.PeopleAdapter;
 import dev.b28.enterprise.binding.adapters.StockAdapter;
 import dev.b28.enterprise.wire.Output;
@@ -10,7 +11,8 @@ import dev.b28.enterprise.wire.Output;
  * variant, each to the adapter that shows it in the world. A variant the core adds doesn't compile here until it's
  * routed, so no outcome is dropped unseen.
  *
- * <p>{@code Moved} goes to {@code adapters/StockAdapter}, which writes it to a desk's or a depot's chests. The people's
+ * <p>{@code Moved} goes to {@code adapters/StockAdapter}, which writes it to a desk's or a depot's chests; {@code Cash}
+ * to {@code adapters/MoneyAdapter}, which writes it to a desk's chests and Blaze Banker. The people's
  * outputs (a child born, a hand settled, departed or gone, a hand's level) go to {@code adapters/PeopleAdapter}. The
  * rest are the wagons', the master Merchant's and the pallets', each routed to {@link #unshown} until its adapter lands
  * (the wagons' with {@code wagon-adapter}, the pallets' with {@code pallet-views}: the mod's crates drawn from these,
@@ -19,16 +21,19 @@ import dev.b28.enterprise.wire.Output;
 final class Outcomes {
     private final PeopleAdapter people;
     private final StockAdapter stock;
+    private final MoneyAdapter money;
     private long unshown;
 
-    Outcomes(PeopleAdapter people, StockAdapter stock) {
+    Outcomes(PeopleAdapter people, StockAdapter stock, MoneyAdapter money) {
         this.people = people;
         this.stock = stock;
+        this.money = money;
     }
 
     void show(Output output) {
         switch (output) {
             case Output.Moved o -> stock.show(o);
+            case Output.Cash o -> money.show(o);
             case Output.WagonLeft o -> unshown(o);
             case Output.WagonSold o -> unshown(o);
             case Output.WagonHome o -> unshown(o);

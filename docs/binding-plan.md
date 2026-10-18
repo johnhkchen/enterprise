@@ -515,6 +515,37 @@ each look the floorplan's containers the core doesn't keep, a chest put back or 
 (no stocktake while a look's moves are still to be shown; what wasn't moved told the core before the next count, a
 question or a save), `/enterprise core chests <point>`, the testbench's desk registered at load. Seven game tests.
 
+**Built (B4.4 `money-adapter`).** A town's money in its desk's chests and Blaze Banker, shown by the core. In the core
+(`till.rs`, `Tills` in `saved!`): the treasury stays one number of emerald-worth; a desk's `Till` is what the core takes
+its chests and Banker to hold of it (whole emeralds, spurs of coin, the Banker's balance), the two piles of coin each a
+`Hoard` (spurs, and the worth they stand for). **Spurs convert at the treasury**: spurs a player pays in come in at the
+mint's rate then, spurs the mint pays for emeralds stand for those emeralds, spurs taken out take their share of the
+pile's worth: the rate moving makes no money and loses none, and nothing posts for a conversion. At each look the host
+counts the till (`Input::Cashcount`, right after the desk's `Stocktake`): what's more than the core took it to hold is
+`Reason::PaidIn`, what's less `Reason::Withdrawn` (new; never more than the treasury holds), both through
+`cash_book::post`. After the look's counts the core shows its treasury there (`Society::show_cash`, run by
+`wire::handle` after `show_stock`; `Output::Cash { point, emeralds, coins, bank }`, deltas): the treasury above the till
+put in as whole emeralds as far as the chests have room (fractions stay on the books), the treasury below it taken out
+(emeralds first, then coin, then the Banker, then an emerald changed at the mint and the change back as coin:
+`Treasury.withdraw`), the Merchant's emeralds topped up to its reserve from its coin at the mint's price
+(`MoneyChanger.buyEmeralds`, the 5% spread shown in what a spur stands for, not in the treasury), and emeralds above the
+reserve sold to the mint for coin, into the Banker's account if there is one, else coins in the chests if they have room
+(`MoneyChanger.settle`). The reserve is 64 emeralds while a switched-on trade of the town's lockers costs emeralds
+(`Society::emerald_reserve`), none otherwise. What the host couldn't do comes back as `Input::CashUnmoved`. A host that
+doesn't write (Java mode) says so in the count (`writes`): the core then only counts, sells nothing to the mint and
+moves nothing. `Query::Cash { point }` / `Answer::Cash` (the treasury, the till, the reserve) and `Query::Mint` /
+`Answer::Mint` (the rate, the pressure, the coin minted without backing, the debasement); a desk broken takes its money
+with it (`Society::remove_point`) and one put back counts it afresh. Schema `ccb902b478f9a78f`, FORMAT 1 (the save's
+shape grew: dev worlds' `enterprise_core.dat` are rebuilt). Base worlds' behaviour unmoved (`just core-fingerprint`
+`5e6b6d51a3b4061e`); the replay digest written again for the new random-worlds slice (`till`) and the save's shape. In the
+mod: `adapters/MoneyAdapter` (the desk's chests and Banker counted after its stocktake: emeralds loose and in shulker
+boxes, coin loose, the Banker's account; `Output.Cash` written: coin minted again into the fewest stacks with the
+chests' own, the account's balance set, emeralds put and taken; a sale whose coin has no room keeps its emeralds and is
+told back unmoved), `StockChests` (`coinSpurs`, `coinRoom`, `mint`), `CoreHost` (the counts ride the stock adapter's;
+unmoved cash told before the next count, a question or a save), `Outcomes` routes `Cash`, `/enterprise core cash <desk>`
+and `/enterprise core mint`. `MoneyChanger.bankAt` (a Blaze Banker's account, or an off-map market's) stays Java as the
+view onto the account. Six game tests.
+
 ### 3.6 Wave B5: closing
 
 | Order | Task | Goal | Waits for | Java | Model / effort |

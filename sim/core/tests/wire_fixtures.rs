@@ -228,6 +228,16 @@ fn inputs() -> Vec<Input> {
         Input::Unmoved { point: point(PointKind::Depot, 31, -60, 27), good: 2, count: -1 },
         Input::Unmoved { point: point(PointKind::Desk, i32::MIN, i32::MIN, i32::MIN), good: BIGGEST_ID, count: i64::MIN },
         Input::Unmoved { point: point(PointKind::Desk, 0, 0, 0), good: 1, count: i64::MAX },
+        Input::Cashcount { point: point(PointKind::Desk, 27, -60, 27), emeralds: 0, coins: 0, bank: None, coin_room: false, writes: false },
+        Input::Cashcount { point: point(PointKind::Desk, 27, -60, 27), emeralds: 100, coins: 4_096, bank: Some(19_164),
+            coin_room: true, writes: true },
+        Input::Cashcount { point: point(PointKind::Desk, i32::MIN, i32::MIN, i32::MIN), emeralds: u64::MAX, coins: u64::MAX,
+            bank: Some(u64::MAX), coin_room: true, writes: false },
+        Input::Cashcount { point: point(PointKind::Desk, 0, 0, 0), emeralds: 3, coins: 1, bank: Some(0), coin_room: false, writes: true },
+        Input::CashUnmoved { point: point(PointKind::Desk, 27, -60, 27), emeralds: 64, coins: 0, bank: 0 },
+        Input::CashUnmoved { point: point(PointKind::Desk, 27, -60, 27), emeralds: -2, coins: -4_096, bank: -1 },
+        Input::CashUnmoved { point: point(PointKind::Desk, i32::MAX, i32::MAX, i32::MAX), emeralds: i64::MIN, coins: i64::MAX,
+            bank: i64::MIN },
     ]);
     all
 }
@@ -264,6 +274,10 @@ fn outputs() -> Vec<Output> {
         Output::Moved { point: point(PointKind::Depot, 31, -60, 27), good: 3, count: -64 },
         Output::Moved { point: point(PointKind::Desk, i32::MAX, i32::MAX, i32::MAX), good: BIGGEST_ID, count: i64::MAX },
         Output::Moved { point: point(PointKind::Depot, -5, -64, 9), good: 1, count: i64::MIN },
+        Output::Cash { point: point(PointKind::Desk, 27, -60, 27), emeralds: 12, coins: 0, bank: 0 },
+        Output::Cash { point: point(PointKind::Desk, 27, -60, 27), emeralds: -36, coins: 574, bank: 0 },
+        Output::Cash { point: point(PointKind::Desk, 0, 0, 0), emeralds: -100, coins: 0, bank: 19_164 },
+        Output::Cash { point: point(PointKind::Desk, i32::MAX, i32::MAX, i32::MAX), emeralds: i64::MIN, coins: i64::MAX, bank: i64::MIN },
     ]
 }
 
@@ -279,7 +293,8 @@ fn residents() -> Vec<Resident> {
 fn queries() -> Vec<Query> {
     vec![Query::Stock { town: 0 }, Query::Stock { town: BIGGEST_ID }, Query::Points, Query::Goods, Query::Dials,
         Query::Hands { town: 0 }, Query::Hands { town: BIGGEST_ID }, Query::Chests { point: point(PointKind::Desk, 27, -60, 27) },
-        Query::Chests { point: point(PointKind::Depot, i32::MIN, 0, i32::MAX) }]
+        Query::Chests { point: point(PointKind::Depot, i32::MIN, 0, i32::MAX) }, Query::Cash { point: point(PointKind::Desk, 27, -60, 27) },
+        Query::Cash { point: point(PointKind::Desk, i32::MIN, i32::MIN, i32::MAX) }, Query::Mint]
 }
 
 fn hand_views() -> Vec<HandView> {
@@ -316,6 +331,16 @@ fn answers() -> Vec<Answer> {
             short: vec![0.0, 2.0] },
         Answer::Chests { point: point(PointKind::Desk, i32::MAX, i32::MAX, i32::MAX), town: BIGGEST_ID, held: EDGE_F64.to_vec(),
             free: u32::MAX, short: (0..200).map(|i| i as f64).collect() },
+        Answer::Cash { point: point(PointKind::Desk, 27, -60, 27), town: 0, treasury: Fixed::ZERO, emeralds: 0, coins: 0,
+            coin_worth: Fixed::ZERO, bank: None, bank_worth: Fixed::ZERO, reserve: 0 },
+        Answer::Cash { point: point(PointKind::Desk, 27, -60, 27), town: 2, treasury: Fixed::from_millis(1_234_567), emeralds: 64,
+            coins: 4_096, coin_worth: Fixed::emeralds(256), bank: Some(19_164), bank_worth: Fixed::emeralds(1_728), reserve: 64 },
+        Answer::Cash { point: point(PointKind::Desk, i32::MAX, i32::MAX, i32::MAX), town: BIGGEST_ID, treasury: Fixed::MAX,
+            emeralds: u64::MAX, coins: u64::MAX, coin_worth: Fixed::from_millis(i64::MIN), bank: Some(u64::MAX),
+            bank_worth: Fixed::MAX, reserve: u64::MAX },
+        Answer::Mint { rate: 16.0, pressure: 0.0, minted: 0.0, debased: 1.0 },
+        Answer::Mint { rate: 8.0, pressure: 1728.0, minted: 27648.5, debased: 1.5 },
+        Answer::Mint { rate: f64::MAX, pressure: f64::MIN_POSITIVE, minted: 0.1, debased: 1e-300 },
     ]
 }
 
@@ -431,6 +456,8 @@ fn input_place(i: &Input) -> usize {
         Input::Census { .. } => 17,
         Input::TagHand { .. } => 18,
         Input::Unmoved { .. } => 19,
+        Input::Cashcount { .. } => 20,
+        Input::CashUnmoved { .. } => 21,
     }
 }
 
@@ -450,6 +477,7 @@ fn output_place(o: &Output) -> usize {
         Output::HandGone { .. } => 11,
         Output::HandLevel { .. } => 12,
         Output::Moved { .. } => 13,
+        Output::Cash { .. } => 14,
     }
 }
 
@@ -461,6 +489,8 @@ fn query_place(q: &Query) -> usize {
         Query::Dials => 3,
         Query::Hands { .. } => 4,
         Query::Chests { .. } => 5,
+        Query::Cash { .. } => 6,
+        Query::Mint => 7,
     }
 }
 
@@ -472,6 +502,8 @@ fn answer_place(a: &Answer) -> usize {
         Answer::Dials { .. } => 3,
         Answer::Hands { .. } => 4,
         Answer::Chests { .. } => 5,
+        Answer::Cash { .. } => 6,
+        Answer::Mint { .. } => 7,
     }
 }
 
@@ -518,10 +550,10 @@ fn covers<T>(what: &str, samples: &[T], variants: usize, place: fn(&T) -> usize)
 
 #[test]
 fn every_variant_of_every_wire_enum_has_a_sample() {
-    covers("Input", &inputs(), 20, input_place);
-    covers("Output", &outputs(), 14, output_place);
-    covers("Query", &queries(), 6, query_place);
-    covers("Answer", &answers(), 6, answer_place);
+    covers("Input", &inputs(), 22, input_place);
+    covers("Output", &outputs(), 15, output_place);
+    covers("Query", &queries(), 8, query_place);
+    covers("Answer", &answers(), 8, answer_place);
     covers("Command", &commands(), 5, command_place);
     covers("Response", &responses(), 3, response_place);
     covers("Refusal", &refusals(), 9, refusal_place);

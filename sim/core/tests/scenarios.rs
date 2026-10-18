@@ -21,7 +21,7 @@
 //!
 //! A refusal matches by its kind and numbers; its `why` is prose and isn't compared ([`without_prose`]).
 //!
-//! `people` shows a child born (`Born`) and `chests` the chests' moves (`Moved`); the others need a master Merchant,
+//! `people` shows a child born (`Born`), `chests` the chests' moves (`Moved`) and `money` the till's (`Cash`); the others need a master Merchant,
 //! a route or a party of settlers, and the wire has no input that makes any of them. Their bytes are pinned by the
 //! golden files meanwhile
 //! (`tests/wire_fixtures.rs`).
@@ -382,6 +382,55 @@ fn chests() -> Scenario {
 }
 
 /// Every kind of happening and question, accepted.
+/// A desk's money (`till.rs`): its chests and Blaze Banker counted, the surplus sold to the mint for coin, the treasury shown
+/// in them, and the mint asked.
+fn money() -> Scenario {
+    let mut s = Script::new("money", "A town's money in its desk's chests and its Blaze Banker. The host counts them with \
+        each look (Cashcount): what they hold beyond what the core took them to is money paid in, and a town with no trade \
+        that costs emeralds sells all its emeralds to the mint for coin, into the Banker's account if one touches the desk \
+        (Cash). The mint's rate falls with the selling and is asked (Mint). What the host couldn't write comes back as \
+        CashUnmoved and is shown again. \
+        A desk broken takes its money with it, and put back where it stood counts it in once. Saved and loaded, the till \
+        is as the core took it.");
+    let desk = at(PointKind::Desk, 27, 27);
+    let till = |s: &mut Script, note: &str| s.ask(note, vec![Query::Cash { point: desk.clone() }, Query::Mint]);
+    s.create("a society from a pack of four goods");
+    s.apply("a town at its desk", vec![Input::AddTown { name: "Ashford".into(), desk: desk.clone() }]);
+    s.apply("the desk's chests count 40 emeralds and 8 spurs of coin, its Banker's account 160, and the host only counts: \
+        the money is paid in, the mint untouched", vec![
+        Input::Stocktake { point: desk.clone(), counts: counts(&[]), free: 20 },
+        Input::Cashcount { point: desk.clone(), emeralds: 40, coins: 8, bank: Some(160), coin_room: true, writes: false },
+    ]);
+    till(&mut s, "40 emeralds, 8 spurs worth half an emerald and 160 spurs worth ten: 50.5 in the treasury");
+    let cash = s.apply("the host writes now: no trade of the town's costs emeralds, so all 40 are sold to the mint for coin, \
+        into the Banker's account", vec![
+        Input::Stocktake { point: desk.clone(), counts: counts(&[]), free: 20 },
+        Input::Cashcount { point: desk.clone(), emeralds: 40, coins: 8, bank: Some(160), coin_room: true, writes: true },
+    ]);
+    assert!(matches!(cash[..], [Output::Cash { emeralds: -40, coins: 0, bank: 632, .. }]), "{cash:?}");
+    till(&mut s, "the Banker's account holds 792 spurs standing for 50 emeralds, and the mint's rate has fallen");
+    let again = s.apply("the host could take only 30 of the 40 emeralds sold out of the chests (a hopper): it says so, and counts \
+        again; the ten left are the coin's already, so they are taken out once more", vec![
+        Input::CashUnmoved { point: desk.clone(), emeralds: -10, coins: 0, bank: 0 },
+        Input::Stocktake { point: desk.clone(), counts: counts(&[]), free: 20 },
+        Input::Cashcount { point: desk.clone(), emeralds: 10, coins: 8, bank: Some(792), coin_room: true, writes: true },
+    ]);
+    assert!(matches!(again[..], [Output::Cash { emeralds: -10, coins: 0, bank: 0, .. }]), "{again:?}");
+    till(&mut s, "the treasury is the same: nothing was paid in, and nothing is in the chests twice");
+    s.apply("the desk broken: its money goes with it", vec![Input::RemovePoint { point: desk.clone() }]);
+    s.apply("and put back where it stood: the same town, its money counted in once", vec![
+        Input::AddTown { name: "Newton".into(), desk: desk.clone() },
+        Input::Stocktake { point: desk.clone(), counts: counts(&[]), free: 20 },
+        Input::Cashcount { point: desk.clone(), emeralds: 5, coins: 0, bank: None, coin_room: true, writes: false },
+    ]);
+    let before = till(&mut s, "five emeralds in the treasury");
+    s.save("saved");
+    s.load("loaded");
+    let after = till(&mut s, "asked again after the load");
+    assert_eq!(before, after, "a society loaded answers as the one saved did");
+    s.scenario
+}
+
 fn inputs() -> Scenario {
     let mut s = Script::new("inputs", "Every happening the host can hand the core, and every question, each accepted.");
     s.create("a society from a pack of four goods");
@@ -776,7 +825,7 @@ fn refusals() -> Scenario {
 }
 
 fn scenarios() -> Vec<Scenario> {
-    vec![stocktake(), inputs(), content(), refusals(), hands(), people(), chests()]
+    vec![stocktake(), inputs(), content(), refusals(), hands(), people(), chests(), money()]
 }
 
 fn text(scenario: &Scenario) -> String {
@@ -803,7 +852,7 @@ fn the_scenarios_play_as_their_files_say() {
         return;
     }
     let mut wrong = Vec::new();
-    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people", "chests"] {
+    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people", "chests", "money"] {
         let scenario = read(name);
         assert!(!scenario.steps.is_empty(), "{name}: no steps");
         wrong.extend(play(&scenario));
@@ -861,13 +910,13 @@ fn every_message_appears_in_a_scenario() {
         }
     }
     let set = |names: &[&str]| names.iter().map(|s| s.to_string()).collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost", "Census", "TagHand", "Unmoved"]));
+    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost", "Census", "TagHand", "Unmoved", "Cashcount", "CashUnmoved"]));
     assert_eq!(commands, set(&["Apply", "Ask", "Create", "Load", "Save"]));
-    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands", "Chests"]));
+    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands", "Chests", "Cash", "Mint"]));
     assert_eq!(refusals, set(&["Abi", "Input", "NoSociety", "Pack", "Query", "Save", "SaveFormat", "Schema", "Unreadable"]));
     // A child born and the chests' moves: the others need a master Merchant (OrderFilled, Signal), a route (the
     // wagon's three), a pallet (the pallets' three: only a wagon packs one) or a party of settlers or the rules taking a
     // hand (Settled, Departed, HandGone, HandLevel), and no wire input makes any. When one does, a scenario shows each
     // and its name goes here.
-    assert_eq!(outputs, set(&["Born", "Moved"]));
+    assert_eq!(outputs, set(&["Born", "Cash", "Moved"]));
 }
