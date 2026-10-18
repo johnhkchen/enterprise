@@ -161,7 +161,7 @@ pub fn offer_training(world: &mut World, capital: usize) {
         if short > 0 {
             let raised = sov.raised.get(&trade).copied().unwrap_or(0);
             let bonus = content.dials.training_bonus * wanted.level as f64 / 5.0 * premium
-                * crate::training::REPOST_RAISE.powi(raised as i32);
+                * crate::fixed::powi(crate::training::REPOST_RAISE, raised as i32);
             let work = Training::new(trade, wanted.level, bonus, OFFTAKE);
             tenders.post(capital, capital, work, short as u32, now + TRAINING_DAYS * day, now, 0);
         }

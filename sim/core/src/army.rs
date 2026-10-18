@@ -275,7 +275,7 @@ pub fn ration_days(content: &Content, blocks: f64) -> u32 {
 /// Blocks between two towns' hexes, as the crow flies (none if either isn't placed).
 pub fn blocks_between(a: Option<crate::hex::Hex>, b: Option<crate::hex::Hex>) -> f64 {
     match (a, b) {
-        (Some(a), Some(b)) => (a.center_x() - b.center_x()).hypot(a.center_z() - b.center_z()),
+        (Some(a), Some(b)) => crate::fixed::hypot(a.center_x() - b.center_x(), a.center_z() - b.center_z()),
         _ => 0.0,
     }
 }

@@ -239,8 +239,8 @@ impl Record {
     fn at(&self, now: u64, day: u64) -> Record {
         let days = now.saturating_sub(self.touched) as f64 / day as f64;
         Record {
-            kept: self.kept * 0.5f64.powf(days / KEPT_HALF_LIFE_DAYS),
-            missed: self.missed * 0.5f64.powf(days / MISS_HALF_LIFE_DAYS),
+            kept: self.kept * crate::fixed::halved(days, KEPT_HALF_LIFE_DAYS),
+            missed: self.missed * crate::fixed::halved(days, MISS_HALF_LIFE_DAYS),
             touched: now.max(self.touched),
         }
     }

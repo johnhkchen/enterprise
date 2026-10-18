@@ -685,13 +685,13 @@ pub fn accrue(content: &Content, farm: &mut Farm, mood: f64, now: u64) {
         }
         farm.wage_owed += wage_per_day(content, farm) * days;
         if days > 0.0 {
-            let weight = 1.0 - 0.5f64.powf(days / SALES_HALF_LIFE_DAYS);
+            let weight = 1.0 - crate::fixed::halved(days, SALES_HALF_LIFE_DAYS);
             farm.sales_per_day += (farm.sales_since / days - farm.sales_per_day) * weight;
             farm.value_per_day += (value_per_day(content, &farm.per_day) - farm.value_per_day) * weight;
             farm.sales_since = 0.0;
             if farm.value_per_day > 0.0 {
                 let target = (farm.sales_per_day / farm.value_per_day * farm.tightness).clamp(MIN_LABOR_SHARE, MAX_LABOR_SHARE);
-                farm.labor_share += (target - farm.labor_share) * (1.0 - 0.5f64.powf(days / SHARE_HALF_LIFE_DAYS));
+                farm.labor_share += (target - farm.labor_share) * (1.0 - crate::fixed::halved(days, SHARE_HALF_LIFE_DAYS));
             }
         }
     }

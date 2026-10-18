@@ -160,7 +160,7 @@ impl Territory {
             let next = h.hexes.iter().flat_map(|x| x.neighbors())
                 .filter(|x| x.distance(home) <= rings && !self.owners.contains_key(x))
                 .min_by(|a, b| {
-                    let near = |x: &Hex| (x.center_x() - home.center_x()).hypot(x.center_z() - home.center_z());
+                    let near = |x: &Hex| crate::fixed::hypot(x.center_x() - home.center_x(), x.center_z() - home.center_z());
                     near(a).total_cmp(&near(b)).then(a.q.cmp(&b.q)).then(a.r.cmp(&b.r))
                 });
             let Some(next) = next else { return };

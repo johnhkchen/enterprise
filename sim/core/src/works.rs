@@ -215,7 +215,7 @@ pub fn deck_size(hex: Hex, from: Hex, to: Hex) -> u32 {
     let mut cells: BTreeSet<(i64, i64)> = BTreeSet::new();
     for end in [from, to] {
         let (ex, ez) = (end.center_x() - cx, end.center_z() - cz);
-        let length = ex.hypot(ez);
+        let length = crate::fixed::hypot(ex, ez);
         let (ux, uz) = (ex / length, ez / length);
         let reach = length / 2.0 + LANDING;
         let mut t = 0.0;
@@ -236,7 +236,7 @@ pub fn ring_size(radius: i32) -> u32 {
     let mut n = 0;
     for dx in -radius - 1..=radius + 1 {
         for dz in -radius - 1..=radius + 1 {
-            let round = ((dx as f64).hypot(dz as f64) + 0.5).floor() as i32;
+            let round = (crate::fixed::hypot(dx as f64, dz as f64) + 0.5).floor() as i32;
             if round == radius && dx.abs() > 1 && dz.abs() > 1 {
                 n += 1;
             }

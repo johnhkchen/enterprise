@@ -47,7 +47,7 @@ pub struct Mint {
 /// Decays `value`, last set at `at`, to `now`, halving every `half_life` ticks.
 fn decayed(value: f64, at: u64, now: u64, half_life: f64) -> f64 {
     let elapsed = now.saturating_sub(at) as f64;
-    value * 0.5f64.powf(elapsed / half_life)
+    value * crate::fixed::halved(elapsed, half_life)
 }
 
 /// Spurs for `emeralds` sold at selling pressure `pressure`: the integral of base / (1 + p / scale) from p to p + n,
@@ -57,7 +57,7 @@ fn spurs_for(pressure: f64, emeralds: u64) -> u64 {
         return 0;
     }
     let paid = BASE_SPURS_PER_EMERALD * PRESSURE_SCALE
-        * ((PRESSURE_SCALE + pressure + emeralds as f64) / (PRESSURE_SCALE + pressure)).ln();
+        * crate::fixed::ln((PRESSURE_SCALE + pressure + emeralds as f64) / (PRESSURE_SCALE + pressure));
     paid.floor() as u64
 }
 

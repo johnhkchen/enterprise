@@ -142,7 +142,7 @@ pub fn left_for(content: &Content, now: u64, free: f64, budget: &mut Budget, day
     let allowed = if days <= 1.0 || share <= 0.0 || share >= 1.0 {
         budget.budget
     } else {
-        budget.budget / share * (1.0 - (1.0 - share).powf(days))
+        budget.budget / share * (1.0 - crate::fixed::pow(1.0 - share, days))
     };
     (allowed - budget.spent).max(0.0)
 }

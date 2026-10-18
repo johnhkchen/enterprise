@@ -122,7 +122,7 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
         }
         // Mood heads toward the comforts met, less its size, villagers without beds and unpaid wages.
         let target = mood_target(d, people, works);
-        people.mood += (target - people.mood) * (1.0 - 0.5f64.powf(days / d.mood_half_life_days));
+        people.mood += (target - people.mood) * (1.0 - crate::fixed::halved(days, d.mood_half_life_days));
         // A home, once the beds are full, as far as the land holds: the households pay what they can, the town the rest.
         let spare = money.0 - trading_capital(&content, trades);
         if people.mood >= d.home_mood && people.villagers >= people.beds && people.beds + 2.0 <= people.land {

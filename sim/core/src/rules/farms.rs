@@ -133,7 +133,7 @@ fn settle_deposits(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<
         }
         let days = now.saturating_sub(deposits.last) as f64 / day as f64;
         deposits.last = now;
-        deposits.owed *= (1.0 + content.dials.deposit_interest_per_day).powf(days.min(MAX_DAYS));
+        deposits.owed *= crate::fixed::pow(1.0 + content.dials.deposit_interest_per_day, days.min(MAX_DAYS));
         let spare = money.0 - reserve(&content, trades, farm) - content.dials.deposit_keep;
         let repay = deposits.owed.min(spare);
         if repay > 0.01 {
