@@ -103,22 +103,36 @@ fn answer(s: &Society, query: &Query) -> Result<Answer, String> {
     })
 }
 
+/// The longest an `Advance` may reach past now, in days (a hundred years): a host's tick far in the future (a bug, a
+/// `u64::MAX`) would otherwise keep one call catching up day by day without end.
+pub const LONGEST_ADVANCE_DAYS: u64 = 36_500;
+
 /// Checks a look's happenings in order, as they'd be applied (a town added is there for the happenings after it, a
-/// point removed isn't): the first naming a town, good or point that isn't there, or a count or sum that isn't a
-/// number at or above nothing, is refused.
+/// point removed isn't): the first naming a town, good or point that isn't there (or a point of another kind than the
+/// one standing there), a count or sum that isn't a number at or above nothing, or an advance past
+/// [`LONGEST_ADVANCE_DAYS`] from now, is refused.
 fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
     let goods = s.content().goods.len();
     let mut towns = s.town_count();
-    // The points as they'd stand, by place: only those the happenings touch.
-    let mut points: BTreeMap<Spot, bool> = BTreeMap::new();
-    let stands = |points: &BTreeMap<Spot, bool>, at: &Spot| points.get(at).copied().unwrap_or_else(|| s.point(at).is_some());
+    let mut now = s.now();
+    let longest = LONGEST_ADVANCE_DAYS.saturating_mul(s.content().day_ticks);
+    // The points as they'd stand, by place, with their kind: only those the happenings touch.
+    let mut points: BTreeMap<Spot, Option<Kind>> = BTreeMap::new();
+    let stands = |points: &BTreeMap<Spot, Option<Kind>>, at: &Spot| {
+        points.get(at).copied().unwrap_or_else(|| s.point(at).map(|p| p.kind))
+    };
     for (at, input) in inputs.iter().enumerate() {
         let wrong = |why: String| Refusal::Input { at: at as u32, why };
         let town = |t: usize| if t < towns { Ok(()) } else { Err(wrong(format!("no town {t}"))) };
         let good = |g: usize| if g < goods { Ok(()) } else { Err(wrong(format!("no good {g}"))) };
         let amount = |what: &str, x: f64| if x.is_finite() && x >= 0.0 { Ok(()) } else { Err(wrong(format!("{what} {x}"))) };
         match input {
-            Input::Advance { .. } => {}
+            Input::Advance { to } => {
+                if *to > now && *to - now > longest {
+                    return Err(wrong(format!("an advance to tick {to}, more than {LONGEST_ADVANCE_DAYS} days past {now}")));
+                }
+                now = now.max(*to);
+            }
             Input::Deliver { town: t, good: g, count } | Input::Buy { town: t, good: g, count } => {
                 town(*t)?;
                 good(*g)?;
@@ -150,31 +164,27 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
                     return Err(wrong(format!("a town's desk that's a {:?}", desk.kind)));
                 }
                 let spot = desk.spot();
-                if stands(&points, &spot) {
+                if stands(&points, &spot).is_some() {
                     return Err(wrong(format!("a point already stands at {spot:?}")));
                 }
-                points.insert(spot, true);
+                points.insert(spot, Some(Kind::Desk));
                 towns += 1;
             }
             Input::AddPoint { point, town: t } => {
                 town(*t)?;
                 let spot = point.spot();
-                if stands(&points, &spot) {
+                if stands(&points, &spot).is_some() {
                     return Err(wrong(format!("a point already stands at {spot:?}")));
                 }
-                points.insert(spot, true);
+                points.insert(spot, Some(point.kind()));
             }
             Input::RemovePoint { point } => {
                 let spot = point.spot();
-                if !stands(&points, &spot) {
-                    return Err(wrong(format!("no point at {spot:?}")));
-                }
-                points.insert(spot, false);
+                same_kind(stands(&points, &spot), point).map_err(wrong)?;
+                points.insert(spot, None);
             }
             Input::Stocktake { point, counts } => {
-                if !stands(&points, &point.spot()) {
-                    return Err(wrong(format!("no point at {:?}", point.spot())));
-                }
+                same_kind(stands(&points, &point.spot()), point).map_err(wrong)?;
                 for c in counts {
                     good(c.good)?;
                     amount("a count of", c.count)?;
@@ -183,4 +193,15 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
         }
     }
     Ok(())
+}
+
+/// A point named by a happening is the one standing there, of the same kind.
+fn same_kind(standing: Option<Kind>, point: &Point) -> Result<(), String> {
+    match standing {
+        None => Err(format!("no point at {:?}", point.spot())),
+        Some(kind) if kind != point.kind() => {
+            Err(format!("a {:?} at {:?}, where a {kind:?} stands", point.kind, point.spot()))
+        }
+        Some(_) => Ok(()),
+    }
 }

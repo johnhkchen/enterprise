@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::points::{Kind, Spot};
 
-/// A trade point: what it is, and where, by the host's own coordinates (a dimension and a block). Two points are the
-/// same point if they stand in the same place.
+/// A trade point: what it is, and where, by the host's own coordinates (a dimension and a block). One point stands in a
+/// place: a happening naming a point names the one standing there, and is refused if it names another kind.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Point {
     pub kind: PointKind,

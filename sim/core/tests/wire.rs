@@ -277,6 +277,9 @@ fn a_look_naming_what_isnt_there_is_refused_whole() {
         (Input::RemovePoint { point: desk(1, 1) }, "no point at"),
         (Input::Stocktake { point: desk(1, 1), counts: vec![] }, "no point at"),
         (Input::Stocktake { point: desk(27, 27), counts: counts(&[(7, 1.0)]) }, "no good 7"),
+        (Input::RemovePoint { point: at(PointKind::Locker, 27, 27) }, "a Locker at"),
+        (Input::Stocktake { point: at(PointKind::Shop, 27, 27), counts: vec![] }, "where a Desk stands"),
+        (Input::Advance { to: u64::MAX }, "more than 36500 days"),
     ];
     for (input, why) in cases {
         // A good delivery first: refused with the rest, so nothing of the look is applied.
