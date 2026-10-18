@@ -581,7 +581,7 @@ fn hands() -> Scenario {
     s.apply("a Merchant takes the desk; a farmer, a librarian and a villager with no trade come to live at Ashford, and a \
         mason at Brent (the trades by the host's names, with or without its namespace)", vec![
         Input::AddHand { town: 0, trade: "enterprise:merchant".into(), level: 1, tag: "villager-m".into() },
-        Input::AddHand { town: 0, trade: "minecraft:farmer".into(), level: 3, tag: "villager-f".into() },
+        Input::AddHand { town: 0, trade: "minecraft:farmer".into(), level: 2, tag: "villager-f".into() },
         Input::AddHand { town: 0, trade: "librarian".into(), level: 1, tag: "villager-l".into() },
         Input::AddHand { town: 1, trade: "mason".into(), level: 3, tag: "villager-s".into() },
         Input::AddHand { town: 0, trade: "none".into(), level: 1, tag: String::new() },

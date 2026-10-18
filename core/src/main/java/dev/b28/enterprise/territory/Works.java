@@ -611,21 +611,6 @@ public final class Works extends SavedData {
     }
 
     /**
-     * Whether every one of {@code chunks} is loaded, so a work can be laid there now; those that aren't are asked to
-     * load (a ticket, as the bridges, buildings and walls here wait for), so the next try finds them.
-     */
-    public static boolean loadedFor(ServerLevel level, java.util.Collection<ChunkPos> chunks) {
-        boolean loaded = true;
-        for (ChunkPos chunk : chunks) {
-            if (!level.hasChunk(chunk.x, chunk.z)) {
-                level.getChunkSource().addRegionTicket(LAYING, chunk, 0, chunk);
-                loaded = false;
-            }
-        }
-        return loaded;
-    }
-
-    /**
      * The deck's columns {x, z, railing?}: from the edge facing {@code from}, through the hex's centre, to the edge
      * facing {@code to}, and a little past each edge; three wide with a railing either side.
      */

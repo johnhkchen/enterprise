@@ -564,14 +564,16 @@ again for the save's shape and the new random-worlds slice (`land`). In the mod:
 modes: a hex whose chunks `Terrain` surveyed again, and at a town's first sight in a run the hexes within 8 of it whose
 ground the core has otherwise, at most 64 a look; in core mode each loaded town surveyed every look, its crops counted
 every 20 looks through `Crops.countChunk`; `Build` laid with the mod's own placement, `Works.layDeck`, `raiseColumns`,
-`Buildings.site`/`build`, `Growth.farmSite`/`Fields.plant`, chunks asked to load first, then `Built` with the next look,
-or before a save), `Works`' placement halves made public (`layDeck`, `raiseColumns`, `loadedFor`), `/enterprise core
+`Buildings.site`/`build`, `Growth.farmSite`/`Fields.plant`, at the start of the next look once every look sent is
+shown, its chunks held loaded for four looks if they aren't, then `Built` with that look, or before a save), `Works`' placement halves made public (`layDeck`, `raiseColumns`), `/enterprise core
 land <desk>`; three game tests. Measured in the game-test server: a town's first look of a run 1.1 to 4.1 ms of the tick
 (64 hexes' ground read, 35 to 42 chunks of crops counted), a look after it 0.14 to 0.15 ms (fifty averaged, the crops
 counted at every twentieth), one hex's crops 0.4 ms. A look the core refuses or traps on has its `Built`s said again
 with the next (never laid twice). Left: the wooden pier (`Territory.buildDock`), pastures' fences and mine heads have no core rule or output;
 `dock` and `pastures` and the free/confined split aren't surveyed; settlers' founded towns get no desk; town names
-still drift from Java's `Names`; the Java `Territory` family stays (Java mode) until `delete-java-rules`.
+still drift from Java's `Names`; the Java `Territory` family stays (Java mode) until `delete-java-rules`. A field is paid
+for when the rules plant it, before the host looks for its site (`Fields.consider` finds the site first), so one with
+no room is paid for, on the farm and asked for at every survey; every town's crops are counted on the same look.
 
 ### 3.6 Wave B5: closing
 

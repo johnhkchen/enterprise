@@ -1,6 +1,7 @@
 package dev.b28.enterprise.binding.adapters;
 
 import dev.b28.enterprise.Enterprise;
+import dev.b28.enterprise.binding.CoreClock;
 import dev.b28.enterprise.binding.CoreHost;
 import dev.b28.enterprise.hex.Hex;
 import dev.b28.enterprise.merchant.Merchant;
@@ -24,6 +25,7 @@ import dev.b28.enterprise.wire.Response;
 import dev.b28.enterprise.wire.Work;
 import dev.b28.enterprise.wire.WorkView;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -33,6 +35,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.CompletableFuture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.Holder;
@@ -40,6 +43,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -48,7 +52,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.neoforged.neoforge.common.Tags;
 import net.neoforged.neoforge.event.level.ChunkEvent;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 /**
  * A town's land, from the core (docs/binding-plan.md 2, concern 7). The host surveys its world and lays what the core's
@@ -70,9 +73,11 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
  *       ({@code Build}): a bridge's deck ({@link Works#layDeck}), a wall's columns from what's shown to what's due a
  *       quarter at a time ({@link Works#raiseColumns}, round the bell), a hall at its site ({@link Buildings#site},
  *       {@link Buildings#build}), a field of its crop on zoned ground in the town's land ({@link Growth#farmSite},
- *       {@link Fields#plant}, its hex's crops counted at once). Laid, it's said ({@code Built}, with the next look);
- *       not yet laid (its chunks not loaded: they're asked to load; no site), it's asked for again at the next look.
- *       Nothing waits here.</li>
+ *       {@link Fields#plant}, its hex's crops counted at once), at the start of the next look, once every look sent is
+ *       shown (so asking the core while laying never shows a look inside another's outcomes, and a work laid and not yet
+ *       said is never laid again). Laid, it's said ({@code Built}, with that look); not yet laid (its chunks not loaded:
+ *       they're held loaded past the look after, so the look that asks again finds them; no site), it's asked for
+ *       again at that look's end.</li>
  * </ul>
  *
  * <p>The adapter keeps no land of its own: the hexes a town holds and its works are the core's ({@link #land}), the
@@ -86,6 +91,12 @@ public final class LandAdapter {
     public static final int GROUND_PER_LOOK = 64;
     /** Looks between counts of a town's crops: a game day at a look a minute. */
     public static final int CROPS_EVERY = 20;
+    /**
+     * Holds a work's chunks loaded while it waits for them: four looks, past the look that asks for it again (laid at the
+     * start of the one after). {@code Works}' own ticket lasts 200 ticks, for its 100-tick poll.
+     */
+    private static final TicketType<ChunkPos> LAYING =
+            TicketType.create("enterprise_land", Comparator.comparingLong(ChunkPos::toLong), (int) (4 * CoreClock.EVERY));
 
     private final CoreHost host;
     /** Whether the core's towns' land is the core's to survey and build (core mode, a test's host), or only the ground. */
@@ -108,6 +119,8 @@ public final class LandAdapter {
      * a work laid is never asked for, and laid, twice.
      */
     private final java.util.concurrent.ConcurrentLinkedQueue<Input> unsaid = new java.util.concurrent.ConcurrentLinkedQueue<>();
+    /** The builds the core asked for since the last look, by town and work (the largest share asked), laid at the next. */
+    private final Map<List<Object>, Output.Build> asked = new LinkedHashMap<>();
 
     public LandAdapter(CoreHost host, boolean ownsLand) {
         this.host = host;
@@ -172,6 +185,7 @@ public final class LandAdapter {
      * whose desk is loaded surveyed, its crops counted every {@value #CROPS_EVERY} looks.
      */
     public List<Input> happenings(MinecraftServer server, boolean survey) {
+        layAsked(server);
         List<Input> inputs = takePending();
         ServerLevel overworld = server.overworld();
         for (var desk : host.points().of(PointsAdapter.Kind.DESK).entrySet()) {
@@ -343,6 +357,7 @@ public final class LandAdapter {
      * @throws IllegalStateException when the core refuses it (a town it hasn't)
      */
     public void surveyNow(ServerLevel level, long town, BlockPos desk) {
+        layAsked(level.getServer()); // every look shown and what it asked for laid first: said with this survey
         BlockPos bell = PeopleAdapter.centre(level, desk);
         List<Input> inputs = takePending();
         List<Input> said = inputs.stream().filter(i -> i instanceof Input.Built).toList();
@@ -350,10 +365,28 @@ public final class LandAdapter {
         inputs.add(new Input.Survey(town, bell.getX(), bell.getZ()));
         sinceCounted.put(town, 1);
         Response r = host.apply(inputs);
-        if (r instanceof Response.Refused refused) {
+        if (!(r instanceof Response.Done)) {
             unsaid(said);
-            throw new IllegalStateException("the core wouldn't take town " + town + "'s survey: " + refused.why());
+            throw new IllegalStateException("the core wouldn't take town " + town + "'s survey: "
+                    + (r instanceof Response.Refused refused ? refused.why() : host.pausedWhy()));
         }
+        layAsked(level.getServer());
+    }
+
+    /**
+     * A look sent with {@code inputs}: the works it says were laid are said again with the next look if the core refuses
+     * it or traps on it, so a work laid is never asked for, and laid, twice.
+     */
+    public CompletableFuture<Response> watch(CompletableFuture<Response> look, List<Input> inputs) {
+        List<Input> said = inputs.stream().filter(i -> i instanceof Input.Built).toList();
+        if (said.isEmpty()) {
+            return look;
+        }
+        return look.whenComplete((r, e) -> {
+            if (e != null || r instanceof Response.Refused) {
+                unsaid(said);
+            }
+        });
     }
 
     /** What the host has laid and not yet said, sent now (a command, a test, a save). */
@@ -416,12 +449,45 @@ public final class LandAdapter {
     }
 
     /**
-     * One of the core's builds laid in the world, if its town's desk is loaded and the host owns the land (core mode):
-     * where it goes found here, its chunks loaded first (asked to load if they aren't, and laid at a later look).
+     * One of the core's builds, to lay at the start of the next look if the host owns the land (core mode). Shown among
+     * a look's outcomes, where asking the core would show a later look inside this one's: kept until then.
      */
     public void show(Output.Build build) {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-        if (server == null || !ownsLand) {
+        if (ownsLand) {
+            asked.merge(List.of(build.town(), build.work()), build, (a, b) -> b.share() >= a.share() ? b : a);
+        }
+    }
+
+    /**
+     * The builds the core asked for laid, once every look sent is shown: each but those laid and not yet said (asked for
+     * again by a look that went before the {@code Built}).
+     */
+    private void layAsked(MinecraftServer server) {
+        if (asked.isEmpty()) {
+            return;
+        }
+        host.settle();
+        List<Output.Build> builds = new ArrayList<>(asked.values());
+        asked.clear();
+        Map<List<Object>, Double> said = new HashMap<>();
+        for (Input i : pending()) {
+            if (i instanceof Input.Built b) {
+                said.merge(List.of(b.town(), b.work()), b.share(), Math::max);
+            }
+        }
+        for (Output.Build b : builds) {
+            if (said.getOrDefault(List.of(b.town(), b.work()), -1.0) < b.share()) {
+                layNow(server, b);
+            }
+        }
+    }
+
+    /**
+     * One of the core's builds laid in the world, if its town's desk is loaded: where it goes found here, its chunks
+     * loaded first (held loaded if they aren't, and laid when the core asks again).
+     */
+    private void layNow(MinecraftServer server, Output.Build build) {
+        if (server == null) {
             return;
         }
         for (var desk : host.points().of(PointsAdapter.Kind.DESK).entrySet()) {
@@ -465,7 +531,7 @@ public final class LandAdapter {
                 List<long[]> deck = Works.deck(hex, new Hex(b.from().q(), b.from().r()), new Hex(b.to().q(), b.to().r()));
                 Set<ChunkPos> chunks = new LinkedHashSet<>();
                 deck.forEach(c -> chunks.add(new ChunkPos(BlockPos.containing(c[0], 0, c[1]))));
-                if (!Works.loadedFor(level, chunks)) {
+                if (!loadedFor(level, chunks)) {
                     yield false;
                 }
                 Works.layDeck(level, hex, deck);
@@ -476,7 +542,7 @@ public final class LandAdapter {
                 int from = (int) Math.floor(land(town).shown(work) * ring.size());
                 int to = (int) Math.floor(Math.min(1, share) * ring.size());
                 List<BlockPos> stretch = ring.subList(Math.min(from, to), to);
-                if (!Works.loadedFor(level, stretch.stream().map(ChunkPos::new).distinct().toList())) {
+                if (!loadedFor(level, stretch.stream().map(ChunkPos::new).distinct().toList())) {
                     yield false;
                 }
                 Works.raiseColumns(level, stretch);
@@ -489,7 +555,7 @@ public final class LandAdapter {
                 }
                 BlockPos corner = site.get();
                 int n = Math.max(kind.get().size(), Docks.PIER * 2 + 1);
-                if (!Works.loadedFor(level, List.of(new ChunkPos(corner.offset(-n, 0, -n)), new ChunkPos(corner),
+                if (!loadedFor(level, List.of(new ChunkPos(corner.offset(-n, 0, -n)), new ChunkPos(corner),
                         new ChunkPos(corner.offset(n, 0, n))).stream().distinct().toList())) {
                     yield false;
                 }
@@ -520,6 +586,21 @@ public final class LandAdapter {
             Enterprise.LOGGER.debug("Town {}'s {} can't be laid yet", town, work);
         }
         return laid;
+    }
+
+    /**
+     * Whether every one of {@code chunks} is loaded, so a work can be laid there now; those that aren't are held loaded
+     * ({@link #LAYING}) so the look that asks again finds them.
+     */
+    private static boolean loadedFor(ServerLevel level, java.util.Collection<ChunkPos> chunks) {
+        boolean loaded = true;
+        for (ChunkPos chunk : chunks) {
+            if (!level.hasChunk(chunk.x, chunk.z)) {
+                level.getChunkSource().addRegionTicket(LAYING, chunk, 0, chunk);
+                loaded = false;
+            }
+        }
+        return loaded;
     }
 
     /** The town at a desk, for commands: its desk's place in the world, the desk's chunk loaded. */

@@ -26,7 +26,9 @@
 //!
 //! **Not as the mod:** the core keeps no wooden pier (`Territory.buildDock`) and no pastures' fences or mine heads
 //! (their rules are the core's, `herds.rs` and `kit.rs`, with nothing laid in the host's world); a hall's or a field's
-//! site isn't checked by the core, so a host that finds none leaves it asked for.
+//! site isn't checked by the core, so a host that finds none leaves it asked for. A field is paid for (and its plots
+//! are the farm's) when the rules plant it, before the host looks for its site, where `Fields.consider` finds the site
+//! first: a field the host finds no room for is paid for, yields on the farm and is asked for at every survey.
 
 use std::collections::{BTreeMap, BTreeSet};
 

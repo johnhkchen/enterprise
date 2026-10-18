@@ -255,22 +255,12 @@ public final class CoreHost implements AutoCloseable {
         inputs.addAll(people.happenings(server, Society.isCore()));
         // The ground in both modes; the towns surveyed (their crops, their bell) only in core mode, where their land is the core's.
         List<Input> landInputs = land.happenings(server, Society.isCore());
-        List<Input> said = landInputs.stream().filter(i -> i instanceof Input.Built).toList();
         inputs.addAll(landInputs);
         if (looks.isEmpty()) {
             inputs.addAll(money.withCash(stock.stocktakes(server)));
         }
         inputs.add(new Input.Advance(now));
-        CompletableFuture<Response> sent = worker.submit(Wire.request(new Command.Apply(inputs)));
-        if (!said.isEmpty()) {
-            // Works laid and said in a look the core didn't take are said again with the next, never laid twice.
-            sent = sent.whenComplete((r, e) -> {
-                if (e != null || r instanceof Response.Refused) {
-                    land.unsaid(said);
-                }
-            });
-        }
-        looks.add(sent);
+        looks.add(land.watch(worker.submit(Wire.request(new Command.Apply(inputs))), landInputs));
     }
 
     /**
