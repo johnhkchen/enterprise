@@ -155,12 +155,25 @@ const ITEMS: &[Item] = &[
     plain("saddle", 1.0 / 6.0, 1),
 ];
 
+/// What a full stack weighs where it isn't 1: `ModPack.WEIGHTS` in the mod, name for name (the mod has jungle and acacia
+/// logs and red sand too; the study deals in none of them). Mild: ore, raw metal, coal, bricks, ingots, logs and hay blocks 2 a stack,
+/// stone, cobblestone and sand 3, so a wagon (27 stacks of weight) of iron carries 13 stacks and a wagon of wool 27.
+pub const WEIGHTS: &[(&str, f64)] = &[
+    ("stone", 3.0), ("cobblestone", 3.0), ("sand", 3.0),
+    ("raw_iron", 2.0), ("raw_gold", 2.0), ("coal", 2.0), ("brick", 2.0), ("hay_block", 2.0),
+    ("iron_ingot", 2.0), ("gold_ingot", 2.0),
+    ("oak_log", 2.0), ("spruce_log", 2.0),
+];
+
 /// The study's content: its goods, the mod's dials.
 pub fn content() -> Content {
     let goods: Vec<Good> = ITEMS
         .iter()
         .map(|i| {
             let mut g = Good::new(i.name, 1.0 / i.per_emerald, i.stack);
+            if let Some((_, w)) = WEIGHTS.iter().find(|(n, _)| *n == i.name) {
+                g = g.weight(w / i.stack.max(1) as f64);
+            }
             if let Some(kind) = i.comfort {
                 let k = Content::COMFORTS.iter().position(|c| *c == kind).expect("one of the mod's kinds");
                 g = g.comfort(k);
@@ -178,4 +191,21 @@ pub fn content() -> Content {
         })
         .collect();
     Content::new(goods, DAY)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every weighted name is a good of the study, and a stack of it weighs what the table says (the core weighs a piece).
+    #[test]
+    fn weights_land_on_the_goods() {
+        let c = content();
+        for (name, w) in WEIGHTS {
+            let g = &c.goods[c.good(name).unwrap_or_else(|| panic!("{name} is not a study good"))];
+            assert!((g.weight * g.stack as f64 - w).abs() < 1e-9, "{name}");
+        }
+        let wool = &c.goods[c.good("white_wool").unwrap()];
+        assert!((wool.weight * wool.stack as f64 - 1.0).abs() < 1e-9);
+    }
 }

@@ -63,15 +63,19 @@ public final class ModPack {
 
     /**
      * What a full stack of an item weighs, where it isn't 1 (docs/pallets.md: a pallet holds 9 and a wagon 27). Ore,
-     * ingots and logs are a little heavy and stone and sand heavier, mildly at first: a wagon of iron ingots carries
+     * coal, bricks, ingots, logs and hay blocks are a little heavy (2) and stone and sand heavier (3), mildly at first: a wagon of iron ingots carries
      * thirteen stacks and one of wool twenty-seven. Tools and armour stack to one and weigh a stack of one each.
      */
     public static final Map<String, Double> WEIGHTS = Map.ofEntries(
             Map.entry("minecraft:cobblestone", 3.0),
+            Map.entry("minecraft:stone", 3.0),
             Map.entry("minecraft:sand", 3.0),
             Map.entry("minecraft:red_sand", 3.0),
             Map.entry("minecraft:raw_iron", 2.0),
             Map.entry("minecraft:raw_gold", 2.0),
+            Map.entry("minecraft:coal", 2.0),
+            Map.entry("minecraft:brick", 2.0),
+            Map.entry("minecraft:hay_block", 2.0),
             Map.entry("minecraft:iron_ingot", 2.0),
             Map.entry("minecraft:gold_ingot", 2.0),
             Map.entry("minecraft:oak_log", 2.0),

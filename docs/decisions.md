@@ -1127,6 +1127,15 @@ The cotton chain, chocolate, the cold chain and the exchange follow later.
 - **Goods have weight.** A pallet and each carrier have weight caps as well as slots (`docs/pallets.md`). The base
   content keeps 1 a stack, so nothing changes there; the Minecraft content makes ore, ingots, stone and blocks
   heavier, mildly at first, so a wagon of iron carries fewer stacks than a wagon of wool.
+- **The weights** (`content-weights`; `ModPack.WEIGHTS`, mirrored name for name in `sim/host/src/goods.rs`). What a
+  full stack weighs, in the unit where a plain stack is 1 (a pallet holds 9, a wagon 27): ore and raw metal, coal,
+  bricks, ingots, logs and hay blocks 2; stone, cobblestone and sand 3; everything else 1 (wool, crops, paper, food,
+  tools and armour, which stack to one and weigh one). Mild on purpose, 2 to 3 times: a wagon of iron ingots carries 13
+  stacks within its weight and one of wool 27, so heavy trade costs a wagon something without ending it. The weights are
+  data in the content pack the mod sends, not Java rules, and the base (toy) content keeps 1 a stack. Measured: the
+  network study (365 days, with `--river --services --metal --trades --freight`) and the 300-seed sweep come out the
+  same with and without them, since wagons there leave with about 2 stacks and never near a weight cap; the weights
+  bite only on a full wagon of heavy goods, which is the loads the handling-units work will make.
 - **Pallets in the core only.** The core implements pallets; the mod draws them from it through the binding (crate
   items tagged from the core's pallet messages, a chest asking the core whether a pallet fits), with no pallet rules
   in Java. The mod's old bills-on-crates stay as they are until the binding retires them. Weights are content-pack
