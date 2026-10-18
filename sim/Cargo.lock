@@ -359,6 +359,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "enterprise-wasm"
+version = "0.1.0"
+dependencies = [
+ "enterprise-core",
+ "postcard",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

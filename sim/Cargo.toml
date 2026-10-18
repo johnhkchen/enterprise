@@ -1,8 +1,17 @@
 # The Enterprise core and its fast host. The core is the society (towns, goods, money, wagons) with no game in it;
 # a host passes time and happenings in, and shows what comes out. See docs/architecture.md.
 [workspace]
-members = ["core", "host"]
+members = ["core", "host", "wasm"]
 resolver = "2"
 
 [profile.release]
 debug = false
+
+# The WebAssembly module (`just wasm`): a panic aborts (no unwinding tables), debug info stripped, optimised and linked
+# whole. Its own profile, so the native builds and the tests are as they were.
+[profile.wasm]
+inherits = "release"
+panic = "abort"
+strip = "symbols"
+lto = true
+codegen-units = 1

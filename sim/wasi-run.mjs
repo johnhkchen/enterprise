@@ -2,8 +2,12 @@
 // Cargo uses it as the target's runner, so a test built for WebAssembly runs as a native one does (see README.md):
 //   CARGO_TARGET_WASM32_WASIP1_RUNNER="node $PWD/wasi-run.mjs" cargo test --release -p enterprise-core \
 //       --target wasm32-wasip1 --test replay
+//
+// Reactor mode, for the core's module (`wasm/`, which has no `main`): `node wasi-run.mjs --reactor MODULE.wasm IN OUT`
+// reads IN, a run of requests each as a u32 little-endian length and its bytes, calls the module's `ent_call` on each
+// in turn (one instance, so one society) and writes OUT as the same framing of the responses. Exits 0.
 // The program sees the current directory (preopened as `.`) and the environment; its exit code is the runner's.
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { argv, env, exit, emitWarning } from 'node:process';
 
 // (Node calls WASI experimental and says so on every run: quiet that one warning.)
@@ -12,12 +16,41 @@ process.emitWarning = (warning, ...rest) =>
 // (Imported only now: node:wasi warns as it loads, and a static import would load it before the line above.)
 const { WASI } = await import('node:wasi');
 
-const [program, ...args] = argv.slice(2);
-if (!program) {
-    console.error('usage: node wasi-run.mjs PROGRAM.wasm [args...]');
+const reactor = argv[2] === '--reactor';
+const [program, ...args] = argv.slice(reactor ? 3 : 2);
+if (!program || (reactor && args.length !== 2)) {
+    console.error('usage: node wasi-run.mjs PROGRAM.wasm [args...]\n       node wasi-run.mjs --reactor MODULE.wasm IN OUT');
     exit(2);
 }
-const wasi = new WASI({ version: 'preview1', args: [program, ...args], env, returnOnExit: true, preopens: { '.': '.' } });
+const wasi = new WASI({ version: 'preview1', args: [program, ...(reactor ? [] : args)], env, returnOnExit: true, preopens: { '.': '.' } });
 const module = await WebAssembly.compile(await readFile(program));
 const instance = await WebAssembly.instantiate(module, wasi.getImportObject());
+
+if (reactor) {
+    wasi.initialize(instance);
+    const { memory, ent_abi, ent_alloc, ent_call, ent_free } = instance.exports;
+    if (ent_abi() !== 1) {
+        console.error(`the module's ABI is ${ent_abi()}, not 1`);
+        exit(1);
+    }
+    const input = await readFile(args[0]);
+    const frames = [];
+    for (let at = 0; at < input.length; ) {
+        const len = input.readUInt32LE(at);
+        at += 4;
+        const ptr = ent_alloc(len);
+        new Uint8Array(memory.buffer, ptr, len).set(input.subarray(at, at + len));
+        at += len;
+        const packed = ent_call(ptr, len); // a BigInt: pointer << 32 | length
+        const out = Number(packed >> 32n);
+        const outLen = Number(packed & 0xffffffffn);
+        frames.push(Buffer.from(new Uint8Array(memory.buffer, out, outLen))); // (copied before anything grows memory)
+        ent_free(ptr, len);
+        ent_free(out, outLen);
+    }
+    const sizes = Buffer.alloc(4 * frames.length);
+    frames.forEach((f, i) => sizes.writeUInt32LE(f.length, 4 * i));
+    await writeFile(args[1], Buffer.concat(frames.flatMap((f, i) => [sizes.subarray(4 * i, 4 * i + 4), f])));
+    exit(0);
+}
 exit(wasi.start(instance));

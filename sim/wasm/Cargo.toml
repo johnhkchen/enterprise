@@ -1,0 +1,15 @@
+[package]
+name = "enterprise-wasm"
+version = "0.1.0"
+edition = "2021"
+description = "The Enterprise core as a WebAssembly module: four exports over the wire, for a JVM (Chicory) to run"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+enterprise-core = { path = "../core" }
+
+[dev-dependencies]
+# Tests only: the requests as bytes (the same crate and features the core uses, already in Cargo.lock).
+postcard = { version = "1.1.3", default-features = false, features = ["alloc"] }
