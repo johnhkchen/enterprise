@@ -1194,3 +1194,17 @@ The cotton chain, chocolate, the cold chain and the exchange follow later.
   trips 143529 to 143114, completed contracts 18952 to 19039, broken 13060 to 13093. The mod keeps no pallets of its
   own: it will draw them from the core (`Society::pack_pallets`, `PalletPacked`/`PalletMoved`) once `pallet-views`
   gives the wire a `PackPallets` command and the goods' package kind and handling.
+- **Superbills and consolidations (superbills; divergence 5 of `docs/pallets.md`).** A wagon on each leg is a
+  container: its manifest has a line for each pallet loose aboard and one for each hub consolidation it carries. A
+  manifest of two lines or more is drawn as a document, a superbill (kind `"superbill"`): the wagon's at its home as it
+  leaves home (written once its stranded pallets are aboard too) and as it leaves the far end; calls at a hub on the way
+  change the manifest without a new document. A hub's booked pallets on one run for one next stop, two or more, are made
+  up as one consolidation the hub issues, its superbill drawn at the hub, loaded as one line, handed out whole at its
+  stop and dissolved there, its pallets received still sealed. Where this reads `docs/pallets.md` "two pallets or more"
+  as two lines or more: a consolidation is one line, so a wagon carrying only one consolidation draws no superbill of
+  its own (the hub's superbill is its manifest), as one pallet's bill of lading is its own. Drops are written for booked
+  pallets only, and the far end's `open` still finds what's made out to it by the registry (the same pallets the lines
+  give): drops by line for the rest are `itinerary-drops`'. In the 300 worlds: documents 85129 to 90343 (5834
+  superbills, 1263 consolidations), scribes' fees 7631.2 to 8102.3, trips 143891 to 143839, broken contracts 12943 to
+  12884. The 365-day study's books are unchanged (no wagon there carries two lines). The mod keeps no containers of its
+  own: it will see a wagon's manifest and a desk's pallets through the wire once `pallet-views` adds the query.

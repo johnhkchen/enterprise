@@ -11,8 +11,8 @@
 //! - **Decide**, as each wagon leaves: its crew and space kept for its freight's price; from a hub, the crates booked on
 //!   its run aboard first (two or more for one next stop as one consolidation, its superbill drawn at the hub:
 //!   `freight::load_run`); to a hub, the goods its town owes markets the hub serves crated with a bill on each buyer
-//!   ([`pick_forwarded`]); the stop on its way, if its path crosses a hub's land; and its manifest written, a superbill
-//!   drawn at home for two lines or more ([`depart`]).
+//!   ([`pick_forwarded`]); the stop on its way, if its path crosses a hub's land ([`depart`]); and, its stranded pallets
+//!   aboard too, its manifest written, a superbill drawn at home for two lines or more ([`write_out`]).
 //! - **Arrive**, before the arrivals are marked: a wagon reaching the hub on its way calls there ([`call_at_stop`]): the
 //!   landing fee, food for the road home where the far end may not feed it, its crates bound for markets the hub serves
 //!   handed over, its bills sold, the crates booked on its run loaded (consolidated as from a hub's own run), the block
@@ -61,6 +61,7 @@ pub fn register(schedule: &mut Schedule) {
             .before(super::atlas::want_books),
         plan_freight.in_set(Step::PlanFreight),
         depart.in_set(Step::Decide).after(super::cargo::ship).before(super::atlas::depart),
+        write_out.in_set(Step::Decide).after(super::stranded::load).before(super::atlas::depart),
         call_at_stop.in_set(Step::Arrive).before(super::arrive::mark),
         deliver_freight.in_set(Step::Mail),
         at_hub.in_set(Step::Freight),
@@ -349,8 +350,8 @@ pub fn plan_freight(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, t
 /// As each wagon leaves (`dispatch`): its crew with the team and its space kept for its freight's price (`lastCrew`,
 /// `lastCapacity`); from a hub, the crates booked on its run aboard first, as far as there's room (`loadBooked`; two or
 /// more for one next stop as a consolidation: [`load_run`]); to a hub, its town's goods for markets the hub serves crated
-/// and billed (`pickForwarded`); then the stop on its way; and its manifest written, a superbill drawn at home for two
-/// lines or more (`superbills`).
+/// and billed (`pickForwarded`); then the stop on its way. Its manifest is written once its stranded pallets are aboard
+/// too ([`write_out`]).
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn depart(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territory: Res<Territory>,
         mut book: ResMut<Book>, mut bills: ResMut<Bills>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
@@ -405,11 +406,22 @@ pub fn depart(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
             let path = net.run(route.seq).map_or(1, |r| r.path.len().max(2) - 1);
             set_stop(wagon, now, hub, i as f64 / path as f64);
         }
-        // Its manifest written as it leaves: two lines or more, a superbill drawn at home (`superbills`).
-        if let Ok((.., mut paperwork)) = towns.get_mut(towns_list.0[route.from_id]) {
+        wagon.freight.reckoned = Some(Leg::Out);
+    }
+}
+
+/// A wagon that left this look writes its manifest once everything has gone aboard (after `stranded::load`, whose
+/// stranded pallets are lines too): two lines or more, a superbill drawn at its home (`superbills`).
+pub fn write_out(clock: Res<Clock>, routes: Query<(&Route, &RouteState)>, mut papers: Query<&mut Paperwork>) {
+    let now = clock.now;
+    for (route, state) in &routes {
+        let Some(wagon) = state.wagon.as_ref() else { continue };
+        if state.last_departure != Some(now) || wagon.leg != Leg::Out || wagon.freight.reckoned != Some(Leg::Out) {
+            continue;
+        }
+        if let Ok(mut paperwork) = papers.get_mut(route.from) {
             crate::cargo::write_manifest(&mut paperwork, &wagon.manifest, now);
         }
-        wagon.freight.reckoned = Some(Leg::Out);
     }
 }
 

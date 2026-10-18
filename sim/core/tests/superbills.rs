@@ -152,6 +152,12 @@ fn a_hub_loading_three_pallets_for_one_next_stop_makes_one_consolidation_that_co
     assert_eq!(s.wagon_pallets(onward).0.len(), 3, "the wagon carries the three");
     assert_eq!(superbills(&s, hub), 1, "the hub drew the consolidation's superbill; the wagon's one line needs none");
     assert!(s.hub(hub).custody.is_empty() && s.hub(hub).book.carried == 3, "out of the forwarder's custody");
+    // Saved and loaded with the consolidation on the road: the wagon's line and the registry's container come back.
+    let blob = s.save();
+    let mut s = Society::load(&blob).expect("loads");
+    assert_eq!(s.wagon_manifest(onward).unwrap(), m, "the wagon's manifest, its consolidation line with it");
+    assert_eq!(s.pallets().containers.get(&line.container), Some(&c), "the consolidation, its issuer and day");
+    assert!(s.save() == blob, "the same blob again");
     let cloth = s.town(buyer).stock[CLOTH];
     s.advance(DAY);
     assert_eq!(s.town(buyer).stock[CLOTH] - cloth, 3.0 * 64.0, "handed out whole at the buyer and received");
@@ -161,7 +167,7 @@ fn a_hub_loading_three_pallets_for_one_next_stop_makes_one_consolidation_that_co
 }
 
 #[test]
-fn pallets_for_two_next_stops_or_one_alone_are_not_consolidated() {
+fn one_pallet_alone_booked_on_a_run_is_not_consolidated() {
     // One pallet booked on the run: a line of its own (the forwarder's parity test's case), no superbill.
     let mut s = network(true, 10.0);
     let (hub, buyer) = (1, 2);
@@ -237,4 +243,32 @@ fn a_consolidation_moves_its_pallets_in_and_out_whole_and_counts_aboard() {
     assert_eq!(p.at(At::Wagon(4)), &[loose, a, b], "its pallets on the wagon's floor, behind what was there");
     assert_eq!(p.get(a).unwrap().since, 9);
     assert!(p.dissolve(c, At::Wagon(4), 9).is_empty(), "gone: nothing more to dissolve");
+}
+
+#[test]
+fn a_runs_booked_pallets_are_consolidated_by_next_stop_two_or_more_to_a_stop() {
+    use enterprise_core::cargo::Paperwork;
+    use enterprise_core::freight::{load_run, Booking, Leg};
+    use enterprise_core::state::Wagon;
+    let (hub, route) = (1, 3);
+    let mut p = Pallets::default();
+    let bill = Lading::new(0, 2, 0);
+    let ids: Vec<u64> = (0..4).map(|_| p.pack(bill.clone(), vec![Package::new(CRATE, CLOTH, 64.0)], At::Custody(hub), 0)).collect();
+    // Two next stops: the far end (2) and home (0), as no hub's run gives today (`Hub::load_booked` is one leg's).
+    let out = Leg { route, home: 0, far: 2, outbound: true, at: hub };
+    let back = Leg { outbound: false, ..out };
+    let booking = |leg| Booking { leg, stacks: 1, ..Default::default() };
+    let load = vec![(ids[0], booking(out)), (ids[1], booking(back)), (ids[2], booking(out)), (ids[3], booking(out))];
+    let (mut wagon, mut paper) = (Wagon::default(), Paperwork::default());
+    let made = load_run(&mut p, &mut wagon, route, hub, &mut paper, load, 7);
+    assert_eq!(made.len(), 1, "one consolidation: the three for the far end");
+    let c = &p.containers[&made[0]];
+    assert_eq!(c.manifest.lines.iter().map(|l| l.pallet).collect::<Vec<_>>(), vec![ids[0], ids[2], ids[3]], "in load order");
+    assert!(c.manifest.lines.iter().all(|l| l.drop == Some(2)) && c.issuer == hub && c.issued == 7);
+    assert_eq!(wagon.manifest.containers, vec![enterprise_core::pallet::ContainerLine { container: made[0], drop: Some(2) }]);
+    assert_eq!(wagon.manifest.lines.len(), 1, "the one for home loose aboard, a line of its own");
+    assert_eq!((wagon.manifest.lines[0].pallet, wagon.manifest.lines[0].drop), (ids[1], Some(0)));
+    assert_eq!(p.at(At::Wagon(route)), &[ids[1]]);
+    assert!(ids.iter().all(|id| p.get(*id).unwrap().seal.is_some()), "each sealed leaving the hub");
+    assert_eq!((paper.documents, paper.by_kind.get(SUPERBILL).copied()), (1, Some(1)), "the consolidation's superbill at the hub");
 }

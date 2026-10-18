@@ -706,3 +706,27 @@ fn the_random_worlds_strand_paper_and_the_hubs_buy_it() {
         "{deals} deals, {bills} bills, {crates} crates, {credit} credit, {coined} coin ({borrowed} borrowed)");
 }
 
+
+/// A wagon's stranded pallets are lines of its manifest too (`superbills`): two stranded crates aboard, two lines, so the
+/// wagon draws a superbill at home as it leaves, its manifest written after `load` puts them aboard.
+#[test]
+fn a_wagon_leaving_with_two_stranded_crates_draws_a_superbill_at_home() {
+    let (town, capital) = (0, 2);
+    let mut s = town_to_hub(100.0);
+    let id = past_its_day(&mut s, capital, town);
+    let crates = [crate_at(&mut s, town, capital), crate_at(&mut s, town, capital)];
+    s.bill_pallets(id, &crates);
+    s.deliver(town, PAPER, 128.0);
+    let superbills = |s: &Society| s.paperwork(town).by_kind.get(enterprise_core::cargo::SUPERBILL).copied().unwrap_or(0);
+    assert_eq!(superbills(&s), 0);
+    for _ in 0..(DAY / LOOK) {
+        look(&mut s);
+        if s.route(0).on_the_road {
+            break;
+        }
+    }
+    assert!(s.route(0).on_the_road, "the wagon left");
+    let m = s.wagon_manifest(0).unwrap();
+    assert!(crates.iter().all(|c| m.line(*c).is_some()) && m.len() == 2, "both stranded crates aboard: {m:?}");
+    assert_eq!(superbills(&s), 1, "its manifest of two lines drawn as it left");
+}
