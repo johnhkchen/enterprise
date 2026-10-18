@@ -5,10 +5,10 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
-- **Main:** `f48f053`. 788 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
-  `just scenarios-wasm` passes; `just wire-check` passes (schema `e66ad7c365d84fd0`, 29 files); `just binding-test`
-  passes (122). Game tests: "All 267 required tests passed" in Java mode, and `just gametest-core`: 267 of 267 against
-  the baseline of 267. `just core-fingerprint`: `96b225213f5f291c` (unchanged).
+- **Main:** `0cc5292`. 803 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
+  `just wire-check` passes (schema `e66ad7c365d84fd0`, 29 files); `just binding-test` passes. Game tests: "All 267
+  required tests passed" in Java mode, and `just gametest-core`: 267 of 267 against the baseline of 267. `just
+  core-fingerprint`: `3ca9f1c2c91329ef` (moved by `packing`, not by `content-weights`, which touches no core rule).
 - **The content pack** (B4.1, `binding/ModPack`): the mod's goods, comfort kinds, trades, recipes (`PackRecipe`),
   herds (`PackAnimal`), each good's stack weight (`PackGood.weight`, which was `content-weights`) and dials
   (`PackDial`) cross as one `ContentPack`; `Content::from_pack` names everything wrong at once. The pack's dials are
@@ -17,8 +17,10 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
   dial and the core follows (and at start, for what the world had set). `Content::good` now matches a name with or
   without the host's namespace, so in core mode the core's bread, wheat and hay_block rules and the vanilla
   `default_offers` find the mod's goods (they found nothing before), and pallet caps bind on the pack's weights.
-  **For John to confirm:** the weights (`ModPack.WEIGHTS`: ore, ingots and logs 2 a stack, stone and sand 3, the rest
-  1); the mod's `birth_mood` 0.5 goes in the pack and the core's default stays 1.0. **Open:** 7 mod dials have no core
+  **For John to confirm:** the weights (`ModPack.WEIGHTS`, finished by `content-weights`: raw metal, coal, bricks,
+  ingots, logs and hay blocks 2 a stack, stone, cobblestone and sand 3, the rest 1; mirrored by hand in
+  `sim/host/src/goods.rs`, nothing checks the two match; stone and brick weigh nothing in the game yet, since the
+  mod's pack lists neither); the mod's `birth_mood` 0.5 goes in the pack and the core's default stays 1.0. **Open:** 7 mod dials have no core
   counterpart (`ModPack.JAVA_ONLY`: `dealer_take_profit`, `discount_days`, `correspondent_floor`, `wagon_pays`,
   `call_start`, `pastures_max`, `feed_days`), they come with the rules that read them; the pack's recipes, herds and
   trades are read from the Java rule tables (`Workshop.CONVERSIONS`, `Husbandry.KINDS`, `Squad.TRADES`) and `Dials`,
@@ -116,7 +118,7 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
   because it comes from outside). Decide it there, with `Moved` and write-back. Also: chests that lose more than the
   town holds drop the excess with no record (`withdraw`); `Query::Stock` answers as last touched, not caught up.
 - **Not planned yet:** `pallet-views` (the mod's crates and chests drawing pallets from the core's messages; the
-  weights it needs are in the pack now, `content-weights` having folded into `content-pack`; since `packing` it also
+  weights it needs are in the pack now (`content-pack`, finished by `content-weights`); since `packing` it also
   needs a `PackPallets` command for `Society::pack_pallets`, with set-aside and `crate_room` guards, and `Good.package`
   and `.handling` on the wire's `Good` so the mod can declare barrels, bundles and goods that need care). Named in
   `docs/decisions.md` (2026-10-18) but has no row below.
@@ -145,6 +147,7 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 | B3.1 | `gametest-triage` | sonnet / medium | — | `59b7b77` | `parity.py --binding` writes `docs/binding-tests.md`: 150 fixture, 66 rule API, 46 own; 2 rule-API tests with only a partial twin go to the core first. At landing: helpers followed across test files and a discarded entity counted (5 tests moved to fixture: BuildingTests' three and CountingHouseTests' clerks via `LabourTests.town`, `GrowthTests.childrenGrowUpWhileAway`); rule-API tests that pass the level to a rule marked *level* (27); the plan's section 2 counts updated |
 | B3.2 | `core-mode` | sonnet / medium | `proof-in-mod`, `gametest-triage` | `5532ae3` | `Society` (java\|core, per process: property, env, `config/enterprise.properties`; default java) gates the 11 rule tick listeners; `CoreClock` the only clock in core mode; `just gametest-core` (own folder, `GameTestReport`, `scripts/gametest_core.py`, baseline 264 of 264). At landing: `LockerCatchUp`'s join gated with its tick (it queued jobs nothing drained), the core-mode report cleared before a run and an empty or missing one fails (a stale 264 could pass), the Java run pins `society=java` (an exported env var switched it), `trees.py`'s `--java` gates run the core-mode suite. One flake at landing (`wagesClimbTowardEverythingTheHarvestSellsFor`, share 0.5; passed on the retry, no Java changed in the rebase). Left: core mode is frozen until the adapters land, `CensusTaker`'s counting half off with its rule half (for `people-adapter`), the mode not saved with the world, no JVM test of `Society.parse` |
 | B4.1 | `content-pack` | sonnet / high | `core-mode` | `f48f053` | `ContentPack` carries goods (with stack weights: `content-weights` folded in), comforts, trades, recipes, herds and dials, checked whole by `Content::from_pack`; the pack's dials are the world's start; `SetDial`/`Query::Dials`; `/enterprise dial` through the core in core mode, mirrored to it in Java mode; `Content::good` matches with or without a namespace; 3 game tests (267 both modes), schema `e66ad7c365d84fd0`. At landing: a dial documented with its group shows the group's words (79 of 219 had none in core mode); the command reads an adapter record, not the wire's `DialView`; `mirror` checks the core's dial names instead of its English error, and warns when Java takes a value the core refuses; start-up sync sends dials in name order. Left: weights and `birth_mood` for John, 7 Java-only dials, Java tables still the pack's source until `delete-java-rules`, two dial stores across a mode switch, no Java class deleted |
+| B4.1a | `content-weights` | sonnet / medium | `content-pack`, `pallet-caps` | `0cc5292` | The pack's weights finished as data, no Java rule: stone 3, coal, brick and hay_block 2 joined `ModPack.WEIGHTS`; the same table in `sim/host/src/goods.rs` (plus a test); a decisions.md entry with the numbers and why. Measured: the 365-day study (default and `--river --services --metal --trades --freight`) and the 300-seed sweep identical with and without (wagons leave with about 2 stacks, far under the 27 cap), ms a day unchanged. At landing: stone and brick said to wait for content the mod's pack lists (neither is priced or in a recipe, so both weights are lookups only in the game), hay's 2 given its reason, the tables called hand-kept, comments wrapped. Left: John to confirm the numbers, no check that the mod's and the host's tables match, the weights bite only once handling units fill wagons |
 | B4.2 | `points-and-hands` | opus / high | `content-pack` | | |
 | B4.3 | `stock-adapter` | opus / xhigh | `points-and-hands` | | |
 | B4.4 | `money-adapter` | sonnet / high | `stock-adapter` | | |
