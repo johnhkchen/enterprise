@@ -1,0 +1,26 @@
+[
+  {
+    "tag": "6f1c2a3e-0000-4000-8000-00000000002a",
+    "trade": "enterprise:merchant",
+    "level": 2,
+    "baby": false
+  },
+  {
+    "tag": "6f1c2a3e-0000-4000-8000-00000000002c",
+    "trade": "minecraft:none",
+    "level": 1,
+    "baby": true
+  },
+  {
+    "tag": "",
+    "trade": "",
+    "level": 0,
+    "baby": false
+  },
+  {
+    "tag": "🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾",
+    "trade": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "level": 255,
+    "baby": true
+  }
+]

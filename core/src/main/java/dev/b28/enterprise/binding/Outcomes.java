@@ -1,6 +1,7 @@
 package dev.b28.enterprise.binding;
 
 import dev.b28.enterprise.Enterprise;
+import dev.b28.enterprise.binding.adapters.PeopleAdapter;
 import dev.b28.enterprise.wire.Output;
 
 /**
@@ -8,14 +9,18 @@ import dev.b28.enterprise.wire.Output;
  * variant, each to the adapter that shows it in the world. A variant the core adds doesn't compile here until it's
  * routed, so no outcome is dropped unseen.
  *
- * <p>The proof (B2.1) has one adapter, {@code adapters/StockAdapter} (no output of its own yet: {@code Moved} comes with
- * {@code stock-adapter}), and the core's outputs today are the wagons', the master
- * Merchant's and the pallets': no input the proof sends makes one, so each is routed to {@link #unshown} until its
- * adapter lands (the wagons' and pallets' with {@code wagon-adapter} and {@code pallet-views}, the orders' with
- * {@code shop-adapter}).
+ * <p>The people's outputs (a child born, a hand settled, departed or gone, a hand's level) go to {@code
+ * adapters/PeopleAdapter}. The wagons', the master Merchant's and the pallets' are routed to {@link #unshown} until their
+ * adapters land (the wagons' and pallets' with {@code wagon-adapter} and {@code pallet-views}, the orders' with {@code
+ * shop-adapter}).
  */
 final class Outcomes {
+    private final PeopleAdapter people;
     private long unshown;
+
+    Outcomes(PeopleAdapter people) {
+        this.people = people;
+    }
 
     void show(Output output) {
         switch (output) {
@@ -27,6 +32,11 @@ final class Outcomes {
             case Output.PalletPacked o -> unshown(o);
             case Output.PalletMoved o -> unshown(o);
             case Output.PalletOpened o -> unshown(o);
+            case Output.Born o -> people.show(o);
+            case Output.Settled o -> people.show(o);
+            case Output.Departed o -> people.show(o);
+            case Output.HandGone o -> people.show(o);
+            case Output.HandLevel o -> people.show(o);
         }
     }
 

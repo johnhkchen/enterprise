@@ -213,6 +213,12 @@ fn inputs() -> Vec<Input> {
         Input::AddHand { town: 1, trade: "farmer".into(), level: 0, tag: "Br\u{f6}ly \u{1f33e}".repeat(20) },
         Input::HandLost { hand: 1 },
         Input::HandLost { hand: u32::MAX },
+        Input::Census { town: 0, beds: 0, residents: vec![] },
+        Input::Census { town: 1, beds: 4, residents: residents() },
+        Input::Census { town: BIGGEST_ID, beds: u32::MAX, residents: (0..60).map(|i| Resident { tag: format!("v{i}"),
+            trade: "farmer".into(), level: (i % 6) as u8, baby: i % 7 == 0 }).collect() },
+        Input::TagHand { hand: 7, tag: "6f1c2a3e-0000-4000-8000-00000000002b".into() },
+        Input::TagHand { hand: u32::MAX, tag: String::new() },
     ];
     all.extend(counts().into_iter().map(|counts| Input::Stocktake { point: point(PointKind::Desk, 27, -60, 27), counts }));
     all
@@ -238,6 +244,23 @@ fn outputs() -> Vec<Output> {
         Output::PalletMoved { id: u64::MAX, to: Place::Container { container: u64::MAX } },
         Output::PalletOpened { id: 7, at: Place::Town { town: 1 } },
         Output::PalletOpened { id: 0, at: Place::Custody { town: BIGGEST_ID } },
+        Output::Born { town: 0, hand: 7 },
+        Output::Born { town: BIGGEST_ID, hand: u32::MAX },
+        Output::Settled { town: 2, hand: 12 },
+        Output::Departed { town: 1, hand: 12, tag: "6f1c2a3e-0000-4000-8000-00000000002a".into() },
+        Output::Departed { town: BIGGEST_ID, hand: u32::MAX, tag: String::new() },
+        Output::HandGone { hand: 3, tag: "Br\u{f6}ly \u{1f33e}".repeat(20) },
+        Output::HandLevel { hand: 1, tag: "6f1c2a3e-0000-4000-8000-00000000002a".into(), trade: "merchant".into(), level: 3, xp: 1395 },
+        Output::HandLevel { hand: u32::MAX, tag: String::new(), trade: "x".repeat(300), level: u8::MAX, xp: u32::MAX },
+    ]
+}
+
+fn residents() -> Vec<Resident> {
+    vec![
+        Resident { tag: "6f1c2a3e-0000-4000-8000-00000000002a".into(), trade: "enterprise:merchant".into(), level: 2, baby: false },
+        Resident { tag: "6f1c2a3e-0000-4000-8000-00000000002c".into(), trade: "minecraft:none".into(), level: 1, baby: true },
+        Resident { tag: String::new(), trade: String::new(), level: 0, baby: false },
+        Resident { tag: "\u{1f33e}".repeat(40), trade: "x".repeat(300), level: u8::MAX, baby: true },
     ]
 }
 
@@ -359,6 +382,7 @@ fixtures! {
     pack_dial_fixtures: PackDial = pack_dials();
     dial_view_fixtures: DialView = dial_views();
     hand_view_fixtures: HandView = hand_views();
+    resident_fixtures: Resident = residents();
     good_flag_fixtures: GoodFlag = vec![GoodFlag::Crop, GoodFlag::Meat];
     save_file_fixtures: SaveFile = saves();
     fixed_fixtures: Fixed = fixeds();
@@ -386,6 +410,8 @@ fn input_place(i: &Input) -> usize {
         Input::SetDial { .. } => 14,
         Input::AddHand { .. } => 15,
         Input::HandLost { .. } => 16,
+        Input::Census { .. } => 17,
+        Input::TagHand { .. } => 18,
     }
 }
 
@@ -399,6 +425,11 @@ fn output_place(o: &Output) -> usize {
         Output::PalletPacked { .. } => 5,
         Output::PalletMoved { .. } => 6,
         Output::PalletOpened { .. } => 7,
+        Output::Born { .. } => 8,
+        Output::Settled { .. } => 9,
+        Output::Departed { .. } => 10,
+        Output::HandGone { .. } => 11,
+        Output::HandLevel { .. } => 12,
     }
 }
 
@@ -465,8 +496,8 @@ fn covers<T>(what: &str, samples: &[T], variants: usize, place: fn(&T) -> usize)
 
 #[test]
 fn every_variant_of_every_wire_enum_has_a_sample() {
-    covers("Input", &inputs(), 17, input_place);
-    covers("Output", &outputs(), 8, output_place);
+    covers("Input", &inputs(), 19, input_place);
+    covers("Output", &outputs(), 13, output_place);
     covers("Query", &queries(), 5, query_place);
     covers("Answer", &answers(), 5, answer_place);
     covers("Command", &commands(), 5, command_place);

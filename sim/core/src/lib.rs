@@ -62,6 +62,7 @@ pub mod training;
 pub mod workshop;
 pub mod points;
 pub mod hands;
+pub mod census;
 pub mod wire;
 
 pub use content::{Content, Dials, Good, GoodId};

@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{GoodNo, PackageLine, Place, RouteNo, TownNo};
+use super::{GoodNo, HandNo, PackageLine, Place, RouteNo, TownNo};
 use crate::fixed::Fixed;
 
 /// What happened, for the host to show.
@@ -21,4 +21,18 @@ pub enum Output {
     PalletMoved { id: u64, to: Place },
     /// A pallet was opened at `at` (by its consignee, or taken apart by its holder): its crates are empty, and it is gone.
     PalletOpened { id: u64, at: Place },
+    /// A child was born at a town (`people.rs`): a hand with no villager yet. The host spawns one for it by the town's
+    /// bell and names it (`TagHand`).
+    Born { town: TownNo, hand: HandNo },
+    /// A hand came to live at a town from elsewhere (a party of settlers arriving, or one come home): a hand with no
+    /// villager there yet. The host spawns one for it and names it (`TagHand`).
+    Settled { town: TownNo, hand: HandNo },
+    /// A hand left its town with a party of settlers: its villager (the host's `tag`) leaves the world, and the hand is
+    /// off it until it settles (`Settled`, under a new villager). The core forgets the tag.
+    Departed { town: TownNo, hand: HandNo, tag: String },
+    /// A hand is no more (the rules took it from the world: a soldier fallen), or a census saw the villager of one that
+    /// is: its villager (`tag`) leaves the world.
+    HandGone { hand: HandNo, tag: String },
+    /// The core changed a hand's trade, level or XP (a trade taken up, a locker's trade): written to its villager.
+    HandLevel { hand: HandNo, tag: String, trade: String, level: u8, xp: u32 },
 }

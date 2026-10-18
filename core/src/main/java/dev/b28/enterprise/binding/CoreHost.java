@@ -2,6 +2,7 @@ package dev.b28.enterprise.binding;
 
 import dev.b28.enterprise.Enterprise;
 import dev.b28.enterprise.binding.adapters.HandsAdapter;
+import dev.b28.enterprise.binding.adapters.PeopleAdapter;
 import dev.b28.enterprise.binding.adapters.PointsAdapter;
 import dev.b28.enterprise.binding.adapters.StockAdapter;
 import dev.b28.enterprise.core.CoreModule;
@@ -37,8 +38,8 @@ import net.neoforged.neoforge.event.server.ServerStoppedEvent;
  * ({@link CoreWorker}), saved with the world. The host makes the society from the mod's content pack at a new world
  * ({@link ModPack}, seeded with the world's seed) or loads the world's {@value SaveStore#FILE}, saves it when the world
  * saves, and drops it when the server stops. Its adapters ({@link PointsAdapter}, {@link HandsAdapter}, {@link
- * StockAdapter}) turn Minecraft's happenings into the core's inputs and its outputs into things in the world; {@link
- * CoreClock} hands them a look at a time. The host keeps no society ids: which block is which town's and which villager
+ * PeopleAdapter}, {@link StockAdapter}) turn Minecraft's happenings into the core's inputs and its outputs into things
+ * in the world; {@link CoreClock} hands them a look at a time. The host keeps no society ids: which block is which town's and which villager
  * is which hand are the core's, read back by the adapters when it starts.
  *
  * <p><b>The save is a file of its own, not a {@code SavedData}.</b> {@value SaveStore#FILE} sits in the world's folder
@@ -65,6 +66,7 @@ public final class CoreHost implements AutoCloseable {
     private final SaveStore store;
     private final PointsAdapter points;
     private final HandsAdapter hands;
+    private final PeopleAdapter people;
     private final StockAdapter stock;
     private final Outcomes outcomes;
     private final List<CompletableFuture<Response>> looks = new ArrayList<>();
@@ -76,8 +78,9 @@ public final class CoreHost implements AutoCloseable {
         this.store = new SaveStore(dir, this::callNow);
         this.points = new PointsAdapter(this);
         this.hands = new HandsAdapter(this);
+        this.people = new PeopleAdapter(this);
         this.stock = new StockAdapter(this);
-        this.outcomes = new Outcomes();
+        this.outcomes = new Outcomes(people);
         try {
             switch (store.open()) {
                 case SaveStore.Opened.Fresh fresh -> {
@@ -179,6 +182,11 @@ public final class CoreHost implements AutoCloseable {
         return hands;
     }
 
+    /** The people adapter: each town's census into the core, its villagers the core's hands' views. */
+    public PeopleAdapter people() {
+        return people;
+    }
+
     /** The stock adapter: the desks the core keeps, their chests counted at each look. */
     public StockAdapter stock() {
         return stock;
@@ -199,7 +207,9 @@ public final class CoreHost implements AutoCloseable {
             return;
         }
         looked = now;
-        List<Input> inputs = new ArrayList<>(stock.happenings(server));
+        // A census only in core mode: in Java mode the Java rules' census keeps the people (CensusTaker).
+        List<Input> inputs = new ArrayList<>(people.happenings(server, Society.isCore()));
+        inputs.addAll(stock.happenings(server));
         inputs.add(new Input.Advance(now));
         looks.add(worker.submit(Wire.request(new Command.Apply(inputs))));
     }
@@ -235,6 +245,7 @@ public final class CoreHost implements AutoCloseable {
             failed("a look", e.getCause());
             return;
         }
+        hands.stale(); // a census, a birth or a death in the look: which villager is which hand is asked again
         switch (r) {
             case Response.Done done -> done.outputs().forEach(outcomes::show);
             case Response.Refused refused -> Enterprise.LOGGER.warn("The core refused a look: {}", refused.why());

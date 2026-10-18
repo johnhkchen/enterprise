@@ -51,4 +51,5 @@ slices! {
     random_worlds_sweep,
     trade_points,
     hands,
+    census,
 }

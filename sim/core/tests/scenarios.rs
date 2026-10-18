@@ -21,8 +21,9 @@
 //!
 //! A refusal matches by its kind and numbers; its `why` is prose and isn't compared ([`without_prose`]).
 //!
-//! No scenario shows an [`Output`] yet: every one needs a master Merchant or a route, and the wire has no input that
-//! makes either. Their bytes are pinned by the golden files meanwhile (`tests/wire_fixtures.rs`).
+//! `people` shows the first [`Output`], a child born (`Born`); the others need a master Merchant, a route or a party of
+//! settlers, and the wire has no input that makes any of them. Their bytes are pinned by the golden files meanwhile
+//! (`tests/wire_fixtures.rs`).
 //!
 //! The scripts are written here, in Rust, so each step is built from the wire's own types and its answer comes from the
 //! core; `just wire-fixtures` writes the files (`WIRE_SCENARIOS=write`) and the diff is what changed in the
@@ -528,6 +529,73 @@ fn hands() -> Scenario {
     s.scenario
 }
 
+fn resident(tag: &str, trade: &str, level: u8, baby: bool) -> Resident {
+    Resident { tag: tag.into(), trade: trade.into(), level, baby }
+}
+
+/// A town's census as its roster's source: the villagers seen join as hands, a child is born in the core and named by
+/// the host, a villager unseen for ten days has left; the refusals of a census's happenings.
+fn people() -> Scenario {
+    let mut s = Script::new("people", "A town's census is its roster's source: the villagers the host saw living there \
+        join as hands under their tags (one of a trade the core hasn't isn't counted), its beds are the world's, and a \
+        child born in the core comes out as Born, a hand with no villager that the host spawns and names (TagHand). A \
+        villager no census has seen for ten days has left.");
+    s.create("a society from a pack of four goods");
+    s.apply("a town at its desk, with bread, where children come easily (the dials)", vec![
+        Input::AddTown { name: "Ashford".into(), desk: at(PointKind::Desk, 27, 27) },
+        Input::Deliver { town: 0, good: BREAD, count: 64.0 },
+        Input::SetDial { name: "birth_mood".into(), value: Some(-100.0) },
+        Input::SetDial { name: "birth_cost".into(), value: Some(0.0) },
+    ]);
+    s.apply("its first census: four beds, its Merchant, a farmer, a child, and a baker the core has no trade for", vec![
+        Input::Census { town: 0, beds: 4, residents: vec![
+            resident("villager-m", "enterprise:merchant", 1, false),
+            resident("villager-f", "minecraft:farmer", 2, false),
+            resident("villager-c", "minecraft:none", 1, true),
+            resident("villager-b", "minecraft:baker", 1, false),
+        ] },
+    ]);
+    s.ask("its hands, by the host's tags", hands_of(0));
+    let out = s.apply("five days on: a child born, with no villager yet", vec![Input::Advance { to: 5 * DAY }]);
+    let born: Vec<u32> = out.iter().filter_map(|o| match o {
+        Output::Born { hand, .. } => Some(*hand),
+        _ => None,
+    }).collect();
+    assert_eq!(born.len(), 1, "{out:?}");
+    s.ask("the child is a hand with no tag", hands_of(0));
+    s.apply("the host spawns a villager for it and names it; its next census sees it as that hand", vec![
+        Input::TagHand { hand: born[0], tag: "villager-n".into() },
+        Input::Census { town: 0, beds: 4, residents: vec![
+            resident("villager-m", "enterprise:merchant", 1, false),
+            resident("villager-f", "minecraft:farmer", 2, false),
+            resident("villager-c", "minecraft:none", 1, true),
+            resident("villager-n", "minecraft:none", 1, true),
+        ] },
+    ]);
+    s.ask("four hands, the child named", hands_of(0));
+    s.apply("eleven days on, a census that doesn't see the farmer: it has left", vec![
+        Input::Advance { to: 16 * DAY + 1 },
+        Input::Census { town: 0, beds: 4, residents: vec![
+            resident("villager-m", "enterprise:merchant", 1, false),
+            resident("villager-c", "minecraft:none", 1, false),
+            resident("villager-n", "minecraft:none", 1, true),
+        ] },
+    ]);
+    s.ask("three hands", hands_of(0));
+    let r = s.say("a census of a town that isn't there", Command::Apply { inputs: vec![
+        Input::Census { town: 4, beds: 1, residents: vec![] },
+    ] });
+    assert!(matches!(s.refused("census", r), Refusal::Input { at: 0, .. }));
+    let r = s.say("a hand named with no tag", Command::Apply { inputs: vec![Input::TagHand { hand: born[0], tag: String::new() }] });
+    assert!(matches!(s.refused("tag", r), Refusal::Input { at: 0, .. }));
+    s.apply("a hand that isn't there named, and a name another hand has: ignored, not refused", vec![
+        Input::TagHand { hand: 99, tag: "villager-z".into() },
+        Input::TagHand { hand: born[0], tag: "villager-m".into() },
+    ]);
+    s.ask("the hands as they were", hands_of(0));
+    s.scenario
+}
+
 /// Every way the core refuses, each leaving the society as it was.
 fn refusals() -> Scenario {
     let mut s = Script::new("refusals", "Every refusal, each a message and nothing applied.");
@@ -635,7 +703,7 @@ fn refusals() -> Scenario {
 }
 
 fn scenarios() -> Vec<Scenario> {
-    vec![stocktake(), inputs(), content(), refusals(), hands()]
+    vec![stocktake(), inputs(), content(), refusals(), hands(), people()]
 }
 
 fn text(scenario: &Scenario) -> String {
@@ -662,7 +730,7 @@ fn the_scenarios_play_as_their_files_say() {
         return;
     }
     let mut wrong = Vec::new();
-    for name in ["stocktake", "inputs", "content", "refusals", "hands"] {
+    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people"] {
         let scenario = read(name);
         assert!(!scenario.steps.is_empty(), "{name}: no steps");
         wrong.extend(play(&scenario));
@@ -720,11 +788,12 @@ fn every_message_appears_in_a_scenario() {
         }
     }
     let set = |names: &[&str]| names.iter().map(|s| s.to_string()).collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost"]));
+    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost", "Census", "TagHand"]));
     assert_eq!(commands, set(&["Apply", "Ask", "Create", "Load", "Save"]));
     assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands"]));
     assert_eq!(refusals, set(&["Abi", "Input", "NoSociety", "Pack", "Query", "Save", "SaveFormat", "Schema", "Unreadable"]));
-    // None yet: an Output needs a master Merchant (OrderFilled, Signal), a route (the wagon's three) or a pallet (the
-    // pallets' three: only a wagon packs one), and no wire input makes any. When one does, a scenario shows each and its name goes here.
-    assert_eq!(outputs, set(&[]));
+    // Only a child born: the others need a master Merchant (OrderFilled, Signal), a route (the wagon's three), a pallet
+    // (the pallets' three: only a wagon packs one) or a party of settlers or the rules taking a hand (Settled, Departed,
+    // HandGone, HandLevel), and no wire input makes any. When one does, a scenario shows each and its name goes here.
+    assert_eq!(outputs, set(&["Born"]));
 }

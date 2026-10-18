@@ -207,6 +207,19 @@ Input:
       HandLost:
         STRUCT:
           - hand: U32
+    17:
+      Census:
+        STRUCT:
+          - town: U32
+          - beds: U32
+          - residents:
+              SEQ:
+                TYPENAME: Resident
+    18:
+      TagHand:
+        STRUCT:
+          - hand: U32
+          - tag: STR
 Output:
   ENUM:
     0:
@@ -263,6 +276,35 @@ Output:
           - id: U64
           - at:
               TYPENAME: Place
+    8:
+      Born:
+        STRUCT:
+          - town: U32
+          - hand: U32
+    9:
+      Settled:
+        STRUCT:
+          - town: U32
+          - hand: U32
+    10:
+      Departed:
+        STRUCT:
+          - town: U32
+          - hand: U32
+          - tag: STR
+    11:
+      HandGone:
+        STRUCT:
+          - hand: U32
+          - tag: STR
+    12:
+      HandLevel:
+        STRUCT:
+          - hand: U32
+          - tag: STR
+          - trade: STR
+          - level: U8
+          - xp: U32
 PackAmount:
   STRUCT:
     - good: STR
@@ -412,6 +454,12 @@ Request:
     - schema: U64
     - command:
         TYPENAME: Command
+Resident:
+  STRUCT:
+    - tag: STR
+    - trade: STR
+    - level: U8
+    - baby: BOOL
 Response:
   ENUM:
     0:

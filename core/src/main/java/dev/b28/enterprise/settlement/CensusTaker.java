@@ -202,16 +202,30 @@ public final class CensusTaker {
     }
 
     private static Job start(ServerLevel level, BlockPos bell, int radius) {
-        PoiManager pois = level.getPoiManager();
-        pois.ensureLoadedAndValid(level, bell, radius);
-        int beds = (int) pois.getInRange(type -> type.is(PoiTypes.HOME), bell, radius, PoiManager.Occupancy.ANY).count();
-        int workstations = (int) pois.getInRange(
+        int beds = beds(level, bell, radius);
+        int workstations = (int) level.getPoiManager().getInRange(
                 type -> type.is(PoiTypeTags.ACQUIRABLE_JOB_SITE), bell, radius, PoiManager.Occupancy.ANY).count();
         List<UUID> villagers = new ArrayList<>();
-        level.getEntitiesOfClass(Villager.class, new AABB(bell).inflate(radius),
-                        villager -> villager.blockPosition().closerThan(bell, radius))
-                .forEach(villager -> villagers.add(villager.getUUID()));
+        villagersAround(level, bell, radius).forEach(villager -> villagers.add(villager.getUUID()));
         return new Job(level, bell, radius, villagers, beds, workstations);
+    }
+
+    /** The beds within {@code radius} of {@code centre} (vanilla's homes: a bed's head). The census's count of them. */
+    public static int beds(ServerLevel level, BlockPos centre, int radius) {
+        PoiManager pois = level.getPoiManager();
+        pois.ensureLoadedAndValid(level, centre, radius);
+        return (int) pois.getInRange(type -> type.is(PoiTypes.HOME), centre, radius, PoiManager.Occupancy.ANY).count();
+    }
+
+    /** The villagers loaded within {@code radius} of {@code centre}: who a census looks at. */
+    public static List<Villager> villagersAround(ServerLevel level, BlockPos centre, int radius) {
+        return level.getEntitiesOfClass(Villager.class, new AABB(centre).inflate(radius),
+                villager -> villager.blockPosition().closerThan(centre, radius));
+    }
+
+    /** The bell nearest {@code at} within a settlement's reach ({@link #RADIUS}), if any: the settlement it's in. */
+    public static Optional<BlockPos> nearestBell(ServerLevel level, BlockPos at) {
+        return level.getPoiManager().findClosest(type -> type.is(PoiTypes.MEETING), at, RADIUS, PoiManager.Occupancy.ANY);
     }
 
     private static void work(MinecraftServer server, Job job, int budget) {

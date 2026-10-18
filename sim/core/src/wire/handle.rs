@@ -232,6 +232,13 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
                     return Err(wrong(format!("hand {hand} lost twice")));
                 }
             }
+            // A count of the world: lenient (`census.rs`), but of a town that's there.
+            Input::Census { town: t, .. } => town(*t)?,
+            Input::TagHand { tag, .. } => {
+                if tag.is_empty() {
+                    return Err(wrong("a hand named with no tag".into()));
+                }
+            }
             // A pallet that isn't there, or isn't in a warehouse, is a stale view: ignored, not refused.
             Input::PackageLost { .. } => {}
             Input::Stocktake { point, counts } => {

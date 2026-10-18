@@ -359,6 +359,62 @@
               }
             }
           }
+        },
+        {
+          "Born": {
+            "town": 0,
+            "hand": 7
+          }
+        },
+        {
+          "Born": {
+            "town": 4294967295,
+            "hand": 4294967295
+          }
+        },
+        {
+          "Settled": {
+            "town": 2,
+            "hand": 12
+          }
+        },
+        {
+          "Departed": {
+            "town": 1,
+            "hand": 12,
+            "tag": "6f1c2a3e-0000-4000-8000-00000000002a"
+          }
+        },
+        {
+          "Departed": {
+            "town": 4294967295,
+            "hand": 4294967295,
+            "tag": ""
+          }
+        },
+        {
+          "HandGone": {
+            "hand": 3,
+            "tag": "Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾"
+          }
+        },
+        {
+          "HandLevel": {
+            "hand": 1,
+            "tag": "6f1c2a3e-0000-4000-8000-00000000002a",
+            "trade": "merchant",
+            "level": 3,
+            "xp": 1395
+          }
+        },
+        {
+          "HandLevel": {
+            "hand": 4294967295,
+            "tag": "",
+            "trade": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "level": 255,
+            "xp": 4294967295
+          }
         }
       ],
       "answers": []
@@ -5689,6 +5745,62 @@
                 "town": 4294967295
               }
             }
+          }
+        },
+        {
+          "Born": {
+            "town": 0,
+            "hand": 7
+          }
+        },
+        {
+          "Born": {
+            "town": 4294967295,
+            "hand": 4294967295
+          }
+        },
+        {
+          "Settled": {
+            "town": 2,
+            "hand": 12
+          }
+        },
+        {
+          "Departed": {
+            "town": 1,
+            "hand": 12,
+            "tag": "6f1c2a3e-0000-4000-8000-00000000002a"
+          }
+        },
+        {
+          "Departed": {
+            "town": 4294967295,
+            "hand": 4294967295,
+            "tag": ""
+          }
+        },
+        {
+          "HandGone": {
+            "hand": 3,
+            "tag": "Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾"
+          }
+        },
+        {
+          "HandLevel": {
+            "hand": 1,
+            "tag": "6f1c2a3e-0000-4000-8000-00000000002a",
+            "trade": "merchant",
+            "level": 3,
+            "xp": 1395
+          }
+        },
+        {
+          "HandLevel": {
+            "hand": 4294967295,
+            "tag": "",
+            "trade": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "level": 255,
+            "xp": 4294967295
           }
         }
       ],

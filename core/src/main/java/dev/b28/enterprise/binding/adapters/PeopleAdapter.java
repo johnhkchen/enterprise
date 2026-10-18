@@ -1,0 +1,294 @@
+package dev.b28.enterprise.binding.adapters;
+
+import dev.b28.enterprise.Enterprise;
+import dev.b28.enterprise.binding.CoreHost;
+import dev.b28.enterprise.merchant.Merchant;
+import dev.b28.enterprise.settlement.CensusTaker;
+import dev.b28.enterprise.territory.Growth;
+import dev.b28.enterprise.wire.Input;
+import dev.b28.enterprise.wire.Output;
+import dev.b28.enterprise.wire.Resident;
+import dev.b28.enterprise.wire.Response;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.entity.npc.VillagerProfession;
+import net.minecraft.world.entity.npc.VillagerType;
+import net.minecraft.world.level.ChunkPos;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
+
+/**
+ * A town's people, from the core (docs/binding-plan.md 2, concern 5): the census is the town's roster's source, and its
+ * villagers are views of the core's hands. Each look in core mode, every town whose desk and settlement are loaded is
+ * counted around its bell (the nearest within {@value CensusTaker#RADIUS} blocks of the desk, or the desk itself if it
+ * has none): its beds and the villagers living there, each by its UUID with its profession, level and age, sent as a
+ * {@code Census}; the core's rules decide who joins, who's seen and who has left ({@code census.rs}). No path checks:
+ * the core has no free and confined villagers.
+ *
+ * <p>The core's outcomes are written to the world: a child born ({@code Born}) or a hand come to live at a town
+ * ({@code Settled}) is a hand with no villager, and one is spawned for it by the bell and named ({@code TagHand}, sent
+ * with the next look); a hand gone with settlers ({@code Departed}) or from the world ({@code HandGone}) takes its
+ * villager away; a hand's trade, level or XP changed ({@code HandLevel}) is written to its villager. A hand with no
+ * villager whose town is loaded is spawned at the next census too (a birth while the town was unloaded). The adapter
+ * keeps no ids: which villager is which hand is the core's ({@link HandsAdapter}); it only remembers, until the next
+ * look carries their names, the villagers it has just spawned.
+ *
+ * <p>In Java mode the census is the Java rules' ({@code CensusTaker}) and this adapter sends none: the core's towns then
+ * keep only the hands joined by hand (the Merchant on its screen), and no child is born in them.
+ */
+public final class PeopleAdapter {
+    private final CoreHost host;
+    /** Villagers spawned for hands, by hand, whose names the next look carries: never spawned twice meanwhile. */
+    private final Map<Long, UUID> naming = new LinkedHashMap<>();
+    /** The professions by the core's names for them (a registry path: {@code farmer}, {@code merchant}). */
+    private Map<String, VillagerProfession> professions;
+
+    public PeopleAdapter(CoreHost host) {
+        this.host = host;
+    }
+
+    /**
+     * A look's happenings: (in core mode) a census of every town that can be counted whole (its desk a desk, its
+     * settlement's chunks and their villagers loaded: a look never loads a chunk to count, and a census of half a town
+     * would have the other half leave in ten days), a villager spawned for each of its hands with none (not in this
+     * census: counted at the next), and before them the names of the villagers spawned since the last look.
+     */
+    public List<Input> happenings(MinecraftServer server, boolean census) {
+        List<Input> counts = new ArrayList<>();
+        if (census) {
+            for (var desk : host.points().of(PointsAdapter.Kind.DESK).entrySet()) {
+                ServerLevel level = server.getLevel(desk.getKey().dimension());
+                if (level == null || !level.isLoaded(desk.getKey().pos())
+                        || !level.getBlockState(desk.getKey().pos()).is(Merchant.DESK.get())) {
+                    continue;
+                }
+                BlockPos centre = centre(level, desk.getKey().pos());
+                if (entitiesLoaded(level, centre, CensusTaker.RADIUS)) {
+                    counts.add(census(level, desk.getValue(), centre, CensusTaker.RADIUS));
+                    views(level, desk.getValue(), centre);
+                }
+            }
+        }
+        List<Input> inputs = new ArrayList<>(names());
+        inputs.addAll(counts);
+        return inputs;
+    }
+
+    /** The names of the villagers spawned since the last look, for the core: each hand's villager from now on. */
+    private List<Input> names() {
+        List<Input> inputs = new ArrayList<>(naming.size());
+        naming.forEach((hand, villager) -> inputs.add(new Input.TagHand(hand, villager.toString())));
+        naming.clear();
+        return inputs;
+    }
+
+    /** A town's census: the beds and villagers within {@code radius} of {@code centre}. */
+    public Input census(ServerLevel level, long town, BlockPos centre, int radius) {
+        List<Resident> residents = new ArrayList<>();
+        for (Villager v : CensusTaker.villagersAround(level, centre, radius)) {
+            var data = v.getVillagerData();
+            residents.add(new Resident(v.getUUID().toString(),
+                    BuiltInRegistries.VILLAGER_PROFESSION.getKey(data.getProfession()).toString(),
+                    Math.clamp(data.getLevel(), 1, 5), v.isBaby()));
+        }
+        return new Input.Census(town, CensusTaker.beds(level, centre, radius), residents);
+    }
+
+    /**
+     * A town's census taken now (a command, a test): sent to the core at once, its outcomes shown, and a villager
+     * spawned by {@code centre} for each of its hands with none, named with the next look (or {@link #nameNow}).
+     *
+     * @throws IllegalStateException when the core refuses it (a town it hasn't)
+     */
+    public void countNow(ServerLevel level, long town, BlockPos centre, int radius) {
+        Response r = host.apply(List.of(census(level, town, centre, radius)));
+        if (r instanceof Response.Refused refused) {
+            throw new IllegalStateException("the core wouldn't take town " + town + "'s census: " + refused.why());
+        }
+        host.hands().reload();
+        views(level, town, centre);
+    }
+
+    /** The names of the villagers just spawned, sent now rather than with the next look (a command, a test). */
+    public void nameNow() {
+        List<Input> inputs = names();
+        if (!inputs.isEmpty()) {
+            host.apply(inputs);
+            host.hands().reload();
+        }
+    }
+
+    /** Where a town's people are counted and its children are born: the bell nearest its desk, or the desk. */
+    public static BlockPos centre(ServerLevel level, BlockPos desk) {
+        return CensusTaker.nearestBell(level, desk).orElse(desk);
+    }
+
+    /** Every hand of the town at home with no villager gets one, spawned by {@code centre} (unless being named). */
+    private void views(ServerLevel level, long town, BlockPos centre) {
+        if (!level.isLoaded(centre)) {
+            return;
+        }
+        for (HandsAdapter.Hand h : host.hands().roster(town).hands()) {
+            if (h.villager() == null && !h.away() && !naming.containsKey(h.id())) {
+                Villager v = spawn(level, centre, h);
+                if (v != null) {
+                    naming.put(h.id(), v.getUUID());
+                }
+            }
+        }
+    }
+
+    /** A villager for a hand: a child by the bell as the mod bears one, or an adult of its trade, level and XP. */
+    private Villager spawn(ServerLevel level, BlockPos centre, HandsAdapter.Hand h) {
+        if (h.baby()) {
+            return Growth.bear(level, centre);
+        }
+        VillagerProfession profession = profession(h.trade());
+        if (profession == null) {
+            Enterprise.LOGGER.warn("The core's hand {} is a {}, which no profession here is", h.id(), h.trade());
+            return null;
+        }
+        BlockPos at = beside(level, centre);
+        Villager v = EntityType.VILLAGER.create(level);
+        if (v == null) {
+            return null;
+        }
+        v.moveTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, level.random.nextFloat() * 360, 0);
+        v.finalizeSpawn(level, level.getCurrentDifficultyAt(at), MobSpawnType.MOB_SUMMONED, null);
+        v.setVillagerData(v.getVillagerData().setType(VillagerType.byBiome(level.getBiome(at))).setProfession(profession)
+                .setLevel(Math.clamp(h.level(), 1, 5)));
+        v.setVillagerXp((int) Math.min(Integer.MAX_VALUE, h.xp()));
+        level.addFreshEntity(v);
+        return v;
+    }
+
+    /** Open ground beside {@code centre} (two blocks of air over something solid), or on top of it. */
+    private static BlockPos beside(ServerLevel level, BlockPos centre) {
+        for (Direction side : Direction.Plane.HORIZONTAL) {
+            BlockPos spot = centre.relative(side);
+            if (level.getBlockState(spot).isAir() && level.getBlockState(spot.above()).isAir()
+                    && level.getBlockState(spot.below()).isFaceSturdy(level, spot.below(), Direction.UP)) {
+                return spot;
+            }
+        }
+        return centre.above();
+    }
+
+    /** The profession the core calls {@code trade} (a registry path), the vanilla one first. */
+    private VillagerProfession profession(String trade) {
+        if (professions == null) {
+            Map<String, VillagerProfession> byName = new HashMap<>();
+            for (var entry : BuiltInRegistries.VILLAGER_PROFESSION.entrySet()) {
+                ResourceLocation id = entry.getKey().location();
+                if (id.getNamespace().equals("minecraft") || !byName.containsKey(id.getPath())) {
+                    byName.put(id.getPath(), entry.getValue());
+                }
+            }
+            professions = Map.copyOf(byName);
+        }
+        return professions.get(trade.contains(":") ? trade.substring(trade.indexOf(':') + 1) : trade);
+    }
+
+    /**
+     * Shows one of the core's outcomes for its people in the world. A town or villager not loaded is left: a hand with
+     * no villager is spawned at its town's next census, and a villager that should be gone is taken when a census sees
+     * it ({@code HandGone} again).
+     */
+    public void show(Output output) {
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) {
+            return;
+        }
+        switch (output) {
+            case Output.Born o -> arrive(server, o.town());
+            case Output.Settled o -> arrive(server, o.town());
+            case Output.Departed o -> remove(server, o.tag());
+            case Output.HandGone o -> remove(server, o.tag());
+            case Output.HandLevel o -> write(server, o);
+            default -> {}
+        }
+    }
+
+    /** A hand came to the town: a villager for it (and any other with none) by its bell, if the town is loaded. */
+    private void arrive(MinecraftServer server, long town) {
+        host.hands().reload();
+        for (var desk : host.points().of(PointsAdapter.Kind.DESK).entrySet()) {
+            if (desk.getValue() == town) {
+                ServerLevel level = server.getLevel(desk.getKey().dimension());
+                if (level != null && level.isLoaded(desk.getKey().pos())) {
+                    views(level, town, centre(level, desk.getKey().pos()));
+                }
+                return;
+            }
+        }
+    }
+
+    /** A hand's villager leaves the world, if it's loaded (no death: the core has the hand as it should be). */
+    private void remove(MinecraftServer server, String tag) {
+        Entity e = find(server, tag);
+        if (e instanceof Villager v) {
+            v.discard();
+        }
+        host.hands().reload();
+    }
+
+    /** The core's word on a hand's trade, level and XP, written to its villager if it's loaded. */
+    private void write(MinecraftServer server, Output.HandLevel o) {
+        if (!(find(server, o.tag()) instanceof Villager v)) {
+            return;
+        }
+        VillagerProfession profession = profession(o.trade());
+        var data = v.getVillagerData();
+        if (profession != null && profession != data.getProfession()) {
+            data = data.setProfession(profession);
+        }
+        v.setVillagerData(data.setLevel(Math.clamp(o.level(), 1, 5)));
+        v.setVillagerXp((int) Math.min(Integer.MAX_VALUE, o.xp()));
+    }
+
+    private static Entity find(MinecraftServer server, String tag) {
+        UUID id;
+        try {
+            id = tag.isEmpty() ? null : UUID.fromString(tag);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+        if (id == null) {
+            return null;
+        }
+        for (ServerLevel level : server.getAllLevels()) {
+            Entity e = level.getEntity(id);
+            if (e != null) {
+                return e;
+            }
+        }
+        return null;
+    }
+
+    /** The entities of every chunk within {@code radius} of {@code centre} are loaded: a census there sees them all. */
+    public static boolean entitiesLoaded(ServerLevel level, BlockPos centre, int radius) {
+        int x0 = (centre.getX() - radius) >> 4, x1 = (centre.getX() + radius) >> 4;
+        int z0 = (centre.getZ() - radius) >> 4, z1 = (centre.getZ() + radius) >> 4;
+        for (int x = x0; x <= x1; x++) {
+            for (int z = z0; z <= z1; z++) {
+                if (!level.areEntitiesLoaded(ChunkPos.asLong(x, z))) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+}

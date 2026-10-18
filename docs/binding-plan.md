@@ -116,7 +116,7 @@ And **stable hand ids** in the roster (`HandId`, never an index: `settlers::take
 | `Advance { to }` | the clock adapter, at each look's tick |
 | `AddTown`, `AddPoint`, `RemovePoint` | a Merchant's desk, lockers, vendors, bankers, depots placed or broken |
 | `Stocktake { point, counts }`, `Deliver`, `Withdraw` | a desk's chests read when loaded: what players, hoppers and Create put in or took out since the last sync |
-| `Census { town, beds, hands }`, `HandLost`, `HandTrade` | the census (bells, beds, POIs), a villager's death, a profession taken |
+| `Census { town, beds, residents }`, `AddHand`, `HandLost`, `TagHand` | the census (bells, beds, villagers; a profession taken travels in it, so no `HandTrade`), a villager joining on touch, a villager's death, a villager spawned for a hand |
 | `Switch { point, offer, on }` | the Merchant's screen (`ToggleTradePayload`) |
 | `Ground { hex, water, relief }`, `Bridge`, `Built` | chunk scans (`Terrain`), blocks placed by works |
 | `Order`, `Stall`, `OwnShop`, `Buy`, `Pay` | Numismatics vendors and players buying (exist today) |
@@ -126,7 +126,7 @@ And **stable hand ids** in the roster (`HandId`, never an index: `settlers::take
 |---|---|
 | `Moved { point, good, count }` | items put in or taken from a point's chests (a wagon's sale, a locker's trade); queued while unloaded |
 | `WagonLeft`, `WagonHome`, `WagonSold` (exist) | stow the squad's villagers, release them, show the caravan |
-| `Born`, `Settled`, `HandLevel` | spawn a baby, a party arriving, a villager's level and XP written to its entity |
+| `Born`, `Settled`, `Departed`, `HandGone`, `HandLevel` | spawn a baby, a party arriving, a party leaving and a hand gone (the villager taken away), a villager's trade, level and XP written to its entity |
 | `Trades { point, offers }` | the offers a locker's villager runs, for the screen |
 | `Build { kind, hex }` | works the town builds (walls, halls, bridges, fields) |
 | `Coins { point, spurs }` | coins minted into a desk's stock or its Blaze Banker |
@@ -466,6 +466,25 @@ stock adapter's desks are its), `adapters/HandsAdapter` (villager to hand by UUI
 town with a point; `join`, `lose`, a villager's death heard at LOWEST), `Merchant.lockersAt` (core mode: the Merchant's
 screen shows the core's count of the lockers it manages, the Merchant joined as its town's hand on that touch),
 `/enterprise core points` and `/enterprise core hands <desk>`.
+
+**Built (B4.5 `people-adapter`).** In the core (`census.rs`, `Sightings` in `saved!`): the host's census is a town's
+roster's source. `Input::Census { town, beds, residents: Vec<Resident { tag, trade, level, baby }> }` sets the town's
+beds and reconciles its roster by tag, leniently (a count of the world never refuses a look): a villager the core
+doesn't know joins (a child as a child), one it knows at home is seen (a profession taken in the world becomes its
+trade, never `none` and never the desk's Merchant's; a level earned there its level, never less), one whose hand is
+away, another town's or with settlers is left alone, one whose hand is gone comes back as `HandGone`; a tagged hand at
+home that no census has seen for `FORGET_AFTER_DAYS` (10, `CensusTaker.FORGET_AFTER_TICKS`) has left. What the rules do
+to hands in an `Advance` through the wire comes out for the host's villagers (`Society::hand_outputs`, a diff of every
+hand by id around the `Advance`): `Born { town, hand }` and `Settled { town, hand }` (a hand with no villager: the host
+spawns one and names it with `Input::TagHand { hand, tag }`), `Departed { town, hand, tag }` (gone with settlers: the
+core forgets the tag and keeps it as retired, so the old villager seen again is `HandGone`), `HandGone { hand, tag }`,
+`HandLevel { hand, tag, trade, level, xp }`. `AddHand` stays beside `Census`: one villager joining on touch (the
+Merchant's screen), where the census is the periodic whole. In the mod: `adapters/PeopleAdapter` (in core mode, each
+look counts every town whose desk and settlement are loaded, round the bell nearest its desk, radius 48, no path
+checks, sends the `Census` and spawns a villager by the bell for each hand with none; shows the five outputs; the
+villagers it spawned are named with the next look), `CensusTaker.beds`/`villagersAround`/`nearestBell` (its counting
+half, shared), `HandsAdapter`'s lookup read again after each look, `/enterprise core census <desk>`. Schema
+`e0b54576b14c0176`, FORMAT 1 (the save grew: dev worlds' `enterprise_core.dat` are rebuilt).
 
 ### 3.6 Wave B5: closing
 

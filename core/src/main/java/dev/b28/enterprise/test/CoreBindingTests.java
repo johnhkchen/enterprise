@@ -6,13 +6,17 @@ import dev.b28.enterprise.binding.ModPack;
 import dev.b28.enterprise.binding.Society;
 import dev.b28.enterprise.binding.adapters.DialAdapter;
 import dev.b28.enterprise.binding.adapters.HandsAdapter;
+import dev.b28.enterprise.binding.adapters.PeopleAdapter;
 import dev.b28.enterprise.binding.adapters.PointsAdapter;
 import dev.b28.enterprise.core.SaveStore;
 import dev.b28.enterprise.wire.Answer;
 import dev.b28.enterprise.wire.ContentPack;
 import dev.b28.enterprise.wire.GoodFlag;
+import dev.b28.enterprise.wire.Input;
+import dev.b28.enterprise.wire.Output;
 import dev.b28.enterprise.wire.PackGood;
 import dev.b28.enterprise.wire.Query;
+import dev.b28.enterprise.wire.Response;
 import dev.b28.enterprise.merchant.Merchant;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -31,7 +35,11 @@ import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.properties.BedPart;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -348,6 +356,193 @@ public final class CoreBindingTests {
             librarian.discard();
         }
         helper.succeed();
+    }
+
+    // A settlement's bell at the arena's middle, so a census 4 blocks round it stays inside the arena; its desk beside.
+    private static final BlockPos BELL = new BlockPos(3, 2, 3);
+    private static final BlockPos TOWN_DESK = new BlockPos(3, 2, 5);
+    private static final int CENSUS_RADIUS = 4;
+    private static final long DAY = 24_000;
+
+    /** A bell, a desk beside it with a chest of 64 bread, and {@code beds} beds round the bell (at most 4). */
+    private static BlockPos settlement(GameTestHelper helper, int beds) {
+        helper.setBlock(BELL, Blocks.BELL);
+        helper.setBlock(TOWN_DESK, Merchant.DESK.get());
+        helper.setBlock(TOWN_DESK.east(), Blocks.CHEST);
+        ChestBlockEntity chest = (ChestBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(TOWN_DESK.east()));
+        chest.setItem(0, new ItemStack(Items.BREAD, 64));
+        List<BlockPos> feet = List.of(new BlockPos(0, 2, 0), new BlockPos(0, 2, 1), new BlockPos(4, 2, 1), new BlockPos(4, 2, 0));
+        var state = Blocks.RED_BED.defaultBlockState().setValue(BedBlock.FACING, Direction.EAST);
+        for (BlockPos foot : feet.subList(0, beds)) {
+            helper.setBlock(foot, state.setValue(BedBlock.PART, BedPart.FOOT));
+            helper.setBlock(foot.east(), state.setValue(BedBlock.PART, BedPart.HEAD));
+        }
+        return helper.absolutePos(TOWN_DESK);
+    }
+
+    /** The core brought to {@code tick} (as a look's {@code Advance}, without a look's own happenings). */
+    private static Response advance(CoreHost host, long tick) {
+        return host.apply(List.of(new Input.Advance(tick)));
+    }
+
+    /**
+     * A town's census is its roster (B4.5): the Merchant, a Farmer and a child seen round the bell join the core's town
+     * as hands under their UUIDs (the child as a child), and seen again join nothing; the Farmer wanders off (its
+     * villager gone from the world, no death) and is still a hand five days on, but no census has seen it for eleven and
+     * it has left. The core decides all of it (`census.rs`); the mod only counts.
+     */
+    @GameTest(template = "floor")
+    public static void aTownsCensusIsItsRosterAndAVillagerUnseenForTenDaysHasLeft(GameTestHelper helper) {
+        var level = helper.getLevel();
+        BlockPos desk = settlement(helper, 3);
+        BlockPos bell = helper.absolutePos(BELL);
+        Villager merchant = villager(helper, Merchant.PROFESSION.get(), 2, new BlockPos(2, 2, 4));
+        Villager farmer = villager(helper, VillagerProfession.FARMER, 3, new BlockPos(4, 2, 4));
+        Villager child = helper.spawn(EntityType.VILLAGER, new BlockPos(2, 2, 2));
+        child.setAge(-24000);
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, desk, "Testford");
+            helper.assertTrue(PeopleAdapter.centre(level, desk).equals(bell), "the town's people aren't counted at its bell");
+            PeopleAdapter people = host.people();
+            HandsAdapter hands = host.hands();
+            people.countNow(level, town, bell, CENSUS_RADIUS);
+            var roster = hands.roster(town).hands();
+            helper.assertTrue(roster.size() == 3, "the census made " + roster.size() + " hands of three villagers: " + roster);
+            for (Villager v : List.of(merchant, farmer, child)) {
+                helper.assertTrue(hands.of(v.getUUID()) != null && hands.of(v.getUUID()).town() == town,
+                        v.getUUID() + " isn't its town's hand");
+            }
+            var byVillager = roster.stream().collect(java.util.stream.Collectors.toMap(HandsAdapter.Hand::villager, h -> h));
+            helper.assertTrue(byVillager.get(merchant.getUUID()).merchant() && byVillager.get(merchant.getUUID()).level() == 2,
+                    "the Merchant is " + byVillager.get(merchant.getUUID()));
+            helper.assertTrue(byVillager.get(farmer.getUUID()).trade().equals("farmer") && byVillager.get(farmer.getUUID()).level() == 3,
+                    "the Farmer is " + byVillager.get(farmer.getUUID()));
+            helper.assertTrue(byVillager.get(child.getUUID()).baby(), "the child is " + byVillager.get(child.getUUID()));
+            people.countNow(level, town, bell, CENSUS_RADIUS);
+            helper.assertTrue(hands.roster(town).hands().size() == 3, "seen again, a villager joined twice");
+            measureACensus(host, level, town, bell);
+
+            farmer.discard();
+            long t = level.getGameTime();
+            advance(host, t + 5 * DAY);
+            people.countNow(level, town, bell, CENSUS_RADIUS);
+            helper.assertTrue(hands.of(farmer.getUUID()) != null, "five days unseen and the Farmer has left");
+            advance(host, t + 11 * DAY);
+            people.countNow(level, town, bell, CENSUS_RADIUS);
+            helper.assertTrue(hands.of(farmer.getUUID()) == null && hands.roster(town).hands().size() == 2,
+                    "eleven days unseen and the Farmer is still a hand: " + hands.roster(town).hands());
+        } finally {
+            delete(dir);
+            merchant.discard();
+            farmer.discard();
+            child.discard();
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A child is born in the core and the binding spawns it (B4.5): a town of two with four beds and bread, where the
+     * dials make children come easily, has a child within five days; the core's {@code Born} is a hand with no villager,
+     * and the people adapter spawns a baby by the bell for it and names it, so the core's hand is that baby's and the
+     * next census sees it as that hand, not a newcomer.
+     */
+    @GameTest(template = "floor")
+    public static void aChildBornInTheCoreIsSpawnedByItsTownsBellAndNamed(GameTestHelper helper) {
+        var level = helper.getLevel();
+        BlockPos desk = settlement(helper, 4);
+        BlockPos bell = helper.absolutePos(BELL);
+        Villager merchant = villager(helper, Merchant.PROFESSION.get(), 1, new BlockPos(2, 2, 4));
+        Villager farmer = villager(helper, VillagerProfession.FARMER, 1, new BlockPos(4, 2, 4));
+        AABB near = new AABB(bell).inflate(CENSUS_RADIUS - 1);
+        List<Villager> babies = List.of();
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, desk, "Testford");
+            Response dials = host.apply(List.of(new Input.SetDial("birth_mood", java.util.Optional.of(-100.0)),
+                    new Input.SetDial("birth_cost", java.util.Optional.of(0.0))));
+            helper.assertTrue(dials instanceof Response.Done, "the dials weren't set: " + dials);
+            host.people().countNow(level, town, bell, CENSUS_RADIUS);
+            helper.assertTrue(host.hands().roster(town).hands().size() == 2, "two villagers aren't two hands");
+            helper.assertTrue(level.getEntitiesOfClass(Villager.class, near, Villager::isBaby).isEmpty(), "a child before any was born");
+
+            Response r = advance(host, level.getGameTime() + 5 * DAY);
+            helper.assertTrue(r instanceof Response.Done done && done.outputs().stream().filter(o -> o instanceof Output.Born).count() == 1,
+                    "no child born in five days: " + r);
+            babies = level.getEntitiesOfClass(Villager.class, near, Villager::isBaby);
+            helper.assertTrue(babies.size() == 1, babies.size() + " babies by the bell, not one");
+            host.people().nameNow();
+            var hands = host.hands();
+            HandsAdapter.Where baby = hands.of(babies.get(0).getUUID());
+            helper.assertTrue(baby != null && baby.town() == town, "the baby isn't the core's child: " + hands.roster(town).hands());
+            helper.assertTrue(hands.roster(town).hands().stream().filter(HandsAdapter.Hand::baby).count() == 1
+                    && hands.roster(town).hands().stream().allMatch(h -> h.villager() != null), "the hands are " + hands.roster(town));
+            host.people().countNow(level, town, bell, CENSUS_RADIUS);
+            helper.assertTrue(hands.roster(town).hands().size() == 3, "the baby counted again is a newcomer: " + hands.roster(town));
+            helper.assertTrue(level.getEntitiesOfClass(Villager.class, near, Villager::isBaby).size() == 1, "a second baby spawned");
+        } finally {
+            delete(dir);
+            merchant.discard();
+            farmer.discard();
+            babies.forEach(Villager::discard);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The core's word on a hand is written to its villager (B4.5): a trade taken up and a level earned in the core
+     * ({@code HandLevel}) become the villager's profession, level and XP; a hand the core took from the world ({@code
+     * HandGone}) takes its villager away, with no death for the core to hear.
+     */
+    @GameTest(template = "floor")
+    public static void theCoresWordOnAHandIsWrittenToItsVillager(GameTestHelper helper) {
+        var level = helper.getLevel();
+        helper.setBlock(DESK, Merchant.DESK.get());
+        Villager farmer = villager(helper, VillagerProfession.FARMER, 1, DESK.west());
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, helper.absolutePos(DESK), "Testford");
+            long hand = host.hands().join(town, farmer);
+            String tag = farmer.getUUID().toString();
+            host.people().show(new Output.HandLevel(hand, tag, "librarian", 3, 160));
+            var data = farmer.getVillagerData();
+            helper.assertTrue(data.getProfession() == VillagerProfession.LIBRARIAN && data.getLevel() == 3
+                    && farmer.getVillagerXp() == 160, "the villager is " + data + " with " + farmer.getVillagerXp() + " XP");
+            host.people().show(new Output.HandGone(hand, tag));
+            helper.assertTrue(farmer.isRemoved(), "the villager of a hand gone still stands");
+        } finally {
+            delete(dir);
+            farmer.discard();
+        }
+        helper.succeed();
+    }
+
+    /**
+     * What a look's census costs the server's tick, logged: counting the villagers and beds a settlement's reach (48
+     * blocks) round the bell (here the neighbouring tests' too) into a {@code Census}, and the core taking the arena's
+     * own (4 blocks) and answering its hands, as a look's happenings and its views do. Nothing of the wide count is sent.
+     */
+    private static void measureACensus(CoreHost host, net.minecraft.server.level.ServerLevel level, long town, BlockPos bell) {
+        int n = 50;
+        int wide = dev.b28.enterprise.settlement.CensusTaker.RADIUS;
+        if (!PeopleAdapter.entitiesLoaded(level, bell, wide)) {
+            Enterprise.LOGGER.info("people census: a settlement's reach round the arena isn't loaded; not measured");
+            return;
+        }
+        long a = System.nanoTime();
+        int residents = 0;
+        for (int i = 0; i < n; i++) {
+            residents = ((Input.Census) host.people().census(level, town, bell, wide)).residents().size();
+        }
+        long counted = System.nanoTime() - a;
+        a = System.nanoTime();
+        for (int i = 0; i < n; i++) {
+            host.apply(List.of(host.people().census(level, town, bell, CENSUS_RADIUS)));
+            host.hands().roster(town);
+        }
+        long sent = System.nanoTime() - a;
+        Enterprise.LOGGER.info("people census: counting {} villagers in a settlement's reach {} ms; a census sent and the"
+                + " hands asked {} ms", residents, "%.3f".formatted(counted / 1e6 / n), "%.3f".formatted(sent / 1e6 / n));
     }
 
     /** A villager of {@code trade} at {@code level}, kept in it without a workstation (one XP). */

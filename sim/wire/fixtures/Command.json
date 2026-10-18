@@ -423,6 +423,425 @@
           }
         },
         {
+          "Census": {
+            "town": 0,
+            "beds": 0,
+            "residents": []
+          }
+        },
+        {
+          "Census": {
+            "town": 1,
+            "beds": 4,
+            "residents": [
+              {
+                "tag": "6f1c2a3e-0000-4000-8000-00000000002a",
+                "trade": "enterprise:merchant",
+                "level": 2,
+                "baby": false
+              },
+              {
+                "tag": "6f1c2a3e-0000-4000-8000-00000000002c",
+                "trade": "minecraft:none",
+                "level": 1,
+                "baby": true
+              },
+              {
+                "tag": "",
+                "trade": "",
+                "level": 0,
+                "baby": false
+              },
+              {
+                "tag": "🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾",
+                "trade": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                "level": 255,
+                "baby": true
+              }
+            ]
+          }
+        },
+        {
+          "Census": {
+            "town": 4294967295,
+            "beds": 4294967295,
+            "residents": [
+              {
+                "tag": "v0",
+                "trade": "farmer",
+                "level": 0,
+                "baby": true
+              },
+              {
+                "tag": "v1",
+                "trade": "farmer",
+                "level": 1,
+                "baby": false
+              },
+              {
+                "tag": "v2",
+                "trade": "farmer",
+                "level": 2,
+                "baby": false
+              },
+              {
+                "tag": "v3",
+                "trade": "farmer",
+                "level": 3,
+                "baby": false
+              },
+              {
+                "tag": "v4",
+                "trade": "farmer",
+                "level": 4,
+                "baby": false
+              },
+              {
+                "tag": "v5",
+                "trade": "farmer",
+                "level": 5,
+                "baby": false
+              },
+              {
+                "tag": "v6",
+                "trade": "farmer",
+                "level": 0,
+                "baby": false
+              },
+              {
+                "tag": "v7",
+                "trade": "farmer",
+                "level": 1,
+                "baby": true
+              },
+              {
+                "tag": "v8",
+                "trade": "farmer",
+                "level": 2,
+                "baby": false
+              },
+              {
+                "tag": "v9",
+                "trade": "farmer",
+                "level": 3,
+                "baby": false
+              },
+              {
+                "tag": "v10",
+                "trade": "farmer",
+                "level": 4,
+                "baby": false
+              },
+              {
+                "tag": "v11",
+                "trade": "farmer",
+                "level": 5,
+                "baby": false
+              },
+              {
+                "tag": "v12",
+                "trade": "farmer",
+                "level": 0,
+                "baby": false
+              },
+              {
+                "tag": "v13",
+                "trade": "farmer",
+                "level": 1,
+                "baby": false
+              },
+              {
+                "tag": "v14",
+                "trade": "farmer",
+                "level": 2,
+                "baby": true
+              },
+              {
+                "tag": "v15",
+                "trade": "farmer",
+                "level": 3,
+                "baby": false
+              },
+              {
+                "tag": "v16",
+                "trade": "farmer",
+                "level": 4,
+                "baby": false
+              },
+              {
+                "tag": "v17",
+                "trade": "farmer",
+                "level": 5,
+                "baby": false
+              },
+              {
+                "tag": "v18",
+                "trade": "farmer",
+                "level": 0,
+                "baby": false
+              },
+              {
+                "tag": "v19",
+                "trade": "farmer",
+                "level": 1,
+                "baby": false
+              },
+              {
+                "tag": "v20",
+                "trade": "farmer",
+                "level": 2,
+                "baby": false
+              },
+              {
+                "tag": "v21",
+                "trade": "farmer",
+                "level": 3,
+                "baby": true
+              },
+              {
+                "tag": "v22",
+                "trade": "farmer",
+                "level": 4,
+                "baby": false
+              },
+              {
+                "tag": "v23",
+                "trade": "farmer",
+                "level": 5,
+                "baby": false
+              },
+              {
+                "tag": "v24",
+                "trade": "farmer",
+                "level": 0,
+                "baby": false
+              },
+              {
+                "tag": "v25",
+                "trade": "farmer",
+                "level": 1,
+                "baby": false
+              },
+              {
+                "tag": "v26",
+                "trade": "farmer",
+                "level": 2,
+                "baby": false
+              },
+              {
+                "tag": "v27",
+                "trade": "farmer",
+                "level": 3,
+                "baby": false
+              },
+              {
+                "tag": "v28",
+                "trade": "farmer",
+                "level": 4,
+                "baby": true
+              },
+              {
+                "tag": "v29",
+                "trade": "farmer",
+                "level": 5,
+                "baby": false
+              },
+              {
+                "tag": "v30",
+                "trade": "farmer",
+                "level": 0,
+                "baby": false
+              },
+              {
+                "tag": "v31",
+                "trade": "farmer",
+                "level": 1,
+                "baby": false
+              },
+              {
+                "tag": "v32",
+                "trade": "farmer",
+                "level": 2,
+                "baby": false
+              },
+              {
+                "tag": "v33",
+                "trade": "farmer",
+                "level": 3,
+                "baby": false
+              },
+              {
+                "tag": "v34",
+                "trade": "farmer",
+                "level": 4,
+                "baby": false
+              },
+              {
+                "tag": "v35",
+                "trade": "farmer",
+                "level": 5,
+                "baby": true
+              },
+              {
+                "tag": "v36",
+                "trade": "farmer",
+                "level": 0,
+                "baby": false
+              },
+              {
+                "tag": "v37",
+                "trade": "farmer",
+                "level": 1,
+                "baby": false
+              },
+              {
+                "tag": "v38",
+                "trade": "farmer",
+                "level": 2,
+                "baby": false
+              },
+              {
+                "tag": "v39",
+                "trade": "farmer",
+                "level": 3,
+                "baby": false
+              },
+              {
+                "tag": "v40",
+                "trade": "farmer",
+                "level": 4,
+                "baby": false
+              },
+              {
+                "tag": "v41",
+                "trade": "farmer",
+                "level": 5,
+                "baby": false
+              },
+              {
+                "tag": "v42",
+                "trade": "farmer",
+                "level": 0,
+                "baby": true
+              },
+              {
+                "tag": "v43",
+                "trade": "farmer",
+                "level": 1,
+                "baby": false
+              },
+              {
+                "tag": "v44",
+                "trade": "farmer",
+                "level": 2,
+                "baby": false
+              },
+              {
+                "tag": "v45",
+                "trade": "farmer",
+                "level": 3,
+                "baby": false
+              },
+              {
+                "tag": "v46",
+                "trade": "farmer",
+                "level": 4,
+                "baby": false
+              },
+              {
+                "tag": "v47",
+                "trade": "farmer",
+                "level": 5,
+                "baby": false
+              },
+              {
+                "tag": "v48",
+                "trade": "farmer",
+                "level": 0,
+                "baby": false
+              },
+              {
+                "tag": "v49",
+                "trade": "farmer",
+                "level": 1,
+                "baby": true
+              },
+              {
+                "tag": "v50",
+                "trade": "farmer",
+                "level": 2,
+                "baby": false
+              },
+              {
+                "tag": "v51",
+                "trade": "farmer",
+                "level": 3,
+                "baby": false
+              },
+              {
+                "tag": "v52",
+                "trade": "farmer",
+                "level": 4,
+                "baby": false
+              },
+              {
+                "tag": "v53",
+                "trade": "farmer",
+                "level": 5,
+                "baby": false
+              },
+              {
+                "tag": "v54",
+                "trade": "farmer",
+                "level": 0,
+                "baby": false
+              },
+              {
+                "tag": "v55",
+                "trade": "farmer",
+                "level": 1,
+                "baby": false
+              },
+              {
+                "tag": "v56",
+                "trade": "farmer",
+                "level": 2,
+                "baby": true
+              },
+              {
+                "tag": "v57",
+                "trade": "farmer",
+                "level": 3,
+                "baby": false
+              },
+              {
+                "tag": "v58",
+                "trade": "farmer",
+                "level": 4,
+                "baby": false
+              },
+              {
+                "tag": "v59",
+                "trade": "farmer",
+                "level": 5,
+                "baby": false
+              }
+            ]
+          }
+        },
+        {
+          "TagHand": {
+            "hand": 7,
+            "tag": "6f1c2a3e-0000-4000-8000-00000000002b"
+          }
+        },
+        {
+          "TagHand": {
+            "hand": 4294967295,
+            "tag": ""
+          }
+        },
+        {
           "Stocktake": {
             "point": {
               "kind": "Desk",

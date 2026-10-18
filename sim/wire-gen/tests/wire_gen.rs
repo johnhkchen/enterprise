@@ -217,7 +217,16 @@ fn an_inserted_or_removed_variant_is_refused() {
         v.pop();
     });
     let why = generate_from(&removed, &docs, Some(&committed), false).unwrap_err();
-    assert!(why.contains("(HandLost) is gone"), "{why}");
+    let last = input_variants(&registry).pop().expect("an Input variant");
+    assert!(why.contains(&format!("({last}) is gone")), "{why}");
+}
+
+/// The names of `Input`'s variants, in their order (so these tests don't move each time the wire grows one).
+fn input_variants(registry: &serde_reflection::Registry) -> Vec<String> {
+    match registry.get("Input") {
+        Some(ContainerFormat::Enum(vs)) => vs.values().map(|v| v.name.clone()).collect(),
+        _ => panic!("no Input enum"),
+    }
 }
 
 #[test]
@@ -228,7 +237,8 @@ fn a_variant_added_at_the_end_is_welcome() {
     let generated = generate_from(&appended, &docs, Some(&committed), false).unwrap();
     assert!(generated.warnings.is_empty());
     let input = &generated.files[&format!("{JAVA_DIR}/Input.java")];
-    assert!(input.contains("case 17 -> new Hello();"), "{input}");
+    let at = input_variants(&registry).len();
+    assert!(input.contains(&format!("case {at} -> new Hello();")), "{input}");
     assert!(input.contains("record Hello() implements Input"), "{input}");
 }
 

@@ -54,6 +54,7 @@ crate::saved! {
         pallets: crate::pallet::Pallets = crate::pallet::Pallets::default(),
         points: crate::points::Points = crate::points::Points::default(),
         hands: crate::roster::Hands = crate::roster::Hands::default(),
+        sightings: crate::census::Sightings = crate::census::Sightings::default(),
     }
     town {
         town: Town,

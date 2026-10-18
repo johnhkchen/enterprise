@@ -25,7 +25,9 @@ public sealed interface Input
                 Input.PackageLost,
                 Input.SetDial,
                 Input.AddHand,
-                Input.HandLost {
+                Input.HandLost,
+                Input.Census,
+                Input.TagHand {
     void encode(PostcardOut out);
 
     static Input decode(PostcardIn in) {
@@ -48,6 +50,8 @@ public sealed interface Input
             case 14 -> new SetDial(in.string(), in.option(PostcardIn::f64));
             case 15 -> new AddHand(in.u32(), in.string(), in.u8(), in.string());
             case 16 -> new HandLost(in.u32());
+            case 17 -> new Census(in.u32(), in.u32(), in.list(4, Resident::decode));
+            case 18 -> new TagHand(in.u32(), in.string());
             default -> throw in.unknownVariant("Input", at);
         };
     }
@@ -317,6 +321,49 @@ public sealed interface Input
         public void encode(PostcardOut out) {
             out.variant(16);
             out.u32(this.hand);
+        }
+    }
+
+    /**
+     * The host's count of a town's people (its census, {@code settlement/CensusTaker.java}): the beds there, and every
+     * villager it saw living there, each by the host's tag for it (its UUID) with its trade, level and whether it's a
+     * child. The town's roster follows it ({@code census.rs}): a villager the core doesn't know joins as a hand (a child as a
+     * child), one it knows is seen (a profession taken in the world is its trade now, a level earned there its level,
+     * never less), and one at home that no census has seen for {@code FORGET_AFTER_DAYS} is taken to have left. A villager
+     * whose hand is away, another town's or with settlers is left as the core has it; one whose hand is gone (the rules
+     * took it from the world) comes back as {@code HandGone}. Lenient, as a count of the world is: a resident of a trade the
+     * core hasn't, or with no tag, isn't counted, and a tag listed twice is counted once.
+     */
+    record Census(long town, long beds, List<Resident> residents) implements Input {
+        public Census {
+            Objects.requireNonNull(residents, "residents");
+            residents = List.copyOf(residents);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(17);
+            out.u32(this.town);
+            out.u32(this.beds);
+            out.list(this.residents, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * A villager now stands for a hand that had none (the host spawned it for {@code Born} or {@code Settled}): the host's tag for
+     * it from now on. Ignored when the hand isn't at home on a roster by the time it applies, or another living hand has
+     * the tag. Refused only for an empty tag.
+     */
+    record TagHand(long hand, String tag) implements Input {
+        public TagHand {
+            Objects.requireNonNull(tag, "tag");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(18);
+            out.u32(this.hand);
+            out.string(this.tag);
         }
     }
 }

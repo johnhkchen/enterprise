@@ -25,8 +25,9 @@ import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
  * own: its lookup from villager to hand is the core's {@code Query.Hands} for every town with a point, read again when
  * the host starts and after every change.
  *
- * <p>A villager joins its town's roster here ({@link #join}: the Merchant at a desk, by the Merchant's screen today;
- * the census's villagers with {@code people-adapter}), and leaves it when it dies ({@link #onDeath}). A hand away from
+ * <p>A villager joins its town's roster here ({@link #join}: the Merchant at a desk, by the Merchant's screen) or by its
+ * town's census ({@link PeopleAdapter}, in core mode), and leaves it when it dies ({@link #onDeath}) or when no census
+ * has seen it for ten days (the core's rule). A hand away from
  * home (with a caravan, at war) is off the world and the core's to bring back: a death the host sees is never one.
  */
 public final class HandsAdapter {
@@ -47,6 +48,8 @@ public final class HandsAdapter {
     private final CoreHost host;
     /** Each villager the core has a hand for, by UUID: rebuilt from the core, never kept. */
     private Map<UUID, Where> byVillager = Map.of();
+    /** A look has run since the lookup was read (a census, a birth, a death in it): read again before it's used. */
+    private boolean stale;
 
     public HandsAdapter(CoreHost host) {
         this.host = host;
@@ -63,6 +66,19 @@ public final class HandsAdapter {
             }
         }
         byVillager = Map.copyOf(found);
+        stale = false;
+    }
+
+    /** The core's hands may have changed (a look ran): the lookup is read again when next used. */
+    public void stale() {
+        stale = true;
+    }
+
+    private Map<UUID, Where> lookup() {
+        if (stale) {
+            reload();
+        }
+        return byVillager;
     }
 
     /** A town's hands as the core has them now. */
@@ -79,7 +95,7 @@ public final class HandsAdapter {
 
     /** Where the villager's hand is, if the core has one for it. */
     public Where of(UUID villager) {
-        return byVillager.get(villager);
+        return lookup().get(villager);
     }
 
     /**
@@ -90,7 +106,7 @@ public final class HandsAdapter {
      * @throws IllegalStateException when the core refuses it (a profession the core has no trade for)
      */
     public long join(long town, Villager villager) {
-        Where known = byVillager.get(villager.getUUID());
+        Where known = lookup().get(villager.getUUID());
         if (known != null) {
             return known.hand();
         }
@@ -115,7 +131,7 @@ public final class HandsAdapter {
      * hand for it, or its hand is away (the core's to bring home).
      */
     public boolean lose(UUID villager) {
-        Where where = byVillager.get(villager);
+        Where where = lookup().get(villager);
         if (where == null) {
             return false;
         }

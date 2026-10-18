@@ -15,7 +15,12 @@ public sealed interface Output
                 Output.Signal,
                 Output.PalletPacked,
                 Output.PalletMoved,
-                Output.PalletOpened {
+                Output.PalletOpened,
+                Output.Born,
+                Output.Settled,
+                Output.Departed,
+                Output.HandGone,
+                Output.HandLevel {
     void encode(PostcardOut out);
 
     static Output decode(PostcardIn in) {
@@ -29,6 +34,11 @@ public sealed interface Output
             case 5 -> new PalletPacked(in.u64(), Place.decode(in), in.list(10, PackageLine::decode));
             case 6 -> new PalletMoved(in.u64(), Place.decode(in));
             case 7 -> new PalletOpened(in.u64(), Place.decode(in));
+            case 8 -> new Born(in.u32(), in.u32());
+            case 9 -> new Settled(in.u32(), in.u32());
+            case 10 -> new Departed(in.u32(), in.u32(), in.string());
+            case 11 -> new HandGone(in.u32(), in.string());
+            case 12 -> new HandLevel(in.u32(), in.string(), in.string(), in.u8(), in.u32());
             default -> throw in.unknownVariant("Output", at);
         };
     }
@@ -149,6 +159,87 @@ public sealed interface Output
             out.variant(7);
             out.u64(this.id);
             this.at.encode(out);
+        }
+    }
+
+    /**
+     * A child was born at a town ({@code people.rs}): a hand with no villager yet. The host spawns one for it by the town's
+     * bell and names it ({@code TagHand}).
+     */
+    record Born(long town, long hand) implements Output {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(8);
+            out.u32(this.town);
+            out.u32(this.hand);
+        }
+    }
+
+    /**
+     * A hand came to live at a town from elsewhere (a party of settlers arriving, or one come home): a hand with no
+     * villager there yet. The host spawns one for it and names it ({@code TagHand}).
+     */
+    record Settled(long town, long hand) implements Output {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(9);
+            out.u32(this.town);
+            out.u32(this.hand);
+        }
+    }
+
+    /**
+     * A hand left its town with a party of settlers: its villager (the host's {@code tag}) leaves the world, and the hand is
+     * off it until it settles ({@code Settled}, under a new villager). The core forgets the tag.
+     */
+    record Departed(long town, long hand, String tag) implements Output {
+        public Departed {
+            Objects.requireNonNull(tag, "tag");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(10);
+            out.u32(this.town);
+            out.u32(this.hand);
+            out.string(this.tag);
+        }
+    }
+
+    /**
+     * A hand is no more (the rules took it from the world: a soldier fallen), or a census saw the villager of one that
+     * is: its villager ({@code tag}) leaves the world.
+     */
+    record HandGone(long hand, String tag) implements Output {
+        public HandGone {
+            Objects.requireNonNull(tag, "tag");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(11);
+            out.u32(this.hand);
+            out.string(this.tag);
+        }
+    }
+
+    /**
+     * The core changed a hand's trade, level or XP (a trade taken up, a locker's trade): written to its villager.
+     */
+    record HandLevel(long hand, String tag, String trade, int level, long xp) implements Output {
+        public HandLevel {
+            Objects.requireNonNull(tag, "tag");
+            Objects.requireNonNull(trade, "trade");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(12);
+            out.u32(this.hand);
+            out.string(this.tag);
+            out.string(this.trade);
+            out.u8(this.level);
+            out.u32(this.xp);
         }
     }
 }

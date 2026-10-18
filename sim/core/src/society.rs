@@ -471,7 +471,13 @@ impl Society {
 
     fn apply_input(&mut self, input: &Input) -> Vec<Output> {
         match *input {
-            Input::Advance { to } => self.advance(to),
+            Input::Advance { to } => {
+                // What the rules do to hands comes out for the host's villagers (`census.rs`).
+                let before = self.hands_now();
+                let mut out = self.advance(to);
+                out.extend(self.hand_outputs(&before));
+                out
+            }
             Input::Deliver { town, good, count } => {
                 self.deliver(town as TownId, good as GoodId, count);
                 Vec::new()
@@ -504,6 +510,7 @@ impl Society {
                 self.apply_hands(input);
                 Vec::new()
             }
+            Input::Census { .. } | Input::TagHand { .. } => self.apply_census(input).unwrap_or_default(),
             Input::SetDial { ref name, value } => {
                 // (checked before the look applies: a name or value that wouldn't do is refused there)
                 let _ = match value {

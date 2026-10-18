@@ -54,7 +54,10 @@ final class EnterpriseCommands {
                         .then(Commands.literal("points").executes(EnterpriseCommands::corePoints))
                         .then(Commands.literal("hands")
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos())
-                                        .executes(EnterpriseCommands::coreHands))))
+                                        .executes(EnterpriseCommands::coreHands)))
+                        .then(Commands.literal("census")
+                                .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                        .executes(EnterpriseCommands::coreCensus))))
                 .then(Commands.literal("mint").executes(EnterpriseCommands::mint))
                 .then(Commands.literal("census")
                         .then(Commands.argument("bell", BlockPosArgument.blockPos())
@@ -487,6 +490,31 @@ final class EnterpriseCommands {
         }
         source.sendSuccess(() -> Component.literal(out.toString()), false);
         return roster.hands().size();
+    }
+
+    /**
+     * Takes the census of the core's town at a desk now (its beds and the villagers around its bell, as each look in
+     * core mode does), spawns a villager for each of its hands with none and names it, then lists its hands.
+     */
+    private static int coreCensus(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        ServerLevel level = source.getLevel();
+        BlockPos desk = BlockPosArgument.getLoadedBlockPos(context, "desk");
+        var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+        if (host == null || host.pausedWhy() != null) {
+            source.sendFailure(Component.literal(host == null ? "The core isn't running" : host.pausedWhy()));
+            return 0;
+        }
+        Long town = host.stock().townAt(GlobalPos.of(level.dimension(), desk));
+        if (town == null) {
+            source.sendFailure(Component.literal("The core keeps no town at " + desk.toShortString()));
+            return 0;
+        }
+        var people = host.people();
+        people.countNow(level, town, dev.b28.enterprise.binding.adapters.PeopleAdapter.centre(level, desk),
+                dev.b28.enterprise.settlement.CensusTaker.RADIUS);
+        people.nameNow();
+        return coreHands(context);
     }
 
     /** Lists what the Merchant at a desk sees: its stock containers and the lockers it manages. */

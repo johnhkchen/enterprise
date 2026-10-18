@@ -61,6 +61,29 @@ pub enum Input {
     /// roster, with its locker. Refused for a hand that isn't on a roster, or is away (out with a caravan or at war: off
     /// the host's world, the core brings it home or buries it).
     HandLost { hand: HandNo },
+    /// The host's count of a town's people (its census, `settlement/CensusTaker.java`): the beds there, and every
+    /// villager it saw living there, each by the host's tag for it (its UUID) with its trade, level and whether it's a
+    /// child. The town's roster follows it (`census.rs`): a villager the core doesn't know joins as a hand (a child as a
+    /// child), one it knows is seen (a profession taken in the world is its trade now, a level earned there its level,
+    /// never less), and one at home that no census has seen for `FORGET_AFTER_DAYS` is taken to have left. A villager
+    /// whose hand is away, another town's or with settlers is left as the core has it; one whose hand is gone (the rules
+    /// took it from the world) comes back as `HandGone`. Lenient, as a count of the world is: a resident of a trade the
+    /// core hasn't, or with no tag, isn't counted, and a tag listed twice is counted once.
+    Census { town: TownNo, beds: u32, residents: Vec<Resident> },
+    /// A villager now stands for a hand that had none (the host spawned it for `Born` or `Settled`): the host's tag for
+    /// it from now on. Ignored when the hand isn't at home on a roster by the time it applies, or another living hand has
+    /// the tag. Refused only for an empty tag.
+    TagHand { hand: HandNo, tag: String },
+}
+
+/// A villager a census saw: the host's tag for it (its UUID), its trade by the host's name (with or without the host's
+/// namespace), its level (1 to 5; another is taken as the nearest of them) and whether it's a child.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Resident {
+    pub tag: String,
+    pub trade: String,
+    pub level: u8,
+    pub baby: bool,
 }
 
 /// So many of a good.
