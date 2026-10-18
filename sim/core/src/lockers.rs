@@ -272,13 +272,14 @@ impl Lockers {
     /// those with a trade switched on, then the nearest (the roster's order).
     pub fn order(&self, content: &Content, roster: &Roster, limit: usize) -> Vec<usize> {
         let mut all: Vec<usize> = (0..self.hands.len()).filter(|&i| has_locker(content, roster, i)).collect();
+        // (Each hand's key once, not at every comparison.)
+        let keys: Vec<(bool, usize, bool, usize)> = (0..self.hands.len()).map(|i| {
+            let needed = !self.needed.contains(&self.hands[i].trade);
+            let client = self.clients.iter().position(|&c| c == i).unwrap_or(usize::MAX);
+            (needed, client, !self.hands[i].switched_on(), i)
+        }).collect();
         all.sort_by(|&a, &b| {
-            let key = |i: usize| {
-                let needed = !self.needed.contains(&self.hands[i].trade);
-                let client = self.clients.iter().position(|&c| c == i).unwrap_or(usize::MAX);
-                (needed, client, !self.hands[i].switched_on(), i)
-            };
-            let (ka, kb) = (key(a), key(b));
+            let (ka, kb) = (keys[a], keys[b]);
             ka.0.cmp(&kb.0).then(ka.1.cmp(&kb.1))
                 .then((-self.hands[a].worth).total_cmp(&-self.hands[b].worth))
                 .then(ka.2.cmp(&kb.2)).then(ka.3.cmp(&kb.3))
