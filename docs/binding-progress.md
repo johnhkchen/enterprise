@@ -1,14 +1,25 @@
 # Binding progress: where the Minecraft binding stands
 
 The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md`; how trees work is
-`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-18, `proof-in-mod` landed.
+`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-19, `core-mode` landed.
 
 ## Now
 
-- **Main:** `84802f2`. 772 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
-  `just wire-check` passes (schema `208b58181a4f9956`, 24 files: `Query::Goods` appended); `just binding-test`: 99 JVM
-  tests pass. Game tests: "All 264 required tests passed" (262 and `CoreBindingTests`' two). `just core-fingerprint`:
-  `cb418063bb32364e` (unchanged by this landing).
+- **Main:** `5532ae3`. 778 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
+  `just wire-check` passes (schema `208b58181a4f9956`, 24 files); `just binding-test` passes. Game tests: "All 264
+  required tests passed" in Java mode, and `just gametest-core`: 264 of 264 against the baseline of 264.
+  `just core-fingerprint`: `96b225213f5f291c` (moved by `pallet-caps` on the core's side, not by this landing).
+- **The society switch** (B3.2, `binding/Society.java`): `java|core`, read once at mod construction from the system
+  property `enterprise.society`, then env `ENTERPRISE_SOCIETY`, then `society=` in `config/enterprise.properties`;
+  default java. In core mode the 11 rule tick listeners (and `LockerCatchUp`'s join, which queues for its tick) aren't
+  registered and `CoreClock` is the only clock; views (joins, deaths, chunks, desk listeners) stay. `just gametest-core`
+  runs the suite in `core/run/gametest-core` and checks passes per class against `scripts/gametest-core-baseline.txt`;
+  `trees.py`'s `--java` gates (check and land) now run it after the Java suite. **Core mode is a frozen society today**:
+  only `StockAdapter` applies anything, and the baseline passes because the tests call the Java rule classes directly,
+  so it binds only as B4 tasks move tests onto the core. The mode is per process, not saved with the world: a world run
+  in one mode and then the other advances the Java SavedData and `enterprise_core.dat` apart, unsaid. Open: the whole
+  `CensusTaker` poller is off in core mode, its counting half (villagers, beds, workstations around a bell) included,
+  which `people-adapter` needs as the roster's source; no JVM test covers `Society.parse`.
 - **The mod runs the core** (B2.1, `dev.b28.enterprise.binding`): `CoreHost` (started with the server, saved with the
   overworld, closed at stop; the core on `CoreWorker`), `CoreClock` (a look every 1,200 ticks), `Outcomes` (every
   Output routed to "unshown" until its adapter lands), `ModPack` (Prices' goods), `adapters/StockAdapter` (a desk a
@@ -111,7 +122,7 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 | B1.7 | `versioning` | sonnet / high | `chicory-host` | `25e0895` | `save::migrate` (chain, `OLDEST`, recipe for the first bump), `Load` refusing unreachable formats by number and a header that disagrees with its `SaveFile`; `tests/saves.rs` with the format-0 template and the golden-save test (no goldens while `FORMAT` is 1); `Core.start` probes ABI and schema; `SaveStore` with prev.dat; 98 JVM tests. At landing: `save::upgraded_with`, so the template runs the migrating load path (header off, payload through the chain) end to end; the plan's Built paragraph moved after its list with the SavedData choice for B2.1. Left: prev.dat's lifetime for John, SavedData or plain file (B2.1), the first real migration as the first end-to-end test |
 | B2.1 | `proof-in-mod` | opus / high | `versioning` | `84802f2` | The mod depends on `binding` (dev classpath, jar-in-jar with Chicory); `CoreHost`, `CoreClock`, `Outcomes`, `ModPack`, `adapters/StockAdapter`, `/enterprise core stock`; `enterprise_core.dat` as `SaveStore`'s plain file; `Query::Goods` added to the core (schema `208b58181a4f9956`, FORMAT 1); two game tests (264 pass). Measured in the game-test server: 0.05-0.07 ms a look on the tick, 2.4-2.6 ms on the core's thread, 2.2 ms a save. At landing: the desk listeners log the core's failures instead of throwing into a placement and listen at LOWEST (cancelled events don't reach the core); `found` advances the core to now before `AddTown`; a look at start catches a new society up to an old world; a look counts a desk only with its neighbours' chunks loaded; the plan's diagram, 1.4 and 1.5 say plain file. Left: a Prism launch of the jar-in-jar, sync calls waiting behind a look, unseen desk changes (`stock-adapter`), `Names` drift, the java/core switch (`core-mode`) |
 | B3.1 | `gametest-triage` | sonnet / medium | — | `59b7b77` | `parity.py --binding` writes `docs/binding-tests.md`: 150 fixture, 66 rule API, 46 own; 2 rule-API tests with only a partial twin go to the core first. At landing: helpers followed across test files and a discarded entity counted (5 tests moved to fixture: BuildingTests' three and CountingHouseTests' clerks via `LabourTests.town`, `GrowthTests.childrenGrowUpWhileAway`); rule-API tests that pass the level to a rule marked *level* (27); the plan's section 2 counts updated |
-| B3.2 | `core-mode` | sonnet / medium | `proof-in-mod`, `gametest-triage` | | |
+| B3.2 | `core-mode` | sonnet / medium | `proof-in-mod`, `gametest-triage` | `5532ae3` | `Society` (java\|core, per process: property, env, `config/enterprise.properties`; default java) gates the 11 rule tick listeners; `CoreClock` the only clock in core mode; `just gametest-core` (own folder, `GameTestReport`, `scripts/gametest_core.py`, baseline 264 of 264). At landing: `LockerCatchUp`'s join gated with its tick (it queued jobs nothing drained), the core-mode report cleared before a run and an empty or missing one fails (a stale 264 could pass), the Java run pins `society=java` (an exported env var switched it), `trees.py`'s `--java` gates run the core-mode suite. One flake at landing (`wagesClimbTowardEverythingTheHarvestSellsFor`, share 0.5; passed on the retry, no Java changed in the rebase). Left: core mode is frozen until the adapters land, `CensusTaker`'s counting half off with its rule half (for `people-adapter`), the mode not saved with the world, no JVM test of `Society.parse` |
 | B4.1 | `content-pack` | sonnet / high | `core-mode` | | |
 | B4.2 | `points-and-hands` | opus / high | `content-pack` | | |
 | B4.3 | `stock-adapter` | opus / xhigh | `points-and-hands` | | |
