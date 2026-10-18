@@ -263,7 +263,6 @@ pub fn buy_for_home(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut
         let merchant = crate::realms::level(&content, realms.get(route.from).ok(), rosters.get(route.from).ok());
         let resident = crate::realms::level(&content, realms.get(route.to).ok(), rosters.get(route.to).ok());
         let keep = keep_for_food(&content, &route, wagon);
-        let slots = if wagon.slots > 0 { wagon.slots } else { content.dials.wagon_slots };
         let (mut stock, mut money, _, people, roster, works) = towns.get_mut(route.to).expect("the far end");
         let far_keeps = keeps(&content, roster, works);
         let their_keep = comfort_keep(&content, people);
@@ -273,13 +272,16 @@ pub fn buy_for_home(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut
             let mut goods: Vec<usize> = (0..n).filter(|&g| content.goods[g].comfort == Some(kind)).collect();
             goods.sort_by(|&a, &b| content.goods[a].value.total_cmp(&content.goods[b].value));
             for g in goods {
-                if budget <= 0.0 || crate::cargo::stacks(&content, &pallets, route.seq, wagon) >= slots {
+                // The room left: slots, weight and pallets (`pallet-caps`).
+                let room = crate::cargo::wagon_room(&content, &pallets, route.seq, wagon);
+                if budget <= 0.0 || room.slots == 0 {
                     break;
                 }
                 let value = content.goods[g].value;
                 let Some(each) = deal(&content, crate::bargain::seller_floor(value), value, resident, merchant) else { continue };
                 let quantity = (budget / value).ceil().min(((wagon.purse - keep).to_f64() / each).floor());
-                let taken = quantity.min(stock.0[g].floor().max(0.0));
+                // No more than the room left holds of it (`pallet-caps`: the wagon's caps, a porter run's one pack).
+                let taken = quantity.min(stock.0[g].floor().max(0.0)).min(room.loose(&content, g));
                 if taken <= 0.0 {
                     continue;
                 }
@@ -353,13 +355,13 @@ pub fn buy_surplus(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<Sto
         let merchant = crate::realms::level(&content, realms.get(route.from).ok(), rosters.get(route.from).ok());
         let resident = crate::realms::level(&content, realms.get(route.to).ok(), rosters.get(route.to).ok());
         let keep = keep_for_food(&content, &route, wagon);
-        let slots = if wagon.slots > 0 { wagon.slots } else { content.dials.wagon_slots };
         let (mut stock, mut money, trades, people, roster, works) = towns.get_mut(route.to).expect("the far end");
         let far_keeps = keeps(&content, roster, works);
         let mut spare_food = crate::road::held(&content, &stock.0) - crate::road::FOOD_PAR_POINTS;
         for g in 0..n {
-            let stacks = crate::cargo::stacks(&content, &pallets, route.seq, wagon);
-            if stacks >= slots {
+            // The room left: slots, weight and pallets (`pallet-caps`).
+            let free = crate::cargo::wagon_room(&content, &pallets, route.seq, wagon);
+            if free.slots == 0 {
                 break;
             }
             let held = stock.0[g].floor().max(0.0);
@@ -382,7 +384,7 @@ pub fn buy_surplus(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<Sto
             if points > 0.0 {
                 surplus = surplus.min((spare_food.max(0.0) / points).floor());
             }
-            let room = (slots - stacks) as f64 * content.goods[g].stack as f64;
+            let room = free.loose(&content, g);
             let Some(each) = deal(&content, crate::bargain::seller_floor(value), value * content.dials.resale_ceiling,
                 resident, merchant) else { continue };
             let mut quantity = surplus.min(room).floor();
@@ -451,12 +453,12 @@ pub fn buy_backhaul(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<St
             Err(_) => continue,
         };
         let keep = keep_for_food(&content, &route, wagon);
-        let slots = if wagon.slots > 0 { wagon.slots } else { content.dials.wagon_slots };
         let (mut stock, mut money, trades, _, roster, works) = towns.get_mut(route.to).expect("the far end");
         let far_keeps = keeps(&content, roster, works);
         for g in 0..n {
-            let room = slots as i64 - crate::cargo::stacks(&content, &pallets, route.seq, wagon) as i64;
-            if room <= 0 {
+            // The room left: slots, weight and pallets (`pallet-caps`).
+            let room = crate::cargo::wagon_room(&content, &pallets, route.seq, wagon);
+            if room.slots == 0 {
                 break;
             }
             let held = stock.0[g].floor().max(0.0);
@@ -480,7 +482,7 @@ pub fn buy_backhaul(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<St
             }
             let discount = MOST_GLUT_DISCOUNT.min(GLUT_DISCOUNT * (held / par - GLUT_PARS));
             let each = content.goods[g].value * (1.0 - discount);
-            let mut quantity = glut.min(room as f64 * stack);
+            let mut quantity = glut.min(room.loose(&content, g));
             quantity = quantity.min(((wagon.purse - keep).to_f64() / each.max(1e-9)).floor());
             if quantity <= 0.0 {
                 continue;

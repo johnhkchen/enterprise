@@ -31,7 +31,7 @@ use super::{in_order, Step};
 use crate::atlas::{Atlas, Whys, Why};
 use crate::bank::Discounts;
 use crate::bills::{BillState, Bills, Held as Paper};
-use crate::cargo::{put_aboard, pack, stacks, Paperwork, Shipments, Shipper};
+use crate::cargo::{put_aboard, Paperwork, Shipments, Shipper};
 use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::chokepoints::Takings;
 use crate::content::Content;
@@ -283,7 +283,7 @@ pub fn retire(mut routes: Query<&mut RouteState>) {
 /// the block's fares too, and it goes on its day, `liner_days` after the last (`space sold, on its day`).
 #[allow(clippy::type_complexity)]
 pub fn plan_freight(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, towns: Query<(&Town, &Hub, &Stock)>,
-        mut routes: Query<(&Route, &mut RouteState, Option<&RoutePath>)>) {
+        pallets: Res<Pallets>, mut routes: Query<(&Route, &mut RouteState, Option<&RoutePath>)>) {
     if !towns.iter().any(|(_, h, _)| h.storehouse) {
         return;
     }
@@ -302,6 +302,12 @@ pub fn plan_freight(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, t
             if booked > 0 {
                 plan.booked = booked;
                 plan.worth += booked as f64 * leg_price(&content, &net, &leg);
+                // Their weight, for the carrier's weight cap (`pallet-caps`).
+                if let Some(h) = hubs.get(&route.from_id) {
+                    plan.booked_weight = pallets.at_place(At::Custody(route.from_id))
+                        .filter(|p| h.custody.get(&p.id).and_then(|c| c.booked).is_some_and(|b| b.leg.key() == leg.key()))
+                        .map(|p| crate::pallet::Load::of_pallet(&content, p).weight).sum();
+                }
             }
             continue;
         }
@@ -322,6 +328,7 @@ pub fn plan_freight(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, t
                 continue;
             }
             plan.booked += crate::cargo::stacks_of(&content, c.good, going);
+            plan.booked_weight += going * content.goods[c.good].weight;
             plan.worth += going * c.price;
             let counts = if c.incoterm.seller_bears_road() { there + day } else { now + day };
             plan.pressing |= c.next_deadline(c.wait_ticks(grace, day)).is_some_and(|deadline| counts > deadline);
@@ -369,7 +376,7 @@ pub fn depart(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
         if net.is_hub(route.from_id) {
             // The crates booked on this run load first: they're paid for.
             let (_, mut hub, ..) = towns.get_mut(towns_list.0[route.from_id]).unwrap();
-            let room = slots.saturating_sub(stacks(&content, &pallets, route.seq, wagon));
+            let room = crate::cargo::wagon_room(&content, &pallets, route.seq, wagon);
             for (id, booking) in hub.load_booked(&content, &pallets, route.from_id, &RunLeg::of(&route, true), room) {
                 put_aboard(&mut pallets, wagon, route.seq, Line { pallet: id, booking: Some(booking), ..Default::default() },
                     route.from_id, now);
@@ -382,7 +389,7 @@ pub fn depart(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
             let mut shipper = Shipper { town: route.from_id, money: &mut money.0, spare: can, store: &mut store,
                 paperwork: &mut paperwork };
             let fees = pick_forwarded(&content, &net, &mut book, &mut bills, &mut ledger, &mut cash, &mut pallets, now, rate,
-                &route, &mut stock.0, &mut shipper, wagon, slots);
+                &route, &mut stock.0, &mut shipper, wagon);
             if fees.is_positive() {
                 // The forwarding goes with the wagon, from what the town can spare, and its landing at the hub.
                 let landing = stop_fee(&content, passage(&territory, route.to_id), rate);
@@ -418,7 +425,7 @@ fn set_stop(wagon: &mut Wagon, now: u64, hub: TownId, share: f64) {
 #[allow(clippy::too_many_arguments)]
 fn pick_forwarded(content: &Content, net: &Network, book: &mut Book, bills: &mut Bills, ledger: &mut Ledger,
         cash: &mut CashBook, pallets: &mut Pallets, now: u64, rate: f64, route: &Route, stock: &mut [f64],
-        shipper: &mut Shipper, wagon: &mut Wagon, slots: u32) -> Fixed {
+        shipper: &mut Shipper, wagon: &mut Wagon) -> Fixed {
     let (home, hub) = (route.from_id, route.to_id);
     let day = content.day_ticks;
     let serves = |buyer: TownId| buyer != hub && buyer != home && !net.legs(hub, buyer).is_empty();
@@ -427,7 +434,7 @@ fn pick_forwarded(content: &Content, net: &Network, book: &mut Book, bills: &mut
     let at_home: Vec<PalletId> = pallets.at(At::Town(home)).to_vec();
     for id in at_home {
         let s = pallets.get(id).unwrap();
-        let room = stacks(content, pallets, route.seq, wagon) + s.slots(content) <= slots;
+        let room = crate::cargo::fits(content, pallets, route.seq, wagon, s); // in slots, weight and pallets (`pallet-caps`)
         let to = s.lading.consignee;
         let fee = Some(to).filter(|&b| serves(b)).and_then(|b| forwarding_fee(content, net, hub, b, s.slots(content), rate).map(|f| f.0));
         let Some(fee) = fee.filter(|f| s.lading.shipper == home && s.lading.contract.is_some() && room && shipper.spare >= *f) else {
@@ -455,8 +462,8 @@ fn pick_forwarded(content: &Content, net: &Network, book: &mut Book, bills: &mut
         }
         let g = c.good;
         let owed = (c.owed(arrival) - c.shipped).floor();
-        let free = slots.saturating_sub(stacks(content, pallets, route.seq, wagon));
-        let room = free as f64 * content.goods[g].stack.max(1) as f64;
+        // As far as the wagon has room for it packed on pallets: slots, weight and pallets (`pallet-caps`).
+        let room = crate::cargo::wagon_room(content, pallets, route.seq, wagon).palleted(content, g);
         let n = owed.min(room).min(stock[g].max(0.0).floor());
         if n <= 0.0 {
             continue;
@@ -465,21 +472,29 @@ fn pick_forwarded(content: &Content, net: &Network, book: &mut Book, bills: &mut
         let Some(fee) = forwarding_fee(content, net, hub, buyer, crate::cargo::stacks_of(content, g, n).max(1), rate)
             .map(|f| f.0).filter(|f| shipper.spare >= *f) else { continue };
         // Only what can be crated goes: loose goods for a market beyond would be sold at the hub as the wagon's own.
-        let Some(packages) = pack(content, ledger, cash, now, shipper, g, n, true) else { continue };
+        // A pallet each pallet's worth, a bill of lading each (`pallet-caps`); the forwarding each pallet's, as the hub
+        // takes them one by one (`Hub::hand_over`).
         let lading = Lading { contract: Some(id), copy: true, ..Lading::new(home, buyer, now) };
-        let p = pallets.pack(lading, packages, At::Town(home), now);
-        let (count, slots_of) = (pallets.get(p).unwrap().count(), pallets.get(p).unwrap().slots(content));
-        let fee = forwarding_fee(content, net, hub, buyer, slots_of, rate).map_or(fee, |f| f.0);
+        let ids = crate::cargo::pack_pallets(content, ledger, cash, now, shipper, pallets, &lading, g, n, At::Town(home));
+        if ids.is_empty() {
+            continue;
+        }
+        let count = crate::cargo::count_of(pallets, &ids);
+        let fee = ids.iter().map(|p| pallets.get(*p).unwrap().slots(content))
+            .map(|slots| forwarding_fee(content, net, hub, buyer, slots, rate).map(|f| f.0))
+            .sum::<Option<Fixed>>().unwrap_or(fee);
         shipper.spare -= fee;
         fees += fee;
         stock[g] -= count;
-        // Sent on with a bill of exchange drawn on the buyer for it (the mod's `billed` lading), the bill naming it.
+        // Sent on with a bill of exchange drawn on the buyer for it (the mod's `billed` lading), the bill naming them.
         let bill = bills.draw_for(buyer, home, Fixed::ceil(count * price), now, day, Some(id));
-        bills.bills[bill].pallets.push(p);
-        pallets.pallets.get_mut(&p).unwrap().lading.payment = Payment::ByBill(bill);
+        bills.bills[bill].pallets.extend(ids.iter().copied());
         wagon.bills.push(bill);
         book.ship(id, count);
-        put_aboard(pallets, wagon, route.seq, Line { pallet: p, ..Default::default() }, home, now);
+        for p in ids {
+            pallets.pallets.get_mut(&p).unwrap().lading.payment = Payment::ByBill(bill);
+            put_aboard(pallets, wagon, route.seq, Line { pallet: p, ..Default::default() }, home, now);
+        }
     }
     fees
 }
@@ -601,8 +616,7 @@ fn deal(at: &AtHub, skip: &[TownId], book: &Book, bills: &mut Bills, ledger: &mu
     // The forwarder books what it holds, then the crates booked on this run load, first.
     let mut can = spare(content, money.0, trades, farm);
     hub.forward(content, net, id, pallets, now, at.rate, &mut can);
-    let slots = if wagon.slots > 0 { wagon.slots } else { content.dials.wagon_slots };
-    let room = slots.saturating_sub(stacks(content, pallets, seq, wagon));
+    let room = crate::cargo::wagon_room(content, pallets, seq, wagon); // slots, weight and pallets (`pallet-caps`)
     for (p, booking) in hub.load_booked(content, pallets, id, &at.leg, room) {
         // The fare the hub owes this carrier for the space, paid as its run loads (the mod's shop takings).
         let fare = booking.fare.min(money.0.at_least_zero());

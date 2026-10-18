@@ -4,7 +4,7 @@
 //! into custody) and the claiming route exists.
 
 use super::super::*;
-use enterprise_core::cargo::{crated, Lading, Payment};
+use enterprise_core::cargo::{one_pallet, Lading, Payment};
 use enterprise_core::pallet::At;
 use enterprise_core::Incoterm;
 
@@ -30,7 +30,7 @@ pub fn daily(s: &mut Society, r: &mut Rng, day: u64) {
     let count = r.range(8.0, 120.0).floor();
     let id = s.draft(from, to, good, count, 0.05, s.now(), s.content().day_ticks, 1, Incoterm::Ddp, true);
     let lading = Lading { contract: Some(id), payment: Payment::Owed, copy: true, ..Lading::new(from, to, s.now()) };
-    s.deliver_pallet(from, lading, crated(s.content(), good, count));
+    s.deliver_pallet(from, lading, one_pallet(s.content(), good, count));
 }
 
 pub fn check(s: &Society, _day: u64) -> Result<(), String> {

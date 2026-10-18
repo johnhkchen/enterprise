@@ -87,8 +87,8 @@ fn training() -> Reason {
 /// What a trip calls for of a town's hands at home (`dispatch` 249–270): the trades wanted there that a hand at home
 /// has (`Services.wantedAbroad`, a hook); a Leatherworker, and porters, for more stacks of what the far end wants than
 /// a wagon holds; and how many may go beyond a lead for every route `waiting` here (this one too).
-pub fn call(content: &Content, roster: &Roster, home: &[usize], stacks: u32, wanted_trades: &[TradeId], waiting: usize)
-        -> (Needs, usize) {
+pub fn call(content: &Content, roster: &Roster, home: &[usize], stacks: u32, weight: f64, wanted_trades: &[TradeId],
+        waiting: usize) -> (Needs, usize) {
     let mut wanted: Vec<TradeId> = Vec::new();
     for &t in wanted_trades {
         if !wanted.contains(&t) && home.iter().any(|&i| roster.hands[i].trade == t) {
@@ -97,14 +97,15 @@ pub fn call(content: &Content, roster: &Roster, home: &[usize], stacks: u32, wan
     }
     let leatherworker = content.trade(LEATHERWORKER);
     let mut porters = 0;
-    if stacks > content.dials.wagon_slots {
+    // (More than a wagon holds in stacks, or in weight: `pallet-caps`.)
+    if stacks > content.dials.wagon_slots || weight > content.dials.wagon_weight + 1e-9 {
         if let Some(lw) = leatherworker {
             if !wanted.contains(&lw) {
                 wanted.push(lw);
             }
         }
         let packs = home.iter().any(|&i| Some(roster.hands[i].trade) == leatherworker);
-        porters = porters_needed(content, stacks, packs);
+        porters = porters_needed(content, stacks, weight, packs);
     }
     (Needs { wanted, water: false, porters }, home.len().saturating_sub(waiting))
 }
@@ -133,9 +134,9 @@ pub fn size_up(content: Res<Content>, mut routes: Query<(Entity, &Route, &mut Ro
         }
         let Ok((far, far_lockers, far_roster)) = fars.get(route.to) else { continue };
         let home = available(&content, roster, lockers);
-        let stacks = wanted_stacks(&content, &stock.0, far, far_lockers.zip(far_roster));
+        let (stacks, weight) = wanted_load(&content, &stock.0, far, far_lockers.zip(far_roster));
         let waiting = idle.get(&route.from_id).copied().unwrap_or(0);
-        let (needs, extras) = call(&content, roster, &home, stacks, &wants, waiting);
+        let (needs, extras) = call(&content, roster, &home, stacks, weight, &wants, waiting);
         plan.crew = crate::squad::muster(&content, roster, &home, &needs, extras);
         plan.wanted = needs.wanted;
         plan.porters = needs.porters;
@@ -153,11 +154,11 @@ pub fn size_up(content: Res<Content>, mut routes: Query<(Entity, &Route, &mut Ro
 /// (`free`), and musters again; still nobody, "no squad". The crew, the trades wanted and the porters go on the plan.
 #[allow(clippy::too_many_arguments)]
 pub fn crew(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u64, town: usize, plan: &mut Plan,
-        roster: &mut Roster, mut lockers: Option<&mut Lockers>, stacks: u32, wanted_trades: &[TradeId],
+        roster: &mut Roster, mut lockers: Option<&mut Lockers>, (stacks, weight): (u32, f64), wanted_trades: &[TradeId],
         waiting: usize, routes: usize, money: &mut Money, free: impl Fn(&Money) -> crate::fixed::Fixed) -> Result<(), Stay> {
     let d = &content.dials;
     let mut home = available(content, roster, lockers.as_deref());
-    let (needs, extras) = call(content, roster, &home, stacks, wanted_trades, waiting);
+    let (needs, extras) = call(content, roster, &home, stacks, weight, wanted_trades, waiting);
     let mut squad = crate::squad::muster(content, roster, &home, &needs, extras);
     if squad.is_empty() {
         let out = routes.saturating_sub(waiting);
@@ -198,9 +199,10 @@ pub fn trim(content: &Content, roster: &Roster, plan: &mut Plan, home_food: Opti
 /// A small load goes on a porter's back (`Caravans.porterRun`, as `dispatch` asks it): a town with a roster whose
 /// trip wants at most one trade's work and no porters nor a Shepherd's droving, whose wagon came home last time with
 /// a pack's worth or less (a run never seen home goes by wagon), with a team to spare (`wagon_team`), what's owed and
-/// what's planned within one pack, and something that can't wait or its day come.
+/// what's planned within one pack, and something that can't wait or its day come. Since `pallet-caps` the pack's caps
+/// are the porter run's (`Caps::of`): the `load` planned within its weight and its one pallet too.
 pub fn porter_run(content: &Content, state: &RouteState, plan: &Plan, owed_stacks: u32, on_its_day: bool,
-        roster: Option<&Roster>) -> bool {
+        roster: Option<&Roster>, load: &crate::pallet::Load) -> bool {
     let d = &content.dials;
     let Some(roster) = roster else { return false };
     let shepherd = content.trade(SHEPHERD);
@@ -209,6 +211,7 @@ pub fn porter_run(content: &Content, state: &RouteState, plan: &Plan, owed_stack
         && plan.wanted.len() <= 1 && plan.porters == 0
         && !plan.crew.iter().any(|&i| Some(roster.hands[i].trade) == shepherd)
         && owed_stacks <= d.pack_stacks && plan.stacks <= d.pack_stacks
+        && load.weight <= d.pack_weight + 1e-9 && load.pallets <= 1
         && (plan.pressing || on_its_day)
 }
 
@@ -268,9 +271,13 @@ pub fn send_porters_home(clock: Res<Clock>, content: Res<Content>, pallets: Res<
             continue;
         }
         let capacity = capacity(&content, wagon.crew.iter().map(|h| h.trade), wagon.porter);
-        // What's aboard, crates too (`Crates.stacks`): unsold lots crated again, pallets fetched for home.
-        let stacks = crate::cargo::stacks(&content, &pallets, route.seq, wagon);
-        if stacks as i64 > capacity as i64 - (d.pack_stacks as usize * porters) as i64 {
+        // What's aboard, crates too (`Crates.stacks`): unsold lots crated again, pallets fetched for home; its weight and
+        // pallets within what the wagon holds without the porters' packs too (`pallet-caps`).
+        let load = crate::cargo::wagon_load(&content, &pallets, route.seq, wagon);
+        let caps = crate::pallet::Caps::of(&content, wagon.crew.iter().filter(|h| !porter(&content, h.trade)).map(|h| h.trade),
+            wagon.porter);
+        if load.slots as i64 > capacity as i64 - (d.pack_stacks as usize * porters) as i64
+                || load.weight > caps.weight + 1e-9 || load.pallets > caps.pallets {
             continue;
         }
         let (walking, staying): (Vec<Hand>, Vec<Hand>) = wagon.crew.drain(..).partition(|h| porter(&content, h.trade));

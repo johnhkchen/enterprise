@@ -702,17 +702,19 @@ impl Hub {
         cost
     }
 
-    /// Booked crates waiting for a leg's run, in the order they came, out of custody to load first, as many as `slots`
-    /// hold (`loadBooked`): each with its booking, for the caller to load.
-    pub fn load_booked(&mut self, content: &Content, pallets: &Pallets, hub: TownId, leg: &Leg, slots: u32)
+    /// Booked crates waiting for a leg's run, in the order they came, out of custody to load first, as many as `room`
+    /// holds (`loadBooked`; in slots, weight and pallets since `pallet-caps`: a pallet only if it fits): each with its
+    /// booking, for the caller to load.
+    pub fn load_booked(&mut self, content: &Content, pallets: &Pallets, hub: TownId, leg: &Leg, room: crate::pallet::Caps)
             -> Vec<(PalletId, Booking)> {
-        let mut room = slots;
+        let mut room = room;
         let mut load = Vec::new();
         for p in pallets.at_place(At::Custody(hub)) {
             let stacks = p.slots(content);
             let Some(b) = self.custody.get(&p.id).and_then(|h| h.booked) else { continue };
-            if b.leg.key() == leg.key() && stacks <= room {
-                room -= stacks;
+            let takes = crate::pallet::Load::of_pallet(content, p);
+            if b.leg.key() == leg.key() && room.holds(&takes) {
+                room = room.less(&takes);
                 self.custody.remove(&p.id);
                 self.book.carried += stacks;
                 load.push((p.id, b));

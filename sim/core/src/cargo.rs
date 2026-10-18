@@ -7,7 +7,9 @@
 //! returned), `settleOwing`; `contract/ContractBook.java` `owe`, `owing`, `paidOwing`).
 //!
 //! Goods crated under a bill of lading are a [`Pallet`] in the registry ([`Pallets`], `pallet.rs`): one good, so many of
-//! it, in crates of nine stacks (the last part-full), from a shipper, made out to a consignee under a contract, with a
+//! it, in crates of nine stacks (the last part-full), no more than its kind's caps (`pallet_slots`, `pallet_weight`: a
+//! shipment over them is several pallets, a bill each, since `pallet-caps`), from a shipper, made out to a consignee
+//! under a contract, with a
 //! bill saying who pays for it ([`Payment`]: owed, paid in coin when crated, or by a bill of exchange drawn on the buyer)
 //! and whether it carries a copy of the contract. It takes the cargo space of what's in it, at least a stack a crate
 //! ([`Pallet::slots`]). A town's pallets (`At::Town`) are out of its [`Stock`](crate::state::Stock)'s reach (the lockers,
@@ -38,7 +40,7 @@ use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::{Content, GoodId};
 use crate::contracts::Book;
 use crate::messages::{RouteId, TownId};
-use crate::pallet::{At, Line, Manifest, Package, Pallet, PalletId, Pallets, CRATE};
+use crate::pallet::{At, Caps, Line, Load, Manifest, Package, Pallet, PalletId, Pallets, CRATE};
 pub use crate::pallet::{Lading, Payment};
 use crate::state::{Ledger, Wagon};
 
@@ -218,37 +220,114 @@ fn scribe_reason() -> Reason {
     Reason::Other("scribe".into())
 }
 
+/// `count` of a good as packing puts it on pallets of the base kind (`pallet-caps`, `docs/pallets.md` "Weight and
+/// volume"): a pallet [`pallet_most`](crate::pallet::pallet_most) at most (its kind's slots, as far as its weight
+/// allows), each in crates of nine stacks, the last part-full ([`crated`]). The base content's pallet is one crate.
+pub fn pallet_loads(content: &Content, good: GoodId, count: f64) -> Vec<Vec<Package>> {
+    let most = crate::pallet::pallet_most(content, good);
+    let (mut left, mut loads) = (count.max(0.0), Vec::new());
+    loop {
+        let lot = left.min(most);
+        loads.push(crated(content, good, lot));
+        left -= lot;
+        if left <= 0.0 {
+            return loads;
+        }
+    }
+}
+
+/// What a host hands in as one pallet of a good (`pallet-caps`): `count` of it, at most a pallet's worth
+/// ([`pallet_most`](crate::pallet::pallet_most)), crated as packing crates it. A host's pallet is taken as the host made
+/// it (`Society::deliver_pallet`, `forward_pallet`, `book`, `hand_over`); this keeps one within its kind's caps.
+pub fn one_pallet(content: &Content, good: GoodId, count: f64) -> Vec<Package> {
+    crated(content, good, count.min(crate::pallet::pallet_most(content, good)))
+}
+
 /// Packs `count` of a good in crates: a crate a nine stacks, the town's own empties first, then new ones at
-/// `crate_emeralds` each as far as it can spare. Goods with a consignee (`papers`) draw a bill of lading at the shipper's,
-/// crated or not (`Crates.shipping` is drawn before `pack`); a lot for sale has no papers. Returns the crates packed (none
-/// if nothing could be crated): the rest goes loose, without papers. `Crates.pack`.
+/// `crate_emeralds` each as far as it can spare. Goods with a consignee (`papers`) go on pallets within the pallet kind's
+/// caps ([`pallet_loads`]), a bill of lading drawn at the shipper's for each, and one if nothing could be crated
+/// (`Crates.shipping` is drawn before `pack`); a lot for sale has no papers and no pallets: its crates, as one group.
+/// Returns the packages packed, a group a pallet (none if nothing could be crated): the rest goes loose, without
+/// papers. `Crates.pack`; the split into pallets is `pallet-caps`' (a shipment over a pallet's caps is several bills).
 #[allow(clippy::too_many_arguments)]
 pub fn pack(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u64, shipper: &mut Shipper,
-        good: GoodId, count: f64, papers: bool) -> Option<Vec<Package>> {
+        good: GoodId, count: f64, papers: bool) -> Option<Vec<Vec<Package>>> {
     if count <= 0.0 {
         return None;
     }
-    if papers {
-        shipper.paperwork.drawn(1, LADING, now);
-    }
-    let per_crate = CRATE_STACKS as f64 * content.goods[good].stack.max(1) as f64;
+    let loads = if papers { pallet_loads(content, good, count) } else { vec![crated(content, good, count)] };
     let cost = crate::fixed::Fixed::ceil(content.dials.crate_emeralds);
-    let (mut left, mut packages) = (count, Vec::new());
-    while left > 0.0 {
-        let lot = left.min(per_crate);
-        let had = shipper.store.take_empty() || (shipper.spare >= cost && *shipper.money >= cost && {
-            post(ledger, cash, Side::treasury(shipper.town, shipper.money), Side::outside(), cost, crates_reason(), now,
-                content.day_ticks);
-            shipper.spare -= cost;
-            true
-        });
-        if !had {
-            break; // no crate to be had: the rest goes loose
+    let mut packed: Vec<Vec<Package>> = Vec::new();
+    'loads: for load in loads {
+        let mut pallet = Vec::new();
+        for package in load {
+            let had = shipper.store.take_empty() || (shipper.spare >= cost && *shipper.money >= cost && {
+                post(ledger, cash, Side::treasury(shipper.town, shipper.money), Side::outside(), cost, crates_reason(), now,
+                    content.day_ticks);
+                shipper.spare -= cost;
+                true
+            });
+            if !had {
+                // No crate to be had: the rest goes loose.
+                if !pallet.is_empty() {
+                    packed.push(pallet);
+                }
+                break 'loads;
+            }
+            pallet.push(package);
         }
-        packages.push(Package::new(CRATE, good, lot));
-        left -= lot;
+        packed.push(pallet);
     }
-    (!packages.is_empty()).then_some(packages)
+    if papers {
+        shipper.paperwork.drawn(packed.len().max(1) as u32, LADING, now);
+    }
+    (!packed.is_empty()).then_some(packed)
+}
+
+/// Packs `count` of a good for a consignee under `lading` at `at` ([`pack`]): a pallet each group, its own bill (a copy of
+/// `lading`). Their ids in order, none if nothing could be crated.
+#[allow(clippy::too_many_arguments)]
+pub fn pack_pallets(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u64, shipper: &mut Shipper,
+        pallets: &mut Pallets, lading: &Lading, good: GoodId, count: f64, at: At) -> Vec<PalletId> {
+    pack(content, ledger, cash, now, shipper, good, count, true).unwrap_or_default().into_iter()
+        .map(|packages| pallets.pack(lading.clone(), packages, at, now)).collect()
+}
+
+/// How many of their good the pallets `ids` hold, in all (each pallet's count, summed in order).
+pub fn count_of(pallets: &Pallets, ids: &[PalletId]) -> f64 {
+    ids.iter().filter_map(|id| pallets.get(*id)).map(|p| p.count()).sum()
+}
+
+/// What a wagon holds at most (`pallet-caps`): its crew's caps ([`Caps::of`]: a wagon, its packs, or a porter's one
+/// pack), its slots those it was sent out with (`Wagon.slots`, when set: `squad::capacity` as it left or was last
+/// trimmed).
+pub fn wagon_caps(content: &Content, wagon: &Wagon) -> Caps {
+    let mut caps = Caps::of(content, wagon.crew.iter().map(|h| h.trade), wagon.porter);
+    if wagon.slots > 0 {
+        caps.slots = wagon.slots;
+    }
+    caps
+}
+
+/// What a wagon carries (`pallet-caps`): its loose cargo, its pallets, and its lots for sale (each crate its stacks and
+/// weight); its slots are [`stacks`].
+pub fn wagon_load(content: &Content, pallets: &Pallets, route: RouteId, wagon: &Wagon) -> Load {
+    let mut load = Load::of(content, &wagon.cargo, pallets.at_place(At::Wagon(route)));
+    for pk in wagon.for_sale.iter().flat_map(|l| &l.packages) {
+        load.slots += pk.slots(content);
+        load.weight += pk.weight(content);
+    }
+    load
+}
+
+/// The room left on a wagon: its caps less its load.
+pub fn wagon_room(content: &Content, pallets: &Pallets, route: RouteId, wagon: &Wagon) -> Caps {
+    wagon_caps(content, wagon).less(&wagon_load(content, pallets, route, wagon))
+}
+
+/// Whether a pallet fits on a wagon with what it carries.
+pub fn fits(content: &Content, pallets: &Pallets, route: RouteId, wagon: &Wagon, pallet: &Pallet) -> bool {
+    wagon_caps(content, wagon).holds(&wagon_load(content, pallets, route, wagon).and(Load::of_pallet(content, pallet)))
 }
 
 /// A pallet loaded onto a route's wagon as it leaves `by`'s premises (or a hub's custody): moved aboard (the back of its

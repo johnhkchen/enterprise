@@ -538,9 +538,9 @@ fn the_pupils_work_is_crated_for_a_buyer_only_where_a_collector_comes() {
     assert!(s.collectable(smithy, capital));
     assert_eq!(s.town(smithy).stock[1], 0.0, "crated for the buyer");
     let held = s.town_pallets(smithy);
-    assert_eq!(held.len(), 1);
+    assert_eq!(held.len(), 2, "twelve axes: nine to a pallet (`pallet-caps`), and three");
     assert_eq!(s.bills().len(), 1, "with a bill on the capital");
-    assert_eq!(s.bills()[0].pallets, vec![held[0].id], "the bill names the pallet it pays for");
+    assert_eq!(s.bills()[0].pallets, held.iter().map(|p| p.id).collect::<Vec<_>>(), "the bill names the pallets it pays for");
     // A buyer's own wagon calling counts as before; a wound-down one no longer does.
     let mut s = make(&|s| {
         s.add_route(capital, smithy, 0.1, 0.0, 2.0);

@@ -633,13 +633,12 @@ pub fn collect(clock: Res<Clock>, content: Res<Content>, list: Res<Towns>, book:
         let fare = fare(&content, blocks, !route.on_call);
         let (_, _, mut state) = routes.get_mut(e).unwrap();
         let wagon = state.wagon.as_mut().unwrap();
-        let capacity = if wagon.slots > 0 { wagon.slots } else { content.dials.wagon_slots };
         let (_, _, _, mut stock, ..) = towns.get_mut(route.to).unwrap();
         let (goods, _) = sale_goods(&content, now, route.to_id, route.from_id, &book, &roads, &known, &stock.0, &pallets);
         for (g, n) in goods {
-            let aboard = crate::cargo::stacks(&content, &pallets, route.seq, wagon);
             let stack = content.goods[g].stack.max(1) as f64;
-            let room = capacity.saturating_sub(aboard) as f64 * stack;
+            // The room left: slots, weight and pallets (`pallet-caps`).
+            let room = crate::cargo::wagon_room(&content, &pallets, route.seq, wagon).loose(&content, g);
             let going = n.min(room).min(stock.0[g]).floor();
             if going <= 0.0 {
                 continue;

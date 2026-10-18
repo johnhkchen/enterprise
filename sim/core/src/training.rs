@@ -47,7 +47,7 @@ use bevy_ecs::prelude::Resource;
 use serde::{Deserialize, Serialize};
 
 use crate::bills::{Bills, Held};
-use crate::cargo::{pack, stacks_of, Paperwork, Shipments, Shipper};
+use crate::cargo::{stacks_of, Paperwork, Shipments, Shipper};
 use crate::cash_book::CashBook;
 use crate::content::{Content, GoodId};
 use crate::contracts::{Book, Contract, Incoterm, State, GRACE_DAYS, MIN_TRUST};
@@ -362,17 +362,19 @@ pub fn finish(content: &Content, book: &Book, bills: &mut Bills, ledger: &mut Le
         }
         let spare = money.0 - crate::rules::farms::reserve(content, trades, farm);
         let mut shipper = Shipper { town, money: &mut money.0, spare, store: &mut *store, paperwork: &mut *paperwork };
-        let Some(packages) = pack(content, ledger, cash, now, &mut shipper, made.good, n, true) else { continue };
-        // Paid for as it's crated (the buyer's bill for it drawn at once, naming it), stored, not stock, until the buyer's
-        // wagon fetches it.
+        // Paid for as it's crated (the buyer's bill for it drawn at once, naming them), stored, not stock, until the buyer's
+        // wagon fetches it: a pallet each pallet's worth, a bill of lading each (`pallet-caps`).
         let lading = Lading { contract: Some(c.id), payment: Payment::Paid, ..Lading::new(town, c.buyer, now) };
-        let p = pallets.pack(lading, packages, At::Town(town), now);
-        let count = pallets.get(p).unwrap().count();
+        let ids = crate::cargo::pack_pallets(content, ledger, cash, now, &mut shipper, pallets, &lading, made.good, n, At::Town(town));
+        if ids.is_empty() {
+            continue;
+        }
+        let count = crate::cargo::count_of(pallets, &ids);
         stock.0[made.good] -= count;
         let worth = count * content.goods[made.good].value * t.offtake;
         let bill = bills.draw(c.buyer, town, crate::fixed::Fixed::ceil(worth), now, content.day_ticks);
         bills.bills[bill].held = Held::Town(town);
-        bills.bills[bill].pallets.push(p);
+        bills.bills[bill].pallets.extend(ids);
     }
 }
 

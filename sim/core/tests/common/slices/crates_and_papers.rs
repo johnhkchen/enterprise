@@ -5,7 +5,7 @@
 //! none waits at its own consignee (it's received at once), and the paperwork's sums never run backwards.
 
 use super::super::*;
-use enterprise_core::cargo::{crated, Lading, Payment, LADING};
+use enterprise_core::cargo::{one_pallet, Lading, Payment, LADING};
 use enterprise_core::State;
 
 pub fn extend(_s: &mut Society, _r: &mut Rng) {}
@@ -26,7 +26,7 @@ pub fn daily(s: &mut Society, r: &mut Rng, _day: u64) {
             let count = (r.range(0.0, 1.5) * c.quantity).floor();
             let payment = if r.below(3) == 0 { Payment::Paid } else { Payment::Owed };
             let lading = Lading { contract: Some(c.id), payment, copy: true, ..Lading::new(c.seller, c.buyer, s.now()) };
-            s.deliver_pallet(c.buyer, lading, crated(s.content(), c.good, count));
+            s.deliver_pallet(c.buyer, lading, one_pallet(s.content(), c.good, count));
         }
         1 => {
             // A paid-for pallet made out to one town, left at another for its wagons to fetch.
@@ -37,14 +37,14 @@ pub fn daily(s: &mut Society, r: &mut Rng, _day: u64) {
                 // a pallet of nothing, which `pallets.rs`'s check refuses.)
                 let count = r.range(0.0, 700.0).floor().max(1.0);
                 let lading = Lading { payment: Payment::Paid, ..Lading::new(at, to, s.now()) };
-                s.deliver_pallet(at, lading, crated(s.content(), good, count));
+                s.deliver_pallet(at, lading, one_pallet(s.content(), good, count));
             }
         }
         2 => {
             // Empty crates handed in.
             let t = r.below(n_towns as u64) as usize;
             for _ in 0..r.below(20) {
-                s.deliver_pallet(t, Lading::new(t, t, s.now()), crated(s.content(), 0, 0.0));
+                s.deliver_pallet(t, Lading::new(t, t, s.now()), one_pallet(s.content(), 0, 0.0));
             }
         }
         3 => {

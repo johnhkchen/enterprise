@@ -8,7 +8,7 @@
 //! hubs.
 
 use super::super::*;
-use enterprise_core::cargo::{crated, Lading, Payment};
+use enterprise_core::cargo::{one_pallet, Lading, Payment};
 
 pub fn extend(s: &mut Society, r: &mut Rng) {
     if r.below(3) != 0 || s.town_count() < 3 {
@@ -53,7 +53,7 @@ pub fn daily(s: &mut Society, r: &mut Rng, _day: u64) {
     let shipper = r.below(s.town_count() as u64) as usize;
     let count = r.range(1.0, 400.0).floor();
     let lading = Lading { payment: Payment::Paid, ..Lading::new(shipper, consignee, s.now()) };
-    s.forward_pallet(hub, lading, crated(s.content(), good, count), r.below(2) == 0);
+    s.forward_pallet(hub, lading, one_pallet(s.content(), good, count), r.below(2) == 0);
 }
 
 pub fn check(s: &Society, _day: u64) -> Result<(), String> {

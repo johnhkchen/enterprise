@@ -74,7 +74,8 @@ fn a_forwarder_takes_crates_bound_on_and_their_run_loads_them_first() {
     let (lading, packages) = cargo[0].clone();
     let id = s.book(hub, lading, packages, leg, 1);
     let mut h = s.hub(hub);
-    let load = h.load_booked(s.content(), s.pallets(), hub, &leg, 27);
+    let room = enterprise_core::pallet::Caps::wagon(s.content()); // a plain wagon's room: 27 slots, weight and pallets
+    let load = h.load_booked(s.content(), s.pallets(), hub, &leg, room);
     assert_eq!(load.len(), 1, "booked, it loads for its run");
     assert_eq!((load[0].0, load[0].1.leg, load[0].1.stacks), (id, leg, 1), "one stack booked on the run out");
     assert!(s.pallets().get(id).unwrap().consigned_to(buyer), "and still made out to its buyer");

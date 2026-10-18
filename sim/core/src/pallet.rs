@@ -14,6 +14,10 @@
 //!
 //! Weight is new: `Good.weight` per item (default a stack weighs 1) plus each package kind's tare. With the default,
 //! weight equals slots, so nothing binds differently until a content pack says a good is heavy.
+//!
+//! The caps bind since `pallet-caps`: packing puts at most [`pallet_most`] of a good on a pallet (its kind's slots, as
+//! far as its weight allows), and every carrier is loaded within its [`Caps`]: [`Caps::loose`] and [`Caps::palleted`] say
+//! how much of a good fits the room left, loose or as packing would pallet it ([`palleted`]).
 
 use std::collections::BTreeMap;
 
@@ -434,10 +438,13 @@ impl Pallets {
     }
 
     /// Crates a pallet's goods again, where it stands (a seller's warehouse, what a buyer's wagon collected taken off it):
-    /// to a host, its crates emptied and packed again, so the places its packages are named by start over.
+    /// to a host, its crates emptied and packed again, so the places its packages are named by start over. Packed again
+    /// at its holder's premises it's open, as a pallet not yet sent is: a seal it had from an earlier trip (one that came
+    /// back) is broken, and it's sealed afresh as it next leaves.
     pub fn repack(&mut self, id: PalletId, packages: Vec<Package>) {
         let Some(p) = self.pallets.get_mut(&id) else { return };
         p.packages = packages;
+        p.seal = None;
         let at = p.at;
         self.arriving.remove(&id);
         if self.report {
@@ -555,6 +562,18 @@ impl Load {
     }
 }
 
+impl Load {
+    /// One load and another, together.
+    pub fn and(self, o: Load) -> Load {
+        Load { slots: self.slots + o.slots, weight: self.weight + o.weight, pallets: self.pallets + o.pallets }
+    }
+
+    /// A pallet's: its packages' slots and weight, one pallet.
+    pub fn of_pallet(content: &Content, p: &Pallet) -> Load {
+        Load::of(content, &[], [p])
+    }
+}
+
 /// What a carrier holds at most.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Caps {
@@ -585,4 +604,89 @@ impl Caps {
     pub fn holds(&self, load: &Load) -> bool {
         load.slots <= self.slots && load.weight <= self.weight + 1e-9 && load.pallets <= self.pallets
     }
+
+    /// A plain wagon's: its dials' slots, weight and pallets, no packs (`squad::capacity` with no crew).
+    pub fn wagon(content: &Content) -> Caps {
+        Caps::of(content, [], false)
+    }
+
+    /// No cap at all (a caller that only counts).
+    pub fn unbounded() -> Caps {
+        Caps { slots: u32::MAX, weight: f64::INFINITY, pallets: u32::MAX }
+    }
+
+    /// What's left of the caps with `load` aboard (none below nothing): the room for more.
+    pub fn less(&self, load: &Load) -> Caps {
+        Caps {
+            slots: self.slots.saturating_sub(load.slots),
+            weight: (self.weight - load.weight).max(0.0),
+            pallets: self.pallets.saturating_sub(load.pallets),
+        }
+    }
+
+    /// The most of a good that fits loose in these caps (`pallet-caps`): the free slots' stacks, as far as the weight left
+    /// allows, whole items. With a stack weighing 1 (the base content) the slots always bind first.
+    pub fn loose(&self, content: &Content, good: GoodId) -> f64 {
+        let by_slots = self.slots as f64 * content.goods[good].stack.max(1) as f64;
+        by_slots.min(items_by_weight(self.weight, content.goods[good].weight))
+    }
+
+    /// The most of a good that fits in these caps packed on pallets of the base kind, as packing would pack it
+    /// ([`palleted`]): whole pallets as far as slots, weight and pallets allow, then a part pallet in what's left.
+    pub fn palleted(&self, content: &Content, good: GoodId) -> f64 {
+        let most = pallet_most(content, good);
+        let full = palleted(content, good, most);
+        if full.slots == 0 {
+            return 0.0;
+        }
+        let by_weight = if full.weight > 0.0 {
+            (self.weight / full.weight + 1e-9).floor().min(u32::MAX as f64) as u32
+        } else {
+            u32::MAX
+        };
+        let k = (self.slots / full.slots).min(self.pallets).min(by_weight);
+        let left = self.less(&Load { slots: full.slots * k, weight: full.weight * k as f64, pallets: k });
+        if left.pallets == 0 || left.slots == 0 {
+            return k as f64 * most;
+        }
+        // A part pallet: its crates whole but the last, so its slots are its stacks (`cargo::crated`).
+        let tare = content.packages.get(CRATE).map_or(0.0, |p| p.tare)
+            * left.slots.div_ceil(crate::cargo::CRATE_STACKS.max(1)) as f64;
+        let part = most.min(Caps { weight: (left.weight - tare).max(0.0), ..left }.loose(content, good));
+        k as f64 * most + part.max(0.0)
+    }
+}
+
+/// Whole items of `each` weight within `weight` (a hair of slack for the sums' last bits; all of them when weightless).
+fn items_by_weight(weight: f64, each: f64) -> f64 {
+    if each > 0.0 { (weight / each + 1e-6).floor().max(0.0) } else { f64::INFINITY }
+}
+
+/// The most of a good one pallet of the base kind holds (`pallet-caps`): its kind's slots' stacks, as far as its weight
+/// allows with its crates' tare, whole items; at least one item (a single item heavier than a pallet goes alone).
+pub fn pallet_most(content: &Content, good: GoodId) -> f64 {
+    let d = &content.dials;
+    let kind = &content.pallet_kinds[LOAD];
+    let slots = kind.slots(d);
+    let crates = slots.div_ceil(crate::cargo::CRATE_STACKS.max(1)) as f64;
+    let tare = content.packages.get(CRATE).map_or(0.0, |p| p.tare) * crates;
+    let by_slots = slots as f64 * content.goods[good].stack.max(1) as f64;
+    by_slots.min(items_by_weight((kind.weight(d) - tare).max(0.0), content.goods[good].weight)).max(1.0)
+}
+
+/// What `count` of a good packed on pallets of the base kind takes: each pallet [`pallet_most`] at most, in crates of
+/// nine stacks (`cargo::pallet_loads`).
+pub fn palleted(content: &Content, good: GoodId, count: f64) -> Load {
+    let mut load = Load::default();
+    if count <= 0.0 {
+        return load;
+    }
+    for packages in crate::cargo::pallet_loads(content, good, count) {
+        load.pallets += 1;
+        for pk in &packages {
+            load.slots += pk.slots(content);
+            load.weight += pk.weight(content);
+        }
+    }
+    load
 }

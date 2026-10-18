@@ -268,6 +268,8 @@ pub struct Plan {
     pub booked: u32,
     /// Pallets (`cargo.rs`): home's pallets it would take (owed under contract, not in `cargo`), by id.
     pub pallets: Vec<crate::pallet::PalletId>,
+    /// Pallet caps (`pallet-caps`): the weight of what loads first (`booked`'s stacks), for the carrier's weight cap.
+    pub booked_weight: f64,
 }
 
 /// What a route has done, its wagon if one's on the road, the leg its wagon finished this look (the arriving steps

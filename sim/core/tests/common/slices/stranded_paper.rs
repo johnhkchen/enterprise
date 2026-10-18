@@ -7,7 +7,7 @@
 
 use super::super::*;
 use enterprise_core::bills::{BillState, Held};
-use enterprise_core::cargo::{crated, Lading, Payment};
+use enterprise_core::cargo::{one_pallet, Lading, Payment};
 
 pub fn extend(s: &mut Society, r: &mut Rng) {
     if r.below(3) != 0 || s.town_count() < 3 {
@@ -45,7 +45,7 @@ pub fn daily(s: &mut Society, r: &mut Rng, day: u64) {
                     let good = r.below(s.content().goods.len() as u64) as usize;
                     let count = r.range(1.0, 200.0).floor();
                     let lading = Lading { payment: Payment::Paid, ..Lading::new(town, capital, s.now()) };
-                    if let Some(id) = s.deliver_pallet(town, lading, crated(s.content(), good, count)) {
+                    if let Some(id) = s.deliver_pallet(town, lading, one_pallet(s.content(), good, count)) {
                         s.bill_pallets(bill, &[id]);
                     }
                 }

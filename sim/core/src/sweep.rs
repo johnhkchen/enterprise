@@ -96,6 +96,12 @@ pub struct Sweep {
     pub off_map: u32,
     pub war_days: u64,
     pub soldiers: u32,
+    /// The paper at the ends (`cargo.rs`): documents drawn, of them bills of lading, scribes' and clerks' fees in
+    /// emeralds, and pallets packed (`pallet.rs`: the registry's ids handed out).
+    pub documents: u64,
+    pub ladings: u64,
+    pub scribe_fees: f64,
+    pub pallets: u64,
 }
 
 impl Sweep {
@@ -172,6 +178,13 @@ impl Sweep {
             self.off_map += s.is_off_map(t) as u32;
         }
         self.soldiers += s.army().soldiers.len() as u32;
+        for t in 0..s.town_count() {
+            let p = s.paperwork(t);
+            self.documents += p.documents;
+            self.ladings += p.by_kind.get(crate::cargo::LADING).copied().unwrap_or(0);
+            self.scribe_fees += p.scribe_fees.to_f64();
+        }
+        self.pallets += s.pallets().next;
     }
 
     /// Two sweeps' tallies as one (seeds run apart).
@@ -209,6 +222,10 @@ impl Sweep {
         self.off_map += o.off_map;
         self.war_days += o.war_days;
         self.soldiers += o.soldiers;
+        self.documents += o.documents;
+        self.ladings += o.ladings;
+        self.scribe_fees += o.scribe_fees;
+        self.pallets += o.pallets;
     }
 
     /// The tally in words, a line a topic.
@@ -239,6 +256,8 @@ impl Sweep {
         out += "\n";
         out += &format!("on at the end: {} farms, {} banks, {} hubs, {} off-map places, {} soldiers serving; {} \
             world-days at war\n", self.farms, self.banks, self.hubs, self.off_map, self.soldiers, self.war_days);
+        out += &format!("paper: {} documents drawn ({} bills of lading), {:.1} emeralds of scribes' fees, {} pallets packed\n",
+            self.documents, self.ladings, self.scribe_fees, self.pallets);
         out
     }
 }

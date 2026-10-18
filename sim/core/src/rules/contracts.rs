@@ -115,7 +115,11 @@ pub(crate) fn collect(clock: Res<Clock>, content: Res<Content>, mut book: ResMut
                 .filter(|p| p.lading.contract == Some(id) && p.consigned_to(c.buyer)).map(|p| p.count()).sum();
             // (What its bank lent on the contract is paid out of the goods, not the purse.)
             let lent = banks.owed_to(route.from_id, id);
-            let n = c.owed(now).min(stock.0[c.good] + crated).min(((wagon.purse + lent).to_f64() / c.price.max(1e-9)).floor());
+            // As far as the wagon has room, in slots, weight and pallets, as the seller will pack it (`collectExWorks`'s
+            // `room`; `pallet-caps`).
+            let room = crate::cargo::wagon_room(&content, &pallets, route.seq, wagon).palleted(&content, c.good);
+            let n = c.owed(now).min(stock.0[c.good] + crated).min(((wagon.purse + lent).to_f64() / c.price.max(1e-9)).floor())
+                .min(room.floor());
             if n <= 0.0 {
                 continue;
             }
@@ -126,19 +130,16 @@ pub(crate) fn collect(clock: Res<Clock>, content: Res<Content>, mut book: ResMut
             stock.0[c.good] -= n - from_crates;
             let packed = super::cargo::pack_collected(&content, &mut ledger, &mut cash, now, route.to_id, &mut money.0,
                 trades, farm, &mut store, &mut paperwork, c, n);
-            let in_crates = match packed {
-                Some(packages) => {
-                    // Paid for as it's collected, sealed as it leaves the seller's.
-                    let lading = crate::pallet::Lading { contract: Some(id), payment: crate::pallet::Payment::Paid, copy: true,
-                        ..crate::pallet::Lading::new(route.to_id, c.buyer, now) };
-                    let p = pallets.pack(lading, packages, crate::pallet::At::Town(route.to_id), now);
-                    let count = pallets.get(p).unwrap().count();
-                    crate::cargo::put_aboard(&mut pallets, wagon, route.seq, crate::pallet::Line { pallet: p, ..Default::default() },
-                        route.to_id, now);
-                    count
-                }
-                None => 0.0,
-            };
+            // Paid for as it's collected, sealed as it leaves the seller's: a pallet each pallet's worth, a bill each.
+            let lading = crate::pallet::Lading { contract: Some(id), payment: crate::pallet::Payment::Paid, copy: true,
+                ..crate::pallet::Lading::new(route.to_id, c.buyer, now) };
+            let mut in_crates = 0.0;
+            for packages in packed.unwrap_or_default() {
+                let p = pallets.pack(lading.clone(), packages, crate::pallet::At::Town(route.to_id), now);
+                in_crates += pallets.get(p).unwrap().count();
+                crate::cargo::put_aboard(&mut pallets, wagon, route.seq, crate::pallet::Line { pallet: p, ..Default::default() },
+                    route.to_id, now);
+            }
             wagon.cargo[c.good] += n - in_crates;
             // A loan from this wagon's bank on the contract comes out of the payment first (`bank.rs`).
             let repaid = banks.repay_from(route.from_id, id, paid);
@@ -153,9 +154,12 @@ pub(crate) fn collect(clock: Res<Clock>, content: Res<Content>, mut book: ResMut
 }
 
 /// In the plan: what's owed under contract the seller carries, by the time the wagon would arrive, as far as home
-/// has it. Pressing if an installment would be judged before the goods count, were the wagon to wait a day.
+/// has it and the squad it sized up has room for it, packed on pallets (`pickContracted`'s `room`; in slots, weight and
+/// pallets since `pallet-caps`). Pressing if an installment would be judged before the goods count, were the wagon to
+/// wait a day.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn plan_owed(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, pallets: Res<crate::pallet::Pallets>,
-        mut routes: Query<(&Route, &mut RouteState)>, towns: Query<&Stock>) {
+        mut routes: Query<(&Route, &mut RouteState)>, towns: Query<&Stock>, rosters: Query<&crate::roster::Roster>) {
     let now = clock.now;
     let day = content.day_ticks;
     let grace = (contracts::GRACE_DAYS * day as f64) as u64;
@@ -169,7 +173,9 @@ pub(crate) fn plan_owed(clock: Res<Clock>, content: Res<Content>, book: Res<Book
             let crated: f64 = pallets.at_place(At::Town(route.from_id))
                 .filter(|p| p.claimed.is_some() && p.consigned_to(route.to_id) && p.lading.contract == Some(c.id)).map(|p| p.count()).sum();
             let owed = (c.owed(arrival) - c.shipped - crated).max(0.0);
-            let going = owed.min(home.0[c.good] - plan.cargo[c.good]).floor();
+            let caps = super::plan::plan_caps(&content, plan, rosters.get(route.from).ok(), false);
+            let room = caps.less(&super::plan::plan_load(&content, &book, &pallets, plan)).palleted(&content, c.good);
+            let going = owed.min(home.0[c.good] - plan.cargo[c.good]).min(room).floor();
             if going <= 0.0 {
                 continue;
             }

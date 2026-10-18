@@ -15,7 +15,7 @@
 //!   a consolidation that exists; no pallet at its own consignee unopened.
 //! - **Seals** ([`seals`]): a pallet on a carrier or in custody is sealed, and a sealed pallet's digest is its seal's.
 //! - **Caps** ([`wagon_caps`], [`pallet_caps`]): every wagon's load (loose cargo, pallets) within its carrier's slots,
-//!   weight and pallets; every pallet within its kind's slots and weight (with the wagon's weight and pallets, switched on by [`CAPS_BIND`]).
+//!   weight and pallets; every pallet within its kind's slots and weight (switched on by [`CAPS_BIND`] since `pallet-caps`).
 //! - **Manifests** ([`manifests`]): a wagon's open manifest lines are exactly the pallets aboard, once each; a
 //!   consolidation's lines are exactly its pallets, and share one next stop.
 //! - **Goods conserved:** `check.rs` counts the pallets once, from the registry; the harness runs `conserved` each day.
@@ -23,18 +23,18 @@
 //! Later tasks add a line each where marked `// later:` below (claims, superbills, losses).
 
 use super::super::*;
-use enterprise_core::cargo::{crated, Lading, Payment};
+use enterprise_core::cargo::{one_pallet, Lading, Payment};
 use enterprise_core::content::Content;
 use enterprise_core::pallet::{At, Caps, Load, Manifest, Pallet, PalletId, Pallets};
 use enterprise_core::State;
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Whether the caps `pallet-caps` brings are checked: a pallet's own slots and weight (its kind's), and a wagon's load
-/// against its slots, weight and pallets. Until that task lands a town crates a whole sale in one pallet of however many
-/// crates, a heavy good fills no wagon by weight, a porter run carries as many pallets as there are, and three paths load
-/// a wagon past its stacks (see [`wagon_caps`]): main's behaviour, in most seeds, so these checks would fail on it (the
-/// test `main_lets_a_wagon_and_a_pallet_go_over_their_caps` pins that they do). `pallet-caps` sets this to `true`.
-pub const CAPS_BIND: bool = false;
+/// against its slots, weight and pallets. Before that task a town crated a whole sale in one pallet of however many crates,
+/// a heavy good filled no wagon by weight, a porter run carried as many pallets as there were, and several paths loaded a
+/// wagon past its stacks (see [`wagon_caps`]). `pallet-caps` fits them all and turns this on (the test
+/// `the_worlds_that_went_over_their_caps_keep_within_them` replays the worlds that went over).
+pub const CAPS_BIND: bool = true;
 
 /// A wagon on the road, as the checks see it.
 #[derive(Clone, Debug)]
@@ -254,11 +254,11 @@ fn load_of<'a>(v: &View, route: usize, w: &WagonView, aboard: impl IntoIterator<
 }
 
 /// Every wagon's load (loose cargo, pallets, lots for sale) within its carrier's slots, weight and pallets. Switched on by
-/// [`CAPS_BIND`]: main's rules hold a wagon to its stacks at planning only, and three paths put more aboard than it holds
-/// (`.tree/TASK.md` has the seeds): `stranded::load` loads a stranded pallet while the wagon has room *left* (`room > 0`,
-/// the Java's `loadStranded`, a crate overshooting by eight at most: now a pallet of a whole sale by more), the Ex Works
-/// collection (`contracts::collect`) puts the collected goods aboard whatever room is left, and a porter run home buys at
-/// the far end by the wagon's slots, not its pack's.
+/// [`CAPS_BIND`]. Before `pallet-caps` the rules held a wagon to its stacks at planning only, and these paths put more
+/// aboard than it held: `stranded::load` loaded a stranded pallet while the wagon had room *left* (`room > 0`, the Java's
+/// `loadStranded`), the Ex Works collection (`contracts::collect`) whatever room was left, the goods owed went without a
+/// room (`plan_owed`), a hub's wagon bought a town's stranded pallets whatever its room (`buy_at_town`), shopping at the
+/// far end bought past the slots, and a porter run took several pallets.
 pub fn wagon_caps(v: &View) -> Result<(), String> {
     for (route, w) in &v.wagons {
         let load = load_of(v, *route, w, v.pallets.at_place(At::Wagon(*route)));
@@ -363,7 +363,7 @@ pub fn daily(s: &mut Society, r: &mut Rng, _day: u64) {
     }
     let good = r.below(s.content().goods.len() as u64) as usize;
     let count = (r.range(0.0, 300.0).floor()).max(1.0);
-    let packages = crated(s.content(), good, count);
+    let packages = one_pallet(s.content(), good, count);
     let now = s.now();
     let kind = r.below(4);
     match kind {
@@ -373,7 +373,7 @@ pub fn daily(s: &mut Society, r: &mut Rng, _day: u64) {
             let (lading, packages) = match c {
                 // (Its goods are the contract's: the book counts them against it.)
                 Some(c) => (Lading { contract: Some(c.id), copy: true, ..Lading::new(at, to, now) },
-                    crated(s.content(), c.good, count)),
+                    one_pallet(s.content(), c.good, count)),
                 None => (Lading::new(at, to, now), packages),
             };
             s.deliver_pallet(at, lading, packages);

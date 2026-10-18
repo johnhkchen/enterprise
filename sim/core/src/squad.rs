@@ -222,15 +222,24 @@ pub fn capacity(content: &Content, crew: impl IntoIterator<Item = TradeId>, port
     d.wagon_slots + d.pack_stacks * crew.into_iter().filter(|&t| carries(content, t)).count() as u32
 }
 
-/// Porters a load of `stacks` wants beyond the wagon and, if a Leatherworker is at home, its packs (`dispatch`):
-/// `ceil((stacks - wagon_slots - packs) / pack_stacks)`, none for a load the wagon holds.
-pub fn porters_needed(content: &Content, stacks: u32, packs: bool) -> usize {
+/// Porters a load of `stacks` weighing `weight` wants beyond the wagon and, if a Leatherworker is at home, its packs
+/// (`dispatch`): `ceil((stacks - wagon_slots - packs) / pack_stacks)`, or by weight `ceil((weight - wagon_weight - packs)
+/// / pack_weight)` if more (`pallet-caps`: the larger of the two); none for a load the wagon holds. With a stack weighing 1
+/// (the base content) the two are the same.
+pub fn porters_needed(content: &Content, stacks: u32, weight: f64, packs: bool) -> usize {
     let d = &content.dials;
-    if stacks <= d.wagon_slots || d.pack_stacks == 0 {
+    if (stacks <= d.wagon_slots && weight <= d.wagon_weight + 1e-9) || d.pack_stacks == 0 {
         return 0;
     }
     let beyond = stacks as f64 - d.wagon_slots as f64 - if packs { d.pack_stacks as f64 } else { 0.0 };
-    (beyond / d.pack_stacks as f64).ceil().max(0.0) as usize
+    let by_slots = (beyond / d.pack_stacks as f64).ceil().max(0.0) as usize;
+    let by_weight = if d.pack_weight > 0.0 {
+        let beyond = weight - d.wagon_weight - if packs { d.pack_weight } else { 0.0 };
+        (beyond / d.pack_weight - 1e-9).ceil().max(0.0) as usize
+    } else {
+        0
+    };
+    by_slots.max(by_weight)
 }
 
 /// The goods the far end wants (`Caravans.wantedThere`, as far as the core knows it): what its people use or its
@@ -250,9 +259,16 @@ pub fn wanted_there(content: &Content, far: &Trades, far_lockers: Option<(&crate
 /// Stacks of the goods the far end wants that home holds (`Caravans.wantedStacks`: 64 to a stack, whatever the good).
 pub fn wanted_stacks(content: &Content, home: &[f64], far: &Trades,
         far_lockers: Option<(&crate::lockers::Lockers, &Roster)>) -> u32 {
+    wanted_load(content, home, far, far_lockers).0
+}
+
+/// [`wanted_stacks`], and their weight (`pallet-caps`): each of those stacks weighs what a stack of its good does (1 in
+/// the base content, so the weight is the stacks).
+pub fn wanted_load(content: &Content, home: &[f64], far: &Trades,
+        far_lockers: Option<(&crate::lockers::Lockers, &Roster)>) -> (u32, f64) {
     // (`wanted_there`'s goods, asked only of those home holds a whole one of: the rest add no stack.)
     let mut taken: Option<Vec<bool>> = None;
-    let mut stacks = 0;
+    let (mut stacks, mut weight) = (0, 0.0);
     for g in 0..content.goods.len() {
         let n = (home.get(g).copied().unwrap_or(0.0).max(0.0).floor() / 64.0).ceil() as u32;
         if n == 0 || content.goods[g].comfort.is_some() {
@@ -263,9 +279,10 @@ pub fn wanted_stacks(content: &Content, home: &[f64], far: &Trades,
             || far_lockers.is_some_and(|(l, r)| taken.get_or_insert_with(|| l.taken(content, r, content.goods.len()))[g]);
         if wanted {
             stacks += n;
+            weight += n as f64 * content.goods[g].weight * content.goods[g].stack.max(1) as f64;
         }
     }
-    stacks
+    (stacks, weight)
 }
 
 /// The hand a town with routes and nobody to lead them takes on as a travelling Merchant (`Squad.hire`): the first

@@ -311,14 +311,14 @@ fn the_check_is_what_a_slice_runs_every_day() {
     common::slices::pallets::check(&s, 0).unwrap();
 }
 
-/// Main's rules let a wagon and a pallet go over their caps in most worlds: a town crates a whole sale as one pallet (so a
-/// pallet is many crates), `stranded::load` loads while a wagon has room left, and a porter's run carries any number of
-/// pallets. That is why [`CAPS_BIND`] is off in the sweep until `pallet-caps`; here is each, in the worlds found.
+/// Before `pallet-caps` the rules let a wagon and a pallet go over their caps in most worlds: a town crated a whole sale as
+/// one pallet (so a pallet was many crates), `stranded::load` loaded while a wagon had room left, and a porter's run
+/// carried any number of pallets. Those worlds (seed 8 day 15: 12 stacks on a wagon of 9; seed 1 day 4: a pallet of 42
+/// stacks) now keep every wagon and pallet within its caps, and [`CAPS_BIND`] has the sweep check it every day.
 #[test]
-fn main_lets_a_wagon_and_a_pallet_go_over_their_caps() {
-    // (seed, day, what the world shows). Every slice's doings make these worlds, so a slice's new doings move them: found
-    // again at pallet-messages' landing (its PackageLost and PackageBrought), where seed 5 day 22's wagon had been.
-    for (seed, day, route, pallet) in [(8u64, 15u64, Some(26usize), None), (1, 4, None, Some(6u64))] {
+fn the_worlds_that_went_over_their_caps_keep_within_them() {
+    assert!(CAPS_BIND, "pallet-caps turns the caps on in the sweep");
+    for (seed, day) in [(8u64, 15u64), (1, 4)] {
         let mut s = world(seed);
         let daily = sellers(seed);
         for d in 1..=day {
@@ -327,20 +327,11 @@ fn main_lets_a_wagon_and_a_pallet_go_over_their_caps() {
             }
             s.advance(d * DAY);
             common::slices::daily(&mut s, seed, d);
-        }
-        let v = View::of(&s);
-        if let Some(r) = route {
-            // 12 stacks of pallets on a wagon of 9.
-            let err = sweep::wagon_caps(&v).expect_err("a wagon over its stacks");
-            assert!(err.contains(&format!("route {r}'s wagon carries Load {{ slots: 12")), "{err}");
-        }
-        if let Some(p) = pallet {
-            // 42 stacks to a pallet that holds nine.
-            let err = sweep::pallet_caps(&v).expect_err("a pallet over its kind's caps");
-            assert!(err.contains(&format!("pallet {p} takes 42 slots")), "{err}");
+            let v = View::of(&s);
+            sweep::wagon_caps(&v).unwrap_or_else(|e| panic!("seed {seed} day {d}: {e}"));
+            sweep::pallet_caps(&v).unwrap_or_else(|e| panic!("seed {seed} day {d}: {e}"));
         }
     }
-    assert!(!CAPS_BIND, "pallet-caps turns the caps on in the sweep, and removes this test");
 }
 
 #[test]

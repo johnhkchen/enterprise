@@ -32,7 +32,8 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
         if c.recouped > c.advanced || c.refund.is_negative() || c.advanced.is_negative() {
             return Err(format!("contract {id}: advanced {}, worked off {}, owed back {}", c.advanced, c.recouped, c.refund));
         }
-        if c.state == State::Broken && c.advanced != c.recouped {
+        // (A residue under `ADVANCE_EPS` is nothing, as `Book::broken` reckons it: `Contract.advanceDue` lists above 0.01.)
+        if c.state == State::Broken && c.advanced - c.recouped > enterprise_core::contracts::ADVANCE_EPS {
             return Err(format!("contract {id}: broken with {} not worked off or owed back", c.advanced - c.recouped));
         }
         // (A broken contract whose goods were on the road when it broke completes when they arrive, as the mod's

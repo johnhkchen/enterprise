@@ -281,18 +281,18 @@ fn under_an_offtake_the_pupils_work_is_crated_for_the_buyer_with_a_bill() {
     assert_eq!(s.town(0).stock[AXE], 0.0, "no axes left loose to clog it");
     let held = s.town_pallets(0);
     let crated: Vec<_> = held.iter().filter(|c| c.consigned_to(1)).collect();
-    assert_eq!(crated.len(), 1, "one pallet");
-    assert_eq!(crated[0].count(), 12.0);
+    // A pallet holds nine stacks (`pallet_slots`), an axe a stack: nine axes and three, a pallet each (`pallet-caps`).
+    assert_eq!(crated.iter().map(|p| p.count()).collect::<Vec<_>>(), vec![9.0, 3.0], "two pallets");
     assert_eq!(held.iter().map(|p| p.crates()).sum::<u32>(), 2, "twelve axes crated for the buyer: two crates");
-    assert!(crated[0].lading.prepaid() && crated[0].lading.contract.is_some(), "paid for by the bill drawn with them");
+    assert!(crated.iter().all(|p| p.lading.prepaid() && p.lading.contract.is_some()), "paid for by the bill drawn with them");
     let bills = s.bills();
     assert_eq!(bills.len(), 1);
-    assert_eq!(bills[0].pallets, vec![crated[0].id], "the bill names its pallet");
+    assert_eq!(bills[0].pallets, crated.iter().map(|p| p.id).collect::<Vec<_>>(), "the bill names its pallets");
     assert!(bills[0].drawee == 1 && bills[0].payee == 0, "a bill drawn on the buyer for them");
     assert!(bills[0].amount >= 12.0 / 3.0, "worth at least a third of an emerald each: {}", bills[0].amount);
     assert!(bills[0].amount == 12.0 * 0.5 * 1.02, "twelve axes at half an emerald, plus the bill's two per cent");
     assert_eq!(bills[0].held, Held::Town(0), "filed in the seller's warehouse");
-    assert_eq!(s.paperwork(0).by_kind.get("bill of lading"), Some(&1), "with a bill of lading");
+    assert_eq!(s.paperwork(0).by_kind.get("bill of lading"), Some(&2), "with a bill of lading each");
 }
 
 #[test]
