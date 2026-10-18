@@ -290,6 +290,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         let (_, route, mut state) = routes.get_mut(entity).unwrap();
         let route = *route;
         let Some(mut plan) = state.plan.take() else { continue };
+        state.tried_at = Some(now);
         // (A realm's wagons are never crewed from a roster, whoever stands in it: `realms.rs`.)
         let foreign = places.get(route.from).is_ok_and(|(_, realm, _)| realm.is_some());
         let rostered = !foreign && rosters.get(route.from).ok().is_some_and(|r| crewed(Some(r)));

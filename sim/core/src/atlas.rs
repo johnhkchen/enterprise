@@ -40,8 +40,9 @@
 //!
 //! **Where the core differs.** The mod's stocktake is one per market, as here, but a far end with no stocktake reads
 //! as holding nothing (its wagons haul its whole par); the core reads its stock as it is, so towns without Librarians
-//! trade as before, and a stocktake gone stale is read the same way rather than for ever. Reasons are tallied when a
-//! wagon leaves, or once a day while it stays (the mod tallies at each try, four a day). A page of the books takes no
+//! trade as before, and a stocktake gone stale is read the same way rather than for ever. A wagon's reasons, good by good,
+//! are tallied only when it leaves, as the mod reckons them only past its waiting (`dispatch` 433–441); a try that
+//! sends none tallies only "no trip", at each try (`poll` 182–184): the core tries at its looks, the mod at its polls. A page of the books takes no
 //! stationery yet (`Paperwork.drawn(desk, 1, LEDGER)`). A commissioned route carries a shopping purse like any town's wagon
 //! (`desires.rs`), and a Cartographer's news isn't brought home yet (`services`).
 
@@ -281,11 +282,10 @@ pub struct Tally {
 /// A reason's key in a town's tally: with whom, which good (none: the trip as a whole), why.
 pub type WhyKey = (Option<TownId>, Option<GoodId>, Why);
 
-/// Each town's reasons (`Books.whys`), and the day each route last told why it stayed (once a day).
+/// Each town's reasons (`Books.whys`).
 #[derive(Resource, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Whys {
     pub tally: BTreeMap<TownId, BTreeMap<WhyKey, Tally>>,
-    pub noted: BTreeMap<RouteId, u64>,
 }
 
 impl Whys {

@@ -202,7 +202,10 @@ fn a_home_with_a_roster_plans_on_the_last_stocktake_while_fresh() {
     s.record_stocktake(DEST, &[(PAPER, 64.0)], Some(0));
     s.advance(LOOK);
     assert_eq!(s.route(0).carried, 0.0, "they hold their fill, as last seen");
-    assert!(whys(&s, HUB).contains("Dest | paper | not sent: they hold their fill"), "{}", whys(&s, HUB));
+    // No wagon went, so no reasons good by good: the mod reckons them only for a wagon that goes (`Caravans.dispatch`
+    // 469–510, `pickCargo` 2368–2398, past its waiting at 433–441); only why no wagon left (`poll` 182–184).
+    assert!(!whys(&s, HUB).contains("Dest | paper |"), "{}", whys(&s, HUB));
+    assert!(whys(&s, HUB).contains("Dest | - | no trip: waiting for a fuller load"), "{}", whys(&s, HUB));
     // Three days on the stocktake is stale: home plans on the far end as it is (none held), and wants a Librarian.
     s.advance(3 * DAY + 2 * LOOK);
     assert_eq!(s.books(HUB).iter().filter(|e| e.kind == Kind::Sent).map(|e| e.count).sum::<f64>(), 64.0,
@@ -390,10 +393,14 @@ fn what_the_far_end_wont_buy_is_noted_in_the_log_and_tallied_at_home() {
 }
 
 #[test]
-fn a_route_that_stays_home_says_why_once_a_day() {
+fn a_route_that_stays_home_says_why_each_time_it_tries() {
+    // The mod books "no trip" at each try that sends no wagon (`Caravans.poll` 182–184); nobody to lead a squad sets no
+    // recheck (`dispatch` 261–264), so it tries at every poll: the core's are its looks.
     let mut s = network(70.0, 5.0, 192.0, &[]); // nobody to lead a squad
-    s.advance(DAY - LOOK);
+    s.advance(LOOK);
     assert_eq!(tally(&s, HUB, "Dest | - | no trip: no squad at home"), Some((1, 0.0)), "{}", whys(&s, HUB));
-    s.advance(2 * DAY - LOOK);
-    assert_eq!(tally(&s, HUB, "Dest | - | no trip: no squad at home").map(|t| t.0), Some(2), "a day, a line");
+    s.advance(DAY);
+    assert_eq!(tally(&s, HUB, "Dest | - | no trip: no squad at home").map(|t| t.0), Some(DAY / LOOK),
+        "a line a look: twenty in the day");
+    assert!(s.whys(HUB).iter().all(|w| w.line.contains(" | - | ")), "and no reasons good by good: {}", whys(&s, HUB));
 }

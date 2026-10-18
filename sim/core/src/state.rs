@@ -284,6 +284,9 @@ pub struct RouteState {
     pub food_eaten: f64,
     pub food_paid: Fixed,
     pub stayed: Option<crate::road::Stay>,
+    /// The look a wagon was last tried (`Caravans.poll` 173 calling `dispatch`): a plan reached `Decide`. A try that
+    /// sent none is a "no trip" in the books (`poll` 182–184).
+    pub tried_at: Option<u64>,
     /// Squads (`squad.rs`): the saddle's wear so far (a saddle is used up at 1), porters walking home from the far end,
     /// the stacks its wagon brought home last trip (`lastHome`), porters sent home (`portersSent`), and the trades whose
     /// work the far end wants (a host's or a later slice's hook: `Services.wantedAbroad`).

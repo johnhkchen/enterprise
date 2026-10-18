@@ -12,7 +12,7 @@
 //! - **Plan:** an idle route's trip wants a Librarian while the far end's books are stale ([`want_books`]); the sale
 //!   load reads the far end's stocktake (`plan::plan_sale`).
 //! - **Decide:** a wagon gone, home's stocktake is taken, both ends know each other, what went out goes in its books
-//!   (`Sent`) and its reasons in the tally; a route that stayed tells why, once a day ([`depart`]).
+//!   (`Sent`) and its reasons in the tally; a route tried that stayed tells why, each time ([`depart`]).
 
 use bevy_ecs::prelude::*;
 
@@ -57,7 +57,7 @@ pub fn want_books(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<Stoc
 
 /// A wagon gone this look (`Caravans.dispatch` 498, 510, 562, 570): home's stocktake taken as it leaves (no time: it
 /// makes no books fresh), both ends know each other, what went out (crates opened) in home's books, the plan's
-/// reasons and why it went in the tally. A route that stayed home tells why (and its plan's reasons), once a day.
+/// reasons and why it went in the tally. A route tried that stayed home tells why ("no trip"), and only that.
 #[allow(clippy::too_many_arguments)]
 pub fn depart(clock: Res<Clock>, content: Res<Content>, mut atlas: ResMut<Atlas>, mut stocktakes: ResMut<Stocktakes>,
         mut books: ResMut<Books>, mut whys: ResMut<Whys>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
@@ -90,16 +90,11 @@ pub fn depart(clock: Res<Clock>, content: Res<Content>, mut atlas: ResMut<Atlas>
             let stacks = crate::cargo::stacks(&content, &w.cargo, &w.shipments);
             // Full as the wagon was judged leaving: of what the far end could pay for (`saleLoad`).
             whys.why(route.from_id, Some(route.to_id), None, Why::Went { full: w.full, porter: w.porter }, stacks as f64, today);
-        } else if let Some(stay) = state.stayed.filter(|s| state.wagon.is_none() && *s != crate::road::Stay::Home) {
-            // (Home within the day, a route isn't dispatched at all: the mod notes no "no trip" then, `poll` 172.)
-            if whys.noted.get(&route.seq) == Some(&today) {
-                continue;
-            }
-            whys.noted.insert(route.seq, today);
-            // Why each good would have stayed; what would have gone didn't.
-            for (good, why, n) in reasons.into_iter().filter(|(_, w, _)| !matches!(w, Why::Sent(_) | Why::SentComfort(_))) {
-                whys.why(route.from_id, Some(route.to_id), good, why, n, today);
-            }
+        } else if let Some(stay) = state.stayed.filter(|_| state.tried_at == Some(now) && state.wagon.is_none()) {
+            // A wagon tried and none went: why, in the books (`Caravans.poll` 182–184), each time it's tried. Its plan's
+            // reasons, good by good, aren't: the mod reckons them only for a wagon that goes (`dispatch` 469–510,
+            // `pickCargo` 2368–2398, past its waiting at 433–441). (A route home within the day, or waiting out its
+            // recheck, isn't tried: `poll` 173.)
             whys.why(route.from_id, Some(route.to_id), None, Why::NoTrip(stay_label(stay).to_string()), 0.0, today);
         }
     }
