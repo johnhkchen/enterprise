@@ -49,10 +49,14 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
  * {@code CensusTaker} assumes it's where it was).
  *
  * <p>In Java mode the census is the Java rules' ({@code CensusTaker}) and this adapter sends none: the core's towns then
- * keep only the hands joined by hand (the Merchant on its screen), and no child is born in them.
+ * keep only the hands joined by hand (the Merchant on its screen), and no child is born in them. Nor does it show the
+ * core's outcomes for its people: a world that ran in core mode keeps its tagged hands and counted beds, and their
+ * births, levels and departures would spawn, write or discard villagers beside the Java rules' own.
  */
 public final class PeopleAdapter {
     private final CoreHost host;
+    /** The core's outcomes are written to the villagers: the server's host in core mode, or a test's. */
+    private final boolean ownsVillagers;
     /**
      * Villagers spawned for hands, by hand, with their town: named with every look until the core's roster shows the
      * name taken (a refused look loses none), never spawned twice meanwhile, and left out of censuses until then.
@@ -65,8 +69,9 @@ public final class PeopleAdapter {
 
     private record Named(long town, UUID villager) {}
 
-    public PeopleAdapter(CoreHost host) {
+    public PeopleAdapter(CoreHost host, boolean ownsVillagers) {
         this.host = host;
+        this.ownsVillagers = ownsVillagers;
     }
 
     /**
@@ -186,7 +191,7 @@ public final class PeopleAdapter {
         views(level, town, centre);
     }
 
-    /** The names of the villagers just spawned, sent now rather than with the next look (a command, a test). */
+    /** The names of the villagers just spawned, sent now rather than with the next look (a save, a command, a test). */
     public void nameNow() {
         List<Input> inputs = names();
         if (!inputs.isEmpty()) {
@@ -273,11 +278,11 @@ public final class PeopleAdapter {
     /**
      * Shows one of the core's outcomes for its people in the world. A town or villager not loaded is left: a hand with
      * no villager is spawned at its town's next census, and a villager that should be gone is taken when a census sees
-     * it ({@code HandGone} again).
+     * it ({@code HandGone} again). Nothing is shown by a host that doesn't own the villagers (Java mode).
      */
     public void show(Output output) {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-        if (server == null) {
+        if (server == null || !ownsVillagers) {
             return;
         }
         switch (output) {

@@ -78,7 +78,7 @@ public final class CoreHost implements AutoCloseable {
         this.store = new SaveStore(dir, this::callNow);
         this.points = new PointsAdapter(this);
         this.hands = new HandsAdapter(this);
-        this.people = new PeopleAdapter(this);
+        this.people = new PeopleAdapter(this, ownsChests);
         this.stock = new StockAdapter(this, ownsChests);
         this.outcomes = new Outcomes(people, stock);
         try {
@@ -105,8 +105,9 @@ public final class CoreHost implements AutoCloseable {
 
     /**
      * A host for the world folder {@code dir}: its society loaded from {@value SaveStore#FILE} there, or made from the
-     * mod's content pack with {@code seed} when there's none, its moves written to the chests ({@code ownsChests}: the
-     * server's own in core mode) or every one sent back unmoved (Java mode, where the Java rules own the chests). The
+     * mod's content pack with {@code seed} when there's none, its moves written to the chests and its people's outcomes
+     * to the villagers ({@code ownsChests}: the server's own in core mode) or every move sent back unmoved and no
+     * villager spawned, discarded or written (Java mode, where the Java rules own the chests and the people). The
      * server's own is {@link #of}; a test makes its own.
      */
     public static CoreHost open(Path dir, long seed, boolean ownsChests) {
@@ -325,8 +326,10 @@ public final class CoreHost implements AutoCloseable {
     }
 
     /**
-     * Saves the society to the world's folder, after every look sent and what the host couldn't move of them, so the
-     * save takes the chests to hold what they do. False when paused (nothing written).
+     * Saves the society to the world's folder, after every look sent, what the host couldn't move of them and the names
+     * of the villagers just spawned for hands, so the save takes the chests to hold what they do and every villager the
+     * world saves to be its hand's (a name left for the next look would be lost with a stop: the villager joined anew
+     * as a second hand, and its hand spawned again). False when paused (nothing written).
      */
     public boolean save() {
         if (pausedWhy != null) {
@@ -334,6 +337,7 @@ public final class CoreHost implements AutoCloseable {
         }
         settle();
         flush();
+        people.nameNow();
         try {
             return store.save();
         } catch (RuntimeException e) {

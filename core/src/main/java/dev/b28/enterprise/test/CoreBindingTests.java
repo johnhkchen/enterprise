@@ -496,6 +496,49 @@ public final class CoreBindingTests {
     }
 
     /**
+     * A villager spawned for a hand is that hand's in the save (B4.5): a child born in the core and spawned by the bell
+     * is named with the next look, but a save before it sends the name first, so a world stopped in between loads with
+     * the child as the core's hand (not a newcomer for the next census, with the hand spawned again).
+     */
+    @GameTest(template = "floor")
+    public static void aVillagerSpawnedForAHandIsItsHandsInTheSave(GameTestHelper helper) {
+        var level = helper.getLevel();
+        BlockPos desk = settlement(helper, 4);
+        BlockPos bell = helper.absolutePos(BELL);
+        Villager merchant = villager(helper, Merchant.PROFESSION.get(), 1, new BlockPos(2, 2, 4));
+        Villager farmer = villager(helper, VillagerProfession.FARMER, 1, new BlockPos(4, 2, 4));
+        AABB near = new AABB(bell).inflate(CENSUS_RADIUS - 1);
+        List<Villager> babies = List.of();
+        Path dir = folder();
+        try {
+            long town;
+            try (CoreHost host = CoreHost.open(dir, 7)) {
+                town = host.stock().found(level, desk, "Testford");
+                host.apply(List.of(new Input.SetDial("birth_mood", java.util.Optional.of(-100.0)),
+                        new Input.SetDial("birth_cost", java.util.Optional.of(0.0))));
+                host.people().countNow(level, town, bell, CENSUS_RADIUS);
+                advance(host, level.getGameTime() + 5 * DAY);
+                babies = level.getEntitiesOfClass(Villager.class, near, Villager::isBaby);
+                helper.assertTrue(babies.size() == 1, babies.size() + " babies by the bell, not one");
+                helper.assertTrue(host.save(), "the core didn't save");
+            }
+            try (CoreHost loaded = CoreHost.open(dir, 8)) {
+                HandsAdapter.Where baby = loaded.hands().of(babies.get(0).getUUID());
+                helper.assertTrue(baby != null && baby.town() == town,
+                        "the saved core doesn't have the baby as its child: " + loaded.hands().roster(town).hands());
+                helper.assertTrue(loaded.hands().roster(town).hands().stream().allMatch(h -> h.villager() != null),
+                        "a hand saved with no villager: " + loaded.hands().roster(town).hands());
+            }
+        } finally {
+            delete(dir);
+            merchant.discard();
+            farmer.discard();
+            babies.forEach(Villager::discard);
+        }
+        helper.succeed();
+    }
+
+    /**
      * The core's word on a hand is written to its villager (B4.5): a trade taken up and a level earned in the core
      * ({@code HandLevel}) become the villager's profession, level and XP; a hand the core took from the world ({@code
      * HandGone}) takes its villager away, with no death for the core to hear.
