@@ -73,6 +73,23 @@ fn a_barrel_good_and_a_crate_good_for_one_buyer_share_a_pallet() {
 }
 
 #[test]
+fn a_host_packs_only_its_own_goods_and_under_a_contract_only_the_contracts_good() {
+    let mut s = Society::new(goods(&[("carrot", CRATE), ("paper", CRATE)]));
+    s.add_town("Cloverby", 10.0);
+    s.add_town("Far Market", 0.0);
+    s.deliver(0, 0, 64.0);
+    s.deliver(0, 1, 64.0);
+    let before = s.totals();
+    let c = s.draft_harvest(0, 1, 0, 64.0, 0.04, 0, 10 * DAY, 3, Incoterm::Ddp, true, false);
+    assert!(s.pack_pallets(1, bill(0, 1, None), &[(0, 64.0)], How::OWED).is_empty(), "not the shipper: refused");
+    assert!(s.pack_pallets(0, bill(0, 1, Some(c)), &[(0, 64.0), (1, 64.0)], How::OWED).is_empty(),
+        "another good under the contract: refused");
+    assert_eq!((s.town(0).stock[0], s.town(0).stock[1]), (64.0, 64.0), "nothing left the stock");
+    assert_eq!(s.pack_pallets(0, bill(0, 1, Some(c)), &[(0, 64.0)], How::OWED).len(), 1, "the contract's good: packed");
+    s.conserved(&before).unwrap();
+}
+
+#[test]
 fn goods_of_a_key_fill_a_pallet_and_the_next_begins_a_new_one() {
     // Nine stacks to a pallet: nine of ale fill one; the paper begins another.
     let mut s = shelf(goods(&[("ale", BARREL), ("paper", CRATE)]), 5.0, 0);

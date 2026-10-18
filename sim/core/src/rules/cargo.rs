@@ -235,9 +235,11 @@ pub(crate) fn plan_owing(content: Res<Content>, book: Res<Book>, mut routes: Que
 }
 
 /// As each wagon leaves: the pallets its plan claimed, taken from home's by id and released, sealed, counted on the road
-/// under their contracts; the loose goods owed packed, a pallet a contract, made out to the far end with its bill of
-/// lading and copy; then each good for sale of two stacks or more packed in crates of its own, an open lot with no papers.
-/// Crates are home's empties first, then new ones as far as it can spare; the rest goes loose.
+/// under their contracts; the goods owed that were planned loose packed on pallets, a contract's to a bill and a pallet a
+/// pallet's worth, made out to the far end with its bill of lading and copy, crated where there are crates to be had and
+/// loose on their pallet where there are none, so none of it is left in the wagon's cargo (`packing`); then each good for
+/// sale of two stacks or more packed in crates of its own, an open lot with no papers. Crates are home's empties first,
+/// then new ones as far as it can spare; what of the goods for sale can't be crated travels loose.
 #[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub(crate) fn ship(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut ledger: ResMut<Ledger>,
         mut cash: ResMut<CashBook>, mut pallets: ResMut<Pallets>, mut routes: Query<(Entity, &Route, &mut RouteState)>,

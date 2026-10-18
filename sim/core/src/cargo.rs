@@ -762,10 +762,18 @@ impl Society {
     /// packages of each good's kind (the town's empty crates first, else new at `crate_emeralds` as far as it can spare), a
     /// bill of lading drawn for each pallet made, `how` saying whether what can't be crated rides loose on its pallet or stays
     /// in stock, and whether the open pallets of the key already at the town are topped up. The town is brought up to date
-    /// first. Returns the pallets made or topped up, in order; the goods packed leave the stock.
+    /// first. Returns the pallets made or topped up, in order; the goods packed leave the stock. Refused (nothing packed)
+    /// unless the town is `lading`'s shipper, and, under a contract, unless every line is the contract's good: the readers of
+    /// a contract's pallets (`collect`, `ship`, set-asides) count a pallet's goods as the contract's.
     pub fn pack_pallets(&mut self, town: TownId, lading: Lading, lines: &[(GoodId, f64)], how: How) -> Vec<PalletId> {
         use bevy_ecs::prelude::Mut;
         use crate::cash_book::CashBook;
+        if lading.shipper != town || lading.contract.is_some_and(|id| {
+            let good = self.world.resource::<crate::contracts::Book>().contracts.get(id).map(|c| c.good);
+            lines.iter().any(|&(g, _)| Some(g) != good)
+        }) {
+            return Vec::new();
+        }
         self.deliver(town, 0, 0.0); // brings the town up to date: nothing delivered
         let (e, now) = (self.towns[town], self.now());
         let content = self.content().clone();
