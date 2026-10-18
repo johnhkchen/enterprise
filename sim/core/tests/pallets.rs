@@ -269,3 +269,22 @@ fn a_bill_paid_for_in_coin_is_prepaid_and_owed_or_billed_ones_are_not() {
     let l = Lading::new(2, 5, 77);
     assert!(l.shipper == 2 && l.consignee == 5 && l.issued == 77 && l.payment == Payment::Owed && l.contract.is_none());
 }
+
+#[test]
+fn the_first_claim_holds_a_pallet_till_it_is_released_or_the_look_ends() {
+    let mut p = Pallets::default();
+    let a = p.pack(bill(), vec![Package::new(CRATE, 0, 5.0)], At::Town(0), 0);
+    let b = p.pack(bill(), vec![Package::new(CRATE, 0, 5.0)], At::Town(0), 0);
+    let d = p.digest(a);
+    assert!(p.claim(a, 0), "free: the first route takes it");
+    assert!(p.claim(a, 0), "its own claim again");
+    assert!(!p.claim(a, 1), "another route's plan goes without");
+    assert_eq!(p.claimed_by(a), Some(0));
+    assert_eq!(p.digest(a), d, "a claim is no part of the pallet");
+    p.release(a);
+    assert!(p.claim(a, 1), "released: free");
+    assert!(p.claim(b, 0));
+    p.clear_claims();
+    assert!(p.claimed_by(a).is_none() && p.claimed_by(b).is_none(), "every claim let go at a look's start");
+    assert!(!p.claim(99, 0), "no such pallet");
+}

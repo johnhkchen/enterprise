@@ -344,3 +344,47 @@ fn ex_works_the_buyer_takes_what_the_seller_crated_for_it_first() {
     assert_eq!(s.town(1).stock[0], 40.0, "home and stored");
     assert_eq!(s.contract(id).owing, 0.0, "paid for: no debt booked at home");
 }
+
+/// Haygate to Cloverby by two routes, and one contracted pallet waiting at Haygate.
+fn two_routes_one_pallet() -> (Society, usize, u64) {
+    let mut s = hub_and_town(5.0, 5.0, 30.0);
+    s.add_route(0, 1, 1.0, 0.0, 30.0);
+    s.deliver(0, 0, 64.0);
+    let id = s.draft(0, 1, 0, 64.0, 0.05, 0, DAY, 1, Incoterm::Ddp, true);
+    let packages = crated(s.content(), 0, 64.0);
+    let pallet = s.deliver_pallet(0, bill(0, 1, Some(id), Payment::Owed, true), packages).expect("held");
+    (s, id, pallet)
+}
+
+// A race the mod doesn't have: it clones the crate into every route's plan.
+#[test]
+fn two_routes_to_one_buyer_one_pallet_only_the_first_routes_plan_counts_it() {
+    let (mut s, id, pallet) = two_routes_one_pallet();
+    assert!(until(&mut s, 3, |s| s.route(0).on_the_road || s.route(1).on_the_road), "a wagon left");
+    assert!(s.route(0).on_the_road, "the first route's");
+    assert_eq!(s.wagon_pallets(0).0.iter().map(|p| p.id).collect::<Vec<_>>(), vec![pallet], "it took the pallet");
+    assert!(s.wagon_pallets(1).0.is_empty(), "the second route's plan didn't count it: {:?}", s.wagon_manifest(1));
+    assert!(s.pallets().get(pallet).unwrap().claimed.is_none(), "leaving lets the claim go");
+    assert_eq!(s.contract(id).shipped, 64.0, "counted on the road once");
+}
+
+// Route 0's road costs more than Haygate holds, so its plan claims the pallet and the wagon stays. Route 1's plan, made
+// after it, goes without the pallet (and plans no loose paper for what it covers); the claim stays till the next look's plans
+// begin (`Pallets::clear_claims`, tested with the registry).
+#[test]
+fn a_wagon_that_stays_holds_its_claim_for_the_look() {
+    let mut s = Society::new(goods(&["paper", "flint", "iron_axe"]));
+    s.add_town("Haygate", 5.0);
+    s.add_town("Cloverby", 5.0);
+    s.add_route(0, 1, 1.0, 50.0, 30.0);
+    s.add_route(0, 1, 1.0, 0.0, 30.0);
+    s.deliver(0, 0, 64.0);
+    let id = s.draft(0, 1, 0, 64.0, 0.05, 0, DAY, 1, Incoterm::Ddp, true);
+    let packages = crated(s.content(), 0, 64.0);
+    let pallet = s.deliver_pallet(0, bill(0, 1, Some(id), Payment::Owed, true), packages).expect("held");
+    look(&mut s);
+    assert!(!s.route(0).on_the_road, "the first route's wagon stayed");
+    assert_eq!(s.pallets().claimed_by(pallet), Some(0), "its plan holds the pallet till the next look");
+    assert!(s.wagon_pallets(1).0.is_empty(), "the second route's plan went without it");
+    assert_eq!(s.route(1).carried, 0.0, "and planned no loose paper for what the pallet covers");
+}

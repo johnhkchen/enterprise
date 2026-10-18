@@ -143,11 +143,13 @@ pub(crate) fn earmark(clock: Res<Clock>, content: Res<Content>, book: Res<Book>,
 /// In the plan, before the loose goods owed: home's pallets for each contract it carries to the far end, as they are, in
 /// the order they came, as many as cover what's owed by the time it would arrive (within the wagon's slots); pressing as
 /// the loose goods' would be (`rules/contracts.rs` `plan_owed`).
-fn plan_crated(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, pallets: Res<Pallets>,
-        mut routes: Query<(&Route, &mut RouteState)>) {
+fn plan_crated(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut pallets: ResMut<Pallets>,
+        mut routes: Query<(Entity, &Route, &mut RouteState)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let grace = (contracts::GRACE_DAYS * day as f64) as u64;
-    for (route, mut state) in &mut routes {
+    // In route order: the first route to plan a pallet claims it, and the routes after it go without (`pallet-claims`).
+    for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
+        let (_, route, mut state) = routes.get_mut(entity).unwrap();
         let Some(plan) = state.plan.as_mut() else { continue };
         if pallets.at(At::Town(route.from_id)).is_empty() {
             continue;
@@ -159,15 +161,20 @@ fn plan_crated(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, pallet
                 + planned_slots(&content, &pallets, plan));
             let mut left = owed.min(free as f64 * content.goods[c.good].stack as f64);
             let mut taken = 0.0;
-            for p in pallets.at_place(At::Town(route.from_id))
-                    .filter(|p| p.lading.contract == Some(c.id) && p.consigned_to(route.to_id)) {
+            let mut counted = Vec::new();
+            for p in pallets.at_place(At::Town(route.from_id)).filter(|p| p.claimed.is_none()
+                    && p.lading.contract == Some(c.id) && p.consigned_to(route.to_id)) {
                 if left <= 0.0 {
                     break;
                 }
                 let count = p.count();
                 left -= count;
                 taken += count;
-                plan.pallets.push(p.id);
+                counted.push(p.id);
+            }
+            for id in counted {
+                pallets.claim(id, route.seq);
+                plan.pallets.push(id);
             }
             if taken <= 0.0 {
                 continue;
@@ -206,8 +213,7 @@ pub(crate) fn plan_owing(content: Res<Content>, book: Res<Book>, mut routes: Que
     }
 }
 
-/// As each wagon leaves: the pallets it planned taken from home's (another wagon may have taken one since: it's not
-/// aboard), sealed, counted on the road under their contracts; the loose goods owed packed, a pallet a contract, made out
+/// As each wagon leaves: the pallets it planned, claimed by its plan, taken from home's by id and released, sealed, counted on the road under their contracts; the loose goods owed packed, a pallet a contract, made out
 /// to the far end with its bill of lading and copy; then each good for sale of two stacks or more packed in crates of its
 /// own, an open lot with no papers. Crates are home's empties first, then new ones as far as it can spare; the rest goes
 /// loose.
@@ -231,7 +237,11 @@ pub(crate) fn ship(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Bo
         // The pallets planned (their lines written as the plan went), from home's.
         let mut crated: Vec<(usize, f64)> = Vec::new();
         for line in std::mem::take(&mut wagon.manifest.lines) {
+            // Claimed by this route's plan at the look's start, so no other wagon's plan took it (`pallet-claims`).
             let Some(p) = pallets.get(line.pallet).filter(|p| p.at == At::Town(home)) else { continue };
+            debug_assert_eq!(p.claimed, Some(seq), "a pallet on a manifest is its plan's claim");
+            pallets.release(line.pallet);
+            let p = pallets.get(line.pallet).unwrap();
             if let Some(id) = p.lading.contract {
                 let count = p.count();
                 book.ship(id, count);

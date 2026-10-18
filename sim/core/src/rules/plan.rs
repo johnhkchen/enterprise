@@ -40,7 +40,10 @@ pub fn recheck_ticks(content: &Content) -> u64 {
 /// route.recheckAt`); a route with its wagon out, whose last wagon left within the day, or waiting out its recheck
 /// has none, and nothing plans for it: the mod reckons a load only in `dispatch`. One waiting out its recheck keeps
 /// why it stayed (the mod's `route.status`).
-pub fn start(clock: Res<Clock>, content: Res<Content>, mut routes: Query<&mut RouteState>) {
+pub fn start(clock: Res<Clock>, content: Res<Content>, mut pallets: ResMut<crate::pallet::Pallets>,
+        mut routes: Query<&mut RouteState>) {
+    // Last look's claims on pallets let go: a wagon that stayed gave its pallets up (`pallet-claims`).
+    pallets.clear_claims();
     let n = content.goods.len();
     for mut state in &mut routes {
         let rested = state.last_departure.is_none_or(|t| clock.now.saturating_sub(t) >= content.day_ticks);

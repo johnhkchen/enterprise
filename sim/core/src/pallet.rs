@@ -474,6 +474,40 @@ impl Pallets {
         }
     }
 
+    /// A plan claims a pallet it counts this look (`pallet-claims`): true if it was free (or already this route's), false
+    /// if another route's plan has it. The first route to plan wins; claims clear at the next look's start
+    /// ([`Pallets::clear_claims`]) or as the pallet leaves ([`Pallets::release`]).
+    pub fn claim(&mut self, id: PalletId, route: RouteId) -> bool {
+        match self.pallets.get_mut(&id) {
+            Some(p) if p.claimed.is_none() || p.claimed == Some(route) => {
+                p.claimed = Some(route);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Lets a pallet go from its plan's claim.
+    pub fn release(&mut self, id: PalletId) {
+        if let Some(p) = self.pallets.get_mut(&id) {
+            p.claimed = None;
+        }
+    }
+
+    /// The route whose plan holds a pallet this look.
+    pub fn claimed_by(&self, id: PalletId) -> Option<RouteId> {
+        self.pallets.get(&id).and_then(|p| p.claimed)
+    }
+
+    /// Every claim lets go: the start of a look, when the plans are made afresh (a wagon that stayed gave its pallets up).
+    pub fn clear_claims(&mut self) {
+        if self.pallets.values().any(|p| p.claimed.is_some()) {
+            for p in self.pallets.values_mut() {
+                p.claimed = None;
+            }
+        }
+    }
+
     /// The pallets at a place, as they are, in arrival order.
     pub fn at_place(&self, place: At) -> impl Iterator<Item = &Pallet> {
         self.at(place).iter().filter_map(|id| self.pallets.get(id))

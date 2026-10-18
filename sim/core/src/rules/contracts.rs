@@ -10,6 +10,7 @@ use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
 use crate::contracts::{self, Book, Contract};
 use crate::fixed::Fixed;
+use crate::pallet::At;
 use crate::state::*;
 
 pub fn register(schedule: &mut Schedule) {
@@ -163,9 +164,10 @@ pub(crate) fn plan_owed(clock: Res<Clock>, content: Res<Content>, book: Res<Book
         let home = towns.get(route.from).expect("home");
         let arrival = now + route.travel_ticks;
         for c in book.in_force(route.from_id, route.to_id).filter(|c| c.incoterm.seller_carries()) {
-            // Less what home's pallets for it carry already (`rules/cargo.rs`).
-            let crated: f64 = plan.pallets.iter().filter_map(|id| pallets.get(*id))
-                .filter(|p| p.lading.contract == Some(c.id)).map(|p| p.count()).sum();
+            // Less what home's pallets for it carry already (`rules/cargo.rs`): those this plan counts, and those another
+            // route's plan has claimed this look (`pallet-claims`: a pallet is counted once, not sent twice).
+            let crated: f64 = pallets.at_place(At::Town(route.from_id))
+                .filter(|p| p.claimed.is_some() && p.lading.contract == Some(c.id)).map(|p| p.count()).sum();
             let owed = (c.owed(arrival) - c.shipped - crated).max(0.0);
             let going = owed.min(home.0[c.good] - plan.cargo[c.good]).floor();
             if going <= 0.0 {
