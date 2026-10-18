@@ -347,8 +347,8 @@ pub fn extend(s: &mut Society, r: &mut Rng) {
 
 /// A host's doings: a player brings a whole pallet, one a different way each time it is told how it is paid for (owed,
 /// paid, by a bill of exchange) or made out to another town than the one it was brought to.
-// later: pallet-messages brings part of a pallet (a `PackageBrought` of some of its packages, the rest split off and
-// left waiting) and a lost package (`PackageLost`) here: section 5's "bring, split and lose"; this brings whole pallets only.
+// (pallet-messages' part of section 5's "bring, split and lose", a `PackageBrought` of one package and a `PackageLost`,
+// is in `pallet_types.rs`'s daily doings; this brings whole pallets only.)
 // (`deliver_pallet` takes a pallet under a contract whatever its good: one of another good moves the wrong good on the
 // contract's book and breaks conservation, so the owed doing below crates the contract's good. pallet-messages should
 // refuse such a message at the core's boundary rather than trust the host.)

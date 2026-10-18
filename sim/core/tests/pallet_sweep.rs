@@ -316,8 +316,9 @@ fn the_check_is_what_a_slice_runs_every_day() {
 /// pallets. That is why [`CAPS_BIND`] is off in the sweep until `pallet-caps`; here is each, in the worlds found.
 #[test]
 fn main_lets_a_wagon_and_a_pallet_go_over_their_caps() {
-    // (seed, day, what the world shows)
-    for (seed, day, route, pallet) in [(5u64, 22u64, Some(15usize), None), (1, 4, None, Some(6u64))] {
+    // (seed, day, what the world shows). Every slice's doings make these worlds, so a slice's new doings move them: found
+    // again at pallet-messages' landing (its PackageLost and PackageBrought), where seed 5 day 22's wagon had been.
+    for (seed, day, route, pallet) in [(8u64, 15u64, Some(26usize), None), (1, 4, None, Some(6u64))] {
         let mut s = world(seed);
         let daily = sellers(seed);
         for d in 1..=day {
@@ -329,9 +330,9 @@ fn main_lets_a_wagon_and_a_pallet_go_over_their_caps() {
         }
         let v = View::of(&s);
         if let Some(r) = route {
-            // 37 stacks of pallets on a wagon of 27.
+            // 12 stacks of pallets on a wagon of 9.
             let err = sweep::wagon_caps(&v).expect_err("a wagon over its stacks");
-            assert!(err.contains(&format!("route {r}'s wagon carries Load {{ slots: 37")), "{err}");
+            assert!(err.contains(&format!("route {r}'s wagon carries Load {{ slots: 12")), "{err}");
         }
         if let Some(p) = pallet {
             // 42 stacks to a pallet that holds nine.

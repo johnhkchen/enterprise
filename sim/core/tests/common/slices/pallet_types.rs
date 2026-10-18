@@ -11,17 +11,24 @@ pub fn extend(_s: &mut Society, _r: &mut Rng) {}
 
 /// A package is lost now and then from a pallet standing in a warehouse (`pallet-messages`: raided, broken, thrown in
 /// lava), as a host would tell the core; the goods are booked as used, and the pallet goes on short.
+/// And now and then a player carries one package of such a pallet to its consignee (`PackageBrought`): it arrives in
+/// parts, and the rules that fetch, take into custody or take apart the rest must leave the registry whole.
 pub fn daily(s: &mut Society, r: &mut Rng, _day: u64) {
-    if r.below(4) != 0 {
-        return;
-    }
-    let standing: Vec<(u64, usize)> = s.world.resource::<Pallets>().pallets.values()
-        .filter(|p| matches!(p.at, At::Town(_))).map(|p| (p.id, p.packages.len())).collect();
+    let (lose, bring) = (r.below(4) == 0, r.below(4) == 0);
+    let standing: Vec<(u64, usize, usize)> = s.world.resource::<Pallets>().pallets.values()
+        .filter(|p| matches!(p.at, At::Town(_))).map(|p| (p.id, p.packages.len(), p.lading.consignee)).collect();
     if standing.is_empty() {
         return;
     }
-    let (pallet, packages) = standing[r.below(standing.len() as u64) as usize];
-    s.apply(&enterprise_core::wire::Input::PackageLost { pallet, package: r.below(packages as u64) as u32 });
+    let (a, b) = (r.below(standing.len() as u64) as usize, r.below(standing.len() as u64) as usize);
+    let (pa, pb) = (r.below(standing[a].1 as u64) as u32, r.below(standing[b].1 as u64) as u32);
+    if bring {
+        let (pallet, _, town) = standing[b];
+        s.apply(&enterprise_core::wire::Input::PackageBrought { town, pallet, package: pb });
+    }
+    if lose && s.pallets().get(standing[a].0).is_some_and(|p| (pa as usize) < p.packages.len()) {
+        s.apply(&enterprise_core::wire::Input::PackageLost { pallet: standing[a].0, package: pa });
+    }
 }
 
 pub fn check(s: &Society, _day: u64) -> Result<(), String> {
@@ -39,8 +46,8 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
             return Err(format!("pallet {} at {place:?} isn't sealed as it was: {x:?}", x.id));
         }
     }
-    if let Some(id) = p.arriving.keys().find(|id| p.get(**id).is_none()) {
-        return Err(format!("pallet {id} is arriving in parts, but isn't in the registry"));
+    if let Some(id) = p.arriving.keys().find(|id| !p.get(**id).is_some_and(|x| matches!(x.at, At::Town(_)))) {
+        return Err(format!("pallet {id} is arriving in parts, but isn't standing in a town's warehouse"));
     }
     for route in 0..s.route_count() {
         let aboard: Vec<u64> = p.at(At::Wagon(route)).to_vec();
