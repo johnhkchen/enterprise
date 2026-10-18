@@ -1,14 +1,41 @@
 # Binding progress: where the Minecraft binding stands
 
 The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md`; how trees work is
-`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-19, `people-adapter` landed.
+`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-19, `stock-adapter` landed.
 
 ## Now
 
-- **Main:** `2874c6b`. 834 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
-  `just wire-check` passes (schema `e0b54576b14c0176`, 31 files); `just binding-test` passes (172 JVM tests). Game
-  tests: "All 272 required tests passed" in Java mode, and `just gametest-core`: 272 of 272 against the baseline of 272.
-  `just core-fingerprint`: `5e6b6d51a3b4061e` (moved by `consignment-pallets`; `people-adapter` leaves it as it was).
+- **Main:** `d19bb85`. 852 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
+  `just wire-check` passes (schema `a7833bce12ce3273`, 31 files); `just scenarios-wasm` and `just binding-test` pass
+  (190 JVM tests). Game tests: "All 280 required tests passed" in Java mode, and `just gametest-core`: 280 of 280
+  against the baseline of 280. `just core-fingerprint`: `5e6b6d51a3b4061e` (unmoved by `stock-adapter`).
+- **Stock** (B4.3, `adapters/StockAdapter`, `adapters/StockChests`, `sim/core/src/chests.rs`): chests stay physical and
+  show their town's stock. At each look every loaded desk and depot is counted (`Stocktake` with its empty slots,
+  `free`; goods loose and in shulker boxes, storage crates left shut for `pallet-views`), and at the end of the `Apply`
+  the core shows the town's stock in the chests it counted: `Output::Moved { point, good, count }`, the town's whole
+  items against what all its points' chests are taken to hold, into desks then depots as far as each count shows room,
+  out of them as far as each holds it. What the host can't do comes back as `Input::Unmoved` before the next count;
+  what has no room, and fractions, wait on the town's books. A move is a number of items worked out against a count of
+  the same look, so a chest is always counted before it's written, a hopper between count and write keeps its items,
+  and an unloaded point isn't written (counted as its chunk loads, the next tick): nothing is queued. Java mode counts
+  but never writes (every move sent back unmoved). `RemovePoint` takes a point's counted goods out of its town and a
+  desk put back where a town's stood is that town again (`chests::FormerDesks`, saved): the double count is settled,
+  and what chests gave up beyond what the town held is the point's `short`. Depots follow a building's floorplan
+  (`merchant/Depots`, from `/enterprise depot add`): at each look its containers the core doesn't keep join as depots
+  (a chest put back, one added). `Query::Chests`, `/enterprise core chests <point>`; desks placed unseen are founded
+  when their chunk loads (in a fixed chunk order), the testbench's desk registers at load. Measured in the game-test
+  server at machine load 10 to 20: a look counting four desks' 540 stacks 0.09 ms p50 of the tick (0.19 mean), a move
+  written 0.007 ms, a 42 KB save 3.4 ms p50. **Open:** depot kinds (an armoury's war goods, a barracks' rations) have
+  no core counterpart, and the floorplan stays Java's `Depots` record (its kind and its rules Java mode's) until a
+  depot kind lands in the core; the rules' room is still the `warehouse_slots` dial, not the counted chests (`kit.rs`,
+  `training.rs`); `free` counts only empty loose slots, not room in shulker boxes; goods in storage crates aren't town
+  stock in core mode until `pallet-views`; any stack of an item counts whatever its components (a renamed or enchanted
+  one is a town good); a move that can never be done (a good that maps to no item, every move in Java mode) is a
+  Moved/Unmoved pair at every look; consignment pallets moving town stock show as `Moved` but no test covers it; desks in
+  chunks loaded before the host started (spawn chunks) aren't scanned; the per-chunk POI scan while exploring isn't
+  measured; LogisticsTests and MerchantTests' four stock tests still call `MerchantStock`, `Depots` and `ColdStore`
+  directly (not rewritten onto the core; `Warehouse`, `Depots`' rules and `ColdStore` stay until `delete-java-rules`).
+  The save grew at FORMAT 1: dev worlds' `enterprise_core.dat` are rebuilt.
 - **People** (B4.5, `adapters/PeopleAdapter`, `sim/core/src/census.rs`): the host's census is a town's roster's
   source. In core mode each look counts every town whose desk and settlement (48 blocks round the bell nearest the
   desk, no path checks) are loaded and sends `Input::Census { town, beds, residents }`: a villager the core doesn't
@@ -153,10 +180,8 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 - **Trade points are core state already** (`points.rs`, landed with `wire-types` because the proof needs them):
   `AddTown`, `AddPoint`, `RemovePoint`, `Stocktake`, `Query::Points`. `points-and-hands` (B4.2) builds on them for
   the Java side and adds hands; it doesn't make points again.
-- **Open for `stock-adapter`:** a point broken and placed again counts its chests from nothing at its first
-  stocktake, so what they held is delivered to the town twice (free goods for a player; the books still balance,
-  because it comes from outside). Decide it there, with `Moved` and write-back. Also: chests that lose more than the
-  town holds drop the excess with no record (`withdraw`); `Query::Stock` answers as last touched, not caught up.
+- **Settled by `stock-adapter`:** a point broken and placed again no longer counts its chests twice, and chests that
+  lose more than the town holds keep it as the point's `short`. Still open: `Query::Stock` answers as last touched.
 - **Placed at landing, for John to confirm the order:** `pallet-views` (B4.12 below). The mod gets no pallet rules:
   it registers its crate items and blocks once and draws each pallet's contents, moves and openings from the core's
   three pallet outputs, as `PointsAdapter`/`HandsAdapter` draw points and hands. The weights it needs are in the pack
@@ -190,7 +215,7 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 | B4.1 | `content-pack` | sonnet / high | `core-mode` | `f48f053` | `ContentPack` carries goods (with stack weights: `content-weights` folded in), comforts, trades, recipes, herds and dials, checked whole by `Content::from_pack`; the pack's dials are the world's start; `SetDial`/`Query::Dials`; `/enterprise dial` through the core in core mode, mirrored to it in Java mode; `Content::good` matches with or without a namespace; 3 game tests (267 both modes), schema `e66ad7c365d84fd0`. At landing: a dial documented with its group shows the group's words (79 of 219 had none in core mode); the command reads an adapter record, not the wire's `DialView`; `mirror` checks the core's dial names instead of its English error, and warns when Java takes a value the core refuses; start-up sync sends dials in name order. Left: weights and `birth_mood` for John, 7 Java-only dials, Java tables still the pack's source until `delete-java-rules`, two dial stores across a mode switch, no Java class deleted |
 | B4.1a | `content-weights` | sonnet / medium | `content-pack`, `pallet-caps` | `0cc5292` | The pack's weights finished as data, no Java rule: stone 3, coal, brick and hay_block 2 joined `ModPack.WEIGHTS`; the same table in `sim/host/src/goods.rs` (plus a test); a decisions.md entry with the numbers and why. Measured: the 365-day study (default and `--river --services --metal --trades --freight`) and the 300-seed sweep identical with and without (wagons leave with about 2 stacks, far under the 27 cap), ms a day unchanged. At landing: stone and brick said to wait for content the mod's pack lists (neither is priced or in a recipe, so both weights are lookups only in the game), hay's 2 given its reason, the tables called hand-kept, comments wrapped. Left: John to confirm the numbers, no check that the mod's and the host's tables match, the weights bite only once handling units fill wagons |
 | B4.2 | `points-and-hands` | opus / high | `content-pack` | `bf44ab1` | Stable `HandId` in the core's roster with the host's tag beside it (`roster::Hands`, saved), lockers and clients by id; `AddHand`, `HandLost`, `Query::Hands`; `PointsAdapter` and `HandsAdapter` rebuilt from the core; `/enterprise core points`, `hands <desk>`; 2 game tests (269 both modes), fingerprint unchanged. At landing: rebased onto packing, content-weights and superbills (digest written again); a `HandLost` whose hand an earlier `Advance` in the look sent away panicked the core (a wasm trap): now a stale view, ignored, tested; the random-worlds check refuses more lockers than hands; `Answer::Hands.lockers` documented as the cap. Left: only the Merchant joins, on its screen (`people-adapter`: the census, births, levels written back, `AddHand` against the plan's `Census`), Java's `lockerLimit` as core mode's fallback, other points' registration (their adapters), positions for `merchant`/`managed`, unpruned tags |
-| B4.3 | `stock-adapter` | opus / xhigh | `points-and-hands` | | |
+| B4.3 | `stock-adapter` | opus / xhigh | `points-and-hands` | `d19bb85` | Chests stay physical and show the town's stock: `Stocktake` gained `free`; `Output::Moved`, `Input::Unmoved`, `Query`/`Answer::Chests` (`chests.rs`, `FormerDesks` saved); `RemovePoint` takes the chests' goods out and a desk put back is its town again; `StockChests` (loose and shulker contents, crates left shut) and `StockAdapter` (counts each look, writes in core mode, sends every move back in Java mode, catches up loaded chunks, founds unseen desks, depots from a floorplan); 8 game tests (280 both modes), fingerprint unchanged, schema `a7833bce12ce3273`. At landing: depots follow their building's floorplan at each look (a chest broken and put back, or added since, was never the core's again: the audit's blocker; game test `aChestPutBackInAStorehouseIsItsTownsDepotAgain`); chunks caught up in a fixed order (desks found unseen got run-dependent town numbers); an `Unmoved` at a locker, shop or banker ignored (tested); rebased onto people-adapter and itinerary-drops (Unmoved Input 19, Moved Output 13; registry, Java, fixtures, scenarios and digest written again). Left: depot kinds in the core, the rules' room from counted chests, shulker room in `free`, crates (`pallet-views`), components ignored when counting, endless Moved/Unmoved for an unmovable good, spawn-chunk desks, the stock tests in LogisticsTests and MerchantTests not rewritten onto the core, Java's stock rules until `delete-java-rules` |
 | B4.4 | `money-adapter` | sonnet / high | `stock-adapter` | | |
 | B4.5 | `people-adapter` | opus / high | `points-and-hands` | `2874c6b` | The census as a town's roster's source (`census.rs`, `Sightings` saved): `Census`, `TagHand`, `Resident`; outputs `Born`, `Settled`, `Departed`, `HandGone`, `HandLevel`; `PeopleAdapter` counts loaded towns (48 blocks round the bell, no path checks), spawns villagers for hands with none and writes profession, level and XP; `CensusTaker`'s counting half shared; `/enterprise core census <desk>`; the first Output scenario (`people`); 3 game tests (272 both modes), fingerprint unchanged, schema `e0b54576b14c0176`. At landing: a villager not loaded and last seen where nothing is loaded sent as the core has it (it was aged out and came back a new hand, breaking lockers and clients); names sent with every look until the roster takes them (a refused look lost them and hands were spawned twice); `/enterprise census` refuses in core mode; rebased onto consignment-pallets (digest written again); decisions.md "People and the binding". Left: settlers' views and founded towns' desks (`land-adapter`), away hands' outputs (`wagon-adapter`), census beds overwriting the core's homes, no free/confined split, births across a mode switch, the Java people rules and their tests until `delete-java-rules`, John to confirm the census never takes `none` or the Merchant's trade |
 | B4.6 | `locker-adapter` | opus / high | `stock-adapter`, `people-adapter` | | |
