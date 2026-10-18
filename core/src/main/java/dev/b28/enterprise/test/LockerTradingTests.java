@@ -481,7 +481,7 @@ public final class LockerTradingTests {
                 .thenExecute(() -> {
                     market.givePaperTrade(0);
                     helper.assertTrue(market.librarian().shouldRestock() != core, core
-                            ? "in core mode an unused villager with a locker asks to restock (the core restocks its locker)"
+                            ? "in core mode an unused villager with a locker doesn't ask to restock (the core restocks its locker)"
                             : "an unused villager with a locker restocks");
                     helper.setBlock(CHEST, Blocks.AIR);
                     helper.assertFalse(market.librarian().shouldRestock(), "without a locker, vanilla rules apply");

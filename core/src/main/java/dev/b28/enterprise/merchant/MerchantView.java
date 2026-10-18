@@ -90,9 +90,8 @@ public record MerchantView(BlockPos desk, int limit, List<LockerView> lockers, d
         if (dev.b28.enterprise.binding.Society.isCore()) {
             var host = dev.b28.enterprise.binding.CoreHost.of(level.getServer());
             List<LockerView> lockers = host == null || host.pausedWhy() != null ? null : host.lockers().view(level, desk);
-            if (lockers != null) {
-                return build(level, desk, limit, Lockers.MERCHANT_RANGE, lockers);
-            }
+            // No core town here (or no core running): no lockers, never the Java rules' (their switches the core never reads).
+            return build(level, desk, limit, Lockers.MERCHANT_RANGE, lockers == null ? List.of() : lockers);
         }
         return build(level, desk, limit);
     }

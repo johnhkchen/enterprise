@@ -159,9 +159,9 @@ public final class LockerAdapter {
         for (LockerView l : lockers.lockers()) {
             GlobalPos had = l.at().map(PointsAdapter::place).orElse(null);
             UUID id = villagers.get(l.hand());
-            if (id == null || !(level.getEntity(id) instanceof Villager v)) {
+            if (id == null || !(level.getEntity(id) instanceof Villager v) || !siteLoaded(level, v)) {
                 if (had != null) {
-                    tied.add(had); // not loaded: as the core has it
+                    tied.add(had); // not loaded, or its workstation isn't: as the core has it
                 }
                 continue;
             }
@@ -199,6 +199,13 @@ public final class LockerAdapter {
             return null;
         }
         return GlobalPos.of(level.dimension(), site.immutable());
+    }
+
+    /** Whether the villager's workstation, if it has one in this dimension, is loaded with the blocks touching it. */
+    private static boolean siteLoaded(ServerLevel level, Villager v) {
+        return v.getBrain().getMemory(MemoryModuleType.JOB_SITE)
+                .filter(s -> s.dimension() == level.dimension())
+                .map(s -> loaded(level, s.pos())).orElse(true);
     }
 
     private static boolean loaded(ServerLevel level, BlockPos pos) {
@@ -241,8 +248,11 @@ public final class LockerAdapter {
                     : Component.translatable("screen.enterprise.merchant.unclaimed");
             List<MerchantView.TradeView> trades = new ArrayList<>();
             for (OfferView o : l.offers()) {
-                ItemStack good = new ItemStack(item(o.good()), (int) Math.max(1, Math.min(o.count(), 64)));
-                ItemStack emeralds = new ItemStack(Items.EMERALD, (int) Math.max(1, Math.min(o.emeralds(), 64)));
+                // The Merchant's price is the cost side: the goods a buying offer takes, the emeralds a selling one charges.
+                long goods = o.sells() ? o.count() : o.price();
+                long cost = o.sells() ? o.price() : o.emeralds();
+                ItemStack good = new ItemStack(item(o.good()), (int) Math.max(1, Math.min(goods, 64)));
+                ItemStack emeralds = new ItemStack(Items.EMERALD, (int) Math.max(1, Math.min(cost, 64)));
                 if (good.isEmpty()) {
                     continue; // a good with no item here
                 }
