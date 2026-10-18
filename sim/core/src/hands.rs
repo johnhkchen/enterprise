@@ -118,15 +118,21 @@ impl Society {
         }).collect()
     }
 
-    /// Applies a hand's happening (`Input::AddHand`, `HandLost`); false for any other. Panics on one the wire would
-    /// have refused: it checks them first (`wire::handle`).
+    /// Applies a hand's happening (`Input::AddHand`, `HandLost`); false for any other. The wire checks them against
+    /// the society as the look starts (`wire::handle`), but an `Advance` earlier in the same look runs the rules first:
+    /// a caravan, a war or a party of settlers may have taken the hand by now. A hand lost that's away or gone by the
+    /// time it applies is a stale view, ignored as `PackageLost` is (the core brings it home or buries it); a hand
+    /// joining under a name still taken (only by such a hand, whose loss was ignored) is ignored with it. Panics on
+    /// anything else the wire would have refused (a town, trade or level: no look changes those).
     pub(crate) fn apply_hands(&mut self, input: &Input) -> bool {
         match input {
             Input::AddHand { town, trade, level, tag } => {
-                self.join(*town as TownId, trade, *level, tag).expect("a hand the wire checked");
+                if tag.is_empty() || self.hand_tagged(tag).is_none() {
+                    self.join(*town as TownId, trade, *level, tag).expect("a hand the wire checked");
+                }
             }
             Input::HandLost { hand } => {
-                self.lose_hand(*hand).expect("a hand on a roster");
+                let _stale = self.lose_hand(*hand);
             }
             _ => return false,
         }

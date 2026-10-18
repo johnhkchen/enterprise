@@ -42,6 +42,10 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
             }
         }
         if let Some(lockers) = s.world.get::<Lockers>(s.world.resource::<enterprise_core::state::Towns>().0[t]) {
+            // A hand joined since the last sync has no locker yet; a locker with no hand is one a leaver left behind.
+            if lockers.hands.len() > roster.hands.len() {
+                return Err(format!("town {t}: {} lockers for {} hands", lockers.hands.len(), roster.hands.len()));
+            }
             if let Some((i, (l, h))) = lockers.hands.iter().zip(&roster.hands).enumerate().find(|(_, (l, h))| l.hand != h.id) {
                 return Err(format!("town {t}: locker {i} is hand {}'s, the roster's hand there is {}", l.hand, h.id));
             }

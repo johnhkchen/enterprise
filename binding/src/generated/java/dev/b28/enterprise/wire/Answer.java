@@ -98,8 +98,8 @@ public sealed interface Answer permits Answer.Stock, Answer.Points, Answer.Goods
     }
 
     /**
-     * A town's hands in its roster's order (children grown by now), and how many lockers its desk's Merchant manages
-     * (none without one). Empty for a town that keeps no roster.
+     * A town's hands in its roster's order (children grown by now), and how many lockers its desk's Merchant may manage
+     * (its level's cap, {@code Roster::locker_limit}; none without one). Empty for a town that keeps no roster.
      */
     record Hands(long town, long lockers, List<HandView> hands) implements Answer {
         public Hands {

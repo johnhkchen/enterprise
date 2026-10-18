@@ -33,8 +33,8 @@ pub enum Answer {
     Goods { goods: Vec<String> },
     /// Every dial, in the order the core lists them.
     Dials { dials: Vec<DialView> },
-    /// A town's hands in its roster's order (children grown by now), and how many lockers its desk's Merchant manages
-    /// (none without one). Empty for a town that keeps no roster.
+    /// A town's hands in its roster's order (children grown by now), and how many lockers its desk's Merchant may manage
+    /// (its level's cap, `Roster::locker_limit`; none without one). Empty for a town that keeps no roster.
     Hands { town: TownNo, lockers: u32, hands: Vec<HandView> },
 }
 

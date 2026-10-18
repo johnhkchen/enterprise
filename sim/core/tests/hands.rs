@@ -214,3 +214,41 @@ fn a_host_finds_its_villagers_hands_by_asking() {
     let Answer::Hands { lockers, hands, .. } = &answers[0] else { panic!() };
     assert_eq!((*lockers, hands.len(), hands[0].hand), (0, 1, 2), "no Merchant, no lockers; the Librarian still 2");
 }
+
+#[test]
+fn a_hand_lost_after_the_looks_advance_took_it_is_a_stale_view() {
+    // The wire checks a look's happenings against the society as it starts, but its Advance runs the rules first: here
+    // a caravan leaves with the Cartographer, and the host's word that it died (sent in the same look) comes too late.
+    // Ignored, as a PackageLost is, not a trap; a villager joining under its name in the same look is ignored with it.
+    let mut s = Society::new(simple());
+    s.content_mut().dials.standing_orders = false;
+    let hub = s.add_town("Hub", 5.0);
+    let dest = s.add_town("Dest", 12.0);
+    s.record_capacity(dest, 1, &[(1, 64.0 / 5.0)]);
+    s.set_trade(dest, 1, 0.0, 1e-9);
+    s.deliver(hub, 1, 128.0);
+    s.deliver(hub, 2, 70.0);
+    s.deliver(dest, 2, 2.0);
+    s.set_roster(hub, &[("merchant", 1), ("farmer", 1), ("cartographer", 2), ("librarian", 2)]);
+    for i in 1..4 {
+        s.set_offers(hub, i, Vec::new());
+    }
+    s.add_route(hub, dest, 4.0 / 1200.0, 0.0, 4.0);
+    s.want_trades(0, &["cartographer", "librarian"]);
+    let before = ids(&s, hub);
+    let tag = "uuid-cartographer";
+    s.world.resource_mut::<enterprise_core::roster::Hands>().tags.insert(before[2], tag.into());
+    let mut society = Some(s);
+    let r = wire::handle(&mut society, Request::new(Command::Apply { inputs: vec![
+        Input::Advance { to: LOOK },
+        Input::HandLost { hand: before[2] },
+        Input::AddHand { town: hub as u32, trade: "cartographer".into(), level: 1, tag: tag.into() },
+        Input::HandLost { hand: before[1] },
+    ] }));
+    assert!(matches!(r, Response::Done { .. }), "{r:?}");
+    let s = society.as_ref().unwrap();
+    let away: Vec<u32> = s.roster(hub).hands.iter().filter(|h| h.away).map(|h| h.id).collect();
+    assert_eq!(away, vec![before[2], before[3]], "the crew is on the road, the Cartographer with it");
+    assert_eq!(ids(&s, hub), vec![before[0], before[2], before[3]], "the Farmer at home lost; no one joined");
+    assert_eq!(s.hand_tag(before[2]), Some(tag), "the name stays with the hand away");
+}
