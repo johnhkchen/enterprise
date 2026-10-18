@@ -116,7 +116,7 @@ core-wasm-replay:
 
 # The core as a WebAssembly module for the Minecraft binding: enterprise_core.wasm in sim/target, size and imports told
 wasm:
-    cd sim && cargo build --profile wasm -q -p enterprise-wasm --target wasm32-wasip1
+    cd sim && cargo build --profile wasm -q -p enterprise-wasm --target wasm32-wasip1 --target-dir target
     cp sim/target/wasm32-wasip1/wasm/enterprise_wasm.wasm sim/target/enterprise_core.wasm
     @ls -l sim/target/enterprise_core.wasm | awk '{print "enterprise_core.wasm: " $5 " bytes"}'
     @node -e 'const m=new WebAssembly.Module(require("fs").readFileSync("sim/target/enterprise_core.wasm")); console.log("imports:", WebAssembly.Module.imports(m).map(i=>i.module+"."+i.name).join(" ")); console.log("exports:", WebAssembly.Module.exports(m).map(e=>e.name).join(" "))'

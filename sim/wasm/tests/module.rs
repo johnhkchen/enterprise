@@ -38,15 +38,20 @@ fn module() -> Option<PathBuf> {
         return skip("there is no node");
     }
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
+    // Its own target folder, named: a CARGO_TARGET_DIR or build.target-dir set elsewhere would put the module where
+    // the path below doesn't look (or leave a stale one there).
+    let target = sim().join("target");
     let built = Command::new(cargo)
         .args(["build", "--profile", "wasm", "-p", "enterprise-wasm", "--target", "wasm32-wasip1", "--quiet"])
+        .arg("--target-dir")
+        .arg(&target)
         .current_dir(sim())
         .status()
         .expect("cargo runs");
     if !built.success() {
         return skip("the module did not build (is the wasm32-wasip1 target installed?)");
     }
-    Some(sim().join("target/wasm32-wasip1/wasm/enterprise_wasm.wasm"))
+    Some(target.join("wasm32-wasip1/wasm/enterprise_wasm.wasm"))
 }
 
 fn leb(bytes: &[u8], at: &mut usize) -> usize {

@@ -42,7 +42,8 @@ pub unsafe fn free(ptr: *mut u8, len: usize) {
 /// its pointer and length. The request's buffer stays the caller's to [`free`].
 ///
 /// # Safety
-/// `ptr` and `len` are a live buffer.
+/// `ptr` and `len` are a live buffer, and no other thread is in `call`: the society is one static for the whole
+/// instance (in a native process, for the whole process, so a native test binary has one test that calls it).
 pub unsafe fn call(ptr: *const u8, len: usize) -> (*mut u8, usize) {
     let request = std::slice::from_raw_parts(ptr, len);
     let response = handle_bytes(&mut *SOCIETY.0.get(), request).into_boxed_slice();
