@@ -6,9 +6,10 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `db7edea`. 623 tests pass (`just core-test`, about 2.5 minutes now the random worlds run 300 seeds with
+- **Main:** `6765f0f`. 631 tests pass (`just core-test`, about 2.5 minutes now the random worlds run 300 seeds with
   the sweep's checks, across the cores). Parity: **186 covered, 30 partial, 46 skipped, 0 left of 262** (`just
-  parity`). `just core-fingerprint`: `eaaefbf57237382a` (a fifth of the random worlds name a capital and go to war);
+  parity`). `just core-fingerprint`: `958e237a391a51ed` (money in thousandths; `just core-wasm-replay` checks the
+  WebAssembly build's 200-day digest against the native one);
   `cargo run --release -p enterprise-sim -- --sweep 300` prints what the random worlds did.
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
@@ -57,7 +58,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 36 | 4 | `stranded-paper` | sonnet/medium (sonnet/medium) | `bank-and-discounts`, `freight-hubs`, `training-and-tenders` | `67f4377` | the tagged test pinned; a hub buys stranded paper for coin and installments, freight on credit, the pupil's work waits for a hub; crates sold before the hand-over (desk first, then the stranded sale: declared); `Bills.tidy`, `Forwarder.collect` not ported; a longer bill's interest scaled by its terms (installments, 30-day credit at 15%), fixed at landing |
 | 37 | 4 | `settlers-rule` | sonnet/medium (haiku/low) | `roster`, `hex-map` | `5830058` | Parties to the nearest village or open ground, capital off the books on the road; ExpeditionTests settle partial. Gaps: spare is `rules::free` (no wage float), no `inRange`, road every 4 days the core's. At landing: Nitwits stay home, only a Merchant's town sends, only the nearest village (as `findNearestMapStructure`), new towns' land 40 not 4, claimed hexes not open |
 | 38 | 5 | `random-worlds-sweep` | opus/high (sonnet/medium) | everything above | `db7edea` | reads every slice; finds what they broke together. Seeds across the cores (`each_seed`: suite 11:24 to 2:25, fingerprint unchanged), sweep invariants daily, save round trip every 30 days with a one-day twin, `sim/host --sweep N`; partial: 10 s budget (38 s), the stall check is only "says why", mood checked against a floor not -8, the contract check amounts to "judged within a day", the same-seed test still 3 seeds; at landing: `--sweep` merged into the new study host, docs say what the checks amount to |
-| 39 | 5 | `fixed-point-money` | opus/xhigh (opus/high) | `random-worlds-sweep` | — |  |
+| 39 | 5 | `fixed-point-money` | opus/xhigh (opus/high) | `random-worlds-sweep` | `6765f0f` | money a `Fixed` (i64 thousandths) everywhere it's held, moved or owed, rounded per the mod's site rule (payer up, share down, host figure nearest), check.rs exact; the curves from + - * / alone; `tests/replay.rs` digest matches in wasm32-wasip1 under Node (`just core-wasm-replay`); partial: goods, rates and per-look accruals stay f64; at landing: training's second outcome expected 40 - ceil(40/3), wasi-run.mjs quiets its warning |
 | 40 | 5 | `parity-report` | sonnet/medium (haiku/low) | `fixed-point-money` | — | haiku only for trivial edits |
 
 ## Wave 1a: all 8 landed
@@ -178,3 +179,8 @@ dependencies are the integrator's; `trees.py` locks its registry, so agents can 
   with an epsilon, where the mod compares its doubles raw, so 6-, 10-, 24- and 30-day kit lasted a day less than in the
   mod (ten tenths sum to just under 1). Briefs: keep the mod's comparisons and floors as written, dust and all; an
   epsilon only where the core's money or stock differs from the mod's ints.
+- Money is a `Fixed` now (`fixed-point-money`): a brief that moves money names the rounding at each site (what a payer
+  owes `Fixed::ceil`, a share paid out `Fixed::floor`, a host's figure `round`), since `From<f64>` and the `impl
+  Into<Fixed>` APIs round to the nearest without saying so; and a tree that changes behaviour rewrites
+  `tests/replay_digest.txt` after its rebase (`REPLAY_DIGEST=write cargo test --release --test replay`). For the
+  binding: a spur at 16 an emerald is 62.5 thousandths, so spurs convert at the treasury, not posting by posting.
