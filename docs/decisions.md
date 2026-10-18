@@ -1121,3 +1121,16 @@ The cotton chain, chocolate, the cold chain and the exchange follow later.
 - **Debasement.** Can a faction cut the metal in its coin to fund a war, at the cost of its exchange rate?
 - **Guard mods.** Check whether an existing guard-villager mod for 1.21.1 NeoForge could supply the militia, or whether we write our own.
 - **Scope.** Hexes, factions and garrisons push this toward a 4X game. The build order keeps each step playable on its own.
+
+## Pallets and the binding (2026-10-18)
+
+- **Goods have weight.** A pallet and each carrier have weight caps as well as slots (`docs/pallets.md`). The base
+  content keeps 1 a stack, so nothing changes there; the Minecraft content makes ore, ingots, stone and blocks
+  heavier, mildly at first, so a wagon of iron carries fewer stacks than a wagon of wool.
+- **Pallets in both.** The pallet model goes into the Java mod's cargo too, not only the core: bills on pallets, not
+  crates, in both, while the binding moves the mod onto the core.
+- **The binding** (`docs/binding-plan.md`): chests stay physical and are synced with the core each look; saves survive
+  core changes from the first release on (until then dev worlds are rebuilt); Chicory, serde-reflection (for the
+  generator only) and postcard with our own Java generator, Chicory run through plain Gradle `JavaExec`; game tests
+  that only call a Java rule retire with their class where a Rust twin stands in; a `java | core` switch until the
+  Java rules are deleted; most Java-server studies retire in favour of `sim/host`, one in-game study kept as a check.
