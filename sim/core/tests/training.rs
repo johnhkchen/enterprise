@@ -279,14 +279,15 @@ fn under_an_offtake_the_pupils_work_is_crated_for_the_buyer_with_a_bill() {
     s.add_route(1, 0, 1.0, 0.0, 2.0);
     s.restock(0);
     assert_eq!(s.town(0).stock[AXE], 0.0, "no axes left loose to clog it");
-    let store = s.shipments(0);
-    let crated: Vec<_> = store.held.iter().filter(|c| c.consigned_to(1)).collect();
-    assert_eq!(crated.len(), 1);
-    assert_eq!(crated[0].count, 12.0);
-    assert_eq!(store.crates(s.content()), 2, "twelve axes crated for the buyer: two crates");
-    assert!(crated[0].settled && crated[0].contract.is_some(), "paid for by the bill drawn with them");
+    let held = s.town_pallets(0);
+    let crated: Vec<_> = held.iter().filter(|c| c.consigned_to(1)).collect();
+    assert_eq!(crated.len(), 1, "one pallet");
+    assert_eq!(crated[0].count(), 12.0);
+    assert_eq!(held.iter().map(|p| p.crates()).sum::<u32>(), 2, "twelve axes crated for the buyer: two crates");
+    assert!(crated[0].lading.prepaid() && crated[0].lading.contract.is_some(), "paid for by the bill drawn with them");
     let bills = s.bills();
     assert_eq!(bills.len(), 1);
+    assert_eq!(bills[0].pallets, vec![crated[0].id], "the bill names its pallet");
     assert!(bills[0].drawee == 1 && bills[0].payee == 0, "a bill drawn on the buyer for them");
     assert!(bills[0].amount >= 12.0 / 3.0, "worth at least a third of an emerald each: {}", bills[0].amount);
     assert!(bills[0].amount == 12.0 * 0.5 * 1.02, "twelve axes at half an emerald, plus the bill's two per cent");
@@ -301,7 +302,7 @@ fn with_no_wagon_of_the_buyers_calling_the_work_is_the_towns() {
     s.draft_training(0, 1, "weaponsmith", 5, 24.0, 1.0, 10 * DAY, false, true);
     s.restock(0);
     assert_eq!(s.town(0).stock[AXE], 12.0, "no caravan of the buyer's calls, and no hub: the work is the town's");
-    assert!(s.bills().is_empty() && s.shipments(0).held.is_empty());
+    assert!(s.bills().is_empty() && s.town_pallets(0).is_empty());
 }
 
 #[test]
@@ -398,7 +399,7 @@ fn the_offtake_crates_are_fetched_by_the_buyers_wagon_and_the_bill_is_honoured()
         s.advance(day * DAY);
         s.conserved(&start).unwrap_or_else(|e| panic!("day {day}: {e}"));
     }
-    assert!(s.shipments(0).held.iter().all(|c| !c.consigned_to(1)), "the buyer's wagon fetched what was made out to it");
+    assert!(s.town_pallets(0).iter().all(|c| !c.consigned_to(1)), "the buyer's wagon fetched what was made out to it");
     assert!(s.town(1).stock[AXE] >= 12.0, "the axes are at the buyer: {}", s.town(1).stock[AXE]);
     assert!(s.bills().iter().all(|b| b.state != enterprise_core::bills::BillState::Dishonoured));
 }

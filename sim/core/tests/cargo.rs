@@ -1,7 +1,7 @@
 //! Crates and their papers (`cargo.rs`), pinned as the mod's game tests pin them (`CargoTests`, `CaravanTests`,
 //! `MarketTests`, `CountingHouseTests`), in milliseconds.
 
-use enterprise_core::cargo::{self, Shipment, LADING};
+use enterprise_core::cargo::{self, crated, Lading, Lot, Payment, LADING};
 use enterprise_core::contracts::Book;
 use enterprise_core::{Content, Good, Incoterm, Society};
 
@@ -28,16 +28,22 @@ fn goods(names: &[&str]) -> Content {
     Content::new(names.iter().map(|n| Good::new(n, 0.05, 64)).collect(), DAY)
 }
 
-// parity-partial: CargoTests.aCrateTakesTheSpaceOfWhatsInIt (the core's shipment is one good, not mixed stacks; the item stack sizes are Minecraft's)
+/// A bill of lading from `shipper` to `consignee`, under `contract`, paid as `payment`, with a copy or not.
+fn bill(shipper: usize, consignee: usize, contract: Option<usize>, payment: Payment, copy: bool) -> Lading {
+    Lading { contract, payment, copy, ..Lading::new(shipper, consignee, 0) }
+}
+
+// parity-partial: CargoTests.aCrateTakesTheSpaceOfWhatsInIt (the core's package is one good, not mixed stacks; the item stack sizes are Minecraft's)
 #[test]
 fn a_crate_takes_the_space_of_whats_in_it() {
-    // (The mod's crate holds three stacks of mixed goods; the core's shipment is one good, three stacks of it.)
+    // (The mod's crate holds three stacks of mixed goods; the core's package is one good, three stacks of it.)
     let content = goods(&["paper", "bread"]);
-    let crate_of = |count| Shipment { good: 0, count, shipper: 0, consignee: None, ..Default::default() };
-    assert_eq!(cargo::stacks(&content, &[0.0, 1.0], &[crate_of(129.0)]), 4, "three stacks crated, one loose: four");
-    assert_eq!(cargo::stacks(&content, &[0.0, 0.0], &[crate_of(0.0)]), 1, "an empty crate takes one");
-    assert_eq!(crate_of(64.0 * 9.0).crates(&content), 1, "nine stacks to a crate");
-    assert_eq!(crate_of(64.0 * 9.0 + 1.0).crates(&content), 2);
+    let crate_of = |count| Lot { packages: crated(&content, 0, count) };
+    assert_eq!(cargo::loose_stacks(&content, &[0.0, 1.0]) + crate_of(129.0).slots(&content), 4,
+        "three stacks crated, one loose: four");
+    assert_eq!(crate_of(0.0).slots(&content), 1, "an empty crate takes one");
+    assert_eq!(crate_of(64.0 * 9.0).crates(), 1, "nine stacks to a crate");
+    assert_eq!(crate_of(64.0 * 9.0 + 1.0).crates(), 2);
     assert_eq!(content.dials.empties_kept, 16, "a stack of empties kept");
 }
 
@@ -102,11 +108,13 @@ fn contracted_goods_ship_in_crates_with_their_papers() {
     s.deliver(0, 0, 192.0);
     let id = s.draft(0, 1, 0, 64.0, 0.05, 0, DAY, 1, Incoterm::Ddp, true);
     assert!(until(&mut s, 3, |s| s.route(0).on_the_road), "the wagon left");
-    let (aboard, _) = s.wagon_shipments(0);
-    assert_eq!(aboard.len(), 1, "the paper rides in a crate: {aboard:?}");
+    let (aboard, lots, _) = s.wagon_pallets(0);
+    assert!(aboard.len() == 1 && lots.is_empty(), "the paper rides on a pallet, in a crate: {aboard:?}");
     let crate_ = &aboard[0];
-    assert!(crate_.consignee == Some(1) && crate_.contract == Some(id) && crate_.count == 64.0 && crate_.copy,
+    assert!(crate_.consigned_to(1) && crate_.lading.contract == Some(id) && crate_.count() == 64.0 && crate_.lading.copy,
         "its bill of lading names the town and the contract: {crate_:?}");
+    assert_eq!(crate_.crates(), 1, "one crate");
+    assert!(crate_.seal.is_some_and(|seal| seal.by == 0), "sealed as it left home");
     assert_eq!(s.paperwork(0).documents, 1, "one bill of lading drawn");
     assert!(s.town(0).money == (5.0 - 0.125), "a new crate bought: {}", s.town(0).money);
     assert!(until(&mut s, 30, |s| s.contract(id).delivered > 0.0));
@@ -120,8 +128,8 @@ fn what_a_player_brought_is_paid_for_by_the_next_wagon() {
     let mut s = hub_and_town(5.0, 10.0, 30.0);
     let id = s.draft(0, 1, 1, 16.0, 0.25, 0, DAY, 1, Incoterm::Dap, true);
     // A player carried a crate from the hub and put it in the town's warehouse.
-    s.deliver_shipment(1, Shipment { good: 1, count: 16.0, shipper: 0, consignee: Some(1), contract: Some(id),
-        settled: false, copy: true });
+    let packages = crated(s.content(), 1, 16.0);
+    assert_eq!(s.deliver_pallet(1, bill(0, 1, Some(id), Payment::Owed, true), packages), None, "received, not held");
     assert!(s.contract(id).delivered == 16.0 && s.town(1).stock[1] == 16.0, "the Merchant opened it and took delivery");
     assert!(s.contract(id).owing == 4.0, "4 emeralds owed to the hub: {}", s.contract(id).owing);
     assert_eq!(s.shipments(1).empties, 1, "and keeps the crate");
@@ -139,8 +147,8 @@ fn the_buyers_wagon_carries_what_its_town_owes() {
     s.add_town("Cloverby", 10.0);
     s.add_route(1, 0, 1.0, 0.0, 1.0);
     let id = s.draft(0, 1, 1, 16.0, 0.25, 0, DAY, 1, Incoterm::Dap, true);
-    s.deliver_shipment(1, Shipment { good: 1, count: 16.0, shipper: 0, consignee: Some(1), contract: Some(id),
-        settled: false, copy: true });
+    let packages = crated(s.content(), 1, 16.0);
+    s.deliver_pallet(1, bill(0, 1, Some(id), Payment::Owed, true), packages);
     assert!(until(&mut s, 60, |s| s.contract(id).owing < 0.01), "paid: {}", s.contract(id).owing);
     assert!(s.town(0).money == 9.0, "the hub has its 4: {}", s.town(0).money);
     assert!(until(&mut s, 60, |s| s.route(0).trips >= 1));
@@ -151,8 +159,8 @@ fn the_buyers_wagon_carries_what_its_town_owes() {
 fn a_settled_crate_is_received_without_a_debt() {
     let mut s = hub_and_town(5.0, 10.0, 30.0);
     let id = s.draft(0, 1, 1, 16.0, 0.25, 0, DAY, 1, Incoterm::Dap, true);
-    s.deliver_shipment(1, Shipment { good: 1, count: 16.0, shipper: 0, consignee: Some(1), contract: Some(id),
-        settled: true, copy: true });
+    let packages = crated(s.content(), 1, 16.0);
+    s.deliver_pallet(1, bill(0, 1, Some(id), Payment::Paid, true), packages);
     assert_eq!(s.town(1).stock[1], 16.0);
     assert_eq!(s.contract(id).owing, 0.0, "paid for when crated");
     assert_eq!(s.contract(id).delivered, 0.0, "settled elsewhere: not booked here");
@@ -162,13 +170,15 @@ fn a_settled_crate_is_received_without_a_debt() {
 #[test]
 fn a_wagon_fetches_home_crates_made_out_to_it() {
     let mut s = hub_and_town(5.0, 5.0, 30.0);
-    s.deliver_shipment(1, Shipment { good: 2, count: 9.0, shipper: 1, consignee: Some(0), contract: None,
-        settled: true, copy: false });
-    assert_eq!(s.shipments(1).held.len(), 1, "it waits at the town, crated");
+    let packages = crated(s.content(), 2, 9.0);
+    let id = s.deliver_pallet(1, bill(1, 0, None, Payment::Paid, false), packages).expect("held");
+    assert_eq!(s.town_pallets(1).len(), 1, "it waits at the town, crated");
     assert_eq!(s.town(1).stock[2], 0.0, "not the town's stock");
+    assert!(until(&mut s, 40, |s| s.wagon_pallets(0).0.iter().any(|p| p.id == id)), "the wagon fetched it, the same pallet");
+    assert!(s.wagon_pallets(0).0[0].seal.is_some_and(|seal| seal.by == 1), "sealed as it left the town's");
     assert!(until(&mut s, 60, |s| s.route(0).trips >= 1));
     assert_eq!(s.town(0).stock[2], 9.0, "home and opened");
-    assert!(s.shipments(1).held.is_empty());
+    assert!(s.town_pallets(1).is_empty() && s.pallets().get(id).is_none(), "opened: out of the registry");
     assert_eq!(s.shipments(0).empties, 1, "the crate kept at home");
 }
 
@@ -180,14 +190,14 @@ fn goods_for_sale_travel_crated_and_the_buyer_keeps_the_crate() {
     s.deliver(0, 0, 640.0);
     s.set_trade(1, 0, 0.0, 128.0 / s.content().dials.shelf_days); // its shelf takes 128 paper
     assert!(until(&mut s, 3, |s| s.route(0).on_the_road));
-    let (aboard, _) = s.wagon_shipments(0);
-    assert!(aboard.iter().any(|c| c.good == 0 && c.count == 128.0 && c.consignee.is_none() && c.contract.is_none()),
-        "the paper goes in a crate of its own: {aboard:?}");
+    let (aboard, lots, _) = s.wagon_pallets(0);
+    assert!(aboard.is_empty() && lots.iter().any(|c| c.good() == 0 && c.count() == 128.0),
+        "the paper goes in a crate of its own, an open lot with no bill: {lots:?}");
     assert_eq!(s.paperwork(0).documents, 0, "goods for sale have no papers");
     assert!(until(&mut s, 30, |s| s.route(0).sold > 0.0));
     assert_eq!(s.town(1).stock[0], 128.0, "sold, all of it");
     assert_eq!(s.shipments(1).empties, 1, "the lot bought whole: its crate stays with the buyer");
-    assert!(s.wagon_shipments(0).0.is_empty(), "nothing left crated aboard");
+    assert!(s.wagon_pallets(0).1.is_empty(), "nothing left crated aboard");
 }
 
 #[test]
@@ -200,8 +210,8 @@ fn a_lot_partly_sold_rides_on_crated() {
     s.deliver(1, 0, 100.0);
     assert!(until(&mut s, 30, |s| s.route(0).sold > 0.0));
     let sold = s.route(0).sold;
-    let (aboard, _) = s.wagon_shipments(0);
-    assert!(sold < 128.0 && aboard.len() == 1 && aboard[0].count == 128.0 - sold, "the rest crated aboard: {sold} sold, {aboard:?}");
+    let (_, lots, _) = s.wagon_pallets(0);
+    assert!(sold < 128.0 && lots.len() == 1 && lots[0].count() == 128.0 - sold, "the rest crated aboard: {sold} sold, {lots:?}");
     assert_eq!(s.shipments(1).empties, 0, "the crate stays with the lot");
     assert!(until(&mut s, 60, |s| s.route(0).trips >= 1));
     assert!(s.shipments(0).empties >= 1, "home, its lot back on the shelf, the crate kept");
@@ -212,9 +222,10 @@ fn a_shipper_uses_its_own_empties_first_and_has_spare_ones_back() {
     let mut s = hub_and_town(5.0, 5.0, 30.0);
     s.deliver(0, 0, 640.0);
     // The hub holds an empty crate; the town more than the stack it keeps.
-    s.deliver_shipment(0, Shipment { good: 0, count: 0.0, shipper: 1, consignee: Some(0), ..Default::default() });
+    let empty = crated(s.content(), 0, 0.0);
+    s.deliver_pallet(0, bill(1, 0, None, Payment::Owed, false), empty.clone());
     for _ in 0..20 {
-        s.deliver_shipment(1, Shipment { good: 0, count: 0.0, shipper: 0, consignee: Some(1), ..Default::default() });
+        s.deliver_pallet(1, bill(0, 1, None, Payment::Owed, false), empty.clone());
     }
     assert_eq!((s.shipments(0).empties, s.shipments(1).empties), (1, 20));
     let id = s.draft(0, 1, 0, 64.0, 0.05, 0, DAY, 1, Incoterm::Ddp, true);
@@ -222,7 +233,7 @@ fn a_shipper_uses_its_own_empties_first_and_has_spare_ones_back() {
     assert_eq!(s.shipments(0).empties, 0, "its own crate used");
     assert!(s.town(0).money == 5.0, "nothing paid for it: {}", s.town(0).money);
     assert!(until(&mut s, 30, |s| s.contract(id).delivered > 0.0));
-    let (_, empties) = s.wagon_shipments(0);
+    let (_, _, empties) = s.wagon_pallets(0);
     assert_eq!(empties, 4, "the town keeps sixteen of its 20 and hands the rest back, before the crate is opened");
     assert_eq!(s.shipments(1).empties, 17, "then the opened crate's kept too");
     assert!(until(&mut s, 60, |s| s.route(0).trips >= 1));
@@ -235,7 +246,7 @@ fn with_no_crate_and_no_money_goods_go_loose_without_papers_crated() {
     s.deliver(0, 0, 192.0);
     let id = s.draft(0, 1, 0, 64.0, 0.05, 0, DAY, 1, Incoterm::Ddp, true);
     assert!(until(&mut s, 3, |s| s.route(0).on_the_road));
-    assert!(s.wagon_shipments(0).0.is_empty(), "no crate to be had: it goes loose");
+    assert!(s.wagon_pallets(0).0.is_empty(), "no crate to be had: it goes loose");
     assert!(until(&mut s, 30, |s| s.contract(id).delivered > 0.0));
     assert_eq!(s.contract(id).delivered, 64.0, "and is delivered all the same");
 }
@@ -263,8 +274,9 @@ fn a_farm_crates_owed_crop_in_lots_not_as_it_trickles() {
     look(&mut s);
     assert_eq!(s.earmarked(0, id), 40.0, "all 40 in: crated at once");
     assert_eq!(s.paperwork(0).documents, 1, "one bill of lading");
-    let crate_ = &s.shipments(0).held[0];
-    assert!(crate_.consignee == Some(1) && crate_.contract == Some(id) && crate_.copy, "made out to the buyer: {crate_:?}");
+    let crate_ = &s.town_pallets(0)[0];
+    assert!(crate_.consigned_to(1) && crate_.lading.contract == Some(id) && crate_.lading.copy && crate_.seal.is_none(),
+        "made out to the buyer, open at the farm: {crate_:?}");
 }
 
 // parity-partial: MarketTests.aFarmWithNoRoomForCratesDrawsNoPapers (the room is the dial crate_room, not the chests' free slots (Minecraft's))
@@ -293,7 +305,7 @@ fn a_farm_crates_what_it_owes_out_of_reach_until_it_ships() {
     s.world.resource_mut::<Book>().close(id);
     look(&mut s);
     assert_eq!(s.town(0).stock[0], 64.0, "its contract closed, back on the shelf");
-    assert!(s.shipments(0).held.is_empty() && s.shipments(0).empties == 1, "the crate kept empty");
+    assert!(s.town_pallets(0).is_empty() && s.shipments(0).empties == 1, "the crate kept empty");
 }
 
 #[test]
@@ -303,8 +315,8 @@ fn a_farms_crates_ride_first_to_its_buyer() {
     assert_eq!(s.earmarked(0, id), 40.0);
     s.add_route(0, 1, 1.0, 0.0, 30.0);
     assert!(until(&mut s, 3, |s| s.route(0).on_the_road));
-    let (aboard, _) = s.wagon_shipments(0);
-    assert!(aboard.len() == 1 && aboard[0].count == 40.0 && aboard[0].contract == Some(id), "the crate as it was: {aboard:?}");
+    let (aboard, ..) = s.wagon_pallets(0);
+    assert!(aboard.len() == 1 && aboard[0].count() == 40.0 && aboard[0].lading.contract == Some(id), "the crate as it was: {aboard:?}");
     assert_eq!(s.town(0).stock[0], 24.0, "nothing loose went with it");
     assert_eq!(s.paperwork(0).documents, 1, "no second bill of lading");
     assert!(until(&mut s, 40, |s| s.contract(id).delivered > 0.0));
@@ -324,8 +336,9 @@ fn ex_works_the_buyer_takes_what_the_seller_crated_for_it_first() {
     assert!(until(&mut s, 40, |s| s.contract(id).delivered > 0.0));
     assert_eq!(s.contract(id).delivered, 40.0, "collected");
     assert_eq!(s.town(0).stock[0], 24.0, "from the crate, the loose ones left");
-    let (aboard, _) = s.wagon_shipments(0);
-    assert!(aboard.len() == 1 && aboard[0].consignee == Some(1) && aboard[0].settled, "crated again, made out home: {aboard:?}");
+    let (aboard, ..) = s.wagon_pallets(0);
+    assert!(aboard.len() == 1 && aboard[0].consigned_to(1) && aboard[0].lading.payment == Payment::Paid,
+        "crated again, made out home, paid for: {aboard:?}");
     assert_eq!(s.paperwork(0).documents, 2, "a bill for the earmark, one for the collection");
     assert!(until(&mut s, 40, |s| s.route(0).trips >= 1));
     assert_eq!(s.town(1).stock[0], 40.0, "home and stored");

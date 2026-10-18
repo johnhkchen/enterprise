@@ -8,7 +8,7 @@
 //! hubs.
 
 use super::super::*;
-use enterprise_core::cargo::Shipment;
+use enterprise_core::cargo::{crated, Lading, Payment};
 
 pub fn extend(s: &mut Society, r: &mut Rng) {
     if r.below(3) != 0 || s.town_count() < 3 {
@@ -51,8 +51,9 @@ pub fn daily(s: &mut Society, r: &mut Rng, _day: u64) {
     let consignee = to[r.below(to.len() as u64) as usize];
     let good = r.below(s.content().goods.len() as u64) as usize;
     let shipper = r.below(s.town_count() as u64) as usize;
-    s.forward_shipment(hub, Shipment { good, count: r.range(1.0, 400.0).floor(), shipper, consignee: Some(consignee),
-        contract: None, settled: true, copy: false }, r.below(2) == 0);
+    let count = r.range(1.0, 400.0).floor();
+    let lading = Lading { payment: Payment::Paid, ..Lading::new(shipper, consignee, s.now()) };
+    s.forward_pallet(hub, lading, crated(s.content(), good, count), r.below(2) == 0);
 }
 
 pub fn check(s: &Society, _day: u64) -> Result<(), String> {
@@ -60,20 +61,19 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
     let share = (c.dials.wagon_slots as f64 * c.dials.freight_share) as u32;
     for t in 0..s.town_count() {
         let h = s.hub(t);
-        if !s.is_hub(t) && (!h.held.is_empty() || !h.blocks.is_empty()) {
+        if !s.is_hub(t) && (!h.custody.is_empty() || !h.blocks.is_empty()) {
             return Err(format!("town {t} isn't a hub, yet holds freight: {h:?}"));
         }
-        for held in &h.held {
-            let x = &held.shipment;
-            if !(x.count >= 0.0 && x.count.is_finite()) || x.consignee == Some(t) || x.consignee.is_none() {
+        for (x, held) in &s.custody(t) {
+            if !(x.count() >= 0.0 && x.count().is_finite()) || x.consigned_to(t) {
                 return Err(format!("hub {t}'s forwarder holds {x:?}"));
             }
             if let Some(b) = held.booked {
-                if b.stacks != x.stacks(c) || b.leg.from() != t || b.fare.is_negative() {
-                    return Err(format!("hub {t}'s crate {x:?} is booked {b:?}"));
+                if b.stacks != x.slots(c) || b.leg.from() != t || b.fare.is_negative() {
+                    return Err(format!("hub {t}'s pallet {x:?} is booked {b:?}"));
                 }
-                if b.leg.to() != x.consignee.unwrap() || !held.carted {
-                    return Err(format!("hub {t}'s crate {x:?} is booked on a run elsewhere, or uncarted: {b:?}"));
+                if b.leg.to() != x.lading.consignee || !held.carted {
+                    return Err(format!("hub {t}'s pallet {x:?} is booked on a run elsewhere, or uncarted: {b:?}"));
                 }
             }
         }
@@ -92,8 +92,9 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
     }
     for route in 0..s.route_count() {
         let Some(f) = s.wagon_freight(route) else { continue };
-        let (aboard, _) = s.wagon_shipments(route);
-        if let Some(x) = f.booked.iter().find(|x| !aboard.contains(x)) {
+        let (aboard, ..) = s.wagon_pallets(route);
+        let manifest = s.wagon_manifest(route).unwrap_or_default();
+        if let Some(x) = manifest.lines.iter().filter(|l| l.booking.is_some()).find(|l| !aboard.iter().any(|p| p.id == l.pallet)) {
             return Err(format!("route {route}'s wagon has {x:?} on freight, not aboard"));
         }
         if let Some(stop) = f.stop.filter(|stop| !s.is_hub(stop.hub)) {

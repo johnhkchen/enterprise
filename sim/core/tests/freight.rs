@@ -3,7 +3,8 @@
 //! paper at 24 an emerald; and on maps of hexes, the hubs the roads make, the stops on the way and the routes that
 //! reorganise round them.
 
-use enterprise_core::cargo::Shipment;
+use enterprise_core::cargo::{crated, Lading, Payment};
+use enterprise_core::pallet::Package;
 use enterprise_core::freight::{self, Network, Run};
 use enterprise_core::{Content, Good, Hex, Society};
 
@@ -23,9 +24,15 @@ fn close(a: f64, b: f64) -> bool {
     (a - b).abs() < 1e-9
 }
 
-/// A crate of 64 paper from `shipper`, made out to `buyer` (`Papers.billOfLading(0, shipper, buyer, "64 paper", ...)`).
-fn crate_of_paper(shipper: usize, buyer: usize) -> Shipment {
-    Shipment { good: PAPER, count: 64.0, shipper, consignee: Some(buyer), contract: None, settled: true, copy: false }
+/// A crate of 64 paper from `shipper`, made out to `buyer` (`Papers.billOfLading(0, shipper, buyer, "64 paper", ...)`):
+/// its bill and its package, as a host hands them in.
+fn crate_of_paper(shipper: usize, buyer: usize) -> (Lading, Vec<Package>) {
+    crate_of(PAPER, shipper, buyer)
+}
+
+/// A crate of 64 of a good, paid for.
+fn crate_of(good: usize, shipper: usize, buyer: usize) -> (Lading, Vec<Package>) {
+    (Lading { payment: Payment::Paid, ..Lading::new(shipper, buyer, 0) }, crated(&content(), good, 64.0))
 }
 
 /// The mod's test network with a hub (`CaravanTests.network(helper, 2)` and a storehouse at its far end): a town and
@@ -64,12 +71,13 @@ fn a_forwarder_takes_crates_bound_on_and_their_run_loads_them_first() {
     assert_eq!(s.hand_over(hub, &mut cargo, &mut purse), 0, "no draymen to cart it in");
     assert!(cargo.len() == 1 && purse == 1000.0, "it stays aboard, nothing paid");
     let leg = s.leg(onward, true);
-    s.book(hub, cargo[0].clone(), leg, 1);
+    let (lading, packages) = cargo[0].clone();
+    let id = s.book(hub, lading, packages, leg, 1);
     let mut h = s.hub(hub);
-    let load = h.load_booked(s.content(), &leg, 27);
+    let load = h.load_booked(s.content(), s.pallets(), hub, &leg, 27);
     assert_eq!(load.len(), 1, "booked, it loads for its run");
-    assert_eq!(load[0].booked.map(|b| (b.leg, b.stacks)), Some((leg, 1)), "one stack booked on the run out");
-    assert!(load[0].shipment.consigned_to(buyer), "and still made out to its buyer");
+    assert_eq!((load[0].0, load[0].1.leg, load[0].1.stacks), (id, leg, 1), "one stack booked on the run out");
+    assert!(s.pallets().get(id).unwrap().consigned_to(buyer), "and still made out to its buyer");
 }
 
 // parity: CaravanTests.theForwarderBuysABlockOfSpaceItFillsAndPaysForEachRun
@@ -80,7 +88,8 @@ fn the_forwarder_buys_a_block_of_space_it_fills_and_pays_for_each_run() {
     let calling = 1;
     let home = s.leg(calling, false); // the carrier's run home from the hub
     assert!(!home.passing() && home.from() == hub && home.to() == carrier && home.carrier() == carrier);
-    s.forward_shipment(hub, crate_of_paper(0, carrier), true);
+    let (lading, packages) = crate_of_paper(0, carrier);
+    s.forward_pallet(hub, lading, packages, true);
     assert_eq!(s.forward(hub), 0, "no shop yet: it waits");
     assert!(!s.has_block(hub, &home), "no block yet");
     assert_eq!(s.hub(hub).wanted_on.get(&home.key()), Some(&1.0), "and it remembers what it wanted: a stack");
@@ -92,7 +101,7 @@ fn the_forwarder_buys_a_block_of_space_it_fills_and_pays_for_each_run() {
     assert!(close(s.leg_price(&home), leg_price), "{} against {leg_price}", s.leg_price(&home));
     assert!(close(block.price, 0.8 * leg_price), "at 0.8 of the leg's price: {}", block.price);
     assert_eq!(s.forward(hub), 1, "booked on its block, no shop needed");
-    assert!(s.hub(hub).held.iter().any(|h| h.booked.is_some_and(|b| b.leg == home && b.stacks == 1 && b.block)));
+    assert!(s.hub(hub).custody.values().any(|h| h.booked.is_some_and(|b| b.leg == home && b.stacks == 1 && b.block)));
     let before = s.town(hub).money;
     let paid = s.run_block(hub, &home);
     // (the block's cost rounded up to the thousandth: a cost)
@@ -138,7 +147,9 @@ fn with_draymen_free_the_forwarder_takes_the_crate_for_its_fee() {
         enterprise_core::Fixed::emeralds(10) - purse);
     let h = s.hub(hub);
     assert_eq!((h.carts, h.book.forwarded, h.book.carts), (3, 1, 1), "a cart of the day's four used");
-    assert!(h.held.len() == 1 && h.held[0].carted && h.held[0].booked.is_none(), "in the forwarder's hands, carted in");
+    let held = s.custody(hub);
+    assert!(held.len() == 1 && held[0].1.carted && held[0].1.booked.is_none(), "in the forwarder's custody, carted in");
+    assert!(held[0].0.consigned_to(buyer) && held[0].0.seal.is_some_and(|seal| seal.by == shipper), "sealed, made out on");
     assert!(h.book.drayage == enterprise_core::Fixed::ceil(3.0 / 16.0), "the draymen's 3 spurs");
     s.conserved(&start).unwrap_or_else(|e| panic!("{e}"));
     let book = s.cash_book(hub, 1);
@@ -163,12 +174,13 @@ fn a_forwarder_books_tickets_on_the_soonest_run_and_the_carrier_is_paid_as_it_lo
     let mut s = network(false, 20.0);
     let (hub, carrier) = (1, 2);
     let home = s.leg(1, false);
-    s.forward_shipment(hub, crate_of_paper(0, carrier), true);
+    let (lading, packages) = crate_of_paper(0, carrier);
+    s.forward_pallet(hub, lading, packages, true);
     s.restock_hub(hub);
     let money = s.town(hub).money;
     assert_eq!(s.forward(hub), 1, "a ticket bought at the carrier's shop");
     let h = s.hub(hub);
-    let booking = h.held[0].booked.expect("booked");
+    let booking = h.custody.values().next().unwrap().booked.expect("booked");
     let fare = (stack_price_200() * 0.25 * 16.0).ceil().max(1.0) / 16.0; // the shop's price in whole spurs
     assert!(booking.leg == home && !booking.block && booking.fare == enterprise_core::Fixed::ceil(fare), "{booking:?} against {fare}");
     assert_eq!(h.tickets[&home.key()], 12, "one of its 13 tickets sold");
@@ -429,16 +441,15 @@ fn a_hubs_own_run_loads_the_crates_booked_on_it_first() {
     s.deliver(hub, BREAD, 64.0);
     s.deliver(buyer, BREAD, 64.0);
     let leg = s.leg(onward, true);
-    let cloth = Shipment { good: CLOTH, count: 64.0, shipper: 0, consignee: Some(buyer), contract: None, settled: true,
-        copy: false };
-    s.book(hub, cloth.clone(), leg, 1);
+    let (lading, packages) = crate_of(CLOTH, 0, buyer);
+    let cloth = s.book(hub, lading, packages, leg, 1);
     let start = s.totals();
     s.advance(LOOK);
     assert!(s.route(onward).on_the_road, "the hub's run left: {:?} {:?}", s.road_food(onward).stayed, s.town(hub));
-    let (aboard, _) = s.wagon_shipments(onward);
-    assert!(aboard.contains(&cloth), "with the booked crate aboard: {aboard:?}");
-    assert!(s.wagon_freight(onward).unwrap().booked.contains(&cloth), "on its ticket");
-    assert!(s.hub(hub).held.is_empty() && s.hub(hub).book.carried == 1, "out of the forwarder's hands");
+    let (aboard, ..) = s.wagon_pallets(onward);
+    assert!(aboard.iter().any(|p| p.id == cloth), "with the booked crate aboard: {aboard:?}");
+    assert!(s.wagon_manifest(onward).unwrap().booked(cloth), "on its ticket");
+    assert!(s.hub(hub).custody.is_empty() && s.hub(hub).book.carried == 1, "out of the forwarder's custody");
     let cloth_before = s.town(buyer).stock[CLOTH];
     s.advance(DAY);
     assert_eq!(s.town(buyer).stock[CLOTH] - cloth_before, 64.0, "received by its consignee");
@@ -469,6 +480,11 @@ fn a_wagon_to_a_hub_sends_on_what_its_town_owes_markets_beyond_and_the_forwarder
     assert!(h.book.bills >= 1, "and bought the shipper's bill on the buyer: {:?}", h.book);
     let c = s.contract(id);
     assert!(c.delivered >= 64.0 || c.shipped >= 64.0, "under way or delivered: {c:?}");
+    // The bill drawn on the buyer names the pallet it pays for, and the pallet's bill of lading says so.
+    let bill = s.bills().into_iter().find(|b| b.contract == Some(id)).expect("a bill on the buyer");
+    assert_eq!(bill.pallets.len(), 1, "{bill:?}");
+    assert!(s.pallets().get(bill.pallets[0]).is_none_or(|p| p.lading.payment == Payment::ByBill(bill.id)
+        && p.consigned_to(buyer) && p.lading.shipper == shipper), "sent on billed: {:?}", s.pallets().get(bill.pallets[0]));
     for day in 2..=10 {
         s.advance(day * DAY);
         s.conserved(&start).and_then(|_| s.solvent()).unwrap_or_else(|e| panic!("day {day}: {e}"));
@@ -558,3 +574,35 @@ fn a_wagon_calling_at_the_hub_carries_its_contract_copies_on_to_where_its_bound(
     assert_eq!(s.contract(id).state, enterprise_core::State::Active, "B holds its copy now: in force");
 }
 
+/// Two pallets alike in every way (good, count, shipper, consignee, bill) booked at the hub on two runs to their
+/// consignee: each run loads the one booked on it, told apart by id (no copies matched by contents), and both arrive.
+#[test]
+fn two_alike_pallets_for_one_consignee_booked_at_a_hub_go_to_the_right_runs() {
+    let mut s = network(true, 10.0);
+    let (hub, buyer) = (1, 2);
+    let second = s.add_route(hub, buyer, 200.0 / 1200.0, 0.0, 4.0); // a second run of the hub's to the buyer
+    // The buyer uses tools; the hub has some to sell on both runs, and bread for the road.
+    s.set_trade(buyer, TOOLS, 0.0, 60.0);
+    s.deliver(hub, TOOLS, 256.0);
+    s.deliver(hub, BREAD, 128.0);
+    s.deliver(buyer, BREAD, 128.0);
+    let (first, second_leg) = (s.leg(1, true), s.leg(second, true));
+    let (lading, packages) = crate_of(CLOTH, 0, buyer);
+    let a = s.book(hub, lading.clone(), packages.clone(), first, 1);
+    let b = s.book(hub, lading, packages, second_leg, 1);
+    let (pa, pb) = (s.pallets().get(a).unwrap().clone(), s.pallets().get(b).unwrap().clone());
+    assert!(pa.lading == pb.lading && pa.packages == pb.packages && a != b, "alike, but two pallets");
+    let start = s.totals();
+    s.advance(LOOK);
+    assert!(s.route(1).on_the_road && s.route(second).on_the_road, "both runs left");
+    let ids = |s: &Society, r: usize| s.wagon_pallets(r).0.iter().map(|p| p.id).collect::<Vec<_>>();
+    assert_eq!(ids(&s, 1), vec![a], "the first run took the one booked on it");
+    assert_eq!(ids(&s, second), vec![b], "the second run the other");
+    assert!(s.wagon_manifest(1).unwrap().booked(a) && s.wagon_manifest(second).unwrap().booked(b), "each on its ticket");
+    assert!(s.custody(hub).is_empty(), "out of the forwarder's custody");
+    let cloth = s.town(buyer).stock[CLOTH];
+    s.advance(DAY);
+    assert_eq!(s.town(buyer).stock[CLOTH] - cloth, 128.0, "both received by their consignee");
+    assert!(s.pallets().get(a).is_none() && s.pallets().get(b).is_none(), "opened: out of the registry");
+    s.conserved(&start).unwrap_or_else(|e| panic!("{e}"));
+}

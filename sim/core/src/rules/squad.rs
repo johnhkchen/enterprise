@@ -252,7 +252,8 @@ pub fn saddle(content: &Content, ledger: &mut Ledger, state: &mut RouteState, st
 
 /// At the far end, once the wagon has sold: its porters have delivered, and walk home on their own (a leg's time),
 /// unless what's left aboard still needs their backs, or they're all its crew (`Caravans.sendPortersHome`).
-pub fn send_porters_home(clock: Res<Clock>, content: Res<Content>, mut routes: Query<(Entity, &Route, &mut RouteState)>) {
+pub fn send_porters_home(clock: Res<Clock>, content: Res<Content>, pallets: Res<crate::pallet::Pallets>,
+        mut routes: Query<(Entity, &Route, &mut RouteState)>) {
     let d = &content.dials;
     for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(e).unwrap();
@@ -267,8 +268,8 @@ pub fn send_porters_home(clock: Res<Clock>, content: Res<Content>, mut routes: Q
             continue;
         }
         let capacity = capacity(&content, wagon.crew.iter().map(|h| h.trade), wagon.porter);
-        // What's aboard, crates too (`Crates.stacks`): unsold lots crated again, crates fetched for home.
-        let stacks = crate::cargo::stacks(&content, &wagon.cargo, &wagon.shipments);
+        // What's aboard, crates too (`Crates.stacks`): unsold lots crated again, pallets fetched for home.
+        let stacks = crate::cargo::stacks(&content, &pallets, route.seq, wagon);
         if stacks as i64 > capacity as i64 - (d.pack_stacks as usize * porters) as i64 {
             continue;
         }
@@ -298,7 +299,8 @@ pub fn walk_home(clock: Res<Clock>, mut routes: Query<(Entity, &Route, &mut Rout
 
 /// A wagon home: its crew are home again (`arriveHome`: the squad released, no longer away), and the stacks it
 /// brought home are noted (`lastHome`, for the porter run).
-pub fn come_home(content: Res<Content>, mut routes: Query<(Entity, &Route, &mut RouteState)>, mut rosters: Query<&mut Roster>) {
+pub fn come_home(content: Res<Content>, pallets: Res<crate::pallet::Pallets>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
+        mut rosters: Query<&mut Roster>) {
     for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(e).unwrap();
         if state.arrived != Some(Leg::Home) {
@@ -307,7 +309,7 @@ pub fn come_home(content: Res<Content>, mut routes: Query<(Entity, &Route, &mut 
         let Some(wagon) = state.wagon.as_ref() else { continue };
         // What it brought home, crates too (`Crates.stacks`), before they're unloaded (`rules/cargo.rs`). The mod notes
         // it as the caravan turns for home; the core as it gets there, after the road home's food.
-        let stacks = crate::cargo::stacks(&content, &wagon.cargo, &wagon.shipments);
+        let stacks = crate::cargo::stacks(&content, &pallets, route.seq, wagon);
         if let Ok(mut roster) = rosters.get_mut(route.from) {
             release(&mut roster, &wagon.crew);
         }

@@ -154,7 +154,7 @@ fn hub_and_far_end() -> Society {
 
 fn aboard(s: &Society, route: usize, good: usize) -> f64 {
     let loose = s.wagon_cargo(route).map_or(0.0, |c| c[good]);
-    loose + s.wagon_shipments(route).0.iter().filter(|c| c.good == good).map(|c| c.count).sum::<f64>()
+    loose + s.wagon_crated(route, good)
 }
 
 #[test]

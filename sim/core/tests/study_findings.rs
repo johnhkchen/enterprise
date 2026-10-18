@@ -88,8 +88,8 @@ fn a_managed_lockers_par_is_its_capacity_and_any_other_switched_on_trade_a_stack
     s.advance(LOOK);
     assert_eq!(s.capacity(DEST, PAPER), 768.0, "the managed lockers take 768 paper a day");
     let mut cargo = s.wagon_cargo(0).expect("a wagon out");
-    for crate_ in s.wagon_shipments(0).0 {
-        cargo[crate_.good] += crate_.count; // (a good of two stacks or more rides crated)
+    for (g, c) in cargo.iter_mut().enumerate() {
+        *c += s.wagon_crated(0, g); // (a good of two stacks or more rides crated)
     }
     assert_eq!(cargo[PAPER], 200.0, "all the paper: the far end's par is 3,840");
     assert_eq!(cargo[WHEAT], 64.0, "a stack of wheat, for the Farmer's trade its Merchant doesn't manage");
@@ -102,8 +102,8 @@ fn a_managed_lockers_par_is_its_capacity_and_any_other_switched_on_trade_a_stack
 /// What a wagon left with, loose and crated (a good of two stacks or more rides crated: `rules/cargo.rs`).
 fn aboard(s: &Society, route: usize) -> Vec<f64> {
     let mut cargo = s.wagon_cargo(route).expect("a wagon out");
-    for crate_ in s.wagon_shipments(route).0 {
-        cargo[crate_.good] += crate_.count;
+    for (g, c) in cargo.iter_mut().enumerate() {
+        *c += s.wagon_crated(route, g);
     }
     cargo
 }

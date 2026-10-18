@@ -1,9 +1,14 @@
-//! Pallets: the bill of lading on a handling unit (`docs/pallets.md` section 1, task `pallet-types`).
+//! Pallets: the bill of lading on a handling unit (`docs/pallets.md` section 1, tasks `pallet-types`, `pallets-for-crates`).
 //!
-//! The types and the registry, unused by the rules yet: a wagon (or a hub's consolidation) holds pallets, a pallet holds
-//! packages (crates, barrels, bundles, loose stacks) of one good each, and the pallet carries one bill of lading. Every
-//! pallet is a record in [`Pallets`], at one place, moved only by [`Pallets::move_to`]; `by_place` is an index in
-//! arrival order, so loading is deterministic. Reference for the rules already ported: `cargo/Crates.java` `stacks`
+//! A wagon (or a hub's consolidation) holds pallets, a pallet holds packages (crates, barrels, bundles, loose stacks) of
+//! one good each, and the pallet carries one bill of lading. Every pallet is a record in [`Pallets`], at one place,
+//! moved only by [`Pallets::move_to`]; `by_place` is an index in arrival order, so loading is deterministic. Since
+//! `pallets-for-crates` every crate the rules ship under a bill is a pallet here, one shipment one pallet: a town's in
+//! its warehouse (`At::Town`), a wagon's aboard (`At::Wagon`, a line each on its [`Manifest`]), a hub's in its forwarder's
+//! custody (`At::Custody`, with `freight::Custody` beside it); the rules are `cargo.rs`'s, `freight.rs`'s,
+//! `stranded.rs`'s and `training.rs`'s. A pallet is sealed as it leaves a holder's premises onto a carrier
+//! ([`Pallets::seal_leaving`]), opened only by its consignee at its premises ([`Pallets::open`]), and taken apart only by
+//! its holder ([`Pallets::unpack`]: the shipper's void bill, a seller re-palleting what's collected). Reference for the rules already ported: `cargo/Crates.java` `stacks`
 //! (a package takes the stacks of what's in it, at least one: [`Package::slots`]), `caravan/Caravan.java` `capacity`
 //! (the carrier's caps: [`Caps::of`], extending `squad::capacity` with weight and pallets).
 //!
@@ -207,7 +212,48 @@ fn fnv1a(bytes: &[u8]) -> u64 {
     h
 }
 
+impl Lading {
+    /// A bill of lading for goods from `shipper` made out to `consignee`, issued `now`: under no contract, owed, no copy.
+    pub fn new(shipper: TownId, consignee: TownId, now: u64) -> Self {
+        Lading { shipper, consignee, issued: now, ..Default::default() }
+    }
+
+    /// Paid for in coin when it was packed (the mod's `settled`): received, it's stored, not booked as owed; stranded, it's
+    /// paper a hub buys. `Owed` and `ByBill` aren't: received off freight under a contract both are taken as paid by the
+    /// bill drawn on the buyer when they were sent on (`freight::receive`, the mod's `billed`), and any other way as owed
+    /// (`cargo::receive`), as the core received them before pallets.
+    pub fn prepaid(&self) -> bool {
+        self.payment == Payment::Paid
+    }
+}
+
 impl Pallet {
+    /// Its good: one a pallet for now (the first package's).
+    pub fn good(&self) -> GoodId {
+        self.packages.first().map_or(0, |p| p.good)
+    }
+
+    /// How many of its good it holds, in all: its packages' counts summed in order (a good crated whole, then the last
+    /// part-full crate, sums back to what was crated exactly).
+    pub fn count(&self) -> f64 {
+        self.packages.iter().map(|p| p.count).sum()
+    }
+
+    /// Stacks of cargo space it takes: each package its stacks, at least one (`Crates.stacks`).
+    pub fn slots(&self, content: &Content) -> u32 {
+        self.packages.iter().map(|p| p.slots(content)).sum()
+    }
+
+    /// The crates (and barrels, bundles) it's packed in: every package that isn't loose.
+    pub fn crates(&self) -> u32 {
+        self.packages.iter().filter(|p| p.kind != LOOSE).count() as u32
+    }
+
+    /// Made out to `town`: its bill of lading names it the consignee (`Crates.consignedTo`).
+    pub fn consigned_to(&self, town: TownId) -> bool {
+        self.lading.consignee == town
+    }
+
     /// FNV-1a over the `postcard` bytes of its bill and packages: not of where it is or since when.
     pub fn digest(&self) -> u64 {
         let mut bytes = postcard::to_allocvec(&self.lading).expect("a bill serializes");
@@ -221,18 +267,44 @@ impl Pallet {
     }
 }
 
-/// One line of a manifest: a pallet, where it drops, and its booking on freight.
+/// One line of a manifest: a pallet, where it drops, its booking on freight (it rides on a forwarder's ticket or block,
+/// received at its consignee as freight: `freight::receive`), and whether the hub's own wagon carries it for its
+/// forwarder (bought as stranded paper or collected on credit: into the forwarder's hands once home).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Line {
     pub pallet: PalletId,
     pub drop: Option<TownId>,
-    pub booking: Option<usize>,
+    pub booking: Option<crate::freight::Booking>,
+    pub for_forwarder: bool,
 }
 
 /// What a container carries, by line.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Manifest {
     pub lines: Vec<Line>,
+}
+
+impl Manifest {
+    /// A pallet's line, if it's on the manifest.
+    pub fn line(&self, pallet: PalletId) -> Option<&Line> {
+        self.lines.iter().find(|l| l.pallet == pallet)
+    }
+
+    /// Takes a pallet's line off (it has left the container).
+    pub fn take(&mut self, pallet: PalletId) -> Option<Line> {
+        let i = self.lines.iter().position(|l| l.pallet == pallet)?;
+        Some(self.lines.remove(i))
+    }
+
+    /// Is the pallet on freight tickets (its line booked)?
+    pub fn booked(&self, pallet: PalletId) -> bool {
+        self.line(pallet).is_some_and(|l| l.booking.is_some())
+    }
+
+    /// Does the hub's own wagon carry it for its forwarder?
+    pub fn for_forwarder(&self, pallet: PalletId) -> bool {
+        self.line(pallet).is_some_and(|l| l.for_forwarder)
+    }
 }
 
 /// A wagon on a trip, or a hub's consolidation of pallets for one run.
@@ -298,6 +370,44 @@ impl Pallets {
         if let Some(p) = self.pallets.get_mut(&id) {
             p.seal = Some(Seal { at: now, by, digest: p.digest() });
         }
+    }
+
+    /// A pallet leaves `by`'s premises (or custody) onto a carrier: sealed there, unless it's sealed and unchanged since
+    /// (a pallet that came back, or that a hub held for others, keeps the seal it has).
+    pub fn seal_leaving(&mut self, id: PalletId, by: TownId, now: u64) {
+        if self.pallets.get(&id).is_some_and(|p| p.seal.is_none() || !p.intact()) {
+            self.seal(id, by, now);
+        }
+    }
+
+    /// Takes a pallet apart at its holder's premises (`docs/pallets.md` "Breaking bulk"): its shipper's, when its bill is
+    /// void; a seller's, re-palleting what a buyer's wagon collects. It leaves the registry, not counted received.
+    pub fn unpack(&mut self, id: PalletId) -> Option<Pallet> {
+        let p = self.pallets.remove(&id)?;
+        self.unindex(p.at, id);
+        Some(p)
+    }
+
+    /// Puts the pallets at a place in `order` (the same pallets, another order): where a rule hands some on and keeps
+    /// the rest, those it keeps go back in the order it kept them (a forwarder's leftovers behind the rest, say). Nothing
+    /// moves place.
+    pub fn arrange(&mut self, place: At, order: Vec<PalletId>) {
+        debug_assert!({
+            let (mut a, mut b) = (self.at(place).to_vec(), order.clone());
+            a.sort_unstable();
+            b.sort_unstable();
+            a == b
+        }, "arranging {place:?} into other pallets than it holds");
+        if order.is_empty() {
+            self.by_place.remove(&place);
+        } else {
+            self.by_place.insert(place, order);
+        }
+    }
+
+    /// The pallets at a place, as they are, in arrival order.
+    pub fn at_place(&self, place: At) -> impl Iterator<Item = &Pallet> {
+        self.at(place).iter().filter_map(|id| self.pallets.get(id))
     }
 
     /// A pallet's digest.

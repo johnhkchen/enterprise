@@ -67,7 +67,7 @@ fn town_of_five(s: &mut Society, town: usize) {
 /// What a route's wagon carries of a good, loose and crated.
 fn aboard(s: &Society, route: usize, good: usize) -> f64 {
     let loose = s.wagon_cargo(route).map_or(0.0, |c| c[good]);
-    loose + s.wagon_shipments(route).0.iter().filter(|c| c.good == good).map(|c| c.count).sum::<f64>()
+    loose + s.wagon_crated(route, good)
 }
 
 /// Its par of a kind: 5 villagers x 0.1 x `comfort_days`, in emeralds' worth.

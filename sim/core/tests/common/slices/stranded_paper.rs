@@ -7,7 +7,7 @@
 
 use super::super::*;
 use enterprise_core::bills::{BillState, Held};
-use enterprise_core::cargo::Shipment;
+use enterprise_core::cargo::{crated, Lading, Payment};
 
 pub fn extend(s: &mut Society, r: &mut Rng) {
     if r.below(3) != 0 || s.town_count() < 3 {
@@ -39,11 +39,15 @@ pub fn daily(s: &mut Society, r: &mut Rng, day: u64) {
             let capital = to[r.below(to.len() as u64) as usize];
             let town = towns[r.below(towns.len() as u64) as usize];
             if town != capital {
-                s.draw_bill(capital, town, r.range(2.0, 40.0));
+                let bill = s.draw_bill(capital, town, r.range(2.0, 40.0));
                 if r.below(3) == 0 {
+                    // The goods it paid for, crated for the capital: the bill names them.
                     let good = r.below(s.content().goods.len() as u64) as usize;
-                    s.deliver_shipment(town, Shipment { good, count: r.range(1.0, 200.0).floor(), shipper: town,
-                        consignee: Some(capital), contract: None, settled: true, copy: false });
+                    let count = r.range(1.0, 200.0).floor();
+                    let lading = Lading { payment: Payment::Paid, ..Lading::new(town, capital, s.now()) };
+                    if let Some(id) = s.deliver_pallet(town, lading, crated(s.content(), good, count)) {
+                        s.bill_pallets(bill, &[id]);
+                    }
                 }
             }
         }
@@ -72,9 +76,9 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
         }
     }
     for route in 0..s.route_count() {
-        let Some(f) = s.wagon_freight(route) else { continue };
-        let (aboard, _) = s.wagon_shipments(route);
-        if let Some(x) = f.forwarding.iter().find(|x| !aboard.contains(x)) {
+        let Some(m) = s.wagon_manifest(route) else { continue };
+        let (aboard, ..) = s.wagon_pallets(route);
+        if let Some(x) = m.lines.iter().filter(|l| l.for_forwarder).find(|l| !aboard.iter().any(|p| p.id == l.pallet)) {
             return Err(format!("route {route}'s wagon has {x:?} for its forwarder, not aboard"));
         }
     }

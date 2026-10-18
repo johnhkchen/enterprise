@@ -6,24 +6,26 @@
 //! `collectExWorks`, `lots`, `arriveAtDestination` (crates made out to the caravan's home fetched, spare empties
 //! returned), `settleOwing`; `contract/ContractBook.java` `owe`, `owing`, `paidOwing`).
 //!
-//! A [`Shipment`] is goods crated as a unit: one good, so many of it, from a shipper, made out to a consignee under a
-//! contract, with a bill of lading saying whether it was paid for when crated (`settled`) and a copy of the contract.
-//! It takes the cargo space of what's in it, at least a stack ([`Shipment::stacks`]); a crate holds nine stacks. A
-//! town's [`Shipments`] are its crated goods, out of its [`Stock`](crate::state::Stock)'s reach (the lockers, the
-//! workshop and spot sales see only the stock), and the empty crates it keeps to ship with. Packing a shipment takes
-//! the town's own empty crates first, then new ones it pays `crate_emeralds` each for, as far as it can spare beyond
-//! its reserve; what it can't crate goes loose, without papers. Every bill of lading is a document drawn up at the
-//! shipper's ([`Paperwork`]): a sheet of paper, an eighth of an ink sac and a thirty-second of a feather from its stock
-//! when it's next touched, or a scribe's fee for what it lacks.
+//! Goods crated under a bill of lading are a [`Pallet`] in the registry ([`Pallets`], `pallet.rs`): one good, so many of
+//! it, in crates of nine stacks (the last part-full), from a shipper, made out to a consignee under a contract, with a
+//! bill saying who pays for it ([`Payment`]: owed, paid in coin when crated, or by a bill of exchange drawn on the buyer)
+//! and whether it carries a copy of the contract. It takes the cargo space of what's in it, at least a stack a crate
+//! ([`Pallet::slots`]). A town's pallets (`At::Town`) are out of its [`Stock`](crate::state::Stock)'s reach (the lockers,
+//! the workshop and spot sales see only the stock); its [`Shipments`] are the empty crates it keeps to ship with. Goods
+//! for sale go crated as an open [`Lot`] aboard a wagon: no bill, not sealed, sold piecemeal. Packing takes the town's own
+//! empty crates first, then new ones it pays `crate_emeralds` each for, as far as it can spare beyond its reserve; what
+//! it can't crate goes loose, without papers. Every bill of lading is a document drawn up at the shipper's
+//! ([`Paperwork`]): a sheet of paper, an eighth of an ink sac and a thirty-second of a feather from its stock when it's
+//! next touched, or a scribe's fee for what it lacks.
 //!
-//! The rules are in `rules/cargo.rs`: contracted goods load as shipments, crated ones first (`PlanOwed`, then at
-//! departure); goods for sale go crated a good to a crate when there are two stacks or more; the consignee opens what's
-//! made out to it (`Settle`); a wagon fetches home what's made out to its home and takes the far end's spare empties,
-//! first as it arrives (`Papers`); a farm crates what falls due under its forward sales in lots (`Work`); the buyer's wagon carries what
-//! it owes for goods a player brought (`Papers`).
+//! The rules are in `rules/cargo.rs`: contracted goods load as pallets, the town's own first (`PlanOwed`, then at
+//! departure, sealed as they leave); goods for sale go crated a good to a lot when there are two stacks or more; the
+//! consignee opens what's made out to it (`Settle`); a wagon fetches home what's made out to its home and takes the far
+//! end's spare empties, first as it arrives (`Papers`); a farm crates what falls due under its forward sales in lots
+//! (`Work`); the buyer's wagon carries what it owes for goods a player brought (`Papers`).
 //!
 //! **Stood in for:** the crate's slots are Minecraft's; here a warehouse has room for `crate_room` crates of
-//! shipments. A shipment delivered under its contract is stored as it came in the mod (plain stock, nine stacks to a
+//! pallets. A pallet delivered under its contract is stored as it came in the mod (plain stock, nine stacks to a
 //! slot, papers filed): in the core, stock (it has no slots), its crate kept empty to ship with. Mixed crates, the
 //! freight forwarder's tickets and bills on crates, and the counting house's clerks are later slices'.
 
@@ -36,7 +38,9 @@ use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::{Content, GoodId};
 use crate::contracts::Book;
 use crate::messages::{RouteId, TownId};
-use crate::state::Ledger;
+use crate::pallet::{At, Line, Manifest, Package, Pallet, PalletId, Pallets, CRATE};
+pub use crate::pallet::{Lading, Payment};
+use crate::state::{Ledger, Wagon};
 
 /// Stacks of goods a crate holds (`Crates.GOODS`).
 pub const CRATE_STACKS: u32 = 9;
@@ -54,69 +58,81 @@ pub const PAPER: &str = "paper";
 pub const INK: &str = "ink_sac";
 pub const QUILL: &str = "feather";
 
-/// Goods crated as a unit, with their papers.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub struct Shipment {
-    pub good: GoodId,
-    pub count: f64,
-    pub shipper: TownId,
-    /// Who the bill of lading makes it out to; none for a lot packed for sale, which has no papers.
-    pub consignee: Option<TownId>,
-    /// The contract it ships under, if any.
-    pub contract: Option<usize>,
-    /// Paid for when it was crated: received, it's stored, not booked as owed.
-    pub settled: bool,
-    /// It carries a copy of the contract, filed by the consignee.
-    pub copy: bool,
-}
-
-impl Shipment {
-    /// Stacks of cargo space it takes: what's in it, at least one (`Crates.stacks`).
-    pub fn stacks(&self, content: &Content) -> u32 {
-        stacks_of(content, self.good, self.count).max(1)
-    }
-
-    /// Crates it's packed in, nine stacks to a crate.
-    pub fn crates(&self, content: &Content) -> u32 {
-        self.stacks(content).div_ceil(CRATE_STACKS).max(1)
-    }
-
-    /// Made out to `town`: its bill of lading names it the consignee (`Crates.consignedTo`).
-    pub fn consigned_to(&self, town: TownId) -> bool {
-        self.consignee == Some(town)
-    }
-}
-
 /// Stacks `count` of a good fills, loose.
 pub fn stacks_of(content: &Content, good: GoodId, count: f64) -> u32 {
     if count <= 0.0 { 0 } else { (count / content.goods[good].stack.max(1) as f64).ceil() as u32 }
 }
 
-/// Stacks of cargo space a load takes: each loose good its stacks, each shipment what's in it, at least one
-/// (`Crates.stacks`).
-pub fn stacks(content: &Content, loose: &[f64], shipments: &[Shipment]) -> u32 {
-    loose.iter().enumerate().map(|(g, n)| stacks_of(content, g, *n)).sum::<u32>()
-        + shipments.iter().map(|s| s.stacks(content)).sum::<u32>()
+/// Stacks loose goods fill, each good its own.
+pub fn loose_stacks(content: &Content, loose: &[f64]) -> u32 {
+    loose.iter().enumerate().map(|(g, n)| stacks_of(content, g, *n)).sum()
 }
 
-/// A town's crated goods (out of its stock's reach), and the empty crates it keeps to ship with.
+/// Stacks of cargo space a wagon's load takes: each loose good its stacks, each pallet aboard and each lot for sale what's
+/// in it, at least a stack a crate (`Crates.stacks`).
+pub fn stacks(content: &Content, pallets: &Pallets, route: RouteId, wagon: &Wagon) -> u32 {
+    loose_stacks(content, &wagon.cargo)
+        + pallets.at_place(At::Wagon(route)).map(|p| p.slots(content)).sum::<u32>()
+        + wagon.for_sale.iter().map(|l| l.slots(content)).sum::<u32>()
+}
+
+/// What a wagon carries crated of each good, on its pallets and in its lots for sale (with its loose cargo, what's
+/// aboard), each good's counts summed in the order they're aboard.
+pub fn crated_aboard(pallets: &Pallets, route: RouteId, wagon: &Wagon, good: GoodId) -> f64 {
+    pallets.at_place(At::Wagon(route)).filter(|p| p.good() == good).map(|p| p.count())
+        .chain(wagon.for_sale.iter().filter(|l| l.good() == good).map(|l| l.count())).sum()
+}
+
+/// `count` of a good in crates of nine stacks, the last part-full (one crate, empty, for none): how a shipment's goods
+/// lie in their crates (`Crates.pack`'s nine stacks a crate).
+pub fn crated(content: &Content, good: GoodId, count: f64) -> Vec<Package> {
+    let per_crate = CRATE_STACKS as f64 * content.goods[good].stack.max(1) as f64;
+    let (mut left, mut packages) = (count.max(0.0), Vec::new());
+    loop {
+        let lot = left.min(per_crate);
+        packages.push(Package::new(CRATE, good, lot));
+        left -= lot;
+        if left <= 0.0 {
+            return packages;
+        }
+    }
+}
+
+/// Goods for sale crated aboard a wagon (`Caravans.lots`): an open lot of one good, its crates. No bill, not sealed,
+/// sold piecemeal at the far end; what's left comes home.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Lot {
+    pub packages: Vec<Package>,
+}
+
+impl Lot {
+    pub fn good(&self) -> GoodId {
+        self.packages.first().map_or(0, |p| p.good)
+    }
+
+    /// Its good's count, its crates' summed in order.
+    pub fn count(&self) -> f64 {
+        self.packages.iter().map(|p| p.count).sum()
+    }
+
+    /// Stacks it takes: each crate its stacks, at least one.
+    pub fn slots(&self, content: &Content) -> u32 {
+        self.packages.iter().map(|p| p.slots(content)).sum()
+    }
+
+    /// Crates it's in.
+    pub fn crates(&self) -> u32 {
+        self.packages.len() as u32
+    }
+}
+
+/// A town's empty crates, kept to ship with (its crated goods are its pallets, `At::Town`, in the registry).
 #[derive(Component, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Shipments {
-    pub held: Vec<Shipment>,
     pub empties: u32,
 }
 
 impl Shipments {
-    /// Of a good, what's crated under a contract (`ForwardSales.earmarked`).
-    pub fn earmarked(&self, contract: usize) -> f64 {
-        self.held.iter().filter(|s| s.contract == Some(contract)).map(|s| s.count).sum()
-    }
-
-    /// Crates held, packed.
-    pub fn crates(&self, content: &Content) -> u32 {
-        self.held.iter().map(|s| s.crates(content)).sum()
-    }
-
     /// Takes one empty crate, if it has one (`Crates.takeEmpty`).
     pub fn take_empty(&mut self) -> bool {
         if self.empties > 0 {
@@ -133,6 +149,16 @@ impl Shipments {
         self.empties -= spare;
         spare
     }
+}
+
+/// What a town has crated under a contract, in its warehouse (`ForwardSales.earmarked`).
+pub fn earmarked(pallets: &Pallets, town: TownId, contract: usize) -> f64 {
+    pallets.at_place(At::Town(town)).filter(|p| p.lading.contract == Some(contract)).map(|p| p.count()).sum()
+}
+
+/// The crates a town holds packed, in its warehouse.
+pub fn crates_held(pallets: &Pallets, town: TownId) -> u32 {
+    pallets.at_place(At::Town(town)).map(|p| p.crates()).sum()
 }
 
 /// A town's paperwork (`Paperwork.Desk`): documents drawn up and not yet reckoned, the stationery owed in parts of a
@@ -192,22 +218,22 @@ fn scribe_reason() -> Reason {
     Reason::Other("scribe".into())
 }
 
-/// Packs `count` of a good as a shipment like `like` (its consignee, contract, settled, copy; the shipper the town):
-/// a crate a nine stacks, the town's own empties first, then new ones at `crate_emeralds` each as far as it can spare.
-/// A shipment with a consignee draws a bill of lading at the shipper's, crated or not (`Crates.shipping` is drawn
-/// before `pack`); a lot for sale has no papers. Returns the crated part (none if nothing could be crated): the rest
-/// goes loose, without papers. `Crates.pack`.
+/// Packs `count` of a good in crates: a crate a nine stacks, the town's own empties first, then new ones at
+/// `crate_emeralds` each as far as it can spare. Goods with a consignee (`papers`) draw a bill of lading at the shipper's,
+/// crated or not (`Crates.shipping` is drawn before `pack`); a lot for sale has no papers. Returns the crates packed (none
+/// if nothing could be crated): the rest goes loose, without papers. `Crates.pack`.
+#[allow(clippy::too_many_arguments)]
 pub fn pack(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u64, shipper: &mut Shipper,
-        good: GoodId, count: f64, like: &Shipment) -> Option<Shipment> {
+        good: GoodId, count: f64, papers: bool) -> Option<Vec<Package>> {
     if count <= 0.0 {
         return None;
     }
-    if like.consignee.is_some() {
+    if papers {
         shipper.paperwork.drawn(1, LADING, now);
     }
     let per_crate = CRATE_STACKS as f64 * content.goods[good].stack.max(1) as f64;
     let cost = crate::fixed::Fixed::ceil(content.dials.crate_emeralds);
-    let (mut left, mut crated) = (count, 0.0);
+    let (mut left, mut packages) = (count, Vec::new());
     while left > 0.0 {
         let lot = left.min(per_crate);
         let had = shipper.store.take_empty() || (shipper.spare >= cost && *shipper.money >= cost && {
@@ -219,10 +245,18 @@ pub fn pack(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u6
         if !had {
             break; // no crate to be had: the rest goes loose
         }
-        crated += lot;
+        packages.push(Package::new(CRATE, good, lot));
         left -= lot;
     }
-    (crated > 0.0).then(|| Shipment { good, count: crated, shipper: shipper.town, ..like.clone() })
+    (!packages.is_empty()).then_some(packages)
+}
+
+/// A pallet loaded onto a route's wagon as it leaves `by`'s premises (or a hub's custody): moved aboard (the back of its
+/// load), sealed (`docs/pallets.md` "Sealed in transit"), and its line on the wagon's manifest.
+pub fn put_aboard(pallets: &mut Pallets, wagon: &mut Wagon, route: RouteId, line: Line, by: TownId, now: u64) {
+    pallets.move_to(line.pallet, At::Wagon(route), now);
+    pallets.seal_leaving(line.pallet, by, now);
+    wagon.manifest.lines.push(line);
 }
 
 /// A town's paperwork reckoned when it's touched (`Paperwork.settle`): for the whole documents drawn since, paper, ink
@@ -273,43 +307,43 @@ pub fn reckon(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: 
 
 /// What the farm keeps back of a crop for its forward sales and rents' coupons, less what's crated for each already
 /// (out of the stock's reach): `ForwardSales.setAside`. Its spot sales and its workshop use only the rest.
-pub fn set_aside(book: &Book, store: Option<&Shipments>, farm: TownId, crop: GoodId, now: u64, day: u64) -> f64 {
+pub fn set_aside(book: &Book, pallets: &Pallets, farm: TownId, crop: GoodId, now: u64, day: u64) -> f64 {
     book.open.iter().map(|&id| &book.contracts[id])
         .filter(|c| c.seller == farm && c.good == crop && c.in_force())
         .filter_map(|c| c.harvest.map(|h| (c, h)))
-        .map(|(c, h)| (c.owed(now + h.window_ticks(day)) - c.shipped - store.map_or(0.0, |s| s.earmarked(c.id))).max(0.0))
+        .map(|(c, h)| (c.owed(now + h.window_ticks(day)) - c.shipped - earmarked(pallets, farm, c.id)).max(0.0))
         .sum()
 }
 
 /// [`set_aside`] of every crop below `n` at once, by good: one pass over the open contracts, each good's sum in their
 /// order as `set_aside` adds it (from -0.0, as `Iterator::sum` starts).
-pub fn set_aside_all(book: &Book, store: Option<&Shipments>, farm: TownId, n: usize, now: u64, day: u64) -> Vec<f64> {
+pub fn set_aside_all(book: &Book, pallets: &Pallets, farm: TownId, n: usize, now: u64, day: u64) -> Vec<f64> {
     let mut out = vec![-0.0; n];
     for c in book.open.iter().map(|&id| &book.contracts[id]).filter(|c| c.seller == farm && c.good < n && c.in_force()) {
         if let Some(h) = c.harvest {
-            out[c.good] += (c.owed(now + h.window_ticks(day)) - c.shipped - store.map_or(0.0, |s| s.earmarked(c.id))).max(0.0);
+            out[c.good] += (c.owed(now + h.window_ticks(day)) - c.shipped - earmarked(pallets, farm, c.id)).max(0.0);
         }
     }
     out
 }
 
-/// A shipment received by its consignee (`Crates.receive`): its contract copy filed, its goods into `stock` (stored as
-/// they came: in the core, stock), its crates kept empty to ship with; if it wasn't settled when crated and the
-/// consignee is the buyer of a contract in force, it's delivered under it, at most what's owed by the next
+/// A pallet received by its consignee, opened (`Crates.receive`): its contract copy filed, its goods into `stock`
+/// (stored as they came: in the core, stock), its crates kept empty to ship with; if it wasn't paid for in coin when
+/// crated and the consignee is the buyer of a contract in force, it's delivered under it, at most what's owed by the next
 /// installment, the payment owed the seller until a wagon between the two carries it (`ContractBook.owe`).
-pub fn receive(content: &Content, book: &mut Book, now: u64, town: TownId, stock: &mut [f64], store: &mut Shipments,
-        shipment: Shipment) {
-    if let Some(id) = shipment.contract.filter(|_| shipment.copy) {
+pub fn receive(book: &mut Book, now: u64, town: TownId, stock: &mut [f64], store: &mut Shipments, pallet: &Pallet) {
+    let (good, count) = (pallet.good(), pallet.count());
+    if let Some(id) = pallet.lading.contract.filter(|_| pallet.lading.copy) {
         book.deliver_copy(id, town);
     }
-    stock[shipment.good] += shipment.count;
-    store.empties += shipment.crates(content);
-    let Some(id) = shipment.contract.filter(|_| !shipment.settled) else { return };
+    stock[good] += count;
+    store.empties += pallet.crates();
+    let Some(id) = pallet.lading.contract.filter(|_| !pallet.lading.prepaid()) else { return };
     let c = &book.contracts[id];
-    if c.buyer != town || !c.in_force() || c.good != shipment.good {
+    if c.buyer != town || !c.in_force() || c.good != good {
         return;
     }
-    let counted = shipment.count.min(c.owed(now + c.every)).max(0.0);
+    let counted = count.min(c.owed(now + c.every)).max(0.0);
     let owing = crate::fixed::Fixed::ceil(counted * c.price);
     book.settle(id, 0.0, counted, crate::fixed::Fixed::ZERO, owing);
 }
@@ -318,32 +352,50 @@ use crate::society::Society;
 use crate::state::{RouteState, Stock};
 
 impl Society {
-    /// A crate a player carried into a town's warehouse (`Crates.receive`, called as the Merchant next looks): made
-    /// out to the town, it's received (an unsettled one delivered under its contract, the money owed the seller till
-    /// a wagon between them carries it); made out elsewhere, it waits, crated, to be fetched.
-    pub fn deliver_shipment(&mut self, town: TownId, shipment: Shipment) {
+    /// A pallet a player carried into a town's warehouse (`Crates.receive`, called as the Merchant next looks): made out
+    /// to the town, it's received (one not paid for in coin delivered under its contract, the money owed the seller till
+    /// a wagon between them carries it); made out elsewhere, it waits, crated, to be fetched (its id). One good a pallet.
+    pub fn deliver_pallet(&mut self, town: TownId, lading: Lading, packages: Vec<Package>) -> Option<PalletId> {
         let e = self.towns[town];
-        if shipment.consigned_to(town) {
+        let now = self.now();
+        let pallet = Pallet { id: 0, kind: crate::pallet::LOAD, lading, packages, at: At::Town(town), since: now, seal: None,
+            claimed: None };
+        let (good, count) = (pallet.good(), pallet.count());
+        if pallet.consigned_to(town) {
             // Into the warehouse from outside the society, as `deliver` brings goods (the town brought up to date
-            // first), then out of the stock as the shipment's, received.
-            self.deliver(town, shipment.good, shipment.count);
-            let now = self.now();
-            let content = self.content().clone();
+            // first), then out of the stock as the pallet's, received.
+            self.deliver(town, good, count);
             let mut store = self.shipments(town);
             let mut stock = self.world.get::<Stock>(e).expect("a town").0.clone();
-            stock[shipment.good] -= shipment.count;
-            receive(&content, &mut self.world.resource_mut::<Book>(), now, town, &mut stock, &mut store, shipment);
+            stock[good] -= count;
+            receive(&mut self.world.resource_mut::<Book>(), now, town, &mut stock, &mut store, &pallet);
             self.world.get_mut::<Stock>(e).expect("a town").0 = stock;
             *self.world.get_mut::<Shipments>(e).expect("a town") = store;
+            None
         } else {
-            self.world.resource_mut::<Ledger>().delivered[shipment.good] += shipment.count;
-            self.world.get_mut::<Shipments>(e).expect("a town").held.push(shipment);
+            self.world.resource_mut::<Ledger>().delivered[good] += count;
+            Some(self.world.resource_mut::<Pallets>().pack(pallet.lading, pallet.packages, At::Town(town), now))
         }
     }
 
-    /// A town's crated goods and empty crates.
+    /// A town's empty crates.
     pub fn shipments(&self, town: TownId) -> Shipments {
         self.world.get::<Shipments>(self.towns[town]).cloned().unwrap_or_default()
+    }
+
+    /// Every pallet in the world, where it is.
+    pub fn pallets(&self) -> &Pallets {
+        self.world.resource::<Pallets>()
+    }
+
+    /// The pallets at a place, in arrival order.
+    pub fn pallets_at(&self, place: At) -> Vec<Pallet> {
+        self.pallets().at_place(place).cloned().collect()
+    }
+
+    /// A town's crated goods: its pallets, in its warehouse.
+    pub fn town_pallets(&self, town: TownId) -> Vec<Pallet> {
+        self.pallets_at(At::Town(town))
     }
 
     /// A town's paperwork.
@@ -358,20 +410,36 @@ impl Society {
         self.world.get_mut::<Paperwork>(self.towns[town]).expect("a town").drawn(count, kind, now);
     }
 
-    /// The shipments aboard a route's wagon, and the empty crates it carries.
-    pub fn wagon_shipments(&self, route: RouteId) -> (Vec<Shipment>, u32) {
+    /// The pallets aboard a route's wagon (in load order), its lots for sale, and the empty crates it carries.
+    pub fn wagon_pallets(&self, route: RouteId) -> (Vec<Pallet>, Vec<Lot>, u32) {
         self.world.get::<RouteState>(self.routes[route]).and_then(|s| s.wagon.as_ref())
-            .map_or((Vec::new(), 0), |w| (w.shipments.clone(), w.empties))
+            .map_or((Vec::new(), Vec::new(), 0), |w| (self.pallets_at(At::Wagon(route)), w.for_sale.clone(), w.empties))
+    }
+
+    /// What a route's wagon carries crated of a good: on its pallets and in its lots for sale.
+    pub fn wagon_crated(&self, route: RouteId, good: GoodId) -> f64 {
+        self.world.get::<RouteState>(self.routes[route]).and_then(|s| s.wagon.as_ref())
+            .map_or(0.0, |w| crated_aboard(self.pallets(), route, w, good))
+    }
+
+    /// A route's wagon's manifest: a line for each pallet aboard.
+    pub fn wagon_manifest(&self, route: RouteId) -> Option<Manifest> {
+        self.world.get::<RouteState>(self.routes[route]).and_then(|s| s.wagon.as_ref()).map(|w| w.manifest.clone())
     }
 
     /// What a town has crated under a contract.
     pub fn earmarked(&self, town: TownId, contract: usize) -> f64 {
-        self.shipments(town).earmarked(contract)
+        earmarked(self.pallets(), town, contract)
     }
 
     /// What a farm keeps back of a crop for its harvest contracts beyond what it has crated for them.
     pub fn set_aside_beyond_crates(&self, town: TownId, good: GoodId) -> f64 {
-        let store = self.world.get::<Shipments>(self.towns[town]);
-        set_aside(self.world.resource::<Book>(), store, town, good, self.now(), self.content().day_ticks)
+        set_aside(self.world.resource::<Book>(), self.pallets(), town, good, self.now(), self.content().day_ticks)
+    }
+
+    /// A host's bill of exchange names the pallets it pays for (goods crated for its drawee: their title, as a rule's
+    /// bill drawn for crated goods names them: `Bill.pallets`).
+    pub fn bill_pallets(&mut self, bill: usize, pallets: &[PalletId]) {
+        self.world.resource_mut::<crate::bills::Bills>().bills[bill].pallets.extend_from_slice(pallets);
     }
 }

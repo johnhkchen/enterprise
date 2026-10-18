@@ -7,9 +7,9 @@
 //! - `PlanOwed`: home's crates for a contract the seller carries load first, as they are (`Caravans.pickContracted`,
 //!   `ForwardSales.takeEarmarked`); the loose goods owed are planned after them (`rules/contracts.rs`).
 //! - `PlanPapers`: the buyer's wagon takes what its town owes the far end for goods a player brought (`exWorksPurse`).
-//! - `Decide`, as the wagon leaves: the crates planned taken from home's; the loose goods owed packed with a bill of
-//!   lading and a copy of the contract, made out to the far end; then each good for sale of two stacks or more packed
-//!   in crates of its own, with no papers (`Caravans.lots`); what can't be crated travels loose.
+//! - `Decide`, as the wagon leaves: the pallets planned taken from home's, sealed; the loose goods owed packed with a bill
+//!   of lading and a copy of the contract, made out to the far end; then each good for sale of two stacks or more packed
+//!   in crates of its own, an open lot with no papers (`Caravans.lots`); what can't be crated travels loose.
 //! - `Papers`, first: the far end's empty crates beyond the stack it keeps go back, and crates there made out to the
 //!   wagon's home are fetched, as far as there's room, before anything is delivered, paid or collected (the mod's
 //!   order in `arriveAtDestination`: `spareEmpties` and the consigned crates before `settleOwing`). Then the buyer's
@@ -24,11 +24,13 @@
 use bevy_ecs::prelude::*;
 
 use super::{in_order, Step};
-use crate::cargo::{self, pack, stacks, stacks_of, Paperwork, Shipment, Shipments, Shipper, CRATE_STACKS};
+use crate::cargo::{self, crated_aboard, put_aboard, pack, stacks, stacks_of, Lot, Paperwork, Shipments, Shipper, CRATE_STACKS};
 use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
 use crate::contracts::{self, Book};
 use crate::farms::Farm;
+use crate::messages::TownId;
+use crate::pallet::{At, Lading, Line, Package, Payment, PalletId, Pallets};
 use crate::state::*;
 
 pub fn register(schedule: &mut Schedule) {
@@ -76,36 +78,35 @@ fn spare(content: &Content, money: crate::fixed::Fixed, trades: &Trades, farm: O
 /// forward sale and coupon in force, what falls due by the end of the next harvest window beyond what's on the road
 /// and crated already, crated in one go once the stock holds a lot of it (a stack, or all that's owed), if there's room
 /// for the crates; one bill of lading for it, made out to the buyer, with a copy of the contract.
-#[allow(clippy::type_complexity)]
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub(crate) fn earmark(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, bills: Res<crate::bills::Bills>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
+        mut pallets: ResMut<Pallets>,
         mut towns: Query<(&Town, &mut Stock, &mut Money, &Trades, Option<&Farm>, &mut Shipments, &mut Paperwork)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let harvests: Vec<usize> = book.open.iter().copied()
         .filter(|&id| book.contracts[id].harvest.is_some() && book.contracts[id].in_force()).collect();
-    let mut order: Vec<_> = towns.iter_mut().filter(|(town, .., store, _)| !store.held.is_empty()
+    let mut order: Vec<_> = towns.iter_mut().filter(|(town, ..)| !pallets.at(At::Town(town.id)).is_empty()
         || harvests.iter().any(|&id| book.contracts[id].seller == town.id)).collect();
     order.sort_by_key(|(town, ..)| town.id);
     for (town, mut stock, mut money, trades, farm, mut store, mut paperwork) in order {
-        // A crate it shipped whose contract is no longer in force, or has gone to another buyer: its own again.
-        let mut i = 0;
-        while i < store.held.len() {
-            let s = &store.held[i];
-            let stale = s.shipper == town.id && !s.consigned_to(town.id) && s.contract.is_some_and(|id| {
+        // A crate it shipped whose contract is no longer in force, or has gone to another buyer: its own again (the
+        // shipper opens a void pallet at its premises).
+        let stale: Vec<PalletId> = pallets.at_place(At::Town(town.id)).filter(|p| {
+            let l = &p.lading;
+            l.shipper == town.id && !p.consigned_to(town.id) && l.contract.is_some_and(|id| {
                 let c = &book.contracts[id];
                 // A harvest crate whose contract has closed or gone to another buyer; any crate shipped under a contract no
                 // longer in force, unless a bill it was paid for by is still to be collected (then it's the buyer's, and goes
                 // with the bill: `ForwardSales.earmark`, `market.Stranded`).
-                (c.harvest.is_some() && c.seller == town.id && (!c.in_force() || s.consignee != Some(c.buyer)))
-                    || (!c.in_force() && !(s.settled && bills.open.iter().map(|&b| &bills.bills[b]).any(|b|
-                        b.state == crate::bills::BillState::Outstanding && b.payee == town.id && s.consignee == Some(b.drawee))))
-            });
-            if stale {
-                let s = store.held.remove(i);
-                stock.0[s.good] += s.count;
-                store.empties += s.crates(&content);
-            } else {
-                i += 1;
-            }
+                (c.harvest.is_some() && c.seller == town.id && (!c.in_force() || l.consignee != c.buyer))
+                    || (!c.in_force() && !(l.prepaid() && bills.open.iter().map(|&b| &bills.bills[b]).any(|b|
+                        b.state == crate::bills::BillState::Outstanding && b.payee == town.id && l.consignee == b.drawee)))
+            })
+        }).map(|p| p.id).collect();
+        for id in stale {
+            let p = pallets.unpack(id).expect("a pallet at the town");
+            stock.0[p.good()] += p.count();
+            store.empties += p.crates();
         }
         for &id in &harvests {
             let c = &book.contracts[id];
@@ -114,7 +115,7 @@ pub(crate) fn earmark(clock: Res<Clock>, content: Res<Content>, book: Res<Book>,
             }
             let g = c.good;
             let window = c.harvest.map_or(0, |h| h.window_ticks(day));
-            let want = (c.owed(now + window) - c.shipped - store.earmarked(id)).floor();
+            let want = (c.owed(now + window) - c.shipped - cargo::earmarked(&pallets, town.id, id)).floor();
             if want <= 0.0 {
                 continue;
             }
@@ -125,47 +126,48 @@ pub(crate) fn earmark(clock: Res<Clock>, content: Res<Content>, book: Res<Book>,
             }
             let taking = want.min(stock.0[g].floor());
             let crates = stacks_of(&content, g, taking).div_ceil(CRATE_STACKS);
-            if store.crates(&content) + crates > content.dials.crate_room {
+            if cargo::crates_held(&pallets, town.id) + crates > content.dials.crate_room {
                 continue; // no room for the crates: the crop stays loose (still set aside), and no papers are drawn
             }
-            let like = Shipment { good: g, count: 0.0, shipper: town.id, consignee: Some(c.buyer), contract: Some(id),
-                settled: false, copy: true };
             let spare = spare(&content, money.0, trades, farm);
             let mut shipper = Shipper { town: town.id, money: &mut money.0, spare, store: &mut *store, paperwork: &mut *paperwork };
-            if let Some(s) = pack(&content, &mut ledger, &mut cash, now, &mut shipper, g, taking, &like) {
-                stock.0[g] -= s.count;
-                store.held.push(s);
+            if let Some(packages) = pack(&content, &mut ledger, &mut cash, now, &mut shipper, g, taking, true) {
+                let lading = Lading { contract: Some(id), payment: Payment::Owed, copy: true, ..Lading::new(town.id, c.buyer, now) };
+                let p = pallets.pack(lading, packages, At::Town(town.id), now);
+                stock.0[g] -= pallets.get(p).unwrap().count();
             }
         }
     }
 }
 
-/// In the plan, before the loose goods owed: home's crates for each contract it carries to the far end, as they are,
-/// as many as cover what's owed by the time it would arrive (within the wagon's slots); pressing as the loose goods'
-/// would be (`rules/contracts.rs` `plan_owed`).
-fn plan_crated(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut routes: Query<(&Route, &mut RouteState)>,
-        stores: Query<&Shipments>) {
+/// In the plan, before the loose goods owed: home's pallets for each contract it carries to the far end, as they are, in
+/// the order they came, as many as cover what's owed by the time it would arrive (within the wagon's slots); pressing as
+/// the loose goods' would be (`rules/contracts.rs` `plan_owed`).
+fn plan_crated(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, pallets: Res<Pallets>,
+        mut routes: Query<(&Route, &mut RouteState)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let grace = (contracts::GRACE_DAYS * day as f64) as u64;
     for (route, mut state) in &mut routes {
         let Some(plan) = state.plan.as_mut() else { continue };
-        let Ok(store) = stores.get(route.from) else { continue };
-        if store.held.is_empty() {
+        if pallets.at(At::Town(route.from_id)).is_empty() {
             continue;
         }
         let arrival = now + route.travel_ticks;
         for c in book.in_force(route.from_id, route.to_id).filter(|c| c.incoterm.seller_carries()) {
             let owed = (c.owed(arrival) - c.shipped).max(0.0);
-            let free = content.dials.wagon_slots.saturating_sub(stacks(&content, &plan.cargo, &plan.shipments));
+            let free = content.dials.wagon_slots.saturating_sub(cargo::loose_stacks(&content, &plan.cargo)
+                + planned_slots(&content, &pallets, plan));
             let mut left = owed.min(free as f64 * content.goods[c.good].stack as f64);
             let mut taken = 0.0;
-            for s in store.held.iter().filter(|s| s.contract == Some(c.id) && s.consigned_to(route.to_id)) {
+            for p in pallets.at_place(At::Town(route.from_id))
+                    .filter(|p| p.lading.contract == Some(c.id) && p.consigned_to(route.to_id)) {
                 if left <= 0.0 {
                     break;
                 }
-                left -= s.count;
-                taken += s.count;
-                plan.shipments.push(s.clone());
+                let count = p.count();
+                left -= count;
+                taken += count;
+                plan.pallets.push(p.id);
             }
             if taken <= 0.0 {
                 continue;
@@ -175,6 +177,11 @@ fn plan_crated(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut ro
             plan.pressing |= c.next_deadline(c.wait_ticks(grace, day)).is_some_and(|deadline| counts > deadline);
         }
     }
+}
+
+/// The stacks a plan's pallets take, as they stand in the registry.
+pub(crate) fn planned_slots(content: &Content, pallets: &Pallets, plan: &Plan) -> u32 {
+    plan.pallets.iter().filter_map(|id| pallets.get(*id)).map(|p| p.slots(content)).sum()
 }
 
 /// In the plan: what home owes the far end for goods delivered without a wagon (a player brought them) goes in the
@@ -199,13 +206,14 @@ pub(crate) fn plan_owing(content: Res<Content>, book: Res<Book>, mut routes: Que
     }
 }
 
-/// As each wagon leaves: the crates it planned taken from home's (another wagon may have taken one since: it's not
-/// aboard), counted on the road under their contracts; the loose goods owed packed, a shipment a contract, made out to
-/// the far end with its bill of lading and copy; then each good for sale of two stacks or more packed in crates of its
-/// own, with no papers. Crates are home's empties first, then new ones as far as it can spare; the rest goes loose.
-#[allow(clippy::type_complexity)]
+/// As each wagon leaves: the pallets it planned taken from home's (another wagon may have taken one since: it's not
+/// aboard), sealed, counted on the road under their contracts; the loose goods owed packed, a pallet a contract, made out
+/// to the far end with its bill of lading and copy; then each good for sale of two stacks or more packed in crates of its
+/// own, an open lot with no papers. Crates are home's empties first, then new ones as far as it can spare; the rest goes
+/// loose.
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub(crate) fn ship(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut ledger: ResMut<Ledger>,
-        mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
+        mut cash: ResMut<CashBook>, mut pallets: ResMut<Pallets>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<(&mut Money, &Trades, Option<&Farm>, &mut Shipments, &mut Paperwork)>) {
     let now = clock.now;
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
@@ -219,30 +227,38 @@ pub(crate) fn ship(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Bo
             && w.arrives == now + crate::squad::leg_ticks(&content, route.travel_ticks, w.saddled, 1.0))
             else { continue };
         let Ok((mut money, trades, farm, mut store, mut paperwork)) = towns.get_mut(route.from) else { continue };
-        // The crates planned, from home's.
+        let (home, seq) = (route.from_id, route.seq);
+        // The pallets planned (their lines written as the plan went), from home's.
         let mut crated: Vec<(usize, f64)> = Vec::new();
-        for s in std::mem::take(&mut wagon.shipments) {
-            let Some(i) = store.held.iter().position(|h| *h == s) else { continue };
-            let s = store.held.remove(i);
-            if let Some(id) = s.contract {
-                book.ship(id, s.count);
-                crated.push((id, s.count));
+        for line in std::mem::take(&mut wagon.manifest.lines) {
+            let Some(p) = pallets.get(line.pallet).filter(|p| p.at == At::Town(home)) else { continue };
+            if let Some(id) = p.lading.contract {
+                let count = p.count();
+                book.ship(id, count);
+                crated.push((id, count));
             }
-            wagon.shipments.push(s);
+            put_aboard(&mut pallets, wagon, seq, line, home, now);
         }
         let spare = spare(&content, money.0, trades, farm);
-        let mut shipper = Shipper { town: route.from_id, money: &mut money.0, spare, store: &mut *store, paperwork: &mut *paperwork };
+        let mut shipper = Shipper { town: home, money: &mut money.0, spare, store: &mut *store, paperwork: &mut *paperwork };
         // The loose goods owed, crated with their papers.
         let mut owed_loose = vec![0.0; wagon.cargo.len()];
-        for &(id, n) in &wagon.contracted {
+        for (id, n) in wagon.contracted.clone() {
             let g = book.contracts[id].good;
-            let like = Shipment { good: g, count: 0.0, shipper: route.from_id, consignee: Some(route.to_id),
-                contract: Some(id), settled: false, copy: true };
-            let packed = pack(&content, &mut ledger, &mut cash, now, &mut shipper, g, n, &like);
-            let in_crates = packed.as_ref().map_or(0.0, |s| s.count);
+            let packed = pack(&content, &mut ledger, &mut cash, now, &mut shipper, g, n, true);
+            let in_crates = match packed {
+                Some(packages) => {
+                    let lading = Lading { contract: Some(id), payment: Payment::Owed, copy: true,
+                        ..Lading::new(home, route.to_id, now) };
+                    let p = pallets.pack(lading, packages, At::Town(home), now);
+                    let count = pallets.get(p).unwrap().count();
+                    put_aboard(&mut pallets, wagon, seq, Line { pallet: p, ..Default::default() }, home, now);
+                    count
+                }
+                None => 0.0,
+            };
             wagon.cargo[g] -= in_crates;
             owed_loose[g] += n - in_crates;
-            wagon.shipments.extend(packed);
         }
         for (id, n) in crated {
             match wagon.contracted.iter_mut().find(|(c, _)| *c == id) {
@@ -250,17 +266,16 @@ pub(crate) fn ship(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Bo
                 None => wagon.contracted.push((id, n)),
             }
         }
-        // Goods for sale, a good to a crate where there are two stacks or more of it.
+        // Goods for sale, a good to a lot where there are two stacks or more of it.
         for g in 0..wagon.cargo.len() {
             let for_sale = (wagon.cargo[g] - owed_loose[g]).max(0.0);
             if stacks_of(&content, g, for_sale) < 2 {
                 continue;
             }
-            let like = Shipment { good: g, count: 0.0, shipper: route.from_id, consignee: None, contract: None,
-                settled: true, copy: false };
-            if let Some(s) = pack(&content, &mut ledger, &mut cash, now, &mut shipper, g, for_sale, &like) {
-                wagon.cargo[g] -= s.count;
-                wagon.shipments.push(s);
+            if let Some(packages) = pack(&content, &mut ledger, &mut cash, now, &mut shipper, g, for_sale, false) {
+                let lot = Lot { packages };
+                wagon.cargo[g] -= lot.count();
+                wagon.for_sale.push(lot);
             }
         }
     }
@@ -301,10 +316,10 @@ fn pay_owing(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, m
     }
 }
 
-/// At the far end, before the goods owed are delivered: its Merchant opens the crates made out to it: a copy of the
-/// contract is now its copy, the goods are delivered under the contract or sold like any (`rules/contracts.rs`,
-/// `rules/arrive.rs`), the empty crates kept to ship with.
-fn open(content: Res<Content>, mut book: ResMut<Book>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
+/// At the far end, before the goods owed are delivered: its Merchant opens the pallets made out to it, at its premises: a
+/// copy of the contract is now its copy, the goods are delivered under the contract or sold like any
+/// (`rules/contracts.rs`, `rules/arrive.rs`), the empty crates kept to ship with.
+fn open(mut book: ResMut<Book>, mut pallets: ResMut<Pallets>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut stores: Query<&mut Shipments>) {
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(entity).unwrap();
@@ -313,19 +328,20 @@ fn open(content: Res<Content>, mut book: ResMut<Book>, mut routes: Query<(Entity
         }
         let route = *route;
         let wagon = state.wagon.as_mut().unwrap();
-        if !wagon.shipments.iter().any(|s| s.consigned_to(route.to_id)) {
+        let here: Vec<PalletId> = pallets.at_place(At::Wagon(route.seq)).filter(|p| p.consigned_to(route.to_id))
+            .map(|p| p.id).collect();
+        if here.is_empty() {
             continue;
         }
         let Ok(mut store) = stores.get_mut(route.to) else { continue };
-        let (here, rest): (Vec<Shipment>, Vec<Shipment>) =
-            std::mem::take(&mut wagon.shipments).into_iter().partition(|s| s.consigned_to(route.to_id));
-        wagon.shipments = rest;
-        for s in here {
-            if let Some(id) = s.contract.filter(|_| s.copy) {
+        for id in here {
+            let p = pallets.open(id).expect("aboard");
+            wagon.manifest.take(id);
+            if let Some(id) = p.lading.contract.filter(|_| p.lading.copy) {
                 book.deliver_copy(id, route.to_id);
             }
-            wagon.cargo[s.good] += s.count;
-            store.empties += s.crates(&content);
+            wagon.cargo[p.good()] += p.count();
+            store.empties += p.crates();
         }
     }
 }
@@ -335,8 +351,8 @@ fn open(content: Res<Content>, mut book: ResMut<Book>, mut routes: Query<(Entity
 /// out to the wagon's home are fetched, as far as the wagon, still loaded with what it brought, has room. Not a farm's
 /// unpaid earmark for an Ex Works contract: that's for the Ex Works collection to take first, paid for (as the mod's
 /// `collectExWorks` says it does; its fetch, coming first, would take it unpaid and the collection the loose goods too).
-fn fetch(content: Res<Content>, book: Res<Book>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
-        mut stores: Query<&mut Shipments>) {
+fn fetch(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut pallets: ResMut<Pallets>,
+        mut routes: Query<(Entity, &Route, &mut RouteState)>, mut stores: Query<&mut Shipments>) {
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(entity).unwrap();
         if state.arrived != Some(Leg::Out) {
@@ -348,15 +364,13 @@ fn fetch(content: Res<Content>, book: Res<Book>, mut routes: Query<(Entity, &Rou
         // As far as its crew carries (`caravan.capacity()`: a squad's packs, a porter's one; 0, a plain wagon's).
         let slots = if wagon.slots > 0 { wagon.slots } else { content.dials.wagon_slots };
         wagon.empties += store.spare_empties(content.dials.empties_kept);
-        let mut i = 0;
-        while i < store.held.len() {
-            let h = &store.held[i];
-            let collected = !h.settled && h.contract.is_some_and(|id| !book.contracts[id].incoterm.seller_carries());
-            if h.consigned_to(route.from_id) && !collected && stacks(&content, &wagon.cargo, &wagon.shipments)
-                    + h.stacks(&content) <= slots {
-                wagon.shipments.push(store.held.remove(i));
-            } else {
-                i += 1;
+        let there: Vec<PalletId> = pallets.at(At::Town(route.to_id)).to_vec();
+        for id in there {
+            let h = pallets.get(id).unwrap();
+            let collected = !h.lading.prepaid() && h.lading.contract.is_some_and(|id| !book.contracts[id].incoterm.seller_carries());
+            if h.consigned_to(route.from_id) && !collected && stacks(&content, &pallets, route.seq, wagon)
+                    + h.slots(&content) <= slots {
+                put_aboard(&mut pallets, wagon, route.seq, Line { pallet: id, ..Default::default() }, route.to_id, clock.now);
             }
         }
     }
@@ -369,17 +383,15 @@ fn unlot(mut routes: Query<&mut RouteState>) {
             continue;
         }
         let wagon = state.wagon.as_mut().unwrap();
-        let (lots, rest): (Vec<Shipment>, Vec<Shipment>) =
-            std::mem::take(&mut wagon.shipments).into_iter().partition(|s| s.consignee.is_none());
-        wagon.shipments = rest;
-        for s in lots {
-            wagon.cargo[s.good] += s.count;
-            wagon.lots.push((s.good, s.count));
+        for lot in std::mem::take(&mut wagon.for_sale) {
+            let (g, count) = (lot.good(), lot.count());
+            wagon.cargo[g] += count;
+            wagon.lots.push((g, count));
         }
     }
 }
 
-/// After the sale: a lot bought whole leaves its crate with the buyer; what's left of one stays crated aboard.
+/// After the sale: a lot bought whole leaves its crates with the buyer; what's left of one stays crated aboard.
 pub(crate) fn relot(content: Res<Content>, mut routes: Query<(&Route, &mut RouteState)>, mut stores: Query<&mut Shipments>) {
     for (route, mut state) in &mut routes {
         if state.arrived != Some(Leg::Out) {
@@ -388,24 +400,22 @@ pub(crate) fn relot(content: Res<Content>, mut routes: Query<(&Route, &mut Route
         let wagon = state.wagon.as_mut().unwrap();
         for (g, count) in std::mem::take(&mut wagon.lots) {
             let left = wagon.cargo[g].min(count).max(0.0);
-            let lot = Shipment { good: g, count, shipper: route.from_id, consignee: None, contract: None, settled: true,
-                copy: false };
             if left <= 0.0 {
                 if let Ok(mut store) = stores.get_mut(route.to) {
-                    store.empties += lot.crates(&content);
+                    store.empties += Lot { packages: cargo::crated(&content, g, count) }.crates();
                 }
             } else {
                 wagon.cargo[g] -= left;
-                wagon.shipments.push(Shipment { count: left, ..lot });
+                wagon.for_sale.push(Lot { packages: cargo::crated(&content, g, left) });
             }
         }
     }
 }
 
-/// Home again, before the cargo goes back on the shelves: crates made out home received (`Crates.receive`), lots that
-/// didn't sell back in stock, any other crate kept as it is; the empty crates it brought into home's.
+/// Home again, before the cargo goes back on the shelves: pallets made out home received (`Crates.receive`), any other
+/// kept as it is, still sealed; lots that didn't sell back in stock; the empty crates it brought into home's.
 #[allow(clippy::type_complexity)]
-pub(crate) fn unload(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>,
+pub(crate) fn unload(clock: Res<Clock>, mut book: ResMut<Book>, mut pallets: ResMut<Pallets>,
         mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<(&mut Stock, &mut Shipments)>) {
     // In route order: receiving books deliveries and debts under contracts two wagons may share.
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
@@ -414,58 +424,73 @@ pub(crate) fn unload(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             continue;
         }
         let wagon = state.wagon.as_mut().unwrap();
-        if wagon.shipments.is_empty() && wagon.empties == 0 {
+        let aboard: Vec<PalletId> = pallets.at(At::Wagon(route.seq)).to_vec();
+        if aboard.is_empty() && wagon.for_sale.is_empty() && wagon.empties == 0 {
             continue;
         }
         let Ok((mut stock, mut store)) = towns.get_mut(route.from) else { continue };
         store.empties += std::mem::take(&mut wagon.empties);
-        for s in std::mem::take(&mut wagon.shipments) {
-            if s.consigned_to(route.from_id) {
-                cargo::receive(&content, &mut book, clock.now, route.from_id, &mut stock.0, &mut store, s);
-            } else if s.consignee.is_none() {
-                stock.0[s.good] += s.count;
-                store.empties += s.crates(&content);
+        // (Its lots for sale went back aboard after the sale, last of all: home's pallets came before them.)
+        for id in aboard {
+            wagon.manifest.take(id);
+            if pallets.get(id).unwrap().consigned_to(route.from_id) {
+                let p = pallets.open(id).unwrap();
+                cargo::receive(&mut book, clock.now, route.from_id, &mut stock.0, &mut store, &p);
             } else {
-                store.held.push(s);
+                pallets.move_to(id, At::Town(route.from_id), clock.now);
             }
+        }
+        for lot in std::mem::take(&mut wagon.for_sale) {
+            stock.0[lot.good()] += lot.count();
+            store.empties += lot.crates();
         }
     }
 }
 
-/// The Ex Works goods a buyer's wagon collects, from the seller's crates for the contract first (opened, the crates
-/// kept), up to `most`: what it took from them.
-pub(crate) fn take_earmarked(content: &Content, store: &mut Shipments, contract: usize, buyer: crate::messages::TownId,
-        most: f64) -> f64 {
+/// The Ex Works goods a buyer's wagon collects, from the seller's pallets for the contract first (opened at its
+/// premises, the crates kept; the last part taken, what's left re-crated on its pallet), up to `most`: what it took from
+/// them.
+pub(crate) fn take_earmarked(content: &Content, pallets: &mut Pallets, store: &mut Shipments, seller: TownId,
+        contract: usize, buyer: TownId, most: f64) -> f64 {
     let mut taken = 0.0;
-    let mut i = 0;
-    while i < store.held.len() && taken < most {
-        let s = &mut store.held[i];
-        if s.contract != Some(contract) || !s.consigned_to(buyer) {
-            i += 1;
+    let there: Vec<PalletId> = pallets.at(At::Town(seller)).to_vec();
+    for id in there {
+        if taken >= most {
+            break;
+        }
+        let p = pallets.get(id).unwrap();
+        if p.lading.contract != Some(contract) || !p.consigned_to(buyer) {
             continue;
         }
-        let n = s.count.min(most - taken);
+        let (good, count) = (p.good(), p.count());
+        let n = count.min(most - taken);
         taken += n;
-        s.count -= n;
-        if s.count <= 0.0 {
-            let s = store.held.remove(i);
-            store.empties += s.crates(content);
+        let left = count - n;
+        // What's left is crated again on its pallet: none left, the pallet's taken apart, and its crates kept are those
+        // what's left would take (one, empty: the core has always kept one of an emptied pallet's crates).
+        let left_in = cargo::crated(content, good, left);
+        if left <= 0.0 {
+            pallets.unpack(id);
+            store.empties += left_in.len() as u32;
         } else {
-            i += 1;
+            pallets.pallets.get_mut(&id).unwrap().packages = left_in;
         }
     }
     taken
 }
 
 /// The seller packs what a buyer's wagon collects Ex Works, made out to the buyer, paid for (`Caravans.collectExWorks`):
-/// its own empties first, else new crates as far as it can spare. Returns the shipment, if any of it was crated.
+/// its own empties first, else new crates as far as it can spare. Returns the crates, if any of it was crated.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn pack_collected(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u64,
-        seller: crate::messages::TownId, money: &mut crate::fixed::Fixed, trades: &Trades, farm: Option<&Farm>, store: &mut Shipments,
-        paperwork: &mut Paperwork, contract: &crate::contracts::Contract, count: f64) -> Option<Shipment> {
+        seller: TownId, money: &mut crate::fixed::Fixed, trades: &Trades, farm: Option<&Farm>, store: &mut Shipments,
+        paperwork: &mut Paperwork, contract: &crate::contracts::Contract, count: f64) -> Option<Vec<Package>> {
     let spare = spare(content, *money, trades, farm);
-    let like = Shipment { good: contract.good, count: 0.0, shipper: seller, consignee: Some(contract.buyer),
-        contract: Some(contract.id), settled: true, copy: true };
     let mut shipper = Shipper { town: seller, money, spare, store, paperwork };
-    pack(content, ledger, cash, now, &mut shipper, contract.good, count, &like)
+    pack(content, ledger, cash, now, &mut shipper, contract.good, count, true)
+}
+
+/// What a wagon carries of a good, loose and crated (`crated_aboard`).
+pub(crate) fn aboard_of(pallets: &Pallets, route: crate::messages::RouteId, wagon: &Wagon, good: usize) -> f64 {
+    wagon.cargo[good] + crated_aboard(pallets, route, wagon, good)
 }

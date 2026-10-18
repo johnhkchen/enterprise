@@ -13,6 +13,7 @@ use bevy_ecs::prelude::*;
 use super::{in_order, Step};
 use crate::bills::Bills;
 use crate::cargo::{Paperwork, Shipments};
+use crate::pallet::Pallets;
 use crate::cash_book::CashBook;
 use crate::content::Content;
 use crate::contracts::{Book, State};
@@ -38,16 +39,17 @@ pub fn register(schedule: &mut Schedule) {
 /// Every town's lockers told what its training contracts ask, in town order.
 #[allow(clippy::type_complexity)]
 pub(crate) fn lessons(content: Res<Content>, book: Res<Book>, mut apprenticeships: ResMut<Apprenticeships>,
-        mut towns: Query<(&Town, &mut Lockers, &Stock, &Trades, Option<&Farm>, Option<&Shipments>)>) {
+        pallets: Res<Pallets>, mut towns: Query<(&Town, &mut Lockers, &Stock, &Trades, Option<&Farm>)>) {
     let mut order: Vec<_> = towns.iter_mut().collect();
     order.sort_by_key(|(t, ..)| t.id);
-    for (town, mut lockers, stock, trades, farm, store) in order {
+    for (town, mut lockers, stock, trades, farm) in order {
         // Nothing to say, nothing said before: leave the town as it is.
         let held = book.training_for(town.id).next().is_some();
         if !held && lockers.lessons.targets.is_empty() && lockers.lessons.made.is_empty() && !apprenticeships.added.contains_key(&town.id) {
             continue;
         }
-        plan(&content, &book, &mut apprenticeships, town.id, &mut lockers, stock, trades, farm, store);
+        plan(&content, &book, &mut apprenticeships, town.id, &mut lockers, stock, trades, farm,
+            crate::cargo::crates_held(&pallets, town.id));
     }
 }
 
@@ -55,7 +57,7 @@ pub(crate) fn lessons(content: Res<Content>, book: Res<Book>, mut apprenticeship
 /// or a hub the town's wagons reach runs to the buyer: `stranded.rs`).
 #[allow(clippy::type_complexity, clippy::too_many_arguments)]
 fn crate_work(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut bills: ResMut<Bills>, mut ledger: ResMut<Ledger>,
-        mut cash: ResMut<CashBook>, routes: Query<(&Route, &RouteState, Option<&RoutePath>)>,
+        mut cash: ResMut<CashBook>, mut pallets: ResMut<Pallets>, routes: Query<(&Route, &RouteState, Option<&RoutePath>)>,
         places: Query<(&Town, &crate::freight::Hub)>,
         mut towns: Query<(&Town, &mut Lockers, &mut Stock, &mut Money, &Trades, Option<&Farm>, &mut Shipments, &mut Paperwork)>) {
     let mut order: Vec<_> = towns.iter_mut().filter(|(_, l, ..)| !l.lessons.made.is_empty()).collect();
@@ -66,8 +68,8 @@ fn crate_work(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut bil
         places.iter().map(|(t, h)| (t.id, t.hex, h.storehouse)).collect::<Vec<_>>());
     order.sort_by_key(|(t, ..)| t.id);
     for (town, mut lockers, mut stock, mut money, trades, farm, mut store, mut paperwork) in order {
-        finish(&content, &book, &mut bills, &mut ledger, &mut cash, &net, clock.now, town.id, &mut lockers, &mut stock,
-            &mut money, trades, farm, &mut store, &mut paperwork);
+        finish(&content, &book, &mut bills, &mut ledger, &mut cash, &mut pallets, &net, clock.now, town.id, &mut lockers,
+            &mut stock, &mut money, trades, farm, &mut store, &mut paperwork);
     }
 }
 
@@ -93,13 +95,15 @@ type Desks<'w, 's> = Query<'w, 's, (&'static Money, &'static Stock, &'static Tra
 #[allow(clippy::too_many_arguments)]
 /// Reads `board`'s board for `reader` over the world as the systems see it.
 fn read(clock: &Clock, content: &Content, book: &mut Book, tenders: &mut Tenders, routes: &[Route], order: &Towns,
-        desks: &Desks, reader: usize, board: usize) {
+        desks: &Desks, pallets: &Pallets, reader: usize, board: usize) {
     if tenders.tenders.is_empty() {
         return;
     }
     let desk = |t: usize| {
         let (money, stock, trades, farm, roster, store) = desks.get(order.0[t]).ok()?;
-        Some(Desk { roster, money: money.0, stock, trades, farm, store })
+        // (A town without a crates' store holds none: the crates it holds are its pallets.)
+        let crates = store.map_or(0, |_| crate::cargo::crates_held(pallets, t));
+        Some(Desk { roster, money: money.0, stock, trades, farm, crates })
     };
     let env = Env { content, now: clock.now, routes, desk };
     tenders.read(book, &env, reader, board);
@@ -108,7 +112,7 @@ fn read(clock: &Clock, content: &Content, book: &mut Book, tenders: &mut Tenders
 /// A wagon at the far end: the Merchant there reads its home's board.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn read_out(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut tenders: ResMut<Tenders>, order: Res<Towns>,
-        desks: Desks, routes: Query<(Entity, &Route, &RouteState)>) {
+        desks: Desks, pallets: Res<Pallets>, routes: Query<(Entity, &Route, &RouteState)>) {
     if tenders.tenders.is_empty() {
         return;
     }
@@ -116,7 +120,7 @@ pub(crate) fn read_out(clock: Res<Clock>, content: Res<Content>, mut book: ResMu
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, state) = routes.get(entity).unwrap();
         if state.arrived == Some(Leg::Out) {
-            read(&clock, &content, &mut book, &mut tenders, &all, &order, &desks, route.to_id, route.from_id);
+            read(&clock, &content, &mut book, &mut tenders, &all, &order, &desks, &pallets, route.to_id, route.from_id);
         }
     }
 }
@@ -124,7 +128,7 @@ pub(crate) fn read_out(clock: Res<Clock>, content: Res<Content>, mut book: ResMu
 /// A wagon home: the Merchant there reads the far end's board.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn read_home(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut tenders: ResMut<Tenders>, order: Res<Towns>,
-        desks: Desks, routes: Query<(Entity, &Route, &RouteState)>) {
+        desks: Desks, pallets: Res<Pallets>, routes: Query<(Entity, &Route, &RouteState)>) {
     if tenders.tenders.is_empty() {
         return;
     }
@@ -132,7 +136,7 @@ pub(crate) fn read_home(clock: Res<Clock>, content: Res<Content>, mut book: ResM
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, state) = routes.get(entity).unwrap();
         if state.arrived == Some(Leg::Home) {
-            read(&clock, &content, &mut book, &mut tenders, &all, &order, &desks, route.from_id, route.to_id);
+            read(&clock, &content, &mut book, &mut tenders, &all, &order, &desks, &pallets, route.from_id, route.to_id);
         }
     }
 }

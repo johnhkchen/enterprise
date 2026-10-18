@@ -53,6 +53,9 @@ pub struct Bill {
     pub held: Held,
     /// The contract it pays for, if any (goods crated for the drawee: their title; `Bill.contract`).
     pub contract: Option<usize>,
+    /// The pallets of goods it pays for, if any (crated for the drawee, `pallet.rs`): named, not guessed; stranded, they
+    /// go with it.
+    pub pallets: Vec<crate::pallet::PalletId>,
 }
 
 /// Every bill, and the ones still to be paid.
@@ -94,6 +97,7 @@ impl Bills {
             state: BillState::Outstanding,
             held: Held::Wagon,
             contract,
+            pallets: Vec::new(),
         });
         self.open.push(id);
         id

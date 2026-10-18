@@ -7,7 +7,8 @@
 
 use enterprise_core::bills::{BillState, Held, LAPSE_DAYS};
 use enterprise_core::cash_book::{Account, Reason};
-use enterprise_core::cargo::Shipment;
+use enterprise_core::cargo::{crated, Lading, Payment};
+use enterprise_core::pallet::{At, Package};
 use enterprise_core::contracts::Book;
 use enterprise_core::{Content, Good, Incoterm, Society};
 
@@ -41,9 +42,16 @@ fn arena(hub_money: f64) -> Society {
     s
 }
 
-/// A crate of `n` leggings the town made for the capital, paid for by a bill (`Papers.billOfLading(...)` marked settled).
-fn leggings(shipper: usize, consignee: usize) -> Shipment {
-    Shipment { good: LEGGINGS, count: 1.0, shipper, consignee: Some(consignee), contract: None, settled: true, copy: false }
+/// A crate of leggings the town made for the capital, paid for by a bill (`Papers.billOfLading(...)` marked settled): its
+/// bill of lading and its package, as a host hands them in.
+fn leggings(shipper: usize, consignee: usize) -> (Lading, Vec<Package>) {
+    (Lading { payment: Payment::Paid, ..Lading::new(shipper, consignee, 0) }, crated(&content(), LEGGINGS, 1.0))
+}
+
+/// The leggings put in the town's warehouse (a host's): the pallet's id.
+fn crate_at(s: &mut Society, town: usize, consignee: usize) -> u64 {
+    let (lading, packages) = leggings(town, consignee);
+    s.deliver_pallet(town, lading, packages).expect("made out elsewhere: it waits")
 }
 
 // parity: ContractTests.aHubBuysATownsStrandedPaperForCoinAndItsOwnBill
@@ -54,11 +62,16 @@ fn a_hub_buys_a_towns_stranded_paper_for_coin_and_its_own_bill() {
     let id = s.draw_bill(capital, town, 100.0); // for goods crated for the capital; long past its day by now
     s.advance(10 * DAY);
     let mut bundles = vec![id];
-    let mut crates = vec![leggings(town, capital)];
+    // The bill names the crate it paid for: the same crate goes with it, by id.
+    let leggings = crate_at(&mut s, town, capital);
+    s.bill_pallets(id, &[leggings]);
+    let mut crates = vec![leggings];
     let rate = s.mint_rate();
     let deal = s.buy_stranded(hub, town, &mut crates, &mut bundles, 1000.0);
     assert!(deal.is_some(), "the hub buys it");
     let deal = deal.unwrap();
+    assert_eq!(deal.crates, vec![leggings], "the bill's own pallet");
+    assert_eq!(s.custody(hub).len(), 1, "into the forwarder's custody");
     let face = 100.0 * (1.0 + 0.02);
     let d = &s.content().dials;
     let ceiling = face * (1.0 - 0.02 - d.stale_bill_discount) * s.trust(hub, capital);
@@ -76,6 +89,45 @@ fn a_hub_buys_a_towns_stranded_paper_for_coin_and_its_own_bill() {
     let bill = &s.bills()[deal.hub_bill().unwrap()];
     assert!(bill.drawee == hub && bill.payee == town, "the hub's own bill to the town");
     assert_eq!(s.stranded_book(hub).bills, 1);
+}
+
+/// A stranded bill's goods are the pallets it names, by id: of two alike pallets for its drawee at the town, the one the
+/// bill names goes with it; a pallet for another market whose paper the hub doesn't buy stays.
+#[test]
+fn a_stranded_bills_goods_are_its_pallets_by_id() {
+    let (hub, town, capital) = (0, 1, 2);
+    let mut s = arena(100.0);
+    let elsewhere = s.add_town("Elsewhere", 10.0);
+    s.add_route(hub, elsewhere, 200.0 / 1200.0, 0.0, 4.0);
+    let id = s.draw_bill(capital, town, 100.0); // more than the capital can pay when the post brings it: it stands
+    s.advance(10 * DAY);
+    let named = crate_at(&mut s, town, capital);
+    let twin = crate_at(&mut s, town, capital);
+    let other = crate_at(&mut s, town, elsewhere);
+    s.bill_pallets(id, &[named]);
+    assert_eq!(s.pallets().get(named).unwrap().lading, s.pallets().get(twin).unwrap().lading, "alike");
+    let (mut crates, mut bills) = (vec![named, other], vec![id]);
+    let deal = s.buy_stranded(hub, town, &mut crates, &mut bills, 1000.0).expect("bought");
+    assert_eq!(deal.crates, s.bills()[id].pallets, "exactly the bill's pallets");
+    assert_eq!(crates, vec![other], "the pallet for a market whose paper it didn't buy stays");
+    assert_eq!(s.custody(hub).iter().map(|(p, _)| p.id).collect::<Vec<_>>(), vec![named], "the named one in custody");
+    assert!(s.town_pallets(town).iter().any(|p| p.id == twin), "its twin still at the town");
+}
+
+/// The one rule kept from before bills named their goods (`stranded::buy`): a paid-for pallet for a drawee whose paper
+/// the hub buys goes with it though no bill names it. By id alone it would stay, moving 2 of the fingerprint's 300 worlds
+/// (`docs/pallets.md` divergence 7: the integrator's to take).
+#[test]
+fn a_pallet_for_the_drawee_no_bill_names_still_goes_with_its_paper() {
+    let (hub, town, capital) = (0, 1, 2);
+    let mut s = arena(100.0);
+    let id = s.draw_bill(capital, town, 100.0);
+    s.advance(10 * DAY);
+    let unnamed = crate_at(&mut s, town, capital);
+    let (mut crates, mut bills) = (vec![unnamed], vec![id]);
+    let deal = s.buy_stranded(hub, town, &mut crates, &mut bills, 1000.0).expect("bought");
+    assert!(s.bills()[id].pallets.is_empty());
+    assert_eq!(deal.crates, vec![unnamed], "made out to the drawee: it goes along");
 }
 
 #[test]
@@ -114,12 +166,14 @@ fn never_a_bill_on_the_hub_itself_nor_on_a_market_it_does_not_run_to() {
         "the town presents the hub's bill there, for its face; the hub runs nowhere to the other");
     assert_eq!(bills.len(), 2);
     // A crate not paid for by a bill isn't paper the hub buys either.
-    let mut unpaid = leggings(town, capital);
-    unpaid.settled = false;
+    let (mut lading, packages) = leggings(town, capital);
+    lading.payment = Payment::Owed;
+    let unpaid = s.deliver_pallet(town, lading, packages).unwrap();
     let on_capital = s.draw_bill(capital, town, 10.0); // not yet due, the capital's wagons don't call
-    let (mut crates, mut bills) = (vec![unpaid.clone()], vec![on_capital]);
+    s.bill_pallets(on_capital, &[unpaid]);
+    let (mut crates, mut bills) = (vec![unpaid], vec![on_capital]);
     let deal = s.buy_stranded(hub, town, &mut crates, &mut bills, 100.0).unwrap();
-    assert!(deal.crates.is_empty() && crates == vec![unpaid], "an unsettled crate stays");
+    assert!(deal.crates.is_empty() && crates == vec![unpaid], "an unsettled crate stays, named or not");
 }
 
 #[test]
@@ -233,19 +287,20 @@ fn a_hubs_wagon_calling_at_a_town_buys_its_stranded_bill_and_carries_it_home() {
 fn the_goods_a_hubs_wagon_buys_with_a_bill_go_to_its_forwarder() {
     let (mut s, id) = hub_calls(100.0, 0);
     let (hub, town, capital) = (0, 1, 2);
-    s.deliver_shipment(town, leggings(town, capital));
+    let crate_ = crate_at(&mut s, town, capital);
+    s.bill_pallets(id, &[crate_]);
     let start = s.totals();
     for _ in 0..(12 * DAY / LOOK) {
         look(&mut s);
         s.conserved(&start).and_then(|_| s.solvent()).unwrap_or_else(|e| panic!("{e}"));
     }
     assert_eq!(s.bills()[id].payee, hub);
-    assert!(s.shipments(town).held.is_empty(), "the town's crate left with the wagon");
-    let h = s.hub(hub);
-    let at_hub = h.held.iter().filter(|x| x.shipment.good == LEGGINGS).count();
-    let on_road = (0..s.route_count()).map(|r| s.wagon_shipments(r).0.iter().filter(|x| x.good == LEGGINGS).count()).sum::<usize>();
+    assert!(s.town_pallets(town).is_empty(), "the town's crate left with the wagon");
+    let at_hub = s.custody(hub).iter().filter(|(x, _)| x.id == crate_).count();
+    let on_road = (0..s.route_count()).map(|r| s.wagon_pallets(r).0.iter().filter(|x| x.id == crate_).count()).sum::<usize>();
     let received = s.town(capital).stock[LEGGINGS] as usize;
-    assert_eq!(at_hub + on_road + received, 1, "in the forwarder's hands, on its run to the capital, or there: {h:?}");
+    assert_eq!(at_hub + on_road + received, 1, "in the forwarder's custody, on its run to the capital, or there: {:?}",
+        s.hub(hub));
     assert_eq!(s.stranded_book(hub).crates, 1);
 }
 
@@ -289,7 +344,8 @@ fn a_towns_wagon_to_a_hub_carries_its_stranded_paper_and_sells_it_there() {
     let (town, hub, capital) = (0, 1, 2);
     let mut s = town_to_hub(100.0);
     let id = past_its_day(&mut s, capital, town);
-    s.deliver_shipment(town, leggings(town, capital));
+    let crate_ = crate_at(&mut s, town, capital);
+    s.bill_pallets(id, &[crate_]);
     assert!(s.bills()[id].due < s.now() && s.route(0).trips == 0);
     s.deliver(town, PAPER, 128.0); // now it has: the wagon goes
     let start = s.totals();
@@ -314,7 +370,7 @@ fn a_towns_wagon_to_a_hub_carries_its_stranded_paper_and_sells_it_there() {
         s.conserved(&start).unwrap_or_else(|e| panic!("{e}"));
     }
     assert!(s.town(town).money > before + book.coin.mul_floor(0.5), "the town has the coin: {} from {before}", s.town(town).money);
-    assert!(s.shipments(town).held.is_empty(), "the crate went with the wagon");
+    assert!(s.town_pallets(town).is_empty(), "the crate went with the wagon");
     // And the rest in the hub's bills, to the town (the wagon carried them home).
     let own: Vec<_> = s.bills().into_iter().filter(|b| b.drawee == hub && b.payee == town).collect();
     assert!(!own.is_empty() && own.iter().all(|b| b.held == Held::Town(town)), "the hub's own bill for the rest: {own:?}");
@@ -333,7 +389,8 @@ fn a_wagon_with_a_purse_sells_the_hub_the_crate_with_its_bill_not_hands_it_over_
     let (town, hub, capital) = (0, 1, 2);
     let mut s = town_to_hub_with(200.0, 100.0, true);
     let id = past_its_day(&mut s, capital, town);
-    s.deliver_shipment(town, leggings(town, capital));
+    let crate_ = crate_at(&mut s, town, capital);
+    s.bill_pallets(id, &[crate_]);
     // The town owes the hub for cloth it collects there Ex Works, and the hub has none by it: the wagon goes with the purse
     // for it (64 emeralds) and comes back with it.
     s.draft(hub, town, CLOTH, 64.0, 1.0, s.now(), 7 * DAY, 4, Incoterm::Exw, true);
@@ -359,13 +416,13 @@ fn a_stranded_crate_the_hub_does_not_buy_is_handed_the_forwarder_for_its_fee() {
     let mut s = town_to_hub_with(200.0, 100.0, true);
     // (a purse for the forwarding, as above)
     s.draft(hub, town, CLOTH, 64.0, 1.0, 0, 7 * DAY, 4, Incoterm::Exw, true);
-    s.deliver_shipment(town, leggings(town, capital));
+    crate_at(&mut s, town, capital);
     s.deliver(town, PAPER, 128.0);
     for _ in 0..(3 * DAY / LOOK) {
         look(&mut s);
     }
     assert_eq!(s.stranded_book(hub).crates, 0);
-    assert!(s.hub(hub).book.forwarded >= 1 || !s.hub(hub).held.is_empty(), "the forwarder has it: {:?}", s.hub(hub).book);
+    assert!(s.hub(hub).book.forwarded >= 1 || !s.custody(hub).is_empty(), "the forwarder has it: {:?}", s.hub(hub).book);
 }
 
 #[test]
@@ -470,7 +527,7 @@ fn the_pupils_work_is_crated_for_a_buyer_only_where_a_collector_comes() {
     });
     assert!(!s.collectable(smithy, capital));
     assert_eq!(s.town(smithy).stock[1], 12.0, "no collector: the work is the town's");
-    assert!(s.bills().is_empty() && s.shipments(smithy).held.is_empty());
+    assert!(s.bills().is_empty() && s.town_pallets(smithy).is_empty());
     // The same road, and the hub runs on to the capital: it will buy the bill and forward the goods.
     let s = make(&|s| {
         s.add_route(smithy, hub, 0.1, 0.0, 2.0);
@@ -479,8 +536,10 @@ fn the_pupils_work_is_crated_for_a_buyer_only_where_a_collector_comes() {
     });
     assert!(s.collectable(smithy, capital));
     assert_eq!(s.town(smithy).stock[1], 0.0, "crated for the buyer");
-    assert_eq!(s.shipments(smithy).held.len(), 1);
+    let held = s.town_pallets(smithy);
+    assert_eq!(held.len(), 1);
     assert_eq!(s.bills().len(), 1, "with a bill on the capital");
+    assert_eq!(s.bills()[0].pallets, vec![held[0].id], "the bill names the pallet it pays for");
     // A buyer's own wagon calling counts as before; a wound-down one no longer does.
     let mut s = make(&|s| {
         s.add_route(capital, smithy, 0.1, 0.0, 2.0);
@@ -540,7 +599,7 @@ fn a_hubs_wagon_carries_a_towns_goods_on_credit_when_it_cannot_pay_the_fare() {
     // Two per cent for every bill term it runs: 30 days are seven and a half of them.
     assert!(owed[0].amount == book.credit.mul_ceil(1.15), "the fare, and its fifteen per cent: {} of {}", owed[0].amount, book.credit);
     assert_eq!(owed[0].due - owed[0].drawn, 30 * DAY, "due in thirty days");
-    assert!(s.hub(hub).book.forwarded >= 1 || !s.hub(hub).held.is_empty(), "the goods are the forwarder's, or on their way home");
+    assert!(s.hub(hub).book.forwarded >= 1 || !s.custody(hub).is_empty(), "the goods are the forwarder's, or on their way home");
     assert!(s.town(town).money >= 0.0 && s.hub(hub).book.fees > 0.0, "it paid what it could: {:?}", s.hub(hub).book);
 }
 
@@ -572,9 +631,9 @@ fn a_crate_shipped_under_a_broken_contract_goes_back_on_the_shelf_unless_a_bill_
         s.add_town("Else", 5.0);
         // A contract the town sold, no longer in force (never held by both: drafted by the seller alone, it lapses).
         let id = s.draft(town, buyer, PAPER, 64.0, 1.0 / 24.0, 10 * DAY, 4 * DAY, 2, Incoterm::Dap, false);
-        let c = Shipment { good: PAPER, count: 64.0, shipper: town, consignee: Some(buyer), contract: Some(id), settled: true,
-            copy: true };
-        s.deliver_shipment(town, c);
+        let lading = Lading { contract: Some(id), payment: Payment::Paid, copy: true, ..Lading::new(town, buyer, 0) };
+        let packages = crated(s.content(), PAPER, 64.0);
+        s.deliver_pallet(town, lading, packages);
         if paid_by_bill {
             s.draw_bill(buyer, town, 5.0);
         }
@@ -583,9 +642,10 @@ fn a_crate_shipped_under_a_broken_contract_goes_back_on_the_shelf_unless_a_bill_
         s
     };
     let s = make(false);
-    assert!(s.shipments(town).held.is_empty() && s.town(town).stock[PAPER] == 64.0, "the goods are its own again");
+    assert!(s.town_pallets(town).is_empty() && s.town(town).stock[PAPER] == 64.0, "the goods are its own again");
+    assert!(s.pallets().at(At::Town(town)).is_empty(), "the void pallet taken apart by its shipper");
     let s = make(true);
-    assert_eq!(s.shipments(town).held.len(), 1, "paid for by a bill still to be collected: the buyer's");
+    assert_eq!(s.town_pallets(town).len(), 1, "paid for by a bill still to be collected: the buyer's");
     assert_eq!(s.town(town).stock[PAPER], 0.0);
 }
 
@@ -595,7 +655,8 @@ fn the_books_survive_a_save() {
     let mut s = arena(100.0);
     let id = s.draw_bill(capital, town, 100.0);
     s.advance(10 * DAY);
-    let (mut crates, mut bills) = (vec![leggings(town, capital)], vec![id]);
+    let crate_ = crate_at(&mut s, town, capital);
+    let (mut crates, mut bills) = (vec![crate_], vec![id]);
     s.buy_stranded(hub, town, &mut crates, &mut bills, 1000.0).unwrap();
     let book = s.stranded_book(hub);
     let mut loaded = Society::load(&s.save()).unwrap();
@@ -643,3 +704,4 @@ fn the_random_worlds_strand_paper_and_the_hubs_buy_it() {
     assert!(deals > 10 && bills > 10 && crates > 0 && credit > 0.0 && coined > 0.0,
         "{deals} deals, {bills} bills, {crates} crates, {credit} credit, {coined} coin ({borrowed} borrowed)");
 }
+

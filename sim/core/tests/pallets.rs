@@ -1,4 +1,4 @@
-//! Pallets and their registry (`pallet.rs`, `docs/pallets.md` section 1): the types, nothing in the rules reads them yet.
+//! Pallets and their registry (`pallet.rs`, `docs/pallets.md` section 1): the types, and the movers the rules use.
 //! Reference for the rules already ported: `CargoTests.aCrateTakesTheSpaceOfWhatsInIt`, `Caravan.capacity`.
 
 use enterprise_core::pallet::*;
@@ -168,7 +168,7 @@ fn pallets_survive_a_save_and_load() {
         p.pack(Lading { payment: Payment::ByBill(4), contract: Some(2), ..bill() }, vec![Package::new(BARREL, 1, 7.0)], At::Custody(1), 4);
         p.move_to(a, At::Wagon(1), 9);
         p.seal(a, 0, 9);
-        p.containers.insert(0, Container { issuer: 0, manifest: Manifest { lines: vec![Line { pallet: a, drop: Some(1), booking: None }] } });
+        p.containers.insert(0, Container { issuer: 0, manifest: Manifest { lines: vec![Line { pallet: a, drop: Some(1), ..Default::default() }] } });
         p.next_container = 1;
     }
     let blob = s.save();
@@ -186,4 +186,86 @@ fn pallets_survive_a_save_and_load() {
     assert_eq!(b.containers, a.containers);
     assert_eq!((b.next, b.next_container), (a.next, a.next_container));
     assert!(back.save() == blob, "the same blob again");
+}
+
+// The rules on the registry (`pallets-for-crates`): how a shipment's goods lie in their crates, and the registry's
+// other movers.
+
+#[test]
+fn a_good_crated_lies_in_crates_of_nine_stacks_the_last_part_full_and_sums_back_exactly() {
+    let c = content();
+    let per = 9.0 * 64.0;
+    let lie = |n: f64| enterprise_core::cargo::crated(&c, 0, n).iter().map(|p| p.count).collect::<Vec<_>>();
+    assert_eq!(lie(0.0), vec![0.0], "nothing: one crate, empty");
+    assert_eq!(lie(per), vec![per]);
+    assert_eq!(lie(per + 1.0), vec![per, 1.0]);
+    assert_eq!(lie(2.0 * per + 0.5), vec![per, per, 0.5]);
+    // As a shipment took its space before pallets: its stacks at least one, its crates nine stacks each, at least one;
+    // and its count, summed back from the crates, the very number crated.
+    let stacks_of = |n: f64| if n <= 0.0 { 0 } else { (n / 64.0).ceil() as u32 };
+    for i in 0..4000 {
+        let n = i as f64 * 1.37 + if i % 3 == 0 { 0.0 } else { 0.1 * (i % 7) as f64 };
+        let p = Pallet { id: 0, kind: LOAD, lading: bill(), packages: enterprise_core::cargo::crated(&c, 0, n),
+            at: At::Town(0), since: 0, seal: None, claimed: None };
+        assert_eq!(p.count().to_bits(), n.to_bits(), "{n} sums back");
+        assert_eq!(p.slots(&c), stacks_of(n).max(1), "{n}'s stacks");
+        assert_eq!(p.crates(), stacks_of(n).max(1).div_ceil(9).max(1), "{n}'s crates");
+        assert_eq!(p.good(), 0);
+    }
+}
+
+#[test]
+fn unpacking_takes_a_pallet_apart_without_counting_it_received() {
+    let mut p = Pallets::default();
+    let a = p.pack(bill(), vec![Package::new(CRATE, 0, 5.0)], At::Town(0), 0);
+    let taken = p.unpack(a).expect("there");
+    assert_eq!(taken.packages.len(), 1);
+    assert!(p.get(a).is_none() && p.at(At::Town(0)).is_empty() && p.received == 0, "gone, not received");
+}
+
+#[test]
+fn arranging_a_place_puts_its_pallets_in_another_order_without_moving_them() {
+    let mut p = Pallets::default();
+    let (a, b, c) = (p.pack(bill(), vec![], At::Wagon(3), 1), p.pack(bill(), vec![], At::Wagon(3), 2),
+        p.pack(bill(), vec![], At::Wagon(3), 3));
+    p.arrange(At::Wagon(3), vec![b, c, a]);
+    assert_eq!(p.at(At::Wagon(3)), &[b, c, a]);
+    assert_eq!((p.get(a).unwrap().at, p.get(a).unwrap().since), (At::Wagon(3), 1), "nothing moved");
+    p.move_to(c, At::Town(1), 9);
+    assert_eq!(p.at(At::Wagon(3)), &[b, a]);
+}
+
+#[test]
+fn leaving_premises_seals_a_pallet_once_and_again_only_if_it_changed() {
+    let mut p = Pallets::default();
+    let a = p.pack(bill(), vec![Package::new(CRATE, 0, 5.0)], At::Town(0), 0);
+    p.seal_leaving(a, 0, 4);
+    let first = p.get(a).unwrap().seal.expect("sealed as it leaves");
+    assert_eq!((first.at, first.by), (4, 0));
+    p.seal_leaving(a, 7, 9);
+    assert_eq!(p.get(a).unwrap().seal, Some(first), "sealed and unchanged: the seal it had");
+    p.pallets.get_mut(&a).unwrap().packages[0].count = 3.0;
+    p.seal_leaving(a, 7, 9);
+    let again = p.get(a).unwrap().seal.unwrap();
+    assert!((again.at, again.by) == (9, 7) && p.get(a).unwrap().intact(), "changed at a holder's: sealed anew");
+}
+
+#[test]
+fn a_manifest_finds_takes_and_tells_its_lines() {
+    let booking = enterprise_core::freight::Booking::default();
+    let mut m = Manifest { lines: vec![Line { pallet: 4, booking: Some(booking), ..Default::default() },
+        Line { pallet: 7, for_forwarder: true, ..Default::default() }] };
+    assert!(m.booked(4) && !m.booked(7) && !m.booked(9));
+    assert!(m.for_forwarder(7) && !m.for_forwarder(4));
+    assert_eq!(m.take(4).map(|l| l.pallet), Some(4));
+    assert!(m.line(4).is_none() && m.take(4).is_none() && m.lines.len() == 1);
+}
+
+#[test]
+fn a_bill_paid_for_in_coin_is_prepaid_and_owed_or_billed_ones_are_not() {
+    for (payment, prepaid) in [(Payment::Paid, true), (Payment::Owed, false), (Payment::ByBill(3), false)] {
+        assert_eq!(Lading { payment, ..bill() }.prepaid(), prepaid, "{payment:?}");
+    }
+    let l = Lading::new(2, 5, 77);
+    assert!(l.shipper == 2 && l.consignee == 5 && l.issued == 77 && l.payment == Payment::Owed && l.contract.is_none());
 }

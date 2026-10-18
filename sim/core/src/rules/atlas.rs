@@ -61,7 +61,7 @@ pub fn want_books(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<Stoc
 #[allow(clippy::too_many_arguments)]
 pub fn depart(clock: Res<Clock>, content: Res<Content>, mut atlas: ResMut<Atlas>, mut stocktakes: ResMut<Stocktakes>,
         mut books: ResMut<Books>, mut whys: ResMut<Whys>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
-        towns: Query<(&Stock, Option<&Roster>, Option<&Works>)>) {
+        towns: Query<(&Stock, Option<&Roster>, Option<&Works>)>, pallets: Res<crate::pallet::Pallets>) {
     let now = clock.now;
     let today = today(&content, now);
     for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
@@ -76,18 +76,14 @@ pub fn depart(clock: Res<Clock>, content: Res<Content>, mut atlas: ResMut<Atlas>
             stocktakes.record(route.from_id, &stock.0, None);
             atlas.learn_both(route.from_id, route.to_id, now);
             let mut sent = w.cargo.clone();
-            for s in &w.shipments {
-                if s.good < sent.len() {
-                    sent[s.good] += s.count;
-                }
-            }
+            crated_into(&pallets, route.seq, w, &mut sent);
             let lines: Vec<Entry> = sent.iter().enumerate().filter(|(_, n)| **n > 0.0)
                 .map(|(g, &n)| Entry::new(today, Kind::Sent, route.to_id, g, n, crate::fixed::Fixed::ZERO)).collect();
             books.file(&mut whys, route.from_id, today, keeps(&content, roster, works), lines);
             for (good, why, n) in reasons {
                 whys.why(route.from_id, Some(route.to_id), good, why, n, today);
             }
-            let stacks = crate::cargo::stacks(&content, &w.cargo, &w.shipments);
+            let stacks = crate::cargo::stacks(&content, &pallets, route.seq, w);
             // Full as the wagon was judged leaving: of what the far end could pay for (`saleLoad`).
             whys.why(route.from_id, Some(route.to_id), None, Why::Went { full: w.full, porter: w.porter }, stacks as f64, today);
         } else if let Some(stay) = state.stayed.filter(|_| state.tried_at == Some(now) && state.wagon.is_none()) {
@@ -180,7 +176,7 @@ pub fn copy_books(clock: Res<Clock>, mut stocktakes: ResMut<Stocktakes>, content
 pub fn hand_in(clock: Res<Clock>, content: Res<Content>, territory: Res<Territory>, mut atlas: ResMut<Atlas>,
         mut books: ResMut<Books>, mut whys: ResMut<Whys>,
         mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>,
-        towns: Query<(Option<&Roster>, Option<&Works>)>) {
+        towns: Query<(Option<&Roster>, Option<&Works>)>, pallets: Res<crate::pallet::Pallets>) {
     let now = clock.now;
     let today = today(&content, now);
     for e in in_order(routes.iter().map(|(e, r, _, _)| (e, r))) {
@@ -191,11 +187,7 @@ pub fn hand_in(clock: Res<Clock>, content: Res<Content>, territory: Res<Territor
         let route = *route;
         let Some(wagon) = state.wagon.as_mut() else { continue };
         let mut home = wagon.cargo.clone();
-        for s in &wagon.shipments {
-            if s.good < home.len() {
-                home[s.good] += s.count;
-            }
-        }
+        crated_into(&pallets, route.seq, wagon, &mut home);
         let mut lines: Vec<Entry> = home.iter().enumerate().filter(|(_, n)| **n > 0.0)
             .map(|(g, &n)| Entry::new(today, Kind::Home, route.to_id, g, n, crate::fixed::Fixed::ZERO)).collect();
         lines.append(&mut wagon.log);
@@ -257,6 +249,20 @@ pub fn consider(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, sto
         let considering = Considering { town: town.id, has_route, comfort_met: &people.comfort_met, spare: spare.to_f64() };
         if let Some(to) = choose(&content, &atlas, &stocktakes, &places, &considering) {
             atlas.pending.push((town.id, to));
+        }
+    }
+}
+
+/// A wagon's crated goods, its pallets' and its lots for sale's, added to `goods` (its loose cargo, say), good by good.
+fn crated_into(pallets: &crate::pallet::Pallets, route: usize, wagon: &Wagon, goods: &mut [f64]) {
+    for p in pallets.at_place(crate::pallet::At::Wagon(route)) {
+        if p.good() < goods.len() {
+            goods[p.good()] += p.count();
+        }
+    }
+    for l in &wagon.for_sale {
+        if l.good() < goods.len() {
+            goods[l.good()] += l.count();
         }
     }
 }

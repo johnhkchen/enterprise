@@ -429,14 +429,16 @@ fn a_saddled_wagon_takes_its_crates_from_home() {
     let mut s = network(2.0, 5.0, 192.0, &["librarian"]);
     s.deliver(HUB, SADDLE, 1.0);
     let id = s.draft(HUB, DEST, PAPER, 64.0, 1.0 / 24.0, 0, DAY, 1, Incoterm::Ddp, true);
-    s.deliver_shipment(HUB, enterprise_core::cargo::Shipment { good: PAPER, count: 64.0, shipper: HUB,
-        consignee: Some(DEST), contract: Some(id), settled: false, copy: true });
-    assert_eq!(s.shipments(HUB).held.len(), 1, "crated at home");
+    let lading = enterprise_core::cargo::Lading { contract: Some(id), copy: true,
+        ..enterprise_core::cargo::Lading::new(HUB, DEST, 0) };
+    let packages = enterprise_core::cargo::crated(s.content(), PAPER, 64.0);
+    let crate_ = s.deliver_pallet(HUB, lading, packages).expect("made out elsewhere");
+    assert_eq!(s.town_pallets(HUB).len(), 1, "crated at home");
     let start = s.totals();
     s.advance(LOOK);
     assert!(s.route(0).on_the_road && s.crew(0).saddled, "the wagon went, saddled");
-    assert!(s.shipments(HUB).held.is_empty(), "the crate left home's warehouse");
-    assert!(s.wagon_shipments(0).0.iter().any(|c| c.contract == Some(id) && c.count == 64.0), "and rides aboard");
+    assert!(s.town_pallets(HUB).is_empty(), "the crate left home's warehouse");
+    assert!(s.wagon_pallets(0).0.iter().any(|c| c.id == crate_ && c.count() == 64.0), "and rides aboard, the same pallet");
     s.conserved(&start).unwrap();
 }
 

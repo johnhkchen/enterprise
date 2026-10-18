@@ -22,14 +22,15 @@ use bevy_ecs::prelude::*;
 use super::{in_order, Step};
 use crate::bank::Discounts;
 use crate::bills::{Bills, Held as Paper};
-use crate::cargo::{pack, stacks, Paperwork, Shipment, Shipments, Shipper};
+use crate::cargo::{put_aboard, pack, stacks, Paperwork, Shipments, Shipper};
 use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
 use crate::contracts::Book;
 use crate::farms::{borrow, on_call, Deposits, Farm};
-use crate::freight::{cart_price, forwarding_price, Freight, Held, Hub, Leg as RunLeg, Network, CART, FORWARD_LEAD_DAYS};
+use crate::freight::{cart_price, forwarding_price, Custody, Freight, Hub, Leg as RunLeg, Network, CART, FORWARD_LEAD_DAYS};
 use crate::messages::TownId;
 use crate::mint::Mint;
+use crate::pallet::{At, Lading, Line, PalletId, Pallets, Payment};
 use crate::realms::Realm;
 use crate::fixed::Fixed;
 use crate::state::*;
@@ -89,15 +90,16 @@ struct Cx<'a> {
 
 /// As a town's wagon leaves for a hub, or one whose road calls at a hub on its way (`dispatch`): the town's stranded
 /// crates, as many as the wagon has room for, and its stranded bills go aboard, to be sold there.
-#[allow(clippy::type_complexity)]
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub fn load(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, book: Res<Book>, mut bills: ResMut<Bills>,
-        towns_list: Res<Towns>, mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>,
-        places: Query<(&Town, &Hub)>, mut stores: Query<(&mut Shipments, Option<&Realm>)>) {
+        towns_list: Res<Towns>, mut pallets: ResMut<Pallets>, mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>,
+        places: Query<(&Town, &Hub)>, stores: Query<(&Shipments, Option<&Realm>)>) {
     let now = clock.now;
     let left: Vec<Entity> = routes.iter().filter(|(_, _, s, _)| s.last_departure == Some(now)
         && s.wagon.as_ref().is_some_and(|w| w.leg == Leg::Out && w.freight.reckoned == Some(Leg::Out)))
         .map(|(e, ..)| e).collect();
-    if left.is_empty() || bills.open.is_empty() && stores.iter().all(|(s, _)| s.held.is_empty()) {
+    let crated = pallets.by_place.keys().any(|a| matches!(a, At::Town(_)));
+    if left.is_empty() || bills.open.is_empty() && !crated {
         return;
     }
     let net = network(&content, routes.iter().map(|(_, r, s, p)| (r, s, p)), places.iter());
@@ -111,21 +113,19 @@ pub fn load(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, book: Res
         let wagon = state.wagon.as_mut().unwrap();
         // Its paper to sell at the hub this run goes to or calls at.
         let Some(hub) = (if net.is_hub(route.to_id) { Some(route.to_id) } else { wagon.freight.stop.map(|s| s.hub) }) else { continue };
-        let Ok((mut store, realm)) = stores.get_mut(towns_list.0[route.from_id]) else { continue };
+        let Ok((_, realm)) = stores.get(towns_list.0[route.from_id]) else { continue };
         if realm.is_some() {
             continue;
         }
         let t = Terms { content: &content, net: &net, book: &book, hub, town: route.from_id, counting: false, now, rate };
         let slots = if wagon.slots > 0 { wagon.slots } else { content.dials.wagon_slots };
-        let mut room = slots as i64 - stacks(&content, &wagon.cargo, &wagon.shipments) as i64;
-        let mut i = 0;
-        while i < store.held.len() {
-            if room > 0 && crate_ok(&t, &store.held[i]) {
-                let s = store.held.remove(i);
-                room -= s.stacks(&content) as i64;
-                wagon.shipments.push(s);
-            } else {
-                i += 1;
+        let mut room = slots as i64 - stacks(&content, &pallets, route.seq, wagon) as i64;
+        let at_home: Vec<PalletId> = pallets.at(At::Town(route.from_id)).to_vec();
+        for id in at_home {
+            let p = pallets.get(id).unwrap();
+            if room > 0 && crate_ok(&t, p) {
+                room -= p.slots(&content) as i64;
+                put_aboard(&mut pallets, wagon, route.seq, Line { pallet: id, ..Default::default() }, route.from_id, now);
             }
         }
         for &id in &bills.open.clone() {
@@ -142,27 +142,26 @@ pub fn load(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, book: Res
 /// households' savings it may borrow), the hub's bills for the rest, carried home. The bills go in the hub's files, the
 /// crates to its forwarder. What the hub won't buy rides home again (`sellStrandedAtHub`).
 #[allow(clippy::too_many_arguments)]
-fn sell_aboard(cx: &Cx, bills: &mut Bills, ledger: &mut Ledger, cash: &mut CashBook, freight: &mut Freight, route: &Route,
-        wagon: &mut Wagon, mut h: HubSide, skip: &[TownId]) {
+fn sell_aboard(cx: &Cx, bills: &mut Bills, ledger: &mut Ledger, cash: &mut CashBook, freight: &mut Freight,
+        pallets: &mut Pallets, route: &Route, wagon: &mut Wagon, mut h: HubSide, skip: &[TownId]) {
     let (now, day, rate) = (cx.now, cx.content.day_ticks, cx.rate);
     let t = Terms { content: cx.content, net: cx.net, book: cx.book, hub: h.id, town: route.from_id,
         counting: h.trades.counting_house, now, rate };
-    let (mut crates, rest): (Vec<Shipment>, Vec<Shipment>) = std::mem::take(&mut wagon.shipments).into_iter()
-        .partition(|s| crate_ok(&t, s) && !wagon.freight.booked.contains(s));
-    wagon.shipments = rest;
-    let (mut offered, rest): (Vec<usize>, Vec<usize>) = std::mem::take(&mut wagon.bills).into_iter()
+    let (mut crates, rest): (Vec<PalletId>, Vec<PalletId>) = pallets.at(At::Wagon(route.seq)).iter().copied()
+        .partition(|&id| crate_ok(&t, pallets.get(id).unwrap()) && !wagon.manifest.booked(id));
+    let (mut offered, kept): (Vec<usize>, Vec<usize>) = std::mem::take(&mut wagon.bills).into_iter()
         .partition(|&id| bill_ok(&t, &bills.bills[id]));
-    wagon.bills = rest;
+    wagon.bills = kept;
     if crates.is_empty() && offered.is_empty() {
         return;
     }
     let cash_on_hand = spare(cx.content, h.money.0, h.trades, h.farm).at_least_zero();
     // Its households' savings count too: deposits the Merchant may lend on such paper.
     let means = cash_on_hand + on_call(cx.content, h.people.purse, h.deposits.owed);
-    let deal = buy(&t, bills, &mut crates, &mut offered, means.to_f64(), means.to_f64());
+    let deal = buy(&t, bills, pallets, &mut crates, &mut offered, means.to_f64(), means.to_f64());
     wagon.bills.extend(offered);
     let Some(deal) = deal else {
-        hand_leftovers(cx, ledger, cash, route, wagon, &mut h, skip, crates);
+        hand_leftovers(cx, ledger, cash, pallets, route, wagon, &mut h, skip, crates, rest);
         return;
     };
     let coin = deal.coin(rate);
@@ -196,21 +195,24 @@ fn sell_aboard(cx: &Cx, bills: &mut Bills, ledger: &mut Ledger, cash: &mut CashB
     book.coin += paid;
     book.promised += deal.hub_bills.iter().map(|&id| bills.bills[id].amount).sum::<Fixed>();
     book.crates += deal.crates.len() as u32;
-    for s in deal.crates {
-        h.hub.held.push(Held { shipment: s, carted: false, booked: None });
+    // The pallets bought go into the forwarder's custody, sealed, to be carted in.
+    for &id in &deal.crates {
+        wagon.manifest.take(id);
+        pallets.move_to(id, At::Custody(h.id), now);
+        h.hub.custody.insert(id, Custody { carted: false, booked: None });
     }
-    hand_leftovers(cx, ledger, cash, route, wagon, &mut h, skip, crates);
+    hand_leftovers(cx, ledger, cash, pallets, route, wagon, &mut h, skip, crates, rest);
 }
 
-/// The stranded crates the hub didn't buy go to its forwarder as any crate bound beyond, the forwarding from the wagon's
-/// purse: the mod's `handOver` ran after the stranded sale. Not those for the wagon's own ends (`skip`).
+/// The stranded pallets the hub didn't buy go to its forwarder as any pallet bound beyond, the forwarding from the
+/// wagon's purse: the mod's `handOver` ran after the stranded sale. Not those for the wagon's own ends (`skip`). What
+/// stays aboard of them goes before the rest of its load.
 #[allow(clippy::too_many_arguments)]
-fn hand_leftovers(cx: &Cx, ledger: &mut Ledger, cash: &mut CashBook, route: &Route, wagon: &mut Wagon, h: &mut HubSide,
-        skip: &[TownId], crates: Vec<Shipment>) {
-    let rest = std::mem::replace(&mut wagon.shipments, crates);
-    super::freight::hand_over(cx.content, cx.net, h.id, cx.now, cx.rate, route.seq, skip, ledger, cash, h.hub, h.money,
-        wagon, &|_| false);
-    wagon.shipments.extend(rest);
+fn hand_leftovers(cx: &Cx, ledger: &mut Ledger, cash: &mut CashBook, pallets: &mut Pallets, route: &Route, wagon: &mut Wagon,
+        h: &mut HubSide, skip: &[TownId], crates: Vec<PalletId>, rest: Vec<PalletId>) {
+    let left = super::freight::hand_over(cx.content, cx.net, h.id, cx.now, cx.rate, route.seq, skip, ledger, cash, pallets,
+        h.hub, h.money, wagon, crates, &|_| false);
+    pallets.arrange(At::Wagon(route.seq), left.into_iter().chain(rest).collect());
 }
 
 type HubQuery<'w, 's> = Query<'w, 's, (&'static Town, &'static mut Hub, &'static mut Money, &'static Trades,
@@ -220,12 +222,14 @@ type HubQuery<'w, 's> = Query<'w, 's, (&'static Town, &'static mut Hub, &'static
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn sell_at_stop(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, book: Res<Book>, towns_list: Res<Towns>,
         mut bills: ResMut<Bills>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut freight: ResMut<Freight>,
+        mut pallets: ResMut<Pallets>,
         mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>, mut hubs: HubQuery, realms: Query<&Realm>) {
     let now = clock.now;
     // Wagons that called at their hub this look: `call_at_stop` set them on, so far along the road yet to go.
     let due: Vec<Entity> = routes.iter().filter(|(_, _, s, _)| s.wagon.as_ref().is_some_and(|w| w.waiting_since.is_none()
         && w.freight.stop.is_some_and(|s| s.called && w.arrives == now + s.remaining))).map(|(e, ..)| e).collect();
-    if due.is_empty() || bills.open.is_empty() && routes.iter().all(|(_, _, s, _)| s.wagon.as_ref().is_none_or(|w| w.shipments.is_empty())) {
+    if due.is_empty() || bills.open.is_empty() && routes.iter().all(|(_, r, s, _)| s.wagon.is_none()
+            || pallets.at(At::Wagon(r.seq)).is_empty()) {
         return;
     }
     let net = Network::of(&content, routes.iter().map(|(_, r, s, p)| (r, s, p)),
@@ -242,7 +246,7 @@ pub fn sell_at_stop(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, b
         }
         let Ok((_, mut hub_side, mut money, trades, farm, mut people, mut deposits)) = hubs.get_mut(towns_list.0[hub]) else { continue };
         let side = HubSide { id: hub, hub: &mut hub_side, money: &mut money, trades, farm, people: &mut people, deposits: &mut deposits };
-        sell_aboard(&cx, &mut bills, &mut ledger, &mut cash, &mut freight, &route, wagon, side,
+        sell_aboard(&cx, &mut bills, &mut ledger, &mut cash, &mut freight, &mut pallets, &route, wagon, side,
             &[route.from_id, route.to_id]);
     }
 }
@@ -251,10 +255,11 @@ pub fn sell_at_stop(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, b
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn sell_at_hub(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, book: Res<Book>, towns_list: Res<Towns>,
         mut bills: ResMut<Bills>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut freight: ResMut<Freight>,
+        mut pallets: ResMut<Pallets>,
         mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>, mut hubs: HubQuery, realms: Query<&Realm>) {
     let now = clock.now;
     let here: Vec<Entity> = routes.iter().filter(|(_, r, s, _)| s.arrived == Some(Leg::Out)
-        && s.wagon.as_ref().is_some_and(|w| !w.shipments.is_empty() || !w.bills.is_empty())
+        && s.wagon.as_ref().is_some_and(|w| !pallets.at(At::Wagon(r.seq)).is_empty() || !w.bills.is_empty())
         && hubs.get(towns_list.0[r.to_id]).is_ok_and(|(_, h, ..)| h.storehouse)).map(|(e, ..)| e).collect();
     if here.is_empty() {
         return;
@@ -273,7 +278,7 @@ pub fn sell_at_hub(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, bo
         let Ok((_, mut hub_side, mut money, trades, farm, mut people, mut deposits)) = hubs.get_mut(towns_list.0[route.to_id]) else { continue };
         let side = HubSide { id: route.to_id, hub: &mut hub_side, money: &mut money, trades, farm, people: &mut people,
             deposits: &mut deposits };
-        sell_aboard(&cx, &mut bills, &mut ledger, &mut cash, &mut freight, &route, wagon, side, &[route.from_id]);
+        sell_aboard(&cx, &mut bills, &mut ledger, &mut cash, &mut freight, &mut pallets, &route, wagon, side, &[route.from_id]);
     }
 }
 
@@ -283,7 +288,7 @@ pub fn sell_at_hub(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, bo
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn buy_at_town(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, book: Res<Book>, towns_list: Res<Towns>,
         mut bills: ResMut<Bills>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut freight: ResMut<Freight>,
-        mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>,
+        mut pallets: ResMut<Pallets>, mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>,
         places: Query<(&Town, &Hub)>,
         mut towns: Query<(&mut Money, &mut Shipments, &Trades, &People, &Deposits, Option<&Farm>)>) {
     let now = clock.now;
@@ -306,17 +311,10 @@ pub fn buy_at_town(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, bo
         };
         let counting = towns.get(towns_list.0[hub]).is_ok_and(|(_, _, t, ..)| t.counting_house);
         let Some(wagon) = state.wagon.as_mut() else { continue };
-        let Ok((mut money, mut store, ..)) = towns.get_mut(towns_list.0[town]) else { continue };
+        let Ok((mut money, ..)) = towns.get_mut(towns_list.0[town]) else { continue };
         let t = Terms { content: &content, net: &net, book: &book, hub, town, counting, now, rate };
-        let mut crates = Vec::new();
-        let mut i = 0;
-        while i < store.held.len() {
-            if crate_ok(&t, &store.held[i]) {
-                crates.push(store.held.remove(i));
-            } else {
-                i += 1;
-            }
-        }
+        let (mut crates, others): (Vec<PalletId>, Vec<PalletId>) = pallets.at(At::Town(town)).iter().copied()
+            .partition(|&id| crate_ok(&t, pallets.get(id).unwrap()));
         let mut offered: Vec<usize> = bills.open.iter().copied()
             .filter(|&id| bills.bills[id].held == Paper::Town(town) && bill_ok(&t, &bills.bills[id])).collect();
         if crates.is_empty() && offered.is_empty() {
@@ -324,8 +322,12 @@ pub fn buy_at_town(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, bo
         }
         let keep = crate::road::purse_keep(&content, &route, crate::road::mouths(Some(wagon)));
         let coin = (wagon.purse - keep).at_least_zero();
-        let deal = buy(&t, &mut bills, &mut crates, &mut offered, coin.to_f64(), means.to_f64());
-        store.held.extend(crates);
+        let deal = buy(&t, &mut bills, &pallets, &mut crates, &mut offered, coin.to_f64(), means.to_f64());
+        // The pallets bought ride home in the forwarder's name; those it left go back on the shelf behind the rest.
+        for &id in deal.iter().flat_map(|d| &d.crates) {
+            put_aboard(&mut pallets, wagon, route.seq, Line { pallet: id, for_forwarder: true, ..Default::default() }, town, now);
+        }
+        pallets.arrange(At::Town(town), others.into_iter().chain(crates).collect());
         let Some(deal) = deal else { continue };
         let paid = deal.coin(rate);
         post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(town, &mut money.0), paid,
@@ -344,10 +346,6 @@ pub fn buy_at_town(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, bo
         book.coin += paid;
         book.promised += deal.hub_bills.iter().map(|&id| bills.bills[id].amount).sum::<Fixed>();
         book.crates += deal.crates.len() as u32;
-        for s in deal.crates {
-            wagon.freight.forwarding.push(s.clone());
-            wagon.shipments.push(s);
-        }
     }
 }
 
@@ -356,12 +354,13 @@ pub fn buy_at_town(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, bo
 /// bill of exchange drawn on the buyer for each (`pickForwarded`'s contract loop), as many stacks as `room` for the
 /// contracts `ok` passes. Returns the crates and the bills drawn.
 #[allow(clippy::too_many_arguments)]
-fn pick(content: &Content, net: &Network, now: u64, book: &mut Book, bills: &mut Bills, ledger: &mut Ledger, cash: &mut CashBook, route: &Route, stock: &mut [f64],
-        shipper: &mut Shipper, room: i64, ok: impl Fn(&crate::contracts::Contract) -> bool) -> (Vec<Shipment>, Vec<usize>) {
+fn pick(content: &Content, net: &Network, now: u64, book: &mut Book, bills: &mut Bills, ledger: &mut Ledger, cash: &mut CashBook,
+        pallets: &mut Pallets, route: &Route, stock: &mut [f64], shipper: &mut Shipper, room: i64,
+        ok: impl Fn(&crate::contracts::Contract) -> bool) -> (Vec<PalletId>, Vec<usize>) {
     let (home, hub) = (route.to_id, route.from_id);
     let day = content.day_ticks;
     let arrival = now + route.travel_ticks + (FORWARD_LEAD_DAYS * day as f64) as u64;
-    let (mut picked, mut drawn) = (Vec::<Shipment>::new(), Vec::new());
+    let (mut picked, mut drawn) = (Vec::<PalletId>::new(), Vec::new());
     for id in book.open.clone() {
         let c = &book.contracts[id];
         if !c.in_force() || c.seller != home || !c.incoterm.seller_carries() || c.training.is_some() || c.buyer == hub
@@ -369,21 +368,26 @@ fn pick(content: &Content, net: &Network, now: u64, book: &mut Book, bills: &mut
             continue;
         }
         let g = c.good;
-        let free = room - picked.iter().map(|s| s.stacks(content)).sum::<u32>() as i64;
+        let free = room - picked.iter().map(|&p| pallets.get(p).unwrap().slots(content)).sum::<u32>() as i64;
         let owed = (c.owed(arrival) - c.shipped).floor();
         let n = owed.min(free.max(0) as f64 * content.goods[g].stack.max(1) as f64).min(stock[g].max(0.0).floor());
         if n <= 0.0 {
             continue;
         }
         let (buyer, price) = (c.buyer, c.price);
-        let like = Shipment { good: g, count: 0.0, shipper: home, consignee: Some(buyer), contract: Some(id), settled: false,
-            copy: true };
         // Only what can be crated goes: loose goods for a market beyond would be sold at the hub as the wagon's own.
-        let Some(s) = pack(content, ledger, cash, now, shipper, g, n, &like) else { continue };
-        stock[g] -= s.count;
-        drawn.push(bills.draw_for(buyer, home, Fixed::ceil(s.count * price), now, day, Some(id)));
-        book.ship(id, s.count);
-        picked.push(s);
+        let Some(packages) = pack(content, ledger, cash, now, shipper, g, n, true) else { continue };
+        let p = pallets.pack(Lading { contract: Some(id), copy: true, ..Lading::new(home, buyer, now) }, packages,
+            At::Town(home), now);
+        let count = pallets.get(p).unwrap().count();
+        stock[g] -= count;
+        // Sent on with a bill of exchange drawn on the buyer for it (the mod's `billed` lading), the bill naming it.
+        let bill = bills.draw_for(buyer, home, Fixed::ceil(count * price), now, day, Some(id));
+        bills.bills[bill].pallets.push(p);
+        pallets.pallets.get_mut(&p).unwrap().lading.payment = Payment::ByBill(bill);
+        drawn.push(bill);
+        book.ship(id, count);
+        picked.push(p);
     }
     (picked, drawn)
 }
@@ -396,7 +400,8 @@ fn pick(content: &Content, net: &Network, now: u64, book: &mut Book, bills: &mut
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn collect_forwarding(clock: Res<Clock>, content: Res<Content>, towns_list: Res<Towns>,
         mut book: ResMut<Book>, mut bills: ResMut<Bills>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
-        mut freight: ResMut<Freight>, mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>,
+        mut freight: ResMut<Freight>, mut pallets: ResMut<Pallets>,
+        mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>,
         mut towns: Query<(&Town, &mut Money, &mut Stock, &Trades, Option<&Farm>, &mut Shipments, &mut Paperwork, &mut Hub,
             &People, &Deposits)>) {
     let now = clock.now;
@@ -421,15 +426,15 @@ pub fn collect_forwarding(clock: Res<Clock>, content: Res<Content>, towns_list: 
         }
         // The hub's means, as last counted, for its discount desk.
         let (hub_means, counting, fill) = match towns.get(towns_list.0[hub]) {
-            Ok((_, money, stock, trades, farm, _, _, h, people, deposits)) => (
+            Ok((_, money, stock, trades, farm, _, _, _, people, deposits)) => (
                 (spare(&content, money.0, trades, farm) + on_call(&content, people.purse, deposits.owed)).at_least_zero(),
-                trades.counting_house, super::freight::fill(&content, stock, h)),
+                trades.counting_house, super::freight::fill(&content, stock, &pallets, hub)),
             Err(_) => continue,
         };
         let Ok((_, mut money, mut stock, trades, farm, mut store, mut paperwork, ..)) = towns.get_mut(towns_list.0[town]) else { continue };
         let can = spare(&content, money.0, trades, farm).at_least_zero();
         let slots = if wagon.slots > 0 { wagon.slots } else { d.wagon_slots };
-        let aboard = stacks(&content, &wagon.cargo, &wagon.shipments) as i64;
+        let aboard = stacks(&content, &pallets, route.seq, wagon) as i64;
         let room = (slots as i64 - aboard).min((can.to_f64() / per_stack).floor() as i64);
         if slots as i64 - aboard <= 0 {
             continue;
@@ -442,17 +447,18 @@ pub fn collect_forwarding(clock: Res<Clock>, content: Res<Content>, towns_list: 
             let mut shipper = Shipper { town, money: &mut money.0, spare: shipper_spare, store: &mut store,
                 paperwork: &mut paperwork };
             if room > 0 {
-                let (p, b) = pick(&content, &net, now, &mut book, &mut bills, &mut ledger, &mut cash, &route, &mut stock.0, &mut shipper, room,
-                    |_| true);
+                let (p, b) = pick(&content, &net, now, &mut book, &mut bills, &mut ledger, &mut cash, &mut pallets, &route,
+                    &mut stock.0, &mut shipper, room, |_| true);
                 picked = p;
                 drawn = b;
             }
             // The rest on credit: the contracts whose stack is worth the fare over the lien's share.
-            let more = slots as i64 - aboard - picked.iter().map(|s| s.stacks(&content)).sum::<u32>() as i64;
+            let more = slots as i64 - aboard - picked.iter().map(|&p| pallets.get(p).unwrap().slots(&content)).sum::<u32>() as i64;
             if more > 0 {
-                let (p, b) = pick(&content, &net, now, &mut book, &mut bills, &mut ledger, &mut cash, &route, &mut stock.0, &mut shipper, more,
+                let (p, b) = pick(&content, &net, now, &mut book, &mut bills, &mut ledger, &mut cash, &mut pallets, &route,
+                    &mut stock.0, &mut shipper, more,
                     |c| c.price * content.goods[c.good].stack as f64 * d.freight_lien >= per_stack);
-                credit = Fixed::ceil(p.iter().map(|s| s.stacks(&content)).sum::<u32>() as f64 * per_stack);
+                credit = Fixed::ceil(p.iter().map(|&p| pallets.get(p).unwrap().slots(&content)).sum::<u32>() as f64 * per_stack);
                 picked.extend(p);
                 drawn.extend(b);
             }
@@ -460,7 +466,7 @@ pub fn collect_forwarding(clock: Res<Clock>, content: Res<Content>, towns_list: 
         if picked.is_empty() {
             continue;
         }
-        let total: u32 = picked.iter().map(|s| s.stacks(&content)).sum();
+        let total: u32 = picked.iter().map(|&p| pallets.get(p).unwrap().slots(&content)).sum();
         let fee = (Fixed::ceil(total as f64 * per_stack) - credit).at_least_zero().min(money.0.at_least_zero());
         post(&mut ledger, &mut cash, Side::treasury(town, &mut money.0), Side::wagon(route.seq, &mut wagon.purse), fee,
             credit_reason(), now, content.day_ticks);
@@ -492,10 +498,9 @@ pub fn collect_forwarding(clock: Res<Clock>, content: Res<Content>, towns_list: 
             bills.bills[id].held = Paper::Wagon;
             wagon.bills.push(id);
         }
-        // The goods ride home in the forwarder's name.
-        for s in picked {
-            wagon.freight.forwarding.push(s.clone());
-            wagon.shipments.push(s);
+        // The goods ride home in the forwarder's name, sealed as they leave the town.
+        for p in picked {
+            put_aboard(&mut pallets, wagon, route.seq, Line { pallet: p, for_forwarder: true, ..Default::default() }, town, now);
         }
         let book_entry = freight.stranded(hub);
         book_entry.credit_stacks += if credit.is_positive() { (credit.to_f64() / per_stack).round() as u32 } else { 0 };
@@ -509,21 +514,24 @@ pub fn collect_forwarding(clock: Res<Clock>, content: Res<Content>, towns_list: 
     }
 }
 
-/// Home again, before the crates are unloaded: those the wagon bought or collected for the forwarder are in its hands, to be
-/// carted in and booked on (`Freight.forwarding`, then `insert`).
-pub fn home_forwarding(mut routes: Query<(Entity, &Route, &mut RouteState)>, mut hubs: Query<&mut Hub>,
-        towns_list: Res<Towns>) {
-    // In the routes' order: crates from several runs reach one forwarder's hands in an order a load keeps.
+/// Home again, before the pallets are unloaded: those the wagon bought or collected for the forwarder are in its custody,
+/// to be carted in and booked on (`Freight.forwarding`, then `insert`).
+pub fn home_forwarding(clock: Res<Clock>, mut pallets: ResMut<Pallets>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
+        mut hubs: Query<&mut Hub>, towns_list: Res<Towns>) {
+    // In the routes' order: pallets from several runs reach one forwarder's hands in an order a load keeps.
     for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(e).unwrap();
         if state.arrived != Some(Leg::Home) {
             continue;
         }
-        let Some(wagon) = state.wagon.as_mut().filter(|w| !w.freight.forwarding.is_empty()) else { continue };
+        let Some(wagon) = state.wagon.as_mut().filter(|w| w.manifest.lines.iter().any(|l| l.for_forwarder)) else { continue };
         let Ok(mut hub) = hubs.get_mut(towns_list.0[route.from_id]) else { continue };
-        for s in std::mem::take(&mut wagon.freight.forwarding) {
-            let Some(i) = wagon.shipments.iter().position(|x| *x == s) else { continue };
-            hub.held.push(Held { shipment: wagon.shipments.remove(i), carted: false, booked: None });
+        let theirs: Vec<PalletId> = pallets.at(At::Wagon(route.seq)).iter().copied()
+            .filter(|&id| wagon.manifest.for_forwarder(id)).collect();
+        for id in theirs {
+            wagon.manifest.take(id);
+            pallets.move_to(id, At::Custody(route.from_id), clock.now);
+            hub.custody.insert(id, Custody { carted: false, booked: None });
         }
     }
 }

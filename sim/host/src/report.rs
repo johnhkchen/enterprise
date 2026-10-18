@@ -257,7 +257,7 @@ pub fn end_report(st: &mut Study, tr: &Tracker, days: u64) -> String {
         }
         if s.is_hub(*t) {
             let hub = s.hub(*t);
-            let _ = writeln!(o, "{:>18}  freight hub: {} crates held, book {:?}", "", hub.held.len(), hub.book);
+            let _ = writeln!(o, "{:>18}  freight hub: {} crates held, book {:?}", "", hub.custody.len(), hub.book);
         }
         if let Some(m) = s.mine(*t) {
             let _ = writeln!(o, "{:>18}  mine: {m:?}", "");

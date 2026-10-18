@@ -66,7 +66,7 @@ pub fn start(clock: Res<Clock>, content: Res<Content>, mut routes: Query<&mut Ro
 #[allow(clippy::too_many_arguments)]
 fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktakes: Res<crate::atlas::Stocktakes>,
         mut routes: Query<(&Route, &mut RouteState)>, towns: Query<(&Stock, &Trades, &People)>,
-        rosters: Query<&crate::roster::Roster>, stores: Query<&crate::cargo::Shipments>, realms: Query<&Realm>,
+        rosters: Query<&crate::roster::Roster>, pallets: Res<crate::pallet::Pallets>, realms: Query<&Realm>,
         orders: Res<crate::orders::Orders>, lockers: Query<&crate::lockers::Lockers>) {
     use crate::atlas::{Want, Why};
     let d = &content.dials;
@@ -74,7 +74,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
     let mut order: Vec<usize> = (0..n).collect();
     order.sort_by(|&a, &b| content.goods[a].value.total_cmp(&content.goods[b].value));
     // What wagons on their way out carry to each far end: loose, and crated (`rules/cargo.rs::ship` crates a good for
-    // sale of two stacks or more; a lot has no consignee, a contract's crate is made out to the far end).
+    // sale of two stacks or more as a lot; a contract's pallet is made out to the far end).
     let mut aboard: BTreeMap<usize, Vec<f64>> = BTreeMap::new();
     for (route, state) in routes.iter() {
         if let Some(w) = state.wagon.as_ref().filter(|w| w.leg == Leg::Out) {
@@ -82,8 +82,11 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
             for (g, c) in w.cargo.iter().enumerate().take(n) {
                 a[g] += c;
             }
-            for s in w.shipments.iter().filter(|s| s.good < n && s.consignee.is_none_or(|c| c == route.to_id)) {
-                a[s.good] += s.count;
+            for p in pallets.at_place(crate::pallet::At::Wagon(route.seq)).filter(|p| p.good() < n && p.consigned_to(route.to_id)) {
+                a[p.good()] += p.count();
+            }
+            for l in w.for_sale.iter().filter(|l| l.good() < n) {
+                a[l.good()] += l.count();
             }
         }
     }
@@ -115,8 +118,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
         };
         // What the town owes under harvest contracts by the end of the next window, beyond what this plan already
         // carries to the contract's buyer and what's crated for them, isn't for sale (`ForwardSales.setAside`).
-        let mut aside = crate::cargo::set_aside_all(&book, stores.get(route.from).ok(), route.from_id, n, clock.now,
-            content.day_ticks);
+        let mut aside = crate::cargo::set_aside_all(&book, &pallets, route.from_id, n, clock.now, content.day_ticks);
         for &(id, taken) in &plan.contracted {
             let c = &book.contracts[id];
             if c.harvest.is_some() {
@@ -124,7 +126,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
             }
         }
         let mut stacks: u32 = (0..n).map(|g| (plan.cargo[g] / content.goods[g].stack as f64).ceil() as u32).sum();
-        stacks += plan.shipments.iter().map(|s| s.stacks(&content)).sum::<u32>(); // home's crates (`rules/cargo.rs`)
+        stacks += super::cargo::planned_slots(&content, &pallets, plan); // home's pallets (`rules/cargo.rs`)
         stacks += plan.booked; // what loads first: crates booked on its run, goods sent on through a hub (`freight.rs`)
         // Comforts first, out of what home holds beyond its own par of each kind: half again what the far end is short
         // of (`comfort_margin`), the cheapest goods of a kind first, whole items (`Caravans.dispatch` 468–492,
@@ -273,7 +275,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
 pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut outbox: ResMut<Outbox>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<TownData>, mut rosters: Query<&mut crate::roster::Roster>, mut lockers: Query<&mut crate::lockers::Lockers>,
-        places: Query<(Option<&OffMap>, Option<&Realm>, Option<&crate::freight::Hub>)>) {
+        places: Query<(Option<&OffMap>, Option<&Realm>, Option<&crate::freight::Hub>)>, pallets: Res<crate::pallet::Pallets>) {
     let now = clock.now;
     let d = &content.dials;
     // Squads (`squad.rs`): each town's routes, and those of them without a wagon (`dispatch`'s `waiting`).
@@ -341,8 +343,8 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             plan.cargo[g] = owed[g] + (plan.cargo[g] - owed[g]).min(left[g].max(0.0)).max(0.0).floor();
             stacks += (plan.cargo[g] / content.goods[g].stack as f64).ceil() as u32;
         }
-        // Home's crates it takes (`rules/cargo.rs`).
-        stacks += plan.shipments.iter().map(|s| s.stacks(&content)).sum::<u32>();
+        // Home's pallets it takes (`rules/cargo.rs`).
+        stacks += super::cargo::planned_slots(&content, &pallets, &plan);
         stacks += plan.booked; // what loads first at a hub (`freight.rs`)
         plan.stacks = stacks;
         let on_its_day = state.last_departure.map_or(true, |t| now - t >= route.every_ticks);
@@ -379,14 +381,14 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         let slots = if plan.slots > 0 { plan.slots } else { d.wagon_slots };
         if plan.stacks > slots {
             // Fewer slots than the plan was made for: the last of the sale load stays home, never what's owed.
-            clip(&content, &mut plan, &owed, slots);
+            clip(&content, &pallets, &mut plan, &owed, slots);
         }
         // Full by what the far end could pay for when its last wagon sold there (`saleLoad`): a freight hub's forwarder
         // takes on consignment what it can't pay for, so there any.
         let (far_realm, far_hub) = places.get(route.to)
             .map_or((false, false), |(_, realm, hub)| (realm.is_some(), hub.is_some_and(|h| h.storehouse)));
         let purse = if far_hub { None } else { state.far_purse };
-        let full = full_stacks(&content, &plan, &owed, purse, far_realm) as f64 >= d.wagon_full * slots as f64;
+        let full = full_stacks(&content, &pallets, &plan, &owed, purse, far_realm) as f64 >= d.wagon_full * slots as f64;
         // Each of the crew eats (`squad.rs`); a town without a roster sends one.
         let mouths = if foreign { crate::realms::crew(&content) } else { plan.crew.len().max(1) as f64 };
         // The road's cost: its food where content has food (eaten from home, bought on the way, a purse for the road
@@ -482,7 +484,9 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             collecting: plan.collecting,
             bills: papers,
             provisions: provision.map_or(0.0, |p| p.provisions),
-            shipments: plan.shipments,
+            // Home's pallets it planned, on its manifest: loaded as it leaves (`rules/cargo.rs` `ship`).
+            manifest: crate::pallet::Manifest { lines: plan.pallets.iter()
+                .map(|&pallet| crate::pallet::Line { pallet, ..Default::default() }).collect() },
             crew,
             porter,
             slots,
@@ -500,10 +504,11 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
 /// (`Route.farPurse`, at each good's worth, in the order it went aboard). Comforts count toward a load's worth, not
 /// its stacks (a realm's people want theirs as goods). `purse`: `None` for any (never sold there yet, or a freight
 /// hub). A load the far end can't pay for waits for its day rather than going full.
-fn full_stacks(content: &Content, plan: &Plan, owed: &[f64], purse: Option<Fixed>, realm: bool) -> u32 {
+fn full_stacks(content: &Content, pallets: &crate::pallet::Pallets, plan: &Plan, owed: &[f64], purse: Option<Fixed>,
+        realm: bool) -> u32 {
     let stacks_of = |g: usize, n: f64| (n / content.goods[g].stack as f64).ceil() as u32;
     let mut stacks: u32 = owed.iter().enumerate().map(|(g, &n)| stacks_of(g, n)).sum();
-    stacks += plan.shipments.iter().map(|s| s.stacks(content)).sum::<u32>() + plan.booked;
+    stacks += super::cargo::planned_slots(content, pallets, plan) + plan.booked;
     let mut paid = 0.0;
     for &(g, n, _) in &plan.sale {
         if content.goods[g].comfort.is_some() && !realm {
@@ -523,10 +528,10 @@ fn full_stacks(content: &Content, plan: &Plan, owed: &[f64], purse: Option<Fixed
 
 /// The sale load cut to `slots` (`plan_sale` filled the slots the squad sized up at the look's start): the last of what
 /// it put aboard first, whole stacks, never below what's `owed`; its worth goes with it.
-fn clip(content: &Content, plan: &mut Plan, owed: &[f64], slots: u32) {
+fn clip(content: &Content, pallets: &crate::pallet::Pallets, plan: &mut Plan, owed: &[f64], slots: u32) {
     let stacks_of = |plan: &Plan| -> u32 {
         (0..plan.cargo.len()).map(|g| (plan.cargo[g] / content.goods[g].stack as f64).ceil() as u32).sum::<u32>()
-            + plan.shipments.iter().map(|s| s.stacks(content)).sum::<u32>() // home's crates it takes
+            + super::cargo::planned_slots(content, pallets, plan) // home's pallets it takes
             + plan.booked // what loads first at a hub (`freight.rs`)
     };
     let sale = std::mem::take(&mut plan.sale);

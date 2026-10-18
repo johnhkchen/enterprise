@@ -50,18 +50,11 @@ impl Society {
                 goods[*g] += n;
             }
         }
-        // Goods crated in the towns' warehouses (`cargo.rs`).
-        let mut stores = self.world.query::<&crate::cargo::Shipments>();
-        for store in stores.iter(&self.world) {
-            for s in &store.held {
-                goods[s.good] += s.count;
-            }
-        }
-        // Crates in the forwarders' hands at the freight hubs (`freight.rs`).
-        let mut hubs = self.world.query::<&crate::freight::Hub>();
-        for hub in hubs.iter(&self.world) {
-            for h in &hub.held {
-                goods[h.shipment.good] += h.shipment.count;
+        // Goods on pallets, wherever they are: in the towns' warehouses, in the forwarders' custody, on the wagons
+        // (`pallet.rs`), counted once, from the registry.
+        for p in self.world.resource::<crate::pallet::Pallets>().pallets.values() {
+            for pk in &p.packages {
+                goods[pk.good] += pk.count;
             }
         }
         // Goods on the town's own shops' shelves (`orders.rs`).
@@ -77,8 +70,11 @@ impl Society {
                 for g in 0..n {
                     goods[g] += w.cargo[g];
                 }
-                for s in &w.shipments {
-                    goods[s.good] += s.count;
+                // Its lots for sale, crated (open lots: not pallets).
+                for lot in &w.for_sale {
+                    for pk in &lot.packages {
+                        goods[pk.good] += pk.count;
+                    }
                 }
                 money += w.purse;
             }

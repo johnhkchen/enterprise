@@ -244,7 +244,8 @@ fn doesnt_sell(offmap: &Query<&OffMap>, route: &Route) -> bool {
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn buy_for_home(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
         mut books: ResMut<Books>, mut whys: ResMut<Whys>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
-        mut towns: Query<BuyTown>, rosters: Query<&Roster>, realms: Query<&Realm>, offmap: Query<&OffMap>) {
+        mut towns: Query<BuyTown>, rosters: Query<&Roster>, realms: Query<&Realm>, offmap: Query<&OffMap>,
+        pallets: Res<crate::pallet::Pallets>) {
     let (now, day) = (clock.now, content.day_ticks);
     let n = content.goods.len();
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
@@ -272,7 +273,7 @@ pub fn buy_for_home(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut
             let mut goods: Vec<usize> = (0..n).filter(|&g| content.goods[g].comfort == Some(kind)).collect();
             goods.sort_by(|&a, &b| content.goods[a].value.total_cmp(&content.goods[b].value));
             for g in goods {
-                if budget <= 0.0 || crate::cargo::stacks(&content, &wagon.cargo, &wagon.shipments) >= slots {
+                if budget <= 0.0 || crate::cargo::stacks(&content, &pallets, route.seq, wagon) >= slots {
                     break;
                 }
                 let value = content.goods[g].value;
@@ -314,7 +315,8 @@ fn market<'a>(content: &Content, towns: &'a Query<BuyTown>, farms: &'a Query<&mu
 pub fn buy_surplus(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<Stocktakes>, listings: Res<Listings>,
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut books: ResMut<Books>, mut whys: ResMut<Whys>,
         mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<BuyTown>, mut farms: Query<&mut Farm>,
-        rosters: Query<&Roster>, realms: Query<&Realm>, offmap: Query<&OffMap>, orders: Res<crate::orders::Orders>) {
+        rosters: Query<&Roster>, realms: Query<&Realm>, offmap: Query<&OffMap>, orders: Res<crate::orders::Orders>,
+        pallets: Res<crate::pallet::Pallets>) {
     let (now, day) = (clock.now, content.day_ticks);
     let n = content.goods.len();
     let all = infos(&routes);
@@ -341,7 +343,7 @@ pub fn buy_surplus(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<Sto
                 }
             }
             for g in 0..n {
-                let aboard = wagon.cargo[g] + wagon.shipments.iter().filter(|s| s.good == g).map(|s| s.count).sum::<f64>();
+                let aboard = super::cargo::aboard_of(&pallets, route.seq, wagon, g);
                 // And what players' shops at home have ordered: the caravan buys it up on its way (`networkWants`).
                 network[g] += orders.wanted_of(route.from_id, g);
                 network[g] = (network[g] - stocktakes.on_hand(route.from_id, g) - aboard).max(0.0);
@@ -356,7 +358,7 @@ pub fn buy_surplus(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<Sto
         let far_keeps = keeps(&content, roster, works);
         let mut spare_food = crate::road::held(&content, &stock.0) - crate::road::FOOD_PAR_POINTS;
         for g in 0..n {
-            let stacks = crate::cargo::stacks(&content, &wagon.cargo, &wagon.shipments);
+            let stacks = crate::cargo::stacks(&content, &pallets, route.seq, wagon);
             if stacks >= slots {
                 break;
             }
@@ -371,7 +373,7 @@ pub fn buy_surplus(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<Sto
             let outlet = outlets[g];
             if let Some(o) = outlet {
                 // Comforts the towns it supplies are short of: they keep their own.
-                let aboard = wagon.cargo[g] + wagon.shipments.iter().filter(|s| s.good == g).map(|s| s.count).sum::<f64>();
+                let aboard = super::cargo::aboard_of(&pallets, route.seq, wagon, g);
                 wanted = wanted.max(o.units - stocktakes.on_hand(route.from_id, g) - aboard);
                 their_par = (comfort_keep(&content, people) / value.max(1e-9)).ceil();
             }
@@ -419,7 +421,8 @@ pub fn buy_surplus(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<Sto
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn buy_backhaul(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<Stocktakes>, mut ledger: ResMut<Ledger>,
         mut cash: ResMut<CashBook>, mut books: ResMut<Books>, mut whys: ResMut<Whys>,
-        mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<BuyTown>, offmap: Query<&OffMap>) {
+        mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<BuyTown>, offmap: Query<&OffMap>,
+        pallets: Res<crate::pallet::Pallets>) {
     let (now, day) = (clock.now, content.day_ticks);
     let n = content.goods.len();
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
@@ -452,7 +455,7 @@ pub fn buy_backhaul(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<St
         let (mut stock, mut money, trades, _, roster, works) = towns.get_mut(route.to).expect("the far end");
         let far_keeps = keeps(&content, roster, works);
         for g in 0..n {
-            let room = slots as i64 - crate::cargo::stacks(&content, &wagon.cargo, &wagon.shipments) as i64;
+            let room = slots as i64 - crate::cargo::stacks(&content, &pallets, route.seq, wagon) as i64;
             if room <= 0 {
                 break;
             }

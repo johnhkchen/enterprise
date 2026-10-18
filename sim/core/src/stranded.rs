@@ -40,12 +40,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::bank::Discounts;
 use crate::bills::{Bill, BillState, Bills};
-use crate::cargo::Shipment;
 use crate::content::Content;
 use crate::contracts::Book;
 use crate::freight::{forwarding_price, Freight, Network};
 use crate::fixed::Fixed;
 use crate::messages::TownId;
+use crate::pallet::{At, Pallet, PalletId, Pallets};
 
 /// A hub's book of the stranded paper it has bought, and the freight it has carried on credit.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -113,9 +113,10 @@ pub fn bill_ok(t: &Terms, bill: &Bill) -> bool {
         && reaches(t.net, t.hub, bill.drawee) && (!calls(t.net, bill.drawee, t.town) || bill.due < t.now)
 }
 
-/// A crate the town shipped, paid for by a bill, that its consignee doesn't come for (`Stranded.crate`).
-pub fn crate_ok(t: &Terms, s: &Shipment) -> bool {
-    s.settled && s.shipper == t.town && s.consignee.is_some_and(|to| to != t.town && reaches(t.net, t.hub, to) && !calls(t.net, to, t.town))
+/// A pallet the town shipped, paid for, that its consignee doesn't come for (`Stranded.crate`).
+pub fn crate_ok(t: &Terms, s: &Pallet) -> bool {
+    let to = s.lading.consignee;
+    s.lading.prepaid() && s.lading.shipper == t.town && to != t.town && reaches(t.net, t.hub, to) && !calls(t.net, to, t.town)
 }
 
 /// What the hub pays: coin now (in spurs), its own bills for the rest (in installments), and the paper it bought.
@@ -123,7 +124,8 @@ pub fn crate_ok(t: &Terms, s: &Shipment) -> bool {
 pub struct Deal {
     pub spurs: u64,
     pub hub_bills: Vec<usize>,
-    pub crates: Vec<Shipment>,
+    /// The pallets bought with the bills: those the bills name.
+    pub crates: Vec<PalletId>,
     pub bills: Vec<usize>,
     pub face: Fixed,
     /// The price, before the coin: what the hub promised in all.
@@ -141,13 +143,15 @@ impl Deal {
     }
 }
 
-/// The hub buys the stranded paper among `crates` and `offered` (bill numbers; the rest is left in them): the bills whose
-/// goods it can forward, and the crates that go with them (consigned to their drawees). Pays coin up to `coin` emeralds;
-/// the rest in its bills on itself, due a bill term apart. Returns nothing if nothing was worth buying. It promises no
-/// more in its own bills than its treasury (`means`, emeralds) could pay: installments every bill term, each at most half
-/// of it; beyond that it doesn't buy (`Stranded.buy`).
-pub fn buy(t: &Terms, bills: &mut Bills, crates: &mut Vec<Shipment>, offered: &mut Vec<usize>, coin: f64, means: f64)
-        -> Option<Deal> {
+/// The hub buys the stranded paper among `crates` (pallets, by id) and `offered` (bill numbers; the rest is left in them):
+/// the bills whose goods it can forward, and the goods they pay for among the crates (the pallets they name, and any other
+/// for their drawees). Pays coin up to `coin` emeralds; the rest in its bills on itself,
+/// due a bill term apart. Returns nothing if nothing was worth buying. It promises no more in its own bills than its
+/// treasury (`means`, emeralds) could pay: installments every bill term, each at most half of it; beyond that it doesn't
+/// buy (`Stranded.buy`).
+#[allow(clippy::too_many_arguments)]
+pub fn buy(t: &Terms, bills: &mut Bills, pallets: &Pallets, crates: &mut Vec<PalletId>, offered: &mut Vec<usize>, coin: f64,
+        means: f64) -> Option<Deal> {
     let d = &t.content.dials;
     let day = t.content.day_ticks;
     // At least one: a dial set to nothing would leave the hub no way to pay the part it can't in coin.
@@ -155,8 +159,9 @@ pub fn buy(t: &Terms, bills: &mut Bills, crates: &mut Vec<Shipment>, offered: &m
     let mut bought: BTreeMap<TownId, Vec<usize>> = BTreeMap::new();
     let (mut face, mut price) = (Fixed::ZERO, 0.0);
     let mut least: f64 = 1.0; // the trust the hub has in the least trusted drawee bought
-    // Its goods come with it where a crate for the drawee is among them: paper on goods in hand.
-    let crated: BTreeSet<TownId> = crates.iter().filter(|c| crate_ok(t, c)).filter_map(|c| c.consignee).collect();
+    // Paper on goods in hand: a pallet for the drawee among the crates.
+    let crated: BTreeSet<TownId> = crates.iter().filter_map(|id| pallets.get(*id)).filter(|c| crate_ok(t, c))
+        .map(|c| c.lading.consignee).collect();
     let quote_means = if means == f64::MAX { coin } else { means };
     let mut kept = Vec::new();
     for id in std::mem::take(offered) {
@@ -182,22 +187,28 @@ pub fn buy(t: &Terms, bills: &mut Bills, crates: &mut Vec<Shipment>, offered: &m
     if bought.is_empty() {
         return None;
     }
-    // The crates paid for by those bills go with them; their forwarding comes off the price.
+    // The goods its paper pays for go with it: the pallets the bills it buys name (`Bill.pallets`), by id; and, as the
+    // core had it before bills named their goods (`Stranded.buy`: crates for the drawee), any other paid-for pallet among
+    // them made out to a drawee whose paper it bought. Their forwarding comes off the price. (By id alone, a pallet whose
+    // own bill the hub refused would stay with the town's wagon, and go to the forwarder for its fee: that moves outcomes,
+    // so it waits for the integrator: `docs/pallets.md` divergence 7.)
+    let named: BTreeSet<PalletId> = bought.values().flatten().flat_map(|&b| bills.bills[b].pallets.iter().copied()).collect();
     let mut goods = Vec::new();
-    let mut i = 0;
-    while i < crates.len() {
-        let c = &crates[i];
-        match c.consignee.filter(|to| crate_ok(t, c) && bought.contains_key(to)) {
-            Some(to) => {
+    let mut left = Vec::new();
+    for id in std::mem::take(crates) {
+        match pallets.get(id).filter(|c| (named.contains(&id) || bought.contains_key(&c.lading.consignee)) && crate_ok(t, c)) {
+            Some(c) => {
+                let to = c.lading.consignee;
                 let forwarding = if to == t.hub { 0.0 } else {
                     t.net.legs(t.hub, to).iter().map(|l| forwarding_price(t.content, t.net, l)).fold(f64::INFINITY, f64::min)
                 };
-                price -= if forwarding.is_finite() { forwarding } else { 0.0 } * c.stacks(t.content) as f64;
-                goods.push(crates.remove(i));
+                price -= if forwarding.is_finite() { forwarding } else { 0.0 } * c.slots(t.content) as f64;
+                goods.push(id);
             }
-            None => i += 1,
+            None => left.push(id),
         }
     }
+    *crates = left;
     price = price.max(0.0);
     let spurs = (coin.max(0.0).min(price * least) * t.rate).floor() as u64;
     let rest = price - spurs as f64 / t.rate;
@@ -220,27 +231,28 @@ pub fn buy(t: &Terms, bills: &mut Bills, crates: &mut Vec<Shipment>, offered: &m
 use crate::society::Society;
 
 impl Society {
-    /// The hub buys stranded paper a town holds, among `crates` and `bills` (bill numbers), now (`Stranded.buy`, as the
-    /// mod's test calls it): coin up to `coin` emeralds from nowhere in the society (the host's purse; the caller posts
-    /// it), the rest in the hub's bills. What it takes leaves `crates` and `bills`; its own bills are held by the town
-    /// (filed). Returns the deal.
-    pub fn buy_stranded(&mut self, hub: TownId, town: TownId, crates: &mut Vec<Shipment>, bills: &mut Vec<usize>, coin: f64)
+    /// The hub buys stranded paper a town holds, among `crates` (the town's pallets, by id) and `bills` (bill numbers),
+    /// now (`Stranded.buy`, as the mod's test calls it): coin up to `coin` emeralds from nowhere in the society (the host's
+    /// purse; the caller posts it), the rest in the hub's bills. What it takes leaves `crates` and `bills`: the pallets go
+    /// into its forwarder's custody, to be carted in; its own bills are held by the town (filed). Returns the deal.
+    pub fn buy_stranded(&mut self, hub: TownId, town: TownId, crates: &mut Vec<PalletId>, bills: &mut Vec<usize>, coin: f64)
             -> Option<Deal> {
         self.buy_stranded_within(hub, town, crates, bills, coin, f64::MAX)
     }
 
     /// As [`Society::buy_stranded`], promising no more in the hub's own bills than its treasury (`means`, emeralds) could pay
     /// (`Stranded.buy`'s `means`).
-    pub fn buy_stranded_within(&mut self, hub: TownId, town: TownId, crates: &mut Vec<Shipment>, bills: &mut Vec<usize>,
+    pub fn buy_stranded_within(&mut self, hub: TownId, town: TownId, crates: &mut Vec<PalletId>, bills: &mut Vec<usize>,
             coin: f64, means: f64) -> Option<Deal> {
         let net = self.network();
         let content = self.content().clone();
         let (now, rate) = (self.now(), self.mint_rate());
         let counting = self.world.get::<crate::state::Trades>(self.towns[hub]).is_some_and(|t| t.counting_house);
         let book = self.world.resource::<Book>().clone();
+        let pallets = self.world.resource::<Pallets>().clone();
         let mut ledger = self.world.resource_mut::<Bills>();
         let terms = Terms { content: &content, net: &net, book: &book, hub, town, counting, now, rate };
-        let deal = buy(&terms, &mut ledger, crates, bills, coin, means)?;
+        let deal = buy(&terms, &mut ledger, &pallets, crates, bills, coin, means)?;
         let mut promised = Fixed::ZERO;
         for &id in &deal.hub_bills {
             ledger.bills[id].held = crate::bills::Held::Town(town);
@@ -257,6 +269,13 @@ impl Society {
         book.coin += deal.coin(rate);
         book.promised += promised;
         book.crates += deal.crates.len() as u32;
+        for &id in &deal.crates {
+            let mut pallets = self.world.resource_mut::<Pallets>();
+            pallets.move_to(id, At::Custody(hub), now);
+            pallets.seal_leaving(id, town, now);
+            self.world.get_mut::<crate::freight::Hub>(self.towns[hub]).expect("a town").custody
+                .insert(id, crate::freight::Custody { carted: false, booked: None });
+        }
         Some(deal)
     }
 

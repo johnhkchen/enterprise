@@ -66,11 +66,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use bevy_ecs::prelude::{Component, Resource};
 use serde::{Deserialize, Serialize};
 
-use crate::cargo::Shipment;
 use crate::content::Content;
 use crate::fixed::Fixed;
 use crate::hex::Hex;
 use crate::messages::{RouteId, TownId};
+use crate::pallet::{At, Lading, Package, Pallet, PalletId, Pallets};
 use crate::state::{Route, RoutePath, RouteState};
 
 /// Stacks a cart of drayage carries (`Freight.CART`).
@@ -435,10 +435,10 @@ pub struct Booking {
     pub block: bool,
 }
 
-/// A crate in the forwarder's hands: carted in from the quay (drayage bought) or not yet, and booked or not.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub struct Held {
-    pub shipment: Shipment,
+/// A pallet in the forwarder's custody (`At::Custody` in the registry, held for others: never opened there): carted in
+/// from the quay (drayage bought) or not yet, and booked or not.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Custody {
     pub carted: bool,
     pub booked: Option<Booking>,
 }
@@ -460,12 +460,13 @@ pub struct HubBook {
 }
 
 /// A town's storehouse and its forwarder (`Depots.STOREHOUSE`, `Freight`): every town has one, inert until it's a hub.
-/// The crates in its hands, its blocks of space and the demand it couldn't book, the tickets each leg's shop has left
-/// today and the carts its draymen have, and its book.
+/// The pallets in its custody (by id: they're `At::Custody` in the registry, in the order they came), its blocks of space
+/// and the demand it couldn't book, the tickets each leg's shop has left today and the carts its draymen have, and its
+/// book.
 #[derive(Component, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Hub {
     pub storehouse: bool,
-    pub held: Vec<Held>,
+    pub custody: BTreeMap<PalletId, Custody>,
     pub blocks: BTreeMap<u64, Block>,
     pub wanted_on: BTreeMap<u64, f64>,
     pub tickets: BTreeMap<u64, u32>,
@@ -486,10 +487,15 @@ pub fn share_stacks(content: &Content) -> u32 {
     (content.dials.wagon_slots as f64 * content.dials.freight_share) as u32
 }
 
+/// The crates a hub's forwarder holds in custody, packed.
+pub fn custody_crates(pallets: &Pallets, hub: TownId) -> u32 {
+    pallets.at_place(At::Custody(hub)).map(|p| p.crates()).sum()
+}
+
 impl Hub {
     /// Stacks booked on a leg among the crates waiting (`Freight.booked` over the warehouse).
     pub fn booked_on(&self, leg: &Leg) -> u32 {
-        self.held.iter().filter_map(|h| h.booked).filter(|b| b.leg.key() == leg.key()).map(|b| b.stacks).sum()
+        self.custody.values().filter_map(|h| h.booked).filter(|b| b.leg.key() == leg.key()).map(|b| b.stacks).sum()
     }
 
     /// Stacks of the forwarder's block on a leg still free for its next run (`blockRoom`).
@@ -524,28 +530,27 @@ impl Hub {
         self.carts = carts_per_day(content, idle);
     }
 
-    /// The forwarder takes crates bound for markets it serves off a wagon (`handOver`): for each crate with a
-    /// consignee (not the hub, nor one of `skip`), where a carrier runs that way and the warehouse has room, the draymen
-    /// free to cart it in and out, and `purse` (emeralds) to pay the fee (the cheapest leg's forwarding a stack, and the
-    /// carting with the margin, in whole spurs at `rate`), the crate is the forwarder's. The rest stay in `crates`.
+    /// The forwarder takes crates bound for markets it serves off a wagon (`handOver`): for each of `crates` (its
+    /// consignee, its stacks and its crates) made out elsewhere than the hub or one of `skip`, where a carrier runs that
+    /// way and the warehouse has room (beside the `held` crates in custody already), the draymen free to cart it in and
+    /// out, and `purse` (emeralds) to pay the fee (the cheapest leg's forwarding a stack, and the carting with the margin,
+    /// in whole spurs at `rate`), the crate is the forwarder's. Returns what it came to, and which it took, in order: the
+    /// caller takes them into custody, carted in.
     #[allow(clippy::too_many_arguments)]
-    pub fn hand_over(&mut self, content: &Content, net: &Network, hub: TownId, crates: &mut Vec<Shipment>, purse: Fixed,
-            rate: f64, skip: &[TownId]) -> HandOver {
+    pub fn hand_over(&mut self, content: &Content, net: &Network, hub: TownId, held: u32, crates: &[(TownId, u32, u32)],
+            purse: Fixed, rate: f64, skip: &[TownId]) -> (HandOver, Vec<usize>) {
         let mut out = HandOver::default();
-        let mut i = 0;
-        while i < crates.len() {
-            let s = &crates[i];
-            let Some(to) = s.consignee.filter(|&c| c != hub && !skip.contains(&c)) else { i += 1; continue };
-            let room = self.held.iter().map(|h| h.shipment.crates(content)).sum::<u32>() + s.crates(content)
-                <= content.dials.crate_room;
-            let stacks = s.stacks(content);
+        let (mut taken, mut held) = (Vec::new(), held);
+        for (i, &(to, stacks, packed)) in crates.iter().enumerate() {
+            if to == hub || skip.contains(&to) {
+                continue;
+            }
+            let room = held + packed <= content.dials.crate_room;
             let carts = carts_for(stacks);
             let Some((fee, drayage)) = forwarding_fee(content, net, hub, to, stacks, rate).filter(|_| room) else {
-                i += 1;
                 continue; // no carrier runs that way, or no room in the warehouse
             };
             if self.carts < carts || purse - out.fee < fee {
-                i += 1;
                 continue; // no draymen free today (it stays aboard), or no money for the fee
             }
             self.carts -= carts;
@@ -555,38 +560,41 @@ impl Hub {
             self.book.carts += carts;
             self.book.forwarded += stacks;
             self.book.fees += fee;
-            self.held.push(Held { shipment: crates.remove(i), carted: true, booked: None });
+            held += packed;
+            taken.push(i);
         }
         self.book.drayage += out.drayage;
-        out
+        (out, taken)
     }
 
-    /// The forwarder books the crates in its hands (`forward`): a crate not yet carted in is carted first, if the
-    /// draymen are free (the hub's own drayage); then each is booked on the soonest carrier's run toward its consignee
-    /// that has the space: its own block first; failing that, the demand is remembered on the soonest other carrier's
-    /// run, and it buys just the tickets the crate needs at the soonest run's shop with what it can `spare` (emeralds,
-    /// beyond its reserve; counted down), the fare owed the carrier as it loads (none on its own run). A crate booked on
-    /// a run that's gone is booked again. Returns stacks booked, and the fares it took on.
-    pub fn forward(&mut self, content: &Content, net: &Network, hub: TownId, now: u64, rate: f64, spare: &mut Fixed)
-            -> (u32, Fixed) {
+    /// The forwarder books the crates in its custody (`forward`), in the order they came: a crate not yet carted in is
+    /// carted first, if the draymen are free (the hub's own drayage); then each is booked on the soonest carrier's run
+    /// toward its consignee that has the space: its own block first; failing that, the demand is remembered on the
+    /// soonest other carrier's run, and it buys just the tickets the crate needs at the soonest run's shop with what it
+    /// can `spare` (emeralds, beyond its reserve; counted down), the fare owed the carrier as it loads (none on its own
+    /// run). A crate booked on a run that's gone is booked again. Returns stacks booked, and the fares it took on.
+    #[allow(clippy::too_many_arguments)]
+    pub fn forward(&mut self, content: &Content, net: &Network, hub: TownId, pallets: &Pallets, now: u64, rate: f64,
+            spare: &mut Fixed) -> (u32, Fixed) {
         let legs: BTreeSet<u64> = net.legs_from(hub).iter().map(|l| l.key()).collect();
-        let mut held = std::mem::take(&mut self.held);
-        for h in held.iter_mut() {
+        let mut held = std::mem::take(&mut self.custody);
+        for h in held.values_mut() {
             if h.booked.is_some_and(|b| !legs.contains(&b.leg.key())) {
                 h.booked = None;
             }
         }
         // Stacks booked on each leg, as the crates stand (a crate booked now counts against the block for the next).
         let mut on_legs: BTreeMap<u64, u32> = BTreeMap::new();
-        for b in held.iter().filter_map(|h| h.booked) {
+        for b in held.values().filter_map(|h| h.booked) {
             *on_legs.entry(b.leg.key()).or_insert(0) += b.stacks;
         }
         let (mut booked, mut fares) = (0, Fixed::ZERO);
-        for h in held.iter_mut() {
+        for p in pallets.at_place(At::Custody(hub)) {
+            let Some(h) = held.get_mut(&p.id) else { continue };
             if h.booked.is_some() {
                 continue;
             }
-            let stacks = h.shipment.stacks(content);
+            let stacks = p.slots(content);
             if !h.carted {
                 // Collected by the hub's own wagon: carted in and out now, the hub's own draymen paid by itself.
                 let carts = carts_for(stacks);
@@ -597,7 +605,7 @@ impl Hub {
                 self.book.carts += carts;
                 h.carted = true;
             }
-            let Some(to) = h.shipment.consignee else { continue };
+            let to = p.lading.consignee;
             let mut on = net.legs(hub, to);
             on.sort_by_key(|l| net.next_run(l, now));
             // On the forwarder's own block first: space it's bought already.
@@ -634,7 +642,7 @@ impl Hub {
                 break;
             }
         }
-        self.held = held;
+        self.custody = held;
         (booked, fares)
     }
 
@@ -694,22 +702,22 @@ impl Hub {
         cost
     }
 
-    /// Booked crates waiting for a leg's run, taken out to load first, as many as `slots` hold (`loadBooked`).
-    pub fn load_booked(&mut self, content: &Content, leg: &Leg, slots: u32) -> Vec<Held> {
+    /// Booked crates waiting for a leg's run, in the order they came, out of custody to load first, as many as `slots`
+    /// hold (`loadBooked`): each with its booking, for the caller to load.
+    pub fn load_booked(&mut self, content: &Content, pallets: &Pallets, hub: TownId, leg: &Leg, slots: u32)
+            -> Vec<(PalletId, Booking)> {
         let mut room = slots;
         let mut load = Vec::new();
-        let mut i = 0;
-        while i < self.held.len() {
-            let h = &self.held[i];
-            let stacks = h.shipment.stacks(content);
-            if h.booked.is_some_and(|b| b.leg.key() == leg.key()) && stacks <= room {
+        for p in pallets.at_place(At::Custody(hub)) {
+            let stacks = p.slots(content);
+            let Some(b) = self.custody.get(&p.id).and_then(|h| h.booked) else { continue };
+            if b.leg.key() == leg.key() && stacks <= room {
                 room -= stacks;
-                load.push(self.held.remove(i));
-            } else {
-                i += 1;
+                self.custody.remove(&p.id);
+                self.book.carried += stacks;
+                load.push((p.id, b));
             }
         }
-        self.book.carried += load.iter().map(|h| h.shipment.stacks(content)).sum::<u32>();
         load
     }
 }
@@ -722,16 +730,13 @@ pub struct Stop {
     pub remaining: u64,
 }
 
-/// A wagon's freight (`Wagon.freight`): the hub it calls at on this leg (and the leg its stop was reckoned for), and
-/// copies of the crates aboard on freight tickets, to be received at their consignee.
+/// A wagon's freight (`Wagon.freight`): the hub it calls at on this leg (and the leg its stop was reckoned for). Its
+/// pallets on freight tickets, and those the hub's own wagon carries for its forwarder, are lines on its manifest
+/// (`Wagon.manifest`).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Aboard {
     pub stop: Option<Stop>,
     pub reckoned: Option<crate::state::Leg>,
-    pub booked: Vec<Shipment>,
-    /// Crates the hub's own wagon bought or collected for its forwarder (`Freight.forwarding`; stranded paper's goods,
-    /// a town's goods on consignment): copies of those in `shipments`, put in the forwarder's hands when it's home.
-    pub forwarding: Vec<Shipment>,
 }
 
 /// A route's freight (`RouteState.freight`): its calls at hubs (`Route.stops`), its last wagon's mouths with the team
@@ -753,26 +758,27 @@ pub struct Freight {
     pub stranded: BTreeMap<TownId, crate::stranded::StrandedBook>,
 }
 
-/// A crate on freight received by its consignee (`Crates.receive`): its copy filed, its goods into `stock`, its crates
-/// kept empty to ship with; under a contract in force with the consignee its buyer, it's delivered, paid for by the bill
-/// drawn on the buyer when it was sent on (`billed`): at most the larger of what's owed by the next installment and
-/// what's on the road.
-pub fn receive(content: &Content, book: &mut crate::contracts::Book, now: u64, town: TownId, stock: &mut [f64],
-        store: &mut crate::cargo::Shipments, shipment: Shipment) {
-    let Some(id) = shipment.contract.filter(|_| !shipment.settled) else {
-        crate::cargo::receive(content, book, now, town, stock, store, shipment);
+/// A pallet on freight received by its consignee, opened (`Crates.receive`): its copy filed, its goods into `stock`, its
+/// crates kept empty to ship with; not paid for in coin when crated, under a contract in force with the consignee its
+/// buyer, it's delivered, paid for by the bill drawn on the buyer when it was sent on (`billed`): at most the larger of
+/// what's owed by the next installment and what's on the road.
+pub fn receive(book: &mut crate::contracts::Book, now: u64, town: TownId, stock: &mut [f64],
+        store: &mut crate::cargo::Shipments, pallet: &Pallet) {
+    let Some(id) = pallet.lading.contract.filter(|_| !pallet.lading.prepaid()) else {
+        crate::cargo::receive(book, now, town, stock, store, pallet);
         return;
     };
-    if shipment.copy {
+    let (good, count) = (pallet.good(), pallet.count());
+    if pallet.lading.copy {
         book.deliver_copy(id, town);
     }
-    stock[shipment.good] += shipment.count;
-    store.empties += shipment.crates(content);
+    stock[good] += count;
+    store.empties += pallet.crates();
     let c = &book.contracts[id];
-    if c.buyer != town || !c.in_force() || c.good != shipment.good {
+    if c.buyer != town || !c.in_force() || c.good != good {
         return;
     }
-    let counted = shipment.count.min(c.owed(now + c.every).max(c.shipped)).max(0.0);
+    let counted = count.min(c.owed(now + c.every).max(c.shipped)).max(0.0);
     let worth = Fixed::ceil(counted * c.price);
     book.settle(id, counted, counted, worth, Fixed::ZERO);
 }
@@ -863,22 +869,37 @@ impl Society {
         self.put_hub(hub, h);
     }
 
-    /// A host's crates offered to the hub's forwarder (a caravan's, in the mod's test): those it takes are its, the fee
-    /// paid in from `purse` (emeralds the host holds, outside the society) into the hub's treasury; the rest stay in
-    /// `crates`. Returns stacks handed over (`handOver`).
-    pub fn hand_over(&mut self, hub: TownId, crates: &mut Vec<Shipment>, purse: &mut Fixed) -> u32 {
+    /// A host's crates offered to the hub's forwarder (a caravan's, in the mod's test: each its bill and packages): those
+    /// it takes come into the society, into its custody, carted in, the fee paid in from `purse` (emeralds the host holds,
+    /// outside the society) into the hub's treasury; the rest stay in `crates`. Returns stacks handed over (`handOver`).
+    pub fn hand_over(&mut self, hub: TownId, crates: &mut Vec<(Lading, Vec<Package>)>, purse: &mut Fixed) -> u32 {
         let net = self.network();
         let content = self.content().clone();
-        let rate = self.mint_rate();
+        let (rate, now) = (self.mint_rate(), self.now());
+        let offered: Vec<(TownId, u32, u32)> = crates.iter().map(|(l, pk)| {
+            let p = Pallet { lading: l.clone(), packages: pk.clone(), ..pallet_of_host() };
+            (l.consignee, p.slots(&content), p.crates())
+        }).collect();
+        let held = custody_crates(self.pallets(), hub);
         let mut h = self.hub_mut(hub);
-        let before = h.held.len();
-        let taken = h.hand_over(&content, &net, hub, crates, *purse, rate, &[]);
-        let came: Vec<(usize, f64)> = h.held[before..].iter().map(|x| (x.shipment.good, x.shipment.count)).collect();
-        self.put_hub(hub, h);
-        // The crates come into the society from the host's hands.
-        for (g, n) in came {
-            self.world.resource_mut::<crate::state::Ledger>().delivered[g] += n;
+        let (taken, which) = h.hand_over(&content, &net, hub, held, &offered, *purse, rate, &[]);
+        let mut kept = Vec::new();
+        for (i, (lading, packages)) in std::mem::take(crates).into_iter().enumerate() {
+            if !which.contains(&i) {
+                kept.push((lading, packages));
+                continue;
+            }
+            // The crate comes into the society from the host's hands.
+            let p = Pallet { lading, packages, ..pallet_of_host() };
+            self.world.resource_mut::<crate::state::Ledger>().delivered[p.good()] += p.count();
+            let shipper = p.lading.shipper;
+            let mut pallets = self.world.resource_mut::<Pallets>();
+            let id = pallets.pack(p.lading, p.packages, At::Custody(hub), now);
+            pallets.seal(id, shipper, now); // sealed as it left its shipper's: the host carried it
+            h.custody.insert(id, Custody { carted: true, booked: None });
         }
+        *crates = kept;
+        self.put_hub(hub, h);
         if taken.stacks > 0 {
             *purse -= taken.fee;
             use crate::cash_book::Account;
@@ -888,21 +909,35 @@ impl Society {
         taken.stacks
     }
 
-    /// A host's crate into the hub's warehouse, booked on `leg` for `stacks` (`Freight.book`, then `insert`).
-    pub fn book(&mut self, hub: TownId, shipment: Shipment, leg: Leg, stacks: u32) {
-        self.world.resource_mut::<crate::state::Ledger>().delivered[shipment.good] += shipment.count;
-        let mut h = self.hub_mut(hub);
-        h.held.push(Held { shipment, carted: true, booked: Some(Booking { leg, stacks, fare: Fixed::ZERO, block: false }) });
-        self.put_hub(hub, h);
+    /// A host's crate into the hub's custody, booked on `leg` for `stacks` (`Freight.book`, then `insert`): its id.
+    pub fn book(&mut self, hub: TownId, lading: Lading, packages: Vec<Package>, leg: Leg, stacks: u32) -> PalletId {
+        self.pack_into_custody(hub, lading, packages, Custody { carted: true, booked: Some(Booking { leg, stacks, fare: Fixed::ZERO,
+            block: false }) })
     }
 
-    /// A host's crate into the hub's forwarder's hands, to be booked on (`Freight.forwarding`, then `insert`): carted in
-    /// already, or waiting on the quay for the draymen.
-    pub fn forward_shipment(&mut self, hub: TownId, shipment: Shipment, carted: bool) {
-        self.world.resource_mut::<crate::state::Ledger>().delivered[shipment.good] += shipment.count;
-        let mut h = self.hub_mut(hub);
-        h.held.push(Held { shipment, carted, booked: None });
-        self.put_hub(hub, h);
+    /// A host's crate into the hub's forwarder's custody, to be booked on (`Freight.forwarding`, then `insert`): carted in
+    /// already, or waiting on the quay for the draymen. Its id.
+    pub fn forward_pallet(&mut self, hub: TownId, lading: Lading, packages: Vec<Package>, carted: bool) -> PalletId {
+        self.pack_into_custody(hub, lading, packages, Custody { carted, booked: None })
+    }
+
+    fn pack_into_custody(&mut self, hub: TownId, lading: Lading, packages: Vec<Package>, custody: Custody) -> PalletId {
+        let now = self.now();
+        let p = Pallet { lading, packages, ..pallet_of_host() };
+        self.world.resource_mut::<crate::state::Ledger>().delivered[p.good()] += p.count();
+        let shipper = p.lading.shipper;
+        let mut pallets = self.world.resource_mut::<Pallets>();
+        let id = pallets.pack(p.lading, p.packages, At::Custody(hub), now);
+        pallets.seal(id, shipper, now); // sealed as it left its shipper's: the host carried it
+        self.world.get_mut::<Hub>(self.towns[hub]).expect("a town").custody.insert(id, custody);
+        id
+    }
+
+    /// The pallets in a hub's custody, in the order they came, with what the forwarder notes of each.
+    pub fn custody(&self, hub: TownId) -> Vec<(Pallet, Custody)> {
+        let h = self.world.get::<Hub>(self.towns[hub]);
+        self.pallets().at_place(At::Custody(hub))
+            .map(|p| (p.clone(), h.and_then(|h| h.custody.get(&p.id).copied()).unwrap_or_default())).collect()
     }
 
     /// The forwarder books the crates in its hands now (`forward`), with what the hub can spare beyond its reserve.
@@ -915,7 +950,7 @@ impl Society {
         let mut spare = e.get::<crate::state::Money>().unwrap().0
             - crate::rules::farms::reserve(&content, e.get::<crate::state::Trades>().unwrap(), e.get::<crate::farms::Farm>());
         let mut h = self.hub_mut(hub);
-        let (booked, _) = h.forward(&content, &net, hub, now, rate, &mut spare);
+        let (booked, _) = h.forward(&content, &net, hub, self.world.resource::<Pallets>(), now, rate, &mut spare);
         self.put_hub(hub, h);
         booked
     }
@@ -992,8 +1027,15 @@ impl Society {
         self.world.get::<RouteState>(self.routes[route]).map(|s| s.freight.clone()).unwrap_or_default()
     }
 
-    /// The freight of a route's wagon on the road: its stop, and the crates aboard on freight tickets.
+    /// The freight of a route's wagon on the road: its stop (its pallets on freight tickets are lines on its manifest:
+    /// [`Society::wagon_manifest`]).
     pub fn wagon_freight(&self, route: RouteId) -> Option<Aboard> {
         self.world.get::<RouteState>(self.routes[route]).and_then(|s| s.wagon.as_ref()).map(|w| w.freight.clone())
     }
+}
+
+/// A pallet as a host hands it in, before the registry gives it an id and a place.
+fn pallet_of_host() -> Pallet {
+    Pallet { id: 0, kind: crate::pallet::LOAD, lading: Lading::default(), packages: Vec::new(), at: At::default(), since: 0,
+        seal: None, claimed: None }
 }

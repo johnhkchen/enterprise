@@ -80,7 +80,7 @@ fn owe(content: &Content, kits: &mut Kits, name: &str, amount: f64) {
 /// A day's work, for the days since the last (`Territory.touch`): see the module.
 #[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: Res<Territory>, order: Res<Towns>,
-        mut ledger: ResMut<Ledger>,
+        mut ledger: ResMut<Ledger>, pallets: Res<crate::pallet::Pallets>,
         mut towns: Query<(&Town, &mut Kits, &mut Stock, &Trades, Option<&Roster>, Option<&Works>, Option<&Shipments>)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let d = &content.dials;
@@ -93,7 +93,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
         kits.last = now;
         let Some(roster) = roster else { continue };
         let (kits, stock) = (&mut *kits, &mut stock.0);
-        let crates = shipments.map_or(0, |s| s.crates(&content));
+        let crates = shipments.map_or(0, |_| crate::cargo::crates_held(&pallets, town.id));
         let holding = territory.holdings.get(&town.id);
         let smithy = works.is_some_and(|w| w.built(Kind::Smithy));
         kits.fit(&content, stock);

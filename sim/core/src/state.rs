@@ -174,9 +174,8 @@ pub struct Wagon {
     /// feed it; and since when it has waited at the far end for food it couldn't get (the arriving steps leave it be).
     pub provisions: f64,
     pub waiting_since: Option<u64>,
-    /// Crates and their papers (`cargo.rs`): the shipments aboard (crated goods, not in `cargo`), the empty crates it
-    /// carries home, and the lots for sale opened at the far end this visit (good, count).
-    pub shipments: Vec<crate::cargo::Shipment>,
+    /// Crates and their papers (`cargo.rs`): the empty crates it carries home, and the lots for sale opened at the far
+    /// end this visit (good, count).
     pub empties: u32,
     pub lots: Vec<(usize, f64)>,
     /// Squads (`squad.rs`): its crew as they left home (marked away in the roster while on the road), whether it's a
@@ -197,14 +196,18 @@ pub struct Wagon {
     /// markets the crew learned of at the far end, which its town hears of once it's home (`Caravan.news`).
     pub herd: Vec<usize>,
     pub news: Vec<usize>,
-    /// Freight hubs (`freight.rs`): the hub it calls at on this leg, and the crates aboard on freight tickets (copies of
-    /// those in `shipments`), received at their consignee as the mod's `Crates.receive` takes them.
+    /// Freight hubs (`freight.rs`): the hub it calls at on this leg.
     pub freight: crate::freight::Aboard,
     /// The crown (`crown.rs`): the recruits it carries (`Caravan.recruits`): a levy's to the capital's barracks, the
     /// barracks' to the front.
     pub recruits: Vec<crate::army::Recruit>,
     /// It went full, of what the far end could pay for (`dispatch`'s `goesFor`: "full", not "on its day"; `saleLoad`).
     pub full: bool,
+    /// Pallets (`pallet.rs`, `cargo.rs`): a line for each pallet aboard (`At::Wagon` in the registry, in load order), with
+    /// its booking on freight and whether it's for the hub's forwarder; and the goods for sale crated aboard, a good to a
+    /// lot (open lots: no bill, not sealed).
+    pub manifest: crate::pallet::Manifest,
+    pub for_sale: Vec<crate::cargo::Lot>,
 }
 
 /// A town's run to another: how long the road takes one way, what a round trip costs in road food, its timetable.
@@ -246,8 +249,6 @@ pub struct Plan {
     pub worth: f64,
     pub stacks: u32,
     pub pressing: bool,
-    /// Crated goods it would take from home's crates (`cargo.rs`): owed under contract, not in `cargo`.
-    pub shipments: Vec<crate::cargo::Shipment>,
     /// Squads (`squad.rs`): the hands mustered (their places in home's roster), the stacks they carry (0: a wagon's
     /// `wagon_slots`), the trades this trip wants and the porters its load wants.
     pub crew: Vec<usize>,
@@ -264,6 +265,8 @@ pub struct Plan {
     /// Freight hubs (`freight.rs`): stacks kept for what loads first as it leaves: the crates booked on this run at its
     /// hub, or its town's goods sent on through the hub it's bound for.
     pub booked: u32,
+    /// Pallets (`cargo.rs`): home's pallets it would take (owed under contract, not in `cargo`), by id.
+    pub pallets: Vec<crate::pallet::PalletId>,
 }
 
 /// What a route has done, its wagon if one's on the road, the leg its wagon finished this look (the arriving steps

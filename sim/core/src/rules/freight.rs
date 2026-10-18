@@ -31,7 +31,7 @@ use super::{in_order, Step};
 use crate::atlas::{Atlas, Whys, Why};
 use crate::bank::Discounts;
 use crate::bills::{BillState, Bills, Held as Paper};
-use crate::cargo::{pack, stacks, Paperwork, Shipment, Shipments, Shipper};
+use crate::cargo::{put_aboard, pack, stacks, Paperwork, Shipments, Shipper};
 use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::chokepoints::Takings;
 use crate::content::Content;
@@ -41,6 +41,7 @@ use crate::freight::*;
 use crate::freight::Leg as RunLeg;
 use crate::messages::{RouteId, TownId};
 use crate::mint::Mint;
+use crate::pallet::{At, Lading, Line, Pallet, PalletId, Pallets, Payment};
 use crate::realms::OffMap;
 use crate::roster::Roster;
 use crate::fixed::Fixed;
@@ -101,7 +102,7 @@ macro_rules! network_of {
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn review(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territory: Res<Territory>,
         takings: Res<Takings>, mut freight: ResMut<Freight>, mut whys: ResMut<Whys>, mut ledger: ResMut<Ledger>,
-        mut cash: ResMut<CashBook>,
+        mut cash: ResMut<CashBook>, pallets: Res<Pallets>,
         mut towns: Query<(Entity, &Town, &mut Hub, &mut Money, &Stock, &Trades, Option<&Farm>, Option<&Roster>,
             Option<&OffMap>)>,
         mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>) {
@@ -167,7 +168,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
         let idle = roster.map_or(0, |r| r.idle(&content).len());
         hub.restock(&content, &net, id, idle);
         let mut can = spare(&content, money.0, trades, farm);
-        hub.forward(&content, &net, id, now, rate, &mut can);
+        hub.forward(&content, &net, id, &pallets, now, rate, &mut can);
         hub.buy_blocks(&content, &net, id);
         match reorganise(&content, &net, &territory, &takings, id, rate, &freight.pending, &wind) {
             Some(Reorganise::Open { end, caller }) => {
@@ -342,7 +343,7 @@ pub fn plan_freight(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, t
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn depart(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territory: Res<Territory>,
         mut book: ResMut<Book>, mut bills: ResMut<Bills>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
-        towns_list: Res<Towns>,
+        towns_list: Res<Towns>, mut pallets: ResMut<Pallets>,
         mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>,
         mut towns: Query<(&Town, &mut Hub, &mut Stock, &mut Money, &Trades, Option<&Farm>, &mut Shipments, &mut Paperwork)>) {
     let now = clock.now;
@@ -368,10 +369,10 @@ pub fn depart(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
         if net.is_hub(route.from_id) {
             // The crates booked on this run load first: they're paid for.
             let (_, mut hub, ..) = towns.get_mut(towns_list.0[route.from_id]).unwrap();
-            let room = slots.saturating_sub(stacks(&content, &wagon.cargo, &wagon.shipments));
-            for h in hub.load_booked(&content, &RunLeg::of(&route, true), room) {
-                wagon.freight.booked.push(h.shipment.clone());
-                wagon.shipments.push(h.shipment);
+            let room = slots.saturating_sub(stacks(&content, &pallets, route.seq, wagon));
+            for (id, booking) in hub.load_booked(&content, &pallets, route.from_id, &RunLeg::of(&route, true), room) {
+                put_aboard(&mut pallets, wagon, route.seq, Line { pallet: id, booking: Some(booking), ..Default::default() },
+                    route.from_id, now);
             }
         }
         if net.is_hub(route.to_id) {
@@ -380,8 +381,8 @@ pub fn depart(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
             let can = spare(&content, money.0, trades, farm);
             let mut shipper = Shipper { town: route.from_id, money: &mut money.0, spare: can, store: &mut store,
                 paperwork: &mut paperwork };
-            let fees = pick_forwarded(&content, &net, &mut book, &mut bills, &mut ledger, &mut cash, now, rate, &route,
-                &mut stock.0, &mut shipper, wagon, slots);
+            let fees = pick_forwarded(&content, &net, &mut book, &mut bills, &mut ledger, &mut cash, &mut pallets, now, rate,
+                &route, &mut stock.0, &mut shipper, wagon, slots);
             if fees.is_positive() {
                 // The forwarding goes with the wagon, from what the town can spare, and its landing at the hub.
                 let landing = stop_fee(&content, passage(&territory, route.to_id), rate);
@@ -416,34 +417,34 @@ fn set_stop(wagon: &mut Wagon, now: u64, hub: TownId, share: f64) {
 /// pays a hub's caravan: `collectForwarding`).
 #[allow(clippy::too_many_arguments)]
 fn pick_forwarded(content: &Content, net: &Network, book: &mut Book, bills: &mut Bills, ledger: &mut Ledger,
-        cash: &mut CashBook, now: u64, rate: f64, route: &Route, stock: &mut [f64], shipper: &mut Shipper,
-        wagon: &mut Wagon, slots: u32) -> Fixed {
+        cash: &mut CashBook, pallets: &mut Pallets, now: u64, rate: f64, route: &Route, stock: &mut [f64],
+        shipper: &mut Shipper, wagon: &mut Wagon, slots: u32) -> Fixed {
     let (home, hub) = (route.from_id, route.to_id);
     let day = content.day_ticks;
     let serves = |buyer: TownId| buyer != hub && buyer != home && !net.legs(hub, buyer).is_empty();
     let mut fees = Fixed::ZERO;
-    // Crates it sent before that came home: out again, with their bills.
-    let mut i = 0;
-    while i < shipper.store.held.len() {
-        let s = &shipper.store.held[i];
-        let room = stacks(content, &wagon.cargo, &wagon.shipments) + s.stacks(content) <= slots;
-        let fee = s.consignee.filter(|&b| serves(b)).and_then(|b| forwarding_fee(content, net, hub, b, s.stacks(content), rate).map(|f| f.0));
-        let Some(fee) = fee.filter(|f| s.shipper == home && s.contract.is_some() && room && shipper.spare >= *f) else {
-            i += 1;
+    // Pallets it sent before that came home: out again, with their bills.
+    let at_home: Vec<PalletId> = pallets.at(At::Town(home)).to_vec();
+    for id in at_home {
+        let s = pallets.get(id).unwrap();
+        let room = stacks(content, pallets, route.seq, wagon) + s.slots(content) <= slots;
+        let to = s.lading.consignee;
+        let fee = Some(to).filter(|&b| serves(b)).and_then(|b| forwarding_fee(content, net, hub, b, s.slots(content), rate).map(|f| f.0));
+        let Some(fee) = fee.filter(|f| s.lading.shipper == home && s.lading.contract.is_some() && room && shipper.spare >= *f) else {
             continue;
         };
         shipper.spare -= fee;
         fees += fee;
-        let s = shipper.store.held.remove(i);
-        for &id in &bills.open {
-            let b = &mut bills.bills[id];
-            if b.held == Paper::Town(home) && b.payee == home && Some(b.drawee) == s.consignee
-                    && b.contract == s.contract && b.state == BillState::Outstanding {
+        let contract = s.lading.contract;
+        for &b in &bills.open {
+            let b = &mut bills.bills[b];
+            if b.held == Paper::Town(home) && b.payee == home && b.drawee == to && b.contract == contract
+                    && b.state == BillState::Outstanding {
                 b.held = Paper::Wagon;
-                wagon.bills.push(id);
+                wagon.bills.push(b.id);
             }
         }
-        wagon.shipments.push(s);
+        put_aboard(pallets, wagon, route.seq, Line { pallet: id, ..Default::default() }, home, now);
     }
     let arrival = now + route.travel_ticks + (FORWARD_LEAD_DAYS * day as f64) as u64;
     let ids: Vec<usize> = book.open.clone();
@@ -454,7 +455,7 @@ fn pick_forwarded(content: &Content, net: &Network, book: &mut Book, bills: &mut
         }
         let g = c.good;
         let owed = (c.owed(arrival) - c.shipped).floor();
-        let free = slots.saturating_sub(stacks(content, &wagon.cargo, &wagon.shipments));
+        let free = slots.saturating_sub(stacks(content, pallets, route.seq, wagon));
         let room = free as f64 * content.goods[g].stack.max(1) as f64;
         let n = owed.min(room).min(stock[g].max(0.0).floor());
         if n <= 0.0 {
@@ -463,18 +464,22 @@ fn pick_forwarded(content: &Content, net: &Network, book: &mut Book, bills: &mut
         let (buyer, price) = (c.buyer, c.price);
         let Some(fee) = forwarding_fee(content, net, hub, buyer, crate::cargo::stacks_of(content, g, n).max(1), rate)
             .map(|f| f.0).filter(|f| shipper.spare >= *f) else { continue };
-        let like = Shipment { good: g, count: 0.0, shipper: home, consignee: Some(buyer), contract: Some(id),
-            settled: false, copy: true };
         // Only what can be crated goes: loose goods for a market beyond would be sold at the hub as the wagon's own.
-        let Some(s) = pack(content, ledger, cash, now, shipper, g, n, &like) else { continue };
-        let fee = forwarding_fee(content, net, hub, buyer, s.stacks(content), rate).map_or(fee, |f| f.0);
+        let Some(packages) = pack(content, ledger, cash, now, shipper, g, n, true) else { continue };
+        let lading = Lading { contract: Some(id), copy: true, ..Lading::new(home, buyer, now) };
+        let p = pallets.pack(lading, packages, At::Town(home), now);
+        let (count, slots_of) = (pallets.get(p).unwrap().count(), pallets.get(p).unwrap().slots(content));
+        let fee = forwarding_fee(content, net, hub, buyer, slots_of, rate).map_or(fee, |f| f.0);
         shipper.spare -= fee;
         fees += fee;
-        stock[g] -= s.count;
-        let bill = bills.draw_for(buyer, home, Fixed::ceil(s.count * price), now, day, Some(id));
+        stock[g] -= count;
+        // Sent on with a bill of exchange drawn on the buyer for it (the mod's `billed` lading), the bill naming it.
+        let bill = bills.draw_for(buyer, home, Fixed::ceil(count * price), now, day, Some(id));
+        bills.bills[bill].pallets.push(p);
+        pallets.pallets.get_mut(&p).unwrap().lading.payment = Payment::ByBill(bill);
         wagon.bills.push(bill);
-        book.ship(id, s.count);
-        wagon.shipments.push(s);
+        book.ship(id, count);
+        put_aboard(pallets, wagon, route.seq, Line { pallet: p, ..Default::default() }, home, now);
     }
     fees
 }
@@ -502,29 +507,45 @@ fn land(at: &AtHub, territory: &Territory, ledger: &mut Ledger, cash: &mut CashB
     }
 }
 
-/// The wagon's crates bound for markets the hub serves (not those for `skip`, nor those on freight tickets or bought for its
-/// own forwarder, nor those `hold` keeps back) handed to the forwarder, the forwarding and drayage paid from its purse as
-/// far as it goes (`Forwarder.handOver`).
+/// The wagon's pallets bound for markets the hub serves, among `among` (those aboard it, in their order; not those for
+/// `skip`, nor those on freight tickets or bought for its own forwarder, nor those `hold` keeps back) handed to the
+/// forwarder, into its custody, the forwarding and drayage paid from its purse as far as it goes (`Forwarder.handOver`).
+/// Returns `among` less those it took, in their new order: those it offered and kept go behind the rest.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn hand_over(content: &Content, net: &Network, id: TownId, now: u64, rate: f64, seq: RouteId, skip: &[TownId],
-        ledger: &mut Ledger, cash: &mut CashBook, hub: &mut Hub, money: &mut Money, wagon: &mut Wagon,
-        hold: &dyn Fn(&Shipment) -> bool) {
+        ledger: &mut Ledger, cash: &mut CashBook, pallets: &mut Pallets, hub: &mut Hub, money: &mut Money,
+        wagon: &mut Wagon, among: Vec<PalletId>, hold: &dyn Fn(&Pallet) -> bool) -> Vec<PalletId> {
     let day = content.day_ticks;
-    let (mut offered, mut rest): (Vec<Shipment>, Vec<Shipment>) = std::mem::take(&mut wagon.shipments).into_iter()
-        .partition(|s| s.consignee.is_some_and(|c| c != id && !skip.contains(&c)) && !wagon.freight.booked.contains(s)
-            && !wagon.freight.forwarding.contains(s) // (nor those it bought or collected for its own forwarder)
-            && !hold(s));
-    if !offered.is_empty() {
-        let taken = hub.hand_over(content, net, id, &mut offered, wagon.purse.at_least_zero(), rate, skip);
-        if taken.stacks > 0 {
-            post(ledger, cash, Side::wagon(seq, &mut wagon.purse), Side::treasury(id, &mut money.0),
-                taken.fee - taken.drayage, forwarding_reason(), now, day);
-            post(ledger, cash, Side::wagon(seq, &mut wagon.purse), Side::treasury(id, &mut money.0), taken.drayage,
-                drayage_reason(), now, day);
-        }
+    let (offered, rest): (Vec<PalletId>, Vec<PalletId>) = among.into_iter().partition(|&p| {
+        let s = pallets.get(p).unwrap();
+        let c = s.lading.consignee;
+        c != id && !skip.contains(&c) && !wagon.manifest.booked(p)
+            && !wagon.manifest.for_forwarder(p) // (nor those it bought or collected for its own forwarder)
+            && !hold(s)
+    });
+    if offered.is_empty() {
+        return rest;
     }
-    rest.extend(offered);
-    wagon.shipments = rest;
+    let crates: Vec<(TownId, u32, u32)> = offered.iter().map(|&p| {
+        let s = pallets.get(p).unwrap();
+        (s.lading.consignee, s.slots(content), s.crates())
+    }).collect();
+    let held = crate::freight::custody_crates(pallets, id);
+    let (taken, which) = hub.hand_over(content, net, id, held, &crates, wagon.purse.at_least_zero(), rate, skip);
+    for &i in &which {
+        let p = offered[i];
+        wagon.manifest.take(p);
+        pallets.move_to(p, At::Custody(id), now);
+        hub.custody.insert(p, Custody { carted: true, booked: None });
+    }
+    if taken.stacks > 0 {
+        post(ledger, cash, Side::wagon(seq, &mut wagon.purse), Side::treasury(id, &mut money.0),
+            taken.fee - taken.drayage, forwarding_reason(), now, day);
+        post(ledger, cash, Side::wagon(seq, &mut wagon.purse), Side::treasury(id, &mut money.0), taken.drayage,
+            drayage_reason(), now, day);
+    }
+    let kept = offered.iter().enumerate().filter(|(i, _)| !which.contains(i)).map(|(_, &p)| p);
+    rest.iter().copied().chain(kept).collect()
 }
 
 /// At the hub (`atHub`, `callAtStop`): the wagon hands the forwarder its crates bound for markets the hub serves (not
@@ -533,8 +554,8 @@ pub(crate) fn hand_over(content: &Content, net: &Network, id: TownId, now: u64, 
 /// fares paid it); and pays for its block on the run.
 #[allow(clippy::too_many_arguments)]
 fn deal(at: &AtHub, skip: &[TownId], book: &Book, bills: &mut Bills, ledger: &mut Ledger, cash: &mut CashBook,
-        hub: &mut Hub, money: &mut Money, stock: &Stock, trades: &Trades, farm: Option<&Farm>, wagon: &mut Wagon,
-        strand: Option<TownId>) {
+        pallets: &mut Pallets, hub: &mut Hub, money: &mut Money, stock: &Stock, trades: &Trades, farm: Option<&Farm>,
+        wagon: &mut Wagon, strand: Option<TownId>) {
     let (content, net, id) = (at.content, at.net, at.hub);
     let (now, day) = (at.now, content.day_ticks);
     let seq = at.route.seq;
@@ -542,12 +563,14 @@ fn deal(at: &AtHub, skip: &[TownId], book: &Book, bills: &mut Bills, ledger: &mu
     // sale takes (`strand`: the town whose paper the hub buys, for a wagon that sells it): the mod sells those first
     // (`sellStrandedAtHub`), and the hub's bill for them is the forwarding, so they don't go to the forwarder for it.
     let counting = trades.counting_house;
-    let hold = |s: &Shipment| strand.is_some_and(|town| crate::stranded::crate_ok(&crate::stranded::Terms {
+    let hold = |s: &Pallet| strand.is_some_and(|town| crate::stranded::crate_ok(&crate::stranded::Terms {
         content, net, book, hub: id, town, counting, now, rate: at.rate }, s));
-    hand_over(content, net, id, now, at.rate, at.route.seq, skip, ledger, cash, hub, money, wagon, &hold);
+    let aboard = pallets.at(At::Wagon(seq)).to_vec();
+    let left = hand_over(content, net, id, now, at.rate, seq, skip, ledger, cash, pallets, hub, money, wagon, aboard, &hold);
+    pallets.arrange(At::Wagon(seq), left);
     // Its bills on markets the hub runs to, payable to the wagon's home and not yet due: bought for coin now.
     let mut can = spare(content, money.0, trades, farm);
-    let fill = fill(content, stock, hub);
+    let fill = fill(content, stock, pallets, id);
     let means = can;
     let mut taking = Fixed::ZERO;
     let mut kept = Vec::new();
@@ -577,18 +600,17 @@ fn deal(at: &AtHub, skip: &[TownId], book: &Book, bills: &mut Bills, ledger: &mu
     wagon.bills = kept;
     // The forwarder books what it holds, then the crates booked on this run load, first.
     let mut can = spare(content, money.0, trades, farm);
-    hub.forward(content, net, id, now, at.rate, &mut can);
+    hub.forward(content, net, id, pallets, now, at.rate, &mut can);
     let slots = if wagon.slots > 0 { wagon.slots } else { content.dials.wagon_slots };
-    let room = slots.saturating_sub(stacks(content, &wagon.cargo, &wagon.shipments));
-    for h in hub.load_booked(content, &at.leg, room) {
+    let room = slots.saturating_sub(stacks(content, pallets, seq, wagon));
+    for (p, booking) in hub.load_booked(content, pallets, id, &at.leg, room) {
         // The fare the hub owes this carrier for the space, paid as its run loads (the mod's shop takings).
-        let fare = h.booked.map_or(Fixed::ZERO, |b| b.fare).min(money.0.at_least_zero());
+        let fare = booking.fare.min(money.0.at_least_zero());
         if fare > 0.0 {
             post(ledger, cash, Side::treasury(id, &mut money.0), Side::wagon(seq, &mut wagon.purse), fare, fares_reason(),
                 now, day);
         }
-        wagon.freight.booked.push(h.shipment.clone());
-        wagon.shipments.push(h.shipment);
+        put_aboard(pallets, wagon, seq, Line { pallet: p, booking: Some(booking), ..Default::default() }, id, now);
     }
     // The forwarder's block on the run, paid, full or not.
     let cost = hub.run_block(content, &at.leg).min(money.0.at_least_zero());
@@ -599,11 +621,11 @@ fn deal(at: &AtHub, skip: &[TownId], book: &Book, bills: &mut Bills, ledger: &mu
     }
 }
 
-/// How full the hub's warehouse is, 0 to 1 (`Discounts.fill`): its stock's stacks and the forwarder's crates against its
-/// slots.
-pub(crate) fn fill(content: &Content, stock: &Stock, hub: &Hub) -> f64 {
+/// How full the hub's warehouse is, 0 to 1 (`Discounts.fill`): its stock's stacks and the crates in its forwarder's
+/// custody against its slots.
+pub(crate) fn fill(content: &Content, stock: &Stock, pallets: &Pallets, hub: TownId) -> f64 {
     let used: u32 = stock.0.iter().enumerate().map(|(g, n)| crate::cargo::stacks_of(content, g, *n)).sum::<u32>()
-        + hub.held.iter().map(|h| h.shipment.crates(content)).sum::<u32>();
+        + crate::freight::custody_crates(pallets, hub);
     let slots = content.dials.warehouse_slots;
     if slots == 0 { 1.0 } else { (used as f64 / slots as f64).clamp(0.0, 1.0) }
 }
@@ -627,7 +649,7 @@ fn promised(content: &Content, routes: &[(&Route, &RouteState)]) -> BTreeMap<Tow
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn call_at_stop(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territory: Res<Territory>,
         towns_list: Res<Towns>, mut book: ResMut<Book>, mut bills: ResMut<Bills>, mut ledger: ResMut<Ledger>,
-        mut cash: ResMut<CashBook>, mut atlas: ResMut<Atlas>,
+        mut cash: ResMut<CashBook>, mut atlas: ResMut<Atlas>, mut pallets: ResMut<Pallets>,
         mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>,
         mut towns: Query<(&Town, &mut Hub, &mut Money, &mut Stock, &Trades, Option<&Farm>)>, realms: Query<&crate::realms::Realm>) {
     let (now, day) = (clock.now, content.day_ticks);
@@ -673,8 +695,8 @@ pub fn call_at_stop(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, t
             }
             let skip = [bound, route.from_id, route.to_id];
             let strand = (realms.get(towns_list.0[route.from_id]).is_err() && route.from_id != stop.hub).then_some(route.from_id);
-            deal(&at, &skip, &book, &mut bills, &mut ledger, &mut cash, &mut hub, &mut money, &stock, trades, farm, wagon,
-                strand);
+            deal(&at, &skip, &book, &mut bills, &mut ledger, &mut cash, &mut pallets, &mut hub, &mut money, &stock, trades,
+                farm, wagon, strand);
         }
         // The hub's copies of its contracts with where the wagon's bound ride on.
         let copies: Vec<usize> = book.open.iter().copied().filter(|&id| {
@@ -698,7 +720,8 @@ pub fn call_at_stop(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, t
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn at_hub(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territory: Res<Territory>,
         towns_list: Res<Towns>, book: Res<Book>, mut bills: ResMut<Bills>, mut ledger: ResMut<Ledger>,
-        mut cash: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>,
+        mut cash: ResMut<CashBook>, mut pallets: ResMut<Pallets>,
+        mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>,
         mut towns: Query<(&Town, &mut Hub, &mut Money, &Stock, &Trades, Option<&Farm>)>, realms: Query<&crate::realms::Realm>) {
     let (now, day) = (clock.now, content.day_ticks);
     let hubs: BTreeSet<TownId> = towns.iter().filter(|(_, h, ..)| h.storehouse).map(|(t, ..)| t.id).collect();
@@ -718,27 +741,33 @@ pub fn at_hub(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
         let (_, mut hub, mut money, stock, trades, farm) = towns.get_mut(towns_list.0[route.to_id]).unwrap();
         land(&at, &territory, &mut ledger, &mut cash, &mut hub, &mut money, wagon);
         let strand = realms.get(towns_list.0[route.from_id]).is_err().then_some(route.from_id);
-        deal(&at, &[route.from_id], &book, &mut bills, &mut ledger, &mut cash, &mut hub, &mut money, stock, trades, farm,
-            wagon, strand);
+        deal(&at, &[route.from_id], &book, &mut bills, &mut ledger, &mut cash, &mut pallets, &mut hub, &mut money, stock,
+            trades, farm, wagon, strand);
     }
 }
 
-/// The crates aboard on freight tickets made out to `town`, taken off the wagon and received there ([`receive`]).
-fn receive_aboard(content: &Content, book: &mut Book, now: u64, town: TownId, wagon: &mut Wagon, stock: &mut Stock,
-        store: &mut Shipments) {
-    let (here, rest): (Vec<Shipment>, Vec<Shipment>) =
-        std::mem::take(&mut wagon.freight.booked).into_iter().partition(|s| s.consigned_to(town));
-    wagon.freight.booked = rest;
-    for s in here {
-        let Some(i) = wagon.shipments.iter().position(|x| *x == s) else { continue };
-        let s = wagon.shipments.remove(i);
-        receive(content, book, now, town, &mut stock.0, store, s);
+/// The pallets aboard on freight tickets made out to `town`, taken off the wagon and received there ([`receive`]), in the
+/// order they loaded.
+#[allow(clippy::too_many_arguments)]
+fn receive_aboard(book: &mut Book, pallets: &mut Pallets, now: u64, route: RouteId, town: TownId, wagon: &mut Wagon,
+        stock: &mut Stock, store: &mut Shipments) {
+    let here: Vec<PalletId> = pallets.at_place(At::Wagon(route))
+        .filter(|p| p.consigned_to(town) && wagon.manifest.booked(p.id)).map(|p| p.id).collect();
+    for id in here {
+        wagon.manifest.take(id);
+        let p = pallets.open(id).expect("aboard");
+        receive(book, now, town, &mut stock.0, store, &p);
     }
 }
 
-/// At the far end, before anything else: the crates it carried on freight tickets made out here are received
+/// Has the wagon pallets on freight tickets?
+fn on_freight(wagon: &Wagon) -> bool {
+    wagon.manifest.lines.iter().any(|l| l.booking.is_some())
+}
+
+/// At the far end, before anything else: the pallets it carried on freight tickets made out here are received
 /// (`arriveAtDestination`'s ticketed crates, then `Crates.receive`).
-pub fn deliver_freight(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>,
+pub fn deliver_freight(clock: Res<Clock>, mut book: ResMut<Book>, mut pallets: ResMut<Pallets>,
         mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<(&mut Stock, &mut Shipments)>) {
     for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(e).unwrap();
@@ -746,15 +775,15 @@ pub fn deliver_freight(clock: Res<Clock>, content: Res<Content>, mut book: ResMu
             continue;
         }
         let route = *route;
-        let Some(wagon) = state.wagon.as_mut().filter(|w| !w.freight.booked.is_empty()) else { continue };
+        let Some(wagon) = state.wagon.as_mut().filter(|w| on_freight(w)) else { continue };
         let Ok((mut stock, mut store)) = towns.get_mut(route.to) else { continue };
-        receive_aboard(&content, &mut book, clock.now, route.to_id, wagon, &mut stock, &mut store);
+        receive_aboard(&mut book, &mut pallets, clock.now, route.seq, route.to_id, wagon, &mut stock, &mut store);
     }
 }
 
-/// Home again, before the crates are unloaded: those it carried home on freight tickets are received (`arriveHome`'s
+/// Home again, before the pallets are unloaded: those it carried home on freight tickets are received (`arriveHome`'s
 /// `Crates.receive`).
-pub fn deliver_home(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>,
+pub fn deliver_home(clock: Res<Clock>, mut book: ResMut<Book>, mut pallets: ResMut<Pallets>,
         mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<(&mut Stock, &mut Shipments)>) {
     for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(e).unwrap();
@@ -762,9 +791,9 @@ pub fn deliver_home(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<B
             continue;
         }
         let route = *route;
-        let Some(wagon) = state.wagon.as_mut().filter(|w| !w.freight.booked.is_empty()) else { continue };
+        let Some(wagon) = state.wagon.as_mut().filter(|w| on_freight(w)) else { continue };
         let Ok((mut stock, mut store)) = towns.get_mut(route.from) else { continue };
-        receive_aboard(&content, &mut book, clock.now, route.from_id, wagon, &mut stock, &mut store);
+        receive_aboard(&mut book, &mut pallets, clock.now, route.seq, route.from_id, wagon, &mut stock, &mut store);
     }
 }
 

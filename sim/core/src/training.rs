@@ -47,12 +47,13 @@ use bevy_ecs::prelude::Resource;
 use serde::{Deserialize, Serialize};
 
 use crate::bills::{Bills, Held};
-use crate::cargo::{pack, stacks_of, Paperwork, Shipment, Shipments, Shipper};
+use crate::cargo::{pack, stacks_of, Paperwork, Shipments, Shipper};
 use crate::cash_book::CashBook;
 use crate::content::{Content, GoodId};
 use crate::contracts::{Book, Contract, Incoterm, State, GRACE_DAYS, MIN_TRUST};
 use crate::farms::Farm;
 use crate::lockers::{merchant_reputation, Lockers, Offer, EMERALD_STACK};
+use crate::pallet::{At, Lading, Pallets, Payment};
 use crate::roster::{Roster, TradeId};
 use crate::state::*;
 
@@ -286,7 +287,7 @@ pub fn review(content: &Content, roster: &Roster, lockers: &mut Lockers, i: usiz
 /// (`Apprentices.neededTrades`: the Merchant manages their lockers first; the job draw takes the trade up).
 #[allow(clippy::too_many_arguments)]
 pub fn plan(content: &Content, book: &Book, apprenticeships: &mut Apprenticeships, town: usize,
-        lockers: &mut Lockers, stock: &Stock, trades: &Trades, farm: Option<&Farm>, store: Option<&Shipments>) {
+        lockers: &mut Lockers, stock: &Stock, trades: &Trades, farm: Option<&Farm>, crates: u32) {
     let mut targets: Vec<Target> = Vec::new();
     for (_, t) in book.training_for(town) {
         match targets.iter_mut().find(|x| x.trade == t.trade) {
@@ -317,7 +318,7 @@ pub fn plan(content: &Content, book: &Book, apprenticeships: &mut Apprenticeship
     let lessons = &mut lockers.lessons;
     lessons.held = if targets.is_empty() { crate::fixed::Fixed::ZERO } else { book.advances_held(town) };
     lessons.reserve = crate::rules::farms::reserve(content, trades, farm);
-    lessons.crates = store.map_or(0, |s| s.crates(content));
+    lessons.crates = crates;
     lessons.wanted = wanted;
     // The trades in `needed`: those the host set, and those a contract adds.
     let mine = apprenticeships.added.entry(town).or_default();
@@ -348,8 +349,8 @@ pub fn collectable(net: &crate::freight::Network, desk: usize, buyer: usize) -> 
 /// the buyer's wagon is next here (`Apprentices.afterTrade`). With no wagon of the buyer's calling, the work is the town's.
 #[allow(clippy::too_many_arguments)]
 pub fn finish(content: &Content, book: &Book, bills: &mut Bills, ledger: &mut Ledger, cash: &mut CashBook,
-        net: &crate::freight::Network, now: u64, town: usize, lockers: &mut Lockers, stock: &mut Stock, money: &mut Money,
-        trades: &Trades, farm: Option<&Farm>, store: &mut Shipments, paperwork: &mut Paperwork) {
+        pallets: &mut Pallets, net: &crate::freight::Network, now: u64, town: usize, lockers: &mut Lockers, stock: &mut Stock,
+        money: &mut Money, trades: &Trades, farm: Option<&Farm>, store: &mut Shipments, paperwork: &mut Paperwork) {
     for made in std::mem::take(&mut lockers.lessons.made) {
         let Some((c, t)) = book.training_for(town).find(|(_, t)| t.trade == made.trade && t.offtake > 0.0) else { continue };
         if !collectable(net, town, c.buyer) {
@@ -359,16 +360,19 @@ pub fn finish(content: &Content, book: &Book, bills: &mut Bills, ledger: &mut Le
         if n <= 0.0 {
             continue;
         }
-        let like = Shipment { good: made.good, count: 0.0, shipper: town, consignee: Some(c.buyer), contract: Some(c.id),
-            settled: true, copy: false };
         let spare = money.0 - crate::rules::farms::reserve(content, trades, farm);
         let mut shipper = Shipper { town, money: &mut money.0, spare, store: &mut *store, paperwork: &mut *paperwork };
-        let Some(crated) = pack(content, ledger, cash, now, &mut shipper, made.good, n, &like) else { continue };
-        stock.0[made.good] -= crated.count;
-        let worth = crated.count * content.goods[made.good].value * t.offtake;
+        let Some(packages) = pack(content, ledger, cash, now, &mut shipper, made.good, n, true) else { continue };
+        // Paid for as it's crated (the buyer's bill for it drawn at once, naming it), stored, not stock, until the buyer's
+        // wagon fetches it.
+        let lading = Lading { contract: Some(c.id), payment: Payment::Paid, ..Lading::new(town, c.buyer, now) };
+        let p = pallets.pack(lading, packages, At::Town(town), now);
+        let count = pallets.get(p).unwrap().count();
+        stock.0[made.good] -= count;
+        let worth = count * content.goods[made.good].value * t.offtake;
         let bill = bills.draw(c.buyer, town, crate::fixed::Fixed::ceil(worth), now, content.day_ticks);
         bills.bills[bill].held = Held::Town(town);
-        store.held.push(crated);
+        bills.bills[bill].pallets.push(p);
     }
 }
 
@@ -408,7 +412,8 @@ pub struct Desk<'a> {
     pub stock: &'a Stock,
     pub trades: &'a Trades,
     pub farm: Option<&'a Farm>,
-    pub store: Option<&'a Shipments>,
+    /// The crates it holds packed (its pallets, in its warehouse).
+    pub crates: u32,
 }
 
 /// What this tender is worth to the desk's own town: its bonus, less what training would cost (a stall for a trade it
@@ -433,7 +438,7 @@ pub fn worth(content: &Content, now: u64, desk: &Desk, tender: &Tender) -> Optio
     let cost = if best == 0 { d.stall_emeralds } else { 0.0 } + levels * d.level_cost;
     let money = (desk.money - crate::rules::farms::reserve(content, desk.trades, desk.farm)).to_f64()
         + tender.work.bonus.to_f64() * d.advance_share;
-    let free = free_slots(content, desk.stock, desk.store.map_or(0, |s| s.crates(content)));
+    let free = free_slots(content, desk.stock, desk.crates);
     if money < cost || free < d.free_slots as i64 {
         return None;
     }
@@ -651,7 +656,7 @@ impl Society {
         let e = self.world.entity(self.towns[town]);
         let tender = self.world.resource::<Tenders>().get(tender)?.clone();
         let desk = Desk { roster: e.get::<Roster>(), money: e.get::<Money>()?.0, stock: e.get::<Stock>()?,
-            trades: e.get::<Trades>()?, farm: e.get::<Farm>(), store: e.get::<Shipments>() };
+            trades: e.get::<Trades>()?, farm: e.get::<Farm>(), crates: crate::cargo::crates_held(self.pallets(), town) };
         worth(self.content(), self.now(), &desk, &tender)
     }
 
@@ -666,7 +671,8 @@ impl Society {
             let desk = |t: usize| {
                 let e = world.entity(self.towns[t]);
                 Some(Desk { roster: e.get::<Roster>(), money: e.get::<Money>()?.0, stock: e.get::<Stock>()?,
-                    trades: e.get::<Trades>()?, farm: e.get::<Farm>(), store: e.get::<Shipments>() })
+                    trades: e.get::<Trades>()?, farm: e.get::<Farm>(),
+                    crates: crate::cargo::crates_held(world.resource::<Pallets>(), t) })
             };
             let env = Env { content: world.resource::<Content>(), now: self.now(), routes: &routes, desk };
             tenders.read(&mut book, &env, reader, board)
@@ -694,7 +700,7 @@ impl Society {
             let ent = self.world.entity(e);
             let (Some(stock), Some(trades)) = (ent.get::<Stock>(), ent.get::<Trades>()) else { return };
             plan(self.content(), self.world.resource::<Book>(), &mut apprenticeships, town, &mut lockers, stock, trades,
-                ent.get::<Farm>(), ent.get::<Shipments>());
+                ent.get::<Farm>(), crate::cargo::crates_held(self.world.resource::<Pallets>(), town));
         }
         *self.world.resource_mut::<Apprenticeships>() = apprenticeships;
         self.world.entity_mut(e).insert(lockers);
@@ -716,8 +722,10 @@ impl Society {
         let mut bills = std::mem::take(&mut *self.world.resource_mut::<Bills>());
         let mut ledger = std::mem::take(&mut *self.world.resource_mut::<Ledger>());
         let mut cash = std::mem::take(&mut *self.world.resource_mut::<CashBook>());
-        finish(self.content(), self.world.resource::<Book>(), &mut bills, &mut ledger, &mut cash, &net, self.now(), town,
-            &mut lockers, &mut stock, &mut money, &trades, farm.as_ref(), &mut store, &mut paperwork);
+        let mut pallets = std::mem::take(&mut *self.world.resource_mut::<Pallets>());
+        finish(self.content(), self.world.resource::<Book>(), &mut bills, &mut ledger, &mut cash, &mut pallets, &net,
+            self.now(), town, &mut lockers, &mut stock, &mut money, &trades, farm.as_ref(), &mut store, &mut paperwork);
+        *self.world.resource_mut::<Pallets>() = pallets;
         *self.world.resource_mut::<Bills>() = bills;
         *self.world.resource_mut::<Ledger>() = ledger;
         *self.world.resource_mut::<CashBook>() = cash;
