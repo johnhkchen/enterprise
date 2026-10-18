@@ -354,8 +354,10 @@ fn about_a_third_of_the_worlds_have_a_heavy_good() {
 
 #[test]
 fn the_hosts_doings_bring_every_kind_of_pallet() {
-    // Over a few worlds' 60 days, the registry holds at some point a pallet owed, paid, paid by a bill of exchange, under
-    // a contract, and one made out to a town other than the one it waits in.
+    // Over a few worlds' 60 days, this slice's own doings (`pallets::daily`, alone: the pallets it brings are the ids new
+    // after it runs; a town's own crating and the other slices' doings make pallets too, and aren't counted) bring a
+    // pallet owed, paid, paid by a bill of exchange, under a contract, and one made out to a town other than the one it
+    // waits in.
     let (mut owed, mut paid, mut by_bill, mut contracted, mut elsewhere) = (0, 0, 0, 0, 0);
     for seed in 0..12u64 {
         let mut s = world(seed);
@@ -366,7 +368,9 @@ fn the_hosts_doings_bring_every_kind_of_pallet() {
             }
             s.advance(day * DAY);
             common::slices::daily(&mut s, seed, day);
-            for p in s.pallets().pallets.values() {
+            let before: BTreeSet<PalletId> = s.pallets().pallets.keys().copied().collect();
+            sweep::daily(&mut s, &mut common::Rng::of(seed, "pallets-test", day), day);
+            for p in s.pallets().pallets.values().filter(|p| !before.contains(&p.id)) {
                 match p.lading.payment {
                     Payment::Owed => owed += 1,
                     Payment::Paid => paid += 1,
@@ -377,6 +381,6 @@ fn the_hosts_doings_bring_every_kind_of_pallet() {
             }
         }
     }
-    println!("pallets seen: {owed} owed, {paid} paid, {by_bill} by bill, {contracted} under contract, {elsewhere} elsewhere");
+    println!("pallets brought: {owed} owed, {paid} paid, {by_bill} by bill, {contracted} under contract, {elsewhere} elsewhere");
     assert!(owed > 0 && paid > 0 && by_bill > 0 && contracted > 0 && elsewhere > 0);
 }

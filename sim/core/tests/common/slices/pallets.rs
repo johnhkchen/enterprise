@@ -286,6 +286,8 @@ pub fn pallet_caps(v: &View) -> Result<(), String> {
 /// A manifest is the load: a wagon's open lines are exactly the pallets aboard (once each); a consolidation's lines are its
 /// pallets, sharing one next stop.
 pub fn manifests(v: &View) -> Result<(), String> {
+    // later: superbills (a container aboard a wagon is a line of its manifest too: "exactly the pallets and containers
+    // aboard"; no rule makes containers yet, so a wagon's lines are its pallets only).
     for (route, w) in &v.wagons {
         let mut lines: Vec<PalletId> = w.manifest.lines.iter().map(|l| l.pallet).collect();
         let mut aboard: Vec<PalletId> = v.pallets.at(At::Wagon(*route)).to_vec();
@@ -345,7 +347,11 @@ pub fn extend(s: &mut Society, r: &mut Rng) {
 
 /// A host's doings: a player brings a whole pallet, one a different way each time it is told how it is paid for (owed,
 /// paid, by a bill of exchange) or made out to another town than the one it was brought to.
-// later: pallet-messages brings a lost package (`PackageLost`) here.
+// later: pallet-messages brings part of a pallet (a `PackageBrought` of some of its packages, the rest split off and
+// left waiting) and a lost package (`PackageLost`) here: section 5's "bring, split and lose"; this brings whole pallets only.
+// (`deliver_pallet` takes a pallet under a contract whatever its good: one of another good moves the wrong good on the
+// contract's book and breaks conservation, so the owed doing below crates the contract's good. pallet-messages should
+// refuse such a message at the core's boundary rather than trust the host.)
 pub fn daily(s: &mut Society, r: &mut Rng, _day: u64) {
     let n_towns = s.town_count();
     if n_towns < 2 || r.below(3) != 0 {
