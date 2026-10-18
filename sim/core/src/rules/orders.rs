@@ -461,7 +461,8 @@ fn sell_surplus(content: &Content, rate: f64, now: u64, trades: &Trades, worksho
 #[allow(clippy::too_many_arguments)]
 pub fn post_signals(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, atlas: Res<Atlas>, mut posted: ResMut<Signals>,
         order: Res<Towns>, routes: Query<&Route>, sites: Query<(&Town, Option<&Works>)>,
-        rosters: Query<&Town>, mut jobs: ResMut<crate::jobs::Signals>, mut sourcing: ResMut<Sourcing>) {
+        rosters: Query<&Town>, mut jobs: ResMut<crate::jobs::Signals>, mut sourcing: ResMut<Sourcing>,
+        mut recipes: Local<Option<Vec<crate::services::Recipe>>>) {
     if !(posted.changed || sourcing.ran == Some(clock.now)) {
         return;
     }
@@ -482,8 +483,15 @@ pub fn post_signals(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, a
             let mut list: Vec<&Signal> = list.iter().collect();
             list.sort_by_key(|s| s.good);
             for s in list {
-                let supplier = *suppliers.entry(s.good)
-                    .or_insert_with(|| crate::rules::sourcing::supplier_trade(&content, s.good));
+                let supplier = *suppliers.entry(s.good).or_insert_with(|| {
+                    // (The recipes kept between looks, worked out again when the content changes: `services::recipes`
+                    // matches the mod's names to the host's goods.)
+                    if content.is_changed() {
+                        *recipes = None;
+                    }
+                    let recipes = recipes.get_or_insert_with(|| crate::services::recipes(&content));
+                    crate::rules::sourcing::supplier_trade_in(&content, recipes, s.good)
+                });
                 let Some(trade) = supplier else { continue };
                 for (&reader, known) in readers.iter().zip(&known) {
                     if reader != desk && known.contains(&desk) {

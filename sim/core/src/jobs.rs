@@ -87,7 +87,13 @@ pub struct Hiring {
 
 /// A good by name, with or without the host's namespace (`paper`, `minecraft:paper`).
 pub fn good_named(content: &Content, name: &str) -> Option<GoodId> {
-    content.goods.iter().position(|g| g.name.rsplit(':').next() == Some(name))
+    // (`g.name.rsplit(':').next() == Some(name)`, without splitting every good's name: the name after its last colon.)
+    if name.contains(':') {
+        return None;
+    }
+    content.goods.iter().position(|g| {
+        g.name.strip_suffix(name).is_some_and(|before| before.is_empty() || before.ends_with(':'))
+    })
 }
 
 /// A trade a town can set up: its place in [`TRADES`], by its place in the content.

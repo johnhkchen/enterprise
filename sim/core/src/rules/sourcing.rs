@@ -154,11 +154,11 @@ pub fn plan_inputs(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, st
     }
 }
 
-/// The trade that would supply a good: the first whose people sell it for emeralds, else the first that makes it
-/// (`Procurement.suppliers`).
-pub(crate) fn supplier_trade(content: &Content, good: GoodId) -> Option<TradeId> {
+/// The trade that would supply a good: the first whose people sell it for emeralds, else the first that makes it of
+/// `recipes` (the content's, [`crate::services::recipes`]; `Procurement.suppliers`).
+pub(crate) fn supplier_trade_in(content: &Content, recipes: &[crate::services::Recipe], good: GoodId) -> Option<TradeId> {
     (0..content.trades.len()).find(|&t| content.trades[t].offers.iter().any(|o| o.sells && o.good == good))
-        .or_else(|| crate::services::recipes(content).iter().find(|r| r.output == good).map(|r| r.trade))
+        .or_else(|| recipes.iter().find(|r| r.output == good).map(|r| r.trade))
 }
 
 /// Is there anything to do today: the exchange to run, or a town with a master Merchant that hasn't sourced yet?
