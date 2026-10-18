@@ -161,7 +161,7 @@ fn a_tender_carried_on_is_taken_by_a_town_of_the_hubs_and_done_when_that_town_is
     s.advance(2 * DAY);
     assert_eq!((s.contract(down).state, s.contract(up).state), (State::Completed, State::Completed),
         "the capital's contract is done when the town's is");
-    assert!(s.contract(up).owing == 40.0 || s.contract(up).owing == enterprise_core::Fixed::round(40.0 - 40.0 / 3.0),
+    assert!(s.contract(up).owing == 40.0 || s.contract(up).owing == enterprise_core::Fixed::emeralds(40) - enterprise_core::Fixed::ceil(40.0 / 3.0),
         "{}", s.contract(up).owing);
 }
 

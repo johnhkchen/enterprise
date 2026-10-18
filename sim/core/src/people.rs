@@ -87,7 +87,8 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
             people.comfort_owed = vec![0.0; k];
         }
         // Wages: a share of the worth of what the town makes (rounded down to the thousandth: a share paid out), as far
-        // as its money goes.
+        // as its money goes. The part of a thousandth rounded off isn't carried to the next look (the comforts below,
+        // rounded up, likewise): at most a thousandth a look each way stays with the treasury.
         let due = Fixed::floor(d.labour_share * trades.makes.iter().zip(&content.goods).map(|(m, g)| m * g.value).sum::<f64>() * days);
         let paid = due.min(money.0.at_least_zero());
         post(&mut ledger, &mut book, Side::treasury(t, &mut money.0), Side::households(t, &mut people.purse), paid,
