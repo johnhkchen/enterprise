@@ -30,6 +30,7 @@ use crate::content::Content;
 use crate::contracts::{self, Book};
 use crate::farms::Farm;
 use crate::messages::TownId;
+use crate::road::Stay;
 use crate::pallet::{At, Lading, Line, Package, Payment, PalletId, Pallets};
 use crate::state::*;
 
@@ -147,8 +148,14 @@ fn plan_crated(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut pa
         mut routes: Query<(Entity, &Route, &mut RouteState)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let grace = (contracts::GRACE_DAYS * day as f64) as u64;
-    // In route order: the first route to plan a pallet claims it, and the routes after it go without (`pallet-claims`).
-    for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
+    // In route order, in two passes: the first route to plan a pallet claims it, and the routes after it go without
+    // (`pallet-claims`). A route whose last try ended in a stay a pallet can't mend (it can't fund the road, has no
+    // Merchant or squad, is out of range) goes in the second pass, so it doesn't hold a pallet a route that can go could take.
+    let order = in_order(routes.iter().map(|(e, r, _)| (e, r)));
+    let stuck = |routes: &Query<(Entity, &Route, &mut RouteState)>, e: Entity| routes.get(e).is_ok_and(|(_, _, s)| matches!(
+        s.stayed, Some(Stay::CantFund | Stay::NoMerchant | Stay::OutOfRange | Stay::NoSquad)));
+    let (second, first): (Vec<Entity>, Vec<Entity>) = order.into_iter().partition(|e| stuck(&routes, *e));
+    for entity in first.into_iter().chain(second) {
         let (_, route, mut state) = routes.get_mut(entity).unwrap();
         let Some(plan) = state.plan.as_mut() else { continue };
         if pallets.at(At::Town(route.from_id)).is_empty() {
@@ -238,8 +245,8 @@ pub(crate) fn ship(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Bo
         let mut crated: Vec<(usize, f64)> = Vec::new();
         for line in std::mem::take(&mut wagon.manifest.lines) {
             // Claimed by this route's plan at the look's start, so no other wagon's plan took it (`pallet-claims`).
-            let Some(p) = pallets.get(line.pallet).filter(|p| p.at == At::Town(home)) else { continue };
-            debug_assert_eq!(p.claimed, Some(seq), "a pallet on a manifest is its plan's claim");
+            let p = pallets.get(line.pallet).expect("a pallet on a manifest is in the registry");
+            assert!(p.at == At::Town(home) && p.claimed == Some(seq), "a pallet on a manifest is home's, claimed by its plan");
             pallets.release(line.pallet);
             let p = pallets.get(line.pallet).unwrap();
             if let Some(id) = p.lading.contract {

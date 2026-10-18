@@ -167,7 +167,7 @@ pub(crate) fn plan_owed(clock: Res<Clock>, content: Res<Content>, book: Res<Book
             // Less what home's pallets for it carry already (`rules/cargo.rs`): those this plan counts, and those another
             // route's plan has claimed this look (`pallet-claims`: a pallet is counted once, not sent twice).
             let crated: f64 = pallets.at_place(At::Town(route.from_id))
-                .filter(|p| p.claimed.is_some() && p.lading.contract == Some(c.id)).map(|p| p.count()).sum();
+                .filter(|p| p.claimed.is_some() && p.consigned_to(route.to_id) && p.lading.contract == Some(c.id)).map(|p| p.count()).sum();
             let owed = (c.owed(arrival) - c.shipped - crated).max(0.0);
             let going = owed.min(home.0[c.good] - plan.cargo[c.good]).floor();
             if going <= 0.0 {

@@ -278,7 +278,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
 pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut outbox: ResMut<Outbox>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<TownData>, mut rosters: Query<&mut crate::roster::Roster>, mut lockers: Query<&mut crate::lockers::Lockers>,
-        places: Query<(Option<&OffMap>, Option<&Realm>, Option<&crate::freight::Hub>)>, pallets: Res<crate::pallet::Pallets>) {
+        places: Query<(Option<&OffMap>, Option<&Realm>, Option<&crate::freight::Hub>)>, mut pallets: ResMut<crate::pallet::Pallets>) {
     let now = clock.now;
     let d = &content.dials;
     // Squads (`squad.rs`): each town's routes, and those of them without a wagon (`dispatch`'s `waiting`).
@@ -318,6 +318,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         // A town with a roster sends no wagon with no Merchant at its desk (`Caravans.dispatch` 210).
         if rostered && roster.as_ref().is_some_and(|r| r.merchant.is_none()) {
             state.stayed = Some(Stay::NoMerchant);
+            for id in &plan.pallets { pallets.release(*id); }
             continue;
         }
         // A realm's wagon is its own people's: no squad, two mouths' road food, no team, never home's poverty counted.
@@ -362,6 +363,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
                 waiting_here, routes_here, &mut money, |m| free(&content, trades, m, &bills, route.from_id, now));
             if let Err(stay) = mustered {
                 state.stayed = Some(stay);
+                for id in &plan.pallets { pallets.release(*id); }
                 continue;
             }
             // A small load goes on a porter's back: one hand, one pack, no team to feed.
@@ -374,6 +376,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         }
         if food_mode && !crate::road::in_range(&content, route.blocks) {
             state.stayed = Some(Stay::OutOfRange);
+            for id in &plan.pallets { pallets.release(*id); }
             continue;
         }
         if let Some(roster) = roster.as_deref().filter(|_| rostered) {
@@ -418,6 +421,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         if money.0 + slack < road_money + wagon_purse || money.0 < road_money {
             state.stayed = Some(Stay::CantFund);
             state.recheck_at = now + recheck_ticks(&content); // `dispatch` 374: "the hub can't fund the trip"
+            for id in &plan.pallets { pallets.release(*id); }
             continue;
         }
         let wagon_purse = if provision.is_some() { wagon_purse.min(money.0 - road_money).at_least_zero() } else { wagon_purse };
@@ -436,6 +440,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             if !foreign {
                 state.recheck_at = now + recheck_ticks(&content);
             }
+            for id in &plan.pallets { pallets.release(*id); }
             continue;
         }
         state.stayed = None;
