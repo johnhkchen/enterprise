@@ -662,8 +662,11 @@ pub fn collect(clock: Res<Clock>, content: Res<Content>, list: Res<Towns>, book:
                 continue;
             }
             stock.0[g] -= taken;
+            // Made out to the hub, so they come off at its home, the leg's end (`itinerary-drops`: every line loads with
+            // a drop).
             for id in packed.ids {
-                crate::cargo::put_aboard(&mut pallets, wagon, route.seq, Line { pallet: id, ..Default::default() }, route.to_id, now);
+                let line = Line { pallet: id, drop: Some(route.from_id), ..Default::default() };
+                crate::cargo::put_aboard(&mut pallets, wagon, route.seq, line, route.to_id, now);
             }
             forwarder.lot(route.from_id, route.to_id, g, taken, Fixed::ceil(fare * (taken / stack).ceil()), now);
         }

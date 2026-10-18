@@ -961,11 +961,6 @@ pub fn turn_stop(clock: Res<Clock>, content: Res<Content>, pallets: Res<Pallets>
         let route = *route;
         let (seq, home) = (route.seq, route.from);
         let wagon = state.wagon.as_mut().unwrap();
-        // Its manifest written as it leaves the far end: two lines or more, a superbill drawn at its home, the carrier's
-        // (`superbills`).
-        if let Ok(mut paperwork) = papers.get_mut(home) {
-            crate::cargo::write_manifest(&mut paperwork, &wagon.manifest, clock.now);
-        }
         wagon.itinerary = Itinerary::direct(route.from_id, wagon.arrives.saturating_sub(clock.now));
         if let Some((hub, i)) = net.as_ref().and_then(|n| n.stop_on(seq)) {
             let path = net.as_ref().and_then(|n| n.run(seq)).map_or(1, |r| r.path.len().max(2) - 1);
@@ -975,6 +970,11 @@ pub fn turn_stop(clock: Res<Clock>, content: Res<Content>, pallets: Res<Pallets>
             .filter(|l| !l.drop.is_some_and(|d| wagon.itinerary.calls.iter().any(|c| c.town == d))).map(|l| l.pallet).collect();
         for id in stale {
             drop_again(net.as_ref(), &route, &pallets, wagon, id, 0);
+        }
+        // Its manifest written as it leaves the far end, its drops chosen again first: two lines or more, a superbill
+        // drawn at its home, the carrier's (`superbills`).
+        if let Ok(mut paperwork) = papers.get_mut(home) {
+            crate::cargo::write_manifest(&mut paperwork, &wagon.manifest, clock.now);
         }
         wagon.freight.reckoned = Some(Leg::Home);
     }
