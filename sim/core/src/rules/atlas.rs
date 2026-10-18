@@ -111,7 +111,7 @@ pub fn depart(clock: Res<Clock>, content: Res<Content>, mut atlas: ResMut<Atlas>
 #[allow(clippy::type_complexity)]
 pub fn log_sales(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut books: ResMut<Books>,
         mut whys: ResMut<Whys>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
-        towns: Query<(&Stock, &Trades, &People, Option<&Roster>, Option<&Works>)>) {
+        towns: Query<(&Stock, &Trades, &People, Option<&Roster>, Option<&Works>)>, lockers: Query<&crate::lockers::Lockers>) {
     let today = today(&content, clock.now);
     for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(e).unwrap();
@@ -121,6 +121,7 @@ pub fn log_sales(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut 
         let route = *route;
         let Some(wagon) = state.wagon.as_mut() else { continue };
         let Ok((stock, trades, people, roster, works)) = towns.get(route.to) else { continue };
+        let far_lockers = lockers.get(route.to).ok().zip(roster);
         let mut bought = Vec::new();
         for g in 0..wagon.sold_here.len() {
             let n = wagon.sold_here[g];
@@ -144,8 +145,12 @@ pub fn log_sales(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut 
                     Why::UnsoldFull(Some(kind)),
                 Some(_) => Why::UnsoldCantPay,
                 None if trades.uses[g] > 0.0 || trades.capacity.get(g).is_some_and(|c| *c > 0.0)
-                    || crate::road::points(&content, g) > 0.0 => {
-                    if super::shelf(&content, trades, g) - stock.0[g] < 1.0 { Why::UnsoldFull(None) } else { Why::UnsoldCantPay }
+                    || crate::road::points(&content, g) > 0.0
+                    || crate::lockers::wanted_par(&content, trades, far_lockers, g).is_some() => {
+                    // (A good a trade there has switched on takes has the warehouse's par for it, as `sell` read it.)
+                    let aim = crate::lockers::wanted_par(&content, trades, far_lockers, g)
+                        .unwrap_or_else(|| super::shelf(&content, trades, g));
+                    if aim - stock.0[g] < 1.0 { Why::UnsoldFull(None) } else { Why::UnsoldCantPay }
                 }
                 None => Why::UnsoldNoUse,
             };

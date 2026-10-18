@@ -282,6 +282,19 @@ mod tests {
     }
 
     #[test]
+    fn the_hubs_wagons_carry_paper_to_the_settlements_lockers() {
+        // The faithful world: no one in the settlements uses paper, but their Librarians' and Cartographers' trades,
+        // switched on, take it (`Caravans.wantsAt`), so the hub's wagons bring it and the lockers turn it into money.
+        let (st, _) = month("");
+        let paper = st.s.content().good("paper").unwrap();
+        let s1 = st.town("S1").unwrap();
+        let hub_s1 = (0..st.s.route_count()).find(|&r| st.s.route_ends(r) == (st.hub, s1)).unwrap();
+        assert!(st.s.route(hub_s1).trips > 0 && st.s.route(hub_s1).sold > 0.0, "the hub's wagons sell at S1");
+        assert!(st.s.town(st.hub).stock[paper] < 3.0 * 1728.0, "the hub's paper went out");
+        assert!(st.s.town(s1).money > 64.0, "S1's lockers earn from it: {}", st.s.town(s1).money);
+    }
+
+    #[test]
     fn the_hubs_wagons_carry_paper_where_the_settlements_people_use_it() {
         let (mut st, tracker) = month("--people-use");
         let left: u32 = (0..st.s.route_count()).map(|r| st.s.route(r).trips).sum();

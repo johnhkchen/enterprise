@@ -61,10 +61,12 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
             return Err(format!("town {town} has a post at {p}, which it doesn't hold"));
         }
         // Armoured guards may ask past the cap, up to `ARMOURED_TOLL_RATE` and more with enchanted plates
-        // (`chokepoints.rs`: the cap rises with the armoured share, to 1.5).
-        let most = MAX_TOLL_RATE + (ARMOURED_TOLL_RATE - MAX_TOLL_RATE) * h.armoured.max(0.0) + 1e-9;
+        // (`chokepoints.rs`: the cap rises with the armoured share, to 1.5). The rate a toll review set stands until
+        // the next (`Territory.java` 1960–1965 sets it only there), so armour lost since doesn't lower it: the bound is
+        // what the best-armoured guards could ask.
+        let most = MAX_TOLL_RATE + (ARMOURED_TOLL_RATE - MAX_TOLL_RATE) * h.armoured.max(1.5) + 1e-9;
         if h.toll_rate.is_some_and(|x| !(0.0..=most).contains(&x)) {
-            return Err(format!("town {town}: toll rate {:?}", h.toll_rate));
+            return Err(format!("town {town}: toll rate {:?}, armoured {}", h.toll_rate, h.armoured));
         }
         if h.culture < -1e-9 || !h.culture.is_finite() {
             return Err(format!("town {town}: culture {}", h.culture));

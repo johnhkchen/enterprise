@@ -51,7 +51,7 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
         mut book: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<TownData>, rosters: Query<&crate::roster::Roster>, realms: Query<&Realm>,
         stocktakes: Res<crate::atlas::Stocktakes>, books: Res<crate::atlas::Books>, listings: Res<crate::desires::Listings>,
-        farms: Query<&crate::farms::Farm>, orders: Res<crate::orders::Orders>) {
+        farms: Query<&crate::farms::Farm>, orders: Res<crate::orders::Orders>, lockers: Query<&crate::lockers::Lockers>) {
     let now = clock.now;
     let day = content.day_ticks;
     let n_goods = content.goods.len();
@@ -76,6 +76,8 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
             })).collect()
         };
         let far_reserve = super::farms::reserve(&content, towns.get(route.to).expect("the far end").2, farms.get(route.to).ok());
+        // Its lockers, for the trades it has switched on (`Caravans.wantedAt`).
+        let far_lockers = lockers.get(route.to).ok().zip(rosters.get(route.to).ok());
         let (mut stock, mut money, trades, mut budget, people) = towns.get_mut(route.to).expect("the far end");
         let wagon = state.wagon.as_mut().unwrap();
         let mut sold_all = 0.0;
@@ -94,9 +96,11 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
                     (own, own + outlet.filter(|o| crate::desires::worth_buying(&content, value, o)).map_or(0.0, |o| o.units))
                 }
                 None => {
-                    // A good wanted only because a player's shop here ordered it has a stack's room (`Warehouse.par`
-                    // with `wanted`), not its order's count on top of a shelf.
-                    let aim = shelf(&content, trades, g);
+                    // A good a trade it has switched on takes, its people using none, has the warehouse's par for a
+                    // wanted good (`Warehouse.par(desk, item, true)`: a stack at least). One wanted only because a
+                    // player's shop here ordered it has a stack's room, not its order's count on top of a shelf.
+                    let aim = crate::lockers::wanted_par(&content, trades, far_lockers, g)
+                        .unwrap_or_else(|| shelf(&content, trades, g));
                     let aim = if aim <= 0.0 && !realm_buys && orders.wanted_of(route.to_id, g) > 0.0 {
                         crate::bargain::par(&content, 0.0, true)
                     } else {

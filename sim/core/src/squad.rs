@@ -234,18 +234,21 @@ pub fn porters_needed(content: &Content, stacks: u32, packs: bool) -> usize {
 }
 
 /// The goods the far end wants (`Caravans.wantedThere`, as far as the core knows it): what its people use or its
-/// lockers take, comforts aside.
-pub fn wanted_there(content: &Content, far: &Trades) -> Vec<GoodId> {
+/// lockers take (a trade it has switched on, managed or not: `far_lockers`, with its roster), comforts aside.
+pub fn wanted_there(content: &Content, far: &Trades, far_lockers: Option<(&crate::lockers::Lockers, &Roster)>)
+        -> Vec<GoodId> {
     (0..content.goods.len())
         .filter(|&g| content.goods[g].comfort.is_none()
             && (far.uses[g] > 0.0 || far.capacity.get(g).is_some_and(|c| *c > 0.0)
-                || far.inputs.get(g).is_some_and(|n| *n > 0.0)))
+                || far.inputs.get(g).is_some_and(|n| *n > 0.0)
+                || far_lockers.is_some_and(|(l, r)| l.takes(content, r, g))))
         .collect()
 }
 
 /// Stacks of the goods the far end wants that home holds (`Caravans.wantedStacks`: 64 to a stack, whatever the good).
-pub fn wanted_stacks(content: &Content, home: &[f64], far: &Trades) -> u32 {
-    wanted_there(content, far).into_iter()
+pub fn wanted_stacks(content: &Content, home: &[f64], far: &Trades,
+        far_lockers: Option<(&crate::lockers::Lockers, &Roster)>) -> u32 {
+    wanted_there(content, far, far_lockers).into_iter()
         .map(|g| (home[g].max(0.0).floor() / 64.0).ceil() as u32).sum()
 }
 

@@ -347,15 +347,18 @@ impl Study {
         }
     }
 
-    /// `enterprise autoswitch <desk> selling`: every offer that pays emeralds for goods, on.
+    /// `enterprise autoswitch <desk> selling`: every offer that pays emeralds for goods, on: the offers each villager
+    /// has now (`MerchantView`'s trades: those of its level and below), not those it'll unlock as it levels.
     fn autoswitch(&mut self, town: TownId) {
         let Some(lockers) = self.s.lockers(town) else { return };
+        let roster = self.s.roster(town);
         for (h, locker) in lockers.hands.iter().enumerate() {
             if locker.switched_on() {
                 continue;
             }
+            let level = roster.hands.get(h).map_or(0, |hand| hand.level);
             for (o, offer) in locker.offers.iter().enumerate() {
-                if !offer.sells {
+                if !offer.sells && offer.level <= level {
                     self.s.switch(town, h, o, true);
                 }
             }
@@ -493,9 +496,6 @@ impl Study {
         let f = &self.flags;
         let mut m = Vec::new();
         m.push("world: the settlements' bells, beds and fields are the host's numbers (no blocks): 7 beds, 81 plots of carrots, land for 40 beds".to_string());
-        if !f.people_use {
-            m.push("core: a wagon's sale load takes only goods the far end's people use (`plan_sale` gates on `Trades.uses`), and a switched-on locker sets its good's uses aside: the settlements' lockers draw no wagon. `--people-use` stands their lockers' wants in as their people's uses".into());
-        }
         if f.fleet {
             m.push("--fleet: boats across water (the fleet's sailing and fishing) aren't in the core: the Fishermen sit in the hub's roster; the Leatherworker's packs are".into());
         }

@@ -312,6 +312,18 @@ impl Lockers {
         self.hands.iter().any(|l| l.offers.iter().any(|o| o.on && !o.sells && o.good == good))
     }
 
+    /// Whether a trade the town has switched on takes `good` (`Caravans.wantsAt` 2302–2315: the costs of every
+    /// workstation's enabled trades, "a trade it has switched on takes it", whether the Merchant manages that locker or
+    /// not): a hand with a locker, of the trade its locker was made for, with a buying offer of `good` switched on at
+    /// its level or below (the offers a villager of that level has).
+    pub fn takes(&self, content: &Content, roster: &Roster, good: GoodId) -> bool {
+        self.hands.iter().enumerate().any(|(i, l)| {
+            let Some(h) = roster.hands.get(i) else { return false };
+            l.trade == h.trade && has_locker(content, roster, i)
+                && l.offers.iter().any(|o| o.on && !o.sells && o.good == good && o.level <= h.level)
+        })
+    }
+
     /// While a switched-on offer buys a good, the town's people don't also buy it at its worth: its `Trades.uses` is
     /// set aside ([`Lockers::kept`]) and its `Trades.capacity` is what its managed lockers can take a day, so its par
     /// follows them (`bargain.rs`), and its workshop makes it up to that par (`workshop.rs`'s `locker_par`); when none
@@ -345,6 +357,21 @@ impl Lockers {
             }
         }
     }
+}
+
+/// A town's par for a good a trade it has switched on takes and its people don't use (`Warehouse.par(desk, item,
+/// true, now)`, 138–141, as `Caravans.pickCargo` 2366 and `sell` 2480 read it for a wanted good): `shelf_days` of
+/// what its lockers can take of it a day (`Trades.capacity`: its managed lockers', recorded at their sessions), rounded
+/// up, a stack at least ([`crate::bargain::MIN_PAR`]: a locker the Merchant doesn't manage records no capacity), and
+/// what its contracts need. `None` where its people use it (their shelf stands, `rules::shelf`) or no trade there
+/// takes it. `lockers`: the town's, with its roster, if it keeps one.
+pub fn wanted_par(content: &Content, trades: &Trades, lockers: Option<(&Lockers, &Roster)>, good: GoodId) -> Option<f64> {
+    if trades.uses.get(good).is_some_and(|u| *u > 0.0) {
+        return None;
+    }
+    let capacity = trades.capacity.get(good).copied().unwrap_or(0.0);
+    let takes = capacity > 0.0 || lockers.is_some_and(|(l, r)| l.takes(content, r, good));
+    takes.then(|| crate::bargain::par(content, capacity, true).max(trades.inputs.get(good).copied().unwrap_or(0.0)))
 }
 
 /// One restock of every hand with a locker (vanilla's `Villager.restock`, with the mod's hooks): demand moves by the

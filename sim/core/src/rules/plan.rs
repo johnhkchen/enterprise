@@ -35,8 +35,9 @@ pub fn start(content: Res<Content>, mut routes: Query<&mut RouteState>) {
 }
 
 /// For sale, on top of what's planned already: comforts by kind, the cheapest first, up to the far end's par in worth
-/// from what home holds beyond its keep; any other good the far end's people use, what home can spare beyond its own
-/// shelf up to the room on theirs; all in the wagon's slots. The load is worth what the far end is expected to pay:
+/// from what home holds beyond its keep; any other good the far end wants (its people use it, a trade it has switched
+/// on takes it, it's an input to what it's contracted to sell, its realm's people or a player's shop there want it:
+/// `Caravans.wantsThere`), what home can spare beyond its own shelf up to the room on theirs; all in the wagon's slots. The load is worth what the far end is expected to pay:
 /// the bargained price at the middle of each good's batch (`bargain.rs`), and a good it won't deal in stays home.
 ///
 /// A home with a roster sizes the room on the far end's shelf by its last stocktake while it's fresh (`atlas.rs`), less
@@ -46,7 +47,7 @@ pub fn start(content: Res<Content>, mut routes: Query<&mut RouteState>) {
 fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktakes: Res<crate::atlas::Stocktakes>,
         mut routes: Query<(&Route, &mut RouteState)>, towns: Query<(&Stock, &Trades, &People)>,
         rosters: Query<&crate::roster::Roster>, stores: Query<&crate::cargo::Shipments>, realms: Query<&Realm>,
-        orders: Res<crate::orders::Orders>) {
+        orders: Res<crate::orders::Orders>, lockers: Query<&crate::lockers::Lockers>) {
     use crate::atlas::{Want, Why};
     let d = &content.dials;
     let n = content.goods.len();
@@ -77,6 +78,8 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
             towns.get_many([route.from, route.to]) else { continue };
         // A realm's Merchants haggle at their own level (`realms.rs`), and its people want comforts as goods, by par.
         let far_realm = realms.get(route.to).ok();
+        // The far end's lockers, for the trades it has switched on (`Caravans.wantsAt`).
+        let far_lockers = lockers.get(route.to).ok().zip(rosters.get(route.to).ok());
         let seller = crate::realms::level(&content, realms.get(route.from).ok(), rosters.get(route.from).ok());
         let buyer = crate::realms::level(&content, far_realm, rosters.get(route.to).ok());
         // What the far end holds of a good, as home knows it (`atlas.rs`): a home with a roster reads its fresh
@@ -159,10 +162,13 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
         for &g in &order {
             let full = stacks >= slots;
             let planned = plan.cargo[g];
+            // A trade it has switched on takes it, and its people don't use it: its par is the warehouse's for a
+            // wanted good (`Warehouse.par(to, item, true)`), a stack at least (`wantsAt`, `pickCargo`).
+            let locker_par = crate::lockers::wanted_par(&content, far_trades, far_lockers, g);
             let (spare, room, par, want) = match content.goods[g].comfort.filter(|_| far_realm.is_none()) {
                 Some(_) => continue, // (the comforts went first)
                 None if far_trades.uses[g] > 0.0 || needs_input(g) || far_realm.is_some_and(|r| r.wants.contains(&g))
-                    || orders.wanted_of(route.to_id, g) > 0.0 => {
+                    || locker_par.is_some() || orders.wanted_of(route.to_id, g) > 0.0 => {
                     // A good the far end wants for its own reasons has its usual shelf, whatever it has ordered. One
                     // wanted only because a player's shop there ordered it has the room `Warehouse.par(to, item, true)`
                     // gives it (a stack at least), less what's held: an order only adds the good to the wanted set
@@ -170,6 +176,8 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
                     let usual = far_trades.uses[g] > 0.0 || needs_input(g) || far_realm.is_some_and(|r| r.wants.contains(&g));
                     let (want, par) = if usual {
                         (Want::of(far_trades, g), shelf(&content, far_trades, g))
+                    } else if let Some(par) = locker_par {
+                        (Want::Locker, par)
                     } else {
                         (Want::Ordered, crate::bargain::par(&content, 0.0, true))
                     };
@@ -261,20 +269,21 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         let (_, route, mut state) = routes.get_mut(entity).unwrap();
         let route = *route;
         let Some(mut plan) = state.plan.take() else { continue };
-        let mut roster = rosters.get_mut(route.from).ok();
         // (A realm's wagons are never crewed from a roster, whoever stands in it: `realms.rs`.)
         let foreign = places.get(route.from).is_ok_and(|(_, realm)| realm.is_some());
-        let rostered = !foreign && roster.as_deref().is_some_and(|r| crewed(Some(r)));
+        let rostered = !foreign && rosters.get(route.from).ok().is_some_and(|r| crewed(Some(r)));
+        // The stacks of what the far end wants that home holds now (`wantedStacks`), for the squad's packs and porters.
+        let stacks_wanted = match (rostered, towns.get(route.from), towns.get(route.to)) {
+            (true, Ok((home, ..)), Ok((_, _, far, ..))) => crate::squad::wanted_stacks(&content, &home.0, far,
+                lockers.get(route.to).ok().zip(rosters.get(route.to).ok())),
+            _ => 0,
+        };
+        let mut roster = rosters.get_mut(route.from).ok();
         // A town with a roster sends no wagon with no Merchant at its desk (`Caravans.dispatch` 210).
         if rostered && roster.as_ref().is_some_and(|r| r.merchant.is_none()) {
             state.stayed = Some(Stay::NoMerchant);
             continue;
         }
-        // The stacks of what the far end wants that home holds now (`wantedStacks`), for the squad's packs and porters.
-        let stacks_wanted = match (rostered, towns.get(route.from), towns.get(route.to)) {
-            (true, Ok((home, ..)), Ok((_, _, far, ..))) => crate::squad::wanted_stacks(&content, &home.0, far),
-            _ => 0,
-        };
         // A realm's wagon is its own people's: no squad, two mouths' road food, no team, never home's poverty counted.
         // An off-map market that sells no food feeds no one (`OffMap.sells`): its wagons pack the road home's food.
         let far_sells = places.get(route.to).map_or(true, |(off, _)| off.map_or(true, |o| o.sells_food));
