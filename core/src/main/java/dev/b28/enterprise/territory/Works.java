@@ -527,6 +527,16 @@ public final class Works extends SavedData {
      * something built, or the air above isn't clear, it leaves a gap: villagers' paths become gates.
      */
     static void raise(ServerLevel level, Wall wall, List<BlockPos> stretch) {
+        int raised = raiseColumns(level, stretch);
+        Enterprise.LOGGER.debug("Raised {} of {} columns of wall for the settlement at {}", raised, stretch.size(),
+                wall.owner.pos().toShortString());
+    }
+
+    /**
+     * Raises a stretch of a wall's columns as {@link #raise} does (the view of a wall whatever keeps its rules: the core
+     * in core mode). Returns the columns raised; the rest are gaps.
+     */
+    public static int raiseColumns(ServerLevel level, List<BlockPos> stretch) {
         int raised = 0;
         for (BlockPos column : stretch) {
             int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, column.getX(), column.getZ()) - 1;
@@ -558,13 +568,21 @@ public final class Works extends SavedData {
             }
             raised++;
         }
-        Enterprise.LOGGER.debug("Raised {} of {} columns of wall for the settlement at {}", raised, stretch.size(),
-                wall.owner.pos().toShortString());
+        return raised;
     }
 
     /** Puts the deck on every wet column (land is left as it is): deck at the water's surface, railings either side. */
     static void lay(ServerLevel level, Bridge bridge, List<long[]> columns) {
-        var biome = level.getBiome(BlockPos.containing(bridge.hex.centerX(), level.getSeaLevel(), bridge.hex.centerZ()));
+        int laid = layDeck(level, bridge.hex, columns);
+        Enterprise.LOGGER.debug("Laid the bridge on {}: {} wet columns of {}", bridge.hex, laid, columns.size());
+    }
+
+    /**
+     * Lays a bridge's deck on {@code hex} as {@link #lay} does (the view of a bridge whatever keeps its rules: the core
+     * in core mode): every wet column of {@code columns} ({@link #deck}). Returns the columns laid.
+     */
+    public static int layDeck(ServerLevel level, Hex hex, List<long[]> columns) {
+        var biome = level.getBiome(BlockPos.containing(hex.centerX(), level.getSeaLevel(), hex.centerZ()));
         Block deck = Blocks.STONE_BRICKS;
         Block rail = Blocks.STONE_BRICK_WALL;
         if (biome.is(BiomeTags.IS_FOREST) || biome.is(BiomeTags.IS_TAIGA) || biome.is(BiomeTags.IS_JUNGLE)) {
@@ -589,7 +607,22 @@ public final class Works extends SavedData {
             }
             laid++;
         }
-        Enterprise.LOGGER.debug("Laid the bridge on {}: {} wet columns of {}", bridge.hex, laid, columns.size());
+        return laid;
+    }
+
+    /**
+     * Whether every one of {@code chunks} is loaded, so a work can be laid there now; those that aren't are asked to
+     * load (a ticket, as the bridges, buildings and walls here wait for), so the next try finds them.
+     */
+    public static boolean loadedFor(ServerLevel level, java.util.Collection<ChunkPos> chunks) {
+        boolean loaded = true;
+        for (ChunkPos chunk : chunks) {
+            if (!level.hasChunk(chunk.x, chunk.z)) {
+                level.getChunkSource().addRegionTicket(LAYING, chunk, 0, chunk);
+                loaded = false;
+            }
+        }
+        return loaded;
     }
 
     /**

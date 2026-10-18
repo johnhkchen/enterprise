@@ -1,0 +1,794 @@
+{
+  "name": "land",
+  "about": "The host's land into the core. A hex's ground as the host surveyed it is the map's         (asked back as Ground). A town's fields are the crops the host counted in the hexes it holds, chunk by chunk, set         on its farm at each Survey (which sets the farm up). Its level-3 Farmer has hands to spare, so the town plants a         field of carrots: at the end of every look that surveys the town it's asked of the host (Build) until the host         lays it, counts its chunk and says so (Built); its plots are counted once.",
+  "steps": [
+    {
+      "note": "a society from a pack with carrots",
+      "request": {
+        "abi": 1,
+        "schema": 257864190372853313,
+        "command": {
+          "Create": {
+            "pack": {
+              "day_ticks": 24000,
+              "goods": [
+                {
+                  "name": "minecraft:wheat",
+                  "worth": 0.05,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [
+                    "Crop"
+                  ],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:bread",
+                  "worth": 0.2,
+                  "stack": 64,
+                  "food": 5.0,
+                  "saturation": 6.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:book",
+                  "worth": 0.5,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": "reading",
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:cooked_beef",
+                  "worth": 0.3,
+                  "stack": 64,
+                  "food": 8.0,
+                  "saturation": 12.8,
+                  "comfort": null,
+                  "flags": [
+                    "Meat"
+                  ],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:carrot",
+                  "worth": 0.045454545454545456,
+                  "stack": 64,
+                  "food": 3.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [
+                    "Crop"
+                  ],
+                  "weight": 1.0
+                }
+              ],
+              "comforts": [
+                "treats",
+                "reading",
+                "clothing",
+                "furnishings",
+                "leisure"
+              ],
+              "trades": [
+                "merchant",
+                "cartographer",
+                "librarian",
+                "shepherd",
+                "leatherworker",
+                "fisherman",
+                "cleric",
+                "farmer",
+                "toolsmith",
+                "armorer",
+                "weaponsmith",
+                "mason",
+                "fletcher",
+                "butcher",
+                "none",
+                "nitwit"
+              ],
+              "recipes": [],
+              "animals": [],
+              "dials": []
+            },
+            "seed": 7
+          }
+        }
+      },
+      "request_postcard": "01c1ecdedbd6c387ca0300c0bb01050f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f106d696e6563726166743a636172726f7446175d74d145a73f4000000000000008400000000000000000000100000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e697477697400000007",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "a town at its desk (in hex 0, 0), money paid in, a level-3 Farmer, its ground surveyed: a lake to the east",
+      "request": {
+        "abi": 1,
+        "schema": 257864190372853313,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "AddTown": {
+                  "name": "Ashford",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 8,
+                    "y": -60,
+                    "z": 8
+                  }
+                }
+              },
+              {
+                "Pay": {
+                  "town": 0,
+                  "money": 200000
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 0,
+                  "trade": "minecraft:farmer",
+                  "level": 3,
+                  "tag": "villager-f"
+                }
+              },
+              {
+                "Ground": {
+                  "hex": {
+                    "q": 0,
+                    "r": 0
+                  },
+                  "water": 0.0,
+                  "relief": 2.0,
+                  "land": "Plains"
+                }
+              },
+              {
+                "Ground": {
+                  "hex": {
+                    "q": 1,
+                    "r": 0
+                  },
+                  "water": 0.875,
+                  "relief": 1.0,
+                  "land": "Water"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c1ecdedbd6c387ca0303050707417368666f726400136d696e6563726166743a6f766572776f726c64107710020080b5180f00106d696e6563726166743a6661726d6572030a76696c6c616765722d661600000000000000000000000000000000004000160200000000000000ec3f000000000000f03f06",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "the ground of its hex, the lake's, and one never surveyed",
+      "request": {
+        "abi": 1,
+        "schema": 257864190372853313,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Ground": {
+                  "hexes": [
+                    {
+                      "q": 0,
+                      "r": 0
+                    },
+                    {
+                      "q": 1,
+                      "r": 0
+                    },
+                    {
+                      "q": 0,
+                      "r": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c1ecdedbd6c387ca0304010903000002000002",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Ground": {
+                "ground": [
+                  {
+                    "hex": {
+                      "q": 0,
+                      "r": 0
+                    },
+                    "water": 0.0,
+                    "relief": 2.0,
+                    "land": "Plains",
+                    "bridged": false
+                  },
+                  {
+                    "hex": {
+                      "q": 1,
+                      "r": 0
+                    },
+                    "water": 0.875,
+                    "relief": 1.0,
+                    "land": "Water",
+                    "bridged": false
+                  },
+                  {
+                    "hex": {
+                      "q": 0,
+                      "r": 1
+                    },
+                    "water": 0.0,
+                    "relief": 0.0,
+                    "land": "Plains",
+                    "bridged": false
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "000001090300000000000000000000000000000000004000000200000000000000ec3f000000000000f03f06000002000000000000000000000000000000000000"
+    },
+    {
+      "note": "its first survey: 20 wheat plots counted in one chunk of its hex, 500 in a hex nobody holds",
+      "request": {
+        "abi": 1,
+        "schema": 257864190372853313,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Crops": {
+                  "hex": {
+                    "q": 0,
+                    "r": 0
+                  },
+                  "chunk_x": 0,
+                  "chunk_z": 0,
+                  "counts": [
+                    {
+                      "good": 0,
+                      "count": 20.0
+                    }
+                  ]
+                }
+              },
+              {
+                "Crops": {
+                  "hex": {
+                    "q": 2,
+                    "r": 2
+                  },
+                  "chunk_x": 12,
+                  "chunk_z": 12,
+                  "counts": [
+                    {
+                      "good": 0,
+                      "count": 500.0
+                    }
+                  ]
+                }
+              },
+              {
+                "Survey": {
+                  "town": 0,
+                  "bell_x": 8,
+                  "bell_z": 4
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c1ecdedbd6c387ca030303170000000001000000000000003440170404181801000000000000407f4018001008",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "its land: the 20 wheat plots its fields",
+      "request": {
+        "abi": 1,
+        "schema": 257864190372853313,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Land": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c1ecdedbd6c387ca0304010800",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Land": {
+                "town": 0,
+                "hexes": [],
+                "culture": 0.0,
+                "next_hex": 5.0,
+                "plots": [
+                  {
+                    "good": 0,
+                    "count": 20.0
+                  }
+                ],
+                "works": []
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "000001080000000000000000000000000000000014400100000000000000344000"
+    },
+    {
+      "note": "day 1: a look that surveys the town",
+      "request": {
+        "abi": 1,
+        "schema": 257864190372853313,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Advance": {
+                  "to": 24000
+                }
+              },
+              {
+                "Survey": {
+                  "town": 0,
+                  "bell_x": 8,
+                  "bell_z": 4
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c1ecdedbd6c387ca03030200c0bb0118001008",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "Build": {
+                "town": 0,
+                "work": {
+                  "Field": {
+                    "crop": 4
+                  }
+                },
+                "share": 1.0
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "00010f000304000000000000f03f00"
+    },
+    {
+      "note": "the field of carrots is the farm's before the host lays it",
+      "request": {
+        "abi": 1,
+        "schema": 257864190372853313,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Land": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c1ecdedbd6c387ca0304010800",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Land": {
+                "town": 0,
+                "hexes": [
+                  {
+                    "q": 0,
+                    "r": 0
+                  }
+                ],
+                "culture": 0.99820531568014,
+                "next_hex": 5.0,
+                "plots": [
+                  {
+                    "good": 0,
+                    "count": 20.0
+                  },
+                  {
+                    "good": 4,
+                    "count": 80.0
+                  }
+                ],
+                "works": [
+                  {
+                    "work": {
+                      "Field": {
+                        "crop": 4
+                      }
+                    },
+                    "laid": 1.0,
+                    "done": true,
+                    "shown": 0.0
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "00000108000100000e4431464cf1ef3f000000000000144002000000000000003440040000000000005440010304000000000000f03f010000000000000000"
+    },
+    {
+      "note": "a look whose host couldn't lay it: asked again",
+      "request": {
+        "abi": 1,
+        "schema": 257864190372853313,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Survey": {
+                  "town": 0,
+                  "bell_x": 8,
+                  "bell_z": 4
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c1ecdedbd6c387ca03030118001008",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "Build": {
+                "town": 0,
+                "work": {
+                  "Field": {
+                    "crop": 4
+                  }
+                },
+                "share": 1.0
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "00010f000304000000000000f03f00"
+    },
+    {
+      "note": "the host lays it, counts its chunk and says so: not asked again",
+      "request": {
+        "abi": 1,
+        "schema": 257864190372853313,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Crops": {
+                  "hex": {
+                    "q": 0,
+                    "r": 0
+                  },
+                  "chunk_x": 1,
+                  "chunk_z": 0,
+                  "counts": [
+                    {
+                      "good": 4,
+                      "count": 80.0
+                    }
+                  ]
+                }
+              },
+              {
+                "Built": {
+                  "town": 0,
+                  "work": {
+                    "Field": {
+                      "crop": 4
+                    }
+                  },
+                  "share": 1.0
+                }
+              },
+              {
+                "Survey": {
+                  "town": 0,
+                  "bell_x": 8,
+                  "bell_z": 4
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c1ecdedbd6c387ca03030317000002000104000000000000544019000304000000000000f03f18001008",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "its land: 20 wheat and 80 carrot plots, counted once",
+      "request": {
+        "abi": 1,
+        "schema": 257864190372853313,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Land": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c1ecdedbd6c387ca0304010800",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Land": {
+                "town": 0,
+                "hexes": [
+                  {
+                    "q": 0,
+                    "r": 0
+                  }
+                ],
+                "culture": 0.99820531568014,
+                "next_hex": 5.0,
+                "plots": [
+                  {
+                    "good": 0,
+                    "count": 20.0
+                  },
+                  {
+                    "good": 4,
+                    "count": 80.0
+                  }
+                ],
+                "works": []
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "00000108000100000e4431464cf1ef3f00000000000014400200000000000000344004000000000000544000"
+    },
+    {
+      "note": "ground that isn't a number",
+      "request": {
+        "abi": 1,
+        "schema": 257864190372853313,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Ground": {
+                  "hex": {
+                    "q": 0,
+                    "r": 0
+                  },
+                  "water": -0.5,
+                  "relief": 0.0,
+                  "land": "Plains"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c1ecdedbd6c387ca030301160000000000000000e0bf000000000000000000",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "a share under water of -0.5"
+            }
+          }
+        }
+      },
+      "response_postcard": "0207001b6120736861726520756e646572207761746572206f66202d302e35"
+    },
+    {
+      "note": "a hall the core has no name for",
+      "request": {
+        "abi": 1,
+        "schema": 257864190372853313,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Built": {
+                  "town": 0,
+                  "work": {
+                    "Hall": {
+                      "kind": "palace"
+                    }
+                  },
+                  "share": 1.0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c1ecdedbd6c387ca0303011900020670616c616365000000000000f03f",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "no hall called palace"
+            }
+          }
+        }
+      },
+      "response_postcard": "020700156e6f2068616c6c2063616c6c65642070616c616365"
+    },
+    {
+      "note": "the land of a town that isn't there",
+      "request": {
+        "abi": 1,
+        "schema": 257864190372853313,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Land": {
+                  "town": 3
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c1ecdedbd6c387ca0304010803",
+      "response": {
+        "Refused": {
+          "why": {
+            "Query": {
+              "at": 0,
+              "why": "no town 3"
+            }
+          }
+        }
+      },
+      "response_postcard": "020800096e6f20746f776e2033"
+    },
+    {
+      "note": "saved",
+      "request": {
+        "abi": 1,
+        "schema": 257864190372853313,
+        "command": "Save"
+      },
+      "request_postcard": "01c1ecdedbd6c387ca0302",
+      "saved": {
+        "format": 1,
+        "schema": 257864190372853313,
+        "blob_len": 5057,
+        "blob_fnv": "92b4d7215ebdd926"
+      }
+    },
+    {
+      "note": "loaded",
+      "load": "saved",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "its land as saved",
+      "request": {
+        "abi": 1,
+        "schema": 257864190372853313,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Land": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c1ecdedbd6c387ca0304010800",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Land": {
+                "town": 0,
+                "hexes": [
+                  {
+                    "q": 0,
+                    "r": 0
+                  }
+                ],
+                "culture": 0.99820531568014,
+                "next_hex": 5.0,
+                "plots": [
+                  {
+                    "good": 0,
+                    "count": 20.0
+                  },
+                  {
+                    "good": 4,
+                    "count": 80.0
+                  }
+                ],
+                "works": []
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "00000108000100000e4431464cf1ef3f00000000000014400200000000000000344004000000000000544000"
+    }
+  ]
+}

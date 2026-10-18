@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{GoodNo, HandNo, PackageLine, Place, Point, RouteNo, TownNo};
+use super::{GoodNo, HandNo, PackageLine, Place, Point, RouteNo, TownNo, Work};
 use crate::fixed::Fixed;
 
 /// What happened, for the host to show.
@@ -47,4 +47,9 @@ pub enum Output {
     /// wagon's takings, wages paid, surplus emeralds sold to the mint for coin). The core takes the till to hold it from
     /// now on; what the host can't do it sends back as `CashUnmoved`.
     Cash { point: Point, emeralds: i64, coins: i64, bank: i64 },
+    /// A town's work for the host to lay in its world, up to `share` of it (0 to 1): a bridge or a hall the masons
+    /// finished, a wall a quarter at a time as they lay it, a field the town planted. Given at the end of a look that
+    /// surveyed the town, until the host says it's laid (`Built`), so a town whose ground wasn't loaded is shown its works
+    /// when it is. Where it goes (a hall's site, a field's) is the host's to find.
+    Build { town: TownNo, work: Work, share: f64 },
 }

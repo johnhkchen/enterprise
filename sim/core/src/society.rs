@@ -474,8 +474,10 @@ impl Society {
             Input::Advance { to } => {
                 // What the rules do to hands comes out for the host's villagers (`census.rs`).
                 let before = self.hands_now();
+                let plots = self.plots_now(); // the fields the rules plant, for the host to lay (`land.rs`)
                 let mut out = self.advance(to);
                 out.extend(self.hand_outputs(&before));
+                self.note_fields(&plots);
                 out
             }
             Input::Deliver { town, good, count } => {
@@ -512,6 +514,10 @@ impl Society {
                 Vec::new()
             }
             Input::Census { .. } | Input::TagHand { .. } => self.apply_census(input).unwrap_or_default(),
+            Input::Ground { .. } | Input::Crops { .. } | Input::Survey { .. } | Input::Built { .. } => {
+                self.apply_land(input);
+                Vec::new()
+            }
             Input::SetDial { ref name, value } => {
                 // (checked before the look applies: a name or value that wouldn't do is refused there)
                 let _ = match value {

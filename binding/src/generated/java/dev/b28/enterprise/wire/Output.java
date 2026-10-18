@@ -22,7 +22,8 @@ public sealed interface Output
                 Output.HandGone,
                 Output.HandLevel,
                 Output.Moved,
-                Output.Cash {
+                Output.Cash,
+                Output.Build {
     void encode(PostcardOut out);
 
     static Output decode(PostcardIn in) {
@@ -43,6 +44,7 @@ public sealed interface Output
             case 12 -> new HandLevel(in.u32(), in.string(), in.string(), in.u8(), in.u32());
             case 13 -> new Moved(Point.decode(in), in.u32(), in.i64());
             case 14 -> new Cash(Point.decode(in), in.i64(), in.i64(), in.i64());
+            case 15 -> new Build(in.u32(), Work.decode(in), in.f64());
             default -> throw in.unknownVariant("Output", at);
         };
     }
@@ -287,6 +289,26 @@ public sealed interface Output
             out.i64(this.emeralds);
             out.i64(this.coins);
             out.i64(this.bank);
+        }
+    }
+
+    /**
+     * A town's work for the host to lay in its world, up to {@code share} of it (0 to 1): a bridge or a hall the masons
+     * finished, a wall a quarter at a time as they lay it, a field the town planted. Given at the end of a look that
+     * surveyed the town, until the host says it's laid ({@code Built}), so a town whose ground wasn't loaded is shown its works
+     * when it is. Where it goes (a hall's site, a field's) is the host's to find.
+     */
+    record Build(long town, Work work, double share) implements Output {
+        public Build {
+            Objects.requireNonNull(work, "work");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(15);
+            out.u32(this.town);
+            this.work.encode(out);
+            out.f64(this.share);
         }
     }
 }

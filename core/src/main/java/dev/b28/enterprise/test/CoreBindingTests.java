@@ -6,6 +6,7 @@ import dev.b28.enterprise.binding.ModPack;
 import dev.b28.enterprise.binding.Society;
 import dev.b28.enterprise.binding.adapters.DialAdapter;
 import dev.b28.enterprise.binding.adapters.HandsAdapter;
+import dev.b28.enterprise.binding.adapters.LandAdapter;
 import dev.b28.enterprise.binding.adapters.PeopleAdapter;
 import dev.b28.enterprise.binding.adapters.PointsAdapter;
 import dev.b28.enterprise.core.SaveStore;
@@ -1231,6 +1232,165 @@ public final class CoreBindingTests {
             delete(dir);
         }
         helper.succeed();
+    }
+
+    /**
+     * A hex's ground is the survey's in the core (B4.7): a far hex flooded and cragged in a survey of its own is sent as
+     * the adapter reads it (its share under water, its relief, its biome's land) and the core answers the same, and the
+     * hex is no way through for a caravan (its relief past a cliff). The arena's own hex, its chunk surveyed again, goes
+     * with the next look, and the core has the world's survey of it.
+     */
+    @GameTest(template = "floor")
+    public static void aHexsGroundIsTheSurveysInTheCore(GameTestHelper helper) {
+        var level = helper.getLevel();
+        helper.setBlock(DESK, Merchant.DESK.get());
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            host.stock().found(level, helper.absolutePos(DESK), "Testford");
+            dev.b28.enterprise.territory.Terrain terrain = new dev.b28.enterprise.territory.Terrain();
+            dev.b28.enterprise.hex.Hex far = new dev.b28.enterprise.hex.Hex(5100, 5100);
+            for (long chunk : dev.b28.enterprise.territory.Terrain.chunksOf(far)) {
+                terrain.record(level, chunk, dev.b28.enterprise.territory.Terrain.SAMPLES * 3 / 4);
+            }
+            var chunks = dev.b28.enterprise.territory.Terrain.chunksOf(far);
+            terrain.recordHeights(level, chunks.get(0), new int[] {-60, -60});
+            terrain.recordHeights(level, chunks.get(1), new int[] {-60, -20});
+            Input.Ground sent = LandAdapter.ground(terrain, level, far);
+            helper.assertTrue(sent.water() == 0.75 && sent.relief() == 40, "the survey reads " + sent);
+            host.apply(List.of(sent));
+            var core = host.land().groundOf(List.of(sent.hex())).get(0);
+            helper.assertTrue(core.water() == sent.water() && core.relief() == sent.relief() && core.land() == sent.land()
+                    && !core.bridged(), "the core has " + core + " for the survey's " + sent);
+
+            dev.b28.enterprise.hex.Hex home = dev.b28.enterprise.hex.Hex.at(helper.absolutePos(DESK));
+            host.land().surveyed(level, new net.minecraft.world.level.ChunkPos(helper.absolutePos(DESK)));
+            host.look(level.getServer(), level.getGameTime());
+            host.settle();
+            Input.Ground world = LandAdapter.ground(level, home);
+            var had = host.land().groundOf(List.of(world.hex())).get(0);
+            helper.assertTrue(had.water() == world.water() && had.relief() == world.relief() && had.land() == world.land(),
+                    "after a look the core has " + had + " for the arena's hex, the world's survey " + world);
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A town's fields are the crops counted in its land, in the core (B4.7; TerritoryTests.farmersProduceWhatGrowsInTheirHex
+     * drives the Java rule): up to ten wheat plots by the bell in its home hex, counted by a look's survey of the town
+     * (core mode's), are its farm's plots before it holds a hex, and once it has claimed its home hex they're still its.
+     * Neighbouring tests' crops in the hex count too, so at least those planted.
+     */
+    @GameTest(template = "floor")
+    public static void aTownsFieldsAreTheCropsCountedInItsLand(GameTestHelper helper) {
+        var level = helper.getLevel();
+        BlockPos desk = settlement(helper, 0);
+        // Wheat in the arena where it lies in the town's home hex (the one its desk's block is in: the
+        // arena may straddle a hex's edge, and a block's crops are its own hex's).
+        dev.b28.enterprise.hex.Hex home = dev.b28.enterprise.hex.Hex.at((double) desk.getX(), (double) desk.getZ());
+        int planted = 0;
+        List<BlockPos> taken = List.of(BELL, TOWN_DESK, TOWN_DESK.east(), new BlockPos(2, 2, 4));
+        for (int z = 0; z < 7 && planted < 10; z++) {
+            for (int x = 0; x < 7 && planted < 10; x++) {
+                BlockPos at = helper.absolutePos(new BlockPos(x, 2, z));
+                if (!taken.contains(new BlockPos(x, 2, z))
+                        && dev.b28.enterprise.hex.Hex.at(at.getX() + 0.5, at.getZ() + 0.5).equals(home)) {
+                    helper.setBlock(new BlockPos(x, 1, z), Blocks.FARMLAND);
+                    helper.setBlock(new BlockPos(x, 2, z), Blocks.WHEAT);
+                    planted++;
+                }
+            }
+        }
+        helper.assertTrue(planted >= 3, "only " + planted + " of the arena's blocks lie in the desk's hex");
+        Villager farmer = villager(helper, VillagerProfession.FARMER, 1, new BlockPos(2, 2, 4));
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, desk, "Testford");
+            host.hands().join(town, farmer);
+            LandAdapter land = host.land();
+            long a = System.nanoTime();
+            List<Input> first = land.happenings(level.getServer(), true);
+            long firstNs = System.nanoTime() - a;
+            Response r = host.apply(first);
+            helper.assertTrue(r instanceof Response.Done, "the survey was refused: " + r);
+            measureALandLook(host, level, firstNs, first);
+            var before = land.land(town);
+            double wheat = before.plots().getOrDefault("minecraft:wheat", 0.0);
+            helper.assertTrue(before.hexes().isEmpty() && wheat >= planted,
+                    "before its first count the town's fields are its home hex's: " + before);
+            advance(host, level.getGameTime() + DAY);
+            land.surveyNow(level, town, desk);
+            var after = land.land(town);
+            helper.assertTrue(after.hexes().size() == 1, "the town holds " + after.hexes() + ", not its home hex");
+            helper.assertTrue(after.plots().getOrDefault("minecraft:wheat", 0.0) >= planted, "its fields are " + after.plots());
+        } finally {
+            delete(dir);
+            farmer.discard();
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A work the core asks for is laid in the world and said to be (B4.7): a watchtower at a site in the arena (a hall's
+     * site is found round the bell in a world; here given), its stone up seven blocks with a ladder inside, and a
+     * {@code Built} for it waiting for the next look. The core takes it as a stale view (the test's town has no tower),
+     * as it would a work it has already been told of.
+     */
+    @GameTest(template = "floor")
+    public static void aWorkTheCoreAsksForIsLaidAndSaidToBeLaid(GameTestHelper helper) {
+        var level = helper.getLevel();
+        helper.setBlock(DESK, Merchant.DESK.get());
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, helper.absolutePos(DESK), "Testford");
+            LandAdapter land = host.land();
+            var tower = new dev.b28.enterprise.wire.Work.Hall("watchtower");
+            BlockPos corner = helper.absolutePos(new BlockPos(0, 1, 0));
+            helper.assertTrue(land.lay(level, town, helper.absolutePos(DESK), tower, 1.0, java.util.Optional.of(corner)),
+                    "the tower wasn't laid");
+            helper.assertBlockPresent(Blocks.STONE_BRICKS, new BlockPos(0, 1, 0));
+            helper.assertBlockPresent(Blocks.STONE_BRICKS, new BlockPos(0, 7, 0));
+            helper.assertBlockPresent(Blocks.LADDER, new BlockPos(1, 3, 1));
+            helper.assertTrue(land.pending().equals(List.of(new Input.Built(town, tower, 1.0))),
+                    "waiting to be said: " + land.pending());
+            helper.assertTrue(!land.lay(level, town, helper.absolutePos(DESK), new dev.b28.enterprise.wire.Work.Hall("palace"),
+                    1.0, java.util.Optional.of(corner)), "a hall the mod hasn't was laid");
+            land.sayNow();
+            helper.assertTrue(land.pending().isEmpty(), "still waiting: " + land.pending());
+            helper.assertTrue(land.land(town).works().isEmpty(), "the core took a tower it never asked for: " + land.land(town));
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * What a look's land costs the server's tick, logged: the first look of a run (the ground of up to 64 hexes near a
+     * town first seen, its crops counted in its hexes, its survey), then a look with only the survey (the crops are
+     * counted every 20 looks), and one town's crops counted on their own.
+     */
+    private static void measureALandLook(CoreHost host, net.minecraft.server.level.ServerLevel level, long firstNs,
+            List<Input> first) {
+        int n = 50;
+        long a = System.nanoTime();
+        for (int i = 0; i < n; i++) {
+            host.land().happenings(level.getServer(), true);
+        }
+        long survey = (System.nanoTime() - a) / n;
+        var desk = host.points().of(dev.b28.enterprise.binding.adapters.PointsAdapter.Kind.DESK).entrySet().iterator().next();
+        BlockPos bell = PeopleAdapter.centre(level, desk.getKey().pos());
+        a = System.nanoTime();
+        int counted = 0;
+        for (int i = 0; i < n; i++) {
+            counted = host.land().crops(level, desk.getValue(), desk.getKey().pos(), bell).size();
+        }
+        long crops = (System.nanoTime() - a) / n;
+        Enterprise.LOGGER.info("land look: the first {} ms ({} grounds, {} chunks of crops); a look after it {} ms (fifty averaged, the crops counted at every twentieth); one hex's crops"
+                + " ({} chunks) {} ms", "%.3f".formatted(firstNs / 1e6),
+                first.stream().filter(i -> i instanceof Input.Ground).count(),
+                first.stream().filter(i -> i instanceof Input.Crops).count(), "%.3f".formatted(survey / 1e6), counted,
+                "%.3f".formatted(crops / 1e6));
     }
 
     /** A villager of {@code trade} at {@code level}, kept in it without a workstation (one XP). */

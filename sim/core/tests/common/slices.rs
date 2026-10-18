@@ -55,4 +55,5 @@ slices! {
     itinerary_drops,
     chests,
     till,
+    land,
 }

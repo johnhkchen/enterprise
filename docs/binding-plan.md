@@ -545,6 +545,33 @@ told back unmoved), `StockChests` (`coinSpurs`, `coinRoom`, `mint`), `CoreHost` 
 unmoved cash told before the next count, a question or a save), `Outcomes` routes `Cash`, `/enterprise core cash <desk>`
 and `/enterprise core mint`. `MoneyChanger.bankAt` (a Blaze Banker's account, or an off-map market's) stays Java as the
 view onto the account. Six game tests.
+**Built (B4.7 `land-adapter`).** In the core (`land.rs`, `LandBook` in `saved!`): the host surveys its land and lays what
+the towns build; whose land is whose, what grows and what's built are the core's. `Input::Ground { hex, water, relief,
+land }` (a hex's survey into the `Map`: caravans go round water and cliffs by it, hands gather what its `LandKind`
+gives, bridges go where it's wet; a finished bridge stays), `Input::Crops { hex, chunk_x, chunk_z, counts }` (the crop
+plots counted in one chunk's part of a hex, kept by chunk, so an unloaded chunk keeps its last count, as
+`Territory.cropsIn`), `Input::Survey { town, bell_x, bell_z }` (the bell its land grows from; its farm set to the plots
+counted in the hexes it holds, its home hex before its first count, with the fields it planted that the host hasn't
+laid; the farm set up), and the works shown as outcomes: at the end of each `Apply`, every town surveyed in it is asked
+for what it has to lay, `Output::Build { town, work, share }` (a bridge or a hall once finished, the wall a quarter at a
+time as `Works.onServerTick` raised it, a field as soon as the rules plant it: noted around a wire `Advance` from the
+plots each crop gained), until the host says `Input::Built { town, work, share }`: nothing waits in the host, and a town
+unloaded when its work finished is shown it when its ground loads. `Work` is `Bridge { hex, from, to }`, `Wall`, `Hall {
+kind }`, `Field { crop }`; `Query::Land { town }` (hexes, culture, the next hex's cost, plots, works with laid, done and
+shown) and `Query::Ground { hexes }`. Schema `03941e1d6b77b641` (on `money-adapter`'s), FORMAT 1 (the save grew: dev worlds'
+`enterprise_core.dat` are rebuilt); `just core-fingerprint` unmoved (`5e6b6d51a3b4061e`), the replay digest written
+again for the save's shape and the new random-worlds slice (`land`). In the mod: `adapters/LandAdapter` (ground in both
+modes: a hex whose chunks `Terrain` surveyed again, and at a town's first sight in a run the hexes within 8 of it whose
+ground the core has otherwise, at most 64 a look; in core mode each loaded town surveyed every look, its crops counted
+every 20 looks through `Crops.countChunk`; `Build` laid with the mod's own placement, `Works.layDeck`, `raiseColumns`,
+`Buildings.site`/`build`, `Growth.farmSite`/`Fields.plant`, chunks asked to load first, then `Built` with the next look,
+or before a save), `Works`' placement halves made public (`layDeck`, `raiseColumns`, `loadedFor`), `/enterprise core
+land <desk>`; three game tests. Measured in the game-test server: a town's first look of a run 1.1 to 4.1 ms of the tick
+(64 hexes' ground read, 35 to 42 chunks of crops counted), a look after it 0.14 to 0.15 ms (fifty averaged, the crops
+counted at every twentieth), one hex's crops 0.4 ms. A look the core refuses or traps on has its `Built`s said again
+with the next (never laid twice). Left: the wooden pier (`Territory.buildDock`), pastures' fences and mine heads have no core rule or output;
+`dock` and `pastures` and the free/confined split aren't surveyed; settlers' founded towns get no desk; town names
+still drift from Java's `Names`; the Java `Territory` family stays (Java mode) until `delete-java-rules`.
 
 ### 3.6 Wave B5: closing
 

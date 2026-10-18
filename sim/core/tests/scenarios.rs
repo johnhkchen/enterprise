@@ -581,7 +581,7 @@ fn hands() -> Scenario {
     s.apply("a Merchant takes the desk; a farmer, a librarian and a villager with no trade come to live at Ashford, and a \
         mason at Brent (the trades by the host's names, with or without its namespace)", vec![
         Input::AddHand { town: 0, trade: "enterprise:merchant".into(), level: 1, tag: "villager-m".into() },
-        Input::AddHand { town: 0, trade: "minecraft:farmer".into(), level: 2, tag: "villager-f".into() },
+        Input::AddHand { town: 0, trade: "minecraft:farmer".into(), level: 3, tag: "villager-f".into() },
         Input::AddHand { town: 0, trade: "librarian".into(), level: 1, tag: "villager-l".into() },
         Input::AddHand { town: 1, trade: "mason".into(), level: 3, tag: "villager-s".into() },
         Input::AddHand { town: 0, trade: "none".into(), level: 1, tag: String::new() },
@@ -718,6 +718,79 @@ fn people() -> Scenario {
     s.scenario
 }
 
+fn land_pack() -> ContentPack {
+    let mut p = pack();
+    let mut carrot = PackGood::new("minecraft:carrot", 1.0 / 22.0, 64);
+    carrot.food = 3.0;
+    carrot.flags = vec![GoodFlag::Crop];
+    p.goods.push(carrot);
+    p
+}
+
+const CARROT: GoodNo = 4;
+
+fn hex_at(q: i32, r: i32) -> HexAt {
+    HexAt { q, r }
+}
+
+/// The host's land into the core: a surveyed hex's ground; a town's fields as the crops counted in its hexes; a field
+/// its rules plant asked of the host (Build) at each look that surveys it until the host says it's laid (Built).
+fn land() -> Scenario {
+    let mut s = Script::new("land", "The host's land into the core. A hex's ground as the host surveyed it is the map's         (asked back as Ground). A town's fields are the crops the host counted in the hexes it holds, chunk by chunk, set         on its farm at each Survey (which sets the farm up). Its level-3 Farmer has hands to spare, so the town plants a         field of carrots: at the end of every look that surveys the town it's asked of the host (Build) until the host         lays it, counts its chunk and says so (Built); its plots are counted once.");
+    s.say("a society from a pack with carrots", Command::Create { pack: land_pack(), seed: 7 });
+    s.apply("a town at its desk (in hex 0, 0), money paid in, a level-3 Farmer, its ground surveyed: a lake to the east", vec![
+        Input::AddTown { name: "Ashford".into(), desk: at(PointKind::Desk, 8, 8) },
+        Input::Pay { town: 0, money: Fixed::emeralds(200) },
+        Input::AddHand { town: 0, trade: "minecraft:farmer".into(), level: 3, tag: "villager-f".into() },
+        Input::Ground { hex: hex_at(0, 0), water: 0.0, relief: 2.0, land: LandKind::Plains },
+        Input::Ground { hex: hex_at(1, 0), water: 0.875, relief: 1.0, land: LandKind::Water },
+    ]);
+    s.ask("the ground of its hex, the lake's, and one never surveyed", vec![
+        Query::Ground { hexes: vec![hex_at(0, 0), hex_at(1, 0), hex_at(0, 1)] },
+    ]);
+    s.apply("its first survey: 20 wheat plots counted in one chunk of its hex, 500 in a hex nobody holds", vec![
+        Input::Crops { hex: hex_at(0, 0), chunk_x: 0, chunk_z: 0, counts: counts(&[(WHEAT, 20.0)]) },
+        Input::Crops { hex: hex_at(2, 2), chunk_x: 12, chunk_z: 12, counts: counts(&[(WHEAT, 500.0)]) },
+        Input::Survey { town: 0, bell_x: 8, bell_z: 4 },
+    ]);
+    s.ask("its land: the 20 wheat plots its fields", vec![Query::Land { town: 0 }]);
+    let mut day = 0;
+    let field = loop {
+        day += 1;
+        assert!(day <= 5, "no field planted in five days");
+        let out = s.apply(&format!("day {day}: a look that surveys the town"), vec![
+            Input::Advance { to: day * DAY },
+            Input::Survey { town: 0, bell_x: 8, bell_z: 4 },
+        ]);
+        if let Some(Output::Build { work, .. }) = out.iter().find(|o| matches!(o, Output::Build { .. })) {
+            break work.clone();
+        }
+    };
+    assert_eq!(field, Work::Field { crop: CARROT });
+    s.ask("the field of carrots is the farm's before the host lays it", vec![Query::Land { town: 0 }]);
+    s.apply("a look whose host couldn't lay it: asked again", vec![Input::Survey { town: 0, bell_x: 8, bell_z: 4 }]);
+    s.apply("the host lays it, counts its chunk and says so: not asked again", vec![
+        Input::Crops { hex: hex_at(0, 0), chunk_x: 1, chunk_z: 0, counts: counts(&[(CARROT, 80.0)]) },
+        Input::Built { town: 0, work: field, share: 1.0 },
+        Input::Survey { town: 0, bell_x: 8, bell_z: 4 },
+    ]);
+    s.ask("its land: 20 wheat and 80 carrot plots, counted once", vec![Query::Land { town: 0 }]);
+    let r = s.say("ground that isn't a number", Command::Apply { inputs: vec![
+        Input::Ground { hex: hex_at(0, 0), water: -0.5, relief: 0.0, land: LandKind::Plains },
+    ] });
+    assert!(matches!(s.refused("ground", r), Refusal::Input { at: 0, .. }));
+    let r = s.say("a hall the core has no name for", Command::Apply { inputs: vec![
+        Input::Built { town: 0, work: Work::Hall { kind: "palace".into() }, share: 1.0 },
+    ] });
+    assert!(matches!(s.refused("hall", r), Refusal::Input { at: 0, .. }));
+    let r = s.say("the land of a town that isn't there", Command::Ask { queries: vec![Query::Land { town: 3 }] });
+    assert!(matches!(s.refused("land", r), Refusal::Query { at: 0, .. }));
+    s.save("saved");
+    s.load("loaded");
+    s.ask("its land as saved", vec![Query::Land { town: 0 }]);
+    s.scenario
+}
+
 /// Every way the core refuses, each leaving the society as it was.
 fn refusals() -> Scenario {
     let mut s = Script::new("refusals", "Every refusal, each a message and nothing applied.");
@@ -825,7 +898,7 @@ fn refusals() -> Scenario {
 }
 
 fn scenarios() -> Vec<Scenario> {
-    vec![stocktake(), inputs(), content(), refusals(), hands(), people(), chests(), money()]
+    vec![stocktake(), inputs(), content(), refusals(), hands(), people(), chests(), money(), land()]
 }
 
 fn text(scenario: &Scenario) -> String {
@@ -852,7 +925,7 @@ fn the_scenarios_play_as_their_files_say() {
         return;
     }
     let mut wrong = Vec::new();
-    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people", "chests", "money"] {
+    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people", "chests", "money", "land"] {
         let scenario = read(name);
         assert!(!scenario.steps.is_empty(), "{name}: no steps");
         wrong.extend(play(&scenario));
@@ -910,13 +983,13 @@ fn every_message_appears_in_a_scenario() {
         }
     }
     let set = |names: &[&str]| names.iter().map(|s| s.to_string()).collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost", "Census", "TagHand", "Unmoved", "Cashcount", "CashUnmoved"]));
+    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost", "Census", "TagHand", "Unmoved", "Cashcount", "CashUnmoved", "Ground", "Crops", "Survey", "Built"]));
     assert_eq!(commands, set(&["Apply", "Ask", "Create", "Load", "Save"]));
-    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands", "Chests", "Cash", "Mint"]));
+    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands", "Chests", "Cash", "Mint", "Land", "Ground"]));
     assert_eq!(refusals, set(&["Abi", "Input", "NoSociety", "Pack", "Query", "Save", "SaveFormat", "Schema", "Unreadable"]));
-    // A child born and the chests' moves: the others need a master Merchant (OrderFilled, Signal), a route (the
+    // A child born, the chests' moves and a field to lay: the others need a master Merchant (OrderFilled, Signal), a route (the
     // wagon's three), a pallet (the pallets' three: only a wagon packs one) or a party of settlers or the rules taking a
     // hand (Settled, Departed, HandGone, HandLevel), and no wire input makes any. When one does, a scenario shows each
     // and its name goes here.
-    assert_eq!(outputs, set(&["Born", "Cash", "Moved"]));
+    assert_eq!(outputs, set(&["Born", "Cash", "Moved", "Build"]));
 }

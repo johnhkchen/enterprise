@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{HandNo, Point, TownNo};
+use super::{Count, GroundView, HandNo, HexAt, Point, TownNo, WorkView};
 use crate::fixed::Fixed;
 
 /// A question for the core.
@@ -26,6 +26,10 @@ pub enum Query {
     Cash { point: Point },
     /// The mint: the spurs an emerald fetches now, and what moves it.
     Mint,
+    /// A town's land: the hexes it holds, its culture, its fields' plots and its works.
+    Land { town: TownNo },
+    /// The ground of these hexes as the core has it (a hex never surveyed is dry, flat plains).
+    Ground { hexes: Vec<HexAt> },
 }
 
 /// An answer, in the place of its question.
@@ -54,6 +58,13 @@ pub enum Answer {
     /// The mint: `rate` spurs an emerald now, the selling `pressure` (emeralds recently sold to it, decayed), the coin
     /// `minted` without backing (decayed) and how far the spur is `debased` (1: not at all).
     Mint { rate: f64, pressure: f64, minted: f64, debased: f64 },
+    /// A town's land: the hexes it holds in the order it claimed them (none before its first count), its culture and
+    /// what the next hex costs of it, its fields' plots by crop (what's counted in its hexes and the fields it planted
+    /// that the host hasn't laid yet), and its works in the order started (bridges, its wall, halls, then the fields it
+    /// planted that the host hasn't laid).
+    Land { town: TownNo, hexes: Vec<HexAt>, culture: f64, next_hex: f64, plots: Vec<Count>, works: Vec<WorkView> },
+    /// The hexes' ground, in the order asked.
+    Ground { ground: Vec<GroundView> },
 }
 
 /// One of a town's hands: its id (stable while it lives, wherever it goes: a place in the list isn't), the host's tag

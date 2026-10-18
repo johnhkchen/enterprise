@@ -16,7 +16,9 @@ public sealed interface Answer
                 Answer.Hands,
                 Answer.Chests,
                 Answer.Cash,
-                Answer.Mint {
+                Answer.Mint,
+                Answer.Land,
+                Answer.Ground {
     void encode(PostcardOut out);
 
     static Answer decode(PostcardIn in) {
@@ -30,6 +32,8 @@ public sealed interface Answer
             case 5 -> new Chests(Point.decode(in), in.u32(), in.list(8, PostcardIn::f64), in.u32(), in.list(8, PostcardIn::f64));
             case 6 -> new Cash(Point.decode(in), in.u32(), in.i64(), in.u64(), in.u64(), in.i64(), in.option(PostcardIn::u64), in.i64(), in.u64());
             case 7 -> new Mint(in.f64(), in.f64(), in.f64(), in.f64());
+            case 8 -> new Land(in.u32(), in.list(2, HexAt::decode), in.f64(), in.f64(), in.list(9, Count::decode), in.list(18, WorkView::decode));
+            case 9 -> new Ground(in.list(20, GroundView::decode));
             default -> throw in.unknownVariant("Answer", at);
         };
     }
@@ -190,6 +194,50 @@ public sealed interface Answer
             out.f64(this.pressure);
             out.f64(this.minted);
             out.f64(this.debased);
+        }
+    }
+
+    /**
+     * A town's land: the hexes it holds in the order it claimed them (none before its first count), its culture and
+     * what the next hex costs of it, its fields' plots by crop (what's counted in its hexes and the fields it planted
+     * that the host hasn't laid yet), and its works in the order started (bridges, its wall, halls, then the fields it
+     * planted that the host hasn't laid).
+     */
+    record Land(long town, List<HexAt> hexes, double culture, double nextHex, List<Count> plots, List<WorkView> works) implements Answer {
+        public Land {
+            Objects.requireNonNull(hexes, "hexes");
+            hexes = List.copyOf(hexes);
+            Objects.requireNonNull(plots, "plots");
+            plots = List.copyOf(plots);
+            Objects.requireNonNull(works, "works");
+            works = List.copyOf(works);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(8);
+            out.u32(this.town);
+            out.list(this.hexes, (o1, e1) -> e1.encode(o1));
+            out.f64(this.culture);
+            out.f64(this.nextHex);
+            out.list(this.plots, (o1, e1) -> e1.encode(o1));
+            out.list(this.works, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * The hexes' ground, in the order asked.
+     */
+    record Ground(List<GroundView> ground) implements Answer {
+        public Ground {
+            Objects.requireNonNull(ground, "ground");
+            ground = List.copyOf(ground);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(9);
+            out.list(this.ground, (o1, e1) -> e1.encode(o1));
         }
     }
 }

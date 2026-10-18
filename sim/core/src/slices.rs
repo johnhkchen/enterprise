@@ -57,6 +57,7 @@ crate::saved! {
         sightings: crate::census::Sightings = crate::census::Sightings::default(),
         former_desks: crate::chests::FormerDesks = crate::chests::FormerDesks::default(),
         tills: crate::till::Tills = crate::till::Tills::default(),
+        land_book: crate::land::LandBook = crate::land::LandBook::default(),
     }
     town {
         town: Town,

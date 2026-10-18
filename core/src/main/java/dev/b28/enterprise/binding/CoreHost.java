@@ -2,6 +2,7 @@ package dev.b28.enterprise.binding;
 
 import dev.b28.enterprise.Enterprise;
 import dev.b28.enterprise.binding.adapters.HandsAdapter;
+import dev.b28.enterprise.binding.adapters.LandAdapter;
 import dev.b28.enterprise.binding.adapters.MoneyAdapter;
 import dev.b28.enterprise.binding.adapters.PeopleAdapter;
 import dev.b28.enterprise.binding.adapters.PointsAdapter;
@@ -39,7 +40,7 @@ import net.neoforged.neoforge.event.server.ServerStoppedEvent;
  * ({@link CoreWorker}), saved with the world. The host makes the society from the mod's content pack at a new world
  * ({@link ModPack}, seeded with the world's seed) or loads the world's {@value SaveStore#FILE}, saves it when the world
  * saves, and drops it when the server stops. Its adapters ({@link PointsAdapter}, {@link HandsAdapter}, {@link
- * PeopleAdapter}, {@link StockAdapter}, {@link MoneyAdapter}) turn Minecraft's happenings into the core's inputs and its outputs into things
+ * PeopleAdapter}, {@link StockAdapter}, {@link MoneyAdapter}, {@link LandAdapter}) turn Minecraft's happenings into the core's inputs and its outputs into things
  * in the world; {@link CoreClock} hands them a look at a time. The host keeps no society ids: which block is which town's and which villager
  * is which hand are the core's, read back by the adapters when it starts.
  *
@@ -70,6 +71,7 @@ public final class CoreHost implements AutoCloseable {
     private final PeopleAdapter people;
     private final StockAdapter stock;
     private final MoneyAdapter money;
+    private final LandAdapter land;
     private final Outcomes outcomes;
     private final List<CompletableFuture<Response>> looks = new ArrayList<>();
     private String pausedWhy;
@@ -83,7 +85,8 @@ public final class CoreHost implements AutoCloseable {
         this.people = new PeopleAdapter(this, ownsChests);
         this.stock = new StockAdapter(this, ownsChests);
         this.money = new MoneyAdapter(this, ownsChests);
-        this.outcomes = new Outcomes(people, stock, money);
+        this.land = new LandAdapter(this, ownsChests);
+        this.outcomes = new Outcomes(people, stock, money, land);
         try {
             switch (store.open()) {
                 case SaveStore.Opened.Fresh fresh -> {
@@ -99,6 +102,7 @@ public final class CoreHost implements AutoCloseable {
                 points.reload();
                 hands.reload();
                 stock.reload();
+                land.reload();
             }
         } catch (RuntimeException e) {
             worker.close();
@@ -145,6 +149,9 @@ public final class CoreHost implements AutoCloseable {
         bus.addListener(EventPriority.LOWEST, StockAdapter::onBroken);
         bus.addListener(EventPriority.LOWEST, HandsAdapter::onDeath);
         bus.addListener(StockAdapter::onChunkLoad);
+        // After the Terrain survey of the chunk (heard at the normal priority).
+        bus.addListener(EventPriority.LOWEST, LandAdapter::onChunkLoad);
+        bus.addListener(EventPriority.LOWEST, LandAdapter::onChunkUnload);
     }
 
     private static void onStarted(ServerStartedEvent event) {
@@ -218,6 +225,11 @@ public final class CoreHost implements AutoCloseable {
         return out;
     }
 
+    /** The land adapter: the world's ground into the core's map, its towns surveyed and their works laid. */
+    public LandAdapter land() {
+        return land;
+    }
+
     /** Why the host is paused (the save refused, the core stuck), or null while it runs. */
     public String pausedWhy() {
         return pausedWhy;
@@ -241,11 +253,24 @@ public final class CoreHost implements AutoCloseable {
         List<Input> inputs = pending();
         // A census only in core mode: in Java mode the Java rules' census keeps the people (CensusTaker).
         inputs.addAll(people.happenings(server, Society.isCore()));
+        // The ground in both modes; the towns surveyed (their crops, their bell) only in core mode, where their land is the core's.
+        List<Input> landInputs = land.happenings(server, Society.isCore());
+        List<Input> said = landInputs.stream().filter(i -> i instanceof Input.Built).toList();
+        inputs.addAll(landInputs);
         if (looks.isEmpty()) {
             inputs.addAll(money.withCash(stock.stocktakes(server)));
         }
         inputs.add(new Input.Advance(now));
-        looks.add(worker.submit(Wire.request(new Command.Apply(inputs))));
+        CompletableFuture<Response> sent = worker.submit(Wire.request(new Command.Apply(inputs)));
+        if (!said.isEmpty()) {
+            // Works laid and said in a look the core didn't take are said again with the next, never laid twice.
+            sent = sent.whenComplete((r, e) -> {
+                if (e != null || r instanceof Response.Refused) {
+                    land.unsaid(said);
+                }
+            });
+        }
+        looks.add(sent);
     }
 
     /**
@@ -353,6 +378,7 @@ public final class CoreHost implements AutoCloseable {
         settle();
         flush();
         people.nameNow();
+        land.sayNow(); // what was laid, said before the save: a stop before the next look would have it laid twice
         try {
             return store.save();
         } catch (RuntimeException e) {

@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{GoodNo, HandNo, Point, TownNo};
+use super::{GoodNo, HandNo, HexAt, LandKind, Point, TownNo, Work};
 use crate::fixed::Fixed;
 
 /// A happening the host hands the core.
@@ -96,6 +96,24 @@ pub enum Input {
     /// take (below), and the same for `coins` loose in the chests and the Banker's `bank` spurs. Sent before the desk's
     /// next `Cashcount`. Ignored for a desk that isn't there any more (the host's view was stale).
     CashUnmoved { point: Point, emeralds: i64, coins: i64, bank: i64 },
+    /// A hex's ground as the host surveyed it (`territory/Terrain.java`: its chunks' surface columns under water and
+    /// their heights, a chunk never loaded guessed from its biome): its share under water (0 to 1), its relief in blocks
+    /// (highest surface less lowest) and what its land gives (its biome at its centre). Caravans go round water and
+    /// cliffs by it (`map.rs`), a town's hands gather what its land gives (`kit.rs`) and bridges go where it's wet
+    /// (`works.rs`). A bridge the core finished stays.
+    Ground { hex: HexAt, water: f64, relief: f64, land: LandKind },
+    /// The crop plots the host counted in one chunk's part of a hex (`territory/Crops.java`: crop blocks within 16 of
+    /// the bell's height, by the good working them gives), every crop there (one not listed has none). The core keeps
+    /// each chunk's last count, so a chunk not loaded keeps what it last had; a town's fields are the plots counted in
+    /// the hexes it holds (`land.rs`), set at its next `Survey`.
+    Crops { hex: HexAt, chunk_x: i32, chunk_z: i32, counts: Vec<Count> },
+    /// A town's land as the host found it this look (`land.rs`): its bell's block, where its land grows from and its
+    /// wall rings. Its farm is the plots counted in the hexes it holds from now on, and the works it has to show come
+    /// back as `Build` at the end of the look. Sent for a town whose ground is loaded.
+    Survey { town: TownNo, bell_x: i32, bell_z: i32 },
+    /// The host has laid `share` (0 to 1) of a town's work in its world (a `Build` shown): the core won't ask for that
+    /// much again. Ignored for a work the town hasn't (a stale view).
+    Built { town: TownNo, work: Work, share: f64 },
 }
 
 /// A villager a census saw: the host's tag for it (its UUID), its trade by the host's name (with or without the host's

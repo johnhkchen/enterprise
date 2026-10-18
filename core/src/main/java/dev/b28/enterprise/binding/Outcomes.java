@@ -1,6 +1,7 @@
 package dev.b28.enterprise.binding;
 
 import dev.b28.enterprise.Enterprise;
+import dev.b28.enterprise.binding.adapters.LandAdapter;
 import dev.b28.enterprise.binding.adapters.MoneyAdapter;
 import dev.b28.enterprise.binding.adapters.PeopleAdapter;
 import dev.b28.enterprise.binding.adapters.StockAdapter;
@@ -13,7 +14,8 @@ import dev.b28.enterprise.wire.Output;
  *
  * <p>{@code Moved} goes to {@code adapters/StockAdapter}, which writes it to a desk's or a depot's chests; {@code Cash}
  * to {@code adapters/MoneyAdapter}, which writes it to a desk's chests and Blaze Banker. The people's
- * outputs (a child born, a hand settled, departed or gone, a hand's level) go to {@code adapters/PeopleAdapter}. The
+ * outputs (a child born, a hand settled, departed or gone, a hand's level) go to {@code adapters/PeopleAdapter}, a town's
+ * works to lay ({@code Build}) to {@code adapters/LandAdapter}. The
  * rest are the wagons', the master Merchant's and the pallets', each routed to {@link #unshown} until its adapter lands
  * (the wagons' with {@code wagon-adapter}, the pallets' with {@code pallet-views}: the mod's crates drawn from these,
  * with no pallet rules in Java; the orders' with {@code shop-adapter}).
@@ -22,12 +24,14 @@ final class Outcomes {
     private final PeopleAdapter people;
     private final StockAdapter stock;
     private final MoneyAdapter money;
+    private final LandAdapter land;
     private long unshown;
 
-    Outcomes(PeopleAdapter people, StockAdapter stock, MoneyAdapter money) {
+    Outcomes(PeopleAdapter people, StockAdapter stock, MoneyAdapter money, LandAdapter land) {
         this.people = people;
         this.stock = stock;
         this.money = money;
+        this.land = land;
     }
 
     void show(Output output) {
@@ -47,6 +51,7 @@ final class Outcomes {
             case Output.Departed o -> people.show(o);
             case Output.HandGone o -> people.show(o);
             case Output.HandLevel o -> people.show(o);
+            case Output.Build o -> land.show(o);
         }
     }
 

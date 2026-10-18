@@ -66,6 +66,27 @@ Answer:
           - pressure: F64
           - minted: F64
           - debased: F64
+    8:
+      Land:
+        STRUCT:
+          - town: U32
+          - hexes:
+              SEQ:
+                TYPENAME: HexAt
+          - culture: F64
+          - next_hex: F64
+          - plots:
+              SEQ:
+                TYPENAME: Count
+          - works:
+              SEQ:
+                TYPENAME: WorkView
+    9:
+      Ground:
+        STRUCT:
+          - ground:
+              SEQ:
+                TYPENAME: GroundView
 Command:
   ENUM:
     0:
@@ -128,6 +149,15 @@ GoodFlag:
       Crop: UNIT
     1:
       Meat: UNIT
+GroundView:
+  STRUCT:
+    - hex:
+        TYPENAME: HexAt
+    - water: F64
+    - relief: F64
+    - land:
+        TYPENAME: LandKind
+    - bridged: BOOL
 HandView:
   STRUCT:
     - hand: U32
@@ -138,6 +168,10 @@ HandView:
     - baby: BOOL
     - away: BOOL
     - merchant: BOOL
+HexAt:
+  STRUCT:
+    - q: I32
+    - r: I32
 Input:
   ENUM:
     0:
@@ -279,6 +313,54 @@ Input:
           - emeralds: I64
           - coins: I64
           - bank: I64
+    22:
+      Ground:
+        STRUCT:
+          - hex:
+              TYPENAME: HexAt
+          - water: F64
+          - relief: F64
+          - land:
+              TYPENAME: LandKind
+    23:
+      Crops:
+        STRUCT:
+          - hex:
+              TYPENAME: HexAt
+          - chunk_x: I32
+          - chunk_z: I32
+          - counts:
+              SEQ:
+                TYPENAME: Count
+    24:
+      Survey:
+        STRUCT:
+          - town: U32
+          - bell_x: I32
+          - bell_z: I32
+    25:
+      Built:
+        STRUCT:
+          - town: U32
+          - work:
+              TYPENAME: Work
+          - share: F64
+LandKind:
+  ENUM:
+    0:
+      Plains: UNIT
+    1:
+      Woods: UNIT
+    2:
+      Taiga: UNIT
+    3:
+      Desert: UNIT
+    4:
+      Shore: UNIT
+    5:
+      Hills: UNIT
+    6:
+      Water: UNIT
 Output:
   ENUM:
     0:
@@ -379,6 +461,13 @@ Output:
           - emeralds: I64
           - coins: I64
           - bank: I64
+    15:
+      Build:
+        STRUCT:
+          - town: U32
+          - work:
+              TYPENAME: Work
+          - share: F64
 PackAmount:
   STRUCT:
     - good: STR
@@ -493,6 +582,16 @@ Query:
               TYPENAME: Point
     7:
       Mint: UNIT
+    8:
+      Land:
+        STRUCT:
+          - town: U32
+    9:
+      Ground:
+        STRUCT:
+          - hexes:
+              SEQ:
+                TYPENAME: HexAt
 Refusal:
   ENUM:
     0:
@@ -579,3 +678,31 @@ TownPoint:
     - point:
         TYPENAME: Point
     - town: U32
+Work:
+  ENUM:
+    0:
+      Bridge:
+        STRUCT:
+          - hex:
+              TYPENAME: HexAt
+          - from:
+              TYPENAME: HexAt
+          - to:
+              TYPENAME: HexAt
+    1:
+      Wall: UNIT
+    2:
+      Hall:
+        STRUCT:
+          - kind: STR
+    3:
+      Field:
+        STRUCT:
+          - crop: U32
+WorkView:
+  STRUCT:
+    - work:
+        TYPENAME: Work
+    - laid: F64
+    - done: BOOL
+    - shown: F64

@@ -6,7 +6,7 @@
       "note": "a society from a pack of four goods",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Create": {
             "pack": {
@@ -90,7 +90,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0100c0bb01040f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e697477697400000007",
+      "request_postcard": "01c1ecdedbd6c387ca0300c0bb01040f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e697477697400000007",
       "response": {
         "Done": {
           "outputs": [],
@@ -103,7 +103,7 @@
       "note": "two towns at their desks",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Apply": {
             "inputs": [
@@ -135,7 +135,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0103020707417368666f726400136d696e6563726166743a6f766572776f726c6436773607054272656e7400136d696e6563726166743a6f766572776f726c64b009774f",
+      "request_postcard": "01c1ecdedbd6c387ca0303020707417368666f726400136d696e6563726166743a6f766572776f726c6436773607054272656e7400136d696e6563726166743a6f766572776f726c64b009774f",
       "response": {
         "Done": {
           "outputs": [],
@@ -148,7 +148,7 @@
       "note": "a town with no roster has no hands, and its desk no Merchant",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Ask": {
             "queries": [
@@ -161,7 +161,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0104010400",
+      "request_postcard": "01c1ecdedbd6c387ca0304010400",
       "response": {
         "Done": {
           "outputs": [],
@@ -182,7 +182,7 @@
       "note": "a Merchant takes the desk; a farmer, a librarian and a villager with no trade come to live at Ashford, and a mason at Brent (the trades by the host's names, with or without its namespace)",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Apply": {
             "inputs": [
@@ -198,7 +198,7 @@
                 "AddHand": {
                   "town": 0,
                   "trade": "minecraft:farmer",
-                  "level": 2,
+                  "level": 3,
                   "tag": "villager-f"
                 }
               },
@@ -230,7 +230,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0103050f0013656e74657270726973653a6d65726368616e74010a76696c6c616765722d6d0f00106d696e6563726166743a6661726d6572020a76696c6c616765722d660f00096c696272617269616e010a76696c6c616765722d6c0f01056d61736f6e030a76696c6c616765722d730f00046e6f6e650100",
+      "request_postcard": "01c1ecdedbd6c387ca0303050f0013656e74657270726973653a6d65726368616e74010a76696c6c616765722d6d0f00106d696e6563726166743a6661726d6572030a76696c6c616765722d660f00096c696272617269616e010a76696c6c616765722d6c0f01056d61736f6e030a76696c6c616765722d730f00046e6f6e650100",
       "response": {
         "Done": {
           "outputs": [],
@@ -243,7 +243,7 @@
       "note": "Ashford's hands, each with its id and tag",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Ask": {
             "queries": [
@@ -256,7 +256,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0104010400",
+      "request_postcard": "01c1ecdedbd6c387ca0304010400",
       "response": {
         "Done": {
           "outputs": [],
@@ -280,8 +280,8 @@
                     "hand": 2,
                     "tag": "villager-f",
                     "trade": "farmer",
-                    "level": 2,
-                    "xp": 10,
+                    "level": 3,
+                    "xp": 70,
                     "baby": false,
                     "away": false,
                     "merchant": false
@@ -312,13 +312,13 @@
           ]
         }
       },
-      "response_postcard": "00000104000204010a76696c6c616765722d6d086d65726368616e740100000001020a76696c6c616765722d66066661726d6572020a000000030a76696c6c616765722d6c096c696272617269616e01000000000500046e6f6e650100000000"
+      "response_postcard": "00000104000204010a76696c6c616765722d6d086d65726368616e740100000001020a76696c6c616765722d66066661726d65720346000000030a76696c6c616765722d6c096c696272617269616e01000000000500046e6f6e650100000000"
     },
     {
       "note": "and Brent's",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Ask": {
             "queries": [
@@ -331,7 +331,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0104010401",
+      "request_postcard": "01c1ecdedbd6c387ca0304010401",
       "response": {
         "Done": {
           "outputs": [],
@@ -363,7 +363,7 @@
       "note": "the farmer dies (by its id: its place is second)",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Apply": {
             "inputs": [
@@ -376,7 +376,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0103011002",
+      "request_postcard": "01c1ecdedbd6c387ca0303011002",
       "response": {
         "Done": {
           "outputs": [],
@@ -389,7 +389,7 @@
       "note": "the others keep their ids; the librarian is second now",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Ask": {
             "queries": [
@@ -402,7 +402,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0104010400",
+      "request_postcard": "01c1ecdedbd6c387ca0304010400",
       "response": {
         "Done": {
           "outputs": [],
@@ -454,15 +454,15 @@
       "note": "saved",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": "Save"
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0102",
+      "request_postcard": "01c1ecdedbd6c387ca0302",
       "saved": {
         "format": 1,
-        "schema": 14751825028575766415,
-        "blob_len": 4917,
-        "blob_fnv": "7ed8704ed123a161"
+        "schema": 257864190372853313,
+        "blob_len": 4921,
+        "blob_fnv": "5107ad6a22538a84"
       }
     },
     {
@@ -480,7 +480,7 @@
       "note": "asked after the load: the same ids and tags",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Ask": {
             "queries": [
@@ -493,7 +493,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0104010400",
+      "request_postcard": "01c1ecdedbd6c387ca0304010400",
       "response": {
         "Done": {
           "outputs": [],
@@ -545,7 +545,7 @@
       "note": "a weaponsmith comes: a new id, never one given before",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Apply": {
             "inputs": [
@@ -566,7 +566,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0103020f000b776561706f6e736d697468010b76696c6c616765722d66320080f702",
+      "request_postcard": "01c1ecdedbd6c387ca0303020f000b776561706f6e736d697468010b76696c6c616765722d66320080f702",
       "response": {
         "Done": {
           "outputs": [],
@@ -579,7 +579,7 @@
       "note": "its hands two days on",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Ask": {
             "queries": [
@@ -592,7 +592,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0104010400",
+      "request_postcard": "01c1ecdedbd6c387ca0304010400",
       "response": {
         "Done": {
           "outputs": [],
@@ -654,7 +654,7 @@
       "note": "the hands as they stand",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Ask": {
             "queries": [
@@ -667,7 +667,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0104010400",
+      "request_postcard": "01c1ecdedbd6c387ca0304010400",
       "response": {
         "Done": {
           "outputs": [],
@@ -729,7 +729,7 @@
       "note": "a hand for a town that isn't there",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Apply": {
             "inputs": [
@@ -745,7 +745,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0103010f09066661726d65720100",
+      "request_postcard": "01c1ecdedbd6c387ca0303010f09066661726d65720100",
       "response": {
         "Refused": {
           "why": {
@@ -762,7 +762,7 @@
       "note": "a hand of a trade the core hasn't",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Apply": {
             "inputs": [
@@ -778,7 +778,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0103010f000f6d696e6563726166743a62616b65720100",
+      "request_postcard": "01c1ecdedbd6c387ca0303010f000f6d696e6563726166743a62616b65720100",
       "response": {
         "Refused": {
           "why": {
@@ -795,7 +795,7 @@
       "note": "a hand of level 0, after one of level 5",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Apply": {
             "inputs": [
@@ -819,7 +819,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0103020f0006636c6572696305000f0006636c657269630000",
+      "request_postcard": "01c1ecdedbd6c387ca0303020f0006636c6572696305000f0006636c657269630000",
       "response": {
         "Refused": {
           "why": {
@@ -836,7 +836,7 @@
       "note": "a hand called what another is called",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Apply": {
             "inputs": [
@@ -852,7 +852,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0103010f01066661726d6572010a76696c6c616765722d6c",
+      "request_postcard": "01c1ecdedbd6c387ca0303010f01066661726d6572010a76696c6c616765722d6c",
       "response": {
         "Refused": {
           "why": {
@@ -869,7 +869,7 @@
       "note": "two hands called alike in one look",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Apply": {
             "inputs": [
@@ -893,7 +893,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0103020f01066661726d6572010a76696c6c616765722d780f00066661726d6572010a76696c6c616765722d78",
+      "request_postcard": "01c1ecdedbd6c387ca0303020f01066661726d6572010a76696c6c616765722d780f00066661726d6572010a76696c6c616765722d78",
       "response": {
         "Refused": {
           "why": {
@@ -910,7 +910,7 @@
       "note": "a hand lost that was lost already",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Apply": {
             "inputs": [
@@ -923,7 +923,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0103011002",
+      "request_postcard": "01c1ecdedbd6c387ca0303011002",
       "response": {
         "Refused": {
           "why": {
@@ -940,7 +940,7 @@
       "note": "a hand lost twice in one look",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Apply": {
             "inputs": [
@@ -958,7 +958,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc01030210051005",
+      "request_postcard": "01c1ecdedbd6c387ca03030210051005",
       "response": {
         "Refused": {
           "why": {
@@ -975,7 +975,7 @@
       "note": "the hands of a town that isn't there",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Ask": {
             "queries": [
@@ -993,7 +993,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc01040204000407",
+      "request_postcard": "01c1ecdedbd6c387ca03040204000407",
       "response": {
         "Refused": {
           "why": {
@@ -1010,7 +1010,7 @@
       "note": "nothing of any refused request applied",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Ask": {
             "queries": [
@@ -1023,7 +1023,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0104010400",
+      "request_postcard": "01c1ecdedbd6c387ca0304010400",
       "response": {
         "Done": {
           "outputs": [],
@@ -1085,7 +1085,7 @@
       "note": "a tag freed by its hand's death is free again: a villager of the same name comes",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Apply": {
             "inputs": [
@@ -1101,7 +1101,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0103010f01066661726d6572010a76696c6c616765722d66",
+      "request_postcard": "01c1ecdedbd6c387ca0303010f01066661726d6572010a76696c6c616765722d66",
       "response": {
         "Done": {
           "outputs": [],
@@ -1114,7 +1114,7 @@
       "note": "Brent's hands",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Ask": {
             "queries": [
@@ -1127,7 +1127,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0104010401",
+      "request_postcard": "01c1ecdedbd6c387ca0304010401",
       "response": {
         "Done": {
           "outputs": [],
@@ -1169,7 +1169,7 @@
       "note": "a villager called as a living hand is, before that hand is lost in the same look",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Apply": {
             "inputs": [
@@ -1190,7 +1190,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0103020f01066661726d6572020a76696c6c616765722d661007",
+      "request_postcard": "01c1ecdedbd6c387ca0303020f01066661726d6572020a76696c6c616765722d661007",
       "response": {
         "Refused": {
           "why": {
@@ -1207,7 +1207,7 @@
       "note": "the hand lost first, then a villager of its name comes, in one look",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Apply": {
             "inputs": [
@@ -1228,7 +1228,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc01030210070f01066661726d6572020a76696c6c616765722d66",
+      "request_postcard": "01c1ecdedbd6c387ca03030210070f01066661726d6572020a76696c6c616765722d66",
       "response": {
         "Done": {
           "outputs": [],
@@ -1241,7 +1241,7 @@
       "note": "Brent's hands: the new one with a new id",
       "request": {
         "abi": 1,
-        "schema": 14751825028575766415,
+        "schema": 257864190372853313,
         "command": {
           "Ask": {
             "queries": [
@@ -1254,7 +1254,7 @@
           }
         }
       },
-      "request_postcard": "018fcfe6c7c7d6c0dccc0104010401",
+      "request_postcard": "01c1ecdedbd6c387ca0304010401",
       "response": {
         "Done": {
           "outputs": [],

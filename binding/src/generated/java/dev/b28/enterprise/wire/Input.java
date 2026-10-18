@@ -30,7 +30,11 @@ public sealed interface Input
                 Input.TagHand,
                 Input.Unmoved,
                 Input.Cashcount,
-                Input.CashUnmoved {
+                Input.CashUnmoved,
+                Input.Ground,
+                Input.Crops,
+                Input.Survey,
+                Input.Built {
     void encode(PostcardOut out);
 
     static Input decode(PostcardIn in) {
@@ -58,6 +62,10 @@ public sealed interface Input
             case 19 -> new Unmoved(Point.decode(in), in.u32(), in.i64());
             case 20 -> new Cashcount(Point.decode(in), in.u64(), in.u64(), in.option(PostcardIn::u64), in.bool(), in.bool());
             case 21 -> new CashUnmoved(Point.decode(in), in.i64(), in.i64(), in.i64());
+            case 22 -> new Ground(HexAt.decode(in), in.f64(), in.f64(), LandKind.decode(in));
+            case 23 -> new Crops(HexAt.decode(in), in.i32(), in.i32(), in.list(9, Count::decode));
+            case 24 -> new Survey(in.u32(), in.i32(), in.i32());
+            case 25 -> new Built(in.u32(), Work.decode(in), in.f64());
             default -> throw in.unknownVariant("Input", at);
         };
     }
@@ -443,6 +451,85 @@ public sealed interface Input
             out.i64(this.emeralds);
             out.i64(this.coins);
             out.i64(this.bank);
+        }
+    }
+
+    /**
+     * A hex's ground as the host surveyed it ({@code territory/Terrain.java}: its chunks' surface columns under water and
+     * their heights, a chunk never loaded guessed from its biome): its share under water (0 to 1), its relief in blocks
+     * (highest surface less lowest) and what its land gives (its biome at its centre). Caravans go round water and
+     * cliffs by it ({@code map.rs}), a town's hands gather what its land gives ({@code kit.rs}) and bridges go where it's wet
+     * ({@code works.rs}). A bridge the core finished stays.
+     */
+    record Ground(HexAt hex, double water, double relief, LandKind land) implements Input {
+        public Ground {
+            Objects.requireNonNull(hex, "hex");
+            Objects.requireNonNull(land, "land");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(22);
+            this.hex.encode(out);
+            out.f64(this.water);
+            out.f64(this.relief);
+            this.land.encode(out);
+        }
+    }
+
+    /**
+     * The crop plots the host counted in one chunk's part of a hex ({@code territory/Crops.java}: crop blocks within 16 of
+     * the bell's height, by the good working them gives), every crop there (one not listed has none). The core keeps
+     * each chunk's last count, so a chunk not loaded keeps what it last had; a town's fields are the plots counted in
+     * the hexes it holds ({@code land.rs}), set at its next {@code Survey}.
+     */
+    record Crops(HexAt hex, int chunkX, int chunkZ, List<Count> counts) implements Input {
+        public Crops {
+            Objects.requireNonNull(hex, "hex");
+            Objects.requireNonNull(counts, "counts");
+            counts = List.copyOf(counts);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(23);
+            this.hex.encode(out);
+            out.i32(this.chunkX);
+            out.i32(this.chunkZ);
+            out.list(this.counts, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * A town's land as the host found it this look ({@code land.rs}): its bell's block, where its land grows from and its
+     * wall rings. Its farm is the plots counted in the hexes it holds from now on, and the works it has to show come
+     * back as {@code Build} at the end of the look. Sent for a town whose ground is loaded.
+     */
+    record Survey(long town, int bellX, int bellZ) implements Input {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(24);
+            out.u32(this.town);
+            out.i32(this.bellX);
+            out.i32(this.bellZ);
+        }
+    }
+
+    /**
+     * The host has laid {@code share} (0 to 1) of a town's work in its world (a {@code Build} shown): the core won't ask for that
+     * much again. Ignored for a work the town hasn't (a stale view).
+     */
+    record Built(long town, Work work, double share) implements Input {
+        public Built {
+            Objects.requireNonNull(work, "work");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(25);
+            out.u32(this.town);
+            this.work.encode(out);
+            out.f64(this.share);
         }
     }
 }

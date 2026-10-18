@@ -90,6 +90,14 @@ pub fn handle(society: &mut Option<Society>, request: Request) -> Response {
                 coins: m.coins,
                 bank: m.bank,
             }));
+            // The towns surveyed in this look are shown their works to lay (`land.rs`).
+            let surveyed: Vec<usize> = inputs.iter()
+                .filter_map(|i| match i {
+                    Input::Survey { town, .. } => Some(*town as usize),
+                    _ => None,
+                })
+                .collect();
+            outputs.extend(s.show_land(&surveyed));
             done(outputs, Vec::new())
         }
         Command::Ask { queries } => {
@@ -166,6 +174,13 @@ fn answer(s: &Society, query: &Query) -> Result<Answer, String> {
             let c = s.chests(&spot).expect("a point that stands");
             Answer::Chests { point: point.clone(), town: super::no(c.town), held: c.held, free: c.free, short: c.short }
         }
+        &Query::Land { town } => {
+            if town as usize >= s.town_count() {
+                return Err(format!("no town {town}"));
+            }
+            s.land_view(town as usize)
+        }
+        Query::Ground { hexes } => Answer::Ground { ground: hexes.iter().map(|&h| s.ground_view(h)).collect() },
     })
 }
 
@@ -316,6 +331,29 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
                 same_kind(stands(&points, &point.spot()), point).map_err(wrong)?;
             }
             Input::CashUnmoved { .. } => {}
+            Input::Ground { water, relief, .. } => {
+                amount("a share under water of", *water)?;
+                amount("a relief of", *relief)?;
+            }
+            Input::Crops { counts, .. } => {
+                for c in counts {
+                    good(c.good)?;
+                    amount("a count of", c.count)?;
+                }
+            }
+            Input::Survey { town: t, .. } => town(*t)?,
+            // A work the town hasn't is a stale view (ignored), but of a town that's there, a good that is, and a share.
+            Input::Built { town: t, work, share } => {
+                town(*t)?;
+                amount("a share of", *share)?;
+                match work {
+                    super::Work::Field { crop } => good(*crop)?,
+                    super::Work::Hall { kind } if !Society::hall_named(kind) => {
+                        return Err(wrong(format!("no hall called {kind}")));
+                    }
+                    _ => {}
+                }
+            }
         }
     }
     Ok(())

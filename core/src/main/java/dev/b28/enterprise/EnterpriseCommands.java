@@ -64,7 +64,10 @@ final class EnterpriseCommands {
                                         .executes(EnterpriseCommands::coreHands)))
                         .then(Commands.literal("census")
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos())
-                                        .executes(EnterpriseCommands::coreCensus))))
+                                        .executes(EnterpriseCommands::coreCensus)))
+                        .then(Commands.literal("land")
+                                .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                        .executes(EnterpriseCommands::coreLand))))
                 .then(Commands.literal("mint").executes(EnterpriseCommands::mint))
                 .then(Commands.literal("census")
                         .then(Commands.argument("bell", BlockPosArgument.blockPos())
@@ -615,6 +618,39 @@ final class EnterpriseCommands {
                 dev.b28.enterprise.settlement.CensusTaker.RADIUS);
         people.nameNow();
         return coreHands(context);
+    }
+
+    /**
+     * Surveys the core's town at a desk now (its crops counted in the hexes it holds, its bell sent, as each look in core
+     * mode does; its works to lay shown) and lists its land as the core has it: its hexes, culture, fields and works.
+     */
+    private static int coreLand(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        ServerLevel level = source.getLevel();
+        BlockPos desk = BlockPosArgument.getLoadedBlockPos(context, "desk");
+        var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+        if (host == null || host.pausedWhy() != null) {
+            source.sendFailure(Component.literal(host == null ? "The core isn't running" : host.pausedWhy()));
+            return 0;
+        }
+        Long town = host.stock().townAt(GlobalPos.of(level.dimension(), desk));
+        if (town == null) {
+            source.sendFailure(Component.literal("The core keeps no town at " + desk.toShortString()));
+            return 0;
+        }
+        if (host.land().ownsLand()) {
+            host.land().surveyNow(level, town, desk);
+            host.land().sayNow();
+        }
+        var land = host.land().land(town);
+        source.sendSuccess(() -> Component.literal("Town %d holds %d hex(es) %s; culture %.1f (the next hex costs %.1f)"
+                .formatted(town, land.hexes().size(), land.hexes(), land.culture(), land.nextHex())), false);
+        source.sendSuccess(() -> Component.literal("  fields: " + (land.plots().isEmpty() ? "none" : land.plots())), false);
+        for (var w : land.works()) {
+            source.sendSuccess(() -> Component.literal("  %s: %.0f%% laid%s, %.0f%% shown".formatted(w.work(), 100 * w.laid(),
+                    w.done() ? " (done)" : "", 100 * w.shown())), false);
+        }
+        return land.hexes().size();
     }
 
     /** Lists what the Merchant at a desk sees: its stock containers and the lockers it manages. */

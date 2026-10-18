@@ -22,6 +22,7 @@ use serde::{Deserialize, Serialize};
 
 mod handle;
 mod input;
+mod land;
 mod output;
 mod pack;
 mod pallet;
@@ -32,6 +33,7 @@ mod save_file;
 pub use crate::content::GoodId;
 pub use handle::{handle, handle_bytes};
 pub use input::{Count, Input, Resident};
+pub use land::{GroundView, HexAt, LandKind, Work, WorkView};
 pub use output::Output;
 pub use pack::{ContentPack, GoodFlag, PackAmount, PackAnimal, PackDial, PackGood, PackRecipe};
 pub use pallet::{PackageLine, Place};

@@ -238,8 +238,49 @@ fn inputs() -> Vec<Input> {
         Input::CashUnmoved { point: point(PointKind::Desk, 27, -60, 27), emeralds: -2, coins: -4_096, bank: -1 },
         Input::CashUnmoved { point: point(PointKind::Desk, i32::MAX, i32::MAX, i32::MAX), emeralds: i64::MIN, coins: i64::MAX,
             bank: i64::MIN },
+        Input::Ground { hex: hex(0, 0), water: 0.0, relief: 0.0, land: LandKind::Plains },
+        Input::Ground { hex: hex(-3, 7), water: 0.5625, relief: 31.0, land: LandKind::Water },
+        Input::Ground { hex: hex(i32::MIN, i32::MAX), water: 1.0, relief: f64::MAX, land: LandKind::Hills },
+        Input::Crops { hex: hex(0, 0), chunk_x: 0, chunk_z: -1, counts: vec![] },
+        Input::Crops { hex: hex(2, -1), chunk_x: i32::MIN, chunk_z: i32::MAX, counts: vec![count(3, 80.0), count(BIGGEST_ID, 1.0)] },
+        Input::Survey { town: 0, bell_x: 27, bell_z: 24 },
+        Input::Survey { town: BIGGEST_ID, bell_x: i32::MIN, bell_z: i32::MAX },
     ]);
+    all.extend(works().into_iter().enumerate().map(|(i, work)| Input::Built { town: i as TownNo, work, share: 0.25 * i as f64 }));
+    all.push(Input::Built { town: BIGGEST_ID, work: Work::Wall, share: 1.0 });
     all
+}
+
+fn hex(q: i32, r: i32) -> HexAt {
+    HexAt { q, r }
+}
+
+fn works() -> Vec<Work> {
+    vec![
+        Work::Bridge { hex: hex(1, 2), from: hex(0, 2), to: hex(2, 2) },
+        Work::Bridge { hex: hex(i32::MAX, i32::MIN), from: hex(i32::MIN, 0), to: hex(0, i32::MAX) },
+        Work::Wall,
+        Work::Hall { kind: "watchtower".into() },
+        Work::Hall { kind: String::new() },
+        Work::Field { crop: 0 },
+        Work::Field { crop: BIGGEST_ID },
+    ]
+}
+
+const LANDS: [LandKind; 7] = [LandKind::Plains, LandKind::Woods, LandKind::Taiga, LandKind::Desert, LandKind::Shore,
+    LandKind::Hills, LandKind::Water];
+
+fn work_views() -> Vec<WorkView> {
+    works().into_iter().enumerate()
+        .map(|(i, work)| WorkView { work, laid: i as f64 / 6.0, done: i % 2 == 0, shown: EDGE_F64[i % EDGE_F64.len()] })
+        .collect()
+}
+
+fn ground_views() -> Vec<GroundView> {
+    LANDS.iter().enumerate()
+        .map(|(i, &land)| GroundView { hex: hex(i as i32, -(i as i32)), water: i as f64 / 7.0, relief: EDGE_F64[i], land,
+            bridged: i % 3 == 0 })
+        .collect()
 }
 
 fn outputs() -> Vec<Output> {
@@ -278,6 +319,10 @@ fn outputs() -> Vec<Output> {
         Output::Cash { point: point(PointKind::Desk, 27, -60, 27), emeralds: -36, coins: 574, bank: 0 },
         Output::Cash { point: point(PointKind::Desk, 0, 0, 0), emeralds: -100, coins: 0, bank: 19_164 },
         Output::Cash { point: point(PointKind::Desk, i32::MAX, i32::MAX, i32::MAX), emeralds: i64::MIN, coins: i64::MAX, bank: i64::MIN },
+        Output::Build { town: 0, work: Work::Wall, share: 0.25 },
+        Output::Build { town: BIGGEST_ID, work: works().remove(1), share: 1.0 },
+        Output::Build { town: 2, work: Work::Hall { kind: "caravanserai".into() }, share: 0.0 },
+        Output::Build { town: 1, work: Work::Field { crop: 4 }, share: 1.0 },
     ]
 }
 
@@ -294,7 +339,10 @@ fn queries() -> Vec<Query> {
     vec![Query::Stock { town: 0 }, Query::Stock { town: BIGGEST_ID }, Query::Points, Query::Goods, Query::Dials,
         Query::Hands { town: 0 }, Query::Hands { town: BIGGEST_ID }, Query::Chests { point: point(PointKind::Desk, 27, -60, 27) },
         Query::Chests { point: point(PointKind::Depot, i32::MIN, 0, i32::MAX) }, Query::Cash { point: point(PointKind::Desk, 27, -60, 27) },
-        Query::Cash { point: point(PointKind::Desk, i32::MIN, i32::MIN, i32::MAX) }, Query::Mint]
+        Query::Cash { point: point(PointKind::Desk, i32::MIN, i32::MIN, i32::MAX) }, Query::Mint,
+        Query::Land { town: 0 },
+        Query::Land { town: BIGGEST_ID }, Query::Ground { hexes: vec![] },
+        Query::Ground { hexes: (0..60).map(|i| hex(i - 30, 30 - i)).collect() }]
 }
 
 fn hand_views() -> Vec<HandView> {
@@ -341,6 +389,13 @@ fn answers() -> Vec<Answer> {
         Answer::Mint { rate: 16.0, pressure: 0.0, minted: 0.0, debased: 1.0 },
         Answer::Mint { rate: 8.0, pressure: 1728.0, minted: 27648.5, debased: 1.5 },
         Answer::Mint { rate: f64::MAX, pressure: f64::MIN_POSITIVE, minted: 0.1, debased: 1e-300 },
+        Answer::Land { town: 0, hexes: vec![], culture: 0.0, next_hex: 0.0, plots: vec![], works: vec![] },
+        Answer::Land { town: 3, hexes: vec![hex(0, 0), hex(1, 0), hex(0, 1)], culture: 12.75, next_hex: 30.0,
+            plots: vec![count(0, 80.0), count(5, 54.0)], works: work_views() },
+        Answer::Land { town: BIGGEST_ID, hexes: (0..19).map(|i| hex(i, -i)).collect(), culture: f64::MAX,
+            next_hex: f64::MIN_POSITIVE, plots: counts().remove(2), works: vec![] },
+        Answer::Ground { ground: vec![] },
+        Answer::Ground { ground: ground_views() },
     ]
 }
 
@@ -429,6 +484,11 @@ fixtures! {
     good_flag_fixtures: GoodFlag = vec![GoodFlag::Crop, GoodFlag::Meat];
     save_file_fixtures: SaveFile = saves();
     fixed_fixtures: Fixed = fixeds();
+    hex_at_fixtures: HexAt = vec![hex(0, 0), hex(-1, 1), hex(i32::MIN, i32::MAX)];
+    land_kind_fixtures: LandKind = LANDS.to_vec();
+    work_fixtures: Work = works();
+    work_view_fixtures: WorkView = work_views();
+    ground_view_fixtures: GroundView = ground_views();
 }
 
 // Every variant of a wire enum appears in its file. The matches are exhaustive: a variant added to a wire type is a
@@ -458,6 +518,10 @@ fn input_place(i: &Input) -> usize {
         Input::Unmoved { .. } => 19,
         Input::Cashcount { .. } => 20,
         Input::CashUnmoved { .. } => 21,
+        Input::Ground { .. } => 22,
+        Input::Crops { .. } => 23,
+        Input::Survey { .. } => 24,
+        Input::Built { .. } => 25,
     }
 }
 
@@ -478,6 +542,7 @@ fn output_place(o: &Output) -> usize {
         Output::HandLevel { .. } => 12,
         Output::Moved { .. } => 13,
         Output::Cash { .. } => 14,
+        Output::Build { .. } => 15,
     }
 }
 
@@ -491,6 +556,8 @@ fn query_place(q: &Query) -> usize {
         Query::Chests { .. } => 5,
         Query::Cash { .. } => 6,
         Query::Mint => 7,
+        Query::Land { .. } => 8,
+        Query::Ground { .. } => 9,
     }
 }
 
@@ -504,6 +571,8 @@ fn answer_place(a: &Answer) -> usize {
         Answer::Chests { .. } => 5,
         Answer::Cash { .. } => 6,
         Answer::Mint { .. } => 7,
+        Answer::Land { .. } => 8,
+        Answer::Ground { .. } => 9,
     }
 }
 
@@ -550,10 +619,10 @@ fn covers<T>(what: &str, samples: &[T], variants: usize, place: fn(&T) -> usize)
 
 #[test]
 fn every_variant_of_every_wire_enum_has_a_sample() {
-    covers("Input", &inputs(), 22, input_place);
-    covers("Output", &outputs(), 15, output_place);
-    covers("Query", &queries(), 8, query_place);
-    covers("Answer", &answers(), 8, answer_place);
+    covers("Input", &inputs(), 26, input_place);
+    covers("Output", &outputs(), 16, output_place);
+    covers("Query", &queries(), 10, query_place);
+    covers("Answer", &answers(), 10, answer_place);
     covers("Command", &commands(), 5, command_place);
     covers("Response", &responses(), 3, response_place);
     covers("Refusal", &refusals(), 9, refusal_place);
@@ -594,6 +663,12 @@ fn a_variant_is_named_by_its_place() {
     }
     for (i, f) in [GoodFlag::Crop, GoodFlag::Meat].iter().enumerate() {
         assert_eq!(postcard::to_allocvec(f).unwrap(), vec![i as u8], "{f:?}");
+    }
+    for (i, l) in LANDS.iter().enumerate() {
+        assert_eq!(postcard::to_allocvec(l).unwrap(), vec![i as u8], "{l:?}");
+    }
+    for (w, i) in works().iter().zip([0, 0, 1, 2, 2, 3, 3]) {
+        assert_eq!(postcard::to_allocvec(w).unwrap()[0], i, "{w:?}");
     }
 }
 

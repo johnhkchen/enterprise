@@ -83,3 +83,6 @@ CoreBindingTests.inJavaModeTheCoreCountsADesksMoneyButMovesNone # the binding's 
 CoreBindingTests.theTownsEarningsAreShownInItsChestAsCoin # the binding's own: Input.Pay's money written to the chest (Rust: tests/till.rs income_is_put_in_as_whole_emeralds_and_fractions_wait_on_the_books)
 CoreBindingTests.moneyWithNoRoomInTheChestWaitsOnTheTownsBooks # the binding's own: a full chest (Rust: tests/till.rs what_the_host_couldnt_write_is_the_treasurys_still_and_is_shown_again)
 CoreBindingTests.aDeskBrokenTakesItsMoneyAndOnePutBackCountsItOnce # the binding's own: the desk listeners (Rust: tests/till.rs a_desk_broken_takes_its_money_and_one_put_back_counts_it_afresh)
+CoreBindingTests.aHexsGroundIsTheSurveysInTheCore # the binding's own: Terrain's survey of a hex into the core's map (Rust: tests/land.rs, scenarios/land.json)
+CoreBindingTests.aTownsFieldsAreTheCropsCountedInItsLand # the binding's own: crop blocks counted in a town's hexes into the core's farm (Rust: tests/land.rs, scenarios/land.json)
+CoreBindingTests.aWorkTheCoreAsksForIsLaidAndSaidToBeLaid # the binding's own: a Build laid in the world and said with Built (Rust: tests/land.rs)
