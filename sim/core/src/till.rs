@@ -230,7 +230,7 @@ impl Society {
             self.post(Account::Outside, Account::Treasury(town), booked, Reason::PaidIn);
         } else if booked.is_negative() {
             let held = self.balance(Account::Treasury(town)).expect("a town's treasury");
-            self.post(Account::Treasury(town), Account::Outside, (-booked).min(held), Reason::Withdrawn);
+            self.post(Account::Treasury(town), Account::Outside, (-booked).min(held).at_least_zero(), Reason::Withdrawn);
         }
         Ok(booked)
     }
@@ -244,7 +244,7 @@ impl Society {
         if gone.is_positive() {
             self.touch_treasury(town);
             let held = self.balance(Account::Treasury(town)).expect("a town's treasury");
-            self.post(Account::Treasury(town), Account::Outside, gone.min(held), Reason::Withdrawn);
+            self.post(Account::Treasury(town), Account::Outside, gone.min(held).at_least_zero(), Reason::Withdrawn);
         }
     }
 
@@ -252,6 +252,13 @@ impl Society {
     /// the surplus sold to the mint, the treasury put in or taken out of the till (see the module). Each is in the till
     /// from now on. In towns' order, one desk to a town (its first counted).
     pub fn show_cash(&mut self, counted: &[Spot]) -> Vec<CashMove> {
+        self.show_cash_after(counted, &[])
+    }
+
+    /// [`Society::show_cash`] after the same look's stock moves (`chests.rs`'s `show_stock`): the empty slots they fill
+    /// are no room for emeralds.
+    pub fn show_cash_after(&mut self, counted: &[Spot], stock: &[crate::chests::Move]) -> Vec<CashMove> {
+        let taken = self.slots_taken(stock);
         let mut by_town: BTreeMap<TownId, Spot> = BTreeMap::new();
         for at in counted {
             let Some(p) = self.point(at).filter(|p| p.kind == Kind::Desk) else { continue };
@@ -261,7 +268,7 @@ impl Society {
         }
         let mut moves = Vec::new();
         for (town, at) in by_town {
-            let mv = self.show_town_cash(town, &at);
+            let mv = self.show_town_cash(town, &at, taken.get(&at).copied().unwrap_or(0));
             if !mv.is_none() {
                 moves.push(mv);
             }
@@ -269,11 +276,25 @@ impl Society {
         moves
     }
 
-    fn show_town_cash(&mut self, town: TownId, at: &Spot) -> CashMove {
+    /// The empty slots stock moves into a point fill (each move's new stacks, against what the point holds after it).
+    fn slots_taken(&self, stock: &[crate::chests::Move]) -> BTreeMap<Spot, u64> {
+        let mut taken: BTreeMap<Spot, u64> = BTreeMap::new();
+        for m in stock.iter().filter(|m| m.count > 0) {
+            let Some(p) = self.point(&m.at) else { continue };
+            let stack = self.content().goods.get(m.good).map_or(1, |g| g.stack.max(1)) as f64;
+            let after = p.counted.get(m.good).copied().unwrap_or(0.0);
+            let before = (after - m.count as f64).max(0.0);
+            let stacks = ((after - 1e-9) / stack).ceil().max(0.0) - ((before - 1e-9) / stack).ceil().max(0.0);
+            *taken.entry(m.at.clone()).or_default() += stacks.max(0.0) as u64;
+        }
+        taken
+    }
+
+    fn show_town_cash(&mut self, town: TownId, at: &Spot, taken: u64) -> CashMove {
         self.touch_treasury(town);
         let treasury = self.balance(Account::Treasury(town)).expect("a town's treasury");
         let reserve = self.emerald_reserve(town);
-        let mut free = self.point(at).map_or(0, |p| p.free) as u64;
+        let mut free = (self.point(at).map_or(0, |p| p.free) as u64).saturating_sub(taken);
         let others: Fixed = self.world.resource::<Tills>().0.iter()
             .filter(|(s, _)| *s != at && self.point(s).is_some_and(|p| p.town == town))
             .map(|(_, t)| t.worth()).sum();

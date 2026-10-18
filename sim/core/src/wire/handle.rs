@@ -70,20 +70,21 @@ pub fn handle(society: &mut Option<Society>, request: Request) -> Response {
                     _ => None,
                 })
                 .collect();
-            outputs.extend(s.show_stock(&counted).into_iter().map(|m| super::Output::Moved {
+            let moved = s.show_stock(&counted);
+            outputs.extend(moved.iter().map(|m| super::Output::Moved {
                 point: Point::of(&m.at, m.kind),
                 good: super::no(m.good),
                 count: m.count,
             }));
             // And each desk counted with its money shows its town's: the treasury put in or taken out of its chests and
-            // Banker, the surplus sold to the mint (`till.rs`).
+            // Banker, the surplus sold to the mint (`till.rs`), in the room the stock's moves left.
             let cashed: Vec<Spot> = inputs.iter()
                 .filter_map(|i| match i {
                     Input::Cashcount { point, .. } => Some(point.spot()),
                     _ => None,
                 })
                 .collect();
-            outputs.extend(s.show_cash(&cashed).into_iter().map(|m| super::Output::Cash {
+            outputs.extend(s.show_cash_after(&cashed, &moved).into_iter().map(|m| super::Output::Cash {
                 point: Point::of(&m.at, Kind::Desk),
                 emeralds: m.emeralds,
                 coins: m.coins,

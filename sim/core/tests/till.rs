@@ -314,6 +314,22 @@ fn chests_with_no_room_for_coin_keep_their_emeralds_for_now() {
 }
 
 #[test]
+fn emeralds_are_put_only_in_the_room_the_stocks_moves_leave() {
+    let mut s = created();
+    keep_a_reserve(&mut s); // nothing sold: the emeralds stay in the chest
+    let mut purse = Purse::new(0, 0, None);
+    purse.slots = 1; // one empty slot at the count
+    let mut unmoved = Vec::new();
+    purse.look(&mut s, &mut unmoved, None);
+    society(&mut s).deliver(0, WHEAT, 64.0);
+    society(&mut s).post(Account::Outside, Account::Treasury(0), Fixed::emeralds(10), Reason::Takings);
+    let out = purse.look(&mut s, &mut unmoved, None);
+    assert!(out.iter().any(|o| matches!(o, Output::Moved { count: 64, .. })), "a stack of wheat takes the slot: {out:?}");
+    assert!(cash(&out).iter().all(|c| c.0 == 0), "no emerald promised the slot the wheat took: {out:?}");
+    assert_eq!(treasury(&s), Fixed::emeralds(10), "the ten wait on the books");
+}
+
+#[test]
 fn income_is_put_in_as_whole_emeralds_and_fractions_wait_on_the_books() {
     let mut s = created();
     keep_a_reserve(&mut s);
