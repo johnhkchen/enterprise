@@ -764,23 +764,24 @@ pub struct Freight {
 /// crates kept empty to ship with; not paid for in coin when crated, under a contract in force with the consignee its
 /// buyer, it's delivered, paid for by the bill drawn on the buyer when it was sent on (`billed`): at most the larger of
 /// what's owed by the next installment and what's on the road.
-pub fn receive(book: &mut crate::contracts::Book, now: u64, town: TownId, stock: &mut [f64],
+pub fn receive(content: &crate::content::Content, book: &mut crate::contracts::Book, now: u64, town: TownId, stock: &mut [f64],
         store: &mut crate::cargo::Shipments, pallet: &Pallet) {
     let Some(id) = pallet.lading.contract.filter(|_| !pallet.lading.prepaid()) else {
-        crate::cargo::receive(book, now, town, stock, store, pallet);
+        crate::cargo::receive(content, book, now, town, stock, store, pallet);
         return;
     };
-    let (good, count) = (pallet.good(), pallet.count());
     if pallet.lading.copy {
         book.deliver_copy(id, town);
     }
-    stock[good] += count;
-    store.empties += pallet.crates();
+    for (good, count) in pallet.goods() {
+        stock[good] += count;
+    }
+    store.empties += pallet.empties(content);
     let c = &book.contracts[id];
-    if c.buyer != town || !c.in_force() || c.good != good {
+    if c.buyer != town || !c.in_force() || !pallet.packages.iter().any(|p| p.good == c.good) {
         return;
     }
-    let counted = count.min(c.owed(now + c.every).max(c.shipped)).max(0.0);
+    let counted = pallet.count_of(c.good).min(c.owed(now + c.every).max(c.shipped)).max(0.0);
     let worth = Fixed::ceil(counted * c.price);
     book.settle(id, counted, counted, worth, Fixed::ZERO);
 }
@@ -893,7 +894,9 @@ impl Society {
             }
             // The crate comes into the society from the host's hands.
             let p = Pallet { lading, packages, ..pallet_of_host() };
-            self.world.resource_mut::<crate::state::Ledger>().delivered[p.good()] += p.count();
+            for (good, count) in p.goods() {
+                self.world.resource_mut::<crate::state::Ledger>().delivered[good] += count;
+            }
             let shipper = p.lading.shipper;
             let mut pallets = self.world.resource_mut::<Pallets>();
             let id = pallets.pack(p.lading, p.packages, At::Custody(hub), now);
@@ -926,7 +929,9 @@ impl Society {
     fn pack_into_custody(&mut self, hub: TownId, lading: Lading, packages: Vec<Package>, custody: Custody) -> PalletId {
         let now = self.now();
         let p = Pallet { lading, packages, ..pallet_of_host() };
-        self.world.resource_mut::<crate::state::Ledger>().delivered[p.good()] += p.count();
+        for (good, count) in p.goods() {
+            self.world.resource_mut::<crate::state::Ledger>().delivered[good] += count;
+        }
         let shipper = p.lading.shipper;
         let mut pallets = self.world.resource_mut::<Pallets>();
         let id = pallets.pack(p.lading, p.packages, At::Custody(hub), now);

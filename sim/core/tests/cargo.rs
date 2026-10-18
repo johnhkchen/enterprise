@@ -3,6 +3,7 @@
 
 use enterprise_core::cargo::{self, crated, Lading, Lot, Payment, LADING};
 use enterprise_core::contracts::Book;
+use enterprise_core::pallet::LOOSE;
 use enterprise_core::{Content, Good, Incoterm, Society};
 
 const DAY: u64 = 24_000;
@@ -240,15 +241,25 @@ fn a_shipper_uses_its_own_empties_first_and_has_spare_ones_back() {
     assert_eq!(s.shipments(0).empties, 4, "returnable crates home");
 }
 
+// packing: what can't be crated rides loose on its pallet, under its bill (the mod's goes loose in the wagon's cargo, no papers)
 #[test]
-fn with_no_crate_and_no_money_goods_go_loose_without_papers_crated() {
+fn with_no_crate_and_no_money_goods_ride_loose_on_a_pallet_under_a_bill() {
     let mut s = hub_and_town(0.0, 5.0, 30.0);
     s.deliver(0, 0, 192.0);
     let id = s.draft(0, 1, 0, 64.0, 0.05, 0, DAY, 1, Incoterm::Ddp, true);
     assert!(until(&mut s, 3, |s| s.route(0).on_the_road));
-    assert!(s.wagon_pallets(0).0.is_empty(), "no crate to be had: it goes loose");
+    let (aboard, lots, _) = s.wagon_pallets(0);
+    assert!(lots.is_empty());
+    assert_eq!(aboard.len(), 1, "no crate to be had: it rides loose on a pallet of its own: {aboard:?}");
+    let p = &aboard[0];
+    assert!(p.crates() == 0 && p.packages.len() == 1 && p.packages[0].kind == LOOSE && p.count() == 64.0, "loose stacks: {p:?}");
+    assert!(p.consigned_to(1) && p.lading.contract == Some(id) && p.lading.copy && p.seal.is_some(), "under its bill: {p:?}");
+    assert_eq!(s.paperwork(0).by_kind.get(LADING), Some(&1), "one bill of lading");
+    assert_eq!(s.wagon_cargo(0).unwrap()[0], 0.0, "none of it in the wagon's cargo: out of the sale's reach");
+    assert_eq!(s.wagon_manifest(0).unwrap().lines.len(), 1);
     assert!(until(&mut s, 30, |s| s.contract(id).delivered > 0.0));
     assert_eq!(s.contract(id).delivered, 64.0, "and is delivered all the same");
+    assert_eq!(s.shipments(1).empties, 0, "a loose pallet leaves no crate behind");
 }
 
 /// A farm owing a far buyer 40 of a crop every ten days, three times, judged four days after each day.
@@ -338,8 +349,8 @@ fn ex_works_the_buyer_takes_what_the_seller_crated_for_it_first() {
     assert_eq!(s.town(0).stock[0], 24.0, "from the crate, the loose ones left");
     let (aboard, ..) = s.wagon_pallets(0);
     assert!(aboard.len() == 1 && aboard[0].consigned_to(1) && aboard[0].lading.payment == Payment::Paid,
-        "crated again, made out home, paid for: {aboard:?}");
-    assert_eq!(s.paperwork(0).documents, 2, "a bill for the earmark, one for the collection");
+        "the same pallet, made out home, now paid for: {aboard:?}");
+    assert_eq!(s.paperwork(0).documents, 1, "the earmark's bill stands: the buyer takes the whole pallet and pays for it (`packing`)");
     assert!(until(&mut s, 40, |s| s.route(0).trips >= 1));
     assert_eq!(s.town(1).stock[0], 40.0, "home and stored");
     assert_eq!(s.contract(id).owing, 0.0, "paid for: no debt booked at home");

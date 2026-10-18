@@ -42,7 +42,7 @@ fn lose_package(pallets: &mut Pallets, ledger: &mut Ledger, id: PalletId, packag
 /// Receives a pallet at its consignee `town`, whose packages in `parts` (all, if none) have come: the others are lost,
 /// the seal broken; then it is opened and its goods taken in (`cargo::receive`).
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn take_in(pallets: &mut Pallets, book: &mut Book, ledger: &mut Ledger, now: u64, town: TownId,
+pub(crate) fn take_in(content: &crate::content::Content, pallets: &mut Pallets, book: &mut Book, ledger: &mut Ledger, now: u64, town: TownId,
         stock: &mut [f64], store: &mut Shipments, id: PalletId, parts: Option<&[u32]>) {
     if let Some(parts) = parts {
         let len = pallets.pallets[&id].packages.len();
@@ -52,7 +52,7 @@ pub(crate) fn take_in(pallets: &mut Pallets, book: &mut Book, ledger: &mut Ledge
     }
     pallets.arriving.remove(&id);
     let p = pallets.open(id).expect("a pallet");
-    receive(book, now, town, stock, store, &p);
+    receive(content, book, now, town, stock, store, &p);
 }
 
 impl Society {
@@ -66,12 +66,13 @@ impl Society {
     fn receive_pallet(&mut self, town: TownId, id: PalletId, parts: Option<&[u32]>) {
         self.deliver(town, 0, 0.0); // brings the town up to date: nothing delivered
         let (e, now) = (self.towns[town], self.now());
+        let content = self.content().clone();
         self.world.resource_scope(|world, mut pallets: bevy_ecs::prelude::Mut<Pallets>| {
             world.resource_scope(|world, mut book: bevy_ecs::prelude::Mut<Book>| {
                 world.resource_scope(|world, mut ledger: bevy_ecs::prelude::Mut<Ledger>| {
                     let mut stock = world.get::<Stock>(e).expect("a town").0.clone();
                     let mut store = world.get::<Shipments>(e).expect("a town").clone();
-                    take_in(&mut pallets, &mut book, &mut ledger, now, town, &mut stock, &mut store, id, parts);
+                    take_in(&content, &mut pallets, &mut book, &mut ledger, now, town, &mut stock, &mut store, id, parts);
                     world.get_mut::<Stock>(e).expect("a town").0 = stock;
                     *world.get_mut::<Shipments>(e).expect("a town") = store;
                 });

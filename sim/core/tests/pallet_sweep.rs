@@ -183,7 +183,7 @@ fn a_sealed_pallet_changed_or_a_carried_one_unsealed_fails_the_seals() {
 }
 
 #[test]
-fn a_pallet_that_holds_nothing_or_mixes_goods_fails_the_packages() {
+fn a_pallet_that_holds_nothing_or_mixes_handling_fails_the_packages() {
     let mut f = Fixture::new();
     let id = f.shelf;
     f.pallet(id).packages.clear();
@@ -196,8 +196,11 @@ fn a_pallet_that_holds_nothing_or_mixes_goods_fails_the_packages() {
     }
     let mut f = Fixture::new();
     let id = f.shelf;
+    // Goods of one key may share a pallet (`packing`): a second plain good is no fault; one that needs cool storage is.
     f.pallet(id).packages.push(Package::new(CRATE, 1, 5.0));
-    fails(sweep::packages, &f, "mixes goods");
+    sweep::packages(&f.view()).unwrap();
+    f.content.goods[1].handling.cool = true;
+    fails(sweep::packages, &f, "mixes handling");
     let mut f = Fixture::new();
     let id = f.shelf;
     f.pallet(id).packages[0].good = 9;

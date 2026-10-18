@@ -85,8 +85,10 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
             for (g, c) in w.cargo.iter().enumerate().take(n) {
                 a[g] += c;
             }
-            for p in pallets.at_place(crate::pallet::At::Wagon(route.seq)).filter(|p| p.good() < n && p.consigned_to(route.to_id)) {
-                a[p.good()] += p.count();
+            for p in pallets.at_place(crate::pallet::At::Wagon(route.seq)).filter(|p| p.consigned_to(route.to_id)) {
+                for (good, count) in p.goods().into_iter().filter(|(g, _)| *g < n) {
+                    a[good] += count;
+                }
             }
             for l in w.for_sale.iter().filter(|l| l.good() < n) {
                 a[l.good()] += l.count();

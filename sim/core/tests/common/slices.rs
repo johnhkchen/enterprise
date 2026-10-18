@@ -47,6 +47,7 @@ slices! {
     pallet_types,
     pallets,
     pallet_claims,
+    packing,
     random_worlds_sweep,
     trade_points,
 }

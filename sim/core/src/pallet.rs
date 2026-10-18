@@ -206,6 +206,23 @@ pub fn base_pallet_kinds() -> Vec<PalletKind> {
     vec![PalletKind { name: "load".to_string(), slots: None, weight: None, carriers: Vec::new() }]
 }
 
+/// What decides whether packages share a pallet and a bill: shipper, consignee, contract, payment, handling and pallet kind.
+/// Packages that differ in any of these go on separate pallets (`docs/pallets.md` "One contract to a bill").
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PalletKey {
+    pub shipper: TownId,
+    pub consignee: TownId,
+    pub contract: Option<usize>,
+    pub payment: Payment,
+    pub handling: Handling,
+    pub kind: PalletKindId,
+}
+
+/// The packages among `packages` that come back empty: those of a returnable kind.
+pub fn returnables(content: &Content, packages: &[Package]) -> u32 {
+    packages.iter().filter(|p| p.kind != LOOSE && content.packages.get(p.kind).is_none_or(|k| k.returnable)).count() as u32
+}
+
 /// FNV-1a 64.
 fn fnv1a(bytes: &[u8]) -> u64 {
     let mut h: u64 = 0xcbf29ce484222325;
@@ -217,6 +234,12 @@ fn fnv1a(bytes: &[u8]) -> u64 {
 }
 
 impl Lading {
+    /// Its grouping key on a pallet of `kind` ([`PalletKey`]): the bill's issue date and its copy are not part of it.
+    pub fn key(&self, kind: PalletKindId) -> PalletKey {
+        PalletKey { shipper: self.shipper, consignee: self.consignee, contract: self.contract, payment: self.payment,
+            handling: self.handling, kind }
+    }
+
     /// A bill of lading for goods from `shipper` made out to `consignee`, issued `now`: under no contract, owed, no copy.
     pub fn new(shipper: TownId, consignee: TownId, now: u64) -> Self {
         Lading { shipper, consignee, issued: now, ..Default::default() }
@@ -232,15 +255,46 @@ impl Lading {
 }
 
 impl Pallet {
-    /// Its good: one a pallet for now (the first package's).
+    /// Its first good: the first package's. A pallet holds one good unless packing put goods of one key together
+    /// (`packing`, [`Pallet::goods`]); the rules that move goods between a pallet and a stock go by [`Pallet::goods`].
     pub fn good(&self) -> GoodId {
         self.packages.first().map_or(0, |p| p.good)
     }
 
-    /// How many of its good it holds, in all: its packages' counts summed in order (a good crated whole, then the last
-    /// part-full crate, sums back to what was crated exactly).
+    /// How many items it holds, in all: its packages' counts summed in order (a good crated whole, then the last
+    /// part-full crate, sums back to what was crated exactly). Of one good, that good's count.
     pub fn count(&self) -> f64 {
         self.packages.iter().map(|p| p.count).sum()
+    }
+
+    /// What it holds of each good, in the order the goods first appear on it: a package's counts summed in order. A pallet of
+    /// one good gives that good's [`Pallet::count`].
+    pub fn goods(&self) -> Vec<(GoodId, f64)> {
+        let mut goods: Vec<(GoodId, f64)> = Vec::new();
+        for pk in &self.packages {
+            match goods.iter_mut().find(|(g, _)| *g == pk.good) {
+                Some((_, n)) => *n += pk.count,
+                None => goods.push((pk.good, pk.count)),
+            }
+        }
+        goods
+    }
+
+    /// How many of one good it holds.
+    pub fn count_of(&self, good: GoodId) -> f64 {
+        self.packages.iter().filter(|p| p.good == good).map(|p| p.count).sum()
+    }
+
+    /// The packages that come back empty to the consignee (the returnable kinds: crates, barrels): what its Merchant keeps to
+    /// ship with. A bundle is cut and gone.
+    pub fn empties(&self, content: &Content) -> u32 {
+        returnables(content, &self.packages)
+    }
+
+    /// What decides whether goods share a pallet (`docs/pallets.md` "One contract to a bill"): who ships, to whom, under which
+    /// contract, who pays, what handling, which pallet kind.
+    pub fn key(&self) -> PalletKey {
+        self.lading.key(self.kind)
     }
 
     /// Stacks of cargo space it takes: each package its stacks, at least one (`Crates.stacks`).
@@ -455,6 +509,13 @@ impl Pallets {
         }
     }
 
+    /// Tops a pallet up at its shipper's: `packages` are its packages now, with the goods of one more lot among them (a
+    /// farm's earmark adding the next lot to its open pallet). Only an open pallet is topped up; its bill stays the one it has.
+    pub fn top_up(&mut self, id: PalletId, packages: Vec<Package>) {
+        debug_assert!(self.pallets.get(&id).is_some_and(|p| p.seal.is_none()), "only an open pallet is topped up");
+        self.repack(id, packages);
+    }
+
     /// A pallet left the registry emptied (opened, or taken apart): its crates in the world are empty, and it is no longer
     /// arriving anywhere.
     fn opened(&mut self, p: &Pallet) {
@@ -649,9 +710,9 @@ impl Caps {
         if left.pallets == 0 || left.slots == 0 {
             return k as f64 * most;
         }
-        // A part pallet: its crates whole but the last, so its slots are its stacks (`cargo::crated`).
-        let tare = content.packages.get(CRATE).map_or(0.0, |p| p.tare)
-            * left.slots.div_ceil(crate::cargo::CRATE_STACKS.max(1)) as f64;
+        // A part pallet: its packages whole but the last, so its slots are its stacks (`cargo::crated`).
+        let (_, per, each) = package_of(content, good);
+        let tare = each * if per == 0 { 0 } else { left.slots.div_ceil(per) } as f64;
         let part = most.min(Caps { weight: (left.weight - tare).max(0.0), ..left }.loose(content, good));
         k as f64 * most + part.max(0.0)
     }
@@ -662,14 +723,27 @@ fn items_by_weight(weight: f64, each: f64) -> f64 {
     if each > 0.0 { (weight / each + 1e-6).floor().max(0.0) } else { f64::INFINITY }
 }
 
+/// How a good is packed (`Good.package`): its package kind, the stacks one holds (0: loose, any number) and what the empty
+/// package weighs. A kind the content lacks is taken as the crate.
+pub fn package_of(content: &Content, good: GoodId) -> (PackageKindId, u32, f64) {
+    let kind = content.goods[good].package;
+    if kind == LOOSE {
+        return (LOOSE, 0, 0.0);
+    }
+    match content.packages.get(kind) {
+        Some(k) => (kind, k.slots.max(1), k.tare),
+        None => (CRATE, crate::cargo::CRATE_STACKS, 0.0),
+    }
+}
+
 /// The most of a good one pallet of the base kind holds (`pallet-caps`): its kind's slots' stacks, as far as its weight
 /// allows with its crates' tare, whole items; at least one item (a single item heavier than a pallet goes alone).
 pub fn pallet_most(content: &Content, good: GoodId) -> f64 {
     let d = &content.dials;
     let kind = &content.pallet_kinds[LOAD];
     let slots = kind.slots(d);
-    let crates = slots.div_ceil(crate::cargo::CRATE_STACKS.max(1)) as f64;
-    let tare = content.packages.get(CRATE).map_or(0.0, |p| p.tare) * crates;
+    let (_, per, each) = package_of(content, good);
+    let tare = each * if per == 0 { 0 } else { slots.div_ceil(per) } as f64;
     let by_slots = slots as f64 * content.goods[good].stack.max(1) as f64;
     by_slots.min(items_by_weight((kind.weight(d) - tare).max(0.0), content.goods[good].weight)).max(1.0)
 }

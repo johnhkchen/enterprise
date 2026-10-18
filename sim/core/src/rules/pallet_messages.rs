@@ -16,7 +16,7 @@ pub fn register(schedule: &mut Schedule) {
 use super::Step;
 
 /// Each pallet that began arriving before now, in pallet order: received short.
-fn close_arrivals(clock: Res<Clock>, mut book: ResMut<Book>, mut ledger: ResMut<Ledger>, mut pallets: ResMut<Pallets>,
+fn close_arrivals(clock: Res<Clock>, content: Res<crate::content::Content>, mut book: ResMut<Book>, mut ledger: ResMut<Ledger>, mut pallets: ResMut<Pallets>,
         mut towns: Query<(&Town, &mut Stock, &mut Shipments)>) {
     if pallets.arriving.is_empty() {
         return;
@@ -31,6 +31,6 @@ fn close_arrivals(clock: Res<Clock>, mut book: ResMut<Book>, mut ledger: ResMut<
         .map(|(&id, a)| (id, a.town, a.parts.clone())).collect();
     for (id, town, parts) in due {
         let Some((_, mut stock, mut store)) = towns.iter_mut().find(|(t, ..)| t.id == town) else { continue };
-        take_in(&mut pallets, &mut book, &mut ledger, clock.now, town, &mut stock.0, &mut store, id, Some(&parts));
+        take_in(&content, &mut pallets, &mut book, &mut ledger, clock.now, town, &mut stock.0, &mut store, id, Some(&parts));
     }
 }

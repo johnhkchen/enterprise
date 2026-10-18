@@ -7,7 +7,7 @@
 //!
 //! - **Packages** ([`packages`]): every package on exactly one pallet (they are inside it) or in one open lot; no
 //!   pallet empty; every package's count positive (a returnable crate empty is not a pallet's) and finite, its kind and
-//!   good ones the content has, one good a pallet.
+//!   good ones the content has, goods of one handling a pallet (since `packing`: goods of one key share a pallet).
 //! - **Bills** ([`bills`]): every pallet on one bill whose consignee and shipper are towns, whose contract (if any) is in
 //!   the book, whose `Payment::ByBill` bill exists and names this pallet; no two bills of exchange name one pallet.
 //! - **Places** ([`places`]): `by_place` matches each pallet's `at`, and nothing else; a pallet `At::Wagon(r)` only while
@@ -103,7 +103,7 @@ fn counted(n: f64) -> bool {
     n > 0.0 && n.is_finite()
 }
 
-/// Every package on one pallet or in one open lot: none empty, counts positive and finite, one good a pallet.
+/// Every package on one pallet or in one open lot: none empty, counts positive and finite, goods of one handling a pallet.
 pub fn packages(v: &View) -> Result<(), String> {
     let goods = v.content.goods.len();
     for p in v.pallets.pallets.values() {
@@ -117,8 +117,11 @@ pub fn packages(v: &View) -> Result<(), String> {
             if pk.good >= goods || pk.kind >= v.content.packages.len() {
                 return Err(format!("pallet {}'s package {i} is of good {} in kind {}, which the content lacks", p.id, pk.good, pk.kind));
             }
-            if pk.good != p.good() {
-                return Err(format!("pallet {} mixes goods: package {i} is of {}, the pallet's is {}", p.id, pk.good, p.good()));
+            // (Goods of one key may share a pallet since `packing`; the key includes the goods' handling, so those that need
+            // care never share a pallet with those that don't.)
+            if v.content.goods[pk.good].handling != v.content.goods[p.good()].handling {
+                return Err(format!("pallet {} mixes handling: package {i} is of {} ({:?}), the pallet's first is {} ({:?})", p.id,
+                    pk.good, v.content.goods[pk.good].handling, p.good(), v.content.goods[p.good()].handling));
             }
         }
         if p.kind >= v.content.pallet_kinds.len() {

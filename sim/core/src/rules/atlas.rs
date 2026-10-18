@@ -256,8 +256,10 @@ pub fn consider(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, sto
 /// A wagon's crated goods, its pallets' and its lots for sale's, added to `goods` (its loose cargo, say), good by good.
 fn crated_into(pallets: &crate::pallet::Pallets, route: usize, wagon: &Wagon, goods: &mut [f64]) {
     for p in pallets.at_place(crate::pallet::At::Wagon(route)) {
-        if p.good() < goods.len() {
-            goods[p.good()] += p.count();
+        for (good, count) in p.goods() {
+            if good < goods.len() {
+                goods[good] += count;
+            }
         }
     }
     for l in &wagon.for_sale {

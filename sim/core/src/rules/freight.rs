@@ -766,14 +766,14 @@ pub fn at_hub(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
 /// The pallets aboard on freight tickets made out to `town`, taken off the wagon and received there ([`receive`]), in the
 /// order they loaded.
 #[allow(clippy::too_many_arguments)]
-fn receive_aboard(book: &mut Book, pallets: &mut Pallets, now: u64, route: RouteId, town: TownId, wagon: &mut Wagon,
+fn receive_aboard(content: &Content, book: &mut Book, pallets: &mut Pallets, now: u64, route: RouteId, town: TownId, wagon: &mut Wagon,
         stock: &mut Stock, store: &mut Shipments) {
     let here: Vec<PalletId> = pallets.at_place(At::Wagon(route))
         .filter(|p| p.consigned_to(town) && wagon.manifest.booked(p.id)).map(|p| p.id).collect();
     for id in here {
         wagon.manifest.take(id);
         let p = pallets.open(id).expect("aboard");
-        receive(book, now, town, &mut stock.0, store, &p);
+        receive(content, book, now, town, &mut stock.0, store, &p);
     }
 }
 
@@ -784,7 +784,7 @@ fn on_freight(wagon: &Wagon) -> bool {
 
 /// At the far end, before anything else: the pallets it carried on freight tickets made out here are received
 /// (`arriveAtDestination`'s ticketed crates, then `Crates.receive`).
-pub fn deliver_freight(clock: Res<Clock>, mut book: ResMut<Book>, mut pallets: ResMut<Pallets>,
+pub fn deliver_freight(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut pallets: ResMut<Pallets>,
         mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<(&mut Stock, &mut Shipments)>) {
     for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(e).unwrap();
@@ -794,13 +794,13 @@ pub fn deliver_freight(clock: Res<Clock>, mut book: ResMut<Book>, mut pallets: R
         let route = *route;
         let Some(wagon) = state.wagon.as_mut().filter(|w| on_freight(w)) else { continue };
         let Ok((mut stock, mut store)) = towns.get_mut(route.to) else { continue };
-        receive_aboard(&mut book, &mut pallets, clock.now, route.seq, route.to_id, wagon, &mut stock, &mut store);
+        receive_aboard(&content, &mut book, &mut pallets, clock.now, route.seq, route.to_id, wagon, &mut stock, &mut store);
     }
 }
 
 /// Home again, before the pallets are unloaded: those it carried home on freight tickets are received (`arriveHome`'s
 /// `Crates.receive`).
-pub fn deliver_home(clock: Res<Clock>, mut book: ResMut<Book>, mut pallets: ResMut<Pallets>,
+pub fn deliver_home(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut pallets: ResMut<Pallets>,
         mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<(&mut Stock, &mut Shipments)>) {
     for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(e).unwrap();
@@ -810,7 +810,7 @@ pub fn deliver_home(clock: Res<Clock>, mut book: ResMut<Book>, mut pallets: ResM
         let route = *route;
         let Some(wagon) = state.wagon.as_mut().filter(|w| on_freight(w)) else { continue };
         let Ok((mut stock, mut store)) = towns.get_mut(route.from) else { continue };
-        receive_aboard(&mut book, &mut pallets, clock.now, route.seq, route.from_id, wagon, &mut stock, &mut store);
+        receive_aboard(&content, &mut book, &mut pallets, clock.now, route.seq, route.from_id, wagon, &mut stock, &mut store);
     }
 }
 

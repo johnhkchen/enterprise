@@ -88,9 +88,11 @@ pub(crate) fn settle(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
     }
 }
 
-/// Ex Works: what the buyer's wagon collects at the seller's, paid from the purse it brought: what the seller crated
-/// for it first, then loose; the seller crates it, made out to the buyer and paid for (`rules/cargo.rs`). A loan the
-/// wagon's bank made the seller on the contract comes out of the payment first (`Caravans.collectExWorks`).
+/// Ex Works: what the buyer's wagon collects at the seller's, paid from the purse it brought: the pallets the seller
+/// earmarked for it first, taken whole, then the rest packed (a part pallet opened at the seller's, what is left of it
+/// re-palleted), made out to the buyer and paid for, loose on their pallet where the seller has no crate for them
+/// (`rules/cargo.rs` `collect_pallets`). A loan the wagon's bank made the seller on the contract comes out of the payment
+/// first (`Caravans.collectExWorks`).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn collect(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut ledger: ResMut<Ledger>,
         mut cash: ResMut<CashBook>, mut pallets: ResMut<crate::pallet::Pallets>,
@@ -117,7 +119,8 @@ pub(crate) fn collect(clock: Res<Clock>, content: Res<Content>, mut book: ResMut
             let lent = banks.owed_to(route.from_id, id);
             // As far as the wagon has room, in slots, weight and pallets, as the seller will pack it (`collectExWorks`'s
             // `room`; `pallet-caps`).
-            let room = crate::cargo::wagon_room(&content, &pallets, route.seq, wagon).palleted(&content, c.good);
+            let caps = crate::cargo::wagon_room(&content, &pallets, route.seq, wagon);
+            let room = caps.palleted(&content, c.good);
             let n = c.owed(now).min(stock.0[c.good] + crated).min(((wagon.purse + lent).to_f64() / c.price.max(1e-9)).floor())
                 .min(room.floor());
             if n <= 0.0 {
@@ -126,21 +129,14 @@ pub(crate) fn collect(clock: Res<Clock>, content: Res<Content>, mut book: ResMut
             let worth = Fixed::ceil(n * c.price);
             let recoup = c.recoup_from(worth, n);
             let paid = worth - recoup;
-            let from_crates = super::cargo::take_earmarked(&content, &mut pallets, &mut store, route.to_id, id, c.buyer, n);
-            stock.0[c.good] -= n - from_crates;
-            let packed = super::cargo::pack_collected(&content, &mut ledger, &mut cash, now, route.to_id, &mut money.0,
-                trades, farm, &mut store, &mut paperwork, c, n);
-            // Paid for as it's collected, sealed as it leaves the seller's: a pallet each pallet's worth, a bill each.
-            let lading = crate::pallet::Lading { contract: Some(id), payment: crate::pallet::Payment::Paid, copy: true,
-                ..crate::pallet::Lading::new(route.to_id, c.buyer, now) };
-            let mut in_crates = 0.0;
-            for packages in packed.unwrap_or_default() {
-                let p = pallets.pack(lading.clone(), packages, crate::pallet::At::Town(route.to_id), now);
-                in_crates += pallets.get(p).unwrap().count();
+            // Paid for as it's collected: the seller's pallets for the buyer taken whole, the rest packed (a part pallet opened
+            // at the seller's), sealed as they leave it (`rules/cargo.rs` `collect_pallets`).
+            let ids = super::cargo::collect_pallets(&content, &mut ledger, &mut cash, now, &mut pallets, route.to_id,
+                &mut money.0, &mut stock.0, trades, farm, &mut store, &mut paperwork, c, n, caps);
+            for p in ids {
                 crate::cargo::put_aboard(&mut pallets, wagon, route.seq, crate::pallet::Line { pallet: p, ..Default::default() },
                     route.to_id, now);
             }
-            wagon.cargo[c.good] += n - in_crates;
             // A loan from this wagon's bank on the contract comes out of the payment first (`bank.rs`).
             let repaid = banks.repay_from(route.from_id, id, paid);
             post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut money.0),
