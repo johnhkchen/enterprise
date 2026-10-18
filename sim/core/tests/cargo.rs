@@ -399,3 +399,19 @@ fn a_route_that_stays_does_not_strand_a_pallet_across_looks() {
     assert_eq!(s.contract(id).state, enterprise_core::State::Completed);
     assert_eq!(s.contract(id).delivered, 64.0);
 }
+
+// The pallet is all Haygate has for Cloverby, and its installment falls due before a wagon could get there, so a plan that
+// counts it presses. Only the first route's does: the second route's plan goes without it, has nothing to press for and
+// nothing worth its road (1 emerald), so its wagon waits for a load. (On the old core both plans counted it and the second
+// wagon went empty, pressed by a crate the first had taken.)
+#[test]
+fn only_the_route_whose_plan_claims_a_pallet_presses_for_it() {
+    let mut s = hub_and_town(5.0, 5.0, 30.0);
+    s.add_route(0, 1, 1.0, 1.0, 30.0);
+    let id = s.draft(0, 1, 0, 64.0, 0.05, 0, DAY, 1, Incoterm::Ddp, true);
+    let pallet = s.deliver_pallet(0, bill(0, 1, Some(id), Payment::Owed, true), crated(s.content(), 0, 64.0)).expect("held");
+    assert!(until(&mut s, 3, |s| s.route(0).on_the_road), "the first route's wagon left");
+    assert_eq!(s.wagon_pallets(0).0.iter().map(|p| p.id).collect::<Vec<_>>(), vec![pallet], "with the pallet");
+    assert!(!s.route(1).on_the_road, "the second route's wagon didn't press for a pallet it doesn't hold");
+    assert_eq!(s.contract(id).shipped, 64.0);
+}
