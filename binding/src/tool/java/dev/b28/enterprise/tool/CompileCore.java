@@ -107,6 +107,13 @@ public final class CompileCore {
         Files.createDirectories(report.getParent());
         Files.write(report, lines);
         lines.forEach(System.out::println);
+        // A function Chicory couldn't fit in one JVM method runs in its interpreter, about 10x slower, and WARN alone
+        // says so only in this report: farms::Store::goods is a few hundred bytes under the limit, so a core change
+        // could push it over with no gate failing. Fail instead, unless the build says it knows (the spike's variants).
+        if (!interpreted.isEmpty() && System.getenv("ENT_ALLOW_INTERPRETED") == null) {
+            throw new IllegalStateException(interpreted.size() + " functions fell back to Chicory's interpreter (" + report
+                    + "): split them in the core, or set ENT_ALLOW_INTERPRETED=1 to build anyway");
+        }
     }
 
     private static void clear(Path dir) throws IOException {

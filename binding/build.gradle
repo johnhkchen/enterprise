@@ -115,7 +115,7 @@ tasks.register('coreWasmNamed', Exec) {
 }
 
 tasks.register('compileCoreWasm', JavaExec) {
-    description = 'The module compiled to JVM classes (Chicory build-time compiler, interpreterFallback = WARN), with its meta module'
+    description = 'The module compiled to JVM classes (Chicory build-time compiler, interpreterFallback = WARN; fails on any fallback unless ENT_ALLOW_INTERPRETED is set), with its meta module'
     group = 'build'
     dependsOn coreWasm
     // The named module only names what the report lists: built first when both run (the spike), never required.

@@ -15,7 +15,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f040101",
+      "request_postcard": "01aaf4bad9f0a9d6c50c040101",
       "response": {
         "Refused": {
           "why": "NoSociety"
@@ -30,7 +30,7 @@
         "schema": 903914346242816554,
         "command": "Save"
       },
-      "request_postcard": "01b09c81eff99a91d51f02",
+      "request_postcard": "01aaf4bad9f0a9d6c50c02",
       "response": {
         "Refused": {
           "why": "NoSociety"
@@ -94,7 +94,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f0000040f6d696e6563726166743a77686561749a9999999999a93f40000000000000000000000000000000000001000f6d696e6563726166743a62726561649a9999999999c93f400000000000001440000000000000184000000e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a9999999999294000010101",
+      "request_postcard": "01aaf4bad9f0a9d6c50c0000040f6d696e6563726166743a77686561749a9999999999a93f40000000000000000000000000000000000001000f6d696e6563726166743a62726561649a9999999999c93f400000000000001440000000000000184000000e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a9999999999294000010101",
       "response": {
         "Refused": {
           "why": {
@@ -113,7 +113,7 @@
         "schema": 903914346242816554,
         "command": "Save"
       },
-      "request_postcard": "00b09c81eff99a91d51f02",
+      "request_postcard": "00aaf4bad9f0a9d6c50c02",
       "response": {
         "Refused": {
           "why": {
@@ -144,7 +144,7 @@
           }
         }
       },
-      "response_postcard": "0202b09c81eff99a91d51fffffffffffffffffff01"
+      "response_postcard": "0202aaf4bad9f0a9d6c50cffffffffffffffffff01"
     },
     {
       "note": "bytes that are no request",
@@ -244,7 +244,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f00c0bb01040f6d696e6563726166743a77686561749a9999999999a93f40000000000000000000000000000000000001000f6d696e6563726166743a62726561649a9999999999c93f400000000000001440000000000000184000000e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a9999999999294000010107",
+      "request_postcard": "01aaf4bad9f0a9d6c50c00c0bb01040f6d696e6563726166743a77686561749a9999999999a93f40000000000000000000000000000000000001000f6d696e6563726166743a62726561649a9999999999c93f400000000000001440000000000000184000000e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a9999999999294000010107",
       "response": {
         "Done": {
           "outputs": [],
@@ -284,7 +284,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f03020707417368666f726400136d696e6563726166743a6f766572776f726c643677360100000000000000004440",
+      "request_postcard": "01aaf4bad9f0a9d6c50c03020707417368666f726400136d696e6563726166743a6f766572776f726c643677360100000000000000004440",
       "response": {
         "Done": {
           "outputs": [],
@@ -310,7 +310,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f04010000",
+      "request_postcard": "01aaf4bad9f0a9d6c50c04010000",
       "response": {
         "Done": {
           "outputs": [],
@@ -351,7 +351,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f01ffffffff0fb09c81eff99a91d51f056f7468657203010203",
+      "request_postcard": "01aaf4bad9f0a9d6c50c01ffffffff0faaf4bad9f0a9d6c50c056f7468657203010203",
       "response": {
         "Refused": {
           "why": {
@@ -384,7 +384,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f0101b09c81eff99a91d51f056f7468657203010203",
+      "request_postcard": "01aaf4bad9f0a9d6c50c0101aaf4bad9f0a9d6c50c056f7468657203010203",
       "response": {
         "Refused": {
           "why": {
@@ -413,7 +413,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f04010000",
+      "request_postcard": "01aaf4bad9f0a9d6c50c04010000",
       "response": {
         "Done": {
           "outputs": [],
@@ -460,7 +460,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f030201000000000000000014400109000000000000001440",
+      "request_postcard": "01aaf4bad9f0a9d6c50c030201000000000000000014400109000000000000001440",
       "response": {
         "Refused": {
           "why": {
@@ -491,6 +491,7 @@
           }
         }
       },
+      "request_postcard": "01aaf4bad9f0a9d6c50c03010b0900",
       "response": {
         "Refused": {
           "why": {
@@ -500,7 +501,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "020700096e6f20746f776e2039"
     },
     {
       "note": "a package brought to a town that isn't there",
@@ -521,6 +523,7 @@
           }
         }
       },
+      "request_postcard": "01aaf4bad9f0a9d6c50c03010c090000",
       "response": {
         "Refused": {
           "why": {
@@ -530,7 +533,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "020700096e6f20746f776e2039"
     },
     {
       "note": "a good that isn't there",
@@ -551,7 +555,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f0301010063000000000000f03f",
+      "request_postcard": "01aaf4bad9f0a9d6c50c0301010063000000000000f03f",
       "response": {
         "Refused": {
           "why": {
@@ -583,7 +587,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f0301060000000000000000f0bf",
+      "request_postcard": "01aaf4bad9f0a9d6c50c0301060000000000000000f0bf",
       "response": {
         "Refused": {
           "why": {
@@ -614,7 +618,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f0301020001",
+      "request_postcard": "01aaf4bad9f0a9d6c50c0301020001",
       "response": {
         "Refused": {
           "why": {
@@ -651,7 +655,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f03010a01136d696e6563726166743a6f766572776f726c6402770200",
+      "request_postcard": "01aaf4bad9f0a9d6c50c03010a01136d696e6563726166743a6f766572776f726c6402770200",
       "response": {
         "Refused": {
           "why": {
@@ -688,7 +692,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f03010a02136d696e6563726166743a6f766572776f726c6436773600",
+      "request_postcard": "01aaf4bad9f0a9d6c50c03010a02136d696e6563726166743a6f766572776f726c6436773600",
       "response": {
         "Refused": {
           "why": {
@@ -725,7 +729,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f03010801136d696e6563726166743a6f766572776f726c6436773600",
+      "request_postcard": "01aaf4bad9f0a9d6c50c03010801136d696e6563726166743a6f766572776f726c6436773600",
       "response": {
         "Refused": {
           "why": {
@@ -762,7 +766,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f030107074e6f776865726501136d696e6563726166743a6f766572776f726c640a770a",
+      "request_postcard": "01aaf4bad9f0a9d6c50c030107074e6f776865726501136d696e6563726166743a6f766572776f726c640a770a",
       "response": {
         "Refused": {
           "why": {
@@ -792,7 +796,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f030100ffffffffffffffffff01",
+      "request_postcard": "01aaf4bad9f0a9d6c50c030100ffffffffffffffffff01",
       "response": {
         "Refused": {
           "why": {
@@ -853,7 +857,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f0402010004",
+      "request_postcard": "01aaf4bad9f0a9d6c50c0402010004",
       "response": {
         "Refused": {
           "why": {
@@ -883,7 +887,7 @@
           }
         }
       },
-      "request_postcard": "01b09c81eff99a91d51f04010000",
+      "request_postcard": "01aaf4bad9f0a9d6c50c04010000",
       "response": {
         "Done": {
           "outputs": [],

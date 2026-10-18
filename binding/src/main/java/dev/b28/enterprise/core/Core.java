@@ -203,7 +203,14 @@ public final class Core implements AutoCloseable {
         try {
             r = Response.fromBytes(response);
         } catch (WireException e) {
-            return; // not this binding's schema: the core refused it, or a caller decodes it
+            // A response this binding's wire can't read. If the request could have changed the society, nothing here
+            // can say whether the core took it, and a later trap would replay without it and silently diverge: stuck,
+            // loudly, rather than that. (It can't happen while the module's schema is this binding's.)
+            Command c = command(request);
+            if (c instanceof Command.Apply || c instanceof Command.Create || c instanceof Command.Load) {
+                stuck = new CoreTrap(request, "a response this binding's wire can't read", 0, true, e);
+            }
+            return;
         }
         switch (r) {
             case Response.Saved saved -> {
