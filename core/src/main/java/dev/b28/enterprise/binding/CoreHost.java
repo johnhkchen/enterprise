@@ -3,6 +3,7 @@ package dev.b28.enterprise.binding;
 import dev.b28.enterprise.Enterprise;
 import dev.b28.enterprise.binding.adapters.HandsAdapter;
 import dev.b28.enterprise.binding.adapters.LandAdapter;
+import dev.b28.enterprise.binding.adapters.LockerAdapter;
 import dev.b28.enterprise.binding.adapters.MoneyAdapter;
 import dev.b28.enterprise.binding.adapters.PeopleAdapter;
 import dev.b28.enterprise.binding.adapters.PointsAdapter;
@@ -40,7 +41,7 @@ import net.neoforged.neoforge.event.server.ServerStoppedEvent;
  * ({@link CoreWorker}), saved with the world. The host makes the society from the mod's content pack at a new world
  * ({@link ModPack}, seeded with the world's seed) or loads the world's {@value SaveStore#FILE}, saves it when the world
  * saves, and drops it when the server stops. Its adapters ({@link PointsAdapter}, {@link HandsAdapter}, {@link
- * PeopleAdapter}, {@link StockAdapter}, {@link MoneyAdapter}, {@link LandAdapter}) turn Minecraft's happenings into the core's inputs and its outputs into things
+ * PeopleAdapter}, {@link StockAdapter}, {@link MoneyAdapter}, {@link LandAdapter}, {@link LockerAdapter}) turn Minecraft's happenings into the core's inputs and its outputs into things
  * in the world; {@link CoreClock} hands them a look at a time. The host keeps no society ids: which block is which town's and which villager
  * is which hand are the core's, read back by the adapters when it starts.
  *
@@ -72,6 +73,7 @@ public final class CoreHost implements AutoCloseable {
     private final StockAdapter stock;
     private final MoneyAdapter money;
     private final LandAdapter land;
+    private final LockerAdapter lockers;
     private final Outcomes outcomes;
     private final List<CompletableFuture<Response>> looks = new ArrayList<>();
     private String pausedWhy;
@@ -86,6 +88,7 @@ public final class CoreHost implements AutoCloseable {
         this.stock = new StockAdapter(this, ownsChests);
         this.money = new MoneyAdapter(this, ownsChests);
         this.land = new LandAdapter(this, ownsChests);
+        this.lockers = new LockerAdapter(this, ownsChests);
         this.outcomes = new Outcomes(people, stock, money, land);
         try {
             switch (store.open()) {
@@ -230,6 +233,11 @@ public final class CoreHost implements AutoCloseable {
         return land;
     }
 
+    /** The locker adapter: where the core's hands' lockers stand, and the Merchant's screen. */
+    public LockerAdapter lockers() {
+        return lockers;
+    }
+
     /** Why the host is paused (the save refused, the core stuck), or null while it runs. */
     public String pausedWhy() {
         return pausedWhy;
@@ -249,6 +257,7 @@ public final class CoreHost implements AutoCloseable {
         looked = now;
         if (looks.isEmpty()) {
             stock.joinDepots(server); // a building's containers the core doesn't keep yet, its depots now (counted as they join)
+            lockers.place(server); // where the loaded villagers' lockers stand (core mode), before their chests are counted
         }
         List<Input> inputs = pending();
         // A census only in core mode: in Java mode the Java rules' census keeps the people (CensusTaker).

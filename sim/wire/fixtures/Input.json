@@ -2233,6 +2233,52 @@
     }
   },
   {
+    "Switch": {
+      "hand": 3,
+      "offer": 0,
+      "good": 2,
+      "on": true
+    }
+  },
+  {
+    "Switch": {
+      "hand": 4294967295,
+      "offer": 4294967295,
+      "good": 4294967295,
+      "on": false
+    }
+  },
+  {
+    "Locker": {
+      "hand": 3,
+      "at": {
+        "kind": "Locker",
+        "dim": "minecraft:overworld",
+        "x": 30,
+        "y": -60,
+        "z": 27
+      }
+    }
+  },
+  {
+    "Locker": {
+      "hand": 3,
+      "at": null
+    }
+  },
+  {
+    "Locker": {
+      "hand": 4294967295,
+      "at": {
+        "kind": "Locker",
+        "dim": "minecraft:overworld",
+        "x": -2147483648,
+        "y": 2147483647,
+        "z": -2147483648
+      }
+    }
+  },
+  {
     "Built": {
       "town": 0,
       "work": {

@@ -87,6 +87,15 @@ Answer:
           - ground:
               SEQ:
                 TYPENAME: GroundView
+    10:
+      Lockers:
+        STRUCT:
+          - town: U32
+          - limit: U32
+          - placed: BOOL
+          - lockers:
+              SEQ:
+                TYPENAME: LockerView
 Command:
   ENUM:
     0:
@@ -345,6 +354,20 @@ Input:
           - work:
               TYPENAME: Work
           - share: F64
+    26:
+      Switch:
+        STRUCT:
+          - hand: U32
+          - offer: U32
+          - good: U32
+          - on: BOOL
+    27:
+      Locker:
+        STRUCT:
+          - hand: U32
+          - at:
+              OPTION:
+                TYPENAME: Point
 LandKind:
   ENUM:
     0:
@@ -361,6 +384,35 @@ LandKind:
       Hills: UNIT
     6:
       Water: UNIT
+LockerView:
+  STRUCT:
+    - hand: U32
+    - managed: BOOL
+    - client: BOOL
+    - at:
+        OPTION:
+          TYPENAME: Point
+    - worth: F64
+    - offers:
+        SEQ:
+          TYPENAME: OfferView
+OfferView:
+  STRUCT:
+    - offer: U32
+    - good: U32
+    - sells: BOOL
+    - count: U32
+    - emeralds: U32
+    - price: U32
+    - uses: U8
+    - used: U8
+    - xp: U32
+    - level: U8
+    - demand: I32
+    - inflated: BOOL
+    - on: BOOL
+    - training: BOOL
+    - procured: BOOL
 Output:
   ENUM:
     0:
@@ -592,6 +644,10 @@ Query:
           - hexes:
               SEQ:
                 TYPENAME: HexAt
+    10:
+      Lockers:
+        STRUCT:
+          - town: U32
 Refusal:
   ENUM:
     0:

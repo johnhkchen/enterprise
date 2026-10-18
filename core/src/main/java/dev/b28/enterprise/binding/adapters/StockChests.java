@@ -41,10 +41,13 @@ final class StockChests {
         this.handlers = handlers;
     }
 
-    /** The chests of a point of {@code kind} at {@code pos}: a desk's touching containers, a depot's own container. */
+    /**
+     * The chests of a point of {@code kind} at {@code pos}: a desk's touching containers, a locker's (a workstation's)
+     * the same, a depot's own container.
+     */
     static StockChests at(ServerLevel level, PointsAdapter.Kind kind, BlockPos pos) {
         List<BlockPos> containers = switch (kind) {
-            case DESK -> Lockers.touchingContainers(level, pos);
+            case DESK, LOCKER -> Lockers.touchingContainers(level, pos);
             case DEPOT -> isContainer(level, pos) ? List.of(Lockers.canonicalContainer(pos, level.getBlockState(pos))) : List.of();
             default -> List.of();
         };

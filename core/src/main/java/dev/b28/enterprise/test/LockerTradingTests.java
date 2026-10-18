@@ -117,6 +117,18 @@ public final class LockerTradingTests {
     }
 
     /**
+     * A restock as the Java rules hook it ({@code VillagerMixin}: demand floored, then the locker's trades). In core mode
+     * the hook runs no locker trades (the core runs the lockers: CoreBindingTests' locker tests), so these tests of the
+     * Java rules, which stay until delete-java-rules, run them under the Java rules there.
+     */
+    static void restock(Villager villager) {
+        dev.b28.enterprise.locker.LockerTrading.underJavaRules(() -> {
+            villager.restock();
+            return null;
+        });
+    }
+
+    /**
      * Gives the villager this job site at once. Waiting for a natural claim is flaky: tests run side by side, and a
      * villager may claim a neighbouring test's workstation.
      */
@@ -134,7 +146,7 @@ public final class LockerTradingTests {
                     MerchantOffer offer = market.givePaperTrade(0);
                     market.enable(PAPER_TRADE);
                     market.stock(Items.PAPER, 64);
-                    market.librarian().restock();
+                    restock(market.librarian());
 
                     market.assertLocker(16, 2);
                     helper.assertTrue(offer.getUses() == 2, "two trades used, found " + offer.getUses());
@@ -155,7 +167,7 @@ public final class LockerTradingTests {
                     market.enable(PAPER_TRADE);
                     market.stock(Items.PAPER, 64);
                     market.stock(Items.PAPER, 64);
-                    market.librarian().restock(); // five trades, ten XP: an Apprentice
+                    restock(market.librarian()); // five trades, ten XP: an Apprentice
                     helper.assertTrue(market.librarian().getVillagerData().getLevel() == 2,
                             "levelled up there and then, not on its own later tick: "
                                     + market.librarian().getVillagerData().getLevel());
@@ -182,7 +194,7 @@ public final class LockerTradingTests {
                     MerchantBook book = MerchantBook.get(server);
                     var stock = dev.b28.enterprise.merchant.MerchantStock.at(helper.getLevel(), helper.absolutePos(DESK));
                     stock.insert(new ItemStack(Items.EMERALD, 20));
-                    smith.restock();
+                    restock(smith);
                     String coal = "minecraft:coal+>minecraft:emerald";
                     String axe = "minecraft:emerald+>minecraft:iron_axe";
                     helper.assertFalse(book.isEnabled(desk, helper.absolutePos(LECTERN), coal),
@@ -192,14 +204,14 @@ public final class LockerTradingTests {
                             List.of(new dev.b28.enterprise.contract.Training("minecraft:weaponsmith", 5, 24)),
                             dev.b28.enterprise.contract.Incoterm.EXW, helper.getLevel().getGameTime() + 240000, 24000, 1,
                             helper.getLevel().getGameTime(), desk, true);
-                    smith.restock();
+                    restock(smith);
                     helper.assertTrue(book.isTraining(desk, helper.absolutePos(LECTERN), coal),
                             "under contract: what it learns on goes on");
                     helper.assertTrue(book.isTraining(desk, helper.absolutePos(LECTERN), axe),
                             "and with no coal in the warehouse, its work is bought instead");
                     helper.assertTrue(smith.getVillagerXp() > 0, "it learns");
                     smith.setVillagerData(smith.getVillagerData().setLevel(5));
-                    smith.restock();
+                    restock(smith);
                     helper.assertFalse(book.isEnabled(desk, helper.absolutePos(LECTERN), coal)
                             || book.isEnabled(desk, helper.absolutePos(LECTERN), axe), "a master: the training stops");
                 })
@@ -230,7 +242,7 @@ public final class LockerTradingTests {
                     // The buyer's caravans call here: it will collect the work, and pay for it.
                     var ledger = dev.b28.enterprise.caravan.CaravanLedger.get(server);
                     var route = ledger.addRoute(buyer, desk);
-                    smith.restock();
+                    restock(smith);
                     ledger.removeRoute(route.id());
                     helper.assertTrue(stock.count(new ItemCost(Items.IRON_AXE, 1)) == 0, "no axes left loose to clog it");
                     long crates = stock.looseStacks().stream()
@@ -263,7 +275,7 @@ public final class LockerTradingTests {
                             new dev.b28.enterprise.contract.Delivery(Items.DIAMOND_SWORD, 1, 30),
                             dev.b28.enterprise.contract.Incoterm.EXW, helper.getLevel().getGameTime(), 24000, 4,
                             helper.getLevel().getGameTime(), desk, true);
-                    smith.restock();
+                    restock(smith);
                     helper.assertTrue(MerchantBook.get(server).isEnabled(desk, helper.absolutePos(LECTERN),
                             "minecraft:emerald+>minecraft:diamond_sword"), "its sword trade switched on, at the restock");
                     helper.assertTrue(stock.count(new ItemCost(Items.DIAMOND_SWORD, 1)) >= 1, "and swords bought for the contract");
@@ -278,7 +290,7 @@ public final class LockerTradingTests {
                 .thenExecute(() -> {
                     market.givePaperTrade(0);
                     market.stock(Items.PAPER, 64);
-                    market.librarian().restock();
+                    restock(market.librarian());
                     market.assertLocker(64, 0);
                 })
                 .thenSucceed();
@@ -292,7 +304,7 @@ public final class LockerTradingTests {
                     market.givePaperTrade(0);
                     market.enable(PAPER_TRADE);
                     market.stock(Items.PAPER, 64);
-                    market.librarian().restock();
+                    restock(market.librarian());
                     market.assertLocker(64, 0);
                 })
                 .thenSucceed();
@@ -307,7 +319,7 @@ public final class LockerTradingTests {
                     market.givePaperTrade(100);
                     market.enable(PAPER_TRADE);
                     market.stock(Items.PAPER, 64);
-                    market.librarian().restock();
+                    restock(market.librarian());
                     market.assertLocker(64, 0);
                 })
                 .thenSucceed();
@@ -323,7 +335,7 @@ public final class LockerTradingTests {
                     market.givePaperTrade(0);
                     market.enable(PAPER_TRADE);
                     market.stock(Items.PAPER, 64);
-                    market.librarian().restock();
+                    restock(market.librarian());
                     // Reputation 110 x 0.05 = 5 off: 19 paper per emerald, so 3 trades from 64.
                     market.assertLocker(7, 3);
                 })
@@ -348,7 +360,7 @@ public final class LockerTradingTests {
                     market.givePaperTrade(0);
                     market.enable(PAPER_TRADE);
                     market.keepEmeralds();
-                    market.librarian().restock();
+                    restock(market.librarian());
 
                     // 128 paper moved into the locker: 5 trades use 120, 8 stay behind; emeralds go to stock.
                     market.assertLocker(8, 0);
@@ -368,9 +380,9 @@ public final class LockerTradingTests {
         helper.startSequence().thenWaitUntil(() -> helper.assertTrue(market.ready(), "waiting for job sites"))
                 .thenExecute(() -> {
                     MerchantOffer offer = market.givePaperTrade(10);
-                    market.librarian().restock(); // unused: vanilla would take demand to 10 - 16 = -6
+                    restock(market.librarian()); // unused: vanilla would take demand to 10 - 16 = -6
                     helper.assertTrue(offer.getDemand() == 0, "cools to zero, found " + offer.getDemand());
-                    market.librarian().restock();
+                    restock(market.librarian());
                     helper.assertTrue(offer.getDemand() == 0, "stays at zero, found " + offer.getDemand());
                 })
                 .thenSucceed();
@@ -406,7 +418,8 @@ public final class LockerTradingTests {
                     long lastRestock = helper.getLevel().getGameTime() - 3 * 24000L - 100;
                     librarian.lastRestockGameTime = lastRestock;
 
-                    int replayed = dev.b28.enterprise.locker.LockerCatchUp.catchUp(librarian);
+                    int replayed = dev.b28.enterprise.locker.LockerTrading.underJavaRules(
+                            () -> dev.b28.enterprise.locker.LockerCatchUp.catchUp(librarian));
                     helper.assertTrue(replayed == 6, "3 missed days replay 6 restocks, replayed " + replayed);
                     helper.assertTrue(librarian.lastRestockGameTime == lastRestock + 3 * 24000L,
                             "the clock moves by the 3 days replayed, keeping the 100 leftover ticks");
@@ -447,20 +460,29 @@ public final class LockerTradingTests {
                     market.librarian().lastRestockGameTime = 0;
                     helper.assertTrue(dev.b28.enterprise.locker.LockerCatchUp.missedRestocks(market.librarian()) == 0,
                             "a villager that never restocked owes nothing");
-                    dev.b28.enterprise.locker.LockerCatchUp.catchUp(market.librarian());
+                    dev.b28.enterprise.locker.LockerTrading.underJavaRules(
+                            () -> dev.b28.enterprise.locker.LockerCatchUp.catchUp(market.librarian()));
                     helper.assertTrue(market.librarian().lastRestockGameTime == helper.getLevel().getGameTime(),
                             "but with a locker, its restock clock starts now, so later days count");
                 })
                 .thenSucceed();
     }
 
+    /**
+     * In Java mode a villager with a locker asks to restock on schedule, unused, so its locker trades. In core mode the
+     * core restocks the hand's locker by its own clock (loaded or not), so the villager's own restocks are vanilla's:
+     * none while its trades are unused, locker or not.
+     */
     @GameTest(template = "floor", timeoutTicks = 400)
     public static void villagerWithLockerAsksToRestock(GameTestHelper helper) {
         Market market = market(helper, false);
+        boolean core = dev.b28.enterprise.binding.Society.isCore();
         helper.startSequence().thenWaitUntil(() -> helper.assertTrue(market.ready(), "waiting for job sites"))
                 .thenExecute(() -> {
                     market.givePaperTrade(0);
-                    helper.assertTrue(market.librarian().shouldRestock(), "an unused villager with a locker restocks");
+                    helper.assertTrue(market.librarian().shouldRestock() != core, core
+                            ? "in core mode an unused villager with a locker asks to restock (the core restocks its locker)"
+                            : "an unused villager with a locker restocks");
                     helper.setBlock(CHEST, Blocks.AIR);
                     helper.assertFalse(market.librarian().shouldRestock(), "without a locker, vanilla rules apply");
                 })

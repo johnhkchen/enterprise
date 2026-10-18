@@ -575,6 +575,28 @@ still drift from Java's `Names`; the Java `Territory` family stays (Java mode) u
 for when the rules plant it, before the host looks for its site (`Fields.consider` finds the site first), so one with
 no room is paid for, on the farm and asked for at every survey; every town's crops are counted on the same look.
 
+**Built (B4.6 `locker-adapter`).** In the core (`locker_host.rs`; `Lockers.placed` in the saved `Lockers`): a town founded
+through the wire (`AddTown`) has its lockers where its host places them, and a hand has a locker the Merchant can manage
+only where one stands (`Lockers::has`, through `order`, `takes`, `restock`); a town the core keeps as numbers has every
+hand's, as before (`just core-fingerprint` unmoved). `Input::Locker { hand, at: Option<Point> }` ties a hand's locker to a
+`Locker` point of its town's (one hand a point) or unties it; a locker point removed, or a hand gone, takes its tie. A
+locker's chests are counted with the desk's and written (`chests.rs`): what the town uses is taken from its counted
+lockers first, and what they still hold is carried to its counted desks and depots as far as they have room (`Moved` out
+of the locker, into the desk); `Unmoved` is taken at a locker too. The plan's `Switch { point, offer, on }` is
+`Input::Switch { hand, offer, good, on }` (lockers are hands' in the core; `good` checks the screen's view isn't stale),
+and its `Output::Trades` is a question, `Query::Lockers { town }` / `Answer::Lockers { town, limit, placed, lockers:
+Vec<LockerView { hand, managed, client, at, worth, offers: Vec<OfferView> }> }` (screens read `Ask`); schema
+`190c9fa413786e45` (on `land-adapter`'s), FORMAT 1 (the save's shape grew: dev worlds' `enterprise_core.dat` are rebuilt). A `locker_host`
+random-worlds slice; `tests/locker_host.rs`; `sim/scenarios/lockers.json` (the first scenario with a `HandLevel`). In the
+mod: `adapters/LockerAdapter` (each look in core mode, before the stocktakes, every loaded villager's workstation with a
+container touching it tied as its hand's locker, the point added, untied points removed, one question for every town;
+the Merchant's screen built from `Query::Lockers` with keys the screen sends back, `ToggleTradePayload` sending `Switch`),
+`StockAdapter` counting and writing locker points, `VillagerMixin` running the Java locker rules only in Java mode
+(`LockerTrading.underJavaRules` for the Java rules' own tests in core mode), `/enterprise core lockers <desk>` (and
+`/enterprise lockers` in core mode). `Rounds` and `LockerCatchUp` are not needed in core mode (the core's looks trade
+lockers loaded or not; their listeners were already off there); they and `LockerTrading` stay for Java mode until
+`delete-java-rules`.
+
 ### 3.6 Wave B5: closing
 
 | Order | Task | Goal | Waits for | Java | Model / effort |

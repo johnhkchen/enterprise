@@ -86,3 +86,5 @@ CoreBindingTests.aDeskBrokenTakesItsMoneyAndOnePutBackCountsItOnce # the binding
 CoreBindingTests.aHexsGroundIsTheSurveysInTheCore # the binding's own: Terrain's survey of a hex into the core's map (Rust: tests/land.rs, scenarios/land.json)
 CoreBindingTests.aTownsFieldsAreTheCropsCountedInItsLand # the binding's own: crop blocks counted in a town's hexes into the core's farm (Rust: tests/land.rs, scenarios/land.json)
 CoreBindingTests.aWorkTheCoreAsksForIsLaidAndSaidToBeLaid # the binding's own: a Build laid in the world and said with Built (Rust: tests/land.rs)
+CoreBindingTests.aLockerIsAWorkstationsChestAndTheCoreRunsItsSwitchedOnTrades # the binding's own: lockers placed from workstations' chests, the screen's switches, a locker's chests emptied into the desk (Rust: tests/locker_host.rs, tests/chests.rs a_lockers_chests_are_emptied..., scenarios/lockers.json)
+CoreBindingTests.aLockersMissedDaysAreTradedAtTheCoresLooksWithNothingLoaded # the binding's own: no rounds or catch-up on load, the core's looks trade unseen (Rust: tests/locker_host.rs the_restocks_a_town_missed...)

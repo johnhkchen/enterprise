@@ -398,27 +398,64 @@ fn a_town_shows_whole_items_and_keeps_its_fractions() {
     assert_eq!(chests[0].1.goods[BREAD as usize], 9);
 }
 
-/// A locker's, a shop's or a banker's chests aren't written to (their adapters say what they are), but what their
-/// stocktakes counted is the town's, so it isn't shown again in the desk's.
+/// A shop's or a banker's chests aren't written to (their adapters say what they are), but what their stocktakes
+/// counted is the town's, so it isn't shown again in the desk's.
 #[test]
-fn what_a_lockers_stocktake_counted_isnt_shown_again_at_the_desk() {
+fn what_a_shops_stocktake_counted_isnt_shown_again_at_the_desk() {
     let mut s = created();
     apply(&mut s, vec![
         Input::AddTown { name: "Ashford".into(), desk: desk(0) },
-        Input::AddPoint { point: at(PointKind::Locker, 3), town: 0 },
+        Input::AddPoint { point: at(PointKind::Shop, 3), town: 0 },
     ]);
     let out = apply(&mut s, vec![
         Chests::new(27, &[(WHEAT, 5)]).stocktake(&desk(0)),
-        Chests::new(27, &[(BREAD, 3)]).stocktake(&at(PointKind::Locker, 3)),
+        Chests::new(27, &[(BREAD, 3)]).stocktake(&at(PointKind::Shop, 3)),
     ]);
     assert!(moved(&out).is_empty(), "{out:?}");
     s.as_mut().unwrap().withdraw(0, BREAD as usize, 3.0);
-    let out = apply(&mut s, vec![Chests::new(27, &[(BREAD, 3)]).stocktake(&at(PointKind::Locker, 3))]);
-    assert!(moved(&out).is_empty(), "a locker's chests aren't written to: {out:?}");
+    let out = apply(&mut s, vec![Chests::new(27, &[(BREAD, 3)]).stocktake(&at(PointKind::Shop, 3))]);
+    assert!(moved(&out).is_empty(), "a shop's chests aren't written to: {out:?}");
     // Nor is an Unmoved there anything (the core never moved into it): what it counted stands.
-    let counted = held(&s, &at(PointKind::Locker, 3));
-    apply(&mut s, vec![Input::Unmoved { point: at(PointKind::Locker, 3), good: BREAD, count: 3 }]);
-    assert_eq!(held(&s, &at(PointKind::Locker, 3)), counted, "an Unmoved at a locker changed what it holds");
+    let counted = held(&s, &at(PointKind::Shop, 3));
+    apply(&mut s, vec![Input::Unmoved { point: at(PointKind::Shop, 3), good: BREAD, count: 3 }]);
+    assert_eq!(held(&s, &at(PointKind::Shop, 3)), counted, "an Unmoved at a shop changed what it holds");
+}
+
+/// A locker's chests are the Merchant's shelf, not the town's store (`locker_host.rs`): what its stocktake counted is
+/// the town's, carried to the desk's chests counted in the same look as far as they have room, and what the town uses
+/// is taken from a counted locker first. What the host couldn't take out of it comes back as an Unmoved, and stands.
+#[test]
+fn a_lockers_chests_are_emptied_into_the_desk_and_used_from_first() {
+    let mut s = created();
+    let locker = at(PointKind::Locker, 3);
+    apply(&mut s, vec![
+        Input::AddTown { name: "Ashford".into(), desk: desk(0) },
+        Input::AddPoint { point: locker.clone(), town: 0 },
+    ]);
+    // The desk's chests have one slot free: room for a stack of the locker's 100 bread, and 36 stay.
+    let out = apply(&mut s, vec![
+        Chests::new(2, &[(WHEAT, 5)]).stocktake(&desk(0)),
+        Chests::new(27, &[(BREAD, 100)]).stocktake(&locker),
+    ]);
+    assert_eq!(moved(&out), vec![(3, BREAD, -64), (0, BREAD, 64)], "{out:?}");
+    assert_eq!(held(&s, &locker), vec![0.0, 36.0]);
+    assert_eq!(stock(&s, 0), vec![5.0, 100.0], "the town holds the same, in other chests");
+    // The town gives up 10 bread: taken from the locker it's left in, not the desk.
+    s.as_mut().unwrap().withdraw(0, BREAD as usize, 10.0);
+    let out = apply(&mut s, vec![
+        Chests::new(2, &[(WHEAT, 5), (BREAD, 64)]).stocktake(&desk(0)),
+        Chests::new(27, &[(BREAD, 36)]).stocktake(&locker),
+    ]);
+    assert_eq!(moved(&out), vec![(3, BREAD, -10)], "{out:?}");
+    // A locker not counted in the look is neither used from nor emptied: a hand at the desk is.
+    s.as_mut().unwrap().withdraw(0, BREAD as usize, 4.0);
+    let out = apply(&mut s, vec![Chests::new(2, &[(WHEAT, 5), (BREAD, 64)]).stocktake(&desk(0))]);
+    assert_eq!(moved(&out), vec![(0, BREAD, -4)], "{out:?}");
+    // What the host couldn't take out of the locker (a hopper took it first) it says: the locker holds that much more,
+    // as it counted, until its next stocktake books what's there.
+    let before = held(&s, &locker);
+    apply(&mut s, vec![Input::Unmoved { point: locker.clone(), good: BREAD, count: -5 }]);
+    assert_eq!(held(&s, &locker)[1], before[1] + 5.0);
 }
 
 #[test]

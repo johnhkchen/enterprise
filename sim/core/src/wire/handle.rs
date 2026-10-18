@@ -181,6 +181,13 @@ fn answer(s: &Society, query: &Query) -> Result<Answer, String> {
             s.land_view(town as usize)
         }
         Query::Ground { hexes } => Answer::Ground { ground: hexes.iter().map(|&h| s.ground_view(h)).collect() },
+        &Query::Lockers { town } => {
+            if town as usize >= s.town_count() {
+                return Err(format!("no town {town}"));
+            }
+            let (limit, placed, lockers) = s.locker_views(town as usize);
+            Answer::Lockers { town, limit, placed, lockers }
+        }
     })
 }
 
@@ -352,6 +359,16 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
                         return Err(wrong(format!("no hall called {kind}")));
                     }
                     _ => {}
+                }
+            }
+            // A hand gone, or an offer changed, by the time a switch applies is a stale view (`locker_host.rs`).
+            Input::Switch { good: g, .. } => good(*g)?,
+            Input::Locker { at, .. } => {
+                if let Some(point) = at {
+                    if point.kind() != Kind::Locker {
+                        return Err(wrong(format!("a hand's locker at a {:?}", point.kind)));
+                    }
+                    same_kind(stands(&points, &point.spot()), point).map_err(wrong)?;
                 }
             }
         }

@@ -518,6 +518,10 @@ impl Society {
                 self.apply_land(input);
                 Vec::new()
             }
+            Input::Switch { .. } | Input::Locker { .. } => {
+                self.apply_lockers(input);
+                Vec::new()
+            }
             Input::SetDial { ref name, value } => {
                 // (checked before the look applies: a name or value that wouldn't do is refused there)
                 let _ = match value {

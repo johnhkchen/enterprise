@@ -245,6 +245,11 @@ fn inputs() -> Vec<Input> {
         Input::Crops { hex: hex(2, -1), chunk_x: i32::MIN, chunk_z: i32::MAX, counts: vec![count(3, 80.0), count(BIGGEST_ID, 1.0)] },
         Input::Survey { town: 0, bell_x: 27, bell_z: 24 },
         Input::Survey { town: BIGGEST_ID, bell_x: i32::MIN, bell_z: i32::MAX },
+        Input::Switch { hand: 3, offer: 0, good: 2, on: true },
+        Input::Switch { hand: u32::MAX, offer: u32::MAX, good: BIGGEST_ID, on: false },
+        Input::Locker { hand: 3, at: Some(point(PointKind::Locker, 30, -60, 27)) },
+        Input::Locker { hand: 3, at: None },
+        Input::Locker { hand: u32::MAX, at: Some(point(PointKind::Locker, i32::MIN, i32::MAX, i32::MIN)) },
     ]);
     all.extend(works().into_iter().enumerate().map(|(i, work)| Input::Built { town: i as TownNo, work, share: 0.25 * i as f64 }));
     all.push(Input::Built { town: BIGGEST_ID, work: Work::Wall, share: 1.0 });
@@ -342,7 +347,34 @@ fn queries() -> Vec<Query> {
         Query::Cash { point: point(PointKind::Desk, i32::MIN, i32::MIN, i32::MAX) }, Query::Mint,
         Query::Land { town: 0 },
         Query::Land { town: BIGGEST_ID }, Query::Ground { hexes: vec![] },
-        Query::Ground { hexes: (0..60).map(|i| hex(i - 30, 30 - i)).collect() }]
+        Query::Ground { hexes: (0..60).map(|i| hex(i - 30, 30 - i)).collect() },
+        Query::Lockers { town: 0 }, Query::Lockers { town: BIGGEST_ID }]
+}
+
+fn offer_views() -> Vec<OfferView> {
+    vec![
+        OfferView { offer: 0, good: 4, sells: false, count: 24, emeralds: 1, price: 19, uses: 16, used: 2, xp: 2, level: 1, demand: 0,
+            inflated: false, on: true, training: false, procured: false },
+        OfferView { offer: 3, good: 9, sells: true, count: 1, emeralds: 9, price: 9, uses: 12, used: 0, xp: 1, level: 1, demand: -6,
+            inflated: false, on: false, training: true, procured: true },
+        OfferView { offer: u32::MAX, good: BIGGEST_ID, sells: true, count: u32::MAX, emeralds: u32::MAX, price: u32::MAX,
+            uses: u8::MAX, used: u8::MAX, xp: u32::MAX, level: u8::MAX, demand: i32::MIN, inflated: true, on: true, training: true,
+            procured: true },
+        OfferView { offer: 1, good: 0, sells: false, count: 0, emeralds: 0, price: 1, uses: 0, used: 0, xp: 0, level: 0,
+            demand: i32::MAX, inflated: true, on: false, training: false, procured: false },
+    ]
+}
+
+fn locker_views() -> Vec<LockerView> {
+    vec![
+        LockerView { hand: 2, managed: true, client: true, at: Some(point(PointKind::Locker, 30, -60, 27)), worth: 1.5,
+            offers: offer_views() },
+        LockerView { hand: 5, managed: false, client: false, at: None, worth: 0.0, offers: vec![] },
+        LockerView { hand: u32::MAX, managed: true, client: false, at: Some(point(PointKind::Locker, i32::MAX, 0, i32::MIN)),
+            worth: f64::MAX, offers: (0..40).map(|i| OfferView { offer: i, good: i % 7, sells: i % 2 == 0, count: i, emeralds: 1 + i,
+                price: 1 + i / 2, uses: (i % 17) as u8, used: 0, xp: i, level: 1 + (i % 5) as u8, demand: i as i32 - 20,
+                inflated: i % 3 == 0, on: i % 4 == 0, training: false, procured: i % 5 == 0 }).collect() },
+    ]
 }
 
 fn hand_views() -> Vec<HandView> {
@@ -396,6 +428,10 @@ fn answers() -> Vec<Answer> {
             next_hex: f64::MIN_POSITIVE, plots: counts().remove(2), works: vec![] },
         Answer::Ground { ground: vec![] },
         Answer::Ground { ground: ground_views() },
+        Answer::Lockers { town: 0, limit: 0, placed: false, lockers: vec![] },
+        Answer::Lockers { town: 1, limit: 4, placed: true, lockers: locker_views() },
+        Answer::Lockers { town: BIGGEST_ID, limit: u32::MAX, placed: true, lockers: (0..60).map(|i| LockerView { hand: 1 + i,
+            managed: i < 10, client: i < 4, at: None, worth: i as f64 * 0.25, offers: vec![] }).collect() },
     ]
 }
 
@@ -480,6 +516,8 @@ fixtures! {
     pack_dial_fixtures: PackDial = pack_dials();
     dial_view_fixtures: DialView = dial_views();
     hand_view_fixtures: HandView = hand_views();
+    locker_view_fixtures: LockerView = locker_views();
+    offer_view_fixtures: OfferView = offer_views();
     resident_fixtures: Resident = residents();
     good_flag_fixtures: GoodFlag = vec![GoodFlag::Crop, GoodFlag::Meat];
     save_file_fixtures: SaveFile = saves();
@@ -522,6 +560,8 @@ fn input_place(i: &Input) -> usize {
         Input::Crops { .. } => 23,
         Input::Survey { .. } => 24,
         Input::Built { .. } => 25,
+        Input::Switch { .. } => 26,
+        Input::Locker { .. } => 27,
     }
 }
 
@@ -558,6 +598,7 @@ fn query_place(q: &Query) -> usize {
         Query::Mint => 7,
         Query::Land { .. } => 8,
         Query::Ground { .. } => 9,
+        Query::Lockers { .. } => 10,
     }
 }
 
@@ -573,6 +614,7 @@ fn answer_place(a: &Answer) -> usize {
         Answer::Mint { .. } => 7,
         Answer::Land { .. } => 8,
         Answer::Ground { .. } => 9,
+        Answer::Lockers { .. } => 10,
     }
 }
 
@@ -619,10 +661,10 @@ fn covers<T>(what: &str, samples: &[T], variants: usize, place: fn(&T) -> usize)
 
 #[test]
 fn every_variant_of_every_wire_enum_has_a_sample() {
-    covers("Input", &inputs(), 26, input_place);
+    covers("Input", &inputs(), 28, input_place);
     covers("Output", &outputs(), 16, output_place);
-    covers("Query", &queries(), 10, query_place);
-    covers("Answer", &answers(), 10, answer_place);
+    covers("Query", &queries(), 11, query_place);
+    covers("Answer", &answers(), 11, answer_place);
     covers("Command", &commands(), 5, command_place);
     covers("Response", &responses(), 3, response_place);
     covers("Refusal", &refusals(), 9, refusal_place);

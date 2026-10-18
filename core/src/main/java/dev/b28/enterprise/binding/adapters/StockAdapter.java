@@ -104,6 +104,11 @@ public final class StockAdapter {
         }
     }
 
+    /** The item the core's good {@code good} is here (air for a good with none). */
+    public Item item(long good) {
+        return good >= 0 && good < items.size() ? items.get((int) good) : Items.AIR;
+    }
+
     /** Whether the core's moves are written to the chests here. */
     public boolean writes() {
         return writes;
@@ -293,14 +298,15 @@ public final class StockAdapter {
     }
 
     /**
-     * A look's stocktakes: every desk and depot the core keeps that is loaded (with every block touching it), counted.
-     * A desk that isn't one any more, or a depot that isn't a container, is removed from the core first: gone unseen.
+     * A look's stocktakes: every desk, depot and locker the core keeps that is loaded (with every block touching it),
+     * counted. A desk that isn't one any more, a depot that isn't a container, or a locker whose workstation no container
+     * touches, is removed from the core first: gone unseen.
      */
     public List<Input> stocktakes(MinecraftServer server) {
         List<Input> inputs = new ArrayList<>();
         for (Map.Entry<GlobalPos, PointsAdapter.Placed> e : new ArrayList<>(host.points().all().entrySet())) {
             PointsAdapter.Kind kind = e.getValue().kind();
-            if (kind != PointsAdapter.Kind.DESK && kind != PointsAdapter.Kind.DEPOT) {
+            if (!counted(kind)) {
                 continue;
             }
             GlobalPos at = e.getKey();
@@ -345,7 +351,7 @@ public final class StockAdapter {
             PointsAdapter.Kind kind = e.getValue().kind();
             GlobalPos at = e.getKey();
             ServerLevel level = server.getLevel(at.dimension());
-            if ((kind != PointsAdapter.Kind.DESK && kind != PointsAdapter.Kind.DEPOT) || level == null
+            if (!counted(kind) || level == null
                     || !touches(chunks, at) || !loaded(level, at.pos()) || !stands(level, kind, at.pos())) {
                 continue;
             }
@@ -391,7 +397,7 @@ public final class StockAdapter {
     }
 
     /**
-     * One of the core's moves at a desk or a depot: so many of a good put in or taken out of its chests (core mode), as
+     * One of the core's moves at a desk, a depot or a locker: so many of a good put in or taken out of its chests (core mode), as
      * far as they go. What couldn't be done (no room, gone already, the chunk unloaded since the count, or Java mode)
      * is sent back as {@code Unmoved}. A move for a point the host no longer has is dropped: the core forgot it too.
      */
@@ -442,9 +448,21 @@ public final class StockAdapter {
         return out;
     }
 
-    /** Is the point still there: a desk still a desk, a depot still a container. */
+    /**
+     * The points whose chests are counted at each look and written the core's moves: desks and depots (the town's
+     * warehouse), and lockers (a workstation's chests, which the Merchant empties into it: {@code LockerAdapter}).
+     */
+    private static boolean counted(PointsAdapter.Kind kind) {
+        return kind == PointsAdapter.Kind.DESK || kind == PointsAdapter.Kind.DEPOT || kind == PointsAdapter.Kind.LOCKER;
+    }
+
+    /** Is the point still there: a desk still a desk, a depot still a container, a locker's workstation still touching one. */
     private static boolean stands(ServerLevel level, PointsAdapter.Kind kind, BlockPos pos) {
-        return kind == PointsAdapter.Kind.DESK ? level.getBlockState(pos).is(Merchant.DESK.get()) : StockChests.isContainer(level, pos);
+        return switch (kind) {
+            case DESK -> level.getBlockState(pos).is(Merchant.DESK.get());
+            case LOCKER -> !dev.b28.enterprise.locker.Lockers.touchingContainers(level, pos).isEmpty();
+            default -> StockChests.isContainer(level, pos);
+        };
     }
 
     /** The block at {@code pos} and the six touching it are in loaded chunks (a look never loads a chunk to count a chest). */

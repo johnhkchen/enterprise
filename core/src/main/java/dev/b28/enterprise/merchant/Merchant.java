@@ -154,7 +154,7 @@ public final class Merchant {
             player.displayClientMessage(Component.translatable("message.enterprise.merchant.no_desk"), true);
             return;
         }
-        MerchantView view = MerchantView.build(level, desk, lockersAt(level, desk, villager));
+        MerchantView view = MerchantView.of(level, desk, lockersAt(level, desk, villager));
         int merchantId = villager.getId();
         player.openMenu(
                 new SimpleMenuProvider(

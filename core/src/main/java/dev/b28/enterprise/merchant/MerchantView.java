@@ -82,7 +82,22 @@ public record MerchantView(BlockPos desk, int limit, List<LockerView> lockers, d
                 TradeView::new);
     }
 
-    /** Builds the view for the Merchant at {@code desk}, managing up to {@code limit} lockers. */
+    /**
+     * The Merchant's screen at {@code desk}: in core mode its lockers and their switches are the core's ({@code
+     * binding/adapters/LockerAdapter}, while the core keeps a town there), else the Java rules' ({@link #build}).
+     */
+    public static MerchantView of(ServerLevel level, BlockPos desk, int limit) {
+        if (dev.b28.enterprise.binding.Society.isCore()) {
+            var host = dev.b28.enterprise.binding.CoreHost.of(level.getServer());
+            List<LockerView> lockers = host == null || host.pausedWhy() != null ? null : host.lockers().view(level, desk);
+            if (lockers != null) {
+                return build(level, desk, limit, Lockers.MERCHANT_RANGE, lockers);
+            }
+        }
+        return build(level, desk, limit);
+    }
+
+    /** Builds the view for the Merchant at {@code desk}, managing up to {@code limit} lockers (the Java rules'). */
     public static MerchantView build(ServerLevel level, BlockPos desk, int limit) {
         return build(level, desk, limit, Lockers.MERCHANT_RANGE);
     }
@@ -111,6 +126,12 @@ public record MerchantView(BlockPos desk, int limit, List<LockerView> lockers, d
                     return new LockerView(locker.workstation(), label, trades);
                 })
                 .toList();
+        return build(level, desk, limit, range, lockers);
+    }
+
+    /** The view with these lockers, and the rest of the screen (the rate, the bank, the caravans) the other concerns'. */
+    private static MerchantView build(ServerLevel level, BlockPos desk, int limit, int range, List<LockerView> lockers) {
+        GlobalPos deskPos = GlobalPos.of(level.dimension(), desk);
         double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, level.getGameTime());
         int bankSpurs = MoneyChanger.bankAt(level, desk).map(BankAccount::getBalance).orElse(NO_BANK);
         return new MerchantView(desk, limit, lockers, rate, bankSpurs, caravans(level, deskPos, range));

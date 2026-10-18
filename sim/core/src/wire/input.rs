@@ -114,6 +114,20 @@ pub enum Input {
     /// The host has laid `share` (0 to 1) of a town's work in its world (a `Build` shown): the core won't ask for that
     /// much again. Ignored for a work the town hasn't (a stale view).
     Built { town: TownNo, work: Work, share: f64 },
+    /// One of a hand's locker offers switched on or off (the Merchant's screen, `ToggleTradePayload`): the offer at
+    /// `offer`, its place among the hand's offers as `Answer::Lockers` lists them, which is of `good` (a check that the
+    /// screen's view isn't stale). The Merchant runs a switched-on offer at its locker's restocks while it manages the
+    /// locker. Ignored for a hand that isn't on a roster by the time it applies, or an offer that isn't there or isn't of
+    /// that good (the screen showed what has changed since).
+    Switch { hand: HandNo, offer: u32, good: GoodNo, on: bool },
+    /// Where a hand's locker stands: its workstation, with a chest touching it (a `Locker` point of the hand's town's,
+    /// placed with `AddPoint`), or nowhere (`None`: its workstation lost, its chest broken). In a town whose lockers its
+    /// host places (every town founded by `AddTown`), a hand has a locker the Merchant can manage only where one stands;
+    /// the point's chests are counted at each look and written as the town's (`Moved`): what the town uses is taken from
+    /// them first, and what they still hold the Merchant carries to its desk and depots. A point is one hand's locker: a
+    /// hand put where another's stood takes it. Ignored for a hand that isn't on a roster by the time it applies, or a
+    /// point of another town's. Refused for a point that isn't a locker standing there.
+    Locker { hand: HandNo, at: Option<Point> },
 }
 
 /// A villager a census saw: the host's tag for it (its UUID), its trade by the host's name (with or without the host's

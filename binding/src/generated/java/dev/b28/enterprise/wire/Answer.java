@@ -18,7 +18,8 @@ public sealed interface Answer
                 Answer.Cash,
                 Answer.Mint,
                 Answer.Land,
-                Answer.Ground {
+                Answer.Ground,
+                Answer.Lockers {
     void encode(PostcardOut out);
 
     static Answer decode(PostcardIn in) {
@@ -34,6 +35,7 @@ public sealed interface Answer
             case 7 -> new Mint(in.f64(), in.f64(), in.f64(), in.f64());
             case 8 -> new Land(in.u32(), in.list(2, HexAt::decode), in.f64(), in.f64(), in.list(9, Count::decode), in.list(18, WorkView::decode));
             case 9 -> new Ground(in.list(20, GroundView::decode));
+            case 10 -> new Lockers(in.u32(), in.u32(), in.bool(), in.list(13, LockerView::decode));
             default -> throw in.unknownVariant("Answer", at);
         };
     }
@@ -238,6 +240,27 @@ public sealed interface Answer
         public void encode(PostcardOut out) {
             out.variant(9);
             out.list(this.ground, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * A town's lockers: how many its desk's Merchant may manage ({@code limit}, none without one), whether its host places
+     * them ({@code placed}: a hand has one only where {@code Input::Locker} put it), and every hand with a trade a locker serves
+     * (grown, not the Merchant, not idle), in the roster's order. Empty for a town that keeps no roster.
+     */
+    record Lockers(long town, long limit, boolean placed, List<LockerView> lockers) implements Answer {
+        public Lockers {
+            Objects.requireNonNull(lockers, "lockers");
+            lockers = List.copyOf(lockers);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(10);
+            out.u32(this.town);
+            out.u32(this.limit);
+            out.bool(this.placed);
+            out.list(this.lockers, (o1, e1) -> e1.encode(o1));
         }
     }
 }

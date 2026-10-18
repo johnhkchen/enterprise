@@ -21,7 +21,8 @@
 //!
 //! A refusal matches by its kind and numbers; its `why` is prose and isn't compared ([`without_prose`]).
 //!
-//! `people` shows a child born (`Born`), `chests` the chests' moves (`Moved`) and `money` the till's (`Cash`); the others need a master Merchant,
+//! `people` shows a child born (`Born`), `chests` the chests' moves (`Moved`), `money` the till's (`Cash`) and
+//! `lockers` a locker's trades levelling its villager (`HandLevel`); the others need a master Merchant,
 //! a route or a party of settlers, and the wire has no input that makes any of them. Their bytes are pinned by the
 //! golden files meanwhile
 //! (`tests/wire_fixtures.rs`).
@@ -462,9 +463,10 @@ fn inputs() -> Scenario {
         Input::Stocktake { point: at(PointKind::Banker, 27, 30), counts: counts(&[]), free: 27 },
         Input::Stocktake { point: at(PointKind::Depot, 603, -40), counts: counts(&[(BEEF, 20.0)]), free: 27 },
     ]);
-    s.apply("what the host couldn't move at the desk, said before its next stocktake: there's room now, so it goes in again", vec![
+    s.apply("what the host couldn't move at the desk, said before its next stocktake: there's room now, so it goes in again \
+        (the locker's wheat the Merchant carried there is in the desk's chests now)", vec![
         Input::Unmoved { point: at(PointKind::Desk, 27, 27), good: BREAD, count: 4 },
-        Input::Stocktake { point: at(PointKind::Desk, 27, 27), counts: counts(&[(BREAD, 120.0), (BOOK, 8.0)]), free: 25 },
+        Input::Stocktake { point: at(PointKind::Desk, 27, 27), counts: counts(&[(WHEAT, 12.0), (BREAD, 120.0), (BOOK, 8.0)]), free: 24 },
     ]);
     s.apply("a player buys from a town's own shop", vec![Input::Buy { town: 1, good: BEEF, count: 2.0 }]);
     s.apply("a point broken", vec![Input::RemovePoint { point: at(PointKind::Shop, 24, 27) }]);
@@ -791,6 +793,86 @@ fn land() -> Scenario {
     s.scenario
 }
 
+/// The lockers of a town its host places (`locker_host.rs`): a hand's locker standing at a workstation's chests, the
+/// Merchant's screen switching its offers, the chests emptied into the desk, and the refusals.
+fn lockers() -> Scenario {
+    let mut s = Script::new("lockers", "A town founded by its host has its lockers where the host places them: a \
+        Librarian with no locker isn't one the Merchant manages, and once its locker stands at a workstation (a Locker \
+        point, tied to it) it is. The locker's chests are counted with the town's: the paper a player left there is the \
+        town's, carried to the desk's chests at once (Moved out of the locker, into the desk). The screen switches the \
+        Librarian's paper trade on; two days on its locker has sold the town's paper, two trades a restock while the \
+        paper lasts, and the Librarian and the Merchant earned their XP (HandLevel). Untied, the locker isn't managed. \
+        A locker at a point that isn't one is refused; a switch for a hand or an offer that isn't there is ignored. \
+        Saved and loaded, the lockers are as they were.");
+    const PAPER: GoodNo = 6;
+    let desk = at(PointKind::Desk, 27, 27);
+    let locker = at(PointKind::Locker, 25, 27);
+    let lockers_of = |s: &mut Script, note: &str| s.ask(note, vec![Query::Lockers { town: 0 }]);
+    let r = s.say("a society from a pack with paper and Librarians", Command::Create { pack: full_pack(), seed: 7 });
+    assert_eq!(r, Response::Done { outputs: vec![], answers: vec![] });
+    s.apply("a town at its desk, its Merchant and a Librarian, the desk's empty chests counted", vec![
+        Input::AddTown { name: "Ashford".into(), desk: desk.clone() },
+        Input::AddHand { town: 0, trade: "merchant".into(), level: 1, tag: "villager-m".into() },
+        Input::AddHand { town: 0, trade: "minecraft:librarian".into(), level: 1, tag: "villager-l".into() },
+        Input::Stocktake { point: desk.clone(), counts: vec![], free: 27 },
+    ]);
+    let ids = ids(&s.ask("its hands", hands_of(0)));
+    let librarian = ids[1];
+    let a = lockers_of(&mut s, "its lockers: the host places them, and the Librarian has none yet, so isn't managed");
+    let paper_offer = match &a[0] {
+        Answer::Lockers { placed: true, lockers, .. } if lockers.len() == 1 && !lockers[0].managed && lockers[0].at.is_none() => {
+            lockers[0].offers.iter().find(|o| o.good == PAPER && !o.sells).expect("a paper offer").offer
+        }
+        a => panic!("{a:?}"),
+    };
+    let moved = s.apply("its locker placed at the Librarian's workstation, and a look's count: 64 paper a player left in the \
+        locker are the town's, carried to the desk's chests", vec![
+        Input::AddPoint { point: locker.clone(), town: 0 },
+        Input::Locker { hand: librarian, at: Some(locker.clone()) },
+        Input::Stocktake { point: desk.clone(), counts: vec![], free: 27 },
+        Input::Stocktake { point: locker.clone(), counts: counts(&[(PAPER, 64.0)]), free: 26 },
+    ]);
+    assert_eq!(moved, vec![
+        Output::Moved { point: locker.clone(), good: PAPER, count: -64 },
+        Output::Moved { point: desk.clone(), good: PAPER, count: 64 },
+    ]);
+    let a = lockers_of(&mut s, "the Librarian's locker stands there, and the Merchant manages it");
+    assert!(matches!(&a[0], Answer::Lockers { lockers, .. } if lockers[0].managed && lockers[0].at == Some(locker.clone())), "{a:?}");
+    s.apply("the screen switches its paper trade on, and a stale switch (a hand that isn't there, another good) is ignored", vec![
+        Input::Switch { hand: librarian, offer: paper_offer, good: PAPER, on: true },
+        Input::Switch { hand: 99, offer: 0, good: PAPER, on: true },
+        Input::Switch { hand: librarian, offer: paper_offer, good: WHEAT, on: false },
+    ]);
+    let out = s.apply("two days: the locker trades the town's paper, its chests counted as the look ends", vec![
+        Input::Stocktake { point: desk.clone(), counts: counts(&[(PAPER, 64.0)]), free: 26 },
+        Input::Stocktake { point: locker.clone(), counts: vec![], free: 27 },
+        Input::Advance { to: 2 * DAY },
+    ]);
+    assert!(out.iter().any(|o| matches!(o, Output::HandLevel { hand, .. } if *hand == librarian)), "{out:?}");
+    assert!(out.iter().any(|o| matches!(o, Output::Moved { point, good: PAPER, count } if *point == desk && *count < 0)), "{out:?}");
+    lockers_of(&mut s, "its offers, the paper trade used");
+    s.save("saved");
+    s.load("loaded");
+    lockers_of(&mut s, "the same after the load");
+    s.apply("the locker's chest broken: untied, then its point removed", vec![
+        Input::Locker { hand: librarian, at: None },
+        Input::RemovePoint { point: locker.clone() },
+    ]);
+    let a = lockers_of(&mut s, "no locker, not managed");
+    assert!(matches!(&a[0], Answer::Lockers { lockers, .. } if !lockers[0].managed && lockers[0].at.is_none()), "{a:?}");
+    let r = s.say("a locker at a desk: refused", Command::Apply { inputs: vec![
+        Input::Locker { hand: librarian, at: Some(Point { kind: PointKind::Locker, ..desk.clone() }) },
+    ] });
+    assert!(matches!(s.refused("a desk", r), Refusal::Input { at: 0, .. }));
+    let r = s.say("a locker where no point stands: refused", Command::Apply { inputs: vec![
+        Input::Locker { hand: librarian, at: Some(locker.clone()) },
+    ] });
+    assert!(matches!(s.refused("nowhere", r), Refusal::Input { at: 0, .. }));
+    let r = s.say("the lockers of a town that isn't there", Command::Ask { queries: vec![Query::Lockers { town: 3 }] });
+    assert!(matches!(s.refused("no town", r), Refusal::Query { at: 0, .. }));
+    s.scenario
+}
+
 /// Every way the core refuses, each leaving the society as it was.
 fn refusals() -> Scenario {
     let mut s = Script::new("refusals", "Every refusal, each a message and nothing applied.");
@@ -898,7 +980,7 @@ fn refusals() -> Scenario {
 }
 
 fn scenarios() -> Vec<Scenario> {
-    vec![stocktake(), inputs(), content(), refusals(), hands(), people(), chests(), money(), land()]
+    vec![stocktake(), inputs(), content(), refusals(), hands(), people(), chests(), money(), land(), lockers()]
 }
 
 fn text(scenario: &Scenario) -> String {
@@ -925,7 +1007,7 @@ fn the_scenarios_play_as_their_files_say() {
         return;
     }
     let mut wrong = Vec::new();
-    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people", "chests", "money", "land"] {
+    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people", "chests", "money", "land", "lockers"] {
         let scenario = read(name);
         assert!(!scenario.steps.is_empty(), "{name}: no steps");
         wrong.extend(play(&scenario));
@@ -983,13 +1065,13 @@ fn every_message_appears_in_a_scenario() {
         }
     }
     let set = |names: &[&str]| names.iter().map(|s| s.to_string()).collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost", "Census", "TagHand", "Unmoved", "Cashcount", "CashUnmoved", "Ground", "Crops", "Survey", "Built"]));
+    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost", "Census", "TagHand", "Unmoved", "Cashcount", "CashUnmoved", "Ground", "Crops", "Survey", "Built", "Switch", "Locker"]));
     assert_eq!(commands, set(&["Apply", "Ask", "Create", "Load", "Save"]));
-    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands", "Chests", "Cash", "Mint", "Land", "Ground"]));
+    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands", "Chests", "Cash", "Mint", "Land", "Ground", "Lockers"]));
     assert_eq!(refusals, set(&["Abi", "Input", "NoSociety", "Pack", "Query", "Save", "SaveFormat", "Schema", "Unreadable"]));
-    // A child born, the chests' moves and a field to lay: the others need a master Merchant (OrderFilled, Signal), a route (the
-    // wagon's three), a pallet (the pallets' three: only a wagon packs one) or a party of settlers or the rules taking a
-    // hand (Settled, Departed, HandGone, HandLevel), and no wire input makes any. When one does, a scenario shows each
-    // and its name goes here.
-    assert_eq!(outputs, set(&["Born", "Cash", "Moved", "Build"]));
+    // A child born, the chests' moves, the till's, a field to lay and a locker's trades levelling its villager and the
+    // Merchant: the others need a master Merchant (OrderFilled, Signal), a route (the wagon's three), a pallet (the
+    // pallets' three: only a wagon packs one) or a party of settlers or the rules taking a hand (Settled, Departed,
+    // HandGone), and no wire input makes any. When one does, a scenario shows each and its name goes here.
+    assert_eq!(outputs, set(&["Born", "Cash", "Moved", "Build", "HandLevel"]));
 }

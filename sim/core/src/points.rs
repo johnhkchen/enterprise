@@ -112,6 +112,10 @@ impl Society {
     /// put there again is that town's ([`Society::found`]).
     pub fn remove_point(&mut self, at: &Spot) -> Result<Placed, String> {
         let placed = self.world.resource_mut::<Points>().0.remove(at).ok_or_else(|| format!("no point at {at:?}"))?;
+        if placed.kind == Kind::Locker {
+            // A hand whose locker stood there has none now (`locker_host.rs`).
+            self.untie_lockers_at(placed.town, at);
+        }
         for (good, &n) in placed.counted.iter().enumerate() {
             if n > 0.0 {
                 self.withdraw(placed.town, good, n);
@@ -211,7 +215,9 @@ impl Society {
         use crate::wire::Input;
         match input {
             Input::AddTown { name, desk } => {
-                self.found(name, desk.spot()).expect("a town's desk where no point stands");
+                let town = self.found(name, desk.spot()).expect("a town's desk where no point stands");
+                // A host's town: its lockers are where the host places them (`locker_host.rs`).
+                self.host_places_lockers(town);
             }
             Input::AddPoint { point, town } => {
                 self.add_point(point.kind(), point.spot(), *town as usize).expect("a point of a town's where none stands");

@@ -17,8 +17,12 @@
 //! as each has room by its last stocktake (its empty slots, and what's left of a stack of the good it holds); what has
 //! no room waits on the town's books until a stocktake shows some. Out of its counted desks first, then depots, as far
 //! as each holds the good; what's held in chests not counted now waits for them. Whole items only: a town's fractions
-//! (a third of a loaf) stay on its books. Lockers, shops and bankers aren't written to (their adapters say what their
-//! chests are), but what their stocktakes counted is the town's and so isn't shown again in the desk's.
+//! (a third of a loaf) stay on its books. Shops and bankers aren't written to (their adapters say what their chests
+//! are), but what their stocktakes counted is the town's and so isn't shown again in the desk's. **A locker** (a
+//! workstation's chest, `locker_host.rs`) is a shelf the Merchant works from, not a store: what the town uses is taken
+//! from its counted lockers first, and what they still hold is carried to its desks and depots as far as those have
+//! room (`LockerTrading.collect`), so a player's goods left in a locker reach the warehouse and a locker's trades,
+//! which the core runs against the warehouse, leave nothing behind there.
 //!
 //! The mod's warehouse is the chests themselves: `merchant/MerchantStock` (`insert`: a building meant for the goods
 //! first, then the desk's chests and storehouses, loose slots then shulker boxes; `take`: loose first, then boxes) and
@@ -68,18 +72,26 @@ pub fn holds_stock(kind: Kind) -> bool {
     matches!(kind, Kind::Desk | Kind::Depot)
 }
 
+/// Is this kind of point's chests written to by the core: a town's warehouse, and its lockers, which the Merchant
+/// empties into it (`show_stock`).
+pub fn shown(kind: Kind) -> bool {
+    holds_stock(kind) || kind == Kind::Locker
+}
+
 impl Society {
-    /// The stock of every town with a desk or a depot among `counted` (points the host counted in this look) shown in
-    /// those chests: what it holds in whole items against what its points' chests are taken to hold, the difference
-    /// moved in (to desks, then depots, as far as each has room) or out (desks, then depots, as far as each holds it).
-    /// Each move is in the points' `counted` from now on. In towns' order, then goods', then points'.
+    /// The stock of every town with a desk, a depot or a locker among `counted` (points the host counted in this look)
+    /// shown in those chests: what it holds in whole items against what its points' chests are taken to hold, the
+    /// difference moved in (to desks, then depots, as far as each has room) or out (lockers first, then desks, then
+    /// depots, as far as each holds it); then what its counted lockers still hold carried to its desks and depots, as
+    /// far as they have room (the Merchant collecting, `LockerTrading.collect`: a locker is a workstation's shelf, not
+    /// the town's store). Each move is in the points' `counted` from now on. In towns' order, then goods', then points'.
     pub fn show_stock(&mut self, counted: &[Spot]) -> Vec<Move> {
         let present: BTreeSet<&Spot> = counted.iter().collect();
         let n = self.content().goods.len();
         let stacks: Vec<f64> = self.content().goods.iter().map(|g| g.stack.max(1) as f64).collect();
         let points = self.world.resource::<Points>();
         let towns: BTreeSet<TownId> = present.iter()
-            .filter_map(|at| points.0.get(*at).filter(|p| holds_stock(p.kind)).map(|p| p.town))
+            .filter_map(|at| points.0.get(*at).filter(|p| shown(p.kind)).map(|p| p.town))
             .collect();
         let mut moves = Vec::new();
         for town in towns {
@@ -92,43 +104,52 @@ impl Society {
                     held[g] += c;
                 }
             }
-            // Its desks counted now, then its depots, each in its places' order.
-            let mut order: Vec<Spot> = Vec::new();
-            for want in [Kind::Desk, Kind::Depot] {
-                order.extend(points.0.iter().filter(|(at, p)| p.town == town && p.kind == want && present.contains(at))
-                    .map(|(at, _)| at.clone()));
-            }
-            for p in &order {
+            // Its desks counted now, then its depots, each in its places' order; its lockers counted now.
+            let counted_of = |points: &Points, want: Kind| -> Vec<Spot> {
+                points.0.iter().filter(|(at, p)| p.town == town && p.kind == want && present.contains(at))
+                    .map(|(at, _)| at.clone()).collect()
+            };
+            let mut order: Vec<Spot> = counted_of(&points, Kind::Desk);
+            order.extend(counted_of(&points, Kind::Depot));
+            let lockers = counted_of(&points, Kind::Locker);
+            for p in order.iter().chain(&lockers) {
                 points.0.get_mut(p).expect("a counted point").counted.resize(n, 0.0);
             }
-            let mut free: BTreeMap<&Spot, i64> = order.iter().map(|at| (at, points.0[at].free as i64)).collect();
+            let mut free: BTreeMap<Spot, i64> = order.iter().map(|at| (at.clone(), points.0[at].free as i64)).collect();
+            // The stores' room for `k` more of a good, put in order: (where, how many), as far as `k` goes.
+            let put_in = |points: &mut Points, free: &mut BTreeMap<Spot, i64>, good: usize, mut k: f64| {
+                let mut put = Vec::new();
+                for at in &order {
+                    if k <= 0.0 {
+                        break;
+                    }
+                    let p = points.0.get_mut(at).expect("a counted point");
+                    let has = p.counted[good];
+                    let stack = stacks[good];
+                    let partial = has - (has / stack).floor() * stack;
+                    let merge = if partial > DUST { stack - partial } else { 0.0 };
+                    let slots = free[at].max(0) as f64;
+                    let room = k.min(merge + slots * stack).floor();
+                    if room < 1.0 {
+                        continue;
+                    }
+                    let new_stacks = ((has + room) / stack).ceil() - (has / stack).ceil();
+                    *free.get_mut(at).expect("a counted point") -= new_stacks as i64;
+                    p.counted[good] = has + room;
+                    k -= room;
+                    put.push((at.clone(), p.kind, room as i64));
+                }
+                put
+            };
             for good in 0..n {
                 let more = stock[good] - held[good];
-                let stack = stacks[good];
                 if more >= 1.0 - DUST {
-                    let mut put = (more + DUST).floor();
-                    for at in &order {
-                        if put <= 0.0 {
-                            break;
-                        }
-                        let p = points.0.get_mut(at).expect("a counted point");
-                        let has = p.counted[good];
-                        let partial = has - (has / stack).floor() * stack;
-                        let merge = if partial > DUST { stack - partial } else { 0.0 };
-                        let slots = free[at].max(0) as f64;
-                        let k = put.min(merge + slots * stack).floor();
-                        if k < 1.0 {
-                            continue;
-                        }
-                        let new_stacks = ((has + k) / stack).ceil() - (has / stack).ceil();
-                        *free.get_mut(at).expect("a counted point") -= new_stacks as i64;
-                        p.counted[good] = has + k;
-                        put -= k;
-                        moves.push(Move { at: at.clone(), kind: p.kind, good, count: k as i64 });
+                    for (at, kind, k) in put_in(&mut points, &mut free, good, (more + DUST).floor()) {
+                        moves.push(Move { at, kind, good, count: k });
                     }
                 } else if more < -DUST {
                     let mut take = (-more - DUST).ceil();
-                    for at in &order {
+                    for at in lockers.iter().chain(&order) {
                         if take <= 0.0 {
                             break;
                         }
@@ -143,18 +164,38 @@ impl Society {
                     }
                 }
             }
+            // What the lockers still hold, carried to the stores with room: the town holds the same, in other chests.
+            for at in &lockers {
+                for good in 0..n {
+                    let has = (points.0[at].counted[good] + DUST).floor();
+                    if has < 1.0 {
+                        continue;
+                    }
+                    let put = put_in(&mut points, &mut free, good, has);
+                    let carried: i64 = put.iter().map(|(_, _, k)| k).sum();
+                    if carried == 0 {
+                        continue;
+                    }
+                    points.0.get_mut(at).expect("a counted locker").counted[good] -= carried as f64;
+                    moves.push(Move { at: at.clone(), kind: Kind::Locker, good, count: -carried });
+                    for (to, kind, k) in put {
+                        moves.push(Move { at: to, kind, good, count: k });
+                    }
+                }
+            }
         }
         moves
     }
 
-    /// What the host couldn't do of a move at the point at `at` (if it's still there, of `kind`, a desk or a depot): `count` of `good`
+    /// What the host couldn't do of a move at the point at `at` (if it's still there, of `kind`, a desk, a depot or a
+    /// locker): `count` of `good`
     /// didn't fit (above nothing) or wasn't there to take (below), so its chests hold that much less (or more) than
     /// the core took them to (never below nothing). The goods that didn't fit are still the town's, moved in again when
     /// a stocktake shows room. False if there's no such point (a stale view, ignored).
     pub fn unmoved(&mut self, at: &Spot, kind: Kind, good: GoodId, count: i64) -> bool {
         let n = self.content().goods.len();
         let mut points = self.world.resource_mut::<Points>();
-        let Some(p) = points.0.get_mut(at).filter(|p| p.kind == kind && holds_stock(p.kind)) else {
+        let Some(p) = points.0.get_mut(at).filter(|p| p.kind == kind && shown(p.kind)) else {
             return false;
         };
         p.counted.resize(n, 0.0);

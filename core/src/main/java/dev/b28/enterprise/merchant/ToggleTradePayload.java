@@ -39,6 +39,14 @@ public record ToggleTradePayload(BlockPos workstation, String key, boolean enabl
             if (!known) {
                 return;
             }
+            // In core mode the screen was shown the core's offers, keyed for it: the switch is the core's.
+            if (payload.key().startsWith(dev.b28.enterprise.binding.adapters.LockerAdapter.KEY)) {
+                var host = dev.b28.enterprise.binding.CoreHost.of(player.server);
+                if (host != null && host.pausedWhy() == null && !host.lockers().flip(payload.key(), payload.enabled())) {
+                    Enterprise.LOGGER.warn("The core didn't take the switch {} on the Merchant's screen", payload.key());
+                }
+                return;
+            }
             GlobalPos desk = GlobalPos.of(player.level().dimension(), menu.view().desk());
             MerchantBook.get(player.server).setEnabled(desk, payload.workstation(), payload.key(), payload.enabled());
         });

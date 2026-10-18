@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{Count, GroundView, HandNo, HexAt, Point, TownNo, WorkView};
+use super::{Count, GoodNo, GroundView, HandNo, HexAt, Point, TownNo, WorkView};
 use crate::fixed::Fixed;
 
 /// A question for the core.
@@ -30,6 +30,9 @@ pub enum Query {
     Land { town: TownNo },
     /// The ground of these hexes as the core has it (a hex never surveyed is dry, flat plains).
     Ground { hexes: Vec<HexAt> },
+    /// A town's lockers: which its Merchant manages, where each stands, and each one's offers with their switches (what
+    /// the Merchant's screen shows).
+    Lockers { town: TownNo },
 }
 
 /// An answer, in the place of its question.
@@ -65,6 +68,48 @@ pub enum Answer {
     Land { town: TownNo, hexes: Vec<HexAt>, culture: f64, next_hex: f64, plots: Vec<Count>, works: Vec<WorkView> },
     /// The hexes' ground, in the order asked.
     Ground { ground: Vec<GroundView> },
+    /// A town's lockers: how many its desk's Merchant may manage (`limit`, none without one), whether its host places
+    /// them (`placed`: a hand has one only where `Input::Locker` put it), and every hand with a trade a locker serves
+    /// (grown, not the Merchant, not idle), in the roster's order. Empty for a town that keeps no roster.
+    Lockers { town: TownNo, limit: u32, placed: bool, lockers: Vec<LockerView> },
+}
+
+/// A hand's locker as the Merchant's screen shows it: the hand, whether the Merchant manages it now and has taken it on
+/// as a client, where it stands (`None`: nowhere the host placed, or a town whose host doesn't place lockers), what it
+/// was worth to the town a restock at the Merchant's last review (in emeralds), and its offers at the hand's level.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct LockerView {
+    pub hand: HandNo,
+    pub managed: bool,
+    pub client: bool,
+    pub at: Option<Point>,
+    pub worth: f64,
+    pub offers: Vec<OfferView>,
+}
+
+/// One of a hand's offers: its place among the hand's offers (what `Input::Switch` names), the good it buys (`sells`
+/// false: `count` of it for `emeralds`) or sells (`emeralds` for `count`), its cost after the Merchant's discount
+/// (`price`: goods it takes, or emeralds it charges), its uses a restock and those used since the last, the XP a trade
+/// gives the hand, the level it's offered from, vanilla's demand and whether that has pushed its price above its base
+/// (`inflated`: the Merchant waits), and whether it's switched on, for a training contract or for what the town's
+/// contracts want.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct OfferView {
+    pub offer: u32,
+    pub good: GoodNo,
+    pub sells: bool,
+    pub count: u32,
+    pub emeralds: u32,
+    pub price: u32,
+    pub uses: u8,
+    pub used: u8,
+    pub xp: u32,
+    pub level: u8,
+    pub demand: i32,
+    pub inflated: bool,
+    pub on: bool,
+    pub training: bool,
+    pub procured: bool,
 }
 
 /// One of a town's hands: its id (stable while it lives, wherever it goes: a place in the list isn't), the host's tag

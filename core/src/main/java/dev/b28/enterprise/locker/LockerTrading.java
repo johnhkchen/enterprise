@@ -43,6 +43,32 @@ public final class LockerTrading {
 
     private LockerTrading() {}
 
+    /** Set while a caller runs these rules in core mode ({@link #underJavaRules}). */
+    private static final ThreadLocal<Boolean> JAVA_RULES = ThreadLocal.withInitial(() -> false);
+
+    /**
+     * Whether a villager's restock runs these rules ({@code VillagerMixin}): in Java mode, or while a test of them runs
+     * them in core mode. In core mode the core runs the lockers ({@code binding/adapters/LockerAdapter}) and a villager's
+     * own restocks are vanilla's.
+     */
+    public static boolean javaRules() {
+        return !dev.b28.enterprise.binding.Society.isCore() || JAVA_RULES.get();
+    }
+
+    /**
+     * Runs {@code run} with these rules hooked to villagers' restocks whatever the mode: for the game tests of the Java
+     * rules, which stay until {@code delete-java-rules} and run in core mode too ({@code just gametest-core}).
+     */
+    public static <T> T underJavaRules(java.util.function.Supplier<T> run) {
+        boolean was = JAVA_RULES.get();
+        JAVA_RULES.set(true);
+        try {
+            return run.get();
+        } finally {
+            JAVA_RULES.set(was);
+        }
+    }
+
     /** The Merchant at {@code desk} manages this locker. */
     public record Manager(BlockPos desk, Villager merchant) {}
 

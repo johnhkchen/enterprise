@@ -67,7 +67,10 @@ final class EnterpriseCommands {
                                         .executes(EnterpriseCommands::coreCensus)))
                         .then(Commands.literal("land")
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos())
-                                        .executes(EnterpriseCommands::coreLand))))
+                                        .executes(EnterpriseCommands::coreLand)))
+                        .then(Commands.literal("lockers")
+                                .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                        .executes(EnterpriseCommands::coreLockers))))
                 .then(Commands.literal("mint").executes(EnterpriseCommands::mint))
                 .then(Commands.literal("census")
                         .then(Commands.argument("bell", BlockPosArgument.blockPos())
@@ -653,8 +656,53 @@ final class EnterpriseCommands {
         return land.hexes().size();
     }
 
-    /** Lists what the Merchant at a desk sees: its stock containers and the lockers it manages. */
+    /**
+     * A desk's town's lockers in the core ({@code /enterprise core lockers <desk>}, and {@code /enterprise lockers} in
+     * core mode): where each loaded villager's stands told the core first, then each hand's, managed or waiting, where it
+     * stands, and its offers with their switches and the Merchant's price.
+     */
+    private static int coreLockers(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        ServerLevel level = source.getLevel();
+        BlockPos desk = BlockPosArgument.getLoadedBlockPos(context, "desk");
+        var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+        if (host == null || host.pausedWhy() != null) {
+            source.sendFailure(Component.literal(host == null ? "The core isn't running" : host.pausedWhy()));
+            return 0;
+        }
+        Long town = host.stock().townAt(GlobalPos.of(level.dimension(), desk));
+        if (town == null) {
+            source.sendFailure(Component.literal("The core keeps no town at " + desk.toShortString()));
+            return 0;
+        }
+        if (dev.b28.enterprise.binding.Society.isCore()) {
+            host.lockers().placeNow(level, town);
+        }
+        var lockers = host.lockers().town(town);
+        long managed = lockers.lockers().stream().filter(dev.b28.enterprise.wire.LockerView::managed).count();
+        StringBuilder out = new StringBuilder("The core's town %d: its Merchant manages %d of %d locker(s)%s"
+                .formatted(town, managed, lockers.limit(), lockers.placed() ? "" : " (every hand's, its host places none)"));
+        for (var l : lockers.lockers()) {
+            String at = l.at().map(p -> "at %d %d %d".formatted(p.x(), p.y(), p.z())).orElse("no locker");
+            out.append("\n  hand %d, %s%s%s, worth %.1f a restock".formatted(l.hand(), at, l.managed() ? ", managed" : "",
+                    l.client() ? ", a client" : "", l.worth()));
+            for (var o : l.offers()) {
+                String good = host.stock().item(o.good()).toString();
+                out.append("\n    [%s] %s %s for %s, %d of %d used%s%s".formatted(o.on() ? "on" : "off",
+                        o.sells() ? "sells" : "buys", o.sells() ? o.count() + " " + good : o.price() + " " + good,
+                        o.sells() ? o.price() + " emeralds" : o.emeralds() + " emerald(s)", o.used(), o.uses(),
+                        o.inflated() ? ", inflated" : "", o.training() ? ", training" : o.procured() ? ", for a contract" : ""));
+            }
+        }
+        source.sendSuccess(() -> Component.literal(out.toString()), false);
+        return (int) managed;
+    }
+
+    /** Lists what the Merchant at a desk sees: its stock containers and the lockers it manages (the Java rules'). */
     private static int lockers(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        if (dev.b28.enterprise.binding.Society.isCore()) {
+            return coreLockers(context);
+        }
         CommandSourceStack source = context.getSource();
         ServerLevel level = source.getLevel();
         BlockPos desk = BlockPosArgument.getLoadedBlockPos(context, "desk");

@@ -29,6 +29,10 @@
 //! Not here yet: the Merchant buying what its contracts want (`Procurement`, its runs capped by what's due soon), herds'
 //! feed kept back from crop sales (`feedKept`), the payroll held back from the emeralds a locker pays out; the offers a
 //! villager rolls at random (here a trade offers all of its level's).
+//! Where a locker stands is its host's to say (`locker_host.rs`, [`Lockers::placed`]): in a town whose host places its
+//! lockers (the mod's: a chest touching a workstation, `LockerTrading.hasLocker`), only a hand whose locker stands
+//! somewhere has one; in a town the core keeps as numbers every hand with a trade does.
+//!
 //! Simplified: one restock clock a town, not one a villager (a hand added later shares it); what a town wants, for a
 //! selling offer's worth, is what its people use (`Trades.uses > 0`, where `Caravans.wantedAt` also counts the
 //! warehouse's, the realm's and the workshop's inputs); the host's `Society::restock` leaves the clock where it is.
@@ -208,6 +212,10 @@ pub struct Lockers {
     pub due: Vec<f64>,
     /// The trades its managed lockers have made, all told (`LockerTrading.trade`'s count; the study's `trades`).
     pub trades: u64,
+    /// Where its hands' lockers stand, when its host places them (`locker_host.rs`): a hand has a locker only where its
+    /// host says one stands (a workstation with a chest touching it, `docs/decisions.md` "Lockers"). `None` (a town the
+    /// core keeps as numbers, the study's): every hand with a trade has one.
+    pub placed: Option<std::collections::BTreeMap<HandId, crate::points::Spot>>,
 }
 
 /// The books a locker trade writes in: the ledger (goods used and made), the cash book, and the world's dice.
@@ -282,9 +290,21 @@ impl Lockers {
             }
             l.hand = h.id;
         }
-        self.clients.retain(|&id| roster.place(id).is_some_and(|i| has_locker(content, roster, i)));
+        if let Some(placed) = self.placed.as_mut() {
+            // A hand gone takes its locker's place with it (the point stays the host's to remove, `locker_host.rs`).
+            placed.retain(|&id, _| roster.place(id).is_some());
+        }
+        let clients: Vec<HandId> = std::mem::take(&mut self.clients);
+        self.clients = clients.into_iter().filter(|&id| roster.place(id).is_some_and(|i| self.has(content, roster, i))).collect();
         self.managed = self.order(content, roster, roster.locker_limit() as usize);
         self.capacity = self.capacity(content, roster);
+    }
+
+    /// Whether the hand at `i` has a locker here: one the Merchant could manage ([`has_locker`]), standing where its
+    /// host placed it if the host places this town's lockers ([`Lockers::placed`]).
+    pub fn has(&self, content: &Content, roster: &Roster, i: usize) -> bool {
+        has_locker(content, roster, i)
+            && self.placed.as_ref().is_none_or(|placed| roster.hands.get(i).is_some_and(|h| placed.contains_key(&h.id)))
     }
 
     /// Whether the hand at `i` is one of the Merchant's clients.
@@ -297,7 +317,7 @@ impl Lockers {
     /// trade a contract needs first, then its clients in the order it took them on, then worth to the town, then
     /// those with a trade switched on, then the nearest (the roster's order).
     pub fn order(&self, content: &Content, roster: &Roster, limit: usize) -> Vec<usize> {
-        let mut all: Vec<usize> = (0..self.hands.len()).filter(|&i| has_locker(content, roster, i)).collect();
+        let mut all: Vec<usize> = (0..self.hands.len()).filter(|&i| self.has(content, roster, i)).collect();
         // (Each hand's key once, not at every comparison.)
         let keys: Vec<(bool, usize, bool, usize)> = (0..self.hands.len()).map(|i| {
             let needed = !self.needed.contains(&self.hands[i].trade);
@@ -348,7 +368,7 @@ impl Lockers {
     pub fn takes(&self, content: &Content, roster: &Roster, good: GoodId) -> bool {
         self.hands.iter().enumerate().any(|(i, l)| {
             let Some(h) = roster.hands.get(i) else { return false };
-            l.trade == h.trade && has_locker(content, roster, i)
+            l.trade == h.trade && self.has(content, roster, i)
                 && l.offers.iter().any(|o| o.on && !o.sells && o.good == good && o.level <= h.level)
         })
     }
@@ -358,7 +378,7 @@ impl Lockers {
         let mut out = vec![false; n];
         for (i, l) in self.hands.iter().enumerate() {
             let Some(h) = roster.hands.get(i) else { continue };
-            if l.trade != h.trade || !has_locker(content, roster, i) {
+            if l.trade != h.trade || !self.has(content, roster, i) {
                 continue;
             }
             for o in l.offers.iter().filter(|o| o.on && !o.sells && o.level <= h.level) {
@@ -469,7 +489,7 @@ pub fn restock(content: &Content, books: &mut Books, now: u64, town: usize, rost
     lockers.sync(content, roster);
     let mut made = 0;
     for i in 0..lockers.hands.len() {
-        if !has_locker(content, roster, i) || roster.hands[i].away {
+        if !lockers.has(content, roster, i) || roster.hands[i].away {
             continue;
         }
         let level = roster.hands[i].level;

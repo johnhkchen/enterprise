@@ -34,7 +34,9 @@ public sealed interface Input
                 Input.Ground,
                 Input.Crops,
                 Input.Survey,
-                Input.Built {
+                Input.Built,
+                Input.Switch,
+                Input.Locker {
     void encode(PostcardOut out);
 
     static Input decode(PostcardIn in) {
@@ -66,6 +68,8 @@ public sealed interface Input
             case 23 -> new Crops(HexAt.decode(in), in.i32(), in.i32(), in.list(9, Count::decode));
             case 24 -> new Survey(in.u32(), in.i32(), in.i32());
             case 25 -> new Built(in.u32(), Work.decode(in), in.f64());
+            case 26 -> new Switch(in.u32(), in.u32(), in.u32(), in.bool());
+            case 27 -> new Locker(in.u32(), in.option(Point::decode));
             default -> throw in.unknownVariant("Input", at);
         };
     }
@@ -530,6 +534,46 @@ public sealed interface Input
             out.u32(this.town);
             this.work.encode(out);
             out.f64(this.share);
+        }
+    }
+
+    /**
+     * One of a hand's locker offers switched on or off (the Merchant's screen, {@code ToggleTradePayload}): the offer at
+     * {@code offer}, its place among the hand's offers as {@code Answer::Lockers} lists them, which is of {@code good} (a check that the
+     * screen's view isn't stale). The Merchant runs a switched-on offer at its locker's restocks while it manages the
+     * locker. Ignored for a hand that isn't on a roster by the time it applies, or an offer that isn't there or isn't of
+     * that good (the screen showed what has changed since).
+     */
+    record Switch(long hand, long offer, long good, boolean on) implements Input {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(26);
+            out.u32(this.hand);
+            out.u32(this.offer);
+            out.u32(this.good);
+            out.bool(this.on);
+        }
+    }
+
+    /**
+     * Where a hand's locker stands: its workstation, with a chest touching it (a {@code Locker} point of the hand's town's,
+     * placed with {@code AddPoint}), or nowhere ({@code None}: its workstation lost, its chest broken). In a town whose lockers its
+     * host places (every town founded by {@code AddTown}), a hand has a locker the Merchant can manage only where one stands;
+     * the point's chests are counted at each look and written as the town's ({@code Moved}): what the town uses is taken from
+     * them first, and what they still hold the Merchant carries to its desk and depots. A point is one hand's locker: a
+     * hand put where another's stood takes it. Ignored for a hand that isn't on a roster by the time it applies, or a
+     * point of another town's. Refused for a point that isn't a locker standing there.
+     */
+    record Locker(long hand, Optional<Point> at) implements Input {
+        public Locker {
+            Objects.requireNonNull(at, "at");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(27);
+            out.u32(this.hand);
+            out.option(this.at, (o1, e1) -> e1.encode(o1));
         }
     }
 }

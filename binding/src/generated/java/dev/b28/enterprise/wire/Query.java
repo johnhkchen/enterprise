@@ -17,7 +17,8 @@ public sealed interface Query
                 Query.Cash,
                 Query.Mint,
                 Query.Land,
-                Query.Ground {
+                Query.Ground,
+                Query.Lockers {
     void encode(PostcardOut out);
 
     static Query decode(PostcardIn in) {
@@ -33,6 +34,7 @@ public sealed interface Query
             case 7 -> new Mint();
             case 8 -> new Land(in.u32());
             case 9 -> new Ground(in.list(2, HexAt::decode));
+            case 10 -> new Lockers(in.u32());
             default -> throw in.unknownVariant("Query", at);
         };
     }
@@ -164,6 +166,18 @@ public sealed interface Query
         public void encode(PostcardOut out) {
             out.variant(9);
             out.list(this.hexes, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * A town's lockers: which its Merchant manages, where each stands, and each one's offers with their switches (what
+     * the Merchant's screen shows).
+     */
+    record Lockers(long town) implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(10);
+            out.u32(this.town);
         }
     }
 }

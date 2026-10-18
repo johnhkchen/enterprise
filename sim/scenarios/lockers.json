@@ -1,0 +1,1018 @@
+{
+  "name": "lockers",
+  "about": "A town founded by its host has its lockers where the host places them: a Librarian with no locker isn't one the Merchant manages, and once its locker stands at a workstation (a Locker point, tied to it) it is. The locker's chests are counted with the town's: the paper a player left there is the town's, carried to the desk's chests at once (Moved out of the locker, into the desk). The screen switches the Librarian's paper trade on; two days on its locker has sold the town's paper, two trades a restock while the paper lasts, and the Librarian and the Merchant earned their XP (HandLevel). Untied, the locker isn't managed. A locker at a point that isn't one is refused; a switch for a hand or an offer that isn't there is ignored. Saved and loaded, the lockers are as they were.",
+  "steps": [
+    {
+      "note": "a society from a pack with paper and Librarians",
+      "request": {
+        "abi": 1,
+        "schema": 1804993077718838853,
+        "command": {
+          "Create": {
+            "pack": {
+              "day_ticks": 24000,
+              "goods": [
+                {
+                  "name": "minecraft:wheat",
+                  "worth": 0.05,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [
+                    "Crop"
+                  ],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:bread",
+                  "worth": 0.2,
+                  "stack": 64,
+                  "food": 5.0,
+                  "saturation": 6.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:book",
+                  "worth": 0.5,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": "reading",
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:cooked_beef",
+                  "worth": 0.3,
+                  "stack": 64,
+                  "food": 8.0,
+                  "saturation": 12.8,
+                  "comfort": null,
+                  "flags": [
+                    "Meat"
+                  ],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:iron_ingot",
+                  "worth": 0.25,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 4.0
+                },
+                {
+                  "name": "minecraft:sugar_cane",
+                  "worth": 0.04,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 0.5
+                },
+                {
+                  "name": "minecraft:paper",
+                  "worth": 0.04,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 1.0
+                }
+              ],
+              "comforts": [
+                "clothing",
+                "reading"
+              ],
+              "trades": [
+                "merchant",
+                "farmer",
+                "librarian",
+                "shepherd",
+                "none",
+                "nitwit"
+              ],
+              "recipes": [
+                {
+                  "trades": [
+                    "farmer"
+                  ],
+                  "inputs": [
+                    {
+                      "good": "minecraft:wheat",
+                      "count": 3.0
+                    }
+                  ],
+                  "output": "minecraft:bread",
+                  "makes": 1.0
+                },
+                {
+                  "trades": [
+                    "librarian"
+                  ],
+                  "inputs": [
+                    {
+                      "good": "minecraft:sugar_cane",
+                      "count": 1.0
+                    }
+                  ],
+                  "output": "minecraft:paper",
+                  "makes": 1.0
+                }
+              ],
+              "animals": [
+                {
+                  "name": "cow",
+                  "feed": [
+                    "minecraft:wheat"
+                  ],
+                  "feed_per_day": 0.25,
+                  "meat": "minecraft:cooked_beef",
+                  "meat_each": 2.0,
+                  "wool": null,
+                  "hide": null
+                }
+              ],
+              "dials": [
+                {
+                  "name": "birth_mood",
+                  "value": 0.5
+                },
+                {
+                  "name": "wagon_slots",
+                  "value": 30.0
+                }
+              ]
+            },
+            "seed": 7
+          }
+        }
+      },
+      "request_postcard": "01c5dce19bc1f4a7861900c0bb01070f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f146d696e6563726166743a69726f6e5f696e676f74000000000000d03f400000000000000000000000000000000000000000000000001040146d696e6563726166743a73756761725f63616e657b14ae47e17aa43f40000000000000000000000000000000000000000000000000e03f0f6d696e6563726166743a70617065727b14ae47e17aa43f40000000000000000000000000000000000000000000000000f03f0208636c6f7468696e670772656164696e6706086d65726368616e74066661726d6572096c696272617269616e087368657068657264046e6f6e65066e69747769740201066661726d6572010f6d696e6563726166743a776865617400000000000008400f6d696e6563726166743a6272656164000000000000f03f01096c696272617269616e01146d696e6563726166743a73756761725f63616e65000000000000f03f0f6d696e6563726166743a7061706572000000000000f03f0103636f77010f6d696e6563726166743a7768656174000000000000d03f01156d696e6563726166743a636f6f6b65645f6265656600000000000000400000020a62697274685f6d6f6f64000000000000e03f0b7761676f6e5f736c6f74730000000000003e4007",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "a town at its desk, its Merchant and a Librarian, the desk's empty chests counted",
+      "request": {
+        "abi": 1,
+        "schema": 1804993077718838853,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "AddTown": {
+                  "name": "Ashford",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 0,
+                  "trade": "merchant",
+                  "level": 1,
+                  "tag": "villager-m"
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 0,
+                  "trade": "minecraft:librarian",
+                  "level": 1,
+                  "tag": "villager-l"
+                }
+              },
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [],
+                  "free": 27
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c5dce19bc1f4a7861903040707417368666f726400136d696e6563726166743a6f766572776f726c643677360f00086d65726368616e74010a76696c6c616765722d6d0f00136d696e6563726166743a6c696272617269616e010a76696c6c616765722d6c0a00136d696e6563726166743a6f766572776f726c64367736001b",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "its hands",
+      "request": {
+        "abi": 1,
+        "schema": 1804993077718838853,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Hands": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c5dce19bc1f4a7861904010400",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Hands": {
+                "town": 0,
+                "lockers": 2,
+                "hands": [
+                  {
+                    "hand": 1,
+                    "tag": "villager-m",
+                    "trade": "merchant",
+                    "level": 1,
+                    "xp": 0,
+                    "baby": false,
+                    "away": false,
+                    "merchant": true
+                  },
+                  {
+                    "hand": 2,
+                    "tag": "villager-l",
+                    "trade": "librarian",
+                    "level": 1,
+                    "xp": 0,
+                    "baby": false,
+                    "away": false,
+                    "merchant": false
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "00000104000202010a76696c6c616765722d6d086d65726368616e740100000001020a76696c6c616765722d6c096c696272617269616e0100000000"
+    },
+    {
+      "note": "its lockers: the host places them, and the Librarian has none yet, so isn't managed",
+      "request": {
+        "abi": 1,
+        "schema": 1804993077718838853,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Lockers": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c5dce19bc1f4a7861904010a00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Lockers": {
+                "town": 0,
+                "limit": 2,
+                "placed": true,
+                "lockers": [
+                  {
+                    "hand": 2,
+                    "managed": false,
+                    "client": false,
+                    "at": null,
+                    "worth": 0.0,
+                    "offers": [
+                      {
+                        "offer": 0,
+                        "good": 6,
+                        "sells": false,
+                        "count": 24,
+                        "emeralds": 1,
+                        "price": 24,
+                        "uses": 16,
+                        "used": 0,
+                        "xp": 2,
+                        "level": 1,
+                        "demand": 0,
+                        "inflated": false,
+                        "on": false,
+                        "training": false,
+                        "procured": false
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010a0002010102000000000000000000000001000600180118100002010000000000"
+    },
+    {
+      "note": "its locker placed at the Librarian's workstation, and a look's count: 64 paper a player left in the locker are the town's, carried to the desk's chests",
+      "request": {
+        "abi": 1,
+        "schema": 1804993077718838853,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "AddPoint": {
+                  "point": {
+                    "kind": "Locker",
+                    "dim": "minecraft:overworld",
+                    "x": 25,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "town": 0
+                }
+              },
+              {
+                "Locker": {
+                  "hand": 2,
+                  "at": {
+                    "kind": "Locker",
+                    "dim": "minecraft:overworld",
+                    "x": 25,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [],
+                  "free": 27
+                }
+              },
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Locker",
+                    "dim": "minecraft:overworld",
+                    "x": 25,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [
+                    {
+                      "good": 6,
+                      "count": 64.0
+                    }
+                  ],
+                  "free": 26
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c5dce19bc1f4a7861903040801136d696e6563726166743a6f766572776f726c64327736001b020101136d696e6563726166743a6f766572776f726c643277360a00136d696e6563726166743a6f766572776f726c64367736001b0a01136d696e6563726166743a6f766572776f726c64327736010600000000000050401a",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "Moved": {
+                "point": {
+                  "kind": "Locker",
+                  "dim": "minecraft:overworld",
+                  "x": 25,
+                  "y": -60,
+                  "z": 27
+                },
+                "good": 6,
+                "count": -64
+              }
+            },
+            {
+              "Moved": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 27
+                },
+                "good": 6,
+                "count": 64
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "00020d01136d696e6563726166743a6f766572776f726c64327736067f0d00136d696e6563726166743a6f766572776f726c6436773606800100"
+    },
+    {
+      "note": "the Librarian's locker stands there, and the Merchant manages it",
+      "request": {
+        "abi": 1,
+        "schema": 1804993077718838853,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Lockers": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c5dce19bc1f4a7861904010a00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Lockers": {
+                "town": 0,
+                "limit": 2,
+                "placed": true,
+                "lockers": [
+                  {
+                    "hand": 2,
+                    "managed": true,
+                    "client": false,
+                    "at": {
+                      "kind": "Locker",
+                      "dim": "minecraft:overworld",
+                      "x": 25,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "worth": 0.0,
+                    "offers": [
+                      {
+                        "offer": 0,
+                        "good": 6,
+                        "sells": false,
+                        "count": 24,
+                        "emeralds": 1,
+                        "price": 24,
+                        "uses": 16,
+                        "used": 0,
+                        "xp": 2,
+                        "level": 1,
+                        "demand": 0,
+                        "inflated": false,
+                        "on": false,
+                        "training": false,
+                        "procured": false
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010a000201010201000101136d696e6563726166743a6f766572776f726c64327736000000000000000001000600180118100002010000000000"
+    },
+    {
+      "note": "the screen switches its paper trade on, and a stale switch (a hand that isn't there, another good) is ignored",
+      "request": {
+        "abi": 1,
+        "schema": 1804993077718838853,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Switch": {
+                  "hand": 2,
+                  "offer": 0,
+                  "good": 6,
+                  "on": true
+                }
+              },
+              {
+                "Switch": {
+                  "hand": 99,
+                  "offer": 0,
+                  "good": 6,
+                  "on": true
+                }
+              },
+              {
+                "Switch": {
+                  "hand": 2,
+                  "offer": 0,
+                  "good": 0,
+                  "on": false
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c5dce19bc1f4a7861903031a020006011a630006011a02000000",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "two days: the locker trades the town's paper, its chests counted as the look ends",
+      "request": {
+        "abi": 1,
+        "schema": 1804993077718838853,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [
+                    {
+                      "good": 6,
+                      "count": 64.0
+                    }
+                  ],
+                  "free": 26
+                }
+              },
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Locker",
+                    "dim": "minecraft:overworld",
+                    "x": 25,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [],
+                  "free": 27
+                }
+              },
+              {
+                "Advance": {
+                  "to": 48000
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c5dce19bc1f4a7861903030a00136d696e6563726166743a6f766572776f726c64367736010600000000000050401a0a01136d696e6563726166743a6f766572776f726c64327736001b0080f702",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "HandLevel": {
+                "hand": 1,
+                "tag": "villager-m",
+                "trade": "merchant",
+                "level": 1,
+                "xp": 10
+              }
+            },
+            {
+              "HandLevel": {
+                "hand": 2,
+                "tag": "villager-l",
+                "trade": "librarian",
+                "level": 1,
+                "xp": 4
+              }
+            },
+            {
+              "Moved": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 27
+                },
+                "good": 6,
+                "count": -48
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "00030c010a76696c6c616765722d6d086d65726368616e74010a0c020a76696c6c616765722d6c096c696272617269616e01040d00136d696e6563726166743a6f766572776f726c64367736065f00"
+    },
+    {
+      "note": "its offers, the paper trade used",
+      "request": {
+        "abi": 1,
+        "schema": 1804993077718838853,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Lockers": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c5dce19bc1f4a7861904010a00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Lockers": {
+                "town": 0,
+                "limit": 2,
+                "placed": true,
+                "lockers": [
+                  {
+                    "hand": 2,
+                    "managed": true,
+                    "client": true,
+                    "at": {
+                      "kind": "Locker",
+                      "dim": "minecraft:overworld",
+                      "x": 25,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "worth": 1.0,
+                    "offers": [
+                      {
+                        "offer": 0,
+                        "good": 6,
+                        "sells": false,
+                        "count": 24,
+                        "emeralds": 1,
+                        "price": 24,
+                        "uses": 16,
+                        "used": 0,
+                        "xp": 2,
+                        "level": 1,
+                        "demand": -12,
+                        "inflated": false,
+                        "on": true,
+                        "training": false,
+                        "procured": false
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010a000201010201010101136d696e6563726166743a6f766572776f726c64327736000000000000f03f01000600180118100002011700010000"
+    },
+    {
+      "note": "saved",
+      "request": {
+        "abi": 1,
+        "schema": 1804993077718838853,
+        "command": "Save"
+      },
+      "request_postcard": "01c5dce19bc1f4a7861902",
+      "saved": {
+        "format": 1,
+        "schema": 1804993077718838853,
+        "blob_len": 5220,
+        "blob_fnv": "351ecfeeb4351815"
+      }
+    },
+    {
+      "note": "loaded",
+      "load": "saved",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "the same after the load",
+      "request": {
+        "abi": 1,
+        "schema": 1804993077718838853,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Lockers": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c5dce19bc1f4a7861904010a00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Lockers": {
+                "town": 0,
+                "limit": 2,
+                "placed": true,
+                "lockers": [
+                  {
+                    "hand": 2,
+                    "managed": true,
+                    "client": true,
+                    "at": {
+                      "kind": "Locker",
+                      "dim": "minecraft:overworld",
+                      "x": 25,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "worth": 1.0,
+                    "offers": [
+                      {
+                        "offer": 0,
+                        "good": 6,
+                        "sells": false,
+                        "count": 24,
+                        "emeralds": 1,
+                        "price": 24,
+                        "uses": 16,
+                        "used": 0,
+                        "xp": 2,
+                        "level": 1,
+                        "demand": -12,
+                        "inflated": false,
+                        "on": true,
+                        "training": false,
+                        "procured": false
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010a000201010201010101136d696e6563726166743a6f766572776f726c64327736000000000000f03f01000600180118100002011700010000"
+    },
+    {
+      "note": "the locker's chest broken: untied, then its point removed",
+      "request": {
+        "abi": 1,
+        "schema": 1804993077718838853,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Locker": {
+                  "hand": 2,
+                  "at": null
+                }
+              },
+              {
+                "RemovePoint": {
+                  "point": {
+                    "kind": "Locker",
+                    "dim": "minecraft:overworld",
+                    "x": 25,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c5dce19bc1f4a7861903021b02000901136d696e6563726166743a6f766572776f726c64327736",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "no locker, not managed",
+      "request": {
+        "abi": 1,
+        "schema": 1804993077718838853,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Lockers": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c5dce19bc1f4a7861904010a00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Lockers": {
+                "town": 0,
+                "limit": 2,
+                "placed": true,
+                "lockers": [
+                  {
+                    "hand": 2,
+                    "managed": false,
+                    "client": false,
+                    "at": null,
+                    "worth": 1.0,
+                    "offers": [
+                      {
+                        "offer": 0,
+                        "good": 6,
+                        "sells": false,
+                        "count": 24,
+                        "emeralds": 1,
+                        "price": 24,
+                        "uses": 16,
+                        "used": 0,
+                        "xp": 2,
+                        "level": 1,
+                        "demand": -12,
+                        "inflated": false,
+                        "on": true,
+                        "training": false,
+                        "procured": false
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010a0002010102000000000000000000f03f01000600180118100002011700010000"
+    },
+    {
+      "note": "a locker at a desk: refused",
+      "request": {
+        "abi": 1,
+        "schema": 1804993077718838853,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Locker": {
+                  "hand": 2,
+                  "at": {
+                    "kind": "Locker",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c5dce19bc1f4a7861903011b020101136d696e6563726166743a6f766572776f726c64367736",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "a Locker at Spot { dim: \"minecraft:overworld\", x: 27, y: -60, z: 27 }, where a Desk stands"
+            }
+          }
+        }
+      },
+      "response_postcard": "0207005a61204c6f636b65722061742053706f74207b2064696d3a20226d696e6563726166743a6f766572776f726c64222c20783a2032372c20793a202d36302c207a3a203237207d2c2077686572652061204465736b207374616e6473"
+    },
+    {
+      "note": "a locker where no point stands: refused",
+      "request": {
+        "abi": 1,
+        "schema": 1804993077718838853,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Locker": {
+                  "hand": 2,
+                  "at": {
+                    "kind": "Locker",
+                    "dim": "minecraft:overworld",
+                    "x": 25,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c5dce19bc1f4a7861903011b020101136d696e6563726166743a6f766572776f726c64327736",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "no point at Spot { dim: \"minecraft:overworld\", x: 25, y: -60, z: 27 }"
+            }
+          }
+        }
+      },
+      "response_postcard": "020700456e6f20706f696e742061742053706f74207b2064696d3a20226d696e6563726166743a6f766572776f726c64222c20783a2032352c20793a202d36302c207a3a203237207d"
+    },
+    {
+      "note": "the lockers of a town that isn't there",
+      "request": {
+        "abi": 1,
+        "schema": 1804993077718838853,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Lockers": {
+                  "town": 3
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01c5dce19bc1f4a7861904010a03",
+      "response": {
+        "Refused": {
+          "why": {
+            "Query": {
+              "at": 0,
+              "why": "no town 3"
+            }
+          }
+        }
+      },
+      "response_postcard": "020800096e6f20746f776e2033"
+    }
+  ]
+}

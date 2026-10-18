@@ -1238,3 +1238,25 @@ The cotton chain, chocolate, the cold chain and the exchange follow later.
   the next level is not (the core's `HandLevel` writes the core's XP over it); a child seen in the world joins as
   newly born. A profession taken in the world becomes the hand's trade, but never "none" (a villager that lost its
   workstation keeps the core's trade) and never the desk's Merchant's: **for John to confirm.**
+
+## Lockers and the binding (2026-10-19)
+
+- **The core runs the lockers (locker-adapter, B4.6).** In core mode a locker is still a chest touching a villager's
+  workstation, but the mod only says where each stands: each look, for every loaded villager that is a hand of a town
+  with a loaded desk, its workstation (if a container touches it) goes to the core as `Locker`, its chests a `Locker`
+  point of the town's. The core decides the rest (`lockers.rs`, `locker_host.rs`): which the Merchant manages, which
+  offers run, the restocks, two a day, loaded or not. So the mod's rounds (chunks forced loaded) and catch-up on load have
+  nothing to do in core mode, and the villagers' own restocks are vanilla's (the restock hook runs no locker trades).
+  A town founded by its host has a locker only where the host placed one; a town the core keeps as numbers (the study's)
+  has every hand's, as the core always had it.
+- **A locker's chests are the Merchant's shelf, not the town's store.** They're counted with the desk's at each look:
+  what's in them is the town's (a player can leave goods there), what the town uses is taken from them first, and what
+  they still hold the Merchant carries to the desk's and depots' chests as far as those have room. The core's trades
+  run against the warehouse, so nothing is put into a locker first (the mod's `supply`) and a locker is empty after a
+  look that found room for its goods at the desk; in the mod a locker kept its leftover inputs. **For John to confirm.**
+- **The screen switches the core's offers.** In core mode the Merchant's screen lists the lockers the core says it
+  manages, each with the core's offers at the villager's level (all of its level's: the core's simplification, not the
+  two a villager rolls) and the Merchant's price; a switch flipped there is `Switch` to the core. The villager's own
+  offers stay vanilla's, for players to trade with, and a player's trades don't reach the core's demand: the two lists
+  can differ (a Librarian whose rolled trades don't include paper still has the core's paper offer). **Open:** sending a
+  villager's rolled offers to the core (`Society::set_offers` is there for it), so the screen and the villager agree.

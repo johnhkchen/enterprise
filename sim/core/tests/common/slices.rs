@@ -56,4 +56,5 @@ slices! {
     chests,
     till,
     land,
+    locker_host,
 }

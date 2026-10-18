@@ -595,6 +595,187 @@ public final class CoreBindingTests {
                 + " hands asked {} ms", residents, "%.3f".formatted(counted / 1e6 / n), "%.3f".formatted(sent / 1e6 / n));
     }
 
+    // A Librarian's lectern with its locker chest touching it, beside the desk and its chest (LockerTradingTests' market).
+    private static final BlockPos LECTERN = new BlockPos(1, 2, 1);
+    private static final BlockPos LOCKER = new BlockPos(0, 2, 1);
+
+    /** A desk with an empty chest, a Librarian at its lectern and a Merchant at the desk, both claimed at once. */
+    private static List<Villager> lockerMarket(GameTestHelper helper) {
+        helper.setBlock(DESK, Merchant.DESK.get());
+        helper.setBlock(DESK.east(), Blocks.CHEST);
+        helper.setBlock(LECTERN, Blocks.LECTERN);
+        Villager librarian = villager(helper, VillagerProfession.LIBRARIAN, 1, new BlockPos(1, 2, 2));
+        Villager merchant = villager(helper, Merchant.PROFESSION.get(), 1, new BlockPos(4, 2, 4));
+        LockerTradingTests.claim(helper, librarian, LECTERN);
+        LockerTradingTests.claim(helper, merchant, DESK);
+        return List.of(librarian, merchant);
+    }
+
+    /** A look's counts and time as the host sends them: the desk's and the locker's chests, then time to {@code now}. */
+    private static Response lockerLook(CoreHost host, net.minecraft.server.level.ServerLevel level, long now) {
+        List<Input> inputs = new java.util.ArrayList<>();
+        host.points().all().forEach((at, p) -> {
+            if (p.kind() == PointsAdapter.Kind.DESK || p.kind() == PointsAdapter.Kind.LOCKER) {
+                inputs.add(host.stock().stocktake(level, p.kind(), at));
+            }
+        });
+        inputs.add(new Input.Advance(now));
+        return host.apply(inputs);
+    }
+
+    /**
+     * A locker is a chest touching a villager's workstation, and the core runs it (B4.6): a Librarian with no chest by
+     * its lectern has no locker the Merchant manages; with one, the next look ties its locker there, and the Merchant's
+     * screen shows it with the core's offers, all off. A switch flipped there is the core's. The 64 paper a player left
+     * in the locker are the town's, carried to the desk's chest by the look that counts them; two days on, the core's
+     * restocks sold two lots of 24 (the town's paper, from the desk's chest) and the Librarian and the Merchant have
+     * their XP. Saved and loaded, the locker and its switch stand; the chest broken, no locker.
+     */
+    @GameTest(template = "floor")
+    public static void aLockerIsAWorkstationsChestAndTheCoreRunsItsSwitchedOnTrades(GameTestHelper helper) {
+        var level = helper.getLevel();
+        List<Villager> villagers = lockerMarket(helper);
+        Villager librarian = villagers.get(0);
+        Villager merchant = villagers.get(1);
+        BlockPos desk = helper.absolutePos(DESK);
+        BlockPos lectern = helper.absolutePos(LECTERN);
+        Path dir = folder();
+        try {
+            long town;
+            String paperKey;
+            try (CoreHost host = CoreHost.open(dir, 7)) {
+                town = host.stock().found(level, desk, "Testford");
+                long hand = host.hands().join(town, librarian);
+                host.hands().join(town, merchant);
+                var lockers = host.lockers();
+                lockers.placeNow(level, town);
+                helper.assertTrue(lockers.town(town).of(hand).map(l -> !l.managed() && l.at().isEmpty()).orElse(false),
+                        "a Librarian with no chest by its lectern has a locker: " + lockers.town(town));
+                helper.assertTrue(lockers.view(level, desk).isEmpty(), "the screen shows a locker that isn't there");
+                helper.setBlock(LOCKER, Blocks.CHEST);
+                ChestBlockEntity locker = chestAt(helper, LOCKER);
+                locker.setItem(0, new ItemStack(Items.PAPER, 64));
+                lockers.placeNow(level, town);
+                var view = lockers.view(level, desk);
+                helper.assertTrue(view.size() == 1 && view.get(0).workstation().equals(lectern)
+                        && !view.get(0).trades().isEmpty() && view.get(0).trades().stream().noneMatch(
+                                dev.b28.enterprise.merchant.MerchantView.TradeView::enabled),
+                        "the screen shows " + view);
+                paperKey = view.get(0).trades().stream().filter(t -> t.costA().is(Items.PAPER)).findFirst()
+                        .orElseThrow(() -> new AssertionError("no paper trade on the screen: " + lockers.view(level, desk)))
+                        .key();
+                helper.assertTrue(lockers.flip(paperKey, true), "the core didn't take the switch " + paperKey);
+                String key = paperKey;
+                helper.assertTrue(lockers.view(level, desk).get(0).trades().stream().anyMatch(t -> t.key().equals(key) && t.enabled()),
+                        "switched on, the screen shows it off");
+                ChestBlockEntity stock = chestAt(helper, DESK.east());
+                long t = level.getGameTime();
+                lockerLook(host, level, t);
+                helper.assertTrue(inChest(locker, Items.PAPER) == 0 && inChest(stock, Items.PAPER) == 64,
+                        "the locker's paper isn't in the desk's chest: " + inChest(locker, Items.PAPER) + " in the locker, "
+                                + inChest(stock, Items.PAPER) + " at the desk");
+                lockerLook(host, level, t + 2 * DAY);
+                helper.assertTrue(inChest(stock, Items.PAPER) == 16 && held(host, town, "minecraft:paper") == 16,
+                        "two lots of 24 weren't sold: " + inChest(stock, Items.PAPER) + " paper at the desk, the town "
+                                + held(host, town, "minecraft:paper"));
+                helper.assertTrue(librarian.getVillagerXp() == 4, "the Librarian has " + librarian.getVillagerXp() + " XP, not 4");
+                int xp = merchant.getVillagerXp();
+                helper.assertTrue(xp >= 6 && xp <= 12, "the Merchant earns 3 to 6 XP a trade, like a player; it has " + xp);
+                helper.assertTrue(host.save(), "the core didn't save");
+            }
+            try (CoreHost loaded = CoreHost.open(dir, 8)) {
+                var view = loaded.lockers().view(level, desk);
+                helper.assertTrue(view.size() == 1 && view.get(0).workstation().equals(lectern)
+                        && view.get(0).trades().stream().anyMatch(t -> t.key().equals(paperKey) && t.enabled()),
+                        "loaded, the locker or its switch is gone: " + view);
+                helper.setBlock(LOCKER, Blocks.AIR);
+                loaded.lockers().placeNow(level, town);
+                helper.assertTrue(loaded.lockers().view(level, desk).isEmpty()
+                        && loaded.points().of(PointsAdapter.Kind.LOCKER).isEmpty(), "its chest broken, the locker stands");
+            }
+        } finally {
+            delete(dir);
+            villagers.forEach(Villager::discard);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * What {@code Rounds} and {@code LockerCatchUp} did for a market nobody was near (loaded its chunks, replayed its
+     * villagers' restocks as they loaded), the core does at its looks with nothing loaded (B4.6;
+     * LockerTradingTests.unloadedDaysAreReplayedOnLoad's twin): three and a half days with no count are six restocks of
+     * the Librarian's locker, every other one inflated, so 48 trades of 24 paper, from a shulker box in the desk's
+     * chest; the next look that counts the chest writes it. And what a look's lockers cost the server's tick, logged.
+     */
+    @GameTest(template = "floor")
+    public static void aLockersMissedDaysAreTradedAtTheCoresLooksWithNothingLoaded(GameTestHelper helper) {
+        var level = helper.getLevel();
+        List<Villager> villagers = lockerMarket(helper);
+        helper.setBlock(LOCKER, Blocks.CHEST);
+        ChestBlockEntity stock = chestAt(helper, DESK.east());
+        ItemStack box = new ItemStack(Items.SHULKER_BOX);
+        box.set(net.minecraft.core.component.DataComponents.CONTAINER, net.minecraft.world.item.component.ItemContainerContents
+                .fromItems(java.util.Collections.nCopies(27, new ItemStack(Items.PAPER, 64))));
+        stock.setItem(0, box);
+        BlockPos desk = helper.absolutePos(DESK);
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, desk, "Testford");
+            host.hands().join(town, villagers.get(0));
+            host.hands().join(town, villagers.get(1));
+            var lockers = host.lockers();
+            lockers.placeNow(level, town);
+            var view = lockers.view(level, desk);
+            helper.assertTrue(view.size() == 1, "no locker on the screen: " + view);
+            String paper = view.get(0).trades().stream().filter(t -> t.costA().is(Items.PAPER)).findFirst()
+                    .orElseThrow(() -> new AssertionError("no paper trade")).key();
+            lockers.flip(paper, true);
+            long t = level.getGameTime();
+            lockerLook(host, level, t);
+            helper.assertTrue(inChest(stock, Items.PAPER) == 27 * 64, "the box's paper moved: " + inChest(stock, Items.PAPER));
+            Response r = host.apply(List.of(new Input.Advance(t + 3 * DAY + DAY / 2)));
+            helper.assertTrue(r instanceof Response.Done, "the core refused the days: " + r);
+            helper.assertTrue(inChest(stock, Items.PAPER) == 27 * 64, "a chest nobody counted was written");
+            double left = held(host, town, "minecraft:paper");
+            helper.assertTrue(left == 27 * 64 - 48 * 24, "48 trades of 24 paper weren't made unseen: the town holds " + left);
+            lockerLook(host, level, t + 3 * DAY + DAY / 2);
+            helper.assertTrue(inChest(stock, Items.PAPER) == left, "the chest shows " + inChest(stock, Items.PAPER)
+                    + " paper, the town " + left);
+            measureALocker(host, level, town);
+        } finally {
+            delete(dir);
+            villagers.forEach(Villager::discard);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * What a look's lockers cost the server's tick, logged: where each loaded villager's locker stands, asked of the core
+     * and found in the world (nothing to tell it: as at most looks), and a locker's chests counted.
+     */
+    private static void measureALocker(CoreHost host, net.minecraft.server.level.ServerLevel level, long town) {
+        int n = 50;
+        long a = System.nanoTime();
+        for (int i = 0; i < n; i++) {
+            nothingToTell(host.lockers().placeNow(level, town).isEmpty());
+        }
+        long placed = System.nanoTime() - a;
+        GlobalPos at = host.points().of(PointsAdapter.Kind.LOCKER).keySet().iterator().next();
+        a = System.nanoTime();
+        for (int i = 0; i < n; i++) {
+            host.stock().stocktake(level, PointsAdapter.Kind.LOCKER, at);
+        }
+        long counted = System.nanoTime() - a;
+        Enterprise.LOGGER.info("lockers: a town's lockers placed (asked and looked for, nothing to tell) {} ms; a locker's"
+                + " chests counted {} ms", "%.3f".formatted(placed / 1e6 / n), "%.3f".formatted(counted / 1e6 / n));
+    }
+
+    private static void nothingToTell(boolean none) {
+        if (!none) {
+            throw new AssertionError("a town's lockers changed with nothing moved in the world");
+        }
+    }
+
     /** The core's number for the good called {@code name}. */
     private static long good(CoreHost host, String name) {
         List<String> goods = ((Answer.Goods) host.ask(List.of(new Query.Goods())).get(0)).goods();
