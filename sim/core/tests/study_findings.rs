@@ -303,3 +303,32 @@ fn a_town_grows_into_the_hexes_nearest_its_bell() {
     assert_eq!(order, vec![(8, 20), (7, 20), (7, 21), (8, 19), (6, 21), (8, 21), (7, 19), (9, 19), (6, 20)],
         "the mod's order (T's growth in the Java study: (8,19) on day 6, (7,19) on day 21, (9,19) on day 28)");
 }
+
+#[test]
+fn a_road_is_as_long_as_the_straight_way_between_desks_and_its_detours() {
+    // `Route.distance` (`Route.java` 191-205): the straight distance between the desks, rounded up, and a hex's width
+    // for each hex the path adds over the straight line of hexes. The study's hub (1002, 1002) to S3 (1851, 1851):
+    // 1,201 blocks, as the Java study's CSV has it, not the 17 steps of 80 (1,360) the core counted.
+    let mut s = Society::new(content());
+    let hub = s.add_town("Hub", 0.0);
+    let s3 = s.add_town("S3", 0.0);
+    let s1 = s.add_town("S1", 0.0);
+    s.place_town(hub, 1002.5, 1002.5);
+    s.place_town(s3, 1851.5, 1851.5);
+    s.place_town(s1, 1302.5, 1002.5);
+    let to_s3 = s.add_road(hub, s3, 4.0).expect("a road");
+    assert_eq!(s.route_road_blocks(to_s3), 1201);
+    let to_s1 = s.add_road(hub, s1, 4.0).expect("a road");
+    assert_eq!(s.route_road_blocks(to_s1), 300, "S1's 300, the CSV's (4 steps of 80: 320)");
+    // Water on the straight line: the road goes round, a hex's width for each hex it adds.
+    let mut s = Society::new(content());
+    let (a, b) = (s.add_town("A", 0.0), s.add_town("B", 0.0));
+    s.place_town(a, 0.0, 0.0);
+    s.place_town(b, 600.0, 0.0);
+    let line = enterprise_core::Hex::line(s.town_hex(a).unwrap(), s.town_hex(b).unwrap());
+    s.set_ground(line[line.len() / 2], 1.0, 0.0);
+    let path = s.plan_road(a, b).expect("a way round");
+    assert!(path.hexes.len() > line.len(), "a detour");
+    let r = s.add_road(a, b, 4.0).unwrap();
+    assert_eq!(s.route_road_blocks(r) as f64, 600.0 + ((path.hexes.len() - line.len()) as f64 * 80.0).round());
+}

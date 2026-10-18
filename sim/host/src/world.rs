@@ -109,7 +109,7 @@ impl Study {
 
     /// A route as `enterprise route add` makes one: refused where the road is too long for a leg's food.
     fn route(&mut self, from: TownId, to: TownId, label: &str) -> Option<usize> {
-        let blocks = self.s.plan_road(from, to).map(|p| p.blocks());
+        let blocks = self.s.plan_road(from, to).map(|p| self.s.road_blocks(from, to, &p));
         if let Some(b) = blocks {
             if enterprise_core::road::road_food(self.s.content())
                 && !enterprise_core::road::in_range(self.s.content(), b.round() as u32) {

@@ -327,7 +327,13 @@ fn a_road_between_placed_towns_runs_the_trade_loop() {
     // 16 food points a hex both ways at 0.04 a point: 0.64 a hex, 12 hexes.
     assert!((s.per_hex() - 0.64).abs() < 1e-12);
     let (ticks, cost) = s.route_road(road);
-    assert_eq!(ticks, 19_200, "960 blocks at 1,200 a day: 0.8 of a day");
+    // The road's length (`Route.distance`): the straight way desk to desk, rounded up, and a hex's width for each hex
+    // the bridge's detour adds over the straight line of hexes; at 1,200 blocks a day.
+    let (dx, dz) = (START.center_x() + 3.0 - GOAL.center_x(), START.center_z() - 2.0 - GOAL.center_z());
+    let straight = (dx * dx + dz * dz).sqrt().ceil();
+    let blocks = straight + ((path.len() - Hex::line(START, GOAL).len()) as f64 * 80.0).round();
+    assert_eq!(s.route_road_blocks(road) as f64, blocks);
+    assert_eq!(ticks, (blocks * 20.0) as u64, "{blocks} blocks at 1,200 a day");
     assert!(cost == 12.0 * 0.64, "{cost}");
     let start = s.totals();
     for day in 1..=60 {

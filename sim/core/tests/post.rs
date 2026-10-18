@@ -305,8 +305,12 @@ fn a_town_books_by_post_and_its_goods_are_collected_on_consignment() {
     assert!(close(s.town(town).stock[LEATHER], 640.0 - lot.count), "out of the town's warehouse");
     let collector = route(&s, hub, town).unwrap();
     assert!(s.on_call(collector), "on a run on call");
-    // A run on call: a stack's fare half as much again.
-    let fare = post::fare(s.content(), s.route_road_blocks(collector), false);
+    // A run on call: a stack's fare half as much again, on the towns' distance as the booking reckoned it
+    // (`Forwarder.fare`'s `distSqr`: here between their hexes' centres), not the road's (300 blocks, desk to desk).
+    let (a, b) = (s.town_hex(hub).unwrap(), s.town_hex(town).unwrap());
+    let (dx, dz) = (a.center_x() - b.center_x(), a.center_z() - b.center_z());
+    let apart = (dx * dx + dz * dz).sqrt().ceil() as u32;
+    let fare = post::fare(s.content(), apart, false);
     assert!(lot.fare == enterprise_core::Fixed::ceil(fare * (lot.count / 64.0).ceil()), "each stack its fare: {lot:?}");
     let before = s.town(town).money;
     run(&mut s, 20 * DAY);

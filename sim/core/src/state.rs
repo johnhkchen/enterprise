@@ -72,6 +72,9 @@ pub struct Town {
     pub id: usize,
     /// The hex it stands in, once the host has placed it.
     pub hex: Option<crate::hex::Hex>,
+    /// Where the host placed it, in blocks (its desk: `Society::place_town`): a road's length runs desk to desk
+    /// (`Route.straightDistance`).
+    pub at: Option<(f64, f64)>,
 }
 
 /// Every town's entity, by its number.

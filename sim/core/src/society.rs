@@ -79,7 +79,7 @@ impl Society {
         let e = self
             .world
             .spawn((
-                Town { name: name.to_string(), id: self.towns.len(), hex: None },
+                Town { name: name.to_string(), id: self.towns.len(), hex: None, at: None },
                 Money(money),
                 Stock(vec![0.0; n]),
                 Trades { makes: vec![0.0; n], uses: vec![0.0; n], capacity: vec![0.0; n], ..Default::default() },
@@ -192,9 +192,22 @@ impl Society {
         self.routes.len() - 1
     }
 
-    /// Places a town at the point (x, z) in blocks: it stands in that point's hex.
+    /// Places a town at the point (x, z) in blocks (its desk): it stands in that point's hex.
     pub fn place_town(&mut self, town: TownId, x: f64, z: f64) {
-        self.world.get_mut::<Town>(self.towns[town]).expect("a town").hex = Some(crate::hex::Hex::at(x, z));
+        let mut t = self.world.get_mut::<Town>(self.towns[town]).expect("a town");
+        t.hex = Some(crate::hex::Hex::at(x, z));
+        t.at = Some((x, z));
+    }
+
+    /// How long a road between two placed towns along `path` is, in blocks (`Route.distance`, `Route.java` 191–205):
+    /// the straight distance between their desks, rounded up, plus a hex's width for each hex the path adds over the
+    /// straight line of hexes (a detour). A town placed without a point counts from its hex's centre.
+    pub fn road_blocks(&self, from: TownId, to: TownId, path: &crate::map::Path) -> f64 {
+        let point = |t: TownId| {
+            let town = self.world.get::<Town>(self.towns[t]).expect("a town");
+            town.at.or_else(|| town.hex.map(|h| (h.center_x(), h.center_z()))).unwrap_or((0.0, 0.0))
+        };
+        crate::map::road_blocks(path, point(from), point(to))
     }
 
     /// The hex a town stands in, if it's been placed.
@@ -236,11 +249,12 @@ impl Society {
     /// road food, when the way is too long for one leg's food (`road.rs`).
     pub fn add_road(&mut self, from: TownId, to: TownId, every_days: f64) -> Option<RouteId> {
         let path = self.plan_road(from, to)?;
+        let blocks = self.road_blocks(from, to, &path);
         // Too long for one leg's food: no road (`road.rs`).
-        if crate::road::road_food(self.content()) && !crate::road::in_range(self.content(), path.blocks().round() as u32) {
+        if crate::road::road_food(self.content()) && !crate::road::in_range(self.content(), blocks.round() as u32) {
             return None;
         }
-        let days = path.blocks().max(1.0) / crate::map::BLOCKS_PER_DAY;
+        let days = blocks.max(1.0) / crate::map::BLOCKS_PER_DAY;
         // The road food the path costs, rounded up to the thousandth (a cost).
         let id = self.add_route(from, to, days, Fixed::ceil(path.cost), every_days);
         self.world.entity_mut(self.routes[id]).insert(RoutePath(path.hexes));

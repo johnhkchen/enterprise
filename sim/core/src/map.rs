@@ -148,11 +148,23 @@ pub struct Path {
 }
 
 impl Path {
-    /// Blocks travelled: a hex's width a step (what the mod's `Route.distance` gives for towns at hex centres: the
-    /// straight distance plus a hex's width for each hex a detour adds).
+    /// Blocks walked hex to hex: a hex's width a step (a settler's walk). A road's length between two towns is
+    /// [`road_blocks`], as the mod's `Route.distance` reckons it.
     pub fn blocks(&self) -> f64 {
         (self.hexes.len().saturating_sub(1)) as f64 * ACROSS
     }
+}
+
+/// A road's length along `path` between points `from` and `to`, in blocks (`Route.distance`, `Route.java` 191–205):
+/// the straight distance between them, rounded up (`straightDistance`), plus a hex's width for each hex the path adds
+/// over the straight line of hexes between theirs (`Hex.line`: a detour). Counting hex steps alone would overcharge a
+/// road across hex edges: hub to S3 in the network study is 1,201 blocks, not 17 steps of 80.
+pub fn road_blocks(path: &Path, from: (f64, f64), to: (f64, f64)) -> f64 {
+    let (dx, dz) = (from.0 - to.0, from.1 - to.1);
+    let straight = (dx * dx + dz * dz).sqrt().ceil(); // `Math.sqrt`, correctly rounded on every host
+    let line = Hex::line(Hex::at(from.0, from.1), Hex::at(to.0, to.1)).len();
+    let extra = path.hexes.len().saturating_sub(line);
+    straight + (extra as f64 * ACROSS).round()
 }
 
 /// The open set as the mod keeps it (`RoutePlanner.plan`'s `PriorityQueue<Node>`, compared on `f` alone): Java's
