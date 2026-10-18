@@ -2,13 +2,13 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{Point, TownId};
+use super::{Point, TownNo};
 
 /// A question for the core.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Query {
     /// What a town holds.
-    Stock { town: TownId },
+    Stock { town: TownNo },
     /// Every trade point and its town.
     Points,
 }
@@ -18,7 +18,7 @@ pub enum Query {
 pub enum Answer {
     /// What a town holds of each good, by the good's place in the content pack, as the core last counted it (at the
     /// last look, or the last happening that touched the town: asking touches nothing).
-    Stock { town: TownId, stock: Vec<f64> },
+    Stock { town: TownNo, stock: Vec<f64> },
     /// Every trade point, in the order of their places (dimension, then x, y, z), with its town.
     Points { points: Vec<TownPoint> },
 }
@@ -27,5 +27,5 @@ pub enum Answer {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct TownPoint {
     pub point: Point,
-    pub town: TownId,
+    pub town: TownNo,
 }

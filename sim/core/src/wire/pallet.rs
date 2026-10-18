@@ -2,17 +2,17 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{GoodId, RouteId, TownId};
+use super::{GoodNo, RouteNo, TownNo};
 
 /// Where a pallet is: the core's `pallet::At`, as numbers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Place {
     /// In a town's own premises (its warehouse: where the host shows its crates).
-    Town { town: TownId },
+    Town { town: TownNo },
     /// Held in a hub's custody for others.
-    Custody { town: TownId },
+    Custody { town: TownNo },
     /// On a route's wagon: a record, nothing to show but its manifest.
-    Wagon { route: RouteId },
+    Wagon { route: RouteNo },
     /// In a consolidation of pallets for one run.
     Container { container: u64 },
 }
@@ -22,6 +22,6 @@ pub enum Place {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PackageLine {
     pub kind: u32,
-    pub good: GoodId,
+    pub good: GoodNo,
     pub count: f64,
 }

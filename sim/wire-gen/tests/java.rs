@@ -79,7 +79,7 @@ fn inputs() -> Vec<Input> {
         Input::Advance { to: 0 },
         Input::Advance { to: u64::MAX },
         Input::Advance { to: 1 << 63 },
-        Input::Deliver { town: usize::MAX, good: 0, count: -0.0 },
+        Input::Deliver { town: u32::MAX, good: 0, count: -0.0 },
         Input::Deliver { town: 127, good: 128, count: f64::INFINITY },
         Input::Pay { town: 0, money: Fixed::from_millis(i64::MIN) },
         Input::Pay { town: 0, money: Fixed::MAX },
@@ -105,7 +105,7 @@ fn outputs() -> Vec<Output> {
     vec![
         Output::WagonLeft { route: 0, stacks: u32::MAX, worth: 12.5 },
         Output::WagonSold { route: 1, sold: 64.0, takings: Fixed::from_millis(-5) },
-        Output::WagonHome { route: usize::MAX, takings: Fixed::ZERO },
+        Output::WagonHome { route: u32::MAX, takings: Fixed::ZERO },
         Output::OrderFilled { town: 2, order: 3, good: 4, lots: 0, count: 1.0, spurs: 0.25 },
         Output::Signal { town: 2, good: 1, count: 9.0, spurs_each: f64::NAN },
     ]
@@ -176,7 +176,7 @@ fn samples() -> Samples {
         Command::Save,
         Command::Apply { inputs: inputs() },
         Command::Apply { inputs: vec![] },
-        Command::Ask { queries: vec![Query::Points, Query::Stock { town: 1 << 40 }] },
+        Command::Ask { queries: vec![Query::Points, Query::Stock { town: 1 << 31 }] },
     ];
     for c in &commands {
         s.ok("Command", c);

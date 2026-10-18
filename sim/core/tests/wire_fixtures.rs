@@ -46,11 +46,9 @@ fn fixture<T: Serialize + DeserializeOwned + PartialEq + Debug>(name: &str, samp
     assert!(postcard::to_allocvec(&from_json).unwrap() == want, "{name}: re-encoding the twin gives other bytes");
 }
 
-/// The largest id a sample holds. Ids (`TownId`, `RouteId`, `GoodId`, a count's good, an order's place) are `usize` in
-/// Rust, and postcard writes a `usize` as wide as the target's: the same bytes below 2^32, but under WebAssembly
-/// (wasm32) a larger id is unreadable, where natively it is a town that isn't there. No real id is near, so a sample of
-/// one past `u32::MAX` would only make the files differ by target; `wire-gen` should make these `u32`.
-const BIGGEST_ID: usize = u32::MAX as usize;
+/// The largest id a sample holds. Ids on the wire (`TownNo`, `RouteNo`, `GoodNo`, a count's good, an order's place)
+/// are `u32`, so a host and a core of any width read the same bytes: `u32::MAX` is the widest an id is written.
+const BIGGEST_ID: u32 = u32::MAX;
 
 const DIM: &str = "minecraft:overworld";
 
@@ -58,7 +56,7 @@ fn point(kind: PointKind, x: i32, y: i32, z: i32) -> Point {
     Point { kind, dim: DIM.into(), x, y, z }
 }
 
-fn count(good: usize, count: f64) -> Count {
+fn count(good: GoodNo, count: f64) -> Count {
     Count { good, count }
 }
 
@@ -69,7 +67,7 @@ fn counts() -> Vec<Vec<Count>> {
     vec![
         vec![],
         vec![count(0, 0.0)],
-        EDGE_F64.iter().enumerate().map(|(i, &c)| count(i, c)).collect(),
+        EDGE_F64.iter().enumerate().map(|(i, &c)| count(i as GoodNo, c)).collect(),
         vec![count(BIGGEST_ID, 3.0)],
         (0..300).map(|i| count(i % 7, i as f64)).collect(),
     ]
@@ -173,7 +171,7 @@ fn outputs() -> Vec<Output> {
             PackageLine { kind: 1, good: 3, count: 576.0 }, PackageLine { kind: 0, good: 0, count: 0.5 },
             PackageLine { kind: u32::MAX, good: BIGGEST_ID, count: f64::MAX }] },
         Output::PalletPacked { id: u64::MAX, at: Place::Wagon { route: BIGGEST_ID }, packages: (0..40)
-            .map(|i| PackageLine { kind: i % 4, good: i as usize, count: i as f64 * 9.0 }).collect() },
+            .map(|i| PackageLine { kind: i % 4, good: i, count: i as f64 * 9.0 }).collect() },
         Output::PalletMoved { id: 7, to: Place::Wagon { route: 3 } },
         Output::PalletMoved { id: u64::MAX, to: Place::Container { container: u64::MAX } },
         Output::PalletOpened { id: 7, at: Place::Town { town: 1 } },
@@ -192,8 +190,8 @@ fn answers() -> Vec<Answer> {
         Answer::Stock { town: BIGGEST_ID, stock: EDGE_F64.to_vec() },
         Answer::Stock { town: 1, stock: (0..200).map(|i| i as f64 * 0.5).collect() },
         Answer::Points { points: vec![] },
-        Answer::Points { points: points().into_iter().enumerate().map(|(i, point)| TownPoint { point, town: i }).collect() },
-        Answer::Points { points: (0..150).map(|i| TownPoint { point: point(PointKind::Locker, i, 0, -i), town: i as usize % 4 }).collect() },
+        Answer::Points { points: points().into_iter().enumerate().map(|(i, point)| TownPoint { point, town: i as TownNo }).collect() },
+        Answer::Points { points: (0..150).map(|i| TownPoint { point: point(PointKind::Locker, i, 0, -i), town: i as u32 % 4 }).collect() },
     ]
 }
 

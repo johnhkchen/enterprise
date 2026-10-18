@@ -13,11 +13,11 @@ public record TownPoint(Point point, long town) {
 
     public void encode(PostcardOut out) {
         this.point.encode(out);
-        out.u64(this.town);
+        out.u32(this.town);
     }
 
     public static TownPoint decode(PostcardIn in) {
-        return new TownPoint(Point.decode(in), in.u64());
+        return new TownPoint(Point.decode(in), in.u32());
     }
 
     public byte[] toBytes() {

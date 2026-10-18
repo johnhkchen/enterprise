@@ -44,6 +44,21 @@ pub type TownId = usize;
 /// A route, by its place in the order routes were added.
 pub type RouteId = usize;
 
+/// A town's number on the wire: its [`TownId`] as a `u32`. The core counts in `usize`, which postcard writes as wide as
+/// the target's: a host would read a `u64` that a WebAssembly core (wasm32) refuses above `u32::MAX` while a native
+/// one reads it. As a `u32` every host reads and writes what every core does.
+pub type TownNo = u32;
+/// A route's number on the wire: its [`RouteId`] as a `u32`.
+pub type RouteNo = u32;
+/// A good's number on the wire, its place in the content pack: its [`GoodId`] as a `u32`.
+pub type GoodNo = u32;
+
+/// An id the core counts in `usize` as the wire's `u32` ([`TownNo`], [`RouteNo`], [`GoodNo`], an order's place). Ids
+/// that high never happen, but if one did it would panic here rather than cross the wire truncated.
+pub fn no(id: usize) -> u32 {
+    u32::try_from(id).expect("an id past u32::MAX can't cross the wire")
+}
+
 /// The ABI's number: the four exports of the WebAssembly module (`ent_abi`, `ent_alloc`, `ent_call`, `ent_free`).
 /// Bumped only if those change.
 pub const ABI: u32 = 1;

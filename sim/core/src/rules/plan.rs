@@ -503,7 +503,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             full,
             ..Default::default()
         });
-        outbox.0.push(Output::WagonLeft { route: route.seq, stacks: plan.stacks, worth: plan.worth });
+        outbox.0.push(Output::WagonLeft { route: crate::wire::no(route.seq), stacks: plan.stacks, worth: plan.worth });
     }
 }
 

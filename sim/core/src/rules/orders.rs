@@ -138,7 +138,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, order: 
             let filled = fill(&content, &mut book, &mut ledger, &mut cash, rate, now, trades, workshop, &mut stock,
                 &mut money, o, tally);
             if filled.lots > 0 {
-                outbox.0.push(Output::OrderFilled { town: t, order: o.id, good: o.good, lots: filled.lots,
+                outbox.0.push(Output::OrderFilled { town: crate::wire::no(t), order: crate::wire::no(o.id), good: crate::wire::no(o.good), lots: filled.lots,
                     count: filled.count, spurs: filled.spurs });
             }
             if o.open > 0.0 {
@@ -188,7 +188,7 @@ pub fn broker(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, atlas: 
         let before = posted.desks.get(&t).cloned().unwrap_or_default();
         // (A want only sourcing found unmet is not told to the host: it never was.)
         for s in signalled.iter().filter(|s| s.why != UNMET && !before.iter().any(|b| b.good == s.good)) {
-            outbox.0.push(Output::Signal { town: t, good: s.good, count: s.count, spurs_each: s.spurs_each });
+            outbox.0.push(Output::Signal { town: crate::wire::no(t), good: crate::wire::no(s.good), count: s.count, spurs_each: s.spurs_each });
         }
         // (The jobs' marbles are what each signal pays, in emeralds: made again when a good, a count or its spurs move.)
         let wants = |l: &[Signal]| l.iter().map(|s| (s.good, s.count, s.spurs_each)).collect::<Vec<_>>();

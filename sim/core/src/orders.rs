@@ -293,16 +293,16 @@ impl Society {
     pub(crate) fn apply_shop(&mut self, input: &Input) -> bool {
         match *input {
             Input::Order { town, good, lot, price, purse } => {
-                self.order(town, good, lot, price, purse);
+                self.order(town as TownId, good as GoodId, lot, price, purse);
             }
             Input::Stall { town, good, lot, price, stock } => {
-                self.stall(town, good, lot, price, stock);
+                self.stall(town as TownId, good as GoodId, lot, price, stock);
             }
             Input::OwnShop { town } => {
-                self.own_shop(town);
+                self.own_shop(town as TownId);
             }
             Input::Buy { town, good, count } => {
-                let _ = self.buy(town, good, count);
+                let _ = self.buy(town as TownId, good as GoodId, count);
             }
             _ => return false,
         }

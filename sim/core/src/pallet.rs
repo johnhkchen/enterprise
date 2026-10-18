@@ -352,9 +352,9 @@ pub struct Arriving {
 impl From<At> for crate::wire::Place {
     fn from(at: At) -> Self {
         match at {
-            At::Town(town) => crate::wire::Place::Town { town },
-            At::Custody(town) => crate::wire::Place::Custody { town },
-            At::Wagon(route) => crate::wire::Place::Wagon { route },
+            At::Town(town) => crate::wire::Place::Town { town: crate::wire::no(town) },
+            At::Custody(town) => crate::wire::Place::Custody { town: crate::wire::no(town) },
+            At::Wagon(route) => crate::wire::Place::Wagon { route: crate::wire::no(route) },
             At::Container(container) => crate::wire::Place::Container { container },
         }
     }
@@ -366,7 +366,7 @@ impl Pallets {
         let id = self.next;
         self.next += 1;
         if self.report {
-            let packages = packages.iter().map(|p| crate::wire::PackageLine { kind: p.kind as u32, good: p.good, count: p.count }).collect();
+            let packages = packages.iter().map(|p| crate::wire::PackageLine { kind: p.kind as u32, good: crate::wire::no(p.good), count: p.count }).collect();
             self.events.push(crate::messages::Output::PalletPacked { id, at: at.into(), packages });
         }
         self.pallets.insert(id, Pallet { id, kind: LOAD, lading, packages, at, since: now, seal: None, claimed: None });
@@ -442,7 +442,7 @@ impl Pallets {
         self.arriving.remove(&id);
         if self.report {
             let packages = self.pallets[&id].packages.iter()
-                .map(|p| crate::wire::PackageLine { kind: p.kind as u32, good: p.good, count: p.count }).collect();
+                .map(|p| crate::wire::PackageLine { kind: p.kind as u32, good: crate::wire::no(p.good), count: p.count }).collect();
             self.events.push(crate::messages::Output::PalletOpened { id, at: at.into() });
             self.events.push(crate::messages::Output::PalletPacked { id, at: at.into(), packages });
         }

@@ -24,7 +24,7 @@ pub fn daily(s: &mut Society, r: &mut Rng, _day: u64) {
     let (pa, pb) = (r.below(standing[a].1 as u64) as u32, r.below(standing[b].1 as u64) as u32);
     if bring {
         let (pallet, _, town) = standing[b];
-        s.apply(&enterprise_core::wire::Input::PackageBrought { town, pallet, package: pb });
+        s.apply(&enterprise_core::wire::Input::PackageBrought { town: town as u32, pallet, package: pb });
     }
     if lose && s.pallets().get(standing[a].0).is_some_and(|p| (pa as usize) < p.packages.len()) {
         s.apply(&enterprise_core::wire::Input::PackageLost { pallet: standing[a].0, package: pa });

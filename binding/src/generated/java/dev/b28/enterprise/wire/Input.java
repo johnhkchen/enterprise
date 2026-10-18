@@ -28,18 +28,18 @@ public sealed interface Input
         int at = in.variant();
         return switch (at) {
             case 0 -> new Advance(in.u64());
-            case 1 -> new Deliver(in.u64(), in.u64(), in.f64());
-            case 2 -> new Pay(in.u64(), in.i64());
-            case 3 -> new Order(in.u64(), in.u64(), in.f64(), in.f64(), in.f64());
-            case 4 -> new Stall(in.u64(), in.u64(), in.f64(), in.f64(), in.f64());
-            case 5 -> new OwnShop(in.u64());
-            case 6 -> new Buy(in.u64(), in.u64(), in.f64());
+            case 1 -> new Deliver(in.u32(), in.u32(), in.f64());
+            case 2 -> new Pay(in.u32(), in.i64());
+            case 3 -> new Order(in.u32(), in.u32(), in.f64(), in.f64(), in.f64());
+            case 4 -> new Stall(in.u32(), in.u32(), in.f64(), in.f64(), in.f64());
+            case 5 -> new OwnShop(in.u32());
+            case 6 -> new Buy(in.u32(), in.u32(), in.f64());
             case 7 -> new AddTown(in.string(), Point.decode(in));
-            case 8 -> new AddPoint(Point.decode(in), in.u64());
+            case 8 -> new AddPoint(Point.decode(in), in.u32());
             case 9 -> new RemovePoint(Point.decode(in));
             case 10 -> new Stocktake(Point.decode(in), in.list(9, Count::decode));
-            case 11 -> new PalletBrought(in.u64(), in.u64());
-            case 12 -> new PackageBrought(in.u64(), in.u64(), in.u32());
+            case 11 -> new PalletBrought(in.u32(), in.u64());
+            case 12 -> new PackageBrought(in.u32(), in.u64(), in.u32());
             case 13 -> new PackageLost(in.u64(), in.u32());
             default -> throw in.unknownVariant("Input", at);
         };
@@ -72,8 +72,8 @@ public sealed interface Input
         @Override
         public void encode(PostcardOut out) {
             out.variant(1);
-            out.u64(this.town);
-            out.u64(this.good);
+            out.u32(this.town);
+            out.u32(this.good);
             out.f64(this.count);
         }
     }
@@ -85,7 +85,7 @@ public sealed interface Input
         @Override
         public void encode(PostcardOut out) {
             out.variant(2);
-            out.u64(this.town);
+            out.u32(this.town);
             out.i64(this.money);
         }
     }
@@ -97,8 +97,8 @@ public sealed interface Input
         @Override
         public void encode(PostcardOut out) {
             out.variant(3);
-            out.u64(this.town);
-            out.u64(this.good);
+            out.u32(this.town);
+            out.u32(this.good);
             out.f64(this.lot);
             out.f64(this.price);
             out.f64(this.purse);
@@ -112,8 +112,8 @@ public sealed interface Input
         @Override
         public void encode(PostcardOut out) {
             out.variant(4);
-            out.u64(this.town);
-            out.u64(this.good);
+            out.u32(this.town);
+            out.u32(this.good);
             out.f64(this.lot);
             out.f64(this.price);
             out.f64(this.stock);
@@ -127,7 +127,7 @@ public sealed interface Input
         @Override
         public void encode(PostcardOut out) {
             out.variant(5);
-            out.u64(this.town);
+            out.u32(this.town);
         }
     }
 
@@ -138,8 +138,8 @@ public sealed interface Input
         @Override
         public void encode(PostcardOut out) {
             out.variant(6);
-            out.u64(this.town);
-            out.u64(this.good);
+            out.u32(this.town);
+            out.u32(this.good);
             out.f64(this.count);
         }
     }
@@ -174,7 +174,7 @@ public sealed interface Input
         public void encode(PostcardOut out) {
             out.variant(8);
             this.point.encode(out);
-            out.u64(this.town);
+            out.u32(this.town);
         }
     }
 
@@ -222,7 +222,7 @@ public sealed interface Input
         @Override
         public void encode(PostcardOut out) {
             out.variant(11);
-            out.u64(this.town);
+            out.u32(this.town);
             out.u64(this.id);
         }
     }
@@ -237,7 +237,7 @@ public sealed interface Input
         @Override
         public void encode(PostcardOut out) {
             out.variant(12);
-            out.u64(this.town);
+            out.u32(this.town);
             out.u64(this.pallet);
             out.u32(this.package_);
         }

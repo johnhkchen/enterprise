@@ -6,7 +6,7 @@ Answer:
     0:
       Stock:
         STRUCT:
-          - town: U64
+          - town: U32
           - stock:
               SEQ: F64
     1:
@@ -50,7 +50,7 @@ ContentPack:
           TYPENAME: PackGood
 Count:
   STRUCT:
-    - good: U64
+    - good: U32
     - count: F64
 GoodFlag:
   ENUM:
@@ -67,39 +67,39 @@ Input:
     1:
       Deliver:
         STRUCT:
-          - town: U64
-          - good: U64
+          - town: U32
+          - good: U32
           - count: F64
     2:
       Pay:
         STRUCT:
-          - town: U64
+          - town: U32
           - money: I64
     3:
       Order:
         STRUCT:
-          - town: U64
-          - good: U64
+          - town: U32
+          - good: U32
           - lot: F64
           - price: F64
           - purse: F64
     4:
       Stall:
         STRUCT:
-          - town: U64
-          - good: U64
+          - town: U32
+          - good: U32
           - lot: F64
           - price: F64
           - stock: F64
     5:
       OwnShop:
         STRUCT:
-          - town: U64
+          - town: U32
     6:
       Buy:
         STRUCT:
-          - town: U64
-          - good: U64
+          - town: U32
+          - good: U32
           - count: F64
     7:
       AddTown:
@@ -112,7 +112,7 @@ Input:
         STRUCT:
           - point:
               TYPENAME: Point
-          - town: U64
+          - town: U32
     9:
       RemovePoint:
         STRUCT:
@@ -129,12 +129,12 @@ Input:
     11:
       PalletBrought:
         STRUCT:
-          - town: U64
+          - town: U32
           - id: U64
     12:
       PackageBrought:
         STRUCT:
-          - town: U64
+          - town: U32
           - pallet: U64
           - package: U32
     13:
@@ -147,34 +147,34 @@ Output:
     0:
       WagonLeft:
         STRUCT:
-          - route: U64
+          - route: U32
           - stacks: U32
           - worth: F64
     1:
       WagonSold:
         STRUCT:
-          - route: U64
+          - route: U32
           - sold: F64
           - takings: I64
     2:
       WagonHome:
         STRUCT:
-          - route: U64
+          - route: U32
           - takings: I64
     3:
       OrderFilled:
         STRUCT:
-          - town: U64
-          - order: U64
-          - good: U64
+          - town: U32
+          - order: U32
+          - good: U32
           - lots: U32
           - count: F64
           - spurs: F64
     4:
       Signal:
         STRUCT:
-          - town: U64
-          - good: U64
+          - town: U32
+          - good: U32
           - count: F64
           - spurs_each: F64
     5:
@@ -213,22 +213,22 @@ PackGood:
 PackageLine:
   STRUCT:
     - kind: U32
-    - good: U64
+    - good: U32
     - count: F64
 Place:
   ENUM:
     0:
       Town:
         STRUCT:
-          - town: U64
+          - town: U32
     1:
       Custody:
         STRUCT:
-          - town: U64
+          - town: U32
     2:
       Wagon:
         STRUCT:
-          - route: U64
+          - route: U32
     3:
       Container:
         STRUCT:
@@ -258,7 +258,7 @@ Query:
     0:
       Stock:
         STRUCT:
-          - town: U64
+          - town: U32
     1:
       Points: UNIT
 Refusal:
@@ -340,4 +340,4 @@ TownPoint:
   STRUCT:
     - point:
         TYPENAME: Point
-    - town: U64
+    - town: U32

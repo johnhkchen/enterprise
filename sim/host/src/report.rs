@@ -96,7 +96,7 @@ impl Tracker {
         for o in out {
             match *o {
                 Output::WagonLeft { route, stacks, worth } => {
-                    let r = &mut self.routes[route];
+                    let r = &mut self.routes[route as usize];
                     r.left += 1;
                     r.stacks_out += stacks as u64;
                     r.worth_out += worth;
@@ -105,20 +105,20 @@ impl Tracker {
                     }
                 }
                 Output::WagonSold { route, sold, takings } => {
-                    let r = &mut self.routes[route];
+                    let r = &mut self.routes[route as usize];
                     r.arrived += 1;
                     r.sold_items += sold;
                     r.takings_far += takings.to_f64();
-                    if let Some(w) = &states[route].wagon {
+                    if let Some(w) = &states[route as usize].wagon {
                         r.sold_stacks += w.sold_here.iter().enumerate()
                             .map(|(g, n)| n / content.goods[g].stack.max(1) as f64).sum::<f64>();
                     }
                 }
                 Output::WagonHome { route, takings } => {
-                    let r = &mut self.routes[route];
+                    let r = &mut self.routes[route as usize];
                     r.home += 1;
                     r.takings_home += takings.to_f64();
-                    r.stacks_home += states[route].last_home.unwrap_or(0) as u64;
+                    r.stacks_home += states[route as usize].last_home.unwrap_or(0) as u64;
                 }
                 _ => {}
             }

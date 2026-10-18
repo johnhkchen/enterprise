@@ -10,7 +10,7 @@ public sealed interface Query permits Query.Stock, Query.Points {
     static Query decode(PostcardIn in) {
         int at = in.variant();
         return switch (at) {
-            case 0 -> new Stock(in.u64());
+            case 0 -> new Stock(in.u32());
             case 1 -> new Points();
             default -> throw in.unknownVariant("Query", at);
         };
@@ -32,7 +32,7 @@ public sealed interface Query permits Query.Stock, Query.Points {
         @Override
         public void encode(PostcardOut out) {
             out.variant(0);
-            out.u64(this.town);
+            out.u32(this.town);
         }
     }
 

@@ -13,7 +13,7 @@ public sealed interface Answer permits Answer.Stock, Answer.Points {
     static Answer decode(PostcardIn in) {
         int at = in.variant();
         return switch (at) {
-            case 0 -> new Stock(in.u64(), in.list(8, PostcardIn::f64));
+            case 0 -> new Stock(in.u32(), in.list(8, PostcardIn::f64));
             case 1 -> new Points(in.list(6, TownPoint::decode));
             default -> throw in.unknownVariant("Answer", at);
         };
@@ -41,7 +41,7 @@ public sealed interface Answer permits Answer.Stock, Answer.Points {
         @Override
         public void encode(PostcardOut out) {
             out.variant(0);
-            out.u64(this.town);
+            out.u32(this.town);
             out.list(this.stock, PostcardOut::f64);
         }
     }

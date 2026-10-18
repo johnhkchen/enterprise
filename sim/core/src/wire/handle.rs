@@ -91,13 +91,13 @@ fn refused(why: Refusal) -> Response {
 fn answer(s: &Society, query: &Query) -> Result<Answer, String> {
     Ok(match *query {
         Query::Stock { town } => {
-            if town >= s.town_count() {
+            if town as usize >= s.town_count() {
                 return Err(format!("no town {town}"));
             }
-            Answer::Stock { town, stock: s.town(town).stock }
+            Answer::Stock { town, stock: s.town(town as usize).stock }
         }
         Query::Points => Answer::Points {
-            points: s.points().0.iter().map(|(spot, p)| TownPoint { point: Point::of(spot, p.kind), town: p.town })
+            points: s.points().0.iter().map(|(spot, p)| TownPoint { point: Point::of(spot, p.kind), town: super::no(p.town) })
                 .collect(),
         },
     })
@@ -123,8 +123,8 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
     };
     for (at, input) in inputs.iter().enumerate() {
         let wrong = |why: String| Refusal::Input { at: at as u32, why };
-        let town = |t: usize| if t < towns { Ok(()) } else { Err(wrong(format!("no town {t}"))) };
-        let good = |g: usize| if g < goods { Ok(()) } else { Err(wrong(format!("no good {g}"))) };
+        let town = |t: u32| if (t as usize) < towns { Ok(()) } else { Err(wrong(format!("no town {t}"))) };
+        let good = |g: u32| if (g as usize) < goods { Ok(()) } else { Err(wrong(format!("no good {g}"))) };
         let amount = |what: &str, x: f64| if x.is_finite() && x >= 0.0 { Ok(()) } else { Err(wrong(format!("{what} {x}"))) };
         match input {
             Input::Advance { to } => {

@@ -18,6 +18,10 @@ const APPLE: usize = 4;
 const BREAD: usize = 5;
 const ARROW: usize = 6;
 const DESK: usize = 0;
+// The same, as the wire numbers them (in a pattern).
+const DESK_NO: u32 = DESK as u32;
+const SHELL_NO: u32 = SHELL as u32;
+const PAPER_NO: u32 = PAPER as u32;
 
 fn content() -> Content {
     Content::new(vec![Good::new("paper", 1.0 / 24.0, 64), Good::new("iron_ingot", 1.0 / 4.0, 64),
@@ -75,7 +79,7 @@ fn what_it_cant_fill_is_asked_of_the_region() {
     // The premium: half again the worth, rounded up to a spur (an eighth of 16 spurs, 1.5 times).
     assert_eq!(signals[0].spurs_each, 3.0);
     assert_eq!(signals[0].count, 20.0);
-    assert!(outs.iter().any(|o| matches!(o, Output::Signal { town: DESK, good: SHELL, .. })), "told to the host: {outs:?}");
+    assert!(outs.iter().any(|o| matches!(o, Output::Signal { town: DESK_NO, good: SHELL_NO, .. })), "told to the host: {outs:?}");
     // (Posted once: the next look doesn't tell the host again.)
     assert!(!s.advance(2 * LOOK).iter().any(|o| matches!(o, Output::Signal { .. })));
 }
@@ -349,14 +353,14 @@ fn a_player_cant_buy_what_isnt_on_the_shelf() {
 fn the_inputs_make_the_same_shops_as_the_calls() {
     let mut s = desk(5, 10.0);
     s.deliver(DESK, PAPER, 64.0);
-    s.apply(&Input::Order { town: DESK, good: PAPER, lot: 16.0, price: 16.0, purse: 40.0 });
-    s.apply(&Input::Stall { town: DESK, good: IRON, lot: 4.0, price: 12.0, stock: 8.0 });
-    s.apply(&Input::OwnShop { town: DESK });
+    s.apply(&Input::Order { town: DESK as u32, good: PAPER as u32, lot: 16.0, price: 16.0, purse: 40.0 });
+    s.apply(&Input::Stall { town: DESK as u32, good: IRON as u32, lot: 4.0, price: 12.0, stock: 8.0 });
+    s.apply(&Input::OwnShop { town: DESK as u32 });
     assert_eq!((s.orders(DESK).len(), s.stalls(DESK).len(), s.own_shops(DESK).len()), (1, 1, 1));
     let outs = s.apply(&Input::Advance { to: LOOK });
-    assert!(outs.iter().any(|o| matches!(o, Output::OrderFilled { town: DESK, good: PAPER, lots: 1, count, spurs, .. }
+    assert!(outs.iter().any(|o| matches!(o, Output::OrderFilled { town: DESK_NO, good: PAPER_NO, lots: 1, count, spurs, .. }
         if *count == 16.0 && *spurs == 16.0)), "{outs:?}");
-    s.apply(&Input::Buy { town: DESK, good: PAPER, count: 1.0 });
+    s.apply(&Input::Buy { town: DESK as u32, good: PAPER as u32, count: 1.0 });
 }
 
 #[test]

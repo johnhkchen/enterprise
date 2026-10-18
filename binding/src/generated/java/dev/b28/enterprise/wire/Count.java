@@ -6,12 +6,12 @@ package dev.b28.enterprise.wire;
  */
 public record Count(long good, double count) {
     public void encode(PostcardOut out) {
-        out.u64(this.good);
+        out.u32(this.good);
         out.f64(this.count);
     }
 
     public static Count decode(PostcardIn in) {
-        return new Count(in.u64(), in.f64());
+        return new Count(in.u32(), in.f64());
     }
 
     public byte[] toBytes() {

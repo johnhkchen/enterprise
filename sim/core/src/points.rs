@@ -168,13 +168,13 @@ impl Society {
                 self.found(name, desk.spot()).expect("a town's desk where no point stands");
             }
             Input::AddPoint { point, town } => {
-                self.add_point(point.kind(), point.spot(), *town).expect("a point of a town's where none stands");
+                self.add_point(point.kind(), point.spot(), *town as usize).expect("a point of a town's where none stands");
             }
             Input::RemovePoint { point } => {
                 self.remove_point(&point.spot()).expect("a point that stands");
             }
             Input::Stocktake { point, counts } => {
-                let counts: Vec<(GoodId, f64)> = counts.iter().map(|c| (c.good, c.count)).collect();
+                let counts: Vec<(GoodId, f64)> = counts.iter().map(|c| (c.good as GoodId, c.count)).collect();
                 self.take_stock(&point.spot(), &counts).expect("a stocktake at a point that stands");
             }
             _ => return false,

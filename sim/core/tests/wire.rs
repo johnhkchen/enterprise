@@ -25,9 +25,9 @@ fn pack() -> ContentPack {
     ContentPack { day_ticks: DAY, goods: vec![wheat, bread, book, beef] }
 }
 
-const WHEAT: usize = 0;
-const BREAD: usize = 1;
-const BOOK: usize = 2;
+const WHEAT: GoodNo = 0;
+const BREAD: GoodNo = 1;
+const BOOK: GoodNo = 2;
 
 fn desk(x: i32, z: i32) -> Point {
     Point { kind: PointKind::Desk, dim: "minecraft:overworld".into(), x, y: -60, z }
@@ -61,7 +61,7 @@ fn ask(s: &mut Option<Society>, queries: Vec<Query>) -> Vec<Answer> {
     }
 }
 
-fn stock(s: &mut Option<Society>, town: TownId) -> Vec<f64> {
+fn stock(s: &mut Option<Society>, town: TownNo) -> Vec<f64> {
     match &ask(s, vec![Query::Stock { town }])[..] {
         [Answer::Stock { town: t, stock }] if *t == town => stock.clone(),
         a => panic!("stock: {a:?}"),
@@ -75,7 +75,7 @@ fn refusal(r: Response) -> Refusal {
     }
 }
 
-fn counts(of: &[(usize, f64)]) -> Vec<Count> {
+fn counts(of: &[(GoodNo, f64)]) -> Vec<Count> {
     of.iter().map(|&(good, count)| Count { good, count }).collect()
 }
 
@@ -126,7 +126,7 @@ fn a_stocktake_books_what_the_chests_gained_and_lost_since_the_last() {
     apply(&mut s, vec![Input::Stocktake { point: at(PointKind::Locker, 30, 27), counts: counts(&[(BREAD, 1.0), (BREAD, 2.0)]) }]);
     assert_eq!(stock(&mut s, 0), vec![10.0, 8.0, 2.0, 0.0]);
     // The town has used 6 wheat the chests still show; then the chests are emptied: only what it holds is taken.
-    assert_eq!(s.as_mut().unwrap().withdraw(0, WHEAT, 6.0), 6.0);
+    assert_eq!(s.as_mut().unwrap().withdraw(0, WHEAT as usize, 6.0), 6.0);
     apply(&mut s, vec![Input::Stocktake { point: desk(27, 27), counts: counts(&[(BREAD, 5.0), (BOOK, 2.0)]) }]);
     assert_eq!(stock(&mut s, 0), vec![0.0, 8.0, 2.0, 0.0]);
     let society = s.as_mut().unwrap();
@@ -152,7 +152,7 @@ fn points_are_answered_in_their_places_order_with_their_towns() {
         Input::AddPoint { point: Point { dim: "minecraft:the_nether".into(), ..at(PointKind::Depot, 0, 0) }, town: 1 },
     ]);
     let Answer::Points { points } = &ask(&mut s, vec![Query::Points])[0] else { panic!() };
-    let seen: Vec<(PointKind, &str, i32, TownId)> = points.iter().map(|p| (p.point.kind, p.point.dim.as_str(), p.point.x, p.town)).collect();
+    let seen: Vec<(PointKind, &str, i32, TownNo)> = points.iter().map(|p| (p.point.kind, p.point.dim.as_str(), p.point.x, p.town)).collect();
     assert_eq!(seen, vec![
         (PointKind::Desk, "minecraft:overworld", -500, 1),
         (PointKind::Desk, "minecraft:overworld", 500, 0),
@@ -168,7 +168,7 @@ fn saved_and_loaded_runs_on_alike(mut kept: Option<Society>, days: std::ops::Ran
     let mut loaded = None;
     assert_eq!(call(&mut loaded, Command::Load { save }), Response::Done { outputs: vec![], answers: vec![] });
     let n = kept.as_ref().unwrap().town_count();
-    let queries: Vec<Query> = (0..n).map(|town| Query::Stock { town }).chain([Query::Points]).collect();
+    let queries: Vec<Query> = (0..n as TownNo).map(|town| Query::Stock { town }).chain([Query::Points]).collect();
     assert_eq!(ask(&mut loaded, queries.clone()), ask(&mut kept, queries.clone()));
     for day in days {
         let advance = vec![Input::Advance { to: day * DAY }];

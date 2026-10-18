@@ -10,9 +10,9 @@ public sealed interface Place permits Place.Town, Place.Custody, Place.Wagon, Pl
     static Place decode(PostcardIn in) {
         int at = in.variant();
         return switch (at) {
-            case 0 -> new Town(in.u64());
-            case 1 -> new Custody(in.u64());
-            case 2 -> new Wagon(in.u64());
+            case 0 -> new Town(in.u32());
+            case 1 -> new Custody(in.u32());
+            case 2 -> new Wagon(in.u32());
             case 3 -> new Container(in.u64());
             default -> throw in.unknownVariant("Place", at);
         };
@@ -34,7 +34,7 @@ public sealed interface Place permits Place.Town, Place.Custody, Place.Wagon, Pl
         @Override
         public void encode(PostcardOut out) {
             out.variant(0);
-            out.u64(this.town);
+            out.u32(this.town);
         }
     }
 
@@ -45,7 +45,7 @@ public sealed interface Place permits Place.Town, Place.Custody, Place.Wagon, Pl
         @Override
         public void encode(PostcardOut out) {
             out.variant(1);
-            out.u64(this.town);
+            out.u32(this.town);
         }
     }
 
@@ -56,7 +56,7 @@ public sealed interface Place permits Place.Town, Place.Custody, Place.Wagon, Pl
         @Override
         public void encode(PostcardOut out) {
             out.variant(2);
-            out.u64(this.route);
+            out.u32(this.route);
         }
     }
 

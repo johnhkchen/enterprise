@@ -466,11 +466,11 @@ impl Society {
         match *input {
             Input::Advance { to } => self.advance(to),
             Input::Deliver { town, good, count } => {
-                self.deliver(town, good, count);
+                self.deliver(town as TownId, good as GoodId, count);
                 Vec::new()
             }
             Input::Pay { town, money } => {
-                self.pay(town, money);
+                self.pay(town as TownId, money);
                 Vec::new()
             }
             Input::Order { .. } | Input::Stall { .. } | Input::OwnShop { .. } | Input::Buy { .. } => {
@@ -482,11 +482,11 @@ impl Society {
                 Vec::new()
             }
             Input::PalletBrought { town, id } => {
-                self.pallet_brought(town, id);
+                self.pallet_brought(town as usize, id);
                 Vec::new()
             }
             Input::PackageBrought { town, pallet, package } => {
-                self.package_brought(town, pallet, package);
+                self.package_brought(town as usize, pallet, package);
                 Vec::new()
             }
             Input::PackageLost { pallet, package } => {

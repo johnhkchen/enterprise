@@ -216,7 +216,7 @@ pub fn turn(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
                     w.arrives = now + crate::squad::leg_ticks(&content, route.travel_ticks, w.saddled, 1.0); // saddled: faster
                 }
                 let sold = w.sold_here.iter().sum();
-                outbox.0.push(Output::WagonSold { route: route.seq, sold, takings: w.takings_here });
+                outbox.0.push(Output::WagonSold { route: crate::wire::no(route.seq), sold, takings: w.takings_here });
             }
             Some(Leg::Home) => {
                 let mut wagon = state.wagon.take().unwrap();
@@ -232,7 +232,7 @@ pub fn turn(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
                 }
                 bills.home(&wagon.bills, route.from_id);
                 state.trips += 1;
-                outbox.0.push(Output::WagonHome { route: route.seq, takings });
+                outbox.0.push(Output::WagonHome { route: crate::wire::no(route.seq), takings });
             }
             None => {}
         }

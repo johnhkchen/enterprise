@@ -21,11 +21,11 @@ public sealed interface Output
     static Output decode(PostcardIn in) {
         int at = in.variant();
         return switch (at) {
-            case 0 -> new WagonLeft(in.u64(), in.u32(), in.f64());
-            case 1 -> new WagonSold(in.u64(), in.f64(), in.i64());
-            case 2 -> new WagonHome(in.u64(), in.i64());
-            case 3 -> new OrderFilled(in.u64(), in.u64(), in.u64(), in.u32(), in.f64(), in.f64());
-            case 4 -> new Signal(in.u64(), in.u64(), in.f64(), in.f64());
+            case 0 -> new WagonLeft(in.u32(), in.u32(), in.f64());
+            case 1 -> new WagonSold(in.u32(), in.f64(), in.i64());
+            case 2 -> new WagonHome(in.u32(), in.i64());
+            case 3 -> new OrderFilled(in.u32(), in.u32(), in.u32(), in.u32(), in.f64(), in.f64());
+            case 4 -> new Signal(in.u32(), in.u32(), in.f64(), in.f64());
             case 5 -> new PalletPacked(in.u64(), Place.decode(in), in.list(10, PackageLine::decode));
             case 6 -> new PalletMoved(in.u64(), Place.decode(in));
             case 7 -> new PalletOpened(in.u64(), Place.decode(in));
@@ -46,7 +46,7 @@ public sealed interface Output
         @Override
         public void encode(PostcardOut out) {
             out.variant(0);
-            out.u64(this.route);
+            out.u32(this.route);
             out.u32(this.stacks);
             out.f64(this.worth);
         }
@@ -56,7 +56,7 @@ public sealed interface Output
         @Override
         public void encode(PostcardOut out) {
             out.variant(1);
-            out.u64(this.route);
+            out.u32(this.route);
             out.f64(this.sold);
             out.i64(this.takings);
         }
@@ -66,7 +66,7 @@ public sealed interface Output
         @Override
         public void encode(PostcardOut out) {
             out.variant(2);
-            out.u64(this.route);
+            out.u32(this.route);
             out.i64(this.takings);
         }
     }
@@ -78,9 +78,9 @@ public sealed interface Output
         @Override
         public void encode(PostcardOut out) {
             out.variant(3);
-            out.u64(this.town);
-            out.u64(this.order);
-            out.u64(this.good);
+            out.u32(this.town);
+            out.u32(this.order);
+            out.u32(this.good);
             out.u32(this.lots);
             out.f64(this.count);
             out.f64(this.spurs);
@@ -94,8 +94,8 @@ public sealed interface Output
         @Override
         public void encode(PostcardOut out) {
             out.variant(4);
-            out.u64(this.town);
-            out.u64(this.good);
+            out.u32(this.town);
+            out.u32(this.good);
             out.f64(this.count);
             out.f64(this.spursEach);
         }

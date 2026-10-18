@@ -276,7 +276,7 @@ fn a_pallet_crated_again_is_drawn_again_and_no_longer_arriving() {
     let packages = crated(s.content(), 0, 600.0);
     s.world.resource_mut::<Pallets>().repack(id, packages.clone());
     assert!(s.pallets().arriving.is_empty(), "the places it was named by start over");
-    let lines = packages.iter().map(|p| PackageLine { kind: p.kind as u32, good: p.good, count: p.count }).collect();
+    let lines = packages.iter().map(|p| PackageLine { kind: p.kind as u32, good: p.good as u32, count: p.count }).collect();
     let out = s.apply(&Input::Advance { to: s.now() });
     assert_eq!(out, vec![
         Output::PalletOpened { id, at: Place::Town { town: 0 } },

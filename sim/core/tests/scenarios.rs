@@ -239,20 +239,20 @@ fn pack() -> ContentPack {
     ContentPack { day_ticks: DAY, goods: vec![wheat, bread, book, beef] }
 }
 
-const WHEAT: usize = 0;
-const BREAD: usize = 1;
-const BOOK: usize = 2;
-const BEEF: usize = 3;
+const WHEAT: GoodNo = 0;
+const BREAD: GoodNo = 1;
+const BOOK: GoodNo = 2;
+const BEEF: GoodNo = 3;
 
 fn at(kind: PointKind, x: i32, z: i32) -> Point {
     Point { kind, dim: "minecraft:overworld".into(), x, y: -60, z }
 }
 
-fn counts(of: &[(usize, f64)]) -> Vec<Count> {
+fn counts(of: &[(GoodNo, f64)]) -> Vec<Count> {
     of.iter().map(|&(good, count)| Count { good, count }).collect()
 }
 
-fn stock_of(town: TownId) -> Vec<Query> {
+fn stock_of(town: TownNo) -> Vec<Query> {
     vec![Query::Stock { town }, Query::Points]
 }
 

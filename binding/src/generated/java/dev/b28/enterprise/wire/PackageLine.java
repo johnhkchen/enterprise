@@ -8,12 +8,12 @@ package dev.b28.enterprise.wire;
 public record PackageLine(long kind, long good, double count) {
     public void encode(PostcardOut out) {
         out.u32(this.kind);
-        out.u64(this.good);
+        out.u32(this.good);
         out.f64(this.count);
     }
 
     public static PackageLine decode(PostcardIn in) {
-        return new PackageLine(in.u32(), in.u64(), in.f64());
+        return new PackageLine(in.u32(), in.u32(), in.f64());
     }
 
     public byte[] toBytes() {
