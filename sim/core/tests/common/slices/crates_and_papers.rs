@@ -33,7 +33,9 @@ pub fn daily(s: &mut Society, r: &mut Rng, _day: u64) {
             let (at, to) = (r.below(n_towns as u64) as usize, r.below(n_towns as u64) as usize);
             if at != to {
                 let good = r.below(n_goods as u64) as usize;
-                let count = r.range(0.0, 700.0).floor();
+                // (At least one: a crate with nothing in it is handed in below, and opened at once; one left waiting would be
+                // a pallet of nothing, which `pallets.rs`'s check refuses.)
+                let count = r.range(0.0, 700.0).floor().max(1.0);
                 let lading = Lading { payment: Payment::Paid, ..Lading::new(at, to, s.now()) };
                 s.deliver_pallet(at, lading, crated(s.content(), good, count));
             }
