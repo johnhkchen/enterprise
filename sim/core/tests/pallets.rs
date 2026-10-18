@@ -148,7 +148,13 @@ fn the_base_content_has_the_crate_barrel_bundle_and_one_pallet_kind() {
     assert_eq!(c.packages[CRATE].slots, enterprise_core::cargo::CRATE_STACKS);
     assert!(c.packages[CRATE].returnable && c.packages[BARREL].returnable && !c.packages[BUNDLE].returnable);
     assert_eq!(c.pallet_kinds.len(), 1);
-    assert_eq!((c.pallet_kinds[LOAD].slots, c.pallet_kinds[LOAD].weight), (c.dials.pallet_slots, c.dials.pallet_weight));
+    let load = &c.pallet_kinds[LOAD];
+    assert_eq!((load.slots(&c.dials), load.weight(&c.dials)), (c.dials.pallet_slots, c.dials.pallet_weight));
+    let mut s = Society::new(content());
+    s.set_dial("pallet_slots", 12.0).unwrap();
+    s.set_dial("pallet_weight", 6.5).unwrap();
+    let load = &s.content().pallet_kinds[LOAD];
+    assert_eq!((load.slots(&s.content().dials), load.weight(&s.content().dials)), (12, 6.5), "the load follows its dials");
     assert_eq!(c.goods[0].package, CRATE);
     assert!((c.goods[0].weight - 1.0 / 64.0).abs() < 1e-12, "a stack weighs 1");
 }

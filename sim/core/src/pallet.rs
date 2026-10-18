@@ -56,13 +56,26 @@ impl PackageKind {
     }
 }
 
-/// A pallet kind: its caps, and the carriers that take it (by name; none listed: every carrier).
+/// A pallet kind: its caps, and the carriers that take it (by name; none listed: every carrier). A cap left `None`
+/// follows the pallet dials (`pallet_slots`, `pallet_weight`), read when asked, so setting a dial moves it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PalletKind {
     pub name: String,
-    pub slots: u32,
-    pub weight: f64,
+    pub slots: Option<u32>,
+    pub weight: Option<f64>,
     pub carriers: Vec<String>,
+}
+
+impl PalletKind {
+    /// Slots it holds at most.
+    pub fn slots(&self, dials: &crate::dials::Dials) -> u32 {
+        self.slots.unwrap_or(dials.pallet_slots)
+    }
+
+    /// Weight it holds at most.
+    pub fn weight(&self, dials: &crate::dials::Dials) -> f64 {
+        self.weight.unwrap_or(dials.pallet_weight)
+    }
 }
 
 /// Reserved for value over time (step 2 of the pallets plan): when a lot was made.
@@ -180,8 +193,8 @@ pub fn base_packages() -> Vec<PackageKind> {
 }
 
 /// The base content's one pallet kind, the load, capped by the pallet dials; every carrier takes it.
-pub fn base_pallet_kinds(dials: &crate::dials::Dials) -> Vec<PalletKind> {
-    vec![PalletKind { name: "load".to_string(), slots: dials.pallet_slots, weight: dials.pallet_weight, carriers: Vec::new() }]
+pub fn base_pallet_kinds() -> Vec<PalletKind> {
+    vec![PalletKind { name: "load".to_string(), slots: None, weight: None, carriers: Vec::new() }]
 }
 
 /// FNV-1a 64.
@@ -197,8 +210,8 @@ fn fnv1a(bytes: &[u8]) -> u64 {
 impl Pallet {
     /// FNV-1a over the `postcard` bytes of its bill and packages: not of where it is or since when.
     pub fn digest(&self) -> u64 {
-        let mut bytes = postcard::to_allocvec(&self.lading).unwrap_or_default();
-        bytes.extend(postcard::to_allocvec(&self.packages).unwrap_or_default());
+        let mut bytes = postcard::to_allocvec(&self.lading).expect("a bill serializes");
+        bytes.extend(postcard::to_allocvec(&self.packages).expect("packages serialize"));
         fnv1a(&bytes)
     }
 
@@ -338,16 +351,18 @@ pub struct Caps {
 }
 
 impl Caps {
-    /// `squad::capacity` extended: a wagon its dials' slots, weight and pallets; each pack (Leatherworker, porter) adds
-    /// `pack_stacks`, `pack_weight` and one pallet; a porter run is one pack.
+    /// `squad::capacity` extended (its slots, the one source): a wagon its dials' slots, weight and pallets; each pack
+    /// (Leatherworker, porter) adds `pack_stacks`, `pack_weight` and one pallet; a porter run is one pack.
     pub fn of(content: &Content, crew: impl IntoIterator<Item = TradeId>, porter_run: bool) -> Caps {
         let d = &content.dials;
+        let crew: Vec<TradeId> = crew.into_iter().collect();
+        let slots = crate::squad::capacity(content, crew.iter().copied(), porter_run);
         if porter_run {
-            return Caps { slots: d.pack_stacks, weight: d.pack_weight, pallets: 1 };
+            return Caps { slots, weight: d.pack_weight, pallets: 1 };
         }
-        let packs = crew.into_iter().filter(|&t| crate::squad::carries(content, t)).count() as u32;
+        let packs = crew.iter().filter(|&&t| crate::squad::carries(content, t)).count() as u32;
         Caps {
-            slots: d.wagon_slots + d.pack_stacks * packs,
+            slots,
             weight: d.wagon_weight + d.pack_weight * packs as f64,
             pallets: d.wagon_pallets + packs,
         }

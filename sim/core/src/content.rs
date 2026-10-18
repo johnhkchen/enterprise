@@ -103,7 +103,7 @@ impl Content {
             dials: Dials::default(), trades: crate::roster::trades(), conversions: Vec::new(), animals: Vec::new(),
             packages: Vec::new(), pallet_kinds: Vec::new() };
         content.packages = crate::pallet::base_packages();
-        content.pallet_kinds = crate::pallet::base_pallet_kinds(&content.dials);
+        content.pallet_kinds = crate::pallet::base_pallet_kinds();
         content.conversions = crate::workshop::mod_conversions(&content);
         content.animals = crate::herds::mod_animals(&content);
         // The mod's villager trades for the goods the host has (`lockers.rs`).

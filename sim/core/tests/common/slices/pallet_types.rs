@@ -1,4 +1,5 @@
-//! The pallet registry in the random worlds: nothing in the rules uses it yet, so a world keeps it empty.
+//! The pallet registry in the random worlds: nothing in the rules uses it yet, so a world keeps it empty. `pallets-for-crates`
+//! packs pallets and replaces this check; `pallet-sweep` brings the invariants (`docs/pallets.md` section 5).
 
 use super::super::*;
 
