@@ -59,6 +59,20 @@ fn hub_desk() -> (f64, f64) {
     (HUB.0 + 2.0, HUB.1 + 2.0)
 }
 
+/// A settlement's bell (`market/settle.mcfunction`: three blocks north of its desk), and the capital's (`--war`).
+fn bell(corner: (f64, f64)) -> (f64, f64) {
+    (corner.0 + 7.0, corner.1 + 4.0)
+}
+
+/// A town placed at its desk's block, as the mod finds its hex (`Hex.at(BlockPos)` takes the block's middle), and
+/// its bell where the study sets it, for the hexes it grows into (`Territory.grow` ranks them from the bell's block).
+fn place(s: &mut Society, town: TownId, desk: (f64, f64), bell: Option<(f64, f64)>) {
+    s.place_town(town, desk.0 + 0.5, desk.1 + 0.5);
+    if let Some((x, z)) = bell {
+        s.place_bell(town, x, z);
+    }
+}
+
 /// Does a box of blocks overlap a town's ground (`overlaps_town`: its corner less 2 to its corner and 29)?
 fn overlaps_town(towns: &[(f64, f64)], x0: f64, z0: f64, x1: f64, z1: f64) -> bool {
     towns.iter().any(|c| x0 <= c.0 + 29.0 && x1 >= c.0 - 2.0 && z0 <= c.1 + 29.0 && z1 >= c.1 - 2.0)
@@ -185,8 +199,9 @@ impl Study {
         let hub = self.s.add_town("hub", 64.0);
         self.hub = hub;
         self.named.push(("hub".into(), hub));
-        let (x, z) = hub_desk();
-        self.s.place_town(hub, x, z);
+        // The capital's bell (`--war`): at the hub's corner +4, +16.
+        let capital_bell = f.war.map(|_| (HUB.0 + 4.0, HUB.1 + 16.0));
+        place(&mut self.s, hub, hub_desk(), capital_bell);
         let desk_level = if f.master || f.war.is_some() { 5 } else { 1 };
         let mut hands: Vec<(&str, u8)> =
             vec![("merchant", desk_level), ("merchant", 2), ("cartographer", 1), ("librarian", 1), ("shepherd", 1)];
@@ -256,8 +271,7 @@ impl Study {
     fn build_settlement(&mut self, name: &str, corner: (f64, f64)) {
         let t = self.s.add_town(name, 64.0);
         self.named.push((name.into(), t));
-        let (x, z) = desk(corner);
-        self.s.place_town(t, x, z);
+        place(&mut self.s, t, desk(corner), Some(bell(corner)));
         self.s.set_roster(t, &[("merchant", 1), ("librarian", 1), ("cartographer", 1), ("fletcher", 1), ("farmer", 1),
             ("none", 1)]);
         self.house(t, 7.0);
@@ -560,7 +574,7 @@ impl Study {
         self.s.pay(spring, 64.0);
         self.named.push(("spring".into(), spring));
         self.spring = Some(spring);
-        self.s.place_town(spring, SPRING.0 + 2.0, SPRING.1 + 2.0);
+        place(&mut self.s, spring, (SPRING.0 + 2.0, SPRING.1 + 2.0), None);
         self.s.set_roster(spring, &[("merchant", 1), ("merchant", 2), ("cartographer", 1), ("librarian", 1), ("shepherd", 1)]);
         self.no_workstations(spring);
         let v = self.s.roster(spring).residents() as f64;

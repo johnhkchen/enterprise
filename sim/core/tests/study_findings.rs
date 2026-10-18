@@ -267,3 +267,39 @@ fn a_farm_grows_what_its_own_workshop_would_draw() {
     assert!(farm.draws.get(&F_CANE).is_some_and(|d| d.0 > 0.0), "and cane");
     assert!(farm.per_day.get(&F_WHEAT).is_some_and(|n| *n > 0.0), "its wheat plots are worked: {:?}", farm.per_day);
 }
+
+#[test]
+fn equal_roads_across_open_ground_go_the_mods_way() {
+    // `RoutePlanner.plan`'s open set is Java's `PriorityQueue`, compared on the guess alone: of equally short paths
+    // it's the heap's sifting that picks, not the order queued (which sent the core's hub->S3 road east first along
+    // q, missing the toll town between). The study's hub desk (1002, 1002) to S3's (1851, 1851), as the mod finds
+    // their hexes (`Hex.at(BlockPos)`: the block's middle), at road food of 16 points a hex, a 30th of an emerald each.
+    let map = enterprise_core::Map::default();
+    let (hub, s3) = (enterprise_core::Hex::at(1002.5, 1002.5), enterprise_core::Hex::at(1851.5, 1851.5));
+    let path = map.plan(hub, s3, enterprise_core::map::per_hex(1.0 / 30.0), 0.0, &Default::default(),
+        &Default::default(), false, &Default::default()).expect("a way");
+    let hexes: Vec<(i32, i32)> = path.hexes.iter().map(|h| (h.q, h.r)).collect();
+    assert_eq!(hexes, vec![(5, 15), (6, 15), (6, 16), (6, 17), (6, 18), (6, 19), (7, 19), (8, 19), (9, 19), (9, 20),
+        (9, 21), (9, 22), (9, 23), (9, 24), (9, 25), (9, 26), (10, 26), (10, 27)],
+        "the mod's road, by the toll town's hexes (7,19), (8,19) and (9,19)");
+}
+
+#[test]
+fn a_town_grows_into_the_hexes_nearest_its_bell() {
+    // `Territory.grow` 842: the next hex is the unclaimed neighbour nearest the bell's block, then the lowest q, then
+    // r. The study's toll town T: its desk at (1400, 1403), its bell at (1400, 1400), in hex (8, 20); the six about it
+    // are all but equally far from the hex's centre (the core ranked them by that, so floating-point noise chose).
+    let mut s = Society::new(content());
+    let t = s.add_town("T", 0.0);
+    s.place_town(t, 1400.5, 1403.5);
+    s.place_bell(t, 1400.0, 1400.0);
+    let home = s.town_hex(t).unwrap();
+    assert_eq!((home.q, home.r), (8, 20));
+    let mut territory = s.territory().clone();
+    territory.claim(t, home);
+    territory.holdings.get_mut(&t).unwrap().culture = 1e9;
+    territory.grow(t, home, 1.0, 2);
+    let order: Vec<(i32, i32)> = territory.holdings[&t].hexes.iter().take(9).map(|h| (h.q, h.r)).collect();
+    assert_eq!(order, vec![(8, 20), (7, 20), (7, 21), (8, 19), (6, 21), (8, 21), (7, 19), (9, 19), (6, 20)],
+        "the mod's order (T's growth in the Java study: (8,19) on day 6, (7,19) on day 21, (9,19) on day 28)");
+}

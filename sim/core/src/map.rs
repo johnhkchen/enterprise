@@ -19,8 +19,7 @@
 //! sailing, else 1), which keeps it consistent (it never drops by more than a step's cost), so the first time the goal
 //! leaves the queue its cost is the least.
 
-use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet, BinaryHeap};
+use std::collections::{BTreeMap, BTreeSet};
 
 use bevy_ecs::prelude::Resource;
 use serde::{Deserialize, Serialize};
@@ -156,29 +155,50 @@ impl Path {
     }
 }
 
-/// An entry in the open set: the guess of the whole cost, then the order it was queued (so ties go the same way every
-/// time), the hex and its cost so far. A min-heap on `f`, then `seq`.
-struct Node {
-    f: f64,
-    seq: u64,
-    hex: Hex,
-    g: f64,
-}
+/// The open set as the mod keeps it (`RoutePlanner.plan`'s `PriorityQueue<Node>`, compared on `f` alone): Java's
+/// binary heap in an array, so of entries with the same guess the one that comes out first is whichever the heap's
+/// sifting leaves on top (`PriorityQueue.offer`'s `siftUp` stops at a parent no greater; `poll`'s `siftDown` takes
+/// the right child only when the left is greater, and stops at a child no less), not the first queued. Equal paths
+/// across open ground go the mod's way.
+#[derive(Default)]
+struct OpenSet(Vec<(f64, Hex)>);
 
-impl PartialEq for Node {
-    fn eq(&self, other: &Self) -> bool {
-        self.cmp(other) == Ordering::Equal
+impl OpenSet {
+    fn push(&mut self, x: (f64, Hex)) {
+        let mut k = self.0.len();
+        self.0.push(x);
+        while k > 0 {
+            let parent = (k - 1) >> 1;
+            if x.0.total_cmp(&self.0[parent].0).is_ge() {
+                break;
+            }
+            self.0[k] = self.0[parent];
+            k = parent;
+        }
+        self.0[k] = x;
     }
-}
-impl Eq for Node {}
-impl PartialOrd for Node {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl Ord for Node {
-    fn cmp(&self, other: &Self) -> Ordering {
-        other.f.total_cmp(&self.f).then(other.seq.cmp(&self.seq))
+
+    fn pop(&mut self) -> Option<(f64, Hex)> {
+        let last = self.0.pop()?;
+        if self.0.is_empty() {
+            return Some(last);
+        }
+        let top = self.0[0];
+        let n = self.0.len();
+        let (mut k, half) = (0, n >> 1);
+        while k < half {
+            let mut child = 2 * k + 1;
+            if child + 1 < n && self.0[child].0.total_cmp(&self.0[child + 1].0).is_gt() {
+                child += 1;
+            }
+            if last.0.total_cmp(&self.0[child].0).is_le() {
+                break;
+            }
+            self.0[k] = self.0[child];
+            k = child;
+        }
+        self.0[k] = last;
+        Some(top)
     }
 }
 
@@ -226,16 +246,12 @@ impl Map {
         // The cheapest a hex can cost, a share of open ground: the heuristic's scale (see the module's note).
         let cheapest = if boat { BOAT_FACTOR.min(1.0) } else { 1.0 };
         let guess = |hex: Hex| hex.distance(goal) as f64 * per_hex * cheapest;
-        let mut open = BinaryHeap::new();
+        let mut open = OpenSet::default();
         let mut best: BTreeMap<Hex, f64> = BTreeMap::new();
         let mut came_from: BTreeMap<Hex, Hex> = BTreeMap::new();
-        let mut seq = 0u64;
         best.insert(start, 0.0);
-        open.push(Node { f: guess(start), seq, hex: start, g: 0.0 });
-        while let Some(Node { hex, g, .. }) = open.pop() {
-            if g > best[&hex] {
-                continue; // stale entry
-            }
+        open.push((guess(start), start));
+        while let Some((f, hex)) = open.pop() {
             if hex == goal {
                 let mut hexes = vec![goal];
                 let mut at = goal;
@@ -244,7 +260,11 @@ impl Map {
                     at = prev;
                 }
                 hexes.reverse();
-                return Some(Path { hexes, cost: g });
+                return Some(Path { hexes, cost: best[&goal] });
+            }
+            let g = best[&hex];
+            if f > g + guess(hex) + 1e-9 {
+                continue; // stale entry
             }
             for next in hex.neighbors() {
                 if next.distance(start) + next.distance(goal) > direct + 2 * MARGIN {
@@ -262,8 +282,7 @@ impl Map {
                 if cost < best.get(&next).copied().unwrap_or(f64::MAX) {
                     best.insert(next, cost);
                     came_from.insert(next, hex);
-                    seq += 1;
-                    open.push(Node { f: cost + guess(next), seq, hex: next, g: cost });
+                    open.push((cost + guess(next), next));
                 }
             }
         }

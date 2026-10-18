@@ -98,6 +98,9 @@ pub struct Holding {
     pub hunting: f64,
     /// Its mine, once a Toolsmith has dug one (`Territory.mine`), and whether it is sunk deep.
     pub mine: Option<crate::kit::Mine>,
+    /// Where its bell stands, in blocks, if the host has said (`Society::place_bell`): the hexes it grows into are
+    /// ranked by their centres' distance from the bell's block (`Territory.grow` 842), else from home's centre.
+    pub bell: Option<(f64, f64)>,
 }
 
 /// Whose every claimed hex is, and what each town holds.
@@ -149,8 +152,9 @@ impl Territory {
         self.grow(town, home, culture_per_hex, rings);
     }
 
-    /// Spends a town's culture on the nearest unclaimed neighbouring hexes, one at a time (`Territory.grow`): within
-    /// `rings` of `home`, nearest home's centre, then lowest q, then lowest r.
+    /// Spends a town's culture on the nearest unclaimed neighbouring hexes, one at a time (`Territory.grow` 833–852):
+    /// within `rings` of `home`, nearest its bell's block (home's centre if the host never placed its bell), then
+    /// lowest q, then lowest r.
     pub fn grow(&mut self, town: TownId, home: Hex, culture_per_hex: f64, rings: i32) {
         loop {
             let cost = self.next_hex_cost(town, culture_per_hex);
@@ -158,10 +162,11 @@ impl Territory {
             if h.culture < cost {
                 return;
             }
+            let (bx, bz) = h.bell.unwrap_or((home.center_x(), home.center_z()));
             let next = h.hexes.iter().flat_map(|x| x.neighbors())
                 .filter(|x| x.distance(home) <= rings && !self.owners.contains_key(x))
                 .min_by(|a, b| {
-                    let near = |x: &Hex| crate::fixed::hypot(x.center_x() - home.center_x(), x.center_z() - home.center_z());
+                    let near = |x: &Hex| crate::fixed::hypot(x.center_x() - bx, x.center_z() - bz);
                     near(a).total_cmp(&near(b)).then(a.q.cmp(&b.q)).then(a.r.cmp(&b.r))
                 });
             let Some(next) = next else { return };
@@ -217,6 +222,12 @@ impl Territory {
 
 /// Host calls.
 impl Society {
+    /// Where a town's bell stands, in blocks (its block, as the mod's `BlockPos`): the hexes it grows into are ranked
+    /// by their distance from it (`Territory.grow`).
+    pub fn place_bell(&mut self, town: TownId, x: f64, z: f64) {
+        self.world.resource_mut::<Territory>().holdings.entry(town).or_default().bell = Some((x, z));
+    }
+
     /// The town claims the hex it stands in if nobody holds it. False if it isn't placed or the hex is taken. If it
     /// was never counted, this is its first count: a day's culture, and the hexes it buys (`Territory.afterCensus`).
     pub fn claim(&mut self, town: TownId) -> bool {
