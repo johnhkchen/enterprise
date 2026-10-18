@@ -326,6 +326,34 @@ impl Lockers {
         })
     }
 
+    /// [`Lockers::takes`] of every good below `n` at once, by good: one pass over the hands' offers, not one a good.
+    pub fn taken(&self, content: &Content, roster: &Roster, n: usize) -> Vec<bool> {
+        let mut out = vec![false; n];
+        for (i, l) in self.hands.iter().enumerate() {
+            let Some(h) = roster.hands.get(i) else { continue };
+            if l.trade != h.trade || !has_locker(content, roster, i) {
+                continue;
+            }
+            for o in l.offers.iter().filter(|o| o.on && !o.sells && o.level <= h.level) {
+                if let Some(t) = out.get_mut(o.good) {
+                    *t = true;
+                }
+            }
+        }
+        out
+    }
+
+    /// [`Lockers::buys`] of every good below `n` at once, by good.
+    fn bought(&self, n: usize) -> Vec<bool> {
+        let mut out = vec![false; n];
+        for o in self.hands.iter().flat_map(|l| l.offers.iter()).filter(|o| o.on && !o.sells) {
+            if let Some(b) = out.get_mut(o.good) {
+                *b = true;
+            }
+        }
+        out
+    }
+
     /// While a switched-on offer buys a good, the town's people don't also buy it at its worth: its `Trades.uses` is
     /// set aside ([`Lockers::kept`]) and its `Trades.capacity` is what its managed lockers can take a day, so its par
     /// follows them (`bargain.rs`), and its workshop makes it up to that par (`workshop.rs`'s `locker_par`); when none
@@ -338,8 +366,9 @@ impl Lockers {
         if let Some(w) = workshop.as_deref_mut() {
             w.locker_par.resize(n, 0.0);
         }
+        let bought = self.bought(n);
         for g in 0..n {
-            if self.buys(g) {
+            if bought[g] {
                 if self.kept[g].is_none() || trades.uses[g] != 0.0 {
                     self.kept[g] = Some(trades.uses[g]);
                     trades.uses[g] = 0.0;
@@ -368,11 +397,21 @@ impl Lockers {
 /// what its contracts need. `None` where its people use it (their shelf stands, `rules::shelf`) or no trade there
 /// takes it. `lockers`: the town's, with its roster, if it keeps one.
 pub fn wanted_par(content: &Content, trades: &Trades, lockers: Option<(&Lockers, &Roster)>, good: GoodId) -> Option<f64> {
+    wanted_par_by(content, trades, |g| lockers.is_some_and(|(l, r)| l.takes(content, r, g)), good)
+}
+
+/// [`wanted_par`] with what the town's lockers take already known, by good ([`Lockers::taken`]): for a caller asking
+/// of every good in turn.
+pub fn wanted_par_of(content: &Content, trades: &Trades, taken: Option<&[bool]>, good: GoodId) -> Option<f64> {
+    wanted_par_by(content, trades, |g| taken.is_some_and(|t| t.get(g).copied().unwrap_or(false)), good)
+}
+
+fn wanted_par_by(content: &Content, trades: &Trades, takes: impl FnOnce(GoodId) -> bool, good: GoodId) -> Option<f64> {
     if trades.uses.get(good).is_some_and(|u| *u > 0.0) {
         return None;
     }
     let capacity = trades.capacity.get(good).copied().unwrap_or(0.0);
-    let takes = capacity > 0.0 || lockers.is_some_and(|(l, r)| l.takes(content, r, good));
+    let takes = capacity > 0.0 || takes(good);
     takes.then(|| crate::bargain::par(content, capacity, true).max(trades.inputs.get(good).copied().unwrap_or(0.0)))
 }
 

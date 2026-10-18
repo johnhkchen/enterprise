@@ -237,11 +237,13 @@ pub fn porters_needed(content: &Content, stacks: u32, packs: bool) -> usize {
 /// lockers take (a trade it has switched on, managed or not: `far_lockers`, with its roster), comforts aside.
 pub fn wanted_there(content: &Content, far: &Trades, far_lockers: Option<(&crate::lockers::Lockers, &Roster)>)
         -> Vec<GoodId> {
-    (0..content.goods.len())
+    let n = content.goods.len();
+    let taken = far_lockers.map(|(l, r)| l.taken(content, r, n));
+    (0..n)
         .filter(|&g| content.goods[g].comfort.is_none()
             && (far.uses[g] > 0.0 || far.capacity.get(g).is_some_and(|c| *c > 0.0)
                 || far.inputs.get(g).is_some_and(|n| *n > 0.0)
-                || far_lockers.is_some_and(|(l, r)| l.takes(content, r, g))))
+                || taken.as_ref().is_some_and(|t| t[g])))
         .collect()
 }
 

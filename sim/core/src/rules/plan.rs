@@ -91,6 +91,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
         let far_realm = realms.get(route.to).ok();
         // The far end's lockers, for the trades it has switched on (`Caravans.wantsAt`).
         let far_lockers = lockers.get(route.to).ok().zip(rosters.get(route.to).ok());
+        let far_taken = far_lockers.map(|(l, r)| l.taken(&content, r, n));
         let seller = crate::realms::level(&content, realms.get(route.from).ok(), rosters.get(route.from).ok());
         let buyer = crate::realms::level(&content, far_realm, rosters.get(route.to).ok());
         // What the far end holds of a good, as home knows it (`atlas.rs`): a home with a roster reads its fresh
@@ -182,7 +183,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
             let planned = plan.cargo[g];
             // A trade it has switched on takes it, and its people don't use it: its par is the warehouse's for a
             // wanted good (`Warehouse.par(to, item, true)`), a stack at least (`wantsAt`, `pickCargo`).
-            let locker_par = crate::lockers::wanted_par(&content, far_trades, far_lockers, g);
+            let locker_par = crate::lockers::wanted_par_of(&content, far_trades, far_taken.as_deref(), g);
             match content.goods[g].comfort.filter(|_| far_realm.is_none()) {
                 Some(_) => continue, // (the comforts went first)
                 None if far_trades.uses[g] > 0.0 || needs_input(g) || far_realm.is_some_and(|r| r.wants.contains(&g))
