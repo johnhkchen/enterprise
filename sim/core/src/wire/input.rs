@@ -32,6 +32,20 @@ pub enum Input {
     /// What a point's chests hold now, every good there (a good not listed holds none): the core books the difference
     /// from its last stocktake there as goods delivered to its town or taken from it (`points.rs`).
     Stocktake { point: Point, counts: Vec<Count> },
+    /// A player carried a whole pallet (every package of it) to a town's desk (`PalletBrought`, `pallet_messages.rs`).
+    /// Made out to the town, it is received there and then (its goods into stock, a contract's goods delivered under
+    /// it, the crates kept); made out elsewhere, it waits in the town's warehouse to be fetched. A pallet that isn't
+    /// in a town's warehouse (already moved, or on a wagon) is ignored: the host's view was stale.
+    PalletBrought { town: TownId, id: u64 },
+    /// A player carried one package of a pallet made out to the town to its desk: `package` is the package's place on
+    /// the pallet (`PalletPacked` lists them in order). The pallet is received when every package has come, or at the
+    /// town's next look with those that have, its seal broken and the rest lost. Ignored for a pallet made out to
+    /// another town.
+    PackageBrought { town: TownId, pallet: u64, package: u32 },
+    /// A package of a pallet was lost (raided, broken, thrown in lava): it leaves the world (its goods booked as used,
+    /// reason lost), the pallet's seal is broken and it goes on short; the packages after it move up one place. A pallet
+    /// left with nothing is gone, and a bill of exchange that paid for it is unbacked.
+    PackageLost { pallet: u64, package: u32 },
 }
 
 /// So many of a good.

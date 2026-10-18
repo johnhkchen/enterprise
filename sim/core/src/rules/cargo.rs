@@ -319,7 +319,7 @@ fn pay_owing(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, m
 /// At the far end, before the goods owed are delivered: its Merchant opens the pallets made out to it, at its premises: a
 /// copy of the contract is now its copy, the goods are delivered under the contract or sold like any
 /// (`rules/contracts.rs`, `rules/arrive.rs`), the empty crates kept to ship with.
-fn open(mut book: ResMut<Book>, mut pallets: ResMut<Pallets>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
+pub(crate) fn open(mut book: ResMut<Book>, mut pallets: ResMut<Pallets>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut stores: Query<&mut Shipments>) {
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(entity).unwrap();

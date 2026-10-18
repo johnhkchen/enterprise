@@ -230,9 +230,9 @@ impl Discounts {
     }
 
     /// Is a bill backed by goods the hub can see: delivered, or crated and on their way, under its contract
-    /// (`Discounts.backed`)?
+    /// (`Discounts.backed`)? Not one whose pallets are all lost (`Bill::goods_lost`): nothing is behind it.
     pub fn backed(book: &Book, bill: &Bill) -> bool {
-        bill.contract.and_then(|id| book.contracts.get(id))
+        !bill.goods_lost() && bill.contract.and_then(|id| book.contracts.get(id))
             .is_some_and(|c| c.delivered + c.shipped > 0.0 || c.state == State::Completed)
     }
 
@@ -262,7 +262,7 @@ impl Discounts {
         let days = (bill.due as f64 - now as f64).max(0.0) / day as f64;
         let mut off = HUB_DISCOUNT_FEE * if counting { 0.5 } else { 1.0 }
             + if bill.due < now { dials.stale_bill_discount } else { HUB_DISCOUNT_PER_DAY * days };
-        if !(backed || Self::backed(book, bill)) {
+        if bill.goods_lost() || !(backed || Self::backed(book, bill)) {
             off += dials.discount_unbacked; // crop not yet in anyone's hands
         }
         if days > dials.discount_long_days {

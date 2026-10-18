@@ -245,6 +245,44 @@
           }
         },
         {
+          "PalletBrought": {
+            "town": 1,
+            "id": 12
+          }
+        },
+        {
+          "PalletBrought": {
+            "town": 4294967295,
+            "id": 18446744073709551615
+          }
+        },
+        {
+          "PackageBrought": {
+            "town": 1,
+            "pallet": 12,
+            "package": 2
+          }
+        },
+        {
+          "PackageBrought": {
+            "town": 0,
+            "pallet": 18446744073709551615,
+            "package": 4294967295
+          }
+        },
+        {
+          "PackageLost": {
+            "pallet": 12,
+            "package": 0
+          }
+        },
+        {
+          "PackageLost": {
+            "pallet": 18446744073709551615,
+            "package": 4294967295
+          }
+        },
+        {
           "Stocktake": {
             "point": {
               "kind": "Desk",

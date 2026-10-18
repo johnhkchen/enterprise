@@ -34,6 +34,7 @@ pub mod jobs;
 pub mod kit;
 pub mod lockers;
 pub mod orders;
+pub mod pallet_messages;
 pub mod plan;
 pub mod post;
 pub mod realms;

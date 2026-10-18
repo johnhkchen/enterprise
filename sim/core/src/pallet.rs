@@ -325,7 +325,39 @@ pub struct Pallets {
     pub next_container: ContainerId,
     /// Tallies for the books: pallets opened by their consignees, and lost.
     pub received: u64,
+    /// Pallets lost whole (every package of them lost: `pallet_messages.rs`).
     pub lost: u64,
+    /// The goods lost off pallets (reason lost: booked as used in the ledger), by good: the books' tally.
+    pub lost_goods: BTreeMap<crate::content::GoodId, f64>,
+    /// Pallets arriving at their consignee in parts, by pallet: the packages that have come (`PackageBrought`).
+    pub arriving: BTreeMap<PalletId, Arriving>,
+    /// Whether the host asked for outputs (`Society::apply` turns it on): off, nothing is queued, so a run with no host
+    /// keeps nothing. Not state.
+    #[serde(skip)]
+    pub report: bool,
+    /// The outputs queued since the host last took them (`Society::apply`). Not state.
+    #[serde(skip)]
+    pub events: Vec<crate::messages::Output>,
+}
+
+/// A pallet whose packages are coming to its consignee a few at a time: which have, and when the first did.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Arriving {
+    pub town: TownId,
+    pub since: u64,
+    /// Places on the pallet of the packages brought (in the order they came).
+    pub parts: Vec<u32>,
+}
+
+impl From<At> for crate::wire::Place {
+    fn from(at: At) -> Self {
+        match at {
+            At::Town(town) => crate::wire::Place::Town { town },
+            At::Custody(town) => crate::wire::Place::Custody { town },
+            At::Wagon(route) => crate::wire::Place::Wagon { route },
+            At::Container(container) => crate::wire::Place::Container { container },
+        }
+    }
 }
 
 impl Pallets {
@@ -333,6 +365,10 @@ impl Pallets {
     pub fn pack(&mut self, lading: Lading, packages: Vec<Package>, at: At, now: u64) -> PalletId {
         let id = self.next;
         self.next += 1;
+        if self.report {
+            let packages = packages.iter().map(|p| crate::wire::PackageLine { kind: p.kind as u32, good: p.good, count: p.count }).collect();
+            self.events.push(crate::messages::Output::PalletPacked { id, at: at.into(), packages });
+        }
         self.pallets.insert(id, Pallet { id, kind: LOAD, lading, packages, at, since: now, seal: None, claimed: None });
         self.by_place.entry(at).or_default().push(id);
         id
@@ -344,11 +380,14 @@ impl Pallets {
         let from = p.at;
         p.at = at;
         p.since = now;
+        if self.report && from != at {
+            self.events.push(crate::messages::Output::PalletMoved { id, to: at.into() });
+        }
         self.unindex(from, id);
         self.by_place.entry(at).or_default().push(id);
     }
 
-    fn unindex(&mut self, at: At, id: PalletId) {
+    pub(crate) fn unindex(&mut self, at: At, id: PalletId) {
         if let Some(list) = self.by_place.get_mut(&at) {
             list.retain(|&i| i != id);
             if list.is_empty() {
@@ -362,6 +401,7 @@ impl Pallets {
         let p = self.pallets.remove(&id)?;
         self.unindex(p.at, id);
         self.received += 1;
+        self.opened(&p);
         Some(p)
     }
 
@@ -385,7 +425,15 @@ impl Pallets {
     pub fn unpack(&mut self, id: PalletId) -> Option<Pallet> {
         let p = self.pallets.remove(&id)?;
         self.unindex(p.at, id);
+        self.opened(&p);
         Some(p)
+    }
+
+    /// A pallet left the registry emptied (opened, or taken apart): its crates in the world are empty.
+    fn opened(&mut self, p: &Pallet) {
+        if self.report {
+            self.events.push(crate::messages::Output::PalletOpened { id: p.id, at: p.at.into() });
+        }
     }
 
     /// Puts the pallets at a place in `order` (the same pallets, another order): where a rule hands some on and keeps

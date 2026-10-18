@@ -147,6 +147,12 @@ fn inputs() -> Vec<Input> {
         Input::AddTown { name: "x".repeat(300), desk: point(PointKind::Desk, i32::MAX, i32::MAX, i32::MAX) },
         Input::AddPoint { point: point(PointKind::Locker, 30, -60, 27), town: 0 },
         Input::RemovePoint { point: point(PointKind::Locker, 30, -60, 27) },
+        Input::PalletBrought { town: 1, id: 12 },
+        Input::PalletBrought { town: BIGGEST_ID, id: u64::MAX },
+        Input::PackageBrought { town: 1, pallet: 12, package: 2 },
+        Input::PackageBrought { town: 0, pallet: u64::MAX, package: u32::MAX },
+        Input::PackageLost { pallet: 12, package: 0 },
+        Input::PackageLost { pallet: u64::MAX, package: u32::MAX },
     ];
     all.extend(counts().into_iter().map(|counts| Input::Stocktake { point: point(PointKind::Desk, 27, -60, 27), counts }));
     all
@@ -162,6 +168,16 @@ fn outputs() -> Vec<Output> {
         Output::OrderFilled { town: 0, order: 3, good: 1, lots: 2, count: 32.0, spurs: 80.0 },
         Output::OrderFilled { town: BIGGEST_ID, order: BIGGEST_ID, good: BIGGEST_ID, lots: u32::MAX, count: f64::MAX, spurs: 0.0 },
         Output::Signal { town: 1, good: 4, count: 12.0, spurs_each: 0.25 },
+        Output::PalletPacked { id: 0, at: Place::Town { town: 0 }, packages: vec![] },
+        Output::PalletPacked { id: 7, at: Place::Custody { town: 2 }, packages: vec![
+            PackageLine { kind: 1, good: 3, count: 576.0 }, PackageLine { kind: 0, good: 0, count: 0.5 },
+            PackageLine { kind: u32::MAX, good: BIGGEST_ID, count: f64::MAX }] },
+        Output::PalletPacked { id: u64::MAX, at: Place::Wagon { route: BIGGEST_ID }, packages: (0..40)
+            .map(|i| PackageLine { kind: i % 4, good: i as usize, count: i as f64 * 9.0 }).collect() },
+        Output::PalletMoved { id: 7, to: Place::Wagon { route: 3 } },
+        Output::PalletMoved { id: u64::MAX, to: Place::Container { container: u64::MAX } },
+        Output::PalletOpened { id: 7, at: Place::Town { town: 1 } },
+        Output::PalletOpened { id: 0, at: Place::Custody { town: BIGGEST_ID } },
     ]
 }
 
@@ -248,6 +264,10 @@ fixtures! {
     refusal_fixtures: Refusal = refusals();
     point_fixtures: Point = points();
     point_kind_fixtures: PointKind = vec![PointKind::Desk, PointKind::Locker, PointKind::Shop, PointKind::Banker, PointKind::Depot];
+    place_fixtures: Place = vec![Place::Town { town: 0 }, Place::Custody { town: 1 }, Place::Wagon { route: BIGGEST_ID },
+        Place::Container { container: u64::MAX }];
+    package_line_fixtures: PackageLine = vec![PackageLine { kind: 0, good: 0, count: 0.0 },
+        PackageLine { kind: u32::MAX, good: BIGGEST_ID, count: f64::MAX }];
     count_fixtures: Count = counts().concat();
     town_point_fixtures: TownPoint = points().into_iter().map(|point| TownPoint { point, town: 0 }).collect();
     content_pack_fixtures: ContentPack = packs();
@@ -273,6 +293,9 @@ fn input_place(i: &Input) -> usize {
         Input::AddPoint { .. } => 8,
         Input::RemovePoint { .. } => 9,
         Input::Stocktake { .. } => 10,
+        Input::PalletBrought { .. } => 11,
+        Input::PackageBrought { .. } => 12,
+        Input::PackageLost { .. } => 13,
     }
 }
 
@@ -283,6 +306,9 @@ fn output_place(o: &Output) -> usize {
         Output::WagonHome { .. } => 2,
         Output::OrderFilled { .. } => 3,
         Output::Signal { .. } => 4,
+        Output::PalletPacked { .. } => 5,
+        Output::PalletMoved { .. } => 6,
+        Output::PalletOpened { .. } => 7,
     }
 }
 
@@ -343,8 +369,8 @@ fn covers<T>(what: &str, samples: &[T], variants: usize, place: fn(&T) -> usize)
 
 #[test]
 fn every_variant_of_every_wire_enum_has_a_sample() {
-    covers("Input", &inputs(), 11, input_place);
-    covers("Output", &outputs(), 5, output_place);
+    covers("Input", &inputs(), 14, input_place);
+    covers("Output", &outputs(), 8, output_place);
     covers("Query", &queries(), 2, query_place);
     covers("Answer", &answers(), 2, answer_place);
     covers("Command", &commands(), 5, command_place);
@@ -380,6 +406,10 @@ fn a_variant_is_named_by_its_place() {
     }
     for (i, k) in [PointKind::Desk, PointKind::Locker, PointKind::Shop, PointKind::Banker, PointKind::Depot].iter().enumerate() {
         assert_eq!(postcard::to_allocvec(k).unwrap(), vec![i as u8], "{k:?}");
+    }
+    for (i, p) in [Place::Town { town: 0 }, Place::Custody { town: 0 }, Place::Wagon { route: 0 }, Place::Container { container: 0 }]
+        .iter().enumerate() {
+        assert_eq!(postcard::to_allocvec(p).unwrap()[0] as usize, i, "{p:?}");
     }
     for (i, f) in [GoodFlag::Crop, GoodFlag::Meat].iter().enumerate() {
         assert_eq!(postcard::to_allocvec(f).unwrap(), vec![i as u8], "{f:?}");

@@ -9,7 +9,20 @@ use enterprise_core::pallet::{At, Pallets};
 
 pub fn extend(_s: &mut Society, _r: &mut Rng) {}
 
-pub fn daily(_s: &mut Society, _r: &mut Rng, _day: u64) {}
+/// A package is lost now and then from a pallet standing in a warehouse (`pallet-messages`: raided, broken, thrown in
+/// lava), as a host would tell the core; the goods are booked as used, and the pallet goes on short.
+pub fn daily(s: &mut Society, r: &mut Rng, _day: u64) {
+    if r.below(4) != 0 {
+        return;
+    }
+    let standing: Vec<(u64, usize)> = s.world.resource::<Pallets>().pallets.values()
+        .filter(|p| matches!(p.at, At::Town(_))).map(|p| (p.id, p.packages.len())).collect();
+    if standing.is_empty() {
+        return;
+    }
+    let (pallet, packages) = standing[r.below(standing.len() as u64) as usize];
+    s.apply(&enterprise_core::wire::Input::PackageLost { pallet, package: r.below(packages as u64) as u32 });
+}
 
 pub fn check(s: &Society, _day: u64) -> Result<(), String> {
     let p = s.world.resource::<Pallets>();
@@ -25,6 +38,9 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
         if let Some(x) = ids.iter().filter_map(|id| p.get(*id)).find(|x| carried && (x.seal.is_none() || !x.intact())) {
             return Err(format!("pallet {} at {place:?} isn't sealed as it was: {x:?}", x.id));
         }
+    }
+    if let Some(id) = p.arriving.keys().find(|id| p.get(**id).is_none()) {
+        return Err(format!("pallet {id} is arriving in parts, but isn't in the registry"));
     }
     for route in 0..s.route_count() {
         let aboard: Vec<u64> = p.at(At::Wagon(route)).to_vec();

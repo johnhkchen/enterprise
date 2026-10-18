@@ -126,6 +126,22 @@ Input:
           - counts:
               SEQ:
                 TYPENAME: Count
+    11:
+      PalletBrought:
+        STRUCT:
+          - town: U64
+          - id: U64
+    12:
+      PackageBrought:
+        STRUCT:
+          - town: U64
+          - pallet: U64
+          - package: U32
+    13:
+      PackageLost:
+        STRUCT:
+          - pallet: U64
+          - package: U32
 Output:
   ENUM:
     0:
@@ -161,6 +177,27 @@ Output:
           - good: U64
           - count: F64
           - spurs_each: F64
+    5:
+      PalletPacked:
+        STRUCT:
+          - id: U64
+          - at:
+              TYPENAME: Place
+          - packages:
+              SEQ:
+                TYPENAME: PackageLine
+    6:
+      PalletMoved:
+        STRUCT:
+          - id: U64
+          - to:
+              TYPENAME: Place
+    7:
+      PalletOpened:
+        STRUCT:
+          - id: U64
+          - at:
+              TYPENAME: Place
 PackGood:
   STRUCT:
     - name: STR
@@ -173,6 +210,29 @@ PackGood:
     - flags:
         SEQ:
           TYPENAME: GoodFlag
+PackageLine:
+  STRUCT:
+    - kind: U32
+    - good: U64
+    - count: F64
+Place:
+  ENUM:
+    0:
+      Town:
+        STRUCT:
+          - town: U64
+    1:
+      Custody:
+        STRUCT:
+          - town: U64
+    2:
+      Wagon:
+        STRUCT:
+          - route: U64
+    3:
+      Container:
+        STRUCT:
+          - container: U64
 Point:
   STRUCT:
     - kind:

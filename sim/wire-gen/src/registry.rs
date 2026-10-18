@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 use serde_reflection::{ContainerFormat, Format, Named, Tracer, TracerConfig, VariantFormat};
 
-use enterprise_core::wire::{Answer, Command, GoodFlag, Input, Output, PointKind, Query, Refusal, Request, Response};
+use enterprise_core::wire::{Answer, Command, GoodFlag, Input, Output, Place, PointKind, Query, Refusal, Request, Response};
 
 pub use serde_reflection::Registry;
 
@@ -24,6 +24,7 @@ pub fn trace_wire() -> Result<Registry, String> {
         tracer.trace_simple_type::<Answer>()?;
         tracer.trace_simple_type::<PointKind>()?;
         tracer.trace_simple_type::<GoodFlag>()?;
+        tracer.trace_simple_type::<Place>()?;
         Ok(())
     })
 }

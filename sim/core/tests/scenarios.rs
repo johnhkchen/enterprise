@@ -326,6 +326,11 @@ fn inputs() -> Scenario {
     ]);
     s.apply("a player buys from a town's own shop", vec![Input::Buy { town: 1, good: BEEF, count: 2.0 }]);
     s.apply("a point broken", vec![Input::RemovePoint { point: at(PointKind::Shop, 24, 27) }]);
+    s.apply("a player's pallet inputs name pallets that aren't there (a stale view): accepted, nothing happens", vec![
+        Input::PalletBrought { town: 1, id: 41 },
+        Input::PackageBrought { town: 1, pallet: 41, package: 0 },
+        Input::PackageLost { pallet: 41, package: 0 },
+    ]);
     s.apply("twenty days pass", vec![Input::Advance { to: 20 * DAY }]);
     s.ask("every question", vec![Query::Stock { town: 0 }, Query::Stock { town: 1 }, Query::Points]);
     s.scenario
@@ -383,6 +388,10 @@ fn refusals() -> Scenario {
         Input::Deliver { town: 0, good: WHEAT, count: 5.0 },
         Input::Deliver { town: 9, good: WHEAT, count: 5.0 },
     ], 1);
+    refuse_apply(&mut s, "a pallet brought to a town that isn't there", vec![Input::PalletBrought { town: 9, id: 0 }], 0);
+    refuse_apply(&mut s, "a package brought to a town that isn't there", vec![
+        Input::PackageBrought { town: 9, pallet: 0, package: 0 },
+    ], 0);
     refuse_apply(&mut s, "a good that isn't there", vec![Input::Deliver { town: 0, good: 99, count: 1.0 }], 0);
     refuse_apply(&mut s, "a count below nothing", vec![Input::Buy { town: 0, good: WHEAT, count: -1.0 }], 0);
     refuse_apply(&mut s, "money below nothing", vec![Input::Pay { town: 0, money: Fixed::from_millis(-1) }], 0);
@@ -498,11 +507,11 @@ fn every_message_appears_in_a_scenario() {
         }
     }
     let set = |names: &[&str]| names.iter().map(|s| s.to_string()).collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "Pay", "RemovePoint", "Stall", "Stocktake"]));
+    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "Stall", "Stocktake"]));
     assert_eq!(commands, set(&["Apply", "Ask", "Create", "Load", "Save"]));
     assert_eq!(queries, set(&["Points", "Stock"]));
     assert_eq!(refusals, set(&["Abi", "Input", "NoSociety", "Pack", "Query", "Save", "SaveFormat", "Schema", "Unreadable"]));
-    // None yet: an Output needs a master Merchant (OrderFilled, Signal) or a route (the wagon's three), and no wire
-    // input makes either. When one does, a scenario shows each and its name goes here.
+    // None yet: an Output needs a master Merchant (OrderFilled, Signal), a route (the wagon's three) or a pallet (the
+    // pallets' three: only a wagon packs one), and no wire input makes any. When one does, a scenario shows each and its name goes here.
     assert_eq!(outputs, set(&[]));
 }

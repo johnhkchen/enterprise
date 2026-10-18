@@ -121,4 +121,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::orders::register(schedule);
     crate::rules::stranded::register(schedule);
     crate::rules::crown::register(schedule);
+    crate::rules::pallet_messages::register(schedule);
 }

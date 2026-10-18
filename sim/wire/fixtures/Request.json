@@ -1,7 +1,7 @@
 [
   {
     "abi": 1,
-    "schema": 9309039127105987393,
+    "schema": 14536444941882998301,
     "command": {
       "Create": {
         "pack": {
@@ -74,7 +74,7 @@
   },
   {
     "abi": 1,
-    "schema": 9309039127105987393,
+    "schema": 14536444941882998301,
     "command": {
       "Create": {
         "pack": {
@@ -87,7 +87,7 @@
   },
   {
     "abi": 1,
-    "schema": 9309039127105987393,
+    "schema": 14536444941882998301,
     "command": {
       "Load": {
         "save": {
@@ -106,12 +106,12 @@
   },
   {
     "abi": 1,
-    "schema": 9309039127105987393,
+    "schema": 14536444941882998301,
     "command": "Save"
   },
   {
     "abi": 1,
-    "schema": 9309039127105987393,
+    "schema": 14536444941882998301,
     "command": {
       "Apply": {
         "inputs": []
@@ -120,7 +120,7 @@
   },
   {
     "abi": 1,
-    "schema": 9309039127105987393,
+    "schema": 14536444941882998301,
     "command": {
       "Apply": {
         "inputs": [
@@ -265,6 +265,44 @@
                 "y": -60,
                 "z": 27
               }
+            }
+          },
+          {
+            "PalletBrought": {
+              "town": 1,
+              "id": 12
+            }
+          },
+          {
+            "PalletBrought": {
+              "town": 4294967295,
+              "id": 18446744073709551615
+            }
+          },
+          {
+            "PackageBrought": {
+              "town": 1,
+              "pallet": 12,
+              "package": 2
+            }
+          },
+          {
+            "PackageBrought": {
+              "town": 0,
+              "pallet": 18446744073709551615,
+              "package": 4294967295
+            }
+          },
+          {
+            "PackageLost": {
+              "pallet": 12,
+              "package": 0
+            }
+          },
+          {
+            "PackageLost": {
+              "pallet": 18446744073709551615,
+              "package": 4294967295
             }
           },
           {
@@ -1581,7 +1619,7 @@
   },
   {
     "abi": 1,
-    "schema": 9309039127105987393,
+    "schema": 14536444941882998301,
     "command": {
       "Ask": {
         "queries": []
@@ -1590,7 +1628,7 @@
   },
   {
     "abi": 1,
-    "schema": 9309039127105987393,
+    "schema": 14536444941882998301,
     "command": {
       "Ask": {
         "queries": [

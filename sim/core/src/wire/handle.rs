@@ -183,6 +183,9 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
                 same_kind(stands(&points, &spot), point).map_err(wrong)?;
                 points.insert(spot, None);
             }
+            Input::PalletBrought { town: t, .. } | Input::PackageBrought { town: t, .. } => town(*t)?,
+            // A pallet that isn't there, or isn't in a warehouse, is a stale view: ignored, not refused.
+            Input::PackageLost { .. } => {}
             Input::Stocktake { point, counts } => {
                 same_kind(stands(&points, &point.spot()), point).map_err(wrong)?;
                 for c in counts {

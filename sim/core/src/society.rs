@@ -456,6 +456,13 @@ impl Society {
 
     /// Applies one happening and returns what came of it.
     pub fn apply(&mut self, input: &Input) -> Vec<Output> {
+        self.world.resource_mut::<crate::pallet::Pallets>().report = true; // a host is listening (`pallet_messages.rs`)
+        let mut out = self.apply_input(input);
+        out.append(&mut self.world.resource_mut::<crate::pallet::Pallets>().events);
+        out
+    }
+
+    fn apply_input(&mut self, input: &Input) -> Vec<Output> {
         match *input {
             Input::Advance { to } => self.advance(to),
             Input::Deliver { town, good, count } => {
@@ -472,6 +479,18 @@ impl Society {
             }
             Input::AddTown { .. } | Input::AddPoint { .. } | Input::RemovePoint { .. } | Input::Stocktake { .. } => {
                 self.apply_points(input);
+                Vec::new()
+            }
+            Input::PalletBrought { town, id } => {
+                self.pallet_brought(town, id);
+                Vec::new()
+            }
+            Input::PackageBrought { town, pallet, package } => {
+                self.package_brought(town, pallet, package);
+                Vec::new()
+            }
+            Input::PackageLost { pallet, package } => {
+                self.package_lost(pallet, package);
                 Vec::new()
             }
         }

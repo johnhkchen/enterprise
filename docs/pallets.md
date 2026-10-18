@@ -293,6 +293,13 @@ The binding doesn't run the core yet (architecture step 3). When it does:
   to }`, `PalletOpened { id, at }`, so crates appear, move and empty in the world; inputs `PalletBrought { town, id }`
   (a player carried a whole pallet to a desk: today's `deliver_shipment`), `PackageBrought { town, pallet, package }`
   (part of one) and `PackageLost { pallet, package }` (raided, broken, thrown in lava).
+- **Built** (`pallet-messages`, `pallet_messages.rs`): the outputs are queued by `Pallets::pack`, `move_to`, `open` and
+  `unpack` once a host has applied a happening (`Society::apply` turns `Pallets.report` on; they are not state, and
+  `advance` called directly returns none, so the fingerprint and replay hold). `PalletOpened` also tells of a pallet
+  taken apart by its holder. `PackageBrought` marks a package of a pallet made out to the town (`Pallets.arriving`):
+  complete, it is received at once with its seal; short, at the town's next look (`rules/pallet_messages.rs`). A pallet
+  names a package by its place on it, and the places after a lost package move up one. Inputs naming a pallet that isn't
+  in a town's warehouse (moved on, on a wagon, in custody, gone) are a stale view: ignored, not refused.
 - **A short pallet** (a package lost, or brought apart): its seal is broken. The consignee takes what came; the rest is
   a loss on the bill (in the books as lost, the carrier's report shows it). A player is a carrier: one who brings every
   package keeps the seal.

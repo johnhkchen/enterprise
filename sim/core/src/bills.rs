@@ -56,6 +56,15 @@ pub struct Bill {
     /// The pallets of goods it pays for, if any (crated for the drawee, `pallet.rs`): named, not guessed; stranded, they
     /// go with it.
     pub pallets: Vec<crate::pallet::PalletId>,
+    /// Those of its pallets lost whole (`pallet_messages.rs`): a bill whose pallets are all lost has no goods behind it.
+    pub lost: Vec<crate::pallet::PalletId>,
+}
+
+impl Bill {
+    /// It names pallets, and every one of them is lost.
+    pub fn goods_lost(&self) -> bool {
+        !self.pallets.is_empty() && self.pallets.iter().all(|p| self.lost.contains(p))
+    }
 }
 
 /// Every bill, and the ones still to be paid.
@@ -98,6 +107,7 @@ impl Bills {
             held: Held::Wagon,
             contract,
             pallets: Vec::new(),
+            lost: Vec::new(),
         });
         self.open.push(id);
         id

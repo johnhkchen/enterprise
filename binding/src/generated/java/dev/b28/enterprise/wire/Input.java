@@ -18,7 +18,10 @@ public sealed interface Input
                 Input.AddTown,
                 Input.AddPoint,
                 Input.RemovePoint,
-                Input.Stocktake {
+                Input.Stocktake,
+                Input.PalletBrought,
+                Input.PackageBrought,
+                Input.PackageLost {
     void encode(PostcardOut out);
 
     static Input decode(PostcardIn in) {
@@ -35,6 +38,9 @@ public sealed interface Input
             case 8 -> new AddPoint(Point.decode(in), in.u64());
             case 9 -> new RemovePoint(Point.decode(in));
             case 10 -> new Stocktake(Point.decode(in), in.list(9, Count::decode));
+            case 11 -> new PalletBrought(in.u64(), in.u64());
+            case 12 -> new PackageBrought(in.u64(), in.u64(), in.u32());
+            case 13 -> new PackageLost(in.u64(), in.u32());
             default -> throw in.unknownVariant("Input", at);
         };
     }
@@ -203,6 +209,51 @@ public sealed interface Input
             out.variant(10);
             this.point.encode(out);
             out.list(this.counts, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * A player carried a whole pallet (every package of it) to a town's desk ({@code PalletBrought}, {@code pallet_messages.rs}).
+     * Made out to the town, it is received there and then (its goods into stock, a contract's goods delivered under
+     * it, the crates kept); made out elsewhere, it waits in the town's warehouse to be fetched. A pallet that isn't
+     * in a town's warehouse (already moved, or on a wagon) is ignored: the host's view was stale.
+     */
+    record PalletBrought(long town, long id) implements Input {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(11);
+            out.u64(this.town);
+            out.u64(this.id);
+        }
+    }
+
+    /**
+     * A player carried one package of a pallet made out to the town to its desk: {@code package} is the package's place on
+     * the pallet ({@code PalletPacked} lists them in order). The pallet is received when every package has come, or at the
+     * town's next look with those that have, its seal broken and the rest lost. Ignored for a pallet made out to
+     * another town.
+     */
+    record PackageBrought(long town, long pallet, long package_) implements Input {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(12);
+            out.u64(this.town);
+            out.u64(this.pallet);
+            out.u32(this.package_);
+        }
+    }
+
+    /**
+     * A package of a pallet was lost (raided, broken, thrown in lava): it leaves the world (its goods booked as used,
+     * reason lost), the pallet's seal is broken and it goes on short; the packages after it move up one place. A pallet
+     * left with nothing is gone, and a bill of exchange that paid for it is unbacked.
+     */
+    record PackageLost(long pallet, long package_) implements Input {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(13);
+            out.u64(this.pallet);
+            out.u32(this.package_);
         }
     }
 }
