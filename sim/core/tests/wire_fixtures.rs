@@ -220,7 +220,15 @@ fn inputs() -> Vec<Input> {
         Input::TagHand { hand: 7, tag: "6f1c2a3e-0000-4000-8000-00000000002b".into() },
         Input::TagHand { hand: u32::MAX, tag: String::new() },
     ];
-    all.extend(counts().into_iter().map(|counts| Input::Stocktake { point: point(PointKind::Desk, 27, -60, 27), counts }));
+    all.extend(counts().into_iter().map(|counts| Input::Stocktake { point: point(PointKind::Desk, 27, -60, 27), counts, free: 27 }));
+    all.push(Input::Stocktake { point: point(PointKind::Depot, 31, -60, 27), counts: vec![], free: 0 });
+    all.push(Input::Stocktake { point: point(PointKind::Desk, 0, 0, 0), counts: vec![], free: u32::MAX });
+    all.extend([
+        Input::Unmoved { point: point(PointKind::Desk, 27, -60, 27), good: 0, count: 64 },
+        Input::Unmoved { point: point(PointKind::Depot, 31, -60, 27), good: 2, count: -1 },
+        Input::Unmoved { point: point(PointKind::Desk, i32::MIN, i32::MIN, i32::MIN), good: BIGGEST_ID, count: i64::MIN },
+        Input::Unmoved { point: point(PointKind::Desk, 0, 0, 0), good: 1, count: i64::MAX },
+    ]);
     all
 }
 
@@ -252,6 +260,10 @@ fn outputs() -> Vec<Output> {
         Output::HandGone { hand: 3, tag: "Br\u{f6}ly \u{1f33e}".repeat(20) },
         Output::HandLevel { hand: 1, tag: "6f1c2a3e-0000-4000-8000-00000000002a".into(), trade: "merchant".into(), level: 3, xp: 1395 },
         Output::HandLevel { hand: u32::MAX, tag: String::new(), trade: "x".repeat(300), level: u8::MAX, xp: u32::MAX },
+        Output::Moved { point: point(PointKind::Desk, 27, -60, 27), good: 0, count: 10 },
+        Output::Moved { point: point(PointKind::Depot, 31, -60, 27), good: 3, count: -64 },
+        Output::Moved { point: point(PointKind::Desk, i32::MAX, i32::MAX, i32::MAX), good: BIGGEST_ID, count: i64::MAX },
+        Output::Moved { point: point(PointKind::Depot, -5, -64, 9), good: 1, count: i64::MIN },
     ]
 }
 
@@ -266,7 +278,8 @@ fn residents() -> Vec<Resident> {
 
 fn queries() -> Vec<Query> {
     vec![Query::Stock { town: 0 }, Query::Stock { town: BIGGEST_ID }, Query::Points, Query::Goods, Query::Dials,
-        Query::Hands { town: 0 }, Query::Hands { town: BIGGEST_ID }]
+        Query::Hands { town: 0 }, Query::Hands { town: BIGGEST_ID }, Query::Chests { point: point(PointKind::Desk, 27, -60, 27) },
+        Query::Chests { point: point(PointKind::Depot, i32::MIN, 0, i32::MAX) }]
 }
 
 fn hand_views() -> Vec<HandView> {
@@ -298,6 +311,11 @@ fn answers() -> Vec<Answer> {
         Answer::Hands { town: 2, lockers: 10, hands: hand_views() },
         Answer::Hands { town: BIGGEST_ID, lockers: u32::MAX, hands: (0..150).map(|i| HandView { hand: 1 + i, tag: format!("v{i}"),
             trade: "farmer".into(), level: 1 + (i % 5) as u8, xp: i * 7, baby: i % 9 == 0, away: i % 4 == 0, merchant: i == 3 }).collect() },
+        Answer::Chests { point: point(PointKind::Desk, 27, -60, 27), town: 0, held: vec![], free: 0, short: vec![] },
+        Answer::Chests { point: point(PointKind::Depot, 31, -60, 27), town: 2, held: vec![40.0, 0.0, 3.0, 64.0], free: 27,
+            short: vec![0.0, 2.0] },
+        Answer::Chests { point: point(PointKind::Desk, i32::MAX, i32::MAX, i32::MAX), town: BIGGEST_ID, held: EDGE_F64.to_vec(),
+            free: u32::MAX, short: (0..200).map(|i| i as f64).collect() },
     ]
 }
 
@@ -412,6 +430,7 @@ fn input_place(i: &Input) -> usize {
         Input::HandLost { .. } => 16,
         Input::Census { .. } => 17,
         Input::TagHand { .. } => 18,
+        Input::Unmoved { .. } => 19,
     }
 }
 
@@ -430,6 +449,7 @@ fn output_place(o: &Output) -> usize {
         Output::Departed { .. } => 10,
         Output::HandGone { .. } => 11,
         Output::HandLevel { .. } => 12,
+        Output::Moved { .. } => 13,
     }
 }
 
@@ -440,6 +460,7 @@ fn query_place(q: &Query) -> usize {
         Query::Goods => 2,
         Query::Dials => 3,
         Query::Hands { .. } => 4,
+        Query::Chests { .. } => 5,
     }
 }
 
@@ -450,6 +471,7 @@ fn answer_place(a: &Answer) -> usize {
         Answer::Goods { .. } => 2,
         Answer::Dials { .. } => 3,
         Answer::Hands { .. } => 4,
+        Answer::Chests { .. } => 5,
     }
 }
 
@@ -496,10 +518,10 @@ fn covers<T>(what: &str, samples: &[T], variants: usize, place: fn(&T) -> usize)
 
 #[test]
 fn every_variant_of_every_wire_enum_has_a_sample() {
-    covers("Input", &inputs(), 19, input_place);
-    covers("Output", &outputs(), 13, output_place);
-    covers("Query", &queries(), 5, query_place);
-    covers("Answer", &answers(), 5, answer_place);
+    covers("Input", &inputs(), 20, input_place);
+    covers("Output", &outputs(), 14, output_place);
+    covers("Query", &queries(), 6, query_place);
+    covers("Answer", &answers(), 6, answer_place);
     covers("Command", &commands(), 5, command_place);
     covers("Response", &responses(), 3, response_place);
     covers("Refusal", &refusals(), 9, refusal_place);

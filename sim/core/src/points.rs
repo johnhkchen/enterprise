@@ -4,14 +4,18 @@
 //! its lookup from the points (`Query::Points`, `wire/`).
 //!
 //! **Stocktakes.** Chests stay physical (`docs/binding-plan.md` 1.5): players, hoppers and Create move items in a
-//! point's chests, so the host counts them and the core books the difference. A point keeps what its chests held at
-//! its last stocktake; a new one ([`Society::stocktake`]) books what's more as goods delivered to its town from
-//! outside the society (`Ledger.delivered`, as [`Society::deliver`] does) and what's less as goods taken out of it
-//! (`Ledger.used`, as a player's buying at a town's shop is), never more than the town holds. A point's first
-//! stocktake counts from nothing. What the core itself moves in and out of a point's chests (a wagon's sale, a
-//! locker's trade) will come back to the host as `Moved` and be counted into the point's last stocktake, so it isn't
-//! booked again (the stock adapter's task, `stock-adapter`); until then a point's last stocktake is only what the host
-//! counted.
+//! point's chests, so the host counts them and the core books the difference. A point keeps what the core takes its
+//! chests to hold (`Placed.counted`); a new stocktake ([`Society::take_stock`]) books what's more as goods delivered to
+//! its town from outside the society (`Ledger.delivered`, as [`Society::deliver`] does) and what's less as goods taken
+//! out of it (`Ledger.used`, as a player's buying at a town's shop is), never more than the town holds: what the chests
+//! gave up beyond that is the point's `short` (goods the host's world made, which the core never had). A point's first
+//! stocktake counts from nothing. What the core itself moves in and out of a desk's or a depot's chests (a wagon's
+//! sale, the town's people eating) goes to the host as `Moved` and into `counted` at once, so the next stocktake
+//! doesn't book it again; what the host couldn't move comes back as `Unmoved` (`chests.rs`).
+//!
+//! **A point broken** takes its chests with it: what the core took them to hold leaves its town (`Ledger.used`, never
+//! more than it holds), since the chests are the host's and a point placed there again counts them in afresh. A desk
+//! placed where a town's desk stood is that town's desk again (`chests::FormerDesks`), not a new town.
 //!
 //! The mod keeps a market's desk and its chests in `merchant/Merchant` and `merchant/Warehouse` (the chests within
 //! reach of the desk, summed); here a point is a place and a town, and its chests are the host's.
@@ -49,12 +53,19 @@ pub enum Kind {
     Depot,
 }
 
-/// A point: what it is, its town, and what its chests held at its last stocktake (by good; empty before the first).
+/// A point: what it is, its town, and its chests as the core takes them to be.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Placed {
     pub kind: Kind,
     pub town: TownId,
+    /// What its chests hold, by good (empty before the first stocktake): what the host counted at the last, with what
+    /// the core has moved in and out since (`Moved`) and less what the host said it couldn't (`Unmoved`).
     pub counted: Vec<f64>,
+    /// Its chests' empty slots at the last stocktake: room for what the core moves in (`chests.rs`).
+    pub free: u32,
+    /// Goods its chests gave up that its town didn't hold, by good (empty if none ever): taken from chests that showed
+    /// more than the town had, before they were counted again. The host's world made them; the core never had them.
+    pub short: Vec<f64>,
 }
 
 /// Every trade point, by where it stands.
@@ -63,10 +74,16 @@ pub struct Points(pub BTreeMap<Spot, Placed>);
 
 impl Society {
     /// A new town at its desk: it stands where the desk does (`place_town` at the desk's x and z), with nothing held
-    /// and no money, and its desk is a point of its own. Refused if a point already stands there.
+    /// and no money, and its desk is a point of its own. A desk placed where a town's desk stood before it was broken
+    /// is that town's desk again (its name kept, `name` unused): a player who breaks a desk and puts it back has the
+    /// same town. Refused if a point already stands there.
     pub fn found(&mut self, name: &str, desk: Spot) -> Result<TownId, String> {
         if self.points().0.contains_key(&desk) {
             return Err(format!("a point already stands at {desk:?}"));
+        }
+        if let Some(town) = self.world.resource_mut::<crate::chests::FormerDesks>().0.remove(&desk) {
+            self.add_point(Kind::Desk, desk, town)?;
+            return Ok(town);
         }
         let town = self.add_town(name, 0);
         self.place_town(town, desk.x as f64, desk.z as f64);
@@ -83,13 +100,27 @@ impl Society {
         if points.0.contains_key(&at) {
             return Err(format!("a point already stands at {at:?}"));
         }
-        points.0.insert(at, Placed { kind, town, counted: Vec::new() });
+        points.0.insert(at.clone(), Placed { kind, town, ..Placed::default() });
+        // The place is taken again: a desk later put there founds a town of its own.
+        self.world.resource_mut::<crate::chests::FormerDesks>().0.remove(&at);
         Ok(())
     }
 
-    /// A trade point broken: gone from the points, its town and what its town holds untouched.
+    /// A trade point broken: gone from the points, and what the core took its chests to hold gone from its town with
+    /// them (as a player's taking is: never more than the town holds), so a point placed there again counts them in
+    /// afresh and nothing is booked twice. The rest of what its town holds stays. A desk's place is remembered: a desk
+    /// put there again is that town's ([`Society::found`]).
     pub fn remove_point(&mut self, at: &Spot) -> Result<Placed, String> {
-        self.world.resource_mut::<Points>().0.remove(at).ok_or_else(|| format!("no point at {at:?}"))
+        let placed = self.world.resource_mut::<Points>().0.remove(at).ok_or_else(|| format!("no point at {at:?}"))?;
+        for (good, &n) in placed.counted.iter().enumerate() {
+            if n > 0.0 {
+                self.withdraw(placed.town, good, n);
+            }
+        }
+        if placed.kind == Kind::Desk {
+            self.world.resource_mut::<crate::chests::FormerDesks>().0.insert(at.clone(), placed.town);
+        }
+        Ok(placed)
     }
 
     /// Every trade point.
@@ -102,11 +133,11 @@ impl Society {
         self.points().0.get(at)
     }
 
-    /// What a point's chests hold now, every good there (a good not listed holds none; a good listed twice, the sum):
-    /// what's more than at its last stocktake is delivered to its town, what's less taken from it (never more than
-    /// the town holds), and this is its last stocktake from now on. Returns what was booked by good (+ delivered,
-    /// - taken).
-    pub fn take_stock(&mut self, at: &Spot, counts: &[(GoodId, f64)]) -> Result<Vec<f64>, String> {
+    /// What a point's chests hold now, every good there (a good not listed holds none; a good listed twice, the sum),
+    /// and `free` of their slots empty: what's more than the core took them to hold is delivered to its town, what's
+    /// less taken from it (never more than the town holds: the rest is the point's `short`), and this is what they hold
+    /// from now on. Returns what was booked by good (+ delivered, - taken).
+    pub fn take_stock(&mut self, at: &Spot, counts: &[(GoodId, f64)], free: u32) -> Result<Vec<f64>, String> {
         let n = self.content().goods.len();
         let Some(placed) = self.point(at) else {
             return Err(format!("no point at {at:?}"));
@@ -121,16 +152,28 @@ impl Society {
             now[good] += count;
         }
         let mut booked = vec![0.0; n];
+        let mut short = vec![0.0; n];
         for good in 0..n {
             let more = now[good] - last[good];
             if more > 0.0 {
                 self.deliver(town, good, more);
                 booked[good] = more;
             } else if more < 0.0 {
-                booked[good] = -self.withdraw(town, good, -more);
+                let taken = self.withdraw(town, good, -more);
+                booked[good] = -taken;
+                short[good] = -more - taken;
             }
         }
-        self.world.resource_mut::<Points>().0.get_mut(at).expect("the point").counted = now;
+        let mut points = self.world.resource_mut::<Points>();
+        let placed = points.0.get_mut(at).expect("the point");
+        placed.counted = now;
+        placed.free = free;
+        if short.iter().any(|&s| s > 0.0) {
+            placed.short.resize(n, 0.0);
+            for (into, s) in placed.short.iter_mut().zip(short) {
+                *into += s;
+            }
+        }
         Ok(booked)
     }
 
@@ -159,7 +202,8 @@ impl Society {
         })
     }
 
-    /// Applies a point's happening (`Input::AddTown`, `AddPoint`, `RemovePoint`, `Stocktake`); false for any other.
+    /// Applies a point's happening (`Input::AddTown`, `AddPoint`, `RemovePoint`, `Stocktake`, `Unmoved`); false for any
+    /// other.
     /// Panics on one naming what isn't there: the wire checks them first (`wire::handle`).
     pub(crate) fn apply_points(&mut self, input: &crate::wire::Input) -> bool {
         use crate::wire::Input;
@@ -173,9 +217,12 @@ impl Society {
             Input::RemovePoint { point } => {
                 self.remove_point(&point.spot()).expect("a point that stands");
             }
-            Input::Stocktake { point, counts } => {
+            Input::Stocktake { point, counts, free } => {
                 let counts: Vec<(GoodId, f64)> = counts.iter().map(|c| (c.good as GoodId, c.count)).collect();
-                self.take_stock(&point.spot(), &counts).expect("a stocktake at a point that stands");
+                self.take_stock(&point.spot(), &counts, *free).expect("a stocktake at a point that stands");
+            }
+            Input::Unmoved { point, good, count } => {
+                self.unmoved(&point.spot(), point.kind(), *good as GoodId, *count);
             }
             _ => return false,
         }

@@ -1,0 +1,1021 @@
+{
+  "name": "chests",
+  "about": "A town's stock shown in its desk's and depot's chests, at the end of each look that counted them: the stack its master Merchant puts on its own shop's shelf is moved out of the desk's chests, and books delivered to the town are moved into the chests' free slots, the desk's first. What didn't fit (a hopper filled the slot first) comes back as Unmoved and waits on the town's books until a count shows room. A desk broken takes its chests' goods with it, and put back where it stood is the same town, its chests counted in once. Saved and loaded, the chests are as the core took them.",
+  "steps": [
+    {
+      "note": "a society from a pack of four goods",
+      "request": {
+        "abi": 1,
+        "schema": 12070557182547866227,
+        "command": {
+          "Create": {
+            "pack": {
+              "day_ticks": 24000,
+              "goods": [
+                {
+                  "name": "minecraft:wheat",
+                  "worth": 0.05,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [
+                    "Crop"
+                  ],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:bread",
+                  "worth": 0.2,
+                  "stack": 64,
+                  "food": 5.0,
+                  "saturation": 6.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:book",
+                  "worth": 0.5,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": "reading",
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:cooked_beef",
+                  "worth": 0.3,
+                  "stack": 64,
+                  "food": 8.0,
+                  "saturation": 12.8,
+                  "comfort": null,
+                  "flags": [
+                    "Meat"
+                  ],
+                  "weight": 1.0
+                }
+              ],
+              "comforts": [
+                "treats",
+                "reading",
+                "clothing",
+                "furnishings",
+                "leisure"
+              ],
+              "trades": [
+                "merchant",
+                "cartographer",
+                "librarian",
+                "shepherd",
+                "leatherworker",
+                "fisherman",
+                "cleric",
+                "farmer",
+                "toolsmith",
+                "armorer",
+                "weaponsmith",
+                "mason",
+                "fletcher",
+                "butcher",
+                "none",
+                "nitwit"
+              ],
+              "recipes": [],
+              "animals": [],
+              "dials": []
+            },
+            "seed": 7
+          }
+        }
+      },
+      "request_postcard": "01f3e4b896e1f9cec1a70100c0bb01040f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e697477697400000007",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "a town at its desk, a depot of its, its master Merchant and its own shop",
+      "request": {
+        "abi": 1,
+        "schema": 12070557182547866227,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "AddTown": {
+                  "name": "Ashford",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "AddPoint": {
+                  "point": {
+                    "kind": "Depot",
+                    "dim": "minecraft:overworld",
+                    "x": 31,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "town": 0
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 0,
+                  "trade": "merchant",
+                  "level": 5,
+                  "tag": "6f1c2a3e-0000-4000-8000-00000000002a"
+                }
+              },
+              {
+                "OwnShop": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01f3e4b896e1f9cec1a70103040707417368666f726400136d696e6563726166743a6f766572776f726c643677360804136d696e6563726166743a6f766572776f726c643e7736000f00086d65726368616e74052436663163326133652d303030302d343030302d383030302d3030303030303030303032610500",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "the desk's full chests and the depot's empty one counted from nothing: nothing to move",
+      "request": {
+        "abi": 1,
+        "schema": 12070557182547866227,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [
+                    {
+                      "good": 0,
+                      "count": 300.0
+                    },
+                    {
+                      "good": 1,
+                      "count": 10.0
+                    }
+                  ],
+                  "free": 0
+                }
+              },
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Depot",
+                    "dim": "minecraft:overworld",
+                    "x": 31,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [],
+                  "free": 1
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01f3e4b896e1f9cec1a70103020a00136d696e6563726166743a6f766572776f726c6436773602000000000000c07240010000000000002440000a04136d696e6563726166743a6f766572776f726c643e77360001",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "a day: its master Merchant puts a stack of its biggest surplus on its shop's shelf, out of the desk's chests",
+      "request": {
+        "abi": 1,
+        "schema": 12070557182547866227,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [
+                    {
+                      "good": 0,
+                      "count": 300.0
+                    },
+                    {
+                      "good": 1,
+                      "count": 10.0
+                    }
+                  ],
+                  "free": 0
+                }
+              },
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Depot",
+                    "dim": "minecraft:overworld",
+                    "x": 31,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [],
+                  "free": 1
+                }
+              },
+              {
+                "Advance": {
+                  "to": 24000
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01f3e4b896e1f9cec1a70103030a00136d696e6563726166743a6f766572776f726c6436773602000000000000c07240010000000000002440000a04136d696e6563726166743a6f766572776f726c643e7736000100c0bb01",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "Moved": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 27
+                },
+                "good": 0,
+                "count": -64
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "00010d00136d696e6563726166743a6f766572776f726c64367736007f00"
+    },
+    {
+      "note": "128 books delivered to the town, the chests counted: a stack into each free slot, the desk's first",
+      "request": {
+        "abi": 1,
+        "schema": 12070557182547866227,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Deliver": {
+                  "town": 0,
+                  "good": 2,
+                  "count": 128.0
+                }
+              },
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [
+                    {
+                      "good": 0,
+                      "count": 236.0
+                    },
+                    {
+                      "good": 1,
+                      "count": 10.0
+                    }
+                  ],
+                  "free": 1
+                }
+              },
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Depot",
+                    "dim": "minecraft:overworld",
+                    "x": 31,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [],
+                  "free": 1
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01f3e4b896e1f9cec1a701030301000200000000000060400a00136d696e6563726166743a6f766572776f726c6436773602000000000000806d40010000000000002440010a04136d696e6563726166743a6f766572776f726c643e77360001",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "Moved": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 27
+                },
+                "good": 2,
+                "count": 64
+              }
+            },
+            {
+              "Moved": {
+                "point": {
+                  "kind": "Depot",
+                  "dim": "minecraft:overworld",
+                  "x": 31,
+                  "y": -60,
+                  "z": 27
+                },
+                "good": 2,
+                "count": 64
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "00020d00136d696e6563726166743a6f766572776f726c643677360280010d04136d696e6563726166743a6f766572776f726c643e773602800100"
+    },
+    {
+      "note": "a hopper filled the desk's slot first: the host couldn't put its stack in, and says so before it counts again; no room is counted, so nothing moves",
+      "request": {
+        "abi": 1,
+        "schema": 12070557182547866227,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Unmoved": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "good": 2,
+                  "count": 64
+                }
+              },
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [
+                    {
+                      "good": 0,
+                      "count": 236.0
+                    },
+                    {
+                      "good": 1,
+                      "count": 10.0
+                    }
+                  ],
+                  "free": 0
+                }
+              },
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Depot",
+                    "dim": "minecraft:overworld",
+                    "x": 31,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [
+                    {
+                      "good": 2,
+                      "count": 64.0
+                    }
+                  ],
+                  "free": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01f3e4b896e1f9cec1a70103031300136d696e6563726166743a6f766572776f726c643677360280010a00136d696e6563726166743a6f766572776f726c6436773602000000000000806d40010000000000002440000a04136d696e6563726166743a6f766572776f726c643e77360102000000000000504000",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "the town holds the 128 books, its chests (as the core takes them) 64: the rest wait on its books",
+      "request": {
+        "abi": 1,
+        "schema": 12070557182547866227,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Stock": {
+                  "town": 0
+                }
+              },
+              "Points",
+              {
+                "Chests": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "Chests": {
+                  "point": {
+                    "kind": "Depot",
+                    "dim": "minecraft:overworld",
+                    "x": 31,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01f3e4b896e1f9cec1a70104040000010500136d696e6563726166743a6f766572776f726c643677360504136d696e6563726166743a6f766572776f726c643e7736",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Stock": {
+                "town": 0,
+                "stock": [
+                  236.0,
+                  10.0,
+                  128.0,
+                  0.0
+                ]
+              }
+            },
+            {
+              "Points": {
+                "points": [
+                  {
+                    "point": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 27,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "town": 0
+                  },
+                  {
+                    "point": {
+                      "kind": "Depot",
+                      "dim": "minecraft:overworld",
+                      "x": 31,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "town": 0
+                  }
+                ]
+              }
+            },
+            {
+              "Chests": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 27
+                },
+                "town": 0,
+                "held": [
+                  236.0,
+                  10.0,
+                  0.0,
+                  0.0
+                ],
+                "free": 0,
+                "short": []
+              }
+            },
+            {
+              "Chests": {
+                "point": {
+                  "kind": "Depot",
+                  "dim": "minecraft:overworld",
+                  "x": 31,
+                  "y": -60,
+                  "z": 27
+                },
+                "town": 0,
+                "held": [
+                  0.0,
+                  0.0,
+                  64.0,
+                  0.0
+                ],
+                "free": 0,
+                "short": []
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000040000040000000000806d40000000000000244000000000000060400000000000000000010200136d696e6563726166743a6f766572776f726c643677360004136d696e6563726166743a6f766572776f726c643e7736000500136d696e6563726166743a6f766572776f726c6436773600040000000000806d4000000000000024400000000000000000000000000000000000000504136d696e6563726166743a6f766572776f726c643e7736000400000000000000000000000000000000000000000000504000000000000000000000"
+    },
+    {
+      "note": "a player takes the bread (the town's no more) and the hopper's cobblestone out: the books that waited go in",
+      "request": {
+        "abi": 1,
+        "schema": 12070557182547866227,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [
+                    {
+                      "good": 0,
+                      "count": 236.0
+                    }
+                  ],
+                  "free": 2
+                }
+              },
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Depot",
+                    "dim": "minecraft:overworld",
+                    "x": 31,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [
+                    {
+                      "good": 2,
+                      "count": 64.0
+                    }
+                  ],
+                  "free": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01f3e4b896e1f9cec1a70103020a00136d696e6563726166743a6f766572776f726c6436773601000000000000806d40020a04136d696e6563726166743a6f766572776f726c643e77360102000000000000504000",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "Moved": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 27
+                },
+                "good": 2,
+                "count": 64
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "00010d00136d696e6563726166743a6f766572776f726c6436773602800100"
+    },
+    {
+      "note": "the desk broken: its chests' goods go with them",
+      "request": {
+        "abi": 1,
+        "schema": 12070557182547866227,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "RemovePoint": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01f3e4b896e1f9cec1a70103010900136d696e6563726166743a6f766572776f726c64367736",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "and put back where it stood: the same town, its chests counted in once",
+      "request": {
+        "abi": 1,
+        "schema": 12070557182547866227,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "AddTown": {
+                  "name": "Newton",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [
+                    {
+                      "good": 0,
+                      "count": 236.0
+                    },
+                    {
+                      "good": 2,
+                      "count": 64.0
+                    }
+                  ],
+                  "free": 1
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01f3e4b896e1f9cec1a701030207064e6577746f6e00136d696e6563726166743a6f766572776f726c643677360a00136d696e6563726166743a6f766572776f726c6436773602000000000000806d4002000000000000504001",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "its stock, points and chests",
+      "request": {
+        "abi": 1,
+        "schema": 12070557182547866227,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Stock": {
+                  "town": 0
+                }
+              },
+              "Points",
+              {
+                "Chests": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "Chests": {
+                  "point": {
+                    "kind": "Depot",
+                    "dim": "minecraft:overworld",
+                    "x": 31,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01f3e4b896e1f9cec1a70104040000010500136d696e6563726166743a6f766572776f726c643677360504136d696e6563726166743a6f766572776f726c643e7736",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Stock": {
+                "town": 0,
+                "stock": [
+                  236.0,
+                  0.0,
+                  128.0,
+                  0.0
+                ]
+              }
+            },
+            {
+              "Points": {
+                "points": [
+                  {
+                    "point": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 27,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "town": 0
+                  },
+                  {
+                    "point": {
+                      "kind": "Depot",
+                      "dim": "minecraft:overworld",
+                      "x": 31,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "town": 0
+                  }
+                ]
+              }
+            },
+            {
+              "Chests": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 27
+                },
+                "town": 0,
+                "held": [
+                  236.0,
+                  0.0,
+                  64.0,
+                  0.0
+                ],
+                "free": 1,
+                "short": []
+              }
+            },
+            {
+              "Chests": {
+                "point": {
+                  "kind": "Depot",
+                  "dim": "minecraft:overworld",
+                  "x": 31,
+                  "y": -60,
+                  "z": 27
+                },
+                "town": 0,
+                "held": [
+                  0.0,
+                  0.0,
+                  64.0,
+                  0.0
+                ],
+                "free": 0,
+                "short": []
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000040000040000000000806d40000000000000000000000000000060400000000000000000010200136d696e6563726166743a6f766572776f726c643677360004136d696e6563726166743a6f766572776f726c643e7736000500136d696e6563726166743a6f766572776f726c6436773600040000000000806d4000000000000000000000000000005040000000000000000001000504136d696e6563726166743a6f766572776f726c643e7736000400000000000000000000000000000000000000000000504000000000000000000000"
+    },
+    {
+      "note": "saved",
+      "request": {
+        "abi": 1,
+        "schema": 12070557182547866227,
+        "command": "Save"
+      },
+      "request_postcard": "01f3e4b896e1f9cec1a70102",
+      "saved": {
+        "format": 1,
+        "schema": 12070557182547866227,
+        "blob_len": 4857,
+        "blob_fnv": "6f71445178db26a4"
+      }
+    },
+    {
+      "note": "loaded",
+      "load": "saved",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "asked again after the load",
+      "request": {
+        "abi": 1,
+        "schema": 12070557182547866227,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Stock": {
+                  "town": 0
+                }
+              },
+              "Points",
+              {
+                "Chests": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "Chests": {
+                  "point": {
+                    "kind": "Depot",
+                    "dim": "minecraft:overworld",
+                    "x": 31,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01f3e4b896e1f9cec1a70104040000010500136d696e6563726166743a6f766572776f726c643677360504136d696e6563726166743a6f766572776f726c643e7736",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Stock": {
+                "town": 0,
+                "stock": [
+                  236.0,
+                  0.0,
+                  128.0,
+                  0.0
+                ]
+              }
+            },
+            {
+              "Points": {
+                "points": [
+                  {
+                    "point": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 27,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "town": 0
+                  },
+                  {
+                    "point": {
+                      "kind": "Depot",
+                      "dim": "minecraft:overworld",
+                      "x": 31,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "town": 0
+                  }
+                ]
+              }
+            },
+            {
+              "Chests": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 27
+                },
+                "town": 0,
+                "held": [
+                  236.0,
+                  0.0,
+                  64.0,
+                  0.0
+                ],
+                "free": 1,
+                "short": []
+              }
+            },
+            {
+              "Chests": {
+                "point": {
+                  "kind": "Depot",
+                  "dim": "minecraft:overworld",
+                  "x": 31,
+                  "y": -60,
+                  "z": 27
+                },
+                "town": 0,
+                "held": [
+                  0.0,
+                  0.0,
+                  64.0,
+                  0.0
+                ],
+                "free": 0,
+                "short": []
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000040000040000000000806d40000000000000000000000000000060400000000000000000010200136d696e6563726166743a6f766572776f726c643677360004136d696e6563726166743a6f766572776f726c643e7736000500136d696e6563726166743a6f766572776f726c6436773600040000000000806d4000000000000000000000000000005040000000000000000001000504136d696e6563726166743a6f766572776f726c643e7736000400000000000000000000000000000000000000000000504000000000000000000000"
+    }
+  ]
+}

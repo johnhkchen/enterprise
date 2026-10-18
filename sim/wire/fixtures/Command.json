@@ -850,7 +850,8 @@
               "y": -60,
               "z": 27
             },
-            "counts": []
+            "counts": [],
+            "free": 27
           }
         },
         {
@@ -867,7 +868,8 @@
                 "good": 0,
                 "count": 0.0
               }
-            ]
+            ],
+            "free": 27
           }
         },
         {
@@ -916,7 +918,8 @@
                 "good": 8,
                 "count": 2.2250738585072014e-308
               }
-            ]
+            ],
+            "free": 27
           }
         },
         {
@@ -933,7 +936,8 @@
                 "good": 4294967295,
                 "count": 3.0
               }
-            ]
+            ],
+            "free": 27
           }
         },
         {
@@ -2146,7 +2150,86 @@
                 "good": 5,
                 "count": 299.0
               }
-            ]
+            ],
+            "free": 27
+          }
+        },
+        {
+          "Stocktake": {
+            "point": {
+              "kind": "Depot",
+              "dim": "minecraft:overworld",
+              "x": 31,
+              "y": -60,
+              "z": 27
+            },
+            "counts": [],
+            "free": 0
+          }
+        },
+        {
+          "Stocktake": {
+            "point": {
+              "kind": "Desk",
+              "dim": "minecraft:overworld",
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "counts": [],
+            "free": 4294967295
+          }
+        },
+        {
+          "Unmoved": {
+            "point": {
+              "kind": "Desk",
+              "dim": "minecraft:overworld",
+              "x": 27,
+              "y": -60,
+              "z": 27
+            },
+            "good": 0,
+            "count": 64
+          }
+        },
+        {
+          "Unmoved": {
+            "point": {
+              "kind": "Depot",
+              "dim": "minecraft:overworld",
+              "x": 31,
+              "y": -60,
+              "z": 27
+            },
+            "good": 2,
+            "count": -1
+          }
+        },
+        {
+          "Unmoved": {
+            "point": {
+              "kind": "Desk",
+              "dim": "minecraft:overworld",
+              "x": -2147483648,
+              "y": -2147483648,
+              "z": -2147483648
+            },
+            "good": 4294967295,
+            "count": -9223372036854775808
+          }
+        },
+        {
+          "Unmoved": {
+            "point": {
+              "kind": "Desk",
+              "dim": "minecraft:overworld",
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "good": 1,
+            "count": 9223372036854775807
           }
         }
       ]
@@ -2181,6 +2264,28 @@
         {
           "Hands": {
             "town": 4294967295
+          }
+        },
+        {
+          "Chests": {
+            "point": {
+              "kind": "Desk",
+              "dim": "minecraft:overworld",
+              "x": 27,
+              "y": -60,
+              "z": 27
+            }
+          }
+        },
+        {
+          "Chests": {
+            "point": {
+              "kind": "Depot",
+              "dim": "minecraft:overworld",
+              "x": -2147483648,
+              "y": 0,
+              "z": 2147483647
+            }
           }
         }
       ]

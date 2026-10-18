@@ -34,6 +34,17 @@ Answer:
           - hands:
               SEQ:
                 TYPENAME: HandView
+    5:
+      Chests:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+          - town: U32
+          - held:
+              SEQ: F64
+          - free: U32
+          - short:
+              SEQ: F64
 Command:
   ENUM:
     0:
@@ -174,6 +185,7 @@ Input:
           - counts:
               SEQ:
                 TYPENAME: Count
+          - free: U32
     11:
       PalletBrought:
         STRUCT:
@@ -220,6 +232,13 @@ Input:
         STRUCT:
           - hand: U32
           - tag: STR
+    19:
+      Unmoved:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+          - good: U32
+          - count: I64
 Output:
   ENUM:
     0:
@@ -305,6 +324,13 @@ Output:
           - trade: STR
           - level: U8
           - xp: U32
+    13:
+      Moved:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+          - good: U32
+          - count: I64
 PackAmount:
   STRUCT:
     - good: STR
@@ -407,6 +433,11 @@ Query:
       Hands:
         STRUCT:
           - town: U32
+    5:
+      Chests:
+        STRUCT:
+          - point:
+              TYPENAME: Point
 Refusal:
   ENUM:
     0:

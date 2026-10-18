@@ -406,5 +406,57 @@
       "level": 255,
       "xp": 4294967295
     }
+  },
+  {
+    "Moved": {
+      "point": {
+        "kind": "Desk",
+        "dim": "minecraft:overworld",
+        "x": 27,
+        "y": -60,
+        "z": 27
+      },
+      "good": 0,
+      "count": 10
+    }
+  },
+  {
+    "Moved": {
+      "point": {
+        "kind": "Depot",
+        "dim": "minecraft:overworld",
+        "x": 31,
+        "y": -60,
+        "z": 27
+      },
+      "good": 3,
+      "count": -64
+    }
+  },
+  {
+    "Moved": {
+      "point": {
+        "kind": "Desk",
+        "dim": "minecraft:overworld",
+        "x": 2147483647,
+        "y": 2147483647,
+        "z": 2147483647
+      },
+      "good": 4294967295,
+      "count": 9223372036854775807
+    }
+  },
+  {
+    "Moved": {
+      "point": {
+        "kind": "Depot",
+        "dim": "minecraft:overworld",
+        "x": -5,
+        "y": -64,
+        "z": 9
+      },
+      "good": 1,
+      "count": -9223372036854775808
+    }
   }
 ]

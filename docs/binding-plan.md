@@ -115,7 +115,7 @@ And **stable hand ids** in the roster (`HandId`, never an index: `settlers::take
 |---|---|
 | `Advance { to }` | the clock adapter, at each look's tick |
 | `AddTown`, `AddPoint`, `RemovePoint` | a Merchant's desk, lockers, vendors, bankers, depots placed or broken |
-| `Stocktake { point, counts }`, `Deliver`, `Withdraw` | a desk's chests read when loaded: what players, hoppers and Create put in or took out since the last sync |
+| `Stocktake { point, counts, free }`, `Unmoved`, `Deliver`, `Withdraw` | a desk's chests read when loaded: what players, hoppers and Create put in or took out since the last sync, and their empty slots; what the host couldn't do of a `Moved` |
 | `Census { town, beds, residents }`, `AddHand`, `HandLost`, `TagHand` | the census (bells, beds, villagers; a profession taken travels in it, so no `HandTrade`), a villager joining on touch, a villager's death, a villager spawned for a hand |
 | `Switch { point, offer, on }` | the Merchant's screen (`ToggleTradePayload`) |
 | `Ground { hex, water, relief }`, `Bridge`, `Built` | chunk scans (`Terrain`), blocks placed by works |
@@ -124,7 +124,7 @@ And **stable hand ids** in the roster (`HandId`, never an index: `settlers::take
 
 | Outcomes out (`Output`) | To |
 |---|---|
-| `Moved { point, good, count }` | items put in or taken from a point's chests (a wagon's sale, a locker's trade); queued while unloaded |
+| `Moved { point, good, count }` | items put in or taken from a desk's or a depot's chests: what the core moved in or out of the town's stock since they were counted, after a stocktake in the same look (built: nothing queued; an unloaded point is counted as it loads) |
 | `WagonLeft`, `WagonHome`, `WagonSold` (exist) | stow the squad's villagers, release them, show the caravan |
 | `Born`, `Settled`, `Departed`, `HandGone`, `HandLevel` | spawn a baby, a party arriving, a party leaving and a hand gone (the villager taken away), a villager's trade, level and XP written to its entity |
 | `Trades { point, offers }` | the offers a locker's villager runs, for the screen |
@@ -190,7 +190,7 @@ In the mod, `dev.b28.enterprise.binding`:
 **Compute on touch, unloaded chunks.** The core runs every town as numbers whether its chunks are loaded or not (the
 design rule: save data is the truth for what works unloaded; here, the core's blob). Views catch up when they load:
 an adapter's `onLoad` asks the core and writes the result to blocks and entities (a locker's chests, a villager's
-level), or applies the `Moved` outcomes queued for that point. So `Rounds` (forced chunk tickets) and `LockerCatchUp`
+level), or counts the point's chests and is given what moved meanwhile (built so in `stock-adapter`: nothing is queued). So `Rounds` (forced chunk tickets) and `LockerCatchUp`
 (replaying restocks on load) go: nothing needs loading for the society to run.
 
 **Chests stay physical.** Players, hoppers and Create move items in a desk's chests, so the core can't own them
@@ -485,6 +485,34 @@ checks, sends the `Census` and spawns a villager by the bell for each hand with 
 villagers it spawned are named with the next look), `CensusTaker.beds`/`villagersAround`/`nearestBell` (its counting
 half, shared), `HandsAdapter`'s lookup read again after each look, `/enterprise core census <desk>`. Schema
 `e0b54576b14c0176`, FORMAT 1 (the save grew: dev worlds' `enterprise_core.dat` are rebuilt).
+
+**Built (B4.3 `stock-adapter`).** Chests stay physical, and a town's stock is shown in them. In the core (`chests.rs`,
+`points.rs`): a point keeps what the core takes its chests to hold (`Placed.counted`), their empty slots at the last count
+(`free`) and what they gave up beyond what the town held (`short`, which `withdraw` used to drop unrecorded). After a
+look's happenings, every desk or depot counted in that look shows its town's stock (`Society::show_stock`, run by
+`wire::handle` at the end of each `Apply`): for each good, what the town holds in whole items against what all its
+points' chests are taken to hold, the difference put into its counted desks then depots as far as each has room (empty
+slots, and what's left of the good's partial stack), or taken out of them as far as each holds it; what has no room waits on
+the town's books until a count shows some; fractions stay on the books. A move is worked out only against a stocktake of
+the same look and is a number of items, never a chest's contents, so a chest is always counted before it's written and a
+hopper filling it between the count and the write keeps what it put in; a point not counted (unloaded) isn't written, and
+when counted again what changed in it is booked first: nothing is queued. Lockers', shops' and bankers' stocktakes still
+book into the town (their adapters decide what their chests are), and count as shown. A point removed takes what the core
+took its chests to hold out of its town (the double count of a point broken and placed again, settled), and a desk put back
+where a town's desk stood is that town's again (`chests::FormerDesks`, saved), not a new town. On the wire: `Stocktake`
+gained `free`; `Output::Moved { point, good, count: i64 }`; `Input::Unmoved { point, good, count }` (what didn't fit,
+above nothing, or wasn't there to take, below; ignored for a point gone); `Query::Chests { point }` and `Answer::Chests
+{ point, town, held, free, short }`; schema `bffc72824690b076`, FORMAT 1 (the save's shape grew: dev worlds'
+`enterprise_core.dat` are rebuilt). Base worlds' behaviour unmoved (`just core-fingerprint` `cb4390b51df82271`); the replay
+digest moved for the new random-worlds slice (`chests`: a host whose chests take part of each move, desks broken and put
+back) and the save's shape. In the mod: `adapters/StockChests` (a point's containers: a desk's touching ones, a depot's
+own; goods counted loose and in shulker boxes, crates left shut as the pallets' view; put loose then into boxes, taken
+loose then out of boxes), `adapters/StockAdapter` (desks and depots counted at each look, a desk or depot gone unseen
+removed, `Moved` written in core mode and every one sent back unmoved in Java mode, where the Java rules own the chests;
+the chests in a chunk that loads counted at the next tick, and desks placed unseen there taken as towns by the server's
+host; depots from a building's floorplan, `/enterprise depot add` and `remove` registering the core's too), `CoreHost`
+(no stocktake while a look's moves are still to be shown; what wasn't moved told the core before the next count, a
+question or a save), `/enterprise core chests <point>`, the testbench's desk registered at load. Seven game tests.
 
 ### 3.6 Wave B5: closing
 

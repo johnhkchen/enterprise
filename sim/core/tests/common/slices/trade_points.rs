@@ -35,7 +35,7 @@ pub fn daily(s: &mut Society, r: &mut Rng, _day: u64) {
             counts.push((g, (n * r.range(0.0, 1.5)).floor()));
         }
     }
-    s.take_stock(&at, &counts).unwrap();
+    s.take_stock(&at, &counts, 27).unwrap();
 }
 
 pub fn check(s: &Society, _day: u64) -> Result<(), String> {

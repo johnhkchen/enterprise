@@ -116,11 +116,14 @@ fn inputs() -> Vec<Input> {
         Input::SetDial { name: String::new(), value: Some(f64::NAN) },
         Input::AddPoint { point: point(PointKind::Depot, "a", 0, 0, 0), town: 3 },
         Input::RemovePoint { point: point(PointKind::Banker, "minecraft:the_nether", -1, 1, -1) },
-        Input::Stocktake { point: desk.clone(), counts: vec![] },
+        Input::Stocktake { point: desk.clone(), counts: vec![], free: 0 },
         Input::Stocktake {
-            point: desk,
+            point: desk.clone(),
             counts: (0..1000).map(|i| Count { good: i, count: i as f64 * 0.5 }).collect(),
+            free: u32::MAX,
         },
+        Input::Unmoved { point: desk.clone(), good: 3, count: 64 },
+        Input::Unmoved { point: desk, good: u32::MAX, count: i64::MIN },
     ]
 }
 
@@ -131,6 +134,9 @@ fn outputs() -> Vec<Output> {
         Output::WagonHome { route: u32::MAX, takings: Fixed::ZERO },
         Output::OrderFilled { town: 2, order: 3, good: 4, lots: 0, count: 1.0, spurs: 0.25 },
         Output::Signal { town: 2, good: 1, count: 9.0, spurs_each: f64::NAN },
+        Output::Moved { point: point(PointKind::Desk, "minecraft:overworld", 27, -60, 27), good: 0, count: 1 },
+        Output::Moved { point: point(PointKind::Depot, "d", i32::MIN, 0, i32::MAX), good: u32::MAX, count: i64::MAX },
+        Output::Moved { point: point(PointKind::Desk, "", -1, 1, -1), good: 7, count: -200 },
     ]
 }
 
@@ -199,7 +205,12 @@ fn samples() -> Samples {
     s.ok("Query", &Query::Points);
     s.ok("Query", &Query::Goods);
     s.ok("Query", &Query::Dials);
+    s.ok("Query", &Query::Chests { point: point(PointKind::Depot, "minecraft:overworld", -5, 70, 300) });
     let answers = vec![
+        Answer::Chests { point: point(PointKind::Desk, "o", 1, 2, 3), town: 2, held: vec![0.0, 64.0, 1e9], free: 27,
+            short: vec![] },
+        Answer::Chests { point: point(PointKind::Depot, "", 0, 0, 0), town: u32::MAX, held: vec![], free: u32::MAX,
+            short: vec![0.5, 3.0] },
         Answer::Stock { town: 3, stock: (0..500).map(|i| i as f64 / 3.0).collect() },
         Answer::Stock { town: 0, stock: vec![] },
         Answer::Points { points: vec![TownPoint { point: point(PointKind::Desk, "o", 1, 2, 3), town: 0 }] },

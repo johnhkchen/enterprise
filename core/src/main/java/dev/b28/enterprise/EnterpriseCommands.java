@@ -52,6 +52,9 @@ final class EnterpriseCommands {
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                         .executes(EnterpriseCommands::coreStock)))
                         .then(Commands.literal("points").executes(EnterpriseCommands::corePoints))
+                        .then(Commands.literal("chests")
+                                .then(Commands.argument("point", BlockPosArgument.blockPos())
+                                        .executes(EnterpriseCommands::coreChests)))
                         .then(Commands.literal("hands")
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                         .executes(EnterpriseCommands::coreHands)))
@@ -349,8 +352,18 @@ final class EnterpriseCommands {
                                                                 .executes(EnterpriseCommands::addDepot))))))
                         .then(Commands.literal("remove")
                                 .then(Commands.argument("id", IntegerArgumentType.integer(1)).executes(context -> {
-                                    boolean removed = dev.b28.enterprise.merchant.Depots.get(context.getSource().getServer())
-                                            .remove(IntegerArgumentType.getInteger(context, "id"));
+                                    int id = IntegerArgumentType.getInteger(context, "id");
+                                    var server = context.getSource().getServer();
+                                    // The core's depots in its floorplan go with it (their goods gone from the town).
+                                    var host = dev.b28.enterprise.binding.CoreHost.of(server);
+                                    dev.b28.enterprise.merchant.Depots.get(server).all().stream().filter(d -> d.id() == id)
+                                            .findFirst().ifPresent(d -> {
+                                                var level = server.getLevel(d.desk().dimension());
+                                                if (host != null && host.pausedWhy() == null && level != null) {
+                                                    host.stock().removeDepots(level, d.min(), d.max());
+                                                }
+                                            });
+                                    boolean removed = dev.b28.enterprise.merchant.Depots.get(server).remove(id);
                                     context.getSource().sendSuccess(() -> Component.literal(removed ? "Removed" : "No such building"),
                                             true);
                                     return removed ? 1 : 0;
@@ -443,6 +456,41 @@ final class EnterpriseCommands {
                 : "%.3f".formatted(n))));
         source.sendSuccess(() -> Component.literal(out.toString()), false);
         return held.size();
+    }
+
+    /**
+     * A desk's or a depot's chests ({@code /enterprise core chests <point>}): what the core takes them to hold, their empty
+     * slots at its last count and what they came up short, beside what they hold now (where loaded).
+     */
+    private static int coreChests(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        ServerLevel level = source.getLevel();
+        BlockPos pos = BlockPosArgument.getBlockPos(context, "point");
+        var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+        if (host == null || host.pausedWhy() != null) {
+            source.sendFailure(Component.literal(host == null ? "The core isn't running" : host.pausedWhy()));
+            return 0;
+        }
+        GlobalPos at = GlobalPos.of(level.dimension(), pos);
+        var point = host.points().at(at);
+        var chests = host.stock().chestsAt(at);
+        if (point == null || chests == null) {
+            source.sendFailure(Component.literal("The core keeps no point at " + pos.toShortString()));
+            return 0;
+        }
+        Map<String, Long> now = level.isLoaded(pos) ? host.stock().counted(level, point.kind(), pos) : Map.of();
+        StringBuilder out = new StringBuilder("The %s at %s (town %d), %d slot(s) free at the last count%s".formatted(
+                point.kind().name().toLowerCase(), pos.toShortString(), chests.town(), chests.free(),
+                host.stock().writes() ? "" : " (Java mode: the core counts these chests, the Java rules fill them)"));
+        java.util.Set<String> goods = new java.util.TreeSet<>(chests.held().keySet());
+        goods.addAll(now.keySet());
+        for (String good : goods) {
+            out.append("\n  %s: the core takes them to hold %.0f, they hold %d".formatted(good,
+                    chests.held().getOrDefault(good, 0.0), now.getOrDefault(good, 0L)));
+        }
+        chests.shortBy().forEach((good, n) -> out.append("\n  %s: %.0f given up that the town no longer had".formatted(good, n)));
+        source.sendSuccess(() -> Component.literal(out.toString()), false);
+        return goods.size();
     }
 
     /** Every trade point the core keeps ({@code /enterprise core points}): where, what, and whose town. */
@@ -962,8 +1010,17 @@ final class EnterpriseCommands {
         var depot = dev.b28.enterprise.merchant.Depots.get(source.getServer()).add(source.getLevel(), desk, kind,
                 BlockPosArgument.getBlockPos(context, "from"), BlockPosArgument.getBlockPos(context, "to"));
         int chests = depot.containers(source.getLevel()).size();
-        source.sendSuccess(() -> Component.literal("Building %d: the %s of the market at %s, %d container(s), %d bed(s)"
-                .formatted(depot.id(), kind.label(), dev.b28.enterprise.settlement.Names.label(desk), chests, depot.beds(source.getLevel()))), true);
+        // Its containers are the core's depots too, each a point of the desk's town (counted at every look).
+        String core = "";
+        var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+        if (host != null && host.pausedWhy() == null && host.stock().townAt(desk) != null) {
+            core = ", %d of them the core's depots".formatted(
+                    host.stock().addDepots(source.getLevel(), desk.pos(), depot.min(), depot.max()).size());
+        }
+        String inCore = core;
+        source.sendSuccess(() -> Component.literal("Building %d: the %s of the market at %s, %d container(s)%s, %d bed(s)"
+                .formatted(depot.id(), kind.label(), dev.b28.enterprise.settlement.Names.label(desk), chests, inCore,
+                        depot.beds(source.getLevel()))), true);
         return depot.id();
     }
 

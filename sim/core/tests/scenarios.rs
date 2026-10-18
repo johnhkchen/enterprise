@@ -21,8 +21,9 @@
 //!
 //! A refusal matches by its kind and numbers; its `why` is prose and isn't compared ([`without_prose`]).
 //!
-//! `people` shows the first [`Output`], a child born (`Born`); the others need a master Merchant, a route or a party of
-//! settlers, and the wire has no input that makes any of them. Their bytes are pinned by the golden files meanwhile
+//! `people` shows a child born (`Born`) and `chests` the chests' moves (`Moved`); the others need a master Merchant,
+//! a route or a party of settlers, and the wire has no input that makes any of them. Their bytes are pinned by the
+//! golden files meanwhile
 //! (`tests/wire_fixtures.rs`).
 //!
 //! The scripts are written here, in Rust, so each step is built from the wire's own types and its answer comes from the
@@ -279,8 +280,8 @@ fn stock_of(town: TownNo) -> Vec<Query> {
 /// A town created, deliveries, a stocktake, its stock asked, saved, loaded, asked again.
 fn stocktake() -> Scenario {
     let mut s = Script::new("stocktake", "A town at its desk takes a delivery and two stocktakes, is saved and loaded, and answers the same. \
-        A delivery and a point's chests are counted apart: the desk's first count adds to what was delivered. Where the \
-        delivered goods sit in those chests that counts them twice, which stock-adapter settles; these answers move then.");
+        A delivery handed to the town outside its chests is added to what the desk's first count finds, and shown in \
+        the desk's chests at the end of that look (Moved): its next count finds it there and books it no more.");
     s.create("a society from a pack of four goods");
     s.apply("a town at its desk, a locker for it, some money paid in", vec![
         Input::AddTown { name: "Ashford".into(), desk: at(PointKind::Desk, 27, 27) },
@@ -292,14 +293,15 @@ fn stocktake() -> Scenario {
         Input::Deliver { town: 0, good: BOOK, count: 3.0 },
     ]);
     s.ask("its stock and points", stock_of(0));
-    s.apply("a stocktake at the desk counts from nothing: its 30 wheat and 5 bread are added to the 40 wheat delivered", vec![
-        Input::Stocktake { point: at(PointKind::Desk, 27, 27), counts: counts(&[(WHEAT, 30.0), (BREAD, 5.0)]) },
+    s.apply("a stocktake at the desk counts from nothing: its 30 wheat and 5 bread are added to the 40 wheat and 3 books \
+        delivered, which are moved into its chests", vec![
+        Input::Stocktake { point: at(PointKind::Desk, 27, 27), counts: counts(&[(WHEAT, 30.0), (BREAD, 5.0)]), free: 27 },
     ]);
     s.apply("the locker is counted apart, a good listed twice is summed", vec![
-        Input::Stocktake { point: at(PointKind::Locker, 30, 27), counts: counts(&[(BREAD, 1.0), (BREAD, 2.0)]) },
+        Input::Stocktake { point: at(PointKind::Locker, 30, 27), counts: counts(&[(BREAD, 1.0), (BREAD, 2.0)]), free: 27 },
     ]);
     s.apply("a player took 20 wheat out of the desk and put 2 books in (stock 70 wheat to 50); three days pass", vec![
-        Input::Stocktake { point: at(PointKind::Desk, 27, 27), counts: counts(&[(WHEAT, 10.0), (BREAD, 5.0), (BOOK, 2.0)]) },
+        Input::Stocktake { point: at(PointKind::Desk, 27, 27), counts: counts(&[(WHEAT, 50.0), (BREAD, 5.0), (BOOK, 5.0)]), free: 25 },
         Input::Advance { to: 3 * DAY },
     ]);
     let before = s.ask("the stock after the stocktakes", stock_of(0));
@@ -310,6 +312,72 @@ fn stocktake() -> Scenario {
     s.ask("the goods by number, as the save keeps them (what a host maps its items by after a load)", vec![Query::Goods]);
     s.apply("it runs on: five more days", vec![Input::Advance { to: 8 * DAY }]);
     s.ask("and answers", stock_of(0));
+    s.scenario
+}
+
+/// A desk's and a depot's chests showing their town's stock (`chests.rs`): what the core moved in or out since they were
+/// counted, at the end of each look that counts them; what the host couldn't do, back; a desk broken and put back.
+fn chests() -> Scenario {
+    let mut s = Script::new("chests", "A town's stock shown in its desk's and depot's chests, at the end of each look that \
+        counted them: the stack its master Merchant puts on its own shop's shelf is moved out of the desk's chests, and \
+        books delivered to the town are moved into the chests' free slots, the desk's first. What didn't fit (a hopper \
+        filled the slot first) comes back as Unmoved and waits on the town's books until a count shows room. A desk \
+        broken takes its chests' goods with it, and put back where it stood is the same town, its chests counted in \
+        once. Saved and loaded, the chests are as the core took them.");
+    let desk = at(PointKind::Desk, 27, 27);
+    let depot = at(PointKind::Depot, 31, 27);
+    let held = |s: &mut Script, note: &str| s.ask(note, vec![
+        Query::Stock { town: 0 }, Query::Points, Query::Chests { point: desk.clone() }, Query::Chests { point: depot.clone() },
+    ]);
+    s.create("a society from a pack of four goods");
+    s.apply("a town at its desk, a depot of its, its master Merchant and its own shop", vec![
+        Input::AddTown { name: "Ashford".into(), desk: desk.clone() },
+        Input::AddPoint { point: depot.clone(), town: 0 },
+        Input::AddHand { town: 0, trade: "merchant".into(), level: 5, tag: "6f1c2a3e-0000-4000-8000-00000000002a".into() },
+        Input::OwnShop { town: 0 },
+    ]);
+    s.apply("the desk's full chests and the depot's empty one counted from nothing: nothing to move", vec![
+        Input::Stocktake { point: desk.clone(), counts: counts(&[(WHEAT, 300.0), (BREAD, 10.0)]), free: 0 },
+        Input::Stocktake { point: depot.clone(), counts: counts(&[]), free: 1 },
+    ]);
+    let moved = s.apply("a day: its master Merchant puts a stack of its biggest surplus on its shop's shelf, out of the desk's chests", vec![
+        Input::Stocktake { point: desk.clone(), counts: counts(&[(WHEAT, 300.0), (BREAD, 10.0)]), free: 0 },
+        Input::Stocktake { point: depot.clone(), counts: counts(&[]), free: 1 },
+        Input::Advance { to: DAY },
+    ]);
+    assert_eq!(moved, vec![Output::Moved { point: desk.clone(), good: WHEAT, count: -64 }]);
+    let moved = s.apply("128 books delivered to the town, the chests counted: a stack into each free slot, the desk's first", vec![
+        Input::Deliver { town: 0, good: BOOK, count: 128.0 },
+        Input::Stocktake { point: desk.clone(), counts: counts(&[(WHEAT, 236.0), (BREAD, 10.0)]), free: 1 },
+        Input::Stocktake { point: depot.clone(), counts: counts(&[]), free: 1 },
+    ]);
+    assert_eq!(moved, vec![
+        Output::Moved { point: desk.clone(), good: BOOK, count: 64 },
+        Output::Moved { point: depot.clone(), good: BOOK, count: 64 },
+    ]);
+    let moved = s.apply("a hopper filled the desk's slot first: the host couldn't put its stack in, and says so before it counts \
+        again; no room is counted, so nothing moves", vec![
+        Input::Unmoved { point: desk.clone(), good: BOOK, count: 64 },
+        Input::Stocktake { point: desk.clone(), counts: counts(&[(WHEAT, 236.0), (BREAD, 10.0)]), free: 0 },
+        Input::Stocktake { point: depot.clone(), counts: counts(&[(BOOK, 64.0)]), free: 0 },
+    ]);
+    assert_eq!(moved, vec![]);
+    held(&mut s, "the town holds the 128 books, its chests (as the core takes them) 64: the rest wait on its books");
+    let moved = s.apply("a player takes the bread (the town's no more) and the hopper's cobblestone out: the books that waited go in", vec![
+        Input::Stocktake { point: desk.clone(), counts: counts(&[(WHEAT, 236.0)]), free: 2 },
+        Input::Stocktake { point: depot.clone(), counts: counts(&[(BOOK, 64.0)]), free: 0 },
+    ]);
+    assert_eq!(moved, vec![Output::Moved { point: desk.clone(), good: BOOK, count: 64 }]);
+    s.apply("the desk broken: its chests' goods go with them", vec![Input::RemovePoint { point: desk.clone() }]);
+    s.apply("and put back where it stood: the same town, its chests counted in once", vec![
+        Input::AddTown { name: "Newton".into(), desk: desk.clone() },
+        Input::Stocktake { point: desk.clone(), counts: counts(&[(WHEAT, 236.0), (BOOK, 64.0)]), free: 1 },
+    ]);
+    let before = held(&mut s, "its stock, points and chests");
+    s.save("saved");
+    s.load("loaded");
+    let after = held(&mut s, "asked again after the load");
+    assert_eq!(before, after, "a society loaded answers as the one saved did");
     s.scenario
 }
 
@@ -339,11 +407,15 @@ fn inputs() -> Scenario {
         Input::OwnShop { town: 1 },
     ]);
     s.apply("every point counted", vec![
-        Input::Stocktake { point: at(PointKind::Desk, 27, 27), counts: counts(&[(BREAD, 60.0), (BOOK, 8.0)]) },
-        Input::Stocktake { point: at(PointKind::Locker, 30, 27), counts: counts(&[(WHEAT, 12.0)]) },
-        Input::Stocktake { point: at(PointKind::Shop, 24, 27), counts: counts(&[]) },
-        Input::Stocktake { point: at(PointKind::Banker, 27, 30), counts: counts(&[]) },
-        Input::Stocktake { point: at(PointKind::Depot, 603, -40), counts: counts(&[(BEEF, 20.0)]) },
+        Input::Stocktake { point: at(PointKind::Desk, 27, 27), counts: counts(&[(BREAD, 60.0), (BOOK, 8.0)]), free: 27 },
+        Input::Stocktake { point: at(PointKind::Locker, 30, 27), counts: counts(&[(WHEAT, 12.0)]), free: 27 },
+        Input::Stocktake { point: at(PointKind::Shop, 24, 27), counts: counts(&[]), free: 27 },
+        Input::Stocktake { point: at(PointKind::Banker, 27, 30), counts: counts(&[]), free: 27 },
+        Input::Stocktake { point: at(PointKind::Depot, 603, -40), counts: counts(&[(BEEF, 20.0)]), free: 27 },
+    ]);
+    s.apply("what the host couldn't move at the desk, said before its next stocktake: there's room now, so it goes in again", vec![
+        Input::Unmoved { point: at(PointKind::Desk, 27, 27), good: BREAD, count: 4 },
+        Input::Stocktake { point: at(PointKind::Desk, 27, 27), counts: counts(&[(BREAD, 120.0), (BOOK, 8.0)]), free: 25 },
     ]);
     s.apply("a player buys from a town's own shop", vec![Input::Buy { town: 1, good: BEEF, count: 2.0 }]);
     s.apply("a point broken", vec![Input::RemovePoint { point: at(PointKind::Shop, 24, 27) }]);
@@ -358,7 +430,8 @@ fn inputs() -> Scenario {
         Input::SetDial { name: "harvest_window_days".into(), value: None },
     ]);
     s.apply("twenty days pass", vec![Input::Advance { to: 20 * DAY }]);
-    s.ask("every question", vec![Query::Stock { town: 0 }, Query::Stock { town: 1 }, Query::Points, Query::Goods]);
+    s.ask("every question", vec![Query::Stock { town: 0 }, Query::Stock { town: 1 }, Query::Points, Query::Goods,
+        Query::Chests { point: at(PointKind::Desk, 27, 27) }]);
     s.scenario
 }
 
@@ -671,10 +744,10 @@ fn refusals() -> Scenario {
     refuse_apply(&mut s, "a count below nothing", vec![Input::Buy { town: 0, good: WHEAT, count: -1.0 }], 0);
     refuse_apply(&mut s, "money below nothing", vec![Input::Pay { town: 0, money: Fixed::from_millis(-1) }], 0);
     refuse_apply(&mut s, "a stocktake of a point that isn't there", vec![
-        Input::Stocktake { point: at(PointKind::Locker, 1, 1), counts: vec![] },
+        Input::Stocktake { point: at(PointKind::Locker, 1, 1), counts: vec![], free: 27 },
     ], 0);
     refuse_apply(&mut s, "a stocktake naming another kind than the point standing there", vec![
-        Input::Stocktake { point: at(PointKind::Shop, 27, 27), counts: vec![] },
+        Input::Stocktake { point: at(PointKind::Shop, 27, 27), counts: vec![], free: 27 },
     ], 0);
     refuse_apply(&mut s, "a point where one stands already", vec![Input::AddPoint { point: at(PointKind::Locker, 27, 27), town: 0 }], 0);
     refuse_apply(&mut s, "a town whose desk isn't a desk", vec![
@@ -703,7 +776,7 @@ fn refusals() -> Scenario {
 }
 
 fn scenarios() -> Vec<Scenario> {
-    vec![stocktake(), inputs(), content(), refusals(), hands(), people()]
+    vec![stocktake(), inputs(), content(), refusals(), hands(), people(), chests()]
 }
 
 fn text(scenario: &Scenario) -> String {
@@ -730,7 +803,7 @@ fn the_scenarios_play_as_their_files_say() {
         return;
     }
     let mut wrong = Vec::new();
-    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people"] {
+    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people", "chests"] {
         let scenario = read(name);
         assert!(!scenario.steps.is_empty(), "{name}: no steps");
         wrong.extend(play(&scenario));
@@ -788,12 +861,13 @@ fn every_message_appears_in_a_scenario() {
         }
     }
     let set = |names: &[&str]| names.iter().map(|s| s.to_string()).collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost", "Census", "TagHand"]));
+    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost", "Census", "TagHand", "Unmoved"]));
     assert_eq!(commands, set(&["Apply", "Ask", "Create", "Load", "Save"]));
-    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands"]));
+    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands", "Chests"]));
     assert_eq!(refusals, set(&["Abi", "Input", "NoSociety", "Pack", "Query", "Save", "SaveFormat", "Schema", "Unreadable"]));
-    // Only a child born: the others need a master Merchant (OrderFilled, Signal), a route (the wagon's three), a pallet
-    // (the pallets' three: only a wagon packs one) or a party of settlers or the rules taking a hand (Settled, Departed,
-    // HandGone, HandLevel), and no wire input makes any. When one does, a scenario shows each and its name goes here.
-    assert_eq!(outputs, set(&["Born"]));
+    // A child born and the chests' moves: the others need a master Merchant (OrderFilled, Signal), a route (the
+    // wagon's three), a pallet (the pallets' three: only a wagon packs one) or a party of settlers or the rules taking a
+    // hand (Settled, Departed, HandGone, HandLevel), and no wire input makes any. When one does, a scenario shows each
+    // and its name goes here.
+    assert_eq!(outputs, set(&["Born", "Moved"]));
 }

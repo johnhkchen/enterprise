@@ -60,7 +60,20 @@ pub fn handle(society: &mut Option<Society>, request: Request) -> Response {
             if let Err(why) = check_inputs(s, &inputs) {
                 return refused(why);
             }
-            let outputs = inputs.iter().flat_map(|input| s.apply(input)).collect();
+            let mut outputs: Vec<super::Output> = inputs.iter().flat_map(|input| s.apply(input)).collect();
+            // The desks and depots counted in this look show their towns' stock: what moved since, put in or taken out
+            // (`chests.rs`).
+            let counted: Vec<Spot> = inputs.iter()
+                .filter_map(|i| match i {
+                    Input::Stocktake { point, .. } => Some(point.spot()),
+                    _ => None,
+                })
+                .collect();
+            outputs.extend(s.show_stock(&counted).into_iter().map(|m| super::Output::Moved {
+                point: Point::of(&m.at, m.kind),
+                good: super::no(m.good),
+                count: m.count,
+            }));
             done(outputs, Vec::new())
         }
         Command::Ask { queries } => {
@@ -98,8 +111,8 @@ fn refused(why: Refusal) -> Response {
 }
 
 fn answer(s: &Society, query: &Query) -> Result<Answer, String> {
-    Ok(match *query {
-        Query::Stock { town } => {
+    Ok(match query {
+        &Query::Stock { town } => {
             if town as usize >= s.town_count() {
                 return Err(format!("no town {town}"));
             }
@@ -111,12 +124,18 @@ fn answer(s: &Society, query: &Query) -> Result<Answer, String> {
         },
         Query::Goods => Answer::Goods { goods: s.content().goods.iter().map(|g| g.name.clone()).collect() },
         Query::Dials => Answer::Dials { dials: s.dial_views() },
-        Query::Hands { town } => {
+        &Query::Hands { town } => {
             if town as usize >= s.town_count() {
                 return Err(format!("no town {town}"));
             }
             let lockers = s.roster(town as usize).locker_limit();
             Answer::Hands { town, lockers, hands: s.hand_views(town as usize) }
+        }
+        Query::Chests { point } => {
+            let spot = point.spot();
+            same_kind(s.point(&spot).map(|p| p.kind), point)?;
+            let c = s.chests(&spot).expect("a point that stands");
+            Answer::Chests { point: point.clone(), town: super::no(c.town), held: c.held, free: c.free, short: c.short }
         }
     })
 }
@@ -136,6 +155,9 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
     let longest = LONGEST_ADVANCE_DAYS.saturating_mul(s.content().day_ticks);
     // The points as they'd stand, by place, with their kind: only those the happenings touch.
     let mut points: BTreeMap<Spot, Option<Kind>> = BTreeMap::new();
+    // Places where a town's desk stood as they'd be (a desk there founds no town: it's that town's again), where the
+    // happenings change them: a desk removed leaves one, any point placed takes it.
+    let mut former: BTreeMap<Spot, bool> = BTreeMap::new();
     // The hands the happenings take on (by their tags) and lose.
     let mut tags: BTreeSet<&str> = BTreeSet::new();
     let mut lost: BTreeSet<u32> = BTreeSet::new();
@@ -188,8 +210,12 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
                 if stands(&points, &spot).is_some() {
                     return Err(wrong(format!("a point already stands at {spot:?}")));
                 }
+                let again = former.get(&spot).copied().unwrap_or_else(|| s.former_desks().0.contains_key(&spot));
+                if !again {
+                    towns += 1;
+                }
+                former.insert(spot.clone(), false);
                 points.insert(spot, Some(Kind::Desk));
-                towns += 1;
             }
             Input::AddPoint { point, town: t } => {
                 town(*t)?;
@@ -197,11 +223,15 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
                 if stands(&points, &spot).is_some() {
                     return Err(wrong(format!("a point already stands at {spot:?}")));
                 }
+                former.insert(spot.clone(), false);
                 points.insert(spot, Some(point.kind()));
             }
             Input::RemovePoint { point } => {
                 let spot = point.spot();
                 same_kind(stands(&points, &spot), point).map_err(wrong)?;
+                if point.kind() == Kind::Desk {
+                    former.insert(spot.clone(), true);
+                }
                 points.insert(spot, None);
             }
             Input::PalletBrought { town: t, .. } | Input::PackageBrought { town: t, .. } => town(*t)?,
@@ -241,13 +271,15 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
             }
             // A pallet that isn't there, or isn't in a warehouse, is a stale view: ignored, not refused.
             Input::PackageLost { .. } => {}
-            Input::Stocktake { point, counts } => {
+            Input::Stocktake { point, counts, .. } => {
                 same_kind(stands(&points, &point.spot()), point).map_err(wrong)?;
                 for c in counts {
                     good(c.good)?;
                     amount("a count of", c.count)?;
                 }
             }
+            // A point gone (or another kind there) by the time the host says what it couldn't move is a stale view.
+            Input::Unmoved { good: g, .. } => good(*g)?,
         }
     }
     Ok(())

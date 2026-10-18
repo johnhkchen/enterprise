@@ -7,7 +7,13 @@ import java.util.Objects;
 /**
  * An answer, in the place of its question.
  */
-public sealed interface Answer permits Answer.Stock, Answer.Points, Answer.Goods, Answer.Dials, Answer.Hands {
+public sealed interface Answer
+        permits Answer.Stock,
+                Answer.Points,
+                Answer.Goods,
+                Answer.Dials,
+                Answer.Hands,
+                Answer.Chests {
     void encode(PostcardOut out);
 
     static Answer decode(PostcardIn in) {
@@ -18,6 +24,7 @@ public sealed interface Answer permits Answer.Stock, Answer.Points, Answer.Goods
             case 2 -> new Goods(in.list(1, PostcardIn::string));
             case 3 -> new Dials(in.list(18, DialView::decode));
             case 4 -> new Hands(in.u32(), in.u32(), in.list(8, HandView::decode));
+            case 5 -> new Chests(Point.decode(in), in.u32(), in.list(8, PostcardIn::f64), in.u32(), in.list(8, PostcardIn::f64));
             default -> throw in.unknownVariant("Answer", at);
         };
     }
@@ -113,6 +120,30 @@ public sealed interface Answer permits Answer.Stock, Answer.Points, Answer.Goods
             out.u32(this.town);
             out.u32(this.lockers);
             out.list(this.hands, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * A point's chests: its town, what the core takes them to hold by good (empty before their first stocktake), their
+     * empty slots at the last, and what they gave up beyond what the town held ({@code short}, by good; empty if never).
+     */
+    record Chests(Point point, long town, List<Double> held, long free, List<Double> short_) implements Answer {
+        public Chests {
+            Objects.requireNonNull(point, "point");
+            Objects.requireNonNull(held, "held");
+            held = List.copyOf(held);
+            Objects.requireNonNull(short_, "short_");
+            short_ = List.copyOf(short_);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(5);
+            this.point.encode(out);
+            out.u32(this.town);
+            out.list(this.held, PostcardOut::f64);
+            out.u32(this.free);
+            out.list(this.short_, PostcardOut::f64);
         }
     }
 }

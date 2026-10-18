@@ -73,14 +73,14 @@ public final class CoreHost implements AutoCloseable {
     private String pausedWhy;
     private long looked = -1;
 
-    private CoreHost(Path dir, long seed) {
+    private CoreHost(Path dir, long seed, boolean ownsChests) {
         this.worker = CoreWorker.start(module());
         this.store = new SaveStore(dir, this::callNow);
         this.points = new PointsAdapter(this);
         this.hands = new HandsAdapter(this);
         this.people = new PeopleAdapter(this);
-        this.stock = new StockAdapter(this);
-        this.outcomes = new Outcomes(people);
+        this.stock = new StockAdapter(this, ownsChests);
+        this.outcomes = new Outcomes(people, stock);
         try {
             switch (store.open()) {
                 case SaveStore.Opened.Fresh fresh -> {
@@ -105,10 +105,17 @@ public final class CoreHost implements AutoCloseable {
 
     /**
      * A host for the world folder {@code dir}: its society loaded from {@value SaveStore#FILE} there, or made from the
-     * mod's content pack with {@code seed} when there's none. The server's own is {@link #of}; a test makes its own.
+     * mod's content pack with {@code seed} when there's none, its moves written to the chests ({@code ownsChests}: the
+     * server's own in core mode) or every one sent back unmoved (Java mode, where the Java rules own the chests). The
+     * server's own is {@link #of}; a test makes its own.
      */
+    public static CoreHost open(Path dir, long seed, boolean ownsChests) {
+        return new CoreHost(dir, seed, ownsChests);
+    }
+
+    /** A host of its own for the world folder {@code dir}, writing its moves to the chests (a test's). */
     public static CoreHost open(Path dir, long seed) {
-        return new CoreHost(dir, seed);
+        return open(dir, seed, true);
     }
 
     /** The running server's host, or null when there's none (no server, or before it started). */
@@ -133,13 +140,16 @@ public final class CoreHost implements AutoCloseable {
         bus.addListener(EventPriority.LOWEST, StockAdapter::onPlaced);
         bus.addListener(EventPriority.LOWEST, StockAdapter::onBroken);
         bus.addListener(EventPriority.LOWEST, HandsAdapter::onDeath);
+        bus.addListener(StockAdapter::onChunkLoad);
     }
 
     private static void onStarted(ServerStartedEvent event) {
         MinecraftServer server = event.getServer();
         long started = System.nanoTime();
         try {
-            running = open(server.getWorldPath(LevelResource.ROOT), server.getWorldData().worldGenOptions().seed());
+            running = open(server.getWorldPath(LevelResource.ROOT), server.getWorldData().worldGenOptions().seed(),
+                    Society.isCore());
+            running.stock().takeUnseenDesks();
             // The core brought to the world's time at once, on its own thread: a society new to an old world catches
             // up before its first desk, not in that desk's first look.
             running.look(server, server.overworld().getGameTime());
@@ -187,7 +197,7 @@ public final class CoreHost implements AutoCloseable {
         return people;
     }
 
-    /** The stock adapter: the desks the core keeps, their chests counted at each look. */
+    /** The stock adapter: the desks and depots the core keeps, their chests counted at each look and written its moves. */
     public StockAdapter stock() {
         return stock;
     }
@@ -198,20 +208,42 @@ public final class CoreHost implements AutoCloseable {
     }
 
     /**
-     * A look: the adapters' happenings since the last, then time passed to {@code now} (the overworld's game time), in
-     * one {@code Apply} sent to the core's thread. Its outputs are shown when it's done ({@link #poll}). Nothing is sent
-     * while paused, or twice for one tick.
+     * A look: the adapters' happenings since the last (what the host couldn't move, then the stocktakes), then time
+     * passed to {@code now} (the overworld's game time), in one {@code Apply} sent to the core's thread. Its outputs are
+     * shown when it's done ({@link #poll}). While an earlier look's moves are still to be shown no chest is counted (a
+     * count would miss them and book them again): that look sends only its time. Nothing is sent while paused, or twice
+     * for one tick.
      */
     public void look(MinecraftServer server, long now) {
         if (pausedWhy != null || now == looked) {
             return;
         }
         looked = now;
+        List<Input> inputs = new ArrayList<>(stock.pending());
         // A census only in core mode: in Java mode the Java rules' census keeps the people (CensusTaker).
-        List<Input> inputs = new ArrayList<>(people.happenings(server, Society.isCore()));
-        inputs.addAll(stock.happenings(server));
+        inputs.addAll(people.happenings(server, Society.isCore()));
+        if (looks.isEmpty()) {
+            inputs.addAll(stock.stocktakes(server));
+        }
         inputs.add(new Input.Advance(now));
         looks.add(worker.submit(Wire.request(new Command.Apply(inputs))));
+    }
+
+    /**
+     * The chests in chunks loaded since the last tick counted at once, so what their towns moved while they were
+     * unloaded is written before a player reaches them ({@link StockAdapter#catchUps}); sent like a look, with no time
+     * passed. Not while a look's moves are still to be shown: the chunks wait for the next tick.
+     */
+    public void catchUp(MinecraftServer server) {
+        if (pausedWhy != null || !looks.isEmpty()) {
+            return;
+        }
+        List<Input> counts = stock.catchUps(server);
+        if (!counts.isEmpty()) {
+            List<Input> inputs = new ArrayList<>(stock.pending());
+            inputs.addAll(counts);
+            looks.add(worker.submit(Wire.request(new Command.Apply(inputs))));
+        }
     }
 
     /** Shows the outputs of every look that's done, in the order sent: each to its adapter ({@link Outcomes}). */
@@ -253,12 +285,18 @@ public final class CoreHost implements AutoCloseable {
         }
     }
 
-    /** Happenings applied now, outside a look (a desk registered): their outputs shown, refusals returned. */
+    /**
+     * Happenings applied now, outside a look (a desk registered), after every look sent is shown and what the host
+     * couldn't move of it: their outputs shown, refusals returned.
+     */
     public Response apply(List<Input> inputs) {
         if (pausedWhy != null) {
             return null;
         }
-        Response r = callNow(Wire.request(new Command.Apply(inputs)));
+        settle();
+        List<Input> all = new ArrayList<>(stock.pending());
+        all.addAll(inputs);
+        Response r = callNow(Wire.request(new Command.Apply(all)));
         if (r instanceof Response.Done done) {
             done.outputs().forEach(outcomes::show);
         }
@@ -266,7 +304,7 @@ public final class CoreHost implements AutoCloseable {
     }
 
     /**
-     * Asks the core, after every look sent: the answers in the order asked.
+     * Asks the core, after every look sent and what the host couldn't move of them: the answers in the order asked.
      *
      * @throws IllegalStateException when the host is paused or the core refused the question
      */
@@ -275,6 +313,7 @@ public final class CoreHost implements AutoCloseable {
             throw new IllegalStateException(pausedWhy);
         }
         settle();
+        flush();
         return switch (callNow(Wire.request(new Command.Ask(queries)))) {
             case Response.Done done -> done.answers();
             case Response.Refused refused -> throw new IllegalStateException("the core refused " + queries + ": " + refused.why());
@@ -282,17 +321,29 @@ public final class CoreHost implements AutoCloseable {
         };
     }
 
-    /** Saves the society to the world's folder, after every look sent. False when paused (nothing written). */
+    /**
+     * Saves the society to the world's folder, after every look sent and what the host couldn't move of them, so the
+     * save takes the chests to hold what they do. False when paused (nothing written).
+     */
     public boolean save() {
         if (pausedWhy != null) {
             return false;
         }
         settle();
+        flush();
         try {
             return store.save();
         } catch (RuntimeException e) {
             Enterprise.LOGGER.error("The core's save failed; the world's last save of it stands", e);
             return false;
+        }
+    }
+
+    /** What the host couldn't move of the looks shown, told the core now (it has no stocktake: nothing moves back). */
+    private void flush() {
+        List<Input> unmoved = stock.pending();
+        if (!unmoved.isEmpty()) {
+            apply(unmoved);
         }
     }
 

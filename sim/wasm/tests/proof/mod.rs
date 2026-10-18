@@ -37,7 +37,7 @@ pub fn requests() -> Vec<Vec<u8>> {
             Input::AddTown { name: "Ashford".into(), desk: desk(27, 27) },
             Input::AddTown { name: "Bly".into(), desk: desk(600, 40) },
             Input::Pay { town: 0, money: enterprise_core::Fixed::emeralds(40) },
-            Input::Stocktake { point: desk(27, 27), counts: counts(64.0, 12.0) },
+            Input::Stocktake { point: desk(27, 27), counts: counts(64.0, 12.0), free: 25 },
             Input::Advance { to: 3 * DAY },
         ] },
         ask(),

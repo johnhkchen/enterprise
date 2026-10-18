@@ -27,7 +27,8 @@ public sealed interface Input
                 Input.AddHand,
                 Input.HandLost,
                 Input.Census,
-                Input.TagHand {
+                Input.TagHand,
+                Input.Unmoved {
     void encode(PostcardOut out);
 
     static Input decode(PostcardIn in) {
@@ -43,7 +44,7 @@ public sealed interface Input
             case 7 -> new AddTown(in.string(), Point.decode(in));
             case 8 -> new AddPoint(Point.decode(in), in.u32());
             case 9 -> new RemovePoint(Point.decode(in));
-            case 10 -> new Stocktake(Point.decode(in), in.list(9, Count::decode));
+            case 10 -> new Stocktake(Point.decode(in), in.list(9, Count::decode), in.u32());
             case 11 -> new PalletBrought(in.u32(), in.u64());
             case 12 -> new PackageBrought(in.u32(), in.u64(), in.u32());
             case 13 -> new PackageLost(in.u64(), in.u32());
@@ -52,6 +53,7 @@ public sealed interface Input
             case 16 -> new HandLost(in.u32());
             case 17 -> new Census(in.u32(), in.u32(), in.list(4, Resident::decode));
             case 18 -> new TagHand(in.u32(), in.string());
+            case 19 -> new Unmoved(Point.decode(in), in.u32(), in.i64());
             default -> throw in.unknownVariant("Input", at);
         };
     }
@@ -158,6 +160,7 @@ public sealed interface Input
     /**
      * A new town at its desk (a Merchant's desk placed): it stands where its desk does, with nothing held and no money
      * (money comes in by {@code Pay}). It's numbered after the towns there are, and its desk is a point of its own.
+     * A desk placed where a town's desk stood before it was broken is that town's desk again, and {@code name} is unused.
      */
     record AddTown(String name, Point desk) implements Input {
         public AddTown {
@@ -190,7 +193,9 @@ public sealed interface Input
     }
 
     /**
-     * A trade point broken. Its town stays, and keeps what it held.
+     * A trade point broken: its chests are no longer its town's, so what the core took them to hold leaves the town
+     * with them (never more than it holds) and a point placed there again counts them in afresh. The town stays, with
+     * the rest of what it held; a desk placed where its desk stood is its desk again ({@code AddTown}).
      */
     record RemovePoint(Point point) implements Input {
         public RemovePoint {
@@ -205,10 +210,12 @@ public sealed interface Input
     }
 
     /**
-     * What a point's chests hold now, every good there (a good not listed holds none): the core books the difference
-     * from its last stocktake there as goods delivered to its town or taken from it ({@code points.rs}).
+     * What a point's chests hold now, every good there (a good not listed holds none, a shulker box's goods are the
+     * chests'), and how many of their slots stand empty: the core books the difference from what it took them to hold
+     * as goods delivered to its town or taken from it ({@code points.rs}). At a desk or a depot, the town's stock is then
+     * shown there: what the core moved in or out of it since comes back as {@code Moved} at the end of the look.
      */
-    record Stocktake(Point point, List<Count> counts) implements Input {
+    record Stocktake(Point point, List<Count> counts, long free) implements Input {
         public Stocktake {
             Objects.requireNonNull(point, "point");
             Objects.requireNonNull(counts, "counts");
@@ -220,6 +227,7 @@ public sealed interface Input
             out.variant(10);
             this.point.encode(out);
             out.list(this.counts, (o1, e1) -> e1.encode(o1));
+            out.u32(this.free);
         }
     }
 
@@ -364,6 +372,26 @@ public sealed interface Input
             out.variant(18);
             out.u32(this.hand);
             out.string(this.tag);
+        }
+    }
+
+    /**
+     * What the host couldn't do of a {@code Moved} at a desk or a depot: {@code count} of the good didn't fit (above nothing: still
+     * the town's, kept on its books and moved in again when its chests have room) or wasn't there to take (below
+     * nothing: a player or a hopper took it first, which the next stocktake books). Sent before the point's next
+     * stocktake. Ignored for a point that isn't there any more, or is another kind (the host's view was stale).
+     */
+    record Unmoved(Point point, long good, long count) implements Input {
+        public Unmoved {
+            Objects.requireNonNull(point, "point");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(19);
+            this.point.encode(out);
+            out.u32(this.good);
+            out.i64(this.count);
         }
     }
 }

@@ -551,6 +551,329 @@ public final class CoreBindingTests {
                 + " hands asked {} ms", residents, "%.3f".formatted(counted / 1e6 / n), "%.3f".formatted(sent / 1e6 / n));
     }
 
+    /** The core's number for the good called {@code name}. */
+    private static long good(CoreHost host, String name) {
+        List<String> goods = ((Answer.Goods) host.ask(List.of(new Query.Goods())).get(0)).goods();
+        int i = goods.indexOf(name);
+        if (i < 0) {
+            throw new AssertionError("the core has no good " + name);
+        }
+        return i;
+    }
+
+    /** What the core says a town holds of the good called {@code name}. */
+    private static double held(CoreHost host, long town, String name) {
+        Answer.Stock stock = (Answer.Stock) host.ask(List.of(new Query.Stock(town))).get(0);
+        return stock.stock().get((int) good(host, name));
+    }
+
+    /** Items of {@code item} in a container, loose and in the shulker boxes in it. */
+    private static int inChest(ChestBlockEntity chest, net.minecraft.world.item.Item item) {
+        int n = 0;
+        for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+            ItemStack stack = chest.getItem(slot);
+            if (stack.is(item)) {
+                n += stack.getCount();
+            } else if (stack.is(Items.SHULKER_BOX)) {
+                n += inBox(stack, item);
+            }
+        }
+        return n;
+    }
+
+    private static int inBox(ItemStack box, net.minecraft.world.item.Item item) {
+        var items = net.minecraft.core.NonNullList.withSize(27, ItemStack.EMPTY);
+        box.getOrDefault(net.minecraft.core.component.DataComponents.CONTAINER,
+                net.minecraft.world.item.component.ItemContainerContents.EMPTY).copyInto(items);
+        return items.stream().filter(i -> i.is(item)).mapToInt(ItemStack::getCount).sum();
+    }
+
+    private static ChestBlockEntity chestAt(GameTestHelper helper, BlockPos at) {
+        return (ChestBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(at));
+    }
+
+    /**
+     * A step of a test that runs over ticks with a host of its own, {@code ticks} from now: a failure closes the host
+     * and its folder before it fails the test, as the last step does when it passes.
+     */
+    private static void later(GameTestHelper helper, CoreHost host, Path dir, long ticks, Runnable step) {
+        helper.runAfterDelay(ticks, () -> {
+            try {
+                step.run();
+            } catch (RuntimeException | AssertionError e) {
+                host.close();
+                delete(dir);
+                throw e;
+            }
+        });
+    }
+
+    /**
+     * The core's own moves are written to a desk's chests (B4.3): bread delivered to the town outside its chests (as a
+     * pallet received would be) is put in at the end of the look that counted them, merging with the bread there; the
+     * stack its master Merchant puts on its own shop's shelf comes out of them, loose wheat first, then the shulker box's.
+     * After each look the chests hold what the town does, in whole items, shulker box and all.
+     */
+    @GameTest(template = "floor")
+    public static void theCoresMovesAreWrittenToADesksChestsAndItsShulkers(GameTestHelper helper) {
+        var level = helper.getLevel();
+        helper.setBlock(DESK, Merchant.DESK.get());
+        helper.setBlock(DESK.east(), Blocks.CHEST);
+        ChestBlockEntity chest = chestAt(helper, DESK.east());
+        chest.setItem(0, new ItemStack(Items.WHEAT, 32));
+        ItemStack box = new ItemStack(Items.SHULKER_BOX);
+        box.set(net.minecraft.core.component.DataComponents.CONTAINER, net.minecraft.world.item.component.ItemContainerContents
+                .fromItems(List.of(new ItemStack(Items.WHEAT, 64), new ItemStack(Items.WHEAT, 64), new ItemStack(Items.WHEAT, 64),
+                        new ItemStack(Items.WHEAT, 64))));
+        chest.setItem(1, box);
+        chest.setItem(2, new ItemStack(Items.BREAD, 10));
+        GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, desk.pos(), "Testford");
+            helper.assertTrue(held(host, town, "minecraft:wheat") == 288, "the shulker box's wheat isn't counted: "
+                    + host.stock().stockAt(desk));
+            long t = level.getGameTime();
+            host.apply(List.of(new Input.Deliver(town, good(host, "minecraft:bread"), 40)));
+            helper.assertTrue(chest.getItem(2).getCount() == 10, "the chests were written before they were counted");
+            host.look(level.getServer(), t + 1);
+            host.settle();
+            helper.assertTrue(chest.getItem(2).is(Items.BREAD) && chest.getItem(2).getCount() == 50,
+                    "the delivered bread isn't in the chest with its bread: " + chest.getItem(2));
+            // A master Merchant and its own shop: a day on, it puts a stack of its surplus on the shelf.
+            host.apply(List.of(new Input.AddHand(town, "merchant", 5, ""), new Input.OwnShop(town)));
+            host.look(level.getServer(), t + 24_000);
+            host.settle();
+            double wheat = held(host, town, "minecraft:wheat");
+            helper.assertTrue(wheat < 288, "the master Merchant took no wheat for its shelf: " + wheat);
+            helper.assertTrue(inChest(chest, Items.WHEAT) == wheat, "the chest holds " + inChest(chest, Items.WHEAT)
+                    + " wheat, the town " + wheat);
+            helper.assertTrue(288 - wheat < 32 || !chest.getItem(0).is(Items.WHEAT), "the loose wheat wasn't taken first");
+            helper.assertTrue(inBox(chest.getItem(1), Items.WHEAT) == Math.min(256, wheat), "the shulker box holds "
+                    + inBox(chest.getItem(1), Items.WHEAT));
+            helper.assertTrue(inChest(chest, Items.BREAD) == (int) held(host, town, "minecraft:bread"), "the bread drifted");
+            var seen = host.stock().chestsAt(desk);
+            helper.assertTrue(seen.held().get("minecraft:wheat") == wheat && seen.shortBy().isEmpty(),
+                    "the core takes the chests to hold " + seen);
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The plan's race (docs/binding-plan.md 4): a hopper fills the chest's last slot between the look's count and the
+     * core's write. The bread that doesn't fit goes back unmoved and stays the town's, on its books, with no room
+     * counted to move it into; once a player clears the slot the next look puts it in. Nothing made, nothing lost.
+     */
+    @GameTest(template = "floor", timeoutTicks = 200)
+    public static void aHopperFillingTheChestDuringAMoveLeavesWhatDidntFitOnTheTownsBooks(GameTestHelper helper) {
+        var level = helper.getLevel();
+        helper.setBlock(DESK, Merchant.DESK.get());
+        helper.setBlock(DESK.east(), Blocks.CHEST);
+        helper.setBlock(DESK.east().above(), Blocks.HOPPER); // feeding the chest below it, not touching the desk
+        ChestBlockEntity chest = chestAt(helper, DESK.east());
+        for (int slot = 0; slot < chest.getContainerSize() - 1; slot++) {
+            chest.setItem(slot, new ItemStack(Items.DIRT, 64));
+        }
+        GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
+        Path dir = folder();
+        CoreHost host = CoreHost.open(dir, 7);
+        long town = host.stock().found(level, desk.pos(), "Testford");
+        long t = level.getGameTime();
+        host.apply(List.of(new Input.Deliver(town, good(host, "minecraft:bread"), 64)));
+        host.look(level.getServer(), t + 1); // counted now: one slot free, so the core moves a stack in
+        var hopper = (net.minecraft.world.level.block.entity.HopperBlockEntity) level.getBlockEntity(
+                helper.absolutePos(DESK.east().above()));
+        hopper.setItem(0, new ItemStack(Items.DIRT, 1));
+        later(helper, host, dir, 20, () -> {
+            helper.assertTrue(chest.getItem(chest.getContainerSize() - 1).is(Items.DIRT), "the hopper didn't fill the slot");
+            host.settle(); // the move shown now: no room for it
+            helper.assertTrue(inChest(chest, Items.BREAD) == 0, "bread went in where there was no room");
+            host.look(level.getServer(), t + 2); // what wasn't moved told, the chest counted again: still no room
+            host.settle();
+            helper.assertTrue(held(host, town, "minecraft:bread") == 64, "the town lost the bread that didn't fit");
+            helper.assertTrue(!host.stock().chestsAt(desk).held().containsKey("minecraft:bread"),
+                    "the core takes the chest to hold bread: " + host.stock().chestsAt(desk));
+            // A player clears the slot: the next look moves the bread in.
+            chest.setItem(chest.getContainerSize() - 1, ItemStack.EMPTY);
+            host.look(level.getServer(), t + 3);
+            host.settle();
+            helper.assertTrue(inChest(chest, Items.BREAD) == 64 && held(host, town, "minecraft:bread") == 64,
+                    "the chest holds " + inChest(chest, Items.BREAD) + " bread, the town " + held(host, town, "minecraft:bread"));
+            host.close();
+            delete(dir);
+            helper.succeed();
+        });
+    }
+
+    /**
+     * A storehouse's chests are the town's depots (B4.3): registered from its floorplan, each a point of the town's,
+     * counted into its stock at once and at every look; what the desk's chests have no room for goes into them.
+     */
+    @GameTest(template = "floor")
+    public static void aDepotsChestsAreItsTownsStoreForWhatTheDeskHasNoRoomFor(GameTestHelper helper) {
+        var level = helper.getLevel();
+        BlockPos at = new BlockPos(1, 2, 1);
+        helper.setBlock(at, Merchant.DESK.get());
+        helper.setBlock(at.east(), Blocks.CHEST);
+        ChestBlockEntity deskChest = chestAt(helper, at.east());
+        for (int slot = 0; slot < deskChest.getContainerSize() - 1; slot++) {
+            deskChest.setItem(slot, new ItemStack(Items.DIRT, 64));
+        }
+        helper.setBlock(new BlockPos(5, 2, 5), Blocks.CHEST); // the storehouse: two chests, apart
+        helper.setBlock(new BlockPos(5, 2, 3), Blocks.CHEST);
+        ChestBlockEntity a = chestAt(helper, new BlockPos(5, 2, 5));
+        ChestBlockEntity b = chestAt(helper, new BlockPos(5, 2, 3));
+        a.setItem(0, new ItemStack(Items.WHEAT, 10));
+        GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(at));
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, desk.pos(), "Testford");
+            var depots = host.stock().addDepots(level, desk.pos(), helper.absolutePos(new BlockPos(4, 2, 3)),
+                    helper.absolutePos(new BlockPos(6, 3, 5)));
+            helper.assertTrue(depots.size() == 2 && host.stock().depots().size() == 2, "the storehouse's depots: " + depots);
+            helper.assertTrue(held(host, town, "minecraft:wheat") == 10, "the depot's wheat isn't the town's");
+            helper.assertTrue(host.stock().addDepots(level, desk.pos(), helper.absolutePos(new BlockPos(4, 2, 3)),
+                    helper.absolutePos(new BlockPos(6, 3, 5))).isEmpty(), "a depot registered twice");
+            long t = level.getGameTime();
+            host.apply(List.of(new Input.Deliver(town, good(host, "minecraft:bread"), 200)));
+            host.look(level.getServer(), t + 1);
+            host.settle();
+            helper.assertTrue(inChest(deskChest, Items.BREAD) == 64, "the desk's free slot holds "
+                    + inChest(deskChest, Items.BREAD) + " bread");
+            helper.assertTrue(inChest(a, Items.BREAD) + inChest(b, Items.BREAD) == 136, "the depots hold "
+                    + (inChest(a, Items.BREAD) + inChest(b, Items.BREAD)) + " bread, not the 136 the desk had no room for");
+            // A player takes wheat out of a depot: the next look books it.
+            a.setItem(0, new ItemStack(Items.WHEAT, 5));
+            host.look(level.getServer(), t + 2);
+            host.settle();
+            helper.assertTrue(held(host, town, "minecraft:wheat") == 5 && held(host, town, "minecraft:bread") == 200,
+                    "the town holds " + host.stock().stockAt(desk));
+            helper.assertTrue(host.stock().removeDepots(level, helper.absolutePos(new BlockPos(4, 2, 3)),
+                    helper.absolutePos(new BlockPos(6, 3, 5))) == 2 && host.stock().depots().isEmpty(), "the depots weren't removed");
+            helper.assertTrue(held(host, town, "minecraft:wheat") == 0 && held(host, town, "minecraft:bread") == 64,
+                    "the depots' goods didn't go with them: " + host.stock().stockAt(desk));
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A desk broken takes its chests' goods with it, and put back where it stood is the same town (B4.3): its chests
+     * counted in once, not on top of what the town held (binding-progress' double count, settled).
+     */
+    @GameTest(template = "floor")
+    public static void aDeskBrokenAndPutBackIsItsTownAgainWithItsGoodsCountedOnce(GameTestHelper helper) {
+        market(helper);
+        var level = helper.getLevel();
+        GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, desk.pos(), "Testford");
+            host.stock().forget(level, desk.pos());
+            helper.assertTrue(host.stock().townAt(desk) == null, "the broken desk is still a point");
+            helper.assertTrue(held(host, town, "minecraft:wheat") == 0 && held(host, town, "minecraft:bread") == 0,
+                    "the chests' goods stayed with the town when its desk went");
+            long again = host.stock().found(level, desk.pos(), "Newton");
+            helper.assertTrue(again == town, "the desk put back is town " + again + ", not " + town);
+            helper.assertTrue(host.stock().stockAt(desk).equals(Map.of("minecraft:wheat", 30.0, "minecraft:bread", 5.0)),
+                    "the town holds " + host.stock().stockAt(desk) + ", its chest 30 wheat and 5 bread");
+            helper.assertTrue(host.points().towns().equals(List.of(town)), "another town: " + host.points().all());
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Write-back safety (docs/decisions.md, lockers; docs/binding-plan.md 1.5): bread delivered to the town while its
+     * desk isn't counted (its chunk unloaded) isn't written blind; when the chunk loads the chest is counted first, a
+     * player's taking meanwhile booked, and only then is the bread put in.
+     */
+    @GameTest(template = "floor")
+    public static void aChestChangedWhileItWasntCountedIsCountedBeforeItsWritten(GameTestHelper helper) {
+        ChestBlockEntity chest = market(helper);
+        var level = helper.getLevel();
+        GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, desk.pos(), "Testford");
+            host.apply(List.of(new Input.Deliver(town, good(host, "minecraft:bread"), 20)));
+            chest.setItem(0, new ItemStack(Items.WHEAT, 20)); // a player took 10 wheat
+            helper.assertTrue(chest.getItem(1).getCount() == 5, "the chest was written without being counted");
+            host.stock().loaded(level, new net.minecraft.world.level.ChunkPos(desk.pos()));
+            host.catchUp(level.getServer());
+            host.settle();
+            helper.assertTrue(chest.getItem(0).getCount() == 20 && chest.getItem(1).getCount() == 25,
+                    "the chest holds " + chest.getItem(0) + " and " + chest.getItem(1) + ", not 20 wheat and 25 bread");
+            helper.assertTrue(held(host, town, "minecraft:wheat") == 20 && held(host, town, "minecraft:bread") == 25,
+                    "the town holds " + host.stock().stockAt(desk));
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * In Java mode the Java rules own the chests (B4.3): the core beside them counts the desk but never writes to it, so
+     * bread it was handed stays on its town's books, sent back unmoved each time, and nothing is booked twice.
+     */
+    @GameTest(template = "floor")
+    public static void inJavaModeTheCoreCountsADesksChestsButNeverWritesThem(GameTestHelper helper) {
+        ChestBlockEntity chest = market(helper);
+        var level = helper.getLevel();
+        GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7, false)) {
+            long town = host.stock().found(level, desk.pos(), "Testford");
+            host.apply(List.of(new Input.Deliver(town, good(host, "minecraft:bread"), 20)));
+            long t = level.getGameTime();
+            for (int i = 1; i <= 3; i++) {
+                host.look(level.getServer(), t + i);
+                host.settle();
+            }
+            helper.assertTrue(chest.getItem(1).getCount() == 5, "the core wrote to a Java-mode chest: " + chest.getItem(1));
+            helper.assertTrue(held(host, town, "minecraft:bread") == 25, "the town holds " + host.stock().stockAt(desk));
+            helper.assertTrue(host.stock().chestsAt(desk).held().get("minecraft:bread") == 5.0,
+                    "the core takes the chest to hold " + host.stock().chestsAt(desk));
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A desk placed where no event saw it ({@code setBlock}, as a datapack or a structure places one) is taken as a town
+     * once its chunk loads (B4.3): the chunk's desks found by their point of interest, counted at once. The server's
+     * host does it for every chunk; a host of the test's own, told to, so the neighbours' desks it finds stay in its
+     * society, not the server's.
+     */
+    @GameTest(template = "floor")
+    public static void aDeskPlacedUnseenIsTakenWhenItsChunkLoads(GameTestHelper helper) {
+        ChestBlockEntity chest = market(helper);
+        var level = helper.getLevel();
+        GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            host.stock().loaded(level, new net.minecraft.world.level.ChunkPos(desk.pos()));
+            host.catchUp(level.getServer());
+            host.settle();
+            helper.assertTrue(host.stock().townAt(desk) == null, "a host not told to took a desk it was never shown");
+            host.stock().takeUnseenDesks();
+            host.stock().loaded(level, new net.minecraft.world.level.ChunkPos(desk.pos()));
+            host.catchUp(level.getServer());
+            host.settle();
+            helper.assertTrue(host.stock().townAt(desk) != null, "the desk wasn't taken when its chunk loaded");
+            helper.assertTrue(host.stock().stockAt(desk).equals(Map.of("minecraft:wheat", 30.0, "minecraft:bread", 5.0)),
+                    "the town holds " + host.stock().stockAt(desk) + ", its chest " + chest.getItem(0) + " and " + chest.getItem(1));
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
     /** A villager of {@code trade} at {@code level}, kept in it without a workstation (one XP). */
     private static Villager villager(GameTestHelper helper, VillagerProfession trade, int level, BlockPos at) {
         Villager v = helper.spawn(EntityType.VILLAGER, at);
@@ -602,10 +925,15 @@ public final class CoreBindingTests {
             int looks = 400;
             long[] tick = new long[looks];
             long start = System.nanoTime();
+            long waited = 0;
             for (int i = 0; i < looks; i++) {
                 // a stack moved each look, so every stocktake books something
                 ChestBlockEntity chest = (ChestBlockEntity) level.getBlockEntity(helper.absolutePos(desks.get(i % desks.size()).east()));
                 chest.setItem(0, new ItemStack(goods.get(0), 1 + i % 64));
+                // The last look shown first (as a minute's ticks would have): a look with one in flight counts nothing.
+                long w = System.nanoTime();
+                host.settle();
+                waited += System.nanoTime() - w;
                 long a = System.nanoTime();
                 host.look(server, t + 1200L * (i + 1));
                 host.poll();
@@ -617,8 +945,27 @@ public final class CoreBindingTests {
             double mean = java.util.Arrays.stream(tick).average().orElse(0) / 1e6;
             out.append("\n  %d desks, %d stacks: a look on the server's tick %.3f ms mean, p50 %.3f, p99 %.3f, max %.3f (without the core: 0)"
                     .formatted(desks.size(), stacks, mean, tick[looks / 2] / 1e6, tick[looks * 99 / 100] / 1e6, tick[looks - 1] / 1e6));
-            out.append("\n  the core's thread: %d looks (a game minute each) in %.1f ms, %.3f ms a look"
-                    .formatted(looks, all / 1e6, all / 1e6 / looks));
+            out.append("\n  the core's thread: %d looks (a game minute each) in %.1f ms, %.3f ms a look (%.1f ms of it waited for)"
+                    .formatted(looks, all / 1e6, all / 1e6 / looks, waited / 1e6));
+            // A move written (stock-adapter): a stack of wheat put into and taken out of a desk's five chests, one of
+            // them emptied for room, as the core's Moved would have it, on the tick that shows it.
+            ChestBlockEntity room = (ChestBlockEntity) level.getBlockEntity(helper.absolutePos(desks.get(0).east()));
+            room.clearContent();
+            var point = dev.b28.enterprise.binding.adapters.StockAdapter.point(GlobalPos.of(level.dimension(),
+                    helper.absolutePos(desks.get(0))));
+            long wheat = good(host, "minecraft:wheat");
+            int moves = 400;
+            long[] move = new long[moves];
+            for (int i = 0; i < moves; i++) {
+                var moved = new dev.b28.enterprise.wire.Output.Moved(point, wheat, i % 2 == 0 ? 64 : -64);
+                long a = System.nanoTime();
+                host.stock().show(moved);
+                move[i] = System.nanoTime() - a;
+            }
+            java.util.Arrays.sort(move);
+            out.append("\n  a move written (64 wheat in or out of a desk's 5 chests, 135 slots): %.3f ms mean, p50 %.3f, max %.3f"
+                    .formatted(java.util.Arrays.stream(move).average().orElse(0) / 1e6, move[moves / 2] / 1e6, move[moves - 1] / 1e6));
+            helper.assertTrue(host.stock().pending().isEmpty(), "a measured move didn't fit");
             long[] saves = new long[20];
             for (int i = 0; i < saves.length; i++) {
                 long a = System.nanoTime();

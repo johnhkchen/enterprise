@@ -53,4 +53,5 @@ slices! {
     hands,
     census,
     itinerary_drops,
+    chests,
 }

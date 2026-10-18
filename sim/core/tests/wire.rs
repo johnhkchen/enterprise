@@ -289,28 +289,28 @@ fn a_stocktake_books_what_the_chests_gained_and_lost_since_the_last() {
     ]);
     let before = s.as_mut().unwrap().totals();
     // The first stocktake counts from nothing.
-    apply(&mut s, vec![Input::Stocktake { point: desk(27, 27), counts: counts(&[(WHEAT, 30.0), (BREAD, 5.0)]) }]);
+    apply(&mut s, vec![Input::Stocktake { point: desk(27, 27), counts: counts(&[(WHEAT, 30.0), (BREAD, 5.0)]), free: 27 }]);
     assert_eq!(stock(&mut s, 0), vec![30.0, 5.0, 0.0, 0.0]);
     // A player took 20 wheat out and put 2 books in; bread is as it was.
-    apply(&mut s, vec![Input::Stocktake { point: desk(27, 27), counts: counts(&[(WHEAT, 10.0), (BREAD, 5.0), (BOOK, 2.0)]) }]);
+    apply(&mut s, vec![Input::Stocktake { point: desk(27, 27), counts: counts(&[(WHEAT, 10.0), (BREAD, 5.0), (BOOK, 2.0)]), free: 27 }]);
     assert_eq!(stock(&mut s, 0), vec![10.0, 5.0, 2.0, 0.0]);
     // A locker's chests are counted apart from the desk's, for the same town; a good listed twice is summed.
-    apply(&mut s, vec![Input::Stocktake { point: at(PointKind::Locker, 30, 27), counts: counts(&[(BREAD, 1.0), (BREAD, 2.0)]) }]);
+    apply(&mut s, vec![Input::Stocktake { point: at(PointKind::Locker, 30, 27), counts: counts(&[(BREAD, 1.0), (BREAD, 2.0)]), free: 27 }]);
     assert_eq!(stock(&mut s, 0), vec![10.0, 8.0, 2.0, 0.0]);
     // The town has used 6 wheat the chests still show; then the chests are emptied: only what it holds is taken.
     assert_eq!(s.as_mut().unwrap().withdraw(0, WHEAT as usize, 6.0), 6.0);
-    apply(&mut s, vec![Input::Stocktake { point: desk(27, 27), counts: counts(&[(BREAD, 5.0), (BOOK, 2.0)]) }]);
+    apply(&mut s, vec![Input::Stocktake { point: desk(27, 27), counts: counts(&[(BREAD, 5.0), (BOOK, 2.0)]), free: 27 }]);
     assert_eq!(stock(&mut s, 0), vec![0.0, 8.0, 2.0, 0.0]);
     let society = s.as_mut().unwrap();
     society.conserved(&before).unwrap();
     society.solvent().unwrap();
-    // A point broken and placed again counts from nothing again.
+    // A point broken takes its chests' goods with it, and placed again counts them in afresh: nothing twice.
     apply(&mut s, vec![
         Input::RemovePoint { point: at(PointKind::Locker, 30, 27) },
         Input::AddPoint { point: at(PointKind::Locker, 30, 27), town: 0 },
-        Input::Stocktake { point: at(PointKind::Locker, 30, 27), counts: counts(&[(BREAD, 3.0)]) },
+        Input::Stocktake { point: at(PointKind::Locker, 30, 27), counts: counts(&[(BREAD, 3.0)]), free: 27 },
     ]);
-    assert_eq!(stock(&mut s, 0), vec![0.0, 11.0, 2.0, 0.0]);
+    assert_eq!(stock(&mut s, 0), vec![0.0, 8.0, 2.0, 0.0]);
     s.as_mut().unwrap().conserved(&before).unwrap();
 }
 
@@ -378,7 +378,7 @@ fn a_society_saved_and_loaded_through_handle_runs_on_as_never_saved() {
         Input::AddTown { name: "Ashford".into(), desk: desk(27, 27) },
         Input::AddTown { name: "Bly".into(), desk: desk(600, 40) },
         Input::Pay { town: 0, money: Fixed::emeralds(40) },
-        Input::Stocktake { point: desk(27, 27), counts: counts(&[(WHEAT, 64.0), (BREAD, 12.0)]) },
+        Input::Stocktake { point: desk(27, 27), counts: counts(&[(WHEAT, 64.0), (BREAD, 12.0)]), free: 27 },
         Input::Advance { to: 3 * DAY },
     ]);
     saved_and_loaded_runs_on_alike(s, 4..=20);
@@ -467,10 +467,10 @@ fn a_look_naming_what_isnt_there_is_refused_whole() {
         (Input::AddPoint { point: Point { kind: PointKind::Shop, ..desk(27, 27) }, town: 0 }, "a point already stands"),
         (Input::AddPoint { point: at(PointKind::Shop, 1, 1), town: 3 }, "no town 3"),
         (Input::RemovePoint { point: desk(1, 1) }, "no point at"),
-        (Input::Stocktake { point: desk(1, 1), counts: vec![] }, "no point at"),
-        (Input::Stocktake { point: desk(27, 27), counts: counts(&[(7, 1.0)]) }, "no good 7"),
+        (Input::Stocktake { point: desk(1, 1), counts: vec![], free: 27 }, "no point at"),
+        (Input::Stocktake { point: desk(27, 27), counts: counts(&[(7, 1.0)]), free: 27 }, "no good 7"),
         (Input::RemovePoint { point: at(PointKind::Locker, 27, 27) }, "a Locker at"),
-        (Input::Stocktake { point: at(PointKind::Shop, 27, 27), counts: vec![] }, "where a Desk stands"),
+        (Input::Stocktake { point: at(PointKind::Shop, 27, 27), counts: vec![], free: 27 }, "where a Desk stands"),
         (Input::Advance { to: u64::MAX }, "more than 36500 days"),
     ];
     for (input, why) in cases {
@@ -486,12 +486,12 @@ fn a_look_naming_what_isnt_there_is_refused_whole() {
         Input::AddTown { name: "Bly".into(), desk: desk(600, 0) },
         Input::Deliver { town: 1, good: BREAD, count: 2.0 },
         Input::AddPoint { point: at(PointKind::Depot, 600, 5), town: 1 },
-        Input::Stocktake { point: at(PointKind::Depot, 600, 5), counts: counts(&[(BREAD, 1.0)]) },
+        Input::Stocktake { point: at(PointKind::Depot, 600, 5), counts: counts(&[(BREAD, 1.0)]), free: 27 },
     ]);
     assert_eq!(stock(&mut s, 1), vec![0.0, 3.0, 0.0, 0.0]);
     assert!(matches!(refused(&mut s, vec![
         Input::RemovePoint { point: at(PointKind::Depot, 600, 5) },
-        Input::Stocktake { point: at(PointKind::Depot, 600, 5), counts: vec![] },
+        Input::Stocktake { point: at(PointKind::Depot, 600, 5), counts: vec![], free: 27 },
     ]), Refusal::Input { at: 1, .. }));
     assert!(matches!(refused(&mut s, vec![
         Input::AddTown { name: "Cray".into(), desk: desk(-600, 0) },
@@ -515,7 +515,7 @@ fn bytes_in_and_out_are_handle_in_postcard() {
         Request::new(Command::Create { pack: pack(), seed: 3 }),
         Request::new(Command::Apply { inputs: vec![
             Input::AddTown { name: "Ashford".into(), desk: desk(27, 27) },
-            Input::Stocktake { point: desk(27, 27), counts: counts(&[(WHEAT, 9.0)]) },
+            Input::Stocktake { point: desk(27, 27), counts: counts(&[(WHEAT, 9.0)]), free: 27 },
             Input::Advance { to: 2 * DAY },
         ] }),
         Request::new(Command::Ask { queries: vec![Query::Stock { town: 0 }, Query::Points] }),

@@ -20,7 +20,8 @@ public sealed interface Output
                 Output.Settled,
                 Output.Departed,
                 Output.HandGone,
-                Output.HandLevel {
+                Output.HandLevel,
+                Output.Moved {
     void encode(PostcardOut out);
 
     static Output decode(PostcardIn in) {
@@ -39,6 +40,7 @@ public sealed interface Output
             case 10 -> new Departed(in.u32(), in.u32(), in.string());
             case 11 -> new HandGone(in.u32(), in.string());
             case 12 -> new HandLevel(in.u32(), in.string(), in.string(), in.u8(), in.u32());
+            case 13 -> new Moved(Point.decode(in), in.u32(), in.i64());
             default -> throw in.unknownVariant("Output", at);
         };
     }
@@ -240,6 +242,26 @@ public sealed interface Output
             out.string(this.trade);
             out.u8(this.level);
             out.u32(this.xp);
+        }
+    }
+
+    /**
+     * Items for the host to put in a desk's or a depot's chests ({@code count} above nothing) or take out of them (below):
+     * what the core moved in or out of its town's stock (a wagon's sale, its people eating) since the chests were
+     * counted, in whole items, after a stocktake there in the same look. The core takes the chests to hold it from now
+     * on; what the host can't do it sends back as {@code Unmoved}.
+     */
+    record Moved(Point point, long good, long count) implements Output {
+        public Moved {
+            Objects.requireNonNull(point, "point");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(13);
+            this.point.encode(out);
+            out.u32(this.good);
+            out.i64(this.count);
         }
     }
 }

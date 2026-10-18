@@ -24,14 +24,19 @@ pub enum Input {
     Buy { town: TownNo, good: GoodNo, count: f64 },
     /// A new town at its desk (a Merchant's desk placed): it stands where its desk does, with nothing held and no money
     /// (money comes in by `Pay`). It's numbered after the towns there are, and its desk is a point of its own.
+    /// A desk placed where a town's desk stood before it was broken is that town's desk again, and `name` is unused.
     AddTown { name: String, desk: Point },
     /// A trade point of a town's (a locker, a shop, a banker, a depot, another desk) placed.
     AddPoint { point: Point, town: TownNo },
-    /// A trade point broken. Its town stays, and keeps what it held.
+    /// A trade point broken: its chests are no longer its town's, so what the core took them to hold leaves the town
+    /// with them (never more than it holds) and a point placed there again counts them in afresh. The town stays, with
+    /// the rest of what it held; a desk placed where its desk stood is its desk again (`AddTown`).
     RemovePoint { point: Point },
-    /// What a point's chests hold now, every good there (a good not listed holds none): the core books the difference
-    /// from its last stocktake there as goods delivered to its town or taken from it (`points.rs`).
-    Stocktake { point: Point, counts: Vec<Count> },
+    /// What a point's chests hold now, every good there (a good not listed holds none, a shulker box's goods are the
+    /// chests'), and how many of their slots stand empty: the core books the difference from what it took them to hold
+    /// as goods delivered to its town or taken from it (`points.rs`). At a desk or a depot, the town's stock is then
+    /// shown there: what the core moved in or out of it since comes back as `Moved` at the end of the look.
+    Stocktake { point: Point, counts: Vec<Count>, free: u32 },
     /// A player carried a whole pallet (every package of it) to a town's desk (`PalletBrought`, `pallet_messages.rs`).
     /// Made out to the town, it is received there and then (its goods into stock, a contract's goods delivered under
     /// it, the crates kept); made out elsewhere, it waits in the town's warehouse to be fetched. A pallet that isn't
@@ -74,6 +79,11 @@ pub enum Input {
     /// it from now on. Ignored when the hand isn't at home on a roster by the time it applies, or another living hand has
     /// the tag. Refused only for an empty tag.
     TagHand { hand: HandNo, tag: String },
+    /// What the host couldn't do of a `Moved` at a desk or a depot: `count` of the good didn't fit (above nothing: still
+    /// the town's, kept on its books and moved in again when its chests have room) or wasn't there to take (below
+    /// nothing: a player or a hopper took it first, which the next stocktake books). Sent before the point's next
+    /// stocktake. Ignored for a point that isn't there any more, or is another kind (the host's view was stale).
+    Unmoved { point: Point, good: GoodNo, count: i64 },
 }
 
 /// A villager a census saw: the host's tag for it (its UUID), its trade by the host's name (with or without the host's

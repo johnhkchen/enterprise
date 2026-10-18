@@ -19,6 +19,8 @@ pub enum Query {
     Dials,
     /// A town's hands, each by its id with the host's tag: what a host ties its villagers to (after a load too).
     Hands { town: TownNo },
+    /// A point's chests as the core takes them to be (what it counted there, with what it moved since).
+    Chests { point: Point },
 }
 
 /// An answer, in the place of its question.
@@ -36,6 +38,9 @@ pub enum Answer {
     /// A town's hands in its roster's order (children grown by now), and how many lockers its desk's Merchant may manage
     /// (its level's cap, `Roster::locker_limit`; none without one). Empty for a town that keeps no roster.
     Hands { town: TownNo, lockers: u32, hands: Vec<HandView> },
+    /// A point's chests: its town, what the core takes them to hold by good (empty before their first stocktake), their
+    /// empty slots at the last, and what they gave up beyond what the town held (`short`, by good; empty if never).
+    Chests { point: Point, town: TownNo, held: Vec<f64>, free: u32, short: Vec<f64> },
 }
 
 /// One of a town's hands: its id (stable while it lives, wherever it goes: a place in the list isn't), the host's tag

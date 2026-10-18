@@ -2,56 +2,85 @@ package dev.b28.enterprise.binding.adapters;
 
 import dev.b28.enterprise.Enterprise;
 import dev.b28.enterprise.binding.CoreHost;
-import dev.b28.enterprise.locker.Lockers;
 import dev.b28.enterprise.merchant.Merchant;
 import dev.b28.enterprise.settlement.Names;
 import dev.b28.enterprise.wire.Answer;
 import dev.b28.enterprise.wire.Count;
 import dev.b28.enterprise.wire.Input;
+import dev.b28.enterprise.wire.Output;
 import dev.b28.enterprise.wire.Point;
 import dev.b28.enterprise.wire.Query;
 import dev.b28.enterprise.wire.Response;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.event.level.BlockEvent;
-import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.event.level.ChunkEvent;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 /**
- * A desk's stock, from the core (docs/binding-plan.md 2, concern 3, its first slice): a Merchant's desk is a town in
- * the core and its trade point ({@code AddTown}); at each look the chests touching every loaded desk are counted into
- * a {@code Stocktake}, and the core books what changed since the last as goods delivered or taken; what the town holds
- * is the core's to say ({@code Query.Stock}). Chests stay physical: players, hoppers and Create move what's in them,
- * and the core counts it.
+ * A town's stock in its chests, from the core (docs/binding-plan.md 1.5 and 2, concern 3). Chests stay physical:
+ * players, hoppers and Create move what's in them. A Merchant's desk is a town in the core and its trade point ({@code
+ * AddTown}); a depot is one more container of the town's warehouse, away from the desk (a storehouse's chest), a point
+ * of its own ({@link #addDepots}). At each look every loaded desk and depot is counted into a {@code Stocktake} (its
+ * goods, loose and in the shulker boxes kept there, and its empty slots), and the core books what changed since as
+ * goods delivered or taken. Then the core shows the town's stock there: what its own rules moved since (a wagon's
+ * sale, the shelf its Merchant stocks) comes back as {@code Moved}, written to the chests here ({@link #show}); what
+ * didn't fit, or wasn't there to take, goes back as {@code Unmoved} before the point's next stocktake.
  *
- * <p>The adapter keeps no society ids of its own: the desks and their towns are the core's points ({@link
- * PointsAdapter}), and the goods' numbers the core's content, read back from the core when the host starts ({@link
- * #reload}). An item that isn't one of the core's goods isn't counted.
+ * <p><b>Never a blind write.</b> A move is a number of items worked out against a stocktake of the same look, never a
+ * chest's whole contents, so a hopper filling a chest between the count and the write keeps what it put in. A chest
+ * that wasn't counted (its chunks unloaded) isn't written; when its chunk loads it's counted at once ({@link
+ * #onChunkLoad}, {@link #catchUps}), what changed in it meanwhile booked first, then what its town moved shown. No
+ * stocktake is taken while a look's moves are still to be shown.
  *
- * <p>Not yet (B4.3 {@code stock-adapter}): the shulkers kept in a desk's chests, its depots, a desk broken or moved
- * without the host seeing it, and the core's own movements ({@code Moved}) written back to the chests.
+ * <p><b>Whose chests.</b> In core mode the core's moves are written. In Java mode the Java rules own the chests and
+ * the core beside them only counts them: every move goes back unmoved, and the core keeps it on the town's books.
+ *
+ * <p>The adapter keeps no society ids and no stock of its own: the desks, depots and their towns are the core's points
+ * ({@link PointsAdapter}), the goods' numbers the core's content, read back when the host starts ({@link #reload}), and
+ * what a town holds the core's to say ({@link #stockAt}). An item that isn't one of the core's goods isn't counted. A
+ * desk or depot gone without the host seeing it (an explosion, a piston, {@code /setblock}) is removed at the next look
+ * that finds it loaded; a desk placed unseen (a datapack, a structure) is founded when its chunk next loads.
  */
 public final class StockAdapter {
     private final CoreHost host;
-    /** The core's goods by number, and the number of each item that's one. */
+    /** Whether the core's moves are written to the chests (core mode, a test's host), or all sent back unmoved. */
+    private final boolean writes;
+    /** The core's goods by number, the item each is, and the number of each item that's one. */
     private List<String> goods = List.of();
+    private List<Item> items = List.of();
     private Map<Item, Integer> numbers = Map.of();
+    /** What the host couldn't do of the core's moves, for the next look (before any stocktake). */
+    private final List<Input> pending = new ArrayList<>();
+    /** Chunks loaded since the last catch-up, whose points are counted at once (heard on any thread, read on the server's). */
+    private final Set<Loaded> loading = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    /** Whether desks found in a chunk just loaded are taken as towns (the server's host; a test's keeps to its own). */
+    private boolean takesUnseen;
 
-    public StockAdapter(CoreHost host) {
+    private record Loaded(ResourceKey<Level> dim, long chunk) {}
+
+    public StockAdapter(CoreHost host, boolean writes) {
         this.host = host;
+        this.writes = writes;
     }
 
     /** Reads the goods from the core again: what its numbers mean. */
@@ -59,16 +88,29 @@ public final class StockAdapter {
         List<Answer> answers = host.ask(List.of(new Query.Goods()));
         if (answers.get(0) instanceof Answer.Goods g) {
             goods = g.goods();
+            List<Item> byNumber = new ArrayList<>(goods.size());
             Map<Item, Integer> byItem = new HashMap<>();
             for (int i = 0; i < goods.size(); i++) {
                 ResourceLocation id = ResourceLocation.tryParse(goods.get(i));
                 Item item = id == null ? Items.AIR : BuiltInRegistries.ITEM.get(id);
+                byNumber.add(item);
                 if (item != Items.AIR) {
                     byItem.put(item, i);
                 }
             }
+            items = List.copyOf(byNumber);
             numbers = Map.copyOf(byItem);
         }
+    }
+
+    /** Whether the core's moves are written to the chests here. */
+    public boolean writes() {
+        return writes;
+    }
+
+    /** Desks found in chunks as they load are taken as towns from now on (the server's host does; a test's may). */
+    public void takeUnseenDesks() {
+        takesUnseen = true;
     }
 
     /** The town at {@code desk}, if the core keeps a desk there. */
@@ -82,9 +124,15 @@ public final class StockAdapter {
         return host.points().of(PointsAdapter.Kind.DESK);
     }
 
+    /** Every depot the core keeps, with its town. */
+    public Map<GlobalPos, Long> depots() {
+        return host.points().of(PointsAdapter.Kind.DEPOT);
+    }
+
     /**
      * The desk at {@code desk} registered with the core as a town called {@code name}, and its chests counted now (its
-     * first stocktake, from nothing). A desk the core keeps already is left as it is.
+     * first stocktake, from nothing). A desk the core keeps already is left as it is; one put back where a town's desk
+     * stood is that town's again (the core says which).
      *
      * @return the desk's town
      * @throws IllegalStateException when the core refuses it
@@ -98,19 +146,76 @@ public final class StockAdapter {
         // Founded at this tick (the points adapter brings the core to now), not at the last look's, nor at tick 0 of a
         // society new to an old world; its first stocktake booked then too.
         long town = host.points().found(level, desk, name);
-        Response r = host.apply(List.of(new Input.Stocktake(point(at), count(level, desk))));
+        Response r = host.apply(List.of(stocktake(level, PointsAdapter.Kind.DESK, at)));
         if (r instanceof Response.Refused refused) {
             throw new IllegalStateException("the core wouldn't count the desk at " + desk.toShortString() + ": " + refused.why());
         }
         return town;
     }
 
-    /** The desk at {@code desk} broken: no longer the core's point (its town keeps what it held). */
+    /** The desk at {@code desk} broken: no longer the core's point, its chests' goods gone from its town with them. */
     public void forget(ServerLevel level, BlockPos desk) {
         GlobalPos at = GlobalPos.of(level.dimension(), desk);
         if (townAt(at) != null) {
             host.points().remove(at);
         }
+    }
+
+    /**
+     * A building's containers between two corners (inclusive) registered as depots of the town at {@code desk}, each a
+     * point of its own, counted at once (what they hold is delivered to the town). Containers touching the desk (the
+     * desk's own chests), those another point stands at already, and the second half of a double chest are skipped.
+     *
+     * @return the depots added, in their places' order
+     * @throws IllegalStateException when the core keeps no town at {@code desk}
+     */
+    public List<GlobalPos> addDepots(ServerLevel level, BlockPos desk, BlockPos from, BlockPos to) {
+        Long town = townAt(GlobalPos.of(level.dimension(), desk));
+        if (town == null) {
+            throw new IllegalStateException("the core keeps no town at " + desk.toShortString());
+        }
+        Set<BlockPos> desks = new HashSet<>(dev.b28.enterprise.locker.Lockers.touchingContainers(level, desk));
+        List<GlobalPos> added = new ArrayList<>();
+        List<Input> counts = new ArrayList<>();
+        for (BlockPos p : BlockPos.betweenClosed(from, to)) {
+            if (!StockChests.isContainer(level, p)) {
+                continue;
+            }
+            BlockPos key = dev.b28.enterprise.locker.Lockers.canonicalContainer(p.immutable(), level.getBlockState(p));
+            GlobalPos at = GlobalPos.of(level.dimension(), key);
+            if (desks.contains(key) || added.contains(at) || host.points().at(at) != null) {
+                continue;
+            }
+            String why = host.points().add(at, PointsAdapter.Kind.DEPOT, town);
+            if (why != null) {
+                Enterprise.LOGGER.warn("The core wouldn't take a depot at {}: {}", key.toShortString(), why);
+                continue;
+            }
+            added.add(at);
+            counts.add(stocktake(level, PointsAdapter.Kind.DEPOT, at));
+        }
+        if (!counts.isEmpty()) {
+            host.apply(counts);
+        }
+        return added;
+    }
+
+    /** The depots between two corners removed, their goods gone from their towns with them. Returns how many. */
+    public int removeDepots(ServerLevel level, BlockPos from, BlockPos to) {
+        int removed = 0;
+        for (GlobalPos at : depots().keySet()) {
+            BlockPos p = at.pos();
+            if (at.dimension() == level.dimension() && between(p, from, to) && host.points().remove(at)) {
+                removed++;
+            }
+        }
+        return removed;
+    }
+
+    private static boolean between(BlockPos p, BlockPos a, BlockPos b) {
+        return p.getX() >= Math.min(a.getX(), b.getX()) && p.getX() <= Math.max(a.getX(), b.getX())
+                && p.getY() >= Math.min(a.getY(), b.getY()) && p.getY() <= Math.max(a.getY(), b.getY())
+                && p.getZ() >= Math.min(a.getZ(), b.getZ()) && p.getZ() <= Math.max(a.getZ(), b.getZ());
     }
 
     /**
@@ -134,8 +239,8 @@ public final class StockAdapter {
     }
 
     /**
-     * A Merchant's desk broken: its point gone from the core, its town and what it held kept. Heard last, as
-     * {@link #onPlaced}, so a break another listener cancels keeps the point; failures are logged, not thrown.
+     * A Merchant's desk broken: its point gone from the core, its chests' goods with it. Heard last, as {@link
+     * #onPlaced}, so a break another listener cancels keeps the point; failures are logged, not thrown.
      */
     public static void onBroken(BlockEvent.BreakEvent event) {
         if (event.getLevel() instanceof ServerLevel level && event.getState().is(Merchant.DESK.get())) {
@@ -150,22 +255,174 @@ public final class StockAdapter {
         }
     }
 
-    /**
-     * A look's happenings: a stocktake at every desk the core keeps that is still a desk, with it and every block
-     * touching it loaded (a look never loads a chunk to count a chest).
-     */
-    public List<Input> happenings(MinecraftServer server) {
-        List<Input> inputs = new ArrayList<>();
-        for (GlobalPos desk : desks().keySet()) {
-            ServerLevel level = server.getLevel(desk.dimension());
-            if (level != null && loaded(level, desk.pos()) && level.getBlockState(desk.pos()).is(Merchant.DESK.get())) {
-                inputs.add(new Input.Stocktake(point(desk), count(level, desk.pos())));
+    /** A chunk loaded: its desks and depots are counted at the next tick ({@link #catchUps}), before players reach them. */
+    public static void onChunkLoad(ChunkEvent.Load event) {
+        if (event.getLevel() instanceof ServerLevel level) {
+            CoreHost host = CoreHost.of(level.getServer());
+            if (host != null && host.pausedWhy() == null) {
+                host.stock().loaded(level, event.getChunk().getPos());
             }
+        }
+    }
+
+    /** The chunk at {@code chunk} loaded in {@code level}: its points to be counted at once. */
+    public void loaded(ServerLevel level, ChunkPos chunk) {
+        loading.add(new Loaded(level.dimension(), chunk.toLong()));
+    }
+
+    /**
+     * A look's stocktakes: every desk and depot the core keeps that is loaded (with every block touching it), counted.
+     * A desk that isn't one any more, or a depot that isn't a container, is removed from the core first: gone unseen.
+     */
+    public List<Input> stocktakes(MinecraftServer server) {
+        List<Input> inputs = new ArrayList<>();
+        for (Map.Entry<GlobalPos, PointsAdapter.Placed> e : new ArrayList<>(host.points().all().entrySet())) {
+            PointsAdapter.Kind kind = e.getValue().kind();
+            if (kind != PointsAdapter.Kind.DESK && kind != PointsAdapter.Kind.DEPOT) {
+                continue;
+            }
+            GlobalPos at = e.getKey();
+            ServerLevel level = server.getLevel(at.dimension());
+            if (level == null || !loaded(level, at.pos())) {
+                continue;
+            }
+            if (!stands(level, kind, at.pos())) {
+                Enterprise.LOGGER.info("The {} at {} is gone; the core forgets it", kind.name().toLowerCase(), at.pos().toShortString());
+                host.points().remove(at);
+                continue;
+            }
+            inputs.add(stocktake(level, kind, at));
         }
         return inputs;
     }
 
-    /** The block at {@code pos} and the six touching it are in loaded chunks. */
+    /**
+     * The stocktakes of the points in the chunks loaded since the last catch-up (and at their edges), and desks placed
+     * unseen in them founded: what a look would count of them, now. Empty when no chunk has loaded.
+     */
+    public List<Input> catchUps(MinecraftServer server) {
+        if (loading.isEmpty()) {
+            return List.of();
+        }
+        Set<Loaded> chunks = new HashSet<>();
+        for (var it = loading.iterator(); it.hasNext(); ) {
+            chunks.add(it.next());
+            it.remove();
+        }
+        for (Loaded c : takesUnseen ? chunks : Set.<Loaded>of()) {
+            ServerLevel level = server.getLevel(c.dim());
+            if (level != null) {
+                foundUnseen(level, new ChunkPos(c.chunk()));
+            }
+        }
+        List<Input> inputs = new ArrayList<>();
+        for (Map.Entry<GlobalPos, PointsAdapter.Placed> e : host.points().all().entrySet()) {
+            PointsAdapter.Kind kind = e.getValue().kind();
+            GlobalPos at = e.getKey();
+            ServerLevel level = server.getLevel(at.dimension());
+            if ((kind != PointsAdapter.Kind.DESK && kind != PointsAdapter.Kind.DEPOT) || level == null
+                    || !touches(chunks, at) || !loaded(level, at.pos()) || !stands(level, kind, at.pos())) {
+                continue;
+            }
+            inputs.add(stocktake(level, kind, at));
+        }
+        return inputs;
+    }
+
+    /** Desks in a chunk just loaded that the core doesn't keep (placed while the host wasn't looking): founded. */
+    private void foundUnseen(ServerLevel level, ChunkPos chunk) {
+        level.getPoiManager().getInChunk(type -> type.is(Merchant.DESK_POI.getKey()), chunk, PoiManager.Occupancy.ANY)
+                .map(poi -> poi.getPos().immutable())
+                .filter(pos -> host.points().at(GlobalPos.of(level.dimension(), pos)) == null)
+                .filter(pos -> level.getBlockState(pos).is(Merchant.DESK.get()) && loaded(level, pos))
+                .toList()
+                .forEach(pos -> {
+                    try {
+                        found(level, pos, Names.of(level.getServer(), GlobalPos.of(level.dimension(), pos)));
+                        Enterprise.LOGGER.info("The core takes the desk at {}, placed unseen", pos.toShortString());
+                    } catch (RuntimeException ex) {
+                        Enterprise.LOGGER.error("The core didn't take the desk at {}", pos.toShortString(), ex);
+                    }
+                });
+    }
+
+    private static boolean touches(Set<Loaded> chunks, GlobalPos at) {
+        if (chunks.contains(new Loaded(at.dimension(), ChunkPos.asLong(at.pos())))) {
+            return true;
+        }
+        for (Direction dir : Direction.Plane.HORIZONTAL) {
+            if (chunks.contains(new Loaded(at.dimension(), ChunkPos.asLong(at.pos().relative(dir))))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** What the host couldn't do of the core's moves since the last look, for the next one (taken: sent once). */
+    public List<Input> pending() {
+        List<Input> out = List.copyOf(pending);
+        pending.clear();
+        return out;
+    }
+
+    /**
+     * One of the core's moves at a desk or a depot: so many of a good put in or taken out of its chests (core mode), as
+     * far as they go. What couldn't be done (no room, gone already, the chunk unloaded since the count, or Java mode)
+     * is sent back as {@code Unmoved}. A move for a point the host no longer has is dropped: the core forgot it too.
+     */
+    public void show(Output.Moved moved) {
+        GlobalPos at = PointsAdapter.place(moved.point());
+        PointsAdapter.Placed p = host.points().at(at);
+        if (p == null) {
+            return;
+        }
+        long left = moved.count();
+        Item item = moved.good() < items.size() ? items.get((int) moved.good()) : Items.AIR;
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        ServerLevel level = server == null ? null : server.getLevel(at.dimension());
+        if (writes && item != Items.AIR && level != null && loaded(level, at.pos())) {
+            StockChests chests = StockChests.at(level, p.kind(), at.pos());
+            left = left > 0 ? chests.put(item, left) : -chests.take(item, -left);
+        }
+        if (left != 0) {
+            Enterprise.LOGGER.debug("{} of good {} not moved at {}", left, moved.good(), at.pos().toShortString());
+            pending.add(new Input.Unmoved(moved.point(), moved.good(), left));
+        }
+    }
+
+    /** The point's chests counted: every good of the core's they hold (shulker boxes' goods included), and their empty slots. */
+    public Input.Stocktake stocktake(ServerLevel level, PointsAdapter.Kind kind, GlobalPos at) {
+        StockChests chests = StockChests.at(level, kind, at.pos());
+        Map<Integer, Long> held = new TreeMap<>();
+        chests.held().forEach((item, n) -> {
+            Integer good = numbers.get(item);
+            if (good != null) {
+                held.merge(good, n, Long::sum);
+            }
+        });
+        List<Count> counts = new ArrayList<>(held.size());
+        held.forEach((good, n) -> counts.add(new Count(good, n.doubleValue())));
+        return new Input.Stocktake(PointsAdapter.point(kind, at), counts, chests.free());
+    }
+
+    /** What the chests at a point hold now of each of the core's goods, by name (for a command or a test to compare). */
+    public Map<String, Long> counted(ServerLevel level, PointsAdapter.Kind kind, BlockPos pos) {
+        Map<String, Long> out = new LinkedHashMap<>();
+        StockChests.at(level, kind, pos).held().forEach((item, n) -> {
+            Integer good = numbers.get(item);
+            if (good != null) {
+                out.merge(goods.get(good), n, Long::sum);
+            }
+        });
+        return out;
+    }
+
+    /** Is the point still there: a desk still a desk, a depot still a container. */
+    private static boolean stands(ServerLevel level, PointsAdapter.Kind kind, BlockPos pos) {
+        return kind == PointsAdapter.Kind.DESK ? level.getBlockState(pos).is(Merchant.DESK.get()) : StockChests.isContainer(level, pos);
+    }
+
+    /** The block at {@code pos} and the six touching it are in loaded chunks (a look never loads a chunk to count a chest). */
     private static boolean loaded(ServerLevel level, BlockPos pos) {
         if (!level.isLoaded(pos)) {
             return false;
@@ -176,22 +433,6 @@ public final class StockAdapter {
             }
         }
         return true;
-    }
-
-    /** What the chests touching {@code desk} hold now of each of the core's goods (others aren't counted). */
-    public List<Count> count(ServerLevel level, BlockPos desk) {
-        IItemHandler chests = Lockers.inventory(level, Lockers.touchingContainers(level, desk));
-        Map<Integer, Long> held = new TreeMap<>();
-        for (int slot = 0; slot < chests.getSlots(); slot++) {
-            ItemStack stack = chests.getStackInSlot(slot);
-            Integer good = stack.isEmpty() ? null : numbers.get(stack.getItem());
-            if (good != null) {
-                held.merge(good, (long) stack.getCount(), Long::sum);
-            }
-        }
-        List<Count> counts = new ArrayList<>(held.size());
-        held.forEach((good, n) -> counts.add(new Count(good, n.doubleValue())));
-        return counts;
     }
 
     /**
@@ -214,6 +455,31 @@ public final class StockAdapter {
             }
         }
         return held;
+    }
+
+    /** A point's chests as the core takes them to be: what they hold by good, their empty slots, what they came up short. */
+    public record Chests(long town, Map<String, Double> held, long free, Map<String, Double> shortBy) {}
+
+    /** The chests at {@code at} as the core takes them to be, or null if the core keeps no point there. */
+    public Chests chestsAt(GlobalPos at) {
+        PointsAdapter.Placed p = host.points().at(at);
+        if (p == null) {
+            return null;
+        }
+        if (host.ask(List.of(new Query.Chests(PointsAdapter.point(p.kind(), at)))).get(0) instanceof Answer.Chests c) {
+            return new Chests(c.town(), byName(c.held()), c.free(), byName(c.short_()));
+        }
+        throw new IllegalStateException("the core answered Chests with something else");
+    }
+
+    private Map<String, Double> byName(List<Double> counts) {
+        Map<String, Double> out = new LinkedHashMap<>();
+        for (int good = 0; good < counts.size() && good < goods.size(); good++) {
+            if (counts.get(good) != 0) {
+                out.put(goods.get(good), counts.get(good));
+            }
+        }
+        return out;
     }
 
     /** A desk's place as the core keeps it: the dimension's id and the block. */

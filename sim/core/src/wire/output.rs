@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{GoodNo, HandNo, PackageLine, Place, RouteNo, TownNo};
+use super::{GoodNo, HandNo, PackageLine, Place, Point, RouteNo, TownNo};
 use crate::fixed::Fixed;
 
 /// What happened, for the host to show.
@@ -35,4 +35,9 @@ pub enum Output {
     HandGone { hand: HandNo, tag: String },
     /// The core changed a hand's trade, level or XP (a trade taken up, a locker's trade): written to its villager.
     HandLevel { hand: HandNo, tag: String, trade: String, level: u8, xp: u32 },
+    /// Items for the host to put in a desk's or a depot's chests (`count` above nothing) or take out of them (below):
+    /// what the core moved in or out of its town's stock (a wagon's sale, its people eating) since the chests were
+    /// counted, in whole items, after a stocktake there in the same look. The core takes the chests to hold it from now
+    /// on; what the host can't do it sends back as `Unmoved`.
+    Moved { point: Point, good: GoodNo, count: i64 },
 }
