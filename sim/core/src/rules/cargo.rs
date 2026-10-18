@@ -77,6 +77,12 @@ fn reckon(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, 
     }
 }
 
+/// Where a pallet made out to `to` drops, riding from stretch `from` on the route's wagon, where only a leg's end can take
+/// it (no hub's forwarder in it: `rules/freight.rs` `drop_for` for those): `to`'s call, if a leg ahead ends there.
+fn drop_at_end(route: &Route, wagon: &Wagon, to: TownId, from: usize) -> Option<TownId> {
+    super::freight::drop_for(None, route, wagon, to, from)
+}
+
 /// What a town can spare beyond its reserve (trading capital and wage float), for crates.
 pub(super) fn spare(content: &Content, money: crate::fixed::Fixed, trades: &Trades, farm: Option<&Farm>) -> crate::fixed::Fixed {
     money - super::farms::reserve(content, trades, farm)
@@ -257,14 +263,19 @@ pub(crate) fn ship(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Bo
             else { continue };
         let Ok((mut money, trades, farm, mut store, mut paperwork)) = towns.get_mut(route.from) else { continue };
         let (home, seq) = (route.from_id, route.seq);
-        // The pallets planned (their lines written as the plan went), from home's.
+        // The pallets planned (their lines written as the plan went), from home's, each dropping at its consignee's call
+        // (`itinerary-drops`: the far end's, where the plan found them made out to).
         let mut crated: Vec<(usize, f64)> = Vec::new();
-        for line in std::mem::take(&mut wagon.manifest.lines) {
+        for mut line in std::mem::take(&mut wagon.manifest.lines) {
             // Claimed by this route's plan at the look's start, so no other wagon's plan took it (`pallet-claims`).
             let p = pallets.get(line.pallet).expect("a pallet on a manifest is in the registry");
             assert!(p.at == At::Town(home) && p.claimed == Some(seq), "a pallet on a manifest is home's, claimed by its plan");
             pallets.release(line.pallet);
             let p = pallets.get(line.pallet).unwrap();
+            line.drop = drop_at_end(&route, wagon, p.lading.consignee, 0);
+            if line.drop.is_none() {
+                continue; // no drop, no load: it stays home (the plan claims only what's made out to the far end)
+            }
             if let Some(id) = p.lading.contract {
                 let count = p.count();
                 book.ship(id, count);
@@ -285,7 +296,8 @@ pub(crate) fn ship(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Bo
                 At::Town(home), How::OWED);
             wagon.cargo[g] -= packed.of(g);
             for p in packed.ids {
-                put_aboard(&mut pallets, wagon, seq, Line { pallet: p, ..Default::default() }, home, now);
+                let drop = drop_at_end(&route, wagon, route.to_id, 0);
+                put_aboard(&mut pallets, wagon, seq, Line { pallet: p, drop, ..Default::default() }, home, now);
             }
         }
         for (id, n) in crated {
@@ -347,8 +359,8 @@ fn pay_owing(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, m
 /// At the far end, before the goods owed are delivered: its Merchant opens the pallets made out to it, at its premises: a
 /// copy of the contract is now its copy, the goods are delivered under the contract or sold like any
 /// (`rules/contracts.rs`, `rules/arrive.rs`), the empty crates kept to ship with.
-pub(crate) fn open(content: Res<Content>, mut book: ResMut<Book>, mut pallets: ResMut<Pallets>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
-        mut stores: Query<&mut Shipments>) {
+pub(crate) fn open(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut pallets: ResMut<Pallets>,
+        mut routes: Query<(Entity, &Route, &mut RouteState)>, mut stores: Query<&mut Shipments>) {
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(entity).unwrap();
         if state.arrived != Some(Leg::Out) {
@@ -356,15 +368,16 @@ pub(crate) fn open(content: Res<Content>, mut book: ResMut<Book>, mut pallets: R
         }
         let route = *route;
         let wagon = state.wagon.as_mut().unwrap();
-        let here: Vec<PalletId> = pallets.at_place(At::Wagon(route.seq)).filter(|p| p.consigned_to(route.to_id))
-            .map(|p| p.id).collect();
-        if here.is_empty() {
+        // The call's drop (`itinerary-drops`): the lines that drop here, made out here.
+        let here_ok = pallets.at_place(At::Wagon(route.seq)).any(|p| p.consigned_to(route.to_id));
+        if !here_ok {
             continue;
         }
         let Ok(mut store) = stores.get_mut(route.to) else { continue };
+        let here = cargo::drop_off(&mut pallets, wagon, route.seq, route.to_id, false, clock.now,
+            |p, _| p.consigned_to(route.to_id));
         for id in here {
             let p = pallets.open(id).expect("aboard");
-            wagon.manifest.take(id);
             if let Some(id) = p.lading.contract.filter(|_| p.lading.copy) {
                 book.deliver_copy(id, route.to_id);
             }
@@ -394,12 +407,16 @@ fn fetch(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut pallets:
         // As far as its crew carries (`caravan.capacity()`: a squad's packs, a porter's one; 0, a plain wagon's), in
         // slots, weight and pallets (`pallet-caps`).
         wagon.empties += store.spare_empties(content.dials.empties_kept);
+        // Picked up at the far end for home, the call after (`itinerary-drops`), fitting every stretch there.
+        let from = wagon.itinerary.after(route.to_id);
         let there: Vec<PalletId> = pallets.at(At::Town(route.to_id)).to_vec();
         for id in there {
             let h = pallets.get(id).unwrap();
             let collected = !h.lading.prepaid() && h.lading.contract.is_some_and(|id| !book.contracts[id].incoterm.seller_carries());
-            if h.consigned_to(route.from_id) && !collected && cargo::fits(&content, &pallets, route.seq, wagon, h) {
-                put_aboard(&mut pallets, wagon, route.seq, Line { pallet: id, ..Default::default() }, route.to_id, clock.now);
+            if h.consigned_to(route.from_id) && !collected {
+                let drop = drop_at_end(&route, wagon, route.from_id, from);
+                cargo::pick_up(&content, &mut pallets, wagon, route.seq, Line { pallet: id, drop, ..Default::default() },
+                    route.to_id, from, clock.now);
             }
         }
     }
@@ -453,10 +470,9 @@ pub(crate) fn unload(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             continue;
         }
         let wagon = state.wagon.as_mut().unwrap();
-        // A consolidation still aboard (one whose stop wasn't home) comes off whole and dissolves, its pallets dropped by
-        // line as any (`superbills`).
-        cargo::unconsolidate(&mut pallets, wagon, route.seq, None, clock.now);
-        let aboard: Vec<PalletId> = pallets.at(At::Wagon(route.seq)).to_vec();
+        // Home, the trip's end: the call's drop takes everything left (`itinerary-drops`), a consolidation still aboard
+        // (one whose stop wasn't home) whole first, its pallets dropped by line as any (`superbills`).
+        let aboard = cargo::drop_off(&mut pallets, wagon, route.seq, route.from_id, true, clock.now, |_, _| true);
         if aboard.is_empty() && wagon.for_sale.is_empty() && wagon.empties == 0 {
             continue;
         }
@@ -464,7 +480,6 @@ pub(crate) fn unload(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         store.empties += std::mem::take(&mut wagon.empties);
         // (Its lots for sale went back aboard after the sale, last of all: home's pallets came before them.)
         for id in aboard {
-            wagon.manifest.take(id);
             if pallets.get(id).unwrap().consigned_to(route.from_id) {
                 let p = pallets.open(id).unwrap();
                 cargo::receive(&content, &mut book, clock.now, route.from_id, &mut stock.0, &mut store, &p);

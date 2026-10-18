@@ -52,4 +52,5 @@ slices! {
     trade_points,
     hands,
     census,
+    itinerary_drops,
 }

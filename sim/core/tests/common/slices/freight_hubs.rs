@@ -91,14 +91,14 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
         }
     }
     for route in 0..s.route_count() {
-        let Some(f) = s.wagon_freight(route) else { continue };
+        let Some(it) = s.wagon_itinerary(route) else { continue };
         let (aboard, ..) = s.wagon_pallets(route);
         let manifest = s.wagon_manifest(route).unwrap_or_default();
         if let Some(x) = manifest.lines.iter().filter(|l| l.booking.is_some()).find(|l| !aboard.iter().any(|p| p.id == l.pallet)) {
             return Err(format!("route {route}'s wagon has {x:?} on freight, not aboard"));
         }
-        if let Some(stop) = f.stop.filter(|stop| !s.is_hub(stop.hub)) {
-            return Err(format!("route {route}'s wagon stops at {}, not a hub", stop.hub));
+        if let Some(stop) = it.on_way().iter().find(|c| !s.is_hub(c.town)) {
+            return Err(format!("route {route}'s wagon stops at {}, not a hub", stop.town));
         }
     }
     Ok(())

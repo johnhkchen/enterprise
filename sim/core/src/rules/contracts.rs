@@ -119,7 +119,10 @@ pub(crate) fn collect(clock: Res<Clock>, content: Res<Content>, mut book: ResMut
             let lent = banks.owed_to(route.from_id, id);
             // As far as the wagon has room, in slots, weight and pallets, as the seller will pack it (`collectExWorks`'s
             // `room`; `pallet-caps`).
-            let caps = crate::cargo::wagon_room(&content, &pallets, route.seq, wagon);
+            // On every stretch home, where they drop (`itinerary-drops`).
+            let from = wagon.itinerary.after(route.to_id);
+            let drop = super::freight::drop_for(None, &route, wagon, c.buyer, from);
+            let caps = crate::cargo::room_to(&content, &pallets, route.seq, wagon, from, drop);
             let room = caps.palleted(&content, c.good);
             let n = c.owed(now).min(stock.0[c.good] + crated).min(((wagon.purse + lent).to_f64() / c.price.max(1e-9)).floor())
                 .min(room.floor());
@@ -134,7 +137,7 @@ pub(crate) fn collect(clock: Res<Clock>, content: Res<Content>, mut book: ResMut
             let ids = super::cargo::collect_pallets(&content, &mut ledger, &mut cash, now, &mut pallets, route.to_id,
                 &mut money.0, &mut stock.0, trades, farm, &mut store, &mut paperwork, c, n, caps);
             for p in ids {
-                crate::cargo::put_aboard(&mut pallets, wagon, route.seq, crate::pallet::Line { pallet: p, ..Default::default() },
+                crate::cargo::put_aboard(&mut pallets, wagon, route.seq, crate::pallet::Line { pallet: p, drop, ..Default::default() },
                     route.to_id, now);
             }
             // A loan from this wagon's bank on the contract comes out of the payment first (`bank.rs`).

@@ -626,9 +626,84 @@ pub fn fits(content: &Content, pallets: &Pallets, route: RouteId, wagon: &Wagon,
     wagon_caps(content, wagon).holds(&wagon_load(content, pallets, route, wagon).and(Load::of_pallet(content, pallet)))
 }
 
+/// What a wagon carries on stretch `k` of its leg, for a pallet riding from stretch `from` (`itinerary-drops`; the
+/// stretches are [`crate::freight::Itinerary`]'s): its loose cargo, the pallets aboard that ride it (their drop that
+/// call or a later one, or beyond the leg; one whose drop is behind `from` and is still aboard rides on until it comes
+/// off) and its lots for sale, counted in [`wagon_load`]'s order: on stretch `from` everything aboard rides, so that
+/// stretch's load is [`wagon_load`] to the bit.
+pub fn stretch_load(content: &Content, pallets: &Pallets, route: RouteId, wagon: &Wagon, from: usize, k: usize) -> Load {
+    let it = &wagon.itinerary;
+    let rides = |p: &&Pallet| it.ride_to(from, wagon.manifest.drop_of(p.id, pallets)) >= k;
+    let mut load = Load::of(content, &wagon.cargo, pallets.aboard(route, &wagon.manifest).filter(rides));
+    for pk in wagon.for_sale.iter().flat_map(|l| &l.packages) {
+        load.slots += pk.slots(content);
+        load.weight += pk.weight(content);
+    }
+    load
+}
+
+/// The most a wagon carries on any stretch a pallet loaded now rides, from stretch `from` to its drop (`docs/pallets.md`
+/// section 3, the fit per stretch): drops on the way free room for what's loaded after them. What's aboard all rides the
+/// first stretch, so with no space spoken for on a later one (none is, yet) the first binds: [`wagon_load`].
+pub fn stretch_peak(content: &Content, pallets: &Pallets, route: RouteId, wagon: &Wagon, from: usize, drop: Option<TownId>)
+        -> Load {
+    let to = wagon.itinerary.ride_to(from, drop);
+    let mut peak = stretch_load(content, pallets, route, wagon, from, from);
+    for k in from + 1..=to {
+        let l = stretch_load(content, pallets, route, wagon, from, k);
+        peak = Load { slots: peak.slots.max(l.slots), weight: peak.weight.max(l.weight), pallets: peak.pallets.max(l.pallets) };
+    }
+    peak
+}
+
+/// The room a wagon has for pallets loaded now that ride from stretch `from` to `drop`: its caps less the most it carries
+/// on those stretches ([`stretch_peak`]).
+pub fn room_to(content: &Content, pallets: &Pallets, route: RouteId, wagon: &Wagon, from: usize, drop: Option<TownId>) -> Caps {
+    wagon_caps(content, wagon).less(&stretch_peak(content, pallets, route, wagon, from, drop))
+}
+
+/// Whether a pallet fits on a wagon on every stretch it would ride, from `from` to its drop (the fit per stretch).
+pub fn fits_to(content: &Content, pallets: &Pallets, route: RouteId, wagon: &Wagon, pallet: &Pallet, from: usize,
+        drop: Option<TownId>) -> bool {
+    wagon_caps(content, wagon).holds(&stretch_peak(content, pallets, route, wagon, from, drop).and(Load::of_pallet(content, pallet)))
+}
+
+/// A call's pickup (`docs/pallets.md` section 3): a pallet at `by` loaded for a later call, riding from stretch `from`:
+/// only with a drop (no drop, no load) and only if it fits every stretch to it; aboard with its line ([`put_aboard`]).
+/// Whether it went.
+#[allow(clippy::too_many_arguments)]
+pub fn pick_up(content: &Content, pallets: &mut Pallets, wagon: &mut Wagon, route: RouteId, line: Line, by: TownId,
+        from: usize, now: u64) -> bool {
+    let Some(p) = pallets.get(line.pallet) else { return false };
+    if line.drop.is_none() || !fits_to(content, pallets, route, wagon, p, from, line.drop) {
+        return false;
+    }
+    put_aboard(pallets, wagon, route, line, by, now);
+    true
+}
+
+/// A call's drop (`docs/pallets.md` section 3): at `here`, the consolidations whose stop it is come off whole first
+/// ([`unconsolidate`]; at the trip's end, `everything`: every one), then the loose lines whose drop is `here` (at the
+/// trip's end, every line left) that `off` takes, in the order aboard: off the manifest, and still aboard in the
+/// registry for the caller to deliver, hand on or shelve as the call does. Their ids, in that order.
+pub fn drop_off(pallets: &mut Pallets, wagon: &mut Wagon, route: RouteId, here: TownId, everything: bool, now: u64,
+        off: impl Fn(&Pallet, &Line) -> bool) -> Vec<PalletId> {
+    unconsolidate(pallets, wagon, route, (!everything).then_some(here), now);
+    let ids: Vec<PalletId> = pallets.at_place(At::Wagon(route)).filter(|p| match wagon.manifest.line(p.id) {
+        Some(l) => (everything || l.drop == Some(here)) && off(p, l),
+        None => everything && off(p, &Line { pallet: p.id, ..Default::default() }), // (none should be aboard without one)
+    }).map(|p| p.id).collect();
+    for &id in &ids {
+        wagon.manifest.take(id);
+    }
+    ids
+}
+
 /// A pallet loaded onto a route's wagon as it leaves `by`'s premises (or a hub's custody): moved aboard (the back of its
-/// load), sealed (`docs/pallets.md` "Sealed in transit"), and its line on the wagon's manifest.
+/// load), sealed (`docs/pallets.md` "Sealed in transit"), and its line on the wagon's manifest, which says where it
+/// drops (`itinerary-drops`: no drop, no load).
 pub fn put_aboard(pallets: &mut Pallets, wagon: &mut Wagon, route: RouteId, line: Line, by: TownId, now: u64) {
+    assert!(line.drop.is_some(), "a pallet loads only with a drop: {line:?}");
     pallets.move_to(line.pallet, At::Wagon(route), now);
     pallets.seal_leaving(line.pallet, by, now);
     wagon.manifest.lines.push(line);

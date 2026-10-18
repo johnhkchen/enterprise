@@ -763,20 +763,127 @@ pub fn load_run(pallets: &mut Pallets, wagon: &mut crate::state::Wagon, route: R
     made
 }
 
-/// The hub a wagon calls at on its leg, called there yet or not, and the ticks of road left after it.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub struct Stop {
-    pub hub: TownId,
-    pub called: bool,
-    pub remaining: u64,
+/// A call on a leg (`docs/pallets.md` section 3): the town, and the ticks of road to it from the call before (or from
+/// setting out).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Call {
+    pub town: TownId,
+    pub ticks: u64,
 }
 
-/// A wagon's freight (`Wagon.freight`): the hub it calls at on this leg (and the leg its stop was reckoned for). Its
-/// pallets on freight tickets, and those the hub's own wagon carries for its forwarder, are lines on its manifest
+/// A leg's calls in order (`Wagon.itinerary`, task `itinerary-drops`; `Caravans.setStop` and `callAtStop` for the one
+/// call on the way today's routes make): its last call is where the leg ends (the far end out, home back), the calls
+/// before it are on the way (a hub whose land its road crosses: [`Network::stop_on`]). `next` is the call it's bound
+/// for, or making: the calls before it are made. A wagon sets out with its leg's end ([`Itinerary::direct`]); the call
+/// on its way is put in as it leaves ([`Itinerary::call_on_way`]).
+///
+/// **Stretches.** The road into call `k` is stretch `k`; a pallet loaded setting out rides from stretch 0, one loaded at
+/// call `k` from stretch `k + 1` ([`Itinerary::after`]), one loaded at the leg's end rides the leg after (stretch
+/// `calls.len()`, "beyond"). It rides every stretch to its drop's call; a drop on a later leg is beyond.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Itinerary {
+    pub calls: Vec<Call>,
+    pub next: usize,
+}
+
+impl Itinerary {
+    /// A leg straight to `to`, `ticks` of road.
+    pub fn direct(to: TownId, ticks: u64) -> Itinerary {
+        Itinerary { calls: vec![Call { town: to, ticks }], next: 0 }
+    }
+
+    /// A call at `hub` on the way to the leg's end, `share` of the way along the last stretch (`setStop`): that stretch
+    /// split at the hub, the rest kept for after. Returns the ticks to the hub.
+    pub fn call_on_way(&mut self, hub: TownId, share: f64) -> u64 {
+        let Some(last) = self.calls.len().checked_sub(1) else { return 0 };
+        let leg = self.calls[last].ticks;
+        let to = (leg as f64 * share) as u64;
+        self.calls[last].ticks = leg - to;
+        self.calls.insert(last, Call { town: hub, ticks: to });
+        to
+    }
+
+    /// Where the leg ends.
+    pub fn end(&self) -> Option<TownId> {
+        self.calls.last().map(|c| c.town)
+    }
+
+    /// The calls on the way (all but the end), in order.
+    pub fn on_way(&self) -> &[Call] {
+        &self.calls[..self.calls.len().saturating_sub(1)]
+    }
+
+    /// The call it's bound for, if it's one on the way (not the leg's end): the call `callAtStop` makes when it gets there.
+    pub fn next_on_way(&self) -> Option<Call> {
+        (self.next + 1 < self.calls.len()).then(|| self.calls[self.next])
+    }
+
+    /// The call it was bound for is made: on to the next. Returns the ticks of road to it.
+    pub fn made(&mut self) -> u64 {
+        self.next += 1;
+        self.calls.get(self.next).map_or(0, |c| c.ticks)
+    }
+
+    /// The call on the way it made this look, if it did: it's bound for the next, set on `arrives` exactly that
+    /// stretch from `now` (the look that made it is the only one where that holds).
+    pub fn called_on_way(&self, now: u64, arrives: u64) -> Option<TownId> {
+        let made = self.next.checked_sub(1)?;
+        let on = self.calls.get(self.next)?;
+        (arrives == now + on.ticks).then(|| self.calls[made].town)
+    }
+
+    /// The stretch a pallet loaded at `here` rides from: the one after `here`'s call (the last of that town among the
+    /// calls made or making), or the first, setting out (`here` not yet called at).
+    pub fn after(&self, here: TownId) -> usize {
+        let upto = (self.next + 1).min(self.calls.len());
+        self.calls[..upto].iter().rposition(|c| c.town == here).map_or(0, |i| i + 1)
+    }
+
+    /// The last stretch a pallet riding from `from` rides to its drop: its drop's call among those from `from` on, else
+    /// beyond this leg (`calls.len()`: a drop on the leg after, or none).
+    pub fn ride_to(&self, from: usize, drop: Option<TownId>) -> usize {
+        let len = self.calls.len();
+        drop.and_then(|d| self.calls.get(from..).and_then(|ahead| ahead.iter().position(|c| c.town == d)))
+            .map_or(len, |i| from + i)
+    }
+
+    /// The calls ahead of a pallet riding from `from`, each with whether a leg ends there: this leg's from `from` on
+    /// (its end, or `leg_end` for a leg with no calls written), then, going out, the way back: the calls on this leg's
+    /// way in reverse (the route calls at the same hub both ways: [`Network::stop_on`]) and `home`.
+    pub fn ahead(&self, from: usize, out: bool, leg_end: TownId, home: TownId) -> Vec<(TownId, bool)> {
+        let mut ahead: Vec<(TownId, bool)> = if self.calls.is_empty() {
+            if from == 0 { vec![(leg_end, true)] } else { Vec::new() }
+        } else {
+            let last = self.calls.len() - 1;
+            self.calls.iter().enumerate().skip(from).map(|(i, c)| (c.town, i == last)).collect()
+        };
+        if out {
+            ahead.extend(self.on_way().iter().rev().map(|c| (c.town, false)));
+            ahead.push((home, true));
+        }
+        ahead
+    }
+
+    /// A pallet's drop as it loads (`docs/pallets.md` section 3): its consignee, where a leg ahead ends there; else the
+    /// first call ahead whose hub `forwards` it on (not home: nothing is handed on there). None: it has no drop on this
+    /// trip, and doesn't load. A call on the way receives nothing made out to it (`callAtStop` hands over and loads
+    /// only): goods for a hub on the way go to the first hub ahead that forwards them, as they always have.
+    #[allow(clippy::too_many_arguments)]
+    pub fn drop_for(&self, consignee: TownId, from: usize, out: bool, leg_end: TownId, home: TownId,
+            forwards: impl Fn(TownId) -> bool) -> Option<TownId> {
+        let ahead = self.ahead(from, out, leg_end, home);
+        if let Some(&(t, _)) = ahead.iter().find(|&&(t, end)| end && t == consignee) {
+            return Some(t);
+        }
+        ahead.iter().map(|&(t, _)| t).find(|&t| t != home && forwards(t))
+    }
+}
+
+/// A wagon's freight (`Wagon.freight`): the leg its calls were last reckoned for (its itinerary is `Wagon.itinerary`).
+/// Its pallets on freight tickets, and those the hub's own wagon carries for its forwarder, are lines on its manifest
 /// (`Wagon.manifest`).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Aboard {
-    pub stop: Option<Stop>,
     pub reckoned: Option<crate::state::Leg>,
 }
 
@@ -1073,10 +1180,15 @@ impl Society {
         self.world.get::<RouteState>(self.routes[route]).map(|s| s.freight.clone()).unwrap_or_default()
     }
 
-    /// The freight of a route's wagon on the road: its stop (its pallets on freight tickets are lines on its manifest:
-    /// [`Society::wagon_manifest`]).
+    /// The freight of a route's wagon on the road: the leg its calls were reckoned for (its pallets on freight tickets
+    /// are lines on its manifest: [`Society::wagon_manifest`]; its calls, [`Society::wagon_itinerary`]).
     pub fn wagon_freight(&self, route: RouteId) -> Option<Aboard> {
         self.world.get::<RouteState>(self.routes[route]).and_then(|s| s.wagon.as_ref()).map(|w| w.freight.clone())
+    }
+
+    /// The calls of a route's wagon on this leg (`itinerary-drops`).
+    pub fn wagon_itinerary(&self, route: RouteId) -> Option<Itinerary> {
+        self.world.get::<RouteState>(self.routes[route]).and_then(|s| s.wagon.as_ref()).map(|w| w.itinerary.clone())
     }
 }
 

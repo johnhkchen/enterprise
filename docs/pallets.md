@@ -255,6 +255,19 @@ What each slice reads and writes afterwards:
 - **The fit is per stretch:** the load between two calls must fit the caps. Drops free room for later pickups. With
   today's three calls this is the check that already happens; it's written for any number.
 - **The run never looks inside a pallet:** only its drop, slots, weight and kind.
+- **Built** (`itinerary-drops`): `freight::Itinerary { calls: Vec<Call { town, ticks }>, next }` on `Wagon.itinerary`
+  replaces `Aboard.stop`: a wagon sets out with its leg's end (`plan.rs`), `depart` and `turn_stop` put the call on the
+  way in (`call_on_way`, today's `setStop` arithmetic), `call_at_stop` makes it (`made`). Drops are chosen by
+  `Itinerary::drop_for` over the calls ahead and, going out, the way back: the consignee where a leg ends there (a call
+  on the way receives nothing, as `callAtStop` never has), else the first hub ahead that forwards it. Calls drop through
+  `cargo::drop_off` (freight and the far end's goods by line, the forwarder's hand-over by line, home everything left)
+  and pick up through `cargo::pick_up`/`room_to`, which fit each stretch (`stretch_load`, `stretch_peak`: with nothing
+  spoken for on a later stretch, the first binds, so the numbers are today's). Two rules keep today's outcomes where the
+  network moves under a wagon: a hub that has come to forward a line since it loaded takes it at its call, and a line a
+  call couldn't take drops at the next that will, else home (`drop_again`, at the hand-over, `close_call` and the turn).
+  The stranded sale buys by its terms, not by drop (it's the paper's sale, title to the hub). The steps of a call stay
+  in their places in the look (freight in `Mail`, fetching in `Papers`, opening in `Settle`, the forwarder in
+  `Freight`): one function for dropping and one for picking up, used by each.
 
 The rest is sketched only, so this design leaves room for it. John's order after this work:
 

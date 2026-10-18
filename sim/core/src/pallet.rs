@@ -366,6 +366,20 @@ impl Manifest {
         self.lines.iter().find(|l| l.pallet == pallet)
     }
 
+    /// A pallet's line, to change (its drop chosen again: `itinerary-drops`).
+    pub fn line_mut(&mut self, pallet: PalletId) -> Option<&mut Line> {
+        self.lines.iter_mut().find(|l| l.pallet == pallet)
+    }
+
+    /// Where a pallet on the manifest drops: its own line's drop, or its consolidation's.
+    pub fn drop_of(&self, pallet: PalletId, pallets: &Pallets) -> Option<TownId> {
+        if let Some(l) = self.line(pallet) {
+            return l.drop;
+        }
+        let At::Container(c) = pallets.get(pallet)?.at else { return None };
+        self.containers.iter().find(|cl| cl.container == c).and_then(|cl| cl.drop)
+    }
+
     /// Takes a pallet's line off (it has left the container).
     pub fn take(&mut self, pallet: PalletId) -> Option<Line> {
         let i = self.lines.iter().position(|l| l.pallet == pallet)?;

@@ -294,14 +294,16 @@ fn a_route_calls_at_the_hub_on_its_way_out_and_home() {
     let start = s.totals();
     s.advance(LOOK);
     assert!(s.route(ab).on_the_road, "A's wagon left");
-    let stop = s.wagon_freight(ab).and_then(|f| f.stop).expect("a stop on its way");
-    assert_eq!(stop.hub, t);
+    let calls = s.wagon_itinerary(ab).expect("on the road").calls;
+    assert_eq!(calls.len(), 2, "a call on its way, then the far end: {calls:?}");
+    assert_eq!((calls[0].town, calls[1].town), (t, b));
     let (travel, _) = s.route_road(ab);
     assert_eq!(travel, 800 * 20, "10 hexes of 80 blocks, 20 ticks a block");
-    assert_eq!(stop.remaining, travel - travel * 4 / 10, "four tenths along: the rest kept for after the stop");
+    assert_eq!(calls[0].ticks, travel * 4 / 10, "four tenths along");
+    assert_eq!(calls[1].ticks, travel - travel * 4 / 10, "the rest kept for after the stop");
     let t_money = s.town(t).money;
     s.advance(LOOK + travel * 4 / 10 + LOOK);
-    assert!(s.wagon_freight(ab).and_then(|f| f.stop).is_some_and(|x| x.called), "it called at T");
+    assert!(s.wagon_itinerary(ab).is_some_and(|i| i.next == 1), "it called at T");
     assert_eq!(s.route_freight(ab).stops, 1);
     assert!(s.town(t).money - t_money == 0.25, "and paid its landing, a quarter emerald");
     // On to B and home again, calling at T on the way back.

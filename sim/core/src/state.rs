@@ -196,7 +196,7 @@ pub struct Wagon {
     /// markets the crew learned of at the far end, which its town hears of once it's home (`Caravan.news`).
     pub herd: Vec<usize>,
     pub news: Vec<usize>,
-    /// Freight hubs (`freight.rs`): the hub it calls at on this leg.
+    /// Freight hubs (`freight.rs`): the leg its calls were last reckoned for.
     pub freight: crate::freight::Aboard,
     /// The crown (`crown.rs`): the recruits it carries (`Caravan.recruits`): a levy's to the capital's barracks, the
     /// barracks' to the front.
@@ -211,6 +211,9 @@ pub struct Wagon {
     /// handed out whole at its stop), and drawn as a superbill as the wagon leaves with two lines or more.
     pub manifest: crate::pallet::Manifest,
     pub for_sale: Vec<crate::cargo::Lot>,
+    /// Itineraries (`freight.rs` `Itinerary`, `itinerary-drops`): this leg's calls in order, the ticks between, and the
+    /// call it's bound for; each manifest line drops at one of them (`Line.drop`).
+    pub itinerary: crate::freight::Itinerary,
 }
 
 /// A town's run to another: how long the road takes one way, what a round trip costs in road food, its timetable.

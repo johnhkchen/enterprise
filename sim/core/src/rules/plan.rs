@@ -514,6 +514,8 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             saddled,
             shopping: plan.shopping,
             full,
+            // It sets out for the far end; a call on its way goes in as it leaves (`rules/freight.rs` `depart`).
+            itinerary: crate::freight::Itinerary::direct(route.to_id, arrival - now),
             ..Default::default()
         });
         outbox.0.push(Output::WagonLeft { route: crate::wire::no(route.seq), stacks: plan.stacks, worth: plan.worth });
