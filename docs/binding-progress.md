@@ -1,13 +1,18 @@
 # Binding progress: where the Minecraft binding stands
 
 The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md`; how trees work is
-`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-18, `wire-types` landed.
+`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-18, `wasm-exports` landed.
 
 ## Now
 
-- **Main:** `a91fab3`. 674 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native.
-  Game tests: not run at this landing (core-only; no Java changed). `just core-fingerprint`: `8144f9be7947133b`
-  (unchanged).
+- **Main:** `128274b`. 678 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
+  `just wasm-test` 4/4 with the module required. Game tests: not run at this landing (core-only; no Java changed).
+  `just core-fingerprint`: `8144f9be7947133b` (unchanged).
+- **The module is built** (`sim/wasm`, `just wasm`): `enterprise_core.wasm`, 4,070,119 bytes, ABI 1, exports
+  `ent_abi`/`ent_alloc`/`ent_call`/`ent_free` and `memory`, imports only WASI's `fd_write`, `proc_exit`,
+  `environ_get`, `environ_sizes_get` (no clock, no `random_get`), no `_initialize` for Chicory to call. The landing
+  gate (`trees.py check`) doesn't set `ENT_WASM_REQUIRED`, so on a machine without node or the `wasm32-wasip1` target
+  the module tests skip and count as passes: `just wasm-test` is the one that insists.
 - **The wire is in** (`sim/core/src/wire/`): `wire::handle(&mut Option<Society>, Request) -> Response` and
   `handle_bytes` (postcard). `SCHEMA` is a hand-bumped `1` until `wire-gen`: bump it by hand at every wire change
   until then. `SaveFile` is checked only for its format (`save::FORMAT` stays 1 while dev worlds are rebuilt).
@@ -38,7 +43,7 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 |---|---|---|---|---|---|
 | B1.1 | `wasm-digest` | opus / high | — | `c8fbc0a` | Every ambiguous system pair pinned as it ran natively; `tests/schedule.rs` guards new ones |
 | B1.2 | `wire-types` | opus / high | `wasm-digest` | `a91fab3` | `wire/`: Request/Command/Response/Refusal, Input/Output moved there (re-exported from `messages.rs`), Query/Answer (`Stock`, `Points`), ContentPack and `Content::from_pack`, Point, SaveFile; a look is checked whole before any of it applies. Beyond the brief: trade points as core state (`points.rs`, in `saved!`) and four inputs, with a `trade_points` random-worlds slice. At landing: rebased onto pallet-types (digest written again); an `Advance` more than 36,500 days past now refused (`u64::MAX` would have looped without end); `RemovePoint`/`Stocktake` naming another kind than the point there refused. Left: SCHEMA by hand (`wire-gen`), fixtures (`wire-fixtures`), re-placed point counts twice (`stock-adapter`) |
-| B1.3 | `wasm-exports` | sonnet / medium | `wire-types` | | |
+| B1.3 | `wasm-exports` | sonnet / medium | `wire-types` | `128274b` | `sim/wasm` (cdylib + rlib), four exports over `wire::handle_bytes`, one society per instance; `[profile.wasm]` (panic abort, stripped, lto) and the workspace line accepted; `wasi-run.mjs --reactor`. At landing: the proof loads its own save over another world and carries on with trade, then saves again (16 requests, byte for byte in Node's WASI); the framing test asserts every refusal it claimed; the nested build names its target folder. Left: the wire has no people inputs yet, so the proof's days move little (real simulation across native and wasm is `core-wasm-replay`) |
 | B1.4 | `wire-gen` | opus / high | `wire-types` | | |
 | B1.5 | `wire-fixtures` | sonnet / medium | `wire-types` | | |
 | B1.6 | `chicory-host` | opus / high | `wasm-exports`, `wire-gen`, `wire-fixtures` | | |
