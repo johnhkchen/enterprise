@@ -154,11 +154,17 @@ pub fn format_of(bytes: &[u8]) -> Result<u32, String> {
 /// A blob of any format the chain reaches, as today's state: the payload run through [`migrate::CHAIN`] from the
 /// blob's format.
 pub fn upgraded(bytes: &[u8]) -> Result<Saved, String> {
+    upgraded_with(migrate::CHAIN, migrate::OLDEST, FORMAT, bytes)
+}
+
+/// [`upgraded`] over any chain (a test's) from `oldest` to `current`, so the migrating path (header off, payload through
+/// the steps) runs end to end before the real chain has a step.
+pub fn upgraded_with(chain: &[migrate::Step], oldest: u32, current: u32, bytes: &[u8]) -> Result<Saved, String> {
     let format = format_of(bytes)?;
-    let payload = if format == FORMAT {
+    let payload = if format == current {
         std::borrow::Cow::Borrowed(&bytes[8..])
     } else {
-        std::borrow::Cow::Owned(migrate::upgrade(format, &bytes[8..]).map_err(|e| e.to_string())?)
+        std::borrow::Cow::Owned(migrate::upgrade_with(chain, oldest, current, format, &bytes[8..]).map_err(|e| e.to_string())?)
     };
     postcard::from_bytes(&payload).map_err(|e| format!("a broken save: {e}"))
 }

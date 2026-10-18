@@ -82,6 +82,9 @@ fn a_hand_made_format_0_is_brought_forward_by_a_chain_of_one_step() {
         // The chain brings it to today's payload, byte for byte what today's core would have saved.
         let payload = migrate::upgrade_with(&chain, 0, 1, 0, &old).expect("the chain runs");
         assert_eq!(blob_of(1, &payload), kept.save(), "seed {seed}: the same blob as never having been format 0");
+        // The load path does the same from the whole old blob: header off, payload through the chain.
+        let through_load = save::upgraded_with(&chain, 0, 1, &blob_of(0, &old)).expect("an old blob loads");
+        assert_eq!(postcard::to_allocvec(&through_load).unwrap(), payload, "seed {seed}: upgraded() reads the chain's payload");
         // ... and the society it loads runs on as the one that was never old.
         let mut loaded = Society::load(&blob_of(1, &payload)).unwrap();
         assert_eq!(seen(&loaded), seen(&kept), "seed {seed}: loaded as saved");

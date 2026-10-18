@@ -152,6 +152,8 @@ from a scenario) that must load and run on to a committed digest.
   (`enterprise_core.prev.dat`) until the next save, so a rollback has it.
 - **A newer world in an older core:** refused, with the formats in the message; the world opens with the society
   paused and its blob untouched, nothing lost.
+- **Before the first release:** `FORMAT` stays 1 and nothing is migrated: a dev world whose core changed shape is
+  rebuilt (the testbench datapack rebuilds its market; study checkpoints are made again). Decided by John (section 6).
 
 **Built (B1.7 `versioning`).** In the core: `save::migrate` (`CHAIN`, empty while `FORMAT` is `OLDEST` = 1; `reads`,
 `upgrade`; the steps are payload to payload, the header is the save's), `Load` refusing by number (`SaveFormat`) what
@@ -164,9 +166,10 @@ anyway), and `SaveStore` is the world's `enterprise_core.dat` (a `SaveFile`'s by
 `Loaded`, or `Refused` with the player's words, which pauses the store: `save()` then writes nothing); the first `save()`
 after a migration copies the file it replaces to `enterprise_core.prev.dat`, and later saves leave that copy alone
 (read as: "until the next save" is the window in which the old file is the world's file; after it, the copy). The mod's
-`CoreHost` (B2.1) is a thin caller of `SaveStore`.
-- **Before the first release:** `FORMAT` stays 1 and nothing is migrated: a dev world whose core changed shape is
-  rebuilt (the testbench datapack rebuilds its market; study checkpoints are made again). Decided by John (section 6).
+`CoreHost` (B2.1) is a thin caller of `SaveStore`: 1.5 calls `enterprise_core.dat` a SavedData (NBT), and `SaveStore`
+writes a plain file of that name, so B2.1 picks one (`SaveStore` on its own path, or its rules around a SavedData's
+byte-array tag), not both in `world/data/`. The migrating load path (`save::upgraded_with`) runs end to end only
+over the template's chain until the first real step.
 
 ### 1.5 The host side, and its cost
 
