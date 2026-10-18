@@ -48,7 +48,11 @@ def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if not args:
         sys.exit(__doc__)
+    if not Path(args[0]).exists():
+        sys.exit(f"no report at {args[0]}: the game test server didn't start")
     results = read(args[0])
+    if not results:
+        sys.exit(f"{args[0]} is empty: no test ran")
     passed = sorted(n for n, s in results.items() if s == "pass")
     per = defaultdict(lambda: [0, 0])
     for n, s in results.items():

@@ -45,6 +45,7 @@ neoForge {
             // Its own folder: the dev server's world (core/run/world) mustn't leak its ledgers into the tests.
             gameDirectory = project.file('run/gametest')
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'enterprise.society', 'java'  // an exported ENTERPRISE_SOCIETY=core mustn't switch this run
             systemProperty 'enterprise.gametest.report', file('run/gametest/report.tsv').absolutePath
         }
         // The same suite with the Rust core running the society (society = core, binding/Society.java): its own folder,

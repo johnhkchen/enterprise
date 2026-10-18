@@ -25,12 +25,13 @@ public final class Enterprise {
         NeoForge.EVENT_BUS.addListener(EnterpriseCommands::register);
         NeoForge.EVENT_BUS.addListener(Dials::onServerStarted);
         NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.market.RentDeeds::onRightClick);
-        NeoForge.EVENT_BUS.addListener(LockerCatchUp::onJoin);
         NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.territory.Growth::onJoin);
         NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.settlement.Settlements::onDeath);
         // The rules' clocks: the Java rule classes tick themselves, or (society = core) the core runs the rules and
         // CoreClock below is the only clock; the listeners that are views (joins, deaths, chunks) stay either way.
+        // LockerCatchUp's join queues the work its tick drains: both are the rule, so both go in core mode.
         if (!dev.b28.enterprise.binding.Society.isCore()) {
+            NeoForge.EVENT_BUS.addListener(LockerCatchUp::onJoin);
             NeoForge.EVENT_BUS.addListener(LockerCatchUp::onServerTick);
             NeoForge.EVENT_BUS.addListener(Rounds::onServerTick);
             NeoForge.EVENT_BUS.addListener(CensusTaker::onServerTick);

@@ -26,13 +26,13 @@ gametest:
 # The same game tests with the Rust core running the society (society = core): passes per class against
 # scripts/gametest-core-baseline.txt, failing if one that passed there falls. Its own folder, core/run/gametest-core.
 gametest-core:
-    rm -rf core/run/gametest-core/world
+    rm -rf core/run/gametest-core/world core/run/gametest-core/report.tsv  # no last run's passes if this one never starts
     -./gradlew :core:runGameTestServerCore
     python3 scripts/gametest_core.py core/run/gametest-core/report.tsv
 
 # Rewrite the core-mode baseline from a fresh run (when tests newly pass; never to excuse a fall)
 gametest-core-baseline:
-    rm -rf core/run/gametest-core/world
+    rm -rf core/run/gametest-core/world core/run/gametest-core/report.tsv  # no last run's passes if this one never starts
     -./gradlew :core:runGameTestServerCore
     python3 scripts/gametest_core.py core/run/gametest-core/report.tsv --write-baseline
 

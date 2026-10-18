@@ -256,6 +256,22 @@ def run_gates(path, branch, name, java=False):
         print(f"[{name}]   {'ok' if good else 'FAILED'}" + "".join(f"\n[{name}]     {l[-160:]}" for l in summary[:10]),
               flush=True)
         ok &= good
+        if (path / "scripts" / "gametest_core.py").exists():
+            # From core-mode on (docs/binding-plan.md B3.2): the suite in core mode, per class, mustn't fall below the
+            # committed baseline.
+            print(f"[{name}] game tests in core mode (just gametest-core, against the baseline)", flush=True)
+            with heavy_slots(1, f"gametest-core in {name}"):
+                subprocess.run(["rm", "-rf", "core/run/gametest-core/world", "core/run/gametest-core/report.tsv"],
+                               cwd=path)
+                subprocess.run(["./gradlew", ":core:runGameTestServerCore"], cwd=path, text=True,
+                               capture_output=True, env=env)
+            r = subprocess.run(["python3", "scripts/gametest_core.py", "core/run/gametest-core/report.tsv"], cwd=path,
+                               text=True, capture_output=True)
+            lines = [l for l in (r.stdout + r.stderr).splitlines()
+                     if l.startswith(("total:", "FELL", "  ", "no report", "core/run")) or "fell" in l]
+            print(f"[{name}]   {'ok' if r.returncode == 0 else 'FAILED'}" +
+                  "".join(f"\n[{name}]     {l[-160:]}" for l in lines[:12]), flush=True)
+            ok &= r.returncode == 0
     elif touched_java:
         print(f"[{name}] Java or the pack changed, but game tests aren't run in this phase (--java to run them)",
               flush=True)
