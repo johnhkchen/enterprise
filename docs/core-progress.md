@@ -6,11 +6,12 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `76ea783`. 645 tests pass (`just core-test`, about 2.5 minutes, the random worlds' 300 seeds across the
+- **Main:** `f92903b`. 645 tests pass (`just core-test`, about 2.5 minutes, the random worlds' 300 seeds across the
   cores). Parity: **191 covered, 25 partial, 46 skipped, 0 left of 262** (`just parity`; `docs/parity.md` lists what
   each partial leaves out). `just core-fingerprint`: `d943db46f28de359` (money in thousandths; `just core-wasm-replay`
   checks the WebAssembly build's 200-day digest against the native one); `cargo run --release -p enterprise-sim --
   --sweep 300` prints what the random worlds did; `just study 365` runs the network study's world.
+- **Speed:** `perf-day` landed `f92903b`, about half the cost a day with the fingerprint unchanged (study world 4.36 to 2.09 ms a day over 10 seeds, toy 10,000 days 6.73 to 2.73): lockers' wants for every good in one pass, the services list and recipes cached in a `Local` rebuilt when `Content` changes (change `Content` only through bevy, or those caches go stale), comforts and set-asides in one pass. Left because they'd change behaviour: planning idle routes only when a wagon could leave (they re-plan every look, 20 a day), coarser looks.
 - **The plan is done (2026-10-18):** all 32 tasks of waves 1b to 5 landed, the workflow's 63 agents with no errors.
 - **After the plan, the study world** (`sim/host`, the network study's hub, S1-S4 and T): `study-findings` landed
   `76ea783` (wagons bring what the far end's switched-on trades take, loads sized and judged as `pickCargo`/`saleLoad`,
