@@ -18,6 +18,9 @@ use crate::state::*;
 use crate::squad::crewed;
 use std::collections::BTreeMap;
 
+/// The most of one good a wagon takes for sale, in items (`Caravans.WANT_PER_ITEM`).
+pub const WANT_PER_ITEM: f64 = 640.0;
+
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
         start.in_set(Step::Plan),
@@ -37,8 +40,10 @@ pub fn start(content: Res<Content>, mut routes: Query<&mut RouteState>) {
 /// For sale, on top of what's planned already: comforts by kind, the cheapest first, up to the far end's par in worth
 /// from what home holds beyond its keep; any other good the far end wants (its people use it, a trade it has switched
 /// on takes it, it's an input to what it's contracted to sell, its realm's people or a player's shop there want it:
-/// `Caravans.wantsThere`), what home can spare beyond its own shelf up to the room on theirs; all in the wagon's slots. The load is worth what the far end is expected to pay:
-/// the bargained price at the middle of each good's batch (`bargain.rs`), and a good it won't deal in stays home.
+/// `Caravans.wantsThere`), what home can spare beyond its own shelf up to the room on theirs, no more of one good than
+/// its share of the slots left (`pickCargo`); all in the wagon's slots. The load is worth its goods' worth, as the mod
+/// weighs a trip against its road food (`saleLoad` 2189: `Prices.emeraldsEach`, the comforts the far end is short of
+/// as far as they go); a good the far end wouldn't deal in at any price stays home (`bargain.rs`).
 ///
 /// A home with a roster sizes the room on the far end's shelf by its last stocktake while it's fresh (`atlas.rs`), less
 /// what other wagons on their way there carry; with none, by its stock as it is. Why each good went or stayed goes
@@ -145,27 +150,34 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
                 let gap = (needs[kind] / content.goods[g].value.max(1e-9)).ceil();
                 let held = far_stock.0[g];
                 let sells = going.min(gap);
-                let Some(price) = crate::bargain::unit_price(&content, g, held, sells, held + gap, seller, buyer) else { continue };
+                if crate::bargain::unit_price(&content, g, held, sells, held + gap, seller, buyer).is_none() {
+                    continue;
+                }
+                let each = content.goods[g].value;
                 plan.cargo[g] += going;
                 stacks += (going / stack).ceil() as u32;
-                plan.worth += sells * price;
-                plan.sale.push((g, sells, price));
+                plan.worth += sells * each;
+                plan.sale.push((g, sells, each));
                 whys.push((Some(g), Why::SentComfort(kind), going));
             }
         }
-        // What the far end needs to make what it has contracted to sell goes first, a stack each when slots are short
-        // (`Caravans.wantsAt`: its inputs are listed first; `pickCargo`).
+        // What the far end needs to make what it has contracted to sell goes first (`Caravans.wantsAt`: its inputs are
+        // listed first). Each good it wants that home can send shares the slots left (`pickCargo` 2391–2399): no more
+        // of one than `WANT_PER_ITEM`, nor than the slots left over the goods that could go, 64 to a slot, a stack at
+        // least.
         let needs_input = |g: usize| far_trades.inputs.get(g).is_some_and(|n| *n > 0.0);
         let mut order = order.clone();
         order.sort_by_key(|&g| !needs_input(g));
-        let input_share = slots.max(1) as usize / (0..n).filter(|&g| needs_input(g)).count().max(1);
+        // Each good's standing: why it stays (`Caravans.pickCargo`: they hold their fill, we have none, it's set aside,
+        // it's our own shelf), or what it could send, the room there and the far end's par for it.
+        #[allow(clippy::type_complexity)]
+        let mut standing: Vec<(usize, Result<(f64, f64, f64, Option<Want>, f64), (Why, f64)>)> = Vec::new();
         for &g in &order {
-            let full = stacks >= slots;
             let planned = plan.cargo[g];
             // A trade it has switched on takes it, and its people don't use it: its par is the warehouse's for a
             // wanted good (`Warehouse.par(to, item, true)`), a stack at least (`wantsAt`, `pickCargo`).
             let locker_par = crate::lockers::wanted_par(&content, far_trades, far_lockers, g);
-            let (spare, room, par, want) = match content.goods[g].comfort.filter(|_| far_realm.is_none()) {
+            match content.goods[g].comfort.filter(|_| far_realm.is_none()) {
                 Some(_) => continue, // (the comforts went first)
                 None if far_trades.uses[g] > 0.0 || needs_input(g) || far_realm.is_some_and(|r| r.wants.contains(&g))
                     || locker_par.is_some() || orders.wanted_of(route.to_id, g) > 0.0 => {
@@ -183,49 +195,53 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
                     };
                     let room = par - held(g);
                     let have = home_stock.0[g] - planned;
-                    // Why it stays (`Caravans.pickCargo`): they hold their fill, we have none, it's set aside, it's
-                    // our own shelf, or there's no room aboard.
-                    let why = if room <= 0.0 {
-                        Some((Why::HoldTheirFill(want), held(g)))
+                    let keep = shelf(&content, home_trades, g);
+                    standing.push((g, if room <= 0.0 {
+                        Err((Why::HoldTheirFill(want), held(g)))
                     } else if have <= 0.0 {
-                        Some((Why::HaveNone(want), room))
+                        Err((Why::HaveNone(want), room))
                     } else if have <= aside[g] {
-                        Some((Why::SetAside(want), room))
-                    } else if have - aside[g] - shelf(&content, home_trades, g) <= 0.0 {
-                        Some((Why::KeepOurShelf(want), room))
-                    } else if full {
-                        Some((Why::NoRoomAboard, room.min(have - aside[g])))
+                        Err((Why::SetAside(want), room))
+                    } else if have - aside[g] - keep <= 0.0 {
+                        Err((Why::KeepOurShelf(want), room))
                     } else {
-                        None
-                    };
-                    if let Some((why, count)) = why {
-                        whys.push((Some(g), why, count.max(0.0)));
-                        continue;
-                    }
-                    (have - aside[g] - shelf(&content, home_trades, g), room,
-                        par, Some(want))
+                        Ok((have - aside[g] - keep, room, par, Some(want), have - aside[g]))
+                    }));
                 }
                 None => continue,
+            }
+        }
+        let goods = standing.iter().filter(|(_, s)| s.is_ok()).count().max(1) as u32;
+        let per_item = WANT_PER_ITEM.min(((slots.saturating_sub(stacks) / goods).max(1) * 64) as f64);
+        for (g, standing) in standing {
+            let (spare, room, par, want) = match standing {
+                Err((why, count)) => {
+                    whys.push((Some(g), why, count.max(0.0)));
+                    continue;
+                }
+                Ok((_, room, _, _, sendable)) if stacks >= slots => {
+                    whys.push((Some(g), Why::NoRoomAboard, room.min(sendable).max(0.0)));
+                    continue;
+                }
+                Ok((spare, room, par, want, _)) => (spare, room, par, want),
             };
             let stack = content.goods[g].stack as f64;
-            let mut going = spare.min(room).min((slots - stacks) as f64 * stack).floor();
-            if needs_input(g) {
-                going = going.min(input_share.max(1) as f64 * stack);
-            }
+            let going = spare.min(room).min(per_item).min((slots - stacks) as f64 * stack).floor();
             if going <= 0.0 {
                 continue;
             }
             let far_held = if want.is_some() { held(g) } else { far_stock.0[g] };
-            let Some(price) = crate::bargain::unit_price(&content, g, far_held, going, par, seller, buyer) else {
+            if crate::bargain::unit_price(&content, g, far_held, going, par, seller, buyer).is_none() {
                 if let Some(want) = want {
                     whys.push((Some(g), Why::NoDeal(want), going));
                 }
                 continue;
-            };
+            }
+            let each = content.goods[g].value;
             plan.cargo[g] += going;
             stacks += (going / stack).ceil() as u32;
-            plan.worth += going * price;
-            plan.sale.push((g, going, price));
+            plan.worth += going * each;
+            plan.sale.push((g, going, each));
             match (content.goods[g].comfort, want) {
                 (Some(kind), _) => whys.push((Some(g), Why::SentComfort(kind), going)),
                 (None, Some(want)) => whys.push((Some(g), Why::Sent(want), going)),
@@ -243,7 +259,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
 pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut outbox: ResMut<Outbox>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<TownData>, mut rosters: Query<&mut crate::roster::Roster>, mut lockers: Query<&mut crate::lockers::Lockers>,
-        places: Query<(Option<&OffMap>, Option<&Realm>)>) {
+        places: Query<(Option<&OffMap>, Option<&Realm>, Option<&crate::freight::Hub>)>) {
     let now = clock.now;
     let d = &content.dials;
     // Squads (`squad.rs`): each town's routes, and those of them without a wagon (`dispatch`'s `waiting`).
@@ -270,7 +286,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         let route = *route;
         let Some(mut plan) = state.plan.take() else { continue };
         // (A realm's wagons are never crewed from a roster, whoever stands in it: `realms.rs`.)
-        let foreign = places.get(route.from).is_ok_and(|(_, realm)| realm.is_some());
+        let foreign = places.get(route.from).is_ok_and(|(_, realm, _)| realm.is_some());
         let rostered = !foreign && rosters.get(route.from).ok().is_some_and(|r| crewed(Some(r)));
         // The stacks of what the far end wants that home holds now (`wantedStacks`), for the squad's packs and porters.
         let stacks_wanted = match (rostered, towns.get(route.from), towns.get(route.to)) {
@@ -286,7 +302,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         }
         // A realm's wagon is its own people's: no squad, two mouths' road food, no team, never home's poverty counted.
         // An off-map market that sells no food feeds no one (`OffMap.sells`): its wagons pack the road home's food.
-        let far_sells = places.get(route.to).map_or(true, |(off, _)| off.map_or(true, |o| o.sells_food));
+        let far_sells = places.get(route.to).map_or(true, |(off, ..)| off.map_or(true, |o| o.sells_food));
         let far_food = if food_mode && far_sells {
             towns.get(route.to).map_or(0.0, |(far, ..)| crate::road::held(&content, &far.0))
                 - promised.get(&route.to_id).copied().unwrap_or(0.0)
@@ -350,7 +366,12 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             // Fewer slots than the plan was made for: the last of the sale load stays home, never what's owed.
             clip(&content, &mut plan, &owed, slots);
         }
-        let full = plan.stacks as f64 >= d.wagon_full * slots as f64;
+        // Full by what the far end could pay for when its last wagon sold there (`saleLoad`): a freight hub's forwarder
+        // takes on consignment what it can't pay for, so there any.
+        let (far_realm, far_hub) = places.get(route.to)
+            .map_or((false, false), |(_, realm, hub)| (realm.is_some(), hub.is_some_and(|h| h.storehouse)));
+        let purse = if far_hub { None } else { state.far_purse };
+        let full = full_stacks(&content, &plan, &owed, purse, far_realm) as f64 >= d.wagon_full * slots as f64;
         // Each of the crew eats (`squad.rs`); a town without a roster sends one.
         let mouths = if foreign { crate::realms::crew(&content) } else { plan.crew.len().max(1) as f64 };
         // The road's cost: its food where content has food (eaten from home, bought on the way, a purse for the road
@@ -450,6 +471,32 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         });
         outbox.0.push(Output::WagonLeft { route: route.seq, stacks: plan.stacks, worth: plan.worth });
     }
+}
+
+/// The stacks that make a wagon full (`Caravans.saleLoad` 2168–2205, `dispatch` 414): what's owed, home's crates
+/// and what loads first, and of the sale load as much as the far end could pay for when a wagon last sold there
+/// (`Route.farPurse`, at each good's worth, in the order it went aboard). Comforts count toward a load's worth, not
+/// its stacks (a realm's people want theirs as goods). `purse`: `None` for any (never sold there yet, or a freight
+/// hub). A load the far end can't pay for waits for its day rather than going full.
+fn full_stacks(content: &Content, plan: &Plan, owed: &[f64], purse: Option<Fixed>, realm: bool) -> u32 {
+    let stacks_of = |g: usize, n: f64| (n / content.goods[g].stack as f64).ceil() as u32;
+    let mut stacks: u32 = owed.iter().enumerate().map(|(g, &n)| stacks_of(g, n)).sum();
+    stacks += plan.shipments.iter().map(|s| s.stacks(content)).sum::<u32>() + plan.booked;
+    let mut paid = 0.0;
+    for &(g, n, _) in &plan.sale {
+        if content.goods[g].comfort.is_some() && !realm {
+            continue;
+        }
+        let n = n.min((plan.cargo[g] - owed[g]).max(0.0));
+        let each = content.goods[g].value;
+        let sells = match purse {
+            Some(p) if each > 0.0 => n.min(((p.to_f64() - paid).max(0.0) / each).floor()),
+            _ => n,
+        };
+        stacks += stacks_of(g, sells);
+        paid += sells * each;
+    }
+    stacks
 }
 
 /// The sale load cut to `slots` (`plan_sale` filled the slots the squad sized up at the look's start): the last of what

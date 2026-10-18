@@ -51,7 +51,8 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
         mut book: ResMut<CashBook>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<TownData>, rosters: Query<&crate::roster::Roster>, realms: Query<&Realm>,
         stocktakes: Res<crate::atlas::Stocktakes>, books: Res<crate::atlas::Books>, listings: Res<crate::desires::Listings>,
-        farms: Query<&crate::farms::Farm>, orders: Res<crate::orders::Orders>, lockers: Query<&crate::lockers::Lockers>) {
+        farms: Query<&crate::farms::Farm>, orders: Res<crate::orders::Orders>,
+        (lockers, territory): (Query<&crate::lockers::Lockers>, Res<crate::territory::Territory>)) {
     let now = clock.now;
     let day = content.day_ticks;
     let n_goods = content.goods.len();
@@ -76,9 +77,19 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
             })).collect()
         };
         let far_reserve = super::farms::reserve(&content, towns.get(route.to).expect("the far end").2, farms.get(route.to).ok());
+        // What it never spends on goods: its Farmers' wages and its guards' pay (`sell` 2477, `Territory.payroll`).
+        let posts = territory.holdings.get(&route.to_id).map_or(0, |h| h.posts.len());
+        let payroll = super::farms::payroll(&content, farms.get(route.to).ok(), posts);
         // Its lockers, for the trades it has switched on (`Caravans.wantedAt`).
         let far_lockers = lockers.get(route.to).ok().zip(rosters.get(route.to).ok());
         let (mut stock, mut money, trades, mut budget, people) = towns.get_mut(route.to).expect("the far end");
+        if !realm_buys {
+            // What it can spend on goods, as the travelling Merchant sees it: the next load is sized to it (`sell`
+            // 2445–2449, `farPurse`; `saleLoad`).
+            let free_money = free(&content, trades, &money, &bills, route.to_id, now);
+            let left = left_for(&content, now, free_money, &mut budget, days);
+            state.far_purse = Some((money.0 - payroll).min(left).at_least_zero());
+        }
         let wagon = state.wagon.as_mut().unwrap();
         let mut sold_all = 0.0;
         for g in 0..wagon.cargo.len() {
@@ -117,7 +128,8 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
                 // Out of the money it doesn't need for wages and its trading capital, within its budget.
                 left_for(&content, now, free_money, &mut budget, days).min((money.0 - far_reserve).at_least_zero())
             } else {
-                left_for(&content, now, free_money, &mut budget, days).min(money.0.at_least_zero())
+                // Never the Farmers' wages nor the guards' pay (`sell` 2477).
+                left_for(&content, now, free_money, &mut budget, days).min((money.0 - payroll).at_least_zero())
             };
             let mut n = wagon.cargo[g].min(room);
             let mut price = value;

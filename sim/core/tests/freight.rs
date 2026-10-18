@@ -454,7 +454,9 @@ fn a_wagon_to_a_hub_sends_on_what_its_town_owes_markets_beyond_and_the_forwarder
         s.deliver(t, BREAD, 128.0);
     }
     s.deliver(shipper, PAPER, 256.0);
-    s.deliver(hub, PAPER, 128.0);
+    // (A stack of its own for the run beyond: at its worth, 2.67 emeralds, not worth the run's road food, so the run
+    // waits for the shipper's crate; two stacks, 5.33, would send it off at the first look, as `saleLoad` weighs it.)
+    s.deliver(hub, PAPER, 64.0);
     // The shipper owes the buyer 64 paper a week, DAP, both holding copies; it has no road there, the hub has.
     let id = s.draft(shipper, buyer, PAPER, 64.0, 1.0 / 24.0, 0, 7 * DAY, 4, enterprise_core::Incoterm::Dap, true);
     let start = s.totals();
@@ -555,3 +557,4 @@ fn a_wagon_calling_at_the_hub_carries_its_contract_copies_on_to_where_its_bound(
     assert_eq!(s.route_freight(ab).stops, 1, "it called at the hub");
     assert_eq!(s.contract(id).state, enterprise_core::State::Active, "B holds its copy now: in force");
 }
+

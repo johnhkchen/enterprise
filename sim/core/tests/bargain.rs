@@ -132,13 +132,16 @@ fn the_seller_s_home_merchant_and_the_buyer_s_set_the_split() {
 }
 
 #[test]
-fn a_load_is_worth_what_the_far_end_is_expected_to_pay() {
-    // The plan loads the same wheat either way; with the bargain it's worth its price at the middle of the batch.
+fn a_load_is_worth_its_goods_worth_whatever_it_will_fetch() {
+    // The plan loads the same wheat either way, and weighs it against its road food at its worth, as the mod's
+    // `Caravans.saleLoad` does (2189: `Prices.emeraldsEach`), not at the price the Merchants will settle at the far end
+    // (which the sale itself pays: `a_wagon_sells_at_the_price_settled_at_the_middle_of_the_batch`).
     let (_, _, flat) = first_sale(farm_and_mill(None, None, false));
     let (_, _, bargained) = first_sale(farm_and_mill(None, None, true));
     let going = flat / 0.05;
     let each = price(0.05, shortage((going / 2.0).floor(), 320.0), 1, 1).unwrap();
-    assert!((bargained - going * each).abs() < 1e-9, "{going} wheat worth {bargained}, {each} each");
+    assert!(each < 0.05, "the bargain would fetch {each} each");
+    assert!((bargained - going * 0.05).abs() < 1e-9, "{going} wheat worth {bargained}, its worth");
 }
 
 #[test]

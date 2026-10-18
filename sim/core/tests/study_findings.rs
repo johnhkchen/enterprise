@@ -98,3 +98,78 @@ fn a_managed_lockers_par_is_its_capacity_and_any_other_switched_on_trade_a_stack
     assert_eq!(s.route(0).sold, 264.0, "the far end bought it all: its paper and its stack of wheat");
 }
 
+
+/// What a wagon left with, loose and crated (a good of two stacks or more rides crated: `rules/cargo.rs`).
+fn aboard(s: &Society, route: usize) -> Vec<f64> {
+    let mut cargo = s.wagon_cargo(route).expect("a wagon out");
+    for crate_ in s.wagon_shipments(route).0 {
+        cargo[crate_.good] += crate_.count;
+    }
+    cargo
+}
+
+/// A far end like the study's settlements: a Merchant of level 1 managing its Librarian's and Cartographer's paper
+/// trades (a par of 3,840), its Farmer's wheat trade switched on beyond its limit (a stack's par).
+const SETTLEMENT: &[(&str, u8)] = &[("merchant", 1), ("librarian", 1), ("cartographer", 1), ("farmer", 1)];
+
+#[test]
+fn no_more_of_one_good_than_640_nor_than_its_share_of_the_slots() {
+    // `pickCargo`: of each good no more than `WANT_PER_ITEM` (640), nor than the slots left over the goods that could
+    // go, 64 to a slot: a wagon's 27 slots over paper and wheat is 13 slots each, so 640 of the paper, though the far
+    // end's par is 3,840 and the hub holds 2,000.
+    let mut s = network(2000.0, 100.0, SETTLEMENT, &[]);
+    s.deliver(HUB, WHEAT, 100.0);
+    s.advance(LOOK);
+    let cargo = aboard(&s, 0);
+    assert_eq!((cargo[PAPER], cargo[WHEAT]), (640.0, 64.0), "640 paper (WANT_PER_ITEM) and a stack of wheat (its par)");
+    // Four slots over the same two goods: two each (`max(1, slots / goods) * 64`), 128 of the paper, where it would
+    // have filled every slot before the wheat's turn.
+    let mut s = network(2000.0, 100.0, SETTLEMENT, &[]);
+    s.content_mut().dials.wagon_slots = 4;
+    s.deliver(HUB, WHEAT, 100.0);
+    s.advance(LOOK);
+    let cargo = aboard(&s, 0);
+    assert_eq!((cargo[PAPER], cargo[WHEAT]), (128.0, 64.0), "two slots of paper, and the wheat");
+}
+
+#[test]
+fn a_wagon_is_full_only_of_what_the_far_end_could_pay_for() {
+    // `saleLoad`: what makes a wagon full is the stacks the far end could pay for when a wagon last sold there
+    // (`farPurse`: its money beyond its payroll, within its day's budget). A far end that could pay for a stack
+    // doesn't fill a wagon with paper: the wagon waits for its day (every four days), where a far end with the money
+    // for it would have the next one the day after.
+    let run = |dest_money: f64| {
+        let mut s = network(5000.0, dest_money, &[("merchant", 1), ("librarian", 1), ("cartographer", 1)], &[]);
+        s.content_mut().dials.wagon_slots = 8; // full at 6 stacks; 512 paper (a good's share of 8 slots) fills it
+        s.deliver(DEST, BREAD, 64.0); // the far end feeds every wagon for the road home
+        assert_eq!(s.route_state(0).1.far_purse, None, "never sold there");
+        s.advance(LOOK);
+        assert!(s.route(0).on_the_road, "the first wagon goes on its day");
+        s.advance(3 * LOOK);
+        assert!(s.route(0).sold > 0.0, "it sold there");
+        let purse = s.route_state(0).1.far_purse.expect("the far end's purse, as its wagon saw it");
+        s.advance(DAY + LOOK);
+        (purse, s.route(0).trips, s.route_state(0).1.stayed)
+    };
+    let (purse, trips, stayed) = run(2.0);
+    assert!(purse.to_f64() < 2.0, "the far end could spend {purse} on goods");
+    assert_eq!(trips, 1, "no wagon the next day: 8 stacks of paper, but it could pay for one");
+    assert_eq!(stayed, Some(enterprise_core::road::Stay::WaitingForALoad));
+    let (purse, trips, _) = run(500.0);
+    assert!(purse.to_f64() > 100.0, "a far end with money: {purse}");
+    assert!(trips >= 2, "the next wagon, full of what it can pay for, goes: {trips} trips");
+}
+
+#[test]
+fn a_load_is_weighed_against_its_road_food_at_its_goods_worth() {
+    // `saleLoad` values the load at each good's worth (`Prices.emeraldsEach`), not at the price the Merchants will
+    // settle: four blocks' road food, a point each way for the crew and a point each way for the team (0.2 emeralds),
+    // is paid by five sheets of paper (a 24th of an emerald each, 0.21), though they'd fetch three quarters of that.
+    let mut s = network(5.0, 12.0, &[("librarian", 1)], &[]);
+    s.advance(LOOK);
+    assert!(s.route(0).on_the_road, "five sheets go");
+    let mut s = network(4.0, 12.0, &[("librarian", 1)], &[]);
+    s.advance(LOOK);
+    assert!(!s.route(0).on_the_road, "four don't pay their road");
+    assert_eq!(s.route_state(0).1.stayed, Some(enterprise_core::road::Stay::WaitingForALoad));
+}

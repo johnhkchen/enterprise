@@ -15,12 +15,16 @@ const LOOK: u64 = 1_200;
 const PAPER: usize = 0;
 const BREAD: usize = 1;
 const SADDLE: usize = 2;
+/// Three more goods a far end's lockers may take: of one good a wagon takes no more than 640, nor than its share of the
+/// slots (`Caravans.pickCargo`), so a load to fill a squad's 36 stacks is four goods' worth (`plan_sale`).
+const MORE: [usize; 3] = [3, 4, 5];
 const HUB: usize = 0;
 const DEST: usize = 1;
 
 fn content() -> Content {
     Content::new(vec![Good::new("paper", 1.0 / 24.0, 64), Good::new("bread", 1.0 / 6.0, 64).food(5.0),
-        Good::new("saddle", 6.0, 1)], DAY)
+        Good::new("saddle", 6.0, 1), Good::new("ink_sac", 1.0 / 24.0, 64), Good::new("feather", 1.0 / 24.0, 64),
+        Good::new("string", 1.0 / 24.0, 64)], DAY)
 }
 
 /// The mod's test network (`CaravanTests.network`): a hub with 128 paper, `bread` and `emeralds`, its Merchant at the
@@ -326,17 +330,22 @@ fn a_leatherworkers_packs_carry_more() {
 
 #[test]
 fn a_squad_with_fewer_slots_than_planned_leaves_the_last_of_the_sale_home() {
-    // Two routes, one Leatherworker: both plan for her packs (36 stacks), the first takes her, and the second, with
-    // the wagon's 27, leaves the rest of its load home.
+    // Two routes, one Leatherworker: both plan for her packs (36 stacks: nine of each of four goods), the first takes
+    // her, and the second, with the wagon's 27, leaves the rest of its load home.
     let mut s = network(70.0, 10.0, 192.0, &["cartographer", "librarian", "leatherworker"]);
     let far = s.add_town("Far", 12.0);
     s.set_trade(far, PAPER, 0.0, 1e-9);
     s.deliver(far, BREAD, 2.0);
     s.add_route(HUB, far, 4.0 / 1200.0, 0.0, 4.0);
+    let goods = [PAPER, MORE[0], MORE[1], MORE[2]];
     for t in [DEST, far] {
-        s.record_capacity(t, 1, &[(PAPER, 40.0 * 64.0 / 5.0)]); // room on their shelves for 40 stacks each
+        // Room on their shelves for 40 stacks of each.
+        s.record_capacity(t, 1, &goods.map(|g| (g, 40.0 * 64.0 / 5.0)));
     }
-    s.deliver(HUB, PAPER, 100.0 * 64.0);
+    s.deliver(HUB, PAPER, 25.0 * 64.0 - 128.0);
+    for g in MORE {
+        s.deliver(HUB, g, 25.0 * 64.0);
+    }
     // Both far ends' books fresh (copied at 0, holding no paper, as they are): no trip wants the Librarian along
     // (`atlas.rs`: stale books would take her as the first route's extra, before the Leatherworker).
     for t in [DEST, far] {
@@ -348,7 +357,8 @@ fn a_squad_with_fewer_slots_than_planned_leaves_the_last_of_the_sale_home() {
     assert_eq!(second.slots, 27, "the second without: {second:?}");
     assert_eq!((s.route(0).carried, s.route(1).carried), (36.0 * 64.0, 27.0 * 64.0),
         "each a full load for its slots: the second planned 36 stacks and left 9 home");
-    assert_eq!(s.town(HUB).stock[PAPER], (100.0 + 2.0 - 36.0 - 27.0) * 64.0);
+    let left: f64 = goods.iter().map(|&g| s.town(HUB).stock[g]).sum();
+    assert_eq!(left, (100.0 - 36.0 - 27.0) * 64.0);
 }
 
 // parity: CaravanTests.aPorterCarriesOutAndWalksHome
@@ -379,8 +389,12 @@ fn a_porter_whose_load_is_still_crated_aboard_stays() {
     // (`rules/cargo.rs`), more than the wagon holds without the porter's pack, so the porter stays with it; home
     // again, the stacks it brought back count the crates too (`lastHome`).
     let mut s = network(70.0, 5.0, 16.0, &["librarian", "nitwit"]);
-    s.record_capacity(DEST, 1, &[(PAPER, 40.0 * 64.0 / 5.0)]); // shelf room for 40 stacks, one emerald to pay
+    // Shelf room for 40 stacks of each of four goods, one emerald to pay: a load of nine stacks of each.
+    s.record_capacity(DEST, 1, &[(PAPER, 40.0 * 64.0 / 5.0), (MORE[0], 512.0), (MORE[1], 512.0), (MORE[2], 512.0)]);
     s.deliver(HUB, PAPER, 30.0 * 64.0);
+    for g in MORE {
+        s.deliver(HUB, g, 10.0 * 64.0);
+    }
     s.advance(LOOK);
     assert_eq!(s.crew(0).crew.len(), 2);
     s.advance(2 * LOOK); // there

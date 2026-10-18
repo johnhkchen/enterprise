@@ -249,8 +249,8 @@ pub struct Plan {
     pub slots: u32,
     pub wanted: Vec<crate::roster::TradeId>,
     pub porters: usize,
-    /// What the sale load put aboard, in the order it went (good, count, price each): a squad that leaves with fewer
-    /// slots than the plan was made for leaves the last of it home.
+    /// What the sale load put aboard, in the order it went (good, count, worth each: what it counts for in the plan's
+    /// worth): a squad that leaves with fewer slots than the plan was made for leaves the last of it home.
     pub sale: Vec<(usize, f64, f64)>,
     /// Desires and backhauls (`desires.rs`): what the town would shop for at the far end (worth of each kind of
     /// comfort it holds less than its par of), and the money in the purse for it.
@@ -314,6 +314,9 @@ pub struct RouteState {
     /// end (with `sold`, the mod's `itemsDelivered`: a long run's usual load, as the hub reorganises).
     pub freight: crate::freight::RouteFreight,
     pub delivered: f64,
+    /// What the far end could spend on goods when its wagon last sold there (`Route.farPurse`, set in `Caravans.sell`
+    /// 2445–2449): what makes the next wagon full is what it could pay for (`saleLoad`). `None` until it has sold there.
+    pub far_purse: Option<Fixed>,
 }
 
 /// A route's ends, before a load links them to their towns' entities again (from `from_id` and `to_id`).

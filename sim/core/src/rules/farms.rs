@@ -52,6 +52,13 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, book: Res<CashBook>, mut f
     }
 }
 
+/// The money a town keeps back even from the goods its trades use (`Territory.payroll` 1776–1779): its Farmers' wage
+/// float and three days of its guards' pay, `posts` of them. A Merchant that spent its farmers' wages on coal would
+/// lose their harvest.
+pub fn payroll(content: &Content, farm: Option<&Farm>, posts: usize) -> Fixed {
+    farm.map_or(Fixed::ZERO, |f| wage_float(content, f)) + Fixed::ceil(posts as f64 * content.dials.guard_pay * 3.0)
+}
+
 /// The reserve a town keeps back before repaying its households or planting: its trading capital and its wage float
 /// (`Territory.reserve`).
 pub fn reserve(content: &Content, trades: &Trades, farm: Option<&Farm>) -> Fixed {
