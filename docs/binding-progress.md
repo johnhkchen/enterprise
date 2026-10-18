@@ -1,14 +1,37 @@
 # Binding progress: where the Minecraft binding stands
 
 The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md`; how trees work is
-`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-19, `money-adapter` landed.
+`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-19, `land-adapter` landed.
 
 ## Now
 
-- **Main:** `926498c`. 870 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
-  `just wire-check` passes (schema `ccb902b478f9a78f`, 31 files); `just scenarios-wasm` and `just binding-test` pass.
-  Game tests: "All 287 required tests passed" in Java mode, and `just gametest-core`: 287 of 287 (baseline now 287).
-  `just core-fingerprint`: `5e6b6d51a3b4061e` (unmoved by `money-adapter`).
+- **Main:** `ad6fa04`. 882 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
+  `just wire-check` passes (schema `03941e1d6b77b641`, 36 files); `just scenarios-wasm` and `just binding-test` pass.
+  Game tests: "All 290 required tests passed" in Java mode, and `just gametest-core`: 290 of 290 (baseline now 290).
+  `just core-fingerprint`: `5e6b6d51a3b4061e` (unmoved by `land-adapter`).
+- **Land** (B4.7, `adapters/LandAdapter`, `sim/core/src/land.rs`): the host surveys, the core decides, the host lays.
+  `Input::Ground` (a hex's water share, relief and `LandKind` from `Terrain`, both modes: hexes whose chunks were
+  surveyed again, and at a town's first sight in a run those within 8 the core has otherwise, 64 a look at most);
+  `Input::Crops` (one chunk's crop plots in a hex, kept by chunk, so an unloaded chunk keeps its count); `Input::Survey`
+  (core mode, each loaded town each look: its bell; its farm set to the plots counted in the hexes it holds plus the
+  fields planted and not laid; crops counted every 20 looks). At the end of a look every surveyed town is asked for its
+  works, `Output::Build { town, work, share }` (a bridge or hall once finished, the wall a quarter at a time, a field as
+  soon as planted), until the host says `Input::Built`; the mod lays them with its own placement (`Works.layDeck`,
+  `raiseColumns`, `Buildings.site`/`build`, `Growth.farmSite`/`Fields.plant`) at the start of the next look, once every
+  look sent is shown. `Query::Land`, `Query::Ground`, `/enterprise core land <desk>`. Measured: a town's first look of a
+  run 1.1 to 4.2 ms of the tick, later looks about 0.15 ms, one hex's crops 0.4 to 0.74 ms. **Open:** no wooden pier
+  (`Territory.buildDock`: stone docks go up at the pier's start with no pier), pastures' fences or mine heads; docks,
+  pastures and the free/confined split aren't surveyed; settlers' founded towns have no desk; town names still drift
+  from `Names`; every town's crops are counted on the same look, unstaggered (a few loaded towns, or one holding 7 to
+  19 hexes, would pass the plan's 5 ms for that tick); a field is paid for before the host looks for its site, so one
+  with no room is paid for, yields on the farm and is asked for at every survey (Java's `Fields.consider` finds the site
+  first), and the site rule accepts any spot while the town holds no hex; a field's Crops recount isn't resent after a
+  refused look (up to 20 looks uncounted); `LandBook.shown` is keyed by what the work is (a work started again would
+  not be shown again; no rule restarts one today); the look path still asks the core synchronously from the tick
+  (crops, ground); none of row 7's acceptance tests (Territory, Toll, Building, Husbandry, Metal, Mood) drives the
+  core, and in the world only a hall at a given site is laid (a 7x7 arena holds no wall, bridge or field: those are
+  pinned in Rust and `sim/scenarios/land.json`). The save grew at FORMAT 1 (`LandBook`): dev worlds'
+  `enterprise_core.dat` are rebuilt.
 - **Money** (B4.4, `adapters/MoneyAdapter`, `sim/core/src/till.rs`): money stays physical (emeralds and Numismatics coin
   in a desk's chests, a Blaze Banker's balance) and the treasury stays one number of emerald-worth. Each look a
   `Cashcount` follows each desk's `Stocktake`: what a player or hopper added or took is booked as `PaidIn` or the new
@@ -245,7 +268,7 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 | B4.4 | `money-adapter` | sonnet / high | `stock-adapter` | `926498c` | A town's money in its desk's chests and Blaze Banker, counted and shown by the core (`till.rs`, `Tills` saved, coin piles as `Hoard`s of spurs and worth): `Cashcount`, `CashUnmoved`, `Output::Cash`, `Query::Cash`/`Mint`, `Reason::Withdrawn`; `MoneyAdapter` (counts after each desk stocktake, writes coin as the fewest stacks, the Banker's balance, emeralds), `StockChests`' coin methods; `money.json` scenario; 6 game tests (287 both modes), fingerprint unchanged, schema `ccb902b478f9a78f`. At landing: emeralds put only in the room the look's stock moves left (show_cash took room from the stocktake's free slots, so a nearly full desk was written emeralds every look that came back unmoved; `show_cash_after`, test `emeralds_are_put_only_in_the_room_the_stocks_moves_leave`); a withdrawal never posted below nothing (a negative treasury would have taken a negative `Withdrawn`); rebased onto people-adapter's landing fixes (binding-tests.md regenerated). Left: reserve 0 in core mode until `locker-adapter`, no wage float, a failed coin write's mint pressure kept, one desk a town shown, the money tests not rewritten onto the core, two mints until `shop-adapter`/`delete-java-rules`, John to confirm a desk's first count sells its chest |
 | B4.5 | `people-adapter` | opus / high | `points-and-hands` | `2874c6b` | The census as a town's roster's source (`census.rs`, `Sightings` saved): `Census`, `TagHand`, `Resident`; outputs `Born`, `Settled`, `Departed`, `HandGone`, `HandLevel`; `PeopleAdapter` counts loaded towns (48 blocks round the bell, no path checks), spawns villagers for hands with none and writes profession, level and XP; `CensusTaker`'s counting half shared; `/enterprise core census <desk>`; the first Output scenario (`people`); 3 game tests (272 both modes), fingerprint unchanged, schema `e0b54576b14c0176`. At landing: a villager not loaded and last seen where nothing is loaded sent as the core has it (it was aged out and came back a new hand, breaking lockers and clients); names sent with every look until the roster takes them (a refused look lost them and hands were spawned twice); `/enterprise census` refuses in core mode; rebased onto consignment-pallets (digest written again); decisions.md "People and the binding". Left: settlers' views and founded towns' desks (`land-adapter`), away hands' outputs (`wagon-adapter`), census beds overwriting the core's homes, no free/confined split, births across a mode switch, the Java people rules and their tests until `delete-java-rules`, John to confirm the census never takes `none` or the Merchant's trade. After landing (`cf4110f`, the audit ran after the land): names of villagers just spawned sent before every save (the audit's blocker: a save and stop before the next look doubled a born or settled hand; game test `aVillagerSpawnedForAHandIsItsHandsInTheSave`), people outputs not shown in Java mode (all five, not only births). Left besides: `Sightings.retired` unbounded, two clocks for a child's growing up, vanilla breeding unsuppressed, `lastChunk` not saved, the Java `Settlements` roster stale in core mode, the look path's people outputs (Settled, Departed, HandGone, HandLevel) not driven end to end in a game test, no cap on towns counted per look |
 | B4.6 | `locker-adapter` | opus / high | `stock-adapter`, `people-adapter` | | |
-| B4.7 | `land-adapter` | opus / high | `people-adapter` | | |
+| B4.7 | `land-adapter` | opus / high | `people-adapter` | `ad6fa04` | The host's survey into the core and the core's works laid by the host (`land.rs`, `LandBook` saved): `Ground`, `Crops`, `Survey`, `Built` in; `Build` out (bridge, wall by quarters, hall, field); `Query::Land`, `Query::Ground`; `LandAdapter` sends the ground in both modes and in core mode surveys loaded towns, counts crops every 20 looks and lays builds with the mod's placement; 3 game tests (290 both modes), fingerprint unchanged, schema `03941e1d6b77b641`. No pallet code in Java (the core owns pallets; `pallet-views` draws crates from its outputs). At landing: rebased onto money-adapter (wire variants after money's, fixtures, scenarios and digest written again); a work's chunks held loaded with a ticket of LandAdapter's own lasting four looks (the audit's blocker: Works' 200-tick ticket was gone before the next look asked again, so a work away from a player was never laid); builds laid at the start of the next look, once every look sent is shown (no look settled inside another's outcomes, a work laid and not yet said never laid again); `surveyNow` shows and lays what's waiting before taking what's to be said, and says it again when the host is paused; `CoreHost` no longer knows `Input.Built` (`LandAdapter.watch`); the hands scenario's unexplained level change reverted. Left: wooden pier, pastures, mine heads, dock/pastures/confined survey, settlers' desks, `Names` drift, unstaggered crop counts, fields paid before their site, row 7's tests on the Java rules |
 | B4.8 | `wagon-adapter` | opus / high | `locker-adapter`, `land-adapter`, `money-adapter` | | |
 | B4.9 | `shop-adapter` | sonnet / high | `money-adapter`, `wagon-adapter` | | |
 | B4.10 | `crown-views` | sonnet / medium | `wagon-adapter`, `shop-adapter` | | |
