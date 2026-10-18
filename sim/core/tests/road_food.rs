@@ -110,10 +110,25 @@ fn a_towns_wagon_waits_for_a_load_worth_its_road_food() {
     assert!(!s.route(0).on_the_road, "it waits");
     assert_eq!(s.road_food(0).stayed, Some(Stay::WaitingForALoad));
     s.deliver(HUB, PAPER, 127.0);
-    s.advance(2 * LOOK);
+    // It tries again a quarter day on (`Caravans.dispatch` 438: `recheckAt`, `RECHECK_TICKS`), not at every look; the
+    // mod's test polls again a day on.
+    s.advance(LOOK + DAY / 4 - LOOK);
+    assert!(!s.route(0).on_the_road, "waiting out its recheck");
+    s.advance(LOOK + DAY / 4);
     assert!(s.route(0).on_the_road, "two stacks, worth the trip: it goes");
     assert_eq!(s.route(0).carried, 64.0, "a stack, the far end's par");
     assert_eq!(s.road_food(0).stayed, None);
+}
+
+#[test]
+fn a_wagon_waiting_for_a_load_tries_again_a_quarter_day_on() {
+    // `Caravans.dispatch` 433–441: a wagon waiting for a fuller load sets `recheckAt` a quarter day on
+    // (`RECHECK_TICKS`), and `poll` 173 doesn't try it till then; each try that sends none is a "no trip" (182–184).
+    let mut s = network_with(1.0, 8.0, 5.0, 192.0);
+    s.advance(DAY);
+    let tries = s.whys(HUB).into_iter().find(|w| w.line == "Dest | - | no trip: waiting for a fuller load").map(|w| w.times);
+    assert_eq!(tries, Some(4), "four tries in the day, not twenty: {:?}", s.whys(HUB));
+    assert_eq!(s.road_food(0).stayed, Some(Stay::WaitingForALoad), "between tries it says why it's home");
 }
 
 // parity: CaravanTests.aHubThatCantFundThePurseStaysHome

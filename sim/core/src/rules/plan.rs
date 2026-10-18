@@ -29,14 +29,23 @@ pub fn register(schedule: &mut Schedule) {
     ));
 }
 
-/// An idle route starts a plan, a day at least after its last wagon left (`Caravans.poll` 172: a route dispatches
-/// once `DEPARTURE_INTERVAL`, a day, has passed since its last departure); a route with its wagon out, or whose last
-/// wagon left within the day, has none.
+/// A route waiting for a fuller load, or that couldn't fund its trip, tries again this much later
+/// (`Caravans.RECHECK_TICKS`, 6,000 ticks: a quarter day).
+pub fn recheck_ticks(content: &Content) -> u64 {
+    content.day_ticks / 4
+}
+
+/// An idle route starts a plan, a day at least after its last wagon left, once its recheck is due (`Caravans.poll`
+/// 173: a route dispatches once `DEPARTURE_INTERVAL`, a day, has passed since its last departure and `now >=
+/// route.recheckAt`); a route with its wagon out, whose last wagon left within the day, or waiting out its recheck
+/// has none, and nothing plans for it: the mod reckons a load only in `dispatch`. One waiting out its recheck keeps
+/// why it stayed (the mod's `route.status`).
 pub fn start(clock: Res<Clock>, content: Res<Content>, mut routes: Query<&mut RouteState>) {
     let n = content.goods.len();
     for mut state in &mut routes {
         let rested = state.last_departure.is_none_or(|t| clock.now.saturating_sub(t) >= content.day_ticks);
-        state.plan = (state.wagon.is_none() && rested).then(|| Plan { cargo: vec![0.0; n], ..Default::default() });
+        let due = clock.now >= state.recheck_at;
+        state.plan = (state.wagon.is_none() && rested && due).then(|| Plan { cargo: vec![0.0; n], ..Default::default() });
         if state.wagon.is_none() && !rested {
             state.stayed = Some(Stay::Home);
         }
@@ -403,6 +412,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         let slack = if provision.is_some() { Fixed::from_millis(3) } else { Fixed::ZERO };
         if money.0 + slack < road_money + wagon_purse || money.0 < road_money {
             state.stayed = Some(Stay::CantFund);
+            state.recheck_at = now + recheck_ticks(&content); // `dispatch` 374: "the hub can't fund the trip"
             continue;
         }
         let wagon_purse = if provision.is_some() { wagon_purse.min(money.0 - road_money).at_least_zero() } else { wagon_purse };
@@ -416,6 +426,11 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         };
         if !goes {
             state.stayed = Some(Stay::WaitingForALoad);
+            // It looks again in a while (`dispatch` 438); a realm's wagon never waits, and an empty trip sets no
+            // recheck (`dispatch` 501–509: "nothing to sell there").
+            if !foreign {
+                state.recheck_at = now + recheck_ticks(&content);
+            }
             continue;
         }
         state.stayed = None;

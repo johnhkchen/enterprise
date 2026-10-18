@@ -37,8 +37,43 @@ pub fn register(schedule: &mut Schedule) {
         walk_home.in_set(Step::Arrive).after(super::arrive::mark),
         send_porters_home.in_set(Step::Buy),
         come_home.in_set(Step::Turn).after(super::road::feed).before(super::arrive::turn),
+        // After the runs that don't try this look (wound down, on call: `poll` 171–175 sees them first), before
+        // anything plans a load.
+        unmanned.in_set(Step::Plan).after(super::plan::start).after(super::freight::retire)
+            .after(super::post::stay_on_call).before(super::atlas::want_books).before(super::services::plan)
+            .before(size_up),
         size_up.in_set(Step::Plan).after(super::plan::start),
     ));
+}
+
+/// Plan, first: a town with a roster whose route can't send a wagon this try, whatever its load, plans none
+/// (`Caravans.dispatch` 210–216, 249–264, ahead of any load: `saleLoad` and `pickCargo` come after): no Merchant at
+/// its desk, or no hand at home who could lead a squad nor one waiting for work it could take on (`Squad.hire`'s
+/// candidates). Each is a try that sent none ("no trip"), as [`crew`] at `Decide` would have found it: hands only
+/// leave home during the look's planning, so no lead appears by then.
+pub fn unmanned(clock: Res<Clock>, content: Res<Content>, mut routes: Query<(&Route, &mut RouteState)>,
+        homes: Query<(&Roster, Option<&Lockers>), Without<crate::realms::Realm>>) {
+    let none = content.trade(crate::roster::NONE);
+    for (route, mut state) in &mut routes {
+        if state.plan.is_none() {
+            continue;
+        }
+        let Ok((roster, lockers)) = homes.get(route.from) else { continue };
+        if !crewed(Some(roster)) {
+            continue;
+        }
+        let stay = if roster.merchant.is_none() {
+            Stay::NoMerchant
+        } else if available(&content, roster, lockers).iter()
+            .any(|&i| leads(&content, roster.hands[i].trade) || Some(roster.hands[i].trade) == none) {
+            continue;
+        } else {
+            Stay::NoSquad
+        };
+        state.plan = None;
+        state.stayed = Some(stay);
+        state.tried_at = Some(clock.now);
+    }
 }
 
 fn signing() -> Reason {

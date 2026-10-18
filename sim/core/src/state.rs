@@ -287,6 +287,10 @@ pub struct RouteState {
     /// The look a wagon was last tried (`Caravans.poll` 173 calling `dispatch`): a plan reached `Decide`. A try that
     /// sent none is a "no trip" in the books (`poll` 182–184).
     pub tried_at: Option<u64>,
+    /// A route that waited for a fuller load, or couldn't fund the trip, tries again no sooner than this
+    /// (`Route.recheckAt`, `Caravans.RECHECK_TICKS`: a quarter day on, not every poll). The mod doesn't save it (a
+    /// reload tries at once); the core does, so a loaded world goes on as the one that saved it.
+    pub recheck_at: u64,
     /// Squads (`squad.rs`): the saddle's wear so far (a saddle is used up at 1), porters walking home from the far end,
     /// the stacks its wagon brought home last trip (`lastHome`), porters sent home (`portersSent`), and the trades whose
     /// work the far end wants (a host's or a later slice's hook: `Services.wantedAbroad`).
@@ -308,7 +312,8 @@ pub struct RouteState {
     pub bought: f64,
     pub purchases: Fixed,
     pub backhauled: f64,
-    /// Services (`services.rs`): the trades whose services abroad the far end would want this trip, from the ledgers
+    /// Services (`services.rs`): the trades whose services abroad the far end would want this trip (as its last try
+    /// reckoned them: a route not tried this look keeps them; the mod asks only in `dispatch`), from the ledgers
     /// alone (`Services.wantedAbroad`); when a Cartographer last mapped the road and the most towns it saw along it
     /// (`mappedAt`, `townsMapped`); animals its Shepherds sold there (`animalsSold`); and what its squads' services
     /// earned in all (`serviceSpurs`, in emeralds).
