@@ -110,6 +110,10 @@ core-test:
 core-fingerprint:
     cd sim && cargo test --release -q --test fingerprint -- --ignored --nocapture 2>&1 | grep '^fingerprint'
 
+# The network study's world in the fast host, no game: `just study 365 --csv /tmp/base.csv --river --people-use`
+study *args:
+    cd sim && cargo run --release -q -p enterprise-sim -- {{args}}
+
 # How far the core matches the mod's game tests: `just parity --left` lists what's not covered yet
 parity *flags:
     python3 scripts/parity.py {{flags}}

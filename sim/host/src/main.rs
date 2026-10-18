@@ -1,90 +1,236 @@
-//! The fast host: the core with no game. Builds the study's map (the capital, a freight hub and seven towns, as in
-//! `dev/experiments/network_study.py`), runs it for DAYS (default 10,000), checking the books every day, and says how
-//! long it took.
+//! The fast host: the core with no game. Builds the network study's world (`dev/experiments/network_study.py`: the
+//! hub with its warehouse and squad, settlements S1-S4 at 300, 600, 1,200 and 4,000 blocks with their farms and money,
+//! toll town T on the S3 road, each flag's additions as far as the core has them), runs it DAYS days (default 10,000),
+//! checking the books every day (goods and money conserved, nobody in debt), and reports what it did: per town, per
+//! route, why wagons went or stayed, and each town's cash book. `--csv OUT` writes a row per town and per route a day.
 //!
-//!     cargo run --release -p enterprise-sim -- 10000
+//!     cargo run --release -p enterprise-sim -- 365 --csv /tmp/base.csv
+//!     cargo run --release -p enterprise-sim -- 120 --river --services --metal --trades --seeds 5
+//!     cargo run --release -p enterprise-sim -- 365 --people-use   # the settlements' lockers' wants as their people's uses
+//!
+//! The world is built through the core's host calls; the only thing read off the world directly is each route's state
+//! (`RouteState`: stacks home, items bought, food eaten), which no host call returns.
+
+mod flags;
+mod goods;
+mod report;
+mod world;
 
 use std::time::Instant;
 
-use enterprise_core::{Content, Good, Society};
+use flags::Flags;
+use goods::DAY;
+use report::Tracker;
+use world::Study;
 
-const DAY: u64 = 24_000;
-
-/// Towns of the study's map, at their desks' positions: name, x, z, money.
-const TOWNS: [(&str, f64, f64, f64); 9] = [
-    ("Hayford", 1002.0, 1002.0, 200.0),
-    ("Haygate", 1400.0, 1403.0, 100.0),
-    ("Meadowworth", 1302.0, 1002.0, 50.0),
-    ("Wheatfield", 1002.0, 1602.0, 50.0),
-    ("Hollowwick", 1851.0, 1851.0, 50.0),
-    ("Greenwick", 5002.0, 1002.0, 50.0),
-    ("Barleyby", 1657.0, 1357.0, 50.0),
-    ("Cloverby", 1307.0, 1757.0, 50.0),
-    ("Lindenfield", 2057.0, 1307.0, 50.0),
-];
+/// What one seed's run came to, for the sweep's summary.
+struct Outcome {
+    seed: u64,
+    days: u64,
+    money: Vec<(String, f64)>,
+    mood: Vec<(String, f64)>,
+    trips: u32,
+    stacks_out: f64,
+    stacks_sold: f64,
+    seconds: f64,
+}
 
 fn main() {
-    let days: u64 = std::env::args().nth(1).and_then(|a| a.parse().ok()).unwrap_or(10_000);
-    let goods = ["wheat", "bread", "paper", "book", "wool", "leather", "iron_ingot", "cookie"];
-    let content = Content::new(
-        goods.iter().zip([0.05, 0.2, 0.04, 0.6, 0.1, 0.25, 1.0, 0.055])
-            .map(|(name, value)| Good::new(name, value, 64))
-            .collect(),
-        DAY,
-    );
-    let mut s = Society::new(content);
-    let ids: Vec<_> = TOWNS.iter().map(|(name, _, _, money)| s.add_town(name, *money)).collect();
-    // Each town makes something and its people use others: farms grow wheat, mills bake, scribes write.
-    let trades: [(usize, &[(usize, f64, f64)]); 9] = [
-        (0, &[(1, 0.0, 48.0), (3, 0.0, 6.0), (6, 0.0, 4.0), (7, 0.0, 30.0)]),
-        (1, &[(1, 0.0, 24.0), (2, 0.0, 20.0), (4, 0.0, 10.0)]),
-        (2, &[(0, 160.0, 0.0), (2, 0.0, 16.0), (5, 0.0, 6.0)]),
-        (3, &[(0, 192.0, 0.0), (1, 48.0, 0.0), (3, 0.0, 4.0)]),
-        (4, &[(2, 96.0, 0.0), (3, 12.0, 0.0), (1, 0.0, 16.0)]),
-        (5, &[(4, 40.0, 0.0), (0, 0.0, 30.0)]),
-        (6, &[(5, 24.0, 0.0), (1, 0.0, 12.0), (7, 0.0, 10.0)]),
-        (7, &[(7, 60.0, 0.0), (0, 0.0, 40.0)]),
-        (8, &[(6, 10.0, 0.0), (1, 0.0, 12.0), (4, 0.0, 8.0)]),
-    ];
-    for (town, list) in trades {
-        for &(good, makes, uses) in list {
-            s.set_trade(ids[town], good, makes, uses);
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let flags = match Flags::parse(&args) {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("{e}");
+            std::process::exit(2);
+        }
+    };
+    let mut outcomes = Vec::new();
+    for seed in 1..=flags.seeds {
+        outcomes.push(run(&flags, seed, flags.seeds == 1 || seed == 1));
+    }
+    if outcomes.len() > 1 {
+        sweep(&outcomes);
+    }
+}
+
+/// One seed's run: built, run day by day with the books checked, reported in full if `full`.
+fn run(flags: &Flags, seed: u64, full: bool) -> Outcome {
+    let mut st = Study::build(flags.clone(), seed);
+    for (name, v) in &flags.dials {
+        if let Err(e) = st.s.set_dial(name, *v) {
+            eprintln!("--dial {name}: {e}");
+            std::process::exit(2);
         }
     }
-    // A route each way between towns within 1,500 blocks: a day on the road for 1,200 blocks, a third of an emerald
-    // of road food a hundred blocks there and back, every four days.
-    for (a, (_, ax, az, _)) in TOWNS.iter().enumerate() {
-        for (b, (_, bx, bz, _)) in TOWNS.iter().enumerate() {
-            let blocks = ((ax - bx).powi(2) + (az - bz).powi(2)).sqrt();
-            if a != b && blocks <= 1500.0 {
-                s.add_route(ids[a], ids[b], blocks / 1200.0, blocks / 300.0, 4.0);
+    if full {
+        println!("seed {seed}: {} towns, {} routes, {} goods", st.s.town_count(), st.s.route_count(), st.s.content().goods.len());
+        for l in st.setup_log.drain(..) {
+            println!("{l}");
+        }
+        for m in &st.missing {
+            println!("missing: {m}");
+        }
+    }
+    st.setup_log.clear();
+    let csv = if seed == 1 { flags.csv.clone() } else { flags.csv.as_ref().map(|c| format!("{c}.seed{seed}")) };
+    let mut tracker = Tracker::new(csv.as_deref()).unwrap_or_else(|e| {
+        eprintln!("--csv: {e}");
+        std::process::exit(2);
+    });
+    let every = if flags.every > 0 { flags.every } else { (flags.days / 12).max(1) };
+    let started = Instant::now();
+    let mut start = st.s.totals();
+    tracker.fit(&st.s, true);
+    let mut ran = 0;
+    for day in 1..=flags.days {
+        let towns_before = st.s.town_count();
+        st.morning(day);
+        if st.s.town_count() != towns_before {
+            // A town opened today (the spring): its money came in paid, its goods delivered; count afresh from here.
+            start = st.s.totals();
+        }
+        if full {
+            for l in st.setup_log.drain(..) {
+                println!("{l}");
             }
         }
-    }
-    let started = Instant::now();
-    let start = s.totals();
-    let mut events = 0usize;
-    for day in 1..=days {
-        events += s.advance(day * DAY).len();
-        if let Err(e) = s.conserved(&start).and_then(|_| s.solvent()) {
+        st.setup_log.clear();
+        let out = st.s.advance(day * DAY);
+        if let Err(e) = st.s.conserved(&start).and_then(|_| st.s.solvent()) {
             eprintln!("day {day}: {e}");
             std::process::exit(1);
         }
+        tracker.day(&mut st, day, &out);
+        ran = day;
+        if full && (day % every == 0 || day == flags.days) {
+            println!("{}", report::day_line(&st, &tracker, day));
+        }
+        let met = stop_met(&st, &flags.stop_when);
+        if !met.is_empty() {
+            println!("stopped on day {day}: {}", met.iter().map(|(why, _)| why.as_str()).collect::<Vec<_>>().join("; "));
+            for (_, t) in met {
+                println!("\n{}'s cash book, the last ten days:", st.s.town(t).name);
+                for (d, label, v) in st.s.cash_book(t, 10) {
+                    println!("  day {d:>4}  {v:>+9.2}  {label}");
+                }
+            }
+            break;
+        }
     }
+    tracker.read_books(&st.s, ran);
+    tracker.finish();
     let took = started.elapsed();
-    println!("{days} days, {} towns, {} routes, {events} wagon events in {:.2?} ({:.1} µs a day); books balanced every day",
-        s.town_count(), s.route_count(), took, took.as_secs_f64() * 1e6 / days as f64);
-    for t in 0..s.town_count() {
-        let v = s.town(t);
-        println!("  {:12} {:>10.1} emeralds", v.name, v.money);
+    let routes = st.s.route_count();
+    println!("seed {seed}: {ran} days, {} towns, {routes} routes, {} events in {:.2?} ({:.1} µs a day); books balanced every day",
+        st.s.town_count(), tracker.events, took, took.as_secs_f64() * 1e6 / ran.max(1) as f64);
+    if full {
+        print!("{}", report::end_report(&mut st, &tracker, ran));
+        if let Some(c) = &csv {
+            println!("\nwrote {} rows to {c}", tracker.rows);
+        }
     }
-    let (mut trips, mut sold, mut carried) = (0u64, 0.0, 0.0);
-    for r in 0..s.route_count() {
-        let v = s.route(r);
-        trips += v.trips as u64;
-        sold += v.sold;
-        carried += v.carried;
+    let s = &st.s;
+    let left: u32 = tracker.routes.iter().map(|t| t.left).sum();
+    let arrived: u32 = tracker.routes.iter().map(|t| t.arrived).sum();
+    Outcome {
+        seed,
+        days: ran,
+        money: st.named.iter().map(|(n, t)| (n.clone(), s.town(*t).money)).collect(),
+        mood: st.named.iter().map(|(n, t)| (n.clone(), s.town(*t).people.mood)).collect(),
+        trips: (0..routes).map(|r| s.route(r).trips).sum(),
+        stacks_out: tracker.routes.iter().map(|t| t.stacks_out).sum::<u64>() as f64 / left.max(1) as f64,
+        stacks_sold: tracker.routes.iter().map(|t| t.sold_stacks).sum::<f64>() / arrived.max(1) as f64,
+        seconds: took.as_secs_f64(),
     }
-    println!("  {trips} trips: {:.1} stacks carried and {:.1} sold a trip", carried / 64.0 / trips.max(1) as f64,
-        sold / 64.0 / trips.max(1) as f64);
+}
+
+/// The towns meeting a `--stop-when` condition today, and why.
+fn stop_met(st: &Study, conds: &[(String, String, String, f64)]) -> Vec<(String, usize)> {
+    let mut met = Vec::new();
+    for (who, field, op, value) in conds {
+        for (name, t) in &st.named {
+            if who != "any" && who != name {
+                continue;
+            }
+            let v = st.s.town(*t);
+            let x = match field.as_str() {
+                "treasury" => v.money,
+                "mood" => v.people.mood,
+                "villagers" => v.people.villagers,
+                "purse" => v.people.purse,
+                "hexes" => st.s.holding(*t).hexes.len() as f64,
+                _ => continue,
+            };
+            let hit = match op.as_str() { "<" => x < *value, "<=" => x <= *value, ">" => x > *value, _ => x >= *value };
+            if hit {
+                met.push((format!("{name} {field} {x:.2} {op} {value}"), *t));
+            }
+        }
+    }
+    met
+}
+
+/// The sweep's summary: each seed's line, then each town's money and mood across the seeds.
+fn sweep(outcomes: &[Outcome]) {
+    println!("\n== Sweep over {} seeds (the core's dice: lockers' XP rolls, the jobs draw)", outcomes.len());
+    for o in outcomes {
+        let money: Vec<String> = o.money.iter().map(|(n, m)| format!("{n} {m:.0}")).collect();
+        println!("seed {:>3}: {} days in {:.2}s, {} trips, {:.2} stacks out / {:.2} sold a trip | {}", o.seed, o.days,
+            o.seconds, o.trips, o.stacks_out, o.stacks_sold, money.join(" "));
+    }
+    let names: Vec<String> = outcomes[0].money.iter().map(|(n, _)| n.clone()).collect();
+    for name in names {
+        let pick = |f: &dyn Fn(&Outcome) -> Option<f64>| -> (f64, f64, f64) {
+            let v: Vec<f64> = outcomes.iter().filter_map(f).collect();
+            let mean = v.iter().sum::<f64>() / v.len().max(1) as f64;
+            (mean, v.iter().cloned().fold(f64::INFINITY, f64::min), v.iter().cloned().fold(f64::NEG_INFINITY, f64::max))
+        };
+        let m = pick(&|o| o.money.iter().find(|(n, _)| *n == name).map(|x| x.1));
+        let d = pick(&|o| o.mood.iter().find(|(n, _)| *n == name).map(|x| x.1));
+        println!("{name:>8}: money {:.1} (from {:.1} to {:.1}), mood {:+.2} (from {:+.2} to {:+.2})", m.0, m.1, m.2, d.0, d.1, d.2);
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn month(args: &str) -> (Study, Tracker) {
+        let argv: Vec<String> = format!("30 {args}").split_whitespace().map(String::from).collect();
+        let mut st = Study::build(Flags::parse(&argv).unwrap(), 1);
+        let mut start = st.s.totals();
+        let mut tracker = Tracker::new(None).unwrap();
+        tracker.fit(&st.s, true);
+        for day in 1..=30 {
+            let towns = st.s.town_count();
+            st.morning(day);
+            if st.s.town_count() != towns {
+                start = st.s.totals();
+            }
+            let out = st.s.advance(day * DAY);
+            st.s.conserved(&start).and_then(|_| st.s.solvent()).unwrap_or_else(|e| panic!("{args}, day {day}: {e}"));
+            tracker.day(&mut st, day, &out);
+        }
+        (st, tracker)
+    }
+
+    #[test]
+    fn every_flag_builds_a_world_that_runs_a_month_with_its_books_balanced() {
+        for args in ["", "--river", "--river-bridge", "--services --metal --trades", "--comforts --fleet --master",
+                "--war 5,10,20", "--freight", "--ridge --realms", "--people-use", "--people-use --river --comforts"] {
+            let (st, _) = month(args);
+            assert!(st.s.town_count() >= 6, "{args}: {} towns", st.s.town_count());
+        }
+    }
+
+    #[test]
+    fn the_hubs_wagons_carry_paper_where_the_settlements_people_use_it() {
+        let (mut st, tracker) = month("--people-use");
+        let left: u32 = (0..st.s.route_count()).map(|r| st.s.route(r).trips).sum();
+        assert!(left > 0, "no wagon came home");
+        let paper = st.s.content().good("paper").unwrap();
+        assert!(st.s.town(st.hub).stock[paper] < 3.0 * 1728.0, "the hub kept all its paper");
+        assert!(report::end_report(&mut st, &tracker, 30).contains("hub->S1"));
+    }
 }
