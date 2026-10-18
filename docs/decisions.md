@@ -1127,8 +1127,10 @@ The cotton chain, chocolate, the cold chain and the exchange follow later.
 - **Goods have weight.** A pallet and each carrier have weight caps as well as slots (`docs/pallets.md`). The base
   content keeps 1 a stack, so nothing changes there; the Minecraft content makes ore, ingots, stone and blocks
   heavier, mildly at first, so a wagon of iron carries fewer stacks than a wagon of wool.
-- **Pallets in both.** The pallet model goes into the Java mod's cargo too, not only the core: bills on pallets, not
-  crates, in both, while the binding moves the mod onto the core.
+- **Pallets in the core only.** The core implements pallets; the mod draws them from it through the binding (crate
+  items tagged from the core's pallet messages, a chest asking the core whether a pallet fits), with no pallet rules
+  in Java. The mod's old bills-on-crates stay as they are until the binding retires them. Weights are content-pack
+  data the mod sends the core, not Java rules.
 - **The binding** (`docs/binding-plan.md`): chests stay physical and are synced with the core each look; saves survive
   core changes from the first release on (until then dev worlds are rebuilt); Chicory, serde-reflection (for the
   generator only) and postcard with our own Java generator, Chicory run through plain Gradle `JavaExec`; game tests
