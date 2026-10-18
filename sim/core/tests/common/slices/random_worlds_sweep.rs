@@ -3,7 +3,8 @@
 //!
 //! - **Mood** stays finite and never sinks below the lowest its target can be ([`enterprise_core::sweep::mood_floor`]:
 //!   its size and its villagers without beds, its wages unpaid, its grief at the most); none did in 300 seeds, though
-//!   a town that had just shrunk could lag below it. A town whose villagers all have beds and that has no more than 32
+//!   a town that had just shrunk (a levy, a host's `set_people`) could lag below it with no rule broken: the check
+//!   allows no slack for that, so a slice that shrinks towns sharply may need it. A town whose villagers all have beds and that has no more than 32
 //!   of them is never below -8 (the brief's floor: crowding and size take a town lower, as `Territory.moodTarget` does).
 //! - **No stall:** no wagon is out more than 30 days (a trip that never ends); a route home that isn't wound down for
 //!   a hub nor on call has said why it stayed (`stayed`), unless it has never been planned (just opened). (A route
@@ -14,6 +15,8 @@
 //!   installment judged by the next judging (one whose last copy arrived since today's comes into force late). (The
 //!   mod leaves one short of its total, broken by fewer than three misses, in force after that, as
 //!   `ContractBook.review` does; the sweep counts them.) Delivered, paid, owing, shipped and refunds are never below nothing.
+//!   (While `review` judges every installment due, as it does now, the copy always comes out fully judged, so this
+//!   amounts to "judging ran today or yesterday": the unjudged branch guards a review that would stop short.)
 //! - **Wages paid or credited:** a farm's whole emeralds owed are settled every look (paid, credited, or the Farmers'
 //!   share taken in crops), so less than one is owed at a day's end; the shares paid are shares; the households' purse
 //!   is never below nothing.
