@@ -6,20 +6,19 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `8e80e7e`. 632 tests pass (`just core-test`, about 2.5 minutes now the random worlds run 300 seeds with
-  the sweep's checks, across the cores). Parity: **191 covered, 25 partial, 46 skipped, 0 left of 262** (`just
-  parity`; `docs/parity.md` lists what each partial leaves out). `just core-fingerprint`: `958e237a391a51ed` (money in thousandths; `just core-wasm-replay` checks the
-  WebAssembly build's 200-day digest against the native one);
-  `cargo run --release -p enterprise-sim -- --sweep 300` prints what the random worlds did.
-- **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
-  landings are one at a time, the earliest in the plan's order first among those done.
-- **Paused 2026-10-17 21:05** (13 of 32 landed), with no landing under way. Four trees waited in `.trees/`
-  (`buildings-and-works`, `squads` and `bank-and-discounts` have since landed).
-- **To resume:** `python3 <session>/waves/remaining.py` writes `waves/remaining.json`: the tasks not yet landed,
-  read from the Landed column below. Then run the Workflow tool with `scriptPath: <session>/waves/waves.js` and those
-  args. A task whose tree exists carries on from it. `<session>` is
-  `~/.claude/projects/-Users-johnchen-swe-repos-enterprise/a9a4c99b-22a4-41ca-a785-1537d11d84db`; the briefs are
-  copied there, so they survive a reboot.
+- **Main:** `76ea783`. 645 tests pass (`just core-test`, about 2.5 minutes, the random worlds' 300 seeds across the
+  cores). Parity: **191 covered, 25 partial, 46 skipped, 0 left of 262** (`just parity`; `docs/parity.md` lists what
+  each partial leaves out). `just core-fingerprint`: `d943db46f28de359` (money in thousandths; `just core-wasm-replay`
+  checks the WebAssembly build's 200-day digest against the native one); `cargo run --release -p enterprise-sim --
+  --sweep 300` prints what the random worlds did; `just study 365` runs the network study's world.
+- **The plan is done (2026-10-18):** all 32 tasks of waves 1b to 5 landed, the workflow's 63 agents with no errors.
+- **After the plan, the study world** (`sim/host`, the network study's hub, S1-S4 and T): `study-findings` landed
+  `76ea783` (wagons bring what the far end's switched-on trades take, loads sized and judged as `pickCargo`/`saleLoad`,
+  one wagon a route a day, the farm grows for the lockers and the workshop, ties on roads as the mod's heap, T in its
+  hex, roads as long as `Route.distance`; 365 days: 0 to 419 trips). Still open: the core sends the settlements far
+  more than the Java study did (S1 22,276 items by day 40 against 5,675), `marketWants`, roads planned once not at each
+  departure, coins and the mint (rate stuck at 16), `Places::distance` hex centres not desks, and a stayed route's
+  reasons booked daily (the mod: only for a wagon that goes; four atlas tests pin the core's way, the user to decide).
 
 ## Waves 1b to 5
 
