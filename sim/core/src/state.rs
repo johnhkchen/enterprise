@@ -203,6 +203,8 @@ pub struct Wagon {
     /// The crown (`crown.rs`): the recruits it carries (`Caravan.recruits`): a levy's to the capital's barracks, the
     /// barracks' to the front.
     pub recruits: Vec<crate::army::Recruit>,
+    /// It went full, of what the far end could pay for (`dispatch`'s `goesFor`: "full", not "on its day"; `saleLoad`).
+    pub full: bool,
 }
 
 /// A town's run to another: how long the road takes one way, what a round trip costs in road food, its timetable.

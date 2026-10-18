@@ -204,6 +204,8 @@ pub struct Lockers {
     /// What the town's contracts will have it deliver within `pace_days`, of each good, not yet less its stock
     /// (`Procurement.soon`; `sourcing.rs` sets it before each restock): a procured offer runs no more than that.
     pub due: Vec<f64>,
+    /// The trades its managed lockers have made, all told (`LockerTrading.trade`'s count; the study's `trades`).
+    pub trades: u64,
 }
 
 /// The books a locker trade writes in: the ledger (goods used and made), the cash book, and the world's dice.
@@ -505,6 +507,7 @@ fn trade(content: &Content, books: &mut Books, now: u64, town: usize, roster: &m
         }
         made += ran;
     }
+    lockers.trades += made as u64;
     made
 }
 

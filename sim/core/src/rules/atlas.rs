@@ -88,9 +88,8 @@ pub fn depart(clock: Res<Clock>, content: Res<Content>, mut atlas: ResMut<Atlas>
                 whys.why(route.from_id, Some(route.to_id), good, why, n, today);
             }
             let stacks = crate::cargo::stacks(&content, &w.cargo, &w.shipments);
-            let slots = if w.slots > 0 { w.slots } else { content.dials.wagon_slots };
-            let full = stacks as f64 >= content.dials.wagon_full * slots as f64;
-            whys.why(route.from_id, Some(route.to_id), None, Why::Went { full, porter: w.porter }, stacks as f64, today);
+            // Full as the wagon was judged leaving: of what the far end could pay for (`saleLoad`).
+            whys.why(route.from_id, Some(route.to_id), None, Why::Went { full: w.full, porter: w.porter }, stacks as f64, today);
         } else if let Some(stay) = state.stayed.filter(|_| state.wagon.is_none()) {
             if whys.noted.get(&route.seq) == Some(&today) {
                 continue;

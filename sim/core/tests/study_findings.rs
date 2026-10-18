@@ -332,3 +332,36 @@ fn a_road_is_as_long_as_the_straight_way_between_desks_and_its_detours() {
     let r = s.add_road(a, b, 4.0).unwrap();
     assert_eq!(s.route_road_blocks(r) as f64, 600.0 + ((path.hexes.len() - line.len()) as f64 * 80.0).round());
 }
+
+#[test]
+fn the_hosts_reads_a_routes_tolls_and_a_towns_locker_trades() {
+    // `Society::tolls_paid`: what a route's wagons paid the posts on their road, all told (its purse book's tolls), as
+    // the posts' owner took it; `Society::locker_trades`: the trades a town's managed lockers made.
+    let mut s = Society::new(Content::new(vec![Good::new("wheat", 0.05, 64), Good::new("bread", 0.2, 64).food(5.0)], DAY));
+    s.content_mut().dials.standing_orders = false;
+    s.content_mut().dials.toll_reviews = false;
+    let farm = s.add_town("Wheatfield", 20.0);
+    let mill = s.add_town("Hayford", 500.0);
+    let keeper = s.add_town("Tollgate", 100.0);
+    s.place_town(farm, 0.0, 0.0);
+    s.place_town(mill, 1000.0, 0.0);
+    s.set_trade(farm, 0, 128.0, 0.0);
+    s.set_trade(mill, 0, 0.0, 128.0);
+    let route = s.add_road(farm, mill, 2.0).expect("a road");
+    let path = s.route_path(route).unwrap();
+    assert!(s.claim_hex(keeper, path[4]) && s.claim_hex(keeper, path[5]));
+    s.set_guards(keeper, 2);
+    s.deliver(keeper, 1, 1000.0);
+    s.set_toll(keeper, 0.1);
+    assert_eq!(s.tolls_paid(route), enterprise_core::Fixed::ZERO);
+    s.advance(30 * DAY);
+    let paid = s.tolls_paid(route);
+    assert!(paid.is_positive() && paid == s.holding(keeper).tolls_taken, "{paid} paid, as the keeper took");
+    assert_eq!(s.route_state(route).1.trips, s.route(route).trips);
+
+    let mut s = network(200.0, 100.0, &[("merchant", 1), ("librarian", 1)], &[]);
+    assert_eq!(s.locker_trades(DEST), 0);
+    s.advance(2 * DAY + LOOK); // a whole day's two restocks since its clock started (`LockerCatchUp`)
+    assert!(s.locker_trades(DEST) >= 8, "the Librarian's paper trades: {}", s.locker_trades(DEST));
+    assert_eq!(s.locker_trades(HUB), 0, "no roster, no lockers");
+}

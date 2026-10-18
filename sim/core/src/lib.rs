@@ -50,6 +50,7 @@ pub mod slices;
 pub mod sourcing;
 pub mod squad;
 pub mod stranded;
+pub mod study;
 pub mod society;
 pub mod state;
 pub mod territory;

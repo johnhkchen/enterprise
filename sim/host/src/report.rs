@@ -7,7 +7,7 @@ use std::fmt::Write as _;
 use std::io::Write as _;
 
 use enterprise_core::cash_book::Account;
-use enterprise_core::state::{Route, RouteState};
+use enterprise_core::state::RouteState;
 use enterprise_core::works::What;
 use enterprise_core::{Output, Society, TownId};
 
@@ -49,12 +49,9 @@ pub struct Tracker {
     pub rows: usize,
 }
 
-/// Every route's state, by its number (the host has no call for it: read off the world).
+/// Every route's state, by its number (`Society::route_state`).
 pub fn route_states(s: &mut Society) -> Vec<RouteState> {
-    let mut q = s.world.query::<(&Route, &RouteState)>();
-    let mut v: Vec<(usize, RouteState)> = q.iter(&s.world).map(|(r, st)| (r.seq, st.clone())).collect();
-    v.sort_by_key(|(seq, _)| *seq);
-    v.into_iter().map(|(_, st)| st).collect()
+    (0..s.route_count()).map(|r| s.route_state(r).1.clone()).collect()
 }
 
 pub fn route_label(s: &Society, route: usize) -> String {
@@ -65,7 +62,7 @@ pub fn route_label(s: &Society, route: usize) -> String {
 const TOWN_COLUMNS: &str = "day,kind,name,mint_rate,treasury,purse,hexes,guards,posts,toll_pct,tolls_taken,traffic,deserted,\
 farm_share_pct,harvested,trades,mood,villagers,beds,homes,born,wall_pct,bridges,culture,focus,stock_worth";
 const ROUTE_COLUMNS: &str = "blocks,trips,sold_items,sales_spurs,service_spurs,bought_items,purchase_spurs,food_spurs,\
-home_spurs,purse_spurs,stacks_out,stacks_home,sold_stacks,food_eaten,short_rations,delivered";
+home_spurs,purse_spurs,stacks_out,stacks_home,sold_stacks,food_eaten,short_rations,delivered,tolls";
 
 impl Tracker {
     pub fn new(csv: Option<&str>) -> Result<Tracker, String> {
@@ -172,18 +169,18 @@ impl Tracker {
                 v.money, v.people.purse, h.hexes.len(), s.guards(*t), posts.join(";"),
                 100.0 * s.toll_rate(*t), h.tolls_taken, h.traffic_per_day, h.deserted,
                 farm.as_ref().map_or(String::new(), |f| format!("{:.1}", 100.0 * f.farm.labor_share)),
-                farm.as_ref().map_or(0.0, |f| f.farm.harvested), self.towns[*t].trades, v.people.mood,
+                farm.as_ref().map_or(0.0, |f| f.farm.harvested), s.locker_trades(*t) as f64, v.people.mood,
                 v.people.villagers, v.people.beds, v.people.homes_built, v.people.born, 100.0 * s.walled(*t), bridges,
                 h.culture, farm.as_ref().map_or(String::new(), |f| format!("{:?}", f.farm.focus)), worth);
         }
         let blank_town = ",".repeat(TOWN_COLUMNS.matches(',').count() - 3);
         for (r, state) in states.iter().enumerate() {
             let tr = &self.routes[r];
-            let _ = writeln!(lines, "{day},route,{},{rate:.3}{blank_town},{},{},{:.0},{:.1},{:.1},{:.0},{:.1},{:.1},{:.1},{:.1},{},{},{:.2},{:.1},{},{:.0}",
+            let _ = writeln!(lines, "{day},route,{},{rate:.3}{blank_town},{},{},{:.0},{:.1},{:.1},{:.0},{:.1},{:.1},{:.1},{:.1},{},{},{:.2},{:.1},{},{:.0},{:.1}",
                 route_label(s, r), s.route_road_blocks(r), state.trips, state.sold, tr.takings_far * rate,
                 state.service_paid.to_f64() * rate, state.bought, state.purchases.to_f64() * rate, state.food_paid.to_f64() * rate,
                 tr.takings_home * rate, tr.cash.get("wagon purse").map_or(0.0, |c| c.0) * rate, tr.stacks_out, tr.stacks_home, tr.sold_stacks, state.food_eaten,
-                state.short_rations, state.delivered);
+                state.short_rations, state.delivered, s.tolls_paid(r).to_f64() * rate);
         }
         self.rows += lines.lines().count();
         if let Some(w) = self.csv.as_mut() {
@@ -199,12 +196,12 @@ impl Tracker {
 }
 
 /// The day's line, as the study prints it: each town's treasury, mood, villagers, hexes, guards, toll and trades.
-pub fn day_line(st: &Study, tr: &Tracker, day: u64) -> String {
+pub fn day_line(st: &Study, _tr: &Tracker, day: u64) -> String {
     let s = &st.s;
     let towns: Vec<String> = st.named.iter().filter(|(n, _)| n != "hub" && n != "spring").map(|(name, t)| {
         let v = s.town(*t);
-        format!("{name} {:.0}em {:+.1} {}v {}h {}g {:.0}% {:.0}t", v.money, v.people.mood, v.people.villagers,
-            s.holding(*t).hexes.len(), s.guards(*t), 100.0 * s.toll_rate(*t), tr.towns.get(*t).map_or(0.0, |x| x.trades))
+        format!("{name} {:.0}em {:+.1} {}v {}h {}g {:.0}% {}t", v.money, v.people.mood, v.people.villagers,
+            s.holding(*t).hexes.len(), s.guards(*t), 100.0 * s.toll_rate(*t), s.locker_trades(*t))
     }).collect();
     format!("day {day:>4}: {} | hub {:.0}em | mint {:.1}", towns.join(" | "), s.town(st.hub).money, s.mint_rate())
 }
@@ -232,10 +229,10 @@ pub fn end_report(st: &mut Study, tr: &Tracker, days: u64) -> String {
         }
         let hands: Vec<String> = trades.iter().map(|(n, l)| if l.len() == 1 { format!("{n} {}", l[0]) }
             else { format!("{}x{n} {:?}", l.len(), l) }).collect();
-        let _ = writeln!(o, "{name:>18}: {:>8.1} em (opened {:.0}), purse {:.1}; {} villagers, {} beds, mood {:+.2}; {} hexes, {} guards, toll {:.0}%, traffic {:.0} spurs/day; {:.0} em of desk sales",
+        let _ = writeln!(o, "{name:>18}: {:>8.1} em (opened {:.0}), purse {:.1}; {} villagers, {} beds, mood {:+.2}; {} hexes, {} guards, toll {:.0}%, traffic {:.0} spurs/day; {} locker trades, {:.0} em of desk sales",
             v.money, tr.towns.get(*t).map_or(0.0, |x| x.opening), v.people.purse, v.people.villagers, v.people.beds,
             v.people.mood, h.hexes.len(), s.guards(*t), 100.0 * s.toll_rate(*t), h.traffic_per_day,
-            tr.towns.get(*t).map_or(0.0, |x| x.trades));
+            s.locker_trades(*t), tr.towns.get(*t).map_or(0.0, |x| x.trades));
         let _ = writeln!(o, "{:>18}  hands: {}", "", hands.join(", "));
         if let Some(f) = s.farm(*t) {
             let plots: Vec<String> = f.farm.plots.iter().map(|(g, n)| format!("{n} {}", content.goods[*g].name)).collect();
