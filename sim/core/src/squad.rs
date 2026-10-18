@@ -24,8 +24,8 @@
 //! - `territory/Territory.java` `grow` 1614: the squad trains before anything, and the idle find work
 //!   (`Jobs.employ`) only when it trained nobody and isn't short ([`hiring_waits`]).
 //!
-//! A hand on the road is known by an id its town stamps it with as it leaves ([`stamp`], as the mod knows a villager by
-//! its UUID): its place in the roster shifts while it's away, as settlers leave (`settlers::take_hand`).
+//! A hand on the road is known by its id ([`stamp`]; `roster.rs`, as the mod knows a villager by its UUID): its place in
+//! the roster shifts while it's away, as settlers leave (`settlers::take_hand`).
 //!
 //! The core's hands have no workstations: a hand "works a locker" when the desk's Merchant manages its locker and one
 //! of its offers is switched on (`lockers.rs`); a hand trained or taken on for a squad keeps its trade with no
@@ -355,13 +355,16 @@ pub fn release(roster: &mut Roster, crew: &[Hand]) {
     }
 }
 
-/// A hand leaves with a caravan: away, with an id none of its town's hands has (the mod knows a villager by its UUID;
-/// a hand's place in the roster shifts as others leave it, `settlers::take_hand`). Returns the hand as it left.
+/// A hand leaves with a caravan: away, known by its id (`roster.rs`'s [`HandId`](crate::roster::HandId): a hand's place
+/// in the roster shifts as others leave it, `settlers::take_hand`). A hand with none yet (a roster built outside a
+/// society) is given one none of its town's hands has. Returns the hand as it left.
 pub fn stamp(roster: &mut Roster, i: usize) -> Option<Hand> {
-    let id = roster.hands.iter().map(|h| h.id).max().unwrap_or(0) + 1;
+    let fresh = roster.hands.iter().map(|h| h.id).max().unwrap_or(0) + 1;
     let h = roster.hands.get_mut(i)?;
     h.away = true;
-    h.id = id;
+    if h.id == 0 {
+        h.id = fresh;
+    }
     Some(h.clone())
 }
 

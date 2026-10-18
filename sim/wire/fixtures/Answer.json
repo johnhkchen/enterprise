@@ -3410,5 +3410,1558 @@
         }
       ]
     }
+  },
+  {
+    "Hands": {
+      "town": 0,
+      "lockers": 0,
+      "hands": []
+    }
+  },
+  {
+    "Hands": {
+      "town": 2,
+      "lockers": 10,
+      "hands": [
+        {
+          "hand": 1,
+          "tag": "6f1c2a3e-0000-4000-8000-00000000002a",
+          "trade": "merchant",
+          "level": 1,
+          "xp": 0,
+          "baby": false,
+          "away": false,
+          "merchant": true
+        },
+        {
+          "hand": 7,
+          "tag": "",
+          "trade": "none",
+          "level": 1,
+          "xp": 0,
+          "baby": true,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 4294967295,
+          "tag": "🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾",
+          "trade": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "level": 255,
+          "xp": 4294967295,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        }
+      ]
+    }
+  },
+  {
+    "Hands": {
+      "town": 4294967295,
+      "lockers": 4294967295,
+      "hands": [
+        {
+          "hand": 1,
+          "tag": "v0",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 0,
+          "baby": true,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 2,
+          "tag": "v1",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 7,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 3,
+          "tag": "v2",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 14,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 4,
+          "tag": "v3",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 21,
+          "baby": false,
+          "away": false,
+          "merchant": true
+        },
+        {
+          "hand": 5,
+          "tag": "v4",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 28,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 6,
+          "tag": "v5",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 35,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 7,
+          "tag": "v6",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 42,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 8,
+          "tag": "v7",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 49,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 9,
+          "tag": "v8",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 56,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 10,
+          "tag": "v9",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 63,
+          "baby": true,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 11,
+          "tag": "v10",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 70,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 12,
+          "tag": "v11",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 77,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 13,
+          "tag": "v12",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 84,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 14,
+          "tag": "v13",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 91,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 15,
+          "tag": "v14",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 98,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 16,
+          "tag": "v15",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 105,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 17,
+          "tag": "v16",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 112,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 18,
+          "tag": "v17",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 119,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 19,
+          "tag": "v18",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 126,
+          "baby": true,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 20,
+          "tag": "v19",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 133,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 21,
+          "tag": "v20",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 140,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 22,
+          "tag": "v21",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 147,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 23,
+          "tag": "v22",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 154,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 24,
+          "tag": "v23",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 161,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 25,
+          "tag": "v24",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 168,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 26,
+          "tag": "v25",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 175,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 27,
+          "tag": "v26",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 182,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 28,
+          "tag": "v27",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 189,
+          "baby": true,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 29,
+          "tag": "v28",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 196,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 30,
+          "tag": "v29",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 203,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 31,
+          "tag": "v30",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 210,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 32,
+          "tag": "v31",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 217,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 33,
+          "tag": "v32",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 224,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 34,
+          "tag": "v33",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 231,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 35,
+          "tag": "v34",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 238,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 36,
+          "tag": "v35",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 245,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 37,
+          "tag": "v36",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 252,
+          "baby": true,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 38,
+          "tag": "v37",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 259,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 39,
+          "tag": "v38",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 266,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 40,
+          "tag": "v39",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 273,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 41,
+          "tag": "v40",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 280,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 42,
+          "tag": "v41",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 287,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 43,
+          "tag": "v42",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 294,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 44,
+          "tag": "v43",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 301,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 45,
+          "tag": "v44",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 308,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 46,
+          "tag": "v45",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 315,
+          "baby": true,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 47,
+          "tag": "v46",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 322,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 48,
+          "tag": "v47",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 329,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 49,
+          "tag": "v48",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 336,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 50,
+          "tag": "v49",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 343,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 51,
+          "tag": "v50",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 350,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 52,
+          "tag": "v51",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 357,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 53,
+          "tag": "v52",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 364,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 54,
+          "tag": "v53",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 371,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 55,
+          "tag": "v54",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 378,
+          "baby": true,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 56,
+          "tag": "v55",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 385,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 57,
+          "tag": "v56",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 392,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 58,
+          "tag": "v57",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 399,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 59,
+          "tag": "v58",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 406,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 60,
+          "tag": "v59",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 413,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 61,
+          "tag": "v60",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 420,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 62,
+          "tag": "v61",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 427,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 63,
+          "tag": "v62",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 434,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 64,
+          "tag": "v63",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 441,
+          "baby": true,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 65,
+          "tag": "v64",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 448,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 66,
+          "tag": "v65",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 455,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 67,
+          "tag": "v66",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 462,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 68,
+          "tag": "v67",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 469,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 69,
+          "tag": "v68",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 476,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 70,
+          "tag": "v69",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 483,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 71,
+          "tag": "v70",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 490,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 72,
+          "tag": "v71",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 497,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 73,
+          "tag": "v72",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 504,
+          "baby": true,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 74,
+          "tag": "v73",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 511,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 75,
+          "tag": "v74",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 518,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 76,
+          "tag": "v75",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 525,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 77,
+          "tag": "v76",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 532,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 78,
+          "tag": "v77",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 539,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 79,
+          "tag": "v78",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 546,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 80,
+          "tag": "v79",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 553,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 81,
+          "tag": "v80",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 560,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 82,
+          "tag": "v81",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 567,
+          "baby": true,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 83,
+          "tag": "v82",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 574,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 84,
+          "tag": "v83",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 581,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 85,
+          "tag": "v84",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 588,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 86,
+          "tag": "v85",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 595,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 87,
+          "tag": "v86",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 602,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 88,
+          "tag": "v87",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 609,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 89,
+          "tag": "v88",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 616,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 90,
+          "tag": "v89",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 623,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 91,
+          "tag": "v90",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 630,
+          "baby": true,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 92,
+          "tag": "v91",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 637,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 93,
+          "tag": "v92",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 644,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 94,
+          "tag": "v93",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 651,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 95,
+          "tag": "v94",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 658,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 96,
+          "tag": "v95",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 665,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 97,
+          "tag": "v96",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 672,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 98,
+          "tag": "v97",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 679,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 99,
+          "tag": "v98",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 686,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 100,
+          "tag": "v99",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 693,
+          "baby": true,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 101,
+          "tag": "v100",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 700,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 102,
+          "tag": "v101",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 707,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 103,
+          "tag": "v102",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 714,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 104,
+          "tag": "v103",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 721,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 105,
+          "tag": "v104",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 728,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 106,
+          "tag": "v105",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 735,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 107,
+          "tag": "v106",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 742,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 108,
+          "tag": "v107",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 749,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 109,
+          "tag": "v108",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 756,
+          "baby": true,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 110,
+          "tag": "v109",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 763,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 111,
+          "tag": "v110",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 770,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 112,
+          "tag": "v111",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 777,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 113,
+          "tag": "v112",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 784,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 114,
+          "tag": "v113",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 791,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 115,
+          "tag": "v114",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 798,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 116,
+          "tag": "v115",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 805,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 117,
+          "tag": "v116",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 812,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 118,
+          "tag": "v117",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 819,
+          "baby": true,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 119,
+          "tag": "v118",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 826,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 120,
+          "tag": "v119",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 833,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 121,
+          "tag": "v120",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 840,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 122,
+          "tag": "v121",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 847,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 123,
+          "tag": "v122",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 854,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 124,
+          "tag": "v123",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 861,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 125,
+          "tag": "v124",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 868,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 126,
+          "tag": "v125",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 875,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 127,
+          "tag": "v126",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 882,
+          "baby": true,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 128,
+          "tag": "v127",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 889,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 129,
+          "tag": "v128",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 896,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 130,
+          "tag": "v129",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 903,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 131,
+          "tag": "v130",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 910,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 132,
+          "tag": "v131",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 917,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 133,
+          "tag": "v132",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 924,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 134,
+          "tag": "v133",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 931,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 135,
+          "tag": "v134",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 938,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 136,
+          "tag": "v135",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 945,
+          "baby": true,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 137,
+          "tag": "v136",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 952,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 138,
+          "tag": "v137",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 959,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 139,
+          "tag": "v138",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 966,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 140,
+          "tag": "v139",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 973,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 141,
+          "tag": "v140",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 980,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 142,
+          "tag": "v141",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 987,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 143,
+          "tag": "v142",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 994,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 144,
+          "tag": "v143",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 1001,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 145,
+          "tag": "v144",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 1008,
+          "baby": true,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 146,
+          "tag": "v145",
+          "trade": "farmer",
+          "level": 1,
+          "xp": 1015,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 147,
+          "tag": "v146",
+          "trade": "farmer",
+          "level": 2,
+          "xp": 1022,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 148,
+          "tag": "v147",
+          "trade": "farmer",
+          "level": 3,
+          "xp": 1029,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        },
+        {
+          "hand": 149,
+          "tag": "v148",
+          "trade": "farmer",
+          "level": 4,
+          "xp": 1036,
+          "baby": false,
+          "away": true,
+          "merchant": false
+        },
+        {
+          "hand": 150,
+          "tag": "v149",
+          "trade": "farmer",
+          "level": 5,
+          "xp": 1043,
+          "baby": false,
+          "away": false,
+          "merchant": false
+        }
+      ]
+    }
   }
 ]

@@ -118,7 +118,8 @@ impl Society {
 
     /// A town's people as a roster, replacing any it had: a hand of each `(trade, level)` (the trade by name, as
     /// [`Content::trade`] reads it), with the XP its level took. Its villagers follow the roster from now on; the
-    /// desk's Merchant is its most experienced Merchant.
+    /// desk's Merchant is its most experienced Merchant. The hands at places the old roster had keep their ids
+    /// (`roster.rs`): a host's fixture that sets a town's people anew sets the same villagers' trades and levels.
     pub fn set_roster(&mut self, town: TownId, hands: &[(&str, u8)]) {
         let content = self.content();
         let hands: Vec<crate::roster::Hand> = hands
@@ -128,7 +129,11 @@ impl Society {
                 crate::roster::Hand::new(content, t, level)
             })
             .collect();
-        let roster = crate::roster::Roster::new(content, hands);
+        let mut roster = crate::roster::Roster::new(content, hands);
+        let old = self.roster(town);
+        for (h, was) in roster.hands.iter_mut().zip(&old.hands) {
+            h.id = was.id;
+        }
         self.put_roster(town, roster);
     }
 
@@ -150,7 +155,9 @@ impl Society {
         roster
     }
 
-    fn put_roster(&mut self, town: TownId, roster: crate::roster::Roster) {
+    fn put_roster(&mut self, town: TownId, mut roster: crate::roster::Roster) {
+        // Hands new to the society get their ids (`roster.rs`).
+        self.world.resource_mut::<crate::roster::Hands>().admit(&mut roster);
         let e = self.towns[town];
         self.world.get_mut::<People>(e).expect("a town").villagers = roster.residents() as f64;
         self.world.entity_mut(e).insert(roster);
@@ -491,6 +498,10 @@ impl Society {
             }
             Input::PackageLost { pallet, package } => {
                 self.package_lost(pallet, package);
+                Vec::new()
+            }
+            Input::AddHand { .. } | Input::HandLost { .. } => {
+                self.apply_hands(input);
                 Vec::new()
             }
             Input::SetDial { ref name, value } => {

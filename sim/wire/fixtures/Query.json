@@ -11,5 +11,15 @@
   },
   "Points",
   "Goods",
-  "Dials"
+  "Dials",
+  {
+    "Hands": {
+      "town": 0
+    }
+  },
+  {
+    "Hands": {
+      "town": 4294967295
+    }
+  }
 ]

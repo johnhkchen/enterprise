@@ -445,6 +445,28 @@ passing, nothing else falling).
 | B4.10 | `crown-views` | 10 | `wagon-adapter`, `shop-adapter` | sonnet / medium | the sovereign's shops, off-map markets as points |
 | B4.11 | `commands-and-studies` | 11 | `wagon-adapter` | sonnet / medium | commands and screens on `Ask`; `dev/experiments` read the same numbers (cash book, whys, trace) |
 
+**Built (B4.2 `points-and-hands`).** In the core: every hand on a roster has a `HandId` (`roster.rs`), a `u32` given from
+the world's count (`roster::Hands`, in `saved!`) as it joins a roster in a society (a host's hand, a child born) and kept
+through a new trade (`jobs.rs` no longer makes the hand anew), a caravan's trip (`squad::stamp` keeps it rather than
+stamping a fresh one each departure), a war and a party that settles another town; ids aren't reused. The host's name
+for a hand (a villager's UUID) is kept beside it (`Hands.tags`), so the mod keeps no ids. What the core keeps by hand
+follows the id: a `Locker` knows its hand (`Locker.hand`), `Lockers::sync` matches lockers to the roster by id, and the
+Merchant's clients are ids (`Lockers.clients`); the managed lockers and `Roster.merchant` stay places, worked out again
+at each sync and kept straight by `settlers::take_hand`. `Society::set_roster` keeps the ids at the places the old
+roster had (a fixture setting a town's people anew). Host calls in `hands.rs` (`join`, `lose_hand`, `find_hand`,
+`hand_tagged`, `hand_views`). On the wire: `Input::AddHand { town, trade, level, tag }` (refused for a trade the core
+hasn't, a level outside 1 to 5, a tag another living hand has), `Input::HandLost { hand }` (refused for a hand that's
+away: off the host's world), `Query::Hands { town }` and `Answer::Hands { town, lockers, hands: Vec<HandView> }`; schema
+`9c9206f91a4ed70f`, FORMAT 1 (the save's shape grew: dev worlds' `enterprise_core.dat` are rebuilt). Behaviour unmoved:
+the replay's outputs digest the same with the save left out, and `just core-fingerprint` is `96b225213f5f291c`; the
+digest moved for the save's shape and the new random-worlds slice (`hands`: villagers joining and dying, its check that
+every hand has an id none other has and every locker is its hand's). In the mod: `adapters/PointsAdapter` (every point
+the core keeps, by place, rebuilt from `Query::Points`; desks, lockers, shops, bankers, depots registered there; the
+stock adapter's desks are its), `adapters/HandsAdapter` (villager to hand by UUID, rebuilt from `Query::Hands` for every
+town with a point; `join`, `lose`, a villager's death heard at LOWEST), `Merchant.lockersAt` (core mode: the Merchant's
+screen shows the core's count of the lockers it manages, the Merchant joined as its town's hand on that touch),
+`/enterprise core points` and `/enterprise core hands <desk>`.
+
 ### 3.6 Wave B5: closing
 
 | Order | Task | Goal | Waits for | Java | Model / effort |

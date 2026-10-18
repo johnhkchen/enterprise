@@ -36,7 +36,7 @@ pub use output::Output;
 pub use pack::{ContentPack, GoodFlag, PackAmount, PackAnimal, PackDial, PackGood, PackRecipe};
 pub use pallet::{PackageLine, Place};
 pub use point::{Point, PointKind};
-pub use query::{Answer, DialView, Query, TownPoint};
+pub use query::{Answer, DialView, HandView, Query, TownPoint};
 pub use save_file::SaveFile;
 
 /// A town, by its place in the order towns were added: stable across saves and hosts, unlike an ECS entity.
@@ -52,6 +52,9 @@ pub type TownNo = u32;
 pub type RouteNo = u32;
 /// A good's number on the wire, its place in the content pack: its [`GoodId`] as a `u32`.
 pub type GoodNo = u32;
+/// A hand's number on the wire: its [`HandId`](crate::roster::HandId), the id the core gave it (never its place in a
+/// roster, which shifts as others leave).
+pub type HandNo = u32;
 
 /// An id the core counts in `usize` as the wire's `u32` ([`TownNo`], [`RouteNo`], [`GoodNo`], an order's place). Ids
 /// that high never happen, but if one did it would panic here rather than cross the wire truncated.

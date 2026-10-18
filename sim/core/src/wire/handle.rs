@@ -1,6 +1,6 @@
 //! A request in, a response out: the core's one entry point for a host.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use super::{Answer, Command, Input, Point, Query, Refusal, Request, Response, SaveFile, TownPoint, ABI, SCHEMA};
 use crate::content::Content;
@@ -111,6 +111,13 @@ fn answer(s: &Society, query: &Query) -> Result<Answer, String> {
         },
         Query::Goods => Answer::Goods { goods: s.content().goods.iter().map(|g| g.name.clone()).collect() },
         Query::Dials => Answer::Dials { dials: s.dial_views() },
+        Query::Hands { town } => {
+            if town as usize >= s.town_count() {
+                return Err(format!("no town {town}"));
+            }
+            let lockers = s.roster(town as usize).locker_limit();
+            Answer::Hands { town, lockers, hands: s.hand_views(town as usize) }
+        }
     })
 }
 
@@ -129,6 +136,9 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
     let longest = LONGEST_ADVANCE_DAYS.saturating_mul(s.content().day_ticks);
     // The points as they'd stand, by place, with their kind: only those the happenings touch.
     let mut points: BTreeMap<Spot, Option<Kind>> = BTreeMap::new();
+    // The hands the happenings take on (by their tags) and lose.
+    let mut tags: BTreeSet<&str> = BTreeSet::new();
+    let mut lost: BTreeSet<u32> = BTreeSet::new();
     let stands = |points: &BTreeMap<Spot, Option<Kind>>, at: &Spot| {
         points.get(at).copied().unwrap_or_else(|| s.point(at).map(|p| p.kind))
     };
@@ -202,6 +212,25 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
                     None => Err(format!("no dial called {name}")),
                 }
                 .map_err(wrong)?;
+            }
+            Input::AddHand { town: t, trade, level, tag } => {
+                town(*t)?;
+                s.can_be_hand(trade, *level, "").map_err(wrong)?;
+                if !tag.is_empty() {
+                    // A name a living hand has is taken, unless that hand is lost earlier in this look.
+                    if let Some(other) = s.hand_tagged(tag).filter(|id| !lost.contains(id)) {
+                        return Err(wrong(format!("hand {other} is called {tag} already")));
+                    }
+                    if !tags.insert(tag.as_str()) {
+                        return Err(wrong(format!("two hands called {tag}")));
+                    }
+                }
+            }
+            Input::HandLost { hand } => {
+                s.can_lose_hand(*hand).map_err(wrong)?;
+                if !lost.insert(*hand) {
+                    return Err(wrong(format!("hand {hand} lost twice")));
+                }
             }
             // A pallet that isn't there, or isn't in a warehouse, is a stale view: ignored, not refused.
             Input::PackageLost { .. } => {}

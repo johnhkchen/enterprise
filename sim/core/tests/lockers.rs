@@ -292,7 +292,8 @@ fn the_merchants_review_takes_clients_switches_on_their_trades_and_swaps_the_wea
     s.deliver(t, WHEAT, 1000.0);
     assert_eq!(s.review_lockers(t), Some(0), "the Librarian let go");
     let lockers = s.lockers(t).unwrap();
-    assert_eq!(lockers.clients, vec![2, 1]);
+    let roster = s.roster(t);
+    assert_eq!(lockers.clients, vec![roster.hands[2].id, roster.hands[1].id], "the Farmer and the Cartographer, by id");
     assert!(!lockers.hands[0].switched_on() && lockers.hands[2].offers[0].on);
     assert_eq!(lockers.hands[2].worth, 16.0);
     assert_eq!(lockers.managed, vec![2, 1], "its clients, in the order taken on");
@@ -354,14 +355,16 @@ fn lockers_are_saved_with_the_world() {
 
 #[test]
 fn a_hand_that_leaves_takes_its_locker() {
-    // Settlers take a hand off the roster: the hands after it keep their own lockers, clients and managed.
+    // Settlers take a hand off the roster: the hands after it keep their own lockers, clients and managed (the
+    // clients by their hands' ids, the managed by their places).
     let c = content();
     let mut l = enterprise_core::Lockers::default();
-    l.hands = (0..4).map(|t| enterprise_core::lockers::Locker::new(&c, t % c.trades.len())).collect();
+    l.hands = (0..4).map(|t| enterprise_core::lockers::Locker { hand: 11 + t as u32,
+        ..enterprise_core::lockers::Locker::new(&c, t % c.trades.len()) }).collect();
     l.hands[3].worth = 7.0;
-    (l.clients, l.managed) = (vec![1, 3], vec![3, 1, 0]);
+    (l.clients, l.managed) = (vec![12, 14], vec![3, 1, 0]);
     l.take_hand(1);
     assert_eq!(l.hands.len(), 3);
     assert_eq!(l.hands[2].worth, 7.0, "the last hand's locker moved down with it");
-    assert_eq!((l.clients, l.managed), (vec![2], vec![2, 0]));
+    assert_eq!((l.clients, l.managed), (vec![14], vec![2, 0]));
 }

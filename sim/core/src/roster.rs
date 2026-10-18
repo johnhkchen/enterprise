@@ -14,15 +14,29 @@
 //!   beds), not workers.
 //! - `territory/Growth.java` `bear` (219), `growUp` (252): a child is marked with its birth time and grows up after
 //!   `BABY_TICKS` of elapsed time, whether or not it was loaded.
+//!
+//! **Hands have ids** ([`HandId`], `docs/binding-plan.md` 1.3), as the mod knows a villager by its UUID: a hand's place
+//! in its roster shifts as others leave it (`settlers::take_hand`), its id never does. A hand is given one when it
+//! joins a roster in a society ([`Hands::admit`]: a host's hand, a child born), from the world's count, and keeps it
+//! through a new trade, a caravan's trip, a war and a party that settles another town; ids aren't reused. The host's own
+//! name for the hand (a villager's UUID) is kept beside it ([`Hands::tags`]), so a host keeps no ids of its own and
+//! finds its villagers' hands again after a load (`Query::Hands`). What the core keeps by hand (a hand's locker, the
+//! Merchant's clients, a crew or a soldier) is kept by its id; a place in the roster is good only until the roster
+//! changes.
+
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use bevy_ecs::prelude::Component;
+use bevy_ecs::prelude::{Component, Resource};
 
 use crate::content::Content;
 
 /// A trade, by its place in [`Content::trades`].
 pub type TradeId = usize;
+/// A hand, by the id the society gave it when it joined a roster: stable while it lives, wherever it goes, and never
+/// another's. 0 is no id: a hand in a roster built outside a society (a rule's test), until it joins one.
+pub type HandId = u32;
 
 /// The Merchant's trade: the desk's own hand, and a lead for caravans.
 pub const MERCHANT: &str = "merchant";
@@ -121,8 +135,7 @@ pub fn merchant_trade_xp(roll: u32, villager_levelled_up: bool) -> u32 {
 }
 
 /// One of a town's people: its trade, level (1 to 5) and XP (in all, as vanilla counts it), when it grows up if it's
-/// a child, and whether it's away (out with a caravan), and the id its town gave it when it last left with one (0:
-/// never has; `squad.rs`, as the mod knows a villager by its UUID).
+/// a child, whether it's away (out with a caravan, at war), and its [`HandId`].
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Hand {
     pub trade: TradeId,
@@ -131,7 +144,7 @@ pub struct Hand {
     pub baby_until: Option<u64>,
     pub away: bool,
     #[serde(default)]
-    pub id: u32,
+    pub id: HandId,
 }
 
 impl Default for Hand {
@@ -196,8 +209,9 @@ impl Hand {
     }
 }
 
-/// A town's people, hand by hand, and which of them is the desk's Merchant (a hand that never travels). Every hand is
-/// a resident (a child too: it needs a bed); the adults are its workers.
+/// A town's people, hand by hand, and which of them is the desk's Merchant (a hand that never travels: its place, kept
+/// straight by `settlers::take_hand`). Every hand is a resident (a child too: it needs a bed); the adults are its
+/// workers.
 #[derive(Component, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Roster {
     pub hands: Vec<Hand>,
@@ -223,6 +237,19 @@ impl Roster {
             self.merchant = Some(i);
         }
         i
+    }
+
+    /// The place of the hand with this id, if it's in this roster.
+    pub fn place(&self, id: HandId) -> Option<usize> {
+        if id == 0 {
+            return None;
+        }
+        self.hands.iter().position(|h| h.id == id)
+    }
+
+    /// The hand with this id, if it's in this roster.
+    pub fn hand(&self, id: HandId) -> Option<&Hand> {
+        self.place(id).map(|i| &self.hands[i])
     }
 
     /// Everyone: adults and children, at home or away.
@@ -294,5 +321,34 @@ impl Roster {
     /// Children grow up by the time elapsed, loaded or not. Returns how many grew up.
     pub fn grow_up(&mut self, now: u64) -> usize {
         self.hands.iter_mut().map(|h| h.grow_up(now)).filter(|g| *g).count()
+    }
+}
+
+/// The society's hands as a host knows them: the next id to give, and the host's own name for each hand it named (a
+/// villager's UUID), by id.
+#[derive(Resource, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Hands {
+    /// The last id given (ids start at 1).
+    pub last: HandId,
+    pub tags: BTreeMap<HandId, String>,
+}
+
+impl Hands {
+    /// A new id, never given before.
+    pub fn next(&mut self) -> HandId {
+        self.last += 1;
+        self.last
+    }
+
+    /// Every hand of the roster with no id yet gets one, in the roster's order (a hand joining a roster in a society).
+    pub fn admit(&mut self, roster: &mut Roster) {
+        for h in roster.hands.iter_mut().filter(|h| h.id == 0) {
+            h.id = self.next();
+        }
+    }
+
+    /// The host's name for a hand, if it gave one.
+    pub fn tag(&self, id: HandId) -> Option<&str> {
+        self.tags.get(&id).map(String::as_str)
     }
 }

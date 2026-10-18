@@ -69,6 +69,7 @@ pub fn register(schedule: &mut Schedule) {
 /// The town's people live the time since they were last counted: wages, comforts, mood, a home, a child.
 #[allow(clippy::type_complexity)]
 pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
+        mut ids: ResMut<crate::roster::Hands>,
         mut towns: Query<(&Town, &mut People, &mut Stock, &mut Money, &Trades, Option<&mut Roster>, Option<&crate::farms::Farm>,
             Option<&crate::works::Works>)>) {
     let d = &content.dials;
@@ -156,7 +157,7 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
                 now, day);
             // A town with a roster has a baby hand (`Growth.bear`): a resident, not yet a worker.
             if let Some(roster) = roster.as_deref_mut() {
-                roster.hands.push(crate::roster::Hand::baby(&content, clock.now));
+                roster.hands.push(crate::roster::Hand { id: ids.next(), ..crate::roster::Hand::baby(&content, clock.now) });
                 people.villagers = roster.residents() as f64;
             } else {
                 people.villagers += 1.0;

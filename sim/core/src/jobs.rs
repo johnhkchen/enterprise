@@ -295,7 +295,8 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
         Reason::Other("stall".into()), now, content.day_ticks);
     // The hand takes the job at once: a locker of the trade's, its trades that buy goods for emeralds switched on, and
     // time to get going (its herd to breed, its first goods) before it is judged slack.
-    place.roster.hands[hand] = Hand::new(content, trade, 1);
+    // The same villager in a new trade: its id stays.
+    place.roster.hands[hand] = Hand { id: place.roster.hands[hand].id, ..Hand::new(content, trade, 1) };
     place.lockers.sync(content, place.roster);
     let locker = &mut place.lockers.hands[hand];
     for o in locker.offers.iter_mut().filter(|o| !o.sells && o.level <= 1) {

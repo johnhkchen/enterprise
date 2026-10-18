@@ -4,7 +4,7 @@ package dev.b28.enterprise.wire;
 /**
  * A question for the core.
  */
-public sealed interface Query permits Query.Stock, Query.Points, Query.Goods, Query.Dials {
+public sealed interface Query permits Query.Stock, Query.Points, Query.Goods, Query.Dials, Query.Hands {
     void encode(PostcardOut out);
 
     static Query decode(PostcardIn in) {
@@ -14,6 +14,7 @@ public sealed interface Query permits Query.Stock, Query.Points, Query.Goods, Qu
             case 1 -> new Points();
             case 2 -> new Goods();
             case 3 -> new Dials();
+            case 4 -> new Hands(in.u32());
             default -> throw in.unknownVariant("Query", at);
         };
     }
@@ -67,6 +68,17 @@ public sealed interface Query permits Query.Stock, Query.Points, Query.Goods, Qu
         @Override
         public void encode(PostcardOut out) {
             out.variant(3);
+        }
+    }
+
+    /**
+     * A town's hands, each by its id with the host's tag: what a host ties its villagers to (after a load too).
+     */
+    record Hands(long town) implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(4);
+            out.u32(this.town);
         }
     }
 }

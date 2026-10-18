@@ -263,8 +263,9 @@ impl Society {
         let e = self.towns[town];
         let mut roster = self.world.get::<Roster>(e).cloned().unwrap_or_default();
         for hand in party.hands.drain(..) {
-            roster.add(&content, hand);
+            roster.add(&content, hand); // with the id it had at home
         }
+        self.world.resource_mut::<crate::roster::Hands>().admit(&mut roster);
         if roster.merchant.is_none() {
             roster.merchant = roster.best(merchant);
         }

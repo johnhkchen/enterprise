@@ -36,7 +36,11 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
-/** The Merchant villager profession and its job site, the Merchant's Desk. */
+/**
+ * The Merchant villager profession and its job site, the Merchant's Desk: the views of a town's desk (a trade point in
+ * the core, {@code binding/adapters/PointsAdapter}) and of its Merchant (one of the core's hands, {@code HandsAdapter}).
+ * In core mode how many lockers the Merchant manages is the core's to say; {@link #lockerLimit} is the Java rules'.
+ */
 public final class Merchant {
     private static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(Enterprise.MOD_ID);
     private static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(Enterprise.MOD_ID);
@@ -76,7 +80,10 @@ public final class Merchant {
 
     private Merchant() {}
 
-    /** How many lockers a Merchant of this villager level manages: 2 at Novice, up to 10 at Master. */
+    /**
+     * How many lockers a Merchant of this villager level manages: 2 at Novice, up to 10 at Master (the Java rules'; in
+     * core mode the core counts it, {@link #lockersAt}).
+     */
     public static int lockerLimit(int villagerLevel) {
         return 2 * Math.clamp(villagerLevel, 1, 5);
     }
@@ -104,6 +111,25 @@ public final class Merchant {
         NeoForge.EVENT_BUS.addListener(Merchant::openScreen);
     }
 
+    /**
+     * How many lockers the Merchant at {@code desk} manages: in core mode the core's count for the desk's town (the
+     * Merchant joined as its hand on this touch, if the core hasn't it yet), else the Java rule's by its level; the
+     * Java rule's too while the core keeps no town at the desk.
+     */
+    public static int lockersAt(ServerLevel level, BlockPos desk, Villager merchant) {
+        int java = lockerLimit(merchant.getVillagerData().getLevel());
+        if (!dev.b28.enterprise.binding.Society.isCore()) {
+            return java;
+        }
+        var host = dev.b28.enterprise.binding.CoreHost.of(level.getServer());
+        if (host == null || host.pausedWhy() != null) {
+            return java;
+        }
+        Long town = host.stock().townAt(GlobalPos.of(level.dimension(), desk));
+        Long core = town == null ? null : host.hands().lockersOf(town, merchant);
+        return core == null ? java : (int) Math.min(core, Integer.MAX_VALUE);
+    }
+
     public static boolean isMerchant(Villager villager) {
         return villager.getVillagerData().getProfession() == PROFESSION.get();
     }
@@ -128,7 +154,7 @@ public final class Merchant {
             player.displayClientMessage(Component.translatable("message.enterprise.merchant.no_desk"), true);
             return;
         }
-        MerchantView view = MerchantView.build(level, desk, lockerLimit(villager.getVillagerData().getLevel()));
+        MerchantView view = MerchantView.build(level, desk, lockersAt(level, desk, villager));
         int merchantId = villager.getId();
         player.openMenu(
                 new SimpleMenuProvider(

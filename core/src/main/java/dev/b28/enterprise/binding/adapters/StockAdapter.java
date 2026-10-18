@@ -9,10 +9,8 @@ import dev.b28.enterprise.wire.Answer;
 import dev.b28.enterprise.wire.Count;
 import dev.b28.enterprise.wire.Input;
 import dev.b28.enterprise.wire.Point;
-import dev.b28.enterprise.wire.PointKind;
 import dev.b28.enterprise.wire.Query;
 import dev.b28.enterprise.wire.Response;
-import dev.b28.enterprise.wire.TownPoint;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -23,15 +21,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.items.IItemHandler;
 
@@ -42,9 +37,9 @@ import net.neoforged.neoforge.items.IItemHandler;
  * is the core's to say ({@code Query.Stock}). Chests stay physical: players, hoppers and Create move what's in them,
  * and the core counts it.
  *
- * <p>The adapter keeps no society ids of its own: the desks and their towns are the core's points, and the goods'
- * numbers the core's content, both read back from the core when the host starts ({@link #reload}) and when a desk is
- * registered. An item that isn't one of the core's goods isn't counted.
+ * <p>The adapter keeps no society ids of its own: the desks and their towns are the core's points ({@link
+ * PointsAdapter}), and the goods' numbers the core's content, read back from the core when the host starts ({@link
+ * #reload}). An item that isn't one of the core's goods isn't counted.
  *
  * <p>Not yet (B4.3 {@code stock-adapter}): the shulkers kept in a desk's chests, its depots, a desk broken or moved
  * without the host seeing it, and the core's own movements ({@code Moved}) written back to the chests.
@@ -54,16 +49,14 @@ public final class StockAdapter {
     /** The core's goods by number, and the number of each item that's one. */
     private List<String> goods = List.of();
     private Map<Item, Integer> numbers = Map.of();
-    /** The desks the core keeps, by place, with their towns. */
-    private Map<GlobalPos, Long> desks = Map.of();
 
     public StockAdapter(CoreHost host) {
         this.host = host;
     }
 
-    /** Reads the goods and the desks from the core again: what its numbers mean, and which desks are towns. */
+    /** Reads the goods from the core again: what its numbers mean. */
     public void reload() {
-        List<Answer> answers = host.ask(List.of(new Query.Goods(), new Query.Points()));
+        List<Answer> answers = host.ask(List.of(new Query.Goods()));
         if (answers.get(0) instanceof Answer.Goods g) {
             goods = g.goods();
             Map<Item, Integer> byItem = new HashMap<>();
@@ -76,25 +69,17 @@ public final class StockAdapter {
             }
             numbers = Map.copyOf(byItem);
         }
-        if (answers.get(1) instanceof Answer.Points p) {
-            Map<GlobalPos, Long> byPlace = new LinkedHashMap<>();
-            for (TownPoint tp : p.points()) {
-                if (tp.point().kind() == PointKind.Desk) {
-                    byPlace.put(place(tp.point()), tp.town());
-                }
-            }
-            desks = byPlace;
-        }
     }
 
-    /** The town at {@code desk}, if the core keeps one there. */
+    /** The town at {@code desk}, if the core keeps a desk there. */
     public Long townAt(GlobalPos desk) {
-        return desks.get(desk);
+        PointsAdapter.Placed p = host.points().at(desk);
+        return p != null && p.kind() == PointsAdapter.Kind.DESK ? p.town() : null;
     }
 
     /** Every desk the core keeps, with its town. */
     public Map<GlobalPos, Long> desks() {
-        return desks;
+        return host.points().of(PointsAdapter.Kind.DESK);
     }
 
     /**
@@ -106,23 +91,16 @@ public final class StockAdapter {
      */
     public long found(ServerLevel level, BlockPos desk, String name) {
         GlobalPos at = GlobalPos.of(level.dimension(), desk);
-        Long known = desks.get(at);
+        Long known = townAt(at);
         if (known != null) {
             return known;
         }
-        Point point = point(at);
-        // The core brought to now first, so the town is founded (and its first stocktake booked) at this tick, not at
-        // the last look's, nor at tick 0 of a society new to an old world.
-        long now = level.getServer().overworld().getGameTime();
-        Response r = host.apply(List.of(new Input.Advance(now), new Input.AddTown(name, point),
-                new Input.Stocktake(point, count(level, desk))));
+        // Founded at this tick (the points adapter brings the core to now), not at the last look's, nor at tick 0 of a
+        // society new to an old world; its first stocktake booked then too.
+        long town = host.points().found(level, desk, name);
+        Response r = host.apply(List.of(new Input.Stocktake(point(at), count(level, desk))));
         if (r instanceof Response.Refused refused) {
-            throw new IllegalStateException("the core wouldn't take a town at " + desk.toShortString() + ": " + refused.why());
-        }
-        reload();
-        Long town = desks.get(at);
-        if (town == null) {
-            throw new IllegalStateException("the core took a town at " + desk.toShortString() + " but doesn't list it");
+            throw new IllegalStateException("the core wouldn't count the desk at " + desk.toShortString() + ": " + refused.why());
         }
         return town;
     }
@@ -130,9 +108,8 @@ public final class StockAdapter {
     /** The desk at {@code desk} broken: no longer the core's point (its town keeps what it held). */
     public void forget(ServerLevel level, BlockPos desk) {
         GlobalPos at = GlobalPos.of(level.dimension(), desk);
-        if (desks.containsKey(at)) {
-            host.apply(List.of(new Input.RemovePoint(point(at))));
-            reload();
+        if (townAt(at) != null) {
+            host.points().remove(at);
         }
     }
 
@@ -179,7 +156,7 @@ public final class StockAdapter {
      */
     public List<Input> happenings(MinecraftServer server) {
         List<Input> inputs = new ArrayList<>();
-        for (GlobalPos desk : desks.keySet()) {
+        for (GlobalPos desk : desks().keySet()) {
             ServerLevel level = server.getLevel(desk.dimension());
             if (level != null && loaded(level, desk.pos()) && level.getBlockState(desk.pos()).is(Merchant.DESK.get())) {
                 inputs.add(new Input.Stocktake(point(desk), count(level, desk.pos())));
@@ -222,7 +199,7 @@ public final class StockAdapter {
      * if the core keeps no town there.
      */
     public Map<String, Double> stockAt(GlobalPos desk) {
-        Long town = desks.get(desk);
+        Long town = townAt(desk);
         if (town == null) {
             return null;
         }
@@ -241,12 +218,6 @@ public final class StockAdapter {
 
     /** A desk's place as the core keeps it: the dimension's id and the block. */
     public static Point point(GlobalPos desk) {
-        BlockPos p = desk.pos();
-        return new Point(PointKind.Desk, desk.dimension().location().toString(), p.getX(), p.getY(), p.getZ());
-    }
-
-    private static GlobalPos place(Point point) {
-        ResourceKey<Level> dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(point.dim()));
-        return GlobalPos.of(dim, new BlockPos(point.x(), point.y(), point.z()));
+        return PointsAdapter.point(PointsAdapter.Kind.DESK, desk);
     }
 }

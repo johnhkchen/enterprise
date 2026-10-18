@@ -63,3 +63,5 @@ CaravanTests.onlyTheDesksCommunityIsMustered # JOB_SITE memory and an 8-block ra
 CoreBindingTests.theModsContentPackIsTakenWholeByTheCore # the binding's own: the mod's pack (item tags, registries) through the core
 CoreBindingTests.aDialSetInTheCoreIsKeptByItsSaveAndResetToThePacks # the binding's own: the dial adapter and the core's save
 CoreBindingTests.theDialCommandIsRoutedToTheCoreOrTheJavaRules # the binding's own: a command routed by the society mode
+CoreBindingTests.aTownsTradePointsAreTheCoresThroughASaveAndLoad # the binding's own: the points adapter's lookup rebuilt from the core's save (Rust: scenarios/inputs.json, stocktake.json)
+CoreBindingTests.aVillagerIsItsTownsHandByAnIdThatOutlivesItsNeighbours # the binding's own: villagers tied to the core's hands by UUID (Rust: tests/hands.rs, scenarios/hands.json)

@@ -7,7 +7,7 @@ import java.util.Objects;
 /**
  * An answer, in the place of its question.
  */
-public sealed interface Answer permits Answer.Stock, Answer.Points, Answer.Goods, Answer.Dials {
+public sealed interface Answer permits Answer.Stock, Answer.Points, Answer.Goods, Answer.Dials, Answer.Hands {
     void encode(PostcardOut out);
 
     static Answer decode(PostcardIn in) {
@@ -17,6 +17,7 @@ public sealed interface Answer permits Answer.Stock, Answer.Points, Answer.Goods
             case 1 -> new Points(in.list(6, TownPoint::decode));
             case 2 -> new Goods(in.list(1, PostcardIn::string));
             case 3 -> new Dials(in.list(18, DialView::decode));
+            case 4 -> new Hands(in.u32(), in.u32(), in.list(8, HandView::decode));
             default -> throw in.unknownVariant("Answer", at);
         };
     }
@@ -93,6 +94,25 @@ public sealed interface Answer permits Answer.Stock, Answer.Points, Answer.Goods
         public void encode(PostcardOut out) {
             out.variant(3);
             out.list(this.dials, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * A town's hands in its roster's order (children grown by now), and how many lockers its desk's Merchant manages
+     * (none without one). Empty for a town that keeps no roster.
+     */
+    record Hands(long town, long lockers, List<HandView> hands) implements Answer {
+        public Hands {
+            Objects.requireNonNull(hands, "hands");
+            hands = List.copyOf(hands);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(4);
+            out.u32(this.town);
+            out.u32(this.lockers);
+            out.list(this.hands, (o1, e1) -> e1.encode(o1));
         }
     }
 }

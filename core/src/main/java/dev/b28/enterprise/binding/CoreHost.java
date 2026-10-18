@@ -1,6 +1,8 @@
 package dev.b28.enterprise.binding;
 
 import dev.b28.enterprise.Enterprise;
+import dev.b28.enterprise.binding.adapters.HandsAdapter;
+import dev.b28.enterprise.binding.adapters.PointsAdapter;
 import dev.b28.enterprise.binding.adapters.StockAdapter;
 import dev.b28.enterprise.core.CoreModule;
 import dev.b28.enterprise.core.CoreTrap;
@@ -34,8 +36,10 @@ import net.neoforged.neoforge.event.server.ServerStoppedEvent;
  * The core in a running server (docs/binding-plan.md 1.5): one society in the Rust core, run on a thread of its own
  * ({@link CoreWorker}), saved with the world. The host makes the society from the mod's content pack at a new world
  * ({@link ModPack}, seeded with the world's seed) or loads the world's {@value SaveStore#FILE}, saves it when the world
- * saves, and drops it when the server stops. Its adapters ({@link StockAdapter}) turn Minecraft's happenings into the
- * core's inputs and its outputs into things in the world; {@link CoreClock} hands them a look at a time.
+ * saves, and drops it when the server stops. Its adapters ({@link PointsAdapter}, {@link HandsAdapter}, {@link
+ * StockAdapter}) turn Minecraft's happenings into the core's inputs and its outputs into things in the world; {@link
+ * CoreClock} hands them a look at a time. The host keeps no society ids: which block is which town's and which villager
+ * is which hand are the core's, read back by the adapters when it starts.
  *
  * <p><b>The save is a file of its own, not a {@code SavedData}.</b> {@value SaveStore#FILE} sits in the world's folder
  * beside {@code level.dat}, written by {@link SaveStore} (whole, through a temporary file, with the migration's
@@ -59,6 +63,8 @@ public final class CoreHost implements AutoCloseable {
 
     private final CoreWorker worker;
     private final SaveStore store;
+    private final PointsAdapter points;
+    private final HandsAdapter hands;
     private final StockAdapter stock;
     private final Outcomes outcomes;
     private final List<CompletableFuture<Response>> looks = new ArrayList<>();
@@ -68,6 +74,8 @@ public final class CoreHost implements AutoCloseable {
     private CoreHost(Path dir, long seed) {
         this.worker = CoreWorker.start(module());
         this.store = new SaveStore(dir, this::callNow);
+        this.points = new PointsAdapter(this);
+        this.hands = new HandsAdapter(this);
         this.stock = new StockAdapter(this);
         this.outcomes = new Outcomes();
         try {
@@ -82,6 +90,8 @@ public final class CoreHost implements AutoCloseable {
                 case SaveStore.Opened.Refused refused -> pause(refused.message());
             }
             if (pausedWhy == null) {
+                points.reload();
+                hands.reload();
                 stock.reload();
             }
         } catch (RuntimeException e) {
@@ -119,6 +129,7 @@ public final class CoreHost implements AutoCloseable {
         // Heard last, so a placement or break another listener cancels doesn't reach the core.
         bus.addListener(EventPriority.LOWEST, StockAdapter::onPlaced);
         bus.addListener(EventPriority.LOWEST, StockAdapter::onBroken);
+        bus.addListener(EventPriority.LOWEST, HandsAdapter::onDeath);
     }
 
     private static void onStarted(ServerStartedEvent event) {
@@ -156,6 +167,16 @@ public final class CoreHost implements AutoCloseable {
             running.close();
             running = null;
         }
+    }
+
+    /** The points adapter: every trade point the core keeps, by place, with its town. */
+    public PointsAdapter points() {
+        return points;
+    }
+
+    /** The hands adapter: which villager is which of the core's hands. */
+    public HandsAdapter hands() {
+        return hands;
     }
 
     /** The stock adapter: the desks the core keeps, their chests counted at each look. */

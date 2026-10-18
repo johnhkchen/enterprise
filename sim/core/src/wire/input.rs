@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{GoodNo, Point, TownNo};
+use super::{GoodNo, HandNo, Point, TownNo};
 use crate::fixed::Fixed;
 
 /// A happening the host hands the core.
@@ -50,6 +50,17 @@ pub enum Input {
     /// (`reset`). Saved with the society. A name the core hasn't, or a value the dial won't take (not a number, a
     /// negative count), is refused.
     SetDial { name: String, value: Option<f64> },
+    /// A villager came to live at a town (a Merchant taking its desk, one born or settled there in the host's world): a
+    /// hand of `trade` (the core's name for it, with or without the host's namespace: `minecraft:farmer`) at `level` (1
+    /// to 5, with the XP it took), known to the host as `tag` (its villager's UUID; empty for none). The core gives it
+    /// an id of its own (`Query::Hands` lists it with its tag); a Merchant becomes the desk's if the town has none. A
+    /// town that kept no roster starts one, and its villagers follow it from then on. Refused for a trade the core
+    /// hasn't, a level outside 1 to 5, or a tag another hand has.
+    AddHand { town: TownNo, trade: String, level: u8, tag: String },
+    /// A hand at home left the society for good (its villager died, or was taken from the world): off its town's
+    /// roster, with its locker. Refused for a hand that isn't on a roster, or is away (out with a caravan or at war: off
+    /// the host's world, the core brings it home or buries it).
+    HandLost { hand: HandNo },
 }
 
 /// So many of a good.

@@ -50,7 +50,11 @@ final class EnterpriseCommands {
                 .then(Commands.literal("core")
                         .then(Commands.literal("stock")
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos())
-                                        .executes(EnterpriseCommands::coreStock))))
+                                        .executes(EnterpriseCommands::coreStock)))
+                        .then(Commands.literal("points").executes(EnterpriseCommands::corePoints))
+                        .then(Commands.literal("hands")
+                                .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                        .executes(EnterpriseCommands::coreHands))))
                 .then(Commands.literal("mint").executes(EnterpriseCommands::mint))
                 .then(Commands.literal("census")
                         .then(Commands.argument("bell", BlockPosArgument.blockPos())
@@ -436,6 +440,53 @@ final class EnterpriseCommands {
                 : "%.3f".formatted(n))));
         source.sendSuccess(() -> Component.literal(out.toString()), false);
         return held.size();
+    }
+
+    /** Every trade point the core keeps ({@code /enterprise core points}): where, what, and whose town. */
+    private static int corePoints(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+        if (host == null || host.pausedWhy() != null) {
+            source.sendFailure(Component.literal(host == null ? "The core isn't running" : host.pausedWhy()));
+            return 0;
+        }
+        var points = host.points().all();
+        StringBuilder out = new StringBuilder("The core keeps %d trade points".formatted(points.size()));
+        points.forEach((at, p) -> out.append("\n  %s %s in %s: town %d".formatted(p.kind().name().toLowerCase(),
+                at.pos().toShortString(), at.dimension().location(), p.town())));
+        source.sendSuccess(() -> Component.literal(out.toString()), false);
+        return points.size();
+    }
+
+    /**
+     * A desk's town's hands in the core ({@code /enterprise core hands <desk>}): each by the id the core gave it, with its
+     * trade and level and the villager it is (by name where it's loaded).
+     */
+    private static int coreHands(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        ServerLevel level = source.getLevel();
+        BlockPos desk = BlockPosArgument.getLoadedBlockPos(context, "desk");
+        var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+        if (host == null || host.pausedWhy() != null) {
+            source.sendFailure(Component.literal(host == null ? "The core isn't running" : host.pausedWhy()));
+            return 0;
+        }
+        Long town = host.stock().townAt(GlobalPos.of(level.dimension(), desk));
+        if (town == null) {
+            source.sendFailure(Component.literal("The core keeps no town at " + desk.toShortString()));
+            return 0;
+        }
+        var roster = host.hands().roster(town);
+        StringBuilder out = new StringBuilder("The core's town %d has %d hands; its Merchant manages %d lockers"
+                .formatted(town, roster.hands().size(), roster.lockers()));
+        for (var h : roster.hands()) {
+            var entity = h.villager() == null ? null : level.getEntity(h.villager());
+            String who = h.villager() == null ? "no villager" : entity != null ? entity.getName().getString() : h.villager().toString();
+            out.append("\n  hand %d: %s, level %d%s%s%s (%s)".formatted(h.id(), h.trade(), h.level(), h.merchant() ? ", the desk's" : "",
+                    h.baby() ? ", a child" : "", h.away() ? ", away" : "", who));
+        }
+        source.sendSuccess(() -> Component.literal(out.toString()), false);
+        return roster.hands().size();
     }
 
     /** Lists what the Merchant at a desk sees: its stock containers and the lockers it manages. */

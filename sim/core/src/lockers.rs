@@ -38,7 +38,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::{Content, GoodId};
-use crate::roster::{merchant_trade_xp, Roster, TradeId, MAX_LEVEL};
+use crate::roster::{merchant_trade_xp, HandId, Roster, TradeId, MAX_LEVEL};
 use crate::state::{Ledger, Money, Rng, Stock, Trades};
 use crate::workshop::Workshop;
 
@@ -158,8 +158,8 @@ pub fn worth(offers: &[Offer], level: u8, supply: &[f64], wanted: &[bool]) -> f6
 }
 
 /// One hand's locker: its trade (when the hand takes another, its locker starts again), its offers, what it was
-/// worth to the town at the last review, what it did since, the days it has done nothing (below 0: a grace), and when
-/// the Merchant took it on as a client.
+/// worth to the town at the last review, what it did since, the days it has done nothing (below 0: a grace), when
+/// the Merchant took it on as a client, and whose it is (the hand's id, `roster.rs`).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Locker {
     pub trade: TradeId,
@@ -168,6 +168,7 @@ pub struct Locker {
     pub earned: f64,
     pub slack: i32,
     pub taken_on: Option<u64>,
+    pub hand: HandId,
 }
 
 impl Locker {
@@ -184,8 +185,9 @@ impl Locker {
     }
 }
 
-/// A rostered town's lockers, one a hand in the roster's order: which the Merchant manages, its clients (in the
-/// order it took them on), the trades its contracts need (a hook the training and sourcing slices fill), its restock
+/// A rostered town's lockers, one a hand in the roster's order (each knows its hand's id, and follows it as the roster
+/// changes: [`Lockers::sync`]): which the Merchant manages (by their places, worked out again at each sync), its
+/// clients (by their hands' ids, in the order it took them on), the trades its contracts need (a hook the training and sourcing slices fill), its restock
 /// clock (`None`: never restocked), the day it last reviewed them, the uses of each good its switched-on offers buy
 /// that were set aside from `Trades.uses` while they buy it, and what its managed lockers can take of each good a day
 /// (the town's `Trades.capacity` for those goods, for the warehouse's par).
@@ -193,7 +195,7 @@ impl Locker {
 pub struct Lockers {
     pub hands: Vec<Locker>,
     pub managed: Vec<usize>,
-    pub clients: Vec<usize>,
+    pub clients: Vec<HandId>,
     pub needed: Vec<TradeId>,
     pub restocked_until: Option<u64>,
     pub reviewed: Option<u64>,
@@ -231,40 +233,64 @@ impl Lockers {
         lockers
     }
 
-    /// The hand at `i` left the roster (`settlers::take_hand`): its locker goes with it, and the later hands' lockers,
-    /// clients and managed move down one, as the roster's do (the mod keys a locker by its workstation, which stays).
+    /// The hand at `i` left the roster (`settlers::take_hand`): its locker goes with it, and the later hands' lockers
+    /// and managed move down one, as the roster's do (the mod keys a locker by its workstation, which stays); a client
+    /// it was is one no more. (A sync after the roster changed does the same, by the hands' ids.)
     pub fn take_hand(&mut self, i: usize) {
         if i < self.hands.len() {
-            self.hands.remove(i);
+            let gone = self.hands.remove(i).hand;
+            if gone != 0 {
+                self.clients.retain(|&c| c != gone);
+            }
         }
-        for list in [&mut self.clients, &mut self.managed] {
-            list.retain(|&c| c != i);
-            for c in list.iter_mut() {
-                if *c > i {
-                    *c -= 1;
-                }
+        self.managed.retain(|&c| c != i);
+        for c in self.managed.iter_mut() {
+            if *c > i {
+                *c -= 1;
             }
         }
     }
 
-    /// Follows the roster: a locker for every hand (a new hand's, or a hand that took another trade, starts afresh),
-    /// none for hands gone; the clients and managed among those still there.
+    /// Follows the roster: a locker for every hand, in the roster's order, found by the hand's id (a new hand's, or a
+    /// hand that took another trade, starts afresh), none for hands gone; the clients and managed among those still
+    /// there. Hands with no id (a roster built outside a society) are matched by place.
     pub fn sync(&mut self, content: &Content, roster: &Roster) {
         let n = content.goods.len();
         self.kept.resize(n, None);
         self.capacity.resize(n, 0.0);
-        self.hands.truncate(roster.hands.len());
-        for (i, h) in roster.hands.iter().enumerate() {
-            if i >= self.hands.len() {
-                self.hands.push(Locker::new(content, h.trade));
-            } else if self.hands[i].trade != h.trade {
-                self.hands[i] = Locker::new(content, h.trade);
+        let aligned = self.hands.len() >= roster.hands.len()
+            && roster.hands.iter().zip(&self.hands).all(|(h, l)| l.hand == h.id);
+        if aligned {
+            // (The common case, and the old one: each locker already at its hand's place.)
+            self.hands.truncate(roster.hands.len());
+        } else {
+            let mut old: Vec<Option<Locker>> = std::mem::take(&mut self.hands).into_iter().map(Some).collect();
+            for (i, h) in roster.hands.iter().enumerate() {
+                let at = if old.get(i).is_some_and(|l| l.as_ref().is_some_and(|l| l.hand == h.id)) {
+                    Some(i)
+                } else if h.id != 0 {
+                    old.iter().position(|l| l.as_ref().is_some_and(|l| l.hand == h.id))
+                } else {
+                    None
+                };
+                self.hands.push(at.and_then(|at| old[at].take()).unwrap_or_else(|| Locker::new(content, h.trade)));
             }
         }
-        let len = self.hands.len();
-        self.clients.retain(|&i| i < len && has_locker(content, roster, i));
+        for (h, l) in roster.hands.iter().zip(self.hands.iter_mut()) {
+            if l.trade != h.trade {
+                *l = Locker::new(content, h.trade);
+            }
+            l.hand = h.id;
+        }
+        self.clients.retain(|&id| roster.place(id).is_some_and(|i| has_locker(content, roster, i)));
         self.managed = self.order(content, roster, roster.locker_limit() as usize);
         self.capacity = self.capacity(content, roster);
+    }
+
+    /// Whether the hand at `i` is one of the Merchant's clients.
+    fn client(&self, roster: &Roster, i: usize) -> Option<usize> {
+        let id = roster.hands.get(i)?.id;
+        self.clients.iter().position(|&c| c == id && id != 0)
     }
 
     /// The hands whose lockers the Merchant manages, at most `limit`, in its order (`Lockers.near`): those whose
@@ -275,7 +301,7 @@ impl Lockers {
         // (Each hand's key once, not at every comparison.)
         let keys: Vec<(bool, usize, bool, usize)> = (0..self.hands.len()).map(|i| {
             let needed = !self.needed.contains(&self.hands[i].trade);
-            let client = self.clients.iter().position(|&c| c == i).unwrap_or(usize::MAX);
+            let client = self.client(roster, i).unwrap_or(usize::MAX);
             (needed, client, !self.hands[i].switched_on(), i)
         }).collect();
         all.sort_by(|&a, &b| {
@@ -623,7 +649,7 @@ pub fn review(content: &Content, now: u64, roster: &Roster, lockers: &mut Locker
             let_go = Some(weakest);
         }
     }
-    lockers.clients = taken.clone();
+    lockers.clients = taken.iter().map(|&i| roster.hands[i].id).collect();
     // Taking a client on is serving it: its trades that would buy goods the town holds are switched on.
     for &i in &taken {
         let level = roster.hands[i].level;

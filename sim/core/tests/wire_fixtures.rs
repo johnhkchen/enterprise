@@ -208,6 +208,11 @@ fn inputs() -> Vec<Input> {
         Input::SetDial { name: "bargain".into(), value: None },
         Input::SetDial { name: String::new(), value: Some(f64::MAX) },
         Input::SetDial { name: "d".repeat(200), value: Some(-0.5) },
+        Input::AddHand { town: 0, trade: "enterprise:merchant".into(), level: 1, tag: "6f1c2a3e-0000-4000-8000-00000000002a".into() },
+        Input::AddHand { town: BIGGEST_ID, trade: String::new(), level: u8::MAX, tag: String::new() },
+        Input::AddHand { town: 1, trade: "farmer".into(), level: 0, tag: "Br\u{f6}ly \u{1f33e}".repeat(20) },
+        Input::HandLost { hand: 1 },
+        Input::HandLost { hand: u32::MAX },
     ];
     all.extend(counts().into_iter().map(|counts| Input::Stocktake { point: point(PointKind::Desk, 27, -60, 27), counts }));
     all
@@ -237,7 +242,18 @@ fn outputs() -> Vec<Output> {
 }
 
 fn queries() -> Vec<Query> {
-    vec![Query::Stock { town: 0 }, Query::Stock { town: BIGGEST_ID }, Query::Points, Query::Goods, Query::Dials]
+    vec![Query::Stock { town: 0 }, Query::Stock { town: BIGGEST_ID }, Query::Points, Query::Goods, Query::Dials,
+        Query::Hands { town: 0 }, Query::Hands { town: BIGGEST_ID }]
+}
+
+fn hand_views() -> Vec<HandView> {
+    vec![
+        HandView { hand: 1, tag: "6f1c2a3e-0000-4000-8000-00000000002a".into(), trade: "merchant".into(), level: 1, xp: 0,
+            baby: false, away: false, merchant: true },
+        HandView { hand: 7, tag: String::new(), trade: "none".into(), level: 1, xp: 0, baby: true, away: false, merchant: false },
+        HandView { hand: u32::MAX, tag: "\u{1f33e}".repeat(40), trade: "x".repeat(300), level: u8::MAX, xp: u32::MAX,
+            baby: false, away: true, merchant: false },
+    ]
 }
 
 fn answers() -> Vec<Answer> {
@@ -255,6 +271,10 @@ fn answers() -> Vec<Answer> {
         Answer::Dials { dials: vec![] },
         Answer::Dials { dials: dial_views() },
         Answer::Dials { dials: (0..220).map(|i| DialView { name: format!("dial_{i}"), value: i as f64 / 8.0, initial: 1.0, does: "x".repeat(i % 9) }).collect() },
+        Answer::Hands { town: 0, lockers: 0, hands: vec![] },
+        Answer::Hands { town: 2, lockers: 10, hands: hand_views() },
+        Answer::Hands { town: BIGGEST_ID, lockers: u32::MAX, hands: (0..150).map(|i| HandView { hand: 1 + i, tag: format!("v{i}"),
+            trade: "farmer".into(), level: 1 + (i % 5) as u8, xp: i * 7, baby: i % 9 == 0, away: i % 4 == 0, merchant: i == 3 }).collect() },
     ]
 }
 
@@ -338,6 +358,7 @@ fixtures! {
     pack_animal_fixtures: PackAnimal = animals();
     pack_dial_fixtures: PackDial = pack_dials();
     dial_view_fixtures: DialView = dial_views();
+    hand_view_fixtures: HandView = hand_views();
     good_flag_fixtures: GoodFlag = vec![GoodFlag::Crop, GoodFlag::Meat];
     save_file_fixtures: SaveFile = saves();
     fixed_fixtures: Fixed = fixeds();
@@ -363,6 +384,8 @@ fn input_place(i: &Input) -> usize {
         Input::PackageBrought { .. } => 12,
         Input::PackageLost { .. } => 13,
         Input::SetDial { .. } => 14,
+        Input::AddHand { .. } => 15,
+        Input::HandLost { .. } => 16,
     }
 }
 
@@ -385,6 +408,7 @@ fn query_place(q: &Query) -> usize {
         Query::Points => 1,
         Query::Goods => 2,
         Query::Dials => 3,
+        Query::Hands { .. } => 4,
     }
 }
 
@@ -394,6 +418,7 @@ fn answer_place(a: &Answer) -> usize {
         Answer::Points { .. } => 1,
         Answer::Goods { .. } => 2,
         Answer::Dials { .. } => 3,
+        Answer::Hands { .. } => 4,
     }
 }
 
@@ -440,10 +465,10 @@ fn covers<T>(what: &str, samples: &[T], variants: usize, place: fn(&T) -> usize)
 
 #[test]
 fn every_variant_of_every_wire_enum_has_a_sample() {
-    covers("Input", &inputs(), 15, input_place);
+    covers("Input", &inputs(), 17, input_place);
     covers("Output", &outputs(), 8, output_place);
-    covers("Query", &queries(), 4, query_place);
-    covers("Answer", &answers(), 4, answer_place);
+    covers("Query", &queries(), 5, query_place);
+    covers("Answer", &answers(), 5, answer_place);
     covers("Command", &commands(), 5, command_place);
     covers("Response", &responses(), 3, response_place);
     covers("Refusal", &refusals(), 9, refusal_place);

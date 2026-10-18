@@ -53,6 +53,7 @@ crate::saved! {
         sovereign: crate::crown::Sovereign = crate::crown::Sovereign::default(),
         pallets: crate::pallet::Pallets = crate::pallet::Pallets::default(),
         points: crate::points::Points = crate::points::Points::default(),
+        hands: crate::roster::Hands = crate::roster::Hands::default(),
     }
     town {
         town: Town,

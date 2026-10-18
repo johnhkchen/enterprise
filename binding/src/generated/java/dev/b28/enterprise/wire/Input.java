@@ -23,7 +23,9 @@ public sealed interface Input
                 Input.PalletBrought,
                 Input.PackageBrought,
                 Input.PackageLost,
-                Input.SetDial {
+                Input.SetDial,
+                Input.AddHand,
+                Input.HandLost {
     void encode(PostcardOut out);
 
     static Input decode(PostcardIn in) {
@@ -44,6 +46,8 @@ public sealed interface Input
             case 12 -> new PackageBrought(in.u32(), in.u64(), in.u32());
             case 13 -> new PackageLost(in.u64(), in.u32());
             case 14 -> new SetDial(in.string(), in.option(PostcardIn::f64));
+            case 15 -> new AddHand(in.u32(), in.string(), in.u8(), in.string());
+            case 16 -> new HandLost(in.u32());
             default -> throw in.unknownVariant("Input", at);
         };
     }
@@ -276,6 +280,43 @@ public sealed interface Input
             out.variant(14);
             out.string(this.name);
             out.option(this.value, PostcardOut::f64);
+        }
+    }
+
+    /**
+     * A villager came to live at a town (a Merchant taking its desk, one born or settled there in the host's world): a
+     * hand of {@code trade} (the core's name for it, with or without the host's namespace: {@code minecraft:farmer}) at {@code level} (1
+     * to 5, with the XP it took), known to the host as {@code tag} (its villager's UUID; empty for none). The core gives it
+     * an id of its own ({@code Query::Hands} lists it with its tag); a Merchant becomes the desk's if the town has none. A
+     * town that kept no roster starts one, and its villagers follow it from then on. Refused for a trade the core
+     * hasn't, a level outside 1 to 5, or a tag another hand has.
+     */
+    record AddHand(long town, String trade, int level, String tag) implements Input {
+        public AddHand {
+            Objects.requireNonNull(trade, "trade");
+            Objects.requireNonNull(tag, "tag");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(15);
+            out.u32(this.town);
+            out.string(this.trade);
+            out.u8(this.level);
+            out.string(this.tag);
+        }
+    }
+
+    /**
+     * A hand at home left the society for good (its villager died, or was taken from the world): off its town's
+     * roster, with its locker. Refused for a hand that isn't on a roster, or is away (out with a caravan or at war: off
+     * the host's world, the core brings it home or buries it).
+     */
+    record HandLost(long hand) implements Input {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(16);
+            out.u32(this.hand);
         }
     }
 }

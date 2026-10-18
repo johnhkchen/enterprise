@@ -1,0 +1,32 @@
+[
+  {
+    "hand": 1,
+    "tag": "6f1c2a3e-0000-4000-8000-00000000002a",
+    "trade": "merchant",
+    "level": 1,
+    "xp": 0,
+    "baby": false,
+    "away": false,
+    "merchant": true
+  },
+  {
+    "hand": 7,
+    "tag": "",
+    "trade": "none",
+    "level": 1,
+    "xp": 0,
+    "baby": true,
+    "away": false,
+    "merchant": false
+  },
+  {
+    "hand": 4294967295,
+    "tag": "🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾",
+    "trade": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "level": 255,
+    "xp": 4294967295,
+    "baby": false,
+    "away": true,
+    "merchant": false
+  }
+]

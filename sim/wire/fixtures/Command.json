@@ -389,6 +389,40 @@
           }
         },
         {
+          "AddHand": {
+            "town": 0,
+            "trade": "enterprise:merchant",
+            "level": 1,
+            "tag": "6f1c2a3e-0000-4000-8000-00000000002a"
+          }
+        },
+        {
+          "AddHand": {
+            "town": 4294967295,
+            "trade": "",
+            "level": 255,
+            "tag": ""
+          }
+        },
+        {
+          "AddHand": {
+            "town": 1,
+            "trade": "farmer",
+            "level": 0,
+            "tag": "Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾Bröly 🌾"
+          }
+        },
+        {
+          "HandLost": {
+            "hand": 1
+          }
+        },
+        {
+          "HandLost": {
+            "hand": 4294967295
+          }
+        },
+        {
           "Stocktake": {
             "point": {
               "kind": "Desk",
@@ -1719,7 +1753,17 @@
         },
         "Points",
         "Goods",
-        "Dials"
+        "Dials",
+        {
+          "Hands": {
+            "town": 0
+          }
+        },
+        {
+          "Hands": {
+            "town": 4294967295
+          }
+        }
       ]
     }
   }

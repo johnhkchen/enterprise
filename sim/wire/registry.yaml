@@ -26,6 +26,14 @@ Answer:
           - dials:
               SEQ:
                 TYPENAME: DialView
+    4:
+      Hands:
+        STRUCT:
+          - town: U32
+          - lockers: U32
+          - hands:
+              SEQ:
+                TYPENAME: HandView
 Command:
   ENUM:
     0:
@@ -88,6 +96,16 @@ GoodFlag:
       Crop: UNIT
     1:
       Meat: UNIT
+HandView:
+  STRUCT:
+    - hand: U32
+    - tag: STR
+    - trade: STR
+    - level: U8
+    - xp: U32
+    - baby: BOOL
+    - away: BOOL
+    - merchant: BOOL
 Input:
   ENUM:
     0:
@@ -178,6 +196,17 @@ Input:
           - name: STR
           - value:
               OPTION: F64
+    15:
+      AddHand:
+        STRUCT:
+          - town: U32
+          - trade: STR
+          - level: U8
+          - tag: STR
+    16:
+      HandLost:
+        STRUCT:
+          - hand: U32
 Output:
   ENUM:
     0:
@@ -332,6 +361,10 @@ Query:
       Goods: UNIT
     3:
       Dials: UNIT
+    4:
+      Hands:
+        STRUCT:
+          - town: U32
 Refusal:
   ENUM:
     0:

@@ -5,6 +5,8 @@ import dev.b28.enterprise.binding.CoreHost;
 import dev.b28.enterprise.binding.ModPack;
 import dev.b28.enterprise.binding.Society;
 import dev.b28.enterprise.binding.adapters.DialAdapter;
+import dev.b28.enterprise.binding.adapters.HandsAdapter;
+import dev.b28.enterprise.binding.adapters.PointsAdapter;
 import dev.b28.enterprise.core.SaveStore;
 import dev.b28.enterprise.wire.Answer;
 import dev.b28.enterprise.wire.ContentPack;
@@ -24,6 +26,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -231,6 +236,126 @@ public final class CoreBindingTests {
         helper.assertTrue(dial(host, "shelf_days").value() == 5.0 && dial.get() == 5.0,
                 "shelf_days isn't back to 5: core " + dial(host, "shelf_days").value() + ", Java " + dial.get());
         helper.succeed();
+    }
+
+    /**
+     * Trade points are the core's (B4.2): a desk founds a town, and a locker, a shop, a banker and a depot of its are
+     * points of that town in the core; one where one stands already, or for a town that isn't there, is refused; one
+     * broken is gone. A fresh host on the saved folder rebuilds the same lookup from the core alone: the mod keeps no
+     * society ids of its own.
+     */
+    @GameTest(template = "floor")
+    public static void aTownsTradePointsAreTheCoresThroughASaveAndLoad(GameTestHelper helper) {
+        var level = helper.getLevel();
+        helper.setBlock(DESK, Merchant.DESK.get());
+        GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
+        GlobalPos locker = GlobalPos.of(level.dimension(), helper.absolutePos(DESK.west(2)));
+        GlobalPos shop = GlobalPos.of(level.dimension(), helper.absolutePos(DESK.north(2)));
+        GlobalPos banker = GlobalPos.of(level.dimension(), helper.absolutePos(DESK.south(2)));
+        GlobalPos depot = GlobalPos.of(level.dimension(), helper.absolutePos(DESK.east(2)));
+        Path dir = folder();
+        try {
+            long town;
+            Map<GlobalPos, PointsAdapter.Placed> saved;
+            try (CoreHost host = CoreHost.open(dir, 7)) {
+                town = host.stock().found(level, desk.pos(), "Testford");
+                PointsAdapter points = host.points();
+                helper.assertTrue(points.add(locker, PointsAdapter.Kind.LOCKER, town) == null, "the locker wasn't taken");
+                helper.assertTrue(points.add(shop, PointsAdapter.Kind.SHOP, town) == null, "the shop wasn't taken");
+                helper.assertTrue(points.add(banker, PointsAdapter.Kind.BANKER, town) == null, "the banker wasn't taken");
+                helper.assertTrue(points.add(depot, PointsAdapter.Kind.DEPOT, town) == null, "the depot wasn't taken");
+                helper.assertTrue(points.add(locker, PointsAdapter.Kind.SHOP, town) != null, "a point where one stands was taken");
+                GlobalPos nowhere = GlobalPos.of(level.dimension(), helper.absolutePos(DESK.above(2)));
+                helper.assertTrue(points.add(nowhere, PointsAdapter.Kind.SHOP, town + 99) != null && points.at(nowhere) == null,
+                        "a point of no town was taken");
+                helper.assertTrue(points.at(banker).equals(new PointsAdapter.Placed(PointsAdapter.Kind.BANKER, town)),
+                        "the banker is " + points.at(banker));
+                helper.assertTrue(points.remove(shop) && points.at(shop) == null, "the shop broken is still a point");
+                helper.assertTrue(host.stock().townAt(locker) == null, "a locker is taken for a desk");
+                saved = Map.copyOf(points.all());
+                helper.assertTrue(saved.size() == 4 && points.towns().equals(List.of(town)), "the core keeps " + saved);
+                helper.assertTrue(host.save(), "the host didn't save");
+            }
+            try (CoreHost loaded = CoreHost.open(dir, 8)) {
+                helper.assertTrue(loaded.points().all().equals(saved), "after a load the core keeps " + loaded.points().all()
+                        + ", not " + saved);
+                Long again = loaded.stock().townAt(desk);
+                helper.assertTrue(again != null && again == town, "the desk isn't town " + town + " after the load");
+            }
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Villagers are the core's hands by ids that never shift (B4.2): the Merchant at a desk joins its town's roster as
+     * its Merchant when the core is first asked what it manages (two lockers a level), a Farmer and a Librarian as they
+     * come; the Farmer dies and the Librarian behind it keeps its id; a fresh host on the saved folder finds each
+     * villager's hand again by its UUID, which the core keeps (the mod keeps none).
+     */
+    @GameTest(template = "floor")
+    public static void aVillagerIsItsTownsHandByAnIdThatOutlivesItsNeighbours(GameTestHelper helper) {
+        var level = helper.getLevel();
+        helper.setBlock(DESK, Merchant.DESK.get());
+        GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
+        Villager merchant = villager(helper, Merchant.PROFESSION.get(), 2, DESK.east());
+        Villager farmer = villager(helper, VillagerProfession.FARMER, 3, DESK.west());
+        Villager librarian = villager(helper, VillagerProfession.LIBRARIAN, 1, DESK.north());
+        Path dir = folder();
+        try {
+            long town;
+            long m;
+            long l;
+            try (CoreHost host = CoreHost.open(dir, 7)) {
+                town = host.stock().found(level, desk.pos(), "Testford");
+                HandsAdapter hands = host.hands();
+                helper.assertTrue(hands.roster(town).hands().isEmpty(), "a new town has hands");
+                Long lockers = hands.lockersOf(town, merchant);
+                helper.assertTrue(lockers != null && lockers == 4, "a Journeyman Merchant manages " + lockers + " lockers, not 4");
+                m = hands.of(merchant.getUUID()).hand();
+                long f = hands.join(town, farmer);
+                l = hands.join(town, librarian);
+                helper.assertTrue(hands.join(town, farmer) == f, "a villager joined twice has two hands");
+                var roster = hands.roster(town);
+                helper.assertTrue(roster.hands().stream().map(HandsAdapter.Hand::id).toList().equals(List.of(m, f, l)),
+                        "the hands are " + roster.hands());
+                helper.assertTrue(roster.hands().stream().map(HandsAdapter.Hand::trade).toList()
+                        .equals(List.of("merchant", "farmer", "librarian")), "the trades are " + roster.hands());
+                helper.assertTrue(roster.hands().stream().map(HandsAdapter.Hand::level).toList().equals(List.of(2, 3, 1))
+                        && roster.hands().get(0).merchant() && !roster.hands().get(1).merchant(), "levels or the Merchant: " + roster);
+                helper.assertTrue(roster.hands().get(1).villager().equals(farmer.getUUID()), "the Farmer's hand isn't its villager's");
+
+                helper.assertTrue(hands.lose(farmer.getUUID()), "the Farmer's death wasn't the core's");
+                helper.assertTrue(!hands.lose(farmer.getUUID()) && hands.of(farmer.getUUID()) == null, "the Farmer died twice");
+                var after = hands.roster(town);
+                helper.assertTrue(after.hands().stream().map(HandsAdapter.Hand::id).toList().equals(List.of(m, l)),
+                        "after the Farmer's death the hands are " + after.hands());
+                helper.assertTrue(host.save(), "the host didn't save");
+            }
+            try (CoreHost loaded = CoreHost.open(dir, 8)) {
+                HandsAdapter hands = loaded.hands();
+                helper.assertTrue(new HandsAdapter.Where(town, l).equals(hands.of(librarian.getUUID())),
+                        "after the load the Librarian is " + hands.of(librarian.getUUID()) + ", not hand " + l);
+                helper.assertTrue(hands.of(merchant.getUUID()) != null && hands.of(merchant.getUUID()).hand() == m,
+                        "after the load the Merchant is " + hands.of(merchant.getUUID()));
+                helper.assertTrue(hands.of(farmer.getUUID()) == null, "the dead Farmer is a hand after the load");
+            }
+        } finally {
+            delete(dir);
+            merchant.discard();
+            farmer.discard();
+            librarian.discard();
+        }
+        helper.succeed();
+    }
+
+    /** A villager of {@code trade} at {@code level}, kept in it without a workstation (one XP). */
+    private static Villager villager(GameTestHelper helper, VillagerProfession trade, int level, BlockPos at) {
+        Villager v = helper.spawn(EntityType.VILLAGER, at);
+        v.setVillagerData(v.getVillagerData().setProfession(trade).setLevel(level));
+        v.setVillagerXp(1);
+        return v;
     }
 
     private static DialAdapter.Dial dial(CoreHost host, String name) {

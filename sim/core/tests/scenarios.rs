@@ -430,6 +430,104 @@ fn content() -> Scenario {
     s.scenario
 }
 
+fn hands_of(town: TownNo) -> Vec<Query> {
+    vec![Query::Hands { town }]
+}
+
+/// The ids of a town's hands, in its roster's order, from an answer to [`hands_of`].
+fn ids(answers: &[Answer]) -> Vec<u32> {
+    match &answers[0] {
+        Answer::Hands { hands, .. } => hands.iter().map(|h| h.hand).collect(),
+        a => panic!("{a:?}"),
+    }
+}
+
+/// Villagers joining towns as hands with ids; one lost from the middle of a roster, the rest keeping theirs through a
+/// save and a load; the refusals of a hand's happenings.
+fn hands() -> Scenario {
+    let mut s = Script::new("hands", "A town's villagers join it as hands, each given an id that a host ties to its own \
+        name for it (a villager's UUID, here a tag) and finds again by asking. A hand lost from the middle of a roster \
+        leaves the others' ids as they were, and the ids and tags come back the same from a save; places in the roster \
+        move, ids don't. The desk's Merchant manages two lockers at Novice.");
+    s.create("a society from a pack of four goods");
+    s.apply("two towns at their desks", vec![
+        Input::AddTown { name: "Ashford".into(), desk: at(PointKind::Desk, 27, 27) },
+        Input::AddTown { name: "Brent".into(), desk: at(PointKind::Desk, 600, -40) },
+    ]);
+    s.ask("a town with no roster has no hands, and its desk no Merchant", hands_of(0));
+    s.apply("a Merchant takes the desk; a farmer, a librarian and a villager with no trade come to live at Ashford, and a \
+        mason at Brent (the trades by the host's names, with or without its namespace)", vec![
+        Input::AddHand { town: 0, trade: "enterprise:merchant".into(), level: 1, tag: "villager-m".into() },
+        Input::AddHand { town: 0, trade: "minecraft:farmer".into(), level: 2, tag: "villager-f".into() },
+        Input::AddHand { town: 0, trade: "librarian".into(), level: 1, tag: "villager-l".into() },
+        Input::AddHand { town: 1, trade: "mason".into(), level: 3, tag: "villager-s".into() },
+        Input::AddHand { town: 0, trade: "none".into(), level: 1, tag: String::new() },
+    ]);
+    let before = ids(&s.ask("Ashford's hands, each with its id and tag", hands_of(0)));
+    assert_eq!(before, vec![1, 2, 3, 5], "ids in the order they joined, across towns");
+    s.ask("and Brent's", hands_of(1));
+    s.apply("the farmer dies (by its id: its place is second)", vec![Input::HandLost { hand: before[1] }]);
+    let after = ids(&s.ask("the others keep their ids; the librarian is second now", hands_of(0)));
+    assert_eq!(after, vec![1, 3, 5]);
+    s.save("saved");
+    s.load("loaded");
+    let loaded = ids(&s.ask("asked after the load: the same ids and tags", hands_of(0)));
+    assert_eq!(loaded, after, "ids survive a save");
+    s.apply("a weaponsmith comes: a new id, never one given before", vec![
+        Input::AddHand { town: 0, trade: "weaponsmith".into(), level: 1, tag: "villager-f2".into() },
+        Input::Advance { to: 2 * DAY },
+    ]);
+    s.ask("its hands two days on", hands_of(0));
+
+    let refuse = |s: &mut Script, note: &str, inputs: Vec<Input>, at: u32| {
+        let r = s.say(note, Command::Apply { inputs });
+        match s.refused(note, r) {
+            Refusal::Input { at: got, .. } => assert_eq!(got, at, "{note}"),
+            r => panic!("{note}: {r:?}"),
+        }
+    };
+    let kept = s.ask("the hands as they stand", hands_of(0));
+    refuse(&mut s, "a hand for a town that isn't there", vec![
+        Input::AddHand { town: 9, trade: "farmer".into(), level: 1, tag: String::new() },
+    ], 0);
+    refuse(&mut s, "a hand of a trade the core hasn't", vec![
+        Input::AddHand { town: 0, trade: "minecraft:baker".into(), level: 1, tag: String::new() },
+    ], 0);
+    refuse(&mut s, "a hand of level 0, after one of level 5", vec![
+        Input::AddHand { town: 0, trade: "cleric".into(), level: 5, tag: String::new() },
+        Input::AddHand { town: 0, trade: "cleric".into(), level: 0, tag: String::new() },
+    ], 1);
+    refuse(&mut s, "a hand called what another is called", vec![
+        Input::AddHand { town: 1, trade: "farmer".into(), level: 1, tag: "villager-l".into() },
+    ], 0);
+    refuse(&mut s, "two hands called alike in one look", vec![
+        Input::AddHand { town: 1, trade: "farmer".into(), level: 1, tag: "villager-x".into() },
+        Input::AddHand { town: 0, trade: "farmer".into(), level: 1, tag: "villager-x".into() },
+    ], 1);
+    refuse(&mut s, "a hand lost that was lost already", vec![Input::HandLost { hand: before[1] }], 0);
+    refuse(&mut s, "a hand lost twice in one look", vec![
+        Input::HandLost { hand: after[2] },
+        Input::HandLost { hand: after[2] },
+    ], 1);
+    let r = s.say("the hands of a town that isn't there", Command::Ask { queries: vec![Query::Hands { town: 0 }, Query::Hands { town: 7 }] });
+    assert!(matches!(s.refused("query", r), Refusal::Query { at: 1, .. }));
+    assert_eq!(s.ask("nothing of any refused request applied", hands_of(0)), kept);
+    s.apply("a tag freed by its hand's death is free again: a villager of the same name comes", vec![
+        Input::AddHand { town: 1, trade: "farmer".into(), level: 1, tag: "villager-f".into() },
+    ]);
+    let brent = ids(&s.ask("Brent's hands", hands_of(1)));
+    refuse(&mut s, "a villager called as a living hand is, before that hand is lost in the same look", vec![
+        Input::AddHand { town: 1, trade: "farmer".into(), level: 2, tag: "villager-f".into() },
+        Input::HandLost { hand: brent[1] },
+    ], 0);
+    s.apply("the hand lost first, then a villager of its name comes, in one look", vec![
+        Input::HandLost { hand: brent[1] },
+        Input::AddHand { town: 1, trade: "farmer".into(), level: 2, tag: "villager-f".into() },
+    ]);
+    s.ask("Brent's hands: the new one with a new id", hands_of(1));
+    s.scenario
+}
+
 /// Every way the core refuses, each leaving the society as it was.
 fn refusals() -> Scenario {
     let mut s = Script::new("refusals", "Every refusal, each a message and nothing applied.");
@@ -537,7 +635,7 @@ fn refusals() -> Scenario {
 }
 
 fn scenarios() -> Vec<Scenario> {
-    vec![stocktake(), inputs(), content(), refusals()]
+    vec![stocktake(), inputs(), content(), refusals(), hands()]
 }
 
 fn text(scenario: &Scenario) -> String {
@@ -564,7 +662,7 @@ fn the_scenarios_play_as_their_files_say() {
         return;
     }
     let mut wrong = Vec::new();
-    for name in ["stocktake", "inputs", "content", "refusals"] {
+    for name in ["stocktake", "inputs", "content", "refusals", "hands"] {
         let scenario = read(name);
         assert!(!scenario.steps.is_empty(), "{name}: no steps");
         wrong.extend(play(&scenario));
@@ -622,9 +720,9 @@ fn every_message_appears_in_a_scenario() {
         }
     }
     let set = |names: &[&str]| names.iter().map(|s| s.to_string()).collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake"]));
+    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost"]));
     assert_eq!(commands, set(&["Apply", "Ask", "Create", "Load", "Save"]));
-    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock"]));
+    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands"]));
     assert_eq!(refusals, set(&["Abi", "Input", "NoSociety", "Pack", "Query", "Save", "SaveFormat", "Schema", "Unreadable"]));
     // None yet: an Output needs a master Merchant (OrderFilled, Signal), a route (the wagon's three) or a pallet (the
     // pallets' three: only a wagon packs one), and no wire input makes any. When one does, a scenario shows each and its name goes here.
