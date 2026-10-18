@@ -125,6 +125,15 @@ wasm:
 wasm-test:
     cd sim && ENT_WASM_REQUIRED=1 cargo test --release -q -p enterprise-wasm
 
+# The wire's golden files (sim/wire/fixtures/) and scenarios (sim/scenarios/) written anew: run it after a wire type or a rule moved, commit the diff
+wire-fixtures:
+    cd sim && WIRE_FIXTURES=write WIRE_SCENARIOS=write cargo test --release -q -p enterprise-core --test wire_fixtures --test scenarios
+    cd sim && cargo test --release -q -p enterprise-core --test wire_fixtures --test scenarios
+
+# The scenarios and the golden files built for WebAssembly, under Node's WASI: the same answers as native
+scenarios-wasm:
+    cd sim/core && CARGO_TARGET_WASM32_WASIP1_RUNNER="node $PWD/../wasi-run.mjs" cargo test --release -q -p enterprise-core --target wasm32-wasip1 --test scenarios --test wire_fixtures
+
 # The network study's world in the fast host, no game: `just study 365 --csv /tmp/base.csv --river --people-use`
 study *args:
     cd sim && cargo run --release -q -p enterprise-sim -- {{args}}

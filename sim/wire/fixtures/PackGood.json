@@ -1,0 +1,61 @@
+[
+  {
+    "name": "a",
+    "worth": 1.0,
+    "stack": 1,
+    "food": 0.0,
+    "saturation": 0.0,
+    "comfort": null,
+    "flags": []
+  },
+  {
+    "name": "minecraft:wheat",
+    "worth": 0.05,
+    "stack": 64,
+    "food": 0.0,
+    "saturation": 0.0,
+    "comfort": null,
+    "flags": [
+      "Crop"
+    ]
+  },
+  {
+    "name": "minecraft:bread",
+    "worth": 0.2,
+    "stack": 64,
+    "food": 5.0,
+    "saturation": 6.0,
+    "comfort": null,
+    "flags": []
+  },
+  {
+    "name": "minecraft:book",
+    "worth": 0.5,
+    "stack": 16,
+    "food": 0.0,
+    "saturation": 0.0,
+    "comfort": "reading",
+    "flags": []
+  },
+  {
+    "name": "minecraft:cooked_beef",
+    "worth": 0.3,
+    "stack": 64,
+    "food": 8.0,
+    "saturation": 12.8,
+    "comfort": null,
+    "flags": [
+      "Meat",
+      "Crop"
+    ]
+  },
+  {
+    "name": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+    "worth": 1.7976931348623157e+308,
+    "stack": 4294967295,
+    "food": 2.2250738585072014e-308,
+    "saturation": 0.0,
+    "comfort": "",
+    "flags": []
+  }
+]

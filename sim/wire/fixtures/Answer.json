@@ -1,0 +1,1839 @@
+[
+  {
+    "Stock": {
+      "town": 0,
+      "stock": []
+    }
+  },
+  {
+    "Stock": {
+      "town": 3,
+      "stock": [
+        40.0,
+        0.0,
+        3.0,
+        0.0
+      ]
+    }
+  },
+  {
+    "Stock": {
+      "town": 4294967295,
+      "stock": [
+        0.0,
+        1.0,
+        0.1,
+        0.05,
+        63.999,
+        1e-300,
+        4503599627370496.0,
+        1.7976931348623157e+308,
+        2.2250738585072014e-308
+      ]
+    }
+  },
+  {
+    "Stock": {
+      "town": 1,
+      "stock": [
+        0.0,
+        0.5,
+        1.0,
+        1.5,
+        2.0,
+        2.5,
+        3.0,
+        3.5,
+        4.0,
+        4.5,
+        5.0,
+        5.5,
+        6.0,
+        6.5,
+        7.0,
+        7.5,
+        8.0,
+        8.5,
+        9.0,
+        9.5,
+        10.0,
+        10.5,
+        11.0,
+        11.5,
+        12.0,
+        12.5,
+        13.0,
+        13.5,
+        14.0,
+        14.5,
+        15.0,
+        15.5,
+        16.0,
+        16.5,
+        17.0,
+        17.5,
+        18.0,
+        18.5,
+        19.0,
+        19.5,
+        20.0,
+        20.5,
+        21.0,
+        21.5,
+        22.0,
+        22.5,
+        23.0,
+        23.5,
+        24.0,
+        24.5,
+        25.0,
+        25.5,
+        26.0,
+        26.5,
+        27.0,
+        27.5,
+        28.0,
+        28.5,
+        29.0,
+        29.5,
+        30.0,
+        30.5,
+        31.0,
+        31.5,
+        32.0,
+        32.5,
+        33.0,
+        33.5,
+        34.0,
+        34.5,
+        35.0,
+        35.5,
+        36.0,
+        36.5,
+        37.0,
+        37.5,
+        38.0,
+        38.5,
+        39.0,
+        39.5,
+        40.0,
+        40.5,
+        41.0,
+        41.5,
+        42.0,
+        42.5,
+        43.0,
+        43.5,
+        44.0,
+        44.5,
+        45.0,
+        45.5,
+        46.0,
+        46.5,
+        47.0,
+        47.5,
+        48.0,
+        48.5,
+        49.0,
+        49.5,
+        50.0,
+        50.5,
+        51.0,
+        51.5,
+        52.0,
+        52.5,
+        53.0,
+        53.5,
+        54.0,
+        54.5,
+        55.0,
+        55.5,
+        56.0,
+        56.5,
+        57.0,
+        57.5,
+        58.0,
+        58.5,
+        59.0,
+        59.5,
+        60.0,
+        60.5,
+        61.0,
+        61.5,
+        62.0,
+        62.5,
+        63.0,
+        63.5,
+        64.0,
+        64.5,
+        65.0,
+        65.5,
+        66.0,
+        66.5,
+        67.0,
+        67.5,
+        68.0,
+        68.5,
+        69.0,
+        69.5,
+        70.0,
+        70.5,
+        71.0,
+        71.5,
+        72.0,
+        72.5,
+        73.0,
+        73.5,
+        74.0,
+        74.5,
+        75.0,
+        75.5,
+        76.0,
+        76.5,
+        77.0,
+        77.5,
+        78.0,
+        78.5,
+        79.0,
+        79.5,
+        80.0,
+        80.5,
+        81.0,
+        81.5,
+        82.0,
+        82.5,
+        83.0,
+        83.5,
+        84.0,
+        84.5,
+        85.0,
+        85.5,
+        86.0,
+        86.5,
+        87.0,
+        87.5,
+        88.0,
+        88.5,
+        89.0,
+        89.5,
+        90.0,
+        90.5,
+        91.0,
+        91.5,
+        92.0,
+        92.5,
+        93.0,
+        93.5,
+        94.0,
+        94.5,
+        95.0,
+        95.5,
+        96.0,
+        96.5,
+        97.0,
+        97.5,
+        98.0,
+        98.5,
+        99.0,
+        99.5
+      ]
+    }
+  },
+  {
+    "Points": {
+      "points": []
+    }
+  },
+  {
+    "Points": {
+      "points": [
+        {
+          "point": {
+            "kind": "Desk",
+            "dim": "minecraft:overworld",
+            "x": 27,
+            "y": -60,
+            "z": 27
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Shop",
+            "dim": "minecraft:overworld",
+            "x": -1,
+            "y": -64,
+            "z": -1
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Banker",
+            "dim": "minecraft:overworld",
+            "x": 2147483647,
+            "y": 319,
+            "z": -2147483648
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Depot",
+            "dim": "minecraft:overworld",
+            "x": -2147483648,
+            "y": -2147483648,
+            "z": 2147483647
+          },
+          "town": 4
+        },
+        {
+          "point": {
+            "kind": "Desk",
+            "dim": "",
+            "x": 1,
+            "y": 2,
+            "z": 3
+          },
+          "town": 5
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:the_nether",
+            "x": -30000000,
+            "y": 0,
+            "z": 30000000
+          },
+          "town": 6
+        },
+        {
+          "point": {
+            "kind": "Shop",
+            "dim": "mod:dimension_é世🌾",
+            "x": 5,
+            "y": 5,
+            "z": 5
+          },
+          "town": 7
+        }
+      ]
+    }
+  },
+  {
+    "Points": {
+      "points": [
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 1,
+            "y": 0,
+            "z": -1
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 2,
+            "y": 0,
+            "z": -2
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 3,
+            "y": 0,
+            "z": -3
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 4,
+            "y": 0,
+            "z": -4
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 5,
+            "y": 0,
+            "z": -5
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 6,
+            "y": 0,
+            "z": -6
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 7,
+            "y": 0,
+            "z": -7
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 8,
+            "y": 0,
+            "z": -8
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 9,
+            "y": 0,
+            "z": -9
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 10,
+            "y": 0,
+            "z": -10
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 11,
+            "y": 0,
+            "z": -11
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 12,
+            "y": 0,
+            "z": -12
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 13,
+            "y": 0,
+            "z": -13
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 14,
+            "y": 0,
+            "z": -14
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 15,
+            "y": 0,
+            "z": -15
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 16,
+            "y": 0,
+            "z": -16
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 17,
+            "y": 0,
+            "z": -17
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 18,
+            "y": 0,
+            "z": -18
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 19,
+            "y": 0,
+            "z": -19
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 20,
+            "y": 0,
+            "z": -20
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 21,
+            "y": 0,
+            "z": -21
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 22,
+            "y": 0,
+            "z": -22
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 23,
+            "y": 0,
+            "z": -23
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 24,
+            "y": 0,
+            "z": -24
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 25,
+            "y": 0,
+            "z": -25
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 26,
+            "y": 0,
+            "z": -26
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 27,
+            "y": 0,
+            "z": -27
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 28,
+            "y": 0,
+            "z": -28
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 29,
+            "y": 0,
+            "z": -29
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 30,
+            "y": 0,
+            "z": -30
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 31,
+            "y": 0,
+            "z": -31
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 32,
+            "y": 0,
+            "z": -32
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 33,
+            "y": 0,
+            "z": -33
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 34,
+            "y": 0,
+            "z": -34
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 35,
+            "y": 0,
+            "z": -35
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 36,
+            "y": 0,
+            "z": -36
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 37,
+            "y": 0,
+            "z": -37
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 38,
+            "y": 0,
+            "z": -38
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 39,
+            "y": 0,
+            "z": -39
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 40,
+            "y": 0,
+            "z": -40
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 41,
+            "y": 0,
+            "z": -41
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 42,
+            "y": 0,
+            "z": -42
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 43,
+            "y": 0,
+            "z": -43
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 44,
+            "y": 0,
+            "z": -44
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 45,
+            "y": 0,
+            "z": -45
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 46,
+            "y": 0,
+            "z": -46
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 47,
+            "y": 0,
+            "z": -47
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 48,
+            "y": 0,
+            "z": -48
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 49,
+            "y": 0,
+            "z": -49
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 50,
+            "y": 0,
+            "z": -50
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 51,
+            "y": 0,
+            "z": -51
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 52,
+            "y": 0,
+            "z": -52
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 53,
+            "y": 0,
+            "z": -53
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 54,
+            "y": 0,
+            "z": -54
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 55,
+            "y": 0,
+            "z": -55
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 56,
+            "y": 0,
+            "z": -56
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 57,
+            "y": 0,
+            "z": -57
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 58,
+            "y": 0,
+            "z": -58
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 59,
+            "y": 0,
+            "z": -59
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 60,
+            "y": 0,
+            "z": -60
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 61,
+            "y": 0,
+            "z": -61
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 62,
+            "y": 0,
+            "z": -62
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 63,
+            "y": 0,
+            "z": -63
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 64,
+            "y": 0,
+            "z": -64
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 65,
+            "y": 0,
+            "z": -65
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 66,
+            "y": 0,
+            "z": -66
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 67,
+            "y": 0,
+            "z": -67
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 68,
+            "y": 0,
+            "z": -68
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 69,
+            "y": 0,
+            "z": -69
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 70,
+            "y": 0,
+            "z": -70
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 71,
+            "y": 0,
+            "z": -71
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 72,
+            "y": 0,
+            "z": -72
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 73,
+            "y": 0,
+            "z": -73
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 74,
+            "y": 0,
+            "z": -74
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 75,
+            "y": 0,
+            "z": -75
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 76,
+            "y": 0,
+            "z": -76
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 77,
+            "y": 0,
+            "z": -77
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 78,
+            "y": 0,
+            "z": -78
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 79,
+            "y": 0,
+            "z": -79
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 80,
+            "y": 0,
+            "z": -80
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 81,
+            "y": 0,
+            "z": -81
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 82,
+            "y": 0,
+            "z": -82
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 83,
+            "y": 0,
+            "z": -83
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 84,
+            "y": 0,
+            "z": -84
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 85,
+            "y": 0,
+            "z": -85
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 86,
+            "y": 0,
+            "z": -86
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 87,
+            "y": 0,
+            "z": -87
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 88,
+            "y": 0,
+            "z": -88
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 89,
+            "y": 0,
+            "z": -89
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 90,
+            "y": 0,
+            "z": -90
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 91,
+            "y": 0,
+            "z": -91
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 92,
+            "y": 0,
+            "z": -92
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 93,
+            "y": 0,
+            "z": -93
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 94,
+            "y": 0,
+            "z": -94
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 95,
+            "y": 0,
+            "z": -95
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 96,
+            "y": 0,
+            "z": -96
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 97,
+            "y": 0,
+            "z": -97
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 98,
+            "y": 0,
+            "z": -98
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 99,
+            "y": 0,
+            "z": -99
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 100,
+            "y": 0,
+            "z": -100
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 101,
+            "y": 0,
+            "z": -101
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 102,
+            "y": 0,
+            "z": -102
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 103,
+            "y": 0,
+            "z": -103
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 104,
+            "y": 0,
+            "z": -104
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 105,
+            "y": 0,
+            "z": -105
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 106,
+            "y": 0,
+            "z": -106
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 107,
+            "y": 0,
+            "z": -107
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 108,
+            "y": 0,
+            "z": -108
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 109,
+            "y": 0,
+            "z": -109
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 110,
+            "y": 0,
+            "z": -110
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 111,
+            "y": 0,
+            "z": -111
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 112,
+            "y": 0,
+            "z": -112
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 113,
+            "y": 0,
+            "z": -113
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 114,
+            "y": 0,
+            "z": -114
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 115,
+            "y": 0,
+            "z": -115
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 116,
+            "y": 0,
+            "z": -116
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 117,
+            "y": 0,
+            "z": -117
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 118,
+            "y": 0,
+            "z": -118
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 119,
+            "y": 0,
+            "z": -119
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 120,
+            "y": 0,
+            "z": -120
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 121,
+            "y": 0,
+            "z": -121
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 122,
+            "y": 0,
+            "z": -122
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 123,
+            "y": 0,
+            "z": -123
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 124,
+            "y": 0,
+            "z": -124
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 125,
+            "y": 0,
+            "z": -125
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 126,
+            "y": 0,
+            "z": -126
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 127,
+            "y": 0,
+            "z": -127
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 128,
+            "y": 0,
+            "z": -128
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 129,
+            "y": 0,
+            "z": -129
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 130,
+            "y": 0,
+            "z": -130
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 131,
+            "y": 0,
+            "z": -131
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 132,
+            "y": 0,
+            "z": -132
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 133,
+            "y": 0,
+            "z": -133
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 134,
+            "y": 0,
+            "z": -134
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 135,
+            "y": 0,
+            "z": -135
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 136,
+            "y": 0,
+            "z": -136
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 137,
+            "y": 0,
+            "z": -137
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 138,
+            "y": 0,
+            "z": -138
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 139,
+            "y": 0,
+            "z": -139
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 140,
+            "y": 0,
+            "z": -140
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 141,
+            "y": 0,
+            "z": -141
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 142,
+            "y": 0,
+            "z": -142
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 143,
+            "y": 0,
+            "z": -143
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 144,
+            "y": 0,
+            "z": -144
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 145,
+            "y": 0,
+            "z": -145
+          },
+          "town": 1
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 146,
+            "y": 0,
+            "z": -146
+          },
+          "town": 2
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 147,
+            "y": 0,
+            "z": -147
+          },
+          "town": 3
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 148,
+            "y": 0,
+            "z": -148
+          },
+          "town": 0
+        },
+        {
+          "point": {
+            "kind": "Locker",
+            "dim": "minecraft:overworld",
+            "x": 149,
+            "y": 0,
+            "z": -149
+          },
+          "town": 1
+        }
+      ]
+    }
+  }
+]

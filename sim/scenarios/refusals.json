@@ -1,0 +1,800 @@
+{
+  "name": "refusals",
+  "about": "Every refusal, each a message and nothing applied.",
+  "steps": [
+    {
+      "note": "a question before there is a society",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Ask": {
+            "queries": [
+              "Points"
+            ]
+          }
+        }
+      },
+      "response": {
+        "Refused": {
+          "why": "NoSociety"
+        }
+      }
+    },
+    {
+      "note": "a save before there is a society",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": "Save"
+      },
+      "response": {
+        "Refused": {
+          "why": "NoSociety"
+        }
+      }
+    },
+    {
+      "note": "a pack with a day of no ticks",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Create": {
+            "pack": {
+              "day_ticks": 0,
+              "goods": [
+                {
+                  "name": "minecraft:wheat",
+                  "worth": 0.05,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [
+                    "Crop"
+                  ]
+                },
+                {
+                  "name": "minecraft:bread",
+                  "worth": 0.2,
+                  "stack": 64,
+                  "food": 5.0,
+                  "saturation": 6.0,
+                  "comfort": null,
+                  "flags": []
+                },
+                {
+                  "name": "minecraft:book",
+                  "worth": 0.5,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": "reading",
+                  "flags": []
+                },
+                {
+                  "name": "minecraft:cooked_beef",
+                  "worth": 0.3,
+                  "stack": 64,
+                  "food": 8.0,
+                  "saturation": 12.8,
+                  "comfort": null,
+                  "flags": [
+                    "Meat"
+                  ]
+                }
+              ]
+            },
+            "seed": 1
+          }
+        }
+      },
+      "response": {
+        "Refused": {
+          "why": {
+            "Pack": {
+              "why": "a day of no ticks"
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "built against another ABI",
+      "request": {
+        "abi": 0,
+        "schema": 1,
+        "command": "Save"
+      },
+      "response": {
+        "Refused": {
+          "why": {
+            "Abi": {
+              "core": 1,
+              "request": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "built against another schema",
+      "request": {
+        "abi": 1,
+        "schema": 18446744073709551615,
+        "command": "Save"
+      },
+      "response": {
+        "Refused": {
+          "why": {
+            "Schema": {
+              "core": 1,
+              "request": 18446744073709551615
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "bytes that are no request",
+      "request_hex": "ffffff",
+      "response": {
+        "Refused": {
+          "why": {
+            "Unreadable": {
+              "why": "Hit the end of buffer, expected more data"
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "no bytes at all",
+      "request_hex": "",
+      "response": {
+        "Refused": {
+          "why": {
+            "Unreadable": {
+              "why": "Hit the end of buffer, expected more data"
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "a request cut short",
+      "request_hex": "010100c0bb01040f6d696e6563726166743a77686561749a9999999999a93f40000000000000000000000000000000000001000f6d696e6563726166743a62726561649a9999999999c93f400000000000001440000000000000184000000e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a9999999999294000",
+      "response": {
+        "Refused": {
+          "why": {
+            "Unreadable": {
+              "why": "Hit the end of buffer, expected more data"
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "a society",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Create": {
+            "pack": {
+              "day_ticks": 24000,
+              "goods": [
+                {
+                  "name": "minecraft:wheat",
+                  "worth": 0.05,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [
+                    "Crop"
+                  ]
+                },
+                {
+                  "name": "minecraft:bread",
+                  "worth": 0.2,
+                  "stack": 64,
+                  "food": 5.0,
+                  "saturation": 6.0,
+                  "comfort": null,
+                  "flags": []
+                },
+                {
+                  "name": "minecraft:book",
+                  "worth": 0.5,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": "reading",
+                  "flags": []
+                },
+                {
+                  "name": "minecraft:cooked_beef",
+                  "worth": 0.3,
+                  "stack": 64,
+                  "food": 8.0,
+                  "saturation": 12.8,
+                  "comfort": null,
+                  "flags": [
+                    "Meat"
+                  ]
+                }
+              ]
+            },
+            "seed": 7
+          }
+        }
+      },
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      }
+    },
+    {
+      "note": "a town with some wheat",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "AddTown": {
+                  "name": "Ashford",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 0,
+                  "good": 0,
+                  "count": 40.0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      }
+    },
+    {
+      "note": "its stock",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Stock": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Stock": {
+                "town": 0,
+                "stock": [
+                  40.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "note": "a save of another format",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Load": {
+            "save": {
+              "format": 4294967295,
+              "schema": 1,
+              "core": "other",
+              "blob": [
+                1,
+                2,
+                3
+              ]
+            }
+          }
+        }
+      },
+      "response": {
+        "Refused": {
+          "why": {
+            "SaveFormat": {
+              "core": 1,
+              "save": 4294967295
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "a save the core can't read",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Load": {
+            "save": {
+              "format": 1,
+              "schema": 1,
+              "core": "other",
+              "blob": [
+                1,
+                2,
+                3
+              ]
+            }
+          }
+        }
+      },
+      "response": {
+        "Refused": {
+          "why": {
+            "Save": {
+              "why": "not an Enterprise save"
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "a refused load keeps the society",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Stock": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Stock": {
+                "town": 0,
+                "stock": [
+                  40.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "note": "a delivery to a town that isn't there, after one that would be fine",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Deliver": {
+                  "town": 0,
+                  "good": 0,
+                  "count": 5.0
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 9,
+                  "good": 0,
+                  "count": 5.0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 1,
+              "why": "no town 9"
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "a good that isn't there",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Deliver": {
+                  "town": 0,
+                  "good": 99,
+                  "count": 1.0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "no good 99"
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "a count below nothing",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Buy": {
+                  "town": 0,
+                  "good": 0,
+                  "count": -1.0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "a count of -1"
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "money below nothing",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Pay": {
+                  "town": 0,
+                  "money": -1
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "a payment of -0.001"
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "a stocktake of a point that isn't there",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Locker",
+                    "dim": "minecraft:overworld",
+                    "x": 1,
+                    "y": -60,
+                    "z": 1
+                  },
+                  "counts": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "no point at Spot { dim: \"minecraft:overworld\", x: 1, y: -60, z: 1 }"
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "a stocktake naming another kind than the point standing there",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "a Shop at Spot { dim: \"minecraft:overworld\", x: 27, y: -60, z: 27 }, where a Desk stands"
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "a point where one stands already",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "AddPoint": {
+                  "point": {
+                    "kind": "Locker",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "a point already stands at Spot { dim: \"minecraft:overworld\", x: 27, y: -60, z: 27 }"
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "a town whose desk isn't a desk",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "AddTown": {
+                  "name": "Nowhere",
+                  "desk": {
+                    "kind": "Locker",
+                    "dim": "minecraft:overworld",
+                    "x": 5,
+                    "y": -60,
+                    "z": 5
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "a town's desk that's a Locker"
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "an advance past a hundred years",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Advance": {
+                  "to": 18446744073709551615
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "an advance to tick 18446744073709551615, more than 36500 days past 0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "a count of NaN, as bytes",
+      "request_hex": "01010301010000000000000000f87f",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "a count of NaN"
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "a price of infinity, as bytes",
+      "request_hex": "01010301030000000000000000f03f000000000000f07f000000000000f03f",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "a price of inf"
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "a question about a town that isn't there",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Ask": {
+            "queries": [
+              "Points",
+              {
+                "Stock": {
+                  "town": 4
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Refused": {
+          "why": {
+            "Query": {
+              "at": 1,
+              "why": "no town 4"
+            }
+          }
+        }
+      }
+    },
+    {
+      "note": "nothing of any refused request applied",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Stock": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Stock": {
+                "town": 0,
+                "stock": [
+                  40.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

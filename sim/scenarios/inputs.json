@@ -1,0 +1,553 @@
+{
+  "name": "inputs",
+  "about": "Every happening the host can hand the core, and every question, each accepted.",
+  "steps": [
+    {
+      "note": "a society from a pack of four goods",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Create": {
+            "pack": {
+              "day_ticks": 24000,
+              "goods": [
+                {
+                  "name": "minecraft:wheat",
+                  "worth": 0.05,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [
+                    "Crop"
+                  ]
+                },
+                {
+                  "name": "minecraft:bread",
+                  "worth": 0.2,
+                  "stack": 64,
+                  "food": 5.0,
+                  "saturation": 6.0,
+                  "comfort": null,
+                  "flags": []
+                },
+                {
+                  "name": "minecraft:book",
+                  "worth": 0.5,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": "reading",
+                  "flags": []
+                },
+                {
+                  "name": "minecraft:cooked_beef",
+                  "worth": 0.3,
+                  "stack": 64,
+                  "food": 8.0,
+                  "saturation": 12.8,
+                  "comfort": null,
+                  "flags": [
+                    "Meat"
+                  ]
+                }
+              ]
+            },
+            "seed": 7
+          }
+        }
+      },
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      }
+    },
+    {
+      "note": "two towns at their desks",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "AddTown": {
+                  "name": "Ashford",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "AddTown": {
+                  "name": "Bröly",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 600,
+                    "y": -60,
+                    "z": -40
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      }
+    },
+    {
+      "note": "a point of each kind, placed",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "AddPoint": {
+                  "point": {
+                    "kind": "Locker",
+                    "dim": "minecraft:overworld",
+                    "x": 30,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "town": 0
+                }
+              },
+              {
+                "AddPoint": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 24,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "town": 0
+                }
+              },
+              {
+                "AddPoint": {
+                  "point": {
+                    "kind": "Banker",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 30
+                  },
+                  "town": 0
+                }
+              },
+              {
+                "AddPoint": {
+                  "point": {
+                    "kind": "Depot",
+                    "dim": "minecraft:overworld",
+                    "x": 603,
+                    "y": -60,
+                    "z": -40
+                  },
+                  "town": 1
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      }
+    },
+    {
+      "note": "money and goods from outside",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Pay": {
+                  "town": 0,
+                  "money": 100000
+                }
+              },
+              {
+                "Pay": {
+                  "town": 1,
+                  "money": 2500
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 0,
+                  "good": 1,
+                  "count": 64.0
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 1,
+                  "good": 3,
+                  "count": 20.0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      }
+    },
+    {
+      "note": "a buying shop, a selling shop, a shop for the Merchant's own",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Order": {
+                  "town": 0,
+                  "good": 0,
+                  "lot": 16.0,
+                  "price": 1.0,
+                  "purse": 50.0
+                }
+              },
+              {
+                "Stall": {
+                  "town": 0,
+                  "good": 2,
+                  "lot": 1.0,
+                  "price": 2.0,
+                  "stock": 8.0
+                }
+              },
+              {
+                "OwnShop": {
+                  "town": 1
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      }
+    },
+    {
+      "note": "every point counted",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [
+                    {
+                      "good": 1,
+                      "count": 60.0
+                    },
+                    {
+                      "good": 2,
+                      "count": 8.0
+                    }
+                  ]
+                }
+              },
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Locker",
+                    "dim": "minecraft:overworld",
+                    "x": 30,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": [
+                    {
+                      "good": 0,
+                      "count": 12.0
+                    }
+                  ]
+                }
+              },
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 24,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "counts": []
+                }
+              },
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Banker",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 30
+                  },
+                  "counts": []
+                }
+              },
+              {
+                "Stocktake": {
+                  "point": {
+                    "kind": "Depot",
+                    "dim": "minecraft:overworld",
+                    "x": 603,
+                    "y": -60,
+                    "z": -40
+                  },
+                  "counts": [
+                    {
+                      "good": 3,
+                      "count": 20.0
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      }
+    },
+    {
+      "note": "a player buys from a town's own shop",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Buy": {
+                  "town": 1,
+                  "good": 3,
+                  "count": 2.0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      }
+    },
+    {
+      "note": "a point broken",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "RemovePoint": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 24,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      }
+    },
+    {
+      "note": "twenty days pass",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Advance": {
+                  "to": 480000
+                }
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      }
+    },
+    {
+      "note": "every question",
+      "request": {
+        "abi": 1,
+        "schema": 1,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Stock": {
+                  "town": 0
+                }
+              },
+              {
+                "Stock": {
+                  "town": 1
+                }
+              },
+              "Points"
+            ]
+          }
+        }
+      },
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Stock": {
+                "town": 0,
+                "stock": [
+                  12.0,
+                  124.0,
+                  8.0,
+                  0.0
+                ]
+              }
+            },
+            {
+              "Stock": {
+                "town": 1,
+                "stock": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  40.0
+                ]
+              }
+            },
+            {
+              "Points": {
+                "points": [
+                  {
+                    "point": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 27,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "town": 0
+                  },
+                  {
+                    "point": {
+                      "kind": "Banker",
+                      "dim": "minecraft:overworld",
+                      "x": 27,
+                      "y": -60,
+                      "z": 30
+                    },
+                    "town": 0
+                  },
+                  {
+                    "point": {
+                      "kind": "Locker",
+                      "dim": "minecraft:overworld",
+                      "x": 30,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "town": 0
+                  },
+                  {
+                    "point": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 600,
+                      "y": -60,
+                      "z": -40
+                    },
+                    "town": 1
+                  },
+                  {
+                    "point": {
+                      "kind": "Depot",
+                      "dim": "minecraft:overworld",
+                      "x": 603,
+                      "y": -60,
+                      "z": -40
+                    },
+                    "town": 1
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

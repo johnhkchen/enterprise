@@ -1,0 +1,1270 @@
+[
+  {
+    "day_ticks": 24000,
+    "goods": [
+      {
+        "name": "a",
+        "worth": 1.0,
+        "stack": 1,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "minecraft:wheat",
+        "worth": 0.05,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": [
+          "Crop"
+        ]
+      },
+      {
+        "name": "minecraft:bread",
+        "worth": 0.2,
+        "stack": 64,
+        "food": 5.0,
+        "saturation": 6.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "minecraft:book",
+        "worth": 0.5,
+        "stack": 16,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": "reading",
+        "flags": []
+      },
+      {
+        "name": "minecraft:cooked_beef",
+        "worth": 0.3,
+        "stack": 64,
+        "food": 8.0,
+        "saturation": 12.8,
+        "comfort": null,
+        "flags": [
+          "Meat",
+          "Crop"
+        ]
+      },
+      {
+        "name": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+        "worth": 1.7976931348623157e+308,
+        "stack": 4294967295,
+        "food": 2.2250738585072014e-308,
+        "saturation": 0.0,
+        "comfort": "",
+        "flags": []
+      }
+    ]
+  },
+  {
+    "day_ticks": 1,
+    "goods": []
+  },
+  {
+    "day_ticks": 18446744073709551615,
+    "goods": [
+      {
+        "name": "a",
+        "worth": 1.0,
+        "stack": 1,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "minecraft:wheat",
+        "worth": 0.05,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": [
+          "Crop"
+        ]
+      }
+    ]
+  },
+  {
+    "day_ticks": 0,
+    "goods": [
+      {
+        "name": "test:good_0",
+        "worth": 1.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_1",
+        "worth": 2.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_2",
+        "worth": 3.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_3",
+        "worth": 4.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_4",
+        "worth": 5.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_5",
+        "worth": 6.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_6",
+        "worth": 7.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_7",
+        "worth": 8.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_8",
+        "worth": 9.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_9",
+        "worth": 10.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_10",
+        "worth": 11.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_11",
+        "worth": 12.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_12",
+        "worth": 13.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_13",
+        "worth": 14.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_14",
+        "worth": 15.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_15",
+        "worth": 16.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_16",
+        "worth": 17.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_17",
+        "worth": 18.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_18",
+        "worth": 19.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_19",
+        "worth": 20.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_20",
+        "worth": 21.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_21",
+        "worth": 22.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_22",
+        "worth": 23.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_23",
+        "worth": 24.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_24",
+        "worth": 25.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_25",
+        "worth": 26.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_26",
+        "worth": 27.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_27",
+        "worth": 28.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_28",
+        "worth": 29.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_29",
+        "worth": 30.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_30",
+        "worth": 31.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_31",
+        "worth": 32.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_32",
+        "worth": 33.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_33",
+        "worth": 34.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_34",
+        "worth": 35.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_35",
+        "worth": 36.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_36",
+        "worth": 37.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_37",
+        "worth": 38.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_38",
+        "worth": 39.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_39",
+        "worth": 40.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_40",
+        "worth": 41.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_41",
+        "worth": 42.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_42",
+        "worth": 43.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_43",
+        "worth": 44.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_44",
+        "worth": 45.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_45",
+        "worth": 46.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_46",
+        "worth": 47.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_47",
+        "worth": 48.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_48",
+        "worth": 49.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_49",
+        "worth": 50.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_50",
+        "worth": 51.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_51",
+        "worth": 52.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_52",
+        "worth": 53.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_53",
+        "worth": 54.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_54",
+        "worth": 55.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_55",
+        "worth": 56.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_56",
+        "worth": 57.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_57",
+        "worth": 58.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_58",
+        "worth": 59.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_59",
+        "worth": 60.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_60",
+        "worth": 61.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_61",
+        "worth": 62.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_62",
+        "worth": 63.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_63",
+        "worth": 64.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_64",
+        "worth": 65.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_65",
+        "worth": 66.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_66",
+        "worth": 67.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_67",
+        "worth": 68.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_68",
+        "worth": 69.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_69",
+        "worth": 70.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_70",
+        "worth": 71.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_71",
+        "worth": 72.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_72",
+        "worth": 73.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_73",
+        "worth": 74.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_74",
+        "worth": 75.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_75",
+        "worth": 76.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_76",
+        "worth": 77.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_77",
+        "worth": 78.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_78",
+        "worth": 79.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_79",
+        "worth": 80.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_80",
+        "worth": 81.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_81",
+        "worth": 82.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_82",
+        "worth": 83.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_83",
+        "worth": 84.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_84",
+        "worth": 85.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_85",
+        "worth": 86.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_86",
+        "worth": 87.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_87",
+        "worth": 88.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_88",
+        "worth": 89.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_89",
+        "worth": 90.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_90",
+        "worth": 91.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_91",
+        "worth": 92.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_92",
+        "worth": 93.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_93",
+        "worth": 94.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_94",
+        "worth": 95.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_95",
+        "worth": 96.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_96",
+        "worth": 97.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_97",
+        "worth": 98.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_98",
+        "worth": 99.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_99",
+        "worth": 100.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_100",
+        "worth": 101.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_101",
+        "worth": 102.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_102",
+        "worth": 103.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_103",
+        "worth": 104.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_104",
+        "worth": 105.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_105",
+        "worth": 106.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_106",
+        "worth": 107.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_107",
+        "worth": 108.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_108",
+        "worth": 109.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_109",
+        "worth": 110.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_110",
+        "worth": 111.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_111",
+        "worth": 112.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_112",
+        "worth": 113.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_113",
+        "worth": 114.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_114",
+        "worth": 115.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_115",
+        "worth": 116.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_116",
+        "worth": 117.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_117",
+        "worth": 118.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_118",
+        "worth": 119.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_119",
+        "worth": 120.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_120",
+        "worth": 121.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_121",
+        "worth": 122.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_122",
+        "worth": 123.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_123",
+        "worth": 124.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_124",
+        "worth": 125.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_125",
+        "worth": 126.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_126",
+        "worth": 127.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_127",
+        "worth": 128.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_128",
+        "worth": 129.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      },
+      {
+        "name": "test:good_129",
+        "worth": 130.0,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": []
+      }
+    ]
+  }
+]

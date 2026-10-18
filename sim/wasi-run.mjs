@@ -6,7 +6,8 @@
 // Reactor mode, for the core's module (`wasm/`, which has no `main`): `node wasi-run.mjs --reactor MODULE.wasm IN OUT`
 // reads IN, a run of requests each as a u32 little-endian length and its bytes, calls the module's `ent_call` on each
 // in turn (one instance, so one society) and writes OUT as the same framing of the responses. Exits 0.
-// The program sees the current directory (preopened as `.`) and the environment; its exit code is the runner's.
+// The program sees the current directory (preopened as `.`), its parent (as `/sim`: the crate's tests read
+// `../wire/fixtures` and `../scenarios`, and a WASI program can't climb out of a preopen) and the environment; its exit code is the runner's.
 import { readFile, writeFile } from 'node:fs/promises';
 import { argv, env, exit, emitWarning } from 'node:process';
 
@@ -22,7 +23,7 @@ if (!program || (reactor && args.length !== 2)) {
     console.error('usage: node wasi-run.mjs PROGRAM.wasm [args...]\n       node wasi-run.mjs --reactor MODULE.wasm IN OUT');
     exit(2);
 }
-const wasi = new WASI({ version: 'preview1', args: [program, ...(reactor ? [] : args)], env, returnOnExit: true, preopens: { '.': '.' } });
+const wasi = new WASI({ version: 'preview1', args: [program, ...(reactor ? [] : args)], env, returnOnExit: true, preopens: { '.': '.', '/sim': '..' } });
 const module = await WebAssembly.compile(await readFile(program));
 const instance = await WebAssembly.instantiate(module, wasi.getImportObject());
 

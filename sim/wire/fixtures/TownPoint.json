@@ -1,0 +1,82 @@
+[
+  {
+    "point": {
+      "kind": "Desk",
+      "dim": "minecraft:overworld",
+      "x": 27,
+      "y": -60,
+      "z": 27
+    },
+    "town": 0
+  },
+  {
+    "point": {
+      "kind": "Locker",
+      "dim": "minecraft:overworld",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "town": 0
+  },
+  {
+    "point": {
+      "kind": "Shop",
+      "dim": "minecraft:overworld",
+      "x": -1,
+      "y": -64,
+      "z": -1
+    },
+    "town": 0
+  },
+  {
+    "point": {
+      "kind": "Banker",
+      "dim": "minecraft:overworld",
+      "x": 2147483647,
+      "y": 319,
+      "z": -2147483648
+    },
+    "town": 0
+  },
+  {
+    "point": {
+      "kind": "Depot",
+      "dim": "minecraft:overworld",
+      "x": -2147483648,
+      "y": -2147483648,
+      "z": 2147483647
+    },
+    "town": 0
+  },
+  {
+    "point": {
+      "kind": "Desk",
+      "dim": "",
+      "x": 1,
+      "y": 2,
+      "z": 3
+    },
+    "town": 0
+  },
+  {
+    "point": {
+      "kind": "Locker",
+      "dim": "minecraft:the_nether",
+      "x": -30000000,
+      "y": 0,
+      "z": 30000000
+    },
+    "town": 0
+  },
+  {
+    "point": {
+      "kind": "Shop",
+      "dim": "mod:dimension_é世🌾",
+      "x": 5,
+      "y": 5,
+      "z": 5
+    },
+    "town": 0
+  }
+]

@@ -1,0 +1,64 @@
+[
+  {
+    "WagonLeft": {
+      "route": 0,
+      "stacks": 0,
+      "worth": 0.0
+    }
+  },
+  {
+    "WagonLeft": {
+      "route": 4294967295,
+      "stacks": 4294967295,
+      "worth": 1234.5
+    }
+  },
+  {
+    "WagonSold": {
+      "route": 2,
+      "sold": 96.0,
+      "takings": 12000
+    }
+  },
+  {
+    "WagonSold": {
+      "route": 2,
+      "sold": 0.0,
+      "takings": -1
+    }
+  },
+  {
+    "WagonHome": {
+      "route": 1,
+      "takings": 9223372036854775807
+    }
+  },
+  {
+    "OrderFilled": {
+      "town": 0,
+      "order": 3,
+      "good": 1,
+      "lots": 2,
+      "count": 32.0,
+      "spurs": 80.0
+    }
+  },
+  {
+    "OrderFilled": {
+      "town": 4294967295,
+      "order": 4294967295,
+      "good": 4294967295,
+      "lots": 4294967295,
+      "count": 1.7976931348623157e+308,
+      "spurs": 0.0
+    }
+  },
+  {
+    "Signal": {
+      "town": 1,
+      "good": 4,
+      "count": 12.0,
+      "spurs_each": 0.25
+    }
+  }
+]

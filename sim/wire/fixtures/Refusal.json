@@ -1,0 +1,60 @@
+[
+  {
+    "Unreadable": {
+      "why": "Hit the end of buffer, expected more data"
+    }
+  },
+  {
+    "Abi": {
+      "core": 1,
+      "request": 0
+    }
+  },
+  {
+    "Abi": {
+      "core": 4294967295,
+      "request": 4294967295
+    }
+  },
+  {
+    "Schema": {
+      "core": 1,
+      "request": 18446744073709551615
+    }
+  },
+  "NoSociety",
+  {
+    "Pack": {
+      "why": ""
+    }
+  },
+  {
+    "SaveFormat": {
+      "core": 7,
+      "save": 6
+    }
+  },
+  {
+    "Save": {
+      "why": "a save the core can't load"
+    }
+  },
+  {
+    "Input": {
+      "at": 0,
+      "why": "no town 3"
+    }
+  },
+  {
+    "Input": {
+      "at": 4294967295,
+      "why": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  },
+  {
+    "Query": {
+      "at": 1,
+      "why": "no town 9"
+    }
+  }
+]
