@@ -1,13 +1,21 @@
 # Binding progress: where the Minecraft binding stands
 
 The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md`; how trees work is
-`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-18, `wasm-exports` landed.
+`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-18, `wire-fixtures` landed.
 
 ## Now
 
-- **Main:** `128274b`. 678 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
-  `just wasm-test` 4/4 with the module required. Game tests: not run at this landing (core-only; no Java changed).
-  `just core-fingerprint`: `8144f9be7947133b` (unchanged).
+- **Main:** `6a0b53c`. 701 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
+  `just scenarios-wasm` 3 + 20 under Node's WASI; `just wasm-test` 4/4 with the module required. Game tests: not run
+  at this landing (core-only; no Java changed). `just core-fingerprint`: `8144f9be7947133b` (unchanged).
+- **Golden files and scenarios are in** (`sim/wire/fixtures/NAME.bin` + `.json` for 17 wire types;
+  `sim/scenarios/{stocktake,inputs,refusals}.json`, played by `tests/scenarios.rs`): `just wire-fixtures` writes both
+  after a wire type or a rule moved. Samples are hand-written until `wire-gen` adds serde-reflection's beside them
+  with its registry check. A host compares a refusal by its kind and numbers, never its `why` prose: `chicory-host`
+  must do the same. No scenario shows an Output yet (each needs a master Merchant or a route, and no wire input makes
+  either): the first task that adds such an input adds the scenario. Ids (`TownId`, `RouteId`, `GoodId`, a count's
+  good, an order) are `usize` on the wire, so postcard's bytes depend on the target above `u32::MAX`: `wire-gen`
+  should make them `u32` (an ABI change) before any Java decoder is generated against the files.
 - **The module is built** (`sim/wasm`, `just wasm`): `enterprise_core.wasm`, 4,070,119 bytes, ABI 1, exports
   `ent_abi`/`ent_alloc`/`ent_call`/`ent_free` and `memory`, imports only WASI's `fd_write`, `proc_exit`,
   `environ_get`, `environ_sizes_get` (no clock, no `random_get`), no `_initialize` for Chicory to call. The landing
@@ -45,7 +53,7 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 | B1.2 | `wire-types` | opus / high | `wasm-digest` | `a91fab3` | `wire/`: Request/Command/Response/Refusal, Input/Output moved there (re-exported from `messages.rs`), Query/Answer (`Stock`, `Points`), ContentPack and `Content::from_pack`, Point, SaveFile; a look is checked whole before any of it applies. Beyond the brief: trade points as core state (`points.rs`, in `saved!`) and four inputs, with a `trade_points` random-worlds slice. At landing: rebased onto pallet-types (digest written again); an `Advance` more than 36,500 days past now refused (`u64::MAX` would have looped without end); `RemovePoint`/`Stocktake` naming another kind than the point there refused. Left: SCHEMA by hand (`wire-gen`), fixtures (`wire-fixtures`), re-placed point counts twice (`stock-adapter`) |
 | B1.3 | `wasm-exports` | sonnet / medium | `wire-types` | `128274b` | `sim/wasm` (cdylib + rlib), four exports over `wire::handle_bytes`, one society per instance; `[profile.wasm]` (panic abort, stripped, lto) and the workspace line accepted; `wasi-run.mjs --reactor`. At landing: the proof loads its own save over another world and carries on with trade, then saves again (16 requests, byte for byte in Node's WASI); the framing test asserts every refusal it claimed; the nested build names its target folder. Left: the wire has no people inputs yet, so the proof's days move little (real simulation across native and wasm is `core-wasm-replay`) |
 | B1.4 | `wire-gen` | opus / high | `wire-types` | | |
-| B1.5 | `wire-fixtures` | sonnet / medium | `wire-types` | | |
+| B1.5 | `wire-fixtures` | sonnet / medium | `wire-types` | `6a0b53c` | Golden `.bin`/`.json` for 17 wire types (every variant, numeric and length edges); three scenarios (`stocktake`, `inputs` with every Input and Query, `refusals` with every Refusal, NaN and cut bytes as hex), the same answers natively and under Node (`just scenarios-wasm`); `wasi-run.mjs` preopens sim/ as `/sim`. At landing: refusals matched by kind and numbers, not prose (postcard's error text, a Spot's Debug); Outputs counted by the coverage test and noted unreachable from the wire; the variant-place check covers every wire enum; stocktake's notes say its answer counts a delivery and the desk's first count apart (stock-adapter's double count: the answers move then). Left: serde-reflection samples and `wire-check` (`wire-gen`), ids `usize` (`wire-gen`), no Output scenario |
 | B1.6 | `chicory-host` | opus / high | `wasm-exports`, `wire-gen`, `wire-fixtures` | | |
 | B1.7 | `versioning` | sonnet / high | `chicory-host` | | |
 | B2.1 | `proof-in-mod` | opus / high | `versioning` | | |
