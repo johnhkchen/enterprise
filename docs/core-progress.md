@@ -6,20 +6,19 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `f92903b`. 645 tests pass (`just core-test`, about 2.5 minutes, the random worlds' 300 seeds across the
+- **Main:** `37f56f9`. 646 tests pass (`just core-test`, about 2.5 minutes, the random worlds' 300 seeds across the
   cores). Parity: **191 covered, 25 partial, 46 skipped, 0 left of 262** (`just parity`; `docs/parity.md` lists what
-  each partial leaves out). `just core-fingerprint`: `d943db46f28de359` (money in thousandths; `just core-wasm-replay`
+  each partial leaves out). `just core-fingerprint`: `8144f9be7947133b` (money in thousandths; `just core-wasm-replay`
   checks the WebAssembly build's 200-day digest against the native one); `cargo run --release -p enterprise-sim --
   --sweep 300` prints what the random worlds did; `just study 365` runs the network study's world.
-- **Speed:** `perf-day` landed `f92903b`, about half the cost a day with the fingerprint unchanged (study world 4.36 to 2.09 ms a day over 10 seeds, toy 10,000 days 6.73 to 2.73): lockers' wants for every good in one pass, the services list and recipes cached in a `Local` rebuilt when `Content` changes (change `Content` only through bevy, or those caches go stale), comforts and set-asides in one pass. Left because they'd change behaviour: planning idle routes only when a wagon could leave (they re-plan every look, 20 a day), coarser looks.
+- **Speed:** `perf-day` landed `f92903b`, about half the cost a day with the fingerprint unchanged (study world 4.36 to 2.09 ms a day over 10 seeds, toy 10,000 days 6.73 to 2.73): lockers' wants for every good in one pass, the services list and recipes cached in a `Local` rebuilt when `Content` changes (change `Content` only through bevy, or those caches go stale), comforts and set-asides in one pass. Then `plan-on-departure` landed `37f56f9` (the user's call): an idle route plans only when the mod's `poll` would try it (a day past its last departure and past `recheck_at`, a quarter day on after a wait or an unfunded trip, `Caravans` 173/374/438), routes with no Merchant or squad turned away unplanned (`squad::unmanned`), and a plan's reasons booked only for a wagon that goes (`dispatch` 433-441; a stayed try books its "no trip"). Study world 2.10 to 1.26 ms a day; its 365 days 419 to 258 trips, S1->hub's trips hung on a shopping purse that counts only while S1 is a cookie short, a flicker 20 tries a day caught. Open: whether a whole shopping purse should count as a trip's worth; turn-aways with no recheck tried once a look (the mod: every 100 ticks).
 - **The plan is done (2026-10-18):** all 32 tasks of waves 1b to 5 landed, the workflow's 63 agents with no errors.
 - **After the plan, the study world** (`sim/host`, the network study's hub, S1-S4 and T): `study-findings` landed
   `76ea783` (wagons bring what the far end's switched-on trades take, loads sized and judged as `pickCargo`/`saleLoad`,
   one wagon a route a day, the farm grows for the lockers and the workshop, ties on roads as the mod's heap, T in its
   hex, roads as long as `Route.distance`; 365 days: 0 to 419 trips). Still open: the core sends the settlements far
   more than the Java study did (S1 22,276 items by day 40 against 5,675), `marketWants`, roads planned once not at each
-  departure, coins and the mint (rate stuck at 16), `Places::distance` hex centres not desks, and a stayed route's
-  reasons booked daily (the mod: only for a wagon that goes; four atlas tests pin the core's way, the user to decide).
+  departure, coins and the mint (rate stuck at 16), `Places::distance` hex centres not desks.
 
 ## Waves 1b to 5
 
