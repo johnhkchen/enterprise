@@ -6,9 +6,9 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `6765f0f`. 631 tests pass (`just core-test`, about 2.5 minutes now the random worlds run 300 seeds with
-  the sweep's checks, across the cores). Parity: **186 covered, 30 partial, 46 skipped, 0 left of 262** (`just
-  parity`). `just core-fingerprint`: `958e237a391a51ed` (money in thousandths; `just core-wasm-replay` checks the
+- **Main:** `8e80e7e`. 632 tests pass (`just core-test`, about 2.5 minutes now the random worlds run 300 seeds with
+  the sweep's checks, across the cores). Parity: **191 covered, 25 partial, 46 skipped, 0 left of 262** (`just
+  parity`; `docs/parity.md` lists what each partial leaves out). `just core-fingerprint`: `958e237a391a51ed` (money in thousandths; `just core-wasm-replay` checks the
   WebAssembly build's 200-day digest against the native one);
   `cargo run --release -p enterprise-sim -- --sweep 300` prints what the random worlds did.
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
@@ -59,7 +59,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 37 | 4 | `settlers-rule` | sonnet/medium (haiku/low) | `roster`, `hex-map` | `5830058` | Parties to the nearest village or open ground, capital off the books on the road; ExpeditionTests settle partial. Gaps: spare is `rules::free` (no wage float), no `inRange`, road every 4 days the core's. At landing: Nitwits stay home, only a Merchant's town sends, only the nearest village (as `findNearestMapStructure`), new towns' land 40 not 4, claimed hexes not open |
 | 38 | 5 | `random-worlds-sweep` | opus/high (sonnet/medium) | everything above | `db7edea` | reads every slice; finds what they broke together. Seeds across the cores (`each_seed`: suite 11:24 to 2:25, fingerprint unchanged), sweep invariants daily, save round trip every 30 days with a one-day twin, `sim/host --sweep N`; partial: 10 s budget (38 s), the stall check is only "says why", mood checked against a floor not -8, the contract check amounts to "judged within a day", the same-seed test still 3 seeds; at landing: `--sweep` merged into the new study host, docs say what the checks amount to |
 | 39 | 5 | `fixed-point-money` | opus/xhigh (opus/high) | `random-worlds-sweep` | `6765f0f` | money a `Fixed` (i64 thousandths) everywhere it's held, moved or owed, rounded per the mod's site rule (payer up, share down, host figure nearest), check.rs exact; the curves from + - * / alone; `tests/replay.rs` digest matches in wasm32-wasip1 under Node (`just core-wasm-replay`); partial: goods, rates and per-look accruals stay f64; at landing: training's second outcome expected 40 - ceil(40/3), wasi-run.mjs quiets its warning |
-| 40 | 5 | `parity-report` | sonnet/medium (haiku/low) | `fixed-point-money` | — | haiku only for trivial edits |
+| 40 | 5 | `parity-report` | sonnet/medium (haiku/low) | `fixed-point-money` | `8e80e7e` | `docs/parity.md` from `parity.py --md`: every partial with what it leaves out (27 bare tags given reasons), reasonless partials and skips warned of, a trade_loop mis-tag dropped. At landing: 191 of 216 covered, the target met: three partials that pinned the mod's numbers promoted (growth, flooded hex, fisherman), the porter test pins the day it goes, crowding pinned with the mod's 8 in 3 beds (the unpaid-wages tag was wrong); header claims computed, fully covered tests left out of the partial table; haiku only for trivial edits |
 
 ## Wave 1a: all 8 landed
 
@@ -95,6 +95,10 @@ dependencies are the integrator's; `trees.py` locks its registry, so agents can 
 
 ## Lessons from wave 1a
 
+- `parity-partial:` is for what the Rust test leaves out of the Java test's assertions, not for Minecraft's stand-ins:
+  agents marked partial tests that pinned the mod's numbers with ground set on the map or a roster hand for an entity
+  (three promoted at `parity-report`), and one tagged a test the Java's name promised but its assertions never made
+  (unpaid wages). Check a partial against the Java's `assert` lines, not its name.
 - Haiku did the mechanical tasks well and fast (1 to 3 minutes each); Opus the structural ones in 6 to 8 minutes.
 - Agents flagged their own weak spots honestly (a tag that claimed too much; a float-sensitive test); read their
   summaries before landing.
