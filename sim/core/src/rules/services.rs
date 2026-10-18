@@ -65,6 +65,22 @@ fn places<'a>(content: &Content, n: usize, towns: impl Iterator<Item = (&'a Town
     places
 }
 
+/// The services a system runs (those done `where_`, none passive) and the recipes, for the content as it stands: kept
+/// between looks, worked out again only when the content changed (`all` and `recipes` match the mod's names to the
+/// host's goods and trades: thousands of string compares, three times a look, for the same answer).
+#[derive(Default)]
+pub struct Listing(Option<(Vec<Service>, Vec<Recipe>)>);
+
+fn listing<'a>(cache: &'a mut Listing, content: &Res<Content>, where_: Where) -> (&'a [Service], &'a [Recipe]) {
+    if content.is_changed() {
+        cache.0 = None;
+    }
+    let (list, recipes) = cache.0.get_or_insert_with(|| {
+        (all(content).into_iter().filter(|s| s.where_ == where_ && !s.passive()).collect(), recipes(content))
+    });
+    (list, recipes)
+}
+
 fn guards(territory: &Territory, town: usize) -> usize {
     territory.holding(town).map_or(0, |h| h.posts.len())
 }
@@ -78,15 +94,14 @@ fn routes_out<'a>(routes: impl Iterator<Item = &'a Route>, town: usize) -> usize
 #[allow(clippy::too_many_arguments)]
 pub fn home(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, territory: Res<Territory>, order: Res<Towns>,
         mut atlas: ResMut<Atlas>, mut ledger: ResMut<Ledger>, mut services: ResMut<ServiceLedger>,
-        routes: Query<&Route>, mut towns: Query<ServedData>) {
+        routes: Query<&Route>, mut towns: Query<ServedData>, mut listed: Local<Listing>) {
     if !content.dials.services {
         return;
     }
-    let list: Vec<Service> = all(&content).into_iter().filter(|s| s.where_ == Where::Home && !s.passive()).collect();
+    let (list, recipes) = listing(&mut listed, &content, Where::Home);
     if list.is_empty() {
         return;
     }
-    let recipes = recipes(&content);
     let now = clock.now;
     let n = order.0.len();
     let places = places(&content, n, towns.iter().map(|t| (t.0, t.8)), routes.iter());
@@ -101,7 +116,7 @@ pub fn home(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, territory
             continue;
         }
         let (guards, out) = (guards(&territory, id), routes_out(routes.iter(), id));
-        for service in &list {
+        for service in list {
             let Some(&skill) = skills.get(&service.trade) else { continue };
             let done = {
                 let t = towns.get(e).unwrap();
@@ -109,7 +124,7 @@ pub fn home(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, territory
                     people: t.4, roster: t.5, farm: t.6, herds: t.7, guards, routes_out: out,
                     miners: crate::kit::miners(&content, &territory, id, t.5) };
                 let visit = Visit { content: &content, from: id, at: id, skill, now, planning: false, budget: 0.0, town,
-                    trip: None, book: &book, atlas: &atlas, places: &places, ledger: &services, recipes: &recipes };
+                    trip: None, book: &book, atlas: &atlas, places: &places, ledger: &services, recipes };
                 if !wanted(service, &visit) {
                     continue;
                 }
@@ -134,12 +149,11 @@ pub fn plan(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, territory
         atlas: Res<Atlas>, stocktakes: Res<Stocktakes>, services: Res<ServiceLedger>,
         mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>,
         towns: Query<(&Town, &Money, &Stock, &Trades, &People, Option<&Roster>, Option<&Farm>, Option<&Herds>,
-            Option<&Works>, Has<OffMap>, Has<Realm>)>, lockers: Query<&Lockers>) {
+            Option<&Works>, Has<OffMap>, Has<Realm>)>, lockers: Query<&Lockers>, mut listed: Local<Listing>) {
     if !content.dials.services {
         return;
     }
-    let list: Vec<Service> = all(&content).into_iter().filter(|s| s.where_ == Where::Abroad && !s.passive()).collect();
-    let recipes = recipes(&content);
+    let (list, recipes) = listing(&mut listed, &content, Where::Abroad);
     let now = clock.now;
     let n = order.0.len();
     let all_routes: Vec<Route> = routes.iter().map(|(_, r, _, _)| *r).collect();
@@ -173,14 +187,14 @@ pub fn plan(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, territory
             buyer_level: crate::bargain::merchant_level(far.5),
         };
         let mut trades: Vec<TradeId> = Vec::new();
-        for service in &list {
+        for service in list {
             let Some(&skill) = skills.get(&service.trade) else { continue };
             if trades.contains(&service.trade) {
                 continue;
             }
             let visit = Visit { content: &content, from: route.from_id, at: route.to_id, skill, now, planning: true,
                 budget: 0.0, town, trip: Some(trip), book: &book, atlas: &atlas, places: &places, ledger: &services,
-                recipes: &recipes };
+                recipes };
             if wanted(service, &visit) {
                 trades.push(service.trade);
             }
@@ -251,13 +265,12 @@ fn turn_out(content: &Content, herds: &mut Herds, animals: &[usize]) -> usize {
 pub fn abroad(clock: Res<Clock>, content: Res<Content>, territory: Res<Territory>, order: Res<Towns>,
         mut book: ResMut<Book>, mut atlas: ResMut<Atlas>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
         mut services: ResMut<ServiceLedger>, mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>,
-        mut towns: Query<ServedData>) {
+        mut towns: Query<ServedData>, mut listed: Local<Listing>) {
     if !content.dials.services {
         return;
     }
     let (now, day) = (clock.now, content.day_ticks);
-    let list: Vec<Service> = all(&content).into_iter().filter(|s| s.where_ == Where::Abroad && !s.passive()).collect();
-    let recipes = recipes(&content);
+    let (list, recipes) = listing(&mut listed, &content, Where::Abroad);
     let all_routes: Vec<Route> = routes.iter().map(|(_, r, _, _)| *r).collect();
     let mut places: Option<Places> = None;
     for e in in_order(routes.iter().map(|(e, r, _, _)| (e, r))) {
@@ -280,7 +293,7 @@ pub fn abroad(clock: Res<Clock>, content: Res<Content>, territory: Res<Territory
         let path: Vec<crate::hex::Hex> = path.map_or_else(Vec::new, |p| p.0.clone());
         let seller_level = towns.get(route.from).map_or(1, |t| crate::bargain::merchant_level(t.5));
         let (guards, out) = (guards(&territory, route.to_id), routes_out(all_routes.iter(), route.to_id));
-        for service in &list {
+        for service in list {
             let Some(&skill) = skills.get(&service.trade) else { continue };
             let (done, budget) = {
                 let Ok(t) = towns.get(route.to) else { break };
@@ -293,7 +306,7 @@ pub fn abroad(clock: Res<Clock>, content: Res<Content>, territory: Res<Territory
                 let budget = (t.1.0 - reserve).at_least_zero();
                 let visit = Visit { content: &content, from: route.from_id, at: route.to_id, skill, now, planning: false,
                     budget: budget.to_f64(), town, trip: Some(trip), book: &book, atlas: &atlas, places, ledger: &services,
-                    recipes: &recipes };
+                    recipes };
                 if !wanted(service, &visit) {
                     continue;
                 }

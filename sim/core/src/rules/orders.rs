@@ -475,13 +475,18 @@ pub fn post_signals(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, a
         // at the spurs the signal pays, in emeralds (`count * spursEach / rate`).
         let places = places_of(&content, &sites, &routes);
         let readers: Vec<usize> = order.0.iter().filter_map(|&e| rosters.get(e).ok().map(|t| t.id)).collect();
+        // (What each reader knows, and each good's supplier, asked once a look, not once a signal.)
+        let known: Vec<Vec<usize>> = readers.iter().map(|&reader| places.known(&content, &atlas, reader)).collect();
+        let mut suppliers: BTreeMap<usize, Option<usize>> = BTreeMap::new();
         for (&desk, list) in &posted.desks {
             let mut list: Vec<&Signal> = list.iter().collect();
             list.sort_by_key(|s| s.good);
             for s in list {
-                let Some(trade) = crate::rules::sourcing::supplier_trade(&content, s.good) else { continue };
-                for &reader in &readers {
-                    if reader != desk && places.known(&content, &atlas, reader).contains(&desk) {
+                let supplier = *suppliers.entry(s.good)
+                    .or_insert_with(|| crate::rules::sourcing::supplier_trade(&content, s.good));
+                let Some(trade) = supplier else { continue };
+                for (&reader, known) in readers.iter().zip(&known) {
+                    if reader != desk && known.contains(&desk) {
                         *now.entry((reader, trade)).or_insert(0.0) += s.count * s.spurs_each / rate;
                     }
                 }
