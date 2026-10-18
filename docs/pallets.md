@@ -233,7 +233,9 @@ What each slice reads and writes afterwards:
 - **Ex works** (`rules/contracts.rs` `settle`'s collection, `take_earmarked`, `pack_collected`). The buyer's wagon takes
   the seller's earmarked pallets whole, then packs the rest paid for (`Payment::Paid`), sealed as it loads; a part
   pallet is re-palleted at the seller's, as above.
-- **Training's offtake** (`training.rs`): the pupil's work packed as a pallet paid by a bill (`Payment::ByBill`).
+- **Training's offtake** (`training.rs`): the pupil's work packed as a pallet its bill names (`Bill.pallets`), but
+  `Payment::Paid`, not `ByBill`: as `ByBill` the stale-crate sweep and stranded paper would treat it as unpaid when
+  crated and outcomes would move (`docs/decisions.md`, pallets-for-crates).
 - **Everything that counts what's aboard** (`rules/atlas.rs`, `rules/desires.rs`, `rules/squad.rs`, `rules/kit.rs`,
   `rules/workshop.rs`): asks `Pallets` instead of iterating `shipments`.
 - **Stays:** prices, fees, fares and drayage (by slots); the paperwork's stationery and scribes; contracts' delivery
@@ -332,7 +334,7 @@ deliberate divergence for `docs/decisions.md`.
 | `CaravanTests.aForwarderTakesCratesBoundOnAndTheirRunLoadsThemFirst` | `pallets-for-crates`, `superbills` | One pallet: no consolidation; booked pallets load first |
 | `CaravanTests.theForwarderBuysABlockOfSpaceItFillsAndPaysForEachRun` | `pallets-for-crates` | Blocks in slots; a pallet's slots are the crate's stacks |
 | `ContractTests.aHubBuysATownsStrandedPaperForCoinAndItsOwnBill` | `pallets-for-crates` | The bill's pallets go with it: the same crates, by id |
-| `LockerTradingTests.underAnOfftakeThePupilsWorkIsCratedForTheBuyerWithABill` | `pallets-for-crates` | One pallet, `Payment::ByBill` |
+| `LockerTradingTests.underAnOfftakeThePupilsWorkIsCratedForTheBuyerWithABill` | `pallets-for-crates` | One pallet its bill names, `Payment::Paid` (not `ByBill`: see section 2) |
 | `CountingHouseTests.theDiscountDeskPricesByGoodsAndCapsItsBook` | `pallets-for-crates` | Bills in the test have no pallets: backed reads the contract, as now |
 | `CountingHouseTests.aCountingHousesClerksDrawUpPapersCheaply` (partial) | none | Papers drawn directly |
 | `PostTests.*` (6) | `consignment-pallets` | Letters and bills untouched. The two consignment tests (`aTownsBookingsFillingAWagonBringTheForwarderToCollect`, `goodsOnConsignmentSellAndTheMoneyComesBackByPost`) keep their numbers for what sells and is remitted; the crates and paper the town now pays are a divergence |

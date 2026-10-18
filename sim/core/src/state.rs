@@ -203,9 +203,10 @@ pub struct Wagon {
     pub recruits: Vec<crate::army::Recruit>,
     /// It went full, of what the far end could pay for (`dispatch`'s `goesFor`: "full", not "on its day"; `saleLoad`).
     pub full: bool,
-    /// Pallets (`pallet.rs`, `cargo.rs`): a line for each pallet aboard (`At::Wagon` in the registry, in load order), with
-    /// its booking on freight and whether it's for the hub's forwarder; and the goods for sale crated aboard, a good to a
-    /// lot (open lots: no bill, not sealed).
+    /// Pallets (`pallet.rs`, `cargo.rs`): a line for each pallet aboard (`At::Wagon` in the registry), with its booking on
+    /// freight and whether it's for the hub's forwarder; and the goods for sale crated aboard, a good to a lot (open lots:
+    /// no bill, not sealed). The order aboard is the registry's (`Pallets::at`), which a hub's hand-over rearranges
+    /// (`Pallets::arrange`); the lines' own order isn't kept in step and means nothing.
     pub manifest: crate::pallet::Manifest,
     pub for_sale: Vec<crate::cargo::Lot>,
 }

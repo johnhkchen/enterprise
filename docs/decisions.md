@@ -1136,3 +1136,9 @@ The cotton chain, chocolate, the cold chain and the exchange follow later.
   generator only) and postcard with our own Java generator, Chicory run through plain Gradle `JavaExec`; game tests
   that only call a Java rule retire with their class where a Rust twin stands in; a `java | core` switch until the
   Java rules are deleted; most Java-server studies retire in favour of `sim/host`, one in-game study kept as a check.
+- **Pallets for crates, as landed (pallets-for-crates).** Every crate shipped under a bill of lading is a pallet in
+  the core's registry, one for one, with no outcome moved. Kept for now so the numbers hold: the pupil's work is
+  `Payment::Paid` though its bill names it (as `ByBill` the stale sweep and stranded paper would call it unpaid);
+  stranded paper still also takes a drawee's paid-for pallets no bought bill names (by id alone, the design's rule,
+  moves 2 of the 300 worlds: the hub's forwarder would carry a refused bill's pallet for a fee); `Discounts::backed`
+  still reads the contract (reading pallets would back training bills). Each is a later task's to move.

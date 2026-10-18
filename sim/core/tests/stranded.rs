@@ -91,10 +91,11 @@ fn a_hub_buys_a_towns_stranded_paper_for_coin_and_its_own_bill() {
     assert_eq!(s.stranded_book(hub).bills, 1);
 }
 
-/// A stranded bill's goods are the pallets it names, by id: of two alike pallets for its drawee at the town, the one the
-/// bill names goes with it; a pallet for another market whose paper the hub doesn't buy stays.
+/// A stranded bill's named pallet goes with it, by id, into the hub's custody, and the deal's crates are the bill's
+/// pallets; a pallet for another market whose paper the hub doesn't buy stays. Its alike twin isn't offered, so this
+/// doesn't pin "by id alone": offered, the twin would go too, by the drawee rule kept in `stranded::buy` (the next test).
 #[test]
-fn a_stranded_bills_goods_are_its_pallets_by_id() {
+fn a_stranded_bills_named_pallet_goes_into_custody_by_id() {
     let (hub, town, capital) = (0, 1, 2);
     let mut s = arena(100.0);
     let elsewhere = s.add_town("Elsewhere", 10.0);
