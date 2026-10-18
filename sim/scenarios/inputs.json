@@ -6,7 +6,7 @@
       "note": "a society from a pack of four goods",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Create": {
             "pack": {
@@ -69,7 +69,7 @@
       "note": "two towns at their desks",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -112,7 +112,7 @@
       "note": "a point of each kind, placed",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -179,7 +179,7 @@
       "note": "money and goods from outside",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -224,7 +224,7 @@
       "note": "a buying shop, a selling shop, a shop for the Merchant's own",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -266,7 +266,7 @@
       "note": "every point counted",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -364,7 +364,7 @@
       "note": "a player buys from a town's own shop",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -390,7 +390,7 @@
       "note": "a point broken",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -420,7 +420,7 @@
       "note": "twenty days pass",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -444,7 +444,7 @@
       "note": "every question",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Ask": {
             "queries": [

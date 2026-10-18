@@ -1,7 +1,7 @@
 [
   {
     "abi": 1,
-    "schema": 1,
+    "schema": 9309039127105987393,
     "command": {
       "Create": {
         "pack": {
@@ -74,7 +74,7 @@
   },
   {
     "abi": 1,
-    "schema": 1,
+    "schema": 9309039127105987393,
     "command": {
       "Create": {
         "pack": {
@@ -87,7 +87,7 @@
   },
   {
     "abi": 1,
-    "schema": 1,
+    "schema": 9309039127105987393,
     "command": {
       "Load": {
         "save": {
@@ -106,12 +106,12 @@
   },
   {
     "abi": 1,
-    "schema": 1,
+    "schema": 9309039127105987393,
     "command": "Save"
   },
   {
     "abi": 1,
-    "schema": 1,
+    "schema": 9309039127105987393,
     "command": {
       "Apply": {
         "inputs": []
@@ -120,7 +120,7 @@
   },
   {
     "abi": 1,
-    "schema": 1,
+    "schema": 9309039127105987393,
     "command": {
       "Apply": {
         "inputs": [
@@ -1581,7 +1581,7 @@
   },
   {
     "abi": 1,
-    "schema": 1,
+    "schema": 9309039127105987393,
     "command": {
       "Ask": {
         "queries": []
@@ -1590,7 +1590,7 @@
   },
   {
     "abi": 1,
-    "schema": 1,
+    "schema": 9309039127105987393,
     "command": {
       "Ask": {
         "queries": [

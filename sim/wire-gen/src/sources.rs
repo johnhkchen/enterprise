@@ -1,6 +1,9 @@
 //! The wire's Rust source (`sim/core/src/wire/`), read for two things the registry doesn't have: where each type is
 //! defined (a type on the wire defined anywhere else is a state type, and a state change would become a wire change)
-//! and the doc comments, so the Java says what each type, variant and field is.
+//! and the doc comments, so the Java says what each type, variant and field is. It also refuses what serde-reflection
+//! can't see: it traces `Deserialize` only, so a serde attribute that makes the bytes written differ from the bytes
+//! read (`skip_serializing_if`, `serialize_with`) would trace as a plain shape and the Java would misread every such
+//! message; and a field named by a path (`crate::state::X`) is a state type hiding behind a wire type's name.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -13,6 +16,8 @@ pub struct TypeDoc {
     pub file: String,
     pub doc: Vec<String>,
     pub members: BTreeMap<String, Vec<String>>,
+    /// What its source holds that the wire can't (a serde attribute, a field named by a path), by line.
+    pub refused: Vec<String>,
 }
 
 /// Every `pub struct` and `pub enum` in `wire/`, by name.
@@ -45,10 +50,20 @@ pub fn scan_text(file: &str, text: &str) -> Vec<(String, TypeDoc)> {
     // The type whose body we're in, its depth in braces, and its member's doc so far.
     let mut body: Option<(String, TypeDoc, i32)> = None;
     let mut member_doc: Vec<String> = Vec::new();
-    for line in text.lines() {
+    // A serde attribute on the item the next line may start.
+    let mut serde_attribute: Option<String> = None;
+    for (number, line) in text.lines().enumerate() {
         let trimmed = line.trim();
         let code = code_of(trimmed);
         if let Some((name, mut td, depth)) = body.take() {
+            if code.contains("serde(") {
+                td.refused.push(format!("{name} ({file}:{}): a serde attribute inside, {code:?}: serde-reflection \
+                    traces only what's read, so the Java would misread what's written; carry it plainly", number + 1));
+            }
+            if code.contains("::") {
+                td.refused.push(format!("{name} ({file}:{}): a field named by a path, {code:?}: a wire type holds \
+                    numbers, strings, ids and wire types, named plainly", number + 1));
+            }
             if depth == 1 {
                 if let Some(d) = doc_line(trimmed) {
                     member_doc.push(d);
@@ -71,12 +86,19 @@ pub fn scan_text(file: &str, text: &str) -> Vec<(String, TypeDoc)> {
             continue;
         }
         if trimmed.starts_with("#[") {
+            if code.contains("serde(") {
+                serde_attribute = Some(format!("{file}:{}: {code:?}", number + 1));
+            }
             continue;
         }
         let kind = ["pub struct ", "pub enum "].into_iter().find(|k| code.starts_with(k));
         if let Some(kind) = kind {
             let name: String = code[kind.len()..].chars().take_while(|c| c.is_alphanumeric() || *c == '_').collect();
-            let td = TypeDoc { file: file.to_string(), doc: std::mem::take(&mut doc), members: BTreeMap::new() };
+            let mut td = TypeDoc { file: file.to_string(), doc: std::mem::take(&mut doc), ..Default::default() };
+            if let Some(at) = serde_attribute.take() {
+                td.refused.push(format!("{name} ({at}): a serde attribute on a wire type: serde-reflection traces \
+                    only what's read, so the Java would misread what's written; carry it plainly"));
+            }
             let depth = braces(code);
             member_doc.clear();
             if depth > 0 {
@@ -86,6 +108,7 @@ pub fn scan_text(file: &str, text: &str) -> Vec<(String, TypeDoc)> {
             }
         } else {
             doc.clear();
+            serde_attribute = None;
         }
     }
     out
@@ -123,8 +146,8 @@ fn member_name(code: &str) -> Option<String> {
     (rest.is_empty() || rest.starts_with([':', '{', ',', '('])).then_some(name)
 }
 
-/// What's wrong between the registry and the types `wire/` defines: a type on the wire defined elsewhere, or one
-/// defined in `wire/` that crosses nowhere.
+/// What's wrong between the registry and the types `wire/` defines: a type on the wire defined elsewhere, one
+/// defined in `wire/` that crosses nowhere, or one whose source the wire can't carry ([`TypeDoc::refused`]).
 pub fn defined_in_wire(registry: &Registry, docs: &Docs) -> Vec<String> {
     let mut wrong = Vec::new();
     for name in registry.keys() {
@@ -136,6 +159,7 @@ pub fn defined_in_wire(registry: &Registry, docs: &Docs) -> Vec<String> {
         }
     }
     for (name, doc) in docs {
+        wrong.extend(doc.refused.iter().cloned());
         if !registry.contains_key(name) {
             wrong.push(format!(
                 "{name} ({}) is defined in wire/ but no Request or Response holds it: wire/ holds only what crosses",

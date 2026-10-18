@@ -6,7 +6,7 @@
       "note": "a question before there is a society",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Ask": {
             "queries": [
@@ -25,7 +25,7 @@
       "note": "a save before there is a society",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": "Save"
       },
       "response": {
@@ -38,7 +38,7 @@
       "note": "a pack with a day of no ticks",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Create": {
             "pack": {
@@ -104,7 +104,7 @@
       "note": "built against another ABI",
       "request": {
         "abi": 0,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": "Save"
       },
       "response": {
@@ -129,7 +129,7 @@
         "Refused": {
           "why": {
             "Schema": {
-              "core": 1,
+              "core": 9309039127105987393,
               "request": 18446744073709551615
             }
           }
@@ -164,7 +164,7 @@
     },
     {
       "note": "a request cut short",
-      "request_hex": "010100c0bb01040f6d696e6563726166743a77686561749a9999999999a93f40000000000000000000000000000000000001000f6d696e6563726166743a62726561649a9999999999c93f400000000000001440000000000000184000000e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a9999999999294000",
+      "request_hex": "01c1c6f59abcb89698810100c0bb01040f6d696e6563726166743a77686561749a9999999999a93f40000000000000000000000000000000000001000f6d696e6563726166743a62726561649a9999999999c93f400000000000001440000000000000184000000e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a9999999999294000",
       "response": {
         "Refused": {
           "why": {
@@ -179,7 +179,7 @@
       "note": "a society",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Create": {
             "pack": {
@@ -242,7 +242,7 @@
       "note": "a town with some wheat",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -280,7 +280,7 @@
       "note": "its stock",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Ask": {
             "queries": [
@@ -316,12 +316,12 @@
       "note": "a save of another format",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Load": {
             "save": {
               "format": 4294967295,
-              "schema": 1,
+              "schema": 9309039127105987393,
               "core": "other",
               "blob": [
                 1,
@@ -347,12 +347,12 @@
       "note": "a save the core can't read",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Load": {
             "save": {
               "format": 1,
-              "schema": 1,
+              "schema": 9309039127105987393,
               "core": "other",
               "blob": [
                 1,
@@ -377,7 +377,7 @@
       "note": "a refused load keeps the society",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Ask": {
             "queries": [
@@ -413,7 +413,7 @@
       "note": "a delivery to a town that isn't there, after one that would be fine",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -450,7 +450,7 @@
       "note": "a good that isn't there",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -480,7 +480,7 @@
       "note": "a count below nothing",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -510,7 +510,7 @@
       "note": "money below nothing",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -539,7 +539,7 @@
       "note": "a stocktake of a point that isn't there",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -574,7 +574,7 @@
       "note": "a stocktake naming another kind than the point standing there",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -609,7 +609,7 @@
       "note": "a point where one stands already",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -644,7 +644,7 @@
       "note": "a town whose desk isn't a desk",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -679,7 +679,7 @@
       "note": "an advance past a hundred years",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -705,7 +705,7 @@
     },
     {
       "note": "a count of NaN, as bytes",
-      "request_hex": "01010301010000000000000000f87f",
+      "request_hex": "01c1c6f59abcb8969881010301010000000000000000f87f",
       "response": {
         "Refused": {
           "why": {
@@ -719,7 +719,7 @@
     },
     {
       "note": "a price of infinity, as bytes",
-      "request_hex": "01010301030000000000000000f03f000000000000f07f000000000000f03f",
+      "request_hex": "01c1c6f59abcb8969881010301030000000000000000f03f000000000000f07f000000000000f03f",
       "response": {
         "Refused": {
           "why": {
@@ -735,7 +735,7 @@
       "note": "a question about a town that isn't there",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Ask": {
             "queries": [
@@ -764,7 +764,7 @@
       "note": "nothing of any refused request applied",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Ask": {
             "queries": [

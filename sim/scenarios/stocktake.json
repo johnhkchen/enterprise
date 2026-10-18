@@ -6,7 +6,7 @@
       "note": "a society from a pack of four goods",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Create": {
             "pack": {
@@ -69,7 +69,7 @@
       "note": "a town at its desk, a locker for it, some money paid in",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -118,7 +118,7 @@
       "note": "a player delivers wheat and books",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -151,7 +151,7 @@
       "note": "its stock and points",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Ask": {
             "queries": [
@@ -214,7 +214,7 @@
       "note": "a stocktake at the desk counts from nothing: its 30 wheat and 5 bread are added to the 40 wheat delivered",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -254,7 +254,7 @@
       "note": "the locker is counted apart, a good listed twice is summed",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -294,7 +294,7 @@
       "note": "a player took 20 wheat out of the desk and put 2 books in (stock 70 wheat to 50); three days pass",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -343,7 +343,7 @@
       "note": "the stock after the stocktakes",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Ask": {
             "queries": [
@@ -406,12 +406,12 @@
       "note": "saved",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": "Save"
       },
       "saved": {
         "format": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "blob_len": 3215,
         "blob_fnv": "4968f881f5f0ff8e"
       }
@@ -430,7 +430,7 @@
       "note": "asked again after the load",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Ask": {
             "queries": [
@@ -493,7 +493,7 @@
       "note": "it runs on: five more days",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Apply": {
             "inputs": [
@@ -517,7 +517,7 @@
       "note": "and answers",
       "request": {
         "abi": 1,
-        "schema": 1,
+        "schema": 9309039127105987393,
         "command": {
           "Ask": {
             "queries": [

@@ -293,3 +293,44 @@ fn docs_follow_their_types_variants_and_fields() {
     assert!(docs["Kind"].members["B"].is_empty());
     assert_eq!(docs["Kind"].members["C"], ["The third,", "in two."]);
 }
+
+#[test]
+fn a_serde_attribute_or_a_path_in_a_wire_type_is_refused() {
+    // serde-reflection traces only Deserialize: `skip_serializing_if` and `serialize_with` would trace as plain
+    // shapes while postcard writes something else, so the source is read for them (the old source scan's rule).
+    let text = "/// A thing.\n#[derive(Serialize, Deserialize)]\n#[serde(rename_all = \"lowercase\")]\npub struct Outer {\n    \
+        pub x: u32,\n}\n\npub struct Thing {\n    pub x: u32,\n    #[serde(skip_serializing_if = \"Option::is_none\", default)]\n    \
+        pub y: Option<u32>,\n}\n\npub enum Kind {\n    A { held: Vec<crate::state::Stock> },\n    B,\n}\n\n\
+        #[serde(transparent)]\nstruct Private(u32);\n\npub struct Plain {\n    pub n: u32,\n}\n";
+    let docs: BTreeMap<_, _> = sources::scan_text("t.rs", text).into_iter().collect();
+    assert_eq!(docs["Outer"].refused.len(), 1, "{:?}", docs["Outer"].refused);
+    assert!(docs["Outer"].refused[0].starts_with("Outer (t.rs:3: "), "{:?}", docs["Outer"].refused);
+    assert_eq!(docs["Thing"].refused.len(), 2, "{:?}", docs["Thing"].refused); // the attribute and its `Option::is_none`
+    assert!(docs["Thing"].refused[0].starts_with("Thing (t.rs:10): a serde attribute inside"), "{:?}", docs["Thing"].refused);
+    assert_eq!(docs["Kind"].refused.len(), 1, "{:?}", docs["Kind"].refused);
+    assert!(docs["Kind"].refused[0].contains("a field named by a path"), "{:?}", docs["Kind"].refused);
+    // A private item's attribute isn't carried to the next wire type.
+    assert!(docs["Plain"].refused.is_empty(), "{:?}", docs["Plain"].refused);
+    // And through the generator: the real wire with one such type in it is refused.
+    let (registry, mut docs) = wire();
+    docs.get_mut("Request").unwrap().refused.push("Request (request.rs:1): a serde attribute".into());
+    let wrong = sources::defined_in_wire(&registry, &docs);
+    assert_eq!(wrong, ["Request (request.rs:1): a serde attribute"]);
+    assert!(generate_from(&registry, &docs, None, false).is_err());
+    // The real wire has none.
+    let (registry, docs) = wire();
+    assert!(docs.values().all(|d| d.refused.is_empty()));
+    assert!(sources::defined_in_wire(&registry, &docs).is_empty());
+}
+
+#[test]
+fn a_backslash_in_a_doc_cant_become_a_java_unicode_escape() {
+    // javac reads a backslash-u as a unicode escape even inside a comment: `C:\users` would stop the folder compiling.
+    let (registry, mut docs) = wire();
+    docs.get_mut("Request").unwrap().doc = vec![r"Kept at C:\users\me, written `\u{41}` in Rust.".into()];
+    let generated = generate_from(&registry, &docs, None, false).unwrap();
+    let java = &generated.files[&format!("{JAVA_DIR}/Request.java")];
+    assert!(java.contains("C:&#92;users&#92;me"), "{java}");
+    assert!(java.contains("<code>&#92;u{41}</code>"), "{java}");
+    assert!(!java.contains('\\'), "{java}");
+}

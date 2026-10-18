@@ -480,7 +480,7 @@ fn doc_text(rust: &str) -> String {
     let rest = rest.replace(['[', ']'], "");
     for (i, part) in rest.split('`').enumerate() {
         if i % 2 == 1 {
-            if part.contains(['{', '}']) || part.contains("*/") {
+            if part.contains(['{', '}', '\\']) || part.contains("*/") {
                 out.push_str(&format!("<code>{}</code>", escape(part)));
             } else {
                 out.push_str(&format!("{{@code {part}}}"));
@@ -493,5 +493,6 @@ fn doc_text(rust: &str) -> String {
 }
 
 fn escape(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('@', "&#64;").replace("*/", "*&#47;")
+    // A backslash as an entity: javac reads a backslash-u as a unicode escape even inside a comment.
+    s.replace('&', "&amp;").replace('\\', "&#92;").replace('<', "&lt;").replace('>', "&gt;").replace('@', "&#64;").replace("*/", "*&#47;")
 }
