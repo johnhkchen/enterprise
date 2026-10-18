@@ -254,18 +254,18 @@ pub struct Entry {
     pub with: Option<TownId>,
     pub good: Option<GoodId>,
     pub count: f64,
-    pub money: f64,
+    pub money: crate::fixed::Fixed,
     pub why: Option<Why>,
 }
 
 impl Entry {
-    pub fn new(day: u64, kind: Kind, with: TownId, good: GoodId, count: f64, money: f64) -> Self {
+    pub fn new(day: u64, kind: Kind, with: TownId, good: GoodId, count: f64, money: crate::fixed::Fixed) -> Self {
         Entry { day, kind, with: Some(with), good: Some(good), count, money, why: None }
     }
 
     /// A reason, for a wagon's log (`Entry.why`).
     pub fn why(day: u64, with: TownId, good: Option<GoodId>, why: Why, count: f64) -> Self {
-        Entry { day, kind: Kind::Why, with: Some(with), good, count, money: 0.0, why: Some(why) }
+        Entry { day, kind: Kind::Why, with: Some(with), good, count, money: crate::fixed::Fixed::ZERO, why: Some(why) }
     }
 }
 
@@ -325,8 +325,8 @@ impl Books {
     /// A line in the town's books (`Books.enter`): nothing for nothing.
     #[allow(clippy::too_many_arguments)]
     pub fn enter(&mut self, whys: &mut Whys, town: TownId, today: u64, keeps: u64, kind: Kind, with: TownId,
-            good: GoodId, count: f64, money: f64) {
-        if count <= 0.0 && money <= 0.0 {
+            good: GoodId, count: f64, money: crate::fixed::Fixed) {
+        if count <= 0.0 && money <= crate::fixed::Fixed::ZERO {
             return;
         }
         self.file(whys, town, today, keeps, vec![Entry::new(today, kind, with, good, count, money)]);
@@ -335,9 +335,9 @@ impl Books {
     /// The last price the town's books show for one of `good` sold to or bought from `market` (`Books.lastPrice`).
     pub fn last_price(&self, town: TownId, market: TownId, good: GoodId) -> Option<f64> {
         self.0.get(&town)?.iter().rev()
-            .find(|e| e.good == Some(good) && e.with == Some(market) && e.count > 0.0 && e.money > 0.0
+            .find(|e| e.good == Some(good) && e.with == Some(market) && e.count > 0.0 && e.money.is_positive()
                 && matches!(e.kind, Kind::Sold | Kind::Bought))
-            .map(|e| e.money / e.count)
+            .map(|e| e.money.to_f64() / e.count)
     }
 }
 
@@ -377,9 +377,9 @@ pub fn trip_wants(content: &Content, state: &RouteState) -> Vec<TradeId> {
 }
 
 /// A wagon's takings for a good at the far end this visit (`rules/arrive.rs::sell`), for both Merchants' books.
-pub fn paid(wagon: &mut Wagon, good: GoodId, money: f64) {
+pub fn paid(wagon: &mut Wagon, good: GoodId, money: crate::fixed::Fixed) {
     if wagon.paid_here.len() <= good {
-        wagon.paid_here.resize(good + 1, 0.0);
+        wagon.paid_here.resize(good + 1, crate::fixed::Fixed::ZERO);
     }
     wagon.paid_here[good] += money;
 }
@@ -582,7 +582,7 @@ impl Society {
             - crate::rules::farms::reserve(&content, entity.get::<Trades>()?, entity.get::<crate::farms::Farm>());
         let places = self.places();
         let to = choose(&content, self.world.resource::<Atlas>(), self.world.resource::<Stocktakes>(), &places,
-            &Considering { town, has_route, comfort_met: &met, spare })?;
+            &Considering { town, has_route, comfort_met: &met, spare: spare.to_f64() })?;
         self.open_route(town, to)
     }
 

@@ -57,10 +57,10 @@ fn a_master_merchant_fills_a_players_order() {
     assert_eq!(shop.purse, 8.0, "paid 32 spurs out of 40");
     assert_eq!(s.town(DESK).stock[PAPER], 32.0, "from the warehouse");
     assert_eq!(s.contract(contract.id).state, State::Completed, "done");
-    assert!(close(s.town(DESK).money, 2.0), "and the desk banked 32 spurs: {}", s.town(DESK).money);
+    assert!(s.town(DESK).money == 2.0, "and the desk banked 32 spurs: {}", s.town(DESK).money);
     s.conserved(&before).expect("goods and money are all accounted for");
-    let banked: f64 = s.cash_book(DESK, 3).iter().filter(|(_, what, _)| what == "order").map(|(_, _, v)| v).sum();
-    assert!(close(banked, 2.0), "the cash book says so, a lot a day: {:?}", s.cash_book(DESK, 3));
+    let banked: enterprise_core::Fixed = s.cash_book(DESK, 3).iter().filter(|(_, what, _)| what == "order").map(|(_, _, v)| v).sum();
+    assert!(banked == 2.0, "the cash book says so, a lot a day: {:?}", s.cash_book(DESK, 3));
 }
 
 // parity: MarketTests.whatItCantFillIsAskedOfTheRegion
@@ -114,7 +114,8 @@ fn its_own_shop_sells_the_surplus() {
     assert_eq!(s.buy(DESK, STICK, 16.0), Ok(9.0), "a player bought a lot");
     s.advance(2 * LOOK);
     assert_eq!(s.tally(DESK).spurs_from_own_shops, 9.0, "and the town banks the takings");
-    assert!(close(s.town(DESK).money, 9.0 / 16.0));
+    // (9 spurs at 16, to the nearest thousandth: coin paid in)
+    assert!(s.town(DESK).money == enterprise_core::Fixed::round(9.0 / 16.0));
     assert_eq!(s.own_shops(DESK)[0].shelf, 48.0);
     s.conserved(&before).expect("goods and money are all accounted for");
 }

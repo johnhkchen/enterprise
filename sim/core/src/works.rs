@@ -281,9 +281,10 @@ pub struct Project {
     pub what: What,
     pub blocks_needed: u32,
     pub laid: f64,
-    /// Emeralds owed the masons, fractions carried.
+    /// Emeralds owed the masons, fractions carried: a claim accruing each day, paid in whole emeralds (the money moved in
+    /// thousandths, `fixed.rs`).
     pub wage_owed: f64,
-    pub wages_paid: f64,
+    pub wages_paid: crate::fixed::Fixed,
     pub done: bool,
     /// When it was last worked on (the first touch only starts the clock).
     pub started: Option<u64>,
@@ -293,7 +294,7 @@ pub struct Project {
 
 impl Project {
     pub fn new(what: What, blocks_needed: u32) -> Self {
-        Project { what, blocks_needed, laid: 0.0, wage_owed: 0.0, wages_paid: 0.0, done: false, started: None, applied: false }
+        Project { what, blocks_needed, laid: 0.0, wage_owed: 0.0, wages_paid: crate::fixed::Fixed::ZERO, done: false, started: None, applied: false }
     }
 
     /// How much of it stands, 0 to 1 (`Project.progress`).
@@ -409,22 +410,25 @@ impl Works {
 /// Lays masons' work on a town's project for the days since it was last worked (`Works.work`): the wages for the days
 /// due, whole emeralds, `treasury` of which is what it can pay; blocks by the stone its land gives (`hexes` held),
 /// in proportion to the wages paid. Returns the emeralds paid. The first call only starts the clock.
-pub fn work(project: &mut Project, d: &crate::dials::Dials, hexes: usize, now: u64, day_ticks: u64, treasury: f64) -> f64 {
+pub fn work(project: &mut Project, d: &crate::dials::Dials, hexes: usize, now: u64, day_ticks: u64,
+        treasury: crate::fixed::Fixed) -> crate::fixed::Fixed {
     let Some(last) = project.started else {
         project.started = Some(now);
-        return 0.0;
+        return crate::fixed::Fixed::ZERO;
     };
     let days = ((now - last) as f64 / day_ticks as f64).min(MAX_DAYS);
     project.started = Some(now);
     project.wage_owed += d.masons as f64 * d.mason_pay * days;
     let whole = project.wage_owed.floor();
     let mut share = 1.0;
-    let mut paid = 0.0;
+    let mut paid = crate::fixed::Fixed::ZERO;
     if whole > 0.0 {
-        paid = whole.min(treasury.max(0.0));
+        // Whole emeralds owed (fractions carried), as far as the treasury goes.
+        let owed = crate::fixed::Fixed::emeralds(whole as i64);
+        paid = owed.min(treasury.at_least_zero());
         project.wage_owed -= whole;
         project.wages_paid += paid;
-        share = paid / whole; // unpaid masons don't work, and aren't owed
+        share = paid.ratio(owed); // unpaid masons don't work, and aren't owed
     }
     let per_day = per_day(d, hexes);
     project.laid += per_day * days * share;

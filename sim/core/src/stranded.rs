@@ -44,6 +44,7 @@ use crate::cargo::Shipment;
 use crate::content::Content;
 use crate::contracts::Book;
 use crate::freight::{forwarding_price, Freight, Network};
+use crate::fixed::Fixed;
 use crate::messages::TownId;
 
 /// A hub's book of the stranded paper it has bought, and the freight it has carried on credit.
@@ -52,13 +53,13 @@ pub struct StrandedBook {
     /// Deals made, the bills bought, their face, the coin paid, the hub's own bills promised, and the crates taken.
     pub deals: u32,
     pub bills: u32,
-    pub face: f64,
-    pub coin: f64,
-    pub promised: f64,
+    pub face: Fixed,
+    pub coin: Fixed,
+    pub promised: Fixed,
     pub crates: u32,
     /// Freight on credit: the stacks carried, and the fares left as the town's bill.
     pub credit_stacks: u32,
-    pub credit: f64,
+    pub credit: Fixed,
 }
 
 impl Freight {
@@ -124,15 +125,15 @@ pub struct Deal {
     pub hub_bills: Vec<usize>,
     pub crates: Vec<Shipment>,
     pub bills: Vec<usize>,
-    pub face: f64,
+    pub face: Fixed,
     /// The price, before the coin: what the hub promised in all.
     pub price: f64,
 }
 
 impl Deal {
-    /// The coin, in emeralds, at the mint's `rate`.
-    pub fn coin(&self, rate: f64) -> f64 {
-        self.spurs as f64 / rate
+    /// The coin, in emeralds at the mint's `rate`, rounded down to the thousandth (what the hub pays out).
+    pub fn coin(&self, rate: f64) -> Fixed {
+        Fixed::floor(self.spurs as f64 / rate)
     }
 
     pub fn hub_bill(&self) -> Option<usize> {
@@ -152,7 +153,7 @@ pub fn buy(t: &Terms, bills: &mut Bills, crates: &mut Vec<Shipment>, offered: &m
     // At least one: a dial set to nothing would leave the hub no way to pay the part it can't in coin.
     let installments = d.stranded_installments.max(1);
     let mut bought: BTreeMap<TownId, Vec<usize>> = BTreeMap::new();
-    let (mut face, mut price) = (0.0, 0.0);
+    let (mut face, mut price) = (Fixed::ZERO, 0.0);
     let mut least: f64 = 1.0; // the trust the hub has in the least trusted drawee bought
     // Its goods come with it where a crate for the drawee is among them: paper on goods in hand.
     let crated: BTreeSet<TownId> = crates.iter().filter(|c| crate_ok(t, c)).filter_map(|c| c.consignee).collect();
@@ -166,8 +167,8 @@ pub fn buy(t: &Terms, bills: &mut Bills, crates: &mut Vec<Shipment>, offered: &m
         }
         // Priced and capped at the hub's discount desk, as any paper it buys (its book, the drawee's share).
         let quote = Discounts::quote(bills, t.book, t.hub, t.counting, bill, crated.contains(&bill.drawee), face, 0.0,
-            quote_means, t.now, day, d);
-        let paying = bill.amount * quote.share;
+            Fixed::floor(quote_means.min(1e15)), t.now, day, d);
+        let paying = bill.amount.to_f64() * quote.share;
         if !quote.taken() || price + paying - coin.max(0.0) > installments as f64 * means / 2.0 {
             kept.push(id); // more than it could pay in its own bills: it leaves the rest
             continue;
@@ -206,7 +207,8 @@ pub fn buy(t: &Terms, bills: &mut Bills, crates: &mut Vec<Shipment>, offered: &m
     };
     let term = (crate::bills::TERM_DAYS * day as f64) as u64;
     let hub_bills = (0..pieces).map(|i| {
-        bills.draw_term(t.hub, t.town, rest / pieces as f64 / (1.0 + crate::bills::INTEREST), t.now, day, term * (i as u64 + 1), None)
+        bills.draw_term(t.hub, t.town, Fixed::ceil(rest / pieces as f64 / (1.0 + crate::bills::INTEREST)), t.now, day,
+            term * (i as u64 + 1), None)
     }).collect();
     let bills_bought: Vec<usize> = bought.into_values().flatten().collect();
     for &id in &bills_bought {
@@ -239,7 +241,7 @@ impl Society {
         let mut ledger = self.world.resource_mut::<Bills>();
         let terms = Terms { content: &content, net: &net, book: &book, hub, town, counting, now, rate };
         let deal = buy(&terms, &mut ledger, crates, bills, coin, means)?;
-        let mut promised = 0.0;
+        let mut promised = Fixed::ZERO;
         for &id in &deal.hub_bills {
             ledger.bills[id].held = crate::bills::Held::Town(town);
             promised += ledger.bills[id].amount;

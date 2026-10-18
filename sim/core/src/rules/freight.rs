@@ -43,6 +43,7 @@ use crate::messages::{RouteId, TownId};
 use crate::mint::Mint;
 use crate::realms::OffMap;
 use crate::roster::Roster;
+use crate::fixed::Fixed;
 use crate::state::*;
 use crate::state::Leg;
 use crate::territory::Territory;
@@ -70,7 +71,7 @@ fn today(content: &Content, now: u64) -> u64 {
 }
 
 /// What a town can spare beyond its reserve (trading capital and wage float: `Territory.reserve`).
-fn spare(content: &Content, money: f64, trades: &Trades, farm: Option<&Farm>) -> f64 {
+fn spare(content: &Content, money: Fixed, trades: &Trades, farm: Option<&Farm>) -> Fixed {
     money - super::farms::reserve(content, trades, farm)
 }
 
@@ -144,10 +145,11 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
             continue;
         }
         let spare = spare(&content, money.0, trades, farm);
-        if crate::road::held(&content, &stock.0) < crate::road::FOOD_PAR_POINTS || spare < d.storehouse_emeralds {
+        let storehouse = Fixed::ceil(d.storehouse_emeralds);
+        if crate::road::held(&content, &stock.0) < crate::road::FOOD_PAR_POINTS || spare < storehouse {
             continue;
         }
-        post(&mut ledger, &mut cash, Side::treasury(town.id, &mut money.0), Side::outside(), d.storehouse_emeralds,
+        post(&mut ledger, &mut cash, Side::treasury(town.id, &mut money.0), Side::outside(), storehouse,
             crate::freight::storehouse_reason(), now, day);
         hub.storehouse = true;
         more = true;
@@ -326,7 +328,7 @@ pub fn plan_freight(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, t
         let home = RunLeg::of(route, false);
         let Some(hub) = hubs.get(&route.to_id) else { continue };
         if hub.has_block(&home) {
-            plan.worth += hub.block_fares(&home);
+            plan.worth += hub.block_fares(&home).to_f64();
             if last.is_none_or(|t| now - t >= liner) {
                 plan.pressing = true; // space sold, on its day
             }
@@ -380,10 +382,10 @@ pub fn depart(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
                 paperwork: &mut paperwork };
             let fees = pick_forwarded(&content, &net, &mut book, &mut bills, &mut ledger, &mut cash, now, rate, &route,
                 &mut stock.0, &mut shipper, wagon, slots);
-            if fees > 0.0 {
+            if fees.is_positive() {
                 // The forwarding goes with the wagon, from what the town can spare, and its landing at the hub.
                 let landing = stop_fee(&content, passage(&territory, route.to_id), rate);
-                let purse = (fees + landing).min(money.0.max(0.0));
+                let purse = (fees + landing).min(money.0.at_least_zero());
                 post(&mut ledger, &mut cash, Side::treasury(route.from_id, &mut money.0),
                     Side::wagon(route.seq, &mut wagon.purse), purse, Reason::WagonPurse, now, content.day_ticks);
             }
@@ -415,11 +417,11 @@ fn set_stop(wagon: &mut Wagon, now: u64, hub: TownId, share: f64) {
 #[allow(clippy::too_many_arguments)]
 fn pick_forwarded(content: &Content, net: &Network, book: &mut Book, bills: &mut Bills, ledger: &mut Ledger,
         cash: &mut CashBook, now: u64, rate: f64, route: &Route, stock: &mut [f64], shipper: &mut Shipper,
-        wagon: &mut Wagon, slots: u32) -> f64 {
+        wagon: &mut Wagon, slots: u32) -> Fixed {
     let (home, hub) = (route.from_id, route.to_id);
     let day = content.day_ticks;
     let serves = |buyer: TownId| buyer != hub && buyer != home && !net.legs(hub, buyer).is_empty();
-    let mut fees = 0.0;
+    let mut fees = Fixed::ZERO;
     // Crates it sent before that came home: out again, with their bills.
     let mut i = 0;
     while i < shipper.store.held.len() {
@@ -469,7 +471,7 @@ fn pick_forwarded(content: &Content, net: &Network, book: &mut Book, bills: &mut
         shipper.spare -= fee;
         fees += fee;
         stock[g] -= s.count;
-        let bill = bills.draw_for(buyer, home, s.count * price, now, day, Some(id));
+        let bill = bills.draw_for(buyer, home, Fixed::ceil(s.count * price), now, day, Some(id));
         wagon.bills.push(bill);
         book.ship(id, s.count);
         wagon.shipments.push(s);
@@ -492,7 +494,7 @@ struct AtHub<'a> {
 /// The wagon's landing fee at the hub, from its purse as far as it goes, into the hub's treasury (`Freight.land`).
 fn land(at: &AtHub, territory: &Territory, ledger: &mut Ledger, cash: &mut CashBook, hub: &mut Hub, money: &mut Money,
         wagon: &mut Wagon) {
-    let fee = stop_fee(at.content, passage(territory, at.hub), at.rate).min(wagon.purse.max(0.0));
+    let fee = stop_fee(at.content, passage(territory, at.hub), at.rate).min(wagon.purse.at_least_zero());
     if fee > 0.0 {
         post(ledger, cash, Side::wagon(at.route.seq, &mut wagon.purse), Side::treasury(at.hub, &mut money.0), fee,
             stop_fee_reason(), at.now, at.content.day_ticks);
@@ -513,7 +515,7 @@ pub(crate) fn hand_over(content: &Content, net: &Network, id: TownId, now: u64, 
             && !wagon.freight.forwarding.contains(s) // (nor those it bought or collected for its own forwarder)
             && !hold(s));
     if !offered.is_empty() {
-        let taken = hub.hand_over(content, net, id, &mut offered, wagon.purse.max(0.0), rate, skip);
+        let taken = hub.hand_over(content, net, id, &mut offered, wagon.purse.at_least_zero(), rate, skip);
         if taken.stacks > 0 {
             post(ledger, cash, Side::wagon(seq, &mut wagon.purse), Side::treasury(id, &mut money.0),
                 taken.fee - taken.drayage, forwarding_reason(), now, day);
@@ -547,7 +549,7 @@ fn deal(at: &AtHub, skip: &[TownId], book: &Book, bills: &mut Bills, ledger: &mu
     let mut can = spare(content, money.0, trades, farm);
     let fill = fill(content, stock, hub);
     let means = can;
-    let mut taking = 0.0;
+    let mut taking = Fixed::ZERO;
     let mut kept = Vec::new();
     for b in std::mem::take(&mut wagon.bills) {
         let bill = &bills.bills[b];
@@ -557,8 +559,9 @@ fn deal(at: &AtHub, skip: &[TownId], book: &Book, bills: &mut Bills, ledger: &mu
             continue;
         }
         let q = Discounts::quote(bills, book, id, counting, bill, false, taking, fill, means, now, day, &content.dials);
-        let price = bill.amount * q.share;
-        if !q.taken() || price <= 0.0 || can < price {
+        // Its face less the discount, rounded down to the thousandth (what the hub pays out: `Bank.deal`).
+        let price = bill.amount.mul_floor(q.share);
+        if !q.taken() || !price.is_positive() || can < price {
             kept.push(b);
             continue;
         }
@@ -579,7 +582,7 @@ fn deal(at: &AtHub, skip: &[TownId], book: &Book, bills: &mut Bills, ledger: &mu
     let room = slots.saturating_sub(stacks(content, &wagon.cargo, &wagon.shipments));
     for h in hub.load_booked(content, &at.leg, room) {
         // The fare the hub owes this carrier for the space, paid as its run loads (the mod's shop takings).
-        let fare = h.booked.map_or(0.0, |b| b.fare).min(money.0.max(0.0));
+        let fare = h.booked.map_or(Fixed::ZERO, |b| b.fare).min(money.0.at_least_zero());
         if fare > 0.0 {
             post(ledger, cash, Side::treasury(id, &mut money.0), Side::wagon(seq, &mut wagon.purse), fare, fares_reason(),
                 now, day);
@@ -588,7 +591,7 @@ fn deal(at: &AtHub, skip: &[TownId], book: &Book, bills: &mut Bills, ledger: &mu
         wagon.shipments.push(h.shipment);
     }
     // The forwarder's block on the run, paid, full or not.
-    let cost = hub.run_block(content, &at.leg).min(money.0.max(0.0));
+    let cost = hub.run_block(content, &at.leg).min(money.0.at_least_zero());
     if cost > 0.0 {
         post(ledger, cash, Side::treasury(id, &mut money.0), Side::wagon(seq, &mut wagon.purse), cost, fares_reason(),
             now, day);
@@ -659,7 +662,7 @@ pub fn call_at_stop(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, t
                 if there < food && crate::road::held(&content, &stock.0) >= food + crate::road::FOOD_PAR_POINTS {
                     let meal = crate::road::eat(&content, &mut ledger, &mut stock.0, food);
                     let cost: f64 = meal.iter().map(|&(g, n)| n * content.goods[g].value).sum();
-                    let price = ((cost * rate).ceil() / rate).min(wagon.purse.max(0.0));
+                    let price = Fixed::ceil((cost * rate).ceil() / rate).min(wagon.purse.at_least_zero());
                     post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse),
                         Side::treasury(stop.hub, &mut money.0), price, Reason::RoadFood, now, day);
                     wagon.provisions = food;

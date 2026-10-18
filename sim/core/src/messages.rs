@@ -4,6 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use crate::content::GoodId;
+use crate::fixed::Fixed;
 
 pub type TownId = usize;
 pub type RouteId = usize;
@@ -16,7 +17,7 @@ pub enum Input {
     /// Goods handed to a town from outside the society (a player's delivery).
     Deliver { town: TownId, good: GoodId, count: f64 },
     /// Money paid a town from outside the society (a player buying at its shops).
-    Pay { town: TownId, money: f64 },
+    Pay { town: TownId, money: Fixed },
     /// A player's buying shop at a town's desk (`orders.rs`): `lot` of `good` at `price` spurs a lot, paid from `purse`.
     Order { town: TownId, good: GoodId, lot: f64, price: f64, purse: f64 },
     /// A player's selling shop at a town's desk: `stock` of `good` in lots of `lot` at `price` spurs a lot.
@@ -31,8 +32,8 @@ pub enum Input {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Output {
     WagonLeft { route: RouteId, stacks: u32, worth: f64 },
-    WagonSold { route: RouteId, sold: f64, takings: f64 },
-    WagonHome { route: RouteId, takings: f64 },
+    WagonSold { route: RouteId, sold: f64, takings: Fixed },
+    WagonHome { route: RouteId, takings: Fixed },
     /// A master Merchant filled a player's order: `lots` lots, `count` goods, for `spurs`.
     OrderFilled { town: TownId, order: usize, good: GoodId, lots: u32, count: f64, spurs: f64 },
     /// A desk newly posted a want no market it knows holds, at `spurs_each` an item.

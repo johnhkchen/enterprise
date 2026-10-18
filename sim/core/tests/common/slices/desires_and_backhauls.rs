@@ -75,7 +75,7 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
     }
     for route in 0..s.route_count() {
         let (bought, paid, backhauled) = s.bought(route);
-        if bought < 0.0 || paid < 0.0 || backhauled < 0.0 || backhauled > bought + 1e-9 || !paid.is_finite() {
+        if bought < 0.0 || paid.is_negative() || backhauled < 0.0 || backhauled > bought + 1e-9 {
             return Err(format!("route {route} bought {bought} for {paid}, {backhauled} as a backhaul"));
         }
         if s.balance(Account::Wagon(route)).is_some_and(|p| p < -1e-9) {

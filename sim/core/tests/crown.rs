@@ -81,7 +81,8 @@ fn mobilising_the_sovereign_mints_and_stockpiles() {
     let money = s.town(0).money;
     s.mobilise(0, 1000);
     assert_eq!(s.sovereign().phase, Phase::Mobilising, "mobilising");
-    assert!((s.town(0).money - money - 1000.0 / rate).abs() < 1e-9,
+    // The coin's worth at the rate, rounded down to the thousandth (`fixed.rs`).
+    assert!(s.town(0).money - money == enterprise_core::Fixed::floor(1000.0 / rate),
         "a treasury with a day's minting in it: {} more", s.town(0).money - money);
     assert!(s.mint().debasement(t, DAY) > before, "the minting debases the spur");
     let sword = good(&s, "diamond_sword");
@@ -111,8 +112,8 @@ fn a_named_capital_mints_its_revenue_daily_into_its_treasury() {
     assert_eq!(s.capital(), Some(0));
     assert!(s.exchange().overseas.is_some(), "its port's exchange opens, with the market across the sea");
     s.advance(DAY / 2);
-    let minted: f64 = s.cash_book(0, 1).iter().filter(|(_, why, _)| why == "minted").map(|(_, _, n)| n).sum();
-    assert!((minted - 160.0 / 16.0).abs() < 1e-9, "today's revenue into its treasury, at 16 spurs an emerald: {minted}");
+    let minted: enterprise_core::Fixed = s.cash_book(0, 1).iter().filter(|(_, why, _)| why == "minted").map(|(_, _, n)| n).sum();
+    assert!(minted == 160.0 / 16.0, "today's revenue into its treasury, at 16 spurs an emerald: {minted}");
     s.advance(DAY + DAY / 2);
     assert_eq!(s.sovereign().minted, 320.0, "a day later, another day's");
 }
@@ -280,7 +281,7 @@ fn at_war_the_towns_the_capitals_wagons_reach_are_levied_and_their_recruits_reac
     s.advance((day + 6) * DAY);
     let c = s.contracts().into_iter().find(|c| c.levy.is_some()).unwrap();
     assert!(c.paid > 0.0, "levy pay carried to the town: {} paid, {} owing", c.paid, c.owing);
-    assert!(((c.paid + c.owing) / 0.25).fract().abs() < 1e-9, "in soldier-days at 0.25: {}", c.paid + c.owing);
+    assert!((c.paid + c.owing).millis() % 250 == 0, "in soldier-days at 0.25: {}", c.paid + c.owing);
     // Peace: they walk home, the minting falls back to the revenue, the levy closes.
     let serving = s.army().size() + s.army().waiting();
     assert_eq!(s.peace(), serving);
@@ -319,14 +320,14 @@ fn the_crown_tenders_for_the_masters_its_realm_lacks() {
     let smith = s.content().trade("weaponsmith").unwrap();
     let t = tenders.iter().find(|t| t.work.trade == smith).expect("a tender for master weaponsmiths");
     assert_eq!((t.open, t.work.level, t.work.offtake), (2, 5, 1.0));
-    assert!((t.work.bonus - 24.0 * 1.5).abs() < 1e-9, "24 a master, at mobilising's premium: {}", t.work.bonus);
+    assert!(t.work.bonus == 24.0 * 1.5, "24 a master, at mobilising's premium: {}", t.work.bonus);
     assert_eq!(t.span, 15 * DAY, "due in fifteen days");
     let butcher = s.content().trade("butcher").unwrap();
     assert!(tenders.iter().any(|t| t.work.trade == butcher && t.work.level == 2 && t.open == 2), "and Butchers");
     // Untaken, it lapses, and is posted again for a quarter more.
     s.advance(16 * DAY);
     let again = s.board(0).into_iter().find(|t| t.work.trade == smith).expect("posted again");
-    assert!((again.work.bonus - 24.0 * 1.5 * 1.25).abs() < 1e-9, "a quarter more: {}", again.work.bonus);
+    assert!(again.work.bonus == 24.0 * 1.5 * 1.25, "a quarter more: {}", again.work.bonus);
 }
 
 #[test]

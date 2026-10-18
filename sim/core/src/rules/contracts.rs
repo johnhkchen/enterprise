@@ -9,6 +9,7 @@ use crate::bills::Bills;
 use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
 use crate::contracts::{self, Book, Contract};
+use crate::fixed::Fixed;
 use crate::state::*;
 
 pub fn register(schedule: &mut Schedule) {
@@ -51,30 +52,32 @@ pub(crate) fn settle(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         for (id, carried) in std::mem::take(&mut wagon.contracted) {
             let c = &book.contracts[id];
             let n = carried.min(c.owed(now)).min(wagon.cargo[c.good]);
-            let worth = n * c.price;
+            // The delivery's price, rounded up to the thousandth (the buyer's to pay: `Treasury.withdraw`).
+            let worth = Fixed::ceil(n * c.price);
             // What was paid up front is worked off: its share of this delivery's price.
             let recoup = c.recoup_from(worth, n);
             let owed_money = worth - recoup;
-            let paid = owed_money.min(money.0.max(0.0));
+            let paid = owed_money.min(money.0.at_least_zero());
             wagon.cargo[c.good] -= n;
             stock.0[c.good] += n;
             post(&mut ledger, &mut cash, Side::treasury(route.to_id, &mut money.0), Side::wagon(route.seq, &mut wagon.purse),
                 paid, Reason::Contract, now, day);
             let short = owed_money - paid;
-            let by_bill = short > 1e-9 && book.trust(route.from_id, route.to_id, now, day) >= contracts::MIN_TRUST;
+            let by_bill = short.is_positive() && book.trust(route.from_id, route.to_id, now, day) >= contracts::MIN_TRUST;
             if by_bill {
                 wagon.bills.push(bills.draw(route.to_id, route.from_id, short, now, day));
             }
             book.recouped(id, recoup);
-            book.settle(id, carried, n, paid + if by_bill { short } else { 0.0 } + recoup, if by_bill { 0.0 } else { short });
+            book.settle(id, carried, n, paid + if by_bill { short } else { Fixed::ZERO } + recoup,
+                if by_bill { Fixed::ZERO } else { short });
             delivered += n;
         }
         for id in book.open_between(route.from_id, route.to_id) {
             let c = &mut book.contracts[id];
-            if c.owing <= 0.0 {
+            if !c.owing.is_positive() {
                 continue;
             }
-            let paid = c.owing.min(money.0.max(0.0));
+            let paid = c.owing.min(money.0.at_least_zero());
             c.owing -= paid;
             c.paid += paid;
             post(&mut ledger, &mut cash, Side::treasury(route.to_id, &mut money.0), Side::wagon(route.seq, &mut wagon.purse),
@@ -110,11 +113,11 @@ pub(crate) fn collect(clock: Res<Clock>, content: Res<Content>, mut book: ResMut
                 .map(|s| s.count).sum();
             // (What its bank lent on the contract is paid out of the goods, not the purse.)
             let lent = banks.owed_to(route.from_id, id);
-            let n = c.owed(now).min(stock.0[c.good] + crated).min(((wagon.purse + lent) / c.price.max(1e-9)).floor());
+            let n = c.owed(now).min(stock.0[c.good] + crated).min(((wagon.purse + lent).to_f64() / c.price.max(1e-9)).floor());
             if n <= 0.0 {
                 continue;
             }
-            let worth = n * c.price;
+            let worth = Fixed::ceil(n * c.price);
             let recoup = c.recoup_from(worth, n);
             let paid = worth - recoup;
             let from_crates = super::cargo::take_earmarked(&content, &mut store, id, c.buyer, n);
@@ -128,7 +131,7 @@ pub(crate) fn collect(clock: Res<Clock>, content: Res<Content>, mut book: ResMut
             post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut money.0),
                 paid - repaid, Reason::Contract, now, content.day_ticks);
             book.recouped(id, recoup);
-            book.settle(id, 0.0, n, paid + recoup, 0.0);
+            book.settle(id, 0.0, n, paid + recoup, Fixed::ZERO);
             collected += n;
         }
         state.bought += collected; // `itemsBought`, as `collectExWorks` counts it
@@ -178,7 +181,8 @@ pub(crate) fn plan_collect(clock: Res<Clock>, content: Res<Content>, book: Res<B
                 continue;
             }
             plan.collecting.push(c.id);
-            plan.purse += owed * c.price - c.recoup_from(owed * c.price, 0.0);
+            let worth = Fixed::ceil(owed * c.price);
+            plan.purse += worth - c.recoup_from(worth, 0.0);
             plan.worth += owed * c.price;
             plan.pressing |= c.next_deadline(c.wait_ticks(grace, day)).is_some_and(|deadline| arrival + day > deadline);
         }

@@ -31,6 +31,7 @@ use crate::freight::{cart_price, forwarding_price, Freight, Held, Hub, Leg as Ru
 use crate::messages::TownId;
 use crate::mint::Mint;
 use crate::realms::Realm;
+use crate::fixed::Fixed;
 use crate::state::*;
 use crate::stranded::{bill_ok, buy, crate_ok, Terms};
 
@@ -54,7 +55,7 @@ fn credit_reason() -> Reason {
 }
 
 /// What a town can spare beyond its reserve (trading capital and wage float).
-fn spare(content: &Content, money: f64, trades: &Trades, farm: Option<&Farm>) -> f64 {
+fn spare(content: &Content, money: Fixed, trades: &Trades, farm: Option<&Farm>) -> Fixed {
     money - super::farms::reserve(content, trades, farm)
 }
 
@@ -153,10 +154,10 @@ fn sell_aboard(cx: &Cx, bills: &mut Bills, ledger: &mut Ledger, cash: &mut CashB
     if crates.is_empty() && offered.is_empty() {
         return;
     }
-    let cash_on_hand = spare(cx.content, h.money.0, h.trades, h.farm).max(0.0);
+    let cash_on_hand = spare(cx.content, h.money.0, h.trades, h.farm).at_least_zero();
     // Its households' savings count too: deposits the Merchant may lend on such paper.
     let means = cash_on_hand + on_call(cx.content, h.people.purse, h.deposits.owed);
-    let deal = buy(&t, bills, &mut crates, &mut offered, means, means);
+    let deal = buy(&t, bills, &mut crates, &mut offered, means.to_f64(), means.to_f64());
     wagon.bills.extend(offered);
     let Some(deal) = deal else {
         hand_leftovers(cx, ledger, cash, route, wagon, &mut h, skip, crates);
@@ -166,12 +167,13 @@ fn sell_aboard(cx: &Cx, bills: &mut Bills, ledger: &mut Ledger, cash: &mut CashB
     if coin > cash_on_hand {
         borrow(cx.content, ledger, cash, h.id, &mut h.money.0, &mut h.people.purse, h.deposits, coin - cash_on_hand, now);
     }
-    let paid = coin.min(h.money.0.max(0.0));
+    let paid = coin.min(h.money.0.at_least_zero());
     // What the treasury couldn't find in coin the hub owes in a bill of its own, as the rest of the price is.
     let short = coin - paid;
-    if short > 0.01 {
+    if short > Fixed::from_millis(10) {
         let term = (crate::bills::TERM_DAYS * day as f64) as u64;
-        let id = bills.draw_term(h.id, route.from_id, short / (1.0 + crate::bills::INTEREST), now, day, term, None);
+        let id = bills.draw_term(h.id, route.from_id, Fixed::ceil(short.to_f64() / (1.0 + crate::bills::INTEREST)), now, day,
+            term, None);
         bills.bills[id].held = Paper::Wagon;
         wagon.bills.push(id);
         freight.stranded(h.id).promised += bills.bills[id].amount;
@@ -190,7 +192,7 @@ fn sell_aboard(cx: &Cx, bills: &mut Bills, ledger: &mut Ledger, cash: &mut CashB
     book.bills += deal.bills.len() as u32;
     book.face += deal.face;
     book.coin += paid;
-    book.promised += deal.hub_bills.iter().map(|&id| bills.bills[id].amount).sum::<f64>();
+    book.promised += deal.hub_bills.iter().map(|&id| bills.bills[id].amount).sum::<Fixed>();
     book.crates += deal.crates.len() as u32;
     for s in deal.crates {
         h.hub.held.push(Held { shipment: s, carted: false, booked: None });
@@ -297,7 +299,7 @@ pub fn buy_at_town(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, bo
         // What the hub could pay, as last counted at home: its treasury beyond its reserve, and its households' savings.
         let means = match towns.get(towns_list.0[hub]) {
             Ok((money, _, trades, people, deposits, farm)) => (spare(&content, money.0, trades, farm)
-                + on_call(&content, people.purse, deposits.owed)).max(0.0),
+                + on_call(&content, people.purse, deposits.owed)).at_least_zero(),
             Err(_) => continue,
         };
         let counting = towns.get(towns_list.0[hub]).is_ok_and(|(_, _, t, ..)| t.counting_house);
@@ -319,8 +321,8 @@ pub fn buy_at_town(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, bo
             continue;
         }
         let keep = crate::road::purse_keep(&content, &route, crate::road::mouths(Some(wagon)));
-        let coin = (wagon.purse - keep).max(0.0);
-        let deal = buy(&t, &mut bills, &mut crates, &mut offered, coin, means);
+        let coin = (wagon.purse - keep).at_least_zero();
+        let deal = buy(&t, &mut bills, &mut crates, &mut offered, coin.to_f64(), means.to_f64());
         store.held.extend(crates);
         let Some(deal) = deal else { continue };
         let paid = deal.coin(rate);
@@ -338,7 +340,7 @@ pub fn buy_at_town(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, bo
         book.bills += deal.bills.len() as u32;
         book.face += deal.face;
         book.coin += paid;
-        book.promised += deal.hub_bills.iter().map(|&id| bills.bills[id].amount).sum::<f64>();
+        book.promised += deal.hub_bills.iter().map(|&id| bills.bills[id].amount).sum::<Fixed>();
         book.crates += deal.crates.len() as u32;
         for s in deal.crates {
             wagon.freight.forwarding.push(s.clone());
@@ -377,7 +379,7 @@ fn pick(content: &Content, net: &Network, now: u64, book: &mut Book, bills: &mut
         // Only what can be crated goes: loose goods for a market beyond would be sold at the hub as the wagon's own.
         let Some(s) = pack(content, ledger, cash, now, shipper, g, n, &like) else { continue };
         stock[g] -= s.count;
-        drawn.push(bills.draw_for(buyer, home, s.count * price, now, day, Some(id)));
+        drawn.push(bills.draw_for(buyer, home, Fixed::ceil(s.count * price), now, day, Some(id)));
         book.ship(id, s.count);
         picked.push(s);
     }
@@ -418,21 +420,21 @@ pub fn collect_forwarding(clock: Res<Clock>, content: Res<Content>, towns_list: 
         // The hub's means, as last counted, for its discount desk.
         let (hub_means, counting, fill) = match towns.get(towns_list.0[hub]) {
             Ok((_, money, stock, trades, farm, _, _, h, people, deposits)) => (
-                (spare(&content, money.0, trades, farm) + on_call(&content, people.purse, deposits.owed)).max(0.0),
+                (spare(&content, money.0, trades, farm) + on_call(&content, people.purse, deposits.owed)).at_least_zero(),
                 trades.counting_house, super::freight::fill(&content, stock, h)),
             Err(_) => continue,
         };
         let Ok((_, mut money, mut stock, trades, farm, mut store, mut paperwork, ..)) = towns.get_mut(towns_list.0[town]) else { continue };
-        let can = spare(&content, money.0, trades, farm).max(0.0);
+        let can = spare(&content, money.0, trades, farm).at_least_zero();
         let slots = if wagon.slots > 0 { wagon.slots } else { d.wagon_slots };
         let aboard = stacks(&content, &wagon.cargo, &wagon.shipments) as i64;
-        let room = (slots as i64 - aboard).min((can / per_stack).floor() as i64);
+        let room = (slots as i64 - aboard).min((can.to_f64() / per_stack).floor() as i64);
         if slots as i64 - aboard <= 0 {
             continue;
         }
         let mut picked = Vec::new();
         let mut drawn = Vec::new();
-        let mut credit = 0.0;
+        let mut credit = Fixed::ZERO;
         {
             let shipper_spare = can;
             let mut shipper = Shipper { town, money: &mut money.0, spare: shipper_spare, store: &mut store,
@@ -448,7 +450,7 @@ pub fn collect_forwarding(clock: Res<Clock>, content: Res<Content>, towns_list: 
             if more > 0 {
                 let (p, b) = pick(&content, &net, now, &mut book, &mut bills, &mut ledger, &mut cash, &route, &mut stock.0, &mut shipper, more,
                     |c| c.price * content.goods[c.good].stack as f64 * d.freight_lien >= per_stack);
-                credit = p.iter().map(|s| s.stacks(&content)).sum::<u32>() as f64 * per_stack;
+                credit = Fixed::ceil(p.iter().map(|s| s.stacks(&content)).sum::<u32>() as f64 * per_stack);
                 picked.extend(p);
                 drawn.extend(b);
             }
@@ -457,10 +459,10 @@ pub fn collect_forwarding(clock: Res<Clock>, content: Res<Content>, towns_list: 
             continue;
         }
         let total: u32 = picked.iter().map(|s| s.stacks(&content)).sum();
-        let fee = (total as f64 * per_stack - credit).max(0.0).min(money.0.max(0.0));
+        let fee = (Fixed::ceil(total as f64 * per_stack) - credit).at_least_zero().min(money.0.at_least_zero());
         post(&mut ledger, &mut cash, Side::treasury(town, &mut money.0), Side::wagon(route.seq, &mut wagon.purse), fee,
             credit_reason(), now, content.day_ticks);
-        if credit > 0.01 {
+        if credit > Fixed::from_millis(10) {
             // The rest on the town's bill to the hub, thirty days hence (it rides home in the wagon's papers).
             let term = (d.freight_credit_days * content.day_ticks as f64) as u64;
             let id = bills.draw_term(town, hub, credit, now, content.day_ticks, term, None);
@@ -468,14 +470,14 @@ pub fn collect_forwarding(clock: Res<Clock>, content: Res<Content>, towns_list: 
             wagon.bills.push(id);
         }
         // The shipper's bills on the buyers: bought now, from the purse, by the hub's forwarder; the rest it keeps.
-        let mut taking = 0.0;
+        let mut taking = Fixed::ZERO;
         let hub_e = towns_list.0[hub];
-        let mut tally = (0u32, 0.0);
+        let mut tally = (0u32, Fixed::ZERO);
         for id in drawn {
             let b = &bills.bills[id];
             let q = Discounts::quote(&bills, &book, hub, counting, b, false, taking, fill, hub_means, now, content.day_ticks, d);
-            let price = b.amount * q.share;
-            if !q.taken() || price <= 0.0 || wagon.purse < price || b.due <= now || net.legs(hub, b.drawee).is_empty() {
+            let price = b.amount.mul_floor(q.share);
+            if !q.taken() || !price.is_positive() || wagon.purse < price || b.due <= now || net.legs(hub, b.drawee).is_empty() {
                 bills.bills[id].held = Paper::Town(town); // drawn at the town, filed by it
                 continue;
             }
@@ -494,7 +496,7 @@ pub fn collect_forwarding(clock: Res<Clock>, content: Res<Content>, towns_list: 
             wagon.shipments.push(s);
         }
         let book_entry = freight.stranded(hub);
-        book_entry.credit_stacks += if credit > 0.0 { (credit / per_stack).round() as u32 } else { 0 };
+        book_entry.credit_stacks += if credit.is_positive() { (credit.to_f64() / per_stack).round() as u32 } else { 0 };
         book_entry.credit += credit;
         if let Ok((.., mut h, _, _)) = towns.get_mut(hub_e) {
             h.book.forwarded += total;

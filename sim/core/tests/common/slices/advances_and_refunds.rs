@@ -29,10 +29,10 @@ pub fn daily(_s: &mut Society, _r: &mut Rng, _day: u64) {}
 pub fn check(s: &Society, _day: u64) -> Result<(), String> {
     for c in s.contracts() {
         let id = c.id;
-        if c.recouped > c.advanced + 1e-6 || c.refund < 0.0 || c.advanced < 0.0 {
+        if c.recouped > c.advanced || c.refund.is_negative() || c.advanced.is_negative() {
             return Err(format!("contract {id}: advanced {}, worked off {}, owed back {}", c.advanced, c.recouped, c.refund));
         }
-        if c.state == State::Broken && (c.advanced - c.recouped).abs() > 1e-6 {
+        if c.state == State::Broken && c.advanced != c.recouped {
             return Err(format!("contract {id}: broken with {} not worked off or owed back", c.advanced - c.recouped));
         }
         // (A broken contract whose goods were on the road when it broke completes when they arrive, as the mod's
@@ -43,7 +43,8 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
         if c.advance_share == 0.0 && (c.advanced != 0.0 || c.recouped != 0.0) {
             return Err(format!("contract {id}: an advance paid with none asked for"));
         }
-        if c.advanced > c.advance_share * c.worth() + 1e-6 {
+        // (its share of the worth rounded up to the thousandth, as `advance_due` asks it)
+        if c.advanced > enterprise_core::Fixed::ceil(c.advance_share * c.worth()) {
             return Err(format!("contract {id}: {} paid up front, more than its share of {}", c.advanced, c.worth()));
         }
     }

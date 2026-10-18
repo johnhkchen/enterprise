@@ -110,6 +110,10 @@ core-test:
 core-fingerprint:
     cd sim && cargo test --release -q --test fingerprint -- --ignored --nocapture 2>&1 | grep '^fingerprint'
 
+# The 200-day replay built for WebAssembly (wasm32-wasip1, under Node's WASI): its digest must be the native one's
+core-wasm-replay:
+    cd sim && CARGO_TARGET_WASM32_WASIP1_RUNNER="node $PWD/wasi-run.mjs" cargo test --release -q -p enterprise-core --target wasm32-wasip1 --test replay
+
 # The network study's world in the fast host, no game: `just study 365 --csv /tmp/base.csv --river --people-use`
 study *args:
     cd sim && cargo run --release -q -p enterprise-sim -- {{args}}

@@ -29,6 +29,7 @@ use crate::freight::Hub;
 use crate::messages::TownId;
 use crate::post::*;
 use crate::realms::{Crown, OffMap, Realm};
+use crate::fixed::Fixed;
 use crate::state::*;
 
 pub fn register(schedule: &mut Schedule) {
@@ -96,8 +97,8 @@ fn distances<'a>(towns: impl Iterator<Item = &'a Town>, routes: &Roads) -> Dista
 }
 
 /// The sender pays the postage, as far as its money goes (`Post.post`).
-fn postage(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, town: TownId, money: &mut f64, now: u64) {
-    let fee = content.dials.postage.min(money.max(0.0));
+fn postage(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, town: TownId, money: &mut Fixed, now: u64) {
+    let fee = Fixed::ceil(content.dials.postage).min(money.at_least_zero());
     post(ledger, cash, Side::treasury(town, money), Side::outside(), fee, postage_reason(), now, content.day_ticks);
 }
 
@@ -153,7 +154,7 @@ pub fn read(clock: Res<Clock>, content: Res<Content>, list: Res<Towns>, crown: R
                     &mut towns, &known, &places),
                 Kind::Remit => {
                     let (_, mut money, ..) = towns.get_mut(known[t].entity).unwrap();
-                    if letter.value > 0.0 {
+                    if letter.value.is_positive() {
                         post(&mut ledger, &mut cash, Side::outside(), Side::treasury(t, &mut money.0), letter.value,
                             remit_reason(), now, day);
                     }
@@ -208,9 +209,9 @@ fn honour(content: &Content, now: u64, letter: &Letter, mail: &mut Mail, book: &
     let (_, mut money, mut people, _, trades, farm, deposits, ..) = towns.get_mut(known[drawee].entity).unwrap();
     let reserve = super::farms::reserve(content, trades, farm);
     let owed = deposits.as_ref().map_or(0.0, |d| d.owed);
-    let cash_beyond = (money.0 - reserve).max(0.0);
+    let cash_beyond = (money.0 - reserve).at_least_zero();
     let can = cash_beyond + crate::farms::on_call(content, people.purse, owed);
-    let mut paid = 0.0;
+    let mut paid = Fixed::ZERO;
     let mut returned = Vec::new();
     for &id in &letter.bills {
         let Some(b) = bills.bills.get(id) else { continue };
@@ -241,7 +242,7 @@ fn honour(content: &Content, now: u64, letter: &Letter, mail: &mut Mail, book: &
                 paid - cash_beyond, now);
         }
     }
-    let sent = paid.min(money.0.max(0.0));
+    let sent = paid.min(money.0.at_least_zero());
     post(ledger, cash, Side::treasury(drawee, &mut money.0), Side::outside(), sent, remit_reason(), now, day);
     postage(content, ledger, cash, drawee, &mut money.0, now);
     mail.send(content, Letter { kind: Kind::Remit, from: drawee, to: letter.from, value: sent, bills: returned,
@@ -263,7 +264,7 @@ fn call_in(content: &Content, now: u64, letter: &Letter, crown: &Crown, roads: &
     let cost = blocks.map_or(f64::INFINITY, |b| trip_cost(content, b));
     let aid = if first && crown.capital.is_some() { content.dials.crown_aid * cost } else { 0.0 };
     let mut reply = Letter { kind: Kind::Reply, from: hub, to: town, ..Default::default() };
-    if known[town].outside || !cost.is_finite() || !call_pays(content, letter.value, cost, aid) {
+    if known[town].outside || !cost.is_finite() || !call_pays(content, letter.value.to_f64(), cost, aid) {
         let (_, mut money, ..) = towns.get_mut(known[hub].entity).unwrap();
         postage(content, ledger, cash, hub, &mut money.0, now);
         mail.send(content, reply, now, blocks); // declined
@@ -277,7 +278,8 @@ fn call_in(content: &Content, now: u64, letter: &Letter, crown: &Crown, roads: &
     // The crown's aid, out of its capital's treasury, as far as it holds it (`payAid`).
     if let Some(capital) = crown.capital.filter(|&c| c != hub && c < known.len() && aid > 0.0) {
         if let Ok([mut royal, mut at_hub]) = towns.get_many_mut([known[capital].entity, known[hub].entity]) {
-            let paid = aid.min(royal.1.0.max(0.0));
+            // Rounded down to the thousandth: aid paid out.
+            let paid = Fixed::floor(aid).min(royal.1.0.at_least_zero());
             post(ledger, cash, Side::treasury(capital, &mut royal.1.0), Side::treasury(hub, &mut at_hub.1.0), paid,
                 aid_reason(), now, day);
         }
@@ -397,12 +399,13 @@ fn consider_booking(content: &Content, now: u64, town: TownId, crown: &Crown, bo
     let (_, mut money, _, stock, .., store) = towns.get_mut(known[town].entity).unwrap();
     let (goods, stacks) = sale_goods(content, now, town, hub, book, roads, known, &stock.0, store);
     let worth: f64 = goods.iter().map(|&(g, n)| n * content.goods[g].value).sum();
+    let value = Fixed::round(worth);
     let fare = fare(content, blocks, roads.route(hub, town).is_some_and(|r| !r.on_call));
     if stacks == 0 || worth < 2.0 * fare * stacks as f64 {
         return;
     }
     postage(content, ledger, cash, town, &mut money.0, now);
-    mail.send(content, Letter { kind: Kind::Book, from: town, to: hub, stacks, value: worth, ..Default::default() },
+    mail.send(content, Letter { kind: Kind::Book, from: town, to: hub, stacks, value, ..Default::default() },
         now, Some(blocks));
 }
 
@@ -444,7 +447,7 @@ fn review_hub(content: &Content, now: u64, hub: TownId, roads: &Roads, places: &
         mail.calls.push(Call { hub, town: c.town, day: today, value: c.worth });
     }
     let (_, mut money, _, _, trades, farm, ..) = towns.get_mut(known[hub].entity).unwrap();
-    let mut spare = (money.0 - super::farms::reserve(content, trades, farm)).max(0.0);
+    let mut spare = (money.0 - super::farms::reserve(content, trades, farm)).at_least_zero();
     for (town, net) in forwarder.remits(content, hub, now, &mut spare) {
         post(ledger, cash, Side::treasury(hub, &mut money.0), Side::outside(), net, remit_reason(), now,
             content.day_ticks);
@@ -493,7 +496,7 @@ pub fn go_on_call(clock: Res<Clock>, content: Res<Content>, mail: Res<Mail>, for
             continue;
         }
         let Ok((money, trades, mut budget, farm)) = towns.get_mut(route.from) else { continue };
-        let spare = (money.0 - super::farms::reserve(&content, trades, farm) - plan.purse).max(0.0);
+        let spare = (money.0 - super::farms::reserve(&content, trades, farm) - plan.purse).at_least_zero();
         let free_money = free(&content, trades, money, &bills, route.from_id, now);
         plan.purse += Accountant::allow(&content, &mut cash, route.from_id, now, free_money, &mut budget,
             Reason::Other("a call's goods".into()), offered.min(spare));
@@ -533,7 +536,7 @@ pub fn credit_sold(mut forwarder: ResMut<Forwarder>, routes: Query<(Entity, &Rou
         let w = state.wagon.as_ref().unwrap();
         for (g, &n) in w.sold_here.iter().enumerate() {
             if n > 0.0 {
-                forwarder.sold(route.from_id, g, n, w.paid_here.get(g).copied().unwrap_or(0.0));
+                forwarder.sold(route.from_id, g, n, w.paid_here.get(g).copied().unwrap_or_default());
             }
         }
     }
@@ -641,7 +644,7 @@ pub fn collect(clock: Res<Clock>, content: Res<Content>, list: Res<Towns>, book:
             }
             stock.0[g] -= going;
             wagon.cargo[g] += going;
-            forwarder.lot(route.from_id, route.to_id, g, going, fare * (going / stack).ceil(), now);
+            forwarder.lot(route.from_id, route.to_id, g, going, Fixed::ceil(fare * (going / stack).ceil()), now);
         }
     }
 }

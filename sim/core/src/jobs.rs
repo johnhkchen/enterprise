@@ -205,8 +205,8 @@ pub fn town_bag(content: &Content, signals: &Signals, town: usize, stock: &Stock
 /// A town's place for its stalls: the borrowed pieces of it (the system and the host's call each lend them).
 pub struct Place<'a> {
     pub town: usize,
-    pub money: &'a mut f64,
-    pub purse: &'a mut f64,
+    pub money: &'a mut crate::fixed::Fixed,
+    pub purse: &'a mut crate::fixed::Fixed,
     pub deposits: &'a mut Deposits,
     pub budget: &'a mut Budget,
     pub stock: &'a Stock,
@@ -259,7 +259,7 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
         .position(|h| !h.is_baby() && !h.away && content.trades.get(h.trade).is_some_and(|t| t.none));
     let retraining = idle.is_none();
     let hand = idle.or_else(|| slack(content, place))?;
-    let stall = content.dials.stall_emeralds;
+    let stall = crate::fixed::Fixed::ceil(content.dials.stall_emeralds);
     let reserve = crate::rules::farms::reserve(content, place.trades, Some(place.farm));
     let cash = *place.money - reserve;
     // Short of coin for the stall, the treasury may borrow its households' savings.
@@ -267,7 +267,8 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
         return None;
     }
     let trade = for_contracts(content, place).or_else(|| {
-        let marbles = town_bag(content, signals, place.town, place.stock, place.farm, place.met, *place.purse, place.roster);
+        let marbles = town_bag(content, signals, place.town, place.stock, place.farm, place.met, place.purse.to_f64(),
+            place.roster);
         draw(&marbles, books.rng)
     })?;
     if retraining && place.roster.count(trade) > 0 {
@@ -319,7 +320,7 @@ impl crate::society::Society {
             return Vec::new();
         };
         let content = self.content();
-        town_bag(content, self.world.resource::<Signals>(), town, stock, farm, &people.comfort_met, people.purse, &roster).into_iter()
+        town_bag(content, self.world.resource::<Signals>(), town, stock, farm, &people.comfort_met, people.purse.to_f64(), &roster).into_iter()
             .map(|(t, m)| (content.trades[t].name.clone(), m)).collect()
     }
 

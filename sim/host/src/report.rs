@@ -86,7 +86,7 @@ impl Tracker {
         self.routes.resize(s.route_count(), RouteTrack::default());
         while self.towns.len() < s.town_count() {
             let t = self.towns.len();
-            self.towns.push(TownTrack { opening: if opening { s.town(t).money } else { 0.0 }, ..Default::default() });
+            self.towns.push(TownTrack { opening: if opening { s.town(t).money.to_f64() } else { 0.0 }, ..Default::default() });
         }
     }
 
@@ -111,7 +111,7 @@ impl Tracker {
                     let r = &mut self.routes[route];
                     r.arrived += 1;
                     r.sold_items += sold;
-                    r.takings_far += takings;
+                    r.takings_far += takings.to_f64();
                     if let Some(w) = &states[route].wagon {
                         r.sold_stacks += w.sold_here.iter().enumerate()
                             .map(|(g, n)| n / content.goods[g].stack.max(1) as f64).sum::<f64>();
@@ -120,7 +120,7 @@ impl Tracker {
                 Output::WagonHome { route, takings } => {
                     let r = &mut self.routes[route];
                     r.home += 1;
-                    r.takings_home += takings;
+                    r.takings_home += takings.to_f64();
                     r.stacks_home += states[route].last_home.unwrap_or(0) as u64;
                 }
                 _ => {}
@@ -137,12 +137,14 @@ impl Tracker {
     pub fn read_books(&mut self, s: &Society, day: u64) {
         for r in 0..s.route_count() {
             for (_, label, v) in s.account_book(Account::Wagon(r), 3).into_iter().filter(|(d, _, _)| *d == day) {
+                let v = v.to_f64();
                 let e = self.routes[r].cash.entry(label).or_default();
                 if v >= 0.0 { e.0 += v } else { e.1 -= v }
             }
         }
         for t in 0..s.town_count() {
             for (_, label, v) in s.cash_book(t, 3).into_iter().filter(|(d, _, _)| *d == day) {
+                let v = v.to_f64();
                 let e = self.towns[t].cash.entry(label.clone()).or_default();
                 if v >= 0.0 { e.0 += v } else { e.1 -= v }
                 if label.starts_with("lockers: sold") && v > 0.0 {
@@ -179,7 +181,7 @@ impl Tracker {
             let tr = &self.routes[r];
             let _ = writeln!(lines, "{day},route,{},{rate:.3}{blank_town},{},{},{:.0},{:.1},{:.1},{:.0},{:.1},{:.1},{:.1},{:.1},{},{},{:.2},{:.1},{},{:.0}",
                 route_label(s, r), s.route_road_blocks(r), state.trips, state.sold, tr.takings_far * rate,
-                state.service_paid * rate, state.bought, state.purchases * rate, state.food_paid * rate,
+                state.service_paid.to_f64() * rate, state.bought, state.purchases.to_f64() * rate, state.food_paid.to_f64() * rate,
                 tr.takings_home * rate, tr.cash.get("wagon purse").map_or(0.0, |c| c.0) * rate, tr.stacks_out, tr.stacks_home, tr.sold_stacks, state.food_eaten,
                 state.short_rations, state.delivered);
         }
@@ -346,7 +348,7 @@ far end a trip; em hm: the purse a wagon brought home; food: points eaten, paid:
         let mut lines: Vec<(&String, &(f64, f64))> = tt.cash.iter().collect();
         lines.sort_by(|a, b| (b.1.0 + b.1.1).total_cmp(&(a.1.0 + a.1.1)));
         let (i, x): (f64, f64) = tt.cash.values().fold((0.0, 0.0), |a, v| (a.0 + v.0, a.1 + v.1));
-        let money = s.town(*t).money;
+        let money = s.town(*t).money.to_f64();
         let _ = writeln!(o, "{name}: opened {:.1}, in {i:.1}, out {x:.1}, now {money:.1} (unexplained {:+.2})",
             tt.opening, money - tt.opening - i + x);
         let parts: Vec<String> = lines.iter().take(10).map(|(l, (i, x))| {

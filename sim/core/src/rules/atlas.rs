@@ -82,7 +82,7 @@ pub fn depart(clock: Res<Clock>, content: Res<Content>, mut atlas: ResMut<Atlas>
                 }
             }
             let lines: Vec<Entry> = sent.iter().enumerate().filter(|(_, n)| **n > 0.0)
-                .map(|(g, &n)| Entry::new(today, Kind::Sent, route.to_id, g, n, 0.0)).collect();
+                .map(|(g, &n)| Entry::new(today, Kind::Sent, route.to_id, g, n, crate::fixed::Fixed::ZERO)).collect();
             books.file(&mut whys, route.from_id, today, keeps(&content, roster, works), lines);
             for (good, why, n) in reasons {
                 whys.why(route.from_id, Some(route.to_id), good, why, n, today);
@@ -127,7 +127,7 @@ pub fn log_sales(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut 
             if n <= 0.0 {
                 continue;
             }
-            let money = wagon.paid_here.get(g).copied().unwrap_or(0.0);
+            let money = wagon.paid_here.get(g).copied().unwrap_or_default();
             bought.push(Entry::new(today, Kind::Bought, route.from_id, g, n, money));
             wagon.log.push(Entry::new(today, Kind::Sold, route.to_id, g, n, money));
         }
@@ -197,7 +197,7 @@ pub fn hand_in(clock: Res<Clock>, content: Res<Content>, territory: Res<Territor
             }
         }
         let mut lines: Vec<Entry> = home.iter().enumerate().filter(|(_, n)| **n > 0.0)
-            .map(|(g, &n)| Entry::new(today, Kind::Home, route.to_id, g, n, 0.0)).collect();
+            .map(|(g, &n)| Entry::new(today, Kind::Home, route.to_id, g, n, crate::fixed::Fixed::ZERO)).collect();
         lines.append(&mut wagon.log);
         let (roster, works) = towns.get(route.from).unwrap_or((None, None));
         books.file(&mut whys, route.from_id, today, keeps(&content, roster, works), lines);
@@ -254,7 +254,7 @@ pub fn consider(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, sto
         let Ok((town, people, money, trades, farm, _)) = q.get(e) else { continue };
         let has_route = routes.iter().any(|r| r.from_id == town.id) || atlas.pending.iter().any(|&(f, _)| f == town.id);
         let spare = money.0 - super::farms::reserve(&content, trades, farm);
-        let considering = Considering { town: town.id, has_route, comfort_met: &people.comfort_met, spare };
+        let considering = Considering { town: town.id, has_route, comfort_met: &people.comfort_met, spare: spare.to_f64() };
         if let Some(to) = choose(&content, &atlas, &stocktakes, &places, &considering) {
             atlas.pending.push((town.id, to));
         }

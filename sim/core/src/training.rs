@@ -67,7 +67,8 @@ pub const REPOST_RAISE: f64 = 1.25;
 pub struct Training {
     pub trade: TradeId,
     pub level: u8,
-    pub bonus: f64,
+    /// What the contract pays for the new master, in thousandths (`fixed.rs`).
+    pub bonus: crate::fixed::Fixed,
     pub offtake: f64,
     pub already: u32,
     pub drafted: u64,
@@ -76,7 +77,7 @@ pub struct Training {
 
 impl Training {
     pub fn new(trade: TradeId, level: u8, bonus: f64, offtake: f64) -> Self {
-        Training { trade, level, bonus, offtake, ..Default::default() }
+        Training { trade, level, bonus: crate::fixed::Fixed::round(bonus), offtake, ..Default::default() }
     }
 
     /// The same work, for a seller that already has `n` of the trade at the level (`Training.forSeller`).
@@ -162,9 +163,9 @@ pub struct Lessons {
     /// Each trade it is contracted to train, to the highest level asked, and the offtake of the first contract with one.
     pub targets: Vec<Target>,
     /// Paid up front and not yet worked off: money the work may spend.
-    pub held: f64,
+    pub held: crate::fixed::Fixed,
     /// What the town keeps back (`Territory.reserve`).
-    pub reserve: f64,
+    pub reserve: crate::fixed::Fixed,
     /// The goods the town wants (its work first).
     pub wanted: Vec<bool>,
     /// Crates its warehouse holds, in its slots.
@@ -269,7 +270,7 @@ pub fn review(content: &Content, roster: &Roster, lockers: &mut Lockers, i: usiz
     // As far as it can spare (with what it was paid up front): a lesson at least.
     let spare = money.0 - reserve + held;
     let price = offers[k].price(rep, stack(&offers[k])) as f64;
-    let pay = !can_buy && spare >= price;
+    let pay = !can_buy && spare >= crate::fixed::Fixed::emeralds(price as i64);
     let o = &mut lockers.hands[i].offers[k];
     if pay && !o.on {
         o.on = true;
@@ -314,7 +315,7 @@ pub fn plan(content: &Content, book: &Book, apprenticeships: &mut Apprenticeship
         }
     }
     let lessons = &mut lockers.lessons;
-    lessons.held = if targets.is_empty() { 0.0 } else { book.advances_held(town) };
+    lessons.held = if targets.is_empty() { crate::fixed::Fixed::ZERO } else { book.advances_held(town) };
     lessons.reserve = crate::rules::farms::reserve(content, trades, farm);
     lessons.crates = store.map_or(0, |s| s.crates(content));
     lessons.wanted = wanted;
@@ -365,7 +366,7 @@ pub fn finish(content: &Content, book: &Book, bills: &mut Bills, ledger: &mut Le
         let Some(crated) = pack(content, ledger, cash, now, &mut shipper, made.good, n, &like) else { continue };
         stock.0[made.good] -= crated.count;
         let worth = crated.count * content.goods[made.good].value * t.offtake;
-        let bill = bills.draw(c.buyer, town, worth, now, content.day_ticks);
+        let bill = bills.draw(c.buyer, town, crate::fixed::Fixed::ceil(worth), now, content.day_ticks);
         bills.bills[bill].held = Held::Town(town);
         store.held.push(crated);
     }
@@ -403,7 +404,7 @@ pub struct Tenders {
 /// crates, the figures its reserve comes from.
 pub struct Desk<'a> {
     pub roster: Option<&'a Roster>,
-    pub money: f64,
+    pub money: crate::fixed::Fixed,
     pub stock: &'a Stock,
     pub trades: &'a Trades,
     pub farm: Option<&'a Farm>,
@@ -430,12 +431,13 @@ pub fn worth(content: &Content, now: u64, desk: &Desk, tender: &Tender) -> Optio
         return None;
     }
     let cost = if best == 0 { d.stall_emeralds } else { 0.0 } + levels * d.level_cost;
-    let money = desk.money - crate::rules::farms::reserve(content, desk.trades, desk.farm) + tender.work.bonus * d.advance_share;
+    let money = (desk.money - crate::rules::farms::reserve(content, desk.trades, desk.farm)).to_f64()
+        + tender.work.bonus.to_f64() * d.advance_share;
     let free = free_slots(content, desk.stock, desk.store.map_or(0, |s| s.crates(content)));
     if money < cost || free < d.free_slots as i64 {
         return None;
     }
-    Some(tender.work.bonus - cost)
+    Some(tender.work.bonus.to_f64() - cost)
 }
 
 /// What a reader's Merchant sees of the world as it reads: the dials, the clock, the routes and every town's desk.
@@ -497,7 +499,7 @@ impl Tenders {
         self.tenders.retain(|t| (t.open > 0 || carried.contains(&(t.id as i64))) && !lapses(t));
         for t in &out {
             if t.relay_for == 0 && t.reposts && t.open > 0 {
-                let work = Training { bonus: t.work.bonus * REPOST_RAISE, ..t.work };
+                let work = Training { bonus: t.work.bonus.mul_round(REPOST_RAISE), ..t.work };
                 let id = self.post(t.board, t.buyer, work, t.open, now + t.span, now, 0);
                 self.tenders.iter_mut().find(|x| x.id == id).unwrap().reposts = true;
             }
@@ -539,7 +541,8 @@ impl Tenders {
         let relaying = self.tenders.iter().any(|t| t.board == reader && t.relay_for == -(id as i64));
         if roads && !relaying && tender.relay_for == 0 {
             self.tenders.iter_mut().find(|t| t.id == id).unwrap().open -= 1;
-            let price = tender.work.bonus * (1.0 - env.content.dials.relay_margin);
+            // Less the relayer's margin, rounded down to the thousandth (what it offers on).
+            let price = tender.work.bonus.mul_floor(1.0 - env.content.dials.relay_margin);
             let work = Training { bonus: price, already: 0, ..tender.work };
             let sooner = (env.content.dials.supply_days * env.content.day_ticks as f64) as u64;
             self.post(reader, reader, work, 1, tender.due.saturating_sub(sooner), env.now, -(id as i64));

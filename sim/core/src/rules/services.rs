@@ -120,7 +120,7 @@ pub fn home(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, territory
             for &m in &done.heard {
                 atlas.learn(id, m, now);
             }
-            services.record(&service.name, id, id, 0.0, now);
+            services.record(&service.name, id, id, crate::fixed::Fixed::ZERO, now);
         }
     }
 }
@@ -290,16 +290,17 @@ pub fn abroad(clock: Res<Clock>, content: Res<Content>, territory: Res<Territory
                     miners: crate::kit::miners(&content, &territory, route.to_id, t.5) };
                 let trip = Trip { route: route.seq, mapped_at: state.mapped_at, path: &path, home_spare_plots: None,
                     home_animals: 0, herd: &wagon.herd, seller_level, buyer_level: crate::bargain::merchant_level(t.5) };
-                let budget = (t.1.0 - reserve).max(0.0);
+                let budget = (t.1.0 - reserve).at_least_zero();
                 let visit = Visit { content: &content, from: route.from_id, at: route.to_id, skill, now, planning: false,
-                    budget, town, trip: Some(trip), book: &book, atlas: &atlas, places, ledger: &services,
+                    budget: budget.to_f64(), town, trip: Some(trip), book: &book, atlas: &atlas, places, ledger: &services,
                     recipes: &recipes };
                 if !wanted(service, &visit) {
                     continue;
                 }
                 (perform(service, &visit), budget)
             };
-            let fee = done.fee.min(budget).max(0.0);
+            // The fee rounded up to the thousandth (a price paid), at most the budget.
+            let fee = crate::fixed::Fixed::ceil(done.fee.max(0.0)).min(budget);
             let (_, mut money, mut stock, _, mut people, _, farm, herds, ..) = towns.get_mut(route.to).unwrap();
             put(&mut ledger, &done, &mut stock.0, &mut people, farm.map(|f| f.into_inner()));
             if !done.bought.is_empty() {
@@ -326,7 +327,7 @@ pub fn abroad(clock: Res<Clock>, content: Res<Content>, territory: Res<Territory
                 state.mapped_at = Some(now);
                 state.towns_mapped = state.towns_mapped.max(seen);
             }
-            if fee > 0.0 {
+            if fee.is_positive() {
                 post(&mut ledger, &mut cash, Side::treasury(route.to_id, &mut money.0), Side::wagon(route.seq, &mut wagon.purse),
                     fee, Reason::Other(format!("service: {}", service.name)), now, day);
                 book.kept(route.from_id, route.to_id, content.dials.trust_per_service, now, day);

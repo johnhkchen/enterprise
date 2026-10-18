@@ -162,7 +162,7 @@ fn unpaid_guards_desert_unless_their_post_takes_tolls() {
     assert_eq!(s.guards(t), 0, "unpaid and earning nothing, they go");
     // The same, with tolls taken lately and within three days' pay owed: they wait.
     let (mut s, t) = garrison(640.0, 0.0, 3);
-    s.world.resource_mut::<enterprise_core::territory::Territory>().holdings.get_mut(&t).unwrap().toll_today = 1.0;
+    s.world.resource_mut::<enterprise_core::territory::Territory>().holdings.get_mut(&t).unwrap().toll_today = enterprise_core::Fixed::ONE;
     s.advance(2 * DAY);
     assert_eq!(s.guards(t), 3, "on credit, up to 3 days x 3 guards x 0.5");
     s.advance(10 * DAY);

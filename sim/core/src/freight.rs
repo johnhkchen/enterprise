@@ -68,6 +68,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::cargo::Shipment;
 use crate::content::Content;
+use crate::fixed::Fixed;
 use crate::hex::Hex;
 use crate::messages::{RouteId, TownId};
 use crate::state::{Route, RoutePath, RouteState};
@@ -149,7 +150,7 @@ pub struct Run {
     pub to: TownId,
     pub blocks: u32,
     pub travel_ticks: u64,
-    pub road_cost: f64,
+    pub road_cost: Fixed,
     pub every_ticks: u64,
     pub last_departure: Option<u64>,
     pub path: Vec<Hex>,
@@ -339,7 +340,7 @@ pub fn stack_price(content: &Content, run: &Run) -> f64 {
     let road = if crate::road::road_food(content) {
         crate::road::food_needed(content, run.blocks) * 2.0 * run.crew * d.purse_per_food_point
     } else {
-        run.road_cost
+        run.road_cost.to_f64()
     };
     road / run.capacity.max(1) as f64 * (1.0 + d.freight_margin)
 }
@@ -383,22 +384,22 @@ pub fn spurs_price(emeralds: f64, rate: f64) -> f64 {
 
 /// What the forwarder at `hub` asks for a crate of `stacks` bound for `to` (`handOver`'s fee), in emeralds, and the
 /// drayage in it: the cheapest leg's forwarding a stack, and the carting in and out with the margin, in whole spurs at
-/// `rate`. None where no carrier runs that way.
+/// `rate`, in thousandths rounded up (a cost). None where no carrier runs that way.
 pub fn forwarding_fee(content: &Content, net: &Network, hub: TownId, to: TownId, stacks: u32, rate: f64)
-        -> Option<(f64, f64)> {
+        -> Option<(Fixed, Fixed)> {
     let cheapest = net.legs(hub, to).iter().map(|l| forwarding_price(content, net, l)).fold(f64::INFINITY, f64::min);
     if !cheapest.is_finite() {
         return None;
     }
     let drayage = carts_for(stacks) as f64 * spurs_price(cart_price(content), rate);
     let fee = (stacks as f64 * cheapest * rate + drayage * (1.0 + content.dials.forward_margin)).ceil();
-    Some((fee / rate, drayage / rate))
+    Some((Fixed::ceil(fee / rate), Fixed::ceil(drayage / rate)))
 }
 
 /// A caravan's landing fee at a hub, in emeralds (`Freight.stopFee`, `land`): a quarter of what passing its posts costs
-/// (`passage`, in spurs), at least a quarter emerald, in whole spurs.
-pub fn stop_fee(content: &Content, passage: f64, rate: f64) -> f64 {
-    stop_price(content, passage, rate).ceil() / rate
+/// (`passage`, in spurs), at least a quarter emerald, in whole spurs (in thousandths, rounded up).
+pub fn stop_fee(content: &Content, passage: f64, rate: f64) -> Fixed {
+    Fixed::ceil(stop_price(content, passage, rate).ceil() / rate)
 }
 
 /// The landing fee as the mod prices it, in spurs, unrounded (`Freight.stopFee`; [`stop_fee`] is what a caravan pays).
@@ -430,7 +431,7 @@ impl Default for Block {
 pub struct Booking {
     pub leg: Leg,
     pub stacks: u32,
-    pub fare: f64,
+    pub fare: Fixed,
     pub block: bool,
 }
 
@@ -448,14 +449,14 @@ pub struct Held {
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct HubBook {
     pub forwarded: u32,
-    pub fees: f64,
+    pub fees: Fixed,
     pub bills: u32,
-    pub face: f64,
+    pub face: Fixed,
     pub carried: u32,
-    pub freight: f64,
-    pub drayage: f64,
+    pub freight: Fixed,
+    pub drayage: Fixed,
     pub carts: u32,
-    pub landing: f64,
+    pub landing: Fixed,
 }
 
 /// A town's storehouse and its forwarder (`Depots.STOREHOUSE`, `Freight`): every town has one, inert until it's a hub.
@@ -476,8 +477,8 @@ pub struct Hub {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct HandOver {
     pub stacks: u32,
-    pub fee: f64,
-    pub drayage: f64,
+    pub fee: Fixed,
+    pub drayage: Fixed,
 }
 
 /// Stacks of space a wagon may sell a run (`(int) (CARGO_SLOTS * SHARE)`).
@@ -505,8 +506,8 @@ impl Hub {
     }
 
     /// The fares a carrier's run earns from the forwarder's block on a leg, in emeralds (`blockFares`).
-    pub fn block_fares(&self, leg: &Leg) -> f64 {
-        self.blocks.get(&leg.key()).filter(|b| b.runs > 0).map_or(0.0, |b| b.stacks as f64 * b.price)
+    pub fn block_fares(&self, leg: &Leg) -> Fixed {
+        self.blocks.get(&leg.key()).filter(|b| b.runs > 0).map_or(Fixed::ZERO, |b| Fixed::ceil(b.stacks as f64 * b.price))
     }
 
     /// The day's restock (`restock`, `restockDray`): each leg's shop stocked with the space its next run has to spare
@@ -528,7 +529,7 @@ impl Hub {
     /// free to cart it in and out, and `purse` (emeralds) to pay the fee (the cheapest leg's forwarding a stack, and the
     /// carting with the margin, in whole spurs at `rate`), the crate is the forwarder's. The rest stay in `crates`.
     #[allow(clippy::too_many_arguments)]
-    pub fn hand_over(&mut self, content: &Content, net: &Network, hub: TownId, crates: &mut Vec<Shipment>, purse: f64,
+    pub fn hand_over(&mut self, content: &Content, net: &Network, hub: TownId, crates: &mut Vec<Shipment>, purse: Fixed,
             rate: f64, skip: &[TownId]) -> HandOver {
         let mut out = HandOver::default();
         let mut i = 0;
@@ -566,8 +567,8 @@ impl Hub {
     /// run, and it buys just the tickets the crate needs at the soonest run's shop with what it can `spare` (emeralds,
     /// beyond its reserve; counted down), the fare owed the carrier as it loads (none on its own run). A crate booked on
     /// a run that's gone is booked again. Returns stacks booked, and the fares it took on.
-    pub fn forward(&mut self, content: &Content, net: &Network, hub: TownId, now: u64, rate: f64, spare: &mut f64)
-            -> (u32, f64) {
+    pub fn forward(&mut self, content: &Content, net: &Network, hub: TownId, now: u64, rate: f64, spare: &mut Fixed)
+            -> (u32, Fixed) {
         let legs: BTreeSet<u64> = net.legs_from(hub).iter().map(|l| l.key()).collect();
         let mut held = std::mem::take(&mut self.held);
         for h in held.iter_mut() {
@@ -580,7 +581,7 @@ impl Hub {
         for b in held.iter().filter_map(|h| h.booked) {
             *on_legs.entry(b.leg.key()).or_insert(0) += b.stacks;
         }
-        let (mut booked, mut fares) = (0, 0.0);
+        let (mut booked, mut fares) = (0, Fixed::ZERO);
         for h in held.iter_mut() {
             if h.booked.is_some() {
                 continue;
@@ -602,7 +603,7 @@ impl Hub {
             // On the forwarder's own block first: space it's bought already.
             if let Some(leg) = on.iter().find(|l| self.room_on(&on_legs, l) >= stacks) {
                 self.blocks.get_mut(&leg.key()).unwrap().wanted += stacks as f64;
-                h.booked = Some(Booking { leg: *leg, stacks, fare: 0.0, block: true });
+                h.booked = Some(Booking { leg: *leg, stacks, fare: Fixed::ZERO, block: true });
                 *on_legs.entry(leg.key()).or_insert(0) += stacks;
                 booked += stacks;
                 continue;
@@ -618,13 +619,13 @@ impl Hub {
                 if lots < stacks {
                     continue;
                 }
-                let cost = stacks as f64 * spurs_price(leg_price(content, net, leg), rate) / rate;
+                let cost = Fixed::ceil(stacks as f64 * spurs_price(leg_price(content, net, leg), rate) / rate);
                 if *spare < cost {
                     continue;
                 }
                 *spare -= cost;
                 *self.tickets.get_mut(&leg.key()).unwrap() -= stacks;
-                let fare = if leg.carrier() == hub { 0.0 } else { cost }; // its own run's shop: the hub pays itself
+                let fare = if leg.carrier() == hub { Fixed::ZERO } else { cost }; // its own run's shop: the hub pays itself
                 fares += fare;
                 self.book.freight += cost;
                 h.booked = Some(Booking { leg: *leg, stacks, fare, block: false });
@@ -679,11 +680,11 @@ impl Hub {
     /// A carrier's run loads at the hub on a leg the forwarder has a block on (`runBlock`): the block's cost (paid by the
     /// caller, full or not, into the carrier's wagon), and what it wanted this run learned for the next block: smoothed
     /// by half, a block it didn't fill shrinking and one that overflowed growing for the runs still to come. Returns the
-    /// cost in emeralds (0 without a block).
-    pub fn run_block(&mut self, content: &Content, leg: &Leg) -> f64 {
+    /// cost in emeralds (0 without a block), rounded up to the thousandth.
+    pub fn run_block(&mut self, content: &Content, leg: &Leg) -> Fixed {
         let d = &content.dials;
-        let Some(b) = self.blocks.get_mut(&leg.key()).filter(|b| b.runs > 0) else { return 0.0 };
-        let cost = b.stacks as f64 * b.price;
+        let Some(b) = self.blocks.get_mut(&leg.key()).filter(|b| b.runs > 0) else { return Fixed::ZERO };
+        let cost = Fixed::ceil(b.stacks as f64 * b.price);
         b.average = if b.average < 0.0 { b.wanted } else { 0.5 * b.average + 0.5 * b.wanted };
         b.wanted = 0.0;
         b.runs -= 1;
@@ -772,8 +773,8 @@ pub fn receive(content: &Content, book: &mut crate::contracts::Book, now: u64, t
         return;
     }
     let counted = shipment.count.min(c.owed(now + c.every).max(c.shipped)).max(0.0);
-    let worth = counted * c.price;
-    book.settle(id, counted, counted, worth, 0.0);
+    let worth = Fixed::ceil(counted * c.price);
+    book.settle(id, counted, counted, worth, Fixed::ZERO);
 }
 
 use crate::society::Society;
@@ -865,7 +866,7 @@ impl Society {
     /// A host's crates offered to the hub's forwarder (a caravan's, in the mod's test): those it takes are its, the fee
     /// paid in from `purse` (emeralds the host holds, outside the society) into the hub's treasury; the rest stay in
     /// `crates`. Returns stacks handed over (`handOver`).
-    pub fn hand_over(&mut self, hub: TownId, crates: &mut Vec<Shipment>, purse: &mut f64) -> u32 {
+    pub fn hand_over(&mut self, hub: TownId, crates: &mut Vec<Shipment>, purse: &mut Fixed) -> u32 {
         let net = self.network();
         let content = self.content().clone();
         let rate = self.mint_rate();
@@ -891,7 +892,7 @@ impl Society {
     pub fn book(&mut self, hub: TownId, shipment: Shipment, leg: Leg, stacks: u32) {
         self.world.resource_mut::<crate::state::Ledger>().delivered[shipment.good] += shipment.count;
         let mut h = self.hub_mut(hub);
-        h.held.push(Held { shipment, carted: true, booked: Some(Booking { leg, stacks, fare: 0.0, block: false }) });
+        h.held.push(Held { shipment, carted: true, booked: Some(Booking { leg, stacks, fare: Fixed::ZERO, block: false }) });
         self.put_hub(hub, h);
     }
 
@@ -936,12 +937,12 @@ impl Society {
     /// A carrier's run loads at the hub on a leg the forwarder has a block on (`runBlock`): the hub pays for the block,
     /// as far as its treasury goes, into the carrier's wagon if it's on the road, else to the host (outside the society,
     /// as the mod's test takes it). Returns the emeralds paid.
-    pub fn run_block(&mut self, hub: TownId, leg: &Leg) -> f64 {
+    pub fn run_block(&mut self, hub: TownId, leg: &Leg) -> Fixed {
         let content = self.content().clone();
         let mut h = self.hub_mut(hub);
         let cost = h.run_block(&content, leg);
         self.put_hub(hub, h);
-        let paid = cost.min(self.town(hub).money.max(0.0));
+        let paid = cost.min(self.town(hub).money.at_least_zero());
         if paid > 0.0 {
             let on_road = self.balance(crate::cash_book::Account::Wagon(leg.route)).is_some();
             let to = if on_road { crate::cash_book::Account::Wagon(leg.route) } else { crate::cash_book::Account::Outside };

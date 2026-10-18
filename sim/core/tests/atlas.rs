@@ -121,7 +121,7 @@ fn a_town_commissions_only_with_money_to_spare_and_a_known_stock() {
     s.set_people(DEST, 5.0, 5.0, 5.0);
     s.advance(DAY);
     s.record_stocktake(HUB, &[(COOKIE, 64.0)], Some(DAY));
-    s.pay(DEST, 7.5 - s.town(DEST).money); // under the 8 to spare beyond its reserve
+    s.pay(DEST, enterprise_core::Fixed::from(7.5) - s.town(DEST).money); // under the 8 to spare beyond its reserve
     assert_eq!(s.consider_commission(DEST), None, "not 8 emeralds to spare");
     s.pay(DEST, 1.0);
     assert!(s.consider_commission(DEST).is_some(), "8.5: enough");
@@ -172,7 +172,7 @@ fn both_merchants_keep_books_of_a_trip() {
     assert!(there.iter().any(|e| e.kind == Kind::Bought && e.good == Some(PAPER) && e.money > 0.0 && e.with == Some(HUB)),
         "the far Merchant's: paper bought {there:?}");
     let sold = home.iter().find(|e| e.kind == Kind::Sold).unwrap();
-    assert_eq!(s.last_price(HUB, DEST, PAPER), Some(sold.money / sold.count), "home knows what paper fetched there");
+    assert_eq!(s.last_price(HUB, DEST, PAPER), Some(sold.money.to_f64() / sold.count), "home knows what paper fetched there");
     assert_eq!(s.last_price(HUB, DEST, BREAD), None);
 }
 
@@ -368,7 +368,7 @@ fn books_go_back_ten_days_sixty_with_a_librarian_a_year_with_a_library() {
             s.finish_project(HUB, library);
         }
         s.advance(100 * DAY);
-        let line = |day: u64| Entry::new(day, Kind::Shop, DEST, PAPER, 1.0, 0.1);
+        let line = |day: u64| Entry::new(day, Kind::Shop, DEST, PAPER, 1.0, enterprise_core::Fixed::from(0.1));
         s.file(HUB, vec![line(0), line(39), line(41), line(89), line(99)]);
         s.books(HUB).iter().filter(|e| e.kind == Kind::Shop).map(|e| e.day).collect()
     };

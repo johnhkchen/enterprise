@@ -31,6 +31,7 @@ use crate::farms::Farm;
 use crate::people::{comfort_keep, comfort_par};
 use crate::realms::{OffMap, Realm};
 use crate::roster::Roster;
+use crate::fixed::Fixed;
 use crate::state::*;
 use crate::works::Works;
 
@@ -57,8 +58,8 @@ pub(crate) fn facts_of<'a>(content: &Content, stock: &'a Stock, money: &Money, t
         villagers: people.villagers,
         par: comfort_par(content, people),
         met: &people.comfort_met,
-        purse: people.purse,
-        spare: money.0 - reserve(content, trades, farm),
+        purse: people.purse.to_f64(),
+        spare: (money.0 - reserve(content, trades, farm)).to_f64(),
         stock: &stock.0,
     }
 }
@@ -86,7 +87,7 @@ pub fn keep_shops(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, m
         let mut shop = Vec::new();
         if people.villagers > 0.0 && roads.contains(&town.id) {
             let facts = facts_of(&content, stock, money, trades, people, farm);
-            let cash = facts.spare.max(0.0) + people.purse;
+            let cash = facts.spare.max(0.0) + facts.purse;
             shop = shop_wants(&content, &facts, trades, cash, true, |g| reckon(&content, g, &facts, None, clock.now));
         }
         if shop.is_empty() {
@@ -117,18 +118,18 @@ pub fn plan_shopping(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>
         towns: Query<(&Money, &Stock, &Trades, &Budget, &People, Option<&Roster>, Option<&Farm>)>) {
     let now = clock.now;
     // What every plan from a town carries and its road costs this look.
-    let mut committed: BTreeMap<usize, f64> = BTreeMap::new();
+    let mut committed: BTreeMap<usize, Fixed> = BTreeMap::new();
     // (In the routes' order: a sum's last bit mustn't hang on archetypes, which a load reorders.)
     for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, state) = routes.get(e).unwrap();
         let Some(plan) = state.plan.as_ref() else { continue };
         let Ok((_, stock, trades, _, _, roster, _)) = towns.get(route.from) else { continue };
         let keep_wheat = crate::road::keep_wheat(&content, trades, roster);
-        *committed.entry(route.from_id).or_insert(0.0) +=
+        *committed.entry(route.from_id).or_default() +=
             plan.purse + crate::road::road_money(&content, route, &stock.0, keep_wheat, plan.crew.len().max(1) as f64);
     }
     let mut budgets: BTreeMap<usize, Budget> = BTreeMap::new();
-    let mut planned: BTreeMap<usize, f64> = BTreeMap::new();
+    let mut planned: BTreeMap<usize, Fixed> = BTreeMap::new();
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(entity).unwrap();
         let route = *route;
@@ -154,15 +155,15 @@ pub fn plan_shopping(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>
         // Worth twice the road food: a round trip's, or the road's cost where content has no food.
         let mouths = plan.crew.len().max(1) as f64;
         let least = if crate::road::road_food(&content) {
-            2.0 * crate::road::food_needed(&content, route.blocks) * mouths * content.dials.purse_per_food_point
+            Fixed::ceil(2.0 * crate::road::food_needed(&content, route.blocks) * mouths * content.dials.purse_per_food_point)
         } else {
             route.road_cost
         }
-        .max(SHOPPING_LEAST);
-        let already = planned.get(&route.from_id).copied().unwrap_or(0.0);
-        let spare = (money.0 - reserve(&content, trades, farm) - committed.get(&route.from_id).copied().unwrap_or(0.0)
-            - already).max(0.0);
-        let mut shopping = spare.min(wanted);
+        .max(Fixed::ceil(SHOPPING_LEAST));
+        let already = planned.get(&route.from_id).copied().unwrap_or_default();
+        let spare = (money.0 - reserve(&content, trades, farm) - committed.get(&route.from_id).copied().unwrap_or_default()
+            - already).at_least_zero();
+        let mut shopping = spare.min(Fixed::floor(wanted));
         if shopping >= least {
             let budget = budgets.entry(route.from_id).or_insert(*budget);
             let free_money = free(&content, trades, money, &bills, route.from_id, now);
@@ -174,13 +175,13 @@ pub fn plan_shopping(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>
         if shopping < least {
             continue;
         }
-        *planned.entry(route.from_id).or_insert(0.0) += shopping;
+        *planned.entry(route.from_id).or_default() += shopping;
         plan.shopping = list;
         plan.shopping_money = shopping;
         plan.purse += shopping;
         // (A trip with nothing there to shop for isn't worth the road for the money alone: no empty trips.)
         if there {
-            plan.worth += shopping;
+            plan.worth += shopping.to_f64();
         }
     }
 }
@@ -192,8 +193,8 @@ fn held_goods(content: &Content, stock: &[f64], list: &[f64]) -> bool {
 }
 
 /// A wagon gone with shopping money: counted spent off its town's day's budget (the Accountant allowed it at the plan).
-pub fn spend(content: &Content, now: u64, free_money: f64, budget: &mut Budget, amount: f64) {
-    if amount > 0.0 {
+pub fn spend(content: &Content, now: u64, free_money: Fixed, budget: &mut Budget, amount: Fixed) {
+    if amount.is_positive() {
         super::left_for(content, now, free_money, budget, 1.0); // (the day's budget is set before it's spent from)
         budget.spent += amount;
     }
@@ -201,10 +202,10 @@ pub fn spend(content: &Content, now: u64, free_money: f64, budget: &mut Budget, 
 
 /// What a far end's Merchant and the wagon's keep of the wagon's purse for the road home's food (`keepForFood`): none
 /// where it packed its own.
-fn keep_for_food(content: &Content, route: &Route, wagon: &Wagon) -> f64 {
+fn keep_for_food(content: &Content, route: &Route, wagon: &Wagon) -> Fixed {
     let mouths = crate::road::mouths(Some(wagon));
     if wagon.provisions >= crate::road::food_needed(content, route.blocks) * mouths && crate::road::road_food(content) {
-        0.0
+        Fixed::ZERO
     } else {
         crate::road::purse_keep(content, route, mouths)
     }
@@ -224,7 +225,7 @@ fn deal(content: &Content, floor: f64, ceiling: f64, seller: u8, buyer: u8) -> O
 /// (`Caravans.boughtThere`): the far end's Merchant sold, the wagon's log says bought.
 #[allow(clippy::too_many_arguments)]
 fn bought_there(content: &Content, now: u64, books: &mut Books, whys: &mut Whys, route: &Route, far_keeps: u64,
-        wagon: &mut Wagon, good: usize, count: f64, paid: f64) {
+        wagon: &mut Wagon, good: usize, count: f64, paid: Fixed) {
     let today = now / content.day_ticks.max(1);
     books.enter(whys, route.to_id, today, far_keeps, Kind::Sold, route.from_id, good, count, paid);
     wagon.log.push(Entry::new(today, Kind::Bought, route.to_id, good, count, paid));
@@ -276,12 +277,13 @@ pub fn buy_for_home(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut
                 }
                 let value = content.goods[g].value;
                 let Some(each) = deal(&content, crate::bargain::seller_floor(value), value, resident, merchant) else { continue };
-                let quantity = (budget / value).ceil().min(((wagon.purse - keep) / each).floor());
+                let quantity = (budget / value).ceil().min(((wagon.purse - keep).to_f64() / each).floor());
                 let taken = quantity.min(stock.0[g].floor().max(0.0));
                 if taken <= 0.0 {
                     continue;
                 }
-                let paid = taken * each;
+                // Rounded up to the thousandth, as the mod's `Math.ceil(taken * each * rate)`.
+                let paid = Fixed::ceil(taken * each).min((wagon.purse - keep).at_least_zero());
                 stock.0[g] -= taken;
                 wagon.cargo[g] += taken;
                 post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse),
@@ -386,13 +388,13 @@ pub fn buy_surplus(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<Sto
                 continue; // no margin in it
             }
             if each > 0.0 {
-                quantity = quantity.min(((wagon.purse - keep) / each).floor());
+                quantity = quantity.min(((wagon.purse - keep).to_f64() / each).floor());
             }
             if each <= 0.0 || quantity <= 0.0 {
                 continue;
             }
             let taken = quantity.min(held);
-            let paid = taken * each;
+            let paid = Fixed::ceil(taken * each).min((wagon.purse - keep).at_least_zero());
             stock.0[g] -= taken;
             wagon.cargo[g] += taken;
             post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut money.0),
@@ -400,7 +402,7 @@ pub fn buy_surplus(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<Sto
             spare_food -= taken * points;
             if content.goods[g].crop {
                 if let Ok(mut farm) = farms.get_mut(route.to) {
-                    farm.sales_since += paid; // the farmers' share counts what was sold of their crops
+                    farm.sales_since += paid.to_f64(); // the farmers' share counts what was sold of their crops
                 }
             }
             state.bought += taken;
@@ -476,12 +478,12 @@ pub fn buy_backhaul(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<St
             let discount = MOST_GLUT_DISCOUNT.min(GLUT_DISCOUNT * (held / par - GLUT_PARS));
             let each = content.goods[g].value * (1.0 - discount);
             let mut quantity = glut.min(room as f64 * stack);
-            quantity = quantity.min(((wagon.purse - keep) / each.max(1e-9)).floor());
+            quantity = quantity.min(((wagon.purse - keep).to_f64() / each.max(1e-9)).floor());
             if quantity <= 0.0 {
                 continue;
             }
             let taken = quantity.min(held);
-            let paid = taken * each;
+            let paid = Fixed::ceil(taken * each).min((wagon.purse - keep).at_least_zero());
             stock.0[g] -= taken;
             wagon.cargo[g] += taken;
             post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut money.0),

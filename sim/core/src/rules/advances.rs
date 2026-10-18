@@ -59,7 +59,7 @@ pub(crate) fn advances_papers(clock: Res<Clock>, content: Res<Content>, mut book
         }
         // The advance the town here owes back to the wagon's town: what it can spare beyond its trading capital.
         for id in book.refunds(route.to_id, route.from_id) {
-            let can = (money.0 - trading_capital(&content, trades)).max(0.0);
+            let can = (money.0 - trading_capital(&content, trades)).at_least_zero();
             let pay = can.min(book.contracts[id].refund);
             if pay > ADVANCE_EPS {
                 post(&mut ledger, &mut cash, Side::treasury(route.to_id, &mut money.0), Side::wagon(route.seq, &mut wagon.purse),
@@ -69,7 +69,7 @@ pub(crate) fn advances_papers(clock: Res<Clock>, content: Res<Content>, mut book
         }
         // The advance the wagon's town owes back to the town here: paid from the purse it brought.
         for id in book.refunds(route.from_id, route.to_id) {
-            let pay = book.contracts[id].refund.min(wagon.purse.max(0.0));
+            let pay = book.contracts[id].refund.min(wagon.purse.at_least_zero());
             if pay > 0.0 {
                 post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut money.0),
                     pay, refund_reason(), now, day);
@@ -84,7 +84,7 @@ pub(crate) fn advances_papers(clock: Res<Clock>, content: Res<Content>, mut book
             }
             let due = c.advance_due();
             // Keeping its road food: the purse for the road home's (`payAdvances`'s `keep`).
-            let coin = due.min((wagon.purse - crate::road::purse_keep(&content, &route, crate::road::mouths(Some(wagon)))).max(0.0));
+            let coin = due.min((wagon.purse - crate::road::purse_keep(&content, &route, crate::road::mouths(Some(wagon)))).at_least_zero());
             post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut money.0),
                 coin, advance_reason(), now, day);
             let mut paid = coin;
@@ -104,7 +104,7 @@ pub(crate) fn advances_papers(clock: Res<Clock>, content: Res<Content>, mut book
             if !book.contracts[id].known_by_buyer {
                 continue;
             }
-            let can = (money.0 - trading_capital(&content, trades)).max(0.0);
+            let can = (money.0 - trading_capital(&content, trades)).at_least_zero();
             let pay = can.min(book.contracts[id].advance_due());
             if pay > ADVANCE_EPS {
                 post(&mut ledger, &mut cash, Side::treasury(route.to_id, &mut money.0), Side::wagon(route.seq, &mut wagon.purse),
@@ -132,15 +132,15 @@ pub(crate) fn plan_advances(clock: Res<Clock>, content: Res<Content>, book: Res<
         let trusted = book.trust(route.from_id, route.to_id, now, content.day_ticks) >= contracts::MIN_TRUST;
         for id in book.advances_due(route.to_id, route.from_id) {
             let due = book.contracts[id].advance_due();
-            let coin = due.min((money - plan.purse).max(0.0));
+            let coin = due.min((money - plan.purse).at_least_zero());
             plan.purse += coin;
-            plan.worth += due;
+            plan.worth += due.to_f64();
             plan.pressing |= coin > ADVANCE_EPS || trusted;
         }
         for id in book.refunds(route.from_id, route.to_id) {
             let owed = book.contracts[id].refund;
-            plan.purse += owed.min((money - plan.purse).max(0.0));
-            plan.worth += owed;
+            plan.purse += owed.min((money - plan.purse).at_least_zero());
+            plan.worth += owed.to_f64();
         }
     }
 }

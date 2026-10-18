@@ -148,7 +148,7 @@ fn a_contract_left_unjudged_past_its_deadline_is_caught() {
     assert!(sweep_checks::contracts(&s).is_ok());
     // Money on a contract below nothing is caught.
     let mut book = s.world.resource_mut::<Book>();
-    book.contracts[0].paid = -1.0;
+    book.contracts[0].paid = enterprise_core::Fixed::from(-1.0);
     drop(book);
     assert!(sweep_checks::contracts(&s).unwrap_err().contains("paid -1"));
 }

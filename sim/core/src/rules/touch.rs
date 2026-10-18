@@ -6,6 +6,7 @@ use bevy_ecs::prelude::*;
 use super::Step;
 use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
+use crate::fixed::Fixed;
 use crate::state::*;
 
 pub fn register(schedule: &mut Schedule) {
@@ -28,7 +29,8 @@ pub fn catch_up_town(now: u64, content: &Content, ledger: &mut Ledger, book: &mu
         let used = (trades.uses[g] * days).min(stock.0[g]);
         stock.0[g] -= used;
         ledger.used[g] += used;
-        let paid = used * content.goods[g].value;
+        // Paid in at its worth, to the nearest thousandth (`fixed.rs`).
+        let paid = Fixed::round(used * content.goods[g].value);
         post(ledger, book, Side::outside(), Side::treasury(town, &mut money.0), paid, Reason::Sold(g), now,
             content.day_ticks);
     }

@@ -154,7 +154,7 @@ fn unpaid_farmers_work_on_credit_then_take_their_share() {
     for touch in 2..=8 {
         s.advance(touch * 10 * DAY);
     }
-    assert!(the_farm(&s).credit <= cap + 1e-9, "credit stops at ten days' customary pay: {} of {cap}", the_farm(&s).credit);
+    assert!(the_farm(&s).credit <= enterprise_core::Fixed::floor(cap), "credit stops at ten days' customary pay: {} of {cap}", the_farm(&s).credit);
     assert!(the_farm(&s).wages_unpaid >= 1.0, "then the wages go unpaid, recorded");
     let before = s.town(0).stock[WHEAT];
     let worked = farms::yield_factor(s.town(0).people.mood);
@@ -266,12 +266,12 @@ fn the_treasury_borrows_its_households_savings_up_to_its_share() {
     let mut s = farm(0.0);
     s.post(Account::Outside, Account::Households(0), 100.0, Reason::PaidIn);
     let on_call = s.deposits_on_call(0);
-    assert!((on_call - 100.0 * s.content().dials.deposit_share).abs() < 1e-9, "its share of their savings on call: {on_call}");
+    assert!(on_call == 100.0 * s.content().dials.deposit_share, "its share of their savings on call: {on_call}");
     let before = s.town(0).money;
     let got = s.borrow_deposits(0, 30.0);
     assert!(got == 30.0 && s.town(0).money - before == 30.0 && s.deposits(0) == 30.0, "30 borrowed, owed them: {got}");
     let more = s.borrow_deposits(0, 100.0);
-    assert!((more - 20.0).abs() < 1e-6, "no more than its share in all: {more}");
+    assert!(more == 20.0, "no more than its share in all: {more}");
 }
 
 /// What it borrowed earns interest, and is repaid from what it can spare beyond its reserve and a keep of 10.
@@ -285,7 +285,7 @@ fn the_treasury_repays_its_households_with_interest_beyond_its_keep() {
     let i = 1.0 + s.content().dials.deposit_interest_per_day;
     let owed = 30.0 * i.powf(0.05) - 20.0;
     assert!((s.deposits(t) - owed).abs() < 1e-9, "20 repaid at once (30 held, 10 kept): {} owed", s.deposits(t));
-    assert!((s.town(t).money - 10.0).abs() < 1e-9 && (s.town(t).people.purse - 90.0).abs() < 1e-9);
+    assert!(s.town(t).money == 10.0 && s.town(t).people.purse == 90.0);
     s.advance(10 * DAY);
     let owed = owed * i.powf(9.95);
     assert!((s.deposits(t) - owed).abs() < 1e-9, "the rest gathers interest: {} of {owed}", s.deposits(t));
@@ -406,7 +406,7 @@ fn a_household_buys_a_field_of_its_own_and_owners_take_more() {
     s.advance(1200);
     let f = the_farm(&s);
     assert_eq!((f.freeholds, f.plots.get(&CARROT).copied()), (80, Some(80)), "nothing wanted, short of food: carrots");
-    assert!((s.town(t).people.purse - 2.0).abs() < 1e-9 && (s.town(t).money - 8.0).abs() < 1e-9, "paid the town");
+    assert!(s.town(t).people.purse == 2.0 && s.town(t).money == 8.0, "paid the town");
     s.advance(DAY + 1200);
     let v = s.farm(t).unwrap();
     let value = farms::value_per_day(s.content(), &v.farm.per_day);

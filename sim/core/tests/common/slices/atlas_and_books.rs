@@ -51,7 +51,7 @@ pub fn check(s: &Society, day: u64) -> Result<(), String> {
         }
         for e in s.books(t) {
             if e.kind == Kind::Why || e.day > day || e.day + enterprise_core::atlas::LIBRARY_DAYS < day
-                || e.count < 0.0 || e.money < 0.0 || !e.count.is_finite() || !e.money.is_finite() {
+                || e.count < 0.0 || e.money.is_negative() || !e.count.is_finite() {
                 return Err(format!("town {t}'s books hold {e:?} on day {day}"));
             }
             if let (Some(m), Some(g)) = (e.with, e.good) {

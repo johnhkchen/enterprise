@@ -83,9 +83,10 @@ impl RentTerms {
         self.season_days as u64 * self.day
     }
 
-    /// A rent's price: `rent_purchase_seasons` seasons' crop at `each` emeralds: `Rents.capital`.
-    pub fn capital(&self, quantity: f64, each: f64) -> f64 {
-        self.purchase_seasons * quantity * each
+    /// A rent's price: `rent_purchase_seasons` seasons' crop at `each` emeralds (`Rents.capital`), rounded up to the
+    /// thousandth: the holder's to pay.
+    pub fn capital(&self, quantity: f64, each: f64) -> crate::fixed::Fixed {
+        crate::fixed::Fixed::ceil(self.purchase_seasons * quantity * each)
     }
 }
 
@@ -105,7 +106,7 @@ pub struct Rent {
     pub holder: TownId,
     pub crop: GoodId,
     pub quantity: f64,
-    pub capital: f64,
+    pub capital: crate::fixed::Fixed,
     pub bought: u64,
     pub next_coupon: u64,
     /// The coupon in force (a contract in the book).
@@ -124,7 +125,7 @@ pub struct Rent {
     /// Of the crop, collected for the bearer and not yet handed over.
     pub accrued: f64,
     /// What its holder paid for it, and when it last changed hands.
-    pub paid: f64,
+    pub paid: crate::fixed::Fixed,
     pub traded: u64,
 }
 
@@ -137,8 +138,9 @@ pub struct Rents {
 impl Rents {
     /// Sold: the holder has paid the capital (the caller moves the money); the first coupon is issued at once.
     #[allow(clippy::too_many_arguments)]
-    pub fn sell(&mut self, farm: TownId, holder: TownId, crop: GoodId, quantity: f64, capital: f64, book: &mut Book,
-            now: u64, terms: &RentTerms) -> usize {
+    pub fn sell(&mut self, farm: TownId, holder: TownId, crop: GoodId, quantity: f64, capital: impl Into<crate::fixed::Fixed>,
+            book: &mut Book, now: u64, terms: &RentTerms) -> usize {
+        let capital = capital.into();
         let id = self.rents.len();
         self.rents.push(Rent { id, farm, holder, crop, quantity, capital, bought: now, next_coupon: now, coupon: None,
             coupons: 0, arrears: 0.0, delivered: 0.0, state: RentState::Active, ex_works: false, bearer: false,
@@ -281,19 +283,21 @@ pub fn bought_forward(book: &Book, buyer: TownId, crop: GoodId, day: u64) -> f64
 
 /// A dealer's price for a rent: its capital times how short the markets are of the crop, from half (all of it bought
 /// ahead) to twice (none): `RentDealer.price`. `wanted` is the markets' wants of the crop a day, `ahead` the crop a day
-/// all rents in force have bought ahead.
-pub fn dealer_price(capital: f64, wanted: f64, ahead: f64) -> f64 {
+/// all rents in force have bought ahead. To the nearest thousandth.
+pub fn dealer_price(capital: impl Into<crate::fixed::Fixed>, wanted: f64, ahead: f64) -> crate::fixed::Fixed {
+    let capital = capital.into();
     let share = if wanted + ahead <= 0.0 { 0.5 } else { wanted / (wanted + ahead) };
-    capital * (0.5 + 1.5 * share)
+    capital.mul_round(0.5 + 1.5 * share)
 }
 
-/// The dealer sells at its price a spread over and buys a spread under: `RentDeeds.quote`.
-pub fn ask(price: f64, spread: f64) -> f64 {
-    price * (1.0 + spread)
+/// The dealer sells at its price a spread over (rounded up: the buyer's to pay) and buys a spread under (rounded down:
+/// what it pays out): `RentDeeds.quote`.
+pub fn ask(price: impl Into<crate::fixed::Fixed>, spread: f64) -> crate::fixed::Fixed {
+    price.into().mul_ceil(1.0 + spread)
 }
 
-pub fn bid(price: f64, spread: f64) -> f64 {
-    price * (1.0 - spread)
+pub fn bid(price: impl Into<crate::fixed::Fixed>, spread: f64) -> crate::fixed::Fixed {
+    price.into().mul_floor(1.0 - spread)
 }
 
 impl Contract {
@@ -345,7 +349,7 @@ impl Society {
     /// The farm buys the rent back: its capital paid to the holder, its coupon closed. `false` if it can't pay.
     pub fn redeem_rent(&mut self, id: usize) -> bool {
         let rent = self.world.resource::<Rents>().rents[id].clone();
-        if rent.state != RentState::Active || self.balance(Account::Treasury(rent.farm)).unwrap_or(0.0) < rent.capital {
+        if rent.state != RentState::Active || self.balance(Account::Treasury(rent.farm)).unwrap_or_default() < rent.capital {
             return false;
         }
         self.post(Account::Treasury(rent.farm), Account::Treasury(rent.holder), rent.capital, Reason::Other("rent".into()));
@@ -382,7 +386,7 @@ impl Society {
 
     /// A rent's price at a hub now: its capital times how short the markets the hub's wagons reach (and the hub itself)
     /// are of the crop, a market's want being what its people use beyond what it makes.
-    pub fn rent_price(&self, hub: TownId, id: usize) -> f64 {
+    pub fn rent_price(&self, hub: TownId, id: usize) -> crate::fixed::Fixed {
         let rents = self.world.resource::<Rents>();
         let rent = &rents.rents[id];
         let capital = self.rent_terms().capital(rent.quantity, self.content().goods[rent.crop].value);
@@ -403,11 +407,11 @@ impl Society {
     }
 
     /// What the dealer at `hub` sells the rent's deed for, and buys it back for.
-    pub fn rent_ask(&self, hub: TownId, id: usize) -> f64 {
+    pub fn rent_ask(&self, hub: TownId, id: usize) -> crate::fixed::Fixed {
         ask(self.rent_price(hub, id), self.content().dials.dealer_spread)
     }
 
-    pub fn rent_bid(&self, hub: TownId, id: usize) -> f64 {
+    pub fn rent_bid(&self, hub: TownId, id: usize) -> crate::fixed::Fixed {
         bid(self.rent_price(hub, id), self.content().dials.dealer_spread)
     }
 }

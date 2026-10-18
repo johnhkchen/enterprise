@@ -164,8 +164,8 @@ impl Sweep {
             self.moods.push(s.town(t).people.mood);
             if let Some(f) = s.farm(t) {
                 self.farms += 1;
-                self.wages_paid += f.farm.wages_paid;
-                self.wages_unpaid += f.farm.wages_unpaid;
+                self.wages_paid += f.farm.wages_paid.to_f64();
+                self.wages_unpaid += f.farm.wages_unpaid.to_f64();
             }
             self.banks += s.is_bank(t) as u32;
             self.hubs += s.hub(t).storehouse as u32;

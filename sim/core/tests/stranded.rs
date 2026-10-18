@@ -23,10 +23,6 @@ fn content() -> Content {
         Good::new("iron_leggings", 3.0, 1), Good::new("cloth", 0.5, 64)], DAY)
 }
 
-fn close(a: f64, b: f64) -> bool {
-    (a - b).abs() < 1e-9
-}
-
 /// One look on.
 fn look(s: &mut Society) {
     let next = s.now() + s.content().dials.look_ticks;
@@ -72,8 +68,11 @@ fn a_hub_buys_a_towns_stranded_paper_for_coin_and_its_own_bill() {
         "the rest in the hub's own bill, and the goods go with the bill");
     assert_eq!(s.bills()[id].payee, hub, "the bill endorsed to the hub");
     // The money adds up: a coin share and the hub's bills make the price, less the goods' forwarding.
-    let promised: f64 = deal.hub_bills.iter().map(|&b| s.bills()[b].amount).sum();
-    assert!(close(coin + promised, deal.price), "coin {coin} and bills {promised} against a price of {}", deal.price);
+    let promised: enterprise_core::Fixed = deal.hub_bills.iter().map(|&b| s.bills()[b].amount).sum();
+    // (The price is a valuation; the coin is rounded down to the thousandth and the bill's debt and interest each up,
+    // so they make it to within the two thousandths those roundings move: `fixed.rs`.)
+    assert!(coin + promised >= enterprise_core::Fixed::floor(deal.price) && coin + promised <= enterprise_core::Fixed::ceil(deal.price) + enterprise_core::Fixed::from_millis(2),
+        "coin {coin} and bills {promised} against a price of {}", deal.price);
     let bill = &s.bills()[deal.hub_bill().unwrap()];
     assert!(bill.drawee == hub && bill.payee == town, "the hub's own bill to the town");
     assert_eq!(s.stranded_book(hub).bills, 1);
@@ -143,13 +142,16 @@ fn the_hub_pays_in_up_to_six_installments_each_at_most_half_what_it_could_pay_an
     for (i, &b) in deal.hub_bills.iter().enumerate() {
         let b = &s.bills()[b];
         assert_eq!(b.due, s.now() + term * (i as u64 + 1), "a bill term apart");
-        assert!(b.amount <= 50.0 + 1e-9, "each at most half of the hub's means: {}", b.amount);
+        assert!(b.amount <= 50.0, "each at most half of the hub's means: {}", b.amount);
         // A sixth of the price, its interest a bill term's for every term it runs (`Bills.draw` with a term).
-        let due = deal.price / 6.0 / 1.02 * (1.0 + 0.02 * (i as f64 + 1.0));
-        assert!(close(b.amount, due), "installment {i}: {} against {due}", b.amount);
+        // (the debt and its interest each rounded up to the thousandth: the drawee's)
+        let due = enterprise_core::Fixed::ceil(deal.price / 6.0 / 1.02).mul_ceil(1.0 + 0.02 * (i as f64 + 1.0));
+        assert!(b.amount == due, "installment {i}: {} against {due}", b.amount);
     }
-    let owed: f64 = deal.hub_bills.iter().map(|&b| s.bills()[b].amount).sum();
-    assert!(owed > deal.price && close(owed, deal.price * 1.07 / 1.02), "the whole price, and the later terms' interest: {owed} of {}", deal.price);
+    let owed: enterprise_core::Fixed = deal.hub_bills.iter().map(|&b| s.bills()[b].amount).sum();
+    let all: enterprise_core::Fixed = (0..6).map(|i| enterprise_core::Fixed::ceil(deal.price / 6.0 / 1.02).mul_ceil(1.0 + 0.02 * (i as f64 + 1.0))).sum();
+    assert!(owed > deal.price && owed == all && (owed.to_f64() - deal.price * 1.07 / 1.02).abs() < 0.012,
+        "the whole price, and the later terms' interest: {owed} of {}", deal.price);
 }
 
 #[test]
@@ -311,7 +313,7 @@ fn a_towns_wagon_to_a_hub_carries_its_stranded_paper_and_sells_it_there() {
         look(&mut s);
         s.conserved(&start).unwrap_or_else(|e| panic!("{e}"));
     }
-    assert!(s.town(town).money > before + 0.5 * book.coin, "the town has the coin: {} from {before}", s.town(town).money);
+    assert!(s.town(town).money > before + book.coin.mul_floor(0.5), "the town has the coin: {} from {before}", s.town(town).money);
     assert!(s.shipments(town).held.is_empty(), "the crate went with the wagon");
     // And the rest in the hub's bills, to the town (the wagon carried them home).
     let own: Vec<_> = s.bills().into_iter().filter(|b| b.drawee == hub && b.payee == town).collect();
@@ -536,7 +538,7 @@ fn a_hubs_wagon_carries_a_towns_goods_on_credit_when_it_cannot_pay_the_fare() {
     let owed: Vec<_> = s.bills().into_iter().skip(bills_before).filter(|b| b.drawee == town && b.payee == hub).collect();
     assert_eq!(owed.len(), 1, "{:?}", s.bills());
     // Two per cent for every bill term it runs: 30 days are seven and a half of them.
-    assert!(close(owed[0].amount, book.credit * 1.15), "the fare, and its fifteen per cent: {} of {}", owed[0].amount, book.credit);
+    assert!(owed[0].amount == book.credit.mul_ceil(1.15), "the fare, and its fifteen per cent: {} of {}", owed[0].amount, book.credit);
     assert_eq!(owed[0].due - owed[0].drawn, 30 * DAY, "due in thirty days");
     assert!(s.hub(hub).book.forwarded >= 1 || !s.hub(hub).held.is_empty(), "the goods are the forwarder's, or on their way home");
     assert!(s.town(town).money >= 0.0 && s.hub(hub).book.fees > 0.0, "it paid what it could: {:?}", s.hub(hub).book);
@@ -625,8 +627,8 @@ fn the_random_worlds_strand_paper_and_the_hubs_buy_it() {
             deals += b.deals;
             bills += b.bills;
             crates += b.crates;
-            credit += b.credit;
-            coined += b.coin;
+            credit += b.credit.to_f64();
+            coined += b.coin.to_f64();
             borrowed += s.deposits(t);
         }
         (deals, crates, credit, bills, borrowed, coined)

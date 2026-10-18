@@ -55,6 +55,7 @@ use bevy_ecs::schedule::SingleThreadedExecutor;
 
 use crate::bills::Bills;
 use crate::content::Content;
+use crate::fixed::Fixed;
 use crate::state::*;
 
 /// The steps of a look, in order.
@@ -117,32 +118,33 @@ pub fn shelf(content: &Content, trades: &Trades, good: usize) -> f64 {
     aim.max(trades.inputs.get(good).copied().unwrap_or(0.0))
 }
 
-/// The town's trading capital: `reserve_days` of what its people use, at its worth. Spend it on anything else and it
-/// couldn't buy the goods that earn its money.
-pub fn trading_capital(content: &Content, trades: &Trades) -> f64 {
-    trades.uses.iter().zip(&content.goods).map(|(u, g)| u * g.value).sum::<f64>() * content.dials.reserve_days
+/// The town's trading capital: `reserve_days` of what its people use, at its worth (to the nearest thousandth). Spend
+/// it on anything else and it couldn't buy the goods that earn its money.
+pub fn trading_capital(content: &Content, trades: &Trades) -> Fixed {
+    Fixed::round(trades.uses.iter().zip(&content.goods).map(|(u, g)| u * g.value).sum::<f64>() * content.dials.reserve_days)
 }
 
 /// The town's free money: what it holds beyond its trading capital, less the bills on it falling due soon.
-pub fn free(content: &Content, trades: &Trades, money: &Money, bills: &Bills, town: usize, now: u64) -> f64 {
+pub fn free(content: &Content, trades: &Trades, money: &Money, bills: &Bills, town: usize, now: u64) -> Fixed {
     let days = content.dials.budget_days * if trades.counting_house { 2.0 } else { 1.0 };
     let ahead = now + (days * content.day_ticks as f64) as u64;
-    (money.0 - trading_capital(content, trades) - bills.due_by(town, ahead)).max(0.0)
+    (money.0 - trading_capital(content, trades) - bills.due_by(town, ahead)).at_least_zero()
 }
 
 /// What's left of a town's day's budget for a seller who last came `days` ago: what the daily looks it missed would
 /// have allowed, one after another (`1 - (1 - share)^days` of the free money), less what's spent today. The budget is
-/// set at the day's first look, from the free money then.
-pub fn left_for(content: &Content, now: u64, free: f64, budget: &mut Budget, days: f64) -> f64 {
+/// set at the day's first look, from the free money then: a share of it, rounded down to the thousandth.
+pub fn left_for(content: &Content, now: u64, free: Fixed, budget: &mut Budget, days: f64) -> Fixed {
     let share = if budget.counting_house { (content.dials.budget_share * 1.5).min(1.0) } else { content.dials.budget_share };
     let today = now / content.day_ticks;
     if !budget.set || budget.day != today {
-        *budget = Budget { day: today, budget: share * free.max(0.0), spent: 0.0, set: true, counting_house: budget.counting_house };
+        *budget = Budget { day: today, budget: free.at_least_zero().mul_floor(share), spent: Fixed::ZERO, set: true,
+            counting_house: budget.counting_house };
     }
     let allowed = if days <= 1.0 || share <= 0.0 || share >= 1.0 {
         budget.budget
     } else {
-        budget.budget / share * (1.0 - crate::fixed::pow(1.0 - share, days))
+        budget.budget.mul_floor((1.0 - crate::fixed::pow(1.0 - share, days)) / share)
     };
-    (allowed - budget.spent).max(0.0)
+    (allowed - budget.spent).at_least_zero()
 }

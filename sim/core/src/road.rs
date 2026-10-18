@@ -153,7 +153,7 @@ pub fn eat(content: &Content, ledger: &mut Ledger, stock: &mut [f64], points: f6
 /// purse never keeps the wagon home): where content has food, the road home's purse, the way out's food home hasn't
 /// got and the team's fodder it hasn't; else the route's `road_cost`.
 /// `mouths`: the crew it plans to send (`squad.rs`), one without.
-pub fn road_money(content: &Content, route: &Route, home_stock: &[f64], keep_wheat: bool, mouths: f64) -> f64 {
+pub fn road_money(content: &Content, route: &Route, home_stock: &[f64], keep_wheat: bool, mouths: f64) -> crate::fixed::Fixed {
     if !road_food(content) {
         return route.road_cost;
     }
@@ -161,17 +161,19 @@ pub fn road_money(content: &Content, route: &Route, home_stock: &[f64], keep_whe
     let food = food_needed(content, route.blocks) * mouths;
     let team = 2.0 * food_needed(content, route.blocks) * content.dials.wagon_team as f64;
     let fed = fodder(content, home_stock, team, keep_wheat).2;
-    (food + (food - held(content, home_stock)).max(0.0) + team - fed) * ppfp
+    // Rounded up to the thousandth: a cost (`fixed.rs`).
+    crate::fixed::Fixed::ceil((food + (food - held(content, home_stock)).max(0.0) + team - fed) * ppfp)
 }
 
 /// What a wagon at the far end keeps of its purse for the road home's food, paying advances there (`payAdvances`'s
 /// `keep`): none where content has no road food.
 /// `mouths`: its crew's.
-pub fn purse_keep(content: &Content, route: &Route, mouths: f64) -> f64 {
+pub fn purse_keep(content: &Content, route: &Route, mouths: f64) -> crate::fixed::Fixed {
     if road_food(content) {
-        food_needed(content, route.blocks) * mouths * content.dials.purse_per_food_point
+        // Rounded up, as the mod's `Math.ceil(... * rate)`.
+        crate::fixed::Fixed::ceil(food_needed(content, route.blocks) * mouths * content.dials.purse_per_food_point)
     } else {
-        0.0
+        crate::fixed::Fixed::ZERO
     }
 }
 
@@ -188,14 +190,14 @@ pub struct RoadFoodView {
     pub home_at: Option<u64>,
     pub short_rations: u32,
     pub food_eaten: f64,
-    pub food_paid: f64,
+    pub food_paid: crate::fixed::Fixed,
     pub stayed: Option<Stay>,
 }
 
 impl Society {
     /// A run from one town to another as [`Society::add_route`], refused where content has road food and a leg of
     /// `days` (at 1,200 blocks a day) is more than a wagon's food will carry it.
-    pub fn try_add_route(&mut self, from: TownId, to: TownId, days: f64, road_cost: f64, every_days: f64)
+    pub fn try_add_route(&mut self, from: TownId, to: TownId, days: f64, road_cost: impl Into<crate::fixed::Fixed>, every_days: f64)
             -> Result<RouteId, String> {
         let blocks = (days * crate::map::BLOCKS_PER_DAY).round().max(0.0) as u32;
         let content = self.content();

@@ -67,6 +67,6 @@ reference, and its game tests are the spec.
 3. **A cold Rust build per tree:** 13 seconds the first time (bevy_ecs), 3 after; 150 MB of `target/` per tree. `sccache` would share it; not installed.
 4. **The reference is big:** `Caravans.java` alone is 2,600 lines. Briefs should name the Java methods to read, not whole files, or agents spend their context reading.
 5. **Parity is self-reported:** a `parity:` tag is the agent's claim. The integrator checks a tag's test really pins the Java test's behaviour before landing.
-6. **`f64` money** replays to the bit on one machine, not necessarily across hosts (WebAssembly in Java against native). Fixed-point is planned before the Minecraft binding (`docs/core-math.md`).
+6. **`f64` money** replayed to the bit on one machine, not across hosts: native and WebAssembly libm curves differ in the last bit. Done (`fixed-point-money`): money in thousandths (`fixed.rs`), the curves from `+ - * /`, and `tests/replay.rs` checks a 200-day script's digest, the same natively and in WebAssembly (`just core-wasm-replay`). A change to the rules writes the new digest (`sim/README.md`): `tests/replay_digest.txt` is one file every tree that moves behaviour rewrites, so the second to land writes it again after its rebase.
 7. **Landing is one at a time,** and a rebase can stop on a conflict in a shared file. Land small and often.
 8. **Agent tool worktrees:** Claude Code's own `isolation: "worktree"` makes throwaway worktrees too. Use `.trees/` for named work that lands; the tool's for quick, disposable tries.

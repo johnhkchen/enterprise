@@ -6,6 +6,7 @@ use bevy_ecs::prelude::*;
 use crate::cash_book::{self, Account, Accountant, CashBook, Reason, Side};
 use crate::content::{Content, GoodId};
 use crate::contracts::{Book, Contract, Incoterm};
+use crate::fixed::Fixed;
 use crate::messages::{Input, Output, RouteId, TownId};
 use crate::rules::{look_schedule, touch::catch_up_town};
 use crate::state::*;
@@ -22,7 +23,7 @@ pub struct Society {
 #[derive(Clone, Debug)]
 pub struct TownView {
     pub name: String,
-    pub money: f64,
+    pub money: Fixed,
     pub stock: Vec<f64>,
     pub people: People,
 }
@@ -70,8 +71,9 @@ impl Society {
         self.world.insert_resource(Rng::new(seed));
     }
 
-    /// A town with `money` and nothing made, used or held yet.
-    pub fn add_town(&mut self, name: &str, money: f64) -> TownId {
+    /// A town with `money` (emeralds, to the thousandth: `fixed.rs`) and nothing made, used or held yet.
+    pub fn add_town(&mut self, name: &str, money: impl Into<Fixed>) -> TownId {
+        let money = money.into();
         let n = self.content().goods.len();
         let now = self.now();
         let e = self
@@ -170,7 +172,8 @@ impl Society {
     /// A run from one town to another, `days` each way, `road_cost` a round trip, every `every_days` on its timetable.
     /// Its road is `days` at 1,200 blocks a day long, for its food (`road.rs`): a leg too long for a wagon's food
     /// is added, but its wagons stay home ([`Society::try_add_route`] refuses one).
-    pub fn add_route(&mut self, from: TownId, to: TownId, days: f64, road_cost: f64, every_days: f64) -> RouteId {
+    pub fn add_route(&mut self, from: TownId, to: TownId, days: f64, road_cost: impl Into<Fixed>, every_days: f64) -> RouteId {
+        let road_cost = road_cost.into();
         let day = self.content().day_ticks as f64;
         let route = Route {
             seq: self.routes.len(),
@@ -238,7 +241,8 @@ impl Society {
             return None;
         }
         let days = path.blocks().max(1.0) / crate::map::BLOCKS_PER_DAY;
-        let id = self.add_route(from, to, days, path.cost, every_days);
+        // The road food the path costs, rounded up to the thousandth (a cost).
+        let id = self.add_route(from, to, days, Fixed::ceil(path.cost), every_days);
         self.world.entity_mut(self.routes[id]).insert(RoutePath(path.hexes));
         Some(id)
     }
@@ -249,7 +253,7 @@ impl Society {
     }
 
     /// The ticks a route's wagons take one way, and its road food a round trip.
-    pub fn route_road(&self, route: RouteId) -> (u64, f64) {
+    pub fn route_road(&self, route: RouteId) -> (u64, Fixed) {
         let r = self.world.get::<Route>(self.routes[route]).expect("a route");
         (r.travel_ticks, r.road_cost)
     }
@@ -292,19 +296,20 @@ impl Society {
     }
 
     /// Money paid a town from outside the society (a player buying at its shops).
-    pub fn pay(&mut self, town: TownId, money: f64) {
-        self.post(Account::Outside, Account::Treasury(town), money, Reason::PaidIn);
+    pub fn pay(&mut self, town: TownId, money: impl Into<Fixed>) {
+        self.post(Account::Outside, Account::Treasury(town), money.into(), Reason::PaidIn);
     }
 
     /// Moves `amount` from one account to another for `reason`, noted in both books (a host's own transfers, and
     /// tests). A wagon's purse moves only while its wagon is on the road.
-    pub fn post(&mut self, from: Account, to: Account, amount: f64, reason: Reason) {
+    pub fn post(&mut self, from: Account, to: Account, amount: impl Into<Fixed>, reason: Reason) {
+        let amount = amount.into();
         if from == to {
             return;
         }
         let now = self.now();
         let day = self.content().day_ticks;
-        let mut balances: Vec<(Account, f64)> = [from, to].into_iter().filter(|a| *a != Account::Outside)
+        let mut balances: Vec<(Account, Fixed)> = [from, to].into_iter().filter(|a| *a != Account::Outside)
             .map(|a| (a, self.balance(a).expect("an account that holds money"))).collect();
         let mut ledger = std::mem::take(&mut *self.world.resource_mut::<Ledger>());
         let mut book = std::mem::take(&mut *self.world.resource_mut::<CashBook>());
@@ -327,7 +332,7 @@ impl Society {
     }
 
     /// What an account holds now (the outside holds no count; a wagon's purse, none while it's home).
-    pub fn balance(&self, account: Account) -> Option<f64> {
+    pub fn balance(&self, account: Account) -> Option<Fixed> {
         match account {
             Account::Treasury(t) => self.world.get::<Money>(self.towns[t]).map(|m| m.0),
             Account::Households(t) => self.world.get::<People>(self.towns[t]).map(|p| p.purse),
@@ -336,7 +341,7 @@ impl Society {
         }
     }
 
-    fn set_balance(&mut self, account: Account, value: f64) {
+    fn set_balance(&mut self, account: Account, value: Fixed) {
         match account {
             Account::Treasury(t) => self.world.get_mut::<Money>(self.towns[t]).unwrap().0 = value,
             Account::Households(t) => self.world.get_mut::<People>(self.towns[t]).unwrap().purse = value,
@@ -347,12 +352,12 @@ impl Society {
 
     /// A town's cash book for the last `days` days, today's included: by day, then what for (in words), the money
     /// in (+) or out (-) of its treasury.
-    pub fn cash_book(&self, town: TownId, days: u64) -> Vec<(u64, String, f64)> {
+    pub fn cash_book(&self, town: TownId, days: u64) -> Vec<(u64, String, Fixed)> {
         self.account_book(Account::Treasury(town), days)
     }
 
     /// Any account's book for the last `days` days, as [`Society::cash_book`].
-    pub fn account_book(&self, account: Account, days: u64) -> Vec<(u64, String, f64)> {
+    pub fn account_book(&self, account: Account, days: u64) -> Vec<(u64, String, Fixed)> {
         let today = self.now() / self.content().day_ticks;
         let from = (today + 1).saturating_sub(days);
         self.world.resource::<CashBook>().entries(account, from, today).into_iter()
@@ -360,7 +365,7 @@ impl Society {
     }
 
     /// What the Accountant held back from a town's spenders, by day and what for, the last `days` days.
-    pub fn held_back(&self, town: TownId, days: u64) -> Vec<(u64, String, f64)> {
+    pub fn held_back(&self, town: TownId, days: u64) -> Vec<(u64, String, Fixed)> {
         let today = self.now() / self.content().day_ticks;
         let from = (today + 1).saturating_sub(days);
         self.world.resource::<CashBook>().held.get(&Account::Treasury(town)).map_or_else(Vec::new, |h| {
@@ -370,14 +375,14 @@ impl Society {
     }
 
     /// A town's free money now: beyond its trading capital, less the bills on it falling due within `budget_days`.
-    pub fn free(&self, town: TownId) -> f64 {
+    pub fn free(&self, town: TownId) -> Fixed {
         let e = self.world.entity(self.towns[town]);
         crate::rules::free(self.content(), e.get::<Trades>().unwrap(), e.get::<Money>().unwrap(),
             self.world.resource::<crate::bills::Bills>(), town, self.now())
     }
 
     /// What's left of a town's day's budget.
-    pub fn budget_left(&mut self, town: TownId) -> f64 {
+    pub fn budget_left(&mut self, town: TownId) -> Fixed {
         let free = self.free(town);
         let now = self.now();
         self.world.resource_scope(|world, content: Mut<Content>| {
@@ -387,21 +392,23 @@ impl Society {
     }
 
     /// May the town spend `amount` on `what` today? If so it's taken off its day's budget; if not, held back.
-    pub fn approve(&mut self, town: TownId, what: &str, amount: f64) -> bool {
+    pub fn approve(&mut self, town: TownId, what: &str, amount: impl Into<Fixed>) -> bool {
+        let amount = amount.into();
         self.accountant(town, what, |content, book, now, free, budget, what| {
-            if Accountant::approve(content, book, town, now, free, budget, what, amount) { 1.0 } else { 0.0 }
-        }) > 0.0
+            if Accountant::approve(content, book, town, now, free, budget, what, amount) { Fixed::ONE } else { Fixed::ZERO }
+        }).is_positive()
     }
 
     /// As much of `amount` for `what` as the town's day's budget has left, taken off it.
-    pub fn allow(&mut self, town: TownId, what: &str, amount: f64) -> f64 {
+    pub fn allow(&mut self, town: TownId, what: &str, amount: impl Into<Fixed>) -> Fixed {
+        let amount = amount.into();
         self.accountant(town, what, |content, book, now, free, budget, what| {
             Accountant::allow(content, book, town, now, free, budget, what, amount)
         })
     }
 
     fn accountant(&mut self, town: TownId, what: &str,
-            f: impl FnOnce(&Content, &mut CashBook, u64, f64, &mut Budget, Reason) -> f64) -> f64 {
+            f: impl FnOnce(&Content, &mut CashBook, u64, Fixed, &mut Budget, Reason) -> Fixed) -> Fixed {
         let free = self.free(town);
         let now = self.now();
         let what = Reason::parse(self.content(), what);

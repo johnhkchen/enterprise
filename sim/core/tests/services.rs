@@ -350,7 +350,7 @@ fn a_shepherd_sells_sheep_where_the_pasture_is_short() {
     s.advance(2 * LOOK);
     let (_, _, sold, paid) = s.route_services(0);
     assert_eq!(sold, 3, "the town buys all three: its five want ten");
-    assert!((paid - 3.0 * 0.75).abs() < 1e-9, "at a bargained price, between half and all of one each: {paid}");
+    assert!(paid == 3.0 * 0.75, "at a bargained price, between half and all of one each: {paid}");
     assert!((s.herds(1).count_of(0) - 3.0).abs() < 1e-6, "and they're its sheep now");
 }
 

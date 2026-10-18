@@ -23,6 +23,7 @@ use super::Step;
 use crate::bills::Bills;
 use crate::cash_book::{post, Accountant, CashBook, Reason, Side};
 use crate::content::Content;
+use crate::fixed::Fixed;
 use crate::farms::*;
 use crate::people::food_points;
 use crate::roster::Roster;
@@ -53,8 +54,8 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, book: Res<CashBook>, mut f
 
 /// The reserve a town keeps back before repaying its households or planting: its trading capital and its wage float
 /// (`Territory.reserve`).
-pub fn reserve(content: &Content, trades: &Trades, farm: Option<&Farm>) -> f64 {
-    super::trading_capital(content, trades) + farm.map_or(0.0, |f| wage_float(content, f))
+pub fn reserve(content: &Content, trades: &Trades, farm: Option<&Farm>) -> Fixed {
+    super::trading_capital(content, trades) + farm.map_or(Fixed::ZERO, |f| wage_float(content, f))
 }
 
 /// Wages settled, produce handed over, stores banking (`Territory.payWages`, `touch`, `bank`).
@@ -71,16 +72,18 @@ pub fn pay(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>,
         // The whole emeralds owed: what the treasury has, then credit as far as the Farmers will wait.
         let whole = farm.wage_owed.floor();
         if whole > 0.0 {
-            let paid = whole.min(money.0.max(0.0));
+            let emeralds = Fixed::emeralds(whole as i64);
+            let paid = emeralds.min(money.0.at_least_zero());
             post(&mut ledger, &mut book, Side::treasury(t, &mut money.0), Side::households(t, &mut people.purse), paid,
                 Reason::Wages, now, day);
-            let room = (CREDIT_DAYS * value_per_day(&content, &farm.per_day) * LABOR_SHARE - farm.credit).max(0.0);
-            let credited = (whole - paid).min(room);
+            let room = (Fixed::floor(CREDIT_DAYS * value_per_day(&content, &farm.per_day) * LABOR_SHARE) - farm.credit)
+                .at_least_zero();
+            let credited = (emeralds - paid).min(room);
             farm.credit += credited;
             farm.wage_owed -= whole;
             farm.wages_paid += paid;
-            farm.wages_unpaid += whole - paid - credited;
-            farm.paid_share = (paid + credited) / whole;
+            farm.wages_unpaid += emeralds - paid - credited;
+            farm.paid_share = (paid + credited).ratio(emeralds);
         } else if wage_per_day(&content, farm) <= 0.0 {
             // No one at work, no wage running: nothing is left unpaid (the mod's 1 with nothing whole owed). Without
             // this a share of 0 from the last settlement would stand for good once the plan empties.
@@ -134,12 +137,13 @@ fn settle_deposits(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<
         let days = now.saturating_sub(deposits.last) as f64 / day as f64;
         deposits.last = now;
         deposits.owed *= crate::fixed::pow(1.0 + content.dials.deposit_interest_per_day, days.min(MAX_DAYS));
-        let spare = money.0 - reserve(&content, trades, farm) - content.dials.deposit_keep;
-        let repay = deposits.owed.min(spare);
-        if repay > 0.01 {
+        let spare = money.0 - reserve(&content, trades, farm) - Fixed::ceil(content.dials.deposit_keep);
+        // What's owed rounded up to the thousandth (the treasury's debt), as far as it can spare.
+        let repay = Fixed::ceil(deposits.owed).min(spare);
+        if repay > Fixed::from_millis(10) {
             post(&mut ledger, &mut book, Side::treasury(town.id, &mut money.0), Side::households(town.id, &mut people.purse),
                 repay, Reason::Other("deposits repaid".into()), now, day);
-            deposits.owed -= repay;
+            deposits.owed = (deposits.owed - repay.to_f64()).max(0.0);
         }
     }
 }
@@ -175,24 +179,26 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
         // A field, where the Farmers have hands to spare, or for a crop the town would buy and doesn't grow.
         if let Some(crop) = field_wanted(&content, farm, &farmers, &wants, food) {
             let free = super::free(&content, trades, &money, &bills, t, now);
-            if money.0 - reserve(&content, trades, Some(farm)) >= FIELD_EMERALDS
+            let field = Fixed::ceil(FIELD_EMERALDS);
+            if money.0 - reserve(&content, trades, Some(farm)) >= field
                 && Accountant::approve(&content, &mut book, t, now, free, &mut budget, Reason::Other("a field".into()),
-                    FIELD_EMERALDS) {
+                    field) {
                 *farm.plots.entry(crop).or_insert(0) += field_plots(&content, crop);
                 farm.fields_planted += 1;
-                post(&mut ledger, &mut book, Side::treasury(t, &mut money.0), Side::outside(), FIELD_EMERALDS,
+                post(&mut ledger, &mut book, Side::treasury(t, &mut money.0), Side::outside(), field,
                     Reason::Other("a field".into()), now, day);
             }
         }
         // A household with the price of a field in purse and credit buys one of its own, where there are hands for it.
-        if people.purse + farm.credit >= LAND_EMERALDS && farm.spare_plots >= FIELD_SIZE * FIELD_SIZE / 3
+        let land = Fixed::ceil(LAND_EMERALDS);
+        if people.purse + farm.credit >= land && farm.spare_plots >= FIELD_SIZE * FIELD_SIZE / 3
             && room_for_a_field(farm) {
             let crop = choose(&content, &Wants { needs: BTreeMap::new(), ..wants.clone() }, &farm.per_day, food,
                 farm.focus.food_only()).or_else(|| content.good("wheat"));
             if let Some(crop) = crop {
-                let from_credit = farm.credit.min(LAND_EMERALDS);
+                let from_credit = farm.credit.min(land);
                 farm.credit -= from_credit;
-                let paid = (LAND_EMERALDS - from_credit).min(people.purse);
+                let paid = (land - from_credit).min(people.purse);
                 post(&mut ledger, &mut book, Side::households(t, &mut people.purse), Side::treasury(t, &mut money.0), paid,
                     Reason::Other("land".into()), now, day);
                 let plots = field_plots(&content, crop);

@@ -68,7 +68,7 @@ fn reckon(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, 
 }
 
 /// What a town can spare beyond its reserve (trading capital and wage float), for crates.
-fn spare(content: &Content, money: f64, trades: &Trades, farm: Option<&Farm>) -> f64 {
+fn spare(content: &Content, money: crate::fixed::Fixed, trades: &Trades, farm: Option<&Farm>) -> crate::fixed::Fixed {
     money - super::farms::reserve(content, trades, farm)
 }
 
@@ -193,8 +193,8 @@ pub(crate) fn plan_owing(content: Res<Content>, book: Res<Book>, mut routes: Que
         let money = money.0 - crate::road::road_money(&content, route, &stock.0, keep_wheat, mouths);
         for id in owing {
             let owed = book.contracts[id].owing;
-            plan.purse += owed.min((money - plan.purse).max(0.0));
-            plan.worth += owed;
+            plan.purse += owed.min((money - plan.purse).at_least_zero());
+            plan.worth += owed.to_f64();
         }
     }
 }
@@ -291,7 +291,7 @@ fn pay_owing(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, m
             if repaid > 0.0 {
                 book.paid_owing(id, repaid);
             }
-            let pay = book.contracts[id].owing.min((wagon.purse - keep).max(0.0));
+            let pay = book.contracts[id].owing.min((wagon.purse - keep).at_least_zero());
             if pay > 0.0 {
                 post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut money.0),
                     pay, Reason::Contract, clock.now, content.day_ticks);
@@ -461,7 +461,7 @@ pub(crate) fn take_earmarked(content: &Content, store: &mut Shipments, contract:
 /// its own empties first, else new crates as far as it can spare. Returns the shipment, if any of it was crated.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn pack_collected(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u64,
-        seller: crate::messages::TownId, money: &mut f64, trades: &Trades, farm: Option<&Farm>, store: &mut Shipments,
+        seller: crate::messages::TownId, money: &mut crate::fixed::Fixed, trades: &Trades, farm: Option<&Farm>, store: &mut Shipments,
         paperwork: &mut Paperwork, contract: &crate::contracts::Contract, count: f64) -> Option<Shipment> {
     let spare = spare(content, *money, trades, farm);
     let like = Shipment { good: contract.good, count: 0.0, shipper: seller, consignee: Some(contract.buyer),

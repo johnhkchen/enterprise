@@ -31,6 +31,7 @@ use bevy_ecs::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::content::{Content, GoodId};
+use crate::fixed::Fixed;
 
 /// Plots a Farmer tends a profession level (`Territory.PLOTS_PER_FARMER_LEVEL`).
 pub const PLOTS_PER_FARMER_LEVEL: u32 = 32;
@@ -215,9 +216,10 @@ pub struct Farm {
     pub pending: BTreeMap<GoodId, f64>,
     /// What this look grew, for the share-croppers' share of it.
     pub fresh: BTreeMap<GoodId, f64>,
-    /// Wages owed the Farmers, fractions carried; pay the town owes them as credit.
+    /// Wages owed the Farmers, fractions carried (a claim accruing each look, paid in whole emeralds); pay the town owes
+    /// them as credit.
     pub wage_owed: f64,
-    pub credit: f64,
+    pub credit: Fixed,
     /// The Farmers' share of what the harvest is worth.
     pub labor_share: f64,
     /// Crop sales since the last accrual, and averaged a day; the harvest's worth a day, averaged.
@@ -231,8 +233,8 @@ pub struct Farm {
     /// Share of the wage paid (or credited) at the last settlement.
     pub paid_share: f64,
     /// Emeralds paid, and owed that couldn't be (the Farmers took it in crops), in all; items handed over in all.
-    pub wages_paid: f64,
-    pub wages_unpaid: f64,
+    pub wages_paid: Fixed,
+    pub wages_unpaid: Fixed,
     pub harvested: f64,
     /// Fields the town has planted, its households' among them.
     pub fields_planted: u32,
@@ -274,7 +276,7 @@ impl Default for Farm {
             pending: BTreeMap::new(),
             fresh: BTreeMap::new(),
             wage_owed: 0.0,
-            credit: 0.0,
+            credit: Fixed::ZERO,
             labor_share: LABOR_SHARE,
             sales_since: 0.0,
             sales_per_day: 0.0,
@@ -282,8 +284,8 @@ impl Default for Farm {
             tightness: 1.0,
             freeholds: 0,
             paid_share: 1.0,
-            wages_paid: 0.0,
-            wages_unpaid: 0.0,
+            wages_paid: Fixed::ZERO,
+            wages_unpaid: Fixed::ZERO,
             harvested: 0.0,
             fields_planted: 0,
             focus: Focus::Grow,
@@ -303,7 +305,9 @@ impl Default for Farm {
     }
 }
 
-/// What the households have lent the treasury of their savings, with interest: owed them (`Holding.deposits`).
+/// What the households have lent the treasury of their savings, with interest: owed them (`Holding.deposits`). A claim
+/// that grows by its interest each look (a fraction of a thousandth on a small debt), so it's kept in `f64` and the
+/// money borrowed and repaid moves in thousandths (`fixed.rs`).
 #[derive(Component, Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub struct Deposits {
     pub owed: f64,
@@ -479,9 +483,9 @@ pub fn wage_per_day(content: &Content, farm: &Farm) -> f64 {
     value_per_day(content, &farm.per_day) * share(farm.labor_share, own)
 }
 
-/// Emeralds the town keeps back for its Farmers' wages (`Territory.wageFloat`).
-pub fn wage_float(content: &Content, farm: &Farm) -> f64 {
-    (wage_per_day(content, farm) * WAGE_FLOAT_DAYS).ceil()
+/// Emeralds the town keeps back for its Farmers' wages (`Territory.wageFloat`): whole ones.
+pub fn wage_float(content: &Content, farm: &Farm) -> Fixed {
+    Fixed::ceil((wage_per_day(content, farm) * WAGE_FLOAT_DAYS).ceil())
 }
 
 /// Crop rotation (`Territory.rotate`): plots of a crop grown beyond all its uses are turned over on the books, a
@@ -667,9 +671,11 @@ pub fn bank(content: &Content, farm: &mut Farm, stock: &mut [f64], uses: &[f64])
 }
 
 /// What the treasury could still borrow of its households' savings (`Territory.depositsOnCall`): its share of all
-/// they have, in purse and lent it, less what it has borrowed, as far as their purse goes.
-pub fn on_call(content: &Content, purse: f64, owed: f64) -> f64 {
-    0.0f64.max(purse.min(content.dials.deposit_share * (purse + owed) - owed))
+/// they have, in purse and lent it, less what it has borrowed, as far as their purse goes (rounded down to the
+/// thousandth).
+pub fn on_call(content: &Content, purse: Fixed, owed: f64) -> Fixed {
+    let purse_ = purse.to_f64();
+    Fixed::floor(0.0f64.max(purse_.min(content.dials.deposit_share * (purse_ + owed) - owed))).min(purse.at_least_zero())
 }
 
 /// Adds produce, and the Farmers' wages for it, for the time since the farm last accrued, at the pace the town's
@@ -731,7 +737,7 @@ pub fn crop_sales(content: &Content, book: &crate::cash_book::CashBook, town: us
     let on = |day: u64| -> f64 {
         book.books.get(&Account::Treasury(town)).map_or(0.0, |b| {
             content.goods.iter().enumerate().filter(|(_, g)| g.crop)
-                .map(|(i, _)| b.get(&(day, Reason::Sold(i))).copied().unwrap_or(0.0)).sum()
+                .map(|(i, _)| b.get(&(day, Reason::Sold(i))).copied().unwrap_or_default()).sum::<Fixed>().to_f64()
         })
     };
     let mut since = on(farm.sales_day) - farm.sales_seen;
@@ -847,7 +853,7 @@ impl crate::society::Society {
     }
 
     /// What the treasury could still borrow of its households' savings (`Territory.depositsOnCall`).
-    pub fn deposits_on_call(&self, town: crate::messages::TownId) -> f64 {
+    pub fn deposits_on_call(&self, town: crate::messages::TownId) -> Fixed {
         let e = self.world.entity(self.towns[town]);
         on_call(self.content(), e.get::<crate::state::People>().unwrap().purse, e.get::<Deposits>().map_or(0.0, |d| d.owed))
     }
@@ -859,7 +865,8 @@ impl crate::society::Society {
 
     /// The treasury borrows up to `emeralds` of its households' savings, as far as they're on call
     /// (`Territory.borrowDeposits`): owed them back with interest. Returns what came in.
-    pub fn borrow_deposits(&mut self, town: crate::messages::TownId, emeralds: f64) -> f64 {
+    pub fn borrow_deposits(&mut self, town: crate::messages::TownId, emeralds: impl Into<Fixed>) -> Fixed {
+        let emeralds = emeralds.into();
         let e = self.towns[town];
         let now = self.now();
         if self.world.get::<Deposits>(e).is_none() {
@@ -888,17 +895,17 @@ impl crate::society::Society {
 /// money (posted "deposits"), owed them with interest from now. Returns what came in.
 #[allow(clippy::too_many_arguments)]
 pub fn borrow(content: &Content, ledger: &mut crate::state::Ledger, book: &mut crate::cash_book::CashBook, town: usize,
-        money: &mut f64, purse: &mut f64, deposits: &mut Deposits, emeralds: f64, now: u64) -> f64 {
+        money: &mut Fixed, purse: &mut Fixed, deposits: &mut Deposits, emeralds: Fixed, now: u64) -> Fixed {
     use crate::cash_book::{post, Reason, Side};
     let take = emeralds.min(on_call(content, *purse, deposits.owed));
-    if take <= 0.01 {
-        return 0.0;
+    if take <= Fixed::from_millis(10) {
+        return Fixed::ZERO;
     }
     if deposits.owed <= 0.01 {
         deposits.last = now; // interest runs from now
     }
     post(ledger, book, Side::households(town, purse), Side::treasury(town, money), take,
         Reason::Other("deposits".into()), now, content.day_ticks);
-    deposits.owed += take;
+    deposits.owed += take.to_f64();
     take
 }

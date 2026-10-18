@@ -61,7 +61,7 @@ fn a_rent_pays_a_coupon_each_season_and_carries_its_arrears() {
     let first = rents.rents[id].coupon.unwrap();
     let c = &book.contracts[first];
     assert!(c.in_force() && c.quantity == 64.0 && c.price == 0.0, "a coupon at once, already paid for");
-    assert!((rents.rents[id].capital - 8.0 * 64.0 * 0.05).abs() < 1e-9, "bought for eight seasons' crop");
+    assert!(rents.rents[id].capital == 8.0 * 64.0 * 0.05, "bought for eight seasons' crop");
     book.settle(first, 0.0, 40.0, 0.0, 0.0);
     book.review(T + season, DAY, |_| false); // the coupon judged: 24 short, carried by the rent, not a miss
     assert_eq!(book.contracts[first].missed, 0, "a coupon's shortfall isn't a miss");
@@ -94,10 +94,10 @@ fn a_bearers_rent_accrues_its_crop_and_the_dealer_quotes_a_tenth_either_side() {
     rents.redeem(id, &mut book); // done with it
     assert_eq!(rents.rents[id].state, RentState::Redeemed);
     // The dealer's price: capital twice with none bought ahead... half with all of it; ask and bid a tenth either side.
-    assert!((harvest::dealer_price(100.0, 10.0, 0.0) - 200.0).abs() < 1e-9, "twice, with none bought ahead");
-    assert!((harvest::dealer_price(100.0, 0.0, 10.0) - 50.0).abs() < 1e-9, "half, with all of it");
-    assert!((harvest::dealer_price(100.0, 0.0, 0.0) - 125.0).abs() < 1e-9, "no word of either: the middle");
-    assert!((harvest::ask(100.0, 0.1) - 110.0).abs() < 1e-9 && (harvest::bid(100.0, 0.1) - 90.0).abs() < 1e-9);
+    assert!(harvest::dealer_price(100.0, 10.0, 0.0) == 200.0, "twice, with none bought ahead");
+    assert!(harvest::dealer_price(100.0, 0.0, 10.0) == 50.0, "half, with all of it");
+    assert!(harvest::dealer_price(100.0, 0.0, 0.0) == 125.0, "no word of either: the middle");
+    assert!(harvest::ask(100.0, 0.1) == 110.0 && harvest::bid(100.0, 0.1) == 90.0);
 }
 
 /// A farm (town 0, with Farmers and plots) and a market (town 1) a day apart; the farm's wagon every `every` days. Wheat is a crop.
@@ -134,7 +134,7 @@ fn a_market_that_uses_a_crop_offers_the_farm_a_forward_sale_a_third_up_front() {
     // The farm's wagon brings the copy home and, on its next arrival at the buyer, the buyer pays a third into its purse.
     s.advance(DAY * 8);
     let c = s.contracts().into_iter().find(|c| c.harvest.is_some()).unwrap();
-    assert!((c.advanced - c.worth() / 3.0).abs() < 1e-6, "a third paid up front, on the wagon's next arrival: {}", c.advanced);
+    assert!(c.advanced == enterprise_core::Fixed::ceil(c.worth() / 3.0), "a third paid up front, on the wagon's next arrival: {}", c.advanced);
 }
 
 #[test]
@@ -146,7 +146,7 @@ fn a_farm_short_of_money_sells_a_rent_to_a_market_with_savings() {
     let rents = s.rents();
     assert_eq!(rents.len(), 1, "a rent");
     let r = &rents[0];
-    assert!(r.farm == 0 && r.holder == 1 && r.quantity == 320.0 && (r.capital - 8.0 * 320.0).abs() < 1e-9, "{r:?}");
+    assert!(r.farm == 0 && r.holder == 1 && r.quantity == 320.0 && r.capital == 8.0 * 320.0, "{r:?}");
     assert!(s.town(0).money > r.capital, "the capital rode home: {} from {before}", s.town(0).money);
     assert!(s.contracts().iter().any(|c| c.price == 0.0 && c.harvest.is_some_and(|h| h.carried) && c.in_force()),
         "its coupon in force");

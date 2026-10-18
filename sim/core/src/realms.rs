@@ -64,7 +64,7 @@ pub struct Realm {
     /// The tick its people last worked (`lastDay`, advanced a whole day at a time).
     pub last_day: u64,
     /// Customs paid the crown in all, and goods made in all (`customsPaid`, `goodsMade`).
-    pub customs_paid: f64,
+    pub customs_paid: crate::fixed::Fixed,
     pub goods_made: f64,
 }
 
@@ -119,7 +119,7 @@ pub fn make(content: &Content, ledger: &mut Ledger, stock: &mut Stock, realm: &m
 pub struct RealmView {
     pub makes: Vec<Make>,
     pub wants: Vec<GoodId>,
-    pub customs_paid: f64,
+    pub customs_paid: crate::fixed::Fixed,
     pub goods_made: f64,
 }
 

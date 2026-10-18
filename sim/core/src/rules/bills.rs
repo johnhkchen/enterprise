@@ -78,6 +78,6 @@ fn plan_papers(clock: Res<Clock>, bills: Res<Bills>, mut routes: Query<(&Route, 
         plan.worth += bills.open.iter().map(|&id| &bills.bills[id])
             .filter(|b| b.held == Held::Town(route.from_id) && b.payee == route.from_id && b.drawee == route.to_id
                 && b.due <= arrival)
-            .map(|b| b.amount).sum::<f64>();
+            .map(|b| b.amount.to_f64()).sum::<f64>();
     }
 }

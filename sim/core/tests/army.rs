@@ -466,10 +466,10 @@ fn pay_is_owed_home_through_its_levy_or_the_armys_ledger() {
     s.set_front(front);
     s.advance(LOOK);
     s.advance(LOOK + 3 * DAY);
-    assert!((s.contract(levy).owing - 2.0 * 3.0 * 0.25).abs() < 1e-12, "the levied two: owed under the levy");
-    assert!((s.army().pay_owed[&home] - 2.0 * 3.0 * 0.25).abs() < 1e-12, "the other two: in the army's ledger");
+    assert!(s.contract(levy).owing == 1.5, "the levied two: owed under the levy");
+    assert!(s.army().pay_owed[&home] == 1.5, "the other two: in the army's ledger");
     assert_eq!(s.contract(not_levy).owing, 0.0, "none through a contract with another town");
-    assert!((s.army().record(home).pay - 3.0).abs() < 1e-12, "12 soldier-days at 0.25");
+    assert!(s.army().record(home).pay == 3.0_f64, "12 soldier-days at 0.25");
 }
 
 #[test]

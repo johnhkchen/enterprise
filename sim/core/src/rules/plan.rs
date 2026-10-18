@@ -13,6 +13,7 @@ use crate::contracts::Book;
 use crate::messages::Output;
 use crate::people::{comfort_keep, comfort_par};
 use crate::realms::{OffMap, Realm};
+use crate::fixed::Fixed;
 use crate::state::*;
 use crate::squad::crewed;
 use std::collections::BTreeMap;
@@ -348,7 +349,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         let keep_wheat = food_mode && crate::road::keep_wheat(&content, trades, roster.as_deref());
         let provision = food_mode.then(|| {
             let after: Vec<f64> = stock.0.iter().zip(&plan.cargo).map(|(s, c)| s - c).collect();
-            let home_free = if foreign { f64::INFINITY } else { free(&content, trades, &money, &bills, route.from_id, now) };
+            let home_free = if foreign { f64::INFINITY } else { free(&content, trades, &money, &bills, route.from_id, now).to_f64() };
             let mut p = provision(&content, route.blocks, mouths, crate::road::held(&content, &after), far_food,
                 home_free, |feed| crate::road::fodder(&content, &after, feed, keep_wheat).2);
             if porter || foreign {
@@ -358,21 +359,22 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         });
         let (road_money, wagon_purse, cost) = match provision {
             Some(p) => (p.food_coin + p.team_coin, p.road_purse + plan.purse, p.cost),
-            None => (route.road_cost, plan.purse, route.road_cost),
+            None => (route.road_cost, plan.purse, route.road_cost.to_f64()),
         };
         let pays = plan.worth >= cost;
-        // (Where content has food, a purse the plan filled to all home has beyond the road may sum an ulp over it.)
-        let slack = if provision.is_some() { 1e-9 } else { 0.0 };
-        if money.0 + slack < road_money + wagon_purse {
+        // (Where content has food, a purse the plan filled to all home has beyond the road may be a few thousandths
+        // over it: the road's food is rounded up leg by leg here and as one sum where the plan reckoned it.)
+        let slack = if provision.is_some() { Fixed::from_millis(3) } else { Fixed::ZERO };
+        if money.0 + slack < road_money + wagon_purse || money.0 < road_money {
             state.stayed = Some(Stay::CantFund);
             continue;
         }
-        let wagon_purse = if provision.is_some() { wagon_purse.min(money.0 - road_money).max(0.0) } else { wagon_purse };
+        let wagon_purse = if provision.is_some() { wagon_purse.min(money.0 - road_money).at_least_zero() } else { wagon_purse };
         // A realm's wagon never waits for a load (`dispatch`'s waiting is `!foreign`): a day after the last it goes
         // with anything aboard or any business there; only an empty trip stays home (`no empty trips`).
         let goes = if foreign {
             state.last_departure.map_or(true, |t| now - t >= content.day_ticks)
-                && (plan.stacks > 0 || plan.pressing || plan.purse > 0.0 || !plan.collecting.is_empty())
+                && (plan.stacks > 0 || plan.pressing || plan.purse.is_positive() || !plan.collecting.is_empty())
         } else {
             plan.pressing || (full || on_its_day) && pays
         };
@@ -400,7 +402,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         // Road food (what it lacks of it, and the team's fodder, bought on the way) and the wagon's purse go out of the
         // treasury as one sum.
         let free_before = free(&content, trades, &money, &bills, route.from_id, now);
-        let mut purse = 0.0;
+        let mut purse = Fixed::ZERO;
         post_legs(&mut ledger, &mut cash, Side::treasury(route.from_id, &mut money.0), vec![
             (Side::outside(), road_money, Reason::RoadFood),
             (Side::wagon(route.seq, &mut purse), wagon_purse, Reason::WagonPurse),

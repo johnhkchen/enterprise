@@ -30,12 +30,12 @@ fn an_advance_is_paid_up_front_and_worked_off() {
     // Three swords a delivery, four deliveries, a coin each: twelve emeralds, a third of it up front.
     let id = book.draft_with_advance(0, 1, 0, 3.0, 1.0, t, DAY, 4, Incoterm::Exw, true, true, 1.0 / 3.0);
     assert!((book.contracts[id].worth() - 12.0).abs() < 1e-9);
-    assert!((book.contracts[id].advance_due() - 4.0).abs() < 1e-9, "a third of twelve emeralds up front: {}",
+    assert!(book.contracts[id].advance_due() == 4.0, "a third of twelve emeralds up front: {}",
         book.contracts[id].advance_due());
     book.advanced(id, 4.0);
     assert!(book.contracts[id].advance_due() < 1e-9, "paid");
     let off = book.contracts[id].recoup_from(3.0, 3.0);
-    assert!((off - 1.0).abs() < 1e-9, "a third of each delivery's price is taken off: {off}");
+    assert!(off == 1.0, "a third of each delivery's price is taken off: {off}");
     book.recouped(id, off);
     book.settle(id, 0.0, 3.0, 3.0, 0.0);
     for _ in 0..2 {
@@ -44,7 +44,7 @@ fn an_advance_is_paid_up_front_and_worked_off() {
         book.settle(id, 0.0, 3.0, 3.0, 0.0);
     }
     let last = book.contracts[id].recoup_from(3.0, 3.0);
-    assert!((last - 1.0).abs() < 1e-9, "and the last delivery takes off what's left: {last}");
+    assert!(last == 1.0, "and the last delivery takes off what's left: {last}");
 }
 
 // parity: ContractTests.aBrokenContractOwesBackItsUnearnedAdvance
@@ -57,12 +57,12 @@ fn a_broken_contract_owes_back_its_unearned_advance() {
     book.review(t + 3 * DAY + 2 * DAY + 1, DAY, |_| false); // all four judged, none delivered
     let c = &book.contracts[id];
     assert_eq!(c.state, State::Broken, "broken: {c:?}");
-    assert!((c.refund - 4.0).abs() < 1e-9, "the advance is owed back: {}", c.refund);
+    assert!(c.refund == 4.0, "the advance is owed back: {}", c.refund);
     assert!(book.refunds(0, 1).contains(&id), "for the buyer's caravan to collect");
     assert!(book.refunds(1, 0).is_empty(), "and only from the seller");
     let bytes = postcard::to_allocvec(&book).unwrap();
     let reloaded: Book = postcard::from_bytes(&bytes).unwrap();
-    assert!((reloaded.contracts[id].refund - 4.0).abs() < 1e-9
+    assert!(reloaded.contracts[id].refund == 4.0
         && reloaded.trust(0, 1, t, DAY).to_bits() == book.trust(0, 1, t, DAY).to_bits(), "saved and loaded whole");
 }
 
@@ -70,13 +70,13 @@ fn a_broken_contract_owes_back_its_unearned_advance() {
 fn the_last_delivery_takes_what_is_left_and_never_more_than_the_price() {
     let mut book = Book::default();
     let id = book.draft_with_advance(0, 1, 0, 3.0, 1.0, 0, DAY, 2, Incoterm::Exw, true, true, 0.5);
-    assert!((book.contracts[id].advance_due() - 3.0).abs() < 1e-9, "half of six");
+    assert!(book.contracts[id].advance_due() == 3.0, "half of six");
     assert_eq!(book.contracts[id].recoup_from(3.0, 3.0), 0.0, "nothing paid yet, nothing to take off");
     book.advanced(id, 3.0);
     book.recouped(id, 1.5);
     book.settle(id, 0.0, 3.0, 3.0, 0.0);
-    assert!((book.contracts[id].recoup_from(3.0, 3.0) - 1.5).abs() < 1e-9, "the last takes what is left");
-    assert!((book.contracts[id].recoup_from(1.0, 3.0) - 1.0).abs() < 1e-9, "never more than the price");
+    assert!(book.contracts[id].recoup_from(3.0, 3.0) == 1.5, "the last takes what is left");
+    assert!(book.contracts[id].recoup_from(1.0, 3.0) == 1.0, "never more than the price");
 }
 
 // parity: CaravanTests.theAdvanceRidesWithTheCopyAndTheInputsFollow
@@ -89,7 +89,8 @@ fn the_advance_rides_with_the_copy() {
     let id = s.draft_advanced(0, 1, 2, 2.0, 1.0, 3 * DAY, DAY, 4, Incoterm::Exw, false, false, true);
     let c = s.contract(id);
     assert_eq!(c.state, State::Drafted, "only the buyer holds the copy");
-    assert!((c.advance_due() - 8.0 / 3.0).abs() < 1e-9);
+    // A third of eight, rounded up to the thousandth: the buyer's to pay (`fixed.rs`).
+    assert!(c.advance_due() == enterprise_core::Fixed::ceil(8.0 / 3.0));
     let start = s.totals();
     let mill_before = s.town(0).money;
     s.advance(DAY / 2);
@@ -97,9 +98,9 @@ fn the_advance_rides_with_the_copy() {
     s.advance(DAY + DAY / 4);
     let c = s.contract(id);
     assert_eq!(c.state, State::Active, "the wagon brought the copy");
-    assert!((c.advanced - 8.0 / 3.0).abs() < 0.01, "and the advance: {}", c.advanced);
-    assert!((s.town(0).money - mill_before - 8.0 / 3.0).abs() < 0.01, "in coin, from its purse: the seller holds it");
-    assert!((s.advances_held(0) - 8.0 / 3.0).abs() < 0.01);
+    assert!(c.advanced == enterprise_core::Fixed::ceil(8.0 / 3.0), "and the advance: {}", c.advanced);
+    assert!(s.town(0).money - mill_before == enterprise_core::Fixed::ceil(8.0 / 3.0), "in coin, from its purse: the seller holds it");
+    assert!(s.advances_held(0) == enterprise_core::Fixed::ceil(8.0 / 3.0));
     assert!(s.bills().is_empty(), "no paper where the purse sufficed");
     s.conserved(&start).unwrap();
     // The inputs follow: the mill needs sixteen iron for eight swords, and the next wagon from the scribes brings it.
@@ -118,11 +119,11 @@ fn what_the_purse_cannot_cover_goes_on_a_bill_on_the_buyer() {
     let id = s.draft_advanced(0, 1, 0, 2.0, 1.0, 3 * DAY, DAY, 4, Incoterm::Exw, false, false, true);
     s.advance(DAY + DAY / 4);
     let c = s.contract(id);
-    assert!((c.advanced - 8.0 / 3.0).abs() < 1e-9, "the whole advance counts: {}", c.advanced);
+    assert!(c.advanced == enterprise_core::Fixed::ceil(8.0 / 3.0), "the whole advance counts: {}", c.advanced);
     let bills = s.bills();
     assert_eq!(bills.len(), 1, "a promise to pay the rest");
     assert_eq!((bills[0].drawee, bills[0].payee), (1, 0));
-    assert!((bills[0].amount - (8.0 / 3.0 - 2.5) * 1.02).abs() < 1e-9, "with the wait's 2%: {}", bills[0].amount);
+    assert!(bills[0].amount == (enterprise_core::Fixed::ceil(8.0 / 3.0) - enterprise_core::Fixed::from(2.5)).mul_ceil(1.02), "with the wait's 2%: {}", bills[0].amount);
 }
 
 #[test]
@@ -138,10 +139,10 @@ fn an_advance_is_worked_off_at_its_share_of_each_delivery_and_the_books_balance(
     }
     let c = s.contract(id);
     assert_eq!(c.state, State::Completed, "{c:?}");
-    assert!((c.advanced - 64.0 / 3.0).abs() < 1e-6, "{}", c.advanced);
-    assert!((c.recouped - c.advanced).abs() < 1e-6, "all worked off: {} of {}", c.recouped, c.advanced);
-    assert!((c.paid - 64.0).abs() < 1e-6, "the whole worth counts as paid: {}", c.paid);
-    assert!(s.town(1).money <= 100.0 - 64.0 + 1e-6, "the buyer paid for the goods: {}", s.town(1).money);
+    assert!(c.advanced == enterprise_core::Fixed::ceil(64.0 / 3.0), "{}", c.advanced);
+    assert!(c.recouped == c.advanced, "all worked off: {} of {}", c.recouped, c.advanced);
+    assert!(c.paid == 64.0, "the whole worth counts as paid: {}", c.paid);
+    assert!(s.town(1).money <= 100.0 - 64.0, "the buyer paid for the goods: {}", s.town(1).money);
 }
 
 // Beyond the mod's game tests: `Caravans.settleOwing`, the next wagon between the two collecting the refund.
@@ -167,7 +168,7 @@ fn a_broken_contract_is_paid_back_by_the_next_wagon_between_the_two() {
     assert!(owed_back.is_some(), "it broke: {:?}", s.contract(id));
     let c = s.contract(id);
     assert!(c.refund < 1e-6 && s.refunds(0, 1).is_empty(), "paid back by a wagon between them: {c:?}");
-    assert!(s.town(1).money > 100.0 - 20.0 * 0.5 * 2.0 - 1e-6, "the buyer has its advance again: {}", s.town(1).money);
+    assert!(s.town(1).money >= 100.0 - 20.0 * 0.5 * 2.0, "the buyer has its advance again: {}", s.town(1).money);
 }
 
 #[test]
@@ -221,7 +222,7 @@ fn the_sellers_wagon_collects_the_advance_at_the_buyer() {
         let c = s.contract(id);
         if first.is_none() && c.advanced > 0.0 {
             first = Some(quarter);
-            assert!((c.advanced - 8.0 / 3.0).abs() < 1e-9, "all of it, the scribes having it to spare: {c:?}");
+            assert!(c.advanced == enterprise_core::Fixed::ceil(8.0 / 3.0), "all of it, the scribes having it to spare: {c:?}");
             assert!(c.recouped <= c.advanced);
         }
     }

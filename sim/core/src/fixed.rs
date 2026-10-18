@@ -246,18 +246,22 @@ impl PartialOrd<f64> for Fixed {
     }
 }
 
-/// In emeralds, to the thousandth: `12.345`, `-0.005`, `3`.
+/// In emeralds, to the thousandth: `12.345`, `-0.005`, `3`; with a precision, as its `f64` would show (`{:.1}`: `12.3`).
 impl fmt::Display for Fixed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(p) = f.precision() {
+            return f.pad_integral(self.0 >= 0, "", &format!("{:.*}", p, self.to_f64().abs()));
+        }
         let sign = if self.0 < 0 { "-" } else { "" };
         let a = self.0.unsigned_abs();
         let (whole, part) = (a / SCALE as u64, a % SCALE as u64);
-        if part == 0 {
-            write!(f, "{sign}{whole}")
+        let text = if part == 0 {
+            format!("{sign}{whole}")
         } else {
             let digits = format!("{part:03}");
-            write!(f, "{sign}{whole}.{}", digits.trim_end_matches('0'))
-        }
+            format!("{sign}{whole}.{}", digits.trim_end_matches('0'))
+        };
+        f.pad(&text)
     }
 }
 

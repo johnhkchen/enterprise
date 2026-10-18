@@ -147,7 +147,7 @@ pub struct Paperwork {
     pub paper: u64,
     pub ink: u64,
     pub quills: u64,
-    pub scribe_fees: f64,
+    pub scribe_fees: crate::fixed::Fixed,
     /// When it first drew up a document.
     pub since: Option<u64>,
     /// Documents drawn, by what they are.
@@ -165,7 +165,7 @@ impl Paperwork {
 
     /// {documents, paper, ink, quills, scribe fees in emeralds}: `Paperwork.book`.
     pub fn book(&self) -> [f64; 5] {
-        [self.documents as f64, self.paper as f64, self.ink as f64, self.quills as f64, self.scribe_fees]
+        [self.documents as f64, self.paper as f64, self.ink as f64, self.quills as f64, self.scribe_fees.to_f64()]
     }
 
     /// Documents a day since its first: `Paperwork.perDay`.
@@ -178,8 +178,8 @@ impl Paperwork {
 /// spare beyond its reserve (counted down as it spends).
 pub struct Shipper<'a> {
     pub town: TownId,
-    pub money: &'a mut f64,
-    pub spare: f64,
+    pub money: &'a mut crate::fixed::Fixed,
+    pub spare: crate::fixed::Fixed,
     pub store: &'a mut Shipments,
     pub paperwork: &'a mut Paperwork,
 }
@@ -206,7 +206,7 @@ pub fn pack(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u6
         shipper.paperwork.drawn(1, LADING, now);
     }
     let per_crate = CRATE_STACKS as f64 * content.goods[good].stack.max(1) as f64;
-    let cost = content.dials.crate_emeralds;
+    let cost = crate::fixed::Fixed::ceil(content.dials.crate_emeralds);
     let (mut left, mut crated) = (count, 0.0);
     while left > 0.0 {
         let lot = left.min(per_crate);
@@ -229,7 +229,7 @@ pub fn pack(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u6
 /// and quills from its stock (`stationery` of a sheet each: half with a counting house's clerks), and a fee for those
 /// it lacked stationery for (`fee` each: a scribe's, or a clerk's), paid from its treasury as far as it holds.
 #[allow(clippy::too_many_arguments)]
-pub fn reckon(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u64, town: TownId, money: &mut f64,
+pub fn reckon(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u64, town: TownId, money: &mut crate::fixed::Fixed,
         stock: &mut [f64], paperwork: &mut Paperwork, stationery: f64, fee: f64) {
     let d = &content.dials;
     if paperwork.owed < 1.0 {
@@ -264,8 +264,8 @@ pub fn reckon(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: 
         .max((quills_wanted - quills) / d.quill_per_document / stationery)
         .round();
     if lacking > 0.0 {
-        let owed = lacking.min(documents) * fee;
-        let paid = owed.min(money.max(0.0));
+        let owed = crate::fixed::Fixed::ceil(lacking.min(documents) * fee);
+        let paid = owed.min(money.at_least_zero());
         post(ledger, cash, Side::treasury(town, money), Side::outside(), paid, scribe_reason(), now, content.day_ticks);
         paperwork.scribe_fees += owed; // the fee in full, paid or not, as the mod books it (`Paperwork.settle`)
     }
@@ -298,8 +298,8 @@ pub fn receive(content: &Content, book: &mut Book, now: u64, town: TownId, stock
         return;
     }
     let counted = shipment.count.min(c.owed(now + c.every)).max(0.0);
-    let owing = counted * c.price;
-    book.settle(id, 0.0, counted, 0.0, owing);
+    let owing = crate::fixed::Fixed::ceil(counted * c.price);
+    book.settle(id, 0.0, counted, crate::fixed::Fixed::ZERO, owing);
 }
 
 use crate::society::Society;

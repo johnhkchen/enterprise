@@ -59,7 +59,7 @@ pub(crate) fn plan_redeem(content: Res<Content>, rents: Res<Rents>, mut routes: 
         for id in rents.owed(route.from_id, route.to_id) {
             let capital = rents.rents[id].capital;
             let spare = free - plan.purse;
-            if spare >= 2.0 * capital {
+            if spare >= capital.times(2) {
                 plan.purse += capital;
             }
         }
@@ -148,7 +148,7 @@ pub(crate) fn offer(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<B
                 .min((lacking * terms.season_ticks() as f64 / day as f64 / 16.0).floor() * 16.0);
             let capital = terms.capital(season, value);
             let savings = money.0 - reserve(&content, trades, Some(buyer_farm));
-            if season >= contracts::CONTRACT_MIN_ITEMS && farm_spare < capital && savings >= 2.0 * capital {
+            if season >= contracts::CONTRACT_MIN_ITEMS && farm_spare < capital && savings >= capital.times(2) {
                 post(&mut ledger, &mut cash, Side::treasury(route.to_id, &mut money.0), Side::wagon(route.seq, &mut wagon.purse),
                     capital, rent_reason(), now, day);
                 rents.sell(route.from_id, route.to_id, g, season, capital, &mut book, now, &terms);

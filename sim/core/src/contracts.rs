@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 use bevy_ecs::prelude::Resource;
 
 use crate::content::GoodId;
+use crate::fixed::Fixed;
 use crate::harvest::HarvestDials;
 use crate::messages::TownId;
 
@@ -105,14 +106,14 @@ pub struct Contract {
     pub buyer_missed: u32,
     pub judged: u32,
     /// Money paid, and money the buyer owes for goods delivered it couldn't pay for at the time.
-    pub paid: f64,
-    pub owing: f64,
+    pub paid: Fixed,
+    pub owing: Fixed,
     /// The advance (`contract/Advance.java`): the share of the contract's worth the buyer pays up front (0: none), what
     /// it has paid, how much of that is worked off, and what the seller owes back after the contract broke.
     pub advance_share: f64,
-    pub advanced: f64,
-    pub recouped: f64,
-    pub refund: f64,
+    pub advanced: Fixed,
+    pub recouped: Fixed,
+    pub refund: Fixed,
     /// The harvest term (`contract/Harvest.java`), if any: a forward crop sale or a rent's coupon (`harvest.rs`).
     pub harvest: Option<crate::harvest::Harvest>,
     /// The training term (`contract/Training.java`), if any: the contract is for a new master, not for goods
@@ -132,35 +133,37 @@ pub struct Contract {
 }
 
 /// Sums under this are nothing (`Contract.advanceDue` and `refunds` list above 0.01; `recoupFrom` stops at 0.001).
-pub const ADVANCE_EPS: f64 = 0.01;
-pub const RECOUP_EPS: f64 = 0.001;
+pub const ADVANCE_EPS: Fixed = Fixed::from_millis(10);
+pub const RECOUP_EPS: Fixed = Fixed::from_millis(1);
 
 impl Contract {
     /// The whole contract's worth at the locked price: `Contract.worth`.
     pub fn worth(&self) -> f64 {
         if let Some(t) = &self.training {
-            return t.bonus;
+            return t.bonus.to_f64();
         }
         self.quantity * self.installments as f64 * self.price
     }
 
-    /// What the buyer has still to pay up front, while the contract stands: `Contract.advanceDue`.
-    pub fn advance_due(&self) -> f64 {
+    /// What the buyer has still to pay up front, while the contract stands: `Contract.advanceDue` (its share of the
+    /// worth rounded up to the thousandth: the buyer's to pay).
+    pub fn advance_due(&self) -> Fixed {
         if !matches!(self.state, State::Drafted | State::Active) {
-            return 0.0;
+            return Fixed::ZERO;
         }
-        (self.advance_share * self.worth() - self.advanced).max(0.0)
+        (Fixed::ceil(self.advance_share * self.worth()) - self.advanced).at_least_zero()
     }
 
-    /// Of a delivery worth `price` of `items`, what's taken off for the advance already paid: its share of the price,
-    /// and on the last delivery whatever is left: `Contract.recoupFrom`.
-    pub fn recoup_from(&self, price: f64, items: f64) -> f64 {
+    /// Of a delivery worth `price` of `items`, what's taken off for the advance already paid: its share of the price
+    /// (to the nearest thousandth), and on the last delivery whatever is left: `Contract.recoupFrom`.
+    pub fn recoup_from(&self, price: impl Into<Fixed>, items: f64) -> Fixed {
+        let price = price.into();
         let left = self.advanced - self.recouped;
         if left <= RECOUP_EPS {
-            return 0.0;
+            return Fixed::ZERO;
         }
         let last = self.delivered + items >= self.quantity * self.installments as f64;
-        price.min(if last { left } else { left.min(price * self.advance_share) })
+        price.min(if last { left } else { left.min(price.mul_round(self.advance_share)) })
     }
 
     pub fn in_force(&self) -> bool {
@@ -270,9 +273,9 @@ impl Book {
         let known_by_buyer = !at_seller || both;
         self.contracts.push(Contract {
             advance_share: 0.0,
-            advanced: 0.0,
-            recouped: 0.0,
-            refund: 0.0,
+            advanced: Fixed::ZERO,
+            recouped: Fixed::ZERO,
+            refund: Fixed::ZERO,
             harvest: None,
             training: None,
             drafted: 0,
@@ -296,8 +299,8 @@ impl Book {
             missed: 0,
             buyer_missed: 0,
             judged: 0,
-            paid: 0.0,
-            owing: 0.0,
+            paid: Fixed::ZERO,
+            owing: Fixed::ZERO,
         });
         self.open.push(id);
         id
@@ -334,26 +337,26 @@ impl Book {
     }
 
     /// The buyer paid `emeralds` up front (coin, or a bill on itself): `ContractBook.advanced`.
-    pub fn advanced(&mut self, id: usize, emeralds: f64) {
-        self.contracts[id].advanced += emeralds;
+    pub fn advanced(&mut self, id: usize, emeralds: impl Into<Fixed>) {
+        self.contracts[id].advanced += emeralds.into();
     }
 
     /// Of a delivery's price, `emeralds` were taken off to work off the advance: `ContractBook.recouped`.
-    pub fn recouped(&mut self, id: usize, emeralds: f64) {
-        self.contracts[id].recouped += emeralds;
+    pub fn recouped(&mut self, id: usize, emeralds: impl Into<Fixed>) {
+        self.contracts[id].recouped += emeralds.into();
     }
 
     /// The seller paid back `emeralds` of an advance it hadn't worked off: `ContractBook.refunded`.
-    pub fn refunded(&mut self, id: usize, emeralds: f64) {
+    pub fn refunded(&mut self, id: usize, emeralds: impl Into<Fixed>) {
         let c = &mut self.contracts[id];
-        c.refund = (c.refund - emeralds).max(0.0);
+        c.refund = (c.refund - emeralds.into()).at_least_zero();
         self.tidy();
     }
 
     /// What this seller holds paid up front and not yet worked off: money its contracts' work may spend.
-    pub fn advances_held(&self, seller: TownId) -> f64 {
+    pub fn advances_held(&self, seller: TownId) -> Fixed {
         self.open.iter().map(|&id| &self.contracts[id]).filter(|c| c.in_force() && c.seller == seller)
-            .map(|c| (c.advanced - c.recouped).max(0.0)).sum()
+            .map(|c| (c.advanced - c.recouped).at_least_zero()).sum()
     }
 
     /// Contracts from this seller to this buyer with an advance still to pay.
@@ -373,14 +376,15 @@ impl Book {
     }
 
     /// The buyer owes the seller this much more for goods delivered: `ContractBook.owe`.
-    pub fn owe(&mut self, id: usize, emeralds: f64) {
-        self.contracts[id].owing += emeralds;
+    pub fn owe(&mut self, id: usize, emeralds: impl Into<Fixed>) {
+        self.contracts[id].owing += emeralds.into();
     }
 
     /// What's owed was paid (carried to the seller): `ContractBook.paidOwing`.
-    pub fn paid_owing(&mut self, id: usize, emeralds: f64) {
+    pub fn paid_owing(&mut self, id: usize, emeralds: impl Into<Fixed>) {
+        let emeralds = emeralds.into();
         let c = &mut self.contracts[id];
-        c.owing = (c.owing - emeralds).max(0.0);
+        c.owing = (c.owing - emeralds).at_least_zero();
         c.paid += emeralds;
     }
 
@@ -407,7 +411,7 @@ impl Book {
         let contracts = &self.contracts;
         self.open.retain(|&id| {
             let c = &contracts[id];
-            matches!(c.state, State::Drafted | State::Active) || c.owing > 0.0 || c.refund > 0.0
+            matches!(c.state, State::Drafted | State::Active) || c.owing.is_positive() || c.refund.is_positive()
         });
     }
 
@@ -469,7 +473,8 @@ impl Book {
     }
 
     /// Goods delivered and paid for (or owed for): no longer on the road; done once all are in.
-    pub fn settle(&mut self, id: usize, carried: f64, delivered: f64, paid: f64, owing: f64) {
+    pub fn settle(&mut self, id: usize, carried: f64, delivered: f64, paid: impl Into<Fixed>, owing: impl Into<Fixed>) {
+        let (paid, owing) = (paid.into(), owing.into());
         let c = &mut self.contracts[id];
         c.shipped = (c.shipped - carried).max(0.0);
         c.delivered += delivered;

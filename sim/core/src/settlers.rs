@@ -75,7 +75,7 @@ pub struct Party {
     pub target: Hex,
     pub village: Option<TownId>,
     pub hands: Vec<Hand>,
-    pub capital: f64,
+    pub capital: crate::fixed::Fixed,
     pub bread: f64,
     pub departs: u64,
     pub arrives: u64,
@@ -105,24 +105,25 @@ pub struct PartyView {
     pub kind: Kind,
     pub target: Hex,
     pub hands: usize,
-    pub capital: f64,
+    pub capital: crate::fixed::Fixed,
     pub bread: f64,
     pub arrives: u64,
 }
 
 /// The capital a party carries: half what the town can spare beyond the set-up, up to the dial's jumpstart, and never
-/// less than the least it takes (`Expeditions.capital`). `spare` is what's left after the set-up.
-pub fn capital(kind: Kind, jumpstart: f64, spare: f64) -> f64 {
+/// less than the least it takes (`Expeditions.capital`). `spare` is what's left after the set-up. Rounded down to the
+/// thousandth (a share of the spare).
+pub fn capital(kind: Kind, jumpstart: f64, spare: crate::fixed::Fixed) -> crate::fixed::Fixed {
     let least = if kind == Kind::Village { SETTLING_CAPITAL } else { FOUNDING_CAPITAL };
-    least.max(jumpstart.min(spare / 2.0))
+    crate::fixed::Fixed::floor(least.max(jumpstart.min(spare.to_f64() / 2.0)))
 }
 
 /// What the set-up costs beyond the capital (the desk, stalls and homes): spent.
-pub fn set_up(kind: Kind) -> f64 {
-    match kind {
+pub fn set_up(kind: Kind) -> crate::fixed::Fixed {
+    crate::fixed::Fixed::ceil(match kind {
         Kind::Village => SETTLING_EMERALDS - SETTLING_CAPITAL,
         Kind::Found => FOUNDING_EMERALDS - FOUNDING_CAPITAL,
-    }
+    })
 }
 
 /// Is the town raising a party (`Expeditions.raising`): past growing, none of its parties on the road, its last

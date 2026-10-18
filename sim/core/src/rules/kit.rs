@@ -60,7 +60,7 @@ pub fn dig(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mut terr
             continue;
         }
         let Some(holding) = territory.holdings.get_mut(&town.id).filter(|h| h.mine.is_none()) else { continue };
-        let cost = content.dials.mine_emeralds;
+        let cost = crate::fixed::Fixed::ceil(content.dials.mine_emeralds);
         if money.0 - super::farms::reserve(&content, trades, farm) < cost {
             continue;
         }
@@ -206,7 +206,7 @@ pub fn deep_mine(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mu
         if skills.get(&toolsmith).copied().unwrap_or(0) < MASTER_LEVEL || skills.get(&mason).copied().unwrap_or(0) < MASON_LEVEL {
             continue;
         }
-        let cost = content.dials.deep_mine_emeralds;
+        let cost = crate::fixed::Fixed::ceil(content.dials.deep_mine_emeralds);
         if money.0 - super::farms::reserve(&content, trades, farm) < cost {
             continue;
         }

@@ -62,7 +62,7 @@ fn documents_use_stationery_or_a_scribe() {
     look(&mut s);
     let b = s.paperwork(0).book();
     assert!((b[4] - 0.8).abs() < 1e-9, "out of paper: a scribe paid a tenth a document: {b:?}");
-    assert!((s.town(0).money - 9.2).abs() < 1e-9, "from the treasury: {}", s.town(0).money);
+    assert!(s.town(0).money == 9.2, "from the treasury: {}", s.town(0).money);
     assert_eq!(s.paperwork(0).by_kind.get(LADING), Some(&16));
 }
 
@@ -72,7 +72,7 @@ fn with_no_stationery_a_scribe_draws_up_each_document_for_a_tenth() {
     let mut s = desk(0.0, 0.0, 10.0);
     s.draw_papers(0, 10, LADING);
     look(&mut s);
-    assert!((s.paperwork(0).scribe_fees - 1.0).abs() < 1e-9, "a scribe at 0.1 a document: {}", s.paperwork(0).scribe_fees);
+    assert!(s.paperwork(0).scribe_fees == 1.0, "a scribe at 0.1 a document: {}", s.paperwork(0).scribe_fees);
     assert_eq!(cargo::CLERK_EMERALDS, 0.02);
     assert_eq!(cargo::COUNTING_STATIONERY, 0.5);
 }
@@ -83,7 +83,7 @@ fn a_scribe_is_paid_only_what_the_treasury_holds() {
     s.draw_papers(0, 10, LADING);
     look(&mut s);
     assert_eq!(s.town(0).money, 0.0, "it pays what it has");
-    assert!((s.paperwork(0).scribe_fees - 1.0).abs() < 1e-9, "the fee booked in full, as the mod's");
+    assert!(s.paperwork(0).scribe_fees == 1.0, "the fee booked in full, as the mod's");
 }
 
 /// A hub and a town a day apart, the hub's wagon going every `every` days; paper and flint and axes.
@@ -108,7 +108,7 @@ fn contracted_goods_ship_in_crates_with_their_papers() {
     assert!(crate_.consignee == Some(1) && crate_.contract == Some(id) && crate_.count == 64.0 && crate_.copy,
         "its bill of lading names the town and the contract: {crate_:?}");
     assert_eq!(s.paperwork(0).documents, 1, "one bill of lading drawn");
-    assert!((s.town(0).money - (5.0 - 0.125)).abs() < 1e-9, "a new crate bought: {}", s.town(0).money);
+    assert!(s.town(0).money == (5.0 - 0.125), "a new crate bought: {}", s.town(0).money);
     assert!(until(&mut s, 30, |s| s.contract(id).delivered > 0.0));
     assert_eq!(s.contract(id).delivered, 64.0, "opened and delivered under the contract");
     assert!(s.shipments(1).empties >= 1, "the empty crate stays, to ship with");
@@ -123,12 +123,12 @@ fn what_a_player_brought_is_paid_for_by_the_next_wagon() {
     s.deliver_shipment(1, Shipment { good: 1, count: 16.0, shipper: 0, consignee: Some(1), contract: Some(id),
         settled: false, copy: true });
     assert!(s.contract(id).delivered == 16.0 && s.town(1).stock[1] == 16.0, "the Merchant opened it and took delivery");
-    assert!((s.contract(id).owing - 4.0).abs() < 1e-9, "4 emeralds owed to the hub: {}", s.contract(id).owing);
+    assert!(s.contract(id).owing == 4.0, "4 emeralds owed to the hub: {}", s.contract(id).owing);
     assert_eq!(s.shipments(1).empties, 1, "and keeps the crate");
     assert!(until(&mut s, 60, |s| s.route(0).trips >= 1));
     let c = s.contract(id);
     assert!(c.owing < 0.01 && c.paid >= 3.9, "the hub's wagon collected it: owing {}, paid {}", c.owing, c.paid);
-    assert!((s.town(0).money - 9.0).abs() < 1e-9, "home with it: {}", s.town(0).money);
+    assert!(s.town(0).money == 9.0, "home with it: {}", s.town(0).money);
 }
 
 #[test]
@@ -142,9 +142,9 @@ fn the_buyers_wagon_carries_what_its_town_owes() {
     s.deliver_shipment(1, Shipment { good: 1, count: 16.0, shipper: 0, consignee: Some(1), contract: Some(id),
         settled: false, copy: true });
     assert!(until(&mut s, 60, |s| s.contract(id).owing < 0.01), "paid: {}", s.contract(id).owing);
-    assert!((s.town(0).money - 9.0).abs() < 1e-9, "the hub has its 4: {}", s.town(0).money);
+    assert!(s.town(0).money == 9.0, "the hub has its 4: {}", s.town(0).money);
     assert!(until(&mut s, 60, |s| s.route(0).trips >= 1));
-    assert!((s.town(1).money - 6.0).abs() < 1e-9, "the town paid 4: {}", s.town(1).money);
+    assert!(s.town(1).money == 6.0, "the town paid 4: {}", s.town(1).money);
 }
 
 #[test]
@@ -220,7 +220,7 @@ fn a_shipper_uses_its_own_empties_first_and_has_spare_ones_back() {
     let id = s.draft(0, 1, 0, 64.0, 0.05, 0, DAY, 1, Incoterm::Ddp, true);
     assert!(until(&mut s, 3, |s| s.route(0).on_the_road));
     assert_eq!(s.shipments(0).empties, 0, "its own crate used");
-    assert!((s.town(0).money - 5.0).abs() < 1e-9, "nothing paid for it: {}", s.town(0).money);
+    assert!(s.town(0).money == 5.0, "nothing paid for it: {}", s.town(0).money);
     assert!(until(&mut s, 30, |s| s.contract(id).delivered > 0.0));
     let (_, empties) = s.wagon_shipments(0);
     assert_eq!(empties, 4, "the town keeps sixteen of its 20 and hands the rest back, before the crate is opened");

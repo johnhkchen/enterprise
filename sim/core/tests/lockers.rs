@@ -50,7 +50,7 @@ fn paper(s: &Society) -> f64 {
 fn a_switched_on_trade_runs_at_restock() {
     let mut s = market(Some(1), 0, true, 64.0);
     assert_eq!(s.restock(0), 2, "two trades from 64 paper");
-    assert_eq!((paper(&s), s.town(0).money), (16.0, 2.0), "16 paper left, 2 emeralds");
+    assert_eq!((paper(&s), s.town(0).money), (16.0, enterprise_core::Fixed::from(2.0)), "16 paper left, 2 emeralds");
     let lockers = s.lockers(0).unwrap();
     assert_eq!(lockers.hands[0].offers[0].used, 2, "two trades used");
     let roster = s.roster(0);
@@ -58,7 +58,7 @@ fn a_switched_on_trade_runs_at_restock() {
     let merchant_xp = roster.hands[1].xp;
     assert!((6..=12).contains(&merchant_xp), "the Merchant earns 3 to 6 XP a trade, like a player: {merchant_xp}");
     // The income in the cash book.
-    assert_eq!(s.cash_book(0, 1), vec![(0, "lockers: sold paper".to_string(), 2.0)]);
+    assert_eq!(s.cash_book(0, 1), vec![(0, "lockers: sold paper".to_string(), enterprise_core::Fixed::from(2.0))]);
 }
 
 // parity: LockerTradingTests.aVillagerLevelsUpAtOnceFromLockerTrades
@@ -74,7 +74,7 @@ fn a_villager_levels_up_at_once_from_locker_trades() {
 fn a_switched_off_trade_does_not_run() {
     let mut s = market(Some(1), 0, false, 64.0);
     assert_eq!(s.restock(0), 0);
-    assert_eq!((paper(&s), s.town(0).money), (64.0, 0.0));
+    assert_eq!((paper(&s), s.town(0).money), (64.0, enterprise_core::Fixed::from(0.0)));
 }
 
 // parity: LockerTradingTests.noMerchantNoTrading
@@ -83,7 +83,7 @@ fn no_merchant_no_trading() {
     // No Merchant hand: no income from lockers (the mod's: no desk's Merchant loaded in reach).
     let mut s = market(None, 0, true, 64.0);
     assert_eq!(s.restock(0), 0);
-    assert_eq!((paper(&s), s.town(0).money), (64.0, 0.0));
+    assert_eq!((paper(&s), s.town(0).money), (64.0, enterprise_core::Fixed::from(0.0)));
     assert!(s.lockers(0).unwrap().managed.is_empty(), "nobody manages its locker");
 }
 
@@ -93,7 +93,7 @@ fn an_inflated_price_is_skipped() {
     // A restock cools demand by 16 when unused; 100 stays well above zero.
     let mut s = market(Some(1), 100, true, 64.0);
     assert_eq!(s.restock(0), 0);
-    assert_eq!((paper(&s), s.town(0).money), (64.0, 0.0));
+    assert_eq!((paper(&s), s.town(0).money), (64.0, enterprise_core::Fixed::from(0.0)));
     assert_eq!(s.lockers(0).unwrap().hands[0].offers[0].demand, 84, "100 - 16");
     assert!(paper_trade(84).inflated() && !paper_trade(0).inflated() && !paper_trade(-6).inflated());
 }
@@ -107,7 +107,7 @@ fn a_master_merchant_gets_a_discount() {
         [24, 23, 22, 20, 19]);
     let mut s = market(Some(5), 0, true, 64.0);
     assert_eq!(s.restock(0), 3);
-    assert_eq!((paper(&s), s.town(0).money), (7.0, 3.0));
+    assert_eq!((paper(&s), s.town(0).money), (7.0, enterprise_core::Fixed::from(3.0)));
 }
 
 // parity-partial: LockerTradingTests.merchantFillsLockerFromShulkerAndCollects
@@ -117,7 +117,7 @@ fn the_merchant_supplies_from_the_warehouse_and_collects() {
     // emeralds come back to the treasury (no locker apart from the warehouse, no shulker boxes).
     let mut s = market(Some(1), 0, true, 128.0);
     assert_eq!(s.restock(0), 5, "5 trades use 120");
-    assert_eq!((paper(&s), s.town(0).money), (8.0, 5.0), "8 stay behind, 5 emeralds to the treasury");
+    assert_eq!((paper(&s), s.town(0).money), (8.0, enterprise_core::Fixed::from(5.0)), "8 stay behind, 5 emeralds to the treasury");
 }
 
 // parity: LockerTradingTests.lockerRestocksDoNotSinkDemand
@@ -333,8 +333,8 @@ fn a_selling_offer_buys_within_the_towns_money() {
     s.switch(t, 0, 0, true);
     let start = s.totals();
     assert_eq!(s.restock(t), 5);
-    assert_eq!((s.town(t).stock[0], s.town(t).money), (30.0, 0.5));
-    assert_eq!(s.cash_book(t, 1), vec![(0, "lockers: bought bread".to_string(), -5.0)]);
+    assert_eq!((s.town(t).stock[0], s.town(t).money), (30.0, enterprise_core::Fixed::from(0.5)));
+    assert_eq!(s.cash_book(t, 1), vec![(0, "lockers: bought bread".to_string(), enterprise_core::Fixed::from(-5.0))]);
     s.conserved(&start).unwrap();
 }
 
@@ -349,7 +349,7 @@ fn lockers_are_saved_with_the_world() {
     loaded.advance(6 * DAY);
     assert_eq!(loaded.lockers(0), s.lockers(0));
     assert_eq!(loaded.roster(0), s.roster(0), "the Merchant's rolls the same");
-    assert_eq!(loaded.town(0).money.to_bits(), s.town(0).money.to_bits());
+    assert_eq!(loaded.town(0).money.millis(), s.town(0).money.millis());
 }
 
 #[test]

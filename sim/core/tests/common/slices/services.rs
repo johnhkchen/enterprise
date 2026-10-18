@@ -56,7 +56,7 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
         if done.len() > enterprise_core::services::RECENT {
             return Err(format!("town {t}: {} services in the ledger's latest", done.len()));
         }
-        if let Some(r) = done.iter().find(|r| r.paid.is_nan() || r.paid < 0.0) {
+        if let Some(r) = done.iter().find(|r| r.paid.is_negative()) {
             return Err(format!("town {t}: {r:?}"));
         }
     }

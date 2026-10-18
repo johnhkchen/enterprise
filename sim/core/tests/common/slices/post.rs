@@ -56,7 +56,7 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
     let bills = s.bills();
     for l in &mail.letters {
         if l.from == l.to || l.from >= s.town_count() || l.to >= s.town_count() || l.arrives < l.posted
-            || !(l.value >= 0.0 && l.value.is_finite()) {
+            || l.value.is_negative() {
             return Err(format!("a letter {l:?}"));
         }
         if s.is_off_map(l.to) || s.is_off_map(l.from) || s.realm(l.to).is_some() || s.realm(l.from).is_some() {
@@ -70,7 +70,7 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
         }
     }
     for c in &mail.calls {
-        if c.hub == c.town || !(c.value >= 0.0 && c.value.is_finite()) {
+        if c.hub == c.town || c.value.is_negative() {
             return Err(format!("a call {c:?}"));
         }
     }
@@ -93,11 +93,11 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
     }
     for l in &f.lots {
         let ok = |v: f64| v >= 0.0 && v.is_finite();
-        if l.hub == l.town || !ok(l.count) || !ok(l.sold) || l.sold > l.count + 1e-9 || !ok(l.proceeds) || !ok(l.fare) {
+        if l.hub == l.town || !ok(l.count) || !ok(l.sold) || l.sold > l.count + 1e-9 || l.proceeds.is_negative() || l.fare.is_negative() {
             return Err(format!("a lot {l:?}"));
         }
     }
-    if ![f.remitted, f.commission, f.consigned].iter().all(|v| *v >= 0.0 && v.is_finite()) {
+    if f.remitted.is_negative() || f.commission.is_negative() || !(f.consigned >= 0.0 && f.consigned.is_finite()) {
         return Err(format!("the forwarders' totals ran backwards: {f:?}"));
     }
     Ok(())

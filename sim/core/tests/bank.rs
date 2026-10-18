@@ -61,11 +61,12 @@ fn a_bank_buys_a_towns_bill_for_coin_now() {
     assert!(book.bills_paid < 10.0 * 1.02, "less the discount: {}", book.bills_paid);
     // Face less 1% and 1% a day to its due day: about 9.69 for a bill of 10.2 four days out.
     let days = (due - s.now()) as f64 / DAY as f64; // from the look its wagon arrived in
-    assert!((book.bills_paid - 10.2 * (1.0 - 0.01 - 0.01 * days)).abs() < 1e-9, "{} for 10.2 due in {days} days",
+    // (its face less the discount, rounded down to the thousandth: what the bank pays out)
+    assert!(book.bills_paid == enterprise_core::Fixed::from(10.2).mul_floor(1.0 - 0.01 - 0.01 * days), "{} for 10.2 due in {days} days",
         book.bills_paid);
-    assert!((book.bills_paid - 9.69).abs() < 0.02, "about 9.69: {}", book.bills_paid);
+    assert!((book.bills_paid.to_f64() - 9.69).abs() < 0.02, "about 9.69: {}", book.bills_paid);
     assert!((s.town(1).money - book.bills_paid).abs() < 1e-9, "in coin, from the wagon's purse");
-    assert!((book.bills_face - 10.2).abs() < 1e-9 && book.bills_bought == 1);
+    assert!(book.bills_face == 10.2 && book.bills_bought == 1);
     s.conserved(&start).unwrap();
 }
 
@@ -82,15 +83,15 @@ fn a_bank_lends_against_a_contract_and_is_repaid_from_the_payment() {
     let lent = s.owed_on(id);
     assert!(lent > 5.0, "lent against the books to come: {lent}");
     // Half the 32 to come, at 3%.
-    assert!((s.bank(0).lent - 16.0).abs() < 1e-9 && (lent - 16.0 * 1.03).abs() < 1e-9, "{:?}", s.bank(0));
-    assert!((s.town(1).money - 16.0).abs() < 1e-9, "in the town's treasury: {}", s.town(1).money);
+    assert!(s.bank(0).lent == 16.0 && lent == 16.0 * 1.03, "{:?}", s.bank(0));
+    assert!(s.town(1).money == 16.0, "in the town's treasury: {}", s.town(1).money);
     s.deliver(1, 1, 64.0); // made, with the money
     assert!(until(&mut s, 3 * 20, |s| s.contract(id).delivered >= 64.0), "collected: {:?}", s.contract(id));
     let owed = s.owed_on(id);
     assert_eq!(s.contract(id).state, State::Completed);
     assert!(owed < 0.01 && s.bank(0).repaid > 5.0, "the loan came out of the payment: {owed}, {:?}", s.bank(0));
-    assert!((s.bank(0).repaid - 16.48).abs() < 1e-9, "the principal and its 3%");
-    assert!((s.town(1).money - (16.0 + 32.0 - 16.48)).abs() < 1e-9, "the town was paid the rest: {}", s.town(1).money);
+    assert!(s.bank(0).repaid == 16.48, "the principal and its 3%");
+    assert!(s.town(1).money == (16.0 + 32.0 - 16.48), "the town was paid the rest: {}", s.town(1).money);
     assert!(s.loans().is_empty(), "paid off");
     s.conserved(&start).unwrap();
 }
@@ -122,13 +123,13 @@ fn the_discount_desk_prices_by_goods_and_caps_its_book() {
     assert!(!booked.taken(), "its book at its limit: {booked:?}");
     // The numbers: the fee 2%, 1% a day for four days, 4% unbacked, and the throttle on a book 30.6 of 100 full.
     assert!((fresh.share - (1.0 - 0.02 - 0.04 - 0.04 - 0.03 * 0.306)).abs() < 1e-9, "{}", fresh.share);
-    assert!((Discounts::limit(false, means, &dials) - 100.0).abs() < 1e-9);
-    assert!((Discounts::book(&bills, hub) - 30.6).abs() < 1e-9, "only what it holds on other markets");
+    assert!(Discounts::limit(false, means, &dials) == 100.0);
+    assert!(Discounts::book(&bills, hub) == 30.6, "only what it holds on other markets");
     // With a counting house: twice the paper, at half the fee (and the throttle on a book half as full).
     let counted =
         Discounts::quote(&bills, &book, hub, true, &bills.bills[elsewhere], true, 65.0, 0.0, means, t, DAY, &dials);
     assert!(counted.taken() && (counted.share - (1.0 - 0.01 - 0.04 - 0.03 * 95.6 / 200.0)).abs() < 1e-9, "{counted:?}");
-    assert!((Discounts::limit(true, means, &dials) - 200.0).abs() < 1e-9);
+    assert!(Discounts::limit(true, means, &dials) == 200.0);
 }
 
 #[test]
@@ -230,20 +231,20 @@ fn a_bank_endorses_another_markets_bill_and_presents_it_at_home() {
     s.advance(due + 2 * DAY);
     let bill = &s.bills()[id];
     assert_eq!(bill.state, BillState::Paid, "presented by the bank's wagon once due: {bill:?}");
-    assert!(s.town(third).money < 50.0 - 10.2 + 1e-6, "the third market paid its face: {}", s.town(third).money);
+    assert!(s.town(third).money <= enterprise_core::Fixed::emeralds(50) - enterprise_core::Fixed::from(10.2), "the third market paid its face: {}", s.town(third).money);
     s.conserved(&start).unwrap();
 }
 
 #[test]
 fn the_banks_rules_in_numbers() {
     let dials = content().dials;
-    assert!((discount_price(10.2, 4 * DAY, 0, DAY, &dials) - 10.2 * 0.95).abs() < 1e-12, "1% and 1% a day");
+    assert!(discount_price(10.2, 4 * DAY, 0, DAY, &dials) == 10.2 * 0.95, "1% and 1% a day");
     assert_eq!((dials.loan_share, dials.loan_interest, dials.bank_float), (0.5, 0.03, 48.0));
     let mut book = Book::default();
     let id = book.draft_with_advance(1, 0, 1, 16.0, 1.0, 0, DAY, 4, Incoterm::Exw, true, true, 0.25);
     book.advanced(id, 16.0);
     // Half of 64 to come, less the 16 paid up front, less 4 lent already.
-    assert!((loan_cap(&book.contracts[id], 4.0, &dials) - 12.0).abs() < 1e-12);
+    assert!(loan_cap(&book.contracts[id], 4.0, &dials) == 12.0);
     // A training contract's goods to come are its bonus (`Bank.lend`: `contract.worth()` when there's no delivery).
     let t = book.draft_with_advance(1, 0, 1, 0.0, 0.0, 0, DAY, 1, Incoterm::Exw, true, true, 0.0);
     book.contracts[t].training = Some(enterprise_core::training::Training::new(0, 2, 30.0, 0.0));
@@ -262,12 +263,12 @@ fn a_loan_on_a_broken_contract_is_collected_from_what_the_town_can_spare() {
     assert!(until(&mut s, 20 * 8, |s| s.contract(id).state == State::Broken), "{:?}", s.contract(id));
     let owed = s.owed_on(id);
     assert!(owed >= first && s.bank(0).repaid == 0.0, "nothing came out of a payment: {owed}, {:?}", s.bank(0));
-    assert!(owed <= 1.03 * 0.5 * 96.0 + 1e-9, "never past half the goods to come: {owed}");
+    assert!(owed <= enterprise_core::Fixed::ceil(1.03 * 0.5 * 96.0), "never past half the goods to come: {owed}");
     let before = s.town(1).money;
     s.pay(1, 200.0); // the town's shops take money: beyond its reserve of 128, it can spare the loan
     assert!(until(&mut s, 20 * 3, |s| s.owed_on(id) < 0.01), "collected: {}", s.owed_on(id));
     assert!((s.bank(0).repaid - owed).abs() < 1e-6, "all of it: {:?}", s.bank(0));
-    assert!(s.town(1).money < before + 200.0 - owed + 1e-6, "from its treasury: {}", s.town(1).money);
+    assert!(s.town(1).money <= before + enterprise_core::Fixed::emeralds(200) - owed, "from its treasury: {}", s.town(1).money);
 }
 
 #[test]

@@ -5,7 +5,9 @@
 //! host's libm. How to run it under wasm32-wasip1 is in `sim/README.md`.
 //!
 //! The script is the random worlds' generator (`common/`) for a few seeds, every slice's part in it, with the sellers'
-//! emeralds sold to the mint each day and each slice's daily doings: every mechanism the core has, on one thread.
+//! emeralds sold to the mint each day and each slice's daily doings: every mechanism the core has, on one thread. And
+//! the curves themselves (`fixed::exp`, `ln`, `exp2`, `pow`, `halved`, `powi`, `hypot`) over a grid, to the bit: a
+//! last-bit difference the worlds would round away still shows there.
 //!
 //! When the rules change what a world does, the digest changes: `REPLAY_DIGEST=write cargo test --release --test
 //! replay` writes the new one (natively), to commit with the change that moved it.
@@ -60,8 +62,24 @@ fn play(seed: u64) -> (u64, usize) {
     (h.0, blob.len())
 }
 
+/// The curves over a grid of the rules' ranges, every result's bits.
+fn curves() -> u64 {
+    use enterprise_core::fixed;
+    let mut h = Fnv::new();
+    for i in 0..4096 {
+        let t = i as f64 / 4096.0;
+        let x = -40.0 + 80.0 * t;
+        let y = 1e-6 + 1e4 * t * t;
+        for v in [fixed::exp(x), fixed::exp2(x), fixed::ln(y), fixed::pow(0.75, 60.0 * t), fixed::pow(1.002, 60.0 * t),
+                fixed::halved(60.0 * t, 3.0), fixed::powi(15.0 / 16.0, i % 40), fixed::hypot(x, y)] {
+            h.write(&v.to_bits().to_le_bytes());
+        }
+    }
+    h.0
+}
+
 fn digest() -> String {
-    let mut lines = Vec::new();
+    let mut lines = vec![format!("curves: {:016x}", curves())];
     for seed in SEEDS {
         let (d, bytes) = play(seed);
         lines.push(format!("seed {seed}: {d:016x} ({bytes} bytes saved)"));

@@ -48,15 +48,15 @@ fn open(s: &Society) -> Vec<usize> {
 fn a_training_contract_is_paid_when_the_census_shows_the_master() {
     let mut s = world(&[("weaponsmith", 3)], 0.0);
     let id = s.draft_training(0, 1, "weaponsmith", 5, 24.0, 0.0, 10 * DAY, true, true);
-    assert!((s.contract(id).advance_due() - 8.0).abs() < 1e-9, "a third of the bonus up front: {}", s.contract(id).advance_due());
+    assert!(s.contract(id).advance_due() == 8.0, "a third of the bonus up front: {}", s.contract(id).advance_due());
     s.world.resource_mut::<Book>().advanced(id, 8.0);
     s.advance(DAY);
     assert!(s.contract(id).in_force(), "a Journeyman yet: under way");
     s.set_roster(0, &[("weaponsmith", 5)]);
     s.advance(2 * DAY);
     let c = s.contract(id);
-    assert!(c.state == State::Completed && (c.owing - 16.0).abs() < 1e-9, "a master: done, the rest of the bonus owed: {}", c.owing);
-    assert!((c.recouped - 8.0).abs() < 1e-9, "the advance worked off against the bonus");
+    assert!(c.state == State::Completed && c.owing == 16.0, "a master: done, the rest of the bonus owed: {}", c.owing);
+    assert!(c.recouped == 8.0, "the advance worked off against the bonus");
     // A second contract wants a second master, not the one it has.
     let another = s.draft_training(0, 1, "weaponsmith", 5, 24.0, 0.0, 10 * DAY, false, true);
     assert_eq!(s.contract(another).training.unwrap().already, 1);
@@ -82,7 +82,7 @@ fn a_training_contract_late_is_a_miss_and_as_long_again_breaks_it() {
     s.advance(11 * DAY);
     let c = s.contract(id);
     assert_eq!(c.state, State::Broken, "broken, still untrained");
-    assert!((c.refund - 8.0).abs() < 1e-9, "and the advance it hadn't worked off is owed back: {}", c.refund);
+    assert!(c.refund == 8.0, "and the advance it hadn't worked off is owed back: {}", c.refund);
 }
 
 // parity: LogisticsTests.aMerchantTakesATenderWorthItsWhile
@@ -125,7 +125,7 @@ fn a_merchant_with_no_one_to_train_carries_the_tender_on() {
     let onward = s.board(hub);
     assert!(onward.len() == 1 && onward[0].work.bonus < 40.0 && onward[0].due < first.due,
         "posted on its own board, for a little less, a little sooner");
-    assert!((onward[0].work.bonus - 34.0).abs() < 1e-9, "15% less");
+    assert!(onward[0].work.bonus == 34.0, "15% less");
     assert_eq!(onward[0].due, 18 * DAY, "two days sooner");
     assert_eq!(s.tenders_open_for(capital, "weaponsmith"), 1, "the capital's want is still one, wherever it is posted");
     // Nobody to carry it to, and nobody read it twice.
@@ -149,7 +149,7 @@ fn a_tender_carried_on_is_taken_by_a_town_of_the_hubs_and_done_when_that_town_is
     let up = book.contracts.iter().find(|c| c.seller == hub).expect("the hub's own, with the capital");
     assert_eq!((down.buyer, up.buyer), (hub, capital));
     assert_eq!(up.training.unwrap().via, Some(down.id), "carried out by the town's");
-    assert!((down.training.unwrap().bonus - 34.0).abs() < 1e-9 && (up.training.unwrap().bonus - 40.0).abs() < 1e-9);
+    assert!(down.training.unwrap().bonus == 34.0 && up.training.unwrap().bonus == 40.0);
     let (down, up) = (down.id, up.id);
     // The copies ride: the town's to the hub, the hub's to the capital, on wagons; here by hand.
     for (id, party) in [(down, hub), (up, capital)] {
@@ -161,7 +161,8 @@ fn a_tender_carried_on_is_taken_by_a_town_of_the_hubs_and_done_when_that_town_is
     s.advance(2 * DAY);
     assert_eq!((s.contract(down).state, s.contract(up).state), (State::Completed, State::Completed),
         "the capital's contract is done when the town's is");
-    assert!((s.contract(up).owing - 40.0).abs() < 1e-9 || (s.contract(up).owing - 40.0 + 40.0 / 3.0).abs() < 1e-9);
+    assert!(s.contract(up).owing == 40.0 || s.contract(up).owing == enterprise_core::Fixed::round(40.0 - 40.0 / 3.0),
+        "{}", s.contract(up).owing);
 }
 
 #[test]
@@ -183,7 +184,7 @@ fn a_tender_nobody_takes_lapses_and_is_posted_again_for_a_quarter_more() {
     assert!(lapsed.iter().all(|t| t.id != id), "gone from the boards");
     let again = s.board(1);
     assert_eq!(again.len(), 1);
-    assert!((again[0].work.bonus - 10.0).abs() < 1e-9, "a quarter more: {}", again[0].work.bonus);
+    assert!(again[0].work.bonus == 10.0, "a quarter more: {}", again[0].work.bonus);
     assert_eq!(again[0].due, 18 * DAY, "as long as it was given, from today");
 }
 
@@ -288,7 +289,7 @@ fn under_an_offtake_the_pupils_work_is_crated_for_the_buyer_with_a_bill() {
     assert_eq!(bills.len(), 1);
     assert!(bills[0].drawee == 1 && bills[0].payee == 0, "a bill drawn on the buyer for them");
     assert!(bills[0].amount >= 12.0 / 3.0, "worth at least a third of an emerald each: {}", bills[0].amount);
-    assert!((bills[0].amount - 12.0 * 0.5 * 1.02).abs() < 1e-9, "twelve axes at half an emerald, plus the bill's two per cent");
+    assert!(bills[0].amount == 12.0 * 0.5 * 1.02, "twelve axes at half an emerald, plus the bill's two per cent");
     assert_eq!(bills[0].held, Held::Town(0), "filed in the seller's warehouse");
     assert_eq!(s.paperwork(0).by_kind.get("bill of lading"), Some(&1), "with a bill of lading");
 }

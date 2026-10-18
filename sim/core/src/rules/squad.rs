@@ -118,7 +118,7 @@ pub fn size_up(content: Res<Content>, mut routes: Query<(Entity, &Route, &mut Ro
 #[allow(clippy::too_many_arguments)]
 pub fn crew(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u64, town: usize, plan: &mut Plan,
         roster: &mut Roster, mut lockers: Option<&mut Lockers>, stacks: u32, wanted_trades: &[TradeId],
-        waiting: usize, routes: usize, money: &mut Money, free: impl Fn(&Money) -> f64) -> Result<(), Stay> {
+        waiting: usize, routes: usize, money: &mut Money, free: impl Fn(&Money) -> crate::fixed::Fixed) -> Result<(), Stay> {
     let d = &content.dials;
     let mut home = available(content, roster, lockers.as_deref());
     let (needs, extras) = call(content, roster, &home, stacks, wanted_trades, waiting);
@@ -126,8 +126,9 @@ pub fn crew(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u6
     if squad.is_empty() {
         let out = routes.saturating_sub(waiting);
         if let (Some(i), Some(merchant)) = (to_hire(content, roster, &home, routes, out), content.trade(MERCHANT)) {
-            if free(money) >= d.signing_emeralds {
-                post(ledger, cash, Side::treasury(town, &mut money.0), Side::outside(), d.signing_emeralds, signing(),
+            let signing_fee = crate::fixed::Fixed::ceil(d.signing_emeralds);
+            if free(money) >= signing_fee {
+                post(ledger, cash, Side::treasury(town, &mut money.0), Side::outside(), signing_fee, signing(),
                     now, content.day_ticks);
                 sign_on(content, roster, lockers.as_deref_mut(), i, merchant);
                 roster.hands[i].xp = 1; // `Squad.hire`: `setVillagerXp(1)`, whatever it had
@@ -186,7 +187,7 @@ pub fn to_porter(content: &Content, plan: &mut Plan, roster: &Roster) {
 pub fn no_team(content: &Content, p: &mut Provision) {
     p.team_feed = 0.0;
     p.fed = 0.0;
-    p.team_coin = 0.0;
+    p.team_coin = crate::fixed::Fixed::ZERO;
     p.cost = 2.0 * p.food * content.dials.purse_per_food_point;
 }
 
@@ -312,10 +313,10 @@ pub fn train(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, towns_
 /// one [`to_train`] picks, if it can pay `training_emeralds` from its free money. Returns the hand trained.
 #[allow(clippy::too_many_arguments)]
 pub fn train_town(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u64, town: usize, routes: usize,
-        free: f64, roster: &mut Roster, lockers: Option<&mut Lockers>, money: &mut Money) -> Option<usize> {
+        free: crate::fixed::Fixed, roster: &mut Roster, lockers: Option<&mut Lockers>, money: &mut Money) -> Option<usize> {
     // No Merchant at the desk, nobody to commission it (`Caravans.dispatch` 210: the town sends no caravan either).
     roster.merchant?;
-    let cost = content.dials.training_emeralds;
+    let cost = crate::fixed::Fixed::ceil(content.dials.training_emeralds);
     let (i, trade) = to_train(content, roster, lockers.as_deref(), routes)?;
     if free < cost {
         return None;

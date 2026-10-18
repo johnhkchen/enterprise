@@ -55,12 +55,12 @@ fn conserved(s: &mut Society, before: &enterprise_core::check::Totals) {
 #[test]
 fn the_capital_is_half_the_spare_between_the_least_and_the_dial() {
     // `Expeditions.capital`: max(least, min(jumpstart, spare / 2)); the least 10 for a village, 16 for a new town.
-    assert_eq!(capital(Kind::Village, 30.0, 10.0), 10.0, "spare 10: the least, 10");
-    assert_eq!(capital(Kind::Village, 30.0, 40.0), 20.0, "half of 40");
-    assert_eq!(capital(Kind::Village, 30.0, 100.0), 30.0, "up to the jumpstart");
-    assert_eq!(capital(Kind::Found, 42.0, 20.0), 16.0, "a new town's least");
-    assert_eq!(capital(Kind::Found, 42.0, 100.0), 42.0);
-    assert_eq!(capital(Kind::Found, 42.0, 60.0), 30.0);
+    assert_eq!(capital(Kind::Village, 30.0, enterprise_core::Fixed::from(10.0)), 10.0, "spare 10: the least, 10");
+    assert_eq!(capital(Kind::Village, 30.0, enterprise_core::Fixed::from(40.0)), 20.0, "half of 40");
+    assert_eq!(capital(Kind::Village, 30.0, enterprise_core::Fixed::from(100.0)), 30.0, "up to the jumpstart");
+    assert_eq!(capital(Kind::Found, 42.0, enterprise_core::Fixed::from(20.0)), 16.0, "a new town's least");
+    assert_eq!(capital(Kind::Found, 42.0, enterprise_core::Fixed::from(100.0)), 42.0);
+    assert_eq!(capital(Kind::Found, 42.0, enterprise_core::Fixed::from(60.0)), 30.0);
 }
 
 // parity-partial: ExpeditionTests.aMerchantSettlesAVillageNobodyTradesWith
@@ -76,7 +76,7 @@ fn a_merchant_settles_a_village_nobody_trades_with() {
     s.advance(DAY / 4);
     let parties = s.parties();
     assert_eq!(parties.len(), 1, "a party left at the first look");
-    assert_eq!((parties[0].kind, parties[0].hands, parties[0].capital, parties[0].bread), (Kind::Village, 1, 10.0, 64.0));
+    assert_eq!((parties[0].kind, parties[0].hands, parties[0].capital, parties[0].bread), (Kind::Village, 1, enterprise_core::Fixed::from(10.0), 64.0));
     assert!(!s.raising(home), "and none while it's on the road");
     assert!(s.town(home).money.abs() < 1e-9, "14 left the treasury: the desk 4 and the capital 10");
     // Off the world on the road: the hand is off the old town's roll, the capital off the books, the bread gone.
@@ -90,7 +90,7 @@ fn a_merchant_settles_a_village_nobody_trades_with() {
     s.advance(DAY);
     assert!(s.parties().is_empty(), "arrived");
     assert_eq!(s.settled(), vec![v]);
-    assert!((s.town(v).money - 10.0).abs() < 1e-9, "the capital in its treasury: {}", s.town(v).money);
+    assert!(s.town(v).money == 10.0, "the capital in its treasury: {}", s.town(v).money);
     assert!((s.town(v).stock[BREAD] - 64.0).abs() < 1e-9, "and the bread");
     let r = s.roster(v);
     assert!(r.merchant.is_some_and(|m| s.content().trades[r.hands[m].trade].merchant), "with its Merchant");
@@ -100,7 +100,7 @@ fn a_merchant_settles_a_village_nobody_trades_with() {
     assert_eq!((route.first(), route.last()), (Some(&Hex::new(0, 0)), Some(&Hex::new(5, 0))));
     conserved(&mut s, &before);
     let book = s.account_book(Account::Treasury(v), 2);
-    assert!(book.iter().any(|(_, what, n)| what == "settling" && (*n - 10.0).abs() < 1e-9), "{book:?}");
+    assert!(book.iter().any(|(_, what, n)| what == "settling" && *n == 10.0), "{book:?}");
 }
 
 #[test]
@@ -113,7 +113,7 @@ fn a_party_goes_once_in_eight_days_at_most() {
     s.advance(8 * DAY - 1);
     assert_eq!(s.settled(), vec![v1], "one in the first eight days: the nearest village");
     assert_eq!(s.last_party(home), Some(1200));
-    assert!((s.town(home).money - (200.0 - 34.0)).abs() < 1e-9, "4 for the desk, the jumpstart's 30");
+    assert!(s.town(home).money == (200.0 - 34.0), "4 for the desk, the jumpstart's 30");
     s.advance(8 * DAY);
     assert_eq!(s.parties().len(), 1, "the second left on day 8");
     assert_eq!(s.last_party(home), Some(8 * DAY));
@@ -127,7 +127,7 @@ fn a_party_goes_once_in_eight_days_at_most() {
     assert!(settled[1] != v2 && s.roster(v2).merchant.is_none(), "{settled:?}");
     // The capital, less the stall of the Mason it took on for the square its works now want (`buildings-and-works`).
     let stall = s.content().dials.stall_emeralds;
-    assert!((s.town(v1).money - (30.0 - stall)).abs() < 1e-9, "{:?}", s.cash_book(v1, 30));
+    assert!(s.town(v1).money == (30.0 - stall), "{:?}", s.cash_book(v1, 30));
     conserved(&mut s, &before);
 }
 
@@ -224,15 +224,15 @@ fn with_no_village_a_town_is_founded_on_open_ground() {
     // The flattest, driest ground, then the nearest, then the first direction (east): 5 hexes out.
     assert_eq!((parties[0].kind, parties[0].target, parties[0].hands), (Kind::Found, Hex::new(5, 0), 2));
     // 18 for the set-up and half of the 82 beyond it, 41, under the dial's 42.
-    assert!((parties[0].capital - 41.0).abs() < 1e-9, "{}", parties[0].capital);
-    assert!((s.town(home).money - (100.0 - 18.0 - 41.0)).abs() < 1e-9);
+    assert!(parties[0].capital == 41.0, "{}", parties[0].capital);
+    assert!(s.town(home).money == (100.0 - 18.0 - 41.0));
     assert_eq!(s.roster(home).residents(), 8, "two hands away");
     conserved(&mut s, &before);
     s.advance(DAY);
     assert_eq!(s.town_count(), 2, "the new town");
     let new = s.settled()[0];
     assert_eq!(s.town_hex(new), Some(Hex::new(5, 0)));
-    assert!((s.town(new).money - 41.0).abs() < 1e-9);
+    assert!(s.town(new).money == 41.0);
     let r = s.roster(new);
     let names: Vec<&str> = r.hands.iter().map(|h| s.content().trades[h.trade].name.as_str()).collect();
     assert_eq!(names, ["merchant", "farmer"], "a Merchant and its Farmer");
@@ -288,7 +288,7 @@ fn a_party_whose_village_found_a_merchant_comes_home_with_its_capital() {
     s.advance(2 * DAY);
     assert!(s.settled().is_empty(), "no place to settle");
     assert_eq!(s.roster(home).residents(), 10, "the hand is home");
-    assert!((s.town(home).money - 96.0).abs() < 1e-9, "with the capital, less the desk's 4: {}", s.town(home).money);
+    assert!(s.town(home).money == 96.0, "with the capital, less the desk's 4: {}", s.town(home).money);
     conserved(&mut s, &before);
 }
 

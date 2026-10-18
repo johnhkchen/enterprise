@@ -60,7 +60,7 @@ fn a_forwarder_takes_crates_bound_on_and_their_run_loads_them_first() {
     let (shipper, hub, buyer) = (0, 1, 2);
     let onward = 1;
     let mut cargo = vec![crate_of_paper(shipper, buyer)];
-    let mut purse = 1000.0;
+    let mut purse = enterprise_core::Fixed::emeralds(1000);
     assert_eq!(s.hand_over(hub, &mut cargo, &mut purse), 0, "no draymen to cart it in");
     assert!(cargo.len() == 1 && purse == 1000.0, "it stays aboard, nothing paid");
     let leg = s.leg(onward, true);
@@ -95,8 +95,9 @@ fn the_forwarder_buys_a_block_of_space_it_fills_and_pays_for_each_run() {
     assert!(s.hub(hub).held.iter().any(|h| h.booked.is_some_and(|b| b.leg == home && b.stacks == 1 && b.block)));
     let before = s.town(hub).money;
     let paid = s.run_block(hub, &home);
-    assert!(paid > 0.0 && close(paid, 0.8 * leg_price), "the run loads: the forwarder pays for its block, {paid}");
-    assert!(close(before - s.town(hub).money, paid), "out of the hub's treasury");
+    // (the block's cost rounded up to the thousandth: a cost)
+    assert!(paid > 0.0 && paid == enterprise_core::Fixed::ceil(0.8 * leg_price), "the run loads: the forwarder pays for its block, {paid}");
+    assert!(before - s.town(hub).money == paid, "out of the hub's treasury");
     assert_eq!(s.hub(hub).blocks[&home.key()].runs, 4, "a run counted down");
 }
 
@@ -114,8 +115,9 @@ fn space_is_priced_by_the_road_food_over_what_the_wagon_carries() {
     assert_eq!(freight::carts_for(1), 1, "a stack in and out: two stacks, a cart");
     assert_eq!(freight::carts_for(9), 5, "nine stacks: eighteen, five carts");
     assert!(close(freight::run_cost(c, 200), 20.0 * 2.0 * 2.0 * 0.05), "a usual squad's food both ways");
-    assert!(close(freight::stop_fee(c, 0.0, 16.0), 0.25), "a landing a quarter emerald at least");
-    assert!(close(freight::stop_fee(c, 100.0, 16.0), 25.0 / 16.0), "or a quarter of passing the posts: 25 spurs");
+    assert!(freight::stop_fee(c, 0.0, 16.0) == 0.25, "a landing a quarter emerald at least");
+    // (25 spurs at 16 an emerald, rounded up to the thousandth)
+    assert!(freight::stop_fee(c, 100.0, 16.0) == enterprise_core::Fixed::ceil(25.0 / 16.0), "or a quarter of passing the posts: 25 spurs");
 }
 
 #[test]
@@ -126,21 +128,22 @@ fn with_draymen_free_the_forwarder_takes_the_crate_for_its_fee() {
     assert_eq!(s.hub(hub).carts, 4, "a hub without a roster: one drayman, four carts");
     let start = s.totals();
     let mut cargo = vec![crate_of_paper(shipper, buyer)];
-    let mut purse = 10.0;
+    let mut purse = enterprise_core::Fixed::emeralds(10);
     let money = s.town(hub).money;
     assert_eq!(s.hand_over(hub, &mut cargo, &mut purse), 1, "a stack handed over");
     assert!(cargo.is_empty(), "off the wagon");
     // The cheapest leg's forwarding a stack and a cart in and out (3 spurs, at 16) with the fifth, in whole spurs.
-    let fee = (stack_price_200() * 1.2 * 16.0 + 3.0 * 1.2).ceil() / 16.0;
-    assert!(close(10.0 - purse, fee) && close(s.town(hub).money - money, fee), "paid {} into the hub, {fee}", 10.0 - purse);
+    let fee = enterprise_core::Fixed::ceil((stack_price_200() * 1.2 * 16.0 + 3.0 * 1.2).ceil() / 16.0);
+    assert!(enterprise_core::Fixed::emeralds(10) - purse == fee && s.town(hub).money - money == fee, "paid {} into the hub, {fee}",
+        enterprise_core::Fixed::emeralds(10) - purse);
     let h = s.hub(hub);
     assert_eq!((h.carts, h.book.forwarded, h.book.carts), (3, 1, 1), "a cart of the day's four used");
     assert!(h.held.len() == 1 && h.held[0].carted && h.held[0].booked.is_none(), "in the forwarder's hands, carted in");
-    assert!(close(h.book.drayage, 3.0 / 16.0), "the draymen's 3 spurs");
+    assert!(h.book.drayage == enterprise_core::Fixed::ceil(3.0 / 16.0), "the draymen's 3 spurs");
     s.conserved(&start).unwrap_or_else(|e| panic!("{e}"));
     let book = s.cash_book(hub, 1);
     assert!(book.iter().any(|(_, what, v)| what == "forwarding" && *v > 0.0)
-        && book.iter().any(|(_, what, v)| what == "drayage" && close(*v, 3.0 / 16.0)), "{book:?}");
+        && book.iter().any(|(_, what, v)| what == "drayage" && *v == enterprise_core::Fixed::ceil(3.0 / 16.0)), "{book:?}");
 }
 
 #[test]
@@ -167,7 +170,7 @@ fn a_forwarder_books_tickets_on_the_soonest_run_and_the_carrier_is_paid_as_it_lo
     let h = s.hub(hub);
     let booking = h.held[0].booked.expect("booked");
     let fare = (stack_price_200() * 0.25 * 16.0).ceil().max(1.0) / 16.0; // the shop's price in whole spurs
-    assert!(booking.leg == home && !booking.block && close(booking.fare, fare), "{booking:?} against {fare}");
+    assert!(booking.leg == home && !booking.block && booking.fare == enterprise_core::Fixed::ceil(fare), "{booking:?} against {fare}");
     assert_eq!(h.tickets[&home.key()], 12, "one of its 13 tickets sold");
     assert_eq!(s.town(hub).money, money, "the fare is paid as the run loads, not before");
 }
@@ -179,7 +182,7 @@ fn a_crate_stays_aboard_where_no_carrier_runs_its_way() {
     let elsewhere = s.add_town("Elsewhere", 0.0);
     s.restock_hub(hub);
     let mut cargo = vec![crate_of_paper(shipper, elsewhere), crate_of_paper(shipper, hub)];
-    let mut purse = 10.0;
+    let mut purse = enterprise_core::Fixed::emeralds(10);
     assert_eq!(s.hand_over(hub, &mut cargo, &mut purse), 0, "no run to Elsewhere, and one made out to the hub itself");
     assert!(cargo.len() == 2 && purse == 10.0, "both stay aboard, nothing paid");
 }
@@ -226,8 +229,8 @@ fn a_town_the_roads_pass_becomes_a_hub() {
     let money = s.town(t).money;
     s.advance(LOOK);
     assert!(s.is_hub(t), "two routes of others pass: a hub");
-    assert!(close(money - s.town(t).money, 4.0), "its storehouse cost 4 emeralds");
-    assert!(s.cash_book(t, 1).iter().any(|(_, what, v)| what == "storehouse" && close(*v, -4.0)));
+    assert!(money - s.town(t).money == 4.0, "its storehouse cost 4 emeralds");
+    assert!(s.cash_book(t, 1).iter().any(|(_, what, v)| what == "storehouse" && *v == -4.0));
     assert!(s.whys(t).iter().any(|w| w.line.contains("a freight hub now: 2 routes of others pass through, 0 call")),
         "{:?}", s.whys(t));
     assert_eq!(s.stop_on(ab), Some((t, 4)), "A's road calls at T: the first hex of its path within a hex of T's");
@@ -287,7 +290,7 @@ fn a_route_calls_at_the_hub_on_its_way_out_and_home() {
     s.advance(LOOK + travel * 4 / 10 + LOOK);
     assert!(s.wagon_freight(ab).and_then(|f| f.stop).is_some_and(|x| x.called), "it called at T");
     assert_eq!(s.route_freight(ab).stops, 1);
-    assert!(close(s.town(t).money - t_money, 0.25), "and paid its landing, a quarter emerald");
+    assert!(s.town(t).money - t_money == 0.25, "and paid its landing, a quarter emerald");
     // On to B and home again, calling at T on the way back.
     for day in 1..=4 {
         s.advance(day * DAY);
@@ -327,7 +330,7 @@ fn routes_crossing_a_pass_town_make_it_a_hub_and_it_opens_its_own_runs() {
 fn reorganising(long_blocks: u32, short_blocks: u32, trips: u32, onward_trips: u32, traded: f64) -> Network {
     let (a, h, b) = (0, 1, 2);
     let run = |route, from, to, blocks: u32, trips, path: Vec<Hex>| Run {
-        route, from, to, blocks, travel_ticks: blocks as u64 * 20, road_cost: 0.0, every_ticks: DAY, last_departure: None,
+        route, from, to, blocks, travel_ticks: blocks as u64 * 20, road_cost: enterprise_core::Fixed::ZERO, every_ticks: DAY, last_departure: None,
         path, trips, traded, crew: 2.0, capacity: 27, wagon: None, stop: None,
     };
     let hexes = [(a, Hex::new(0, 0)), (h, Hex::new((short_blocks / 80) as i32, 0)), (b, Hex::new((long_blocks / 80) as i32, 0))];
@@ -531,7 +534,7 @@ fn going_out_a_wagon_buys_its_road_home_food_at_the_stop_where_the_far_end_has_n
     assert_eq!(s.road_food(ab).provisions, 80.0, "it bought the road home's 80 points at T");
     assert_eq!(bread - s.town(t).stock[BREAD], 16.0, "16 bread, out of T's warehouse");
     // The landing (a quarter emerald) and the bread at its worth, in whole spurs: 16 x 1/6 at 16 is 42.7, 43 spurs.
-    assert!(close(s.town(t).money - money, 0.25 + 43.0 / 16.0), "{}", s.town(t).money - money);
+    assert!(s.town(t).money - money == enterprise_core::Fixed::ceil(0.25) + enterprise_core::Fixed::ceil(43.0 / 16.0), "{}", s.town(t).money - money);
     s.advance(2 * DAY);
     assert!(s.road_food(ab).short_rations == 0 && s.road_food(ab).waiting_since.is_none(), "home without waiting at B");
     s.conserved(&start).unwrap_or_else(|e| panic!("{e}"));

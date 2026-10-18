@@ -85,7 +85,7 @@ fn farm_and_mill(farm_level: Option<u8>, mill_level: Option<u8>, bargain: bool) 
 }
 
 /// The first wagon's sale at the mill: (sold, takings), and the worth it left with.
-fn first_sale(mut s: Society) -> (f64, f64, f64) {
+fn first_sale(mut s: Society) -> (f64, enterprise_core::Fixed, f64) {
     let mut worth = None;
     for day in 1..=10 {
         for out in s.advance(day * DAY) {
@@ -105,28 +105,30 @@ fn a_wagon_sells_at_the_price_settled_at_the_middle_of_the_batch() {
     // short of 320.
     let (sold, takings, _) = first_sale(farm_and_mill(None, None, true));
     let each = price(0.05, shortage((sold / 2.0).floor(), 320.0), 1, 1).unwrap();
-    assert!((takings - sold * each).abs() < 1e-9, "{sold} sold for {takings}, {each} each");
+    // (the batch's price rounded up to the thousandth: the buyer's to pay)
+    assert!(takings == enterprise_core::Fixed::ceil(sold * each), "{sold} sold for {takings}, {each} each");
     assert!(each > 0.025 && each < 0.0375, "between the floor and an empty shelf's even split: {each}");
     let (flat_sold, flat_takings, _) = first_sale(farm_and_mill(None, None, false));
     assert_eq!(flat_sold, sold, "the same wheat");
-    assert!((flat_takings - sold * 0.05).abs() < 1e-9, "the dial off: its full worth, {flat_takings}");
+    assert!(flat_takings == enterprise_core::Fixed::ceil(sold * 0.05), "the dial off: its full worth, {flat_takings}");
 }
 
 #[test]
 fn the_seller_s_home_merchant_and_the_buyer_s_set_the_split() {
     let per = |farm, mill| {
         let (sold, takings, _) = first_sale(farm_and_mill(farm, mill, true));
-        (sold, takings / sold)
+        (sold, takings)
     };
     let (sold, even) = per(Some(3), Some(3));
     let (_, master_selling) = per(Some(5), Some(1));
     let (_, master_buying) = per(Some(1), Some(5));
     let (_, none) = per(None, None);
     let s = shortage((sold / 2.0).floor(), 320.0);
-    assert!((master_selling - price(0.05, s, 5, 1).unwrap()).abs() < 1e-12, "{master_selling}");
-    assert!((master_buying - price(0.05, s, 1, 5).unwrap()).abs() < 1e-12, "{master_buying}");
+    // The batch at the price each, rounded up to the thousandth (the buyer's to pay).
+    assert!(master_selling == enterprise_core::Fixed::ceil(sold * price(0.05, s, 5, 1).unwrap()), "{master_selling}");
+    assert!(master_buying == enterprise_core::Fixed::ceil(sold * price(0.05, s, 1, 5).unwrap()), "{master_buying}");
     assert!(master_buying < even && even < master_selling, "{master_buying} < {even} < {master_selling}");
-    assert!((none - even).abs() < 1e-12, "no Merchants: level 1 each, an even split like 3 and 3");
+    assert!(none == even, "no Merchants: level 1 each, an even split like 3 and 3");
 }
 
 #[test]

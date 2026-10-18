@@ -32,6 +32,7 @@ use crate::bills::{Bill, BillState, Bills};
 use crate::cash_book::Reason;
 use crate::content::Dials;
 use crate::contracts::{Book, Contract, State};
+use crate::fixed::Fixed;
 use crate::messages::TownId;
 use crate::society::Society;
 
@@ -40,10 +41,10 @@ use crate::society::Society;
 pub const HUB_DISCOUNT_FEE: f64 = 0.02;
 pub const HUB_DISCOUNT_PER_DAY: f64 = 0.01;
 /// Loans owed under this are paid off (`Bank.repayFrom`, `collect`); a collection under this isn't worth taking.
-pub const LOAN_EPS: f64 = 0.001;
-pub const COLLECT_EPS: f64 = 0.01;
+pub const LOAN_EPS: Fixed = Fixed::from_millis(1);
+pub const COLLECT_EPS: Fixed = Fixed::from_millis(10);
 /// A loan smaller than an emerald isn't made (`Bank.lend`: `spurs < rate`), nor one on less than an emerald's cap.
-pub const MIN_LOAN: f64 = 1.0;
+pub const MIN_LOAN: Fixed = Fixed::ONE;
 
 pub(crate) fn discount_reason() -> Reason {
     Reason::Other("discount".into())
@@ -64,8 +65,8 @@ pub struct Loan {
     pub bank: TownId,
     pub borrower: TownId,
     pub contract: usize,
-    pub principal: f64,
-    pub owed: f64,
+    pub principal: Fixed,
+    pub owed: Fixed,
     pub made: u64,
 }
 
@@ -74,11 +75,11 @@ pub struct Loan {
 pub struct BankBook {
     pub bills_bought: u32,
     /// Emeralds paid for them, and what they were worth when due.
-    pub bills_paid: f64,
-    pub bills_face: f64,
+    pub bills_paid: Fixed,
+    pub bills_face: Fixed,
     pub loans_made: u32,
-    pub lent: f64,
-    pub repaid: f64,
+    pub lent: Fixed,
+    pub repaid: Fixed,
 }
 
 /// Every bank, its loans and its book (`Bank`, the mod's saved data: one for the world, a resource here).
@@ -90,7 +91,7 @@ pub struct Banks {
     pub next_id: usize,
     /// The float each bank's route planned this look (by route), spent off the bank's day's budget once its wagon
     /// leaves; empty between looks.
-    pub floats: BTreeMap<usize, f64>,
+    pub floats: BTreeMap<usize, Fixed>,
 }
 
 impl Banks {
@@ -111,19 +112,19 @@ impl Banks {
     }
 
     /// Loans still owed on a contract, whichever bank made them (`Bank.owedOn`).
-    pub fn owed_on(&self, contract: usize) -> f64 {
+    pub fn owed_on(&self, contract: usize) -> Fixed {
         self.loans.iter().filter(|l| l.contract == contract).map(|l| l.owed).sum()
     }
 
     /// Loans `bank` made on a contract, still owed: what its wagon takes back out of the payment for its goods.
-    pub fn owed_to(&self, bank: TownId, contract: usize) -> f64 {
+    pub fn owed_to(&self, bank: TownId, contract: usize) -> Fixed {
         self.loans.iter().filter(|l| l.bank == bank && l.contract == contract).map(|l| l.owed).sum()
     }
 
     /// A bank's wagon pays a borrower `payment` for goods under `contract`: the loan on it comes out first. Returns what
     /// the bank took back (`Bank.repayFrom`).
-    pub fn repay_from(&mut self, bank: TownId, contract: usize, payment: f64) -> f64 {
-        let mut taken = 0.0;
+    pub fn repay_from(&mut self, bank: TownId, contract: usize, payment: Fixed) -> Fixed {
+        let mut taken = Fixed::ZERO;
         for loan in &mut self.loans {
             if loan.bank == bank && loan.contract == contract && loan.owed > LOAN_EPS && taken < payment {
                 let back = loan.owed.min(payment - taken);
@@ -131,18 +132,19 @@ impl Banks {
                 taken += back;
             }
         }
-        if taken > 0.0 {
+        if taken.is_positive() {
             self.book(bank).repaid += taken;
             self.loans.retain(|l| l.owed > LOAN_EPS);
         }
         taken
     }
 
-    /// A loan made: the principal and the interest owed, the book's tally.
-    pub fn lend(&mut self, bank: TownId, borrower: TownId, contract: usize, principal: f64, interest: f64, now: u64) {
+    /// A loan made: the principal and the interest owed (rounded up to the thousandth: the borrower's debt), the book's
+    /// tally.
+    pub fn lend(&mut self, bank: TownId, borrower: TownId, contract: usize, principal: Fixed, interest: f64, now: u64) {
         let id = self.next_id;
         self.next_id += 1;
-        self.loans.push(Loan { id, bank, borrower, contract, principal, owed: principal * (1.0 + interest), made: now });
+        self.loans.push(Loan { id, bank, borrower, contract, principal, owed: principal.mul_ceil(1.0 + interest), made: now });
         let book = self.book(bank);
         book.loans_made += 1;
         book.lent += principal;
@@ -150,10 +152,11 @@ impl Banks {
 }
 
 /// What a bank pays for a bill of `face` due at `due`, now: its face less the fee and so much a day to its due day
-/// (`Bank.discount`).
-pub fn discount_price(face: f64, due: u64, now: u64, day: u64, dials: &Dials) -> f64 {
+/// (`Bank.discount`), rounded down to the thousandth (`Bank.deal`'s `Math.floor(price * rate)`).
+pub fn discount_price(face: impl Into<Fixed>, due: u64, now: u64, day: u64, dials: &Dials) -> Fixed {
+    let face = face.into();
     let days = due.saturating_sub(now) as f64 / day as f64;
-    face * (1.0 - dials.discount_fee - dials.discount_per_day * days)
+    face.mul_floor(1.0 - dials.discount_fee - dials.discount_per_day * days)
 }
 
 /// What the goods still to come under a contract are worth at its price; a training contract's, its bonus
@@ -166,9 +169,10 @@ pub fn to_come(c: &Contract) -> f64 {
 }
 
 /// The most a bank would lend on a contract: `loan_share` of the goods to come, less what was paid up front and not
-/// worked off, less what's lent on it already (`Bank.lend`'s `cap`).
-pub fn loan_cap(c: &Contract, owed_on: f64, dials: &Dials) -> f64 {
-    dials.loan_share * to_come(c) - (c.advanced - c.recouped).max(0.0) - owed_on
+/// worked off, less what's lent on it already (`Bank.lend`'s `cap`), rounded down to the thousandth.
+pub fn loan_cap(c: &Contract, owed_on: impl Into<Fixed>, dials: &Dials) -> Fixed {
+    let owed_on = owed_on.into();
+    Fixed::floor(dials.loan_share * to_come(c)) - (c.advanced - c.recouped).at_least_zero() - owed_on
 }
 
 /// A price for a bill at the discount desk: the share of its face paid, or why not (`Discounts.Quote`).
@@ -199,21 +203,21 @@ impl Discounts {
     }
 
     /// Emeralds of face the hub holds in other markets' bills, outstanding: its book (`Discounts.book`).
-    pub fn book(bills: &Bills, hub: TownId) -> f64 {
+    pub fn book(bills: &Bills, hub: TownId) -> Fixed {
         Self::held(bills, hub, |b| b.drawee != hub)
     }
 
     /// As [`Discounts::book`], of bills on `drawee` (`Discounts.onDrawee`).
-    pub fn on_drawee(bills: &Bills, hub: TownId, drawee: TownId) -> f64 {
+    pub fn on_drawee(bills: &Bills, hub: TownId, drawee: TownId) -> Fixed {
         Self::held(bills, hub, |b| b.drawee == drawee)
     }
 
     /// As [`Discounts::book`], of bills on foreign markets (`Discounts.foreign`).
-    pub fn foreign(bills: &Bills, hub: TownId) -> f64 {
+    pub fn foreign(bills: &Bills, hub: TownId) -> Fixed {
         Self::held(bills, hub, |b| Self::is_foreign(b.drawee))
     }
 
-    fn held(bills: &Bills, hub: TownId, which: impl Fn(&Bill) -> bool) -> f64 {
+    fn held(bills: &Bills, hub: TownId, which: impl Fn(&Bill) -> bool) -> Fixed {
         bills.open.iter().map(|&id| &bills.bills[id])
             .filter(|b| b.state == BillState::Outstanding && b.payee == hub && which(b))
             .map(|b| b.amount).sum()
@@ -221,8 +225,8 @@ impl Discounts {
 
     /// The most paper the hub will hold, in emeralds of face: `discount_book_share` of its means, twice with a counting
     /// house (`counting`: `Discounts.counting`, `Buildings.COUNTING_HOUSE`) (`Discounts.limit`).
-    pub fn limit(counting: bool, means: f64, dials: &Dials) -> f64 {
-        means.max(0.0) * dials.discount_book_share * if counting { 2.0 } else { 1.0 }
+    pub fn limit(counting: bool, means: impl Into<Fixed>, dials: &Dials) -> Fixed {
+        means.into().at_least_zero().mul_floor(dials.discount_book_share * if counting { 2.0 } else { 1.0 })
     }
 
     /// Is a bill backed by goods the hub can see: delivered, or crated and on their way, under its contract
@@ -241,17 +245,18 @@ impl Discounts {
     /// for goods it can't see, more again past its season, and the throttle: dearer as the warehouse fills and the
     /// book nears its limit.
     #[allow(clippy::too_many_arguments)]
-    pub fn quote(bills: &Bills, book: &Book, hub: TownId, counting: bool, bill: &Bill, backed: bool, taking: f64,
-            fill: f64, means: f64, now: u64, day: u64, dials: &Dials) -> Quote {
+    pub fn quote(bills: &Bills, book: &Book, hub: TownId, counting: bool, bill: &Bill, backed: bool, taking: impl Into<Fixed>,
+            fill: f64, means: impl Into<Fixed>, now: u64, day: u64, dials: &Dials) -> Quote {
+        let (taking, means) = (taking.into(), means.into());
         let limit = Self::limit(counting, means, dials);
         let held = Self::book(bills, hub) + taking;
         if held + bill.amount > limit {
-            return Quote::no(format!("its book is full: {} of {} emeralds", held.round(), limit.round()));
+            return Quote::no(format!("its book is full: {} of {} emeralds", held.to_f64().round(), limit.to_f64().round()));
         }
-        if Self::on_drawee(bills, hub, bill.drawee) + bill.amount > dials.discount_drawee_share * limit {
+        if Self::on_drawee(bills, hub, bill.drawee) + bill.amount > limit.mul_floor(dials.discount_drawee_share) {
             return Quote::no("it holds its fill of that market's paper".into());
         }
-        if Self::is_foreign(bill.drawee) && Self::foreign(bills, hub) + bill.amount > dials.discount_foreign_share * limit {
+        if Self::is_foreign(bill.drawee) && Self::foreign(bills, hub) + bill.amount > limit.mul_floor(dials.discount_foreign_share) {
             return Quote::no("it holds its fill of foreign paper".into());
         }
         let days = (bill.due as f64 - now as f64).max(0.0) / day as f64;
@@ -263,7 +268,7 @@ impl Discounts {
         if days > dials.discount_long_days {
             off += dials.discount_long; // due past the season
         }
-        off += dials.discount_throttle * (fill.clamp(0.0, 1.0) + (held / limit.max(1.0)).min(1.0));
+        off += dials.discount_throttle * (fill.clamp(0.0, 1.0) + held.ratio(limit.max(Fixed::ONE)).min(1.0));
         Quote { share: (1.0 - off).max(0.0), refused: None }
     }
 }
@@ -293,13 +298,14 @@ impl Society {
     }
 
     /// Loans still owed on a contract (`Bank.owedOn`).
-    pub fn owed_on(&self, contract: usize) -> f64 {
+    pub fn owed_on(&self, contract: usize) -> Fixed {
         self.world.resource::<Banks>().owed_on(contract)
     }
 
     /// `drawee` draws a bill on itself to pay `payee` `debt` (and the interest for the wait), filed with `payee` (`Bills
     /// .draw`, then `Bills.file` in the payee's warehouse): a host's bill, and tests'.
-    pub fn draw_bill(&mut self, drawee: TownId, payee: TownId, debt: f64) -> usize {
+    pub fn draw_bill(&mut self, drawee: TownId, payee: TownId, debt: impl Into<Fixed>) -> usize {
+        let debt = debt.into();
         let (now, day) = (self.now(), self.content().day_ticks);
         let mut bills = self.world.resource_mut::<Bills>();
         let id = bills.draw(drawee, payee, debt, now, day);
@@ -309,7 +315,9 @@ impl Society {
 
     /// What hub `hub`'s discount desk would pay for bill `bill` now (`Discounts.quote`; see [`Discounts::quote`]), with
     /// a counting house if its market has one.
-    pub fn quote(&self, hub: TownId, bill: usize, backed: bool, taking: f64, fill: f64, means: f64) -> Quote {
+    pub fn quote(&self, hub: TownId, bill: usize, backed: bool, taking: impl Into<Fixed>, fill: f64, means: impl Into<Fixed>)
+            -> Quote {
+        let (taking, means) = (taking.into(), means.into());
         let bills = self.world.resource::<Bills>();
         let counting = self.world.get::<crate::state::Trades>(self.towns[hub]).is_some_and(|t| t.counting_house);
         Discounts::quote(bills, self.world.resource::<Book>(), hub, counting, &bills.bills[bill], backed, taking, fill,

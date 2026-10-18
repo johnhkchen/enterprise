@@ -38,7 +38,7 @@ impl Society {
     }
 
     /// What a seller holds paid up front and not yet worked off.
-    pub fn advances_held(&self, seller: TownId) -> f64 {
+    pub fn advances_held(&self, seller: TownId) -> crate::fixed::Fixed {
         self.world.resource::<Book>().advances_held(seller)
     }
 }

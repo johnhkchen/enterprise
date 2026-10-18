@@ -51,7 +51,7 @@ pub fn daily(s: &mut Society, r: &mut Rng, day: u64) {
 
 pub fn check(s: &Society, _day: u64) -> Result<(), String> {
     for t in s.tenders() {
-        if !t.work.bonus.is_finite() || t.work.bonus <= 0.0 {
+        if !t.work.bonus.is_positive() {
             return Err(format!("tender {}: a bonus of {}", t.id, t.work.bonus));
         }
         if t.board >= s.town_count() || t.buyer >= s.town_count() || t.origin >= s.town_count() {
@@ -62,8 +62,10 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
         }
     }
     for c in s.contracts() {
-        let Some(t) = c.training else { continue };
-        if !t.bonus.is_finite() || c.quantity != 0.0 {
+        if c.training.is_none() {
+            continue;
+        }
+        if c.quantity != 0.0 {
             return Err(format!("contract {}: a training term with {} goods", c.id, c.quantity));
         }
         if c.state == State::Completed && (c.delivered != 1.0 || c.owing < 0.0) {

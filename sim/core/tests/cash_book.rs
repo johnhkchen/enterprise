@@ -5,7 +5,7 @@ mod common;
 
 use enterprise_core::cash_book::{Account, Reason, KEPT_DAYS};
 use enterprise_core::state::Money;
-use enterprise_core::{Content, Good, Society};
+use enterprise_core::{Content, Fixed, Good, Society};
 
 const DAY: u64 = 24_000;
 
@@ -16,7 +16,7 @@ fn wheat_world() -> Society {
 }
 
 /// What a book says, by what for, summed over its days.
-fn by_label(book: &[(u64, String, f64)], label: &str) -> f64 {
+fn by_label(book: &[(u64, String, Fixed)], label: &str) -> Fixed {
     book.iter().filter(|(_, l, _)| l == label).map(|(_, _, v)| v).sum()
 }
 
@@ -30,16 +30,16 @@ fn the_cash_book_tallies_money_by_what_it_was_for() {
     s.post(Account::Treasury(town), Account::Households(town), 4.0, Reason::Wages);
     s.post(Account::Outside, Account::Treasury(town), 2.0, Reason::Sold(0));
     let book = s.cash_book(town, 1);
-    assert!((by_label(&book, "wages") + 4.0).abs() < 1e-9, "4 out, booked to what took it: {book:?}");
-    assert!((by_label(&book, "lockers: sold wheat") - 2.0).abs() < 1e-9, "2 in from wheat: {book:?}");
+    assert!(by_label(&book, "wages") == -4.0, "4 out, booked to what took it: {book:?}");
+    assert!(by_label(&book, "lockers: sold wheat") == 2.0, "2 in from wheat: {book:?}");
     assert_eq!(book.len(), 2, "nothing else: {book:?}");
-    assert!((s.town(town).money - 8.0).abs() < 1e-9, "and the money moved");
+    assert!(s.town(town).money == 8.0, "and the money moved");
     // The other side of each: the households' purse got the wages; the outside paid the 2.
     let households = s.account_book(Account::Households(town), 1);
-    assert!((by_label(&households, "wages") - 4.0).abs() < 1e-9, "{households:?}");
-    assert!((s.town(town).people.purse - 4.0).abs() < 1e-9);
+    assert!(by_label(&households, "wages") == 4.0, "{households:?}");
+    assert!(s.town(town).people.purse == 4.0);
     let outside = s.account_book(Account::Outside, 1);
-    assert!((by_label(&outside, "lockers: sold wheat") + 2.0).abs() < 1e-9, "{outside:?}");
+    assert!(by_label(&outside, "lockers: sold wheat") == -2.0, "{outside:?}");
 }
 
 // parity: CountingHouseTests.theAccountantKeepsTwoSpendersOffTheSameMoney
@@ -49,30 +49,30 @@ fn the_accountant_keeps_two_spenders_off_the_same_money() {
     let town = s.add_town("Cloverby", 40.0);
     let lender = s.add_town("Lender", 0.0);
     s.content_mut().dials.budget_share = 0.5; // half of the 40 free, 20, today
-    assert!((s.free(town) - 40.0).abs() < 1e-9, "no trading capital, no bills: all 40 free");
+    assert!(s.free(town) == 40.0, "no trading capital, no bills: all 40 free");
     assert!(s.approve(town, "a field", 12.0), "40 free: so much of it today; a field for 12, yes");
     assert!(!s.approve(town, "a shop", 12.0), "and a shop for 12 more, not today: 8 left");
     let shopping = s.allow(town, "caravan shopping", 20.0);
-    assert!((shopping - 8.0).abs() < 1e-9, "the caravan gets what's left, 8: {shopping}");
-    assert!(s.budget_left(town) < 1e-9, "nothing left today");
+    assert!(shopping == 8.0, "the caravan gets what's left, 8: {shopping}");
+    assert!(s.budget_left(town) == 0.0, "nothing left today");
     let held = s.held_back(town, 1);
-    assert_eq!(held, vec![(0, "a shop".to_string(), 12.0), (0, "caravan shopping".to_string(), 12.0)],
+    assert_eq!(held, vec![(0, "a shop".to_string(), Fixed::emeralds(12)), (0, "caravan shopping".to_string(), Fixed::emeralds(12))],
         "what was held back is noted");
-    assert!((s.town(town).money - 40.0).abs() < 1e-9, "approving isn't spending: no money moved");
+    assert!(s.town(town).money == 40.0, "approving isn't spending: no money moved");
     // A new day, a new budget: 20 again.
     s.advance(DAY);
-    assert!((s.budget_left(town) - 20.0).abs() < 1e-9, "{}", s.budget_left(town));
+    assert!(s.budget_left(town) == 20.0, "{}", s.budget_left(town));
     // A bill of 30 (30.6 with its interest) falling due within budget_days: only 9.4 of the 40 free.
     let now = s.now();
     let mut bills = s.world.resource_mut::<enterprise_core::bills::Bills>();
     let id = bills.draw(town, lender, 30.0, now, DAY);
     bills.bills[id].due = now + 2 * DAY;
     let free = s.free(town);
-    assert!(free < 10.0 + 1e-9, "a bill of 30 falling due: only 10 of the 40 free, {free}");
-    assert!((free - (40.0 - 30.6)).abs() < 1e-9, "{free}");
+    assert!(free <= 10.0, "a bill of 30 falling due: only 10 of the 40 free, {free}");
+    assert!(free == Fixed::emeralds(40) - Fixed::from(30.6), "{free}");
     // Falling due beyond budget_days, it doesn't count.
     s.world.resource_mut::<enterprise_core::bills::Bills>().bills[id].due = now + 4 * DAY;
-    assert!((s.free(town) - 40.0).abs() < 1e-9);
+    assert!(s.free(town) == 40.0);
 }
 
 /// A farm making wheat and a mill using it, a day apart, the farm's wagon every two days.
@@ -93,9 +93,9 @@ fn a_towns_book_explains_every_emerald_of_its_treasury() {
     s.advance(40 * DAY);
     for t in 0..2 {
         let book = s.cash_book(t, 41);
-        let booked: f64 = book.iter().map(|(_, _, v)| v).sum();
+        let booked: Fixed = book.iter().map(|(_, _, v)| v).sum();
         let moved = s.town(t).money - start[t];
-        assert!((booked - moved).abs() < 1e-6, "{}: moved {moved}, booked {booked}", s.town(t).name);
+        assert!(booked == moved, "{}: moved {moved}, booked {booked}", s.town(t).name);
     }
     let farm = s.cash_book(0, 41);
     assert!(by_label(&farm, "road food") < 0.0, "the farm buys its wagon's road food: {farm:?}");
@@ -106,8 +106,8 @@ fn a_towns_book_explains_every_emerald_of_its_treasury() {
     // The wagon's purse passes everything it took on to home: what it holds now is what's not home yet.
     let wagon = s.account_book(Account::Wagon(0), 41);
     let sales = by_label(&wagon, "sale");
-    let on_the_road = s.balance(Account::Wagon(0)).unwrap_or(0.0);
-    assert!(sales > 0.0 && (sales + by_label(&wagon, "takings") - on_the_road).abs() < 1e-9, "{wagon:?}");
+    let on_the_road = s.balance(Account::Wagon(0)).unwrap_or_default();
+    assert!(sales > 0.0 && sales + by_label(&wagon, "takings") == on_the_road, "{wagon:?}");
 }
 
 #[test]
@@ -131,8 +131,8 @@ fn money_moved_off_the_books_is_caught() {
     s.conserved(&start).expect("on the books, it balances");
     // Money from one town to another without a posting: the world's money is the same, but the accounts aren't.
     let towns = s.world.resource::<enterprise_core::state::Towns>().0.clone();
-    s.world.get_mut::<Money>(towns[0]).unwrap().0 -= 3.0;
-    s.world.get_mut::<Money>(towns[1]).unwrap().0 += 3.0;
+    s.world.get_mut::<Money>(towns[0]).unwrap().0 -= Fixed::emeralds(3);
+    s.world.get_mut::<Money>(towns[1]).unwrap().0 += Fixed::emeralds(3);
     let e = s.conserved(&start).expect_err("moved off the books");
     assert!(e.contains("Treasury"), "{e}");
 }
@@ -143,7 +143,7 @@ fn money_paid_in_from_outside_is_on_the_books() {
     let start = s.totals();
     s.pay(1, 5.0);
     s.conserved(&start).expect("paid in by the outside");
-    assert!((by_label(&s.cash_book(1, 1), "paid in") - 5.0).abs() < 1e-9);
+    assert!(by_label(&s.cash_book(1, 1), "paid in") == 5.0);
 }
 
 #[test]
@@ -160,8 +160,8 @@ fn households_are_paid_wages_and_pay_for_comforts() {
     assert!(by_label(&h, "wages") > 0.0, "{h:?}");
     assert!(by_label(&h, "comforts") < 0.0, "{h:?}");
     let t = s.cash_book(town, 10);
-    assert!((by_label(&t, "wages") + by_label(&h, "wages")).abs() < 1e-9, "both sides of the wages");
-    assert!((by_label(&t, "comforts") + by_label(&h, "comforts")).abs() < 1e-9, "both sides of the comforts");
+    assert!(by_label(&t, "wages") + by_label(&h, "wages") == Fixed::ZERO, "both sides of the wages");
+    assert!(by_label(&t, "comforts") + by_label(&h, "comforts") == Fixed::ZERO, "both sides of the comforts");
 }
 
 #[test]
@@ -181,10 +181,10 @@ fn each_towns_book_explains_its_treasury_in_random_worlds() {
         }
         // Days 90 to 120's entries are what each town's money moved since day 89.
         for t in 0..s.town_count() {
-            let booked: f64 = s.cash_book(t, 31).iter().map(|(_, _, v)| v).sum();
+            let booked: Fixed = s.cash_book(t, 31).iter().map(|(_, _, v)| v).sum();
             // A town founded since (settlers) had nothing at day 89.
-            let moved = s.town(t).money - at_90.get(t).copied().unwrap_or(0.0);
-            assert!((booked - moved).abs() < 1e-6 * moved.abs().max(1.0), "seed {seed}, town {t}: {booked} {moved}");
+            let moved = s.town(t).money - at_90.get(t).copied().unwrap_or_default();
+            assert!(booked == moved, "seed {seed}, town {t}: {booked} {moved}");
         }
     });
 }

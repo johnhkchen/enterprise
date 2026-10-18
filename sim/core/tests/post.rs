@@ -63,7 +63,7 @@ fn a_letter_leaves_on_the_post_day_and_waits_at_the_desk() {
     let t = s.now();
     s.send_letter(Kind::Reply, from, to, 0.0);
     assert_eq!(s.mail().on_the_road(to, Kind::Reply), 1, "on the road");
-    assert!(close(s.town(from).money, 4.9), "the postage paid: {}", s.town(from).money);
+    assert!(s.town(from).money == 4.9, "the postage paid: {}", s.town(from).money);
     let letter = s.mail().letters[0].clone();
     assert_eq!(letter.arrives, 3 * DAY + 2 * DAY, "it leaves on the next post day, and 4,000 blocks take two days");
     look(&mut s);
@@ -152,8 +152,8 @@ fn the_crown_pays_half_a_first_visits_trip() {
     assert_eq!(calls.len(), 1, "the crown's half pays for one: {calls:?}");
     assert_eq!(calls[0].town, near);
     let cost = post::trip_cost(s.content(), s.mail_distance(hub, near).unwrap());
-    assert!(close(s.town(capital).money, 100.0 - 0.5 * cost), "the crown paid half the trip: {}", s.town(capital).money);
-    assert!(close(s.town(hub).money, before + 0.5 * cost - 0.2), "into the hub's money, less two replies' postage");
+    assert!(s.town(capital).money == enterprise_core::Fixed::emeralds(100) - enterprise_core::Fixed::floor(0.5 * cost), "the crown paid half the trip: {}", s.town(capital).money);
+    assert!(s.town(hub).money == before + enterprise_core::Fixed::floor(0.5 * cost) - enterprise_core::Fixed::from(0.2), "into the hub's money, less two replies' postage");
 }
 
 // parity: PostTests.aBillGoesByPostAndTheCoinComesBack
@@ -163,23 +163,23 @@ fn a_bill_goes_by_post_and_the_coin_comes_back() {
     let holder = s.add_town("Holder", 2.0);
     let drawee = s.add_town("Drawee", 20.0);
     let id = s.draw_bill(drawee, holder, 5.0); // 5.1, due in four days: no wagon of either goes to the other
-    assert!(close(s.bills()[id].amount, 5.1));
+    assert!(s.bills()[id].amount == 5.1);
     let due = s.bills()[id].due;
     run(&mut s, due - LOOK);
     assert_eq!(s.mail().on_the_road(drawee, Kind::Bill), 0, "not before it's due");
     run(&mut s, due);
     assert_eq!(s.mail().on_the_road(drawee, Kind::Bill), 1, "the bill sent by post once due");
-    assert!(close(s.town(holder).money, 1.9), "for the postage");
+    assert!(s.town(holder).money == 1.9, "for the postage");
     s.deliver_mail_now();
     look(&mut s);
     assert_eq!(s.bills()[id].state, BillState::Paid, "paid when the drawee read it");
-    assert!(close(s.town(drawee).money, 20.0 - 5.1 - 0.1), "the coin and the postage back: {}", s.town(drawee).money);
+    assert!(s.town(drawee).money == 20.0 - 5.1 - 0.1, "the coin and the postage back: {}", s.town(drawee).money);
     assert_eq!(s.mail().on_the_road(holder, Kind::Remit), 1);
     let before = s.town(holder).money;
     s.deliver_mail_now();
     look(&mut s);
     let after = s.town(holder).money;
-    assert!(after > before + 4.0 && close(after, before + 5.1), "the coin back by post: {before} -> {after}");
+    assert!(after > before + enterprise_core::Fixed::emeralds(4) && after == before + enterprise_core::Fixed::from(5.1), "the coin back by post: {before} -> {after}");
 }
 
 #[test]
@@ -294,7 +294,7 @@ fn a_town_books_by_post_and_its_goods_are_collected_on_consignment() {
     assert_eq!(s.mail().on_the_road_from(hub, Kind::Book, town), 1, "it books with its hub by post");
     let booked = s.mail().letters.iter().find(|l| l.kind == Kind::Book).unwrap().clone();
     assert_eq!(booked.stacks, 10, "ten stacks of leather for sale");
-    assert!(close(booked.value, 640.0));
+    assert!(booked.value == 640.0);
     let start = s.totals();
     while s.forwarder().lots.is_empty() && s.now() < 8 * DAY {
         look(&mut s);
@@ -307,7 +307,7 @@ fn a_town_books_by_post_and_its_goods_are_collected_on_consignment() {
     assert!(s.on_call(collector), "on a run on call");
     // A run on call: a stack's fare half as much again.
     let fare = post::fare(s.content(), s.route_road_blocks(collector), false);
-    assert!(close(lot.fare, fare * (lot.count / 64.0).ceil()), "each stack its fare: {lot:?}");
+    assert!(lot.fare == enterprise_core::Fixed::ceil(fare * (lot.count / 64.0).ceil()), "each stack its fare: {lot:?}");
     let before = s.town(town).money;
     run(&mut s, 20 * DAY);
     let f = s.forwarder();
@@ -325,13 +325,13 @@ fn goods_on_consignment_sell_and_the_money_comes_back_by_post() {
     s.consign_sold(hub, LEATHER, 20.0, 100.0); // sold for 100
     s.forwarder_review(hub);
     let f = s.forwarder();
-    assert!(close(f.remitted, 85.0) && close(f.commission, 10.0), "100: 10 commission, 5 fare, 85 remitted: {f:?}");
+    assert!(f.remitted == 85.0 && f.commission == 10.0, "100: 10 commission, 5 fare, 85 remitted: {f:?}");
     assert!(f.lots.is_empty(), "done");
     assert_eq!(s.mail().on_the_road(town, Kind::Remit), 1, "the coin on its way by post");
-    assert!(close(s.town(hub).money, 100.0 - 85.0 - 0.1));
+    assert!(s.town(hub).money == 100.0 - 85.0 - 0.1);
     s.deliver_mail_now();
     look(&mut s);
-    assert!(close(s.town(town).money, 85.0), "and in the town's chest: {}", s.town(town).money);
+    assert!(s.town(town).money == 85.0, "and in the town's chest: {}", s.town(town).money);
 }
 
 #[test]
@@ -345,12 +345,12 @@ fn a_lot_waits_for_an_emeralds_worth_and_one_unsold_the_forwarder_buys() {
     assert_eq!(s.forwarder().remitted, 0.0, "0.9 isn't an emerald yet");
     s.consign_sold(hub, LEATHER, 1.0, 1.0);
     s.forwarder_review(hub);
-    assert!(close(s.forwarder().remitted, 1.8), "1.8 is");
+    assert!(s.forwarder().remitted == 1.8, "1.8 is");
     s.advance(20 * DAY + LOOK);
     s.forwarder_review(hub);
     // The 18 left, bought at a trader's floor, less the commission.
     let floor = enterprise_core::bargain::seller_floor(1.0);
-    assert!(close(s.forwarder().remitted, 1.8 + 18.0 * floor * 0.9), "{:?}", s.forwarder());
+    assert!(s.forwarder().remitted == 1.8 + 18.0 * floor * 0.9, "{:?}", s.forwarder());
     assert!(s.forwarder().lots.is_empty());
 }
 
@@ -370,7 +370,7 @@ fn what_a_towns_wagon_cant_sell_at_the_hub_is_left_on_consignment() {
     let before = s.forwarder().remitted;
     s.consign_sold(hub, LEATHER, 64.0, 160.0);
     s.forwarder_review(hub);
-    assert!(close(s.forwarder().remitted - before, 144.0),
+    assert!(s.forwarder().remitted - before == 144.0,
         "sold: the town's 160, less 10% commission, on their way: {}", s.forwarder().remitted - before);
 }
 

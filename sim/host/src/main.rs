@@ -150,7 +150,7 @@ fn run(flags: &Flags, seed: u64, full: bool) -> Outcome {
     Outcome {
         seed,
         days: ran,
-        money: st.named.iter().map(|(n, t)| (n.clone(), s.town(*t).money)).collect(),
+        money: st.named.iter().map(|(n, t)| (n.clone(), s.town(*t).money.to_f64())).collect(),
         mood: st.named.iter().map(|(n, t)| (n.clone(), s.town(*t).people.mood)).collect(),
         trips: (0..routes).map(|r| s.route(r).trips).sum(),
         stacks_out: tracker.routes.iter().map(|t| t.stacks_out).sum::<u64>() as f64 / left.max(1) as f64,
@@ -211,10 +211,10 @@ fn stop_met(st: &Study, conds: &[(String, String, String, f64)]) -> Vec<(String,
             }
             let v = st.s.town(*t);
             let x = match field.as_str() {
-                "treasury" => v.money,
+                "treasury" => v.money.to_f64(),
                 "mood" => v.people.mood,
                 "villagers" => v.people.villagers,
-                "purse" => v.people.purse,
+                "purse" => v.people.purse.to_f64(),
                 "hexes" => st.s.holding(*t).hexes.len() as f64,
                 _ => continue,
             };

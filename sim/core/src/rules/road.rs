@@ -8,6 +8,7 @@ use super::{in_order, Step};
 use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
 use crate::road::{eat, food_needed, mouths};
+use crate::fixed::Fixed;
 use crate::state::*;
 
 pub fn register(schedule: &mut Schedule) {
@@ -23,15 +24,15 @@ pub struct Provision {
     pub from_home: f64,
     /// Packed for the road home: the far end may not feed it, or home is too poor to pay it but rich in food.
     pub provisions: f64,
-    /// The way out's food home hasn't got, bought on the way.
-    pub food_coin: f64,
+    /// The way out's food home hasn't got, bought on the way (in thousandths, rounded up: a cost, `fixed.rs`).
+    pub food_coin: Fixed,
     /// The purse for the road home's food at the far end (none if it packed its own).
-    pub road_purse: f64,
+    pub road_purse: Fixed,
     /// The team's fodder there and back (`teamFeed`: a leg's food per animal of `wagon_team`, both ways), from home's
     /// (`fed`, `eatFodder`), and what it lacks bought on the road (`teamCoin`).
     pub team_feed: f64,
     pub fed: f64,
-    pub team_coin: f64,
+    pub team_coin: Fixed,
     /// Both legs' food and the team's fodder at `purse_per_food_point`: what a load must be worth for the trip.
     pub cost: f64,
 }
@@ -55,12 +56,12 @@ pub fn provision(content: &Content, blocks: u32, mouths: f64, home_food: f64, fa
     } else {
         0.0
     };
-    let road_purse = if provisions > 0.0 { 0.0 } else { food * ppfp };
+    let road_purse = if provisions > 0.0 { Fixed::ZERO } else { Fixed::ceil(food * ppfp) };
     let from_home = food.min(home_food - provisions).max(0.0);
     let team_feed = 2.0 * per_mouth * d.wagon_team as f64;
     let fed = fodder(team_feed).min(team_feed);
-    Provision { food, from_home, provisions, food_coin: (food - from_home) * ppfp, road_purse, team_feed, fed,
-        team_coin: (team_feed - fed) * ppfp, cost: (2.0 * food + team_feed) * ppfp }
+    Provision { food, from_home, provisions, food_coin: Fixed::ceil((food - from_home) * ppfp), road_purse, team_feed, fed,
+        team_coin: Fixed::ceil((team_feed - fed) * ppfp), cost: (2.0 * food + team_feed) * ppfp }
 }
 
 /// At the far end, before it turns for home: a wagon that packed the road home's food eats it; one that didn't eats
@@ -94,7 +95,7 @@ pub fn feed(clock: Res<Clock>, content: Res<Content>, mint: Res<crate::mint::Min
             if !meal.is_empty() {
                 let cost: f64 = meal.iter().map(|&(g, n)| n * content.goods[g].value).sum();
                 let spurs = mint.rate(now, day);
-                let price = ((cost * spurs).ceil() / spurs).min(wagon.purse.max(0.0));
+                let price = Fixed::ceil((cost * spurs).ceil() / spurs).min(wagon.purse.at_least_zero());
                 post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(route.to_id, &mut money.0),
                     price, Reason::RoadFood, now, day);
                 state.food_paid += price;

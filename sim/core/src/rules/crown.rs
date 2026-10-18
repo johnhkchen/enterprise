@@ -90,7 +90,8 @@ pub fn mint(world: &mut World) {
     }
     let now = world.resource::<Clock>().now;
     let day = world.resource::<Content>().day_ticks.max(1);
-    let emeralds = spurs as f64 / world.resource::<Mint>().rate(now, day);
+    // The coin's worth in emeralds at the rate, rounded down to the thousandth.
+    let emeralds = crate::fixed::Fixed::floor(spurs as f64 / world.resource::<Mint>().rate(now, day));
     let e = world.resource::<Towns>().0[capital];
     let mut ledger = std::mem::take(&mut *world.resource_mut::<Ledger>());
     let mut cash = std::mem::take(&mut *world.resource_mut::<CashBook>());

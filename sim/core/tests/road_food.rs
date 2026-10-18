@@ -43,8 +43,8 @@ fn network(bread: f64, emeralds: f64, dest_spurs: f64) -> Society {
     network_with(128.0, bread, emeralds, dest_spurs)
 }
 
-fn purse(s: &Society) -> f64 {
-    s.balance(Account::Wagon(0)).unwrap_or(0.0)
+fn purse(s: &Society) -> enterprise_core::Fixed {
+    s.balance(Account::Wagon(0)).unwrap_or_default()
 }
 
 #[test]
@@ -65,9 +65,9 @@ fn a_wagon_sells_its_cargo_and_buys_its_food_at_the_far_end() {
     assert!(s.route(0).on_the_road && s.road_food(0).home_at.is_none(), "it leaves");
     assert_eq!(s.route(0).carried, 64.0, "with the 64 paper the far end will take (its par, one stack)");
     let out = purse(&s);
-    assert!((out - 0.05).abs() < 1e-12, "and a purse for the road home's food, a point at 0.05: {out}");
+    assert!(out == 0.05, "and a purse for the road home's food, a point at 0.05: {out}");
     let fodder = 2.0 * 0.05; // the team's, a point each way, bought on the road (the hub has no hay or wheat)
-    assert!((hub_money - s.town(HUB).money - out - fodder).abs() < 1e-12,
+    assert!(hub_money - s.town(HUB).money - out == fodder,
         "out of the hub's money, the purse and the team's fodder: the way out's food is its bread");
     assert_eq!(s.town(HUB).stock[PAPER], 64.0, "the rest of the paper stays home");
     assert_eq!(s.food_points(HUB), 5.0, "one bread eaten");
@@ -82,20 +82,20 @@ fn a_wagon_sells_its_cargo_and_buys_its_food_at_the_far_end() {
     assert!(food.home_at.is_some(), "heads home");
     // A bread eaten for the road home's point: a sixth of an emerald, 2.67 spurs, paid in 3.
     assert_eq!(s.town(DEST).stock[BREAD], 1.0, "one bread of the far end's eaten");
-    assert!((food.food_paid - 3.0 / 16.0).abs() < 1e-12, "paid for at its worth, in whole spurs: {}", food.food_paid);
+    assert!(food.food_paid == enterprise_core::Fixed::ceil(3.0 / 16.0), "paid for at its worth, in whole spurs: {}", food.food_paid);
     assert!(takings > 0.0 && food.food_paid > 0.0, "a sale and a food purchase");
     let dest_spent = dest_money - s.town(DEST).money;
-    assert!((dest_spent - (takings - food.food_paid)).abs() < 1e-9, "the far end's money moved by sales less food: {dest_spent}");
+    assert!(dest_spent == takings - food.food_paid, "the far end's money moved by sales less food: {dest_spent}");
     let back = purse(&s);
-    assert!((back - (out + takings - food.food_paid)).abs() < 1e-12, "the wagon carries its purse plus sales less food");
+    assert!(back == (out + takings - food.food_paid), "the wagon carries its purse plus sales less food");
     let book = s.cash_book(DEST, 1);
-    assert!(book.iter().any(|(_, why, v)| why == "road food" && (*v - food.food_paid).abs() < 1e-12),
+    assert!(book.iter().any(|(_, why, v)| why == "road food" && *v == food.food_paid),
         "the far end's income, in its cash book: {book:?}");
 
     let before = s.town(HUB).money;
     s.advance(3 * LOOK);
     assert!(!s.route(0).on_the_road, "the wagon is home");
-    assert!((s.town(HUB).money - before - back).abs() < 1e-12, "the hub banks what it carried");
+    assert!(s.town(HUB).money - before == back, "the hub banks what it carried");
     assert_eq!((s.route(0).trips, s.route(0).sold), (1, 64.0), "one trip, 64 sold");
     assert_eq!(s.town(HUB).stock[PAPER], 64.0, "the paper it didn't send is still at the hub");
     assert_eq!(s.road_food(0).food_eaten, 2.0, "a point each way (`foodEaten`)");
@@ -144,10 +144,10 @@ fn without_bread_a_wagon_buys_its_road_food() {
     assert!(s.route(0).on_the_road, "no bread at home, but money: it goes");
     let spent = before - s.town(HUB).money;
     assert!(spent > purse(&s), "more than its purse went: its road food bought on the way, {spent}");
-    assert!((spent - 0.2).abs() < 1e-9,
+    assert!(spent == 0.2,
         "a point bought (0.05), the team's two of fodder (0.1) and the purse for the road home (0.05): {spent}");
     let book = s.cash_book(HUB, 1);
-    assert!(book.iter().any(|(_, why, v)| why == "road food" && (*v + 0.15).abs() < 1e-9), "{book:?}");
+    assert!(book.iter().any(|(_, why, v)| why == "road food" && *v == -0.15), "{book:?}");
 }
 
 // parity: CaravanTests.foodCapsALegAt3200Blocks
@@ -233,7 +233,7 @@ fn a_wagon_goes_home_on_short_rations_rather_than_wait_for_days() {
     let hungry = s.road_food(0);
     assert_eq!(hungry.short_rations, 1, "then goes home hungry: {hungry:?}");
     assert_eq!(hungry.home_at, Some(2 * LOOK + 12_000 + 160), "at half pace: twice its 80 ticks");
-    assert_eq!((hungry.food_paid, hungry.food_eaten), (0.0, 1.0), "only the way out's eaten: none for the road home");
+    assert_eq!((hungry.food_paid, hungry.food_eaten), (enterprise_core::Fixed::ZERO, 1.0), "only the way out's eaten: none for the road home");
     s.advance(DAY);
     assert_eq!(s.route(0).trips, 1, "home");
 }
@@ -258,7 +258,7 @@ fn a_far_end_short_of_food_gets_wagons_that_pack_their_own() {
     bare.advance(2 * LOOK);
     let there = bare.road_food(0);
     assert!(there.home_at.is_some() && there.waiting_since.is_none(), "it ate its own and went home: {there:?}");
-    assert_eq!((there.food_paid, there.provisions, there.food_eaten), (0.0, 0.0, 2.0));
+    assert_eq!((there.food_paid, there.provisions, there.food_eaten), (enterprise_core::Fixed::ZERO, 0.0, 2.0));
 }
 
 #[test]
@@ -281,7 +281,7 @@ fn wagons_bound_for_a_town_count_what_the_others_will_eat_there() {
     s.advance(LOOK);
     assert_eq!((s.road_food(0).food_a_leg, s.road_food(0).provisions), (4.0, 0.0), "the first: fed there");
     assert_eq!(s.road_food(1).provisions, 4.0, "the second packs the road home's food");
-    assert!((purse(&s) - 0.2).abs() < 1e-12, "the first carries 4 points' purse");
+    assert!(purse(&s) == 0.2, "the first carries 4 points' purse");
 }
 
 #[test]
@@ -292,7 +292,7 @@ fn a_poor_town_rich_in_bread_packs_its_own_road_food() {
     s.content_mut().dials.wagon_team = 0;
     s.advance(LOOK);
     assert!(s.route(0).on_the_road, "it goes, though it holds no money");
-    assert_eq!((s.road_food(0).provisions, purse(&s)), (1.0, 0.0));
+    assert_eq!((s.road_food(0).provisions, purse(&s)), (1.0, enterprise_core::Fixed::ZERO));
     assert_eq!(s.town(HUB).stock[BREAD], 65.0, "a bread for both legs");
     s.advance(2 * LOOK);
     assert_eq!(s.town(DEST).stock[BREAD], 2.0, "the far end's bread untouched");
@@ -368,7 +368,7 @@ fn without_food_in_the_content_the_road_costs_its_money() {
     s.advance(LOOK);
     assert!(s.route(0).on_the_road);
     assert_eq!(purse(&s), 0.0, "no purse for food");
-    assert!((5.0 - s.town(HUB).money - 0.5).abs() < 1e-12, "its road_cost paid");
+    assert!(enterprise_core::Fixed::emeralds(5) - s.town(HUB).money == 0.5, "its road_cost paid");
     s.advance(DAY);
     assert_eq!(s.road_food(0).food_eaten, 0.0);
 }
@@ -389,7 +389,7 @@ fn an_advance_leaves_room_for_the_road_food() {
     s.advance(DAY);
     assert!(s.route(0).trips > 0, "the buyer's wagon went: {:?}", s.road_food(0).stayed);
     let c = s.contract(id);
-    assert!((c.advanced - 8.0 / 3.0).abs() < 1e-9, "the advance paid, coin and a bill: {}", c.advanced);
+    assert!(c.advanced == enterprise_core::Fixed::ceil(8.0 / 3.0), "the advance paid, coin and a bill: {}", c.advanced);
     assert!(s.road_food(0).food_paid > 0.0, "and the purse kept the road home's food: {:?}", s.road_food(0));
 }
 
@@ -426,7 +426,7 @@ fn the_team_eats_home_s_hay_or_spare_wheat_else_its_fodder_is_bought() {
         let (wheat, hay) = (s.town(hub).stock[2], s.town(hub).stock[3]);
         if keeps {
             // (its people's use of a wheat in a billion a day aside)
-            assert!((wheat - 10.0).abs() < 1e-6 && hay == 3.0 && (spent - 0.1).abs() < 1e-6, "bought: {wheat} {hay} {spent}");
+            assert!((wheat - 10.0).abs() < 1e-6 && hay == 3.0 && spent == 0.1, "bought: {wheat} {hay} {spent}");
         } else {
             assert!((wheat, hay, spent.abs() < 1e-12) == (8.0, 3.0, true), "home's wheat: {wheat} {hay} {spent}");
         }

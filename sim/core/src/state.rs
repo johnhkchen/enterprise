@@ -4,6 +4,7 @@
 use bevy_ecs::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::fixed::Fixed;
 use crate::messages::Output;
 /// A town's people, hand by hand (`roster.rs`): a component on towns that keep one.
 pub use crate::roster::{Hand, Roster};
@@ -23,10 +24,10 @@ pub struct Ledger {
     pub made: Vec<f64>,
     pub used: Vec<f64>,
     pub delivered: Vec<f64>,
-    pub income: f64,
-    pub road: f64,
+    pub income: Fixed,
+    pub road: Fixed,
     /// Money spent out of the world: homes built, children raised.
-    pub spent: f64,
+    pub spent: Fixed,
 }
 
 /// The world's dice (decision 8 of `docs/core-plan.md`): xorshift64*, seeded, saved with the state, and drawn only
@@ -77,9 +78,9 @@ pub struct Town {
 #[derive(Resource, Clone, Debug, Default)]
 pub struct Towns(pub Vec<Entity>);
 
-/// A town's money.
+/// A town's money, in thousandths of an emerald (`fixed.rs`).
 #[derive(Component, Clone, Copy, Debug, Default, Serialize, Deserialize)]
-pub struct Money(pub f64);
+pub struct Money(pub Fixed);
 
 /// A town's people: how many, their beds and the most beds its land will hold, their mood, how well each kind of
 /// comfort was met last time and what's still owed of it (below 0: credit from a big item), progress toward the next
@@ -95,7 +96,7 @@ pub struct People {
     pub home_progress: f64,
     pub birth_progress: f64,
     pub paid_share: f64,
-    pub purse: f64,
+    pub purse: Fixed,
     pub last: u64,
     pub homes_built: u32,
     pub born: u32,
@@ -135,8 +136,8 @@ pub struct Touched(pub u64);
 #[derive(Component, Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub struct Budget {
     pub day: u64,
-    pub budget: f64,
-    pub spent: f64,
+    pub budget: Fixed,
+    pub spent: Fixed,
     pub set: bool,
     /// A counting house stands in the town: its budget share is half as much again (`Accountant.today`, set by `works.rs`).
     pub counting_house: bool,
@@ -156,7 +157,7 @@ pub enum Leg {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Wagon {
     pub cargo: Vec<f64>,
-    pub purse: f64,
+    pub purse: Fixed,
     pub leg: Leg,
     pub arrives: u64,
     pub contracted: Vec<(usize, f64)>,
@@ -165,7 +166,7 @@ pub struct Wagon {
     pub bills: Vec<usize>,
     /// What it sold of each good at the far end this visit, and its takings.
     pub sold_here: Vec<f64>,
-    pub takings_here: f64,
+    pub takings_here: Fixed,
     /// Road food (`road.rs`): the food points it carries for the road home, packed at home where the far end may not
     /// feed it; and since when it has waited at the far end for food it couldn't get (the arriving steps leave it be).
     pub provisions: f64,
@@ -185,7 +186,7 @@ pub struct Wagon {
     /// The atlas and books (`atlas.rs`): its log of its dealings at the far end and why the rest didn't sell, handed in
     /// at home; and its takings for each good there this visit.
     pub log: Vec<crate::atlas::Entry>,
-    pub paid_here: Vec<f64>,
+    pub paid_here: Vec<Fixed>,
     /// Desires and backhauls (`desires.rs`): what its town shops for at the far end, in emeralds' worth of each kind
     /// of comfort (`Caravan.shopping`), until it has shopped.
     pub shopping: Vec<f64>,
@@ -213,7 +214,7 @@ pub struct Route {
     pub from_id: usize,
     pub to_id: usize,
     pub travel_ticks: u64,
-    pub road_cost: f64,
+    pub road_cost: Fixed,
     pub every_ticks: u64,
     /// How long the road is in blocks, for its food (`road.rs`): the path's, or a bare route's days at 1,200 a day.
     pub blocks: u32,
@@ -236,7 +237,7 @@ pub struct Plan {
     pub cargo: Vec<f64>,
     pub contracted: Vec<(usize, f64)>,
     pub collecting: Vec<usize>,
-    pub purse: f64,
+    pub purse: Fixed,
     pub worth: f64,
     pub stacks: u32,
     pub pressing: bool,
@@ -254,7 +255,7 @@ pub struct Plan {
     /// Desires and backhauls (`desires.rs`): what the town would shop for at the far end (worth of each kind of
     /// comfort it holds less than its par of), and the money in the purse for it.
     pub shopping: Vec<f64>,
-    pub shopping_money: f64,
+    pub shopping_money: Fixed,
     /// Freight hubs (`freight.rs`): stacks kept for what loads first as it leaves: the crates booked on this run at its
     /// hub, or its town's goods sent on through the hub it's bound for.
     pub booked: u32,
@@ -276,7 +277,7 @@ pub struct RouteState {
     /// paid far ends for it (`foodSpurs`), and why the wagon last stayed home.
     pub short_rations: u32,
     pub food_eaten: f64,
-    pub food_paid: f64,
+    pub food_paid: Fixed,
     pub stayed: Option<crate::road::Stay>,
     /// Squads (`squad.rs`): the saddle's wear so far (a saddle is used up at 1), porters walking home from the far end,
     /// the stacks its wagon brought home last trip (`lastHome`), porters sent home (`portersSent`), and the trades whose
@@ -297,7 +298,7 @@ pub struct RouteState {
     pub last_capacity: u32,
     pub last_crew: u32,
     pub bought: f64,
-    pub purchases: f64,
+    pub purchases: Fixed,
     pub backhauled: f64,
     /// Services (`services.rs`): the trades whose services abroad the far end would want this trip, from the ledgers
     /// alone (`Services.wantedAbroad`); when a Cartographer last mapped the road and the most towns it saw along it
@@ -307,7 +308,7 @@ pub struct RouteState {
     pub mapped_at: Option<u64>,
     pub towns_mapped: u32,
     pub animals_sold: u32,
-    pub service_paid: f64,
+    pub service_paid: Fixed,
     /// Freight hubs (`freight.rs`): its calls at hubs, its last wagon's crew and space (for its freight's price), and
     /// whether its owner wound it down for a run by a hub; and the items its wagons delivered under contract at the far
     /// end (with `sold`, the mod's `itemsDelivered`: a long run's usual load, as the hub reorganises).

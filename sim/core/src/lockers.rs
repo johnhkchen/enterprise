@@ -408,7 +408,7 @@ fn trade(content: &Content, books: &mut Books, now: u64, town: usize, roster: &m
             *r = (*r).min((need / o.count.max(1) as f64).ceil() as u32);
         }
     }
-    let mut budget = money.0.max(0.0).floor() as i64;
+    let mut budget = money.0.at_least_zero().millis() / crate::fixed::SCALE; // whole emeralds
     for (r, &k) in runs.iter_mut().zip(&order) {
         if offers[k].sells {
             let price = offers[k].price(rep, stack(&offers[k])) as i64;
@@ -451,10 +451,11 @@ fn trade(content: &Content, books: &mut Books, now: u64, town: usize, roster: &m
                 // Named as `Reason::Sold` names its good, so a book's lines read alike.
                 let name = &content.goods[g].name;
                 post(books.ledger, books.book, Side::treasury(town, &mut money.0), Side::outside(),
-                    (price * ran) as f64, Reason::Other(format!("lockers: bought {name}")), now, content.day_ticks);
+                    crate::fixed::Fixed::emeralds((price * ran) as i64), Reason::Other(format!("lockers: bought {name}")), now,
+                    content.day_ticks);
             } else {
                 post(books.ledger, books.book, Side::outside(), Side::treasury(town, &mut money.0),
-                    (o.emeralds * ran) as f64, Reason::Sold(g), now, content.day_ticks);
+                    crate::fixed::Fixed::emeralds((o.emeralds * ran) as i64), Reason::Sold(g), now, content.day_ticks);
             }
         }
         made += ran;

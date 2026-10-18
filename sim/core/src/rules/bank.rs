@@ -29,6 +29,7 @@ use crate::cash_book::{post, Accountant, CashBook, Side};
 use crate::content::Content;
 use crate::contracts::{self, Book};
 use crate::farms::Farm;
+use crate::fixed::Fixed;
 use crate::state::*;
 
 pub fn register(schedule: &mut Schedule) {
@@ -71,10 +72,11 @@ fn plan_loans(clock: Res<Clock>, book: Res<Book>, banks: Res<Banks>,
         for &id in &plan.collecting {
             let c = &book.contracts[id];
             let owed = c.owed(arrival);
-            let payment = owed * c.price - c.recoup_from(owed * c.price, 0.0);
-            plan.purse -= banks.owed_to(route.from_id, id).min(payment.max(0.0));
+            let worth = Fixed::ceil(owed * c.price);
+            let payment = worth - c.recoup_from(worth, 0.0);
+            plan.purse -= banks.owed_to(route.from_id, id).min(payment.at_least_zero());
         }
-        plan.purse = plan.purse.max(0.0);
+        plan.purse = plan.purse.at_least_zero();
     }
 }
 
@@ -90,9 +92,9 @@ pub(crate) fn plan_float(clock: Res<Clock>, content: Res<Content>, bills: Res<Bi
     }
     let now = clock.now;
     // What every plan from a bank's market carries and its road costs, this look.
-    let mut committed: BTreeMap<usize, f64> = BTreeMap::new();
+    let mut committed: BTreeMap<usize, Fixed> = BTreeMap::new();
     // And the shopping money the Accountant allowed them already (`rules/desires.rs::plan_shopping`, before this).
-    let mut shopping: BTreeMap<usize, f64> = BTreeMap::new();
+    let mut shopping: BTreeMap<usize, Fixed> = BTreeMap::new();
     // (In the routes' order: a sum's last bit mustn't hang on archetypes, which a load reorders.)
     for e in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, state) = routes.get(e).unwrap();
@@ -100,16 +102,16 @@ pub(crate) fn plan_float(clock: Res<Clock>, content: Res<Content>, bills: Res<Bi
         if !banks.is(route.from_id) {
             continue;
         }
-        *shopping.entry(route.from_id).or_insert(0.0) += plan.shopping_money;
+        *shopping.entry(route.from_id).or_default() += plan.shopping_money;
         let (_, stock, trades, _, roster, _) = towns.get(route.from).expect("home");
         let keep_wheat = crate::road::keep_wheat(&content, trades, roster);
         // (for the crew it has mustered, `squad.rs`: one without)
         let mouths = plan.crew.len().max(1) as f64;
-        *committed.entry(route.from_id).or_insert(0.0) += plan.purse
+        *committed.entry(route.from_id).or_default() += plan.purse
             + crate::road::road_money(&content, route, &stock.0, keep_wheat, mouths);
     }
     let mut budgets: BTreeMap<usize, Budget> = BTreeMap::new();
-    let mut planned: BTreeMap<usize, f64> = BTreeMap::new();
+    let mut planned: BTreeMap<usize, Fixed> = BTreeMap::new();
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(entity).unwrap();
         let route = *route;
@@ -118,23 +120,23 @@ pub(crate) fn plan_float(clock: Res<Clock>, content: Res<Content>, bills: Res<Bi
         }
         let Some(plan) = state.plan.as_mut() else { continue };
         let (money, _, trades, budget, _, farm) = towns.get(route.from).expect("home");
-        let already = planned.get(&route.from_id).copied().unwrap_or(0.0);
-        let spare = money.0 - reserve(&content, trades, farm) - committed.get(&route.from_id).copied().unwrap_or(0.0)
+        let already = planned.get(&route.from_id).copied().unwrap_or_default();
+        let spare = money.0 - reserve(&content, trades, farm) - committed.get(&route.from_id).copied().unwrap_or_default()
             - already;
-        let wanted = content.dials.bank_float.min(spare).max(0.0);
-        if wanted <= 0.0 {
+        let wanted = Fixed::floor(content.dials.bank_float).min(spare).at_least_zero();
+        if !wanted.is_positive() {
             continue;
         }
         let budget = budgets.entry(route.from_id).or_insert(*budget);
         let free_money = free(&content, trades, money, &bills, route.from_id, now);
-        let left = Accountant::left(&content, now, free_money, budget) - shopping.get(&route.from_id).copied().unwrap_or(0.0);
+        let left = Accountant::left(&content, now, free_money, budget) - shopping.get(&route.from_id).copied().unwrap_or_default();
         let float = wanted.min(left);
-        if float <= 0.0 {
+        if !float.is_positive() {
             continue;
         }
         budget.spent += float;
         plan.purse += float;
-        *planned.entry(route.from_id).or_insert(0.0) += float;
+        *planned.entry(route.from_id).or_default() += float;
         banks.floats.insert(route.seq, float);
     }
 }
@@ -194,7 +196,7 @@ pub(crate) fn deal(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mu
                 || book.contracts.get(loan.contract).is_some_and(|c| c.in_force()) {
                 continue; // repaid when its goods are paid for
             }
-            let back = (money.0 - reserve).max(0.0).min(loan.owed);
+            let back = (money.0 - reserve).at_least_zero().min(loan.owed);
             if back > COLLECT_EPS {
                 post(&mut ledger, &mut cash, Side::treasury(town, &mut money.0), Side::wagon(route.seq, &mut wagon.purse),
                     back, bank::repaid_reason(), now, day);
@@ -211,7 +213,7 @@ pub(crate) fn deal(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mu
                 continue; // not its to sell, settled, or due anyway: presented in the ordinary way
             }
             let price = discount_price(b.amount, b.due, now, day, d);
-            if price <= 0.0 || wagon.purse - keep < price {
+            if !price.is_positive() || wagon.purse - keep < price {
                 continue;
             }
             let (face, drawee) = (b.amount, b.drawee);
@@ -243,7 +245,7 @@ pub(crate) fn deal(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mu
             }
             let coming = to_come(c);
             let cap = loan_cap(c, banks.owed_on(id), d);
-            if cap < MIN_LOAN || spare >= coming * d.loan_share {
+            if cap < MIN_LOAN || spare.to_f64() >= coming * d.loan_share {
                 continue; // little to lend on, or it has the money
             }
             let principal = cap.min(wagon.purse - keep);

@@ -54,7 +54,7 @@ pub fn observe_crossings(clock: Res<Clock>, content: Res<Content>, towns: Res<To
         let Some(wagon) = state.wagon.as_ref() else { continue };
         let (Some(start), Some(goal)) = (home(route.from_id), home(route.to_id)) else { continue };
         observe(&mut territory, &map, &content.dials, route.seq, [route.from_id, route.to_id], start, goal, &path.0,
-            wagon.purse * spurs, per_hex, takings.expected_value(route.seq), &home);
+            wagon.purse.to_f64() * spurs, per_hex, takings.expected_value(route.seq), &home);
     }
 }
 
@@ -64,7 +64,7 @@ pub fn takings(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, mut ta
     let spurs = mint.rate(clock.now, content.day_ticks);
     let mut home: Vec<(usize, f64)> = routes.iter()
         .filter(|(_, s)| s.arrived == Some(Leg::Home))
-        .filter_map(|(r, s)| s.wagon.as_ref().map(|w| (r.seq, w.purse * spurs)))
+        .filter_map(|(r, s)| s.wagon.as_ref().map(|w| (r.seq, w.purse.to_f64() * spurs)))
         .collect();
     home.sort_by_key(|&(seq, _)| seq);
     for (seq, spurs) in home {

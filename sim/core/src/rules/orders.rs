@@ -295,8 +295,10 @@ fn fill(content: &Content, book: &mut Book, ledger: &mut Ledger, cash: &mut Cash
         o.purse -= price;
         o.delivered += lot;
         o.paid += price;
-        post(ledger, cash, Side::outside(), Side::treasury(o.town, &mut money.0), price / rate, reason("order"), now, day);
-        book.settle(id, 0.0, lot, price / rate, 0.0);
+        // The player's spurs at the rate, to the nearest thousandth of an emerald (coin from outside).
+        let paid = crate::fixed::Fixed::round(price / rate);
+        post(ledger, cash, Side::outside(), Side::treasury(o.town, &mut money.0), paid, reason("order"), now, day);
+        book.settle(id, 0.0, lot, paid, crate::fixed::Fixed::ZERO);
         tally.lots_sold += 1.0;
         tally.spurs_from_sales += price;
         filled.lots += 1;
@@ -383,10 +385,12 @@ fn buy(content: &Content, rate: f64, now: u64, trades: &Trades, farm: Option<&Fa
     let ceiling = signal.map_or(worth_of(content, g, lot, rate) * content.dials.maker_ceiling, |s| s.spurs_each * lot);
     let price = stall.price;
     let reserve = reserve(content, trades, farm);
+    // What a lot costs the town in emeralds, rounded up to the thousandth.
+    let cost = crate::fixed::Fixed::ceil(price / rate);
     while want > 0.0 && price > 0.0 && price <= ceiling && stall.lots() > 0.0
-        && money.0 - reserve >= price / rate {
+        && money.0 - reserve >= cost {
         stall.stock -= lot;
-        post(ledger, cash, Side::treasury(stall.town, &mut money.0), Side::outside(), price / rate, reason("stall"), now, day);
+        post(ledger, cash, Side::treasury(stall.town, &mut money.0), Side::outside(), cost, reason("stall"), now, day);
         stock.0[g] += lot;
         ledger.delivered[g] += lot;
         want -= lot;
@@ -406,8 +410,8 @@ fn sell_surplus(content: &Content, rate: f64, now: u64, trades: &Trades, worksho
         let takings = shops[i].takings;
         if takings > 0.0 {
             shops[i].takings = 0.0;
-            post(ledger, cash, Side::outside(), Side::treasury(shops[i].town, &mut money.0), takings / rate,
-                reason("own shop"), now, day);
+            post(ledger, cash, Side::outside(), Side::treasury(shops[i].town, &mut money.0),
+                crate::fixed::Fixed::round(takings / rate), reason("own shop"), now, day);
             tally.spurs_from_own_shops += takings;
         }
     }

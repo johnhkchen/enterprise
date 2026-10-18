@@ -9,6 +9,7 @@ use crate::bills::Bills;
 use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
 use crate::contracts::{self, Book, Incoterm};
+use crate::fixed::Fixed;
 use crate::messages::Output;
 use crate::people::{comfort_held, comfort_par};
 use crate::realms::Realm;
@@ -32,8 +33,8 @@ pub fn mark(clock: Res<Clock>, mut routes: Query<&mut RouteState>) {
         if arrived == Some(Leg::Out) {
             let w = state.wagon.as_mut().unwrap();
             w.sold_here = vec![0.0; w.cargo.len()];
-            w.takings_here = 0.0;
-            w.paid_here = vec![0.0; w.cargo.len()]; // each good's takings, for the books (`atlas.rs`)
+            w.takings_here = Fixed::ZERO;
+            w.paid_here = vec![Fixed::ZERO; w.cargo.len()]; // each good's takings, for the books (`atlas.rs`)
         }
     }
 }
@@ -107,12 +108,12 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
             let par = stock.0[g] + room;
             let free_money = free(&content, trades, &money, &bills, route.to_id, now);
             let can = if realm_buys {
-                money.0.max(0.0)
+                money.0.at_least_zero()
             } else if comfort.is_some() {
                 // Out of the money it doesn't need for wages and its trading capital, within its budget.
-                left_for(&content, now, free_money, &mut budget, days).min((money.0 - far_reserve).max(0.0))
+                left_for(&content, now, free_money, &mut budget, days).min((money.0 - far_reserve).at_least_zero())
             } else {
-                left_for(&content, now, free_money, &mut budget, days).min(money.0.max(0.0))
+                left_for(&content, now, free_money, &mut budget, days).min(money.0.at_least_zero())
             };
             let mut n = wagon.cargo[g].min(room);
             let mut price = value;
@@ -122,7 +123,7 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
                 }
                 let each = crate::bargain::unit_price(&content, g, stock.0[g], n, par, seller, buyer);
                 price = each.unwrap_or(0.0);
-                n = n.min(each.map_or(0.0, |each| (can / each).floor()));
+                n = n.min(each.map_or(0.0, |each| (can.to_f64() / each).floor()));
             }
             // Too dear for it to sell on: only what its own people have room for.
             if outlet.is_some_and(|o| price > 0.0 && !crate::desires::worth_buying(&content, price, &o)) && own < n {
@@ -134,7 +135,8 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
             }
             wagon.cargo[g] -= n;
             stock.0[g] += n;
-            let paid = n * price;
+            // The buyer pays the batch's price rounded up to the thousandth (`Treasury.withdraw`), within what it can.
+            let paid = Fixed::ceil(n * price).min(can);
             post(&mut ledger, &mut book, Side::treasury(route.to_id, &mut money.0), Side::wagon(route.seq, &mut wagon.purse),
                 paid, Reason::Sale, now, day);
             budget.spent += paid;

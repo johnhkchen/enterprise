@@ -155,7 +155,7 @@ fn a_town_short_of_crew_takes_on_a_hand() {
     assert!(away, "off home while on the road");
     assert_eq!(s.crew(0).crew, vec![("merchant".to_string(), 1)]);
     let book = s.cash_book(HUB, 1);
-    assert!(book.iter().any(|(_, why, v)| why == "signing" && (*v + 2.0).abs() < 1e-12), "2 emeralds to sign on: {book:?}");
+    assert!(book.iter().any(|(_, why, v)| why == "signing" && *v == -2.0), "2 emeralds to sign on: {book:?}");
     assert_eq!(s.roster(HUB).merchant, Some(0), "the desk's Merchant is still the desk's");
     s.advance(4 * LOOK);
     assert!(!s.route(0).on_the_road, "home");
@@ -172,9 +172,9 @@ fn a_town_with_a_route_trains_its_squad() {
     assert_eq!(s.train_squad(HUB), Some(pupil), "the unemployed adult is trained");
     let (trade, level, xp, _) = s.hand(HUB, pupil).unwrap();
     assert!(trade == "merchant" && level == 1 && xp > 0, "as a Merchant first, and keeps the trade: {trade} {xp}");
-    assert!((money - s.town(HUB).money - 4.0).abs() < 1e-12, "for 4 emeralds");
+    assert!(money - s.town(HUB).money == 4.0, "for 4 emeralds");
     let book = s.cash_book(HUB, 1);
-    assert!(book.iter().any(|(_, why, v)| why == "training" && (*v + 4.0).abs() < 1e-12), "{book:?}");
+    assert!(book.iter().any(|(_, why, v)| why == "training" && *v == -4.0), "{book:?}");
     // A lead a route and a spare, at most four: the next learns the next lead trade, then it has enough.
     s.add_hand(HUB, "none", 1);
     s.add_hand(HUB, "none", 1);
@@ -475,10 +475,10 @@ fn the_day_it_cant_wait_a_small_load_goes_by_porter() {
 fn a_porter_run_has_no_team_to_feed() {
     let (s, _, went) = owed_by_porter();
     let day = went / DAY;
-    let road = |s: &Society, d: u64| -> f64 {
-        s.cash_book(HUB, 30).iter().filter(|(on, why, _)| *on == d && why == "road food").map(|(_, _, v)| -v).sum()
+    let road = |s: &Society, d: u64| -> enterprise_core::Fixed {
+        s.cash_book(HUB, 30).iter().filter(|(on, why, _)| *on == d && why == "road food").map(|(_, _, v)| -*v).sum()
     };
-    assert!((road(&s, 0) - 0.1).abs() < 1e-12, "the first trip's wagon bought its team's fodder, 2 points: {}", road(&s, 0));
+    assert!(road(&s, 0) == 0.1, "the first trip's wagon bought its team's fodder, 2 points: {}", road(&s, 0));
     assert_eq!(road(&s, day), 0.0, "the porter's trip: its food from home's bread, and no team");
 }
 

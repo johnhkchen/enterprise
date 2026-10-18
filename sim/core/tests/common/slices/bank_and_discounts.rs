@@ -31,7 +31,7 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
     let d = &s.content().dials;
     let contracts = s.contracts();
     for l in s.loans() {
-        if l.owed <= 0.0 || l.owed > l.principal * (1.0 + d.loan_interest) + 1e-9 || l.principal <= 0.0 {
+        if !l.owed.is_positive() || l.owed > l.principal.mul_ceil(1.0 + d.loan_interest) || !l.principal.is_positive() {
             return Err(format!("loan {}: {} owed on {} lent", l.id, l.owed, l.principal));
         }
         let c = &contracts[l.contract];
@@ -41,7 +41,10 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
     }
     for t in 0..s.town_count() {
         let b = s.bank(t);
-        if b.bills_paid > b.bills_face + 1e-9 || b.repaid > b.lent * (1.0 + d.loan_interest) + 1e-6 || b.bills_paid < 0.0 {
+        // (Each loan's interest is rounded up to the thousandth: a thousandth a loan over the whole's.)
+        if b.bills_paid > b.bills_face
+            || b.repaid > b.lent.mul_ceil(1.0 + d.loan_interest) + enterprise_core::Fixed::from_millis(b.loans_made as i64)
+            || b.bills_paid.is_negative() {
             return Err(format!("bank {t}: {b:?}"));
         }
     }

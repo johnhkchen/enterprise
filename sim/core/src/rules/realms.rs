@@ -50,9 +50,10 @@ pub fn customs(clock: Res<Clock>, content: Res<Content>, crown: Res<Crown>, mut 
         }
         let Ok(mut realm) = realms.get_mut(route.from) else { continue };
         let Some(wagon) = state.wagon.as_mut() else { continue };
-        let duty = (wagon.takings_here * content.dials.customs).min(wagon.purse).max(0.0);
+        // Its share of the takings, rounded up to the thousandth (a duty owed), as far as the purse goes.
+        let duty = wagon.takings_here.mul_ceil(content.dials.customs).min(wagon.purse).at_least_zero();
         let Ok(mut money) = towns.get_mut(all.0[capital]) else { continue };
-        if duty <= 0.0 {
+        if !duty.is_positive() {
             continue;
         }
         post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(capital, &mut money.0),

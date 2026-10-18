@@ -466,7 +466,7 @@ impl<'a> Env<'a> {
         let carriage = if crate::road::road_food(self.content) {
             crate::road::food_needed(self.content, r.route.blocks) * 2.0 * d.purse_per_food_point / per_wagon
         } else {
-            r.route.road_cost / per_wagon
+            r.route.road_cost.to_f64() / per_wagon
         };
         incoterm.price(ex_works, carriage, self.toll_share(r) * ex_works)
     }

@@ -624,9 +624,9 @@ pub struct TownTally {
     pub days: u32,
     pub hungry: u32,
     pub strength: f64,
-    pub pay: f64,
+    pub pay: crate::fixed::Fixed,
     pub kit: f64,
-    pub earned: f64,
+    pub earned: crate::fixed::Fixed,
 }
 
 /// The war in all: each town's part; the kit issued (by kind and whether enchanted), food points eaten and how hearty;
@@ -892,14 +892,14 @@ impl Society {
         for t in 0..self.town_count() {
             let r = army.record(t);
             let mut kit = 0.0;
-            let mut earned = 0.0;
+            let mut earned = crate::fixed::Fixed::ZERO;
             for c in book.contracts.iter().filter(|c| c.seller == t && crown(c.buyer)) {
                 if c.levy.is_none() && c.training.is_none() && is_kit(content, c.good) {
                     kit += c.delivered;
                 }
                 earned += c.paid;
             }
-            if r.raised > 0 || kit > 0.0 || earned > 0.0 {
+            if r.raised > 0 || kit > 0.0 || earned.is_positive() {
                 towns.push(TownTally { town: t, raised: r.raised, fallen: r.fallen, deserted: r.deserted, days: r.days,
                     hungry: r.hungry, strength: r.strength, pay: r.pay, kit, earned });
             }

@@ -109,7 +109,7 @@ fn the_same_happenings_give_the_same_world() {
     let outs_a: Vec<_> = script.iter().flat_map(|i| a.apply(i)).collect();
     let outs_b: Vec<_> = script.iter().flat_map(|i| b.apply(i)).collect();
     assert_eq!(outs_a, outs_b, "the same results, message for message");
-    assert_eq!(a.town(0).money.to_bits(), b.town(0).money.to_bits(), "to the last bit");
+    assert_eq!(a.town(0).money, b.town(0).money, "to the last thousandth");
 }
 
 #[test]
@@ -141,7 +141,7 @@ fn a_buyer_keeps_its_trading_capital_and_buys_only_the_excess() {
     let mut excess = farm_and_mill(2.0, 26.4);
     excess.advance(20 * DAY);
     assert!(excess.route(0).sold > 0.0, "the excess buys wheat");
-    assert!(excess.town(1).money >= 6.4 - 1e-9, "and the mill keeps its trading capital");
+    assert!(excess.town(1).money >= 6.4, "and the mill keeps its trading capital");
 }
 
 // parity-partial: CaravanTests.aDestinationThatCantPayGetsNothing (no crates in the core yet: the Java test also checks the crated paper rides home)

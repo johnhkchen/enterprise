@@ -147,7 +147,7 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
     if !(0.0..=1.0 + 1e-9).contains(&army.heartiness()) || army.eaten < 0.0 {
         return Err(format!("meals {} hearty, {} eaten", army.heartiness(), army.eaten));
     }
-    if let Some((t, p)) = army.pay_owed.iter().find(|(_, p)| !(p.is_finite() && **p >= 0.0)) {
+    if let Some((t, p)) = army.pay_owed.iter().find(|(_, p)| p.is_negative()) {
         return Err(format!("town {t}: pay owed {p}"));
     }
     for t in 0..s.town_count() {

@@ -356,8 +356,8 @@ impl Society {
             villagers: people.villagers,
             par: comfort_par(content, people),
             met: people.comfort_met.clone(),
-            purse: people.purse,
-            spare: e.get::<Money>().expect("a town").0 - crate::rules::farms::reserve(content, trades, e.get::<crate::farms::Farm>()),
+            purse: people.purse.to_f64(),
+            spare: (e.get::<Money>().expect("a town").0 - crate::rules::farms::reserve(content, trades, e.get::<crate::farms::Farm>())).to_f64(),
             stock: e.get::<Stock>().expect("a town").0.clone(),
         }
     }
@@ -395,7 +395,7 @@ impl Society {
 
     /// Items a route's wagons have bought at the far end, the emeralds paid, and of the items what was a backhaul
     /// (`Route.itemsBought`, `purchaseSpurs`, `backhaulItems`).
-    pub fn bought(&self, route: crate::messages::RouteId) -> (f64, f64, f64) {
+    pub fn bought(&self, route: crate::messages::RouteId) -> (f64, crate::fixed::Fixed, f64) {
         let s = self.world.get::<RouteState>(self.routes[route]).expect("a route");
         (s.bought, s.purchases, s.backhauled)
     }

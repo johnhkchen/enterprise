@@ -71,13 +71,14 @@ pub struct Holding {
     pub militia: u32,
     /// When the guards were last fed and paid.
     pub upkept: Option<u64>,
-    /// Food points and coins owed the guards (below 0: credit).
+    /// Food points and coins owed the guards (below 0: credit): claims accruing each look, fractions carried, paid in
+    /// whole points and whole emeralds (the money moved in thousandths, `fixed.rs`).
     pub food_owed: f64,
     pub pay_owed: f64,
     /// Tolls taken since the last pay, and in the period before it.
-    pub toll_today: f64,
-    pub toll_before: f64,
-    pub tolls_taken: f64,
+    pub toll_today: crate::fixed::Fixed,
+    pub toll_before: crate::fixed::Fixed,
+    pub tolls_taken: crate::fixed::Fixed,
     /// Chokepoints (`chokepoints.rs`): what the town has seen of the routes crossing its land, in the order first
     /// seen; when it last reviewed its tolls; the plan it settled on; the coins carried across its land since the last
     /// review and a day over the last period, in spurs.

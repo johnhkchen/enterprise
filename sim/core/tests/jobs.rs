@@ -152,7 +152,7 @@ fn town(money: f64, paper: f64) -> (Society, usize) {
     (s, t)
 }
 
-fn stall_paid(s: &Society, t: usize) -> f64 {
+fn stall_paid(s: &Society, t: usize) -> enterprise_core::Fixed {
     s.cash_book(t, 400).iter().filter(|(_, what, _)| what == "stall").map(|(_, _, e)| e).sum()
 }
 

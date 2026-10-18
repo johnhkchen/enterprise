@@ -28,7 +28,7 @@ fn load_then_run_equals_never_saved_to_the_bit() {
             assert_eq!(a, b, "seed {seed}, day {day}: the same wagons");
         }
         for t in 0..kept.town_count() {
-            assert_eq!(kept.town(t).money.to_bits(), loaded.town(t).money.to_bits(), "seed {seed}, town {t}");
+            assert_eq!(kept.town(t).money, loaded.town(t).money, "seed {seed}, town {t}");
         }
         assert_eq!(seen(&loaded), seen(&kept), "seed {seed}: the same world at day 100");
         assert!(loaded.save() == kept.save(), "seed {seed}: the same blob at day 100");

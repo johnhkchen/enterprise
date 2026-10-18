@@ -27,7 +27,7 @@ fn contracted_goods_go_first_and_settle_at_the_locked_price() {
     s.advance(3 * DAY);
     let c = s.contract(id);
     assert!(c.delivered >= 64.0, "delivered under contract though the shelf was full: {}", c.delivered);
-    assert!((c.paid - c.delivered * 0.05).abs() < 1e-9, "at the locked price, not the market's: {}", c.paid);
+    assert!(c.paid == c.delivered * 0.05, "at the locked price, not the market's: {}", c.paid);
 }
 
 // parity: CaravanTests.missedInstallmentsCostTrustAndBreakTheContract
@@ -117,9 +117,9 @@ fn ex_works_the_buyer_collects_in_time_and_pays_from_its_purse() {
     s.advance(6 * DAY);
     let c = s.contract(id);
     assert!(c.delivered >= 64.0 && c.buyer_missed == 0, "collected: {} delivered", c.delivered);
-    assert!((c.paid - 32.0).abs() < 1e-9, "paid at the locked price: {}", c.paid);
+    assert!(c.paid == 32.0, "paid at the locked price: {}", c.paid);
     // The town crated them for the hub (`cargo.rs`): a new crate, and a scribe for the bill of lading (no paper).
-    assert!((s.town(town).money - (5.0 + 32.0 - 0.125 - 0.1)).abs() < 1e-9, "the town took 32 emeralds: {}", s.town(town).money);
+    assert!(s.town(town).money == (5.0 + 32.0 - 0.125 - 0.1), "the town took 32 emeralds: {}", s.town(town).money);
     assert!(s.town(hub).stock[0] >= 64.0, "and the books are home");
 }
 
@@ -136,7 +136,7 @@ fn short_of_coin_the_buyer_pays_with_a_bill_presented_once_due() {
     let c = s.contract(id);
     assert!(c.delivered >= 64.0 && c.owing == 0.0, "delivered, nothing owed: {} owed", c.owing);
     let bill = s.bills().into_iter().next().expect("the rest on a bill on the scribes");
-    assert!(bill.drawee == 1 && bill.payee == 0 && (bill.amount - 24.0 * 1.02).abs() < 1e-6, "{bill:?}");
+    assert!(bill.drawee == 1 && bill.payee == 0 && bill.amount == 24.0 * 1.02, "{bill:?}");
     s.pay(1, 30.0); // a player buys at the scribes' shops: money comes in
     s.advance(20 * DAY);
     assert_eq!(s.bills()[0].state, enterprise_core::bills::BillState::Paid, "the mill's next wagon, once it was due, was paid");

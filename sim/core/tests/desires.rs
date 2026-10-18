@@ -212,8 +212,9 @@ fn caravans_buy_a_towns_surplus_for_the_trip_home() {
     assert_eq!(carried, 64.0, "{carried}");
     // The town was paid for its surplus, at most three quarters of its worth.
     let book = s.cash_book(DEST, 3);
-    let got: f64 = book.iter().filter(|(_, what, _)| what == "backhaul").map(|(_, _, v)| v).sum();
-    assert!(got > 0.0 && got <= paid + 1e-9 && got <= 64.0 / 22.0 * 0.75 + 1e-9, "{book:?}");
+    let got: enterprise_core::Fixed = book.iter().filter(|(_, what, _)| what == "backhaul").map(|(_, _, v)| v).sum();
+    // (Paid rounded up to the thousandth, as a price is: `fixed.rs`.)
+    assert!(got > 0.0 && got <= paid && got <= enterprise_core::Fixed::ceil(64.0 / 22.0 * 0.75), "{book:?}");
     assert!(s.food_points(DEST) >= 320.0, "the town keeps its food par: {}", s.food_points(DEST));
 }
 
@@ -279,7 +280,7 @@ fn what_a_market_would_pay_is_its_shop_then_the_books_then_a_reckoning() {
     // A good that's no comfort is worth its worth.
     assert!(close(s.will_pay(HUB, DEST, PAPER), 1.0 / 24.0));
     // The last price the Merchant's books show it sold there for beats the reckoning.
-    s.file(HUB, vec![enterprise_core::atlas::Entry::new(0, Kind::Sold, DEST, COOKIE, 10.0, 0.7)]);
+    s.file(HUB, vec![enterprise_core::atlas::Entry::new(0, Kind::Sold, DEST, COOKIE, 10.0, enterprise_core::Fixed::from(0.7))]);
     assert!(close(s.will_pay(HUB, DEST, COOKIE), 0.07), "{}", s.will_pay(HUB, DEST, COOKIE));
     // And the price its shop listed when a wagon last called beats that (see the shop's test).
     let c = content();
@@ -401,7 +402,7 @@ fn the_accountant_limits_a_towns_shopping_and_the_wagon_gone_spends_the_budget()
     s.deliver(DEST, COOKIE, 64.0);
     // Its day's budget is half its free money, 10; it has spent all but a little.
     let spent = s.allow(HUB, "works", 9.7);
-    assert!(close(spent, 9.7));
+    assert!(spent == 9.7);
     s.advance(LOOK);
     let shopping = s.wagon_shopping(0).expect("it left");
     assert_eq!(shopping.iter().sum::<f64>(), 0.0, "0.3 left of the budget: under the half emerald it takes: {shopping:?}");
@@ -413,7 +414,7 @@ fn the_accountant_limits_a_towns_shopping_and_the_wagon_gone_spends_the_budget()
     s.advance(LOOK);
     assert!(s.wagon_shopping(0).is_some_and(|l| l.iter().sum::<f64>() > 0.0));
     let left = s.budget_left(HUB);
-    assert!(close(before - left, 10.0), "the shopping purse, 10 of the 10: {before} then {left}");
+    assert!(before - left == 10.0, "the shopping purse, 10 of the 10: {before} then {left}");
 }
 
 #[test]
@@ -438,7 +439,7 @@ fn a_wagon_buys_a_glut_for_home_at_a_discount() {
     let (bought, paid, backhauled) = s.bought(0);
     assert!(bought > 0.0 && backhauled == bought, "bought {bought} of wheat as a backhaul: {backhauled}");
     // 1,000 held is 15 pars: half off the worth, the most a glut is discounted.
-    assert!(close(paid, bought * 0.5 / 20.0), "{paid} for {bought}");
+    assert!(paid == bought * 0.5 / 20.0, "{paid} for {bought}");
     assert!(s.cash_book(DEST, 3).iter().any(|(_, what, v)| what == "glut" && *v > 0.0));
     // And the wagon brings it home.
     assert_eq!(aboard(&s, 0, WHEAT), bought);
@@ -504,13 +505,13 @@ fn a_merchant_buys_a_comfort_a_town_on_its_routes_is_short_of_where_it_pays() {
     town_of_five(&mut s, short);
     s.add_route(HUB, short, 4.0 / 1200.0, 0.0, 4.0);
     s.advance(2 * LOOK);
-    let got: f64 = s.cash_book(DEST, 3).iter().filter(|(_, what, _)| what == "backhaul").map(|(_, _, v)| v).sum();
+    let got: enterprise_core::Fixed = s.cash_book(DEST, 3).iter().filter(|(_, what, _)| what == "backhaul").map(|(_, _, v)| v).sum();
     let value = 1.0 / 18.0;
     let held = s.stocktake(HUB).expect("counted as it left").stock[COOKIE];
     let wanted = 54.0 - held;
     assert!((28.0..=30.0).contains(&held), "(its two hands ate a cookie or two): {held}");
     // The same price for each, 0.625 of the worth (levels 1 and 1).
-    assert!(close(got, wanted * 0.625 * value), "{got} for {wanted} cookies");
+    assert!(got == enterprise_core::Fixed::ceil(wanted * 0.625 * value), "{got} for {wanted} cookies");
     assert_eq!(aboard(&s, 0, COOKIE), wanted);
     // And the Merchant carries the news home that it paid that: the next outlet reads it from the books.
     s.advance(3 * LOOK);

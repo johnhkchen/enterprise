@@ -125,7 +125,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
                 continue;
             }
             let c = cost(&content, &stock.0, kind);
-            if work_wanted + c > spare {
+            if work_wanted + c > spare.to_f64() {
                 break;
             }
             work_wanted += c;
@@ -210,9 +210,10 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
             Some(None) => continue, // its Masons are away
             Some(Some(level)) => level,
         };
-        let Some(kind) = next_hall(&content, &works, roster, farm, paperwork, &stock.0, people.mood, spare, now, skill)
+        let Some(kind) = next_hall(&content, &works, roster, farm, paperwork, &stock.0, people.mood, spare.to_f64(), now, skill)
             else { continue };
-        let to_buy = materials(&content, &stock.0, kind);
+        // Rounded up to the thousandth: a cost.
+        let to_buy = crate::fixed::Fixed::ceil(materials(&content, &stock.0, kind));
         let what = Reason::Other(format!("a {}", kind.id().replace('_', " ")));
         let free = super::free(&content, trades, &money, &bills, t, now);
         if !Accountant::approve(&content, &mut book, t, now, free, &mut budget, what.clone(), to_buy) {

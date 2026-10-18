@@ -327,7 +327,7 @@ fn a_road_between_placed_towns_runs_the_trade_loop() {
     assert!((s.per_hex() - 0.64).abs() < 1e-12);
     let (ticks, cost) = s.route_road(road);
     assert_eq!(ticks, 19_200, "960 blocks at 1,200 a day: 0.8 of a day");
-    assert!((cost - 12.0 * 0.64).abs() < 1e-9, "{cost}");
+    assert!(cost == 12.0 * 0.64, "{cost}");
     let start = s.totals();
     for day in 1..=60 {
         s.advance(day * DAY);
@@ -356,7 +356,8 @@ fn a_road_goes_around_and_costs_more_or_there_is_none() {
     assert!(path.len() > 13 && path[1..path.len() - 1].iter().all(|h| h.r != 0), "skirts the hills: {path:?}");
     let (ticks, cost) = s.route_road(road);
     assert_eq!(ticks, ((path.len() - 1) as f64 * 80.0 / 1200.0 * DAY as f64).round() as u64);
-    assert!((cost - (path.len() - 1) as f64 * 16.0 / 30.0).abs() < 1e-9, "no bread: 1/30 a point: {cost}");
+    // (the road's food rounded up to the thousandth: a cost)
+    assert!(cost == enterprise_core::Fixed::ceil((path.len() - 1) as f64 * 16.0 / 30.0), "no bread: 1/30 a point: {cost}");
     // An unplaced town has no road.
     let c = s.add_town("C", 0.0);
     assert!(s.add_road(a, c, 1.0).is_none());

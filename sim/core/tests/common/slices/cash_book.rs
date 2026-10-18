@@ -11,14 +11,14 @@ pub fn daily(s: &mut Society, r: &mut Rng, _day: u64) {
     for t in 0..s.town_count() {
         match r.below(4) {
             0 => {
-                let cost = r.range(0.0, 30.0);
+                let cost = enterprise_core::Fixed::from(r.range(0.0, 30.0));
                 if s.approve(t, "works", cost) {
-                    let cost = cost.min(s.town(t).money.max(0.0));
+                    let cost = cost.min(s.town(t).money.at_least_zero());
                     s.post(Account::Treasury(t), Account::Outside, cost, Reason::Other("works".into()));
                 }
             }
             1 => {
-                let gift = s.allow(t, "a feast", r.range(0.0, 10.0)).min(s.town(t).money.max(0.0));
+                let gift = s.allow(t, "a feast", r.range(0.0, 10.0)).min(s.town(t).money.at_least_zero());
                 s.post(Account::Treasury(t), Account::Households(t), gift, Reason::Other("a feast".into()));
             }
             _ => {}

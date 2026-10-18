@@ -66,14 +66,14 @@ fn masons_build_a_bridge_for_wages() {
     // 4 hexes of stone a day (64 blocks) for 2 masons at 32 a day: 192 blocks in 3 days, 6 emeralds of wages.
     let p = s.works(0).projects[0].clone();
     assert!((p.progress() * deck - 192.0).abs() < 1.0, "192 blocks laid: {}", p.progress() * deck);
-    assert!((s.town(0).money - 58.0).abs() < 1e-9, "6 emeralds of wages paid: {}", s.town(0).money);
+    assert!(s.town(0).money == 58.0, "6 emeralds of wages paid: {}", s.town(0).money);
     assert_eq!(s.account_book(enterprise_core::cash_book::Account::Treasury(0), 5).iter()
-        .filter(|(_, what, _)| what == "masons").map(|(_, _, n)| *n).sum::<f64>(), -6.0, "booked to the masons");
+        .filter(|(_, what, _)| what == "masons").map(|(_, _, n)| *n).sum::<enterprise_core::Fixed>(), enterprise_core::Fixed::emeralds(-6), "booked to the masons");
     assert!(!s.map().ground(HEX).bridged, "not yet");
     s.advance(t0 + 10 * DAY);
     let p = &s.works(0).projects[0];
     assert!(p.done && s.map().ground(HEX).bridged, "finished within 10 days");
-    assert!((s.town(0).money - (64.0 - 2.0 * 7.0)).abs() < 1.0 + 2.0, "and no more wages after: {}", s.town(0).money);
+    assert!((s.town(0).money.to_f64() - (64.0 - 2.0 * 7.0)).abs() < 1.0 + 2.0, "and no more wages after: {}", s.town(0).money);
     s.conserved(&before).unwrap();
     s.solvent().unwrap();
 }
@@ -90,7 +90,7 @@ fn the_first_touch_only_starts_the_clock_and_a_town_with_little_land_builds_slow
     s.advance(t0 + 2 * DAY);
     let p = &s.works(t).projects[0];
     assert!((p.laid - 32.0).abs() < 1e-9, "16 blocks a day from one hex: {}", p.laid);
-    assert!((s.town(t).money - 96.0).abs() < 1e-9, "but the masons are paid for their days: {}", s.town(t).money);
+    assert!(s.town(t).money == 96.0, "but the masons are paid for their days: {}", s.town(t).money);
 }
 
 #[test]
@@ -119,7 +119,7 @@ fn one_project_at_a_time_bridges_first_then_the_wall_then_halls() {
     let works = s.works(0);
     assert!(works.projects[0].laid > 0.0 && works.projects[1].laid == 0.0 && works.projects[2].laid == 0.0,
         "the bridge only: {:?}", works.projects.iter().map(|p| p.laid).collect::<Vec<_>>());
-    assert!((s.town(0).money - 60.0).abs() < 1e-9, "two masons' wages for two days, not six: {}", s.town(0).money);
+    assert!(s.town(0).money == 60.0, "two masons' wages for two days, not six: {}", s.town(0).money);
     s.finish_project(0, What::Bridge { hex: HEX, from: FROM, to: TO });
     assert_eq!(s.works(0).underway(), Some(1), "then the wall");
     assert!(s.map().ground(HEX).bridged, "a bridge finished at once is on the map");
@@ -212,13 +212,13 @@ fn a_counting_houses_clerks_draw_up_papers_cheaply() {
     s.draw_papers(t, 10, LADING);
     look(&mut s);
     let scribes = s.paperwork(t).scribe_fees;
-    assert!((scribes - 1.0).abs() < 1e-9, "no stationery: a scribe at 0.1 a document, {scribes}");
+    assert!(scribes == 1.0, "no stationery: a scribe at 0.1 a document, {scribes}");
     s.start_project(t, What::Hall(Kind::CountingHouse));
     s.finish_project(t, What::Hall(Kind::CountingHouse));
     s.draw_papers(t, 10, LADING);
     look(&mut s);
     let clerks = s.paperwork(t).scribe_fees - scribes;
-    assert!((clerks - 0.2).abs() < 1e-9, "with a counting house: its clerks at 0.02, {clerks}");
+    assert!(clerks == 0.2, "with a counting house: its clerks at 0.02, {clerks}");
     // And half the stationery: ten documents take five sheets, not ten.
     s.deliver(t, 0, 20.0);
     s.deliver(t, 1, 20.0);
@@ -231,23 +231,23 @@ fn a_counting_houses_clerks_draw_up_papers_cheaply() {
 fn a_counting_house_widens_the_accountants_budget() {
     let mut s = Society::new(Content::new(vec![Good::new("bread", 0.2, 64)], DAY));
     let t = s.add_town("Haygate", 100.0);
-    assert!((s.budget_left(t) - 50.0).abs() < 1e-9, "half the free money");
+    assert!(s.budget_left(t) == 50.0, "half the free money");
     let mut s = Society::new(Content::new(vec![Good::new("bread", 0.2, 64)], DAY));
     let t = s.add_town("Haygate", 100.0);
     s.start_project(t, What::Hall(Kind::CountingHouse));
     s.finish_project(t, What::Hall(Kind::CountingHouse));
-    assert!((s.budget_left(t) - 75.0).abs() < 1e-9, "half as much again: {}", s.budget_left(t));
+    assert!(s.budget_left(t) == 75.0, "half as much again: {}", s.budget_left(t));
     // And it holds back bills for twice the days: one falling due in four days is free money to three days' notice,
     // but not to six.
     let content = Content::new(vec![Good::new("bread", 0.2, 64)], DAY);
     let mut bills = enterprise_core::bills::Bills::default();
     bills.draw(0, 1, 10.0, 0, DAY);
     let mut trades = enterprise_core::state::Trades { makes: vec![0.0], uses: vec![0.0], capacity: vec![0.0], counting_house: false, ..Default::default() };
-    let money = enterprise_core::state::Money(100.0);
+    let money = enterprise_core::state::Money(enterprise_core::Fixed::emeralds(100));
     assert_eq!(enterprise_core::rules::free(&content, &trades, &money, &bills, 0, 0), 100.0, "three days: not yet counted");
     trades.counting_house = true;
     let held = enterprise_core::rules::free(&content, &trades, &money, &bills, 0, 0);
-    assert!(held < 100.0 - 10.0 + 1e-9, "six days: counted against it: {held}");
+    assert!(held <= enterprise_core::Fixed::emeralds(90), "six days: counted against it: {held}");
 }
 
 // parity-partial: MasterTests.aMasterFarmerPlantsFlowerBeds
@@ -350,7 +350,7 @@ fn a_content_town_builds_its_wall_and_feels_safe_inside_it() {
     let works = s.works(0);
     let wall = works.wall().expect("a wall started");
     assert!(wall.done, "63 blocks a day, 756 blocks: done in about 12 days: {:.2}", wall.progress());
-    assert!((wall.wages_paid - (756.0f64 / 64.0 * 2.0).floor()).abs() <= 2.0, "wages paid: {}", wall.wages_paid);
+    assert!((wall.wages_paid.to_f64() - (756.0f64 / 64.0 * 2.0).floor()).abs() <= 2.0, "wages paid: {}", wall.wages_paid);
     assert_eq!(s.walled(0), 1.0);
     s.conserved(&before).unwrap();
 }
@@ -367,7 +367,7 @@ fn a_town_builds_its_halls_in_order_when_it_can_pay_twice_over() {
     assert!(works.has_started(Kind::Square), "a square first: {:?}", works.projects);
     assert!(works.built(Kind::Square), "and built");
     let book = s.cash_book(0, 30);
-    assert!(book.iter().any(|(_, what, n)| what == "a square" && (*n + 8.0).abs() < 1e-9), "its materials: {book:?}");
+    assert!(book.iter().any(|(_, what, n)| what == "a square" && *n == -8.0), "its materials: {book:?}");
     // Nothing else: a level-2 Mason can't build the rest (level 3), and the town lacks their trades.
     assert!(works.projects.iter().all(|p| p.what == What::Hall(Kind::Square)), "{:?}", works.projects);
 }
@@ -387,7 +387,7 @@ fn logs_in_the_warehouse_stand_in_for_materials() {
     s.deliver(0, 5, 32.0); // 32 logs at an eighth: 4 emeralds of the 8
     s.advance(25 * DAY);
     let book = s.cash_book(0, 30);
-    assert!(book.iter().any(|(_, what, n)| what == "a square" && (*n + 4.0).abs() < 1e-9), "half the materials in logs: {book:?}");
+    assert!(book.iter().any(|(_, what, n)| what == "a square" && *n == -4.0), "half the materials in logs: {book:?}");
     assert_eq!(s.town(0).stock[5], 32.0 - 32.0, "all 32 logs used (the square wanted 64, it had 32)");
 }
 

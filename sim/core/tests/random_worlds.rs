@@ -101,7 +101,7 @@ fn the_same_seed_gives_the_same_world() {
         }
         assert_eq!(oa, ob, "seed {seed}: the same wagons");
         for t in 0..a.town_count() {
-            assert_eq!(a.town(t).money.to_bits(), b.town(t).money.to_bits(), "seed {seed}, town {t}");
+            assert_eq!(a.town(t).money, b.town(t).money, "seed {seed}, town {t}");
         }
         assert_eq!(a.mint_rate().to_bits(), b.mint_rate().to_bits(), "seed {seed}: the same mint rate");
     }

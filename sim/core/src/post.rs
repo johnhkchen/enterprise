@@ -80,8 +80,9 @@ pub struct Letter {
     pub to: TownId,
     pub posted: u64,
     pub arrives: u64,
-    /// A call: what the goods offered are worth; a booking: the goods for sale; a remittance: the emeralds it carries.
-    pub value: f64,
+    /// A call: what the goods offered are worth; a booking: the goods for sale; a remittance: the emeralds it carries
+    /// (in thousandths, `fixed.rs`).
+    pub value: crate::fixed::Fixed,
     /// A reply: the day booked (none: declined).
     pub day: Option<u64>,
     /// A booking: stacks to collect.
@@ -98,7 +99,7 @@ pub struct Call {
     pub hub: TownId,
     pub town: TownId,
     pub day: u64,
-    pub value: f64,
+    pub value: crate::fixed::Fixed,
 }
 
 /// The crown's post (`Post`): letters on the road, calls booked, the day each town last wrote, letters sent in all;
@@ -146,7 +147,7 @@ impl Mail {
     }
 
     /// The worth of the goods offered on the calls due by `today` for that run: its purse (`Post.purse`).
-    pub fn purse(&self, hub: TownId, town: TownId, today: u64) -> f64 {
+    pub fn purse(&self, hub: TownId, town: TownId, today: u64) -> crate::fixed::Fixed {
         self.calls.iter().filter(|c| c.hub == hub && c.town == town && c.day <= today).map(|c| c.value).sum()
     }
 
@@ -299,7 +300,7 @@ pub struct Booking {
     pub hub: TownId,
     pub town: TownId,
     pub stacks: u32,
-    pub worth: f64,
+    pub worth: crate::fixed::Fixed,
     pub since: u64,
 }
 
@@ -312,8 +313,8 @@ pub struct Lot {
     pub good: GoodId,
     pub count: f64,
     pub sold: f64,
-    pub proceeds: f64,
-    pub fare: f64,
+    pub proceeds: crate::fixed::Fixed,
+    pub fare: crate::fixed::Fixed,
     pub since: u64,
 }
 
@@ -324,8 +325,8 @@ pub struct Forwarder {
     pub bookings: Vec<Booking>,
     pub lots: Vec<Lot>,
     pub collecting: Vec<(TownId, TownId)>,
-    pub remitted: f64,
-    pub commission: f64,
+    pub remitted: crate::fixed::Fixed,
+    pub commission: crate::fixed::Fixed,
     pub consigned: f64,
 }
 
@@ -333,12 +334,12 @@ pub struct Forwarder {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Collection {
     pub town: TownId,
-    pub worth: f64,
+    pub worth: crate::fixed::Fixed,
 }
 
 impl Forwarder {
     /// The hub reads a booking (`booked`): the town's last one replaced.
-    pub fn booked(&mut self, hub: TownId, town: TownId, stacks: u32, worth: f64, now: u64) {
+    pub fn booked(&mut self, hub: TownId, town: TownId, stacks: u32, worth: crate::fixed::Fixed, now: u64) {
         self.bookings.retain(|b| b.town != town);
         self.bookings.push(Booking { hub, town, stacks, worth, since: now });
     }
@@ -384,8 +385,8 @@ impl Forwarder {
     }
 
     /// A lot of the town's goods on consignment at the hub, its collection's fare to come off its proceeds.
-    pub fn lot(&mut self, hub: TownId, town: TownId, good: GoodId, count: f64, fare: f64, now: u64) {
-        self.lots.push(Lot { hub, town, good, count, sold: 0.0, proceeds: 0.0, fare, since: now });
+    pub fn lot(&mut self, hub: TownId, town: TownId, good: GoodId, count: f64, fare: crate::fixed::Fixed, now: u64) {
+        self.lots.push(Lot { hub, town, good, count, sold: 0.0, proceeds: crate::fixed::Fixed::ZERO, fare, since: now });
     }
 
     /// Of a good, what's on consignment at the hub and not yet sold.
@@ -394,12 +395,12 @@ impl Forwarder {
     }
 
     /// Goods of `good` the hub sold (its wagons', or to a wagon calling there) for `emeralds`: credited to the towns'
-    /// lots of it, oldest first (`sold`).
-    pub fn sold(&mut self, hub: TownId, good: GoodId, count: f64, emeralds: f64) {
+    /// lots of it, oldest first (`sold`), each lot's share to the nearest thousandth.
+    pub fn sold(&mut self, hub: TownId, good: GoodId, count: f64, emeralds: crate::fixed::Fixed) {
         if count <= 0.0 {
             return;
         }
-        let each = emeralds / count;
+        let each = emeralds.to_f64() / count;
         let mut left = count;
         for lot in self.lots.iter_mut() {
             if left <= 0.0 {
@@ -410,7 +411,7 @@ impl Forwarder {
             }
             let n = left.min(lot.count - lot.sold);
             lot.sold += n;
-            lot.proceeds += n * each;
+            lot.proceeds += crate::fixed::Fixed::round(n * each);
             left -= n;
         }
     }
@@ -436,7 +437,7 @@ impl Forwarder {
             taken.push((g, take));
         }
         for &(g, count) in &taken {
-            self.lot(hub, town, g, count, 0.0, now);
+            self.lot(hub, town, g, count, crate::fixed::Fixed::ZERO, now);
             self.consigned += count;
         }
         taken
@@ -445,8 +446,9 @@ impl Forwarder {
     /// Once a day at a hub (`remit`): each lot's proceeds less the commission and the collection's fare, owed its town,
     /// once they're an emerald or the lot is done (a lot not sold in `consign_days` the forwarder buys at a trader's
     /// floor), as far as the hub can `spare` (beyond its reserve; counted down): returned as (town, emeralds), to be sent
-    /// by post. A lot done and its fare paid is cleared.
-    pub fn remits(&mut self, content: &Content, hub: TownId, now: u64, spare: &mut f64) -> Vec<(TownId, f64)> {
+    /// by post. A lot done and its fare paid is cleared. The commission is a share kept, rounded down to the thousandth.
+    pub fn remits(&mut self, content: &Content, hub: TownId, now: u64, spare: &mut crate::fixed::Fixed)
+            -> Vec<(TownId, crate::fixed::Fixed)> {
         let d = &content.dials;
         let wait = (d.consign_days * content.day_ticks as f64) as u64;
         let mut out = Vec::new();
@@ -459,29 +461,31 @@ impl Forwarder {
             let mut done = lot.sold >= lot.count;
             if !done && now.saturating_sub(lot.since) >= wait {
                 let rest = lot.count - lot.sold;
-                lot.proceeds += rest * crate::bargain::seller_floor(content.goods[lot.good].value); // bought: it's the hub's
+                // bought: it's the hub's
+                lot.proceeds += crate::fixed::Fixed::round(rest * crate::bargain::seller_floor(content.goods[lot.good].value));
                 lot.sold = lot.count;
                 done = true;
             }
-            let take = lot.proceeds * d.consign_commission;
+            let take = lot.proceeds.mul_floor(d.consign_commission);
             let net = lot.proceeds - take - lot.fare;
-            if net < 1.0 && !done {
+            if net < crate::fixed::Fixed::ONE && !done {
                 keep.push(lot); // less than an emerald yet: it waits for more to sell
                 continue;
             }
-            if net > 0.0 {
+            if net.is_positive() {
                 if *spare < net {
                     keep.push(lot); // the hub's short just now: next time (the postage is paid as far as it goes)
                     continue;
                 }
-                *spare -= net + d.postage;
+                *spare -= net + crate::fixed::Fixed::ceil(d.postage);
                 out.push((lot.town, net));
                 self.remitted += net;
             }
             self.commission += take;
-            lot.fare = if net < 0.0 { -net } else { 0.0 }; // what the fare left owing, from the next of its sales
-            lot.proceeds = 0.0;
-            if !(done && lot.fare <= 0.0) {
+            // what the fare left owing, from the next of its sales
+            lot.fare = if net.is_negative() { -net } else { crate::fixed::Fixed::ZERO };
+            lot.proceeds = crate::fixed::Fixed::ZERO;
+            if !(done && !lot.fare.is_positive()) {
                 keep.push(lot);
             }
         }
@@ -519,13 +523,13 @@ impl Society {
 
     /// A letter of `kind` from one town to another, posted now, the sender paying the postage as far as its money goes
     /// (`Post.sendForTest`; a host's own letter). The riders don't go beyond the border (off the map, a foreign realm).
-    pub fn send_letter(&mut self, kind: Kind, from: TownId, to: TownId, value: f64) {
-        let letter = Letter { kind, from, to, value, ..Default::default() };
+    pub fn send_letter(&mut self, kind: Kind, from: TownId, to: TownId, value: impl Into<crate::fixed::Fixed>) {
+        let letter = Letter { kind, from, to, value: value.into(), ..Default::default() };
         self.world.run_system_once_with(crate::rules::post::send_now, letter).expect("the post");
     }
 
     /// A town writes to a hub to come call: its goods offered worth `value` (`Kind::Call`).
-    pub fn book_call(&mut self, town: TownId, hub: TownId, value: f64) {
+    pub fn book_call(&mut self, town: TownId, hub: TownId, value: impl Into<crate::fixed::Fixed>) {
         self.send_letter(Kind::Call, town, hub, value);
     }
 
@@ -574,20 +578,20 @@ impl Society {
     }
 
     /// A booking read at the hub now (`Forwarder.bookedForTest`).
-    pub fn book_with_forwarder(&mut self, hub: TownId, town: TownId, stacks: u32, worth: f64) {
+    pub fn book_with_forwarder(&mut self, hub: TownId, town: TownId, stacks: u32, worth: impl Into<crate::fixed::Fixed>) {
         let now = self.now();
-        self.world.resource_mut::<Forwarder>().booked(hub, town, stacks, worth, now);
+        self.world.resource_mut::<Forwarder>().booked(hub, town, stacks, worth.into(), now);
     }
 
     /// A lot of the town's goods on consignment at the hub, its collection's fare in emeralds (`Forwarder.lotForTest`).
-    pub fn consign_lot(&mut self, hub: TownId, town: TownId, good: GoodId, count: f64, fare: f64) {
+    pub fn consign_lot(&mut self, hub: TownId, town: TownId, good: GoodId, count: f64, fare: impl Into<crate::fixed::Fixed>) {
         let now = self.now();
-        self.world.resource_mut::<Forwarder>().lot(hub, town, good, count, fare, now);
+        self.world.resource_mut::<Forwarder>().lot(hub, town, good, count, fare.into(), now);
     }
 
     /// The hub sold `count` of a good for `emeralds`: credited to the towns' lots of it (`Forwarder.sold`).
-    pub fn consign_sold(&mut self, hub: TownId, good: GoodId, count: f64, emeralds: f64) {
-        self.world.resource_mut::<Forwarder>().sold(hub, good, count, emeralds);
+    pub fn consign_sold(&mut self, hub: TownId, good: GoodId, count: f64, emeralds: impl Into<crate::fixed::Fixed>) {
+        self.world.resource_mut::<Forwarder>().sold(hub, good, count, emeralds.into());
     }
 
     /// Is a collection due on the hub's run to the town (`Forwarder.collecting`)?

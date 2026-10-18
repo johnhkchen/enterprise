@@ -365,7 +365,7 @@ pub struct Record {
     pub days: u32,
     pub hungry: u32,
     pub strength: f64,
-    pub pay: f64,
+    pub pay: crate::fixed::Fixed,
 }
 
 /// The day's losses, for their towns: the soldiers fallen and the ones who deserted.
@@ -393,7 +393,7 @@ pub struct Army {
     pub falling: f64,
     pub deserting: f64,
     pub walking: Vec<Walker>,
-    pub pay_owed: BTreeMap<TownId, f64>,
+    pub pay_owed: BTreeMap<TownId, crate::fixed::Fixed>,
 }
 
 impl Army {
@@ -593,11 +593,13 @@ impl Army {
             // mod's `seller == home`, `buyer == capital`); else in the army's own pay ledger. (The mod pays through
             // the home's first such levy in force; the core's contracts have no levy term yet to find one by: the
             // crown's, with `Contract.levy`.)
-            record.pay += soldier.pay;
+            // (A soldier-day's pay, to the nearest thousandth: the dial's 0.25 is exact.)
+            let pay = crate::fixed::Fixed::round(soldier.pay);
+            record.pay += pay;
             let levied = |c: &crate::contracts::Contract| c.in_force() && c.seller == soldier.home && Some(c.buyer) == capital;
             match soldier.levy.filter(|&c| book.contracts.get(c).is_some_and(levied)) {
-                Some(c) => book.owe(c, soldier.pay),
-                None => *self.pay_owed.entry(soldier.home).or_default() += soldier.pay,
+                Some(c) => book.owe(c, pay),
+                None => *self.pay_owed.entry(soldier.home).or_default() += pay,
             }
             // Wear: Unbreaking makes it last.
             if arms.is_some() {

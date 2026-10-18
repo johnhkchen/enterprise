@@ -100,17 +100,19 @@ pub fn upkeep(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut t
         }
         let mut paid = 1.0;
         if pay > 0.0 {
-            let taken = pay.min(money.0.max(0.0));
+            // Whole emeralds owed (fractions carried), as far as the treasury goes.
+            let owed = crate::fixed::Fixed::emeralds(pay as i64);
+            let taken = owed.min(money.0.at_least_zero());
             post(&mut ledger, &mut book, Side::treasury(town.id, &mut money.0), Side::outside(), taken,
                 Reason::Other("guards".into()), now, day);
-            paid = (taken / pay).min(1.0);
+            paid = taken.ratio(owed).min(1.0);
             h.pay_owed -= pay;
             // Guards on posts that took tolls wait for their pay, up to a few days' worth: it comes out of the tolls
             // to come. Past that, unpaid, they go.
             let unpaid = pay * (1.0 - paid);
             let credit = d.guard_credit_days * posts as f64 * d.guard_pay;
             // (tolls taken lately, or a toll plan that expects them: new guards wait for the first; `chokepoints.rs`)
-            let earning = h.toll_today + h.toll_before > 0.0
+            let earning = (h.toll_today + h.toll_before).is_positive()
                 || h.toll_plan.income > posts as f64 * crate::chokepoints::guard_cost_per_day(d, mint.rate(now, day));
             if unpaid > 0.0 && earning && h.pay_owed + unpaid <= credit {
                 h.pay_owed += unpaid;
@@ -118,7 +120,7 @@ pub fn upkeep(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut t
             }
         }
         h.toll_before = h.toll_today;
-        h.toll_today = 0.0;
+        h.toll_today = crate::fixed::Fixed::ZERO;
         let kept = fed.min(paid);
         if kept < 1.0 {
             let stay = (posts as f64 * kept).floor() as usize;
@@ -144,10 +146,11 @@ pub fn tolls(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut te
             continue;
         }
         let Some(wagon) = state.wagon.as_mut() else { continue };
-        let carried = wagon.purse * spurs;
+        let carried = wagon.purse.to_f64() * spurs;
         let due = territory.tolls_due(&[route.from_id, route.to_id], &path.0, carried, content.dials.default_toll_rate);
         for (owner, toll) in due {
-            let toll = (toll / spurs).min(wagon.purse);
+            // The toll in emeralds, rounded down to the thousandth (`Caravans.payTolls`' `Math.floor`).
+            let toll = crate::fixed::Fixed::floor(toll / spurs).min(wagon.purse.at_least_zero());
             let Ok(mut m) = money.get_mut(towns.0[owner]) else { continue };
             post(&mut ledger, &mut book, Side::wagon(route.seq, &mut wagon.purse), Side::treasury(owner, &mut m.0), toll,
                 Reason::Other("toll".into()), now, day);

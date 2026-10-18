@@ -69,7 +69,7 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
                 return Err(format!("hub {t}'s forwarder holds {x:?}"));
             }
             if let Some(b) = held.booked {
-                if b.stacks != x.stacks(c) || b.leg.from() != t || !(b.fare >= 0.0 && b.fare.is_finite()) {
+                if b.stacks != x.stacks(c) || b.leg.from() != t || b.fare.is_negative() {
                     return Err(format!("hub {t}'s crate {x:?} is booked {b:?}"));
                 }
                 if b.leg.to() != x.consignee.unwrap() || !held.carted {
@@ -86,7 +86,7 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
             return Err(format!("hub {t}'s shop on {key} has {n} tickets"));
         }
         let b = &h.book;
-        if [b.fees, b.face, b.freight, b.drayage, b.landing].iter().any(|v| !(*v >= 0.0 && v.is_finite())) {
+        if [b.fees, b.face, b.freight, b.drayage, b.landing].iter().any(|v| v.is_negative()) {
             return Err(format!("hub {t}'s book ran backwards: {b:?}"));
         }
     }

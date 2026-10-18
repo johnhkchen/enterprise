@@ -10,6 +10,7 @@
 use serde::{Deserialize, Serialize};
 use bevy_ecs::prelude::Resource;
 
+use crate::fixed::Fixed;
 use crate::messages::TownId;
 
 /// Days a bill runs, and what it carries over the debt for the wait.
@@ -44,7 +45,7 @@ pub struct Bill {
     pub id: usize,
     pub drawee: TownId,
     pub payee: TownId,
-    pub amount: f64,
+    pub amount: Fixed,
     pub drawn: u64,
     pub due: u64,
     pub presented: Option<u64>,
@@ -63,26 +64,30 @@ pub struct Bills {
 
 impl Bills {
     /// A bill on `drawee` for a debt, payable to `payee`, due in a term: its paper rides with the wagon.
-    pub fn draw(&mut self, drawee: TownId, payee: TownId, debt: f64, now: u64, day: u64) -> usize {
+    pub fn draw(&mut self, drawee: TownId, payee: TownId, debt: impl Into<Fixed>, now: u64, day: u64) -> usize {
         self.draw_for(drawee, payee, debt, now, day, None)
     }
 
     /// As [`Bills::draw`], paying for goods under `contract`.
-    pub fn draw_for(&mut self, drawee: TownId, payee: TownId, debt: f64, now: u64, day: u64, contract: Option<usize>) -> usize {
+    pub fn draw_for(&mut self, drawee: TownId, payee: TownId, debt: impl Into<Fixed>, now: u64, day: u64, contract: Option<usize>)
+            -> usize {
         self.draw_term(drawee, payee, debt, now, day, (TERM_DAYS * day as f64) as u64, contract)
     }
 
     /// As [`Bills::draw_for`], due in `term` ticks rather than a bill term (`Bills.draw`'s `term`: a hub's bill for stranded
     /// paper in installments, a town's bill for freight on credit), its interest a bill term's for every term it runs
-    /// (never less than one): `debt * (1 + INTEREST * max(1, term / TERM))`.
-    pub fn draw_term(&mut self, drawee: TownId, payee: TownId, debt: f64, now: u64, day: u64, term: u64, contract: Option<usize>) -> usize {
+    /// (never less than one): `debt * (1 + INTEREST * max(1, term / TERM))`, rounded up to the thousandth (the drawee's
+    /// debt, as the mod's withdrawal for it rounds up to the spur).
+    pub fn draw_term(&mut self, drawee: TownId, payee: TownId, debt: impl Into<Fixed>, now: u64, day: u64, term: u64,
+            contract: Option<usize>) -> usize {
+        let debt = debt.into();
         let terms = (term as f64 / (TERM_DAYS * day as f64)).max(1.0);
         let id = self.bills.len();
         self.bills.push(Bill {
             id,
             drawee,
             payee,
-            amount: debt * (1.0 + INTEREST * terms),
+            amount: debt.mul_ceil(1.0 + INTEREST * terms),
             drawn: now,
             due: now + term,
             presented: None,
@@ -99,12 +104,12 @@ impl Bills {
     /// outstanding (a capital owing a town a fortune needs longer to find it): `Bills.grace`.
     pub fn grace(&self, bill: &Bill, day: u64, grace_days: f64, per: f64) -> u64 {
         let owed = self.owed_to(bill.drawee, bill.payee);
-        let more = if per > 0.0 { (owed / per * day as f64).round() as u64 } else { 0 };
+        let more = if per > 0.0 { (owed.to_f64() / per * day as f64).round() as u64 } else { 0 };
         (grace_days * day as f64) as u64 + more
     }
 
     /// Emeralds outstanding on bills `drawee` owes `payee`.
-    pub fn owed_to(&self, drawee: TownId, payee: TownId) -> f64 {
+    pub fn owed_to(&self, drawee: TownId, payee: TownId) -> Fixed {
         self.open.iter().map(|&id| &self.bills[id])
             .filter(|b| b.state == BillState::Outstanding && b.drawee == drawee && b.payee == payee)
             .map(|b| b.amount).sum()
@@ -141,7 +146,7 @@ impl Bills {
     }
 
     /// Outstanding bills on `drawee` falling due by `by`: money its money manager can't count as free.
-    pub fn due_by(&self, drawee: TownId, by: u64) -> f64 {
+    pub fn due_by(&self, drawee: TownId, by: u64) -> Fixed {
         self.open.iter().map(|&id| &self.bills[id])
             .filter(|b| b.drawee == drawee && b.state != BillState::Paid && b.due <= by)
             .map(|b| b.amount).sum()

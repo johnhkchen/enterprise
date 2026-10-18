@@ -812,21 +812,21 @@ pub struct Record {
     pub service: String,
     pub from: TownId,
     pub at: TownId,
-    pub paid: f64,
+    pub paid: crate::fixed::Fixed,
 }
 
 /// Services done, on the ledger (`ServiceLedger`): how many times each worker's town did each for each town and what
 /// it was paid, when each was last done for each town (by anyone), and the latest few.
 #[derive(Resource, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ServiceLedger {
-    pub tallies: BTreeMap<(String, TownId, TownId), (u32, f64)>,
+    pub tallies: BTreeMap<(String, TownId, TownId), (u32, crate::fixed::Fixed)>,
     pub last: BTreeMap<(String, TownId), u64>,
     pub recent: Vec<Record>,
 }
 
 impl ServiceLedger {
-    pub fn record(&mut self, service: &str, from: TownId, at: TownId, paid: f64, now: u64) {
-        let t = self.tallies.entry((service.to_string(), from, at)).or_insert((0, 0.0));
+    pub fn record(&mut self, service: &str, from: TownId, at: TownId, paid: crate::fixed::Fixed, now: u64) {
+        let t = self.tallies.entry((service.to_string(), from, at)).or_insert((0, crate::fixed::Fixed::ZERO));
         t.0 += 1;
         t.1 += paid;
         self.last.insert((service.to_string(), at), now);
@@ -906,7 +906,7 @@ impl Society {
 
     /// A route's road as its Cartographers left it: when it was last mapped, the most towns seen along it, the animals
     /// its Shepherds sold at the far end, and what its squads' services earned in all.
-    pub fn route_services(&self, route: RouteId) -> (Option<u64>, u32, u32, f64) {
+    pub fn route_services(&self, route: RouteId) -> (Option<u64>, u32, u32, crate::fixed::Fixed) {
         let s = self.world.get::<RouteState>(self.routes[route]).expect("a route");
         (s.mapped_at, s.towns_mapped, s.animals_sold, s.service_paid)
     }

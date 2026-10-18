@@ -126,7 +126,7 @@ fn march(capital: bool, bread: f64) -> (Society, usize, usize, usize, Option<usi
     (s, dest, march, route, crown)
 }
 
-fn sold(outs: &[Output]) -> f64 {
+fn sold(outs: &[Output]) -> enterprise_core::Fixed {
     outs.iter().filter_map(|o| match o { Output::WagonSold { takings, .. } => Some(*takings), _ => None }).sum()
 }
 
@@ -136,7 +136,7 @@ fn a_foreign_realm_sends_its_own_traders() {
     // The mod's network(2, 5, 640): two bread at the far end, too few to feed the March's wagon home.
     let (mut s, dest, march, route, _) = march(false, 2.0);
     assert!(s.is_realm(march) && s.is_off_map(march));
-    let mut takings = 0.0;
+    let mut takings = enterprise_core::Fixed::ZERO;
     let mut t = 0;
     while t < 6_000 && s.route(route).trips == 0 {
         t += LOOK;
@@ -166,7 +166,7 @@ fn a_realm_sends_two_mouths_and_no_squad() {
 #[test]
 fn a_realms_merchants_haggle_at_level_four() {
     let (mut s, dest, _, route, _) = march(false, 20.0);
-    let mut gross = 0.0;
+    let mut gross = enterprise_core::Fixed::ZERO;
     let mut t = 0;
     while t < 3_000 {
         t += LOOK;
@@ -178,7 +178,7 @@ fn a_realms_merchants_haggle_at_level_four() {
     let shortage = bargain::shortage((n / 2.0).floor(), s.par(dest, LEATHER, false).max(n));
     let at4 = n * bargain::price(value, shortage, 4, 1).unwrap();
     let at1 = n * bargain::price(value, shortage, 1, 1).unwrap();
-    assert!((gross - at4).abs() < 1e-9 && at4 > at1, "bargained at 4 to its 1: {gross} (4: {at4}, 1: {at1})");
+    assert!(gross == enterprise_core::Fixed::ceil(at4) && at4 > at1, "bargained at 4 to its 1: {gross} (4: {at4}, 1: {at1})");
     let _ = route;
 }
 
@@ -196,8 +196,9 @@ fn the_crown_takes_customs_on_what_a_foreign_trader_sells() {
     // 64 leather at the 4-to-1 price: 10% of what the wagon took goes to the capital, the rest home.
     let value = s.content().goods[LEATHER].value;
     let paid = 64.0 * bargain::price(value, bargain::shortage(32.0, s.par(dest, LEATHER, false).max(64.0)), 4, 1).unwrap();
-    let duty = s.town(capital).money - 10.0;
-    assert!((duty - 0.1 * paid).abs() < 1e-9, "10% to the crown's treasury: {duty} of {paid}");
+    let duty = s.town(capital).money - enterprise_core::Fixed::emeralds(10);
+    // (the takings rounded up to the thousandth as the buyer paid them, and the duty on them up again)
+    assert!(duty == enterprise_core::Fixed::ceil(paid).mul_ceil(0.1), "10% to the crown's treasury: {duty} of {paid}");
     assert!((s.realm(march).unwrap().customs_paid - duty).abs() < 1e-12, "and the realm's books say so");
     assert!(s.cash_book(capital, 2).iter().any(|(_, what, v)| what == "customs" && (*v - duty).abs() < 1e-9), "in its cash book");
     let net = s.town(march).money - home;

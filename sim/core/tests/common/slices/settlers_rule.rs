@@ -37,7 +37,7 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
         if parties[i + 1..].iter().any(|q| q.from == p.from) {
             return Err(format!("town {} has two parties on the road", p.from));
         }
-        if !(10.0..=42.0).contains(&p.capital) || p.hands == 0 || p.hands > 2 || p.bread < 0.0 || p.bread > 64.0 {
+        if !(10.0..=42.0).contains(&p.capital.to_f64()) || p.hands == 0 || p.hands > 2 || p.bread < 0.0 || p.bread > 64.0 {
             return Err(format!("a party of {} hands carries {} and {} bread", p.hands, p.capital, p.bread));
         }
         if s.last_party(p.from).is_none_or(|t| t > p.arrives) {

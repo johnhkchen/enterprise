@@ -58,10 +58,10 @@ pub fn daily(s: &mut Society, r: &mut Rng, day: u64) {
 pub fn check(s: &Society, _day: u64) -> Result<(), String> {
     for t in 0..s.town_count() {
         let b = s.stranded_book(t);
-        if [b.face, b.coin, b.promised, b.credit].iter().any(|v| !(*v >= 0.0 && v.is_finite())) {
+        if [b.face, b.coin, b.promised, b.credit].iter().any(|v| v.is_negative()) {
             return Err(format!("hub {t}'s stranded book ran backwards: {b:?}"));
         }
-        if b.coin > b.face + 1e-6 {
+        if b.coin > b.face {
             return Err(format!("hub {t} paid {} in coin for {} of paper", b.coin, b.face));
         }
         if b.bills > 0 && !s.is_hub(t) {
