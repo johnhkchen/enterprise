@@ -1222,3 +1222,19 @@ The cotton chain, chocolate, the cold chain and the exchange follow later.
   the road (the host's `PackageLost`) still leaves its lot counted whole, and the hub would remit for goods it never
   got. While the goods rode loose, nothing could be lost. The Java mod gets no pallet code for this: it shows the
   core's pallets through the binding (`pallet-views`).
+
+## People and the binding (2026-10-19)
+
+- **The census is the core's town's roster's source (people-adapter, B4.5).** In core mode the mod only counts: each
+  look, the beds and villagers within 48 blocks of the bell nearest a loaded desk go to the core as `Census`, and the
+  core decides who joins, who's seen and who has left (`census.rs`); villagers are views of its hands (`Born`,
+  `Settled`, `Departed`, `HandGone`, `HandLevel`). Where this departs from the mod's `CensusTaker`: no path checks (no
+  free and confined split: the culture input goes with the land concern); a town is counted only when every chunk of
+  its reach has its entities loaded, in place of the "incomplete census" guard (fewer than half the last count within
+  3 days not recorded); a villager not loaded that the adapter last saw in a chunk with nothing loaded, or never saw
+  (it joined on touch, or the server restarted since), is sent as the core has it, so it isn't aged (the mod assumes
+  it's where it was), but no ticket loads that chunk to find it (so one that vanished with no death, a villager turned
+  witch, stays a hand); a level earned in the world is adopted, its XP below
+  the next level is not (the core's `HandLevel` writes the core's XP over it); a child seen in the world joins as
+  newly born. A profession taken in the world becomes the hand's trade, but never "none" (a villager that lost its
+  workstation keeps the core's trade) and never the desk's Merchant's: **for John to confirm.**

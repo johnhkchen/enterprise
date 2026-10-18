@@ -43,18 +43,27 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
  * with the next look); a hand gone with settlers ({@code Departed}) or from the world ({@code HandGone}) takes its
  * villager away; a hand's trade, level or XP changed ({@code HandLevel}) is written to its villager. A hand with no
  * villager whose town is loaded is spawned at the next census too (a birth while the town was unloaded). The adapter
- * keeps no ids: which villager is which hand is the core's ({@link HandsAdapter}); it only remembers, until the next
- * look carries their names, the villagers it has just spawned.
+ * keeps no ids: which villager is which hand is the core's ({@link HandsAdapter}); it only remembers, until the core's
+ * roster shows their names taken, the villagers it has just spawned, and where it last saw each town's villagers (a
+ * villager not loaded, last seen where nothing is loaded, is sent as the core has it: nobody could look for it, as
+ * {@code CensusTaker} assumes it's where it was).
  *
  * <p>In Java mode the census is the Java rules' ({@code CensusTaker}) and this adapter sends none: the core's towns then
  * keep only the hands joined by hand (the Merchant on its screen), and no child is born in them.
  */
 public final class PeopleAdapter {
     private final CoreHost host;
-    /** Villagers spawned for hands, by hand, whose names the next look carries: never spawned twice meanwhile. */
-    private final Map<Long, UUID> naming = new LinkedHashMap<>();
+    /**
+     * Villagers spawned for hands, by hand, with their town: named with every look until the core's roster shows the
+     * name taken (a refused look loses none), never spawned twice meanwhile, and left out of censuses until then.
+     */
+    private final Map<Long, Named> naming = new LinkedHashMap<>();
+    /** Where each town's census last saw each of its villagers (a chunk), by town: not saved, rebuilt as they're seen. */
+    private final Map<Long, Map<UUID, Long>> lastChunk = new HashMap<>();
     /** The professions by the core's names for them (a registry path: {@code farmer}, {@code merchant}). */
     private Map<String, VillagerProfession> professions;
+
+    private record Named(long town, UUID villager) {}
 
     public PeopleAdapter(CoreHost host) {
         this.host = host;
@@ -77,8 +86,10 @@ public final class PeopleAdapter {
                 }
                 BlockPos centre = centre(level, desk.getKey().pos());
                 if (entitiesLoaded(level, centre, CensusTaker.RADIUS)) {
-                    counts.add(census(level, desk.getValue(), centre, CensusTaker.RADIUS));
-                    views(level, desk.getValue(), centre);
+                    HandsAdapter.Roster roster = host.hands().roster(desk.getValue());
+                    named(server, desk.getValue(), roster);
+                    counts.add(census(level, desk.getValue(), centre, CensusTaker.RADIUS, roster));
+                    views(level, desk.getValue(), centre, roster);
                 }
             }
         }
@@ -87,23 +98,74 @@ public final class PeopleAdapter {
         return inputs;
     }
 
-    /** The names of the villagers spawned since the last look, for the core: each hand's villager from now on. */
+    /** The names of the villagers spawned for hands and not yet taken by the core: each hand's villager from now on. */
     private List<Input> names() {
         List<Input> inputs = new ArrayList<>(naming.size());
-        naming.forEach((hand, villager) -> inputs.add(new Input.TagHand(hand, villager.toString())));
-        naming.clear();
+        naming.forEach((hand, named) -> inputs.add(new Input.TagHand(hand, named.villager().toString())));
         return inputs;
+    }
+
+    /**
+     * The names the core has taken for a town's hands are done with. A hand gone before its name was taken (a child
+     * that died, a stale {@code TagHand} ignored) takes the villager spawned for it away, so no census joins it anew.
+     */
+    private void named(MinecraftServer server, long town, HandsAdapter.Roster roster) {
+        Map<Long, HandsAdapter.Hand> byId = new HashMap<>();
+        roster.hands().forEach(h -> byId.put(h.id(), h));
+        naming.entrySet().removeIf(e -> {
+            if (e.getValue().town() != town) {
+                return false;
+            }
+            HandsAdapter.Hand h = byId.get(e.getKey());
+            if (h != null && !h.away() && h.villager() == null) {
+                return false;
+            }
+            if ((h == null || h.away()) && find(server, e.getValue().villager().toString()) instanceof Villager v) {
+                v.discard();
+            }
+            return true;
+        });
     }
 
     /** A town's census: the beds and villagers within {@code radius} of {@code centre}. */
     public Input census(ServerLevel level, long town, BlockPos centre, int radius) {
+        return census(level, town, centre, radius, host.hands().roster(town));
+    }
+
+    /**
+     * A town's census: the beds and villagers within {@code radius} of {@code centre} (but those spawned for hands and
+     * not yet named), and each of the town's villagers that can't be looked for (not loaded, last seen in a chunk whose
+     * entities aren't loaded: wandered off the loaded ground) as the core has it, so it isn't taken to have left.
+     */
+    private Input census(ServerLevel level, long town, BlockPos centre, int radius, HandsAdapter.Roster roster) {
+        java.util.Set<UUID> pending = new java.util.HashSet<>();
+        naming.values().forEach(n -> pending.add(n.villager()));
+        Map<UUID, Long> before = lastChunk.getOrDefault(town, Map.of());
+        Map<UUID, Long> after = new HashMap<>();
         List<Resident> residents = new ArrayList<>();
         for (Villager v : CensusTaker.villagersAround(level, centre, radius)) {
+            if (pending.contains(v.getUUID())) {
+                continue;
+            }
             var data = v.getVillagerData();
             residents.add(new Resident(v.getUUID().toString(),
                     BuiltInRegistries.VILLAGER_PROFESSION.getKey(data.getProfession()).toString(),
                     Math.clamp(data.getLevel(), 1, 5), v.isBaby()));
+            after.put(v.getUUID(), v.chunkPosition().toLong());
         }
+        for (HandsAdapter.Hand h : roster.hands()) {
+            if (h.away() || h.villager() == null || after.containsKey(h.villager())) {
+                continue;
+            }
+            Long chunk = before.get(h.villager());
+            if (chunk != null) {
+                after.put(h.villager(), chunk);
+            }
+            if (find(level.getServer(), h.villager().toString()) == null && (chunk == null || !level.areEntitiesLoaded(chunk))) {
+                residents.add(new Resident(h.villager().toString(), h.trade(), Math.clamp(h.level(), 1, 5), h.baby()));
+            }
+        }
+        lastChunk.put(town, after);
         return new Input.Census(town, CensusTaker.beds(level, centre, radius), residents);
     }
 
@@ -114,7 +176,9 @@ public final class PeopleAdapter {
      * @throws IllegalStateException when the core refuses it (a town it hasn't)
      */
     public void countNow(ServerLevel level, long town, BlockPos centre, int radius) {
-        Response r = host.apply(List.of(census(level, town, centre, radius)));
+        HandsAdapter.Roster roster = host.hands().roster(town);
+        named(level.getServer(), town, roster);
+        Response r = host.apply(List.of(census(level, town, centre, radius, roster)));
         if (r instanceof Response.Refused refused) {
             throw new IllegalStateException("the core wouldn't take town " + town + "'s census: " + refused.why());
         }
@@ -138,14 +202,18 @@ public final class PeopleAdapter {
 
     /** Every hand of the town at home with no villager gets one, spawned by {@code centre} (unless being named). */
     private void views(ServerLevel level, long town, BlockPos centre) {
+        views(level, town, centre, host.hands().roster(town));
+    }
+
+    private void views(ServerLevel level, long town, BlockPos centre, HandsAdapter.Roster roster) {
         if (!level.isLoaded(centre)) {
             return;
         }
-        for (HandsAdapter.Hand h : host.hands().roster(town).hands()) {
+        for (HandsAdapter.Hand h : roster.hands()) {
             if (h.villager() == null && !h.away() && !naming.containsKey(h.id())) {
                 Villager v = spawn(level, centre, h);
                 if (v != null) {
-                    naming.put(h.id(), v.getUUID());
+                    naming.put(h.id(), new Named(town, v.getUUID()));
                 }
             }
         }

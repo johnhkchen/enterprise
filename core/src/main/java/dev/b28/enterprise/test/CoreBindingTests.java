@@ -389,7 +389,9 @@ public final class CoreBindingTests {
      * A town's census is its roster (B4.5): the Merchant, a Farmer and a child seen round the bell join the core's town
      * as hands under their UUIDs (the child as a child), and seen again join nothing; the Farmer wanders off (its
      * villager gone from the world, no death) and is still a hand five days on, but no census has seen it for eleven and
-     * it has left. The core decides all of it (`census.rs`); the mod only counts.
+     * it has left. A Librarian that joined on touch and was never counted is gone from the world too, but nobody knew
+     * where to look for it (as a villager in a chunk that isn't loaded): it's sent as the core has it, and stays. The
+     * core decides all of it (`census.rs`); the mod only counts.
      */
     @GameTest(template = "floor")
     public static void aTownsCensusIsItsRosterAndAVillagerUnseenForTenDaysHasLeft(GameTestHelper helper) {
@@ -422,6 +424,9 @@ public final class CoreBindingTests {
             people.countNow(level, town, bell, CENSUS_RADIUS);
             helper.assertTrue(hands.roster(town).hands().size() == 3, "seen again, a villager joined twice");
             measureACensus(host, level, town, bell);
+            Villager stray = villager(helper, VillagerProfession.LIBRARIAN, 1, new BlockPos(1, 2, 3));
+            hands.join(town, stray);
+            stray.discard();
 
             farmer.discard();
             long t = level.getGameTime();
@@ -430,8 +435,9 @@ public final class CoreBindingTests {
             helper.assertTrue(hands.of(farmer.getUUID()) != null, "five days unseen and the Farmer has left");
             advance(host, t + 11 * DAY);
             people.countNow(level, town, bell, CENSUS_RADIUS);
-            helper.assertTrue(hands.of(farmer.getUUID()) == null && hands.roster(town).hands().size() == 2,
+            helper.assertTrue(hands.of(farmer.getUUID()) == null && hands.roster(town).hands().size() == 3,
                     "eleven days unseen and the Farmer is still a hand: " + hands.roster(town).hands());
+            helper.assertTrue(hands.of(stray.getUUID()) != null, "a villager nobody could look for has left");
         } finally {
             delete(dir);
             merchant.discard();

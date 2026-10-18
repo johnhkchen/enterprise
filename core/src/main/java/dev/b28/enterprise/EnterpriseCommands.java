@@ -1196,6 +1196,11 @@ final class EnterpriseCommands {
     /** Takes a census around a bell right now and prints it. */
     private static int census(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         CommandSourceStack source = context.getSource();
+        if (dev.b28.enterprise.binding.Society.isCore()) {
+            // The Java census runs the Java people rules (births, jobs, the roster): in core mode the core keeps them.
+            source.sendFailure(Component.literal("In core mode a town's census is the core's: /enterprise core census <desk>"));
+            return 0;
+        }
         BlockPos bell = BlockPosArgument.getLoadedBlockPos(context, "bell");
         Census result = CensusTaker.countNow(source.getLevel(), bell, CensusTaker.RADIUS);
         source.sendSuccess(() -> Component.literal(describe(bell, result)), false);
