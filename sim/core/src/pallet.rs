@@ -380,8 +380,12 @@ impl Pallets {
         let from = p.at;
         p.at = at;
         p.since = now;
-        if self.report && from != at {
-            self.events.push(crate::messages::Output::PalletMoved { id, to: at.into() });
+        if from != at {
+            // Moved on (fetched, into custody, brought elsewhere): no longer arriving at its consignee in parts.
+            self.arriving.remove(&id);
+            if self.report {
+                self.events.push(crate::messages::Output::PalletMoved { id, to: at.into() });
+            }
         }
         self.unindex(from, id);
         self.by_place.entry(at).or_default().push(id);
@@ -429,8 +433,25 @@ impl Pallets {
         Some(p)
     }
 
-    /// A pallet left the registry emptied (opened, or taken apart): its crates in the world are empty.
+    /// Crates a pallet's goods again, where it stands (a seller's warehouse, what a buyer's wagon collected taken off it):
+    /// to a host, its crates emptied and packed again, so the places its packages are named by start over.
+    pub fn repack(&mut self, id: PalletId, packages: Vec<Package>) {
+        let Some(p) = self.pallets.get_mut(&id) else { return };
+        p.packages = packages;
+        let at = p.at;
+        self.arriving.remove(&id);
+        if self.report {
+            let packages = self.pallets[&id].packages.iter()
+                .map(|p| crate::wire::PackageLine { kind: p.kind as u32, good: p.good, count: p.count }).collect();
+            self.events.push(crate::messages::Output::PalletOpened { id, at: at.into() });
+            self.events.push(crate::messages::Output::PalletPacked { id, at: at.into(), packages });
+        }
+    }
+
+    /// A pallet left the registry emptied (opened, or taken apart): its crates in the world are empty, and it is no longer
+    /// arriving anywhere.
     fn opened(&mut self, p: &Pallet) {
+        self.arriving.remove(&p.id);
         if self.report {
             self.events.push(crate::messages::Output::PalletOpened { id: p.id, at: p.at.into() });
         }

@@ -1,7 +1,7 @@
 //! The binding's protocol for pallets (`docs/pallets.md` section 4, task `pallet-messages`): what a host's players do
 //! with the crates of a pallet, as inputs; what the pallets do, as outputs.
 //!
-//! **Outputs** are queued by the registry's movers (`Pallets::pack`, `move_to`, `open` and `unpack`: `PalletPacked`,
+//! **Outputs** are queued by the registry's movers (`Pallets::pack`, `move_to`, `open`, `unpack` and `repack`: `PalletPacked`,
 //! `PalletMoved`, `PalletOpened`) once a host has asked for them (`Society::apply` turns [`Pallets::report`] on), and
 //! come out of `apply` after the happening's own outputs. They are not state: a run with no host queues nothing, and
 //! nothing a rule reads depends on them.
@@ -129,6 +129,9 @@ impl Society {
                     a.parts.retain(|&i| i != package);
                     for i in a.parts.iter_mut().filter(|i| **i > package) {
                         *i -= 1;
+                    }
+                    if a.parts.is_empty() {
+                        pallets.arriving.remove(&pallet); // nothing brought is left: not arriving
                     }
                 }
                 if emptied {

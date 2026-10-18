@@ -21,6 +21,12 @@ fn close_arrivals(clock: Res<Clock>, mut book: ResMut<Book>, mut ledger: ResMut<
     if pallets.arriving.is_empty() {
         return;
     }
+    // Only a pallet still standing in a town's warehouse is arriving (the movers drop the others; a guard all the same).
+    let gone: Vec<_> = pallets.arriving.keys().copied()
+        .filter(|&id| !pallets.get(id).is_some_and(|p| matches!(p.at, crate::pallet::At::Town(_)))).collect();
+    for id in gone {
+        pallets.arriving.remove(&id);
+    }
     let due: Vec<_> = pallets.arriving.iter().filter(|(_, a)| a.since < clock.now)
         .map(|(&id, a)| (id, a.town, a.parts.clone())).collect();
     for (id, town, parts) in due {

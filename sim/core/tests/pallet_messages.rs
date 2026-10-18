@@ -233,3 +233,86 @@ fn nothing_is_queued_before_a_host_listens() {
     s.advance(DAY);
     assert!(s.pallets().events.is_empty(), "a run with no host keeps no outputs");
 }
+
+#[test]
+fn a_pallet_arriving_that_its_shipper_takes_apart_is_no_longer_arriving() {
+    // At landing: the shipper opened a void pallet (`cargo::earmark`, Step::Work) after a package of it was brought, and
+    // the town's look then took in a pallet that was gone (a panic).
+    let mut s = hub_and_town();
+    listening(&mut s);
+    let c = s.draft(0, 1, 0, 1200.0, 0.05, 0, DAY, 1, Incoterm::Dap, true);
+    let id = three_crates(&mut s, Some(c));
+    let before = s.totals();
+    s.apply(&Input::PackageBrought { town: 1, pallet: id, package: 0 });
+    s.world.resource_mut::<enterprise_core::contracts::Book>().contracts[c].state = enterprise_core::contracts::State::Broken;
+    look(&mut s);
+    assert!(s.pallets().get(id).is_none() && s.pallets().arriving.is_empty(), "taken apart, not arriving");
+    assert_eq!(s.pallets().received, 0);
+    s.conserved(&before).unwrap();
+}
+
+#[test]
+fn a_pallet_arriving_that_moves_on_is_no_longer_arriving() {
+    // At landing: a wagon fetched (or a hub took into custody) a pallet a package of which had been brought, and the
+    // look then opened it off the wagon, its manifest line left behind.
+    let mut s = hub_and_town();
+    listening(&mut s);
+    let id = three_crates(&mut s, None);
+    s.apply(&Input::PackageBrought { town: 1, pallet: id, package: 0 });
+    let now = s.now();
+    s.world.resource_mut::<Pallets>().move_to(id, At::Custody(0), now);
+    assert!(s.pallets().arriving.is_empty());
+    look(&mut s);
+    assert_eq!(s.pallets().get(id).unwrap().packages.len(), 3, "still whole, in custody");
+    assert_eq!(s.town(1).stock[0], 0.0);
+}
+
+#[test]
+fn a_pallet_crated_again_is_drawn_again_and_no_longer_arriving() {
+    let mut s = hub_and_town();
+    listening(&mut s);
+    let id = three_crates(&mut s, None);
+    s.apply(&Input::PackageBrought { town: 1, pallet: id, package: 2 });
+    let packages = crated(s.content(), 0, 600.0);
+    s.world.resource_mut::<Pallets>().repack(id, packages.clone());
+    assert!(s.pallets().arriving.is_empty(), "the places it was named by start over");
+    let lines = packages.iter().map(|p| PackageLine { kind: p.kind as u32, good: p.good, count: p.count }).collect();
+    let out = s.apply(&Input::Advance { to: s.now() });
+    assert_eq!(out, vec![
+        Output::PalletOpened { id, at: Place::Town { town: 0 } },
+        Output::PalletPacked { id, at: Place::Town { town: 0 }, packages: lines },
+    ]);
+}
+
+#[test]
+fn a_package_brought_then_lost_leaves_nothing_arriving() {
+    let mut s = hub_and_town();
+    listening(&mut s);
+    let id = three_crates(&mut s, None);
+    s.apply(&Input::PackageBrought { town: 1, pallet: id, package: 0 });
+    s.apply(&Input::PackageLost { pallet: id, package: 0 });
+    assert!(s.pallets().arriving.is_empty(), "what was brought is gone: not an empty pallet received at the look");
+    look(&mut s);
+    assert_eq!(s.pallets().received, 0);
+    assert_eq!(s.pallets().get(id).unwrap().packages.len(), 2);
+}
+
+#[test]
+fn a_world_with_a_pallet_arriving_and_a_bill_lost_saves_and_carries_on_the_same() {
+    let mut s = hub_and_town();
+    listening(&mut s);
+    let a = three_crates(&mut s, None);
+    let b = s.deliver_pallet(0, bill(0, 1, None, Payment::Owed, false), vec![Package::new(CRATE, 1, 30.0)]).unwrap();
+    let paid = s.draw_bill(1, 0, 5.0);
+    s.world.resource_mut::<enterprise_core::bills::Bills>().bills[paid].pallets = vec![b];
+    s.apply(&Input::PackageLost { pallet: b, package: 0 });
+    s.apply(&Input::PackageBrought { town: 1, pallet: a, package: 1 });
+    assert!(!s.pallets().arriving.is_empty() && s.bills()[paid].goods_lost());
+    let mut t = Society::load(&s.save()).unwrap();
+    assert!(!t.pallets().arriving.is_empty() && t.bills()[paid].goods_lost(), "both kept");
+    listening(&mut t);
+    let next = s.now() + 3 * DAY;
+    assert_eq!(s.apply(&Input::Advance { to: next }), t.apply(&Input::Advance { to: next }));
+    assert_eq!(s.save(), t.save());
+    assert_eq!(s.town(1).stock[0], 576.0, "the part brought, taken in at the look, on both");
+}

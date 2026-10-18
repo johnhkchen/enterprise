@@ -473,7 +473,7 @@ pub(crate) fn take_earmarked(content: &Content, pallets: &mut Pallets, store: &m
             pallets.unpack(id);
             store.empties += left_in.len() as u32;
         } else {
-            pallets.pallets.get_mut(&id).unwrap().packages = left_in;
+            pallets.repack(id, left_in);
         }
     }
     taken
