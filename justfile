@@ -23,6 +23,19 @@ gametest:
     rm -rf core/run/gametest/world  # a fresh world each run: saved data (the mint, trust, contracts) would carry over
     ./gradlew :core:runGameTestServer
 
+# The same game tests with the Rust core running the society (society = core): passes per class against
+# scripts/gametest-core-baseline.txt, failing if one that passed there falls. Its own folder, core/run/gametest-core.
+gametest-core:
+    rm -rf core/run/gametest-core/world
+    -./gradlew :core:runGameTestServerCore
+    python3 scripts/gametest_core.py core/run/gametest-core/report.tsv
+
+# Rewrite the core-mode baseline from a fresh run (when tests newly pass; never to excuse a fall)
+gametest-core-baseline:
+    rm -rf core/run/gametest-core/world
+    -./gradlew :core:runGameTestServerCore
+    python3 scripts/gametest_core.py core/run/gametest-core/report.tsv --write-baseline
+
 # Build, then create/update the "Enterprise (dev)" Prism instance with the full pack
 prism: build
     python3 scripts/prism_sync.py
