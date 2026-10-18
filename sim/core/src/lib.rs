@@ -59,6 +59,8 @@ pub mod works;
 pub mod sweep;
 pub mod training;
 pub mod workshop;
+pub mod points;
+pub mod wire;
 
 pub use content::{Content, Dials, Good, GoodId};
 pub use contracts::{Contract, Incoterm, State};

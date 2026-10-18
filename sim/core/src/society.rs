@@ -470,6 +470,10 @@ impl Society {
                 self.apply_shop(input);
                 Vec::new()
             }
+            Input::AddTown { .. } | Input::AddPoint { .. } | Input::RemovePoint { .. } | Input::Stocktake { .. } => {
+                self.apply_points(input);
+                Vec::new()
+            }
         }
     }
 

@@ -46,4 +46,5 @@ slices! {
     crown,
     pallet_types,
     random_worlds_sweep,
+    trade_points,
 }
