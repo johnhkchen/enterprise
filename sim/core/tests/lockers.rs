@@ -110,7 +110,7 @@ fn a_master_merchant_gets_a_discount() {
     assert_eq!((paper(&s), s.town(0).money), (7.0, enterprise_core::Fixed::from(3.0)));
 }
 
-// parity-partial: LockerTradingTests.merchantFillsLockerFromShulkerAndCollects
+// parity-partial: LockerTradingTests.merchantFillsLockerFromShulkerAndCollects (no shulker box or locker apart from the warehouse: the warehouse stands for the chest)
 #[test]
 fn the_merchant_supplies_from_the_warehouse_and_collects() {
     // The mod's shulker box of 128 paper in the Merchant's chest: here the warehouse supplies the locker and the
@@ -185,7 +185,7 @@ fn a_towns_lockers_trade_on_their_own_two_restocks_a_day() {
     s.solvent().unwrap();
 }
 
-// parity-partial: LockerTests.limitKeepsNearestLockers
+// parity-partial: LockerTests.limitKeepsNearestLockers (no distances between lockers: the first in the roster stands for the nearest)
 #[test]
 fn the_merchants_limit_keeps_the_first_lockers() {
     // A Novice Merchant keeps 2; with nothing to tell them apart, the first in the roster (the mod's nearest).
@@ -208,7 +208,7 @@ fn the_merchants_limit_prefers_lockers_with_trades_switched_on() {
     assert_eq!(s.lockers(t).unwrap().managed, vec![2, 0], "the locker with a trade on first, then the nearest");
 }
 
-// parity-partial: LogisticsTests.aMerchantShortOfLockersTendsTheOnesItsContractsNeedFirst
+// parity-partial: LogisticsTests.aMerchantShortOfLockersTendsTheOnesItsContractsNeedFirst (the training contract's need is set by hand, not drafted)
 #[test]
 fn a_merchant_short_of_lockers_tends_the_ones_its_contracts_need_first() {
     // The contract's need is set by hand here (`needed`); a training contract fills it in `training-and-tenders`.

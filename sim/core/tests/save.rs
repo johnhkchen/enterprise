@@ -94,7 +94,7 @@ fn every_dial_has_a_name() {
     }
 }
 
-// parity-partial: ContractTests.aBrokenContractOwesBackItsUnearnedAdvance
+// parity-partial: ContractTests.aBrokenContractOwesBackItsUnearnedAdvance (the save round trip only: the advance owed back and the buyer's caravan collecting it are contracts')
 #[test]
 fn a_broken_contracts_state_survives_save_and_load() {
     let mut s = Society::new(Content::new(vec![Good::new("iron_sword", 1.0, 1)], DAY));

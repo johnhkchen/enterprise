@@ -84,7 +84,7 @@ fn a_town_promises_only_what_it_sells_steadily() {
     assert!(s.contracts().is_empty(), "no standing order for a trickle");
 }
 
-// parity-partial: CaravanTests.goodsOwedWaitTillTheyCantAndASmallLoadGoesByPorter
+// parity-partial: CaravanTests.goodsOwedWaitTillTheyCantAndASmallLoadGoesByPorter (the wait and the go only: the porter is squad.rs's)
 #[test]
 fn goods_owed_wait_till_they_cant_then_go() {
     let mut s = mill_and_scribes(30.0);

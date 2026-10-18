@@ -28,7 +28,7 @@ fn goods(names: &[&str]) -> Content {
     Content::new(names.iter().map(|n| Good::new(n, 0.05, 64)).collect(), DAY)
 }
 
-// parity-partial: CargoTests.aCrateTakesTheSpaceOfWhatsInIt
+// parity-partial: CargoTests.aCrateTakesTheSpaceOfWhatsInIt (the core's shipment is one good, not mixed stacks; the item stack sizes are Minecraft's)
 #[test]
 fn a_crate_takes_the_space_of_whats_in_it() {
     // (The mod's crate holds three stacks of mixed goods; the core's shipment is one good, three stacks of it.)
@@ -172,7 +172,7 @@ fn a_wagon_fetches_home_crates_made_out_to_it() {
     assert_eq!(s.shipments(0).empties, 1, "the crate kept at home");
 }
 
-// parity-partial: CaravanTests.goodsForSaleTravelCratedAndAreStoredAsTheyCome
+// parity-partial: CaravanTests.goodsForSaleTravelCratedAndAreStoredAsTheyCome (a crate's slots are Minecraft's: the buyer keeping the crate stands for 'one slot, not two')
 #[test]
 fn goods_for_sale_travel_crated_and_the_buyer_keeps_the_crate() {
     // (A crate's slots are Minecraft's: "stored as it came, one slot, not two" is here the buyer keeping the crate.)
@@ -267,7 +267,7 @@ fn a_farm_crates_owed_crop_in_lots_not_as_it_trickles() {
     assert!(crate_.consignee == Some(1) && crate_.contract == Some(id) && crate_.copy, "made out to the buyer: {crate_:?}");
 }
 
-// parity-partial: MarketTests.aFarmWithNoRoomForCratesDrawsNoPapers
+// parity-partial: MarketTests.aFarmWithNoRoomForCratesDrawsNoPapers (the room is the dial crate_room, not the chests' free slots (Minecraft's))
 #[test]
 fn a_farm_with_no_room_for_crates_draws_no_papers() {
     // (The mod's room is its chests' free slots; the core's is the dial `crate_room`.)

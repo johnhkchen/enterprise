@@ -71,7 +71,7 @@ fn realm() -> Society {
     s
 }
 
-// parity-partial: WarTests.mobilisingTheSovereignMintsAndBuysGoldThroughAShop
+// parity-partial: WarTests.mobilisingTheSovereignMintsAndBuysGoldThroughAShop (the vendor block buying gold ingots is Minecraft's: the minted treasury, debasement, swords and ration store are pinned)
 #[test]
 fn mobilising_the_sovereign_mints_and_stockpiles() {
     let mut s = realm();

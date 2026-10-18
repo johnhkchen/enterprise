@@ -187,7 +187,7 @@ fn a_route_finds_the_pass_through_a_mountain_range() {
     assert!(path.hexes.contains(&pass), "through the pass: {:?}", path.hexes);
 }
 
-// parity-partial: TollTests.aFloodedHexIsImpassable
+// parity-partial: TollTests.aFloodedHexIsImpassable (the ground is set on the map, not sampled from the world's chunks (Minecraft's))
 #[test]
 fn a_flooded_hex_is_impassable() {
     let mut m = Map::default();
@@ -201,7 +201,7 @@ fn a_flooded_hex_is_impassable() {
     assert!(m.crossing_factor(lake).is_infinite(), "more than half: impassable");
 }
 
-// parity-partial: TollTests.aBridgedHexIsOpenGround
+// parity-partial: TollTests.aBridgedHexIsOpenGround (the bridge's deck (about 92 blocks, 3 wide with railings) is Minecraft's: only the crossing is pinned)
 #[test]
 fn a_bridged_hex_is_open_ground() {
     let mut m = Map::default();
@@ -222,7 +222,7 @@ fn a_bridged_hex_is_open_ground() {
     assert_eq!(m.crossing_factor(marsh), 1.5);
 }
 
-// parity-partial: TollTests.aFishermanSailsWhereCaravansCantWalk
+// parity-partial: TollTests.aFishermanSailsWhereCaravansCantWalk (the river is set on the map, not flooded chunk by chunk (Minecraft's))
 #[test]
 fn a_fisherman_sails_where_caravans_cant_walk() {
     let m = river(false);

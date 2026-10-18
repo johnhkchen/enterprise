@@ -250,7 +250,7 @@ fn a_counting_house_widens_the_accountants_budget() {
     assert!(held <= enterprise_core::Fixed::emeralds(90), "six days: counted against it: {held}");
 }
 
-// parity-partial: MasterTests.aMasterFarmerPlantsFlowerBeds
+// parity-partial: MasterTests.aMasterFarmerPlantsFlowerBeds (the beds as blocks on the square, and the dandelions in the Merchant's chest, are Minecraft's: the flag, the eight flowers and the mood are pinned)
 #[test]
 fn a_master_farmer_plants_flower_beds_on_the_square() {
     // (The mod's beds are blocks in the square; the core keeps the flag, the eight flowers and the mood.)

@@ -72,7 +72,7 @@ fn take(s: &mut Society, town: usize, good: usize, n: f64) {
     s.world.resource_mut::<Ledger>().used[good] += n;
 }
 
-// parity-partial: TerritoryTests.farmersProduceWhatGrowsInTheirHex
+// parity-partial: TerritoryTests.farmersProduceWhatGrowsInTheirHex (the wheat plots counted from chunks of the world are Minecraft's: the plan is pinned from plots set on the books)
 #[test]
 fn a_farmer_works_32_plots_a_level_half_an_item_each() {
     let c = content();
@@ -97,7 +97,7 @@ fn a_farmer_works_32_plots_a_level_half_an_item_each() {
     assert_eq!((p[&WHEAT], idle[&WHEAT]), (48.0, 52.0));
 }
 
-// parity-partial: TerritoryTests.produceAndTollsLandInTheMerchantsChest
+// parity-partial: TerritoryTests.produceAndTollsLandInTheMerchantsChest (produce only: the toll landing as coins in the chest is not pinned here, and the chest is the warehouse)
 #[test]
 fn produce_lands_in_the_warehouse_on_touch() {
     let mut s = Society::new(content());

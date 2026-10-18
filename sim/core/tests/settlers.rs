@@ -63,7 +63,7 @@ fn the_capital_is_half_the_spare_between_the_least_and_the_dial() {
     assert_eq!(capital(Kind::Found, 42.0, enterprise_core::Fixed::from(60.0)), 30.0);
 }
 
-// parity-partial: ExpeditionTests.aMerchantSettlesAVillageNobodyTradesWith
+// parity-partial: ExpeditionTests.aMerchantSettlesAVillageNobodyTradesWith (the bell, beds and desk placed in the world are Minecraft's: the capital, the route home and the roster are pinned)
 #[test]
 fn a_merchant_settles_a_village_nobody_trades_with() {
     // 14 emeralds in all, the floor: 4 for the desk, 10 of capital. The Java test settles by hand (the bell and desk are

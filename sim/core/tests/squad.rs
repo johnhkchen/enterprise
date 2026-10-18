@@ -204,7 +204,7 @@ fn a_town_trains_once_a_day_in_its_review() {
     assert_eq!(trainings, 2, "a lead and a spare for one route: no more (the last idle hand may find work now)");
 }
 
-// parity-partial: CaravanTests.theSquadLeavesTheWorldAndComesBack
+// parity-partial: CaravanTests.theSquadLeavesTheWorldAndComesBack (the villagers as entities leaving and returning are Minecraft's: the crew, the away count and the food are pinned)
 #[test]
 fn the_squad_leaves_home_and_comes_back() {
     // 70 bread (350 food points): food to spare past the caravans' 320-point par, for a second member. What the trip
@@ -459,7 +459,7 @@ fn owed_by_porter() -> (Society, usize, u64) {
     panic!("it never went");
 }
 
-// parity-partial: CaravanTests.goodsOwedWaitTillTheyCantAndASmallLoadGoesByPorter
+// parity-partial: CaravanTests.goodsOwedWaitTillTheyCantAndASmallLoadGoesByPorter (the porter's run only: the wait is contracts.rs's)
 #[test]
 fn the_day_it_cant_wait_a_small_load_goes_by_porter() {
     let (mut s, id, went) = owed_by_porter();

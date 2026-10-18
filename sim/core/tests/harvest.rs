@@ -76,7 +76,7 @@ fn a_rent_pays_a_coupon_each_season_and_carries_its_arrears() {
     assert!(book.trust(farm, holder, T + 3 * season, DAY) < 0.5, "and the farm's name suffers");
 }
 
-// parity-partial: MarketTests.aPlayerBuysARentsDeedCollectsItsCropAndSellsItBack
+// parity-partial: MarketTests.aPlayerBuysARentsDeedCollectsItsCropAndSellsItBack (the deed as an item, the vendor shop and the desk handing it over are Minecraft's: the accrual and the dealer's quotes are pinned)
 #[test]
 fn a_bearers_rent_accrues_its_crop_and_the_dealer_quotes_a_tenth_either_side() {
     let mut book = Book::default();

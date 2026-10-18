@@ -319,7 +319,7 @@ fn towns_whose_land_a_road_crosses_learn_both_its_ends() {
     assert_eq!(s.known(side), vec![hub, dest], "both ends, nearest first");
 }
 
-// parity-partial: CaravanTests.caravansAreCommissionedAtTheDesk
+// parity-partial: CaravanTests.caravansAreCommissionedAtTheDesk (the Send/Stop screen's payload and the squad's profession list are Minecraft's: commissioning and the known towns are pinned; Stop caravans is not)
 #[test]
 fn caravans_are_commissioned_at_the_desk() {
     let mut s = three_towns();

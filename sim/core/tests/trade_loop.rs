@@ -84,7 +84,6 @@ fn a_bargain_leaves_the_buyer_a_margin_that_loosens_its_cash() {
     assert!(s.town(1).money > 50.0, "the mill's margin: {} emeralds", s.town(1).money);
 }
 
-// parity-partial: CaravanTests.aTownsWagonWaitsForALoadWorthItsRoadFood
 #[test]
 fn a_route_with_work_keeps_its_timetable() {
     let mut s = farm_and_mill(3.0, 50.0);

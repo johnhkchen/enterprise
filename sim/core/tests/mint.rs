@@ -28,7 +28,7 @@ fn the_rate_falls_with_selling_and_recovers() {
         mint.rate(days(3.0), DAY));
 }
 
-// parity-partial: MoneyTests.surplusEmeraldsBecomeCoinsInStock
+// parity-partial: MoneyTests.surplusEmeraldsBecomeCoinsInStock (the quote and the sale only: the coins in the chest and the 64-emerald reserve are the money changer's, a block's)
 #[test]
 fn a_quote_is_what_a_sale_pays_and_changes_nothing() {
     let mut mint = Mint::default();
@@ -40,7 +40,7 @@ fn a_quote_is_what_a_sale_pays_and_changes_nothing() {
     assert!(quoted > 0 && quoted < 36 * 16, "priced along the falling rate: {quoted}");
 }
 
-// parity-partial: MoneyTests.theMerchantChangesCoinForEmeraldsToPayItsVillagers
+// parity-partial: MoneyTests.theMerchantChangesCoinForEmeraldsToPayItsVillagers (the mint's buy cost and pressure only: the coin in the chest, change and 'as far as the coin goes' are the money changer's, a block's)
 #[test]
 fn buying_emeralds_costs_a_little_over_the_rate_and_takes_back_pressure() {
     let mut mint = Mint::default();
@@ -60,7 +60,7 @@ fn buying_takes_pressure_no_lower_than_its_floor() {
     assert!(close(mint.pressure(0, DAY), PRESSURE_FLOOR), "pressure stops at -864: {}", mint.pressure(0, DAY));
 }
 
-// parity-partial: WarTests.mobilisingTheSovereignMintsAndBuysGoldThroughAShop
+// parity-partial: WarTests.mobilisingTheSovereignMintsAndBuysGoldThroughAShop (the debasement of the minting only: the shop and the army's stockpile are crown.rs's)
 #[test]
 fn minting_debases_the_spur_and_the_debasement_works_out_over_thirty_days() {
     let mut mint = Mint::default();

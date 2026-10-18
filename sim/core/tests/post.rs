@@ -218,7 +218,7 @@ fn bills_and_copies_go_by_wagon_where_one_runs() {
     assert_eq!(s.contract(c).state, State::Drafted);
 }
 
-// parity-partial: CaravanTests.aContractsCopyGoesByPost
+// parity-partial: CaravanTests.aContractsCopyGoesByPost (no road here between the towns: the core posts a copy only where no wagon runs, the mod's on whatever runs)
 #[test]
 fn a_contracts_copy_goes_by_post() {
     // The mod's network: the hub and the town 192 blocks apart (here with no road between them: the core posts a copy
