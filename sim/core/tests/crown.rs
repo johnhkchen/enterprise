@@ -205,6 +205,27 @@ fn a_levy_takes_idle_hands_first_then_a_trade_it_has_others_of_and_the_needed_la
     assert_eq!(roster.hands[order[1]].level, 2);
 }
 
+#[test]
+fn a_levy_keeps_the_only_hand_of_a_trade_its_town_delivers_by_last() {
+    let mut t = Society::new(content());
+    t.add_town("T", 0.0);
+    t.add_town("U", 0.0);
+    t.set_roster(0, &[("merchant", 3), ("farmer", 1), ("mason", 1)]);
+    let roster = t.roster(0);
+    let name = |book: &enterprise_core::contracts::Book| {
+        let needed = crown::needed_trades(t.content(), book, 0);
+        let i = crown::levy_pick(t.content(), &roster, &needed, 1)[0];
+        t.content().trades[roster.hands[i].trade].name.clone()
+    };
+    let mut book = enterprise_core::contracts::Book::default();
+    assert_eq!(name(&book), "farmer", "equals: the roster's order");
+    let bread = good(&t, "bread");
+    let id = book.draft(0, 1, bread, 8.0, 1.0, DAY, DAY, 4, Incoterm::Exw, false, false);
+    assert_eq!(name(&book), "farmer", "a contract the seller hasn't its copy of yet needs nobody");
+    book.contracts[id].state = State::Active;
+    assert_eq!(name(&book), "mason", "the farmer sells the bread it's bound to deliver (`Apprentices.neededTrades`)");
+}
+
 /// A capital with its Merchant, crew and bread, a road to a town of six (two idle), and its port's exchange; named.
 fn kingdom() -> Society {
     let mut s = Society::new(content());

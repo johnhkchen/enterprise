@@ -12,6 +12,10 @@
 //! - **Turn**, home: the levy's recruits wait in the capital's barracks ([`muster`]).
 //! - **PlanBuy**: a trip to fetch recruits owed can't wait, nor one to the front with its orders or recruits waiting
 //!   ([`plan`]); **Decide**, as a wagon leaves for the front: the waiting recruits go with it ([`embark`]).
+//!
+//! Two orders differ from the mod's: the army campaigns (`Step::Pay`) before the front's orders are reckoned here, so
+//! the quartermaster orders after the day's rations are eaten (the mod orders, then campaigns); and requisitions are
+//! read in `Draft`, after the far end's sale, where `arriveAtDestination` reads them before settling and selling.
 
 use std::collections::BTreeMap;
 
@@ -386,7 +390,6 @@ pub fn raise(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, m
         return;
     }
     let now = clock.now;
-    let trained = trained_trades(&content);
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(entity).unwrap();
         if state.arrived != Some(Leg::Out) {
@@ -407,8 +410,7 @@ pub fn raise(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, m
             continue;
         }
         let abroad = off.get(route.to).is_ok();
-        let mut needed = trained.clone();
-        needed.extend(book.training_for(route.to_id).map(|(_, t)| t.trade));
+        let needed = needed_trades(&content, &book, route.to_id);
         for id in levies {
             let levy = book.contracts[id].levy.unwrap();
             let raised = if abroad {

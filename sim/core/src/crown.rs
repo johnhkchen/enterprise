@@ -408,6 +408,25 @@ pub fn levy_size(content: &Content, roster: &Roster) -> u32 {
     (idle + (rest * d.levy_share + 0.5).floor()).min(most).max(1.0) as u32
 }
 
+/// The trades a levied town keeps last (`raiseLevy`'s `needed`): those its training contracts are for, those that sell
+/// or make a good it delivers under a contract in force (`Apprentices.neededTrades`, `Procurement.suppliers`: every
+/// seller and every maker), and the ones the crown wants trained (`Sovereign.TRAINED`).
+pub fn needed_trades(content: &Content, book: &Book, town: TownId) -> Vec<TradeId> {
+    let mut needed = trained_trades(content);
+    needed.extend(book.training_for(town).map(|(_, t)| t.trade));
+    let recipes = crate::services::recipes(content);
+    for c in book.open.iter().map(|&id| &book.contracts[id]) {
+        if !c.in_force() || c.seller != town || c.training.is_some() || c.levy.is_some() || c.good >= content.goods.len() {
+            continue;
+        }
+        needed.extend((0..content.trades.len()).filter(|&t| content.trades[t].offers.iter().any(|o| o.sells && o.good == c.good)));
+        needed.extend(recipes.iter().filter(|r| r.output == c.good).map(|r| r.trade));
+    }
+    needed.sort_unstable();
+    needed.dedup();
+    needed
+}
+
 /// Who a town sends of `n` (`Caravans.raiseLevy`): its grown hands at home but the Merchant at its desk, idle hands
 /// first, then those of a trade it has others of, then whoever is least missed, and last the only one of a trade its
 /// contracts need or the crown wants trained; the least skilled first of each, equals in the roster's order.
@@ -754,7 +773,8 @@ impl Society {
     }
 
     /// Peace (`Sovereign.peace`): the army walks home, the front closes to the army, the minting falls back to the
-    /// crown's revenue, and the levies not yet raised are closed. Returns the soldiers and recruits sent home.
+    /// crown's revenue, and every levy still drafted or in force is closed, raised or not (the mod leaves them in force;
+    /// pay still owed survives, `Book::tidy` keeps a contract owing). Returns the soldiers and recruits sent home.
     pub fn peace(&mut self) -> usize {
         let home = if self.capital().is_some() { self.demobilise() } else { 0 };
         self.world.resource_mut::<Army>().front = None;

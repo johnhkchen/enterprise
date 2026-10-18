@@ -13,10 +13,8 @@ use super::super::*;
 use enterprise_core::crown::Theatre;
 use enterprise_core::sourcing::Phase;
 
-/// Kit a good may be named for. No armour: a good the base world's towns make by the thousand, named a chestplate, arms
-/// their guards past the toll cap `territory_growth`'s check holds them to (0.25; `chokepoints.rs` lets armoured guards
-/// ask up to 0.35, more with enchanted plates).
-const KIT: [&str; 5] = ["iron_sword", "diamond_sword", "shield", "arrow", "bow"];
+/// Kit a good may be named for.
+const KIT: [&str; 7] = ["iron_sword", "diamond_sword", "shield", "arrow", "bow", "iron_chestplate", "diamond_helmet"];
 
 /// The crown's world (one with a revenue named) and its capital: the exchange's desk, which naming it opened there.
 fn capital(s: &Society) -> Option<usize> {

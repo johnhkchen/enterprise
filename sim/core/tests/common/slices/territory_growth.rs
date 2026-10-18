@@ -2,6 +2,7 @@
 //! the books of who holds what must agree.
 
 use super::super::*;
+use enterprise_core::chokepoints::ARMOURED_TOLL_RATE;
 use enterprise_core::territory::MAX_TOLL_RATE;
 
 /// Some towns claim their home at once (the rest at their first look); some have confined villagers and works.
@@ -59,7 +60,10 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
         if let Some(p) = h.posts.iter().find(|p| !h.hexes.contains(p)) {
             return Err(format!("town {town} has a post at {p}, which it doesn't hold"));
         }
-        if h.toll_rate.is_some_and(|x| !(0.0..=MAX_TOLL_RATE).contains(&x)) {
+        // Armoured guards may ask past the cap, up to `ARMOURED_TOLL_RATE` and more with enchanted plates
+        // (`chokepoints.rs`: the cap rises with the armoured share, to 1.5).
+        let most = MAX_TOLL_RATE + (ARMOURED_TOLL_RATE - MAX_TOLL_RATE) * h.armoured.max(0.0) + 1e-9;
+        if h.toll_rate.is_some_and(|x| !(0.0..=most).contains(&x)) {
             return Err(format!("town {town}: toll rate {:?}", h.toll_rate));
         }
         if h.culture < -1e-9 || !h.culture.is_finite() {
