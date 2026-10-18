@@ -113,13 +113,20 @@ macro_rules! dials {
                 }
             }
 
-            /// What a dial does, as its doc comment says it (a dial documented together with its neighbours has the
-            /// words on the first of them and none of its own).
+            /// What a dial does, as its doc comment says it. A dial documented together with its neighbours has the
+            /// words on the first of them and none of its own: it is told the group's.
             pub fn describe(name: &str) -> Option<String> {
-                match name {
-                    $(stringify!($name) => Some([$($doc),*].iter().map(|line: &&str| line.trim()).collect::<Vec<_>>().join(" ")),)*
-                    _ => None,
-                }
+                let mut group = String::new();
+                $(
+                    let own: &[&str] = &[$($doc),*];
+                    if !own.is_empty() {
+                        group = own.iter().map(|line| line.trim()).collect::<Vec<_>>().join(" ");
+                    }
+                    if name == stringify!($name) {
+                        return Some(group);
+                    }
+                )*
+                None
             }
         }
     };

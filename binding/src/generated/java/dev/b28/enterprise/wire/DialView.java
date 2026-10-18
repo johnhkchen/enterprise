@@ -5,7 +5,7 @@ import java.util.Objects;
 
 /**
  * A dial as {@code /enterprise dial} lists it: its name, its value now and the value it starts the world at, and what it does
- * (empty for a dial documented with its neighbours: the words are on the first of them).
+ * (for a dial documented with its neighbours, the group's words).
  */
 public record DialView(String name, double value, double initial, String does) {
     public DialView {

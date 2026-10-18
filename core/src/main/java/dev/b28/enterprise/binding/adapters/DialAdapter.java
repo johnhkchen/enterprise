@@ -28,10 +28,14 @@ import java.util.Optional;
 public final class DialAdapter {
     private DialAdapter() {}
 
+    /** A dial as the command shows it: its value now, the world's start (what {@code reset} gives) and what it does. */
+    public record Dial(String name, double value, double initial, String does) {}
+
     /** Every dial the core lists, in its order. Throws like {@link CoreHost#ask} when the host is paused. */
-    public static List<DialView> list(CoreHost host) {
+    public static List<Dial> list(CoreHost host) {
         return host.ask(List.of(new Query.Dials())).stream()
-                .filter(Answer.Dials.class::isInstance).map(a -> ((Answer.Dials) a).dials()).findFirst().orElse(List.of());
+                .filter(Answer.Dials.class::isInstance).map(a -> ((Answer.Dials) a).dials()).findFirst().orElse(List.<DialView>of())
+                .stream().map(d -> new Dial(d.name(), d.value(), d.initial(), d.does())).toList();
     }
 
     /** The names of the core's dials, for the command's suggestions; none when the core isn't there to ask. */
@@ -39,7 +43,7 @@ public final class DialAdapter {
         if (host == null || host.pausedWhy() != null) {
             return List.of();
         }
-        return list(host).stream().map(DialView::name).toList();
+        return list(host).stream().map(Dial::name).toList();
     }
 
     /**
@@ -66,12 +70,12 @@ public final class DialAdapter {
      * JAVA_ONLY} ones) is nothing to it and not an error; any other refusal is logged.
      */
     public static void mirror(CoreHost host, String name, Double value) {
-        if (host == null || host.pausedWhy() != null) {
+        if (host == null || host.pausedWhy() != null || !names(host).contains(name)) {
             return;
         }
         String why = set(host, name, value);
-        if (why != null && !why.startsWith("no dial called")) {
-            Enterprise.LOGGER.warn("The core wouldn't take dial {}: {}", name, why);
+        if (why != null) {
+            Enterprise.LOGGER.warn("The core wouldn't take dial {} (the Java rules did; the two differ now): {}", name, why);
         }
     }
 

@@ -237,6 +237,9 @@ fn a_dial_is_set_for_the_world_reset_to_the_packs_and_kept_by_a_save() {
     let shelf = dial(&mut s, "shelf_days");
     assert_eq!((shelf.value, shelf.initial), (5.0, 5.0));
     assert!(shelf.does.starts_with("Days of what its people use a town's warehouse aims to hold"), "{:?}", shelf.does);
+    // A dial documented with its neighbours is told the group's words.
+    let cost = dial(&mut s, "birth_cost");
+    assert!(cost.does.starts_with("A child once a bed is free"), "{:?}", cost.does);
     // Every dial of the core is listed, once, in the order it declares them.
     let all = match &ask(&mut s, vec![Query::Dials])[..] {
         [Answer::Dials { dials }] => dials.iter().map(|d| d.name.clone()).collect::<Vec<_>>(),

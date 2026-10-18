@@ -8,7 +8,6 @@ import dev.b28.enterprise.binding.adapters.DialAdapter;
 import dev.b28.enterprise.core.SaveStore;
 import dev.b28.enterprise.wire.Answer;
 import dev.b28.enterprise.wire.ContentPack;
-import dev.b28.enterprise.wire.DialView;
 import dev.b28.enterprise.wire.GoodFlag;
 import dev.b28.enterprise.wire.PackGood;
 import dev.b28.enterprise.wire.Query;
@@ -157,14 +156,14 @@ public final class CoreBindingTests {
             helper.assertTrue(host.pausedWhy() == null, "the core refused the mod's pack: " + host.pausedWhy());
             List<String> names = ((Answer.Goods) host.ask(List.of(new Query.Goods())).get(0)).goods();
             helper.assertTrue(names.equals(pack.goods().stream().map(PackGood::name).toList()), "the core's goods aren't the pack's");
-            Map<String, DialView> dials = new java.util.HashMap<>();
+            Map<String, DialAdapter.Dial> dials = new java.util.HashMap<>();
             DialAdapter.list(host).forEach(d -> dials.put(d.name(), d));
             for (var dial : dev.b28.enterprise.Dials.all()) {
                 if (ModPack.JAVA_ONLY.contains(dial.name)) {
                     helper.assertTrue(!dials.containsKey(dial.name), "the core has the mod's own dial " + dial.name);
                     continue;
                 }
-                DialView view = dials.get(dial.name);
+                DialAdapter.Dial view = dials.get(dial.name);
                 helper.assertTrue(view != null, "the core has no dial " + dial.name + " (the mod's, with no rule of its own in the core)");
                 helper.assertTrue(view.value() == dial.initial && view.initial() == dial.initial,
                         "dial " + dial.name + " starts at " + view.value() + " (default " + view.initial() + "), the mod's is " + dial.initial);
@@ -234,7 +233,7 @@ public final class CoreBindingTests {
         helper.succeed();
     }
 
-    private static DialView dial(CoreHost host, String name) {
+    private static DialAdapter.Dial dial(CoreHost host, String name) {
         return DialAdapter.list(host).stream().filter(d -> d.name().equals(name)).findFirst()
                 .orElseThrow(() -> new AssertionError("the core has no dial " + name));
     }

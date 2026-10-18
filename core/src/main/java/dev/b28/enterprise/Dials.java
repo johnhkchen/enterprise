@@ -216,9 +216,9 @@ public final class Dials extends SavedData {
         setDirty();
     }
 
-    /** What the world has set, by name: the dials not at their defaults (the core follows them at start). */
-    public Map<String, Double> settings() {
-        return Map.copyOf(set);
+    /** What the world has set, by name in order: the dials not at their defaults (the core follows them at start). */
+    public java.util.SortedMap<String, Double> settings() {
+        return java.util.Collections.unmodifiableSortedMap(new java.util.TreeMap<>(set));
     }
 
     /** The world's settings, put in force (every dial not set back to its default). */

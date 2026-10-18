@@ -41,7 +41,7 @@ pub struct TownPoint {
 }
 
 /// A dial as `/enterprise dial` lists it: its name, its value now and the value it starts the world at, and what it does
-/// (empty for a dial documented with its neighbours: the words are on the first of them).
+/// (for a dial documented with its neighbours, the group's words).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DialView {
     pub name: String,
