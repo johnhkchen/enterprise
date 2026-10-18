@@ -6,9 +6,10 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
 
 ## Now
 
-- **Main:** `ec52412`. 613 tests pass (`just core-test`, a few seconds). Parity: **186 covered, 30 partial, 46
-  skipped, 0 left of 262** (`just parity`). `just core-fingerprint`: `eaaefbf57237382a` (a fifth of the random worlds
-  name a capital and go to war).
+- **Main:** `db7edea`. 623 tests pass (`just core-test`, about 2.5 minutes now the random worlds run 300 seeds with
+  the sweep's checks, across the cores). Parity: **186 covered, 30 partial, 46 skipped, 0 left of 262** (`just
+  parity`). `just core-fingerprint`: `eaaefbf57237382a` (a fifth of the random worlds name a capital and go to war);
+  `cargo run --release -p enterprise-sim -- --sweep 300` prints what the random worlds did.
 - **Waves 1b to 5 run as one workflow:** each task gets its own tree when everything it waits for has landed, and
   landings are one at a time, the earliest in the plan's order first among those done.
 - **Paused 2026-10-17 21:05** (13 of 32 landed), with no landing under way. Four trees waited in `.trees/`
@@ -55,7 +56,7 @@ subtle; Sonnet for well-specified ports. The plan's choice is in brackets.
 | 35 | 4 | `crown` | opus/high (opus/medium) | `war-army`, `mint-rate`, `sourcing-and-procurement`, `realms`, `training-and-tenders` | `ec52412` | The sovereign: a capital minting its revenue into the treasury, requisitions bid and awarded whole lots with bonus clauses, training tenders, levies on the towns its wagons reach, mercenaries over the sea, the front's daily orders, peace; 3 tags pinned, the mobilising test partial (its gold shop is Numismatics'). Gaps: bonuses not paid on delivery (cargo carries no enchantments), front orders free and at once, no ration store kept from road food, no hub boards, no barracks beds, every standing levy closed at peace, the campaign before the front's orders. At landing: a levy keeps last the only hand of a trade the town's contracts deliver (`Apprentices.neededTrades`), territory_growth's toll check allows armoured guards' higher cap (the crown's worlds name armour again), `war_tally` (player orders took `tally`), bridges weighed over routes in order (a load flipped one) |
 | 36 | 4 | `stranded-paper` | sonnet/medium (sonnet/medium) | `bank-and-discounts`, `freight-hubs`, `training-and-tenders` | `67f4377` | the tagged test pinned; a hub buys stranded paper for coin and installments, freight on credit, the pupil's work waits for a hub; crates sold before the hand-over (desk first, then the stranded sale: declared); `Bills.tidy`, `Forwarder.collect` not ported; a longer bill's interest scaled by its terms (installments, 30-day credit at 15%), fixed at landing |
 | 37 | 4 | `settlers-rule` | sonnet/medium (haiku/low) | `roster`, `hex-map` | `5830058` | Parties to the nearest village or open ground, capital off the books on the road; ExpeditionTests settle partial. Gaps: spare is `rules::free` (no wage float), no `inRange`, road every 4 days the core's. At landing: Nitwits stay home, only a Merchant's town sends, only the nearest village (as `findNearestMapStructure`), new towns' land 40 not 4, claimed hexes not open |
-| 38 | 5 | `random-worlds-sweep` | opus/high (sonnet/medium) | everything above | — | reads every slice; finds what they broke together |
+| 38 | 5 | `random-worlds-sweep` | opus/high (sonnet/medium) | everything above | `db7edea` | reads every slice; finds what they broke together. Seeds across the cores (`each_seed`: suite 11:24 to 2:25, fingerprint unchanged), sweep invariants daily, save round trip every 30 days with a one-day twin, `sim/host --sweep N`; partial: 10 s budget (38 s), the stall check is only "says why", mood checked against a floor not -8, the contract check amounts to "judged within a day", the same-seed test still 3 seeds; at landing: `--sweep` merged into the new study host, docs say what the checks amount to |
 | 39 | 5 | `fixed-point-money` | opus/xhigh (opus/high) | `random-worlds-sweep` | — |  |
 | 40 | 5 | `parity-report` | sonnet/medium (haiku/low) | `fixed-point-money` | — | haiku only for trivial edits |
 
