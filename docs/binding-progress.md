@@ -1,14 +1,32 @@
 # Binding progress: where the Minecraft binding stands
 
 The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md`; how trees work is
-`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-19, `content-pack` landed.
+`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-19, `points-and-hands` landed.
 
 ## Now
 
-- **Main:** `0cc5292`. 803 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
-  `just wire-check` passes (schema `e66ad7c365d84fd0`, 29 files); `just binding-test` passes. Game tests: "All 267
-  required tests passed" in Java mode, and `just gametest-core`: 267 of 267 against the baseline of 267. `just
-  core-fingerprint`: `3ca9f1c2c91329ef` (moved by `packing`, not by `content-weights`, which touches no core rule).
+- **Main:** `bf44ab1`. 822 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
+  `just wire-check` passes (schema `9c9206f91a4ed70f`, 30 files); `just binding-test` passes. Game tests: "All 269
+  required tests passed" in Java mode, and `just gametest-core`: 269 of 269 against the baseline of 269. `just
+  core-fingerprint`: `cb4390b51df82271` (moved by `superbills`; `points-and-hands` leaves it as it was).
+- **Trade points and hands** (B4.2, `adapters/PointsAdapter`, `adapters/HandsAdapter`): every hand on a roster has a
+  stable `HandId` (`roster::Hands`, saved: given as it joins, kept through a new trade, a caravan, a war, settlers;
+  never reused) with the host's name for it (a villager's UUID) beside it, so the mod keeps no ids: both adapters are
+  rebuilt from the core (`Query::Points`, `Query::Hands`) after a load. `Locker.hand` and `Lockers.clients` go by id.
+  Wire: `Input::AddHand`, `Input::HandLost` (a hand away or gone by the time it applies, after the look's `Advance`, is
+  a stale view, ignored), `Query::Hands`/`Answer::Hands` (`lockers` is the Merchant's cap by level). `/enterprise core
+  points`, `/enterprise core hands <desk>`. **For John:** `AddHand` isn't in the plan's 1.3 (`Census { town, beds,
+  hands }`, `HandLost`, `HandTrade`): `people-adapter` decides whether Census replaces it (wire variants are
+  append-only once shipped). **Open (for `people-adapter`):** only the Merchant becomes a hand, when its screen opens
+  in core mode, and that starts the town's roster (the core's town then counts 1 resident while Java's census counts N,
+  and births join as untagged babies with no villager spawned); levels aren't written back to the entity; villagers
+  discarded or despawned aren't sent as lost; each join or loss re-asks every town's hands. In core mode
+  `Merchant.lockersAt` still falls back to Java's `lockerLimit` when the core has no town at the desk or refuses the
+  villager (a Java rule deciding in core mode, logged only). Points other than desks have a registry but nothing
+  registers them (their adapters). `PointsAdapter.Kind` and `HandsAdapter.Hand` hand-mirror `PointKind`/`HandView`.
+  `Roster.merchant` and `Lockers.managed` are still places; `set_roster` keeps ids by place (fixtures); tags of hands
+  the rules remove (a soldier fallen) are never pruned. The save grew at FORMAT 1: dev worlds' `enterprise_core.dat`
+  are rebuilt.
 - **The content pack** (B4.1, `binding/ModPack`): the mod's goods, comfort kinds, trades, recipes (`PackRecipe`),
   herds (`PackAnimal`), each good's stack weight (`PackGood.weight`, which was `content-weights`) and dials
   (`PackDial`) cross as one `ContentPack`; `Content::from_pack` names everything wrong at once. The pack's dials are
@@ -117,11 +135,12 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
   stocktake, so what they held is delivered to the town twice (free goods for a player; the books still balance,
   because it comes from outside). Decide it there, with `Moved` and write-back. Also: chests that lose more than the
   town holds drop the excess with no record (`withdraw`); `Query::Stock` answers as last touched, not caught up.
-- **Not planned yet:** `pallet-views` (the mod's crates and chests drawing pallets from the core's messages; the
-  weights it needs are in the pack now (`content-pack`, finished by `content-weights`); since `packing` it also
-  needs a `PackPallets` command for `Society::pack_pallets`, with set-aside and `crate_room` guards, and `Good.package`
-  and `.handling` on the wire's `Good` so the mod can declare barrels, bundles and goods that need care). Named in
-  `docs/decisions.md` (2026-10-18) but has no row below.
+- **Placed at landing, for John to confirm the order:** `pallet-views` (B4.12 below). The mod gets no pallet rules:
+  it registers its crate items and blocks once and draws each pallet's contents, moves and openings from the core's
+  three pallet outputs, as `PointsAdapter`/`HandsAdapter` draw points and hands. The weights it needs are in the pack
+  (`content-pack`, `content-weights`); since `packing` it also needs a `PackPallets` command for
+  `Society::pack_pallets` (set-aside and `crate_room` guards), `Good.package` and `.handling` on the wire's `Good`
+  (barrels, bundles, goods that need care), and since `superbills` the manifest on the wire.
 - **The game tests are sorted** (`python3 scripts/parity.py --binding`, every test in `docs/binding-tests.md`): 150
   world fixtures (the binding's acceptance tests), 66 rule API (retire with their class), 46 Minecraft's own (view
   tests), of 262. About twice the fixtures the plan first guessed (121), because shared helpers in other test files
@@ -148,7 +167,7 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 | B3.2 | `core-mode` | sonnet / medium | `proof-in-mod`, `gametest-triage` | `5532ae3` | `Society` (java\|core, per process: property, env, `config/enterprise.properties`; default java) gates the 11 rule tick listeners; `CoreClock` the only clock in core mode; `just gametest-core` (own folder, `GameTestReport`, `scripts/gametest_core.py`, baseline 264 of 264). At landing: `LockerCatchUp`'s join gated with its tick (it queued jobs nothing drained), the core-mode report cleared before a run and an empty or missing one fails (a stale 264 could pass), the Java run pins `society=java` (an exported env var switched it), `trees.py`'s `--java` gates run the core-mode suite. One flake at landing (`wagesClimbTowardEverythingTheHarvestSellsFor`, share 0.5; passed on the retry, no Java changed in the rebase). Left: core mode is frozen until the adapters land, `CensusTaker`'s counting half off with its rule half (for `people-adapter`), the mode not saved with the world, no JVM test of `Society.parse` |
 | B4.1 | `content-pack` | sonnet / high | `core-mode` | `f48f053` | `ContentPack` carries goods (with stack weights: `content-weights` folded in), comforts, trades, recipes, herds and dials, checked whole by `Content::from_pack`; the pack's dials are the world's start; `SetDial`/`Query::Dials`; `/enterprise dial` through the core in core mode, mirrored to it in Java mode; `Content::good` matches with or without a namespace; 3 game tests (267 both modes), schema `e66ad7c365d84fd0`. At landing: a dial documented with its group shows the group's words (79 of 219 had none in core mode); the command reads an adapter record, not the wire's `DialView`; `mirror` checks the core's dial names instead of its English error, and warns when Java takes a value the core refuses; start-up sync sends dials in name order. Left: weights and `birth_mood` for John, 7 Java-only dials, Java tables still the pack's source until `delete-java-rules`, two dial stores across a mode switch, no Java class deleted |
 | B4.1a | `content-weights` | sonnet / medium | `content-pack`, `pallet-caps` | `0cc5292` | The pack's weights finished as data, no Java rule: stone 3, coal, brick and hay_block 2 joined `ModPack.WEIGHTS`; the same table in `sim/host/src/goods.rs` (plus a test); a decisions.md entry with the numbers and why. Measured: the 365-day study (default and `--river --services --metal --trades --freight`) and the 300-seed sweep identical with and without (wagons leave with about 2 stacks, far under the 27 cap), ms a day unchanged. At landing: stone and brick said to wait for content the mod's pack lists (neither is priced or in a recipe, so both weights are lookups only in the game), hay's 2 given its reason, the tables called hand-kept, comments wrapped. Left: John to confirm the numbers, no check that the mod's and the host's tables match, the weights bite only once handling units fill wagons |
-| B4.2 | `points-and-hands` | opus / high | `content-pack` | | |
+| B4.2 | `points-and-hands` | opus / high | `content-pack` | `bf44ab1` | Stable `HandId` in the core's roster with the host's tag beside it (`roster::Hands`, saved), lockers and clients by id; `AddHand`, `HandLost`, `Query::Hands`; `PointsAdapter` and `HandsAdapter` rebuilt from the core; `/enterprise core points`, `hands <desk>`; 2 game tests (269 both modes), fingerprint unchanged. At landing: rebased onto packing, content-weights and superbills (digest written again); a `HandLost` whose hand an earlier `Advance` in the look sent away panicked the core (a wasm trap): now a stale view, ignored, tested; the random-worlds check refuses more lockers than hands; `Answer::Hands.lockers` documented as the cap. Left: only the Merchant joins, on its screen (`people-adapter`: the census, births, levels written back, `AddHand` against the plan's `Census`), Java's `lockerLimit` as core mode's fallback, other points' registration (their adapters), positions for `merchant`/`managed`, unpruned tags |
 | B4.3 | `stock-adapter` | opus / xhigh | `points-and-hands` | | |
 | B4.4 | `money-adapter` | sonnet / high | `stock-adapter` | | |
 | B4.5 | `people-adapter` | opus / high | `points-and-hands` | | |
@@ -158,6 +177,7 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 | B4.9 | `shop-adapter` | sonnet / high | `money-adapter`, `wagon-adapter` | | |
 | B4.10 | `crown-views` | sonnet / medium | `wagon-adapter`, `shop-adapter` | | |
 | B4.11 | `commands-and-studies` | sonnet / medium | `wagon-adapter` | | |
+| B4.12 | `pallet-views` | opus / high | `stock-adapter`, `content-weights` | | Placed at `points-and-hands`' landing: the mod's crates and chests drawn from the core's pallet outputs, no pallet rules in Java; `PackPallets`, `Good.package`/`.handling` and the manifest on the wire |
 | B5.1 | `delete-java-rules` | opus / high | all of B4 | | |
 | B5.2 | `scenarios-in-game` | sonnet / medium | `delete-java-rules` | | |
 | B5.3 | `upgrade-drill` | sonnet / medium | `delete-java-rules` | | |
