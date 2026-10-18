@@ -146,6 +146,19 @@ wire-check:
 wire-javac:
     cd sim && cargo test --release -q -p enterprise-wire-gen --test java -- --ignored --nocapture
 
+# The binding's JVM tests, no Minecraft (Gradle :binding:test, docs/binding-plan.md 1.5): wire-check and the codec check first, then every golden file through the generated Java, every scenario through Chicory (compiled and interpreted) and a trap at every step
+binding-test:
+    ./gradlew :binding:test --console=plain
+
+# The binding's spike (docs/binding-plan.md section 4): look scripts from the study host, played natively, under Node and in the JVM (the same bytes back from each); tables in binding/build/spike.md
+binding-spike:
+    cd sim && cargo run --release -q -p enterprise-sim -- 30 --wire-looks target/spike/study.looks | tail -1
+    cd sim && cargo run --release -q -p enterprise-sim -- --world 1234 150 target/spike/world.looks | tail -1
+    just wasm
+    cd sim && for w in study world; do cargo run --release -q -p enterprise-wasm --example looks -- target/spike/$w.looks target/spike/$w.native.out target/spike/$w.native.times && ENT_TIMES=target/spike/$w.node.times node wasi-run.mjs --reactor target/enterprise_core.wasm target/spike/$w.looks target/spike/$w.node.out && cmp target/spike/$w.node.out target/spike/$w.native.out && echo "$w: Node's responses are native's" || exit 1; done
+    ./gradlew :binding:spike -Pspike=heap --console=plain -q
+    ./gradlew :binding:spike --console=plain -q
+
 # The network study's world in the fast host, no game: `just study 365 --csv /tmp/base.csv --river --people-use`
 study *args:
     cd sim && cargo run --release -q -p enterprise-sim -- {{args}}

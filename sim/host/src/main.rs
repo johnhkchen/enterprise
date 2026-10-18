@@ -8,6 +8,17 @@
 //!     cargo run --release -p enterprise-sim -- 120 --river --services --metal --trades --seeds 5
 //!     cargo run --release -p enterprise-sim -- 365 --people-use   # the settlements' lockers' wants as their people's uses
 //!
+//! With `--wire-looks FILE` it also writes, after the run, the world as the binding's look script: a `Load` of its save,
+//! a year of looks (an `Apply` advancing a twentieth of a day: `CoreClock`'s minute), then a `Save`, each a `Request` as
+//! postcard bytes after its length (a u32, little-endian), the framing `wasi-run.mjs --reactor` plays. Every host plays
+//! the same script (natively: `cargo run -p enterprise-wasm --example looks`; Node; the JVM: `just binding-spike`) and
+//! must give the same bytes back.
+//!
+//!     cargo run --release -p enterprise-sim -- 30 --wire-looks target/spike/study.looks
+//!
+//! `--world SEED DAYS FILE` does the same for one of the random worlds (the core tests' generator, every slice on by
+//! seed, each day's doings), run DAYS days: a bigger world than the study's, with a bigger save.
+//!
 //! With `--sweep N [DAYS]` it runs the random worlds instead (seeds 0 to N-1, DAYS days each, default 120: the core
 //! tests' generator, every slice on by seed, each day's checks) across the cores and prints what they did.
 //!
@@ -51,6 +62,28 @@ fn main() {
         let n = args.get(1).and_then(|a| a.parse().ok()).unwrap_or(300);
         let days = args.get(2).and_then(|a| a.parse().ok()).unwrap_or(120);
         return random_worlds(n, days);
+    }
+    if args.first().map(String::as_str) == Some("--world") {
+        let n = |i: usize| args.get(i).and_then(|a| a.parse::<u64>().ok());
+        let (Some(seed), Some(days), Some(path)) = (n(1), n(2), args.get(3)) else {
+            eprintln!("enterprise-sim --world SEED DAYS FILE");
+            std::process::exit(2);
+        };
+        let mut s = common::world(seed);
+        let daily = common::sellers(seed);
+        for day in 1..=days {
+            for &emeralds in &daily {
+                s.sell_emeralds(emeralds);
+            }
+            s.advance(day * DAY);
+            common::slices::daily(&mut s, seed, day);
+        }
+        println!("seed {seed}: {days} days, {} towns, {} routes", s.town_count(), s.route_count());
+        if let Err(e) = write_looks(&mut s, path) {
+            eprintln!("--world {path}: {e}");
+            std::process::exit(2);
+        }
+        return;
     }
     let flags = match Flags::parse(&args) {
         Ok(f) => f,
@@ -144,6 +177,12 @@ fn run(flags: &Flags, seed: u64, full: bool) -> Outcome {
             println!("\nwrote {} rows to {c}", tracker.rows);
         }
     }
+    if let Some(path) = &flags.wire_looks {
+        if let Err(e) = write_looks(&mut st.s, path) {
+            eprintln!("--wire-looks {path}: {e}");
+            std::process::exit(2);
+        }
+    }
     let s = &st.s;
     let left: u32 = tracker.routes.iter().map(|t| t.left).sum();
     let arrived: u32 = tracker.routes.iter().map(|t| t.arrived).sum();
@@ -157,6 +196,36 @@ fn run(flags: &Flags, seed: u64, full: bool) -> Outcome {
         stacks_sold: tracker.routes.iter().map(|t| t.sold_stacks).sum::<f64>() / arrived.max(1) as f64,
         seconds: took.as_secs_f64(),
     }
+}
+
+/// The looks a year of play gives the binding: a minute of the game's time each, `CoreClock`'s `look_ticks`.
+const LOOKS_A_DAY: u64 = 20;
+const LOOK_DAYS: u64 = 365;
+
+/// `--wire-looks`: the world now as a look script (the module's own framing: a u32 length, little-endian, and a request).
+fn write_looks(s: &mut enterprise_core::Society, path: &str) -> std::io::Result<()> {
+    use enterprise_core::wire::{Command, Input, Request, SaveFile};
+    let look = DAY / LOOKS_A_DAY;
+    let now = s.now();
+    let mut requests = vec![Request::new(Command::Load { save: SaveFile::of(s) })];
+    for k in 1..=LOOK_DAYS * LOOKS_A_DAY {
+        requests.push(Request::new(Command::Apply { inputs: vec![Input::Advance { to: now + k * look }] }));
+    }
+    requests.push(Request::new(Command::Save));
+    let mut out = Vec::new();
+    for r in &requests {
+        let bytes = r.to_bytes();
+        out.extend((bytes.len() as u32).to_le_bytes());
+        out.extend(bytes);
+    }
+    if let Some(dir) = std::path::Path::new(path).parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    std::fs::write(path, &out)?;
+    let save = requests[0].to_bytes().len();
+    println!("wrote {} requests to {path}: a Load of {save} bytes at tick {now}, {} looks, a Save", requests.len(),
+        LOOK_DAYS * LOOKS_A_DAY);
+    Ok(())
 }
 
 /// One random world for `days` days, as the core's `tests/random_worlds.rs` runs it: what it did, or the day it failed

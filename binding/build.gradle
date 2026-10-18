@@ -1,0 +1,200 @@
+// binding/: the Minecraft binding's plain-Java half (docs/binding-plan.md 1.5). The core (sim/core) built for
+// WebAssembly (sim/wasm), compiled to JVM classes at build time by Chicory's build-time compiler (a plain JavaExec of
+// it: John's call, 2026-10-18, not the experimental Gradle plugin), and run by Chicory's runtime with WASI; the wire
+// generated from the core's Rust types (src/generated, `just wire-gen`: never edited by hand); `Core`, which calls it
+// and recovers from a trap. No Minecraft classes: the mod depends on this, and its tests run in seconds with JUnit.
+//
+//   ./gradlew :binding:test     (`just binding-test`)  the fixtures, the scenarios through Chicory, the trap path
+//   ./gradlew :binding:spike    (`just binding-spike`) the measurements in docs/binding-plan.md section 4
+plugins {
+    id 'java-library'
+}
+
+group = 'dev.b28.enterprise'
+version = '0.1.0'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+repositories {
+    mavenCentral()
+}
+
+def chicoryVersion = '1.7.5'
+def sim = rootProject.file('sim')
+// The module as `just wasm` builds it (release, panic = abort, stripped, linked whole), and the same with its names
+// kept (for the spike's report of what wouldn't compile: function indexes are the same, only the name section differs).
+def coreWasmFile = new File(sim, 'target/wasm32-wasip1/wasm/enterprise_wasm.wasm')
+def namedWasmFile = new File(sim, 'target/wasm-named/wasm32-wasip1/wasm/enterprise_wasm.wasm')
+def chicoryDir = layout.buildDirectory.dir('chicory').get().asFile
+def machineClasses = new File(chicoryDir, 'classes')
+def machineMeta = new File(chicoryDir, 'meta')
+def compileReport = new File(chicoryDir, 'report.txt')
+
+sourceSets {
+    // The build-time compiler's driver (CompileCore), run by compileCoreWasm; not in the jar.
+    tool
+    main {
+        java.srcDir 'src/generated/java'
+        resources.srcDir files(machineMeta).builtBy('compileCoreWasm')
+        output.dir(machineClasses, builtBy: 'compileCoreWasm')
+    }
+}
+
+dependencies {
+    // The runtime, WASI preview 1 (the module imports fd_write, proc_exit, environ_get, environ_sizes_get) and what they
+    // bring (chicory's wasm parser and log): all the mod ships. The compiled machine needs nothing more at run time.
+    implementation "com.dylibso.chicory:runtime:$chicoryVersion"
+    implementation "com.dylibso.chicory:wasi:$chicoryVersion"
+
+    // WASI's classes carry its host-module annotation: there for javac to read, not needed at run time.
+    compileOnly "com.dylibso.chicory:annotations:$chicoryVersion"
+
+    toolImplementation "com.dylibso.chicory:build-time-compiler:$chicoryVersion"
+
+    // The runtime compiler: tests and the spike only, to measure compiling at load against compiling at build.
+    testImplementation "com.dylibso.chicory:compiler:$chicoryVersion"
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs.addAll(['-Xlint:all', '-Xlint:-serial'])
+}
+
+def coreSources = { task ->
+    task.inputs.files(
+            fileTree(new File(sim, 'core/src')),
+            fileTree(new File(sim, 'wasm/src')),
+            new File(sim, 'Cargo.toml'), new File(sim, 'Cargo.lock'),
+            new File(sim, 'core/Cargo.toml'), new File(sim, 'wasm/Cargo.toml'),
+            new File(sim, 'wire/registry.yaml'))
+            .withPropertyName('coreSources').withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
+// `-PwasmOpt=s`, `-PwasmRustflags='-C llvm-args=...'`: the module built otherwise than the profile says (the spike's
+// experiments on what makes the compiled module fast in HotSpot).
+def wasmOpt = providers.gradleProperty('wasmOpt')
+def wasmRustflags = providers.gradleProperty('wasmRustflags')
+
+def coreWasm = tasks.register('coreWasm', Exec) {
+    description = 'The core as a WebAssembly module (as `just wasm`): sim/target/wasm32-wasip1/wasm/enterprise_wasm.wasm'
+    group = 'build'
+    coreSources(it)
+    inputs.property('wasmOpt', wasmOpt.getOrElse(''))
+    inputs.property('wasmRustflags', wasmRustflags.getOrElse(''))
+    outputs.file(coreWasmFile)
+    workingDir sim
+    if (wasmOpt.isPresent()) {
+        environment 'CARGO_PROFILE_WASM_OPT_LEVEL', wasmOpt.get()
+    }
+    if (wasmRustflags.isPresent()) {
+        environment 'CARGO_TARGET_WASM32_WASIP1_RUSTFLAGS', wasmRustflags.get()
+    }
+    commandLine 'cargo', 'build', '--profile', 'wasm', '-q', '-p', 'enterprise-wasm', '--target', 'wasm32-wasip1',
+            '--target-dir', 'target'
+}
+
+tasks.register('coreWasmNamed', Exec) {
+    description = 'The same module with its function names kept, for the spike to name what the compiler left to the interpreter'
+    coreSources(it)
+    outputs.file(namedWasmFile)
+    inputs.property('wasmOpt', wasmOpt.getOrElse(''))
+    inputs.property('wasmRustflags', wasmRustflags.getOrElse(''))
+    workingDir sim
+    environment 'CARGO_PROFILE_WASM_STRIP', 'none'
+    if (wasmOpt.isPresent()) {
+        environment 'CARGO_PROFILE_WASM_OPT_LEVEL', wasmOpt.get()
+    }
+    if (wasmRustflags.isPresent()) {
+        environment 'CARGO_TARGET_WASM32_WASIP1_RUSTFLAGS', wasmRustflags.get()
+    }
+    commandLine 'cargo', 'build', '--profile', 'wasm', '-q', '-p', 'enterprise-wasm', '--target', 'wasm32-wasip1',
+            '--target-dir', 'target/wasm-named'
+}
+
+tasks.register('compileCoreWasm', JavaExec) {
+    description = 'The module compiled to JVM classes (Chicory build-time compiler, interpreterFallback = WARN), with its meta module'
+    group = 'build'
+    dependsOn coreWasm
+    inputs.file(coreWasmFile).withPropertyName('wasm').withPathSensitivity(PathSensitivity.NONE)
+    inputs.files(sourceSets.tool.runtimeClasspath).withPropertyName('compiler')
+    outputs.dir(machineClasses)
+    outputs.dir(machineMeta)
+    outputs.file(compileReport)
+    classpath = sourceSets.tool.runtimeClasspath
+    mainClass = 'dev.b28.enterprise.tool.CompileCore'
+    args coreWasmFile.path, machineClasses.path, machineMeta.path, compileReport.path, namedWasmFile.path
+    maxHeapSize = '2g'
+}
+
+def stamps = layout.buildDirectory.dir('stamps').get().asFile
+
+// `just wire-check` before the Java compiles: a Rust wire change without the Java regenerated fails here.
+def wireCheck = tasks.register('wireCheck', Exec) {
+    description = 'Fails while src/generated or sim/wire/registry.yaml are not what the core\'s wire types generate (just wire-check)'
+    group = 'verification'
+    def stamp = new File(stamps, 'wire-check')
+    inputs.files(fileTree(new File(sim, 'core/src/wire')), fileTree(new File(sim, 'wire-gen/src')),
+            new File(sim, 'wire/registry.yaml'), fileTree('src/generated'))
+            .withPropertyName('wire').withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.file(stamp)
+    workingDir sim
+    commandLine 'cargo', 'run', '--release', '-q', '-p', 'enterprise-wire-gen', '--', '--check'
+    doLast { stamp.parentFile.mkdirs(); stamp.text = 'ok\n' }
+}
+
+// The generated codec against the core's own bytes at their edges (`just wire-javac`: WireCheck's 215 checks).
+def codecCheck = tasks.register('codecCheck', Exec) {
+    description = 'The generated codec on the core\'s own bytes at their edges (just wire-javac)'
+    group = 'verification'
+    dependsOn wireCheck
+    def stamp = new File(stamps, 'codec-check')
+    inputs.files(fileTree('src/generated'), fileTree(new File(sim, 'wire-gen/tests')))
+            .withPropertyName('codec').withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.file(stamp)
+    workingDir sim
+    commandLine 'cargo', 'test', '--release', '-q', '-p', 'enterprise-wire-gen', '--test', 'java', '--', '--ignored'
+    doLast { stamp.parentFile.mkdirs(); stamp.text = 'ok\n' }
+}
+
+tasks.named('compileJava') { dependsOn wireCheck }
+
+tasks.named('test', Test) {
+    dependsOn codecCheck, coreWasm
+    useJUnitPlatform()
+    // The interpreted and runtime-compiled engines read the module itself; the fixtures and scenarios are the core's.
+    inputs.file(coreWasmFile).withPropertyName('wasm').withPathSensitivity(PathSensitivity.NONE)
+    inputs.dir(new File(sim, 'wire/fixtures')).withPropertyName('fixtures').withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(new File(sim, 'scenarios')).withPropertyName('scenarios').withPathSensitivity(PathSensitivity.RELATIVE)
+    systemProperty 'enterprise.wasm', coreWasmFile.path
+    systemProperty 'enterprise.sim', sim.path
+    maxHeapSize = '1g'
+    testLogging {
+        events = ['passed', 'skipped', 'failed']
+        exceptionFormat = 'full'
+        showStandardStreams = true
+    }
+}
+
+// The measurements of docs/binding-plan.md section 4, on the look scripts `just binding-spike` writes first.
+tasks.register('spike', JavaExec) {
+    description = 'Instantiation, a call\'s round trip, looks, save and load, heap: compiled, runtime-compiled, interpreted'
+    group = 'verification'
+    dependsOn 'testClasses', coreWasm, 'coreWasmNamed', 'compileCoreWasm', 'jar'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.b28.enterprise.core.Spike'
+    systemProperty 'enterprise.wasm', coreWasmFile.path
+    systemProperty 'enterprise.wasm.named', namedWasmFile.path
+    systemProperty 'enterprise.sim', sim.path
+    systemProperty 'enterprise.report', compileReport.path
+    systemProperty 'enterprise.jar', tasks.named('jar').get().archiveFile.get().asFile.path
+    systemProperty 'enterprise.runtime', configurations.runtimeClasspath.asPath
+    args providers.gradleProperty('spike').getOrElse('all')
+    // The JVM players run (Mojang ships 21), not the one Gradle runs on.
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+    // `-PspikeJvm='-XX:...'`: JVM flags to try (what a server's start script could set).
+    jvmArgs providers.gradleProperty('spikeJvm').map { it.split(' ').toList() }.getOrElse([])
+    maxHeapSize = '2g'
+}

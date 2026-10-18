@@ -14,6 +14,11 @@
 //! - `saved`: for a `Save`, the save's format and schema, its blob's length and FNV-64 (the blob is the core's own
 //!   bytes, which move with its rules as `replay_digest.txt` does; its `core` string moves with the build).
 //!
+//! A `request` and a `response` each have their postcard twin beside them, in hex (`request_postcard`,
+//! `response_postcard`): the bytes a host sends and the bytes it gets back, so a host plays a scenario with its own
+//! generated decoders and no JSON reader of the wire's types (the Java host, `binding/`'s `ScenariosTest`). This test
+//! checks every twin is its JSON's bytes.
+//!
 //! A refusal matches by its kind and numbers; its `why` is prose and isn't compared ([`without_prose`]).
 //!
 //! No scenario shows an [`Output`] yet: every one needs a master Merchant or a route, and the wire has no input that
@@ -44,11 +49,15 @@ struct Step {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     request: Option<Request>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    request_postcard: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     request_hex: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     load: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     response: Option<Response>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    response_postcard: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     saved: Option<SavedDigest>,
 }
@@ -135,6 +144,12 @@ fn play(scenario: &Scenario) -> Vec<String> {
     let mut wrong = Vec::new();
     for (i, step) in scenario.steps.iter().enumerate() {
         let said = format!("{} step {i} ({})", scenario.name, step.note);
+        if step.request_postcard != step.request.as_ref().map(|r| hex(&postcard::to_allocvec(r).unwrap())) {
+            wrong.push(format!("{said}: request_postcard isn't the request's bytes"));
+        }
+        if step.response_postcard != step.response.as_ref().map(|r| hex(&postcard::to_allocvec(r).unwrap())) {
+            wrong.push(format!("{said}: response_postcard isn't the response's bytes"));
+        }
         match (host.play(step), &step.response, &step.saved) {
             (Seen::Response(got), Some(want), None) => {
                 if without_prose(&got) != without_prose(want) {
@@ -165,9 +180,13 @@ impl Script {
 
     fn add(&mut self, mut step: Step) -> Option<Response> {
         match self.host.play(&step) {
-            Seen::Response(r) => step.response = Some(r),
+            Seen::Response(r) => {
+                step.response_postcard = Some(hex(&postcard::to_allocvec(&r).unwrap()));
+                step.response = Some(r);
+            }
             Seen::Saved(d) => step.saved = Some(d),
         }
+        step.request_postcard = step.request.as_ref().map(|r| hex(&postcard::to_allocvec(r).unwrap()));
         let response = step.response.clone();
         self.scenario.steps.push(step);
         response

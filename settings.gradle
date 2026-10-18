@@ -14,3 +14,7 @@ plugins {
 rootProject.name = 'enterprise'
 
 include 'core'
+
+// The Minecraft binding's plain-Java half (docs/binding-plan.md 1.5): the core run in the JVM by Chicory, the generated wire,
+// its contract tests. No Minecraft classes, so :binding:test runs in seconds.
+include 'binding'

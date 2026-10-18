@@ -58,12 +58,14 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f00c0bb01040f6d696e6563726166743a77686561749a9999999999a93f40000000000000000000000000000000000001000f6d696e6563726166743a62726561649a9999999999c93f400000000000001440000000000000184000000e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a9999999999294000010107",
       "response": {
         "Done": {
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "a town at its desk, a locker for it, some money paid in",
@@ -107,12 +109,14 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f03030707417368666f726400136d696e6563726166743a6f766572776f726c643677360801136d696e6563726166743a6f766572776f726c643c773600020080f104",
       "response": {
         "Done": {
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "a player delivers wheat and books",
@@ -140,12 +144,14 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f030201000000000000000044400100020000000000000840",
       "response": {
         "Done": {
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "its stock and points",
@@ -165,6 +171,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f0402000001",
       "response": {
         "Done": {
           "outputs": [],
@@ -208,7 +215,8 @@
             }
           ]
         }
-      }
+      },
+      "response_postcard": "0000020000040000000000004440000000000000000000000000000008400000000000000000010200136d696e6563726166743a6f766572776f726c643677360001136d696e6563726166743a6f766572776f726c643c773600"
     },
     {
       "note": "a stocktake at the desk counts from nothing: its 30 wheat and 5 bread are added to the 40 wheat delivered",
@@ -243,12 +251,14 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f03010a00136d696e6563726166743a6f766572776f726c6436773602000000000000003e40010000000000001440",
       "response": {
         "Done": {
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "the locker is counted apart, a good listed twice is summed",
@@ -283,12 +293,14 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f03010a01136d696e6563726166743a6f766572776f726c643c77360201000000000000f03f010000000000000040",
       "response": {
         "Done": {
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "a player took 20 wheat out of the desk and put 2 books in (stock 70 wheat to 50); three days pass",
@@ -332,12 +344,14 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f03020a00136d696e6563726166743a6f766572776f726c643677360300000000000000244001000000000000144002000000000000004000c0b204",
       "response": {
         "Done": {
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "the stock after the stocktakes",
@@ -357,6 +371,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f0402000001",
       "response": {
         "Done": {
           "outputs": [],
@@ -400,7 +415,8 @@
             }
           ]
         }
-      }
+      },
+      "response_postcard": "0000020000040000000000004940000000000000204000000000000014400000000000000000010200136d696e6563726166743a6f766572776f726c643677360001136d696e6563726166743a6f766572776f726c643c773600"
     },
     {
       "note": "saved",
@@ -409,6 +425,7 @@
         "schema": 903914346242816554,
         "command": "Save"
       },
+      "request_postcard": "01b09c81eff99a91d51f02",
       "saved": {
         "format": 1,
         "schema": 903914346242816554,
@@ -424,7 +441,8 @@
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "asked again after the load",
@@ -444,6 +462,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f0402000001",
       "response": {
         "Done": {
           "outputs": [],
@@ -487,7 +506,8 @@
             }
           ]
         }
-      }
+      },
+      "response_postcard": "0000020000040000000000004940000000000000204000000000000014400000000000000000010200136d696e6563726166743a6f766572776f726c643677360001136d696e6563726166743a6f766572776f726c643c773600"
     },
     {
       "note": "it runs on: five more days",
@@ -506,12 +526,14 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f03010080dc0b",
       "response": {
         "Done": {
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "and answers",
@@ -531,6 +553,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f0402000001",
       "response": {
         "Done": {
           "outputs": [],
@@ -574,7 +597,8 @@
             }
           ]
         }
-      }
+      },
+      "response_postcard": "0000020000040000000000004940000000000000204000000000000014400000000000000000010200136d696e6563726166743a6f766572776f726c643677360001136d696e6563726166743a6f766572776f726c643c773600"
     }
   ]
 }

@@ -357,3 +357,16 @@ fn the_host_names_the_same_messages_from_messages() {
     let output: enterprise_core::messages::Output = Output::WagonHome { route: 0, takings: Fixed::ZERO };
     let _: enterprise_core::Output = output;
 }
+
+#[test]
+fn a_requests_own_bytes_are_what_handle_bytes_reads() {
+    // `Request::to_bytes` is how a host in Rust writes requests for another to play (the study host's `--wire-looks`).
+    let mut s = None;
+    let create = Request::new(Command::Create { pack: pack(), seed: 7 });
+    assert_eq!(create.to_bytes(), postcard::to_allocvec(&create).unwrap());
+    let done: Response = postcard::from_bytes(&handle_bytes(&mut s, &create.to_bytes())).unwrap();
+    assert_eq!(done, Response::Done { outputs: vec![], answers: vec![] });
+    let ask = Request::new(Command::Ask { queries: vec![Query::Points] });
+    let answered: Response = postcard::from_bytes(&handle_bytes(&mut s, &ask.to_bytes())).unwrap();
+    assert_eq!(answered, Response::Done { outputs: vec![], answers: vec![Answer::Points { points: vec![] }] });
+}

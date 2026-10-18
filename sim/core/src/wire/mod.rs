@@ -101,6 +101,12 @@ impl Request {
     pub fn new(command: Command) -> Self {
         Request { abi: ABI, schema: SCHEMA, command }
     }
+
+    /// The request as the postcard bytes a host sends ([`handle_bytes`] and the module's `ent_call` read them), for a
+    /// host in Rust that writes requests for another to play (the study host's `--wire-looks`).
+    pub fn to_bytes(&self) -> Vec<u8> {
+        postcard::to_allocvec(self).expect("a request serializes")
+    }
 }
 
 /// What a request asks the core to do.

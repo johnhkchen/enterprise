@@ -15,11 +15,13 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f040101",
       "response": {
         "Refused": {
           "why": "NoSociety"
         }
-      }
+      },
+      "response_postcard": "0203"
     },
     {
       "note": "a save before there is a society",
@@ -28,11 +30,13 @@
         "schema": 903914346242816554,
         "command": "Save"
       },
+      "request_postcard": "01b09c81eff99a91d51f02",
       "response": {
         "Refused": {
           "why": "NoSociety"
         }
-      }
+      },
+      "response_postcard": "0203"
     },
     {
       "note": "a pack with a day of no ticks",
@@ -90,6 +94,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f0000040f6d696e6563726166743a77686561749a9999999999a93f40000000000000000000000000000000000001000f6d696e6563726166743a62726561649a9999999999c93f400000000000001440000000000000184000000e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a9999999999294000010101",
       "response": {
         "Refused": {
           "why": {
@@ -98,7 +103,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "0204116120646179206f66206e6f207469636b73"
     },
     {
       "note": "built against another ABI",
@@ -107,6 +113,7 @@
         "schema": 903914346242816554,
         "command": "Save"
       },
+      "request_postcard": "00b09c81eff99a91d51f02",
       "response": {
         "Refused": {
           "why": {
@@ -116,7 +123,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "02010100"
     },
     {
       "note": "built against another schema",
@@ -125,6 +133,7 @@
         "schema": 18446744073709551615,
         "command": "Save"
       },
+      "request_postcard": "01ffffffffffffffffff0102",
       "response": {
         "Refused": {
           "why": {
@@ -134,7 +143,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "0202b09c81eff99a91d51fffffffffffffffffff01"
     },
     {
       "note": "bytes that are no request",
@@ -147,7 +157,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "0200294869742074686520656e64206f66206275666665722c206578706563746564206d6f72652064617461"
     },
     {
       "note": "no bytes at all",
@@ -160,7 +171,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "0200294869742074686520656e64206f66206275666665722c206578706563746564206d6f72652064617461"
     },
     {
       "note": "a request cut short",
@@ -173,7 +185,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "0200294869742074686520656e64206f66206275666665722c206578706563746564206d6f72652064617461"
     },
     {
       "note": "a society",
@@ -231,12 +244,14 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f00c0bb01040f6d696e6563726166743a77686561749a9999999999a93f40000000000000000000000000000000000001000f6d696e6563726166743a62726561649a9999999999c93f400000000000001440000000000000184000000e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a9999999999294000010107",
       "response": {
         "Done": {
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "a town with some wheat",
@@ -269,12 +284,14 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f03020707417368666f726400136d696e6563726166743a6f766572776f726c643677360100000000000000004440",
       "response": {
         "Done": {
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "its stock",
@@ -293,6 +310,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f04010000",
       "response": {
         "Done": {
           "outputs": [],
@@ -310,7 +328,8 @@
             }
           ]
         }
-      }
+      },
+      "response_postcard": "0000010000040000000000004440000000000000000000000000000000000000000000000000"
     },
     {
       "note": "a save of another format",
@@ -332,6 +351,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f01ffffffff0fb09c81eff99a91d51f056f7468657203010203",
       "response": {
         "Refused": {
           "why": {
@@ -341,7 +361,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "020501ffffffff0f"
     },
     {
       "note": "a save the core can't read",
@@ -363,6 +384,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f0101b09c81eff99a91d51f056f7468657203010203",
       "response": {
         "Refused": {
           "why": {
@@ -371,7 +393,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "0206166e6f7420616e20456e74657270726973652073617665"
     },
     {
       "note": "a refused load keeps the society",
@@ -390,6 +413,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f04010000",
       "response": {
         "Done": {
           "outputs": [],
@@ -407,7 +431,8 @@
             }
           ]
         }
-      }
+      },
+      "response_postcard": "0000010000040000000000004440000000000000000000000000000000000000000000000000"
     },
     {
       "note": "a delivery to a town that isn't there, after one that would be fine",
@@ -435,6 +460,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f030201000000000000000014400109000000000000001440",
       "response": {
         "Refused": {
           "why": {
@@ -444,7 +470,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "020701096e6f20746f776e2039"
     },
     {
       "note": "a pallet brought to a town that isn't there",
@@ -524,6 +551,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f0301010063000000000000f03f",
       "response": {
         "Refused": {
           "why": {
@@ -533,7 +561,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "0207000a6e6f20676f6f64203939"
     },
     {
       "note": "a count below nothing",
@@ -554,6 +583,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f0301060000000000000000f0bf",
       "response": {
         "Refused": {
           "why": {
@@ -563,7 +593,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "0207000d6120636f756e74206f66202d31"
     },
     {
       "note": "money below nothing",
@@ -583,6 +614,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f0301020001",
       "response": {
         "Refused": {
           "why": {
@@ -592,7 +624,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "0207001361207061796d656e74206f66202d302e303031"
     },
     {
       "note": "a stocktake of a point that isn't there",
@@ -618,6 +651,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f03010a01136d696e6563726166743a6f766572776f726c6402770200",
       "response": {
         "Refused": {
           "why": {
@@ -627,7 +661,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "020700436e6f20706f696e742061742053706f74207b2064696d3a20226d696e6563726166743a6f766572776f726c64222c20783a20312c20793a202d36302c207a3a2031207d"
     },
     {
       "note": "a stocktake naming another kind than the point standing there",
@@ -653,6 +688,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f03010a02136d696e6563726166743a6f766572776f726c6436773600",
       "response": {
         "Refused": {
           "why": {
@@ -662,7 +698,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "02070058612053686f702061742053706f74207b2064696d3a20226d696e6563726166743a6f766572776f726c64222c20783a2032372c20793a202d36302c207a3a203237207d2c2077686572652061204465736b207374616e6473"
     },
     {
       "note": "a point where one stands already",
@@ -688,6 +725,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f03010801136d696e6563726166743a6f766572776f726c6436773600",
       "response": {
         "Refused": {
           "why": {
@@ -697,7 +735,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "020700536120706f696e7420616c7265616479207374616e64732061742053706f74207b2064696d3a20226d696e6563726166743a6f766572776f726c64222c20783a2032372c20793a202d36302c207a3a203237207d"
     },
     {
       "note": "a town whose desk isn't a desk",
@@ -723,6 +762,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f030107074e6f776865726501136d696e6563726166743a6f766572776f726c640a770a",
       "response": {
         "Refused": {
           "why": {
@@ -732,7 +772,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "0207001d6120746f776e2773206465736b207468617427732061204c6f636b6572"
     },
     {
       "note": "an advance past a hundred years",
@@ -751,6 +792,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f030100ffffffffffffffffff01",
       "response": {
         "Refused": {
           "why": {
@@ -760,7 +802,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "02070044616e20616476616e636520746f207469636b2031383434363734343037333730393535313631352c206d6f7265207468616e203336353030206461797320706173742030"
     },
     {
       "note": "a count of NaN, as bytes",
@@ -774,7 +817,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "0207000e6120636f756e74206f66204e614e"
     },
     {
       "note": "a price of infinity, as bytes",
@@ -788,7 +832,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "0207000e61207072696365206f6620696e66"
     },
     {
       "note": "a question about a town that isn't there",
@@ -808,6 +853,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f0402010004",
       "response": {
         "Refused": {
           "why": {
@@ -817,7 +863,8 @@
             }
           }
         }
-      }
+      },
+      "response_postcard": "020801096e6f20746f776e2034"
     },
     {
       "note": "nothing of any refused request applied",
@@ -836,6 +883,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f04010000",
       "response": {
         "Done": {
           "outputs": [],
@@ -853,7 +901,8 @@
             }
           ]
         }
-      }
+      },
+      "response_postcard": "0000010000040000000000004440000000000000000000000000000000000000000000000000"
     }
   ]
 }

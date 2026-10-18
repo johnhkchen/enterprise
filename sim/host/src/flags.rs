@@ -28,11 +28,13 @@ pub struct Flags {
     pub stop_when: Vec<(String, String, String, f64)>,
     /// `--dial name=value`, set before the first day.
     pub dials: Vec<(String, f64)>,
+    /// `--wire-looks FILE`: after the run, the world as a look script for a host to play (`binding-spike`).
+    pub wire_looks: Option<String>,
 }
 
 pub const USAGE: &str = "enterprise-sim [DAYS] [--csv OUT] [--seeds N] [--every N] [--inject DAY] [--river | --river-bridge] \
 [--comforts] [--fleet] [--services] [--metal] [--trades] [--master] [--war M,W,P] [--freight] [--ridge] [--realms] [--people-use] \
-[--stop-when TOWN.field<value,...] [--dial name=value ...]\n       enterprise-sim --sweep N [DAYS]";
+[--stop-when TOWN.field<value,...] [--dial name=value ...] [--wire-looks FILE]\n       enterprise-sim --sweep N [DAYS]";
 
 impl Flags {
     pub fn parse(args: &[String]) -> Result<Flags, String> {
@@ -47,6 +49,7 @@ impl Flags {
             let a = args[i].as_str();
             match a {
                 "--csv" => f.csv = Some(value(&mut i, a)?),
+                "--wire-looks" => f.wire_looks = Some(value(&mut i, a)?),
                 "--seeds" => f.seeds = number(&value(&mut i, a)?, a)?.max(1),
                 "--every" => f.every = number(&value(&mut i, a)?, a)?,
                 "--inject" => f.inject = Some(number(&value(&mut i, a)?, a)?),

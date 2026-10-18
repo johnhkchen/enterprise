@@ -58,12 +58,14 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f00c0bb01040f6d696e6563726166743a77686561749a9999999999a93f40000000000000000000000000000000000001000f6d696e6563726166743a62726561649a9999999999c93f400000000000001440000000000000184000000e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a9999999999294000010107",
       "response": {
         "Done": {
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "two towns at their desks",
@@ -101,12 +103,14 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f03020707417368666f726400136d696e6563726166743a6f766572776f726c6436773607064272c3b66c7900136d696e6563726166743a6f766572776f726c64b009774f",
       "response": {
         "Done": {
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "a point of each kind, placed",
@@ -168,12 +172,14 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f03040801136d696e6563726166743a6f766572776f726c643c7736000802136d696e6563726166743a6f766572776f726c64307736000803136d696e6563726166743a6f766572776f726c6436773c000804136d696e6563726166743a6f766572776f726c64b609774f01",
       "response": {
         "Done": {
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "money and goods from outside",
@@ -213,12 +219,14 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f03040200c09a0c0201882701000100000000000050400101030000000000003440",
       "response": {
         "Done": {
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "a buying shop, a selling shop, a shop for the Merchant's own",
@@ -255,12 +263,14 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f03030300000000000000003040000000000000f03f0000000000004940040002000000000000f03f000000000000004000000000000020400501",
       "response": {
         "Done": {
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "every point counted",
@@ -353,12 +363,14 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f03050a00136d696e6563726166743a6f766572776f726c6436773602010000000000004e400200000000000020400a01136d696e6563726166743a6f766572776f726c643c7736010000000000000028400a02136d696e6563726166743a6f766572776f726c64307736000a03136d696e6563726166743a6f766572776f726c6436773c000a04136d696e6563726166743a6f766572776f726c64b609774f01030000000000003440",
       "response": {
         "Done": {
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "a player buys from a town's own shop",
@@ -379,12 +391,14 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f03010601030000000000000040",
       "response": {
         "Done": {
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "a point broken",
@@ -409,12 +423,14 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f03010902136d696e6563726166743a6f766572776f726c64307736",
       "response": {
         "Done": {
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "a player's pallet inputs name pallets that aren't there (a stale view): accepted, nothing happens",
@@ -471,12 +487,14 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f03010080a61d",
       "response": {
         "Done": {
           "outputs": [],
           "answers": []
         }
-      }
+      },
+      "response_postcard": "000000"
     },
     {
       "note": "every question",
@@ -501,6 +519,7 @@
           }
         }
       },
+      "request_postcard": "01b09c81eff99a91d51f04030000000101",
       "response": {
         "Done": {
           "outputs": [],
@@ -585,7 +604,8 @@
             }
           ]
         }
-      }
+      },
+      "response_postcard": "00000300000400000000000028400000000000005f40000000000000204000000000000000000001040000000000000000000000000000000000000000000000000000000000004440010500136d696e6563726166743a6f766572776f726c643677360003136d696e6563726166743a6f766572776f726c6436773c0001136d696e6563726166743a6f766572776f726c643c77360000136d696e6563726166743a6f766572776f726c64b009774f0104136d696e6563726166743a6f766572776f726c64b609774f01"
     }
   ]
 }
