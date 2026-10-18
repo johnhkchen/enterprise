@@ -369,7 +369,7 @@ fn sale_goods(content: &Content, now: u64, town: TownId, hub: TownId, book: &Boo
         }
     }
     let par: Vec<f64> = (0..n).map(|g| shelf(content, &known[town].trades, g)).collect();
-    let aside: Vec<f64> = (0..n).map(|g| crate::cargo::set_aside(book, store, town, g, now, content.day_ticks)).collect();
+    let aside = crate::cargo::set_aside_all(book, store, town, n, now, content.day_ticks);
     for_sale(content, stock, &par, &aside, &want)
 }
 

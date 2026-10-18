@@ -106,10 +106,8 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
         };
         // What the town owes under harvest contracts by the end of the next window, beyond what this plan already
         // carries to the contract's buyer and what's crated for them, isn't for sale (`ForwardSales.setAside`).
-        let mut aside = vec![0.0; n];
-        for g in 0..n {
-            aside[g] = crate::cargo::set_aside(&book, stores.get(route.from).ok(), route.from_id, g, clock.now, content.day_ticks);
-        }
+        let mut aside = crate::cargo::set_aside_all(&book, stores.get(route.from).ok(), route.from_id, n, clock.now,
+            content.day_ticks);
         for &(id, taken) in &plan.contracted {
             let c = &book.contracts[id];
             if c.harvest.is_some() {

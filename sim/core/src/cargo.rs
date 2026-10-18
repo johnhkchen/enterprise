@@ -281,6 +281,18 @@ pub fn set_aside(book: &Book, store: Option<&Shipments>, farm: TownId, crop: Goo
         .sum()
 }
 
+/// [`set_aside`] of every crop below `n` at once, by good: one pass over the open contracts, each good's sum in their
+/// order as `set_aside` adds it (from -0.0, as `Iterator::sum` starts).
+pub fn set_aside_all(book: &Book, store: Option<&Shipments>, farm: TownId, n: usize, now: u64, day: u64) -> Vec<f64> {
+    let mut out = vec![-0.0; n];
+    for c in book.open.iter().map(|&id| &book.contracts[id]).filter(|c| c.seller == farm && c.good < n && c.in_force()) {
+        if let Some(h) = c.harvest {
+            out[c.good] += (c.owed(now + h.window_ticks(day)) - c.shipped - store.map_or(0.0, |s| s.earmarked(c.id))).max(0.0);
+        }
+    }
+    out
+}
+
 /// A shipment received by its consignee (`Crates.receive`): its contract copy filed, its goods into `stock` (stored as
 /// they came: in the core, stock), its crates kept empty to ship with; if it wasn't settled when crated and the
 /// consignee is the buyer of a contract in force, it's delivered under it, at most what's owed by the next
