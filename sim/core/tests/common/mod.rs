@@ -40,6 +40,65 @@ impl Rng {
     }
 }
 
+/// The emeralds each of a world's sellers sells to the mint each day (`random_worlds.rs`, `sim/host --sweep`): a few
+/// towns, a stack or two each.
+pub fn sellers(seed: u64) -> Vec<u64> {
+    let mut r = Rng(seed.wrapping_mul(0xD1B5_4A32_D192_ED03) | 1);
+    (0..r.below(4)).map(|_| (1 + r.below(4)) * 64 + r.below(64)).collect()
+}
+
+/// Runs `f` for each seed across the machine's cores (`std::thread::scope`, no dependency) and returns the results in
+/// the seeds' order. Each thread takes the next seed not yet taken; a seed that panics stops the rest from starting
+/// and fails the call with its seed named (its own message first, as the default hook prints it).
+pub fn each_seed<T: Send>(seeds: impl IntoIterator<Item = u64>, f: impl Fn(u64) -> T + Sync) -> Vec<T> {
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+    let seeds: Vec<u64> = seeds.into_iter().collect();
+    // (`SEED_THREADS=1` runs them one after another, to time a world or read one's prints in order.)
+    let threads = std::env::var("SEED_THREADS").ok().and_then(|v| v.parse().ok())
+        .unwrap_or_else(|| std::thread::available_parallelism().map_or(1, |n| n.get()))
+        .clamp(1, seeds.len().max(1));
+    let (next, failed) = (AtomicUsize::new(0), AtomicBool::new(false));
+    let mut done: Vec<(usize, T)> = Vec::with_capacity(seeds.len());
+    let mut first_failure: Option<(u64, String)> = None;
+    std::thread::scope(|scope| {
+        let workers: Vec<_> = (0..threads)
+            .map(|_| scope.spawn(|| {
+                let mut mine = Vec::new();
+                loop {
+                    let i = next.fetch_add(1, Ordering::Relaxed);
+                    if i >= seeds.len() || failed.load(Ordering::Relaxed) {
+                        return Ok(mine);
+                    }
+                    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(seeds[i]))) {
+                        Ok(t) => mine.push((i, t)),
+                        Err(e) => {
+                            failed.store(true, Ordering::Relaxed);
+                            let msg = e.downcast_ref::<String>().cloned()
+                                .or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()))
+                                .unwrap_or_else(|| "a panic".into());
+                            return Err((i, msg));
+                        }
+                    }
+                }
+            }))
+            .collect();
+        for w in workers {
+            match w.join().expect("a seed's thread") {
+                Ok(mine) => done.extend(mine),
+                // The lowest seed's failure, whichever thread met it first.
+                Err((i, msg)) => if first_failure.as_ref().is_none_or(|(s, _)| seeds[i] < *s) {
+                    first_failure = Some((seeds[i], msg));
+                },
+            }
+        }
+    });
+    if let Some((seed, msg)) = first_failure {
+        panic!("seed {seed} failed: {msg}");
+    }
+    done.sort_by_key(|(i, _)| *i);
+    done.into_iter().map(|(_, t)| t).collect()
+}
+
 /// The list of slices (`slices.rs`) made into calls: each slice's `extend` when a world is made, its `daily` each day
 /// (the host's doings, after the day's run) and its `check` after it (its invariants), each with a stream of its own.
 macro_rules! slices {

@@ -32,7 +32,7 @@ pub struct Flags {
 
 pub const USAGE: &str = "enterprise-sim [DAYS] [--csv OUT] [--seeds N] [--every N] [--inject DAY] [--river | --river-bridge] \
 [--comforts] [--fleet] [--services] [--metal] [--trades] [--master] [--war M,W,P] [--freight] [--ridge] [--realms] [--people-use] \
-[--stop-when TOWN.field<value,...] [--dial name=value ...]";
+[--stop-when TOWN.field<value,...] [--dial name=value ...]\n       enterprise-sim --sweep N [DAYS]";
 
 impl Flags {
     pub fn parse(args: &[String]) -> Result<Flags, String> {

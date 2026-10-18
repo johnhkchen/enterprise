@@ -44,4 +44,5 @@ slices! {
     player_orders,
     stranded_paper,
     crown,
+    random_worlds_sweep,
 }

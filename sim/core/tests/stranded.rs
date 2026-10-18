@@ -610,7 +610,8 @@ mod common;
 #[test]
 fn the_random_worlds_strand_paper_and_the_hubs_buy_it() {
     let (mut deals, mut crates, mut credit, mut bills, mut borrowed, mut coined) = (0, 0, 0.0, 0, 0.0, 0.0);
-    for seed in 0..60 {
+    for (d, c, cr, b, bo, co) in common::each_seed(0..60, |seed| {
+        let (mut deals, mut crates, mut credit, mut bills, mut borrowed, mut coined) = (0, 0, 0.0, 0, 0.0, 0.0);
         let mut s = common::world(seed);
         let start = s.totals();
         for day in 1..=60 {
@@ -628,6 +629,14 @@ fn the_random_worlds_strand_paper_and_the_hubs_buy_it() {
             coined += b.coin;
             borrowed += s.deposits(t);
         }
+        (deals, crates, credit, bills, borrowed, coined)
+    }) {
+        deals += d;
+        crates += c;
+        credit += cr;
+        bills += b;
+        borrowed += bo;
+        coined += co;
     }
     assert!(deals > 10 && bills > 10 && crates > 0 && credit > 0.0 && coined > 0.0,
         "{deals} deals, {bills} bills, {crates} crates, {credit} credit, {coined} coin ({borrowed} borrowed)");

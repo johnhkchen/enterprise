@@ -167,7 +167,7 @@ fn households_are_paid_wages_and_pay_for_comforts() {
 #[test]
 fn each_towns_book_explains_its_treasury_in_random_worlds() {
     use common::{world, DAY};
-    for seed in 0..100 {
+    common::each_seed(0..100, |seed| {
         let mut s = world(seed);
         let mut at_90 = Vec::new();
         for day in 1..=120 {
@@ -186,5 +186,5 @@ fn each_towns_book_explains_its_treasury_in_random_worlds() {
             let moved = s.town(t).money - at_90.get(t).copied().unwrap_or(0.0);
             assert!((booked - moved).abs() < 1e-6 * moved.abs().max(1.0), "seed {seed}, town {t}: {booked} {moved}");
         }
-    }
+    });
 }

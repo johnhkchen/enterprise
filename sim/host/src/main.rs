@@ -8,6 +8,11 @@
 //!     cargo run --release -p enterprise-sim -- 120 --river --services --metal --trades --seeds 5
 //!     cargo run --release -p enterprise-sim -- 365 --people-use   # the settlements' lockers' wants as their people's uses
 //!
+//! With `--sweep N [DAYS]` it runs the random worlds instead (seeds 0 to N-1, DAYS days each, default 120: the core
+//! tests' generator, every slice on by seed, each day's checks) across the cores and prints what they did.
+//!
+//!     cargo run --release -p enterprise-sim -- --sweep 300
+//!
 //! The world is built through the core's host calls; the only thing read off the world directly is each route's state
 //! (`RouteState`: stacks home, items bought, food eaten), which no host call returns.
 
@@ -18,10 +23,15 @@ mod world;
 
 use std::time::Instant;
 
+use enterprise_core::sweep::Sweep;
 use flags::Flags;
 use goods::DAY;
 use report::Tracker;
 use world::Study;
+
+/// The random worlds' generator, as the core's tests build them.
+#[path = "../../core/tests/common/mod.rs"]
+mod common;
 
 /// What one seed's run came to, for the sweep's summary.
 struct Outcome {
@@ -37,6 +47,11 @@ struct Outcome {
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("--sweep") {
+        let n = args.get(1).and_then(|a| a.parse().ok()).unwrap_or(300);
+        let days = args.get(2).and_then(|a| a.parse().ok()).unwrap_or(120);
+        return random_worlds(n, days);
+    }
     let flags = match Flags::parse(&args) {
         Ok(f) => f,
         Err(e) => {
@@ -141,6 +156,48 @@ fn run(flags: &Flags, seed: u64, full: bool) -> Outcome {
         stacks_out: tracker.routes.iter().map(|t| t.stacks_out).sum::<u64>() as f64 / left.max(1) as f64,
         stacks_sold: tracker.routes.iter().map(|t| t.sold_stacks).sum::<f64>() / arrived.max(1) as f64,
         seconds: took.as_secs_f64(),
+    }
+}
+
+/// One random world for `days` days, as the core's `tests/random_worlds.rs` runs it: what it did, or the day it failed
+/// a check.
+fn random_world(seed: u64, days: u64) -> Result<Sweep, String> {
+    let mut s = common::world(seed);
+    let daily = common::sellers(seed);
+    let start = s.totals();
+    let mut sweep = Sweep::new();
+    for day in 1..=days {
+        for &emeralds in &daily {
+            s.sell_emeralds(emeralds);
+        }
+        s.advance(day * DAY);
+        common::slices::daily(&mut s, seed, day);
+        s.conserved(&start).and_then(|_| s.solvent()).and_then(|_| common::slices::check(&s, day))
+            .map_err(|e| format!("seed {seed}, day {day}: {e}"))?;
+        sweep.day(&s);
+    }
+    sweep.end(&s);
+    Ok(sweep)
+}
+
+/// `--sweep N [DAYS]`: N random worlds, and what they did.
+fn random_worlds(n: u64, days: u64) {
+    let started = Instant::now();
+    let mut all = Sweep::new();
+    let mut failed = Vec::new();
+    for r in common::each_seed(0..n, |seed| random_world(seed, days)) {
+        match r {
+            Ok(s) => all.merge(s),
+            Err(e) => failed.push(e),
+        }
+    }
+    print!("{}", all.report());
+    println!("in {:.2?}; {} worlds failed a check", started.elapsed(), failed.len());
+    for e in &failed {
+        println!("  {e}");
+    }
+    if !failed.is_empty() {
+        std::process::exit(1);
     }
 }
 

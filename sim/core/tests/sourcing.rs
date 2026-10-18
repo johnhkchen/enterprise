@@ -457,7 +457,8 @@ fn the_random_worlds_source_and_the_exchange_buys() {
     // The generator exercises it: over sixty worlds, towns sourced goods, some of those came into force, the
     // exchange contracted metal, and the jobs heard of wants nobody supplies.
     let (mut sourced, mut in_force, mut trial, mut advances, mut exchange, mut signals) = (0, 0, 0, 0, 0, 0);
-    for seed in 0..60 {
+    for n in common::each_seed(0..60, |seed| {
+        let (mut sourced, mut in_force, mut trial, mut advances, mut exchange, mut signals) = (0, 0, 0, 0, 0, 0);
         let mut s = common::world(seed);
         for day in 1..=45 {
             s.advance(day * DAY);
@@ -472,6 +473,14 @@ fn the_random_worlds_source_and_the_exchange_buys() {
             advances += (c.advance_share > 0.0) as usize;
             exchange += (Some(c.buyer) == capital) as usize;
         }
+        [sourced, in_force, trial, advances, exchange, signals]
+    }) {
+        sourced += n[0];
+        in_force += n[1];
+        trial += n[2];
+        advances += n[3];
+        exchange += n[4];
+        signals += n[5];
     }
     println!("sourced {sourced}, in force {in_force}, trial {trial}, advances {advances}, exchange {exchange}, signals {signals}");
     assert!(sourced > 100 && in_force > 20 && exchange > 20 && signals > 5, "{sourced} {in_force} {exchange} {signals}");

@@ -15,7 +15,7 @@ fn seen(s: &Society) -> String {
 
 #[test]
 fn load_then_run_equals_never_saved_to_the_bit() {
-    for seed in [0, 3, 7, 42, 77, 99, 123, 256, 1234, 4321] {
+    common::each_seed([0, 3, 7, 42, 77, 99, 123, 256, 1234, 4321], |seed| {
         let mut kept = world(seed);
         kept.advance(50 * DAY);
         let blob = kept.save();
@@ -32,21 +32,21 @@ fn load_then_run_equals_never_saved_to_the_bit() {
         }
         assert_eq!(seen(&loaded), seen(&kept), "seed {seed}: the same world at day 100");
         assert!(loaded.save() == kept.save(), "seed {seed}: the same blob at day 100");
-    }
+    });
 }
 
 #[test]
 fn every_piece_of_state_in_a_world_is_in_saved() {
     // Every slice's state, as the random worlds make and run it: a component or resource not in `slices.rs`'s
     // `saved!` would be lost by a save.
-    for seed in 0..60 {
+    common::each_seed(0..60, |seed| {
         let mut s = world(seed);
         for day in 1..=40 {
             s.advance(day * DAY);
             common::slices::daily(&mut s, seed, day);
         }
         assert_eq!(s.unsaved(), Vec::<String>::new(), "seed {seed}: add these to `saved!` in sim/core/src/slices.rs");
-    }
+    });
 }
 
 // parity: ContractTests.aDialIsSetForTheWorldAndSavedWithIt

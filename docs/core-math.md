@@ -61,4 +61,4 @@ slice needs them; tick them here when they land.
 | | Trick | Where it fits | Status |
 |---|---|---|---|
 | ✅ | **Stock-flow consistency checks:** totals reconcile every step | `check.rs`: goods and money conserved and no town in debt, every day of every test and host run | In use |
-| 🔜 | **Property-based testing:** invariants across thousands of random seeds | Random worlds (towns, trades, routes, contracts) checked for conservation, solvency and no stalls, in seconds | Next, alongside people |
+| ✅ | **Property-based testing:** invariants across thousands of random seeds | `tests/random_worlds.rs`: 300 seeds × 120 days, each slice turned on by seed through its own generator (`tests/common/slices/`), every day checked for conservation, solvency, every slice's invariants and the sweep's (`random_worlds_sweep.rs`: mood above its floor, no wagon out a month, no idle route without a word why, no contract left unjudged, wages paid or credited), and every 30 days saved, loaded and run on to the bit. The seeds run across the cores (`common::each_seed`); `sim/host --sweep N` prints what the worlds did | In use |

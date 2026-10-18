@@ -314,7 +314,7 @@ fn the_banks_are_saved_whole() {
 #[test]
 fn the_random_worlds_bank() {
     let (mut bought, mut lent, mut repaid) = (0, 0, 0);
-    for seed in 0..300 {
+    for (b, l, r) in common::each_seed(0..300, |seed| {
         let mut s = common::world(seed);
         let start = s.totals();
         for day in 1..=120 {
@@ -323,12 +323,18 @@ fn the_random_worlds_bank() {
             s.conserved(&start).and_then(|_| s.solvent()).and_then(|_| common::slices::bank_and_discounts::check(&s, day))
                 .unwrap_or_else(|e| panic!("seed {seed} day {day}: {e}"));
         }
+        let (mut bought, mut lent, mut repaid) = (0, 0, 0);
         for t in 0..s.town_count() {
             let b = s.bank(t);
             bought += b.bills_bought;
             lent += b.loans_made;
             repaid += (b.repaid > 0.0) as u32;
         }
+        (bought, lent, repaid)
+    }) {
+        bought += b;
+        lent += l;
+        repaid += r;
     }
     assert!(bought > 10 && lent > 10 && repaid > 3, "{bought} bills bought, {lent} loans made, {repaid} banks repaid");
 }

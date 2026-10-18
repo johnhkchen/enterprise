@@ -173,7 +173,7 @@ fn a_broken_contract_is_paid_back_by_the_next_wagon_between_the_two() {
 #[test]
 fn the_random_worlds_pay_work_off_and_refund_advances() {
     let (mut paid, mut worked, mut refunded, mut broken) = (0, 0, 0, 0);
-    for seed in 0..300 {
+    for (p, w, r, b) in common::each_seed(0..300, |seed| {
         let mut s = common::world(seed);
         let mut owed = std::collections::BTreeSet::new();
         for day in 1..=120 {
@@ -184,12 +184,19 @@ fn the_random_worlds_pay_work_off_and_refund_advances() {
                 }
             }
         }
+        let (mut paid, mut worked, mut refunded, mut broken) = (0, 0, 0, 0);
         for c in s.contracts() {
             paid += (c.advanced > 0.0) as u32;
             worked += (c.recouped > 0.0 && c.state != State::Broken) as u32;
             broken += (c.advanced > 0.0 && c.state == State::Broken) as u32;
             refunded += (owed.contains(&c.id) && c.refund < 1e-6) as u32;
         }
+        (paid, worked, refunded, broken)
+    }) {
+        paid += p;
+        worked += w;
+        refunded += r;
+        broken += b;
     }
     assert!(paid > 20 && worked > 0 && broken > 5 && refunded > 0, "{paid} paid, {worked} worked off, {broken} broken, {refunded} refunded");
 }

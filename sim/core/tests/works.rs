@@ -506,7 +506,8 @@ mod common;
 #[test]
 fn the_random_worlds_exercise_the_works() {
     let (mut walls, mut bridges, mut halls, mut started_by_towns) = (0, 0, 0, 0);
-    for seed in 0..60 {
+    for (w, b, h, st) in common::each_seed(0..60, |seed| {
+        let (mut walls, mut bridges, mut halls, mut started_by_towns) = (0, 0, 0, 0);
         let mut s = common::world(seed);
         for day in 1..=80 {
             s.advance(day * DAY);
@@ -522,6 +523,12 @@ fn the_random_worlds_exercise_the_works() {
             }
             started_by_towns += s.works(t).projects.iter().filter(|p| p.started.is_some()).count();
         }
+        (walls, bridges, halls, started_by_towns)
+    }) {
+        walls += w;
+        bridges += b;
+        halls += h;
+        started_by_towns += st;
     }
     assert!(walls > 0 && bridges > 0 && halls > 0 && started_by_towns > 20, "{walls} walls, {bridges} bridges, {halls} halls");
 }
