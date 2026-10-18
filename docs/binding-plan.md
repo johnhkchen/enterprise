@@ -85,7 +85,9 @@ serde shape into a registry; tracing needs the types to derive `Deserialize`, wh
 2. Java 21 into `binding/src/generated/java/dev/b28/enterprise/wire/`: a record per struct, a sealed interface with a
    record per variant per enum, and a postcard codec for each (`encode(PostcardOut)`, `decode(PostcardIn)`), plus
    `Wire.SCHEMA` (the hash). The runtime (`PostcardIn`/`PostcardOut`: varints, zigzag, `f64` little-endian, lengths,
-   variant indexes) is one hand-written file of about 200 lines, pinned by the golden fixtures.
+   variant indexes; `Bytes`, `WireException`) is hand-written, about 400 lines in `sim/wire-gen/src/runtime/`, and
+   written beside the generated types, so the generated folder compiles alone; `just wire-javac` runs it on the
+   core's own bytes at their edges, and the golden fixtures pin it after.
 
 Why this pair, against what was checked:
 

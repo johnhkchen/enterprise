@@ -3,7 +3,7 @@
 //! A host sends a [`Request`] and gets a [`Response`]: one call a look, the same natively, in WebAssembly under Java
 //! (Chicory) or from a companion program. The types here hold numbers, strings, ids and vectors of each, and other
 //! wire types, never a state type: the state can change shape every day and a host never knows, and only a change to
-//! these regenerates the Java (`wire-gen`). A test (`tests/wire.rs`) fails on a wire type that holds anything else.
+//! these regenerates the Java (`wire-gen`), which refuses a wire type that holds anything else (it walks the registry).
 //!
 //! - [`Request`]: the ABI and schema it was built against, and a [`Command`]: create a society from a host's
 //!   [`ContentPack`], load or save one, apply a look's happenings ([`Input`]), or ask it questions ([`Query`]).
@@ -13,8 +13,10 @@
 //!   [`handle_bytes`] the same as postcard bytes, which is what the WebAssembly module's `ent_call` runs.
 //!
 //! **Adding to the wire.** A new variant goes at the end of its enum, a new field at the end of its struct: postcard
-//! names a variant by its place and has no field names, so a reordering misreads every message after it. Then
-//! `just wire-gen` (once it lands) regenerates the registry and the Java, and a golden fixture and a scenario show it.
+//! names a variant by its place and has no field names, so a reordering misreads every message after it (`wire-gen`
+//! refuses a moved variant). Then `just wire-gen` regenerates `sim/wire/registry.yaml` and the Java (a doc comment
+//! here is the Java's too: regenerate after editing one), and a golden fixture and a scenario show it. A new enum
+//! gets a line in `sim/wire-gen/src/registry.rs::trace_wire`, so every variant is traced.
 
 use serde::{Deserialize, Serialize};
 
@@ -45,9 +47,22 @@ pub type RouteId = usize;
 pub const ABI: u32 = 1;
 
 /// The wire's schema: a request built against another is refused ([`Refusal::Schema`]), so a jar built from two
-/// commits fails at its first call rather than misreading. Bumped by hand at every change to a wire type until
-/// `wire-gen` lands; then it's the FNV-64 of the committed `sim/wire/registry.yaml`, computed at compile time.
-pub const SCHEMA: u64 = 1;
+/// commits fails at its first call rather than misreading. The FNV-1a 64 of the committed `sim/wire/registry.yaml`
+/// (what `wire-gen` traces from these types), computed when the core compiles: the generated Java's `Wire.SCHEMA` is
+/// the same number, and `just wire-check` fails while the registry isn't what these types make.
+pub const SCHEMA: u64 = fnv1a(include_bytes!("../../../wire/registry.yaml"));
+
+/// FNV-1a, 64 bits, at compile time.
+const fn fnv1a(bytes: &[u8]) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut i = 0;
+    while i < bytes.len() {
+        h ^= bytes[i] as u64;
+        h = h.wrapping_mul(0x0100_0000_01b3);
+        i += 1;
+    }
+    h
+}
 
 /// The core that wrote a save: the build's revision when it's given one (`ENTERPRISE_CORE_REV` at compile time),
 /// otherwise the crate's version.

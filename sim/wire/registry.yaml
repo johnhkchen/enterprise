@@ -1,0 +1,283 @@
+# The wire's schema: every type that crosses between the core and a host, traced from sim/core/src/wire by
+# sim/wire-gen. Written by `just wire-gen`: don't edit. Its FNV-1a 64 is the schema hash (wire::SCHEMA, Wire.SCHEMA).
+# An enum's variants are named by their place: new ones go at the end.
+Answer:
+  ENUM:
+    0:
+      Stock:
+        STRUCT:
+          - town: U64
+          - stock:
+              SEQ: F64
+    1:
+      Points:
+        STRUCT:
+          - points:
+              SEQ:
+                TYPENAME: TownPoint
+Command:
+  ENUM:
+    0:
+      Create:
+        STRUCT:
+          - pack:
+              TYPENAME: ContentPack
+          - seed: U64
+    1:
+      Load:
+        STRUCT:
+          - save:
+              TYPENAME: SaveFile
+    2:
+      Save: UNIT
+    3:
+      Apply:
+        STRUCT:
+          - inputs:
+              SEQ:
+                TYPENAME: Input
+    4:
+      Ask:
+        STRUCT:
+          - queries:
+              SEQ:
+                TYPENAME: Query
+ContentPack:
+  STRUCT:
+    - day_ticks: U64
+    - goods:
+        SEQ:
+          TYPENAME: PackGood
+Count:
+  STRUCT:
+    - good: U64
+    - count: F64
+GoodFlag:
+  ENUM:
+    0:
+      Crop: UNIT
+    1:
+      Meat: UNIT
+Input:
+  ENUM:
+    0:
+      Advance:
+        STRUCT:
+          - to: U64
+    1:
+      Deliver:
+        STRUCT:
+          - town: U64
+          - good: U64
+          - count: F64
+    2:
+      Pay:
+        STRUCT:
+          - town: U64
+          - money: I64
+    3:
+      Order:
+        STRUCT:
+          - town: U64
+          - good: U64
+          - lot: F64
+          - price: F64
+          - purse: F64
+    4:
+      Stall:
+        STRUCT:
+          - town: U64
+          - good: U64
+          - lot: F64
+          - price: F64
+          - stock: F64
+    5:
+      OwnShop:
+        STRUCT:
+          - town: U64
+    6:
+      Buy:
+        STRUCT:
+          - town: U64
+          - good: U64
+          - count: F64
+    7:
+      AddTown:
+        STRUCT:
+          - name: STR
+          - desk:
+              TYPENAME: Point
+    8:
+      AddPoint:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+          - town: U64
+    9:
+      RemovePoint:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+    10:
+      Stocktake:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+          - counts:
+              SEQ:
+                TYPENAME: Count
+Output:
+  ENUM:
+    0:
+      WagonLeft:
+        STRUCT:
+          - route: U64
+          - stacks: U32
+          - worth: F64
+    1:
+      WagonSold:
+        STRUCT:
+          - route: U64
+          - sold: F64
+          - takings: I64
+    2:
+      WagonHome:
+        STRUCT:
+          - route: U64
+          - takings: I64
+    3:
+      OrderFilled:
+        STRUCT:
+          - town: U64
+          - order: U64
+          - good: U64
+          - lots: U32
+          - count: F64
+          - spurs: F64
+    4:
+      Signal:
+        STRUCT:
+          - town: U64
+          - good: U64
+          - count: F64
+          - spurs_each: F64
+PackGood:
+  STRUCT:
+    - name: STR
+    - worth: F64
+    - stack: U32
+    - food: F64
+    - saturation: F64
+    - comfort:
+        OPTION: STR
+    - flags:
+        SEQ:
+          TYPENAME: GoodFlag
+Point:
+  STRUCT:
+    - kind:
+        TYPENAME: PointKind
+    - dim: STR
+    - x: I32
+    - y: I32
+    - z: I32
+PointKind:
+  ENUM:
+    0:
+      Desk: UNIT
+    1:
+      Locker: UNIT
+    2:
+      Shop: UNIT
+    3:
+      Banker: UNIT
+    4:
+      Depot: UNIT
+Query:
+  ENUM:
+    0:
+      Stock:
+        STRUCT:
+          - town: U64
+    1:
+      Points: UNIT
+Refusal:
+  ENUM:
+    0:
+      Unreadable:
+        STRUCT:
+          - why: STR
+    1:
+      Abi:
+        STRUCT:
+          - core: U32
+          - request: U32
+    2:
+      Schema:
+        STRUCT:
+          - core: U64
+          - request: U64
+    3:
+      NoSociety: UNIT
+    4:
+      Pack:
+        STRUCT:
+          - why: STR
+    5:
+      SaveFormat:
+        STRUCT:
+          - core: U32
+          - save: U32
+    6:
+      Save:
+        STRUCT:
+          - why: STR
+    7:
+      Input:
+        STRUCT:
+          - at: U32
+          - why: STR
+    8:
+      Query:
+        STRUCT:
+          - at: U32
+          - why: STR
+Request:
+  STRUCT:
+    - abi: U32
+    - schema: U64
+    - command:
+        TYPENAME: Command
+Response:
+  ENUM:
+    0:
+      Done:
+        STRUCT:
+          - outputs:
+              SEQ:
+                TYPENAME: Output
+          - answers:
+              SEQ:
+                TYPENAME: Answer
+    1:
+      Saved:
+        STRUCT:
+          - save:
+              TYPENAME: SaveFile
+    2:
+      Refused:
+        STRUCT:
+          - why:
+              TYPENAME: Refusal
+SaveFile:
+  STRUCT:
+    - format: U32
+    - schema: U64
+    - core: STR
+    - blob:
+        SEQ: U8
+TownPoint:
+  STRUCT:
+    - point:
+        TYPENAME: Point
+    - town: U64

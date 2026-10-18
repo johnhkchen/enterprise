@@ -134,6 +134,18 @@ wire-fixtures:
 scenarios-wasm:
     cd sim/core && CARGO_TARGET_WASM32_WASIP1_RUNNER="node $PWD/../wasi-run.mjs" cargo test --release -q -p enterprise-core --target wasm32-wasip1 --test scenarios --test wire_fixtures
 
+# The wire's registry and Java, generated from the core's wire types (sim/core/src/wire): run after changing one. `--renumber` lets an enum's variants move
+wire-gen *args:
+    cd sim && cargo run --release -q -p enterprise-wire-gen -- {{args}}
+
+# Fails while sim/wire/registry.yaml or binding/src/generated aren't what the core's wire types generate
+wire-check:
+    cd sim && cargo run --release -q -p enterprise-wire-gen -- --check
+
+# The generated Java compiled alone (javac --release 21, no Gradle), then its codec run on the core's own bytes
+wire-javac:
+    cd sim && cargo test --release -q -p enterprise-wire-gen --test java -- --ignored --nocapture
+
 # The network study's world in the fast host, no game: `just study 365 --csv /tmp/base.csv --river --people-use`
 study *args:
     cd sim && cargo run --release -q -p enterprise-sim -- {{args}}

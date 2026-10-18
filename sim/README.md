@@ -61,3 +61,23 @@ CARGO_TARGET_WASM32_WASIP1_RUNNER=wasmtime \
 `just core-wasm-replay` runs the Node one. It passes when the WebAssembly build's digest is byte for byte the native
 one's (about 7 s). A failure prints both digests, the curves' and each seed's on lines of their own. Only the replay
 is meant for WebAssembly: the other tests run their seeds on threads, which `wasm32-wasip1` hasn't got.
+
+## The wire and its Java
+
+What crosses between the core and a host is `core/src/wire/` and nothing else (`docs/binding-plan.md` 1.2). The Java
+side of it is generated, never written: `wire-gen/` traces the wire types with serde-reflection into
+`wire/registry.yaml` (committed; its FNV-1a 64 is the schema hash, `wire::SCHEMA` and the Java's `Wire.SCHEMA`) and
+writes a Java 21 record or sealed interface for each type, with its postcard codec, into
+`../binding/src/generated/java/dev/b28/enterprise/wire/`.
+
+```sh
+just wire-gen      # after changing a wire type (or a doc comment on one: the Java carries them)
+just wire-check    # fails while the committed registry or Java isn't what the wire types make (cargo test does too)
+just wire-javac    # the generated Java compiled alone (javac --release 21) and its codec run on the core's own bytes
+```
+
+An enum's variants are named by their place, so they're append-only: `wire-gen` refuses one inserted, moved or taken
+out (`--renumber` to do it anyway). It refuses what postcard and Java can't carry plainly too: `#[serde(flatten)]`,
+untagged enums, maps, tuples, `u128`, `char`, and a type on the wire that `wire/` doesn't define (a state type). A new
+enum gets a line in `wire-gen/src/registry.rs::trace_wire`. Numbers in Java: `u8`/`u16` an `int`, `u32` a `long`, `u64`
+(ticks, ids) a `long` read unsigned, `Vec<u8>` a `Bytes`, `Vec<T>` an immutable `List`, `Option<T>` an `Optional`.
