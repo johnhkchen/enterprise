@@ -199,12 +199,15 @@ default `java`): in core mode the Java rules' tick listeners aren't registered a
 gametest-core` runs the suite in core mode and prints the count passing per test class: **that count is the
 migration's progress.** Java mode stays green until the delete wave, so the game always works.
 
-**The game tests, sorted once** (task `gametest-triage`, by script):
+**The game tests, sorted once** (task `gametest-triage`: `python3 scripts/parity.py --binding`, every test in
+`docs/binding-tests.md`). The sort found about twice the fixtures first guessed: shared helpers in other test files
+build the world (`CaravanTests.network` behind 47 tests, `LabourTests.town` behind 24), so the B4/B5 acceptance work is
+about twice the first estimate:
 
-| Kind | About | Becomes |
+| Kind | Count | Becomes |
 |---|---|---|
-| A world fixture: blocks, villagers, chests, then an outcome in the world | 121 | **The binding's acceptance tests.** Rewritten where they call a Java rule to drive the core through the binding; green in core mode is a concern's gate |
-| A Java rule's API on data | 141 | Retired with the class they pin. Their Rust twin stands (`parity.py` shows it); if a test has none, it moves to the core first |
+| A world fixture: blocks, villagers, chests, then an outcome in the world | 150 | **The binding's acceptance tests.** Rewritten where they call a Java rule to drive the core through the binding; green in core mode is a concern's gate |
+| A Java rule's API on data | 66 (27 hand the level to a rule: check it reads no terrain before retiring) | Retired with the class they pin. Their Rust twin stands (`parity.py` shows it); if a test has none, it moves to the core first |
 | Minecraft's own (`parity-skip.txt`) | 46 (most of them world fixtures) | The binding's own view tests, kept |
 
 **The concerns, in order** (each a task; "deletes" happens in the delete wave, once its tests are green in core
@@ -441,7 +444,7 @@ daemon and a game-test server each), through `trees.py heavy`; the B1 tasks run 
   the rest. `wire-gen` keeps enums append-only against the committed registry, so old fixtures and logs stay readable.
 - **The generator is ours.** Kept small and pinned by fixtures both sides read; if it costs more than it saves,
   serde-generate's Java with a postcard `Serializer` subclass is the fallback.
-- **Game tests that drive Java rules.** About 141 can't run in core mode as written. Retiring them leans on the Rust
+- **Game tests that drive Java rules.** 66 can't run in core mode as written. Retiring them leans on the Rust
   twins' honesty (`parity:` tags are self-reported, `worktrees.md` pain 5): `gametest-triage` flags the ones with no
   twin, and partials (25) are read against the Java's asserts before their Java test goes.
 - **Two societies in the mod during B4.** The switch doubles what a change can break for a while. Mitigation: B4 lands
@@ -488,7 +491,7 @@ leaking state, and the fix is in the wire, not in more adapters.
 3. **New dependencies:** Chicory (runtime, WASI, build-time compiler) in Gradle, with the experimental community
    Gradle plugin or a `JavaExec` instead; `serde-reflection` in `sim/wire-gen` only (the core gains none). And the
    format: postcard with our own Java emitter, rather than serde-generate's Java on bincode (unmaintained).
-4. **Retire the 141 rule-API game tests with their Java classes,** their Rust twins standing in? The alternative is
+4. **Retire the 66 rule-API game tests with their Java classes,** their Rust twins standing in? The alternative is
    rewriting them to drive the binding, which tests the core twice and the binding little.
 5. **The `java | core` switch for the length of B4,** two societies in the mod for a while, rather than a cut per
    concern that leaves the game half-working between landings.
