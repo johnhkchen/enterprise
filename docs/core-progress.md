@@ -1,13 +1,14 @@
 # Core progress: where the parity work stands
 
 The live to-do list for building the Rust core to parity (the plan is `docs/core-plan.md`; how trees work is
-`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-18, `pallet-types` landed
+`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-18, `pallets-for-crates` landed
 (the pallets' tasks, `docs/pallets.md` section 6, in the table under "Pallets").
 
 ## Now
 
-- **Main:** `826a807`. 657 tests pass (`cd sim && cargo test --release`, the random worlds' 300 seeds across the
-  cores); `just core-wasm-replay` matches native. Game tests: not run at this landing (core only, no Java changed).
+- **Main:** `ffecf17`. 726 tests pass (`cd sim && cargo test --release`, the random worlds' 300 seeds across the
+  cores); `just core-wasm-replay`, `just scenarios-wasm` and `just wire-check` (schema `813059c3c35d6341`) pass.
+  Game tests: not run at this landing (core only, no Java changed).
   Parity: **191 covered, 25 partial, 46 skipped, 0 left of 262** (`just parity`; `docs/parity.md` lists what
   each partial leaves out). `just core-fingerprint`: `8144f9be7947133b` (money in thousandths; `just core-wasm-replay`
   checks the WebAssembly build's 200-day digest against the native one); `cargo run --release -p enterprise-sim --
@@ -29,7 +30,7 @@ In the core only (`docs/decisions.md`, 2026-10-18): no pallet rules in Java; the
 | Order | Task | Model / effort | Waits for | Fingerprint | Landed | Notes |
 |---|---|---|---|---|---|---|
 | 1 | `pallet-types` | sonnet / medium | — | unchanged | `826a807` | `pallet.rs`: the types and the `Pallets` registry (`pack`, the one mover `move_to`, `open`, `seal`, `digest`, `at`), `Load` and `Caps`; `Good.weight` (a stack 1), `.package`, `.handling`; the crate, barrel, bundle, loose and the load as content; five dials; nothing in rules/ reads them, fingerprint unchanged, the replay digest moved for the new saved fields. At landing: the load kind's caps follow the pallet dials (it copied them once, stale after a set dial), `Caps::of` takes its slots from `squad::capacity`, the digest `expect`s its bytes. Left: the barrel (9 stacks, 0.5 emeralds) and bundle (3, 0) values are invented, `packing` confirms them; `slices/pallet_types.rs` checks the registry stays empty, so `pallets-for-crates` replaces it; `by_place` is saved beside each `at` (`pallet-sweep` checks they agree) and is a map on an enum, so `Pallets` never crosses the wire as it is |
-| 2 | `pallets-for-crates` | opus / xhigh | `pallet-types` | unchanged | | |
+| 2 | `pallets-for-crates` | opus / xhigh | `pallet-types` | unchanged | `ffecf17` | Every `Shipment` a pallet, one for one: towns' `At::Town`, wagons' `At::Wagon` with `Wagon.manifest` lines (booking, for_forwarder; no `==` matching), hubs' `At::Custody` (`Hub.custody`); `Plan.pallets` ids; lots for sale open lots (`Wagon.for_sale`); owed/paid/billed as `Payment`; `Bill.pallets`; seals on leaving premises; `check.rs` from the registry; `deliver_pallet`; fingerprint, study and sweep equal to main's (45 seeds' crated goods compared by the audit), replay and stocktake save digests rewritten for the save's shape (FORMAT stays 1). Left, each moving numbers (`docs/decisions.md`): stranded goods by id alone (drop the drawee rule in `stranded::buy`: `04c4c572f6062591`, seeds 223, 248), `Discounts::backed` on pallets, the pupil's work `Paid` not `ByBill`; quirks kept: an emptied Ex Works earmark keeps one crate, a forwarded pallet fetched direct received as owed (charged twice), an earmark sent on through a hub received as billed with no bill; unmeasured edges: pallets now unload before lots (a good on both could sum in another order), two runs between one pair can't both take one planned pallet (`pallet-claims`), `buy_stranded` now puts bought pallets in custody. At landing: the stranded test renamed for what it pins (by id alone isn't), `Wagon.manifest`'s doc says the registry holds the order aboard (hand-overs rearrange it, not the lines), pallets.md's pupil rows fixed |
 | 3 | `pallet-sweep` | sonnet / high | `pallets-for-crates` | unchanged | | |
 | 3 | `pallet-claims` | sonnet / medium | `pallets-for-crates` | may change | | |
 | 3 | `pallet-messages` | sonnet / medium | `pallets-for-crates` | unchanged | | |
