@@ -160,7 +160,11 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
         let per_day = per_day(d, hexes);
         // A bridge whose tolls repay its wages soonest, within `payback_days`, if the town can pay half of them now.
         if toll_review {
-            let ends: Vec<RouteEnds> = routes.iter().filter_map(|r| {
+            // In the routes' order: a load (or a component added mid-run) reorders the query, and the first best
+            // crossing found is the one built.
+            let mut in_seq: Vec<&Route> = routes.iter().collect();
+            in_seq.sort_by_key(|r| r.seq);
+            let ends: Vec<RouteEnds> = in_seq.into_iter().filter_map(|r| {
                 let hex = |id: usize| towns.0.get(id).and_then(|&x| places.get(x).ok()).and_then(|p| p.hex);
                 Some(RouteEnds { ends: [r.from_id, r.to_id], start: hex(r.from_id)?, goal: hex(r.to_id)?,
                     value: takings.expected_value(r.seq) })

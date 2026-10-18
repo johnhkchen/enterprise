@@ -881,7 +881,7 @@ impl Society {
     }
 
     /// The war's tally (`/enterprise war tally`).
-    pub fn tally(&self) -> Tally {
+    pub fn war_tally(&self) -> Tally {
         let content = self.content();
         let army = self.army();
         let sov = self.sovereign();

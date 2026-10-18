@@ -270,7 +270,7 @@ fn at_war_the_towns_the_capitals_wagons_reach_are_levied_and_their_recruits_reac
     assert_eq!(at_front, 3, "three soldiers at the front: {:?}", s.army());
     assert_eq!(s.roster(1).hands.iter().filter(|h| h.away).count(), 3, "away from their town, on its roster");
     assert_eq!(s.contracts().into_iter().find(|c| c.levy.is_some()).unwrap().levy.unwrap().raised, 3);
-    let tally = s.tally();
+    let tally = s.war_tally();
     let town = tally.towns.iter().find(|t| t.town == 1).expect("the town in the tally");
     assert_eq!(town.raised, 3, "the tally counts the soldiers it raised");
     assert_eq!(tally.levies, 1);
@@ -376,7 +376,7 @@ fn the_war_tally_counts_soldiers_kit_and_food() {
     s.deliver(front, bread, 40.0);
     s.enlist(1, 2);
     s.advance(3 * DAY);
-    let tally = s.tally();
+    let tally = s.war_tally();
     let town = tally.towns.iter().find(|t| t.town == 1).unwrap();
     let levied = s.contracts().into_iter().find(|c| c.levy.is_some()).unwrap().levy.unwrap().raised;
     assert_eq!(town.raised, 2 + levied, "the two sent at once, and those its levy raised that reached the front");
