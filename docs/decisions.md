@@ -1152,3 +1152,20 @@ The cotton chain, chocolate, the cold chain and the exchange follow later.
   other routes without those goods that look. `ship` asserts every pallet on a manifest is home's and claimed by its
   route: the old "another wagon took it" skip is gone. In the 300 worlds the rule alone moves almost nothing (trips
   139846 to 139843, broken contracts 12708 to 12719); the random worlds' new claims slice adds its own contracts.
+- **Pallets within their caps, loads within their carrier's (pallet-caps; divergence 1 of `docs/pallets.md`).**
+  Packing splits a shipment at the pallet kind's caps (nine stacks and nine weight: one crate a pallet in the base
+  content), a bill of lading each; a bill of exchange for crated goods names all its pallets, and the forwarding a town
+  prepays is each pallet's (a little more drayage than one big crate group). Every carrier is loaded within its slots,
+  weight and pallets: the plan clips the sale last-in first-out and then the last owed; a wagon is full at `wagon_full`
+  of its slots or its weight; porters are sized by the larger of slots and weight beyond the wagon. Where this departs
+  from the mod: a porter run carries one pallet within its pack's weight, so two contracts owed go by wagon (`porterRun`
+  counts stacks only); `stranded::load` and a hub's buying at a town take a pallet only if it fits (`loadStranded` loads
+  while any room is left, `buyStrandedAtTown` whatever its room), and a hub buys no bill there whose pallets it left for
+  want of room; shopping at the far end buys no more of a good than the room holds (the mod checks room before each
+  good, not within it); the plan counts a good owed apart from the same good for sale (on its own pallets), so it may
+  take a slot more than the mod's merged count. `plan_owed` and the Ex Works collection now limit by room, as the mod
+  does (the core's ports had left it out). A host hands in its pallets as it made them (`deliver_pallet`,
+  `forward_pallet`, `book`, `hand_over` neither split nor refuse one over its kind's caps): the binding must keep a
+  player's pallet within a pallet's worth, or a later task refuses it at the boundary. In the 300 worlds (a third with a
+  good weighing 4 a stack): trips 144084 to 143529, items carried 17.66M to 17.07M (most of it the heavy good's worlds;
+  without it items fall 0.4%), documents 80964 to 84071, broken contracts 12890 to 13060.

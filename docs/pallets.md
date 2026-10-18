@@ -350,7 +350,9 @@ deliberate divergence for `docs/decisions.md`.
 unit", built on the landing date), one line each as the tasks land:
 
 1. A bill of lading covers a pallet of packages, not a crate; a shipment over a pallet's caps is several bills
-   (`pallet-caps`).
+   (`pallet-caps`): landed 2026-10-19, with a porter run of one pallet, stranded loads and a hub's buying at a
+   town by room (a bill only with all its pallets), shopping capped by room, owed and for-sale goods counted apart
+   (`docs/decisions.md`).
 2. A plan claims the pallets it counts; another route's plan that look doesn't count them (`pallet-claims`). Routes
    stuck last time (no money, Merchant, squad or range) plan last, and a stay lets the claims go.
 3. Contracted goods that can't be crated travel loose on their pallet, under its bill (`packing`). The mod's go loose
