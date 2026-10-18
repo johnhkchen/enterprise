@@ -528,4 +528,13 @@ dials! {
     ceiling_carriage: f64 = 1.1,
     /// The front lies this many blocks north of the capital (`Sovereign.FRONT_DISTANCE`).
     front_distance: f64 = 1500.0,
+
+    // pallets (`docs/pallets.md`)
+    /// Slots and weight a pallet holds at most: what one worker moves at a time.
+    pallet_slots: u32 = 9,
+    pallet_weight: f64 = 9.0,
+    /// Weight and pallets a wagon holds; weight a pack (Leatherworker, porter) adds.
+    wagon_weight: f64 = 27.0,
+    wagon_pallets: u32 = 27,
+    pack_weight: f64 = 9.0,
 }

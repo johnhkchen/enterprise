@@ -44,5 +44,6 @@ slices! {
     player_orders,
     stranded_paper,
     crown,
+    pallet_types,
     random_worlds_sweep,
 }

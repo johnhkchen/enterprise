@@ -51,6 +51,7 @@ crate::saved! {
         orders: crate::orders::Orders = crate::orders::Orders::default(),
         posted: crate::orders::Signals = crate::orders::Signals::default(),
         sovereign: crate::crown::Sovereign = crate::crown::Sovereign::default(),
+        pallets: crate::pallet::Pallets = crate::pallet::Pallets::default(),
     }
     town {
         town: Town,

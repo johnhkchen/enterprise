@@ -24,11 +24,24 @@ pub struct Good {
     /// for how hearty it is; and whether it's meat (any cooked meat or stew, `Army.MEATS`: hearty however plain).
     pub saturation: f64,
     pub meat: bool,
+    /// Weight of one (`docs/pallets.md`): a stack weighs 1 unless the content says it's heavy.
+    pub weight: f64,
+    /// How it is packed by default (a package kind, [`crate::pallet::CRATE`]).
+    pub package: crate::pallet::PackageKindId,
+    /// What it needs of handling: plain by default.
+    pub handling: crate::pallet::Handling,
 }
 
 impl Good {
     pub fn new(name: &str, value: f64, stack: u32) -> Self {
-        Good { name: name.to_string(), value, stack, comfort: None, food: 0.0, crop: false, saturation: 0.0, meat: false }
+        Good { name: name.to_string(), value, stack, comfort: None, food: 0.0, crop: false, saturation: 0.0, meat: false,
+            weight: 1.0 / stack.max(1) as f64, package: crate::pallet::CRATE, handling: Default::default() }
+    }
+
+    /// Weighs `weight` a piece.
+    pub fn weight(mut self, weight: f64) -> Self {
+        self.weight = weight;
+        self
     }
 
     /// A comfort of the kind at `kind` in [`Content::comforts`].
@@ -75,6 +88,10 @@ pub struct Content {
     pub conversions: Vec<crate::workshop::Conversion>,
     /// The animals a town keeps (`herds.rs`): the mod's four by default, for the goods the host has.
     pub animals: Vec<crate::herds::Animal>,
+    /// The packing units (`pallet.rs`): loose, the crate, the barrel, the bundle.
+    pub packages: Vec<crate::pallet::PackageKind>,
+    /// The pallet kinds: the base content's one, the load.
+    pub pallet_kinds: Vec<crate::pallet::PalletKind>,
 }
 
 impl Content {
@@ -83,7 +100,10 @@ impl Content {
 
     pub fn new(goods: Vec<Good>, day_ticks: u64) -> Self {
         let mut content = Content { goods, comforts: Self::COMFORTS.iter().map(|k| k.to_string()).collect(), day_ticks,
-            dials: Dials::default(), trades: crate::roster::trades(), conversions: Vec::new(), animals: Vec::new() };
+            dials: Dials::default(), trades: crate::roster::trades(), conversions: Vec::new(), animals: Vec::new(),
+            packages: Vec::new(), pallet_kinds: Vec::new() };
+        content.packages = crate::pallet::base_packages();
+        content.pallet_kinds = crate::pallet::base_pallet_kinds(&content.dials);
         content.conversions = crate::workshop::mod_conversions(&content);
         content.animals = crate::herds::mod_animals(&content);
         // The mod's villager trades for the goods the host has (`lockers.rs`).
