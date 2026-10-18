@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
@@ -115,8 +116,9 @@ public final class CoreHost implements AutoCloseable {
         bus.addListener(CoreHost::onStarted);
         bus.addListener(CoreHost::onSave);
         bus.addListener(CoreHost::onStopped);
-        bus.addListener(StockAdapter::onPlaced);
-        bus.addListener(StockAdapter::onBroken);
+        // Heard last, so a placement or break another listener cancels doesn't reach the core.
+        bus.addListener(EventPriority.LOWEST, StockAdapter::onPlaced);
+        bus.addListener(EventPriority.LOWEST, StockAdapter::onBroken);
     }
 
     private static void onStarted(ServerStartedEvent event) {
@@ -124,6 +126,9 @@ public final class CoreHost implements AutoCloseable {
         long started = System.nanoTime();
         try {
             running = open(server.getWorldPath(LevelResource.ROOT), server.getWorldData().worldGenOptions().seed());
+            // The core brought to the world's time at once, on its own thread: a society new to an old world catches
+            // up before its first desk, not in that desk's first look.
+            running.look(server, server.overworld().getGameTime());
             Enterprise.LOGGER.info("The core is running ({} ms to start)", (System.nanoTime() - started) / 1_000_000);
         } catch (RuntimeException | LinkageError e) {
             // The game runs on without the society the core keeps: the Java rules are what plays (Java mode).

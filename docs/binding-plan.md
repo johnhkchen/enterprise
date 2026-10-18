@@ -31,7 +31,7 @@ says how an upgrade goes and how long it should take.
 Minecraft events ──> adapters (one per concern) ──> Inputs ──┐
                                                              │  ent_call(Request) ─> core.wasm (Chicory, AOT)
 Minecraft views  <── adapters <── Outputs, Answers <─────────┘  <─ Response
-                     the blob <── Save ── saved with the world (one SavedData)
+                     the blob <── Save ── saved with the world (enterprise_core.dat, one file)
 ```
 
 ### 1.1 The ABI: four exports, fixed
@@ -168,7 +168,7 @@ after a migration copies the file it replaces to `enterprise_core.prev.dat`, and
 (read as: "until the next save" is the window in which the old file is the world's file; after it, the copy). The mod's
 `CoreHost` (B2.1) is a thin caller of `SaveStore`: 1.5 calls `enterprise_core.dat` a SavedData (NBT), and `SaveStore`
 writes a plain file of that name, so B2.1 picks one (`SaveStore` on its own path, or its rules around a SavedData's
-byte-array tag), not both in `world/data/`. The migrating load path (`save::upgraded_with`) runs end to end only
+byte-array tag), not both in `world/data/`: B2.1 picked `SaveStore`'s plain file, beside `level.dat`. The migrating load path (`save::upgraded_with`) runs end to end only
 over the template's chain until the first real step.
 
 ### 1.5 The host side, and its cost
@@ -179,8 +179,8 @@ scenario runner): no Minecraft classes, so its tests run in seconds with JUnit, 
 In the mod, `dev.b28.enterprise.binding`:
 
 - `CoreHost`: one per server. Creates the society from the content pack at a new world or loads `enterprise_core.dat`
-  (the one `SavedData` that holds the core: `SaveFile` bytes), keeps the input log since the last save, saves when the
-  world saves.
+  (`SaveStore`'s plain file in the world's folder, beside `level.dat`, holding a `SaveFile`'s bytes; not a
+  `SavedData`), keeps the input log since the last save, saves when the world saves.
 - `CoreClock`: one `ServerTickEvent` listener. At each look's tick (`look_ticks`, 1,200: once a minute) it gathers
   the adapters' happenings, sends `Apply`, and hands each output to its adapter. Nothing runs per tick.
 - `Outcomes`: an exhaustive `switch` over `Output`, one line an adapter. A new variant doesn't compile until it's
@@ -375,7 +375,7 @@ measurements your task asks for, and how long an upgrade through your part would
 |---|---|
 | Goal | The mod depends on `binding`. `CoreHost`, `CoreClock`, `Outcomes`, `enterprise_core.dat`; one adapter, `adapters/StockAdapter` (a desk registered as a town and a point; its chests read at each look into a `Stocktake`); `/enterprise core stock <desk>` answers from the core. The rest of the mod untouched (Java mode) |
 | Files | `core/build.gradle` (the dependency), `core/src/main/java/dev/b28/enterprise/binding/`, `Enterprise.java` (two listeners), `EnterpriseCommands.java` (one subcommand), `test/CoreBindingTests.java` |
-| Tests | `CoreBindingTests.aDesksStocktakeComesBackFromTheCore`, `.theCoreSurvivesASaveAndLoad` (save the `SavedData`, load a fresh host, ask again) |
+| Tests | `CoreBindingTests.aDesksStocktakeComesBackFromTheCore`, `.theCoreSurvivesASaveAndLoad` (save `enterprise_core.dat`, load a fresh host, ask again) |
 | Measure | on the tree's headless server (its own ports, `.tree/env`), the tick time with the core running a look against without; the time a world save takes with the blob |
 | Waits for | `versioning` |
 | Java | **yes**: `just build`, `just gametest`: "All 264 required tests passed" (262 and the two new) |

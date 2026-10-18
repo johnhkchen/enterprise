@@ -1,5 +1,6 @@
 package dev.b28.enterprise.binding.adapters;
 
+import dev.b28.enterprise.Enterprise;
 import dev.b28.enterprise.binding.CoreHost;
 import dev.b28.enterprise.locker.Lockers;
 import dev.b28.enterprise.merchant.Merchant;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -109,7 +111,11 @@ public final class StockAdapter {
             return known;
         }
         Point point = point(at);
-        Response r = host.apply(List.of(new Input.AddTown(name, point), new Input.Stocktake(point, count(level, desk))));
+        // The core brought to now first, so the town is founded (and its first stocktake booked) at this tick, not at
+        // the last look's, nor at tick 0 of a society new to an old world.
+        long now = level.getServer().overworld().getGameTime();
+        Response r = host.apply(List.of(new Input.Advance(now), new Input.AddTown(name, point),
+                new Input.Stocktake(point, count(level, desk))));
         if (r instanceof Response.Refused refused) {
             throw new IllegalStateException("the core wouldn't take a town at " + desk.toShortString() + ": " + refused.why());
         }
@@ -130,37 +136,69 @@ public final class StockAdapter {
         }
     }
 
-    /** A Merchant's desk placed by a player (or anything that places as one): a town in the core, its chests counted. */
+    /**
+     * A Merchant's desk placed by a player (or anything that places as one): a town in the core, its chests counted.
+     * Heard last ({@code EventPriority.LOWEST}, cancelled events not heard), so a placement another listener cancels
+     * founds nothing. The core's failures stay here: logged, never thrown into the placement.
+     */
     public static void onPlaced(BlockEvent.EntityPlaceEvent event) {
         if (event.getLevel() instanceof ServerLevel level && event.getPlacedBlock().is(Merchant.DESK.get())) {
             CoreHost host = CoreHost.of(level.getServer());
             if (host != null && host.pausedWhy() == null) {
-                GlobalPos at = GlobalPos.of(level.dimension(), event.getPos());
-                host.stock().found(level, event.getPos(), Names.of(level.getServer(), at));
+                try {
+                    GlobalPos at = GlobalPos.of(level.dimension(), event.getPos());
+                    host.stock().found(level, event.getPos(), Names.of(level.getServer(), at));
+                } catch (RuntimeException e) {
+                    Enterprise.LOGGER.error("The core didn't take the desk at {}; the world goes on without it",
+                            event.getPos().toShortString(), e);
+                }
             }
         }
     }
 
-    /** A Merchant's desk broken: its point gone from the core, its town and what it held kept. */
+    /**
+     * A Merchant's desk broken: its point gone from the core, its town and what it held kept. Heard last, as
+     * {@link #onPlaced}, so a break another listener cancels keeps the point; failures are logged, not thrown.
+     */
     public static void onBroken(BlockEvent.BreakEvent event) {
         if (event.getLevel() instanceof ServerLevel level && event.getState().is(Merchant.DESK.get())) {
             CoreHost host = CoreHost.of(level.getServer());
             if (host != null && host.pausedWhy() == null) {
-                host.stock().forget(level, event.getPos());
+                try {
+                    host.stock().forget(level, event.getPos());
+                } catch (RuntimeException e) {
+                    Enterprise.LOGGER.error("The core didn't forget the desk at {}", event.getPos().toShortString(), e);
+                }
             }
         }
     }
 
-    /** A look's happenings: a stocktake at every desk the core keeps whose block is loaded and still a desk. */
+    /**
+     * A look's happenings: a stocktake at every desk the core keeps that is still a desk, with it and every block
+     * touching it loaded (a look never loads a chunk to count a chest).
+     */
     public List<Input> happenings(MinecraftServer server) {
         List<Input> inputs = new ArrayList<>();
         for (GlobalPos desk : desks.keySet()) {
             ServerLevel level = server.getLevel(desk.dimension());
-            if (level != null && level.isLoaded(desk.pos()) && level.getBlockState(desk.pos()).is(Merchant.DESK.get())) {
+            if (level != null && loaded(level, desk.pos()) && level.getBlockState(desk.pos()).is(Merchant.DESK.get())) {
                 inputs.add(new Input.Stocktake(point(desk), count(level, desk.pos())));
             }
         }
         return inputs;
+    }
+
+    /** The block at {@code pos} and the six touching it are in loaded chunks. */
+    private static boolean loaded(ServerLevel level, BlockPos pos) {
+        if (!level.isLoaded(pos)) {
+            return false;
+        }
+        for (Direction dir : Direction.values()) {
+            if (!level.isLoaded(pos.relative(dir))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** What the chests touching {@code desk} hold now of each of the core's goods (others aren't counted). */
