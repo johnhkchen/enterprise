@@ -107,14 +107,26 @@ pub fn held_in(content: &Content, stock: &[f64], kind: usize) -> f64 {
         .map(|(i, g)| stock.get(i).copied().unwrap_or(0.0) * g.value).sum()
 }
 
+/// [`held_in`] of every kind at once, by kind: one pass over the goods, each kind's sum in the goods' order as
+/// `held_in` adds it (from -0.0, as `Iterator::sum` starts).
+pub fn held_by_kind(content: &Content, stock: &[f64]) -> Vec<f64> {
+    let mut out = vec![-0.0; content.comforts.len()];
+    for (i, g) in content.goods.iter().enumerate() {
+        if let Some(h) = g.comfort.and_then(|kind| out.get_mut(kind)) {
+            *h += stock.get(i).copied().unwrap_or(0.0) * g.value;
+        }
+    }
+    out
+}
+
 /// What the market will want of each kind of comfort when a wagon leaving now arrives (at `arrival`), in emeralds'
 /// worth (0: none): its `par` less what it held (`stock`, counted at `taken`; none: as it stands, none used) less what
 /// its villagers will have used since (`Caravans.comfortWants`).
 pub fn comfort_wants(content: &Content, par: f64, villagers: f64, stock: &[f64], taken: Option<u64>, arrival: u64) -> Vec<f64> {
     let days = taken.map_or(0.0, |t| arrival.saturating_sub(t) as f64 / content.day_ticks.max(1) as f64);
     let used = villagers * content.dials.ration * days;
-    (0..content.comforts.len()).map(|kind| {
-        let held = (held_in(content, stock, kind) - used).max(0.0);
+    held_by_kind(content, stock).into_iter().map(|held| {
+        let held = (held - used).max(0.0);
         (par - held).max(0.0)
     }).collect()
 }
@@ -253,7 +265,7 @@ impl Knowledge<'_> {
 /// What a town sending its own caravan wants it to bring home: each kind of comfort it holds less of than its par, in
 /// emeralds' worth (0: none; `Commissions.shoppingList`). A town with no people shops for nobody.
 pub fn shopping_list(content: &Content, par: f64, stock: &[f64]) -> Vec<f64> {
-    (0..content.comforts.len()).map(|kind| (par - held_in(content, stock, kind)).max(0.0)).collect()
+    held_by_kind(content, stock).into_iter().map(|held| (par - held).max(0.0)).collect()
 }
 
 /// The comforts to take for what the far end wants (`wants`, emeralds' worth by kind), a little over, the cheapest
@@ -297,7 +309,8 @@ pub fn shop_wants(content: &Content, facts: &Facts, trades: &Trades, money: f64,
     if !road {
         return Vec::new();
     }
-    let shopping = shopping_list(content, facts.par, facts.stock);
+    let held = held_by_kind(content, facts.stock);
+    let shopping: Vec<f64> = held.iter().map(|h| (facts.par - h).max(0.0)).collect(); // (`shopping_list`)
     let mut ranked: Vec<(Listing, f64)> = Vec::new();
     let add = |ranked: &mut Vec<(Listing, f64)>, good: GoodId, each: f64, short: f64| {
         if each <= 0.0 {
@@ -311,7 +324,7 @@ pub fn shop_wants(content: &Content, facts: &Facts, trades: &Trades, money: f64,
         ranked.push((Listing { good, lot, each }, short));
     };
     for (kind, &want) in shopping.iter().enumerate() {
-        if want <= 0.0 || held_in(content, facts.stock, kind) > 0.0 {
+        if want <= 0.0 || held[kind] > 0.0 {
             continue; // it has some: the kind isn't missing
         }
         let Some(good) = (0..content.goods.len()).find(|&g| content.goods[g].comfort == Some(kind)) else { continue };
