@@ -1208,3 +1208,17 @@ The cotton chain, chocolate, the cold chain and the exchange follow later.
   superbills, 1263 consolidations), scribes' fees 7631.2 to 8102.3, trips 143891 to 143839, broken contracts 12943 to
   12884. The 365-day study's books are unchanged (no wagon there carries two lines). The mod keeps no containers of its
   own: it will see a wagon's manifest and a desk's pallets through the wire once `pallet-views` adds the query.
+- **Consignment on pallets (consignment-pallets; divergence 6 of `docs/pallets.md`).** The hub's wagon at a booked
+  town packs the town's goods for sale as pallets made out to the hub: shipper the town, no contract, paid (the goods
+  stay the town's and nobody owes for them). They are crated at the town's cost where it can spare crates beyond its
+  reserve, and go loose on their pallet where it can't. Each pallet has its bill of lading drawn at the town, is sealed
+  as it goes aboard, and is a line on the wagon's manifest (a superbill for two lines or more). At home the hub opens
+  them into its stock, where the forwarder's lots are sold from, as before. The lot is still told at collection, with
+  each stack's fare. The mod's forwarder took the goods loose as a lot, so a consigning town now pays crates and paper on
+  every collection. The crates don't come back: opened at the hub, they go to the hub's empties. In the 300 worlds:
+  documents 90343 to 137907 (bills of lading 84509 to 121741, superbills 5834 to 16166), scribes' fees 8102.3 to
+  12536.3, pallets packed 69141 to 107440, trips 143839 to 144359, broken contracts 12884 to 12898. The 365-day study's
+  books are unchanged: no collection runs there, so it doesn't exercise the rule. Open: a consignment pallet lost on
+  the road (the host's `PackageLost`) still leaves its lot counted whole, and the hub would remit for goods it never
+  got. While the goods rode loose, nothing could be lost. The Java mod gets no pallet code for this: it shows the
+  core's pallets through the binding (`pallet-views`).

@@ -220,9 +220,10 @@ What each slice reads and writes afterwards:
   consolidation for each next stop with two pallets or more. A pallet booked on a run that's gone is booked again, as
   now.
 - **The post** (`post.rs`, `rules/post.rs`). Letters, copies and bills by post are untouched: a bill of lading rides
-  on its pallet and never goes by post (sending title ahead of the goods is step 3's). The forwarder's consignment
-  lots stay open lots now; task `consignment-pallets` packs a town's booked goods as pallets made out to the hub, so
-  a collection run carries a superbill.
+  on its pallet and never goes by post (sending title ahead of the goods is step 3's). A town's booked goods
+  go to the hub as pallets made out to it (`consignment-pallets`: paid, no contract, crated at the town's cost or loose
+  where it can't pay, sealed aboard), so a collection run carries a superbill. The hub opens them into its stock,
+  and the forwarder's lots are sold from there.
 - **The bank discounting a bill** (`bank.rs` `Discounts::backed`, `quote`). A bill with pallets is backed while they
   exist or were received; one whose pallets were lost isn't. A bill without pallets reads its contract, as now.
 - **Stranded paper** (`stranded.rs`, `rules/stranded.rs`). The goods that go with a bill to the hub are the bill's
