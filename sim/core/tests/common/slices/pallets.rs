@@ -13,11 +13,14 @@
 //! - **Places** ([`places`]): `by_place` matches each pallet's `at`, and nothing else; a pallet `At::Wagon(r)` only while
 //!   route `r` has a wagon on the road; `At::Custody(h)` only at a hub, with a custody record; `At::Container(c)` only in
 //!   a consolidation that exists; no pallet at its own consignee unopened.
-//! - **Seals** ([`seals`]): a pallet on a carrier or in custody is sealed, and a sealed pallet's digest is its seal's.
+//! - **Seals** ([`seals`]): a pallet on a carrier, in a consolidation or in custody is sealed, and a sealed pallet's digest
+//!   is its seal's.
 //! - **Caps** ([`wagon_caps`], [`pallet_caps`]): every wagon's load (loose cargo, pallets) within its carrier's slots,
 //!   weight and pallets; every pallet within its kind's slots and weight (switched on by [`CAPS_BIND`] since `pallet-caps`).
-//! - **Manifests** ([`manifests`]): a wagon's open manifest lines are exactly the pallets aboard, once each; a
-//!   consolidation's lines are exactly its pallets, and share one next stop.
+//! - **Manifests** ([`manifests`]): a wagon's open manifest lines are exactly the pallets and consolidations aboard, once
+//!   each; a consolidation's lines are exactly its pallets, two or more on freight tickets, and share one next stop, the one
+//!   its line on the wagon says; every consolidation is aboard one wagon on the road (since `superbills`).
+//! - **Superbills** ([`superbills`]): every consolidation in the registry had its superbill drawn at its issuer's desk.
 //! - **Goods conserved:** `check.rs` counts the pallets once, from the registry; the harness runs `conserved` each day.
 //!
 //! Later tasks add a line each where marked `// later:` below (claims, superbills, losses).
@@ -50,6 +53,8 @@ pub struct WagonView {
 /// The registry and what it is checked against: plain data, so a test can build one by hand or break a world's.
 #[derive(Clone, Debug)]
 pub struct View<'a> {
+    /// Superbills each town has drawn, all told (`Paperwork.by_kind`).
+    pub superbills: BTreeMap<usize, u64>,
     pub content: &'a Content,
     pub pallets: &'a Pallets,
     pub towns: usize,
@@ -86,6 +91,8 @@ impl<'a> View<'a> {
             lots.insert(route, open.into_iter().map(|l| l.packages).collect());
         }
         View {
+            superbills: (0..s.town_count())
+                .map(|t| (t, s.paperwork(t).by_kind.get(enterprise_core::cargo::SUPERBILL).copied().unwrap_or(0))).collect(),
             content,
             pallets: s.pallets(),
             towns: s.town_count(),
@@ -232,7 +239,7 @@ pub fn places(v: &View) -> Result<(), String> {
 /// Sealed pallets unchanged between premises: on a carrier or in custody, sealed, and the digest the seal's.
 pub fn seals(v: &View) -> Result<(), String> {
     for p in v.pallets.pallets.values() {
-        if matches!(p.at, At::Wagon(_) | At::Custody(_)) && p.seal.is_none() {
+        if matches!(p.at, At::Wagon(_) | At::Custody(_) | At::Container(_)) && p.seal.is_none() {
             return Err(format!("pallet {} is at {:?} and isn't sealed", p.id, p.at));
         }
         if !p.intact() {
@@ -264,7 +271,7 @@ fn load_of<'a>(v: &View, route: usize, w: &WagonView, aboard: impl IntoIterator<
 /// far end bought past the slots, and a porter run took several pallets.
 pub fn wagon_caps(v: &View) -> Result<(), String> {
     for (route, w) in &v.wagons {
-        let load = load_of(v, *route, w, v.pallets.at_place(At::Wagon(*route)));
+        let load = load_of(v, *route, w, v.pallets.aboard(*route, &w.manifest));
         if !w.caps.holds(&load) {
             return Err(format!("route {route}'s wagon carries {load:?}, over its carrier's {:?}", w.caps));
         }
@@ -286,11 +293,10 @@ pub fn pallet_caps(v: &View) -> Result<(), String> {
     Ok(())
 }
 
-/// A manifest is the load: a wagon's open lines are exactly the pallets aboard (once each); a consolidation's lines are its
-/// pallets, sharing one next stop.
+/// A manifest is the load: a wagon's open lines are exactly the pallets and consolidations aboard (once each); a
+/// consolidation's lines are its pallets, two or more on freight tickets, sharing one next stop, the one its line on the wagon
+/// says; and every consolidation is aboard one wagon (`superbills`: made up as a run loads, dissolved at its stop).
 pub fn manifests(v: &View) -> Result<(), String> {
-    // later: superbills (a container aboard a wagon is a line of its manifest too: "exactly the pallets and containers
-    // aboard"; no rule makes containers yet, so a wagon's lines are its pallets only).
     for (route, w) in &v.wagons {
         let mut lines: Vec<PalletId> = w.manifest.lines.iter().map(|l| l.pallet).collect();
         let mut aboard: Vec<PalletId> = v.pallets.at(At::Wagon(*route)).to_vec();
@@ -315,6 +321,48 @@ pub fn manifests(v: &View) -> Result<(), String> {
         if stops.len() > 1 {
             return Err(format!("container {c}'s pallets drop at {stops:?}, not one next stop"));
         }
+        if lines.len() < 2 {
+            return Err(format!("container {c} holds {lines:?}: a consolidation is of two pallets or more"));
+        }
+        if let Some(l) = container.manifest.lines.iter().find(|l| l.booking.is_none() || l.for_forwarder) {
+            return Err(format!("container {c}'s line {l:?} isn't on freight tickets (a hub consolidates what's booked)"));
+        }
+    }
+    // The consolidations aboard each wagon: lines of its manifest, each once and on one wagon, each in the registry and
+    // coming off where its pallets drop.
+    let mut on: BTreeMap<u64, usize> = BTreeMap::new();
+    for (route, w) in &v.wagons {
+        for cl in &w.manifest.containers {
+            if let Some(first) = on.insert(cl.container, *route) {
+                return Err(format!("container {} is on route {first}'s manifest and route {route}'s", cl.container));
+            }
+            let Some(container) = v.pallets.containers.get(&cl.container) else {
+                return Err(format!("route {route}'s manifest lists container {}, which doesn't exist", cl.container));
+            };
+            if let Some(l) = container.manifest.lines.iter().find(|l| l.drop != cl.drop) {
+                return Err(format!("container {} comes off route {route}'s wagon at {:?}, but its pallet {} drops at {:?}",
+                    cl.container, cl.drop, l.pallet, l.drop));
+            }
+        }
+    }
+    if let Some(c) = v.pallets.containers.keys().find(|c| !on.contains_key(c)) {
+        return Err(format!("container {c} is aboard no wagon on the road"));
+    }
+    Ok(())
+}
+
+/// Every consolidation had its superbill drawn at its issuer's: at least as many superbills drawn there, all told, as it
+/// has consolidations still in the registry.
+pub fn superbills(v: &View) -> Result<(), String> {
+    let mut issued: BTreeMap<usize, u64> = BTreeMap::new();
+    for c in v.pallets.containers.values() {
+        *issued.entry(c.issuer).or_insert(0) += 1;
+    }
+    for (town, n) in issued {
+        let drawn = v.superbills.get(&town).copied().unwrap_or(0);
+        if drawn < n {
+            return Err(format!("town {town} issued {n} consolidations still aboard, but drew {drawn} superbills"));
+        }
     }
     Ok(())
 }
@@ -330,9 +378,9 @@ pub fn all(v: &View) -> Result<(), String> {
         pallet_caps(v)?;
     }
     manifests(v)?;
+    superbills(v)?;
     // later: pallet-claims (a claimed pallet is on one route's plan, and that route's town holds it),
-    // later: superbills (a container of two pallets or more has its document), pallet-messages (a lost pallet's bill is
-    // unbacked, and no lost pallet stays in the registry).
+    // later: pallet-messages (a lost pallet's bill is unbacked, and no lost pallet stays in the registry).
     Ok(())
 }
 

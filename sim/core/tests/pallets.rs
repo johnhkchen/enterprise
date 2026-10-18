@@ -168,7 +168,8 @@ fn pallets_survive_a_save_and_load() {
         p.pack(Lading { payment: Payment::ByBill(4), contract: Some(2), ..bill() }, vec![Package::new(BARREL, 1, 7.0)], At::Custody(1), 4);
         p.move_to(a, At::Wagon(1), 9);
         p.seal(a, 0, 9);
-        p.containers.insert(0, Container { issuer: 0, manifest: Manifest { lines: vec![Line { pallet: a, drop: Some(1), ..Default::default() }] } });
+        p.containers.insert(0, Container { issuer: 0, manifest: Manifest { lines: vec![Line { pallet: a, drop: Some(1), ..Default::default() }],
+            ..Default::default() }, ..Default::default() });
         p.next_container = 1;
     }
     let blob = s.save();
@@ -254,7 +255,7 @@ fn leaving_premises_seals_a_pallet_once_and_again_only_if_it_changed() {
 fn a_manifest_finds_takes_and_tells_its_lines() {
     let booking = enterprise_core::freight::Booking::default();
     let mut m = Manifest { lines: vec![Line { pallet: 4, booking: Some(booking), ..Default::default() },
-        Line { pallet: 7, for_forwarder: true, ..Default::default() }] };
+        Line { pallet: 7, for_forwarder: true, ..Default::default() }], ..Default::default() };
     assert!(m.booked(4) && !m.booked(7) && !m.booked(9));
     assert!(m.for_forwarder(7) && !m.for_forwarder(4));
     assert_eq!(m.take(4).map(|l| l.pallet), Some(4));

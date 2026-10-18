@@ -18,6 +18,13 @@
 //! The caps bind since `pallet-caps`: packing puts at most [`pallet_most`] of a good on a pallet (its kind's slots, as
 //! far as its weight allows), and every carrier is loaded within its [`Caps`]: [`Caps::loose`] and [`Caps::palleted`] say
 //! how much of a good fits the room left, loose or as packing would pallet it ([`palleted`]).
+//!
+//! Containers since `superbills` (`docs/pallets.md` "Superbills"): a wagon on a leg is a container whose [`Manifest`] is
+//! its load, a line for each pallet loose aboard and one for each consolidation; a hub's consolidation ([`Container`],
+//! `At::Container`) is the pallets booked on one run for one next stop, two or more, made up as the run loads them
+//! ([`Pallets::consolidate`]), carried as one line, handed out whole at that stop and dissolved there
+//! ([`Pallets::dissolve`]). A manifest of two lines or more is drawn as a document, a superbill (`cargo::SUPERBILL`): the
+//! wagon's at its home as it leaves home and as it leaves the far end, a consolidation's at the hub that made it up.
 
 use std::collections::BTreeMap;
 
@@ -336,10 +343,21 @@ pub struct Line {
     pub for_forwarder: bool,
 }
 
-/// What a container carries, by line.
+/// A consolidation aboard a carrier: one line of its manifest, for the container and where it comes off whole
+/// (`superbills`).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct ContainerLine {
+    pub container: ContainerId,
+    pub drop: Option<TownId>,
+}
+
+/// What a container carries, by line: a line for each pallet aboard loose (`lines`), and one for each consolidation
+/// aboard (`containers`: its pallets are on its own manifest, `At::Container`). A wagon's lines are what's aboard it, as it
+/// loads and drops them; a consolidation holds only pallet lines.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Manifest {
     pub lines: Vec<Line>,
+    pub containers: Vec<ContainerLine>,
 }
 
 impl Manifest {
@@ -363,13 +381,31 @@ impl Manifest {
     pub fn for_forwarder(&self, pallet: PalletId) -> bool {
         self.line(pallet).is_some_and(|l| l.for_forwarder)
     }
+
+    /// Its lines: a pallet's each, a consolidation's one.
+    pub fn len(&self) -> usize {
+        self.lines.len() + self.containers.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Whether it needs a superbill of its own: two lines or more (`docs/pallets.md` "Superbills": one pallet's bill, or
+    /// one consolidation's superbill, is its own manifest).
+    pub fn needs_superbill(&self) -> bool {
+        self.len() >= 2
+    }
 }
 
-/// A wagon on a trip, or a hub's consolidation of pallets for one run.
+/// A wagon on a trip, or a hub's consolidation of pallets for one run. The registry keeps the consolidations (a wagon's
+/// manifest is its own, `Wagon.manifest`): who made it up (`issuer`, where its superbill was drawn) and when, and its
+/// manifest, a line for each pallet in it (`At::Container`), all for one next stop.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Container {
     pub issuer: TownId,
     pub manifest: Manifest,
+    pub issued: u64,
 }
 
 /// Every pallet in the world, where it is, and the one way to move it.
@@ -574,6 +610,35 @@ impl Pallets {
                 p.claimed = None;
             }
         }
+    }
+
+    /// Makes up a consolidation at `issuer` of the pallets on `lines` (two or more, for one next stop): each moves into it
+    /// (`At::Container`), in the lines' order; the container's id. Its superbill is the caller's to draw.
+    pub fn consolidate(&mut self, issuer: TownId, lines: Vec<Line>, now: u64) -> ContainerId {
+        let c = self.next_container;
+        self.next_container += 1;
+        for l in &lines {
+            self.move_to(l.pallet, At::Container(c), now);
+        }
+        self.containers.insert(c, Container { issuer, manifest: Manifest { lines, containers: Vec::new() }, issued: now });
+        c
+    }
+
+    /// A consolidation comes off whole and dissolves: its pallets go to `to`, still sealed, in its manifest's order; their
+    /// lines, for the caller to carry on.
+    pub fn dissolve(&mut self, c: ContainerId, to: At, now: u64) -> Vec<Line> {
+        let Some(container) = self.containers.remove(&c) else { return Vec::new() };
+        for l in &container.manifest.lines {
+            self.move_to(l.pallet, to, now);
+        }
+        container.manifest.lines
+    }
+
+    /// The pallets aboard a route's wagon whose manifest is `manifest`: those loose aboard (`At::Wagon`, in arrival order),
+    /// then those in each consolidation it carries, in its lines' order.
+    pub fn aboard<'a>(&'a self, route: RouteId, manifest: &'a Manifest) -> impl Iterator<Item = &'a Pallet> + 'a {
+        let consolidated = manifest.containers.iter().flat_map(move |c| self.at_place(At::Container(c.container)));
+        self.at_place(At::Wagon(route)).chain(consolidated)
     }
 
     /// The pallets at a place, as they are, in arrival order.

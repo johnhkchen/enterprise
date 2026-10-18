@@ -9,19 +9,21 @@
 //!   load first, and their fares count toward its load's worth), and a carrier whose run home from a hub has a block of
 //!   space sold goes on its day (`liner_days`) ([`plan_freight`], `PlanFreight`).
 //! - **Decide**, as each wagon leaves: its crew and space kept for its freight's price; from a hub, the crates booked on
-//!   its run aboard first; to a hub, the goods its town owes markets the hub serves crated with a bill on each buyer
-//!   ([`pick_forwarded`]); and the stop on its way, if its path crosses a hub's land ([`depart`]).
+//!   its run aboard first (two or more for one next stop as one consolidation, its superbill drawn at the hub:
+//!   `freight::load_run`); to a hub, the goods its town owes markets the hub serves crated with a bill on each buyer
+//!   ([`pick_forwarded`]); the stop on its way, if its path crosses a hub's land; and its manifest written, a superbill
+//!   drawn at home for two lines or more ([`depart`]).
 //! - **Arrive**, before the arrivals are marked: a wagon reaching the hub on its way calls there ([`call_at_stop`]): the
 //!   landing fee, food for the road home where the far end may not feed it, its crates bound for markets the hub serves
-//!   handed over, its bills sold, the crates booked on its run loaded, the block paid, the hub's contract copies for where
-//!   it's bound carried on; then on along the road.
-//! - **Mail**, before the papers: crates aboard on freight tickets made out to the far end received there
-//!   ([`deliver_freight`]).
+//!   handed over, its bills sold, the crates booked on its run loaded (consolidated as from a hub's own run), the block
+//!   paid, the hub's contract copies for where it's bound carried on; then on along the road.
+//! - **Mail**, before the papers: crates aboard on freight tickets made out to the far end received there, the
+//!   consolidations that come off there handed out whole first ([`deliver_freight`]).
 //! - **Freight:** at a hub at the far end, the same dealings as at a stop, the run home's booked crates loaded
 //!   ([`at_hub`]).
-//! - **Turn:** home again, the crates on freight made out home received before the crew and cargo come home
-//!   ([`deliver_home`]); a wagon turned for home sets
-//!   the stop on its way back ([`turn_stop`]).
+//! - **Turn:** home again, the crates on freight made out home received before the crew and cargo come home, the
+//!   consolidations for home handed out whole first ([`deliver_home`]); a wagon turned for home writes its manifest (a
+//!   superbill at its home for two lines or more) and sets the stop on its way back ([`turn_stop`]).
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -345,8 +347,10 @@ pub fn plan_freight(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, t
 }
 
 /// As each wagon leaves (`dispatch`): its crew with the team and its space kept for its freight's price (`lastCrew`,
-/// `lastCapacity`); from a hub, the crates booked on its run aboard first, as far as there's room (`loadBooked`); to a
-/// hub, its town's goods for markets the hub serves crated and billed (`pickForwarded`); then the stop on its way.
+/// `lastCapacity`); from a hub, the crates booked on its run aboard first, as far as there's room (`loadBooked`; two or
+/// more for one next stop as a consolidation: [`load_run`]); to a hub, its town's goods for markets the hub serves crated
+/// and billed (`pickForwarded`); then the stop on its way; and its manifest written, a superbill drawn at home for two
+/// lines or more (`superbills`).
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn depart(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territory: Res<Territory>,
         mut book: ResMut<Book>, mut bills: ResMut<Bills>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
@@ -374,13 +378,12 @@ pub fn depart(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
         state.freight.crew = Some(crate::road::mouths(Some(wagon)) + team as f64);
         state.freight.capacity = Some(slots);
         if net.is_hub(route.from_id) {
-            // The crates booked on this run load first: they're paid for.
-            let (_, mut hub, ..) = towns.get_mut(towns_list.0[route.from_id]).unwrap();
+            // The crates booked on this run load first: they're paid for. Two or more for one next stop go as a
+            // consolidation, its superbill drawn at the hub (`superbills`).
+            let (_, mut hub, _, _, _, _, _, mut paperwork) = towns.get_mut(towns_list.0[route.from_id]).unwrap();
             let room = crate::cargo::wagon_room(&content, &pallets, route.seq, wagon);
-            for (id, booking) in hub.load_booked(&content, &pallets, route.from_id, &RunLeg::of(&route, true), room) {
-                put_aboard(&mut pallets, wagon, route.seq, Line { pallet: id, booking: Some(booking), ..Default::default() },
-                    route.from_id, now);
-            }
+            let load = hub.load_booked(&content, &pallets, route.from_id, &RunLeg::of(&route, true), room);
+            load_run(&mut pallets, wagon, route.seq, route.from_id, &mut paperwork, load, now);
         }
         if net.is_hub(route.to_id) {
             let (_, _, mut stock, mut money, trades, farm, mut store, mut paperwork) =
@@ -401,6 +404,10 @@ pub fn depart(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
         if let Some((hub, i)) = net.stop_on(route.seq) {
             let path = net.run(route.seq).map_or(1, |r| r.path.len().max(2) - 1);
             set_stop(wagon, now, hub, i as f64 / path as f64);
+        }
+        // Its manifest written as it leaves: two lines or more, a superbill drawn at home (`superbills`).
+        if let Ok((.., mut paperwork)) = towns.get_mut(towns_list.0[route.from_id]) {
+            crate::cargo::write_manifest(&mut paperwork, &wagon.manifest, now);
         }
         wagon.freight.reckoned = Some(Leg::Out);
     }
@@ -573,7 +580,7 @@ pub(crate) fn hand_over(content: &Content, net: &Network, id: TownId, now: u64, 
 #[allow(clippy::too_many_arguments)]
 fn deal(at: &AtHub, skip: &[TownId], book: &Book, bills: &mut Bills, ledger: &mut Ledger, cash: &mut CashBook,
         pallets: &mut Pallets, hub: &mut Hub, money: &mut Money, stock: &Stock, trades: &Trades, farm: Option<&Farm>,
-        wagon: &mut Wagon, strand: Option<TownId>) {
+        paperwork: &mut Paperwork, wagon: &mut Wagon, strand: Option<TownId>) {
     let (content, net, id) = (at.content, at.net, at.hub);
     let (now, day) = (at.now, content.day_ticks);
     let seq = at.route.seq;
@@ -620,15 +627,17 @@ fn deal(at: &AtHub, skip: &[TownId], book: &Book, bills: &mut Bills, ledger: &mu
     let mut can = spare(content, money.0, trades, farm);
     hub.forward(content, net, id, pallets, now, at.rate, &mut can);
     let room = crate::cargo::wagon_room(content, pallets, seq, wagon); // slots, weight and pallets (`pallet-caps`)
-    for (p, booking) in hub.load_booked(content, pallets, id, &at.leg, room) {
+    let load = hub.load_booked(content, pallets, id, &at.leg, room);
+    for (_, booking) in &load {
         // The fare the hub owes this carrier for the space, paid as its run loads (the mod's shop takings).
         let fare = booking.fare.min(money.0.at_least_zero());
         if fare > 0.0 {
             post(ledger, cash, Side::treasury(id, &mut money.0), Side::wagon(seq, &mut wagon.purse), fare, fares_reason(),
                 now, day);
         }
-        put_aboard(pallets, wagon, seq, Line { pallet: p, booking: Some(booking), ..Default::default() }, id, now);
     }
+    // Aboard, two or more for one next stop as a consolidation, its superbill drawn here (`superbills`).
+    load_run(pallets, wagon, seq, id, paperwork, load, now);
     // The forwarder's block on the run, paid, full or not.
     let cost = hub.run_block(content, &at.leg).min(money.0.at_least_zero());
     if cost > 0.0 {
@@ -668,7 +677,8 @@ pub fn call_at_stop(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, t
         towns_list: Res<Towns>, mut book: ResMut<Book>, mut bills: ResMut<Bills>, mut ledger: ResMut<Ledger>,
         mut cash: ResMut<CashBook>, mut atlas: ResMut<Atlas>, mut pallets: ResMut<Pallets>,
         mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>,
-        mut towns: Query<(&Town, &mut Hub, &mut Money, &mut Stock, &Trades, Option<&Farm>)>, realms: Query<&crate::realms::Realm>) {
+        mut towns: Query<(&Town, &mut Hub, &mut Money, &mut Stock, &Trades, Option<&Farm>, &mut Paperwork)>,
+        realms: Query<&crate::realms::Realm>) {
     let (now, day) = (clock.now, content.day_ticks);
     let due: Vec<Entity> = routes.iter().filter(|(_, _, s, _)| s.wagon.as_ref().is_some_and(|w| w.arrives <= now
         && w.waiting_since.is_none() && w.freight.stop.is_some_and(|s| !s.called))).map(|(e, ..)| e).collect();
@@ -692,7 +702,7 @@ pub fn call_at_stop(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, t
         let bound = if outbound { route.to_id } else { route.from_id };
         let at = AtHub { content: &content, net: &net, hub: stop.hub, route, leg: RunLeg::calling(&route, outbound, stop.hub),
             now, rate };
-        if let Ok((_, mut hub, mut money, mut stock, trades, farm)) = towns.get_mut(towns_list.0[stop.hub]) {
+        if let Ok((_, mut hub, mut money, mut stock, trades, farm, mut paperwork)) = towns.get_mut(towns_list.0[stop.hub]) {
             land(&at, &territory, &mut ledger, &mut cash, &mut hub, &mut money, wagon);
             // Food: going out, for the road home too where the far end may not feed it; bought here, where it can.
             if food_mode && outbound && wagon.provisions <= 0.0 {
@@ -713,7 +723,7 @@ pub fn call_at_stop(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, t
             let skip = [bound, route.from_id, route.to_id];
             let strand = (realms.get(towns_list.0[route.from_id]).is_err() && route.from_id != stop.hub).then_some(route.from_id);
             deal(&at, &skip, &book, &mut bills, &mut ledger, &mut cash, &mut pallets, &mut hub, &mut money, &stock, trades,
-                farm, wagon, strand);
+                farm, &mut paperwork, wagon, strand);
         }
         // The hub's copies of its contracts with where the wagon's bound ride on.
         let copies: Vec<usize> = book.open.iter().copied().filter(|&id| {
@@ -739,7 +749,8 @@ pub fn at_hub(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
         towns_list: Res<Towns>, book: Res<Book>, mut bills: ResMut<Bills>, mut ledger: ResMut<Ledger>,
         mut cash: ResMut<CashBook>, mut pallets: ResMut<Pallets>,
         mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>,
-        mut towns: Query<(&Town, &mut Hub, &mut Money, &Stock, &Trades, Option<&Farm>)>, realms: Query<&crate::realms::Realm>) {
+        mut towns: Query<(&Town, &mut Hub, &mut Money, &Stock, &Trades, Option<&Farm>, &mut Paperwork)>,
+        realms: Query<&crate::realms::Realm>) {
     let (now, day) = (clock.now, content.day_ticks);
     let hubs: BTreeSet<TownId> = towns.iter().filter(|(_, h, ..)| h.storehouse).map(|(t, ..)| t.id).collect();
     let here: Vec<Entity> = routes.iter().filter(|(_, r, s, _)| s.arrived == Some(Leg::Out) && hubs.contains(&r.to_id))
@@ -755,19 +766,21 @@ pub fn at_hub(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
         let route = *route;
         let Some(wagon) = state.wagon.as_mut() else { continue };
         let at = AtHub { content: &content, net: &net, hub: route.to_id, route, leg: RunLeg::of(&route, false), now, rate };
-        let (_, mut hub, mut money, stock, trades, farm) = towns.get_mut(towns_list.0[route.to_id]).unwrap();
+        let (_, mut hub, mut money, stock, trades, farm, mut paperwork) = towns.get_mut(towns_list.0[route.to_id]).unwrap();
         land(&at, &territory, &mut ledger, &mut cash, &mut hub, &mut money, wagon);
         let strand = realms.get(towns_list.0[route.from_id]).is_err().then_some(route.from_id);
         deal(&at, &[route.from_id], &book, &mut bills, &mut ledger, &mut cash, &mut pallets, &mut hub, &mut money, stock,
-            trades, farm, wagon, strand);
+            trades, farm, &mut paperwork, wagon, strand);
     }
 }
 
 /// The pallets aboard on freight tickets made out to `town`, taken off the wagon and received there ([`receive`]), in the
-/// order they loaded.
+/// order they loaded: by manifest line, the consolidations that come off here handed out whole first, dissolved onto the
+/// wagon's floor behind the rest (`superbills`).
 #[allow(clippy::too_many_arguments)]
 fn receive_aboard(content: &Content, book: &mut Book, pallets: &mut Pallets, now: u64, route: RouteId, town: TownId, wagon: &mut Wagon,
         stock: &mut Stock, store: &mut Shipments) {
+    crate::cargo::unconsolidate(pallets, wagon, route, Some(town), now);
     let here: Vec<PalletId> = pallets.at_place(At::Wagon(route))
         .filter(|p| p.consigned_to(town) && wagon.manifest.booked(p.id)).map(|p| p.id).collect();
     for id in here {
@@ -777,9 +790,9 @@ fn receive_aboard(content: &Content, book: &mut Book, pallets: &mut Pallets, now
     }
 }
 
-/// Has the wagon pallets on freight tickets?
+/// Has the wagon pallets on freight tickets (loose, or in a consolidation)?
 fn on_freight(wagon: &Wagon) -> bool {
-    wagon.manifest.lines.iter().any(|l| l.booking.is_some())
+    !wagon.manifest.containers.is_empty() || wagon.manifest.lines.iter().any(|l| l.booking.is_some())
 }
 
 /// At the far end, before anything else: the pallets it carried on freight tickets made out here are received
@@ -814,10 +827,11 @@ pub fn deliver_home(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<B
     }
 }
 
-/// A wagon turned for home this look calls at the hub on its way back too (`setStop` as it turns), the rest of the
-/// way's share of the leg along.
+/// A wagon turned for home this look writes its manifest as it leaves the far end (two lines or more: a superbill drawn at
+/// its home, the carrier's), and calls at the hub on its way back too (`setStop` as it turns), the rest of the way's share
+/// of the leg along.
 #[allow(clippy::type_complexity)]
-pub fn turn_stop(clock: Res<Clock>, content: Res<Content>, towns: Query<(&Town, &Hub)>,
+pub fn turn_stop(clock: Res<Clock>, content: Res<Content>, towns: Query<(&Town, &Hub)>, mut papers: Query<&mut Paperwork>,
         mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>) {
     let turned: Vec<Entity> = routes.iter().filter(|(_, _, s, _)| s.wagon.as_ref()
         .is_some_and(|w| w.leg == Leg::Home && w.freight.reckoned != Some(Leg::Home))).map(|(e, ..)| e).collect();
@@ -832,8 +846,13 @@ pub fn turn_stop(clock: Res<Clock>, content: Res<Content>, towns: Query<(&Town, 
     };
     for e in turned {
         let (_, route, mut state, _) = routes.get_mut(e).unwrap();
-        let seq = route.seq;
+        let (seq, home) = (route.seq, route.from);
         let wagon = state.wagon.as_mut().unwrap();
+        // Its manifest written as it leaves the far end: two lines or more, a superbill drawn at its home, the carrier's
+        // (`superbills`).
+        if let Ok(mut paperwork) = papers.get_mut(home) {
+            crate::cargo::write_manifest(&mut paperwork, &wagon.manifest, clock.now);
+        }
         wagon.freight.stop = None;
         if let Some((hub, i)) = net.as_ref().and_then(|n| n.stop_on(seq)) {
             let path = net.as_ref().and_then(|n| n.run(seq)).map_or(1, |r| r.path.len().max(2) - 1);

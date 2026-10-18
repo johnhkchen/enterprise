@@ -23,7 +23,9 @@
 //! ([`How::CRATED`]). A farm's earmark tops up the open pallet of its key first ([`How::TOP_UP`]). Every bill of lading is a
 //! document drawn up at the shipper's
 //! ([`Paperwork`]): a sheet of paper, an eighth of an ink sac and a thirty-second of a feather from its stock when it's
-//! next touched, or a scribe's fee for what it lacks.
+//! next touched, or a scribe's fee for what it lacks. A wagon leaving with two lines or more on its manifest draws a superbill
+//! too, at its home ([`write_manifest`]; `superbills`), as a hub does for a consolidation it makes up
+//! (`freight::load_run`); a consolidation comes off a wagon whole at its stop ([`unconsolidate`]).
 //!
 //! The rules are in `rules/cargo.rs`: contracted goods load as pallets, the town's own first (`PlanOwed`, then at
 //! departure, sealed as they leave), the rest of what's owed packed on pallets then, none of it left in the wagon's cargo;
@@ -61,6 +63,9 @@ pub const LADING: &str = "bill of lading";
 pub const CONTRACT: &str = "contract";
 pub const EXCHANGE: &str = "bill of exchange";
 pub const LEDGER: &str = "ledger page";
+/// A container's manifest as a document, for two pallets or more (`superbills`): a wagon's as it leaves, a hub's
+/// consolidation's as its run loads it.
+pub const SUPERBILL: &str = "superbill";
 /// The goods paperwork takes, by the names the mod's are (`Items.PAPER`, `INK_SAC`, `FEATHER`).
 pub const PAPER: &str = "paper";
 pub const INK: &str = "ink_sac";
@@ -80,14 +85,14 @@ pub fn loose_stacks(content: &Content, loose: &[f64]) -> u32 {
 /// in it, at least a stack a crate (`Crates.stacks`).
 pub fn stacks(content: &Content, pallets: &Pallets, route: RouteId, wagon: &Wagon) -> u32 {
     loose_stacks(content, &wagon.cargo)
-        + pallets.at_place(At::Wagon(route)).map(|p| p.slots(content)).sum::<u32>()
+        + pallets.aboard(route, &wagon.manifest).map(|p| p.slots(content)).sum::<u32>()
         + wagon.for_sale.iter().map(|l| l.slots(content)).sum::<u32>()
 }
 
 /// What a wagon carries crated of each good, on its pallets and in its lots for sale (with its loose cargo, what's
 /// aboard), each good's counts summed in the order they're aboard.
 pub fn crated_aboard(pallets: &Pallets, route: RouteId, wagon: &Wagon, good: GoodId) -> f64 {
-    pallets.at_place(At::Wagon(route)).filter(|p| p.packages.iter().any(|pk| pk.good == good)).map(|p| p.count_of(good))
+    pallets.aboard(route, &wagon.manifest).filter(|p| p.packages.iter().any(|pk| pk.good == good)).map(|p| p.count_of(good))
         .chain(wagon.for_sale.iter().filter(|l| l.good() == good).map(|l| l.count())).sum()
 }
 
@@ -603,7 +608,7 @@ pub fn wagon_caps(content: &Content, wagon: &Wagon) -> Caps {
 /// What a wagon carries (`pallet-caps`): its loose cargo, its pallets, and its lots for sale (each crate its stacks and
 /// weight); its slots are [`stacks`].
 pub fn wagon_load(content: &Content, pallets: &Pallets, route: RouteId, wagon: &Wagon) -> Load {
-    let mut load = Load::of(content, &wagon.cargo, pallets.at_place(At::Wagon(route)));
+    let mut load = Load::of(content, &wagon.cargo, pallets.aboard(route, &wagon.manifest));
     for pk in wagon.for_sale.iter().flat_map(|l| &l.packages) {
         load.slots += pk.slots(content);
         load.weight += pk.weight(content);
@@ -627,6 +632,36 @@ pub fn put_aboard(pallets: &mut Pallets, wagon: &mut Wagon, route: RouteId, line
     pallets.move_to(line.pallet, At::Wagon(route), now);
     pallets.seal_leaving(line.pallet, by, now);
     wagon.manifest.lines.push(line);
+}
+
+/// A consolidation the hub made up loaded onto a route's wagon at the hub, whole: one line of the wagon's manifest, coming
+/// off at `drop` (its pallets are in it already, sealed: [`Pallets::consolidate`]).
+pub fn put_container_aboard(wagon: &mut Wagon, container: crate::pallet::ContainerId, drop: Option<TownId>) {
+    wagon.manifest.containers.push(crate::pallet::ContainerLine { container, drop });
+}
+
+/// The consolidations aboard a wagon that come off at `town` (or every one, with `None`: a wagon unloading all it has)
+/// handed out whole and dissolved: their pallets onto the wagon's own floor (`At::Wagon`), still sealed, each a line of its
+/// manifest again with its booking, for the call to drop by line (`docs/pallets.md` "Superbills").
+pub fn unconsolidate(pallets: &mut Pallets, wagon: &mut Wagon, route: RouteId, town: Option<TownId>, now: u64) {
+    if wagon.manifest.containers.is_empty() {
+        return;
+    }
+    let (off, on): (Vec<_>, Vec<_>) = std::mem::take(&mut wagon.manifest.containers).into_iter()
+        .partition(|c| town.is_none() || c.drop == town);
+    wagon.manifest.containers = on;
+    for c in off {
+        let lines = pallets.dissolve(c.container, At::Wagon(route), now);
+        wagon.manifest.lines.extend(lines);
+    }
+}
+
+/// A wagon leaving a place with two lines or more on its manifest draws its superbill at its carrier's desk: one
+/// document (`superbills`; one pallet's bill of lading is its own manifest).
+pub fn write_manifest(paperwork: &mut Paperwork, manifest: &Manifest, now: u64) {
+    if manifest.needs_superbill() {
+        paperwork.drawn(1, SUPERBILL, now);
+    }
 }
 
 /// A town's paperwork reckoned when it's touched (`Paperwork.settle`): for the whole documents drawn since, paper, ink
@@ -841,10 +876,12 @@ impl Society {
         self.world.get_mut::<Paperwork>(self.towns[town]).expect("a town").drawn(count, kind, now);
     }
 
-    /// The pallets aboard a route's wagon (in load order), its lots for sale, and the empty crates it carries.
+    /// The pallets aboard a route's wagon (in load order, those in its consolidations after the rest), its lots for sale,
+    /// and the empty crates it carries.
     pub fn wagon_pallets(&self, route: RouteId) -> (Vec<Pallet>, Vec<Lot>, u32) {
         self.world.get::<RouteState>(self.routes[route]).and_then(|s| s.wagon.as_ref())
-            .map_or((Vec::new(), Vec::new(), 0), |w| (self.pallets_at(At::Wagon(route)), w.for_sale.clone(), w.empties))
+            .map_or((Vec::new(), Vec::new(), 0), |w| (self.pallets().aboard(route, &w.manifest).cloned().collect(), w.for_sale.clone(),
+                w.empties))
     }
 
     /// What a route's wagon carries crated of a good: on its pallets and in its lots for sale.
@@ -853,7 +890,7 @@ impl Society {
             .map_or(0.0, |w| crated_aboard(self.pallets(), route, w, good))
     }
 
-    /// A route's wagon's manifest: a line for each pallet aboard.
+    /// A route's wagon's manifest: a line for each pallet aboard, and one for each consolidation.
     pub fn wagon_manifest(&self, route: RouteId) -> Option<Manifest> {
         self.world.get::<RouteState>(self.routes[route]).and_then(|s| s.wagon.as_ref()).map(|w| w.manifest.clone())
     }

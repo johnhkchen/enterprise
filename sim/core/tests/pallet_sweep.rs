@@ -21,6 +21,7 @@ struct Fixture {
     wagons: BTreeMap<usize, WagonView>,
     custody: BTreeMap<usize, BTreeSet<PalletId>>,
     hubs: BTreeSet<usize>,
+    superbills: BTreeMap<usize, u64>,
     /// Pallets: on the town's shelf, aboard the wagon (paid by bill 0), in the hub's custody.
     shelf: PalletId,
     aboard: PalletId,
@@ -38,7 +39,7 @@ impl Fixture {
         let held = pallets.pack(Lading::new(0, 3, 1), crates(0, 30.0), At::Custody(1), 1);
         pallets.seal(aboard, 0, 2);
         pallets.seal(held, 0, 2);
-        let manifest = Manifest { lines: vec![Line { pallet: aboard, ..Default::default() }] };
+        let manifest = Manifest { lines: vec![Line { pallet: aboard, ..Default::default() }], ..Default::default() };
         let caps = Caps::of(&content, [], false);
         let wagons = BTreeMap::from([(0, WagonView { manifest, cargo: vec![0.0, 0.0], caps })]);
         Fixture {
@@ -49,6 +50,7 @@ impl Fixture {
             wagons,
             custody: BTreeMap::from([(1, BTreeSet::from([held]))]),
             hubs: BTreeSet::from([1]),
+            superbills: BTreeMap::new(),
             shelf,
             aboard,
             held,
@@ -57,6 +59,7 @@ impl Fixture {
 
     fn view(&self) -> View<'_> {
         View {
+            superbills: self.superbills.clone(),
             content: &self.content,
             pallets: &self.pallets,
             towns: 4,
@@ -298,13 +301,60 @@ fn a_manifest_that_is_not_the_load_fails_the_manifests() {
     let mut f = Fixture::new();
     let (a, b) = (f.shelf, f.held);
     f.pallets.containers.insert(0, Container { issuer: 1, manifest: Manifest { lines: vec![
-        Line { pallet: a, drop: Some(2), ..Default::default() }, Line { pallet: b, drop: Some(3), ..Default::default() }] } });
+        Line { pallet: a, drop: Some(2), ..Default::default() }, Line { pallet: b, drop: Some(3), ..Default::default() }],
+        ..Default::default() }, ..Default::default() });
     f.pallets.move_to(a, At::Container(0), 3);
     f.pallets.move_to(b, At::Container(0), 3);
     f.custody.get_mut(&1).unwrap().clear();
     fails(sweep::manifests, &f, "not one next stop");
     f.pallets.containers.get_mut(&0).unwrap().manifest.lines.pop();
     fails(sweep::manifests, &f, "are in it");
+}
+
+/// A consolidation aboard the wagon (`superbills`): two booked pallets for one stop, its line on the wagon's manifest, its
+/// superbill drawn at the hub. Taken off the manifest, listed twice, coming off elsewhere than its pallets drop, of one
+/// pallet, of a pallet not on a ticket, or with no superbill drawn, it fails.
+#[test]
+fn a_consolidation_off_the_manifest_or_without_its_superbill_fails() {
+    let consolidated = || {
+        let mut f = Fixture::new();
+        let held = f.held;
+        let other = f.pallets.pack(enterprise_core::cargo::Lading::new(0, 3, 1), vec![Package::new(CRATE, 0, 8.0)], At::Custody(1), 1);
+        f.pallets.seal(other, 0, 2);
+        f.custody.get_mut(&1).unwrap().clear();
+        let booking = Some(enterprise_core::freight::Booking::default());
+        let lines = [held, other].map(|pallet| Line { pallet, drop: Some(3), booking, ..Default::default() }).to_vec();
+        let c = f.pallets.consolidate(1, lines, 3);
+        f.wagons.get_mut(&0).unwrap().manifest.containers.push(ContainerLine { container: c, drop: Some(3) });
+        f.superbills.insert(1, 1);
+        (f, c)
+    };
+    let (f, _) = consolidated();
+    for check in [sweep::places, sweep::seals, sweep::manifests, sweep::superbills] {
+        check(&f.view()).unwrap_or_else(|e| panic!("a consolidation in order fails: {e}"));
+    }
+    let (mut f, _) = consolidated();
+    f.wagons.get_mut(&0).unwrap().manifest.containers.clear();
+    fails(sweep::manifests, &f, "aboard no wagon");
+    let (mut f, c) = consolidated();
+    let line = ContainerLine { container: c, drop: Some(3) };
+    f.wagons.insert(1, f.wagons[&0].clone());
+    f.wagons.get_mut(&1).unwrap().manifest = Manifest { containers: vec![line], ..Default::default() };
+    fails(sweep::manifests, &f, "and route 1's");
+    let (mut f, _) = consolidated();
+    f.wagons.get_mut(&0).unwrap().manifest.containers[0].drop = Some(2);
+    fails(sweep::manifests, &f, "but its pallet");
+    let (mut f, c) = consolidated();
+    f.pallets.containers.get_mut(&c).unwrap().manifest.lines[1].booking = None;
+    fails(sweep::manifests, &f, "isn't on freight tickets");
+    let (mut f, c) = consolidated();
+    let off = f.pallets.containers.get_mut(&c).unwrap().manifest.lines.pop().unwrap();
+    f.pallets.move_to(off.pallet, At::Wagon(0), 4);
+    f.wagons.get_mut(&0).unwrap().manifest.lines.push(off);
+    fails(sweep::manifests, &f, "two pallets or more");
+    let (mut f, _) = consolidated();
+    f.superbills.clear();
+    fails(sweep::superbills, &f, "drew 0 superbills");
 }
 
 #[test]

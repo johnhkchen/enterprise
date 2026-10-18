@@ -207,6 +207,8 @@ pub struct Wagon {
     /// freight and whether it's for the hub's forwarder; and the goods for sale crated aboard, a good to a lot (open lots:
     /// no bill, not sealed). The order aboard is the registry's (`Pallets::at`), which a hub's hand-over rearranges
     /// (`Pallets::arrange`); the lines' own order isn't kept in step and means nothing.
+    /// Since `superbills`, a line too for each consolidation aboard (`Manifest.containers`: its pallets `At::Container`,
+    /// handed out whole at its stop), and drawn as a superbill as the wagon leaves with two lines or more.
     pub manifest: crate::pallet::Manifest,
     pub for_sale: Vec<crate::cargo::Lot>,
 }

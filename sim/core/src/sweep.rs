@@ -97,11 +97,14 @@ pub struct Sweep {
     pub war_days: u64,
     pub soldiers: u32,
     /// The paper at the ends (`cargo.rs`): documents drawn, of them bills of lading, scribes' and clerks' fees in
-    /// emeralds, and pallets packed (`pallet.rs`: the registry's ids handed out).
+    /// emeralds, and pallets packed (`pallet.rs`: the registry's ids handed out); superbills drawn, and the hubs'
+    /// consolidations made up (`superbills`).
     pub documents: u64,
     pub ladings: u64,
     pub scribe_fees: f64,
     pub pallets: u64,
+    pub superbills: u64,
+    pub consolidations: u64,
 }
 
 impl Sweep {
@@ -182,9 +185,11 @@ impl Sweep {
             let p = s.paperwork(t);
             self.documents += p.documents;
             self.ladings += p.by_kind.get(crate::cargo::LADING).copied().unwrap_or(0);
+            self.superbills += p.by_kind.get(crate::cargo::SUPERBILL).copied().unwrap_or(0);
             self.scribe_fees += p.scribe_fees.to_f64();
         }
         self.pallets += s.pallets().next;
+        self.consolidations += s.pallets().next_container;
     }
 
     /// Two sweeps' tallies as one (seeds run apart).
@@ -226,6 +231,8 @@ impl Sweep {
         self.ladings += o.ladings;
         self.scribe_fees += o.scribe_fees;
         self.pallets += o.pallets;
+        self.superbills += o.superbills;
+        self.consolidations += o.consolidations;
     }
 
     /// The tally in words, a line a topic.
@@ -256,8 +263,8 @@ impl Sweep {
         out += "\n";
         out += &format!("on at the end: {} farms, {} banks, {} hubs, {} off-map places, {} soldiers serving; {} \
             world-days at war\n", self.farms, self.banks, self.hubs, self.off_map, self.soldiers, self.war_days);
-        out += &format!("paper: {} documents drawn ({} bills of lading), {:.1} emeralds of scribes' fees, {} pallets packed\n",
-            self.documents, self.ladings, self.scribe_fees, self.pallets);
+        out += &format!("paper: {} documents drawn ({} bills of lading, {} superbills), {:.1} emeralds of scribes' fees, {} pallets packed, {} consolidations\n",
+            self.documents, self.ladings, self.superbills, self.scribe_fees, self.pallets, self.consolidations);
         out
     }
 }

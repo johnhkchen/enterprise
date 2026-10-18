@@ -85,7 +85,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
             for (g, c) in w.cargo.iter().enumerate().take(n) {
                 a[g] += c;
             }
-            for p in pallets.at_place(crate::pallet::At::Wagon(route.seq)).filter(|p| p.consigned_to(route.to_id)) {
+            for p in pallets.aboard(route.seq, &w.manifest).filter(|p| p.consigned_to(route.to_id)) {
                 for (good, count) in p.goods().into_iter().filter(|(g, _)| *g < n) {
                     a[good] += count;
                 }
@@ -507,7 +507,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             provisions: provision.map_or(0.0, |p| p.provisions),
             // Home's pallets it planned, on its manifest: loaded as it leaves (`rules/cargo.rs` `ship`).
             manifest: crate::pallet::Manifest { lines: plan.pallets.iter()
-                .map(|&pallet| crate::pallet::Line { pallet, ..Default::default() }).collect() },
+                .map(|&pallet| crate::pallet::Line { pallet, ..Default::default() }).collect(), ..Default::default() },
             crew,
             porter,
             slots,

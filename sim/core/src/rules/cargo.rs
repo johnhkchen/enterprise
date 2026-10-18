@@ -26,7 +26,7 @@
 //!   cargo to be delivered under the contract (`rules/contracts.rs`) or for sale, the empty crates kept (`Crates.store`, `open`).
 //! - `Sell`: lots for sale opened to sell; a lot bought whole leaves its crate with the buyer, the rest stays crated.
 //! - `Turn`, at home: crates made out home received (`Crates.receive`), lots that didn't sell back on the shelves, the
-//!   empty crates into home's.
+//!   empty crates into home's; a consolidation still aboard comes off whole and its pallets go by line as the rest.
 
 use bevy_ecs::prelude::*;
 
@@ -453,6 +453,9 @@ pub(crate) fn unload(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             continue;
         }
         let wagon = state.wagon.as_mut().unwrap();
+        // A consolidation still aboard (one whose stop wasn't home) comes off whole and dissolves, its pallets dropped by
+        // line as any (`superbills`).
+        cargo::unconsolidate(&mut pallets, wagon, route.seq, None, clock.now);
         let aboard: Vec<PalletId> = pallets.at(At::Wagon(route.seq)).to_vec();
         if aboard.is_empty() && wagon.for_sale.is_empty() && wagon.empties == 0 {
             continue;

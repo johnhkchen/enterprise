@@ -318,15 +318,16 @@ far end a trip; em hm: the purse a wagon brought home; food: points eaten, paid:
     let _ = writeln!(o, "{:>22}: {left} wagons left, {:.2} stacks out a trip, {:.2} stacks sold a trip, {:.2} stacks home a trip ({} slots a wagon)",
         "all routes", out as f64 / left.max(1) as f64, sold / arrived.max(1) as f64, back as f64 / home.max(1) as f64,
         content.dials.wagon_slots);
-    let (mut documents, mut ladings, mut fees) = (0u64, 0u64, 0.0);
+    let (mut documents, mut ladings, mut superbills, mut fees) = (0u64, 0u64, 0u64, 0.0);
     for t in 0..s.town_count() {
         let p = s.paperwork(t);
         documents += p.documents;
         ladings += p.by_kind.get(enterprise_core::cargo::LADING).copied().unwrap_or(0);
+        superbills += p.by_kind.get(enterprise_core::cargo::SUPERBILL).copied().unwrap_or(0);
         fees += p.scribe_fees.to_f64();
     }
-    let _ = writeln!(o, "{:>22}: {documents} documents drawn ({ladings} bills of lading), {fees:.1} emeralds of scribes' fees, {} pallets packed",
-        "paper", s.pallets().next);
+    let _ = writeln!(o, "{:>22}: {documents} documents drawn ({ladings} bills of lading, {superbills} superbills), {fees:.1} emeralds of scribes' fees, {} pallets packed, {} consolidations",
+        "paper", s.pallets().next, s.pallets().next_container);
     let _ = writeln!(o, "\n== Why wagons went or stayed, and goods went or didn't (each Merchant's books, most often first)");
     for (name, t) in &towns {
         let whys = s.whys(*t);

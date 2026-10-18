@@ -16,7 +16,8 @@
 //!   bought already, else on tickets from that run's shop with the hub's money; demand it couldn't book on a carrier's
 //!   run it remembers, and buys blocks of space ahead each day, `block_runs` runs at `block_price` of the shop's, as many
 //!   stacks as it wanted a run ([`Hub::buy_blocks`]), paying for each run's block as it loads, full or not
-//!   ([`Hub::run_block`]). Booked crates load first ([`Hub::load_booked`]). It buys the shippers' bills on markets it runs
+//!   ([`Hub::run_block`]). Booked crates load first ([`Hub::load_booked`]), two or more for one next stop as one
+//!   consolidation the hub makes up, its superbill drawn at the hub ([`load_run`]). It buys the shippers' bills on markets it runs
 //!   to, at its discount desk (`bank.rs` [`crate::bank::Discounts`]).
 //! - **Hubs emerge.** A market on the map becomes a hub on its own when other markets' routes pass within a hex of it,
 //!   at least `hub_routes` pass or end there (or two pass), its Merchant is in, it holds the food to feed callers for
@@ -722,6 +723,44 @@ impl Hub {
         }
         load
     }
+}
+
+/// A run's booked pallets loaded onto its wagon at the hub (`load`: [`Hub::load_booked`]'s, in its order), consolidated
+/// (`superbills`, `docs/pallets.md` "Superbills"): those for one next stop (their booking's leg's end), two or more, made
+/// up as one consolidation the hub issues, its superbill drawn at the hub's desk, loaded whole as one line of the wagon's
+/// manifest that comes off whole at that stop; a pallet alone for its stop a line of its own with its booking. Each sealed
+/// as it leaves the hub's custody (it was sealed as it came, and keeps that seal). Returns the consolidations made.
+#[allow(clippy::too_many_arguments)]
+pub fn load_run(pallets: &mut Pallets, wagon: &mut crate::state::Wagon, route: RouteId, hub: TownId,
+        paperwork: &mut crate::cargo::Paperwork, load: Vec<(PalletId, Booking)>, now: u64) -> Vec<crate::pallet::ContainerId> {
+    use crate::pallet::Line;
+    // By next stop, in the order the first of each loaded.
+    let mut stops: Vec<(TownId, Vec<Line>)> = Vec::new();
+    for (pallet, booking) in load {
+        let to = booking.leg.to();
+        let line = Line { pallet, drop: Some(to), booking: Some(booking), ..Default::default() };
+        match stops.iter_mut().find(|(t, _)| *t == to) {
+            Some((_, lines)) => lines.push(line),
+            None => stops.push((to, vec![line])),
+        }
+    }
+    let mut made = Vec::new();
+    for (to, lines) in stops {
+        if lines.len() < 2 {
+            for line in lines {
+                crate::cargo::put_aboard(pallets, wagon, route, line, hub, now);
+            }
+            continue;
+        }
+        for l in &lines {
+            pallets.seal_leaving(l.pallet, hub, now);
+        }
+        let c = pallets.consolidate(hub, lines, now);
+        paperwork.drawn(1, crate::cargo::SUPERBILL, now);
+        crate::cargo::put_container_aboard(wagon, c, Some(to));
+        made.push(c);
+    }
+    made
 }
 
 /// The hub a wagon calls at on its leg, called there yet or not, and the ticks of road left after it.
