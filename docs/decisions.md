@@ -1127,7 +1127,7 @@ The cotton chain, chocolate, the cold chain and the exchange follow later.
 - **Goods have weight.** A pallet and each carrier have weight caps as well as slots (`docs/pallets.md`). The base
   content keeps 1 a stack, so nothing changes there; the Minecraft content makes ore, ingots, stone and blocks
   heavier, mildly at first, so a wagon of iron carries fewer stacks than a wagon of wool.
-- **The weights** (`content-weights`; `ModPack.WEIGHTS`, mirrored name for name in `sim/host/src/goods.rs`). What a
+- **The weights** (`content-weights`; `ModPack.WEIGHTS`, mirrored by hand in `sim/host/src/goods.rs`). What a
   full stack weighs, in the unit where a plain stack is 1 (a pallet holds 9, a wagon 27): ore and raw metal, coal,
   bricks, ingots, logs and hay blocks 2; stone, cobblestone and sand 3; everything else 1 (wool, crops, paper, food,
   tools and armour, which stack to one and weigh one). Mild on purpose, 2 to 3 times: a wagon of iron ingots carries 13
@@ -1135,7 +1135,11 @@ The cotton chain, chocolate, the cold chain and the exchange follow later.
   data in the content pack the mod sends, not Java rules, and the base (toy) content keeps 1 a stack. Measured: the
   network study (365 days, with `--river --services --metal --trades --freight`) and the 300-seed sweep come out the
   same with and without them, since wagons there leave with about 2 stacks and never near a weight cap; the weights
-  bite only on a full wagon of heavy goods, which is the loads the handling-units work will make.
+  bite only on a full wagon of heavy goods, which is the loads the handling-units work will make. Hay blocks weigh 2
+  against wheat's 1 though a block is nine wheat: baling is what makes fodder worth hauling (a wagon's team eats it).
+  The tables differ where the goods do: the mod's weighs jungle and acacia logs and red sand, which the study doesn't
+  deal in, and stone and brick, which the mod's pack doesn't list yet (nothing it prices or a recipe uses), so in the
+  game they wait for that content. Nothing checks the two tables match: the host can't read the Java.
 - **Pallets in the core only.** The core implements pallets; the mod draws them from it through the binding (crate
   items tagged from the core's pallet messages, a chest asking the core whether a pallet fits), with no pallet rules
   in Java. The mod's old bills-on-crates stay as they are until the binding retires them. Weights are content-pack

@@ -155,9 +155,10 @@ const ITEMS: &[Item] = &[
     plain("saddle", 1.0 / 6.0, 1),
 ];
 
-/// What a full stack weighs where it isn't 1: `ModPack.WEIGHTS` in the mod, name for name (the mod has jungle and acacia
-/// logs and red sand too; the study deals in none of them). Mild: ore, raw metal, coal, bricks, ingots, logs and hay blocks 2 a stack,
-/// stone, cobblestone and sand 3, so a wagon (27 stacks of weight) of iron carries 13 stacks and a wagon of wool 27.
+/// What a full stack weighs where it isn't 1: `ModPack.WEIGHTS` in the mod, kept in step by hand (the mod has jungle and
+/// acacia logs and red sand too, which the study deals in none of; stone and brick are study goods the mod's pack doesn't
+/// list yet). Mild: ore, raw metal, coal, bricks, ingots, logs and hay blocks 2 a stack, stone, cobblestone and sand 3,
+/// so a wagon (27 stacks of weight) of iron carries 13 stacks and a wagon of wool 27.
 pub const WEIGHTS: &[(&str, f64)] = &[
     ("stone", 3.0), ("cobblestone", 3.0), ("sand", 3.0),
     ("raw_iron", 2.0), ("raw_gold", 2.0), ("coal", 2.0), ("brick", 2.0), ("hay_block", 2.0),

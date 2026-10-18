@@ -63,8 +63,10 @@ public final class ModPack {
 
     /**
      * What a full stack of an item weighs, where it isn't 1 (docs/pallets.md: a pallet holds 9 and a wagon 27). Ore,
-     * coal, bricks, ingots, logs and hay blocks are a little heavy (2) and stone and sand heavier (3), mildly at first: a wagon of iron ingots carries
-     * thirteen stacks and one of wool twenty-seven. Tools and armour stack to one and weigh a stack of one each.
+     * coal, bricks, ingots, logs and hay blocks are a little heavy (2) and stone and sand heavier (3), mildly at first:
+     * a wagon of iron ingots carries thirteen stacks and one of wool twenty-seven. Tools and armour stack to one and
+     * weigh a stack of one each. A lookup only: an item weighs here once {@link #of} makes it a good (stone and brick
+     * aren't priced or used by a recipe yet, so they wait for the content that deals in them).
      */
     public static final Map<String, Double> WEIGHTS = Map.ofEntries(
             Map.entry("minecraft:cobblestone", 3.0),
