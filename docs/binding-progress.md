@@ -1,26 +1,47 @@
 # Binding progress: where the Minecraft binding stands
 
 The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md`; how trees work is
-`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-19, `points-and-hands` landed.
+`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-19, `people-adapter` landed.
 
 ## Now
 
-- **Main:** `bf44ab1`. 822 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
-  `just wire-check` passes (schema `9c9206f91a4ed70f`, 30 files); `just binding-test` passes. Game tests: "All 269
-  required tests passed" in Java mode, and `just gametest-core`: 269 of 269 against the baseline of 269. `just
-  core-fingerprint`: `cb4390b51df82271` (moved by `superbills`; `points-and-hands` leaves it as it was).
+- **Main:** `2874c6b`. 834 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
+  `just wire-check` passes (schema `e0b54576b14c0176`, 31 files); `just binding-test` passes (172 JVM tests). Game
+  tests: "All 272 required tests passed" in Java mode, and `just gametest-core`: 272 of 272 against the baseline of 272.
+  `just core-fingerprint`: `5e6b6d51a3b4061e` (moved by `consignment-pallets`; `people-adapter` leaves it as it was).
+- **People** (B4.5, `adapters/PeopleAdapter`, `sim/core/src/census.rs`): the host's census is a town's roster's
+  source. In core mode each look counts every town whose desk and settlement (48 blocks round the bell nearest the
+  desk, no path checks) are loaded and sends `Input::Census { town, beds, residents }`: a villager the core doesn't
+  know joins (a child as a child); one it knows at home takes a profession or a higher level from the world, never
+  `none` and never the desk's Merchant's trade; one away, another town's or with settlers is left as the core has it;
+  one whose hand is gone comes back as `HandGone`; a hand at home no census has seen for 10 days has left
+  (`census::Sightings`, saved). A villager not loaded and last seen where nothing is loaded is sent as the core has it,
+  so it isn't aged out. A hand with no villager gets one spawned by the bell, named by `Input::TagHand` with every
+  look until the roster shows the name taken. Five outputs around an `Advance`: `Born`, `Settled`, `Departed`,
+  `HandGone`, `HandLevel` (profession, level and XP written to the villager). `AddHand` stays beside `Census` (one
+  villager joining on touch, the census the periodic whole): the plan's 1.3 `Census` is answered. `CensusTaker`'s
+  counting half (`beds`, `villagersAround`, `nearestBell`) is shared with the Java census; `/enterprise core census
+  <desk>`; `/enterprise census <bell>` refuses in core mode. Java mode sends no census. Measured in the game-test
+  server: about 0.4 ms of the tick per loaded town per look (0.086 ms counting, 0.29 ms through the core). Divergences
+  from `CensusTaker` in `docs/decisions.md`, "People and the binding". **For John:** the census never takes a
+  villager's lost profession (`none`) or changes the desk's Merchant's trade. **Open:** settlers have no view (`Settled`
+  and `Departed` tested in Rust only: wire-made towns have no hex, so no party leaves in the mod, and a founded town has
+  no desk to spawn at; `land-adapter`); hands going away and coming home with caravans or a war produce no output
+  (`wagon-adapter`); the core's home-building adds beds the next census overwrites until homes are placed, and the
+  free/confined split isn't counted (`land-adapter`); a mode switch would spawn the core's births beside Java
+  `Growth`'s; vanilla-bred babies join as the core's children (two sources of births, as in Java mode); GrowthTests,
+  JobsTests, LabourTests and ExpeditionTests still call the Java rules (`Jobs`, `Labour`, `Households`, `Growth`,
+  `Expeditions` stay until `delete-java-rules`); two parity-partial tags added (GrowthTests.aContentTownWithASpareBedHasAChild,
+  ExpeditionTests.aMerchantSettlesAVillageNobodyTradesWith). The save grew at FORMAT 1: dev worlds'
+  `enterprise_core.dat` are rebuilt.
 - **Trade points and hands** (B4.2, `adapters/PointsAdapter`, `adapters/HandsAdapter`): every hand on a roster has a
   stable `HandId` (`roster::Hands`, saved: given as it joins, kept through a new trade, a caravan, a war, settlers;
   never reused) with the host's name for it (a villager's UUID) beside it, so the mod keeps no ids: both adapters are
   rebuilt from the core (`Query::Points`, `Query::Hands`) after a load. `Locker.hand` and `Lockers.clients` go by id.
   Wire: `Input::AddHand`, `Input::HandLost` (a hand away or gone by the time it applies, after the look's `Advance`, is
   a stale view, ignored), `Query::Hands`/`Answer::Hands` (`lockers` is the Merchant's cap by level). `/enterprise core
-  points`, `/enterprise core hands <desk>`. **For John:** `AddHand` isn't in the plan's 1.3 (`Census { town, beds,
-  hands }`, `HandLost`, `HandTrade`): `people-adapter` decides whether Census replaces it (wire variants are
-  append-only once shipped). **Open (for `people-adapter`):** only the Merchant becomes a hand, when its screen opens
-  in core mode, and that starts the town's roster (the core's town then counts 1 resident while Java's census counts N,
-  and births join as untagged babies with no villager spawned); levels aren't written back to the entity; villagers
-  discarded or despawned aren't sent as lost; each join or loss re-asks every town's hands. In core mode
+  points`, `/enterprise core hands <desk>`. `people-adapter` kept `AddHand` beside `Census` (see People). **Open:**
+  each join or loss re-asks every town's hands. In core mode
   `Merchant.lockersAt` still falls back to Java's `lockerLimit` when the core has no town at the desk or refuses the
   villager (a Java rule deciding in core mode, logged only). Points other than desks have a registry but nothing
   registers them (their adapters). `PointsAdapter.Kind` and `HandsAdapter.Hand` hand-mirror `PointKind`/`HandView`.
@@ -56,9 +77,9 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
   `trees.py`'s `--java` gates (check and land) now run it after the Java suite. **Core mode is a frozen society today**:
   only `StockAdapter` applies anything, and the baseline passes because the tests call the Java rule classes directly,
   so it binds only as B4 tasks move tests onto the core. The mode is per process, not saved with the world: a world run
-  in one mode and then the other advances the Java SavedData and `enterprise_core.dat` apart, unsaid. Open: the whole
-  `CensusTaker` poller is off in core mode, its counting half (villagers, beds, workstations around a bell) included,
-  which `people-adapter` needs as the roster's source; no JVM test covers `Society.parse`.
+  in one mode and then the other advances the Java SavedData and `enterprise_core.dat` apart, unsaid. Open: the
+  `CensusTaker` poller stays off in core mode (its counting half now feeds `PeopleAdapter`); no JVM test covers
+  `Society.parse`.
 - **The mod runs the core** (B2.1, `dev.b28.enterprise.binding`): `CoreHost` (started with the server, saved with the
   overworld, closed at stop; the core on `CoreWorker`), `CoreClock` (a look every 1,200 ticks), `Outcomes` (every
   Output routed to "unshown" until its adapter lands), `ModPack` (Prices' goods), `adapters/StockAdapter` (a desk a
@@ -75,7 +96,8 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
   so does a save (`settle`). For `stock-adapter`: desks changed unseen (explosions, pistons, `/setblock`, Create), the
   testbench desk (placed by a datapack, registered only by the command), shulkers, depots, `Moved` write-back. The
   core copies a town's name from Java's `Names` at founding, which re-names once the land is surveyed: the copies can
-  drift (for `people-adapter`). `CoreHost.of` ignores its server (one host a JVM).
+  drift (`people-adapter` left it: for `land-adapter`, which surveys the land). `CoreHost.of` ignores its server
+  (one host a JVM).
 - **Saves are versioned** (docs/binding-plan.md 1.4): `save::migrate`'s chain (empty while `FORMAT` is 1, its recipe
   for the first bump in `save/migrate/mod.rs`), `Load` refusing by number what the chain doesn't reach, `Core.start`
   saying a jar from two commits at start, `SaveStore` for `enterprise_core.dat` and `enterprise_core.prev.dat`.
@@ -170,7 +192,7 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 | B4.2 | `points-and-hands` | opus / high | `content-pack` | `bf44ab1` | Stable `HandId` in the core's roster with the host's tag beside it (`roster::Hands`, saved), lockers and clients by id; `AddHand`, `HandLost`, `Query::Hands`; `PointsAdapter` and `HandsAdapter` rebuilt from the core; `/enterprise core points`, `hands <desk>`; 2 game tests (269 both modes), fingerprint unchanged. At landing: rebased onto packing, content-weights and superbills (digest written again); a `HandLost` whose hand an earlier `Advance` in the look sent away panicked the core (a wasm trap): now a stale view, ignored, tested; the random-worlds check refuses more lockers than hands; `Answer::Hands.lockers` documented as the cap. Left: only the Merchant joins, on its screen (`people-adapter`: the census, births, levels written back, `AddHand` against the plan's `Census`), Java's `lockerLimit` as core mode's fallback, other points' registration (their adapters), positions for `merchant`/`managed`, unpruned tags |
 | B4.3 | `stock-adapter` | opus / xhigh | `points-and-hands` | | |
 | B4.4 | `money-adapter` | sonnet / high | `stock-adapter` | | |
-| B4.5 | `people-adapter` | opus / high | `points-and-hands` | | |
+| B4.5 | `people-adapter` | opus / high | `points-and-hands` | `2874c6b` | The census as a town's roster's source (`census.rs`, `Sightings` saved): `Census`, `TagHand`, `Resident`; outputs `Born`, `Settled`, `Departed`, `HandGone`, `HandLevel`; `PeopleAdapter` counts loaded towns (48 blocks round the bell, no path checks), spawns villagers for hands with none and writes profession, level and XP; `CensusTaker`'s counting half shared; `/enterprise core census <desk>`; the first Output scenario (`people`); 3 game tests (272 both modes), fingerprint unchanged, schema `e0b54576b14c0176`. At landing: a villager not loaded and last seen where nothing is loaded sent as the core has it (it was aged out and came back a new hand, breaking lockers and clients); names sent with every look until the roster takes them (a refused look lost them and hands were spawned twice); `/enterprise census` refuses in core mode; rebased onto consignment-pallets (digest written again); decisions.md "People and the binding". Left: settlers' views and founded towns' desks (`land-adapter`), away hands' outputs (`wagon-adapter`), census beds overwriting the core's homes, no free/confined split, births across a mode switch, the Java people rules and their tests until `delete-java-rules`, John to confirm the census never takes `none` or the Merchant's trade |
 | B4.6 | `locker-adapter` | opus / high | `stock-adapter`, `people-adapter` | | |
 | B4.7 | `land-adapter` | opus / high | `people-adapter` | | |
 | B4.8 | `wagon-adapter` | opus / high | `locker-adapter`, `land-adapter`, `money-adapter` | | |
