@@ -312,7 +312,7 @@ The binding doesn't run the core yet (architecture step 3). When it does:
 | Task | Fingerprint | What changes |
 |---|---|---|
 | `pallet-types`, `pallets-for-crates`, `pallet-sweep`, `itinerary-drops`, `pallet-messages` | Unchanged (`8144f9be7947133b` or main's at the time) | Nothing: re-representation. Each shows `just core-fingerprint` equal to main's |
-| `pallet-claims` | May change | A town's crates are counted in one route's plan, not in every route's plan that look; a plan that would have counted a crate another route took no longer goes for it. Fixes a race; expected rare |
+| `pallet-claims` | Changed (`cb418063bb32364e`) | A town's crates are counted in one route's plan, not in every route's plan that look; a plan that would have counted a crate another route took no longer goes for it. Fixes a race; rare, as expected: in the 300 worlds without the claims slice, trips 139846 to 139843 and broken contracts 12708 to 12719; study 365's books unchanged |
 | `pallet-caps` | Changes | A shipment over 9 slots goes as several pallets, a bill each: more documents, more paper and ink, a counting house sooner. Base content weight equals slots, so loads don't shrink. A content pack's heavy goods fill a wagon by weight |
 | `packing` | Changes | Owed goods that can't be crated ride on their pallet as loose stacks under its bill, out of the sale's reach; a farm's earmark tops up its open pallet (fewer bills) |
 | `superbills` | Changes | A document for each container of two pallets or more; consolidations load and drop whole |
@@ -351,7 +351,8 @@ unit", built on the landing date), one line each as the tasks land:
 
 1. A bill of lading covers a pallet of packages, not a crate; a shipment over a pallet's caps is several bills
    (`pallet-caps`).
-2. A plan claims the pallets it counts; another route's plan that look doesn't count them (`pallet-claims`).
+2. A plan claims the pallets it counts; another route's plan that look doesn't count them (`pallet-claims`). Routes
+   stuck last time (no money, Merchant, squad or range) plan last, and a stay lets the claims go.
 3. Contracted goods that can't be crated travel loose on their pallet, under its bill (`packing`). The mod's go loose
    without papers in the wagon's cargo.
 4. A farm's earmark tops up its open pallet (`packing`); the mod crates each lot apart.

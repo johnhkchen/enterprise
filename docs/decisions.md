@@ -1142,3 +1142,13 @@ The cotton chain, chocolate, the cold chain and the exchange follow later.
   stranded paper still also takes a drawee's paid-for pallets no bought bill names (by id alone, the design's rule,
   moves 2 of the 300 worlds: the hub's forwarder would carry a refused bill's pallet for a fee); `Discounts::backed`
   still reads the contract (reading pallets would back training bills). Each is a later task's to move.
+- **A pallet is counted in one plan (pallet-claims; divergence 2 of `docs/pallets.md`).** The mod, and the core
+  before, cloned a town's crates into every route's plan that look, so two routes to one buyer both counted (and
+  pressed for) a crate only one could carry. Now a plan claims the pallets it counts, in route order (the first route
+  wins), and later routes' plans go without them and plan no loose goods for what they cover. A route whose last try
+  stayed for want of money, a Merchant, a squad or range plans after the others; a wagon that stays lets its claims go
+  in `decide` and one that leaves in `ship`, so no claim outlives a look (and a pallet waits on a stuck wagon at most
+  its first look). One look's delay is kept: a route that claims a pallet and then waits for a fuller load leaves the
+  other routes without those goods that look. `ship` asserts every pallet on a manifest is home's and claimed by its
+  route: the old "another wagon took it" skip is gone. In the 300 worlds the rule alone moves almost nothing (trips
+  139846 to 139843, broken contracts 12708 to 12719); the random worlds' new claims slice adds its own contracts.
