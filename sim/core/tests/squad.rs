@@ -204,7 +204,8 @@ fn a_town_trains_once_a_day_in_its_review() {
     assert_eq!(trainings, 2, "a lead and a spare for one route: no more (the last idle hand may find work now)");
 }
 
-// parity-partial: CaravanTests.theSquadLeavesTheWorldAndComesBack (the villagers as entities leaving and returning are Minecraft's: the crew, the away count and the food are pinned)
+// parity-partial: CaravanTests.theSquadLeavesTheWorldAndComesBack (why both go is set by hand, `want_trades`, where the mod
+// works it out from the far town's missing books and unmapped road; the entities leaving the world are Minecraft's)
 #[test]
 fn the_squad_leaves_home_and_comes_back() {
     // 70 bread (350 food points): food to spare past the caravans' 320-point par, for a second member. What the trip
@@ -449,17 +450,20 @@ fn owed_by_porter() -> (Society, usize, u64) {
     let id = s.draft(HUB, DEST, PAPER, 32.0, 0.5, t + 2 * DAY, DAY, 1, Incoterm::Dap, true);
     s.advance(t + 2 * DAY);
     assert!(!s.route(0).on_the_road && s.contract(id).delivered == 0.0, "due, with days of grace yet: it waits");
+    // The mod's last day it can wait: a day before the installment's grace runs out (`nextDeadline - 24000`).
+    let last = t + 2 * DAY + (enterprise_core::contracts::GRACE_DAYS as u64) * DAY - DAY;
     for look in 1..=(2 * DAY / LOOK) {
         s.advance(t + 2 * DAY + look * LOOK);
         if s.route(0).on_the_road {
             let went = s.now();
+            assert!(went <= last && went + DAY > last, "it goes on the day it can't wait, {last}: went at {went}");
             return (s, id, went);
         }
     }
     panic!("it never went");
 }
 
-// parity-partial: CaravanTests.goodsOwedWaitTillTheyCantAndASmallLoadGoesByPorter (the porter's run only: the wait is contracts.rs's)
+// parity: CaravanTests.goodsOwedWaitTillTheyCantAndASmallLoadGoesByPorter
 #[test]
 fn the_day_it_cant_wait_a_small_load_goes_by_porter() {
     let (mut s, id, went) = owed_by_porter();

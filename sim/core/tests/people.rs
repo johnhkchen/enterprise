@@ -42,7 +42,19 @@ fn comforts_met_lift_mood_toward_their_count_less_the_towns_size() {
     assert!((p.mood - 4.0).abs() < 0.1, "mood {}", p.mood);
 }
 
-// parity-partial: MoodTests.crowdingAndUnpaidWagesSour (the mood target and the unpaid wages in two tests, over days of the town's own money, not the mod's 12 touches)
+// parity: MoodTests.crowdingAndUnpaidWagesSour (its name says unpaid wages, but it pins only the crowding)
+#[test]
+fn eight_villagers_in_three_beds_sour() {
+    // The mod's census: 8 villagers in 3 beds, wages paid, no comforts, 12 days.
+    let mut s = town(8.0, 3.0, 3.0, 0.0, 200.0);
+    s.advance(12 * DAY);
+    let p = s.town(0).people;
+    // -8/8 for its size, half a point for each of five without beds: heading for -3.5.
+    assert!(p.mood < -3.0, "eight villagers in three beds: {}", p.mood);
+    s.advance(20 * DAY);
+    assert!((s.town(0).people.mood + 3.5).abs() < 0.1, "mood {}", s.town(0).people.mood);
+}
+
 #[test]
 fn a_town_without_comforts_sinks_and_crowding_sinks_it_further() {
     let mut s = town(10.0, 6.0, 6.0, 0.0, 200.0); // money enough for 20 days of wages
@@ -52,7 +64,6 @@ fn a_town_without_comforts_sinks_and_crowding_sinks_it_further() {
     assert!((p.mood + 3.25).abs() < 0.1, "mood {}", p.mood);
 }
 
-// parity-partial: MoodTests.crowdingAndUnpaidWagesSour (the mood target and the unpaid wages in two tests, over days of the town's own money, not the mod's 12 touches)
 #[test]
 fn unpaid_wages_cost_two_points() {
     let mut s = town(8.0, 8.0, 8.0, 30.0, 0.0);

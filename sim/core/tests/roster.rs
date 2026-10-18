@@ -91,7 +91,7 @@ fn a_villager_levels_up_at_once_from_its_trades() {
     assert!(!master.reward_trade_xp(1000) && master.level == 5, "nothing past Master");
 }
 
-// parity-partial: GrowthTests.childrenGrowUpWhileAway (the child is a hand on the roll, not a Villager entity with an age)
+// parity: GrowthTests.childrenGrowUpWhileAway (the child is a hand on the roll, not a Villager entity: its age the same)
 #[test]
 fn a_child_grows_up_by_the_time_elapsed() {
     let c = content();
