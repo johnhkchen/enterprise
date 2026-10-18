@@ -1,6 +1,6 @@
 {
   "name": "stocktake",
-  "about": "A town at its desk takes a delivery and two stocktakes, is saved and loaded, and answers the same.",
+  "about": "A town at its desk takes a delivery and two stocktakes, is saved and loaded, and answers the same. A delivery and a point's chests are counted apart: the desk's first count adds to what was delivered. Where the delivered goods sit in those chests that counts them twice, which stock-adapter settles; these answers move then.",
   "steps": [
     {
       "note": "a society from a pack of four goods",
@@ -211,7 +211,7 @@
       }
     },
     {
-      "note": "a stocktake at the desk counts from nothing",
+      "note": "a stocktake at the desk counts from nothing: its 30 wheat and 5 bread are added to the 40 wheat delivered",
       "request": {
         "abi": 1,
         "schema": 1,
@@ -291,7 +291,7 @@
       }
     },
     {
-      "note": "a player took 20 wheat out and put 2 books in; three days pass",
+      "note": "a player took 20 wheat out of the desk and put 2 books in (stock 70 wheat to 50); three days pass",
       "request": {
         "abi": 1,
         "schema": 1,

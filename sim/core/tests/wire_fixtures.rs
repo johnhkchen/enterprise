@@ -366,6 +366,24 @@ fn a_variant_is_named_by_its_place() {
     for r in refusals() {
         assert_eq!(postcard::to_allocvec(&r).unwrap()[0] as usize, refusal_place(&r));
     }
+    for q in queries() {
+        assert_eq!(postcard::to_allocvec(&q).unwrap()[0] as usize, query_place(&q));
+    }
+    for a in answers() {
+        assert_eq!(postcard::to_allocvec(&a).unwrap()[0] as usize, answer_place(&a));
+    }
+    for c in commands() {
+        assert_eq!(postcard::to_allocvec(&c).unwrap()[0] as usize, command_place(&c));
+    }
+    for r in responses() {
+        assert_eq!(postcard::to_allocvec(&r).unwrap()[0] as usize, response_place(&r));
+    }
+    for (i, k) in [PointKind::Desk, PointKind::Locker, PointKind::Shop, PointKind::Banker, PointKind::Depot].iter().enumerate() {
+        assert_eq!(postcard::to_allocvec(k).unwrap(), vec![i as u8], "{k:?}");
+    }
+    for (i, f) in [GoodFlag::Crop, GoodFlag::Meat].iter().enumerate() {
+        assert_eq!(postcard::to_allocvec(f).unwrap(), vec![i as u8], "{f:?}");
+    }
 }
 
 /// serde_json writes numbers shortest-round-trip and reads them back exactly for the samples, which is what lets the

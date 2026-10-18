@@ -14,6 +14,11 @@
 //! - `saved`: for a `Save`, the save's format and schema, its blob's length and FNV-64 (the blob is the core's own
 //!   bytes, which move with its rules as `replay_digest.txt` does; its `core` string moves with the build).
 //!
+//! A refusal matches by its kind and numbers; its `why` is prose and isn't compared ([`without_prose`]).
+//!
+//! No scenario shows an [`Output`] yet: every one needs a master Merchant or a route, and the wire has no input that
+//! makes either. Their bytes are pinned by the golden files meanwhile (`tests/wire_fixtures.rs`).
+//!
 //! The scripts are written here, in Rust, so each step is built from the wire's own types and its answer comes from the
 //! core; `just wire-fixtures` writes the files (`WIRE_SCENARIOS=write`) and the diff is what changed in the
 //! behaviour. This test plays the files, and checks they are what the scripts write now.
@@ -110,6 +115,20 @@ impl Host {
     }
 }
 
+/// A refusal's `why` is prose for people (it holds a library's error text and the core's own wording), so a host
+/// compares a refusal by its kind and its numbers, never its words: the Java host does the same.
+fn without_prose(r: &Response) -> Response {
+    let mut r = r.clone();
+    if let Response::Refused { why } = &mut r {
+        match why {
+            Refusal::Unreadable { why } | Refusal::Pack { why } | Refusal::Save { why } | Refusal::Input { why, .. }
+            | Refusal::Query { why, .. } => why.clear(),
+            Refusal::Abi { .. } | Refusal::Schema { .. } | Refusal::NoSociety | Refusal::SaveFormat { .. } => {}
+        }
+    }
+    r
+}
+
 /// Plays a scenario and says every step that didn't give its expected answer.
 fn play(scenario: &Scenario) -> Vec<String> {
     let mut host = Host::default();
@@ -118,7 +137,7 @@ fn play(scenario: &Scenario) -> Vec<String> {
         let said = format!("{} step {i} ({})", scenario.name, step.note);
         match (host.play(step), &step.response, &step.saved) {
             (Seen::Response(got), Some(want), None) => {
-                if &got != want {
+                if without_prose(&got) != without_prose(want) {
                     wrong.push(format!("{said}: wanted {want:?}, got {got:?}"));
                 }
             }
@@ -239,7 +258,9 @@ fn stock_of(town: TownId) -> Vec<Query> {
 
 /// A town created, deliveries, a stocktake, its stock asked, saved, loaded, asked again.
 fn stocktake() -> Scenario {
-    let mut s = Script::new("stocktake", "A town at its desk takes a delivery and two stocktakes, is saved and loaded, and answers the same.");
+    let mut s = Script::new("stocktake", "A town at its desk takes a delivery and two stocktakes, is saved and loaded, and answers the same. \
+        A delivery and a point's chests are counted apart: the desk's first count adds to what was delivered. Where the \
+        delivered goods sit in those chests that counts them twice, which stock-adapter settles; these answers move then.");
     s.create("a society from a pack of four goods");
     s.apply("a town at its desk, a locker for it, some money paid in", vec![
         Input::AddTown { name: "Ashford".into(), desk: at(PointKind::Desk, 27, 27) },
@@ -251,13 +272,13 @@ fn stocktake() -> Scenario {
         Input::Deliver { town: 0, good: BOOK, count: 3.0 },
     ]);
     s.ask("its stock and points", stock_of(0));
-    s.apply("a stocktake at the desk counts from nothing", vec![
+    s.apply("a stocktake at the desk counts from nothing: its 30 wheat and 5 bread are added to the 40 wheat delivered", vec![
         Input::Stocktake { point: at(PointKind::Desk, 27, 27), counts: counts(&[(WHEAT, 30.0), (BREAD, 5.0)]) },
     ]);
     s.apply("the locker is counted apart, a good listed twice is summed", vec![
         Input::Stocktake { point: at(PointKind::Locker, 30, 27), counts: counts(&[(BREAD, 1.0), (BREAD, 2.0)]) },
     ]);
-    s.apply("a player took 20 wheat out and put 2 books in; three days pass", vec![
+    s.apply("a player took 20 wheat out of the desk and put 2 books in (stock 70 wheat to 50); three days pass", vec![
         Input::Stocktake { point: at(PointKind::Desk, 27, 27), counts: counts(&[(WHEAT, 10.0), (BREAD, 5.0), (BOOK, 2.0)]) },
         Input::Advance { to: 3 * DAY },
     ]);
@@ -447,6 +468,7 @@ fn every_message_appears_in_a_scenario() {
     let mut commands = std::collections::BTreeSet::new();
     let mut queries = std::collections::BTreeSet::new();
     let mut refusals = std::collections::BTreeSet::new();
+    let mut outputs = std::collections::BTreeSet::new();
     let variant = |v: serde_json::Value| match v {
         serde_json::Value::String(s) => s,
         serde_json::Value::Object(o) => o.keys().next().cloned().unwrap_or_default(),
@@ -461,16 +483,17 @@ fn every_message_appears_in_a_scenario() {
                 Command::Ask { queries: qs } => queries.extend(qs.iter().map(|q| variant(serde_json::to_value(q).unwrap()))),
                 _ => {}
             }
-            if let Some(Response::Refused { why }) = &step.response {
-                refusals.insert(variant(serde_json::to_value(why).unwrap()));
-            }
         }
         for step in &scenario.steps {
             if step.load.is_some() {
                 commands.insert("Load".to_string());
             }
-            if let Some(Response::Refused { why }) = &step.response {
-                refusals.insert(variant(serde_json::to_value(why).unwrap()));
+            match &step.response {
+                Some(Response::Refused { why }) => {
+                    refusals.insert(variant(serde_json::to_value(why).unwrap()));
+                }
+                Some(Response::Done { outputs: os, .. }) => outputs.extend(os.iter().map(|o| variant(serde_json::to_value(o).unwrap()))),
+                _ => {}
             }
         }
     }
@@ -479,4 +502,7 @@ fn every_message_appears_in_a_scenario() {
     assert_eq!(commands, set(&["Apply", "Ask", "Create", "Load", "Save"]));
     assert_eq!(queries, set(&["Points", "Stock"]));
     assert_eq!(refusals, set(&["Abi", "Input", "NoSociety", "Pack", "Query", "Save", "SaveFormat", "Schema", "Unreadable"]));
+    // None yet: an Output needs a master Merchant (OrderFilled, Signal) or a route (the wagon's three), and no wire
+    // input makes either. When one does, a scenario shows each and its name goes here.
+    assert_eq!(outputs, set(&[]));
 }

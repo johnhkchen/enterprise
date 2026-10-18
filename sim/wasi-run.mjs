@@ -6,8 +6,9 @@
 // Reactor mode, for the core's module (`wasm/`, which has no `main`): `node wasi-run.mjs --reactor MODULE.wasm IN OUT`
 // reads IN, a run of requests each as a u32 little-endian length and its bytes, calls the module's `ent_call` on each
 // in turn (one instance, so one society) and writes OUT as the same framing of the responses. Exits 0.
-// The program sees the current directory (preopened as `.`), its parent (as `/sim`: the crate's tests read
-// `../wire/fixtures` and `../scenarios`, and a WASI program can't climb out of a preopen) and the environment; its exit code is the runner's.
+// The program sees the current directory (preopened as `.`), its parent (as `/sim`: Cargo runs a crate's tests in
+// its folder, sim/core, so that is sim/, where they read `wire/fixtures` and `scenarios`; a WASI program can't climb
+// out of a preopen) and the environment; its exit code is the runner's.
 import { readFile, writeFile } from 'node:fs/promises';
 import { argv, env, exit, emitWarning } from 'node:process';
 
