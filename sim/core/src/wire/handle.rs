@@ -29,8 +29,17 @@ pub fn handle(society: &mut Option<Society>, request: Request) -> Response {
             Err(why) => refused(Refusal::Pack { why }),
         },
         Command::Load { save } => {
-            if save.format != crate::save::FORMAT {
+            // A format this core can't bring forward (a newer core's, or older than its chain goes) is refused by
+            // number, so a host can tell its player which; the blob's own header must say the same format.
+            if !crate::save::migrate::reads(save.format) {
                 return refused(Refusal::SaveFormat { core: crate::save::FORMAT, save: save.format });
+            }
+            match crate::save::format_of(&save.blob) {
+                Ok(f) if f != save.format => {
+                    return refused(Refusal::Save { why: format!("a save filed as format {} whose blob says {f}", save.format) });
+                }
+                Err(why) => return refused(Refusal::Save { why }),
+                Ok(_) => {}
             }
             match Society::load(&save.blob) {
                 Ok(s) => {

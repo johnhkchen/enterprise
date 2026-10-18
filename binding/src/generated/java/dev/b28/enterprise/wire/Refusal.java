@@ -108,7 +108,8 @@ public sealed interface Refusal
     }
 
     /**
-     * A save of a format this core doesn't read.
+     * A save of a format this core can't read: newer than its own (a newer core wrote it; the host leaves the save as
+     * it is and runs without the society) or older than its migrations reach.
      */
     record SaveFormat(long core, long save) implements Refusal {
         @Override

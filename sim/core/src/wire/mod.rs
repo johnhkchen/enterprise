@@ -114,7 +114,8 @@ impl Request {
 pub enum Command {
     /// A new society for the host's content, its dice seeded with `seed`, in place of any it had.
     Create { pack: ContentPack, seed: u64 },
-    /// A society from a save, in place of any it had (kept if the save is refused).
+    /// A society from a save, in place of any it had (kept if the save is refused). A save of an older format is brought
+    /// forward by the core's migrations; one of a newer format, or older than they reach, is refused.
     Load { save: SaveFile },
     /// The society as a save, for the host to keep with its world.
     Save,
@@ -149,7 +150,8 @@ pub enum Refusal {
     NoSociety,
     /// A content pack the core won't run, and everything wrong with it.
     Pack { why: String },
-    /// A save of a format this core doesn't read.
+    /// A save of a format this core can't read: newer than its own (a newer core wrote it; the host leaves the save as
+    /// it is and runs without the society) or older than its migrations reach.
     SaveFormat { core: u32, save: u32 },
     /// A save the core can't load.
     Save { why: String },

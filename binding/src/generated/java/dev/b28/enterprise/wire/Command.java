@@ -48,7 +48,8 @@ public sealed interface Command permits Command.Create, Command.Load, Command.Sa
     }
 
     /**
-     * A society from a save, in place of any it had (kept if the save is refused).
+     * A society from a save, in place of any it had (kept if the save is refused). A save of an older format is brought
+     * forward by the core's migrations; one of a newer format, or older than they reach, is refused.
      */
     record Load(SaveFile save) implements Command {
         public Load {

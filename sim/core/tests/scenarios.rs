@@ -390,6 +390,17 @@ fn refusals() -> Scenario {
         save: SaveFile { format: u32::MAX, schema: SCHEMA, core: "other".into(), blob: vec![1, 2, 3] },
     });
     assert!(matches!(s.refused("save format", r), Refusal::SaveFormat { .. }));
+    // A newer core's world (the host leaves its file as it is and runs without a society), and a format older than
+    // this core's migrations reach (it has none yet: format 0 never was).
+    let format = enterprise_core::save::FORMAT;
+    let r = s.say("a save of the next format, from a newer core", Command::Load {
+        save: SaveFile { format: format + 1, schema: SCHEMA ^ 1, core: "a newer core".into(), blob: vec![1, 2, 3] },
+    });
+    assert_eq!(s.refused("save format", r), Refusal::SaveFormat { core: format, save: format + 1 });
+    let r = s.say("a save of a format older than the core brings forward", Command::Load {
+        save: SaveFile { format: 0, schema: SCHEMA, core: "an older core".into(), blob: vec![1, 2, 3] },
+    });
+    assert_eq!(s.refused("save format", r), Refusal::SaveFormat { core: format, save: 0 });
     let r = s.say("a save the core can't read", Command::Load {
         save: SaveFile { format: enterprise_core::save::FORMAT, schema: SCHEMA, core: "other".into(), blob: vec![1, 2, 3] },
     });

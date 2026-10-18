@@ -365,6 +365,72 @@
       "response_postcard": "020501ffffffff0f"
     },
     {
+      "note": "a save of the next format, from a newer core",
+      "request": {
+        "abi": 1,
+        "schema": 903914346242816554,
+        "command": {
+          "Load": {
+            "save": {
+              "format": 2,
+              "schema": 903914346242816555,
+              "core": "a newer core",
+              "blob": [
+                1,
+                2,
+                3
+              ]
+            }
+          }
+        }
+      },
+      "request_postcard": "01aaf4bad9f0a9d6c50c0102abf4bad9f0a9d6c50c0c61206e6577657220636f726503010203",
+      "response": {
+        "Refused": {
+          "why": {
+            "SaveFormat": {
+              "core": 1,
+              "save": 2
+            }
+          }
+        }
+      },
+      "response_postcard": "02050102"
+    },
+    {
+      "note": "a save of a format older than the core brings forward",
+      "request": {
+        "abi": 1,
+        "schema": 903914346242816554,
+        "command": {
+          "Load": {
+            "save": {
+              "format": 0,
+              "schema": 903914346242816554,
+              "core": "an older core",
+              "blob": [
+                1,
+                2,
+                3
+              ]
+            }
+          }
+        }
+      },
+      "request_postcard": "01aaf4bad9f0a9d6c50c0100aaf4bad9f0a9d6c50c0d616e206f6c64657220636f726503010203",
+      "response": {
+        "Refused": {
+          "why": {
+            "SaveFormat": {
+              "core": 1,
+              "save": 0
+            }
+          }
+        }
+      },
+      "response_postcard": "02050100"
+    },
+    {
       "note": "a save the core can't read",
       "request": {
         "abi": 1,

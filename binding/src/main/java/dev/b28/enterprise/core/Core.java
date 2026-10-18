@@ -8,6 +8,7 @@ import com.dylibso.chicory.wasi.WasiOptions;
 import com.dylibso.chicory.wasi.WasiPreview1;
 import dev.b28.enterprise.wire.Command;
 import dev.b28.enterprise.wire.PostcardIn;
+import dev.b28.enterprise.wire.Refusal;
 import dev.b28.enterprise.wire.Request;
 import dev.b28.enterprise.wire.Response;
 import dev.b28.enterprise.wire.Wire;
@@ -57,18 +58,27 @@ public final class Core implements AutoCloseable {
     private int traps;
     private int trapsToMake;
 
-    private Core(CoreModule module) {
+    private final long schema;
+
+    private Core(CoreModule module, long schema) {
         this.module = Objects.requireNonNull(module);
+        this.schema = schema;
         instantiate();
     }
 
     /**
      * A fresh instance of {@code module}, with no society yet (send a {@code Create} or a {@code Load}).
      *
-     * @throws IllegalStateException if the module was built for another ABI than this binding's generated wire
+     * @throws IllegalStateException if the module was built for another ABI or wire schema than this binding's
+     *         generated wire (a jar built from two commits): said at start, not at the first {@code Create}
      */
     public static Core start(CoreModule module) {
-        return new Core(module);
+        return new Core(module, Wire.SCHEMA);
+    }
+
+    /** For tests: a start that claims another wire schema than the generated one, to see a mismatch said at start. */
+    static Core startClaiming(CoreModule module, long schema) {
+        return new Core(module, schema);
     }
 
     /** The module this core runs. */
@@ -164,6 +174,43 @@ public final class Core implements AutoCloseable {
             dropInstance();
             throw new IllegalStateException("the core's module is ABI " + abi + ", this binding's wire ABI " + Wire.ABI);
         }
+        try {
+            checkWire();
+        } catch (RuntimeException e) {
+            dropInstance();
+            throw e;
+        }
+    }
+
+    /**
+     * Asks the fresh instance the one question that tells whether it reads this binding's requests: an empty
+     * {@code Ask}. The core checks a request's ABI and schema before anything else (every call, not only the first), so
+     * its answer is {@code NoSociety} when the wire is the same and a refusal naming the numbers when it isn't. Nothing
+     * is applied or kept.
+     */
+    private void checkWire() {
+        byte[] reply = exchange(new Request(Wire.ABI, schema, new Command.Ask(List.of())).toBytes());
+        Response r;
+        try {
+            r = Response.fromBytes(reply);
+        } catch (WireException e) {
+            throw new IllegalStateException("the core's module answers in a wire this binding can't read: built from another"
+                    + " commit than the binding's generated code (schema " + Long.toHexString(schema) + ")", e);
+        }
+        if (r instanceof Response.Refused refused) {
+            switch (refused.why()) {
+                case Refusal.NoSociety none -> { }
+                case Refusal.Schema other -> throw new IllegalStateException("the core's module is wire schema "
+                        + Long.toHexString(other.core()) + ", this binding's is " + Long.toHexString(schema)
+                        + ": the jar was built from two commits (just wire-gen, then rebuild)");
+                case Refusal.Abi abi -> throw new IllegalStateException("the core's module is ABI " + abi.core()
+                        + ", this binding's wire ABI " + abi.request());
+                case Refusal unexpected -> throw new IllegalStateException("the core's module refuses this binding's first"
+                        + " question: " + unexpected);
+            }
+        } else {
+            throw new IllegalStateException("the core's module answered a question before any society was made: " + r);
+        }
     }
 
     private void dropInstance() {
@@ -175,14 +222,19 @@ public final class Core implements AutoCloseable {
         alloc = call = free = null;
     }
 
-    /** One crossing: the request into the module's memory, the call, the response out, both buffers freed. */
+    /** One crossing, with the tests' traps made first. */
     private byte[] invoke(byte[] request) {
-        Memory memory = instance.memory();
         if (trapsToMake > 0) {
             trapsToMake--;
-            long past = (long) memory.pages() * 65_536L + 16;
+            long past = (long) instance.memory().pages() * 65_536L + 16;
             call.apply(past, 8);
         }
+        return exchange(request);
+    }
+
+    /** One crossing: the request into the module's memory, the call, the response out, both buffers freed. */
+    private byte[] exchange(byte[] request) {
+        Memory memory = instance.memory();
         int len = request.length;
         long ptr = alloc.apply(len)[0] & 0xFFFF_FFFFL;
         memory.write((int) ptr, request);

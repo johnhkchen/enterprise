@@ -152,6 +152,19 @@ from a scenario) that must load and run on to a committed digest.
   (`enterprise_core.prev.dat`) until the next save, so a rollback has it.
 - **A newer world in an older core:** refused, with the formats in the message; the world opens with the society
   paused and its blob untouched, nothing lost.
+
+**Built (B1.7 `versioning`).** In the core: `save::migrate` (`CHAIN`, empty while `FORMAT` is `OLDEST` = 1; `reads`,
+`upgrade`; the steps are payload to payload, the header is the save's), `Load` refusing by number (`SaveFormat`) what
+the chain doesn't reach, and a blob whose header disagrees with its `SaveFile` is a `Save` refusal. Its recipe for the
+first format bump (golden save before, frozen `vN.rs`, digest after) is in `save/migrate/mod.rs`; `tests/saves.rs`
+holds the template (a hand-made format 0 through a chain of one step) and the golden-save test over
+`tests/saves/vN.blob` (none yet). In the binding: `Core.start` asks an empty `Ask` first and throws when the module's
+ABI or schema isn't the generated wire's (a jar from two commits is said at start; the core checks both on every call
+anyway), and `SaveStore` is the world's `enterprise_core.dat` (a `SaveFile`'s bytes): `open()` loads it (`Fresh`,
+`Loaded`, or `Refused` with the player's words, which pauses the store: `save()` then writes nothing); the first `save()`
+after a migration copies the file it replaces to `enterprise_core.prev.dat`, and later saves leave that copy alone
+(read as: "until the next save" is the window in which the old file is the world's file; after it, the copy). The mod's
+`CoreHost` (B2.1) is a thin caller of `SaveStore`.
 - **Before the first release:** `FORMAT` stays 1 and nothing is migrated: a dev world whose core changed shape is
   rebuilt (the testbench datapack rebuilds its market; study checkpoints are made again). Decided by John (section 6).
 

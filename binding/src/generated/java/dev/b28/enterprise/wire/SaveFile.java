@@ -4,9 +4,9 @@ package dev.b28.enterprise.wire;
 import java.util.Objects;
 
 /**
- * A saved society: the blob's {@code crate::save::FORMAT} (a core reads only its own: {@code docs/binding-plan.md} 1.4), the
- * wire's {@code super::SCHEMA} and the {@code super::CORE} that wrote it (for a bug report: neither is checked on a load),
- * and the blob.
+ * A saved society: the blob's {@code crate::save::FORMAT} (a core reads its own and the older ones its migrations bring
+ * forward: {@code docs/binding-plan.md} 1.4), the wire's {@code super::SCHEMA} and the {@code super::CORE} that wrote it (for a bug
+ * report: neither is checked on a load), and the blob.
  */
 public record SaveFile(long format, long schema, String core, Bytes blob) {
     public SaveFile {

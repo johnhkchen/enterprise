@@ -17,13 +17,16 @@
 //!
 //! The format is postcard (compact, no schema, builds for `wasm32-wasip1`), after a magic and a [`FORMAT`] number.
 //! Postcard isn't self-describing: a blob saved before a field was added won't load after it. Bump [`FORMAT`] when the
-//! state changes shape after a release (the integrator's job; until the first, it stays 1); a load of another format is
-//! refused, not misread.
+//! state changes shape after a release (the integrator's job; until the first, it stays 1), with a migration
+//! ([`migrate`]: one step a format, run on load from the blob's format up to today's, so an old world opens in a newer
+//! core). A blob of a newer format, or of one the chain no longer reaches, is refused, not misread.
 
 use bevy_ecs::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::state::*;
+
+pub mod migrate;
 
 /// The blob's first bytes.
 pub const MAGIC: [u8; 4] = *b"ENTS";
@@ -139,17 +142,31 @@ pub fn save(world: &mut World) -> Vec<u8> {
     postcard::to_extend(&saved(world), bytes).expect("the state serializes")
 }
 
-/// A world from a blob, with its towns' and routes' entities in order.
-pub fn load(bytes: &[u8]) -> Result<(World, Vec<Entity>, Vec<Entity>), String> {
+/// The format a blob says it is, if it is one (its magic is right and the number is there): the first thing to read of
+/// a blob, to decide whether the core can read it at all ([`migrate::reads`]).
+pub fn format_of(bytes: &[u8]) -> Result<u32, String> {
     if bytes.len() < 8 || bytes[..4] != MAGIC {
         return Err("not an Enterprise save".to_string());
     }
-    let format = u32::from_le_bytes(bytes[4..8].try_into().unwrap());
-    if format != FORMAT {
-        return Err(format!("a save of format {format}; this core reads {FORMAT}"));
-    }
-    let saved: Saved = postcard::from_bytes(&bytes[8..]).map_err(|e| format!("a broken save: {e}"))?;
-    restore(saved)
+    Ok(u32::from_le_bytes(bytes[4..8].try_into().unwrap()))
+}
+
+/// A blob of any format the chain reaches, as today's state: the payload run through [`migrate::CHAIN`] from the
+/// blob's format.
+pub fn upgraded(bytes: &[u8]) -> Result<Saved, String> {
+    let format = format_of(bytes)?;
+    let payload = if format == FORMAT {
+        std::borrow::Cow::Borrowed(&bytes[8..])
+    } else {
+        std::borrow::Cow::Owned(migrate::upgrade(format, &bytes[8..]).map_err(|e| e.to_string())?)
+    };
+    postcard::from_bytes(&payload).map_err(|e| format!("a broken save: {e}"))
+}
+
+/// A world from a blob, with its towns' and routes' entities in order. A blob of an older format is brought forward
+/// through [`migrate::CHAIN`]; a newer one is refused.
+pub fn load(bytes: &[u8]) -> Result<(World, Vec<Entity>, Vec<Entity>), String> {
+    restore(upgraded(bytes)?)
 }
 
 /// A world from a [`Saved`]: resources put back, towns and routes spawned in their first order, routes' ends linked.
