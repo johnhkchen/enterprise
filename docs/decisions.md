@@ -1169,3 +1169,15 @@ The cotton chain, chocolate, the cold chain and the exchange follow later.
   player's pallet within a pallet's worth, or a later task refuses it at the boundary. In the 300 worlds (a third with a
   good weighing 4 a stack): trips 144084 to 143529, items carried 17.66M to 17.07M (most of it the heavy good's worlds;
   without it items fall 0.4%), documents 80964 to 84071, broken contracts 12890 to 13060.
+- **Packing by the grouping key (packing; divergences 3 and 4 of `docs/pallets.md`).** Goods are packed in packages of
+  their own kind (crate, barrel, bundle, or none) and made up into pallets by the key (shipper, consignee, contract,
+  payment, handling), goods of one key sharing a pallet to its caps; goods that need care never share a pallet with
+  goods that don't. Where this departs from the mod: owed goods that can't be crated ride loose on their pallet under
+  its bill (the mod's go loose in the cargo without papers), so a shipper with no crate and no money draws a bill a
+  pallet; a farm's earmark tops up its open pallet of the key (the mod crates each lot apart, a bill each); an Ex Works
+  collection takes an earmarked pallet whole, its bill now paid, where the rest due fits (the mod re-crates it), and a
+  part pallet is opened at the seller's, the due part packed with a bill and the rest re-palleted with another. In the
+  300 worlds by the rules alone: documents 84071 to 76253, scribes' fees 7466.0 to 6768.3, pallets 63132 to 62512,
+  trips 143529 to 143114, completed contracts 18952 to 19039, broken 13060 to 13093. The mod keeps no pallets of its
+  own: it will draw them from the core (`Society::pack_pallets`, `PalletPacked`/`PalletMoved`) once `pallet-views`
+  gives the wire a `PackPallets` command and the goods' package kind and handling.

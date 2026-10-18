@@ -116,7 +116,9 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
   because it comes from outside). Decide it there, with `Moved` and write-back. Also: chests that lose more than the
   town holds drop the excess with no record (`withdraw`); `Query::Stock` answers as last touched, not caught up.
 - **Not planned yet:** `pallet-views` (the mod's crates and chests drawing pallets from the core's messages; the
-  weights it needs are in the pack now, `content-weights` having folded into `content-pack`). Named in
+  weights it needs are in the pack now, `content-weights` having folded into `content-pack`; since `packing` it also
+  needs a `PackPallets` command for `Society::pack_pallets`, with set-aside and `crate_room` guards, and `Good.package`
+  and `.handling` on the wire's `Good` so the mod can declare barrels, bundles and goods that need care). Named in
   `docs/decisions.md` (2026-10-18) but has no row below.
 - **The game tests are sorted** (`python3 scripts/parity.py --binding`, every test in `docs/binding-tests.md`): 150
   world fixtures (the binding's acceptance tests), 66 rule API (retire with their class), 46 Minecraft's own (view
