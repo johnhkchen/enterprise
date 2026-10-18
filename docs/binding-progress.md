@@ -1,16 +1,24 @@
 # Binding progress: where the Minecraft binding stands
 
 The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md`; how trees work is
-`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-18, `chicory-host` landed.
+`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-18, `versioning` landed.
 
 ## Now
 
-- **Main:** `d48478f`. 762 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
+- **Main:** `25e0895`. 771 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
   `just scenarios-wasm` 3 + 22 under Node's WASI; `just wasm-test` 4/4 with the module required; `just wire-check`
   passes (schema `0c8b594f0b2eba2a`, 24 files); `just wire-javac`: WireCheck passes 215 checks; `just binding-test`:
-  87 JVM tests pass (Chicory compiled and interpreted, every golden file, every scenario, a trap at every step). Game
-  tests: All 262 required tests passed (`trees.py check --java`: settings.gradle now includes `binding`). `just
-  core-fingerprint`: `cb418063bb32364e` (unchanged by this landing).
+  98 JVM tests pass (Chicory compiled and interpreted, every golden file, every scenario, a trap at every step, the
+  versions and `SaveStore`). Game tests: not run at this landing (no mod Java touched); All 262 required tests passed
+  at `d48478f`. `just core-fingerprint`: `cb418063bb32364e` (unchanged by this landing).
+- **Saves are versioned** (docs/binding-plan.md 1.4): `save::migrate`'s chain (empty while `FORMAT` is 1, its recipe
+  for the first bump in `save/migrate/mod.rs`), `Load` refusing by number what the chain doesn't reach, `Core.start`
+  saying a jar from two commits at start, `SaveStore` for `enterprise_core.dat` and `enterprise_core.prev.dat`.
+  **For John to confirm:** prev.dat is copied at the first save after a migration and never deleted (the plan's "kept
+  ... until the next save" read that way; deleting it at the next save instead is one line in `SaveStore.save()`).
+  **For `proof-in-mod`:** `SaveStore` writes a plain file named `enterprise_core.dat`, where 1.5 calls it a SavedData:
+  pick one (`SaveStore` on its own path, or its rules around a SavedData byte array), not both in `world/data/`.
+  The migrating load path runs end to end only over the template's chain until the first real format bump.
 - **The core runs in the JVM** (`binding/`, a plain Java 21 Gradle subproject, Chicory 1.7.5): `Core.call(Request)`,
   the trap path (fresh instance, replay the checkpoint and the Applies since, throw `CoreTrap`; stuck if the replay
   fails, or if a state-changing request's response can't be read), `CoreWorker` (the core on its own thread). The module
@@ -87,7 +95,7 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 | B1.4 | `wire-gen` | opus / high | `wire-types` | `a5e771e` | `sim/wire-gen`: registry.yaml and 21 Java files from the wire types (refuses flatten, untagged, maps, tuples, arrays, u128, char, units, Java name clashes, a type not defined in wire/, one nothing sends; enums append-only); `wire::SCHEMA` the registry's FNV-1a 64; `just wire-gen`/`wire-check`/`wire-javac` (216 codec checks against postcard's bytes); the core's three source-scan tests retired for it. At landing: the source scan's serde-attribute and path-field refusals carried over (serde-reflection traces Deserialize only, so `skip_serializing_if` would have traced plainly and misread); a backslash in a doc escaped (javac's unicode escapes); rebased onto wasm-exports and wire-fixtures, fixtures and scenarios written again for the new schema; plan's serde-reflection version corrected. Left: Gradle wiring and the codec check in a gate (`chicory-host`), ids `usize`, struct field order not held |
 | B1.5 | `wire-fixtures` | sonnet / medium | `wire-types` | `6a0b53c` | Golden `.bin`/`.json` for 17 wire types (every variant, numeric and length edges); three scenarios (`stocktake`, `inputs` with every Input and Query, `refusals` with every Refusal, NaN and cut bytes as hex), the same answers natively and under Node (`just scenarios-wasm`); `wasi-run.mjs` preopens sim/ as `/sim`. At landing: refusals matched by kind and numbers, not prose (postcard's error text, a Spot's Debug); Outputs counted by the coverage test and noted unreachable from the wire; the variant-place check covers every wire enum; stocktake's notes say its answer counts a delivery and the desk's first count apart (stock-adapter's double count: the answers move then). Left: serde-reflection samples and `wire-check` (`wire-gen`), ids `usize` (`wire-gen`), no Output scenario |
 | B1.6 | `chicory-host` | opus / high | `wasm-exports`, `wire-gen`, `wire-fixtures` | `d48478f` | Wire ids `u32`; `binding/` on Chicory 1.7.5 (build-time compiled), `Core` with its trap path, `CoreWorker`, scenarios' postcard twins; `just binding-test` (87 JVM tests), `just binding-spike`. Spike: a compiled look 2.34 ms (38x native) on the study world, bar of 1 ms missed (HotSpot interprets 75 methods over 8,000 bytes); every other bar met (instantiation 76+89 ms, jar +2.3 MB, heap 12 MB, Save 10 ms / Load 36 ms). At landing: rebased onto pallet-messages and pallet-claims with the pallet wire's ids made `u32` too (the audit's blocker; schema `0c8b594f0b2eba2a`); `wire::no` narrows ids loudly where outputs used `as u32`; `Core` goes stuck on an unreadable response to a state-changing request; the build fails on any interpreter fallback; game tests run (262 pass). Left: the hot-function split (a core task to place), CoreWorker's off-tick looks for John to accept, binding-test outside `trees.py check` |
-| B1.7 | `versioning` | sonnet / high | `chicory-host` | | |
+| B1.7 | `versioning` | sonnet / high | `chicory-host` | `25e0895` | `save::migrate` (chain, `OLDEST`, recipe for the first bump), `Load` refusing unreachable formats by number and a header that disagrees with its `SaveFile`; `tests/saves.rs` with the format-0 template and the golden-save test (no goldens while `FORMAT` is 1); `Core.start` probes ABI and schema; `SaveStore` with prev.dat; 98 JVM tests. At landing: `save::upgraded_with`, so the template runs the migrating load path (header off, payload through the chain) end to end; the plan's Built paragraph moved after its list with the SavedData choice for B2.1. Left: prev.dat's lifetime for John, SavedData or plain file (B2.1), the first real migration as the first end-to-end test |
 | B2.1 | `proof-in-mod` | opus / high | `versioning` | | |
 | B3.1 | `gametest-triage` | sonnet / medium | — | `59b7b77` | `parity.py --binding` writes `docs/binding-tests.md`: 150 fixture, 66 rule API, 46 own; 2 rule-API tests with only a partial twin go to the core first. At landing: helpers followed across test files and a discarded entity counted (5 tests moved to fixture: BuildingTests' three and CountingHouseTests' clerks via `LabourTests.town`, `GrowthTests.childrenGrowUpWhileAway`); rule-API tests that pass the level to a rule marked *level* (27); the plan's section 2 counts updated |
 | B3.2 | `core-mode` | sonnet / medium | `proof-in-mod`, `gametest-triage` | | |
