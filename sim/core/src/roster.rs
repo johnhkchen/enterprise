@@ -80,14 +80,14 @@ impl Trade {
 
 /// The mod's sixteen: the fourteen that go with caravans in the squad's order, then `none` and `nitwit`.
 pub fn trades() -> Vec<Trade> {
-    let mut out: Vec<Trade> = SQUAD
-        .iter()
-        .map(|&name| Trade { name: name.to_string(), leads: LEADS.contains(&name), squad: true,
-            merchant: name == MERCHANT, ..Default::default() })
-        .collect();
-    out.push(Trade { name: NONE.to_string(), none: true, ..Default::default() });
-    out.push(Trade { name: NITWIT.to_string(), nitwit: true, ..Default::default() });
-    out
+    SQUAD.iter().copied().chain([NONE, NITWIT]).map(trade_named).collect()
+}
+
+/// The trade a host calls `name` (without its namespace): what the core knows of it by that name. The Merchant's, `none`
+/// and `nitwit` are the core's own to name; the others lead or go with a squad if the mod's lists say so.
+pub fn trade_named(name: &str) -> Trade {
+    Trade { name: name.to_string(), leads: LEADS.contains(&name), squad: SQUAD.contains(&name), merchant: name == MERCHANT,
+        none: name == NONE, nitwit: name == NITWIT, ..Default::default() }
 }
 
 /// Total XP a villager needs to leave `level` (1 = Novice); 0 at Master.

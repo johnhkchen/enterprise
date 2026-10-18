@@ -11,7 +11,8 @@
             "food": 0.0,
             "saturation": 0.0,
             "comfort": null,
-            "flags": []
+            "flags": [],
+            "weight": 1.0
           },
           {
             "name": "minecraft:wheat",
@@ -22,7 +23,8 @@
             "comfort": null,
             "flags": [
               "Crop"
-            ]
+            ],
+            "weight": 1.0
           },
           {
             "name": "minecraft:bread",
@@ -31,7 +33,8 @@
             "food": 5.0,
             "saturation": 6.0,
             "comfort": null,
-            "flags": []
+            "flags": [],
+            "weight": 1.0
           },
           {
             "name": "minecraft:book",
@@ -40,7 +43,8 @@
             "food": 0.0,
             "saturation": 0.0,
             "comfort": "reading",
-            "flags": []
+            "flags": [],
+            "weight": 1.0
           },
           {
             "name": "minecraft:cooked_beef",
@@ -52,7 +56,8 @@
             "flags": [
               "Meat",
               "Crop"
-            ]
+            ],
+            "weight": 1.0
           },
           {
             "name": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
@@ -61,9 +66,58 @@
             "food": 2.2250738585072014e-308,
             "saturation": 0.0,
             "comfort": "",
-            "flags": []
+            "flags": [],
+            "weight": 1.7976931348623157e+308
+          },
+          {
+            "name": "minecraft:iron_ingot",
+            "worth": 0.25,
+            "stack": 64,
+            "food": 0.0,
+            "saturation": 0.0,
+            "comfort": null,
+            "flags": [],
+            "weight": 2.5
+          },
+          {
+            "name": "tiny",
+            "worth": 1.0,
+            "stack": 1,
+            "food": 0.0,
+            "saturation": 0.0,
+            "comfort": null,
+            "flags": [],
+            "weight": 2.2250738585072014e-308
           }
-        ]
+        ],
+        "comforts": [
+          "treats",
+          "reading",
+          "clothing",
+          "furnishings",
+          "leisure"
+        ],
+        "trades": [
+          "merchant",
+          "cartographer",
+          "librarian",
+          "shepherd",
+          "leatherworker",
+          "fisherman",
+          "cleric",
+          "farmer",
+          "toolsmith",
+          "armorer",
+          "weaponsmith",
+          "mason",
+          "fletcher",
+          "butcher",
+          "none",
+          "nitwit"
+        ],
+        "recipes": [],
+        "animals": [],
+        "dials": []
       },
       "seed": 7
     }
@@ -72,7 +126,35 @@
     "Create": {
       "pack": {
         "day_ticks": 1,
-        "goods": []
+        "goods": [],
+        "comforts": [
+          "treats",
+          "reading",
+          "clothing",
+          "furnishings",
+          "leisure"
+        ],
+        "trades": [
+          "merchant",
+          "cartographer",
+          "librarian",
+          "shepherd",
+          "leatherworker",
+          "fisherman",
+          "cleric",
+          "farmer",
+          "toolsmith",
+          "armorer",
+          "weaponsmith",
+          "mason",
+          "fletcher",
+          "butcher",
+          "none",
+          "nitwit"
+        ],
+        "recipes": [],
+        "animals": [],
+        "dials": []
       },
       "seed": 18446744073709551615
     }
@@ -280,6 +362,30 @@
           "PackageLost": {
             "pallet": 18446744073709551615,
             "package": 4294967295
+          }
+        },
+        {
+          "SetDial": {
+            "name": "harvest_window_days",
+            "value": 6.0
+          }
+        },
+        {
+          "SetDial": {
+            "name": "bargain",
+            "value": null
+          }
+        },
+        {
+          "SetDial": {
+            "name": "",
+            "value": 1.7976931348623157e+308
+          }
+        },
+        {
+          "SetDial": {
+            "name": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "value": -0.5
           }
         },
         {
@@ -1612,7 +1718,8 @@
           }
         },
         "Points",
-        "Goods"
+        "Goods",
+        "Dials"
       ]
     }
   }

@@ -9,7 +9,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "minecraft:wheat",
@@ -20,7 +21,8 @@
         "comfort": null,
         "flags": [
           "Crop"
-        ]
+        ],
+        "weight": 1.0
       },
       {
         "name": "minecraft:bread",
@@ -29,7 +31,8 @@
         "food": 5.0,
         "saturation": 6.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "minecraft:book",
@@ -38,7 +41,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": "reading",
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "minecraft:cooked_beef",
@@ -50,7 +54,8 @@
         "flags": [
           "Meat",
           "Crop"
-        ]
+        ],
+        "weight": 1.0
       },
       {
         "name": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
@@ -59,13 +64,90 @@
         "food": 2.2250738585072014e-308,
         "saturation": 0.0,
         "comfort": "",
-        "flags": []
+        "flags": [],
+        "weight": 1.7976931348623157e+308
+      },
+      {
+        "name": "minecraft:iron_ingot",
+        "worth": 0.25,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": [],
+        "weight": 2.5
+      },
+      {
+        "name": "tiny",
+        "worth": 1.0,
+        "stack": 1,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": [],
+        "weight": 2.2250738585072014e-308
       }
-    ]
+    ],
+    "comforts": [
+      "treats",
+      "reading",
+      "clothing",
+      "furnishings",
+      "leisure"
+    ],
+    "trades": [
+      "merchant",
+      "cartographer",
+      "librarian",
+      "shepherd",
+      "leatherworker",
+      "fisherman",
+      "cleric",
+      "farmer",
+      "toolsmith",
+      "armorer",
+      "weaponsmith",
+      "mason",
+      "fletcher",
+      "butcher",
+      "none",
+      "nitwit"
+    ],
+    "recipes": [],
+    "animals": [],
+    "dials": []
   },
   {
     "day_ticks": 1,
-    "goods": []
+    "goods": [],
+    "comforts": [
+      "treats",
+      "reading",
+      "clothing",
+      "furnishings",
+      "leisure"
+    ],
+    "trades": [
+      "merchant",
+      "cartographer",
+      "librarian",
+      "shepherd",
+      "leatherworker",
+      "fisherman",
+      "cleric",
+      "farmer",
+      "toolsmith",
+      "armorer",
+      "weaponsmith",
+      "mason",
+      "fletcher",
+      "butcher",
+      "none",
+      "nitwit"
+    ],
+    "recipes": [],
+    "animals": [],
+    "dials": []
   },
   {
     "day_ticks": 18446744073709551615,
@@ -77,7 +159,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "minecraft:wheat",
@@ -88,9 +171,38 @@
         "comfort": null,
         "flags": [
           "Crop"
-        ]
+        ],
+        "weight": 1.0
       }
-    ]
+    ],
+    "comforts": [
+      "treats",
+      "reading",
+      "clothing",
+      "furnishings",
+      "leisure"
+    ],
+    "trades": [
+      "merchant",
+      "cartographer",
+      "librarian",
+      "shepherd",
+      "leatherworker",
+      "fisherman",
+      "cleric",
+      "farmer",
+      "toolsmith",
+      "armorer",
+      "weaponsmith",
+      "mason",
+      "fletcher",
+      "butcher",
+      "none",
+      "nitwit"
+    ],
+    "recipes": [],
+    "animals": [],
+    "dials": []
   },
   {
     "day_ticks": 0,
@@ -102,7 +214,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_1",
@@ -111,7 +224,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_2",
@@ -120,7 +234,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_3",
@@ -129,7 +244,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_4",
@@ -138,7 +254,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_5",
@@ -147,7 +264,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_6",
@@ -156,7 +274,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_7",
@@ -165,7 +284,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_8",
@@ -174,7 +294,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_9",
@@ -183,7 +304,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_10",
@@ -192,7 +314,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_11",
@@ -201,7 +324,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_12",
@@ -210,7 +334,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_13",
@@ -219,7 +344,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_14",
@@ -228,7 +354,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_15",
@@ -237,7 +364,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_16",
@@ -246,7 +374,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_17",
@@ -255,7 +384,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_18",
@@ -264,7 +394,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_19",
@@ -273,7 +404,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_20",
@@ -282,7 +414,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_21",
@@ -291,7 +424,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_22",
@@ -300,7 +434,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_23",
@@ -309,7 +444,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_24",
@@ -318,7 +454,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_25",
@@ -327,7 +464,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_26",
@@ -336,7 +474,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_27",
@@ -345,7 +484,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_28",
@@ -354,7 +494,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_29",
@@ -363,7 +504,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_30",
@@ -372,7 +514,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_31",
@@ -381,7 +524,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_32",
@@ -390,7 +534,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_33",
@@ -399,7 +544,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_34",
@@ -408,7 +554,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_35",
@@ -417,7 +564,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_36",
@@ -426,7 +574,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_37",
@@ -435,7 +584,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_38",
@@ -444,7 +594,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_39",
@@ -453,7 +604,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_40",
@@ -462,7 +614,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_41",
@@ -471,7 +624,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_42",
@@ -480,7 +634,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_43",
@@ -489,7 +644,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_44",
@@ -498,7 +654,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_45",
@@ -507,7 +664,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_46",
@@ -516,7 +674,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_47",
@@ -525,7 +684,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_48",
@@ -534,7 +694,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_49",
@@ -543,7 +704,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_50",
@@ -552,7 +714,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_51",
@@ -561,7 +724,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_52",
@@ -570,7 +734,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_53",
@@ -579,7 +744,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_54",
@@ -588,7 +754,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_55",
@@ -597,7 +764,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_56",
@@ -606,7 +774,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_57",
@@ -615,7 +784,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_58",
@@ -624,7 +794,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_59",
@@ -633,7 +804,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_60",
@@ -642,7 +814,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_61",
@@ -651,7 +824,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_62",
@@ -660,7 +834,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_63",
@@ -669,7 +844,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_64",
@@ -678,7 +854,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_65",
@@ -687,7 +864,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_66",
@@ -696,7 +874,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_67",
@@ -705,7 +884,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_68",
@@ -714,7 +894,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_69",
@@ -723,7 +904,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_70",
@@ -732,7 +914,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_71",
@@ -741,7 +924,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_72",
@@ -750,7 +934,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_73",
@@ -759,7 +944,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_74",
@@ -768,7 +954,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_75",
@@ -777,7 +964,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_76",
@@ -786,7 +974,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_77",
@@ -795,7 +984,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_78",
@@ -804,7 +994,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_79",
@@ -813,7 +1004,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_80",
@@ -822,7 +1014,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_81",
@@ -831,7 +1024,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_82",
@@ -840,7 +1034,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_83",
@@ -849,7 +1044,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_84",
@@ -858,7 +1054,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_85",
@@ -867,7 +1064,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_86",
@@ -876,7 +1074,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_87",
@@ -885,7 +1084,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_88",
@@ -894,7 +1094,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_89",
@@ -903,7 +1104,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_90",
@@ -912,7 +1114,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_91",
@@ -921,7 +1124,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_92",
@@ -930,7 +1134,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_93",
@@ -939,7 +1144,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_94",
@@ -948,7 +1154,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_95",
@@ -957,7 +1164,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_96",
@@ -966,7 +1174,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_97",
@@ -975,7 +1184,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_98",
@@ -984,7 +1194,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_99",
@@ -993,7 +1204,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_100",
@@ -1002,7 +1214,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_101",
@@ -1011,7 +1224,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_102",
@@ -1020,7 +1234,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_103",
@@ -1029,7 +1244,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_104",
@@ -1038,7 +1254,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_105",
@@ -1047,7 +1264,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_106",
@@ -1056,7 +1274,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_107",
@@ -1065,7 +1284,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_108",
@@ -1074,7 +1294,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_109",
@@ -1083,7 +1304,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_110",
@@ -1092,7 +1314,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_111",
@@ -1101,7 +1324,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_112",
@@ -1110,7 +1334,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_113",
@@ -1119,7 +1344,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_114",
@@ -1128,7 +1354,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_115",
@@ -1137,7 +1364,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_116",
@@ -1146,7 +1374,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_117",
@@ -1155,7 +1384,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_118",
@@ -1164,7 +1394,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_119",
@@ -1173,7 +1404,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_120",
@@ -1182,7 +1414,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_121",
@@ -1191,7 +1424,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_122",
@@ -1200,7 +1434,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_123",
@@ -1209,7 +1444,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_124",
@@ -1218,7 +1454,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_125",
@@ -1227,7 +1464,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_126",
@@ -1236,7 +1474,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_127",
@@ -1245,7 +1484,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_128",
@@ -1254,7 +1494,8 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
       },
       {
         "name": "test:good_129",
@@ -1263,8 +1504,314 @@
         "food": 0.0,
         "saturation": 0.0,
         "comfort": null,
-        "flags": []
+        "flags": [],
+        "weight": 1.0
+      }
+    ],
+    "comforts": [
+      "treats",
+      "reading",
+      "clothing",
+      "furnishings",
+      "leisure"
+    ],
+    "trades": [
+      "merchant",
+      "cartographer",
+      "librarian",
+      "shepherd",
+      "leatherworker",
+      "fisherman",
+      "cleric",
+      "farmer",
+      "toolsmith",
+      "armorer",
+      "weaponsmith",
+      "mason",
+      "fletcher",
+      "butcher",
+      "none",
+      "nitwit"
+    ],
+    "recipes": [],
+    "animals": [],
+    "dials": []
+  },
+  {
+    "day_ticks": 24000,
+    "goods": [
+      {
+        "name": "a",
+        "worth": 1.0,
+        "stack": 1,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": [],
+        "weight": 1.0
+      },
+      {
+        "name": "minecraft:wheat",
+        "worth": 0.05,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": [
+          "Crop"
+        ],
+        "weight": 1.0
+      },
+      {
+        "name": "minecraft:bread",
+        "worth": 0.2,
+        "stack": 64,
+        "food": 5.0,
+        "saturation": 6.0,
+        "comfort": null,
+        "flags": [],
+        "weight": 1.0
+      },
+      {
+        "name": "minecraft:book",
+        "worth": 0.5,
+        "stack": 16,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": "reading",
+        "flags": [],
+        "weight": 1.0
+      },
+      {
+        "name": "minecraft:cooked_beef",
+        "worth": 0.3,
+        "stack": 64,
+        "food": 8.0,
+        "saturation": 12.8,
+        "comfort": null,
+        "flags": [
+          "Meat",
+          "Crop"
+        ],
+        "weight": 1.0
+      },
+      {
+        "name": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+        "worth": 1.7976931348623157e+308,
+        "stack": 4294967295,
+        "food": 2.2250738585072014e-308,
+        "saturation": 0.0,
+        "comfort": "",
+        "flags": [],
+        "weight": 1.7976931348623157e+308
+      },
+      {
+        "name": "minecraft:iron_ingot",
+        "worth": 0.25,
+        "stack": 64,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": [],
+        "weight": 2.5
+      },
+      {
+        "name": "tiny",
+        "worth": 1.0,
+        "stack": 1,
+        "food": 0.0,
+        "saturation": 0.0,
+        "comfort": null,
+        "flags": [],
+        "weight": 2.2250738585072014e-308
+      }
+    ],
+    "comforts": [
+      "reading",
+      "treats",
+      ""
+    ],
+    "trades": [
+      "merchant",
+      "farmer",
+      "none",
+      "nitwit"
+    ],
+    "recipes": [
+      {
+        "trades": [
+          "farmer"
+        ],
+        "inputs": [
+          {
+            "good": "minecraft:wheat",
+            "count": 3.0
+          }
+        ],
+        "output": "minecraft:bread",
+        "makes": 1.0
+      },
+      {
+        "trades": [
+          "librarian",
+          "cartographer"
+        ],
+        "inputs": [
+          {
+            "good": "minecraft:paper",
+            "count": 3.0
+          },
+          {
+            "good": "minecraft:leather",
+            "count": 1.0
+          }
+        ],
+        "output": "minecraft:book",
+        "makes": 0.5
+      },
+      {
+        "trades": [],
+        "inputs": [],
+        "output": "",
+        "makes": 0.0
+      },
+      {
+        "trades": [
+          "trade_0",
+          "trade_1",
+          "trade_2",
+          "trade_3",
+          "trade_4",
+          "trade_5",
+          "trade_6",
+          "trade_7",
+          "trade_8",
+          "trade_9",
+          "trade_10",
+          "trade_11",
+          "trade_12",
+          "trade_13",
+          "trade_14",
+          "trade_15",
+          "trade_16",
+          "trade_17",
+          "trade_18",
+          "trade_19"
+        ],
+        "inputs": [
+          {
+            "good": "minecraft:wheat",
+            "count": 3.0
+          },
+          {
+            "good": "",
+            "count": 0.0
+          },
+          {
+            "good": "gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+            "count": 1.7976931348623157e+308
+          }
+        ],
+        "output": "oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo",
+        "makes": 1.7976931348623157e+308
+      }
+    ],
+    "animals": [
+      {
+        "name": "sheep",
+        "feed": [
+          "minecraft:wheat"
+        ],
+        "feed_per_day": 0.25,
+        "meat": "minecraft:mutton",
+        "meat_each": 1.5,
+        "wool": "minecraft:white_wool",
+        "hide": null
+      },
+      {
+        "name": "cow",
+        "feed": [
+          "minecraft:wheat"
+        ],
+        "feed_per_day": 0.25,
+        "meat": "minecraft:beef",
+        "meat_each": 2.0,
+        "wool": null,
+        "hide": "minecraft:leather"
+      },
+      {
+        "name": "pig",
+        "feed": [
+          "minecraft:carrot",
+          "minecraft:potato",
+          "minecraft:beetroot"
+        ],
+        "feed_per_day": 0.25,
+        "meat": "minecraft:porkchop",
+        "meat_each": 2.0,
+        "wool": null,
+        "hide": null
+      },
+      {
+        "name": "",
+        "feed": [],
+        "feed_per_day": 0.0,
+        "meat": null,
+        "meat_each": 0.0,
+        "wool": null,
+        "hide": null
+      },
+      {
+        "name": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+        "feed": [
+          "feed_0",
+          "feed_1",
+          "feed_2",
+          "feed_3",
+          "feed_4",
+          "feed_5",
+          "feed_6",
+          "feed_7",
+          "feed_8",
+          "feed_9"
+        ],
+        "feed_per_day": 1.7976931348623157e+308,
+        "meat": "",
+        "meat_each": 2.2250738585072014e-308,
+        "wool": "w",
+        "hide": "h"
+      }
+    ],
+    "dials": [
+      {
+        "name": "birth_mood",
+        "value": 0.5
+      },
+      {
+        "name": "wagon_slots",
+        "value": 27.0
+      },
+      {
+        "name": "standing_orders",
+        "value": 0.0
+      },
+      {
+        "name": "",
+        "value": -1.0
+      },
+      {
+        "name": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "value": 1.7976931348623157e+308
       }
     ]
+  },
+  {
+    "day_ticks": 1,
+    "goods": [],
+    "comforts": [],
+    "trades": [],
+    "recipes": [],
+    "animals": [],
+    "dials": []
   }
 ]

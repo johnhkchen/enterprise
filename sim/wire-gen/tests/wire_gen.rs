@@ -217,7 +217,7 @@ fn an_inserted_or_removed_variant_is_refused() {
         v.pop();
     });
     let why = generate_from(&removed, &docs, Some(&committed), false).unwrap_err();
-    assert!(why.contains("(PackageLost) is gone"), "{why}");
+    assert!(why.contains("(SetDial) is gone"), "{why}");
 }
 
 #[test]
@@ -228,7 +228,7 @@ fn a_variant_added_at_the_end_is_welcome() {
     let generated = generate_from(&appended, &docs, Some(&committed), false).unwrap();
     assert!(generated.warnings.is_empty());
     let input = &generated.files[&format!("{JAVA_DIR}/Input.java")];
-    assert!(input.contains("case 14 -> new Hello();"), "{input}");
+    assert!(input.contains("case 15 -> new Hello();"), "{input}");
     assert!(input.contains("record Hello() implements Input"), "{input}");
 }
 
@@ -263,7 +263,7 @@ fn the_java_names_every_wire_type_and_routes_every_variant() {
     let save = &generated.files[&format!("{JAVA_DIR}/SaveFile.java")];
     assert!(save.contains("public record SaveFile(long format, long schema, String core, Bytes blob)"), "{save}");
     let pack = &generated.files[&format!("{JAVA_DIR}/PackGood.java")];
-    assert!(pack.contains("Optional<String> comfort, List<GoodFlag> flags"), "{pack}");
+    assert!(pack.contains("Optional<String> comfort, List<GoodFlag> flags, double weight"), "{pack}");
     assert!(pack.contains("in.option(PostcardIn::string)"), "{pack}");
 }
 

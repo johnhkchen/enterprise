@@ -60,3 +60,6 @@ MasterTests.aMasterLibrarianCopiesABook # vanilla enchantment rolls; kit quality
 # Other
 MoodTests.comfortsAreTags # item tags; the kinds table is content
 CaravanTests.onlyTheDesksCommunityIsMustered # JOB_SITE memory and an 8-block radius
+CoreBindingTests.theModsContentPackIsTakenWholeByTheCore # the binding's own: the mod's pack (item tags, registries) through the core
+CoreBindingTests.aDialSetInTheCoreIsKeptByItsSaveAndResetToThePacks # the binding's own: the dial adapter and the core's save
+CoreBindingTests.theDialCommandIsRoutedToTheCoreOrTheJavaRules # the binding's own: a command routed by the society mode

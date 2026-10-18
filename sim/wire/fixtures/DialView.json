@@ -1,0 +1,20 @@
+[
+  {
+    "name": "shelf_days",
+    "value": 5.0,
+    "initial": 5.0,
+    "does": "Days of what its people use a town's warehouse aims to hold."
+  },
+  {
+    "name": "birth_mood",
+    "value": 0.75,
+    "initial": 0.5,
+    "does": ""
+  },
+  {
+    "name": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "value": 1.7976931348623157e+308,
+    "initial": 0.0,
+    "does": "Mood é🌾"
+  }
+]

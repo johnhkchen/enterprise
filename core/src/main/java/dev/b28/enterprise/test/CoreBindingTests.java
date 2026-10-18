@@ -2,7 +2,16 @@ package dev.b28.enterprise.test;
 
 import dev.b28.enterprise.Enterprise;
 import dev.b28.enterprise.binding.CoreHost;
+import dev.b28.enterprise.binding.ModPack;
+import dev.b28.enterprise.binding.Society;
+import dev.b28.enterprise.binding.adapters.DialAdapter;
 import dev.b28.enterprise.core.SaveStore;
+import dev.b28.enterprise.wire.Answer;
+import dev.b28.enterprise.wire.ContentPack;
+import dev.b28.enterprise.wire.DialView;
+import dev.b28.enterprise.wire.GoodFlag;
+import dev.b28.enterprise.wire.PackGood;
+import dev.b28.enterprise.wire.Query;
 import dev.b28.enterprise.merchant.Merchant;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -115,6 +124,119 @@ public final class CoreBindingTests {
             delete(dir);
         }
         helper.succeed();
+    }
+
+    /**
+     * The mod's content pack (B4.1): goods with their comforts, crops, meat and weights, the trades, recipes and herds,
+     * and the dials, checked by the core when it makes a society from it. A pack the core refused would pause the host,
+     * so a host that isn't paused took the whole of it; the dials it holds are the Java catalogue's, one for one but
+     * the mod's own, at the mod's defaults.
+     */
+    @GameTest(template = "floor")
+    public static void theModsContentPackIsTakenWholeByTheCore(GameTestHelper helper) {
+        ContentPack pack = ModPack.of();
+        Map<String, PackGood> goods = new java.util.HashMap<>();
+        pack.goods().forEach(g -> goods.put(g.name(), g));
+        helper.assertTrue(goods.get("minecraft:iron_ingot").weight() == 2.0 && goods.get("minecraft:cobblestone").weight() == 3.0
+                && goods.get("minecraft:wheat").weight() == 1.0, "the pack's weights: iron " + goods.get("minecraft:iron_ingot"));
+        helper.assertTrue(goods.get("minecraft:wheat").flags().contains(GoodFlag.Crop)
+                && goods.get("minecraft:cooked_beef").flags().contains(GoodFlag.Meat), "a crop and a meat aren't flagged");
+        helper.assertTrue(goods.get("minecraft:book").comfort().equals(java.util.Optional.of("reading"))
+                && goods.get("enterprise:pipe_tobacco").comfort().equals(java.util.Optional.of("leisure")), "comforts aren't the tags'");
+        helper.assertTrue(goods.containsKey("minecraft:white_wool") && goods.containsKey("minecraft:cod"),
+                "goods the recipes and herds use aren't in the pack although the mod doesn't price them");
+        helper.assertTrue(pack.comforts().equals(List.of("clothing", "furnishings", "leisure", "reading", "treats")),
+                "kinds of comfort: " + pack.comforts());
+        helper.assertTrue(pack.trades().size() == 16 && pack.trades().get(0).equals("merchant") && pack.trades().contains("farmer")
+                && pack.trades().get(14).equals("none") && pack.trades().get(15).equals("nitwit"), "trades: " + pack.trades());
+        helper.assertTrue(pack.recipes().size() == dev.b28.enterprise.territory.Workshop.CONVERSIONS.size()
+                && pack.animals().size() == dev.b28.enterprise.territory.Husbandry.KINDS.size(), "recipes or animals missing");
+
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            helper.assertTrue(host.pausedWhy() == null, "the core refused the mod's pack: " + host.pausedWhy());
+            List<String> names = ((Answer.Goods) host.ask(List.of(new Query.Goods())).get(0)).goods();
+            helper.assertTrue(names.equals(pack.goods().stream().map(PackGood::name).toList()), "the core's goods aren't the pack's");
+            Map<String, DialView> dials = new java.util.HashMap<>();
+            DialAdapter.list(host).forEach(d -> dials.put(d.name(), d));
+            for (var dial : dev.b28.enterprise.Dials.all()) {
+                if (ModPack.JAVA_ONLY.contains(dial.name)) {
+                    helper.assertTrue(!dials.containsKey(dial.name), "the core has the mod's own dial " + dial.name);
+                    continue;
+                }
+                DialView view = dials.get(dial.name);
+                helper.assertTrue(view != null, "the core has no dial " + dial.name + " (the mod's, with no rule of its own in the core)");
+                helper.assertTrue(view.value() == dial.initial && view.initial() == dial.initial,
+                        "dial " + dial.name + " starts at " + view.value() + " (default " + view.initial() + "), the mod's is " + dial.initial);
+            }
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /** A dial set in the core is the world's, kept by its save, and put back to the pack's own setting, not the core's. */
+    @GameTest(template = "floor")
+    public static void aDialSetInTheCoreIsKeptByItsSaveAndResetToThePacks(GameTestHelper helper) {
+        Path dir = folder();
+        try {
+            try (CoreHost host = CoreHost.open(dir, 7)) {
+                helper.assertTrue(dial(host, "birth_mood").value() == 0.5, "the pack's birth_mood isn't the mod's 0.5 (the core's is 1)");
+                helper.assertTrue(DialAdapter.set(host, "shelf_days", 7.0) == null, "shelf_days wasn't set");
+                helper.assertTrue(DialAdapter.set(host, "birth_mood", 0.9) == null, "birth_mood wasn't set");
+                helper.assertTrue(dial(host, "shelf_days").value() == 7.0 && dial(host, "shelf_days").initial() == 5.0,
+                        "shelf_days is " + dial(host, "shelf_days"));
+                String why = DialAdapter.set(host, "no_such_dial", 1.0);
+                helper.assertTrue(why != null && why.contains("no dial called"), "an unknown dial: " + why);
+                why = DialAdapter.set(host, "wagon_slots", -1.0);
+                helper.assertTrue(why != null && why.contains("isn't a count"), "a count below nothing: " + why);
+                helper.assertTrue(dial(host, "shelf_days").value() == 7.0, "a refused dial moved another");
+                helper.assertTrue(host.save(), "the host didn't save");
+            }
+            try (CoreHost loaded = CoreHost.open(dir, 8)) {
+                helper.assertTrue(dial(loaded, "shelf_days").value() == 7.0, "the loaded core lost shelf_days: " + dial(loaded, "shelf_days"));
+                helper.assertTrue(DialAdapter.set(loaded, "birth_mood", null) == null, "birth_mood wasn't reset");
+                helper.assertTrue(dial(loaded, "birth_mood").value() == 0.5,
+                        "birth_mood went back to " + dial(loaded, "birth_mood").value() + ", not the pack's 0.5");
+                helper.assertTrue(DialAdapter.set(loaded, "shelf_days", null) == null && dial(loaded, "shelf_days").value() == 5.0,
+                        "shelf_days wasn't put back");
+            }
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * {@code /enterprise dial} is routed (B4.1): in core mode the core's dial moves and the Java catalogue (no rule of
+     * which runs) doesn't; in Java mode the Java rules' dial moves and the core beside them follows. Either way a
+     * reset puts both back, within the test, so no other test sees the change.
+     */
+    @GameTest(template = "floor")
+    public static void theDialCommandIsRoutedToTheCoreOrTheJavaRules(GameTestHelper helper) {
+        var server = helper.getLevel().getServer();
+        CoreHost host = CoreHost.of(server);
+        helper.assertTrue(host != null && host.pausedWhy() == null, "the server's core isn't running");
+        var dial = dev.b28.enterprise.Dials.SHELF_DAYS;
+        boolean core = Society.isCore();
+        try {
+            server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "enterprise dial shelf_days 7");
+            helper.assertTrue(dial(host, "shelf_days").value() == 7.0, "the core's shelf_days is " + dial(host, "shelf_days").value());
+            helper.assertTrue(dial.get() == (core ? 5.0 : 7.0), "the Java dial is " + dial.get() + " in " + (core ? "core" : "Java") + " mode");
+            // A name no one has is told so; nothing moves.
+            server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "enterprise dial no_such_dial 3");
+            helper.assertTrue(dial(host, "shelf_days").value() == 7.0, "an unknown dial moved another");
+        } finally {
+            server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "enterprise dial shelf_days reset");
+        }
+        helper.assertTrue(dial(host, "shelf_days").value() == 5.0 && dial.get() == 5.0,
+                "shelf_days isn't back to 5: core " + dial(host, "shelf_days").value() + ", Java " + dial.get());
+        helper.succeed();
+    }
+
+    private static DialView dial(CoreHost host, String name) {
+        return DialAdapter.list(host).stream().filter(d -> d.name().equals(name)).findFirst()
+                .orElseThrow(() -> new AssertionError("the core has no dial " + name));
     }
 
     /**

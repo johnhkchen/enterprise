@@ -33,10 +33,10 @@ pub use crate::content::GoodId;
 pub use handle::{handle, handle_bytes};
 pub use input::{Count, Input};
 pub use output::Output;
-pub use pack::{ContentPack, GoodFlag, PackGood};
+pub use pack::{ContentPack, GoodFlag, PackAmount, PackAnimal, PackDial, PackGood, PackRecipe};
 pub use pallet::{PackageLine, Place};
 pub use point::{Point, PointKind};
-pub use query::{Answer, Query, TownPoint};
+pub use query::{Answer, DialView, Query, TownPoint};
 pub use save_file::SaveFile;
 
 /// A town, by its place in the order towns were added: stable across saves and hosts, unlike an ECS entity.

@@ -110,6 +110,7 @@ fn answer(s: &Society, query: &Query) -> Result<Answer, String> {
                 .collect(),
         },
         Query::Goods => Answer::Goods { goods: s.content().goods.iter().map(|g| g.name.clone()).collect() },
+        Query::Dials => Answer::Dials { dials: s.dial_views() },
     })
 }
 
@@ -194,6 +195,14 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
                 points.insert(spot, None);
             }
             Input::PalletBrought { town: t, .. } | Input::PackageBrought { town: t, .. } => town(*t)?,
+            Input::SetDial { name, value } => {
+                match value {
+                    Some(v) => crate::dials::Dials::check(name, *v),
+                    None if crate::dials::Dials::names().contains(&name.as_str()) => Ok(()),
+                    None => Err(format!("no dial called {name}")),
+                }
+                .map_err(wrong)?;
+            }
             // A pallet that isn't there, or isn't in a warehouse, is a stale view: ignored, not refused.
             Input::PackageLost { .. } => {}
             Input::Stocktake { point, counts } => {

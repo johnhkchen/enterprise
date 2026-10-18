@@ -1,0 +1,79 @@
+[
+  {
+    "trades": [
+      "farmer"
+    ],
+    "inputs": [
+      {
+        "good": "minecraft:wheat",
+        "count": 3.0
+      }
+    ],
+    "output": "minecraft:bread",
+    "makes": 1.0
+  },
+  {
+    "trades": [
+      "librarian",
+      "cartographer"
+    ],
+    "inputs": [
+      {
+        "good": "minecraft:paper",
+        "count": 3.0
+      },
+      {
+        "good": "minecraft:leather",
+        "count": 1.0
+      }
+    ],
+    "output": "minecraft:book",
+    "makes": 0.5
+  },
+  {
+    "trades": [],
+    "inputs": [],
+    "output": "",
+    "makes": 0.0
+  },
+  {
+    "trades": [
+      "trade_0",
+      "trade_1",
+      "trade_2",
+      "trade_3",
+      "trade_4",
+      "trade_5",
+      "trade_6",
+      "trade_7",
+      "trade_8",
+      "trade_9",
+      "trade_10",
+      "trade_11",
+      "trade_12",
+      "trade_13",
+      "trade_14",
+      "trade_15",
+      "trade_16",
+      "trade_17",
+      "trade_18",
+      "trade_19"
+    ],
+    "inputs": [
+      {
+        "good": "minecraft:wheat",
+        "count": 3.0
+      },
+      {
+        "good": "",
+        "count": 0.0
+      },
+      {
+        "good": "gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+        "count": 1.7976931348623157e+308
+      }
+    ],
+    "output": "oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo",
+    "makes": 1.7976931348623157e+308
+  }
+]

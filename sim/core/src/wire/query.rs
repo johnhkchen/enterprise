@@ -15,6 +15,8 @@ pub enum Query {
     /// it to map its items to numbers again, since the content is the save's (a pack given at `Create` is kept with
     /// the society), not whatever pack the host would build today.
     Goods,
+    /// Every dial: its value now, the value it starts at (what `reset` puts it back to) and what it does.
+    Dials,
 }
 
 /// An answer, in the place of its question.
@@ -27,6 +29,8 @@ pub enum Answer {
     Points { points: Vec<TownPoint> },
     /// Every good's name, in the order of their numbers (a `GoodNo` is a place here).
     Goods { goods: Vec<String> },
+    /// Every dial, in the order the core lists them.
+    Dials { dials: Vec<DialView> },
 }
 
 /// A trade point and the town it's for.
@@ -34,4 +38,14 @@ pub enum Answer {
 pub struct TownPoint {
     pub point: Point,
     pub town: TownNo,
+}
+
+/// A dial as `/enterprise dial` lists it: its name, its value now and the value it starts the world at, and what it does
+/// (empty for a dial documented with its neighbours: the words are on the first of them).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct DialView {
+    pub name: String,
+    pub value: f64,
+    pub initial: f64,
+    pub does: String,
 }

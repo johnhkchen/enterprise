@@ -493,6 +493,14 @@ impl Society {
                 self.package_lost(pallet, package);
                 Vec::new()
             }
+            Input::SetDial { ref name, value } => {
+                // (checked before the look applies: a name or value that wouldn't do is refused there)
+                let _ = match value {
+                    Some(v) => self.set_dial(name, v),
+                    None => self.reset_dial(name),
+                };
+                Vec::new()
+            }
         }
     }
 
@@ -574,9 +582,22 @@ impl Society {
         self.content_mut().dials.set(name, value)
     }
 
-    /// Puts a dial back to the mod's default.
+    /// Puts a dial back to what the world started with: the mod's default, or the content pack's own.
     pub fn reset_dial(&mut self, name: &str) -> Result<(), String> {
-        self.content_mut().dials.reset(name)
+        let mut content = self.content_mut();
+        let initial = content.dial_defaults.clone();
+        content.dials.reset_to(name, &initial)
+    }
+
+    /// Every dial as the host lists it (`Query::Dials`).
+    pub fn dial_views(&self) -> Vec<crate::wire::DialView> {
+        let content = self.content();
+        crate::dials::Dials::names().into_iter().map(|name| crate::wire::DialView {
+            name: name.to_string(),
+            value: content.dials.get(name).unwrap_or(0.0),
+            initial: content.dial_defaults.get(name).unwrap_or(0.0),
+            does: crate::dials::Dials::describe(name).unwrap_or_default(),
+        }).collect()
     }
 
     /// A dial's value now, by its name.

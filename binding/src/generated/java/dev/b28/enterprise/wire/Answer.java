@@ -7,7 +7,7 @@ import java.util.Objects;
 /**
  * An answer, in the place of its question.
  */
-public sealed interface Answer permits Answer.Stock, Answer.Points, Answer.Goods {
+public sealed interface Answer permits Answer.Stock, Answer.Points, Answer.Goods, Answer.Dials {
     void encode(PostcardOut out);
 
     static Answer decode(PostcardIn in) {
@@ -16,6 +16,7 @@ public sealed interface Answer permits Answer.Stock, Answer.Points, Answer.Goods
             case 0 -> new Stock(in.u32(), in.list(8, PostcardIn::f64));
             case 1 -> new Points(in.list(6, TownPoint::decode));
             case 2 -> new Goods(in.list(1, PostcardIn::string));
+            case 3 -> new Dials(in.list(18, DialView::decode));
             default -> throw in.unknownVariant("Answer", at);
         };
     }
@@ -76,6 +77,22 @@ public sealed interface Answer permits Answer.Stock, Answer.Points, Answer.Goods
         public void encode(PostcardOut out) {
             out.variant(2);
             out.list(this.goods, PostcardOut::string);
+        }
+    }
+
+    /**
+     * Every dial, in the order the core lists them.
+     */
+    record Dials(List<DialView> dials) implements Answer {
+        public Dials {
+            Objects.requireNonNull(dials, "dials");
+            dials = List.copyOf(dials);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(3);
+            out.list(this.dials, (o1, e1) -> e1.encode(o1));
         }
     }
 }

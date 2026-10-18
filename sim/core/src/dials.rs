@@ -55,11 +55,11 @@ impl DialValue for bool {
 
 /// The list made into `Dials`: the struct (in the list's order, which is the save's), its defaults, and dials by name.
 macro_rules! dials {
-    ($($(#[$doc:meta])* $name:ident: $ty:ty = $default:expr,)*) => {
+    ($($(#[doc = $doc:literal])* $name:ident: $ty:ty = $default:expr,)*) => {
         /// Settings a study tunes, as in the mod's `Dials`.
         #[derive(Clone, Debug, Serialize, Deserialize)]
         pub struct Dials {
-            $($(#[$doc])* pub $name: $ty,)*
+            $($(#[doc = $doc])* pub $name: $ty,)*
         }
 
         impl Default for Dials {
@@ -91,14 +91,35 @@ macro_rules! dials {
                 Ok(())
             }
 
-            /// Puts a dial back to the mod's default.
+            /// Puts a dial back to the core's default.
             pub fn reset(&mut self, name: &str) -> Result<(), String> {
-                let initial = Dials::default();
+                self.reset_to(name, &Dials::default())
+            }
+
+            /// Puts a dial back to what `initial` has it at: a world's starting dials (the content pack's own).
+            pub fn reset_to(&mut self, name: &str, initial: &Dials) -> Result<(), String> {
                 match name {
                     $(stringify!($name) => self.$name = initial.$name,)*
                     _ => return Err(format!("no dial called {name}")),
                 }
                 Ok(())
+            }
+
+            /// Whether `value` is one `name` takes, without setting it: what [`Dials::set`] would say.
+            pub fn check(name: &str, value: f64) -> Result<(), String> {
+                match name {
+                    $(stringify!($name) => <$ty as DialValue>::from_f64(value).map(|_| ()),)*
+                    _ => Err(format!("no dial called {name}")),
+                }
+            }
+
+            /// What a dial does, as its doc comment says it (a dial documented together with its neighbours has the
+            /// words on the first of them and none of its own).
+            pub fn describe(name: &str) -> Option<String> {
+                match name {
+                    $(stringify!($name) => Some([$($doc),*].iter().map(|line: &&str| line.trim()).collect::<Vec<_>>().join(" ")),)*
+                    _ => None,
+                }
             }
         }
     };

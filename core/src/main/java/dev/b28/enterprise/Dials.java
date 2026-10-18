@@ -216,6 +216,11 @@ public final class Dials extends SavedData {
         setDirty();
     }
 
+    /** What the world has set, by name: the dials not at their defaults (the core follows them at start). */
+    public Map<String, Double> settings() {
+        return Map.copyOf(set);
+    }
+
     /** The world's settings, put in force (every dial not set back to its default). */
     void apply() {
         ALL.values().forEach(d -> d.value = set.getOrDefault(d.name, d.initial));

@@ -1,0 +1,66 @@
+[
+  {
+    "name": "sheep",
+    "feed": [
+      "minecraft:wheat"
+    ],
+    "feed_per_day": 0.25,
+    "meat": "minecraft:mutton",
+    "meat_each": 1.5,
+    "wool": "minecraft:white_wool",
+    "hide": null
+  },
+  {
+    "name": "cow",
+    "feed": [
+      "minecraft:wheat"
+    ],
+    "feed_per_day": 0.25,
+    "meat": "minecraft:beef",
+    "meat_each": 2.0,
+    "wool": null,
+    "hide": "minecraft:leather"
+  },
+  {
+    "name": "pig",
+    "feed": [
+      "minecraft:carrot",
+      "minecraft:potato",
+      "minecraft:beetroot"
+    ],
+    "feed_per_day": 0.25,
+    "meat": "minecraft:porkchop",
+    "meat_each": 2.0,
+    "wool": null,
+    "hide": null
+  },
+  {
+    "name": "",
+    "feed": [],
+    "feed_per_day": 0.0,
+    "meat": null,
+    "meat_each": 0.0,
+    "wool": null,
+    "hide": null
+  },
+  {
+    "name": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
+    "feed": [
+      "feed_0",
+      "feed_1",
+      "feed_2",
+      "feed_3",
+      "feed_4",
+      "feed_5",
+      "feed_6",
+      "feed_7",
+      "feed_8",
+      "feed_9"
+    ],
+    "feed_per_day": 1.7976931348623157e+308,
+    "meat": "",
+    "meat_each": 2.2250738585072014e-308,
+    "wool": "w",
+    "hide": "h"
+  }
+]

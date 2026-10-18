@@ -255,7 +255,7 @@ fn pack() -> ContentPack {
     beef.food = 8.0;
     beef.saturation = 12.8;
     beef.flags = vec![GoodFlag::Meat];
-    ContentPack { day_ticks: DAY, goods: vec![wheat, bread, book, beef] }
+    ContentPack::new(DAY, vec![wheat, bread, book, beef])
 }
 
 const WHEAT: GoodNo = 0;
@@ -351,8 +351,82 @@ fn inputs() -> Scenario {
         Input::PackageBrought { town: 1, pallet: 41, package: 0 },
         Input::PackageLost { pallet: 41, package: 0 },
     ]);
+    s.apply("dials set for the world, one a switch, one put back to the world's start", vec![
+        Input::SetDial { name: "harvest_window_days".into(), value: Some(6.0) },
+        Input::SetDial { name: "bargain".into(), value: Some(0.0) },
+        Input::SetDial { name: "harvest_window_days".into(), value: None },
+    ]);
     s.apply("twenty days pass", vec![Input::Advance { to: 20 * DAY }]);
-    s.ask("every question", vec![Query::Stock { town: 0 }, Query::Stock { town: 1 }, Query::Points]);
+    s.ask("every question", vec![Query::Stock { town: 0 }, Query::Stock { town: 1 }, Query::Points, Query::Goods]);
+    s.scenario
+}
+
+/// The pack of all the game brings: weights, kinds of comfort, trades, recipes, animals and dials.
+fn full_pack() -> ContentPack {
+    let mut p = pack();
+    let mut iron = PackGood::new("minecraft:iron_ingot", 0.25, 64);
+    iron.weight = 4.0;
+    let mut cane = PackGood::new("minecraft:sugar_cane", 0.04, 64);
+    cane.weight = 0.5;
+    let paper = PackGood::new("minecraft:paper", 0.04, 64);
+    p.goods.extend([iron, cane, paper]);
+    p.comforts = vec!["clothing".into(), "reading".into()];
+    p.trades = ["merchant", "farmer", "librarian", "shepherd", "none", "nitwit"].map(String::from).to_vec();
+    p.recipes = vec![
+        PackRecipe { trades: vec!["farmer".into()], inputs: vec![PackAmount { good: "minecraft:wheat".into(), count: 3.0 }],
+            output: "minecraft:bread".into(), makes: 1.0 },
+        PackRecipe { trades: vec!["librarian".into()], inputs: vec![PackAmount { good: "minecraft:sugar_cane".into(), count: 1.0 }],
+            output: "minecraft:paper".into(), makes: 1.0 },
+    ];
+    p.animals = vec![PackAnimal { name: "cow".into(), feed: vec!["minecraft:wheat".into()], feed_per_day: 0.25,
+        meat: Some("minecraft:cooked_beef".into()), meat_each: 2.0, wool: None, hide: None }];
+    p.dials = vec![PackDial { name: "birth_mood".into(), value: 0.5 }, PackDial { name: "wagon_slots".into(), value: 30.0 }];
+    p
+}
+
+/// A society from a pack with everything a game brings, its dials asked, set, kept by a save and put back.
+fn content() -> Scenario {
+    let mut s = Script::new("content", "A pack with all a game brings (kinds of comfort, trades, recipes, animals, dials, weights) makes a society \
+        whose dials start where the pack set them. A dial is set for the world, kept by a save, and reset to the pack's own, not the core's. \
+        A pack that names what it lacks is refused with everything wrong with it.");
+    let r = s.say("a society from the pack", Command::Create { pack: full_pack(), seed: 7 });
+    assert_eq!(r, Response::Done { outputs: vec![], answers: vec![] });
+    let r = s.say("a pack whose recipe, animal, trade and dial name what isn't there: refused, the society kept", Command::Create { pack: {
+        let mut bad = full_pack();
+        bad.recipes[0].output = "minecraft:glass".into();
+        bad.animals[0].feed = vec!["minecraft:hay".into()];
+        bad.trades.retain(|t| t != "merchant");
+        bad.dials.push(PackDial { name: "no_such_dial".into(), value: 1.0 });
+        bad
+    }, seed: 1 });
+    assert!(matches!(s.refused("pack", r), Refusal::Pack { .. }));
+    s.ask("the goods by number", vec![Query::Goods]);
+    let dials = s.ask("every dial, the pack's two set", vec![Query::Dials]);
+    let Answer::Dials { dials } = &dials[0] else { panic!("dials") };
+    let named = |name: &str| dials.iter().find(|d| d.name == name).unwrap_or_else(|| panic!("no dial {name}")).clone();
+    assert_eq!((named("birth_mood").value, named("birth_mood").initial), (0.5, 0.5));
+    assert_eq!((named("wagon_slots").value, named("wagon_slots").initial), (30.0, 30.0));
+    s.apply("a town, then three dials set: a fraction, a count rounded, a switch", vec![
+        Input::AddTown { name: "Ashford".into(), desk: at(PointKind::Desk, 27, 27) },
+        Input::SetDial { name: "birth_mood".into(), value: Some(0.9) },
+        Input::SetDial { name: "wagon_slots".into(), value: Some(12.4) },
+        Input::SetDial { name: "bargain".into(), value: Some(0.0) },
+    ]);
+    s.save("saved with its dials");
+    s.load("loaded");
+    let kept = s.ask("the dials after the load", vec![Query::Dials]);
+    let Answer::Dials { dials } = &kept[0] else { panic!("dials") };
+    let named = |name: &str| dials.iter().find(|d| d.name == name).unwrap_or_else(|| panic!("no dial {name}")).clone();
+    assert_eq!((named("birth_mood").value, named("birth_mood").initial), (0.9, 0.5), "kept, and the pack's start with it");
+    assert_eq!(named("wagon_slots").value, 12.0);
+    s.apply("two dials reset: the pack's setting comes back, not the core's", vec![
+        Input::SetDial { name: "birth_mood".into(), value: None },
+        Input::SetDial { name: "wagon_slots".into(), value: None },
+    ]);
+    let back = s.ask("the dials again", vec![Query::Dials]);
+    let Answer::Dials { dials } = &back[0] else { panic!("dials") };
+    let named = |name: &str| dials.iter().find(|d| d.name == name).unwrap_or_else(|| panic!("no dial {name}")).clone();
+    assert_eq!((named("birth_mood").value, named("wagon_slots").value, named("bargain").value), (0.5, 30.0, 0.0));
     s.scenario
 }
 
@@ -367,6 +441,10 @@ fn refusals() -> Scenario {
     let mut bad = pack();
     bad.day_ticks = 0;
     let r = s.say("a pack with a day of no ticks", Command::Create { pack: bad, seed: 1 });
+    assert!(matches!(s.refused("pack", r), Refusal::Pack { .. }));
+    let mut bad = pack();
+    bad.recipes.push(PackRecipe { trades: vec!["baker".into()], inputs: vec![], output: "minecraft:glass".into(), makes: 0.0 });
+    let r = s.say("a pack with a recipe for trades and goods it hasn't", Command::Create { pack: bad, seed: 1 });
     assert!(matches!(s.refused("pack", r), Refusal::Pack { .. }));
     let r = s.say_request("built against another ABI", Request { abi: 0, schema: SCHEMA, command: Command::Save });
     assert_eq!(s.refused("abi", r), Refusal::Abi { core: ABI, request: 0 });
@@ -437,6 +515,12 @@ fn refusals() -> Scenario {
         Input::AddTown { name: "Nowhere".into(), desk: at(PointKind::Locker, 5, 5) },
     ], 0);
     refuse_apply(&mut s, "an advance past a hundred years", vec![Input::Advance { to: u64::MAX }], 0);
+    refuse_apply(&mut s, "a dial the core hasn't, after one it has", vec![
+        Input::SetDial { name: "shelf_days".into(), value: Some(7.0) },
+        Input::SetDial { name: "no_such_dial".into(), value: Some(1.0) },
+    ], 1);
+    refuse_apply(&mut s, "a count dial set below nothing", vec![Input::SetDial { name: "wagon_slots".into(), value: Some(-1.0) }], 0);
+    refuse_apply(&mut s, "a dial that isn't there put back", vec![Input::SetDial { name: "no_such_dial".into(), value: None }], 0);
     // NaN and infinity are no JSON: those requests go as bytes.
     for (note, input) in [
         ("a count of NaN, as bytes", Input::Deliver { town: 0, good: WHEAT, count: f64::NAN }),
@@ -453,7 +537,7 @@ fn refusals() -> Scenario {
 }
 
 fn scenarios() -> Vec<Scenario> {
-    vec![stocktake(), inputs(), refusals()]
+    vec![stocktake(), inputs(), content(), refusals()]
 }
 
 fn text(scenario: &Scenario) -> String {
@@ -480,7 +564,7 @@ fn the_scenarios_play_as_their_files_say() {
         return;
     }
     let mut wrong = Vec::new();
-    for name in ["stocktake", "inputs", "refusals"] {
+    for name in ["stocktake", "inputs", "content", "refusals"] {
         let scenario = read(name);
         assert!(!scenario.steps.is_empty(), "{name}: no steps");
         wrong.extend(play(&scenario));
@@ -538,9 +622,9 @@ fn every_message_appears_in_a_scenario() {
         }
     }
     let set = |names: &[&str]| names.iter().map(|s| s.to_string()).collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "Stall", "Stocktake"]));
+    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake"]));
     assert_eq!(commands, set(&["Apply", "Ask", "Create", "Load", "Save"]));
-    assert_eq!(queries, set(&["Goods", "Points", "Stock"]));
+    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock"]));
     assert_eq!(refusals, set(&["Abi", "Input", "NoSociety", "Pack", "Query", "Save", "SaveFormat", "Schema", "Unreadable"]));
     // None yet: an Output needs a master Merchant (OrderFilled, Signal), a route (the wagon's three) or a pallet (the
     // pallets' three: only a wagon packs one), and no wire input makes any. When one does, a scenario shows each and its name goes here.

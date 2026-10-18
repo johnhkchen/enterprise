@@ -82,6 +82,9 @@ pub struct Content {
     pub comforts: Vec<String>,
     pub day_ticks: u64,
     pub dials: Dials,
+    /// The dials as the world started with them: what `reset` puts a dial back to. The core's defaults, or the content
+    /// pack's own where it sets them (`wire/pack.rs`).
+    pub dial_defaults: Dials,
     /// The trades a town's hands can have (`roster.rs`): the mod's sixteen by default.
     pub trades: Vec<crate::roster::Trade>,
     /// What a town's trades convert (`workshop.rs`): the mod's seven by default, for the goods the host has.
@@ -100,7 +103,7 @@ impl Content {
 
     pub fn new(goods: Vec<Good>, day_ticks: u64) -> Self {
         let mut content = Content { goods, comforts: Self::COMFORTS.iter().map(|k| k.to_string()).collect(), day_ticks,
-            dials: Dials::default(), trades: crate::roster::trades(), conversions: Vec::new(), animals: Vec::new(),
+            dials: Dials::default(), dial_defaults: Dials::default(), trades: crate::roster::trades(), conversions: Vec::new(), animals: Vec::new(),
             packages: Vec::new(), pallet_kinds: Vec::new() };
         content.packages = crate::pallet::base_packages();
         content.pallet_kinds = crate::pallet::base_pallet_kinds();
@@ -116,9 +119,14 @@ impl Content {
         self.comforts.iter().position(|k| k == name)
     }
 
-    /// The good called `name`, if the host has one.
+    /// The good called `name`, if the host has one, with or without the host's namespace: the core asks for `wheat`
+    /// and a game that calls it `minecraft:wheat` has it (`name` itself, if it has a colon, is matched whole). The
+    /// first good that fits, in the host's order.
     pub fn good(&self, name: &str) -> Option<GoodId> {
-        self.goods.iter().position(|g| g.name == name)
+        self.goods.iter().position(|g| {
+            g.name == name
+                || g.name.strip_suffix(name).is_some_and(|before| before.ends_with(':'))
+        })
     }
 
     /// The trade called `name`, with or without the host's namespace (`librarian`, `minecraft:librarian`).

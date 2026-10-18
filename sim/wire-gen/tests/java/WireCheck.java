@@ -172,7 +172,7 @@ public final class WireCheck {
         n += throwsNull("a null dim", () -> new Point(PointKind.Desk, null, 0, 0, 0));
         n += throwsNull("a null list", () -> new Command.Apply(null));
         n += throwsNull("a null in a list", () -> new Command.Apply(java.util.Arrays.asList((Input) null)));
-        n += throwsNull("a null option", () -> new PackGood("a", 1, 1, 0, 0, null, List.of()));
+        n += throwsNull("a null option", () -> new PackGood("a", 1, 1, 0, 0, null, List.of(), 1));
         List<Input> mutable = new java.util.ArrayList<>(List.of(new Input.Advance(5)));
         Command.Apply apply = new Command.Apply(mutable);
         mutable.add(new Input.Advance(6));
@@ -194,7 +194,7 @@ public final class WireCheck {
         if (!Request.fromBytes(b).equals(r) || Wire.SCHEMA != r.schema()) {
             fail("a request doesn't read back");
         }
-        PackGood g = new PackGood("minecraft:book", 0.5, 64, 0, 0, Optional.of("reading"), List.of(GoodFlag.Crop));
+        PackGood g = new PackGood("minecraft:book", 0.5, 64, 0, 0, Optional.of("reading"), List.of(GoodFlag.Crop), 2.5);
         n++;
         if (!PackGood.fromBytes(g.toBytes()).equals(g)) {
             fail("a good doesn't read back");

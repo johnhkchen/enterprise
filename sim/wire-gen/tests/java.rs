@@ -70,7 +70,27 @@ fn pack() -> ContentPack {
     book.comfort = Some("reading".into());
     book.food = f64::MIN_POSITIVE;
     book.saturation = 5e-324;
-    ContentPack { day_ticks: u64::MAX, goods: vec![wheat, book] }
+    book.weight = f64::MAX;
+    ContentPack::new(u64::MAX, vec![wheat, book])
+}
+
+/// A pack with everything a game brings, at the edges.
+fn full_pack() -> ContentPack {
+    let mut p = pack();
+    p.comforts = vec!["reading".into(), "\u{e9}t\u{e9}".into(), String::new()];
+    p.trades = vec!["merchant".into(), "none".into(), "nitwit".into(), "t".repeat(200)];
+    p.recipes = vec![
+        PackRecipe { trades: vec!["farmer".into(), "baker".into()], inputs: vec![PackAmount { good: "minecraft:wheat".into(), count: 3.0 },
+            PackAmount { good: String::new(), count: f64::MIN_POSITIVE }], output: "minecraft:bread".into(), makes: f64::MAX },
+        PackRecipe { trades: vec![], inputs: vec![], output: String::new(), makes: 0.0 },
+    ];
+    p.animals = vec![
+        PackAnimal { name: "cow".into(), feed: vec!["minecraft:wheat".into(), "minecraft:hay_block".into()], feed_per_day: 0.25,
+            meat: Some("minecraft:beef".into()), meat_each: 2.0, wool: None, hide: Some("minecraft:leather".into()) },
+        PackAnimal { name: String::new(), feed: vec![], feed_per_day: f64::MAX, meat: None, meat_each: 0.0, wool: Some(String::new()), hide: None },
+    ];
+    p.dials = vec![PackDial { name: "birth_mood".into(), value: 0.5 }, PackDial { name: "\u{1f33e}".into(), value: f64::NEG_INFINITY }];
+    p
 }
 
 fn inputs() -> Vec<Input> {
@@ -91,6 +111,9 @@ fn inputs() -> Vec<Input> {
         Input::AddTown { name: String::new(), desk: desk.clone() },
         Input::AddTown { name: "Ünïcødé 町 🐝".into(), desk: desk.clone() },
         Input::AddTown { name: "x".repeat(300), desk: desk.clone() },
+        Input::SetDial { name: "birth_mood".into(), value: Some(0.5) },
+        Input::SetDial { name: "\u{1f33e}".into(), value: None },
+        Input::SetDial { name: String::new(), value: Some(f64::NAN) },
         Input::AddPoint { point: point(PointKind::Depot, "a", 0, 0, 0), town: 3 },
         Input::RemovePoint { point: point(PointKind::Banker, "minecraft:the_nether", -1, 1, -1) },
         Input::Stocktake { point: desk.clone(), counts: vec![] },
@@ -143,7 +166,22 @@ fn samples() -> Samples {
         s.ok("PackGood", g);
     }
     s.ok("ContentPack", &pack());
-    s.ok("ContentPack", &ContentPack { day_ticks: 24_000, goods: vec![] });
+    s.ok("ContentPack", &ContentPack::new(24_000, vec![]));
+    s.ok("ContentPack", &full_pack());
+    for r in &full_pack().recipes {
+        s.ok("PackRecipe", r);
+        for a in &r.inputs {
+            s.ok("PackAmount", a);
+        }
+    }
+    for a in &full_pack().animals {
+        s.ok("PackAnimal", a);
+    }
+    for d in &full_pack().dials {
+        s.ok("PackDial", d);
+    }
+    s.ok("DialView", &DialView { name: "shelf_days".into(), value: 5.0, initial: 4.0, does: "Days. \u{1f33e}".into() });
+    s.ok("DialView", &DialView { name: String::new(), value: f64::NAN, initial: f64::MIN_POSITIVE, does: String::new() });
     for len in [0, 1, 127, 128, 16_383, 16_384, 70_000] {
         s.ok("SaveFile", &save(len));
     }
@@ -159,10 +197,15 @@ fn samples() -> Samples {
     }
     s.ok("Query", &Query::Stock { town: 0 });
     s.ok("Query", &Query::Points);
+    s.ok("Query", &Query::Goods);
+    s.ok("Query", &Query::Dials);
     let answers = vec![
         Answer::Stock { town: 3, stock: (0..500).map(|i| i as f64 / 3.0).collect() },
         Answer::Stock { town: 0, stock: vec![] },
         Answer::Points { points: vec![TownPoint { point: point(PointKind::Desk, "o", 1, 2, 3), town: 0 }] },
+        Answer::Dials { dials: vec![] },
+        Answer::Dials { dials: (0..300).map(|i| DialView { name: format!("dial_{i}"), value: i as f64 * 0.25, initial: 1.0,
+            does: "x".repeat(i % 5) }).collect() },
     ];
     for a in &answers {
         s.ok("Answer", a);

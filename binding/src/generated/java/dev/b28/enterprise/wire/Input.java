@@ -3,6 +3,7 @@ package dev.b28.enterprise.wire;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * A happening the host hands the core.
@@ -21,7 +22,8 @@ public sealed interface Input
                 Input.Stocktake,
                 Input.PalletBrought,
                 Input.PackageBrought,
-                Input.PackageLost {
+                Input.PackageLost,
+                Input.SetDial {
     void encode(PostcardOut out);
 
     static Input decode(PostcardIn in) {
@@ -41,6 +43,7 @@ public sealed interface Input
             case 11 -> new PalletBrought(in.u32(), in.u64());
             case 12 -> new PackageBrought(in.u32(), in.u64(), in.u32());
             case 13 -> new PackageLost(in.u64(), in.u32());
+            case 14 -> new SetDial(in.string(), in.option(PostcardIn::f64));
             default -> throw in.unknownVariant("Input", at);
         };
     }
@@ -254,6 +257,25 @@ public sealed interface Input
             out.variant(13);
             out.u64(this.pallet);
             out.u32(this.package_);
+        }
+    }
+
+    /**
+     * A dial set for this world ({@code /enterprise dial <name> <value>}), or put back to the world's start with no {@code value}
+     * ({@code reset}). Saved with the society. A name the core hasn't, or a value the dial won't take (not a number, a
+     * negative count), is refused.
+     */
+    record SetDial(String name, Optional<Double> value) implements Input {
+        public SetDial {
+            Objects.requireNonNull(name, "name");
+            Objects.requireNonNull(value, "value");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(14);
+            out.string(this.name);
+            out.option(this.value, PostcardOut::f64);
         }
     }
 }

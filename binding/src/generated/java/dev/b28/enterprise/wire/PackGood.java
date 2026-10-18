@@ -7,10 +7,11 @@ import java.util.Optional;
 
 /**
  * A good: its name in the host's game, what one is worth (in emeralds), how many make a stack (a wagon's slot holds a
- * stack), the food points and saturation one is worth if it's food, the kind of comfort it is if any (one of
- * {@code Content::COMFORTS}, by name), and what else it is.
+ * stack), the food points and saturation one is worth if it's food, the kind of comfort it is if any (one of the
+ * pack's {@code comforts}, by name), what else it is, and what a full stack weighs (a pallet and a carrier hold so much,
+ * {@code docs/pallets.md}: 1 for a plain good, so that weight equals slots and never binds first).
  */
-public record PackGood(String name, double worth, long stack, double food, double saturation, Optional<String> comfort, List<GoodFlag> flags) {
+public record PackGood(String name, double worth, long stack, double food, double saturation, Optional<String> comfort, List<GoodFlag> flags, double weight) {
     public PackGood {
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(comfort, "comfort");
@@ -26,10 +27,11 @@ public record PackGood(String name, double worth, long stack, double food, doubl
         out.f64(this.saturation);
         out.option(this.comfort, PostcardOut::string);
         out.list(this.flags, (o1, e1) -> e1.encode(o1));
+        out.f64(this.weight);
     }
 
     public static PackGood decode(PostcardIn in) {
-        return new PackGood(in.string(), in.f64(), in.u32(), in.f64(), in.f64(), in.option(PostcardIn::string), in.list(1, GoodFlag::decode));
+        return new PackGood(in.string(), in.f64(), in.u32(), in.f64(), in.f64(), in.option(PostcardIn::string), in.list(1, GoodFlag::decode), in.f64());
     }
 
     public byte[] toBytes() {

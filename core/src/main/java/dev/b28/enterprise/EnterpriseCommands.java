@@ -197,7 +197,7 @@ final class EnterpriseCommands {
                         .executes(context -> dials(context.getSource()))
                         .then(Commands.argument("name", com.mojang.brigadier.arguments.StringArgumentType.word())
                                 .suggests((context, builder) -> net.minecraft.commands.SharedSuggestionProvider.suggest(
-                                        Dials.all().stream().map(d -> d.name), builder))
+                                        dialNames(context.getSource()), builder))
                                 .then(Commands.literal("reset").executes(context -> setDial(context.getSource(),
                                         com.mojang.brigadier.arguments.StringArgumentType.getString(context, "name"), null)))
                                 .then(Commands.argument("value", com.mojang.brigadier.arguments.DoubleArgumentType.doubleArg())
@@ -658,8 +658,33 @@ final class EnterpriseCommands {
     }
 
     /** Every contract (or a desk's), with its terms, state and record. */
-    /** Every dial: its value now, its default, and what it does. */
+    /** The names of the dials the command takes: the core's in core mode, the Java catalogue's otherwise. */
+    private static java.util.List<String> dialNames(CommandSourceStack source) {
+        if (dev.b28.enterprise.binding.Society.isCore()) {
+            return dev.b28.enterprise.binding.adapters.DialAdapter.names(dev.b28.enterprise.binding.CoreHost.of(source.getServer()));
+        }
+        return Dials.all().stream().map(d -> d.name).toList();
+    }
+
+    /**
+     * Every dial: its value now, its default, and what it does. In core mode the core's (a pack's settings are the
+     * defaults), in Java mode the Java rules' catalogue.
+     */
     private static int dials(CommandSourceStack source) {
+        if (dev.b28.enterprise.binding.Society.isCore()) {
+            var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+            if (host == null || host.pausedWhy() != null) {
+                source.sendFailure(Component.literal(host == null ? "The core isn't running" : host.pausedWhy()));
+                return 0;
+            }
+            var views = dev.b28.enterprise.binding.adapters.DialAdapter.list(host);
+            for (var dial : views) {
+                source.sendSuccess(() -> Component.literal("%s = %s%s%s".formatted(dial.name(), trim(dial.value()),
+                        dial.value() == dial.initial() ? "" : " (default " + trim(dial.initial()) + ")",
+                        dial.does().isEmpty() ? "" : ": " + dial.does())), false);
+            }
+            return views.size();
+        }
         for (Dials.Dial dial : Dials.all()) {
             source.sendSuccess(() -> Component.literal("%s = %s%s: %s".formatted(dial.name, trim(dial.get()),
                     dial.get() == dial.initial ? "" : " (default " + trim(dial.initial) + ")", dial.does)), false);
@@ -671,14 +696,29 @@ final class EnterpriseCommands {
         return value == Math.rint(value) ? Long.toString((long) value) : "%.3f".formatted(value);
     }
 
-    /** Sets a dial for this world, or back to its default ({@code value} null). */
+    /**
+     * Sets a dial for this world, or back to its default ({@code value} null). In core mode the core takes it and says
+     * what's wrong with a name or a value; in Java mode the Java rules do, and the core beside them follows.
+     */
     private static int setDial(CommandSourceStack source, String name, Double value) {
+        var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+        if (dev.b28.enterprise.binding.Society.isCore()) {
+            String why = dev.b28.enterprise.binding.adapters.DialAdapter.set(host, name, value);
+            if (why != null) {
+                source.sendFailure(Component.literal(why + "; /enterprise dial lists them"));
+                return 0;
+            }
+            var now = dev.b28.enterprise.binding.adapters.DialAdapter.list(host).stream().filter(d -> d.name().equals(name)).findFirst();
+            source.sendSuccess(() -> Component.literal("%s = %s".formatted(name, now.map(d -> trim(d.value())).orElse("?"))), true);
+            return 1;
+        }
         var dial = Dials.named(name);
         if (dial.isEmpty()) {
             source.sendFailure(Component.literal("No dial called " + name + "; /enterprise dial lists them"));
             return 0;
         }
         Dials.get(source.getServer()).set(dial.get(), value);
+        dev.b28.enterprise.binding.adapters.DialAdapter.mirror(host, name, value);
         source.sendSuccess(() -> Component.literal("%s = %s".formatted(name, trim(dial.get().get()))), true);
         return 1;
     }

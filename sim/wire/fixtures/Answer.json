@@ -2055,5 +2055,1360 @@
         "enterprise:good_199"
       ]
     }
+  },
+  {
+    "Dials": {
+      "dials": []
+    }
+  },
+  {
+    "Dials": {
+      "dials": [
+        {
+          "name": "shelf_days",
+          "value": 5.0,
+          "initial": 5.0,
+          "does": "Days of what its people use a town's warehouse aims to hold."
+        },
+        {
+          "name": "birth_mood",
+          "value": 0.75,
+          "initial": 0.5,
+          "does": ""
+        },
+        {
+          "name": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "value": 1.7976931348623157e+308,
+          "initial": 0.0,
+          "does": "Mood é🌾"
+        }
+      ]
+    }
+  },
+  {
+    "Dials": {
+      "dials": [
+        {
+          "name": "dial_0",
+          "value": 0.0,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_1",
+          "value": 0.125,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_2",
+          "value": 0.25,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_3",
+          "value": 0.375,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_4",
+          "value": 0.5,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_5",
+          "value": 0.625,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_6",
+          "value": 0.75,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_7",
+          "value": 0.875,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_8",
+          "value": 1.0,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_9",
+          "value": 1.125,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_10",
+          "value": 1.25,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_11",
+          "value": 1.375,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_12",
+          "value": 1.5,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_13",
+          "value": 1.625,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_14",
+          "value": 1.75,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_15",
+          "value": 1.875,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_16",
+          "value": 2.0,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_17",
+          "value": 2.125,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_18",
+          "value": 2.25,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_19",
+          "value": 2.375,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_20",
+          "value": 2.5,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_21",
+          "value": 2.625,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_22",
+          "value": 2.75,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_23",
+          "value": 2.875,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_24",
+          "value": 3.0,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_25",
+          "value": 3.125,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_26",
+          "value": 3.25,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_27",
+          "value": 3.375,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_28",
+          "value": 3.5,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_29",
+          "value": 3.625,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_30",
+          "value": 3.75,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_31",
+          "value": 3.875,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_32",
+          "value": 4.0,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_33",
+          "value": 4.125,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_34",
+          "value": 4.25,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_35",
+          "value": 4.375,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_36",
+          "value": 4.5,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_37",
+          "value": 4.625,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_38",
+          "value": 4.75,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_39",
+          "value": 4.875,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_40",
+          "value": 5.0,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_41",
+          "value": 5.125,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_42",
+          "value": 5.25,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_43",
+          "value": 5.375,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_44",
+          "value": 5.5,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_45",
+          "value": 5.625,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_46",
+          "value": 5.75,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_47",
+          "value": 5.875,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_48",
+          "value": 6.0,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_49",
+          "value": 6.125,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_50",
+          "value": 6.25,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_51",
+          "value": 6.375,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_52",
+          "value": 6.5,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_53",
+          "value": 6.625,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_54",
+          "value": 6.75,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_55",
+          "value": 6.875,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_56",
+          "value": 7.0,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_57",
+          "value": 7.125,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_58",
+          "value": 7.25,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_59",
+          "value": 7.375,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_60",
+          "value": 7.5,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_61",
+          "value": 7.625,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_62",
+          "value": 7.75,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_63",
+          "value": 7.875,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_64",
+          "value": 8.0,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_65",
+          "value": 8.125,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_66",
+          "value": 8.25,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_67",
+          "value": 8.375,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_68",
+          "value": 8.5,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_69",
+          "value": 8.625,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_70",
+          "value": 8.75,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_71",
+          "value": 8.875,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_72",
+          "value": 9.0,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_73",
+          "value": 9.125,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_74",
+          "value": 9.25,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_75",
+          "value": 9.375,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_76",
+          "value": 9.5,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_77",
+          "value": 9.625,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_78",
+          "value": 9.75,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_79",
+          "value": 9.875,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_80",
+          "value": 10.0,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_81",
+          "value": 10.125,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_82",
+          "value": 10.25,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_83",
+          "value": 10.375,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_84",
+          "value": 10.5,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_85",
+          "value": 10.625,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_86",
+          "value": 10.75,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_87",
+          "value": 10.875,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_88",
+          "value": 11.0,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_89",
+          "value": 11.125,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_90",
+          "value": 11.25,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_91",
+          "value": 11.375,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_92",
+          "value": 11.5,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_93",
+          "value": 11.625,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_94",
+          "value": 11.75,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_95",
+          "value": 11.875,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_96",
+          "value": 12.0,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_97",
+          "value": 12.125,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_98",
+          "value": 12.25,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_99",
+          "value": 12.375,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_100",
+          "value": 12.5,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_101",
+          "value": 12.625,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_102",
+          "value": 12.75,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_103",
+          "value": 12.875,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_104",
+          "value": 13.0,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_105",
+          "value": 13.125,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_106",
+          "value": 13.25,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_107",
+          "value": 13.375,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_108",
+          "value": 13.5,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_109",
+          "value": 13.625,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_110",
+          "value": 13.75,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_111",
+          "value": 13.875,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_112",
+          "value": 14.0,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_113",
+          "value": 14.125,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_114",
+          "value": 14.25,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_115",
+          "value": 14.375,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_116",
+          "value": 14.5,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_117",
+          "value": 14.625,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_118",
+          "value": 14.75,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_119",
+          "value": 14.875,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_120",
+          "value": 15.0,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_121",
+          "value": 15.125,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_122",
+          "value": 15.25,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_123",
+          "value": 15.375,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_124",
+          "value": 15.5,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_125",
+          "value": 15.625,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_126",
+          "value": 15.75,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_127",
+          "value": 15.875,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_128",
+          "value": 16.0,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_129",
+          "value": 16.125,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_130",
+          "value": 16.25,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_131",
+          "value": 16.375,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_132",
+          "value": 16.5,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_133",
+          "value": 16.625,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_134",
+          "value": 16.75,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_135",
+          "value": 16.875,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_136",
+          "value": 17.0,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_137",
+          "value": 17.125,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_138",
+          "value": 17.25,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_139",
+          "value": 17.375,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_140",
+          "value": 17.5,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_141",
+          "value": 17.625,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_142",
+          "value": 17.75,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_143",
+          "value": 17.875,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_144",
+          "value": 18.0,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_145",
+          "value": 18.125,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_146",
+          "value": 18.25,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_147",
+          "value": 18.375,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_148",
+          "value": 18.5,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_149",
+          "value": 18.625,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_150",
+          "value": 18.75,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_151",
+          "value": 18.875,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_152",
+          "value": 19.0,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_153",
+          "value": 19.125,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_154",
+          "value": 19.25,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_155",
+          "value": 19.375,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_156",
+          "value": 19.5,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_157",
+          "value": 19.625,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_158",
+          "value": 19.75,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_159",
+          "value": 19.875,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_160",
+          "value": 20.0,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_161",
+          "value": 20.125,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_162",
+          "value": 20.25,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_163",
+          "value": 20.375,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_164",
+          "value": 20.5,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_165",
+          "value": 20.625,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_166",
+          "value": 20.75,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_167",
+          "value": 20.875,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_168",
+          "value": 21.0,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_169",
+          "value": 21.125,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_170",
+          "value": 21.25,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_171",
+          "value": 21.375,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_172",
+          "value": 21.5,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_173",
+          "value": 21.625,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_174",
+          "value": 21.75,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_175",
+          "value": 21.875,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_176",
+          "value": 22.0,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_177",
+          "value": 22.125,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_178",
+          "value": 22.25,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_179",
+          "value": 22.375,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_180",
+          "value": 22.5,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_181",
+          "value": 22.625,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_182",
+          "value": 22.75,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_183",
+          "value": 22.875,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_184",
+          "value": 23.0,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_185",
+          "value": 23.125,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_186",
+          "value": 23.25,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_187",
+          "value": 23.375,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_188",
+          "value": 23.5,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_189",
+          "value": 23.625,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_190",
+          "value": 23.75,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_191",
+          "value": 23.875,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_192",
+          "value": 24.0,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_193",
+          "value": 24.125,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_194",
+          "value": 24.25,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_195",
+          "value": 24.375,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_196",
+          "value": 24.5,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_197",
+          "value": 24.625,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_198",
+          "value": 24.75,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_199",
+          "value": 24.875,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_200",
+          "value": 25.0,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_201",
+          "value": 25.125,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_202",
+          "value": 25.25,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_203",
+          "value": 25.375,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_204",
+          "value": 25.5,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_205",
+          "value": 25.625,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_206",
+          "value": 25.75,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_207",
+          "value": 25.875,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_208",
+          "value": 26.0,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_209",
+          "value": 26.125,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_210",
+          "value": 26.25,
+          "initial": 1.0,
+          "does": "xxx"
+        },
+        {
+          "name": "dial_211",
+          "value": 26.375,
+          "initial": 1.0,
+          "does": "xxxx"
+        },
+        {
+          "name": "dial_212",
+          "value": 26.5,
+          "initial": 1.0,
+          "does": "xxxxx"
+        },
+        {
+          "name": "dial_213",
+          "value": 26.625,
+          "initial": 1.0,
+          "does": "xxxxxx"
+        },
+        {
+          "name": "dial_214",
+          "value": 26.75,
+          "initial": 1.0,
+          "does": "xxxxxxx"
+        },
+        {
+          "name": "dial_215",
+          "value": 26.875,
+          "initial": 1.0,
+          "does": "xxxxxxxx"
+        },
+        {
+          "name": "dial_216",
+          "value": 27.0,
+          "initial": 1.0,
+          "does": ""
+        },
+        {
+          "name": "dial_217",
+          "value": 27.125,
+          "initial": 1.0,
+          "does": "x"
+        },
+        {
+          "name": "dial_218",
+          "value": 27.25,
+          "initial": 1.0,
+          "does": "xx"
+        },
+        {
+          "name": "dial_219",
+          "value": 27.375,
+          "initial": 1.0,
+          "does": "xxx"
+        }
+      ]
+    }
   }
 ]

@@ -46,6 +46,10 @@ pub enum Input {
     /// reason lost), the pallet's seal is broken and it goes on short; the packages after it move up one place. A pallet
     /// left with nothing is gone, and a bill of exchange that paid for it is unbacked.
     PackageLost { pallet: u64, package: u32 },
+    /// A dial set for this world (`/enterprise dial <name> <value>`), or put back to the world's start with no `value`
+    /// (`reset`). Saved with the society. A name the core hasn't, or a value the dial won't take (not a number, a
+    /// negative count), is refused.
+    SetDial { name: String, value: Option<f64> },
 }
 
 /// So many of a good.

@@ -6,7 +6,8 @@
     "food": 0.0,
     "saturation": 0.0,
     "comfort": null,
-    "flags": []
+    "flags": [],
+    "weight": 1.0
   },
   {
     "name": "minecraft:wheat",
@@ -17,7 +18,8 @@
     "comfort": null,
     "flags": [
       "Crop"
-    ]
+    ],
+    "weight": 1.0
   },
   {
     "name": "minecraft:bread",
@@ -26,7 +28,8 @@
     "food": 5.0,
     "saturation": 6.0,
     "comfort": null,
-    "flags": []
+    "flags": [],
+    "weight": 1.0
   },
   {
     "name": "minecraft:book",
@@ -35,7 +38,8 @@
     "food": 0.0,
     "saturation": 0.0,
     "comfort": "reading",
-    "flags": []
+    "flags": [],
+    "weight": 1.0
   },
   {
     "name": "minecraft:cooked_beef",
@@ -47,7 +51,8 @@
     "flags": [
       "Meat",
       "Crop"
-    ]
+    ],
+    "weight": 1.0
   },
   {
     "name": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn",
@@ -56,6 +61,27 @@
     "food": 2.2250738585072014e-308,
     "saturation": 0.0,
     "comfort": "",
-    "flags": []
+    "flags": [],
+    "weight": 1.7976931348623157e+308
+  },
+  {
+    "name": "minecraft:iron_ingot",
+    "worth": 0.25,
+    "stack": 64,
+    "food": 0.0,
+    "saturation": 0.0,
+    "comfort": null,
+    "flags": [],
+    "weight": 2.5
+  },
+  {
+    "name": "tiny",
+    "worth": 1.0,
+    "stack": 1,
+    "food": 0.0,
+    "saturation": 0.0,
+    "comfort": null,
+    "flags": [],
+    "weight": 2.2250738585072014e-308
   }
 ]

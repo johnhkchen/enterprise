@@ -6,21 +6,45 @@ import java.util.Objects;
 
 /**
  * The host's content: how long its day is, in ticks, and the goods the society trades, each numbered by its place
- * here (a {@code super::GoodId}).
+ * here (a {@code super::GoodId}); then the rest of what the game brings, by name: the kinds of comfort its people want,
+ * the trades its villagers can take, what those trades make of one good in another, the animals its towns keep, and
+ * the dials it sets for its world. Everything the core makes of the game's names is checked by {@code Content::from_pack}
+ * before a society is made.
+ *
+ * @param comforts The kinds of comfort, in the order a good's {@code comfort} names them (the mod's tags under {@code enterprise:comforts/}).
+ * @param trades The trades a villager can have, by name without the game's namespace ({@code farmer}, not {@code minecraft:farmer}). The Merchant's ({@code merchant}) and the two with no work ({@code none}, {@code nitwit}) are the core's own to name and must be here; the core knows which lead a caravan or go with one by their names.
+ * @param recipes What the trades make: the town's workshops.
+ * @param animals The animals a town keeps.
+ * @param dials The dials the game sets for a new world, where it isn't the core's default (also what {@code reset} puts one back to).
  */
-public record ContentPack(long dayTicks, List<PackGood> goods) {
+public record ContentPack(long dayTicks, List<PackGood> goods, List<String> comforts, List<String> trades, List<PackRecipe> recipes, List<PackAnimal> animals, List<PackDial> dials) {
     public ContentPack {
         Objects.requireNonNull(goods, "goods");
         goods = List.copyOf(goods);
+        Objects.requireNonNull(comforts, "comforts");
+        comforts = List.copyOf(comforts);
+        Objects.requireNonNull(trades, "trades");
+        trades = List.copyOf(trades);
+        Objects.requireNonNull(recipes, "recipes");
+        recipes = List.copyOf(recipes);
+        Objects.requireNonNull(animals, "animals");
+        animals = List.copyOf(animals);
+        Objects.requireNonNull(dials, "dials");
+        dials = List.copyOf(dials);
     }
 
     public void encode(PostcardOut out) {
         out.u64(this.dayTicks);
         out.list(this.goods, (o1, e1) -> e1.encode(o1));
+        out.list(this.comforts, PostcardOut::string);
+        out.list(this.trades, PostcardOut::string);
+        out.list(this.recipes, (o1, e1) -> e1.encode(o1));
+        out.list(this.animals, (o1, e1) -> e1.encode(o1));
+        out.list(this.dials, (o1, e1) -> e1.encode(o1));
     }
 
     public static ContentPack decode(PostcardIn in) {
-        return new ContentPack(in.u64(), in.list(28, PackGood::decode));
+        return new ContentPack(in.u64(), in.list(36, PackGood::decode), in.list(1, PostcardIn::string), in.list(1, PostcardIn::string), in.list(11, PackRecipe::decode), in.list(21, PackAnimal::decode), in.list(9, PackDial::decode));
     }
 
     public byte[] toBytes() {

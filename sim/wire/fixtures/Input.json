@@ -181,6 +181,30 @@
     }
   },
   {
+    "SetDial": {
+      "name": "harvest_window_days",
+      "value": 6.0
+    }
+  },
+  {
+    "SetDial": {
+      "name": "bargain",
+      "value": null
+    }
+  },
+  {
+    "SetDial": {
+      "name": "",
+      "value": 1.7976931348623157e+308
+    }
+  },
+  {
+    "SetDial": {
+      "name": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "value": -0.5
+    }
+  },
+  {
     "Stocktake": {
       "point": {
         "kind": "Desk",

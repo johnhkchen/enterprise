@@ -4,7 +4,7 @@ package dev.b28.enterprise.wire;
 /**
  * A question for the core.
  */
-public sealed interface Query permits Query.Stock, Query.Points, Query.Goods {
+public sealed interface Query permits Query.Stock, Query.Points, Query.Goods, Query.Dials {
     void encode(PostcardOut out);
 
     static Query decode(PostcardIn in) {
@@ -13,6 +13,7 @@ public sealed interface Query permits Query.Stock, Query.Points, Query.Goods {
             case 0 -> new Stock(in.u32());
             case 1 -> new Points();
             case 2 -> new Goods();
+            case 3 -> new Dials();
             default -> throw in.unknownVariant("Query", at);
         };
     }
@@ -56,6 +57,16 @@ public sealed interface Query permits Query.Stock, Query.Points, Query.Goods {
         @Override
         public void encode(PostcardOut out) {
             out.variant(2);
+        }
+    }
+
+    /**
+     * Every dial: its value now, the value it starts at (what {@code reset} puts it back to) and what it does.
+     */
+    record Dials() implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(3);
         }
     }
 }

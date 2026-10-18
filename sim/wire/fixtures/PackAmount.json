@@ -1,0 +1,14 @@
+[
+  {
+    "good": "minecraft:wheat",
+    "count": 3.0
+  },
+  {
+    "good": "",
+    "count": 0.0
+  },
+  {
+    "good": "gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+    "count": 1.7976931348623157e+308
+  }
+]

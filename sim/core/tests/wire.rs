@@ -8,7 +8,7 @@ mod common;
 
 use common::{world, DAY};
 use enterprise_core::wire::*;
-use enterprise_core::{Content, Fixed, Good, Society};
+use enterprise_core::{Content, Dials, Fixed, Good, Society};
 
 fn pack() -> ContentPack {
     let mut wheat = PackGood::new("minecraft:wheat", 0.05, 64);
@@ -22,7 +22,7 @@ fn pack() -> ContentPack {
     beef.food = 8.0;
     beef.saturation = 12.8;
     beef.flags = vec![GoodFlag::Meat];
-    ContentPack { day_ticks: DAY, goods: vec![wheat, bread, book, beef] }
+    ContentPack::new(DAY, vec![wheat, bread, book, beef])
 }
 
 const WHEAT: GoodNo = 0;
@@ -105,7 +105,176 @@ fn a_pack_makes_the_content_the_core_would_for_its_goods() {
         Good::new("minecraft:book", 0.5, 64).comfort(Content::COMFORTS.iter().position(|k| *k == "reading").unwrap()),
         Good::new("minecraft:cooked_beef", 0.3, 64).food(8.0).saturation(12.8).meat(),
     ];
-    assert_eq!(format!("{content:?}"), format!("{:?}", Content::new(goods, DAY)));
+    // (a pack that lists no recipes or animals brings none: the core's own are for hosts that bring no pack)
+    let mut want = Content::new(goods, DAY);
+    want.conversions.clear();
+    want.animals.clear();
+    assert_eq!(format!("{content:?}"), format!("{want:?}"));
+}
+
+/// A pack with all the game brings: weights, kinds of comfort, trades, recipes, animals and dials.
+fn full_pack() -> ContentPack {
+    let mut p = pack();
+    let mut iron = PackGood::new("minecraft:iron_ingot", 0.25, 64);
+    iron.weight = 4.0;
+    let mut cane = PackGood::new("minecraft:sugar_cane", 0.04, 64);
+    cane.weight = 0.5;
+    let mut paper = PackGood::new("minecraft:paper", 0.04, 64);
+    paper.comfort = Some("reading".into());
+    p.goods.extend([iron, cane, paper]);
+    p.comforts = vec!["clothing".into(), "reading".into()];
+    p.trades = ["merchant", "farmer", "librarian", "shepherd", "none", "nitwit"].map(String::from).to_vec();
+    p.recipes = vec![
+        PackRecipe { trades: vec!["farmer".into()], inputs: vec![PackAmount { good: "minecraft:wheat".into(), count: 3.0 }],
+            output: "minecraft:bread".into(), makes: 1.0 },
+        PackRecipe { trades: vec!["librarian".into()], inputs: vec![PackAmount { good: "minecraft:sugar_cane".into(), count: 1.0 }],
+            output: "minecraft:paper".into(), makes: 1.0 },
+    ];
+    p.animals = vec![PackAnimal { name: "cow".into(), feed: vec!["minecraft:wheat".into()], feed_per_day: 0.25,
+        meat: Some("minecraft:cooked_beef".into()), meat_each: 2.0, wool: None, hide: None }];
+    p.dials = vec![PackDial { name: "birth_mood".into(), value: 0.5 }, PackDial { name: "wagon_slots".into(), value: 30.0 }];
+    p
+}
+
+#[test]
+fn a_pack_brings_its_comforts_trades_recipes_animals_dials_and_weights() {
+    let content = Content::from_pack(&full_pack()).unwrap();
+    assert_eq!(content.comforts, vec!["clothing", "reading"]);
+    assert_eq!(content.goods[2].comfort, Some(1), "the book is the pack's second kind of comfort");
+    let names: Vec<&str> = content.trades.iter().map(|t| t.name.as_str()).collect();
+    assert_eq!(names, vec!["merchant", "farmer", "librarian", "shepherd", "none", "nitwit"]);
+    assert!(content.trades[0].merchant && content.trades[0].leads && content.trades[0].squad);
+    assert!(content.trades[4].none && content.trades[5].nitwit && !content.trades[1].leads);
+    // The recipes are in the pack's order, by place: wheat (0) to bread (1); cane (5) to paper (6) by the librarian (2).
+    assert_eq!(content.conversions.len(), 2);
+    assert_eq!((content.conversions[0].trades.clone(), content.conversions[0].inputs.clone(), content.conversions[0].output,
+        content.conversions[0].out), (vec![1], vec![(0, 3.0)], 1, 1.0));
+    assert_eq!((content.conversions[1].trades.clone(), content.conversions[1].inputs.clone(), content.conversions[1].output),
+        (vec![2], vec![(5, 1.0)], 6));
+    assert_eq!(content.animals.len(), 1);
+    assert_eq!((content.animals[0].feed.clone(), content.animals[0].meat, content.animals[0].wool), (vec![0], Some(3), None));
+    // A dial the pack sets is the world's start; the rest are the core's.
+    assert_eq!((content.dials.birth_mood, content.dials.wagon_slots), (0.5, 30));
+    assert_eq!((content.dial_defaults.birth_mood, content.dial_defaults.shelf_days), (0.5, Dials::default().shelf_days));
+    // A stack weighs what the pack says; a piece, its share of it; a plain good is the stack's 1.
+    assert_eq!(content.goods[4].weight * 64.0, 4.0);
+    assert_eq!(content.goods[5].weight * 64.0, 0.5);
+    assert_eq!(content.goods[0].weight * 64.0, 1.0);
+    // The villagers' trades are vanilla's for the pack's goods: a farmer sells bread, buys wheat.
+    assert!(content.trades[1].offers.iter().any(|o| o.sells && o.good == 1), "the farmer sells bread");
+}
+
+#[test]
+fn a_pack_names_goods_without_the_games_namespace_to_the_rules_that_look_for_bread_and_wheat() {
+    let content = Content::from_pack(&pack()).unwrap();
+    assert_eq!(content.good("wheat"), Some(0));
+    assert_eq!(content.good("minecraft:bread"), Some(1));
+    assert_eq!(content.good("bread"), Some(1));
+    assert_eq!(content.good("heat"), None, "a suffix that isn't a name after a colon is no match");
+    assert_eq!(content.good("minecraft:"), None);
+}
+
+#[test]
+fn a_bad_recipe_animal_trade_comfort_or_dial_is_refused_with_all_of_them() {
+    let mut bad = full_pack();
+    bad.comforts.push("reading".into());
+    bad.comforts.push(" ".into());
+    bad.trades.retain(|t| t != "nitwit");
+    bad.trades.push("minecraft:farmer".into());
+    bad.trades.push("farmer".into());
+    bad.goods[2].comfort = Some("tea".into());
+    bad.goods[4].weight = 0.0;
+    bad.goods[5].weight = f64::NAN;
+    bad.recipes.push(PackRecipe { trades: vec![], inputs: vec![], output: "minecraft:glass".into(), makes: 0.0 });
+    bad.recipes.push(PackRecipe { trades: vec!["baker".into()],
+        inputs: vec![PackAmount { good: "minecraft:flour".into(), count: -1.0 }], output: "minecraft:bread".into(), makes: f64::INFINITY });
+    bad.animals.push(PackAnimal { name: "cow".into(), feed: vec![], feed_per_day: -1.0, meat: Some("minecraft:veal".into()),
+        meat_each: f64::NAN, wool: Some("minecraft:fleece".into()), hide: None });
+    bad.animals.push(PackAnimal { name: "goat".into(), feed: vec!["minecraft:hay".into()], feed_per_day: 0.1, meat: None,
+        meat_each: 0.0, wool: None, hide: Some("minecraft:leather".into()) });
+    bad.dials.push(PackDial { name: "birth_mood".into(), value: 1.0 });
+    bad.dials.push(PackDial { name: "no_such_dial".into(), value: 1.0 });
+    bad.dials.push(PackDial { name: "max_rings".into(), value: -3.0 });
+    bad.dials.push(PackDial { name: "shelf_days".into(), value: f64::NAN });
+    let why = Content::from_pack(&bad).unwrap_err();
+    for wrong in [
+        "comfort 2 (\"reading\"): named as another is", "comfort 3: no name",
+        "no trade called \"nitwit\", which the core needs", "trade 5 (\"minecraft:farmer\"): named with a namespace",
+        "trade 6 (\"farmer\"): named as another is",
+        "good 2 (\"minecraft:book\"): a comfort the pack doesn't list (\"tea\"",
+        "good 4 (\"minecraft:iron_ingot\"): a stack weighing 0", "good 5 (\"minecraft:sugar_cane\"): a stack weighing NaN",
+        "recipe 2 (\"minecraft:glass\"): no trade makes it", "recipe 2 (\"minecraft:glass\"): nothing goes in",
+        "recipe 2 (\"minecraft:glass\"): no good called \"minecraft:glass\" to make",
+        "recipe 3 (\"minecraft:bread\"): no trade called \"baker\"", "no good called \"minecraft:flour\" to put in",
+        "-1 of \"minecraft:flour\" in", "makes inf",
+        "animal 1 (\"cow\"): named as another is", "animal 1 (\"cow\"): eats nothing", "eats -1 a day", "gives NaN meat",
+        "no good called \"minecraft:veal\" for its meat", "no good called \"minecraft:fleece\" for its wool",
+        "animal 2 (\"goat\"): no good called \"minecraft:hay\" to feed it",
+        "dial 2 (\"birth_mood\"): set twice", "dial 3 (\"no_such_dial\"): no dial called no_such_dial",
+        "dial 4 (\"max_rings\"): -3 isn't a count", "dial 5 (\"shelf_days\"): NaN isn't a number"] {
+        assert!(why.contains(wrong), "{wrong:?} in {why:?}");
+    }
+    // A pack that lists no Merchant, no `none` and no `nitwit` is told what the core needs.
+    let mut bare = pack();
+    bare.trades = vec!["farmer".into()];
+    let why = Content::from_pack(&bare).unwrap_err();
+    for needed in ["merchant", "none", "nitwit"] {
+        assert!(why.contains(&format!("no trade called \"{needed}\"")), "{needed} in {why:?}");
+    }
+}
+
+#[test]
+fn a_dial_is_set_for_the_world_reset_to_the_packs_and_kept_by_a_save() {
+    let mut s = None;
+    assert!(matches!(call(&mut s, Command::Create { pack: full_pack(), seed: 7 }), Response::Done { .. }));
+    let dial = |s: &mut Option<Society>, name: &str| match &ask(s, vec![Query::Dials])[..] {
+        [Answer::Dials { dials }] => dials.iter().find(|d| d.name == name).cloned().unwrap_or_else(|| panic!("no dial {name}")),
+        a => panic!("dials: {a:?}"),
+    };
+    // The pack's own setting is where the world starts; the dial says what it does when its doc comment does.
+    let birth = dial(&mut s, "birth_mood");
+    assert_eq!((birth.value, birth.initial), (0.5, 0.5));
+    let shelf = dial(&mut s, "shelf_days");
+    assert_eq!((shelf.value, shelf.initial), (5.0, 5.0));
+    assert!(shelf.does.starts_with("Days of what its people use a town's warehouse aims to hold"), "{:?}", shelf.does);
+    // Every dial of the core is listed, once, in the order it declares them.
+    let all = match &ask(&mut s, vec![Query::Dials])[..] {
+        [Answer::Dials { dials }] => dials.iter().map(|d| d.name.clone()).collect::<Vec<_>>(),
+        a => panic!("dials: {a:?}"),
+    };
+    assert_eq!(all, enterprise_core::Dials::names());
+
+    // Set, a switch and a count rounded as the mod's are; a reset goes back to the pack's, not the core's.
+    let out = apply(&mut s, vec![Input::SetDial { name: "birth_mood".into(), value: Some(0.9) },
+        Input::SetDial { name: "wagon_slots".into(), value: Some(12.4) }, Input::SetDial { name: "bargain".into(), value: Some(0.0) }]);
+    assert!(out.is_empty());
+    assert_eq!((dial(&mut s, "birth_mood").value, dial(&mut s, "wagon_slots").value, dial(&mut s, "bargain").value), (0.9, 12.0, 0.0));
+    assert_eq!(s.as_ref().unwrap().dial("birth_mood"), Some(0.9), "the rules read it");
+    // A save keeps them with the world, and the pack's start with it.
+    let Response::Saved { save } = call(&mut s, Command::Save) else { panic!("a save") };
+    let mut loaded = None;
+    assert!(matches!(call(&mut loaded, Command::Load { save }), Response::Done { .. }));
+    assert_eq!((dial(&mut loaded, "birth_mood").value, dial(&mut loaded, "birth_mood").initial), (0.9, 0.5));
+    assert_eq!(dial(&mut loaded, "wagon_slots").value, 12.0);
+    apply(&mut loaded, vec![Input::SetDial { name: "birth_mood".into(), value: None }, Input::SetDial { name: "wagon_slots".into(), value: None }]);
+    assert_eq!((dial(&mut loaded, "birth_mood").value, dial(&mut loaded, "wagon_slots").value), (0.5, 30.0), "the pack's 0.5 and 30");
+}
+
+#[test]
+fn a_dial_that_isnt_there_or_wont_take_its_value_refuses_the_whole_look() {
+    let mut s = created();
+    let before = s.as_ref().unwrap().dial("shelf_days");
+    for (name, value, why) in [("no_such_dial", Some(1.0), "no dial called no_such_dial"), ("no_such_dial", None, "no dial called no_such_dial"),
+        ("shelf_days", Some(f64::NAN), "NaN isn't a number"), ("wagon_slots", Some(-1.0), "-1 isn't a count"),
+        ("wagon_slots", Some(f64::INFINITY), "inf isn't a count")] {
+        let r = refusal(call(&mut s, Command::Apply { inputs: vec![
+            Input::SetDial { name: "shelf_days".into(), value: Some(9.0) }, Input::SetDial { name: name.into(), value }] }));
+        match r {
+            Refusal::Input { at: 1, why: said } => assert!(said.contains(why), "{said:?} for {name}"),
+            r => panic!("{r:?} for {name}"),
+        }
+        assert_eq!(s.as_ref().unwrap().dial("shelf_days"), before, "nothing of a refused look is applied");
+    }
 }
 
 #[test]
@@ -252,12 +421,12 @@ fn a_bad_pack_is_refused_with_everything_wrong_with_it_and_the_society_kept() {
     apply(&mut s, vec![Input::AddTown { name: "Ashford".into(), desk: desk(27, 27) }]);
     let Refusal::Pack { why } = refusal(call(&mut s, Command::Create { pack: bad, seed: 1 })) else { panic!("a pack refusal") };
     for wrong in ["a day of no ticks", "good 1 (\"minecraft:wheat\"): named as another is", "good 2 (\"minecraft:book\"): worth NaN",
-        "a comfort the core doesn't know (\"gambling\"", "good 3 (\"minecraft:cooked_beef\"): a stack of none", "food points -1",
+        "a comfort the pack doesn't list (\"gambling\"", "good 3 (\"minecraft:cooked_beef\"): a stack of none", "food points -1",
         "good 4 (\" \"): no name"] {
         assert!(why.contains(wrong), "{wrong:?} in {why:?}");
     }
     assert_eq!(s.as_ref().unwrap().town_count(), 1, "the society there is kept");
-    let empty = ContentPack { day_ticks: DAY, goods: vec![] };
+    let empty = ContentPack::new(DAY, vec![]);
     assert_eq!(refusal(call(&mut None, Command::Create { pack: empty, seed: 1 })), Refusal::Pack { why: "no goods".into() });
 }
 

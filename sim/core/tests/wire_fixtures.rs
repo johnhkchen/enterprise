@@ -106,15 +106,68 @@ fn goods() -> Vec<PackGood> {
     let mut edge = PackGood::new(&"n".repeat(200), f64::MAX, u32::MAX);
     edge.food = f64::MIN_POSITIVE;
     edge.comfort = Some(String::new());
-    vec![PackGood::new("a", 1.0, 1), wheat, bread, book, beef, edge]
+    edge.weight = f64::MAX;
+    let mut iron = PackGood::new("minecraft:iron_ingot", 0.25, 64);
+    iron.weight = 2.5;
+    let mut tiny = PackGood::new("tiny", 1.0, 1);
+    tiny.weight = f64::MIN_POSITIVE;
+    vec![PackGood::new("a", 1.0, 1), wheat, bread, book, beef, edge, iron, tiny]
+}
+
+fn amounts() -> Vec<PackAmount> {
+    vec![PackAmount { good: "minecraft:wheat".into(), count: 3.0 }, PackAmount { good: String::new(), count: 0.0 },
+        PackAmount { good: "g".repeat(150), count: f64::MAX }]
+}
+
+fn recipes() -> Vec<PackRecipe> {
+    vec![
+        PackRecipe { trades: vec!["farmer".into()], inputs: amounts()[..1].to_vec(), output: "minecraft:bread".into(), makes: 1.0 },
+        PackRecipe { trades: vec!["librarian".into(), "cartographer".into()],
+            inputs: vec![PackAmount { good: "minecraft:paper".into(), count: 3.0 }, PackAmount { good: "minecraft:leather".into(), count: 1.0 }],
+            output: "minecraft:book".into(), makes: 0.5 },
+        PackRecipe { trades: vec![], inputs: vec![], output: String::new(), makes: 0.0 },
+        PackRecipe { trades: (0..20).map(|i| format!("trade_{i}")).collect(), inputs: amounts(), output: "o".repeat(300), makes: f64::MAX },
+    ]
+}
+
+fn animals() -> Vec<PackAnimal> {
+    vec![
+        PackAnimal { name: "sheep".into(), feed: vec!["minecraft:wheat".into()], feed_per_day: 0.25, meat: Some("minecraft:mutton".into()),
+            meat_each: 1.5, wool: Some("minecraft:white_wool".into()), hide: None },
+        PackAnimal { name: "cow".into(), feed: vec!["minecraft:wheat".into()], feed_per_day: 0.25, meat: Some("minecraft:beef".into()),
+            meat_each: 2.0, wool: None, hide: Some("minecraft:leather".into()) },
+        PackAnimal { name: "pig".into(), feed: vec!["minecraft:carrot".into(), "minecraft:potato".into(), "minecraft:beetroot".into()],
+            feed_per_day: 0.25, meat: Some("minecraft:porkchop".into()), meat_each: 2.0, wool: None, hide: None },
+        PackAnimal { name: String::new(), feed: vec![], feed_per_day: 0.0, meat: None, meat_each: 0.0, wool: None, hide: None },
+        PackAnimal { name: "n".repeat(130), feed: (0..10).map(|i| format!("feed_{i}")).collect(), feed_per_day: f64::MAX,
+            meat: Some(String::new()), meat_each: f64::MIN_POSITIVE, wool: Some("w".into()), hide: Some("h".into()) },
+    ]
+}
+
+fn pack_dials() -> Vec<PackDial> {
+    vec![PackDial { name: "birth_mood".into(), value: 0.5 }, PackDial { name: "wagon_slots".into(), value: 27.0 },
+        PackDial { name: "standing_orders".into(), value: 0.0 }, PackDial { name: String::new(), value: -1.0 },
+        PackDial { name: "d".repeat(100), value: f64::MAX }]
+}
+
+fn dial_views() -> Vec<DialView> {
+    vec![
+        DialView { name: "shelf_days".into(), value: 5.0, initial: 5.0, does: "Days of what its people use a town's warehouse aims to hold.".into() },
+        DialView { name: "birth_mood".into(), value: 0.75, initial: 0.5, does: String::new() },
+        DialView { name: "d".repeat(100), value: f64::MAX, initial: 0.0, does: "Mood \u{e9}\u{1f33e}".into() },
+    ]
 }
 
 fn packs() -> Vec<ContentPack> {
     vec![
-        ContentPack { day_ticks: 24_000, goods: goods() },
-        ContentPack { day_ticks: 1, goods: vec![] },
-        ContentPack { day_ticks: u64::MAX, goods: goods()[..2].to_vec() },
-        ContentPack { day_ticks: 0, goods: (0..130).map(|i| PackGood::new(&format!("test:good_{i}"), 1.0 + i as f64, 64)).collect() },
+        ContentPack::new(24_000, goods()),
+        ContentPack::new(1, vec![]),
+        ContentPack::new(u64::MAX, goods()[..2].to_vec()),
+        ContentPack::new(0, (0..130).map(|i| PackGood::new(&format!("test:good_{i}"), 1.0 + i as f64, 64)).collect()),
+        ContentPack { day_ticks: 24_000, goods: goods(), comforts: vec!["reading".into(), "treats".into(), String::new()],
+            trades: vec!["merchant".into(), "farmer".into(), "none".into(), "nitwit".into()], recipes: recipes(), animals: animals(),
+            dials: pack_dials() },
+        ContentPack { day_ticks: 1, goods: vec![], comforts: vec![], trades: vec![], recipes: vec![], animals: vec![], dials: vec![] },
     ]
 }
 
@@ -151,6 +204,10 @@ fn inputs() -> Vec<Input> {
         Input::PackageBrought { town: 0, pallet: u64::MAX, package: u32::MAX },
         Input::PackageLost { pallet: 12, package: 0 },
         Input::PackageLost { pallet: u64::MAX, package: u32::MAX },
+        Input::SetDial { name: "harvest_window_days".into(), value: Some(6.0) },
+        Input::SetDial { name: "bargain".into(), value: None },
+        Input::SetDial { name: String::new(), value: Some(f64::MAX) },
+        Input::SetDial { name: "d".repeat(200), value: Some(-0.5) },
     ];
     all.extend(counts().into_iter().map(|counts| Input::Stocktake { point: point(PointKind::Desk, 27, -60, 27), counts }));
     all
@@ -180,7 +237,7 @@ fn outputs() -> Vec<Output> {
 }
 
 fn queries() -> Vec<Query> {
-    vec![Query::Stock { town: 0 }, Query::Stock { town: BIGGEST_ID }, Query::Points, Query::Goods]
+    vec![Query::Stock { town: 0 }, Query::Stock { town: BIGGEST_ID }, Query::Points, Query::Goods, Query::Dials]
 }
 
 fn answers() -> Vec<Answer> {
@@ -195,6 +252,9 @@ fn answers() -> Vec<Answer> {
         Answer::Goods { goods: vec![] },
         Answer::Goods { goods: vec!["minecraft:wheat".into(), "".into(), "Br\u{f6}ly \u{1f33e}".into()] },
         Answer::Goods { goods: (0..200).map(|i| format!("enterprise:good_{i}")).collect() },
+        Answer::Dials { dials: vec![] },
+        Answer::Dials { dials: dial_views() },
+        Answer::Dials { dials: (0..220).map(|i| DialView { name: format!("dial_{i}"), value: i as f64 / 8.0, initial: 1.0, does: "x".repeat(i % 9) }).collect() },
     ]
 }
 
@@ -273,6 +333,11 @@ fixtures! {
     town_point_fixtures: TownPoint = points().into_iter().map(|point| TownPoint { point, town: 0 }).collect();
     content_pack_fixtures: ContentPack = packs();
     pack_good_fixtures: PackGood = goods();
+    pack_amount_fixtures: PackAmount = amounts();
+    pack_recipe_fixtures: PackRecipe = recipes();
+    pack_animal_fixtures: PackAnimal = animals();
+    pack_dial_fixtures: PackDial = pack_dials();
+    dial_view_fixtures: DialView = dial_views();
     good_flag_fixtures: GoodFlag = vec![GoodFlag::Crop, GoodFlag::Meat];
     save_file_fixtures: SaveFile = saves();
     fixed_fixtures: Fixed = fixeds();
@@ -297,6 +362,7 @@ fn input_place(i: &Input) -> usize {
         Input::PalletBrought { .. } => 11,
         Input::PackageBrought { .. } => 12,
         Input::PackageLost { .. } => 13,
+        Input::SetDial { .. } => 14,
     }
 }
 
@@ -318,6 +384,7 @@ fn query_place(q: &Query) -> usize {
         Query::Stock { .. } => 0,
         Query::Points => 1,
         Query::Goods => 2,
+        Query::Dials => 3,
     }
 }
 
@@ -326,6 +393,7 @@ fn answer_place(a: &Answer) -> usize {
         Answer::Stock { .. } => 0,
         Answer::Points { .. } => 1,
         Answer::Goods { .. } => 2,
+        Answer::Dials { .. } => 3,
     }
 }
 
@@ -372,10 +440,10 @@ fn covers<T>(what: &str, samples: &[T], variants: usize, place: fn(&T) -> usize)
 
 #[test]
 fn every_variant_of_every_wire_enum_has_a_sample() {
-    covers("Input", &inputs(), 14, input_place);
+    covers("Input", &inputs(), 15, input_place);
     covers("Output", &outputs(), 8, output_place);
-    covers("Query", &queries(), 3, query_place);
-    covers("Answer", &answers(), 3, answer_place);
+    covers("Query", &queries(), 4, query_place);
+    covers("Answer", &answers(), 4, answer_place);
     covers("Command", &commands(), 5, command_place);
     covers("Response", &responses(), 3, response_place);
     covers("Refusal", &refusals(), 9, refusal_place);

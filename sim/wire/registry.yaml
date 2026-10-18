@@ -20,6 +20,12 @@ Answer:
         STRUCT:
           - goods:
               SEQ: STR
+    3:
+      Dials:
+        STRUCT:
+          - dials:
+              SEQ:
+                TYPENAME: DialView
 Command:
   ENUM:
     0:
@@ -53,10 +59,29 @@ ContentPack:
     - goods:
         SEQ:
           TYPENAME: PackGood
+    - comforts:
+        SEQ: STR
+    - trades:
+        SEQ: STR
+    - recipes:
+        SEQ:
+          TYPENAME: PackRecipe
+    - animals:
+        SEQ:
+          TYPENAME: PackAnimal
+    - dials:
+        SEQ:
+          TYPENAME: PackDial
 Count:
   STRUCT:
     - good: U32
     - count: F64
+DialView:
+  STRUCT:
+    - name: STR
+    - value: F64
+    - initial: F64
+    - does: STR
 GoodFlag:
   ENUM:
     0:
@@ -147,6 +172,12 @@ Input:
         STRUCT:
           - pallet: U64
           - package: U32
+    14:
+      SetDial:
+        STRUCT:
+          - name: STR
+          - value:
+              OPTION: F64
 Output:
   ENUM:
     0:
@@ -203,6 +234,27 @@ Output:
           - id: U64
           - at:
               TYPENAME: Place
+PackAmount:
+  STRUCT:
+    - good: STR
+    - count: F64
+PackAnimal:
+  STRUCT:
+    - name: STR
+    - feed:
+        SEQ: STR
+    - feed_per_day: F64
+    - meat:
+        OPTION: STR
+    - meat_each: F64
+    - wool:
+        OPTION: STR
+    - hide:
+        OPTION: STR
+PackDial:
+  STRUCT:
+    - name: STR
+    - value: F64
 PackGood:
   STRUCT:
     - name: STR
@@ -215,6 +267,16 @@ PackGood:
     - flags:
         SEQ:
           TYPENAME: GoodFlag
+    - weight: F64
+PackRecipe:
+  STRUCT:
+    - trades:
+        SEQ: STR
+    - inputs:
+        SEQ:
+          TYPENAME: PackAmount
+    - output: STR
+    - makes: F64
 PackageLine:
   STRUCT:
     - kind: U32
@@ -268,6 +330,8 @@ Query:
       Points: UNIT
     2:
       Goods: UNIT
+    3:
+      Dials: UNIT
 Refusal:
   ENUM:
     0:

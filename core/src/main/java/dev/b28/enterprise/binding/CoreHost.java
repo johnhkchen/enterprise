@@ -129,6 +129,10 @@ public final class CoreHost implements AutoCloseable {
             // The core brought to the world's time at once, on its own thread: a society new to an old world catches
             // up before its first desk, not in that desk's first look.
             running.look(server, server.overworld().getGameTime());
+            if (!Society.isCore()) {
+                // The Java rules read the world's dials; the core beside them follows what the world had set.
+                dev.b28.enterprise.binding.adapters.DialAdapter.sync(running, dev.b28.enterprise.Dials.get(server).settings());
+            }
             Enterprise.LOGGER.info("The core is running ({} ms to start)", (System.nanoTime() - started) / 1_000_000);
         } catch (RuntimeException | LinkageError e) {
             // The game runs on without the society the core keeps: the Java rules are what plays (Java mode).

@@ -16,7 +16,7 @@ fn pack() -> ContentPack {
     let mut bread = PackGood::new("minecraft:bread", 0.2, 64);
     bread.food = 5.0;
     bread.saturation = 6.0;
-    ContentPack { day_ticks: DAY, goods: vec![wheat, bread] }
+    ContentPack::new(DAY, vec![wheat, bread])
 }
 
 fn frame(command: Command) -> Vec<u8> {
