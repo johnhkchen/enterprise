@@ -1,13 +1,14 @@
 # Core progress: where the parity work stands
 
 The live to-do list for building the Rust core to parity (the plan is `docs/core-plan.md`; how trees work is
-`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-17, wave 1a landed and the
-conflict magnets fixed; waves 1b to 5 running as one workflow.
+`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-18, `pallet-types` landed
+(the pallets' tasks, `docs/pallets.md` section 6, in the table under "Pallets").
 
 ## Now
 
-- **Main:** `37f56f9`. 646 tests pass (`just core-test`, about 2.5 minutes, the random worlds' 300 seeds across the
-  cores). Parity: **191 covered, 25 partial, 46 skipped, 0 left of 262** (`just parity`; `docs/parity.md` lists what
+- **Main:** `826a807`. 657 tests pass (`cd sim && cargo test --release`, the random worlds' 300 seeds across the
+  cores); `just core-wasm-replay` matches native. Game tests: not run at this landing (core only, no Java changed).
+  Parity: **191 covered, 25 partial, 46 skipped, 0 left of 262** (`just parity`; `docs/parity.md` lists what
   each partial leaves out). `just core-fingerprint`: `8144f9be7947133b` (money in thousandths; `just core-wasm-replay`
   checks the WebAssembly build's 200-day digest against the native one); `cargo run --release -p enterprise-sim --
   --sweep 300` prints what the random worlds did; `just study 365` runs the network study's world.
@@ -20,6 +21,23 @@ conflict magnets fixed; waves 1b to 5 running as one workflow.
   hex, roads as long as `Route.distance`; 365 days: 0 to 419 trips). Still open: the core sends the settlements far
   more than the Java study did (S1 22,276 items by day 40 against 5,675), `marketWants`, roads planned once not at each
   departure, coins and the mint (rate stuck at 16), `Places::distance` hex centres not desks.
+
+## Pallets (`docs/pallets.md` section 6)
+
+In the core only (`docs/decisions.md`, 2026-10-18): no pallet rules in Java; the mod draws them through the binding.
+
+| Order | Task | Model / effort | Waits for | Fingerprint | Landed | Notes |
+|---|---|---|---|---|---|---|
+| 1 | `pallet-types` | sonnet / medium | — | unchanged | `826a807` | `pallet.rs`: the types and the `Pallets` registry (`pack`, the one mover `move_to`, `open`, `seal`, `digest`, `at`), `Load` and `Caps`; `Good.weight` (a stack 1), `.package`, `.handling`; the crate, barrel, bundle, loose and the load as content; five dials; nothing in rules/ reads them, fingerprint unchanged, the replay digest moved for the new saved fields. At landing: the load kind's caps follow the pallet dials (it copied them once, stale after a set dial), `Caps::of` takes its slots from `squad::capacity`, the digest `expect`s its bytes. Left: the barrel (9 stacks, 0.5 emeralds) and bundle (3, 0) values are invented, `packing` confirms them; `slices/pallet_types.rs` checks the registry stays empty, so `pallets-for-crates` replaces it; `by_place` is saved beside each `at` (`pallet-sweep` checks they agree) and is a map on an enum, so `Pallets` never crosses the wire as it is |
+| 2 | `pallets-for-crates` | opus / xhigh | `pallet-types` | unchanged | | |
+| 3 | `pallet-sweep` | sonnet / high | `pallets-for-crates` | unchanged | | |
+| 3 | `pallet-claims` | sonnet / medium | `pallets-for-crates` | may change | | |
+| 3 | `pallet-messages` | sonnet / medium | `pallets-for-crates` | unchanged | | |
+| 4 | `pallet-caps` | opus / high | `pallet-claims` | changes | | |
+| 5 | `packing` | sonnet / high | `pallet-caps` | changes | | |
+| 6 | `superbills` | opus / high | `packing`, `pallet-sweep` | changes | | |
+| 7 | `itinerary-drops` | opus / high | `superbills` | unchanged | | |
+| 7 | `consignment-pallets` | sonnet / medium | `superbills` | changes | | |
 
 ## Waves 1b to 5
 
