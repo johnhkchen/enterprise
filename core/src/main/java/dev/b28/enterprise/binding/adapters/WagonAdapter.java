@@ -109,6 +109,10 @@ public final class WagonAdapter {
 
     private void goes(MinecraftServer server, Output.HandAway o) {
         CompoundTag stowed = find(server, o.tag()) instanceof Villager v ? Squad.stow(v) : null;
+        Away kept = away.get(o.hand());
+        if (stowed == null && kept != null && kept.entity() != null) {
+            stowed = kept.entity(); // away again by the core's books (its save and this file out of step): keep the villager
+        }
         away.put(o.hand(), new Away(o.town(), o.tag(), stowed));
         dirty = true;
         host.hands().stale();
@@ -125,7 +129,7 @@ public final class WagonAdapter {
             return;
         }
         back.put(o.hand(), new Back(o.town(), o.tag(), was == null ? null : was.entity(), o.trade(), o.level(), o.xp()));
-        release(server, o.hand());
+        release(server, o.hand(), false);
     }
 
     /** The hand is no more (its villager, if kept, is gone with it). */
@@ -150,17 +154,24 @@ public final class WagonAdapter {
             }
         }
         for (long hand : List.copyOf(back.keySet())) {
-            release(server, hand);
+            release(server, hand, true);
         }
     }
 
-    /** The hand's villager let out by its town's desk, if the desk is loaded (else it waits, kept). */
-    private void release(MinecraftServer server, long hand) {
+    /**
+     * The hand's villager let out by its town's desk, if the desk is loaded (else it waits, kept). Let out at a look
+     * ({@code now}), it takes the trade, level and XP the core has for the hand then, not those it came home with: the
+     * core's looks go on while the desk isn't loaded, and a {@code HandLevel} meanwhile had no villager to go to.
+     */
+    private void release(MinecraftServer server, long hand, boolean now) {
         Back b = back.get(hand);
         GlobalPos desk = desk(b.town());
         ServerLevel level = desk == null ? null : server.getLevel(desk.dimension());
         if (level == null || !level.isLoaded(desk.pos())) {
             return;
+        }
+        if (now) {
+            b = asNow(hand, b);
         }
         back.remove(hand);
         dirty = true;
@@ -177,6 +188,20 @@ public final class WagonAdapter {
             host.people().writeTo(v, b.trade(), b.level(), b.xp());
         }
         host.hands().stale();
+    }
+
+    /** The hand back with its trade, level and XP as the core has them now (as it came home if the core can't say). */
+    private Back asNow(long hand, Back b) {
+        try {
+            for (HandsAdapter.Hand h : host.hands().roster(b.town()).hands()) {
+                if (h.id() == hand) {
+                    return new Back(b.town(), b.tag(), b.entity(), h.trade(), h.level(), h.xp());
+                }
+            }
+        } catch (IllegalStateException e) {
+            // The host paused: the trade it came home with.
+        }
+        return b;
     }
 
     /** The town's desk, the first the core keeps for it. */

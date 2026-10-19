@@ -218,6 +218,20 @@ fn a_far_end_beyond_a_legs_food_opens_no_route() {
 }
 
 #[test]
+fn a_route_wound_down_reopens_only_within_a_legs_food_now() {
+    let mut h = Host::new("villager-lead", &[]);
+    h.apply(vec![Input::Route { from: 0, to: 1, send: true }, Input::Route { from: 0, to: 1, send: false }]);
+    h.apply(vec![Input::SetDial { name: "food_capacity".into(), value: Some(1.0) }]);
+    h.apply(vec![Input::Route { from: 0, to: 1, send: true }]);
+    let (routes, markets, _) = h.routes(0);
+    assert!(routes.len() == 1 && !routes[0].open && !markets[0].reachable, "too far now, kept wound down: {routes:?}");
+    h.apply(vec![Input::SetDial { name: "food_capacity".into(), value: None }]);
+    h.apply(vec![Input::Route { from: 0, to: 1, send: true }]);
+    let (routes, _, _) = h.routes(0);
+    assert!(routes.len() == 1 && routes[0].route == 0 && routes[0].open, "{routes:?}");
+}
+
+#[test]
 fn a_route_to_itself_or_a_town_not_there_is_refused_and_nothing_applies() {
     let mut h = Host::new("villager-lead", &[]);
     assert!(matches!(h.refused(vec![Input::Route { from: 1, to: 1, send: true }]), Refusal::Input { at: 0, .. }));

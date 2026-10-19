@@ -7,9 +7,9 @@
 //!   (`merchant/CommissionPayload.java` `commission`) and `/enterprise route add`/`remove`
 //!   (`EnterpriseCommands.addRoute`/`removeRoute`). Started, a route opens as [`Society::open_route`] opens a commissioned
 //!   one, if the far end is within a leg's food (`Caravans.inRange`, desk to desk as the command measures it) and there's
-//!   a way; a route
-//!   from the same town to the same market that was wound down opens again (the mod removes the route and adds a new
-//!   one: here it keeps its number, its books and its road). Stopped, an open route is wound down
+//!   a way; a route from the same town to the same market that was wound down opens again on the same food terms (the
+//!   mod removes the route and adds a new one: here it keeps its number, its books and its road). Stopped, an open route
+//!   is wound down
 //!   ([`Society::close_route`]: its wagon on the road comes home and stays, the mod's `removeRoute`). Unlike the screen's
 //!   commission ([`Society::commission`]) the far end needn't be a market the town knows: the screen shows only those,
 //!   and the command never asked.
@@ -48,7 +48,13 @@ impl Society {
         }
         if let Some(route) = existing {
             // Open already, or wound down: opened again (`retire` dropped its plan; the next look plans one, and until
-            // then it's home, as a wagon just back is).
+            // then it's home, as a wagon just back is), if a leg's food reaches it now, as a new one must (the food
+            // dial may have been lowered since it was wound down).
+            if !self.route_open(route)
+                && !self.blocks_between(from, to).is_some_and(|b| crate::road::in_range(self.content(), b))
+            {
+                return None;
+            }
             if let Some(mut state) = self.world.get_mut::<RouteState>(self.routes[route]) {
                 if state.freight.wound_down.take().is_some() && state.wagon.is_none() && state.stayed.is_none() {
                     state.stayed = Some(crate::road::Stay::Home);

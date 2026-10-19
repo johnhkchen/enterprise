@@ -125,7 +125,7 @@ And **stable hand ids** in the roster (`HandId`, never an index: `settlers::take
 | Outcomes out (`Output`) | To |
 |---|---|
 | `Moved { point, good, count }` | items put in or taken from a desk's or a depot's chests: what the core moved in or out of the town's stock since they were counted, after a stocktake in the same look (built: nothing queued; an unloaded point is counted as it loads) |
-| `WagonLeft`, `WagonHome`, `WagonSold` (exist) | stow the squad's villagers, release them, show the caravan |
+| `WagonLeft`, `WagonHome`, `WagonSold` (exist), `HandAway`, `HandBack` | show the caravan; a hand gone with a wagon (crew, porter, soldier) stowed by hand id, one home let out by its desk with its trade, level and XP (built: the wagon's own three only logged) |
 | `Born`, `Settled`, `Departed`, `HandGone`, `HandLevel` | spawn a baby, a party arriving, a party leaving and a hand gone (the villager taken away), a villager's trade, level and XP written to its entity |
 | `Trades { point, offers }` | the offers a locker's villager runs, for the screen |
 | `Build { kind, hex }` | works the town builds (walls, halls, bridges, fields) |
@@ -600,7 +600,8 @@ lockers loaded or not; their listeners were already off there); they and `Locker
 **Built (B4.8 `wagon-adapter`).** The caravans are the core's; what the world shows of a wagon is its crew. In the core
 (`wagon_host.rs`, no new saved state): `Input::Route { from, to, send }` starts a town's wagons to another (the
 Merchant's screen, `/enterprise route add`): a route opens as a commissioned one does, if the far end is within a leg's
-food desk to desk and there's a way, and one wound down opens again (its number, books and road kept); stopped, it's
+food desk to desk and there's a way, and one wound down opens again on the same terms (its number, books and road
+kept); stopped, it's
 wound down (`close_route`: its wagon comes home and stays). Refused for a town that isn't there or a town to itself;
 too far opens nothing. Around a wire `Advance`, beside `hand_outputs`: `Output::HandAway { town, hand, tag }` for a
 named hand that went away (a wagon's crew or porter, a soldier) and `Output::HandBack { town, hand, tag, trade, level,
