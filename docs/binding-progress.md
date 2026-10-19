@@ -5,6 +5,12 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **Paused 2026-10-19** after `wagon-adapter`, to rest usage until later in the week. No trees open; the workflow
+  (`pallets-and-binding`, run `wf_e42bacdd-ada`) was stopped between landings, so resuming it re-runs nothing landed.
+  Left, in order: `shop-adapter`, `commands-and-studies` and `pallet-views` (all three can start at once), then
+  `crown-views`, then `delete-java-rules`, `scenarios-in-game`, `upgrade-drill`. Core mode now has stock, money,
+  people, land, lockers and caravans from the core; shops, the crown's views and pallets in the world are still Java's.
+
 - **Main:** `cbe2285`. 906 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
   `just wire-check` passes (schema `ac8763985aaf102c`, 41 files); `just scenarios-wasm` (39) and `just binding-test` pass.
   Game tests: "All 295 required tests passed" in Java mode, and `just gametest-core`: 295 of 295 (baseline now 295).
