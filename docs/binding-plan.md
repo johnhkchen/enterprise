@@ -761,6 +761,28 @@ the gold shop's leftover card balance when it comes down (money parked on a card
 across the sea have no block to show (the war is shown by its soldiers, hands away and back), a realm's roads need the
 host to give its partners at opening.
 
+### 3.5c Wave B4c: the world fixtures, rewritten (John, 2026-10-23)
+
+Before the Java rules go, each world-fixture game test (`docs/binding-tests.md`, kind *world fixture*) is rewritten to
+drive the core through the binding: the same blocks, villagers and chests, the same outcome looked for in the world,
+but run in core mode with no call into a Java rule class (the classes `tree/delete-java-rules` deletes: its
+`git diff --name-only --diff-filter=D main...tree/delete-java-rules`). A behaviour the core lacks gets its core rule,
+wire message and adapter in the same tree, with Rust tests; one that truly can't be kept goes on the lost list in
+`docs/decisions.md` (2026-10-23) with why. Rule-API tests with a full Rust twin may retire here (listed in
+`scripts/parity-retired.txt`, as the held tree does). `just gametest-core` must not fall except by tests named on the
+lost list; `just gametest` (Java mode) still passes until B5.1.
+
+| Order | Task | Fixtures (and their lost features) | Waits for | Model |
+|---|---|---|---|---|
+| B4c.1 | `fixtures-caravans` | CaravanTests' trips, squads, porters, saddles, rations, the cleric, routes and loads (not hubs or freight); CargoTests' fixture; a wagon on short rations | — | opus / high |
+| B4c.2 | `fixtures-freight` | CaravanTests' hubs, freight and forwarders; LogisticsTests (the Merchant repacking crates, cold storage); ExpeditionTests; the freight hubs' vendors, `freight`, `forwarder`, `expeditions` | `fixtures-caravans` | opus / high |
+| B4c.3 | `fixtures-post` | PostTests, CountingHouseTests; the post's copy where a wagon runs; `post`, `paperwork` | `fixtures-caravans` | opus / high |
+| B4c.4 | `fixtures-market` | LockerTradingTests, LockerTests, MarketTests, MoneyTests, MetalTests; lockers by distance and by switched-on trades; the bank, tenders, the metal exchange's and requisitions' vendors, renaming a market | — | opus / high |
+| B4c.5 | `fixtures-land` | TerritoryTests, BuildingTests, HusbandryTests, JobsTests, GrowthTests, LabourTests; tolls landing as coin, tolls set by command, `bridge`; stalls built by Jobs, mine heads, pastures | — | opus / high |
+| B4c.6 | `fixtures-people` | MoodTests, ServiceTests, MasterTests, WarTests, SettlementTests; a Librarian's books on an unknown stocktake; enchanted commissions, enchanting and book copying; the census's free-villager value and settlement threshold; `services`, `settlements`, `switch`; the seven Java-only dials | — | opus / high |
+
+B5.1 `delete-java-rules` then runs again in its held tree, rebased on all six: it keeps every rewritten fixture.
+
 ### 3.6 Wave B5: closing
 
 | Order | Task | Goal | Waits for | Java | Model / effort |

@@ -1260,3 +1260,19 @@ The cotton chain, chocolate, the cold chain and the exchange follow later.
   offers stay vanilla's, for players to trade with, and a player's trades don't reach the core's demand: the two lists
   can differ (a Librarian whose rolled trades don't include paper still has the core's paper offer). **Open:** sending a
   villager's rolled offers to the core (`Society::set_offers` is there for it), so the screen and the villager agree.
+
+## World fixtures before the Java rules go (2026-10-23)
+
+- **Rewrite first.** `delete-java-rules` (built at `tree/delete-java-rules`, held) retired about 150 world-fixture game
+  tests with their rules and dropped features the core has no rule or wire message for. John chose to keep the plan:
+  the world fixtures are the binding's acceptance tests, so they are rewritten to drive the core through the binding
+  before the Java rules are deleted, and `delete-java-rules` lands last. Found on the way: main's "core mode 308 of 308"
+  counted fixtures whose bodies still called the Java rules, so it never showed the core running them.
+- **No feature dropped by default.** Every feature the deletion would lose (the post's and freight hubs' vendors, the
+  bank and tenders, tolls set by command, renaming a market, the master services' enchanting and book copying, stalls
+  built by Jobs, mine heads, pastures, the Merchant repacking crates and cold storage, the census's free-villager value
+  and settlement threshold, the seven Java-only dials) gets its core rule, wire message and an in-world test, or is put
+  on a lost list here with why, for John to see. A fixture whose behaviour stays is rewritten, not retired; the core-mode
+  pass count is the gate and only falls by tests named on that list.
+- **One concern a tree** (`docs/binding-plan.md` B4c): caravans, freight and logistics, post and counting houses,
+  markets and money, land and work, people and war; then `delete-java-rules` again on top of them.
