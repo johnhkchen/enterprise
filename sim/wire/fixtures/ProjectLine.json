@@ -1,0 +1,20 @@
+[
+  {
+    "what": "bridge on 2,-1",
+    "progress": 0.5,
+    "done": false,
+    "wages": 8000
+  },
+  {
+    "what": "wall",
+    "progress": 1.0,
+    "done": true,
+    "wages": 9223372036854775807
+  },
+  {
+    "what": "",
+    "progress": 0.0,
+    "done": false,
+    "wages": -9223372036854775808
+  }
+]

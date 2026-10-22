@@ -1,0 +1,28 @@
+[
+  {
+    "town": 0,
+    "name": "Brindle",
+    "raised": 12,
+    "fallen": 1,
+    "deserted": 0,
+    "days": 300,
+    "hungry": 4,
+    "strength": 220.5,
+    "kit": 32.0,
+    "earned": 40000,
+    "trust": 0.7
+  },
+  {
+    "town": 4294967295,
+    "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "raised": 4294967295,
+    "fallen": 4294967295,
+    "deserted": 4294967295,
+    "days": 4294967295,
+    "hungry": 4294967295,
+    "strength": 1.7976931348623157e+308,
+    "kit": 2.2250738585072014e-308,
+    "earned": -9223372036854775808,
+    "trust": 1.0
+  }
+]

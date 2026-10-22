@@ -24,7 +24,15 @@ public sealed interface Answer
                 Answer.Pallets,
                 Answer.Pallet,
                 Answer.Stow,
-                Answer.Manifest {
+                Answer.Manifest,
+                Answer.CashBook,
+                Answer.Books,
+                Answer.Whys,
+                Answer.Trust,
+                Answer.Contracts,
+                Answer.Territory,
+                Answer.War,
+                Answer.RouteBooks {
     void encode(PostcardOut out);
 
     static Answer decode(PostcardIn in) {
@@ -46,6 +54,14 @@ public sealed interface Answer
             case 13 -> new Pallet(in.u64(), in.option(PalletView::decode));
             case 14 -> new Stow(Point.decode(in), in.list(25, PalletView::decode));
             case 15 -> new Manifest(in.u32(), in.list(27, ManifestLine::decode), in.bool());
+            case 16 -> new CashBook(in.u32(), in.string(), in.u64(), in.list(3, BookLine::decode), in.list(3, BookLine::decode), in.list(2, ForTotal::decode), in.list(2, ForTotal::decode), in.i64(), in.i64());
+            case 17 -> new Books(in.u32(), in.string(), in.u64(), in.list(12, SummaryLine::decode), in.list(11, WhyView::decode));
+            case 18 -> new Whys(in.u32(), in.string(), in.list(11, WhyView::decode));
+            case 19 -> new Trust(in.list(27, TrustLine::decode));
+            case 20 -> new Contracts(in.list(38, ContractLine::decode), in.list(34, RentLine::decode));
+            case 21 -> new Territory(in.u32(), in.string(), in.f64(), in.list(2, HexAt::decode), in.f64(), in.f64(), in.list(9, NameCount::decode), in.list(9, NameCount::decode), in.list(17, ForwardLine::decode), in.f64(), in.f64(), in.f64(), in.i64(), in.i64(), in.f64(), in.f64(), in.string(), in.i64(), in.i64(), in.u32(), in.f64(), in.i64(), in.u64(), in.f64(), in.f64(), in.f64(), in.list(9, NameCount::decode), in.f64(), in.f64(), in.list(11, ProjectLine::decode), in.option(ProjectLine::decode), in.list(11, ProjectLine::decode), in.f64(), in.f64(), in.u32(), in.u32(), in.f64(), in.f64(), in.f64(), in.i64(), in.i64(), in.u32(), in.list(2, HexAt::decode), in.f64(), in.u32(), in.u32(), in.u64());
+            case 22 -> new War(in.string(), in.string(), in.f64(), in.option(PostcardIn::u32), in.i64(), in.f64(), in.f64(), in.u32(), in.f64(), in.u32(), in.u32(), in.u32(), in.u32(), in.f64(), in.f64(), in.f64(), in.u32(), in.u32(), in.u32(), in.list(9, NameCount::decode), in.list(1, PostcardIn::string), in.list(32, WarTown::decode), in.list(9, NameCount::decode), in.f64(), in.f64());
+            case 23 -> new RouteBooks(in.f64(), in.list(88, RouteBook::decode));
             default -> throw in.unknownVariant("Answer", at);
         };
     }
@@ -379,6 +395,267 @@ public sealed interface Answer
             out.u32(this.route);
             out.list(this.lines, (o1, e1) -> e1.encode(o1));
             out.bool(this.superbill);
+        }
+    }
+
+    /**
+     * A town's cash book: its name, the day it is, the lines by day then what for (oldest first), and what the
+     * Accountant held back, by day and what for; then the sums the core makes of them: the money in and out of the
+     * treasury by what for ({@code totals}, {@code held_totals}, by name) and all that came in ({@code received}) and went out ({@code paid}, a
+     * positive sum): the sums of the per-cause totals above and below nothing.
+     */
+    record CashBook(long town, String name, long today, List<BookLine> lines, List<BookLine> held, List<ForTotal> totals, List<ForTotal> heldTotals, long received, long paid) implements Answer {
+        public CashBook {
+            Objects.requireNonNull(name, "name");
+            Objects.requireNonNull(lines, "lines");
+            lines = List.copyOf(lines);
+            Objects.requireNonNull(held, "held");
+            held = List.copyOf(held);
+            Objects.requireNonNull(totals, "totals");
+            totals = List.copyOf(totals);
+            Objects.requireNonNull(heldTotals, "heldTotals");
+            heldTotals = List.copyOf(heldTotals);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(16);
+            out.u32(this.town);
+            out.string(this.name);
+            out.u64(this.today);
+            out.list(this.lines, (o1, e1) -> e1.encode(o1));
+            out.list(this.held, (o1, e1) -> e1.encode(o1));
+            out.list(this.totals, (o1, e1) -> e1.encode(o1));
+            out.list(this.heldTotals, (o1, e1) -> e1.encode(o1));
+            out.i64(this.received);
+            out.i64(this.paid);
+        }
+    }
+
+    /**
+     * A market's books: its name, the days its books go back, the dealings summed and its reasons (most often first).
+     */
+    record Books(long town, String name, long keeps, List<SummaryLine> lines, List<WhyView> whys) implements Answer {
+        public Books {
+            Objects.requireNonNull(name, "name");
+            Objects.requireNonNull(lines, "lines");
+            lines = List.copyOf(lines);
+            Objects.requireNonNull(whys, "whys");
+            whys = List.copyOf(whys);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(17);
+            out.u32(this.town);
+            out.string(this.name);
+            out.u64(this.keeps);
+            out.list(this.lines, (o1, e1) -> e1.encode(o1));
+            out.list(this.whys, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * A market's reasons, most often first.
+     */
+    record Whys(long town, String name, List<WhyView> whys) implements Answer {
+        public Whys {
+            Objects.requireNonNull(name, "name");
+            Objects.requireNonNull(whys, "whys");
+            whys = List.copyOf(whys);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(18);
+            out.u32(this.town);
+            out.string(this.name);
+            out.list(this.whys, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * Every pair's record, in the order of the pair.
+     */
+    record Trust(List<TrustLine> records) implements Answer {
+        public Trust {
+            Objects.requireNonNull(records, "records");
+            records = List.copyOf(records);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(19);
+            out.list(this.records, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * The contracts asked for, and the rents of the towns asked about (all, or those a town is a party to), in the order of
+     * their numbers.
+     */
+    record Contracts(List<ContractLine> contracts, List<RentLine> rents) implements Answer {
+        public Contracts {
+            Objects.requireNonNull(contracts, "contracts");
+            contracts = List.copyOf(contracts);
+            Objects.requireNonNull(rents, "rents");
+            rents = List.copyOf(rents);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(20);
+            out.list(this.contracts, (o1, e1) -> e1.encode(o1));
+            out.list(this.rents, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * A town's territory report. Money is in emeralds, the toll's figures in spurs where the mod counted spurs (at the
+     * mint's rate now, {@code rate}). {@code tolls_owed} is what the town's posts are owed and not yet paid: the core's wagons pay a
+     * toll at once, so it is none.
+     */
+    record Territory(long town, String name, double rate, List<HexAt> hexes, double culture, double nextHex, List<NameCount> farms, List<NameCount> idle, List<ForwardLine> soldForward, double wagePerDay, double laborShare, double cropSalesPerDay, long wagesPaid, long wagesUnpaid, double harvested, double deposits, String focus, long purse, long credit, long freeholds, double tightness, long treasury, long reserve, double mood, double villagers, double beds, List<NameCount> comforts, double yieldFactor, double cultureFactor, List<ProjectLine> bridges, Optional<ProjectLine> wall, List<ProjectLine> buildings, double hunting, double armed, long homesBuilt, long born, double tollRate, double passageFee, double tollIncome, long tollsTaken, long tollsOwed, long guards, List<HexAt> posts, double traffic, long deserted, long militia, long trades) implements Answer {
+        public Territory {
+            Objects.requireNonNull(name, "name");
+            Objects.requireNonNull(hexes, "hexes");
+            hexes = List.copyOf(hexes);
+            Objects.requireNonNull(farms, "farms");
+            farms = List.copyOf(farms);
+            Objects.requireNonNull(idle, "idle");
+            idle = List.copyOf(idle);
+            Objects.requireNonNull(soldForward, "soldForward");
+            soldForward = List.copyOf(soldForward);
+            Objects.requireNonNull(focus, "focus");
+            Objects.requireNonNull(comforts, "comforts");
+            comforts = List.copyOf(comforts);
+            Objects.requireNonNull(bridges, "bridges");
+            bridges = List.copyOf(bridges);
+            Objects.requireNonNull(wall, "wall");
+            Objects.requireNonNull(buildings, "buildings");
+            buildings = List.copyOf(buildings);
+            Objects.requireNonNull(posts, "posts");
+            posts = List.copyOf(posts);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(21);
+            out.u32(this.town);
+            out.string(this.name);
+            out.f64(this.rate);
+            out.list(this.hexes, (o1, e1) -> e1.encode(o1));
+            out.f64(this.culture);
+            out.f64(this.nextHex);
+            out.list(this.farms, (o1, e1) -> e1.encode(o1));
+            out.list(this.idle, (o1, e1) -> e1.encode(o1));
+            out.list(this.soldForward, (o1, e1) -> e1.encode(o1));
+            out.f64(this.wagePerDay);
+            out.f64(this.laborShare);
+            out.f64(this.cropSalesPerDay);
+            out.i64(this.wagesPaid);
+            out.i64(this.wagesUnpaid);
+            out.f64(this.harvested);
+            out.f64(this.deposits);
+            out.string(this.focus);
+            out.i64(this.purse);
+            out.i64(this.credit);
+            out.u32(this.freeholds);
+            out.f64(this.tightness);
+            out.i64(this.treasury);
+            out.u64(this.reserve);
+            out.f64(this.mood);
+            out.f64(this.villagers);
+            out.f64(this.beds);
+            out.list(this.comforts, (o1, e1) -> e1.encode(o1));
+            out.f64(this.yieldFactor);
+            out.f64(this.cultureFactor);
+            out.list(this.bridges, (o1, e1) -> e1.encode(o1));
+            out.option(this.wall, (o1, e1) -> e1.encode(o1));
+            out.list(this.buildings, (o1, e1) -> e1.encode(o1));
+            out.f64(this.hunting);
+            out.f64(this.armed);
+            out.u32(this.homesBuilt);
+            out.u32(this.born);
+            out.f64(this.tollRate);
+            out.f64(this.passageFee);
+            out.f64(this.tollIncome);
+            out.i64(this.tollsTaken);
+            out.i64(this.tollsOwed);
+            out.u32(this.guards);
+            out.list(this.posts, (o1, e1) -> e1.encode(o1));
+            out.f64(this.traffic);
+            out.u32(this.deserted);
+            out.u32(this.militia);
+            out.u64(this.trades);
+        }
+    }
+
+    /**
+     * The war. {@code treasury} is the capital's, in emeralds ({@code treasury_spurs}: at the mint's rate); {@code contracts} and {@code delivered}
+     * those the capital buys goods under; {@code bills} the emeralds of bills outstanding; {@code depot} what the capital holds of the
+     * crown's stockpile goods; {@code unmet} the goods it lacks; {@code phase} and {@code theatre} in words; each town's part in {@code towns}.
+     */
+    record War(String phase, String theatre, double days, Optional<Long> capital, long treasury, double treasurySpurs, double minted, long contracts, double delivered, long serving, long waiting, long raised, long fallen, double bills, double rate, double debasement, long levies, long hired, long awarded, List<NameCount> depot, List<String> unmet, List<WarTown> towns, List<NameCount> issued, double eaten, double heartiness) implements Answer {
+        public War {
+            Objects.requireNonNull(phase, "phase");
+            Objects.requireNonNull(theatre, "theatre");
+            Objects.requireNonNull(capital, "capital");
+            Objects.requireNonNull(depot, "depot");
+            depot = List.copyOf(depot);
+            Objects.requireNonNull(unmet, "unmet");
+            unmet = List.copyOf(unmet);
+            Objects.requireNonNull(towns, "towns");
+            towns = List.copyOf(towns);
+            Objects.requireNonNull(issued, "issued");
+            issued = List.copyOf(issued);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(22);
+            out.string(this.phase);
+            out.string(this.theatre);
+            out.f64(this.days);
+            out.option(this.capital, PostcardOut::u32);
+            out.i64(this.treasury);
+            out.f64(this.treasurySpurs);
+            out.f64(this.minted);
+            out.u32(this.contracts);
+            out.f64(this.delivered);
+            out.u32(this.serving);
+            out.u32(this.waiting);
+            out.u32(this.raised);
+            out.u32(this.fallen);
+            out.f64(this.bills);
+            out.f64(this.rate);
+            out.f64(this.debasement);
+            out.u32(this.levies);
+            out.u32(this.hired);
+            out.u32(this.awarded);
+            out.list(this.depot, (o1, e1) -> e1.encode(o1));
+            out.list(this.unmet, PostcardOut::string);
+            out.list(this.towns, (o1, e1) -> e1.encode(o1));
+            out.list(this.issued, (o1, e1) -> e1.encode(o1));
+            out.f64(this.eaten);
+            out.f64(this.heartiness);
+        }
+    }
+
+    /**
+     * Every route's books ({@code rate}: the spurs an emerald fetches now), in the order of the routes' numbers.
+     */
+    record RouteBooks(double rate, List<RouteBook> routes) implements Answer {
+        public RouteBooks {
+            Objects.requireNonNull(routes, "routes");
+            routes = List.copyOf(routes);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(23);
+            out.f64(this.rate);
+            out.list(this.routes, (o1, e1) -> e1.encode(o1));
         }
     }
 }

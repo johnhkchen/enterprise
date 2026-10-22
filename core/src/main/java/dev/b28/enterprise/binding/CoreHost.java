@@ -78,6 +78,8 @@ public final class CoreHost implements AutoCloseable {
     private final LockerAdapter lockers;
     private final WagonAdapter wagons;
     private final PalletAdapter pallets;
+    private final dev.b28.enterprise.binding.adapters.BooksAdapter books = new dev.b28.enterprise.binding.adapters.BooksAdapter(this);
+    private final dev.b28.enterprise.binding.adapters.CommandsAdapter commands = new dev.b28.enterprise.binding.adapters.CommandsAdapter(this);
     private final Outcomes outcomes;
     private final List<CompletableFuture<Response>> looks = new ArrayList<>();
     private String pausedWhy;
@@ -253,6 +255,16 @@ public final class CoreHost implements AutoCloseable {
     /** The pallet adapter: the core's pallets drawn as tagged crates in the desks' chests, and what players do with them. */
     public PalletAdapter pallets() {
         return pallets;
+    }
+
+    /** The commands adapter: the mint, territory, war and routes' books the commands and the studies show, from the core. */
+    public dev.b28.enterprise.binding.adapters.CommandsAdapter commands() {
+        return commands;
+    }
+
+    /** The books adapter: the commands' cash book, books, reasons, trust and contracts, from the core. */
+    public dev.b28.enterprise.binding.adapters.BooksAdapter books() {
+        return books;
     }
 
     /** Why the host is paused (the save refused, the core stuck), or null while it runs. */

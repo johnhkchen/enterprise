@@ -3,6 +3,7 @@ package dev.b28.enterprise.wire;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * A question for the core.
@@ -23,7 +24,15 @@ public sealed interface Query
                 Query.Pallets,
                 Query.Pallet,
                 Query.Stow,
-                Query.Manifest {
+                Query.Manifest,
+                Query.CashBook,
+                Query.Books,
+                Query.Whys,
+                Query.Trust,
+                Query.Contracts,
+                Query.Territory,
+                Query.War,
+                Query.RouteBooks {
     void encode(PostcardOut out);
 
     static Query decode(PostcardIn in) {
@@ -45,6 +54,14 @@ public sealed interface Query
             case 13 -> new Pallet(in.u64());
             case 14 -> new Stow(Point.decode(in), in.u32());
             case 15 -> new Manifest(in.u32());
+            case 16 -> new CashBook(in.u32(), in.u32());
+            case 17 -> new Books(in.u32());
+            case 18 -> new Whys(in.u32());
+            case 19 -> new Trust();
+            case 20 -> new Contracts(in.option(PostcardIn::u32));
+            case 21 -> new Territory(in.u32());
+            case 22 -> new War();
+            case 23 -> new RouteBooks();
             default -> throw in.unknownVariant("Query", at);
         };
     }
@@ -252,6 +269,98 @@ public sealed interface Query
         public void encode(PostcardOut out) {
             out.variant(15);
             out.u32(this.route);
+        }
+    }
+
+    /**
+     * A town's cash book for the last {@code days} days, today's included ({@code /enterprise cashbook}), and what its Accountant
+     * held back from its spenders in them.
+     */
+    record CashBook(long town, long days) implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(16);
+            out.u32(this.town);
+            out.u32(this.days);
+        }
+    }
+
+    /**
+     * A market's books summed, with its reasons ({@code /enterprise books}).
+     */
+    record Books(long town) implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(17);
+            out.u32(this.town);
+        }
+    }
+
+    /**
+     * A market's reasons alone ({@code /enterprise whys}).
+     */
+    record Whys(long town) implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(18);
+            out.u32(this.town);
+        }
+    }
+
+    /**
+     * Trust between each pair of towns that have dealt ({@code /enterprise trust}).
+     */
+    record Trust() implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(19);
+        }
+    }
+
+    /**
+     * Contracts: all of them, or those a town is a party to ({@code /enterprise contracts}).
+     */
+    record Contracts(Optional<Long> town) implements Query {
+        public Contracts {
+            Objects.requireNonNull(town, "town");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(20);
+            out.option(this.town, PostcardOut::u32);
+        }
+    }
+
+    /**
+     * A town's territory report: its land, farms, treasury, mood, people, tolls and posts ({@code /enterprise territory}).
+     */
+    record Territory(long town) implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(21);
+            out.u32(this.town);
+        }
+    }
+
+    /**
+     * The war: the sovereign's phase, treasury and minting, the contracts that supply it, the army and each town's part
+     * ({@code /enterprise war}, {@code war tally}).
+     */
+    record War() implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(22);
+        }
+    }
+
+    /**
+     * Every route's books, for the studies' per-day rows ({@code dev/experiments/network_study.py}).
+     */
+    record RouteBooks() implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(23);
         }
     }
 }

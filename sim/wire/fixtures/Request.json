@@ -1,7 +1,7 @@
 [
   {
     "abi": 1,
-    "schema": 13330218520298609697,
+    "schema": 2387392034397692382,
     "command": {
       "Create": {
         "pack": {
@@ -129,7 +129,7 @@
   },
   {
     "abi": 1,
-    "schema": 13330218520298609697,
+    "schema": 2387392034397692382,
     "command": {
       "Create": {
         "pack": {
@@ -171,7 +171,7 @@
   },
   {
     "abi": 1,
-    "schema": 13330218520298609697,
+    "schema": 2387392034397692382,
     "command": {
       "Load": {
         "save": {
@@ -190,12 +190,12 @@
   },
   {
     "abi": 1,
-    "schema": 13330218520298609697,
+    "schema": 2387392034397692382,
     "command": "Save"
   },
   {
     "abi": 1,
-    "schema": 13330218520298609697,
+    "schema": 2387392034397692382,
     "command": {
       "Apply": {
         "inputs": []
@@ -204,7 +204,7 @@
   },
   {
     "abi": 1,
-    "schema": 13330218520298609697,
+    "schema": 2387392034397692382,
     "command": {
       "Apply": {
         "inputs": [
@@ -2700,7 +2700,7 @@
   },
   {
     "abi": 1,
-    "schema": 13330218520298609697,
+    "schema": 2387392034397692382,
     "command": {
       "Ask": {
         "queries": []
@@ -2709,7 +2709,7 @@
   },
   {
     "abi": 1,
-    "schema": 13330218520298609697,
+    "schema": 2387392034397692382,
     "command": {
       "Ask": {
         "queries": [
@@ -3115,7 +3115,67 @@
             "Manifest": {
               "route": 4294967295
             }
-          }
+          },
+          {
+            "CashBook": {
+              "town": 0,
+              "days": 10
+            }
+          },
+          {
+            "CashBook": {
+              "town": 4294967295,
+              "days": 4294967295
+            }
+          },
+          {
+            "Books": {
+              "town": 0
+            }
+          },
+          {
+            "Books": {
+              "town": 4294967295
+            }
+          },
+          {
+            "Whys": {
+              "town": 0
+            }
+          },
+          {
+            "Whys": {
+              "town": 4294967295
+            }
+          },
+          "Trust",
+          {
+            "Contracts": {
+              "town": null
+            }
+          },
+          {
+            "Contracts": {
+              "town": 2
+            }
+          },
+          {
+            "Contracts": {
+              "town": 4294967295
+            }
+          },
+          {
+            "Territory": {
+              "town": 0
+            }
+          },
+          {
+            "Territory": {
+              "town": 4294967295
+            }
+          },
+          "War",
+          "RouteBooks"
         ]
       }
     }
@@ -3533,7 +3593,67 @@
             "Manifest": {
               "route": 4294967295
             }
-          }
+          },
+          {
+            "CashBook": {
+              "town": 0,
+              "days": 10
+            }
+          },
+          {
+            "CashBook": {
+              "town": 4294967295,
+              "days": 4294967295
+            }
+          },
+          {
+            "Books": {
+              "town": 0
+            }
+          },
+          {
+            "Books": {
+              "town": 4294967295
+            }
+          },
+          {
+            "Whys": {
+              "town": 0
+            }
+          },
+          {
+            "Whys": {
+              "town": 4294967295
+            }
+          },
+          "Trust",
+          {
+            "Contracts": {
+              "town": null
+            }
+          },
+          {
+            "Contracts": {
+              "town": 2
+            }
+          },
+          {
+            "Contracts": {
+              "town": 4294967295
+            }
+          },
+          {
+            "Territory": {
+              "town": 0
+            }
+          },
+          {
+            "Territory": {
+              "town": 4294967295
+            }
+          },
+          "War",
+          "RouteBooks"
         ]
       }
     }

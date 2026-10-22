@@ -401,5 +401,65 @@
     "Manifest": {
       "route": 4294967295
     }
-  }
+  },
+  {
+    "CashBook": {
+      "town": 0,
+      "days": 10
+    }
+  },
+  {
+    "CashBook": {
+      "town": 4294967295,
+      "days": 4294967295
+    }
+  },
+  {
+    "Books": {
+      "town": 0
+    }
+  },
+  {
+    "Books": {
+      "town": 4294967295
+    }
+  },
+  {
+    "Whys": {
+      "town": 0
+    }
+  },
+  {
+    "Whys": {
+      "town": 4294967295
+    }
+  },
+  "Trust",
+  {
+    "Contracts": {
+      "town": null
+    }
+  },
+  {
+    "Contracts": {
+      "town": 2
+    }
+  },
+  {
+    "Contracts": {
+      "town": 4294967295
+    }
+  },
+  {
+    "Territory": {
+      "town": 0
+    }
+  },
+  {
+    "Territory": {
+      "town": 4294967295
+    }
+  },
+  "War",
+  "RouteBooks"
 ]

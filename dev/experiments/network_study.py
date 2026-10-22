@@ -53,6 +53,20 @@ Stopping early: --stop-when E2.treasury<5 (or any.treasury<5, S3.mood<0, E3.vill
 will do) ends the run at the end of the first day a town meets it, saves a checkpoint of that day, and prints the
 town's cash book for the last ten days (`/enterprise cashbook DESK [DAYS]`): what its money went on.
 
+Under `society=core` (the kept check, John 2026-10-18: most Java-server studies retire for sim/host, this one stays as
+the in-game check) every number in the per-day CSV, in `--stop-when` and in the cash book it prints comes from the core:
+the mint rate from `Query::Mint`, each town's row from `Query::Territory` (treasury, mood, villagers, hexes, guards,
+tolls, locker trades, ...), each route's row from `Query::RouteBooks`, the cash book from `Query::CashBook` (all through
+`binding/adapters/CommandsAdapter` and `BooksAdapter`: one question each, the lines out). The same lines carry the Java
+commands' words, so the regexes below read either mode's output; the core's differences: money in emeralds (tolls,
+traffic, route totals in spurs at the mint's rate), town names the core's, route numbers from 0, and a town's
+`locker trades` line replaces the debug log's. Only the default world runs in core mode (plus `--save-at`, `--label`,
+`--resume`, `--stop-when`): the other flags (river, ridge, war, metal, trades, freight, ...) set up and read what is
+still Java rules (docs/binding-plan.md "Studies") and exit saying "Java mode only (retired for sim/host)".
+The cash book, books, whys, trust and contracts the study prints are the core's own in core mode;
+`/enterprise core cashbook|books|whys|trust|contracts` asks the core the same in either mode, so a Java-mode run can be set
+beside it (money in emeralds there, spurs in Java's).
+
     python3 dev/experiments/network_study.py DAYS OUT.csv [--inject DAY] [--river | --river-bridge] [--comforts] [--fleet] [--services] [--metal] [--trades] [--master] [--war M,W,P] [--realms] [--save-at D,... [--label NAME]] [--resume DIR] [--stop-when TOWN.field<value,...]
 """
 
@@ -143,7 +157,8 @@ def save_checkpoint(day):
     finally:
         rcon("save-on")
     # The study's own running count (from the server's log, which the checkpoint doesn't carry).
-    (dest / "study.json").write_text(json.dumps({"day": day, "argv": sys.argv[1:], "trades": trades_by_town()}, indent=1))
+    (dest / "study.json").write_text(json.dumps({"day": day, "argv": sys.argv[1:], "core": CORE,
+                                                "trades": {} if CORE else trades_by_town()}, indent=1))
     print(f"checkpoint: day {day} saved to {dest.relative_to(REPO)}")
 
 
@@ -166,6 +181,15 @@ def number(pattern, text, default=0.0):
 
 _log_offset = 0
 _trades = {}
+CORE = False  # society=core: every number comes from the core's own answers (set by main from the server's own words)
+
+# Flags that shape the world or read what is still the Java rules': Java mode only. Core mode runs the default world.
+CORE_FLAGS = {"--save-at", "--label", "--resume", "--stop-when"}
+
+
+def census(corner):
+    """A town's census taken now: the Java rules' at its bell, in core mode the core's at its desk."""
+    return rcon(f"enterprise core census {desk(corner)}" if CORE else f"enterprise census {bell(corner)}")
 
 
 def trades_by_town():
@@ -404,7 +428,7 @@ def setup():
               .strip().splitlines()[-1])
     sprint(600)
     for corner in TOWNS.values():
-        rcon(f"enterprise census {bell(corner)}")
+        census(corner)
     if "--war" in sys.argv:
         # S2 promoted: a barracks, four beds for men under arms and two double chests for their kit and rations.
         c = TOWNS["S2"]
@@ -515,8 +539,15 @@ def stop_met(towns):
 
 
 def main():
+    global CORE
     days = int(sys.argv[1])
     out = Path(sys.argv[2])
+    CORE = "The core's mint" in rcon("enterprise mint")
+    if CORE:
+        retired = sorted(a for a in sys.argv[3:] if a.startswith("--") and a not in CORE_FLAGS)
+        if retired:
+            sys.exit(f"{' '.join(retired)}: Java mode only (retired for sim/host); under society=core this study runs the "
+                     f"default world (with --save-at, --label, --resume, --stop-when)")
     inject = int(sys.argv[sys.argv.index("--inject") + 1]) if "--inject" in sys.argv else None
     save_at = {int(d) for d in flag("--save-at", "").split(",") if d}
     started = time.time()
@@ -571,7 +602,7 @@ def main():
             print(f"day {day} took {took[-1]:.0f}s, not the usual {usual:.0f}s: the machine slept (lid closed on "
                   f"battery?) or the server stalled; `pmset -g log | grep Sleep` tells which")
         rate = number(r"([\d.]+) spurs per emerald", rcon("enterprise mint"), 16)
-        trades = trades_by_town()
+        trades = {} if CORE else trades_by_town()
         for name, corner in TOWNS.items():
             t = rcon(f"enterprise territory {bell(corner)}")
             rows.append({
@@ -586,7 +617,7 @@ def main():
                 "deserted": number(r"(\d+) deserted", t),
                 "farm_share_pct": number(r"\((\d+)% of the harvest", t),
                 "harvested": number(r"(\d+) items harvested", t),
-                "trades": trades[name],
+                "trades": number(r"locker trades: (\d+)", t) if CORE else trades[name],
                 "mood": number(r"mood ([+-][\d.]+)", t),
                 "villagers": number(r"\): (\d+) villagers", t),
                 "beds": number(r"villagers, (\d+) beds", t),

@@ -402,7 +402,12 @@ fn queries() -> Vec<Query> {
         Query::Routes { town: BIGGEST_ID }, Query::Pallets { town: 0 }, Query::Pallets { town: BIGGEST_ID },
         Query::Pallet { id: 0 }, Query::Pallet { id: u64::MAX }, Query::Stow { point: point(PointKind::Desk, 27, -60, 27), free: 27 },
         Query::Stow { point: point(PointKind::Desk, i32::MAX, i32::MIN, i32::MAX), free: u32::MAX }, Query::Manifest { route: 0 },
-        Query::Manifest { route: BIGGEST_ID }]
+        Query::Manifest { route: BIGGEST_ID },
+        Query::CashBook { town: 0, days: 10 },
+        Query::CashBook { town: BIGGEST_ID, days: u32::MAX }, Query::Books { town: 0 }, Query::Books { town: BIGGEST_ID },
+        Query::Whys { town: 0 }, Query::Whys { town: BIGGEST_ID }, Query::Trust, Query::Contracts { town: None },
+        Query::Contracts { town: Some(2) }, Query::Contracts { town: Some(BIGGEST_ID) }, Query::Territory { town: 0 },
+        Query::Territory { town: BIGGEST_ID }, Query::War, Query::RouteBooks]
 }
 
 fn offer_views() -> Vec<OfferView> {
@@ -503,7 +508,188 @@ fn answers() -> Vec<Answer> {
         Answer::Manifest { route: 0, lines: vec![], superbill: false },
         Answer::Manifest { route: 3, lines: manifest_lines()[..1].to_vec(), superbill: false },
         Answer::Manifest { route: BIGGEST_ID, lines: manifest_lines(), superbill: true },
+        Answer::CashBook { town: 0, name: String::new(), today: 0, lines: vec![], held: vec![], totals: vec![], held_totals: vec![],
+            received: Fixed::ZERO, paid: Fixed::ZERO },
+        Answer::CashBook { town: 1, name: "Brindle".into(), today: 12, lines: book_lines(), held: book_lines().split_off(1),
+            totals: for_totals(), held_totals: for_totals().split_off(1), received: Fixed::from_millis(12_500),
+            paid: Fixed::from_millis(3_000) },
+        Answer::CashBook { town: BIGGEST_ID, name: "x".repeat(300), today: u64::MAX, lines: vec![BookLine { day: u64::MAX,
+            what: "x".repeat(300), amount: Fixed::from_millis(i64::MIN) }], held: vec![], totals: vec![ForTotal {
+            what: "x".repeat(300), amount: Fixed::from_millis(i64::MIN) }], held_totals: vec![], received: Fixed::MAX,
+            paid: Fixed::MAX },
+        Answer::Books { town: 0, name: String::new(), keeps: 0, lines: vec![], whys: vec![] },
+        Answer::Books { town: 1, name: "Brindle".into(), keeps: 30, lines: summary_lines(), whys: why_views() },
+        Answer::Books { town: BIGGEST_ID, name: "x".repeat(300), keeps: u64::MAX, lines: (0..60).map(|i| SummaryLine {
+            kind: "sold".into(), with: format!("town {i}"), good: "wheat".into(), count: i as f64, money: Fixed::MAX }).collect(),
+            whys: why_views() },
+        Answer::Whys { town: 0, name: String::new(), whys: vec![] },
+        Answer::Whys { town: 1, name: "Brindle".into(), whys: why_views() },
+        Answer::Whys { town: BIGGEST_ID, name: "x".repeat(300), whys: (0..60).map(|i| WhyView { line: "x".repeat(300),
+            times: u64::MAX - i, items: f64::MAX, last: u64::MAX }).collect() },
+        Answer::Trust { records: vec![] },
+        Answer::Trust { records: trust_lines() },
+        Answer::Contracts { contracts: vec![], rents: vec![] },
+        Answer::Contracts { contracts: contract_lines(), rents: rent_lines() },
+        territory(0),
+        territory(1),
+        territory(2),
+        Answer::War { phase: String::new(), theatre: String::new(), days: 0.0, capital: None, treasury: Fixed::ZERO,
+            treasury_spurs: 0.0, minted: 0.0, contracts: 0, delivered: 0.0, serving: 0, waiting: 0, raised: 0, fallen: 0, bills: 0.0,
+            rate: 16.0, debasement: 1.0, levies: 0, hired: 0, awarded: 0, depot: vec![], unmet: vec![], towns: vec![],
+            issued: vec![], eaten: 0.0, heartiness: 0.0 },
+        Answer::War { phase: "war".into(), theatre: "faction".into(), days: 12.5, capital: Some(0), treasury: Fixed::from_millis(500_000),
+            treasury_spurs: 8000.0, minted: 1000.0, contracts: 3, delivered: 96.0, serving: 40, waiting: 6, raised: 50, fallen: 4,
+            bills: 12.5, rate: 15.8, debasement: 0.97, levies: 2, hired: 1, awarded: 5, depot: name_counts(),
+            unmet: vec!["minecraft:iron_ingot".into()], towns: war_towns(), issued: name_counts(), eaten: 900.0, heartiness: 0.4 },
+        Answer::War { phase: "x".repeat(300), theatre: "x".repeat(300), days: f64::MAX, capital: Some(BIGGEST_ID),
+            treasury: Fixed::MAX, treasury_spurs: f64::MAX, minted: f64::MAX, contracts: u32::MAX, delivered: f64::MAX,
+            serving: u32::MAX, waiting: u32::MAX, raised: u32::MAX, fallen: u32::MAX, bills: f64::MAX, rate: f64::MIN_POSITIVE,
+            debasement: f64::MIN_POSITIVE, levies: u32::MAX, hired: u32::MAX, awarded: u32::MAX,
+            depot: (0..60).map(|i| NameCount { name: "x".repeat(300), count: i as f64 }).collect(), unmet: vec!["x".repeat(300); 40],
+            towns: war_towns(), issued: vec![], eaten: f64::MAX, heartiness: 1.0 },
+        Answer::RouteBooks { rate: 16.0, routes: vec![] },
+        Answer::RouteBooks { rate: 15.5, routes: route_books() },
     ]
+}
+
+fn book_lines() -> Vec<BookLine> {
+    vec![
+        BookLine { day: 11, what: "sold wheat".into(), amount: Fixed::from_millis(12_500) },
+        BookLine { day: 12, what: "paid wages".into(), amount: Fixed::from_millis(-3_000) },
+        BookLine { day: 12, what: String::new(), amount: Fixed::ZERO },
+    ]
+}
+
+fn summary_lines() -> Vec<SummaryLine> {
+    vec![
+        SummaryLine { kind: "sent".into(), with: "Alder".into(), good: "wheat".into(), count: 64.0, money: Fixed::ZERO },
+        SummaryLine { kind: "sold".into(), with: "the town".into(), good: "-".into(), count: 0.5, money: Fixed::from_millis(-1) },
+    ]
+}
+
+fn why_views() -> Vec<WhyView> {
+    vec![
+        WhyView { line: "Alder | wheat | sent: they're short".into(), times: 9, items: 576.0, last: 11 },
+        WhyView { line: String::new(), times: 0, items: 0.0, last: 0 },
+    ]
+}
+
+fn trust_lines() -> Vec<TrustLine> {
+    vec![
+        TrustLine { a: 0, b: 1, parties: "Brindle and Alder".into(), trust: 0.5, kept: 3.5, missed: 0.25 },
+        TrustLine { a: BIGGEST_ID - 1, b: BIGGEST_ID, parties: "x".repeat(300), trust: f64::MIN_POSITIVE, kept: f64::MAX,
+            missed: f64::MAX },
+    ]
+}
+
+fn contract_lines() -> Vec<ContractLine> {
+    vec![
+        ContractLine { id: 0, seller: 0, buyer: 1, seller_name: "Brindle".into(), buyer_name: "Alder".into(), state: "active".into(),
+            incoterm: "DAP".into(), copies: 2, what: "64 wheat".into(), delivered: 128.0, shipped: 64.0,
+            paid: Fixed::from_millis(24_000), advanced: Fixed::ZERO, missed: 1, buyer_missed: 0, trust: 0.6,
+            history: vec!["day 1: drafted, 64 wheat 10 time(s) every 2 day(s), DAP".into(), String::new()] },
+        ContractLine { id: u32::MAX, seller: BIGGEST_ID, buyer: BIGGEST_ID, seller_name: "x".repeat(300), buyer_name: String::new(),
+            state: "broken".into(), incoterm: "EXW".into(), copies: u8::MAX, what: "a levy of 12 soldiers".into(), delivered: f64::MAX,
+            shipped: f64::MIN_POSITIVE, paid: Fixed::MAX, advanced: Fixed::from_millis(i64::MIN), missed: u32::MAX,
+            buyer_missed: u32::MAX, trust: 1.0, history: vec!["x".repeat(300); 12] },
+    ]
+}
+
+fn for_totals() -> Vec<ForTotal> {
+    vec![
+        ForTotal { what: "paid in".into(), amount: Fixed::from_millis(12_500) },
+        ForTotal { what: "wages".into(), amount: Fixed::from_millis(-3_000) },
+        ForTotal { what: String::new(), amount: Fixed::ZERO },
+    ]
+}
+
+fn name_counts() -> Vec<NameCount> {
+    vec![
+        NameCount { name: "minecraft:wheat".into(), count: 4.5 },
+        NameCount { name: String::new(), count: 0.0 },
+        NameCount { name: "x".repeat(300), count: f64::MAX },
+    ]
+}
+
+fn project_lines() -> Vec<ProjectLine> {
+    vec![
+        ProjectLine { what: "bridge on 2,-1".into(), progress: 0.5, done: false, wages: Fixed::from_millis(8_000) },
+        ProjectLine { what: "wall".into(), progress: 1.0, done: true, wages: Fixed::MAX },
+        ProjectLine { what: String::new(), progress: 0.0, done: false, wages: Fixed::from_millis(i64::MIN) },
+    ]
+}
+
+fn war_towns() -> Vec<WarTown> {
+    vec![
+        WarTown { town: 0, name: "Brindle".into(), raised: 12, fallen: 1, deserted: 0, days: 300, hungry: 4, strength: 220.5,
+            kit: 32.0, earned: Fixed::from_millis(40_000), trust: 0.7 },
+        WarTown { town: BIGGEST_ID, name: "x".repeat(300), raised: u32::MAX, fallen: u32::MAX, deserted: u32::MAX, days: u32::MAX,
+            hungry: u32::MAX, strength: f64::MAX, kit: f64::MIN_POSITIVE, earned: Fixed::from_millis(i64::MIN), trust: 1.0 },
+    ]
+}
+
+fn rent_lines() -> Vec<RentLine> {
+    vec![
+        RentLine { id: 0, farm: 0, holder: 1, farm_name: "Brindle".into(), holder_name: "Alder".into(), quantity: 16.0,
+            crop: "minecraft:wheat".into(), capital: Fixed::from_millis(6_400), state: "active".into(), coupons: 3,
+            delivered: 32.0, arrears: 0.0, history: vec!["day 2: bought for 6.4 emeralds, 16 minecraft:wheat a season".into()] },
+        RentLine { id: u32::MAX, farm: BIGGEST_ID, holder: BIGGEST_ID, farm_name: "x".repeat(300), holder_name: String::new(),
+            quantity: f64::MAX, crop: String::new(), capital: Fixed::MAX, state: "defaulted".into(), coupons: u32::MAX,
+            delivered: f64::MAX, arrears: f64::MIN_POSITIVE, history: vec![] },
+    ]
+}
+
+fn forward_lines() -> Vec<ForwardLine> {
+    vec![
+        ForwardLine { good: "minecraft:wheat".into(), per_day: 12.5, price: 0.055 },
+        ForwardLine { good: "x".repeat(300), per_day: f64::MAX, price: f64::MIN_POSITIVE },
+    ]
+}
+
+fn route_books() -> Vec<RouteBook> {
+    vec![
+        RouteBook { route: 0, from: 0, to: 1, from_desk: Some(point(PointKind::Desk, 1002, -60, 1002)), to_desk: None, blocks: 300,
+            trips: 4, sold_items: 128.0, sales_spurs: 90.5, service_spurs: 0.0, bought_items: 16.0, purchase_spurs: 12.0,
+            food_spurs: 4.5, tolls_spurs: 1.0, home_spurs: 77.0, food_eaten: 80.0, short_rations: 1, delivered: 64.0 },
+        RouteBook { route: u32::MAX, from: BIGGEST_ID, to: BIGGEST_ID, from_desk: None,
+            to_desk: Some(point(PointKind::Desk, i32::MIN, 0, i32::MAX)), blocks: u32::MAX, trips: u32::MAX, sold_items: f64::MAX,
+            sales_spurs: f64::MAX, service_spurs: f64::MIN_POSITIVE, bought_items: f64::MAX, purchase_spurs: f64::MAX,
+            food_spurs: f64::MAX, tolls_spurs: f64::MAX, home_spurs: f64::MAX, food_eaten: f64::MAX, short_rations: u32::MAX,
+            delivered: f64::MAX },
+    ]
+}
+
+/// A territory report, empty (0), ordinary (1) or with every number and string at its widest (2).
+fn territory(which: u8) -> Answer {
+    match which {
+        0 => Answer::Territory { town: 0, name: String::new(), rate: 16.0, hexes: vec![], culture: 0.0, next_hex: 0.0, farms: vec![],
+            idle: vec![], sold_forward: vec![], wage_per_day: 0.0, labor_share: 0.0, crop_sales_per_day: 0.0, wages_paid: Fixed::ZERO,
+            wages_unpaid: Fixed::ZERO, harvested: 0.0, deposits: 0.0, focus: String::new(), purse: Fixed::ZERO, credit: Fixed::ZERO,
+            freeholds: 0, tightness: 1.0, treasury: Fixed::ZERO, reserve: 0, mood: 0.0, villagers: 0.0, beds: 0.0, comforts: vec![],
+            yield_factor: 1.0, culture_factor: 1.0, bridges: vec![], wall: None, buildings: vec![], hunting: 0.0, armed: 0.0,
+            homes_built: 0, born: 0, toll_rate: 0.0, passage_fee: 0.0, toll_income: 0.0, tolls_taken: Fixed::ZERO,
+            tolls_owed: Fixed::ZERO, guards: 0, posts: vec![], traffic: 0.0, deserted: 0, militia: 0, trades: 0 },
+        1 => Answer::Territory { town: 1, name: "Brindle".into(), rate: 15.5, hexes: vec![hex(0, 0), hex(1, -1)], culture: 31.5,
+            next_hex: 40.0, farms: name_counts(), idle: name_counts().split_off(1), sold_forward: forward_lines(), wage_per_day: 2.5,
+            labor_share: 0.25, crop_sales_per_day: 6.0, wages_paid: Fixed::from_millis(12_000), wages_unpaid: Fixed::from_millis(500),
+            harvested: 640.0, deposits: 3.5, focus: "grow".into(), purse: Fixed::from_millis(20_000), credit: Fixed::from_millis(1_000),
+            freeholds: 3, tightness: 1.2, treasury: Fixed::from_millis(150_250), reserve: 64, mood: 1.5, villagers: 9.0, beds: 10.0,
+            comforts: name_counts(), yield_factor: 1.15, culture_factor: 1.375, bridges: project_lines(),
+            wall: Some(project_lines().remove(0)), buildings: project_lines(), hunting: 0.5, armed: 1.0, homes_built: 2, born: 4,
+            toll_rate: 0.05, passage_fee: 2.0, toll_income: 31.0, tolls_taken: Fixed::from_millis(40_000), tolls_owed: Fixed::ZERO,
+            guards: 2, posts: vec![hex(2, 0)], traffic: 410.0, deserted: 1, militia: 1, trades: 120 },
+        _ => Answer::Territory { town: BIGGEST_ID, name: "x".repeat(300), rate: f64::MAX, hexes: (0..60).map(|i| hex(i, -i)).collect(),
+            culture: f64::MAX, next_hex: f64::MAX, farms: name_counts(), idle: name_counts(), sold_forward: forward_lines(),
+            wage_per_day: f64::MAX, labor_share: 1.0, crop_sales_per_day: f64::MAX, wages_paid: Fixed::MAX,
+            wages_unpaid: Fixed::from_millis(i64::MIN), harvested: f64::MAX, deposits: f64::MAX, focus: "x".repeat(300),
+            purse: Fixed::MAX, credit: Fixed::from_millis(i64::MIN), freeholds: u32::MAX, tightness: f64::MIN_POSITIVE,
+            treasury: Fixed::from_millis(i64::MIN), reserve: u64::MAX, mood: -5.0, villagers: f64::MAX, beds: f64::MAX,
+            comforts: name_counts(), yield_factor: 0.5, culture_factor: 0.25, bridges: project_lines(),
+            wall: Some(project_lines().remove(1)), buildings: project_lines(), hunting: 1.0, armed: 1.5, homes_built: u32::MAX,
+            born: u32::MAX, toll_rate: 0.25, passage_fee: f64::MAX, toll_income: f64::MAX, tolls_taken: Fixed::MAX,
+            tolls_owed: Fixed::MAX, guards: u32::MAX, posts: (0..40).map(|i| hex(-i, i)).collect(), traffic: f64::MAX,
+            deserted: u32::MAX, militia: u32::MAX, trades: u64::MAX },
+    }
 }
 
 fn wagon_lines() -> Vec<WagonLine> {
@@ -627,6 +813,18 @@ fixtures! {
     route_line_fixtures: RouteLine = route_lines();
     wagon_line_fixtures: WagonLine = wagon_lines();
     market_line_fixtures: MarketLine = market_lines();
+    book_line_fixtures: BookLine = book_lines();
+    summary_line_fixtures: SummaryLine = summary_lines();
+    why_view_fixtures: WhyView = why_views();
+    contract_line_fixtures: ContractLine = contract_lines();
+    trust_line_fixtures: TrustLine = trust_lines();
+    for_total_fixtures: ForTotal = for_totals();
+    name_count_fixtures: NameCount = name_counts();
+    project_line_fixtures: ProjectLine = project_lines();
+    war_town_fixtures: WarTown = war_towns();
+    rent_line_fixtures: RentLine = rent_lines();
+    forward_line_fixtures: ForwardLine = forward_lines();
+    route_book_fixtures: RouteBook = route_books();
     work_fixtures: Work = works();
     work_view_fixtures: WorkView = work_views();
     ground_view_fixtures: GroundView = ground_views();
@@ -715,6 +913,14 @@ fn query_place(q: &Query) -> usize {
         Query::Pallet { .. } => 13,
         Query::Stow { .. } => 14,
         Query::Manifest { .. } => 15,
+        Query::CashBook { .. } => 16,
+        Query::Books { .. } => 17,
+        Query::Whys { .. } => 18,
+        Query::Trust => 19,
+        Query::Contracts { .. } => 20,
+        Query::Territory { .. } => 21,
+        Query::War => 22,
+        Query::RouteBooks => 23,
     }
 }
 
@@ -736,6 +942,14 @@ fn answer_place(a: &Answer) -> usize {
         Answer::Pallet { .. } => 13,
         Answer::Stow { .. } => 14,
         Answer::Manifest { .. } => 15,
+        Answer::CashBook { .. } => 16,
+        Answer::Books { .. } => 17,
+        Answer::Whys { .. } => 18,
+        Answer::Trust { .. } => 19,
+        Answer::Contracts { .. } => 20,
+        Answer::Territory { .. } => 21,
+        Answer::War { .. } => 22,
+        Answer::RouteBooks { .. } => 23,
     }
 }
 
@@ -784,8 +998,8 @@ fn covers<T>(what: &str, samples: &[T], variants: usize, place: fn(&T) -> usize)
 fn every_variant_of_every_wire_enum_has_a_sample() {
     covers("Input", &inputs(), 31, input_place);
     covers("Output", &outputs(), 18, output_place);
-    covers("Query", &queries(), 16, query_place);
-    covers("Answer", &answers(), 16, answer_place);
+    covers("Query", &queries(), 24, query_place);
+    covers("Answer", &answers(), 24, answer_place);
     covers("Command", &commands(), 5, command_place);
     covers("Response", &responses(), 3, response_place);
     covers("Refusal", &refusals(), 9, refusal_place);

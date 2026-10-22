@@ -1,0 +1,752 @@
+{
+  "name": "books",
+  "about": "What the commands ask of the books: Hub's wagon makes a trip to Far, which holds books Hub's people are short of, so Hub's books show what it sent and bought and its reasons (Books, Whys), and its cash book the money that moved (CashBook). No contract was drafted and no pair has dealt, so Contracts and Trust are empty. A town that isn't there is refused.",
+  "steps": [
+    {
+      "note": "a society from a pack with books and Merchants",
+      "request": {
+        "abi": 1,
+        "schema": 2387392034397692382,
+        "command": {
+          "Create": {
+            "pack": {
+              "day_ticks": 24000,
+              "goods": [
+                {
+                  "name": "minecraft:wheat",
+                  "worth": 0.05,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [
+                    "Crop"
+                  ],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:bread",
+                  "worth": 0.2,
+                  "stack": 64,
+                  "food": 5.0,
+                  "saturation": 6.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:book",
+                  "worth": 0.5,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": "reading",
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:cooked_beef",
+                  "worth": 0.3,
+                  "stack": 64,
+                  "food": 8.0,
+                  "saturation": 12.8,
+                  "comfort": null,
+                  "flags": [
+                    "Meat"
+                  ],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:iron_ingot",
+                  "worth": 0.25,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 4.0
+                },
+                {
+                  "name": "minecraft:sugar_cane",
+                  "worth": 0.04,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 0.5
+                },
+                {
+                  "name": "minecraft:paper",
+                  "worth": 0.04,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 1.0
+                }
+              ],
+              "comforts": [
+                "clothing",
+                "reading"
+              ],
+              "trades": [
+                "merchant",
+                "farmer",
+                "librarian",
+                "shepherd",
+                "none",
+                "nitwit"
+              ],
+              "recipes": [
+                {
+                  "trades": [
+                    "farmer"
+                  ],
+                  "inputs": [
+                    {
+                      "good": "minecraft:wheat",
+                      "count": 3.0
+                    }
+                  ],
+                  "output": "minecraft:bread",
+                  "makes": 1.0
+                },
+                {
+                  "trades": [
+                    "librarian"
+                  ],
+                  "inputs": [
+                    {
+                      "good": "minecraft:sugar_cane",
+                      "count": 1.0
+                    }
+                  ],
+                  "output": "minecraft:paper",
+                  "makes": 1.0
+                }
+              ],
+              "animals": [
+                {
+                  "name": "cow",
+                  "feed": [
+                    "minecraft:wheat"
+                  ],
+                  "feed_per_day": 0.25,
+                  "meat": "minecraft:cooked_beef",
+                  "meat_each": 2.0,
+                  "wool": null,
+                  "hide": null
+                }
+              ],
+              "dials": [
+                {
+                  "name": "birth_mood",
+                  "value": 0.5
+                },
+                {
+                  "name": "wagon_slots",
+                  "value": 30.0
+                }
+              ],
+              "packages": []
+            },
+            "seed": 7
+          }
+        }
+      },
+      "request_postcard": "01dec3fcae808dee902100c0bb01070f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f146d696e6563726166743a69726f6e5f696e676f74000000000000d03f400000000000000000000000000000000000000000000000001040146d696e6563726166743a73756761725f63616e657b14ae47e17aa43f40000000000000000000000000000000000000000000000000e03f0f6d696e6563726166743a70617065727b14ae47e17aa43f40000000000000000000000000000000000000000000000000f03f0208636c6f7468696e670772656164696e6706086d65726368616e74066661726d6572096c696272617269616e087368657068657264046e6f6e65066e69747769740201066661726d6572010f6d696e6563726166743a776865617400000000000008400f6d696e6563726166743a6272656164000000000000f03f01096c696272617269616e01146d696e6563726166743a73756761725f63616e65000000000000f03f0f6d696e6563726166743a7061706572000000000000f03f0103636f77010f6d696e6563726166743a7768656174000000000000d03f01156d696e6563726166743a636f6f6b65645f6265656600000000000000400000020a62697274685f6d6f6f64000000000000e03f0b7761676f6e5f736c6f74730000000000003e400007",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "two towns forty blocks apart, bread and money in both, books at Far",
+      "request": {
+        "abi": 1,
+        "schema": 2387392034397692382,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "AddTown": {
+                  "name": "Hub",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "AddTown": {
+                  "name": "Far",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 67,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 0,
+                  "trade": "merchant",
+                  "level": 1,
+                  "tag": "villager-hub"
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 0,
+                  "trade": "none",
+                  "level": 1,
+                  "tag": "villager-lead"
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 1,
+                  "trade": "merchant",
+                  "level": 1,
+                  "tag": "villager-far"
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 0,
+                  "good": 1,
+                  "count": 128.0
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 1,
+                  "good": 1,
+                  "count": 128.0
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 1,
+                  "good": 2,
+                  "count": 64.0
+                }
+              },
+              {
+                "Pay": {
+                  "town": 0,
+                  "money": 50000
+                }
+              },
+              {
+                "Pay": {
+                  "town": 1,
+                  "money": 50000
+                }
+              },
+              {
+                "Route": {
+                  "from": 0,
+                  "to": 1,
+                  "send": true
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01dec3fcae808dee9021030b070348756200136d696e6563726166743a6f766572776f726c64367736070346617200136d696e6563726166743a6f766572776f726c64860177360f00086d65726368616e74010c76696c6c616765722d6875620f00046e6f6e65010d76696c6c616765722d6c6561640f01086d65726368616e74010c76696c6c616765722d6661720100010000000000006040010101000000000000604001010200000000000050400200a08d060201a08d061c000101",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "a trip and home",
+      "request": {
+        "abi": 1,
+        "schema": 2387392034397692382,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Advance": {
+                  "to": 1200
+                }
+              },
+              {
+                "Advance": {
+                  "to": 2400
+                }
+              },
+              {
+                "Advance": {
+                  "to": 3600
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01dec3fcae808dee9021030300b00900e01200901c",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "WagonLeft": {
+                "route": 0,
+                "stacks": 0,
+                "worth": 2.4
+              }
+            },
+            {
+              "HandAway": {
+                "town": 0,
+                "hand": 2,
+                "tag": "villager-lead"
+              }
+            },
+            {
+              "WagonSold": {
+                "route": 0,
+                "sold": 0.0,
+                "takings": 0
+              }
+            },
+            {
+              "WagonHome": {
+                "route": 0,
+                "takings": 1225
+              }
+            },
+            {
+              "HandBack": {
+                "town": 0,
+                "hand": 2,
+                "tag": "villager-lead",
+                "trade": "merchant",
+                "level": 1,
+                "xp": 1
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "000500000033333333333303401000020d76696c6c616765722d6c6561640100000000000000000000020092131100020d76696c6c616765722d6c656164086d65726368616e74010100"
+    },
+    {
+      "note": "Hub's books",
+      "request": {
+        "abi": 1,
+        "schema": 2387392034397692382,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Books": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01dec3fcae808dee902104011100",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Books": {
+                "town": 0,
+                "name": "Hub",
+                "keeps": 10,
+                "lines": [
+                  {
+                    "kind": "home",
+                    "with": "Far",
+                    "good": "minecraft:book",
+                    "count": 3.0,
+                    "money": 0
+                  },
+                  {
+                    "kind": "bought",
+                    "with": "Far",
+                    "good": "minecraft:book",
+                    "count": 3.0,
+                    "money": 1125
+                  }
+                ],
+                "whys": [
+                  {
+                    "line": "Far | - | not sent: they're short of clothing, and we have none",
+                    "times": 1,
+                    "items": 0.0,
+                    "last": 0
+                  },
+                  {
+                    "line": "Far | - | went: on its day",
+                    "times": 1,
+                    "items": 0.0,
+                    "last": 0
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000011100034875620a0204686f6d65034661720e6d696e6563726166743a626f6f6b00000000000008400006626f75676874034661720e6d696e6563726166743a626f6f6b0000000000000840ca11023f466172207c202d207c206e6f742073656e743a20746865792772652073686f7274206f6620636c6f7468696e672c20616e642077652068617665206e6f6e65010000000000000000001a466172207c202d207c2077656e743a206f6e206974732064617901000000000000000000"
+    },
+    {
+      "note": "Hub's reasons alone are the books' own",
+      "request": {
+        "abi": 1,
+        "schema": 2387392034397692382,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Whys": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01dec3fcae808dee902104011200",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Whys": {
+                "town": 0,
+                "name": "Hub",
+                "whys": [
+                  {
+                    "line": "Far | - | not sent: they're short of clothing, and we have none",
+                    "times": 1,
+                    "items": 0.0,
+                    "last": 0
+                  },
+                  {
+                    "line": "Far | - | went: on its day",
+                    "times": 1,
+                    "items": 0.0,
+                    "last": 0
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "000001120003487562023f466172207c202d207c206e6f742073656e743a20746865792772652073686f7274206f6620636c6f7468696e672c20616e642077652068617665206e6f6e65010000000000000000001a466172207c202d207c2077656e743a206f6e206974732064617901000000000000000000"
+    },
+    {
+      "note": "Hub's cash book, ten days",
+      "request": {
+        "abi": 1,
+        "schema": 2387392034397692382,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "CashBook": {
+                  "town": 0,
+                  "days": 10
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01dec3fcae808dee9021040110000a",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "CashBook": {
+                "town": 0,
+                "name": "Hub",
+                "today": 0,
+                "lines": [
+                  {
+                    "day": 0,
+                    "what": "road food",
+                    "amount": -400
+                  },
+                  {
+                    "day": 0,
+                    "what": "wagon purse",
+                    "amount": -2600
+                  },
+                  {
+                    "day": 0,
+                    "what": "takings",
+                    "amount": 1225
+                  },
+                  {
+                    "day": 0,
+                    "what": "paid in",
+                    "amount": 50000
+                  },
+                  {
+                    "day": 0,
+                    "what": "training",
+                    "amount": -4000
+                  }
+                ],
+                "held": [],
+                "totals": [
+                  {
+                    "what": "paid in",
+                    "amount": 50000
+                  },
+                  {
+                    "what": "road food",
+                    "amount": -400
+                  },
+                  {
+                    "what": "takings",
+                    "amount": 1225
+                  },
+                  {
+                    "what": "training",
+                    "amount": -4000
+                  },
+                  {
+                    "what": "wagon purse",
+                    "amount": -2600
+                  }
+                ],
+                "held_totals": [],
+                "received": 51225,
+                "paid": 7000
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "00000110000348756200050009726f616420666f6f649f06000b7761676f6e207075727365cf28000774616b696e6773921300077061696420696ea08d060008747261696e696e67bf3e0005077061696420696ea08d0609726f616420666f6f649f060774616b696e6773921308747261696e696e67bf3e0b7761676f6e207075727365cf2800b2a006b06d"
+    },
+    {
+      "note": "no contract, no pair that has dealt",
+      "request": {
+        "abi": 1,
+        "schema": 2387392034397692382,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Contracts": {
+                  "town": null
+                }
+              },
+              {
+                "Contracts": {
+                  "town": 1
+                }
+              },
+              "Trust"
+            ]
+          }
+        }
+      },
+      "request_postcard": "01dec3fcae808dee90210403140014010113",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Contracts": {
+                "contracts": [],
+                "rents": []
+              }
+            },
+            {
+              "Contracts": {
+                "contracts": [],
+                "rents": []
+              }
+            },
+            {
+              "Trust": {
+                "records": []
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000031400001400001300"
+    },
+    {
+      "note": "a town that isn't there",
+      "request": {
+        "abi": 1,
+        "schema": 2387392034397692382,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "CashBook": {
+                  "town": 7,
+                  "days": 1
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01dec3fcae808dee90210401100701",
+      "response": {
+        "Refused": {
+          "why": {
+            "Query": {
+              "at": 0,
+              "why": "no town 7"
+            }
+          }
+        }
+      },
+      "response_postcard": "020800096e6f20746f776e2037"
+    },
+    {
+      "note": "a town that isn't there",
+      "request": {
+        "abi": 1,
+        "schema": 2387392034397692382,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Books": {
+                  "town": 7
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01dec3fcae808dee902104011107",
+      "response": {
+        "Refused": {
+          "why": {
+            "Query": {
+              "at": 0,
+              "why": "no town 7"
+            }
+          }
+        }
+      },
+      "response_postcard": "020800096e6f20746f776e2037"
+    },
+    {
+      "note": "a town that isn't there",
+      "request": {
+        "abi": 1,
+        "schema": 2387392034397692382,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Whys": {
+                  "town": 7
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01dec3fcae808dee902104011207",
+      "response": {
+        "Refused": {
+          "why": {
+            "Query": {
+              "at": 0,
+              "why": "no town 7"
+            }
+          }
+        }
+      },
+      "response_postcard": "020800096e6f20746f776e2037"
+    },
+    {
+      "note": "a town that isn't there",
+      "request": {
+        "abi": 1,
+        "schema": 2387392034397692382,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Contracts": {
+                  "town": 7
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01dec3fcae808dee90210401140107",
+      "response": {
+        "Refused": {
+          "why": {
+            "Query": {
+              "at": 0,
+              "why": "no town 7"
+            }
+          }
+        }
+      },
+      "response_postcard": "020800096e6f20746f776e2037"
+    },
+    {
+      "note": "a town that isn't there",
+      "request": {
+        "abi": 1,
+        "schema": 2387392034397692382,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Territory": {
+                  "town": 7
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01dec3fcae808dee902104011507",
+      "response": {
+        "Refused": {
+          "why": {
+            "Query": {
+              "at": 0,
+              "why": "no town 7"
+            }
+          }
+        }
+      },
+      "response_postcard": "020800096e6f20746f776e2037"
+    }
+  ]
+}

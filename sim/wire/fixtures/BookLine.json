@@ -1,0 +1,17 @@
+[
+  {
+    "day": 11,
+    "what": "sold wheat",
+    "amount": 12500
+  },
+  {
+    "day": 12,
+    "what": "paid wages",
+    "amount": -3000
+  },
+  {
+    "day": 12,
+    "what": "",
+    "amount": 0
+  }
+]

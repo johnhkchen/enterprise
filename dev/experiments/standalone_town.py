@@ -9,6 +9,8 @@ and logs what the ledger says: locker trades, money, what its farms grow, its mo
 With --herders, a Shepherd and a Butcher join, each with a workstation and a chest (a locker) by the pen.
 
     python3 dev/experiments/standalone_town.py [DAYS] [--herders]
+
+Retired for sim/host (John, 2026-10-18): Java mode only. Under society=core it exits saying so.
 """
 
 import re
@@ -18,6 +20,8 @@ import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import study_mode  # noqa: E402
 RCON = [sys.executable, str(REPO / "scripts" / "rcon.py")]
 LOG = REPO / "core" / "run" / "logs" / "debug.log"
 CORNER = (3000, 3000)
@@ -44,6 +48,7 @@ def number(pattern, text, default=0.0):
 
 
 def main():
+    study_mode.java_only('standalone_town.py')
     days = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 15
     x, z = CORNER
     bell = f"{x + 7} -60 {z + 4}"

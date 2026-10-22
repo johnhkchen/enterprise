@@ -1,0 +1,34 @@
+[
+  {
+    "id": 0,
+    "farm": 0,
+    "holder": 1,
+    "farm_name": "Brindle",
+    "holder_name": "Alder",
+    "quantity": 16.0,
+    "crop": "minecraft:wheat",
+    "capital": 6400,
+    "state": "active",
+    "coupons": 3,
+    "delivered": 32.0,
+    "arrears": 0.0,
+    "history": [
+      "day 2: bought for 6.4 emeralds, 16 minecraft:wheat a season"
+    ]
+  },
+  {
+    "id": 4294967295,
+    "farm": 4294967295,
+    "holder": 4294967295,
+    "farm_name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "holder_name": "",
+    "quantity": 1.7976931348623157e+308,
+    "crop": "",
+    "capital": 9223372036854775807,
+    "state": "defaulted",
+    "coupons": 4294967295,
+    "delivered": 1.7976931348623157e+308,
+    "arrears": 2.2250738585072014e-308,
+    "history": []
+  }
+]

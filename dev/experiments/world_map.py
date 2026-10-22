@@ -6,6 +6,9 @@
 Draws the hex land (cliffs and water shaded, each town's land tinted), every market by name (hubs ringed, the capital
 starred, markets off the map pinned at the edge), and every caravan route along its planned hex path, its width by the
 trips it has made. Reads only the world's saved files: run it after the server has stopped (or saved).
+
+Java mode only (retired for sim/host, John 2026-10-18): it reads the Java rules' saved data, which a `society=core` world
+does not update.
 """
 import gzip
 import html

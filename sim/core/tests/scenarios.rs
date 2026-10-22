@@ -1048,6 +1048,98 @@ fn pallets() -> Scenario {
     s.scenario
 }
 
+/// A town's books through the wire (`commands_host.rs`): the cash book, the books and reasons, trust and contracts.
+fn books() -> Scenario {
+    let mut s = Script::new("books", "What the commands ask of the books: Hub's wagon makes a trip to Far, which holds books \
+        Hub's people are short of, so Hub's books show what it sent and bought and its reasons (Books, Whys), and its cash \
+        book the money that moved (CashBook). No contract was drafted and no pair has dealt, so Contracts and Trust are \
+        empty. A town that isn't there is refused.");
+    const BREAD: GoodNo = 1;
+    let hub = at(PointKind::Desk, 27, 27);
+    let far = at(PointKind::Desk, 67, 27);
+    s.say("a society from a pack with books and Merchants", Command::Create { pack: full_pack(), seed: 7 });
+    s.apply("two towns forty blocks apart, bread and money in both, books at Far", vec![
+        Input::AddTown { name: "Hub".into(), desk: hub },
+        Input::AddTown { name: "Far".into(), desk: far },
+        Input::AddHand { town: 0, trade: "merchant".into(), level: 1, tag: "villager-hub".into() },
+        Input::AddHand { town: 0, trade: "none".into(), level: 1, tag: "villager-lead".into() },
+        Input::AddHand { town: 1, trade: "merchant".into(), level: 1, tag: "villager-far".into() },
+        Input::Deliver { town: 0, good: BREAD, count: 128.0 },
+        Input::Deliver { town: 1, good: BREAD, count: 128.0 },
+        Input::Deliver { town: 1, good: BOOK, count: 64.0 },
+        Input::Pay { town: 0, money: Fixed::from(50.0) },
+        Input::Pay { town: 1, money: Fixed::from(50.0) },
+        Input::Route { from: 0, to: 1, send: true },
+    ]);
+    s.apply("a trip and home", vec![Input::Advance { to: 1_200 }, Input::Advance { to: 2_400 }, Input::Advance { to: 3_600 }]);
+    let a = s.ask("Hub's books", vec![Query::Books { town: 0 }]);
+    let Answer::Books { name, whys, .. } = &a[0] else { panic!("{a:?}") };
+    assert_eq!(name, "Hub");
+    let b = s.ask("Hub's reasons alone are the books' own", vec![Query::Whys { town: 0 }]);
+    assert!(matches!(&b[0], Answer::Whys { whys: w, .. } if w == whys), "{b:?}");
+    let a = s.ask("Hub's cash book, ten days", vec![Query::CashBook { town: 0, days: 10 }]);
+    assert!(matches!(&a[0], Answer::CashBook { name, lines, .. } if name == "Hub" && !lines.is_empty()), "{a:?}");
+    let a = s.ask("no contract, no pair that has dealt", vec![Query::Contracts { town: None }, Query::Contracts { town: Some(1) }, Query::Trust]);
+    assert!(matches!(&a[..], [Answer::Contracts { contracts: c1, rents: r1 }, Answer::Contracts { contracts: c2, .. }, Answer::Trust { records }]
+        if c1.is_empty() && c2.is_empty() && r1.is_empty() && records.is_empty()), "{a:?}");
+    for q in [Query::CashBook { town: 7, days: 1 }, Query::Books { town: 7 }, Query::Whys { town: 7 }, Query::Contracts { town: Some(7) },
+        Query::Territory { town: 7 }] {
+        let r = s.say("a town that isn't there", Command::Ask { queries: vec![q] });
+        assert!(matches!(s.refused("no town", r), Refusal::Query { at: 0, .. }));
+    }
+    s.scenario
+}
+
+/// A town's territory, the war, the routes' books and a contract with its trust, asked as `/enterprise territory`,
+/// `war`, the studies and `contracts` do.
+fn commands() -> Scenario {
+    let mut s = Script::new("commands", "What the commands and the studies ask beyond the books: a town's territory report (Territory), \
+        the war (War: a peace, no capital named), every route's books (RouteBooks) and, from a master Merchant's player shop \
+        that orders bread, a contract drafted at once and its record of installments kept (Contracts, Trust). A town that isn't \
+        there is refused.");
+    const BREAD: GoodNo = 1;
+    let hub = at(PointKind::Desk, 27, 27);
+    let far = at(PointKind::Desk, 67, 27);
+    s.say("a society from a pack with books and Merchants", Command::Create { pack: full_pack(), seed: 7 });
+    s.apply("two towns forty blocks apart, bread and money in both, a master Merchant at Hub whose shop orders bread", vec![
+        Input::AddTown { name: "Hub".into(), desk: hub },
+        Input::AddTown { name: "Far".into(), desk: far },
+        Input::AddHand { town: 0, trade: "merchant".into(), level: 5, tag: "villager-hub".into() },
+        Input::AddHand { town: 0, trade: "farmer".into(), level: 2, tag: "villager-farmer".into() },
+        Input::AddHand { town: 1, trade: "merchant".into(), level: 1, tag: "villager-far".into() },
+        Input::Deliver { town: 0, good: BREAD, count: 256.0 },
+        Input::Deliver { town: 1, good: BREAD, count: 128.0 },
+        Input::Pay { town: 0, money: Fixed::from(50.0) },
+        Input::Pay { town: 1, money: Fixed::from(50.0) },
+        Input::Order { town: 0, good: BREAD, lot: 16.0, price: 64.0, purse: 256.0 },
+        Input::Route { from: 0, to: 1, send: true },
+    ]);
+    s.apply("ten days pass", (1..=10).map(|d| Input::Advance { to: d * DAY }).collect());
+    let a = s.ask("Hub's territory", vec![Query::Territory { town: 0 }, Query::War, Query::RouteBooks, Query::Trust,
+        Query::Contracts { town: Some(0) }, Query::CashBook { town: 0, days: 10 }]);
+    let [Answer::Territory { name, villagers, treasury, hexes, trades, .. }, Answer::War { phase, capital, .. },
+        Answer::RouteBooks { routes, .. }, Answer::Trust { records }, Answer::Contracts { contracts, .. },
+        Answer::CashBook { totals, received, paid, lines, .. }] = &a[..] else { panic!("{a:?}") };
+    assert_eq!((name.as_str(), phase.as_str(), *capital), ("Hub", "peace", None));
+    assert!(*villagers > 0.0 && treasury.millis() > 0 && !hexes.is_empty() && *trades == 0, "{a:?}");
+    assert_eq!((routes.len(), routes[0].blocks), (1, 40));
+    assert!(routes[0].from_desk.is_some() && routes[0].to_desk.is_some(), "{routes:?}");
+    assert_eq!(records.len(), 1, "the shop's contract was kept");
+    assert!(records[0].kept > 0.0 && records[0].trust > 0.5, "{records:?}");
+    assert_eq!(contracts.len(), 1);
+    assert!(contracts[0].what.contains("bread") && contracts[0].delivered > 0.0 && contracts[0].history.len() >= 2, "{contracts:?}");
+    assert_eq!(contracts[0].trust, records[0].trust);
+    // The cash book's sums are the core's: the money in less the money out is the lines' sum.
+    let net: i64 = lines.iter().map(|l| l.amount.millis()).sum();
+    assert_eq!(received.millis() - paid.millis(), net);
+    assert_eq!(totals.iter().map(|t| t.amount.millis()).sum::<i64>(), net);
+    let a = s.ask("a town's contracts: the shop's, with the same history", vec![Query::Contracts { town: Some(0) }]);
+    assert!(matches!(&a[..], [Answer::Contracts { contracts: c, .. }] if c.len() == 1 && c[0].history == contracts[0].history), "{a:?}");
+    let r = s.say("War and the routes' books need no town", Command::Ask { queries: vec![Query::War, Query::RouteBooks] });
+    assert!(matches!(r, Response::Done { .. }));
+    s.scenario
+}
+
 /// Every way the core refuses, each leaving the society as it was.
 fn refusals() -> Scenario {
     let mut s = Script::new("refusals", "Every refusal, each a message and nothing applied.");
@@ -1155,7 +1247,7 @@ fn refusals() -> Scenario {
 }
 
 fn scenarios() -> Vec<Scenario> {
-    vec![stocktake(), inputs(), content(), refusals(), hands(), people(), chests(), money(), land(), lockers(), wagons(), pallets()]
+    vec![stocktake(), inputs(), content(), refusals(), hands(), people(), chests(), money(), land(), lockers(), wagons(), pallets(), books(), commands()]
 }
 
 fn text(scenario: &Scenario) -> String {
@@ -1182,7 +1274,7 @@ fn the_scenarios_play_as_their_files_say() {
         return;
     }
     let mut wrong = Vec::new();
-    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people", "chests", "money", "land", "lockers", "wagons", "pallets"] {
+    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people", "chests", "money", "land", "lockers", "wagons", "pallets", "books", "commands"] {
         let scenario = read(name);
         assert!(!scenario.steps.is_empty(), "{name}: no steps");
         wrong.extend(play(&scenario));
@@ -1242,12 +1334,13 @@ fn every_message_appears_in_a_scenario() {
     let set = |names: &[&str]| names.iter().map(|s| s.to_string()).collect::<std::collections::BTreeSet<_>>();
     assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost", "Census", "TagHand", "Unmoved", "Cashcount", "CashUnmoved", "Ground", "Crops", "Survey", "Built", "Switch", "Locker", "Route", "Pack", "Stowed"]));
     assert_eq!(commands, set(&["Apply", "Ask", "Create", "Load", "Save"]));
-    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands", "Chests", "Cash", "Mint", "Land", "Ground", "Lockers", "Routes", "Pallets", "Pallet", "Stow", "Manifest"]));
+    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands", "Chests", "Cash", "Mint", "Land", "Ground", "Lockers", "Routes", "Pallets", "Pallet", "Stow", "Manifest", "CashBook", "Books", "Whys", "Trust", "Contracts", "Territory", "War", "RouteBooks"]));
     assert_eq!(refusals, set(&["Abi", "Input", "NoSociety", "Pack", "Query", "Save", "SaveFormat", "Schema", "Unreadable"]));
     // A child born, the chests' moves, the till's, a field to lay, a locker's trades levelling its villager and the
-    // Merchant, a wagon's trip with its crew away and back, and pallets packed, moved and opened (`Pack`): the others
-    // need a master Merchant (OrderFilled, Signal) or a party of settlers or the rules taking a hand (Settled, Departed,
-    // HandGone), and no wire input makes any. When one does, a scenario shows each and its name goes here.
+    // Merchant, a wagon's trip with its crew away and back, pallets packed, moved and opened (`Pack`), and a master
+    // Merchant filling a player's order (`commands`): the others need a master Merchant with an order nothing holds
+    // (Signal) or a party of settlers or the rules taking a hand (Settled, Departed, HandGone), and no wire input makes
+    // any. When one does, a scenario shows each and its name goes here.
     assert_eq!(outputs, set(&["Born", "Cash", "Moved", "Build", "HandLevel", "WagonLeft", "WagonSold", "WagonHome",
-        "HandAway", "HandBack", "PalletPacked", "PalletMoved", "PalletOpened"]));
+        "HandAway", "HandBack", "PalletPacked", "PalletMoved", "PalletOpened", "OrderFilled"]));
 }

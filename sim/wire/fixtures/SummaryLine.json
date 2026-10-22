@@ -1,0 +1,16 @@
+[
+  {
+    "kind": "sent",
+    "with": "Alder",
+    "good": "wheat",
+    "count": 64.0,
+    "money": 0
+  },
+  {
+    "kind": "sold",
+    "with": "the town",
+    "good": "-",
+    "count": 0.5,
+    "money": -1
+  }
+]

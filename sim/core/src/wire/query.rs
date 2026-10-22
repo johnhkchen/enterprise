@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{Count, GoodNo, GroundView, HandNo, HexAt, ManifestLine, MarketLine, PalletView, Point, RouteLine, RouteNo, TownNo, WorkView};
+use super::{BookLine, ContractLine, ForTotal, ForwardLine, NameCount, ProjectLine, RentLine, RouteBook, SummaryLine, TrustLine, WarTown, WhyView};
 use crate::fixed::Fixed;
 
 /// A question for the core.
@@ -47,6 +48,24 @@ pub enum Query {
     /// A route's wagon's manifest: the pallets aboard, by line, and whether it needs a superbill of its own (two lines or
     /// more).
     Manifest { route: RouteNo },
+    /// A town's cash book for the last `days` days, today's included (`/enterprise cashbook`), and what its Accountant
+    /// held back from its spenders in them.
+    CashBook { town: TownNo, days: u32 },
+    /// A market's books summed, with its reasons (`/enterprise books`).
+    Books { town: TownNo },
+    /// A market's reasons alone (`/enterprise whys`).
+    Whys { town: TownNo },
+    /// Trust between each pair of towns that have dealt (`/enterprise trust`).
+    Trust,
+    /// Contracts: all of them, or those a town is a party to (`/enterprise contracts`).
+    Contracts { town: Option<TownNo> },
+    /// A town's territory report: its land, farms, treasury, mood, people, tolls and posts (`/enterprise territory`).
+    Territory { town: TownNo },
+    /// The war: the sovereign's phase, treasury and minting, the contracts that supply it, the army and each town's part
+    /// (`/enterprise war`, `war tally`).
+    War,
+    /// Every route's books, for the studies' per-day rows (`dev/experiments/network_study.py`).
+    RouteBooks,
 }
 
 /// An answer, in the place of its question.
@@ -104,6 +123,41 @@ pub enum Answer {
     /// A route's wagon's manifest, by line (none while it's home), and whether it needs a superbill: two lines or more,
     /// a document drawn at its home as it leaves (one pallet's bill is its own manifest).
     Manifest { route: RouteNo, lines: Vec<ManifestLine>, superbill: bool },
+    /// A town's cash book: its name, the day it is, the lines by day then what for (oldest first), and what the
+    /// Accountant held back, by day and what for; then the sums the core makes of them: the money in and out of the
+    /// treasury by what for (`totals`, `held_totals`, by name) and all that came in (`received`) and went out (`paid`, a
+    /// positive sum): the sums of the per-cause totals above and below nothing.
+    CashBook { town: TownNo, name: String, today: u64, lines: Vec<BookLine>, held: Vec<BookLine>, totals: Vec<ForTotal>,
+        held_totals: Vec<ForTotal>, received: Fixed, paid: Fixed },
+    /// A market's books: its name, the days its books go back, the dealings summed and its reasons (most often first).
+    Books { town: TownNo, name: String, keeps: u64, lines: Vec<SummaryLine>, whys: Vec<WhyView> },
+    /// A market's reasons, most often first.
+    Whys { town: TownNo, name: String, whys: Vec<WhyView> },
+    /// Every pair's record, in the order of the pair.
+    Trust { records: Vec<TrustLine> },
+    /// The contracts asked for, and the rents of the towns asked about (all, or those a town is a party to), in the order of
+    /// their numbers.
+    Contracts { contracts: Vec<ContractLine>, rents: Vec<RentLine> },
+    /// A town's territory report. Money is in emeralds, the toll's figures in spurs where the mod counted spurs (at the
+    /// mint's rate now, `rate`). `tolls_owed` is what the town's posts are owed and not yet paid: the core's wagons pay a
+    /// toll at once, so it is none.
+    Territory { town: TownNo, name: String, rate: f64, hexes: Vec<HexAt>, culture: f64, next_hex: f64, farms: Vec<NameCount>,
+        idle: Vec<NameCount>, sold_forward: Vec<ForwardLine>, wage_per_day: f64, labor_share: f64, crop_sales_per_day: f64,
+        wages_paid: Fixed, wages_unpaid: Fixed, harvested: f64, deposits: f64, focus: String, purse: Fixed, credit: Fixed,
+        freeholds: u32, tightness: f64, treasury: Fixed, reserve: u64, mood: f64, villagers: f64, beds: f64,
+        comforts: Vec<NameCount>, yield_factor: f64, culture_factor: f64, bridges: Vec<ProjectLine>, wall: Option<ProjectLine>,
+        buildings: Vec<ProjectLine>, hunting: f64, armed: f64, homes_built: u32, born: u32, toll_rate: f64, passage_fee: f64,
+        toll_income: f64, tolls_taken: Fixed, tolls_owed: Fixed, guards: u32, posts: Vec<HexAt>, traffic: f64, deserted: u32,
+        militia: u32, trades: u64 },
+    /// The war. `treasury` is the capital's, in emeralds (`treasury_spurs`: at the mint's rate); `contracts` and `delivered`
+    /// those the capital buys goods under; `bills` the emeralds of bills outstanding; `depot` what the capital holds of the
+    /// crown's stockpile goods; `unmet` the goods it lacks; `phase` and `theatre` in words; each town's part in `towns`.
+    War { phase: String, theatre: String, days: f64, capital: Option<TownNo>, treasury: Fixed, treasury_spurs: f64,
+        minted: f64, contracts: u32, delivered: f64, serving: u32, waiting: u32, raised: u32, fallen: u32, bills: f64,
+        rate: f64, debasement: f64, levies: u32, hired: u32, awarded: u32, depot: Vec<NameCount>, unmet: Vec<String>,
+        towns: Vec<WarTown>, issued: Vec<NameCount>, eaten: f64, heartiness: f64 },
+    /// Every route's books (`rate`: the spurs an emerald fetches now), in the order of the routes' numbers.
+    RouteBooks { rate: f64, routes: Vec<RouteBook> },
 }
 
 /// A hand's locker as the Merchant's screen shows it: the hand, whether the Merchant manages it now and has taken it on

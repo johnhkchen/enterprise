@@ -10,6 +10,8 @@ the ledger (harvest delivered, wages paid and unpaid, the farmers' share, and th
 so nothing is loaded between days.
 
     python3 dev/experiments/farm_wages.py [days] [A|B]
+
+Retired for sim/host (John, 2026-10-18): Java mode only. Under society=core it exits saying so.
 """
 
 import re
@@ -19,6 +21,8 @@ import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import study_mode  # noqa: E402
 RCON = [sys.executable, str(REPO / "scripts" / "rcon.py")]
 CORNER = (3000, 3000)
 DESK = f"{CORNER[0] + 7} -60 {CORNER[1] + 7}"
@@ -56,6 +60,7 @@ def money():
 
 
 def main():
+    study_mode.java_only('farm_wages.py')
     days = int(next((a for a in sys.argv[1:] if a.isdigit()), 12))
     scenario = "B" if "B" in sys.argv[1:] else "A"
     rcon(f"forceload add {AREA}", f"execute positioned {CORNER[0]} -60 {CORNER[1]} run function testbench:network/farm_town",

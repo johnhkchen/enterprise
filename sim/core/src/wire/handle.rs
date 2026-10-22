@@ -134,6 +134,10 @@ fn refused(why: Refusal) -> Response {
     Response::Refused { why }
 }
 
+fn check_town(s: &Society, town: u32) -> Result<(), String> {
+    if town as usize >= s.town_count() { Err(format!("no town {town}")) } else { Ok(()) }
+}
+
 fn answer(s: &Society, query: &Query) -> Result<Answer, String> {
     Ok(match query {
         &Query::Stock { town } => {
@@ -214,6 +218,31 @@ fn answer(s: &Society, query: &Query) -> Result<Answer, String> {
             }
             s.manifest_view(route as usize)
         }
+        &Query::CashBook { town, days } => {
+            check_town(s, town)?;
+            s.cash_book_answer(town as usize, u64::from(days))
+        }
+        &Query::Books { town } => {
+            check_town(s, town)?;
+            s.books_answer(town as usize)
+        }
+        &Query::Whys { town } => {
+            check_town(s, town)?;
+            s.whys_answer(town as usize)
+        }
+        Query::Trust => s.trust_answer(),
+        &Query::Contracts { town } => {
+            if let Some(t) = town {
+                check_town(s, t)?;
+            }
+            s.contracts_answer(town.map(|t| t as usize))
+        }
+        &Query::Territory { town } => {
+            check_town(s, town)?;
+            s.territory_answer(town as usize)
+        }
+        Query::War => s.war_answer(),
+        Query::RouteBooks => s.route_books_answer(),
     })
 }
 

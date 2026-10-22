@@ -192,7 +192,7 @@ impl Society {
     }
 
     /// The desk a town's host placed for it (the first desk point of the town's), if any.
-    fn desk_of(&self, town: TownId) -> Option<Point> {
+    pub(crate) fn desk_of(&self, town: TownId) -> Option<Point> {
         self.points().0.iter().find(|(_, p)| p.town == town && p.kind == crate::points::Kind::Desk)
             .map(|(spot, p)| Point::of(spot, p.kind))
     }

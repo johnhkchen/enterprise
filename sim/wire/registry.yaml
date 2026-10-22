@@ -146,6 +146,177 @@ Answer:
               SEQ:
                 TYPENAME: ManifestLine
           - superbill: BOOL
+    16:
+      CashBook:
+        STRUCT:
+          - town: U32
+          - name: STR
+          - today: U64
+          - lines:
+              SEQ:
+                TYPENAME: BookLine
+          - held:
+              SEQ:
+                TYPENAME: BookLine
+          - totals:
+              SEQ:
+                TYPENAME: ForTotal
+          - held_totals:
+              SEQ:
+                TYPENAME: ForTotal
+          - received: I64
+          - paid: I64
+    17:
+      Books:
+        STRUCT:
+          - town: U32
+          - name: STR
+          - keeps: U64
+          - lines:
+              SEQ:
+                TYPENAME: SummaryLine
+          - whys:
+              SEQ:
+                TYPENAME: WhyView
+    18:
+      Whys:
+        STRUCT:
+          - town: U32
+          - name: STR
+          - whys:
+              SEQ:
+                TYPENAME: WhyView
+    19:
+      Trust:
+        STRUCT:
+          - records:
+              SEQ:
+                TYPENAME: TrustLine
+    20:
+      Contracts:
+        STRUCT:
+          - contracts:
+              SEQ:
+                TYPENAME: ContractLine
+          - rents:
+              SEQ:
+                TYPENAME: RentLine
+    21:
+      Territory:
+        STRUCT:
+          - town: U32
+          - name: STR
+          - rate: F64
+          - hexes:
+              SEQ:
+                TYPENAME: HexAt
+          - culture: F64
+          - next_hex: F64
+          - farms:
+              SEQ:
+                TYPENAME: NameCount
+          - idle:
+              SEQ:
+                TYPENAME: NameCount
+          - sold_forward:
+              SEQ:
+                TYPENAME: ForwardLine
+          - wage_per_day: F64
+          - labor_share: F64
+          - crop_sales_per_day: F64
+          - wages_paid: I64
+          - wages_unpaid: I64
+          - harvested: F64
+          - deposits: F64
+          - focus: STR
+          - purse: I64
+          - credit: I64
+          - freeholds: U32
+          - tightness: F64
+          - treasury: I64
+          - reserve: U64
+          - mood: F64
+          - villagers: F64
+          - beds: F64
+          - comforts:
+              SEQ:
+                TYPENAME: NameCount
+          - yield_factor: F64
+          - culture_factor: F64
+          - bridges:
+              SEQ:
+                TYPENAME: ProjectLine
+          - wall:
+              OPTION:
+                TYPENAME: ProjectLine
+          - buildings:
+              SEQ:
+                TYPENAME: ProjectLine
+          - hunting: F64
+          - armed: F64
+          - homes_built: U32
+          - born: U32
+          - toll_rate: F64
+          - passage_fee: F64
+          - toll_income: F64
+          - tolls_taken: I64
+          - tolls_owed: I64
+          - guards: U32
+          - posts:
+              SEQ:
+                TYPENAME: HexAt
+          - traffic: F64
+          - deserted: U32
+          - militia: U32
+          - trades: U64
+    22:
+      War:
+        STRUCT:
+          - phase: STR
+          - theatre: STR
+          - days: F64
+          - capital:
+              OPTION: U32
+          - treasury: I64
+          - treasury_spurs: F64
+          - minted: F64
+          - contracts: U32
+          - delivered: F64
+          - serving: U32
+          - waiting: U32
+          - raised: U32
+          - fallen: U32
+          - bills: F64
+          - rate: F64
+          - debasement: F64
+          - levies: U32
+          - hired: U32
+          - awarded: U32
+          - depot:
+              SEQ:
+                TYPENAME: NameCount
+          - unmet:
+              SEQ: STR
+          - towns:
+              SEQ:
+                TYPENAME: WarTown
+          - issued:
+              SEQ:
+                TYPENAME: NameCount
+          - eaten: F64
+          - heartiness: F64
+    23:
+      RouteBooks:
+        STRUCT:
+          - rate: F64
+          - routes:
+              SEQ:
+                TYPENAME: RouteBook
+BookLine:
+  STRUCT:
+    - day: U64
+    - what: STR
+    - amount: I64
 Command:
   ENUM:
     0:
@@ -195,6 +366,26 @@ ContentPack:
     - packages:
         SEQ:
           TYPENAME: PackPackage
+ContractLine:
+  STRUCT:
+    - id: U32
+    - seller: U32
+    - buyer: U32
+    - seller_name: STR
+    - buyer_name: STR
+    - state: STR
+    - incoterm: STR
+    - copies: U8
+    - what: STR
+    - delivered: F64
+    - shipped: F64
+    - paid: I64
+    - advanced: I64
+    - missed: U32
+    - buyer_missed: U32
+    - trust: F64
+    - history:
+        SEQ: STR
 Count:
   STRUCT:
     - good: U32
@@ -205,6 +396,15 @@ DialView:
     - value: F64
     - initial: F64
     - does: STR
+ForTotal:
+  STRUCT:
+    - what: STR
+    - amount: I64
+ForwardLine:
+  STRUCT:
+    - good: STR
+    - per_day: F64
+    - price: F64
 GoodFlag:
   ENUM:
     0:
@@ -488,6 +688,10 @@ MarketLine:
     - settlement: BOOL
     - reachable: BOOL
     - routed: BOOL
+NameCount:
+  STRUCT:
+    - name: STR
+    - count: F64
 OfferView:
   STRUCT:
     - offer: U32
@@ -747,6 +951,12 @@ PointKind:
       Banker: UNIT
     4:
       Depot: UNIT
+ProjectLine:
+  STRUCT:
+    - what: STR
+    - progress: F64
+    - done: BOOL
+    - wages: I64
 Query:
   ENUM:
     0:
@@ -811,6 +1021,34 @@ Query:
       Manifest:
         STRUCT:
           - route: U32
+    16:
+      CashBook:
+        STRUCT:
+          - town: U32
+          - days: U32
+    17:
+      Books:
+        STRUCT:
+          - town: U32
+    18:
+      Whys:
+        STRUCT:
+          - town: U32
+    19:
+      Trust: UNIT
+    20:
+      Contracts:
+        STRUCT:
+          - town:
+              OPTION: U32
+    21:
+      Territory:
+        STRUCT:
+          - town: U32
+    22:
+      War: UNIT
+    23:
+      RouteBooks: UNIT
 Refusal:
   ENUM:
     0:
@@ -852,6 +1090,22 @@ Refusal:
         STRUCT:
           - at: U32
           - why: STR
+RentLine:
+  STRUCT:
+    - id: U32
+    - farm: U32
+    - holder: U32
+    - farm_name: STR
+    - holder_name: STR
+    - quantity: F64
+    - crop: STR
+    - capital: I64
+    - state: STR
+    - coupons: U32
+    - delivered: F64
+    - arrears: F64
+    - history:
+        SEQ: STR
 Request:
   STRUCT:
     - abi: U32
@@ -885,6 +1139,30 @@ Response:
         STRUCT:
           - why:
               TYPENAME: Refusal
+RouteBook:
+  STRUCT:
+    - route: U32
+    - from: U32
+    - to: U32
+    - from_desk:
+        OPTION:
+          TYPENAME: Point
+    - to_desk:
+        OPTION:
+          TYPENAME: Point
+    - blocks: U32
+    - trips: U32
+    - sold_items: F64
+    - sales_spurs: F64
+    - service_spurs: F64
+    - bought_items: F64
+    - purchase_spurs: F64
+    - food_spurs: F64
+    - tolls_spurs: F64
+    - home_spurs: F64
+    - food_eaten: F64
+    - short_rations: U32
+    - delivered: F64
 RouteLine:
   STRUCT:
     - route: U32
@@ -908,11 +1186,26 @@ SaveFile:
     - core: STR
     - blob:
         SEQ: U8
+SummaryLine:
+  STRUCT:
+    - kind: STR
+    - with: STR
+    - good: STR
+    - count: F64
+    - money: I64
 TownPoint:
   STRUCT:
     - point:
         TYPENAME: Point
     - town: U32
+TrustLine:
+  STRUCT:
+    - a: U32
+    - b: U32
+    - parties: STR
+    - trust: F64
+    - kept: F64
+    - missed: F64
 WagonLine:
   STRUCT:
     - out: BOOL
@@ -921,6 +1214,25 @@ WagonLine:
         SEQ: U32
     - stacks: U32
     - porter: BOOL
+WarTown:
+  STRUCT:
+    - town: U32
+    - name: STR
+    - raised: U32
+    - fallen: U32
+    - deserted: U32
+    - days: U32
+    - hungry: U32
+    - strength: F64
+    - kit: F64
+    - earned: I64
+    - trust: F64
+WhyView:
+  STRUCT:
+    - line: STR
+    - times: U64
+    - items: F64
+    - last: U64
 Work:
   ENUM:
     0:

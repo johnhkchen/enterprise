@@ -1249,6 +1249,94 @@ public final class CoreBindingTests {
         helper.succeed();
     }
 
+    /**
+     * The commands' books are the core's (B4.11): a town's cash book, books, reasons, trust and contracts come from
+     * {@code Query.CashBook}, {@code Books}, {@code Whys}, {@code Trust} and {@code Contracts}, set out in the lines the
+     * commands and the studies read. A town that's paid in has money in its cash book; nobody has dealt, so no trust
+     * record and no contract.
+     */
+    @GameTest(template = "floor")
+    public static void aTownsBooksAreTheCoresForTheCommands(GameTestHelper helper) {
+        Path dir = folder();
+        Wagons w = null;
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            w = wagons(helper, host);
+            var books = host.books();
+            var cash = books.cashBook(w.hub(), 10);
+            helper.assertTrue(cash.get(0).equals("Cash book of Hubford:") && cash.stream().anyMatch(l -> l.contains("paid in")),
+                    "the cash book doesn't show the money paid in: " + cash);
+            helper.assertTrue(books.books(w.hub()).get(0).startsWith("Books of Hubford (kept "), "the books: " + books.books(w.hub()));
+            helper.assertTrue(books.whys(w.hub()).get(0).startsWith("Reasons of Hubford ("), "the reasons: " + books.whys(w.hub()));
+            helper.assertTrue(books.trust().equals(List.of("0 record(s)")), "trust: " + books.trust());
+            helper.assertTrue(books.contracts(null).equals(List.of("0 contract(s)", "0 rent(s)")), "contracts: " + books.contracts(null));
+            helper.assertTrue(books.contracts(w.far()).equals(List.of("0 contract(s)", "0 rent(s)")),
+                    "a town's contracts: " + books.contracts(w.far()));
+            // The cash book's money in and out are the core's sums, not the adapter's.
+            Answer.CashBook book = (Answer.CashBook) host.ask(List.of(new Query.CashBook(w.hub(), 10))).get(0);
+            helper.assertTrue(book.received() - book.paid() == book.lines().stream().mapToLong(l -> l.amount()).sum(),
+                    "the cash book's totals aren't its lines': " + book);
+        } finally {
+            delete(dir);
+            if (w != null) {
+                w.discard();
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The commands that answer for the studies in core mode ({@code /enterprise mint}, {@code territory}, {@code war},
+     * {@code routes}, {@code atlas}, {@code name}, {@code depot}, {@code autoswitch}) are the core's answers, in words the
+     * scripts' regexes ({@code dev/experiments/network_study.py}) read: each pattern the study reads from a town's territory
+     * is found in the core's lines, and the war's line, the mint's and a route's totals match the study's too.
+     */
+    @GameTest(template = "floor")
+    public static void aTownsTerritoryAndTheWarAreTheCoresForTheStudies(GameTestHelper helper) {
+        Path dir = folder();
+        Wagons w = null;
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            w = wagons(helper, host);
+            var commands = host.commands();
+            helper.assertTrue(java.util.regex.Pattern.compile("([\\d.]+) spurs per emerald").matcher(commands.mint().get(0)).find(),
+                    "the mint: " + commands.mint());
+            String territory = String.join("\n", commands.territory(w.hub()));
+            helper.assertTrue(territory.startsWith("Settlement at Hubford holds "), "territory: " + territory);
+            for (String pattern : List.of("treasury ([\\d.]+)", "holds (\\d+) hex", "(\\d+) guard\\(s\\) posted", "posted at \\[(.*?)\\]",
+                    "toll ([\\d.]+)%", "\\((\\d+) spurs collected last review\\)", "traffic (\\d+) spurs a day", "(\\d+) deserted",
+                    "\\): (\\d+) villagers", "villagers, (\\d+) beds", "(\\d+) home\\(s\\) built", "(\\d+) child\\(ren\\) born",
+                    "culture ([\\d.]+) of", "mood ([+-][\\d.]+)", "locker trades: (\\d+)")) {
+                helper.assertTrue(java.util.regex.Pattern.compile(pattern).matcher(territory).find(),
+                        "the study's " + pattern + " isn't in the core's territory:\n" + territory);
+            }
+            String war = commands.war();
+            for (String pattern : List.of("treasury (\\d+) spurs", "minted (\\d+)", "contracts (\\d+)", "delivered (\\d+)",
+                    "army (\\d+) serving", "(\\d+) fallen", "bills ([\\d.]+)")) {
+                helper.assertTrue(java.util.regex.Pattern.compile(pattern).matcher(war).find(),
+                        "the study's " + pattern + " isn't in the core's war line: " + war);
+            }
+            helper.assertTrue(commands.warTally().get(0).startsWith("War tally, against "), "the tally: " + commands.warTally());
+            var made = host.wagons().addRoute(w.hub(), w.far());
+            helper.assertTrue(made.getKey() >= 0, "no route opened: " + made.getValue());
+            var route = commands.routes().get(1);
+            helper.assertTrue(java.util.regex.Pattern.compile("#(\\d+) ([-\\d, ]+) -> ([-\\d, ]+): (\\d+) blocks, (\\d+) trips, "
+                    + "(\\d+) items sold for (\\d+) spurs, (\\d+) for services, (\\d+) bought for (\\d+), (\\d+) spurs on road food, "
+                    + "(\\d+) tolls paid, (\\d+) spurs brought home").matcher(route).find(), "the route's line: " + route);
+            helper.assertTrue(commands.atlas(w.hub()).get(0).startsWith("The desk of Hubford knows "), "atlas: " + commands.atlas(w.hub()));
+            helper.assertTrue(commands.names().stream().anyMatch(l -> l.startsWith("  Hubford at ")), "names: " + commands.names());
+            helper.assertTrue(commands.depots().get(0).endsWith("building(s)"), "depots: " + commands.depots());
+            helper.assertTrue(commands.autoswitch(w.hub(), false) >= 0, "autoswitch");
+            // A desk the core keeps no town at has no town near it.
+            helper.assertTrue(commands.townNear(GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(new BlockPos(40, 2, 40))), 8) == null,
+                    "a town near nothing");
+        } finally {
+            delete(dir);
+            if (w != null) {
+                w.discard();
+            }
+        }
+        helper.succeed();
+    }
+
     /** The core's number for the good called {@code name}. */
     private static long good(CoreHost host, String name) {
         List<String> goods = ((Answer.Goods) host.ask(List.of(new Query.Goods())).get(0)).goods();

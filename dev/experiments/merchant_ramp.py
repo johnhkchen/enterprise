@@ -12,6 +12,8 @@ villagers level up are switched on each morning.
 --all switches on every trade, not just goods-for-emerald ones, so the Merchant also spends the emeralds it
 earns (bookshelves, arrows, ...). Villager trades are rolled at random; without --all, a villager whose novice
 trades all cost emeralds never levels, which starves the Merchant.
+
+Retired for sim/host (John, 2026-10-18): Java mode only. Under society=core it exits saying so.
 """
 
 import re
@@ -21,6 +23,8 @@ import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import study_mode  # noqa: E402
 RCON = [sys.executable, str(REPO / "scripts" / "rcon.py")]
 SERVER_LOG = REPO / "core" / "run" / "logs" / "debug.log"  # locker trades log at debug level
 DESK = "7 -60 7"
@@ -98,6 +102,7 @@ def switch_on_emerald_trades():
 
 
 def main():
+    study_mode.java_only('merchant_ramp.py')
     numbers = [arg for arg in sys.argv[1:] if arg.isdigit()]
     max_days = int(numbers[0]) if numbers else 30
     rcon("forceload add 0 0 16 16", "execute positioned 0 -60 0 run function testbench:market/build",

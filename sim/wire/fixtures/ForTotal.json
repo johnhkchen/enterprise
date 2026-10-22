@@ -1,0 +1,14 @@
+[
+  {
+    "what": "paid in",
+    "amount": 12500
+  },
+  {
+    "what": "wages",
+    "amount": -3000
+  },
+  {
+    "what": "",
+    "amount": 0
+  }
+]

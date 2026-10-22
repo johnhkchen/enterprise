@@ -5,9 +5,15 @@
 
 Each OUTDIR holds LABEL-N.csv from forks.py; checkpoints are core/run/checkpoints/LABEL-N/dayD. With --base (the
 checkpoint a fork started from), only contracts and rents written after it count: what the fork itself did.
+
+Java mode only (retired for sim/host, John 2026-10-18): it reads the Java rules' contract and rent files. It refuses a
+checkpoint of a `society=core` run (`study.json` says `"core": true`), whose contracts and rents are the core's: ask the
+running server `/enterprise contracts [desk]` (each contract with its latest history, then its rents), or read
+`enterprise_core.dat` through sim/host (`just study`).
 """
 
 import csv
+import json
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -33,7 +39,17 @@ def last_day(csv_path):
     return max(int(r["day"]) for r in csv.DictReader(open(csv_path)))
 
 
+def refuse_core(checkpoint):
+    """Exits on a checkpoint of a core-mode run: its contracts and rents aren't in the Java files this reads."""
+    saved = Path(checkpoint) / "study.json"
+    if saved.exists() and json.loads(saved.read_text()).get("core"):
+        sys.exit(f"{checkpoint}: a society=core checkpoint. paper_report.py is Java mode only (retired for sim/host): it "
+                 f"reads the Java rules' contract and rent files. Ask a running server `/enterprise contracts [desk]`, or "
+                 f"read enterprise_core.dat through sim/host.")
+
+
 def load(checkpoint):
+    refuse_core(checkpoint)
     data = Path(checkpoint) / "world/data"
     contracts = wm.load(data / "enterprise_contracts.dat") if (data / "enterprise_contracts.dat").exists() else {}
     rents = wm.load(data / "enterprise_rents.dat") if (data / "enterprise_rents.dat").exists() else {}

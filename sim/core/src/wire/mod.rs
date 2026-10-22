@@ -27,11 +27,15 @@ mod output;
 mod pack;
 mod pallet;
 mod point;
+mod books;
+mod commands;
 mod query;
 mod save_file;
 mod wagon;
 
 pub use crate::content::GoodId;
+pub use books::{BookLine, ContractLine, ForTotal, RentLine, SummaryLine, TrustLine, WhyView};
+pub use commands::{ForwardLine, NameCount, ProjectLine, RouteBook, WarTown};
 pub use handle::{handle, handle_bytes};
 pub use input::{Count, Input, Resident};
 pub use land::{GroundView, HexAt, LandKind, Work, WorkView};

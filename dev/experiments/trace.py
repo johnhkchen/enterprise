@@ -3,6 +3,11 @@
 sold forward), mood, and the contracts and rents it's party to, with each one's latest history. Read-only: it
 loads nothing, so the run goes on as it would.
 
+It works in either mode: it asks `enterprise territory BELL` and `enterprise contracts DESK`, which under `society=core`
+are the core's own answers (`Query::Territory`, `Query::Contracts`: the farm plan, idle plots, crops sold forward, mood,
+then each contract with its latest history lines and the rents), in the Java commands' words, so KEEP reads both. The
+core works a contract's and a rent's `day N:` lines out of its state (it keeps no list of events).
+
     python3 dev/experiments/trace.py LANE TOWN [--every DAYS] [--out FILE]
 
 TOWN is a ridge study key (S1..S4, T, E1..E3) or name (Cloverby). Runs until the lane's server stops; start it once

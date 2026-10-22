@@ -7,6 +7,8 @@ is a shulker of bread. Routes run hub -> each settlement; a fourth at 4,000 bloc
 everything is left unloaded (rounds and caravans load what they need) and each day is logged.
 
     python3 dev/experiments/caravan_network.py [days]
+
+Retired for sim/host (John, 2026-10-18): Java mode only. Under society=core it exits saying so.
 """
 
 import re
@@ -16,6 +18,8 @@ import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import study_mode  # noqa: E402
 RCON = [sys.executable, str(REPO / "scripts" / "rcon.py")]
 LOG = REPO / "core" / "run" / "logs" / "debug.log"
 HUB = (1000, 1000)
@@ -63,6 +67,7 @@ def trades_by_settlement():
 
 
 def main():
+    study_mode.java_only('caravan_network.py')
     days = int(sys.argv[1]) if len(sys.argv) > 1 else 6
     hub_desk = f"{HUB[0] + 2} -60 {HUB[1] + 2}"
     rcon(f"forceload add {area(HUB, 6)}", f"execute positioned {HUB[0]} -60 {HUB[1]} run function testbench:network/hub")

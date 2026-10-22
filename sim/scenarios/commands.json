@@ -1,0 +1,803 @@
+{
+  "name": "commands",
+  "about": "What the commands and the studies ask beyond the books: a town's territory report (Territory), the war (War: a peace, no capital named), every route's books (RouteBooks) and, from a master Merchant's player shop that orders bread, a contract drafted at once and its record of installments kept (Contracts, Trust). A town that isn't there is refused.",
+  "steps": [
+    {
+      "note": "a society from a pack with books and Merchants",
+      "request": {
+        "abi": 1,
+        "schema": 2387392034397692382,
+        "command": {
+          "Create": {
+            "pack": {
+              "day_ticks": 24000,
+              "goods": [
+                {
+                  "name": "minecraft:wheat",
+                  "worth": 0.05,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [
+                    "Crop"
+                  ],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:bread",
+                  "worth": 0.2,
+                  "stack": 64,
+                  "food": 5.0,
+                  "saturation": 6.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:book",
+                  "worth": 0.5,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": "reading",
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:cooked_beef",
+                  "worth": 0.3,
+                  "stack": 64,
+                  "food": 8.0,
+                  "saturation": 12.8,
+                  "comfort": null,
+                  "flags": [
+                    "Meat"
+                  ],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:iron_ingot",
+                  "worth": 0.25,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 4.0
+                },
+                {
+                  "name": "minecraft:sugar_cane",
+                  "worth": 0.04,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 0.5
+                },
+                {
+                  "name": "minecraft:paper",
+                  "worth": 0.04,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 1.0
+                }
+              ],
+              "comforts": [
+                "clothing",
+                "reading"
+              ],
+              "trades": [
+                "merchant",
+                "farmer",
+                "librarian",
+                "shepherd",
+                "none",
+                "nitwit"
+              ],
+              "recipes": [
+                {
+                  "trades": [
+                    "farmer"
+                  ],
+                  "inputs": [
+                    {
+                      "good": "minecraft:wheat",
+                      "count": 3.0
+                    }
+                  ],
+                  "output": "minecraft:bread",
+                  "makes": 1.0
+                },
+                {
+                  "trades": [
+                    "librarian"
+                  ],
+                  "inputs": [
+                    {
+                      "good": "minecraft:sugar_cane",
+                      "count": 1.0
+                    }
+                  ],
+                  "output": "minecraft:paper",
+                  "makes": 1.0
+                }
+              ],
+              "animals": [
+                {
+                  "name": "cow",
+                  "feed": [
+                    "minecraft:wheat"
+                  ],
+                  "feed_per_day": 0.25,
+                  "meat": "minecraft:cooked_beef",
+                  "meat_each": 2.0,
+                  "wool": null,
+                  "hide": null
+                }
+              ],
+              "dials": [
+                {
+                  "name": "birth_mood",
+                  "value": 0.5
+                },
+                {
+                  "name": "wagon_slots",
+                  "value": 30.0
+                }
+              ],
+              "packages": []
+            },
+            "seed": 7
+          }
+        }
+      },
+      "request_postcard": "01dec3fcae808dee902100c0bb01070f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f146d696e6563726166743a69726f6e5f696e676f74000000000000d03f400000000000000000000000000000000000000000000000001040146d696e6563726166743a73756761725f63616e657b14ae47e17aa43f40000000000000000000000000000000000000000000000000e03f0f6d696e6563726166743a70617065727b14ae47e17aa43f40000000000000000000000000000000000000000000000000f03f0208636c6f7468696e670772656164696e6706086d65726368616e74066661726d6572096c696272617269616e087368657068657264046e6f6e65066e69747769740201066661726d6572010f6d696e6563726166743a776865617400000000000008400f6d696e6563726166743a6272656164000000000000f03f01096c696272617269616e01146d696e6563726166743a73756761725f63616e65000000000000f03f0f6d696e6563726166743a7061706572000000000000f03f0103636f77010f6d696e6563726166743a7768656174000000000000d03f01156d696e6563726166743a636f6f6b65645f6265656600000000000000400000020a62697274685f6d6f6f64000000000000e03f0b7761676f6e5f736c6f74730000000000003e400007",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "two towns forty blocks apart, bread and money in both, a master Merchant at Hub whose shop orders bread",
+      "request": {
+        "abi": 1,
+        "schema": 2387392034397692382,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "AddTown": {
+                  "name": "Hub",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "AddTown": {
+                  "name": "Far",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 67,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 0,
+                  "trade": "merchant",
+                  "level": 5,
+                  "tag": "villager-hub"
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 0,
+                  "trade": "farmer",
+                  "level": 2,
+                  "tag": "villager-farmer"
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 1,
+                  "trade": "merchant",
+                  "level": 1,
+                  "tag": "villager-far"
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 0,
+                  "good": 1,
+                  "count": 256.0
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 1,
+                  "good": 1,
+                  "count": 128.0
+                }
+              },
+              {
+                "Pay": {
+                  "town": 0,
+                  "money": 50000
+                }
+              },
+              {
+                "Pay": {
+                  "town": 1,
+                  "money": 50000
+                }
+              },
+              {
+                "Order": {
+                  "town": 0,
+                  "good": 1,
+                  "lot": 16.0,
+                  "price": 64.0,
+                  "purse": 256.0
+                }
+              },
+              {
+                "Route": {
+                  "from": 0,
+                  "to": 1,
+                  "send": true
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01dec3fcae808dee9021030b070348756200136d696e6563726166743a6f766572776f726c64367736070346617200136d696e6563726166743a6f766572776f726c64860177360f00086d65726368616e74050c76696c6c616765722d6875620f00066661726d6572020f76696c6c616765722d6661726d65720f01086d65726368616e74010c76696c6c616765722d666172010001000000000000704001010100000000000060400200a08d060201a08d060300010000000000003040000000000000504000000000000070401c000101",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "ten days pass",
+      "request": {
+        "abi": 1,
+        "schema": 2387392034397692382,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Advance": {
+                  "to": 24000
+                }
+              },
+              {
+                "Advance": {
+                  "to": 48000
+                }
+              },
+              {
+                "Advance": {
+                  "to": 72000
+                }
+              },
+              {
+                "Advance": {
+                  "to": 96000
+                }
+              },
+              {
+                "Advance": {
+                  "to": 120000
+                }
+              },
+              {
+                "Advance": {
+                  "to": 144000
+                }
+              },
+              {
+                "Advance": {
+                  "to": 168000
+                }
+              },
+              {
+                "Advance": {
+                  "to": 192000
+                }
+              },
+              {
+                "Advance": {
+                  "to": 216000
+                }
+              },
+              {
+                "Advance": {
+                  "to": 240000
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01dec3fcae808dee9021030a00c0bb010080f70200c0b2040080ee0500c0a9070080e50800c0a00a0080dc0b00c0970d0080d30e",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "OrderFilled": {
+                "town": 0,
+                "order": 0,
+                "good": 1,
+                "lots": 1,
+                "count": 16.0,
+                "spurs": 64.0
+              }
+            },
+            {
+              "OrderFilled": {
+                "town": 0,
+                "order": 0,
+                "good": 1,
+                "lots": 1,
+                "count": 16.0,
+                "spurs": 64.0
+              }
+            },
+            {
+              "OrderFilled": {
+                "town": 0,
+                "order": 0,
+                "good": 1,
+                "lots": 1,
+                "count": 16.0,
+                "spurs": 64.0
+              }
+            },
+            {
+              "OrderFilled": {
+                "town": 0,
+                "order": 0,
+                "good": 1,
+                "lots": 1,
+                "count": 16.0,
+                "spurs": 64.0
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "000403000001010000000000003040000000000000504003000001010000000000003040000000000000504003000001010000000000003040000000000000504003000001010000000000003040000000000000504000"
+    },
+    {
+      "note": "Hub's territory",
+      "request": {
+        "abi": 1,
+        "schema": 2387392034397692382,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Territory": {
+                  "town": 0
+                }
+              },
+              "War",
+              "RouteBooks",
+              "Trust",
+              {
+                "Contracts": {
+                  "town": 0
+                }
+              },
+              {
+                "CashBook": {
+                  "town": 0,
+                  "days": 10
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01dec3fcae808dee90210406150016171314010010000a",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Territory": {
+                "town": 0,
+                "name": "Hub",
+                "rate": 16.0,
+                "hexes": [
+                  {
+                    "q": 0,
+                    "r": 0
+                  },
+                  {
+                    "q": -1,
+                    "r": 0
+                  },
+                  {
+                    "q": -1,
+                    "r": 1
+                  }
+                ],
+                "culture": 1.4476589869031038,
+                "next_hex": 15.0,
+                "farms": [],
+                "idle": [],
+                "sold_forward": [],
+                "wage_per_day": 0.0,
+                "labor_share": 0.0,
+                "crop_sales_per_day": 0.0,
+                "wages_paid": 0,
+                "wages_unpaid": 0,
+                "harvested": 0.0,
+                "deposits": 0.0,
+                "focus": "",
+                "purse": 0,
+                "credit": 0,
+                "freeholds": 0,
+                "tightness": 1.0,
+                "treasury": 66000,
+                "reserve": 0,
+                "mood": -1.125984292814984,
+                "villagers": 2.0,
+                "beds": 0.0,
+                "comforts": [
+                  {
+                    "name": "clothing",
+                    "count": 0.0
+                  },
+                  {
+                    "name": "reading",
+                    "count": 0.0
+                  }
+                ],
+                "yield_factor": 0.8874015707185016,
+                "culture_factor": 0.7185039267962541,
+                "bridges": [],
+                "wall": null,
+                "buildings": [],
+                "hunting": 0.0,
+                "armed": 0.0,
+                "homes_built": 0,
+                "born": 0,
+                "toll_rate": 0.05,
+                "passage_fee": 0.0,
+                "toll_income": 0.0,
+                "tolls_taken": 0,
+                "tolls_owed": 0,
+                "guards": 0,
+                "posts": [],
+                "traffic": 0.0,
+                "deserted": 0,
+                "militia": 0,
+                "trades": 0
+              }
+            },
+            {
+              "War": {
+                "phase": "peace",
+                "theatre": "faction",
+                "days": 0.0,
+                "capital": null,
+                "treasury": 0,
+                "treasury_spurs": 0.0,
+                "minted": 0.0,
+                "contracts": 0,
+                "delivered": 0.0,
+                "serving": 0,
+                "waiting": 0,
+                "raised": 0,
+                "fallen": 0,
+                "bills": 0.0,
+                "rate": 16.0,
+                "debasement": 1.0,
+                "levies": 0,
+                "hired": 0,
+                "awarded": 0,
+                "depot": [],
+                "unmet": [],
+                "towns": [],
+                "issued": [],
+                "eaten": 0.0,
+                "heartiness": 0.0
+              }
+            },
+            {
+              "RouteBooks": {
+                "rate": 16.0,
+                "routes": [
+                  {
+                    "route": 0,
+                    "from": 0,
+                    "to": 1,
+                    "from_desk": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 27,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "to_desk": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 67,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "blocks": 40,
+                    "trips": 0,
+                    "sold_items": 0.0,
+                    "sales_spurs": 0.0,
+                    "service_spurs": 0.0,
+                    "bought_items": 0.0,
+                    "purchase_spurs": 0.0,
+                    "food_spurs": 0.0,
+                    "tolls_spurs": 0.0,
+                    "home_spurs": 0.0,
+                    "food_eaten": 0.0,
+                    "short_rations": 0,
+                    "delivered": 0.0
+                  }
+                ]
+              }
+            },
+            {
+              "Trust": {
+                "records": [
+                  {
+                    "a": 0,
+                    "b": 0,
+                    "parties": "Hub and Hub",
+                    "trust": 0.5968045100327763,
+                    "kept": 0.9603729450510042,
+                    "missed": 0.0
+                  }
+                ]
+              }
+            },
+            {
+              "Contracts": {
+                "contracts": [
+                  {
+                    "id": 0,
+                    "seller": 0,
+                    "buyer": 0,
+                    "seller_name": "Hub",
+                    "buyer_name": "Hub",
+                    "state": "completed",
+                    "incoterm": "EXW",
+                    "copies": 2,
+                    "what": "16 minecraft:bread",
+                    "delivered": 64.0,
+                    "shipped": 0.0,
+                    "paid": 16000,
+                    "advanced": 0,
+                    "missed": 0,
+                    "buyer_missed": 0,
+                    "trust": 0.5968045100327763,
+                    "history": [
+                      "day 0: drafted, 16 minecraft:bread 4 time(s) every 1 day(s), EXW",
+                      "day 3: 4 of 4 installment(s) judged, 0 missed by the seller, 0 by the buyer",
+                      "day 10: 64 delivered, 0 on the road, 16.0 emeralds paid, 0.0 up front",
+                      "day 10: completed"
+                    ]
+                  }
+                ],
+                "rents": []
+              }
+            },
+            {
+              "CashBook": {
+                "town": 0,
+                "name": "Hub",
+                "today": 10,
+                "lines": [
+                  {
+                    "day": 1,
+                    "what": "order",
+                    "amount": 4000
+                  },
+                  {
+                    "day": 2,
+                    "what": "order",
+                    "amount": 4000
+                  },
+                  {
+                    "day": 3,
+                    "what": "order",
+                    "amount": 4000
+                  }
+                ],
+                "held": [],
+                "totals": [
+                  {
+                    "what": "order",
+                    "amount": 12000
+                  }
+                ],
+                "held_totals": [],
+                "received": 12000,
+                "paid": 0
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "000006150003487562000000000000304003000001000102302648789c29f73f0000000000002e4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f03fa08708006133171b0804f2bf000000000000004000000000000000000208636c6f7468696e6700000000000000000772656164696e670000000000000000b9f594fa9765ec3f506674f2fbfde63f0000000000000000000000000000000000000000009a9999999999a93f00000000000000000000000000000000000000000000000000000000000000160570656163650766616374696f6e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003040000000000000f03f0000000000000000000000000000000000000000000000170000000000003040010000010100136d696e6563726166743a6f766572776f726c643677360100136d696e6563726166743a6f766572776f726c64860177362800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000130100000b48756220616e6420487562464696c50519e33ff1a1de0a60bbee3f00000000000000001401000000034875620348756209636f6d706c657465640345585702123136206d696e6563726166743a62726561640000000000005040000000000000000080fa01000000464696c50519e33f044064617920303a20647261667465642c203136206d696e6563726166743a627265616420342074696d652873292065766572792031206461792873292c204558574b64617920333a2034206f66203420696e7374616c6c6d656e74287329206a75646765642c2030206d6973736564206279207468652073656c6c65722c203020627920746865206275796572456461792031303a2036342064656c6976657265642c2030206f6e2074686520726f61642c2031362e3020656d6572616c647320706169642c20302e302075702066726f6e74116461792031303a20636f6d706c65746564001000034875620a0301056f72646572c03e02056f72646572c03e03056f72646572c03e0001056f72646572c0bb0100c0bb0100"
+    },
+    {
+      "note": "a town's contracts: the shop's, with the same history",
+      "request": {
+        "abi": 1,
+        "schema": 2387392034397692382,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Contracts": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01dec3fcae808dee90210401140100",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Contracts": {
+                "contracts": [
+                  {
+                    "id": 0,
+                    "seller": 0,
+                    "buyer": 0,
+                    "seller_name": "Hub",
+                    "buyer_name": "Hub",
+                    "state": "completed",
+                    "incoterm": "EXW",
+                    "copies": 2,
+                    "what": "16 minecraft:bread",
+                    "delivered": 64.0,
+                    "shipped": 0.0,
+                    "paid": 16000,
+                    "advanced": 0,
+                    "missed": 0,
+                    "buyer_missed": 0,
+                    "trust": 0.5968045100327763,
+                    "history": [
+                      "day 0: drafted, 16 minecraft:bread 4 time(s) every 1 day(s), EXW",
+                      "day 3: 4 of 4 installment(s) judged, 0 missed by the seller, 0 by the buyer",
+                      "day 10: 64 delivered, 0 on the road, 16.0 emeralds paid, 0.0 up front",
+                      "day 10: completed"
+                    ]
+                  }
+                ],
+                "rents": []
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000011401000000034875620348756209636f6d706c657465640345585702123136206d696e6563726166743a62726561640000000000005040000000000000000080fa01000000464696c50519e33f044064617920303a20647261667465642c203136206d696e6563726166743a627265616420342074696d652873292065766572792031206461792873292c204558574b64617920333a2034206f66203420696e7374616c6c6d656e74287329206a75646765642c2030206d6973736564206279207468652073656c6c65722c203020627920746865206275796572456461792031303a2036342064656c6976657265642c2030206f6e2074686520726f61642c2031362e3020656d6572616c647320706169642c20302e302075702066726f6e74116461792031303a20636f6d706c6574656400"
+    },
+    {
+      "note": "War and the routes' books need no town",
+      "request": {
+        "abi": 1,
+        "schema": 2387392034397692382,
+        "command": {
+          "Ask": {
+            "queries": [
+              "War",
+              "RouteBooks"
+            ]
+          }
+        }
+      },
+      "request_postcard": "01dec3fcae808dee902104021617",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "War": {
+                "phase": "peace",
+                "theatre": "faction",
+                "days": 0.0,
+                "capital": null,
+                "treasury": 0,
+                "treasury_spurs": 0.0,
+                "minted": 0.0,
+                "contracts": 0,
+                "delivered": 0.0,
+                "serving": 0,
+                "waiting": 0,
+                "raised": 0,
+                "fallen": 0,
+                "bills": 0.0,
+                "rate": 16.0,
+                "debasement": 1.0,
+                "levies": 0,
+                "hired": 0,
+                "awarded": 0,
+                "depot": [],
+                "unmet": [],
+                "towns": [],
+                "issued": [],
+                "eaten": 0.0,
+                "heartiness": 0.0
+              }
+            },
+            {
+              "RouteBooks": {
+                "rate": 16.0,
+                "routes": [
+                  {
+                    "route": 0,
+                    "from": 0,
+                    "to": 1,
+                    "from_desk": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 27,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "to_desk": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 67,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "blocks": 40,
+                    "trips": 0,
+                    "sold_items": 0.0,
+                    "sales_spurs": 0.0,
+                    "service_spurs": 0.0,
+                    "bought_items": 0.0,
+                    "purchase_spurs": 0.0,
+                    "food_spurs": 0.0,
+                    "tolls_spurs": 0.0,
+                    "home_spurs": 0.0,
+                    "food_eaten": 0.0,
+                    "short_rations": 0,
+                    "delivered": 0.0
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "000002160570656163650766616374696f6e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003040000000000000f03f0000000000000000000000000000000000000000000000170000000000003040010000010100136d696e6563726166743a6f766572776f726c643677360100136d696e6563726166743a6f766572776f726c64860177362800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ]
+}
