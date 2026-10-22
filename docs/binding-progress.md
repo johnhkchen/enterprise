@@ -1,17 +1,33 @@
 # Binding progress: where the Minecraft binding stands
 
 The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md`; how trees work is
-`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-22, `pallet-views` landed.
+`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-22, `commands-and-studies` landed.
 
 ## Now
 
-- **Resumed 2026-10-22.** `pallet-views` landed (28 of 35). Left: `shop-adapter` and `commands-and-studies` (can start
-  at once), then `crown-views`, then `delete-java-rules`, `scenarios-in-game`, `upgrade-drill`. Core mode now has
-  stock, money, people, land, lockers, caravans and pallets from the core; shops and the crown's views are still Java's.
+- **2026-10-22.** `commands-and-studies` landed (29 of 35). Left: `shop-adapter`, then `crown-views`, then
+  `delete-java-rules`, `scenarios-in-game`, `upgrade-drill`. Core mode now has stock, money, people, land, lockers,
+  caravans, pallets and the commands' books from the core; shops and the crown's views are still Java's, and every
+  command still on the Java rules says "Java mode only until <task>" in core mode.
 
-- **Main:** `650078e`. 916 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
-  `just wire-check` passes (schema `b8fe731e20bb5c21`, 44 files); `just scenarios-wasm` (42) and `just binding-test` pass.
-  Game tests: "All 298 required tests passed" in Java mode, and `just gametest-core`: 298 of 298 (baseline now 298).
+- **Main:** `62ac9e3`. 936 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
+  `just wire-check` passes (schema `2121b86805df21de`, 56 files); `just scenarios-wasm` (54) and `just binding-test`
+  (352) pass. Game tests: "All 300 required tests passed" in Java mode, and `just gametest-core`: 300 of 300 (baseline
+  now 300). `just core-fingerprint`: `5e6b6d51a3b4061e` (unmoved: the new queries only read).
+- **Commands and studies** (B4.11, `sim/core/src/commands_host.rs`, `adapters/BooksAdapter`, `adapters/CommandsAdapter`,
+  no new saved state): `Query`/`Answer` `CashBook`, `Books`, `Whys`, `Trust`, `Contracts` (16-20), `Territory`, `War`,
+  `RouteBooks` (21-23), in the Java commands' words so the studies' regexes read both modes. Kept study:
+  `network_study.py` (default flags, `--save-at`, `--label`, `--resume`, `--stop-when`), the core's numbers under
+  `society=core`; `trace.py`, `forks.py`, `compare_lanes.py` work in both; `merchant_ramp`, `farm_wages`,
+  `caravan_network`, `standalone_town` exit "Java mode only (retired for sim/host)", `paper_report` refuses a core
+  checkpoint, `world_map` is only noted. **Open:** the kept study has never been run under `society=core` (only its
+  regexes, by `CoreBindingTests.aTownsTerritoryAndTheWarAreTheCoresForTheStudies`, on a fresh fixture with no trips);
+  contracts' and rents' `day N:` lines are worked out from state (two always carry today, and trace.py keeps only the
+  first three, so a contract's `completed`/`broken` line is dropped there); core-mode territory lacks crossings, herd,
+  kit and flower-bed lines, tolls owed always none; a few command-side rules in Java (`autoswitch`'s which-offers,
+  `townNear`'s 48-block bell-to-desk match, territory's mood and tightness words) belong in the core; town names fetched
+  by a whole `Territory` each; `depot add/remove` still write Java's `Depots` beside the core's points;
+  `name <desk> <name>` and `switch` refused until `delete-java-rules`.
   `just core-fingerprint`: `5e6b6d51a3b4061e` (unmoved by `pallet-views`; the replay digest moved with the save's shape
   and the new `pallet_host` random-worlds slice). Flaky: `TerritoryTests.farmersProduceWhatGrowsInTheirHex` ("counted 8",
   neighbours trampling its plots) failed once in core mode in the tree's gate run, then passed.
@@ -347,7 +363,7 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 | B4.8 | `wagon-adapter` | opus / high | `locker-adapter`, `land-adapter`, `money-adapter` | `cbe2285` | The core's routes started and stopped by the host, its wagons' crews stowed and let out by hand id (`wagon_host.rs`, no new saved state): `Input::Route`, `Output::HandAway`/`HandBack`, `Query`/`Answer::Routes` (`RouteLine`, `WagonLine`, `MarketLine`); `WagonAdapter` stows and lets out villagers (`enterprise_core_stowed.dat`), the Merchant's screen's caravans and Send/Stop and `/enterprise route`/`routes` on the core in core mode, `/enterprise core routes <desk>`; `wagons.json` scenario; 3 game tests (295 both modes), fingerprint unchanged, schema `ac8763985aaf102c`. No pallet, crate or paper code in Java (pallets are the core's; `pallet-views` draws them). At landing: a hand let out at a look takes its trade, level and XP from the core then (a `HandLevel` while its desk was unloaded was lost), a second `HandAway` keeps a villager already stowed, a wound-down route reopens only within a leg's food (test), the plan's 1.3 outputs row names HandAway/HandBack. Left: crate and paper views (`pallet-views`), herds and llamas, Java-mode crews across a switch, the screen's known-market check in Java, English `status` on the wire, row 8's tests on the Java rules, John to confirm routes wound down not deleted |
 | B4.9 | `shop-adapter` | sonnet / high | `money-adapter`, `wagon-adapter` | | |
 | B4.10 | `crown-views` | sonnet / medium | `wagon-adapter`, `shop-adapter` | | |
-| B4.11 | `commands-and-studies` | sonnet / medium | `wagon-adapter` | | |
+| B4.11 | `commands-and-studies` | sonnet / medium | `wagon-adapter` | `62ac9e3` | Every `/enterprise` command asks the core or says "Java mode only until <task>" in core mode (`commands_host.rs`, no new saved state; `BooksAdapter`, `CommandsAdapter`): `Query`/`Answer` `CashBook`, `Books`, `Whys`, `Trust`, `Contracts` (with history lines and rents), `Territory`, `War`, `RouteBooks`; `books.json` and `commands.json` scenarios; `network_study.py` the kept in-game study, the other studies Java mode only (`study_mode.py`); 2 game tests (300 both modes), fingerprint unchanged, schema `2121b86805df21de`. At landing: squashed and rebased onto pallet-views (queries renumbered after the pallets' to 16-23, commands_host's town-name helper renamed beside pallet_host's, registry, Java, fixtures and scenarios written again); `route remove` takes route 0 (core mode numbers from 0); freight, post, forwarder and paperwork wait on `delete-java-rules`, not the landed pallet-views; `--resume` refuses a checkpoint of the other mode; the autoswitch assertion made real; a duplicated doc line, the plan table's pipes and the world_map claim fixed. Left: the kept study never run under `society=core`, `day N:` lines worked out from state, territory's missing detail lines, a few command-side rules in Java, `depot add/remove`'s Java `Depots` |
 | B4.12 | `pallet-views` | opus / high | `stock-adapter`, `content-weights` | `650078e` | Placed at `points-and-hands`' landing: the mod's crates and chests drawn from the core's pallet outputs, no pallet rules in Java; `PackPallets`, `Good.package`/`.handling` and the manifest on the wire. Widened at `wagon-adapter`'s landing: also row 8's crate and paper views, `CrateItem`, the crate block, `CrateMenu` and `client/CrateScreen`, and the post's papers (`DocumentsItem`: a pallet's bill of lading, a wagon's superbill), all from `PalletPacked`/`PalletMoved`/`PalletOpened`; `cargo/Crates`, `Papers`, `Paperwork` stay Java mode's until `delete-java-rules`. Built: the core's pallets drawn as tagged package items in the desks' chests (`pallet_host.rs`, `Stowage` saved; `PalletAdapter`), `Input::Pack`/`Stowed`, `Query`/`Answer::Pallets`/`Pallet`/`Stow`/`Manifest`, `PalletView`, `ManifestLine`, `PackPackage`; `pallets.json` scenario; 3 game tests (298 both modes), fingerprint unchanged, schema `b8fe731e20bb5c21`. At landing: a pallet found at its desk and said `Stowed` isn't drawn a second time by the same look's `Stow` (it was asked before the inputs applied); package crates aren't storage boxes to `MerchantStock` (`/enterprise stock` and the Java rules reached into packages 2..n); `Input::Pack` refuses a fractional count. Left: the superbill as a paper, crates at a wagon's unloading, `CrateMenu`/`CrateScreen` and empties, `Good.package`/`.handling` on the wire, the save's own package kinds, destroyed crates unsaved between looks, John to confirm pallets take chest slots ahead of loose goods |
 | B5.1 | `delete-java-rules` | opus / high | all of B4 | | |
 | B5.2 | `scenarios-in-game` | sonnet / medium | `delete-java-rules` | | |
