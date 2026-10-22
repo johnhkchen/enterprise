@@ -2,7 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{Count, GoodNo, GroundView, HandNo, HexAt, ManifestLine, MarketLine, PalletView, Point, RouteLine, RouteNo, TownNo, WorkView};
+use super::{Count, DeedLine, GoodNo, GroundView, HandNo, HexAt, ListingLine, ManifestLine, MarketLine, PalletView, Point, RouteLine, RouteNo,
+    ShopLine, SignalLine, TallyLine, TownNo, WorkView};
 use super::{BookLine, ContractLine, ForTotal, ForwardLine, NameCount, ProjectLine, RentLine, RouteBook, SummaryLine, TrustLine, WarTown, WhyView};
 use crate::fixed::Fixed;
 
@@ -66,6 +67,11 @@ pub enum Query {
     War,
     /// Every route's books, for the studies' per-day rows (`dev/experiments/network_study.py`).
     RouteBooks,
+    /// A town's shops: the vendors the core keeps for it and what each is, what its open orders want, what it has posted
+    /// as wanted, what its shop board lists and its trade with the shops.
+    Shops { town: TownNo },
+    /// The rents a town holds as a dealer (a freight hub), with the price of each deed and the vendor it's sold at.
+    Deeds { town: TownNo },
 }
 
 /// An answer, in the place of its question.
@@ -158,6 +164,12 @@ pub enum Answer {
         towns: Vec<WarTown>, issued: Vec<NameCount>, eaten: f64, heartiness: f64 },
     /// Every route's books (`rate`: the spurs an emerald fetches now), in the order of the routes' numbers.
     RouteBooks { rate: f64, routes: Vec<RouteBook> },
+    /// A town's shops: its vendors (in the order of their places), `wanted` (what its open orders still want, by good),
+    /// `signals` (posted, biggest first), `listings` (its board's, most wanted first, at the rate now) and its `tally`.
+    Shops { town: TownNo, shops: Vec<ShopLine>, wanted: Vec<Count>, signals: Vec<SignalLine>, listings: Vec<ListingLine>,
+        tally: TallyLine },
+    /// A town's rents as a dealer: `hub` whether it deals in them (a freight hub), and the rents it holds.
+    Deeds { town: TownNo, hub: bool, deeds: Vec<DeedLine> },
 }
 
 /// A hand's locker as the Merchant's screen shows it: the hand, whether the Merchant manages it now and has taken it on

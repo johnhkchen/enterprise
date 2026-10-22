@@ -461,5 +461,25 @@
     }
   },
   "War",
-  "RouteBooks"
+  "RouteBooks",
+  {
+    "Shops": {
+      "town": 0
+    }
+  },
+  {
+    "Shops": {
+      "town": 4294967295
+    }
+  },
+  {
+    "Deeds": {
+      "town": 0
+    }
+  },
+  {
+    "Deeds": {
+      "town": 4294967295
+    }
+  }
 ]

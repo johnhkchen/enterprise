@@ -42,11 +42,16 @@ public final class RentDeeds {
 
     /** The deed to a rent: a document naming it. */
     public static ItemStack deed(Rents.Rent rent) {
-        CompoundTag data = new CompoundTag();
-        data.putInt("rent", rent.id());
-        data.putString("summary", "%d %s a season from %s".formatted(rent.quantity(),
+        return deed(rent.id(), "%d %s a season from %s".formatted(rent.quantity(),
                 BuiltInRegistries.ITEM.getKey(rent.crop()).getPath(),
                 dev.b28.enterprise.settlement.Names.label(rent.farm())));
+    }
+
+    /** The deed to rent number {@code id}: a document naming it and saying in a line what it is (the core's rents too). */
+    public static ItemStack deed(int id, String summary) {
+        CompoundTag data = new CompoundTag();
+        data.putInt("rent", id);
+        data.putString("summary", summary);
         ItemStack deed = new ItemStack(Cargo.DOCUMENTS.get());
         deed.set(Cargo.PAPERS.get(), Papers.NONE.with(new Papers.Document(DEED, data)));
         return deed;
@@ -201,7 +206,15 @@ public final class RentDeeds {
                 || rentOf(event.getItemStack()).isEmpty()) {
             return;
         }
-        present(level, event.getPos(), event.getItemStack(), event.getEntity());
+        if (dev.b28.enterprise.binding.Society.isCore()) {
+            // The core's rents: it hands over the crop (the deed's the document the core's vendor sold).
+            var host = dev.b28.enterprise.binding.CoreHost.of(level.getServer());
+            if (host != null && host.pausedWhy() == null) {
+                host.shops().present(level, event.getPos(), event.getItemStack(), event.getEntity());
+            }
+        } else {
+            present(level, event.getPos(), event.getItemStack(), event.getEntity());
+        }
         event.setCanceled(true);
     }
 }

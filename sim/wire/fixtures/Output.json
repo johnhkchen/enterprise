@@ -40,7 +40,8 @@
       "good": 1,
       "lots": 2,
       "count": 32.0,
-      "spurs": 80.0
+      "spurs": 80.0,
+      "point": null
     }
   },
   {
@@ -50,7 +51,31 @@
       "good": 4294967295,
       "lots": 4294967295,
       "count": 1.7976931348623157e+308,
-      "spurs": 0.0
+      "spurs": 0.0,
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": -2147483648,
+        "y": 2147483647,
+        "z": -2147483648
+      }
+    }
+  },
+  {
+    "OrderFilled": {
+      "town": 1,
+      "order": 0,
+      "good": 0,
+      "lots": 1,
+      "count": 16.0,
+      "spurs": 16.0,
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": 33,
+        "y": -60,
+        "z": 20
+      }
     }
   },
   {
@@ -598,6 +623,173 @@
       "trade": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
       "level": 255,
       "xp": 4294967295
+    }
+  },
+  {
+    "StallBought": {
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": 33,
+        "y": -60,
+        "z": 14
+      },
+      "good": 1,
+      "lots": 2,
+      "count": 8.0,
+      "spurs": 24.0
+    }
+  },
+  {
+    "StallBought": {
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": -2147483648,
+        "y": 2147483647,
+        "z": -2147483648
+      },
+      "good": 4294967295,
+      "lots": 4294967295,
+      "count": 1.7976931348623157e+308,
+      "spurs": 1.7976931348623157e+308
+    }
+  },
+  {
+    "Shelf": {
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": 27,
+        "y": -60,
+        "z": 28
+      },
+      "good": 2,
+      "lot": 16,
+      "price": 9,
+      "add": 64,
+      "clear": false
+    }
+  },
+  {
+    "Shelf": {
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": 28,
+        "y": -60,
+        "z": 28
+      },
+      "good": 0,
+      "lot": 8,
+      "price": 5,
+      "add": -3,
+      "clear": true
+    }
+  },
+  {
+    "Shelf": {
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": 29,
+        "y": -60,
+        "z": 28
+      },
+      "good": null,
+      "lot": 0,
+      "price": 0,
+      "add": 0,
+      "clear": true
+    }
+  },
+  {
+    "Shelf": {
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": 2147483647,
+        "y": 0,
+        "z": 2147483647
+      },
+      "good": 4294967295,
+      "lot": 4294967295,
+      "price": 4294967295,
+      "add": -9223372036854775808,
+      "clear": false
+    }
+  },
+  {
+    "Deed": {
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": 21,
+        "y": -60,
+        "z": 33
+      },
+      "rent": 0,
+      "selling": true,
+      "price": 1290,
+      "fund": 0
+    }
+  },
+  {
+    "Deed": {
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": 21,
+        "y": -60,
+        "z": 33
+      },
+      "rent": 0,
+      "selling": false,
+      "price": 1056,
+      "fund": 1100
+    }
+  },
+  {
+    "Deed": {
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": -2147483648,
+        "y": 2147483647,
+        "z": -2147483648
+      },
+      "rent": 4294967295,
+      "selling": false,
+      "price": 4294967295,
+      "fund": 18446744073709551615
+    }
+  },
+  {
+    "DeedPaid": {
+      "town": 0,
+      "rent": 3,
+      "good": 4,
+      "count": 12,
+      "owed": 0
+    }
+  },
+  {
+    "DeedPaid": {
+      "town": 4294967295,
+      "rent": 4294967295,
+      "good": 4294967295,
+      "count": 4294967295,
+      "owed": 4294967295
+    }
+  },
+  {
+    "BuildShop": {
+      "town": 0
+    }
+  },
+  {
+    "BuildShop": {
+      "town": 4294967295
     }
   }
 ]

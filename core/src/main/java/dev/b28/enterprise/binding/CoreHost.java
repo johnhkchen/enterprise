@@ -8,6 +8,7 @@ import dev.b28.enterprise.binding.adapters.PalletAdapter;
 import dev.b28.enterprise.binding.adapters.MoneyAdapter;
 import dev.b28.enterprise.binding.adapters.PeopleAdapter;
 import dev.b28.enterprise.binding.adapters.PointsAdapter;
+import dev.b28.enterprise.binding.adapters.ShopAdapter;
 import dev.b28.enterprise.binding.adapters.StockAdapter;
 import dev.b28.enterprise.binding.adapters.WagonAdapter;
 import dev.b28.enterprise.core.CoreModule;
@@ -43,7 +44,7 @@ import net.neoforged.neoforge.event.server.ServerStoppedEvent;
  * ({@link CoreWorker}), saved with the world. The host makes the society from the mod's content pack at a new world
  * ({@link ModPack}, seeded with the world's seed) or loads the world's {@value SaveStore#FILE}, saves it when the world
  * saves, and drops it when the server stops. Its adapters ({@link PointsAdapter}, {@link HandsAdapter}, {@link
- * PeopleAdapter}, {@link StockAdapter}, {@link MoneyAdapter}, {@link LandAdapter}, {@link LockerAdapter}, {@link WagonAdapter}, {@link PalletAdapter}) turn Minecraft's happenings into the core's inputs and its outputs into things
+ * PeopleAdapter}, {@link StockAdapter}, {@link MoneyAdapter}, {@link LandAdapter}, {@link LockerAdapter}, {@link WagonAdapter}, {@link PalletAdapter}, {@link ShopAdapter}) turn Minecraft's happenings into the core's inputs and its outputs into things
  * in the world; {@link CoreClock} hands them a look at a time. The host keeps no society ids: which block is which town's and which villager
  * is which hand are the core's, read back by the adapters when it starts.
  *
@@ -80,6 +81,7 @@ public final class CoreHost implements AutoCloseable {
     private final PalletAdapter pallets;
     private final dev.b28.enterprise.binding.adapters.BooksAdapter books = new dev.b28.enterprise.binding.adapters.BooksAdapter(this);
     private final dev.b28.enterprise.binding.adapters.CommandsAdapter commands = new dev.b28.enterprise.binding.adapters.CommandsAdapter(this);
+    private final ShopAdapter shops;
     private final Outcomes outcomes;
     private final List<CompletableFuture<Response>> looks = new ArrayList<>();
     private String pausedWhy;
@@ -97,7 +99,8 @@ public final class CoreHost implements AutoCloseable {
         this.lockers = new LockerAdapter(this, ownsChests);
         this.wagons = new WagonAdapter(this, ownsChests, dir);
         this.pallets = new PalletAdapter(this, ownsChests);
-        this.outcomes = new Outcomes(people, stock, money, land, wagons, pallets);
+        this.shops = new ShopAdapter(this, ownsChests);
+        this.outcomes = new Outcomes(people, stock, money, land, wagons, pallets, shops);
         try {
             switch (store.open()) {
                 case SaveStore.Opened.Fresh fresh -> {
@@ -267,6 +270,11 @@ public final class CoreHost implements AutoCloseable {
         return books;
     }
 
+    /** The shop adapter: the vendors near the desks counted at each look, shown what the core did at them. */
+    public ShopAdapter shops() {
+        return shops;
+    }
+
     /** Why the host is paused (the save refused, the core stuck), or null while it runs. */
     public String pausedWhy() {
         return pausedWhy;
@@ -287,6 +295,7 @@ public final class CoreHost implements AutoCloseable {
         if (looks.isEmpty()) {
             stock.joinDepots(server); // a building's containers the core doesn't keep yet, its depots now (counted as they join)
             lockers.place(server); // where the loaded villagers' lockers stand (core mode), before their chests are counted
+            shops.place(server); // the vendors by the desks registered, the board's and the deeds' put up (core mode)
         }
         wagons.catchUp(server); // crews stowed and let out whose chunks loaded since, before the census counts them
         List<Input> inputs = pending();
@@ -301,6 +310,7 @@ public final class CoreHost implements AutoCloseable {
             // left; what they come to is said after the time passed, so a pallet brought in part has a look for the rest.
             palletInputs = pallets.happenings(server);
             inputs.addAll(money.withCash(stock.stocktakes(server)));
+            inputs.addAll(shops.happenings(server)); // the vendors counted, with the desks' chests (core mode)
         }
         inputs.add(new Input.Advance(now));
         inputs.addAll(palletInputs);

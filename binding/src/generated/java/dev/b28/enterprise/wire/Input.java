@@ -39,7 +39,11 @@ public sealed interface Input
                 Input.Locker,
                 Input.Route,
                 Input.Pack,
-                Input.Stowed {
+                Input.Stowed,
+                Input.Vendor,
+                Input.Board,
+                Input.DeedShop,
+                Input.DeedBrought {
     void encode(PostcardOut out);
 
     static Input decode(PostcardIn in) {
@@ -76,6 +80,10 @@ public sealed interface Input
             case 28 -> new Route(in.u32(), in.u32(), in.bool());
             case 29 -> new Pack(in.u32(), in.u32(), in.list(9, Count::decode));
             case 30 -> new Stowed(Point.decode(in), in.u64());
+            case 31 -> new Vendor(Point.decode(in), VendorRead.decode(in));
+            case 32 -> new Board(Point.decode(in));
+            case 33 -> new DeedShop(in.u32(), in.option(Point::decode));
+            case 34 -> new DeedBrought(in.u32(), in.u32());
             default -> throw in.unknownVariant("Input", at);
         };
     }
@@ -639,6 +647,77 @@ public sealed interface Input
             out.variant(30);
             this.point.encode(out);
             out.u64(this.pallet);
+        }
+    }
+
+    /**
+     * A Numismatics vendor counted this look ({@code shop_host.rs}): a {@code Shop} point of a town's (placed with {@code AddPoint}), and
+     * what the host found in it. The core says what it is (a player's order or stall, the town's own shop, its board's, a
+     * deed's): a standing order drafted, a stall bought from, a shelf stocked and its takings banked. What it does about
+     * it comes back as {@code OrderFilled}, {@code StallBought}, {@code Shelf} and {@code Deed} at the end of the look. A vendor that deals in
+     * nothing the core knows ({@code Idle}) is forgotten. Sent in core mode only, once a look for every vendor near a loaded
+     * desk, before the look's {@code Advance}. Refused for a point that isn't a shop.
+     */
+    record Vendor(Point point, VendorRead read) implements Input {
+        public Vendor {
+            Objects.requireNonNull(point, "point");
+            Objects.requireNonNull(read, "read");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(31);
+            this.point.encode(out);
+            this.read.encode(out);
+        }
+    }
+
+    /**
+     * A vendor the host put up for a town's shop board ({@code Output::BuildShop}): a {@code Shop} point of the town's, placed. Its
+     * cost is paid from the treasury now. The board's vendors show what the town is after at what it would pay, and a
+     * vendor the core knows as one stays so through a save. Refused for a point that isn't a shop.
+     */
+    record Board(Point point) implements Input {
+        public Board {
+            Objects.requireNonNull(point, "point");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(32);
+            this.point.encode(out);
+        }
+    }
+
+    /**
+     * Where a rent's deed is sold ({@code Query::Deeds} lists the rents a dealer holds): the vendor, a {@code Shop} point of the
+     * dealer's town, or {@code None} to take the shop away from the rent (its vendor broken). Refused for a rent that isn't
+     * there or a point that isn't a shop.
+     */
+    record DeedShop(long rent, Optional<Point> point) implements Input {
+        public DeedShop {
+            Objects.requireNonNull(point, "point");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(33);
+            out.u32(this.rent);
+            out.option(this.point, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * A player brought a rent's deed to its holder's desk: the crop collected for the bearer is handed over as far as
+     * the town's stock goes ({@code Output::DeedPaid}). Ignored for a rent that isn't a player's or isn't this town's (the
+     * host's view was stale).
+     */
+    record DeedBrought(long town, long rent) implements Input {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(34);
+            out.u32(this.town);
+            out.u32(this.rent);
         }
     }
 }

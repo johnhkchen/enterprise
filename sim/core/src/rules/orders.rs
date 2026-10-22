@@ -43,6 +43,7 @@ use crate::messages::{Output, TownId};
 use crate::mint::Mint;
 use crate::orders::*;
 use crate::roster::Roster;
+use crate::shop_host::Vendors;
 use crate::sourcing::Sourcing;
 use crate::state::*;
 use crate::workshop::Workshop;
@@ -110,7 +111,7 @@ fn places_of(content: &Content, sites: &Query<(&Town, Option<&Works>)>, routes: 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn review(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, order: Res<Towns>, mut orders: ResMut<Orders>,
         mut posted: ResMut<Signals>, mut book: ResMut<Book>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
-        mut outbox: ResMut<Outbox>,
+        mut outbox: ResMut<Outbox>, vendors: Res<Vendors>,
         mut towns: Query<(&Town, &mut Stock, &mut Money, &Trades, &Workshop, Option<&Roster>)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let rate = mint.rate(now, day);
@@ -135,11 +136,12 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, order: 
         // Fill the buying shops' orders under their contracts; what's left open is asked of the region.
         let mut open: BTreeMap<GoodId, f64> = BTreeMap::new();
         for o in list.iter_mut().filter(|o| o.town == t) {
+            let dealt = vendors.dealt(o.at.as_ref());
             let filled = fill(&content, &mut book, &mut ledger, &mut cash, rate, now, trades, workshop, &mut stock,
-                &mut money, o, tally);
+                &mut money, o, dealt, tally);
             if filled.lots > 0 {
                 outbox.0.push(Output::OrderFilled { town: crate::wire::no(t), order: crate::wire::no(o.id), good: crate::wire::no(o.good), lots: filled.lots,
-                    count: filled.count, spurs: filled.spurs });
+                    count: filled.count, spurs: filled.spurs, point: o.at.as_ref().map(|a| crate::wire::Point::of(a, crate::points::Kind::Shop)) });
             }
             if o.open > 0.0 {
                 *open.entry(o.good).or_insert(0.0) += o.open;
@@ -160,7 +162,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, order: 
 pub fn broker(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, atlas: Res<Atlas>, stocktakes: Res<Stocktakes>,
         order: Res<Towns>, routes: Query<&Route>, sites: Query<(&Town, Option<&Works>)>, mut orders: ResMut<Orders>,
         mut posted: ResMut<Signals>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut outbox: ResMut<Outbox>,
-        sourcing: Res<Sourcing>,
+        (sourcing, vendors): (Res<Sourcing>, Res<Vendors>),
         mut towns: Query<(&Town, &mut Stock, &mut Money, &Trades, &Workshop, Option<&Roster>, Option<&Farm>)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let rate = mint.rate(now, day);
@@ -202,13 +204,18 @@ pub fn broker(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, atlas: 
         }
 
         // Buy from the selling shops what its orders and its lockers want.
-        for stall in stalls.iter_mut().filter(|s| s.town == t) {
-            buy(&content, rate, now, trades, farm, &mut ledger, &mut cash, &mut stock, &mut money, stall, &open,
+        for stall in stalls.iter_mut().filter(|s| s.town == t && vendors.dealt(s.at.as_ref())) {
+            let lots = buy(&content, rate, now, trades, farm, &mut ledger, &mut cash, &mut stock, &mut money, stall, &open,
                 &signalled, tally);
+            if let (Some(at), true) = (&stall.at, lots > 0) {
+                outbox.0.push(Output::StallBought { point: crate::wire::Point::of(at, crate::points::Kind::Shop),
+                    good: crate::wire::no(stall.good), lots, count: lots as f64 * stall.lot, spurs: lots as f64 * stall.price });
+            }
         }
 
         // The town's own shops.
-        let mine: Vec<usize> = (0..shops.len()).filter(|&i| shops[i].town == t).collect();
+        let mine: Vec<usize> = (0..shops.len())
+            .filter(|&i| shops[i].town == t && !shops[i].board && vendors.dealt(shops[i].at.as_ref())).collect();
         if !mine.is_empty() {
             sell_surplus(&content, rate, now, trades, workshop, &mut ledger, &mut cash, &mut stock, &mut money,
                 shops, &mine, &open, tally);
@@ -267,7 +274,7 @@ fn contract_for(content: &Content, book: &mut Book, rate: f64, now: u64, o: &mut
 /// still wants beyond the warehouse stays open for the region.
 #[allow(clippy::too_many_arguments)]
 fn fill(content: &Content, book: &mut Book, ledger: &mut Ledger, cash: &mut CashBook, rate: f64, now: u64, trades: &Trades,
-        workshop: &Workshop, stock: &mut Stock, money: &mut Money, o: &mut Order, tally: &mut Tally) -> Filled {
+        workshop: &Workshop, stock: &mut Stock, money: &mut Money, o: &mut Order, dealt: bool, tally: &mut Tally) -> Filled {
     let day = content.day_ticks;
     let mut filled = Filled { lots: 0, count: 0.0, spurs: 0.0 };
     o.open = 0.0;
@@ -283,6 +290,10 @@ fn fill(content: &Content, book: &mut Book, ledger: &mut Ledger, cash: &mut Cash
         if !(c.owed(now) >= lot && spare(content, trades, workshop, stock, g) >= lot) {
             break;
         }
+        // (A vendor a host counts holds only so many lots, `Shops.roomFor`, and takes none while it isn't counted.)
+        if !dealt || o.room.is_some_and(|room| room < 1.0) {
+            break;
+        }
         // The locked price at today's rate, but never more than the shop now asks: the Merchant won't charge a player
         // above its own posted price.
         let price = o.price.min((c.price * lot * rate).round());
@@ -295,6 +306,9 @@ fn fill(content: &Content, book: &mut Book, ledger: &mut Ledger, cash: &mut Cash
         o.purse -= price;
         o.delivered += lot;
         o.paid += price;
+        if let Some(room) = o.room.as_mut() {
+            *room -= 1.0;
+        }
         // The player's spurs at the rate, to the nearest thousandth of an emerald (coin from outside).
         let paid = crate::fixed::Fixed::round(price / rate);
         post(ledger, cash, Side::outside(), Side::treasury(o.town, &mut money.0), paid, reason("order"), now, day);
@@ -376,8 +390,9 @@ fn signals(content: &Content, trades: &Trades, stock: &Stock, open: &BTreeMap<Go
 #[allow(clippy::too_many_arguments)]
 fn buy(content: &Content, rate: f64, now: u64, trades: &Trades, farm: Option<&Farm>, ledger: &mut Ledger,
         cash: &mut CashBook, stock: &mut Stock, money: &mut Money, stall: &mut Stall, open: &BTreeMap<GoodId, f64>,
-        signalled: &[Signal], tally: &mut Tally) {
+        signalled: &[Signal], tally: &mut Tally) -> u32 {
     let (g, lot, day) = (stall.good, stall.lot, content.day_ticks);
+    let mut bought = 0;
     let signal = signalled.iter().find(|s| s.good == g);
     let par = if is_wanted(trades, g) { par_of(content, trades, g, true) } else { 0.0 };
     let held = stock.0[g].floor();
@@ -396,7 +411,9 @@ fn buy(content: &Content, rate: f64, now: u64, trades: &Trades, farm: Option<&Fa
         want -= lot;
         tally.lots_bought += 1.0;
         tally.spurs_on_purchases += price;
+        bought += 1;
     }
+    bought
 }
 
 /// The town's own shops sell its biggest surpluses (beyond par, no food, nothing ordered) a little over their worth,

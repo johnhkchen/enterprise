@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{GoodNo, HandNo, HexAt, LandKind, Point, TownNo, Work};
+use super::{GoodNo, HandNo, HexAt, LandKind, Point, TownNo, VendorRead, Work};
 use crate::fixed::Fixed;
 
 /// A happening the host hands the core.
@@ -146,6 +146,25 @@ pub enum Input {
     /// Ignored for a pallet that isn't in that desk's town's warehouse by the time it applies (moved on, opened: a stale
     /// view). Refused for a point that isn't a desk standing there.
     Stowed { point: Point, pallet: u64 },
+    /// A Numismatics vendor counted this look (`shop_host.rs`): a `Shop` point of a town's (placed with `AddPoint`), and
+    /// what the host found in it. The core says what it is (a player's order or stall, the town's own shop, its board's, a
+    /// deed's): a standing order drafted, a stall bought from, a shelf stocked and its takings banked. What it does about
+    /// it comes back as `OrderFilled`, `StallBought`, `Shelf` and `Deed` at the end of the look. A vendor that deals in
+    /// nothing the core knows (`Idle`) is forgotten. Sent in core mode only, once a look for every vendor near a loaded
+    /// desk, before the look's `Advance`. Refused for a point that isn't a shop.
+    Vendor { point: Point, read: VendorRead },
+    /// A vendor the host put up for a town's shop board (`Output::BuildShop`): a `Shop` point of the town's, placed. Its
+    /// cost is paid from the treasury now. The board's vendors show what the town is after at what it would pay, and a
+    /// vendor the core knows as one stays so through a save. Refused for a point that isn't a shop.
+    Board { point: Point },
+    /// Where a rent's deed is sold (`Query::Deeds` lists the rents a dealer holds): the vendor, a `Shop` point of the
+    /// dealer's town, or `None` to take the shop away from the rent (its vendor broken). Refused for a rent that isn't
+    /// there or a point that isn't a shop.
+    DeedShop { rent: u32, point: Option<Point> },
+    /// A player brought a rent's deed to its holder's desk: the crop collected for the bearer is handed over as far as
+    /// the town's stock goes (`Output::DeedPaid`). Ignored for a rent that isn't a player's or isn't this town's (the
+    /// host's view was stale).
+    DeedBrought { town: TownNo, rent: u32 },
 }
 
 /// A villager a census saw: the host's tag for it (its UUID), its trade by the host's name (with or without the host's

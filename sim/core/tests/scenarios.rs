@@ -23,8 +23,9 @@
 //!
 //! `people` shows a child born (`Born`), `chests` the chests' moves (`Moved`), `money` the till's (`Cash`) and
 //! `lockers` a locker's trades levelling its villager (`HandLevel`), `wagons` a route started by its host and its crew
-//! away and back (`WagonLeft`, `HandAway`, `HandBack`); the others need a master Merchant or a party of settlers, and
-//! the wire has no input that makes either. Their bytes are pinned by the
+//! away and back (`WagonLeft`, `HandAway`, `HandBack`), `shops` a master Merchant's brokering with a host's vendors
+//! (`OrderFilled`, `StallBought`, `Shelf`); the others need a party of settlers, a hub with a rent, a pallet, a desk with signals to post, or
+//! a town that lists a shop, and the wire has no input that makes any. Their bytes are pinned by the
 //! golden files meanwhile
 //! (`tests/wire_fixtures.rs`).
 //!
@@ -1140,6 +1141,86 @@ fn commands() -> Scenario {
     s.scenario
 }
 
+/// A master Merchant's shops through the wire: orders, stalls, the town's own and its board's, and deeds.
+fn shops() -> Scenario {
+    let mut s = Script::new("shops", "A town whose Merchant is a master (level 5) deals with the vendors its host counts: a \
+        buying vendor is a standing order the Merchant fills a lot a day from its warehouse (OrderFilled names the vendor, \
+        for the host to put the goods in and take the spurs off its card), a selling vendor is bought from for the \
+        order's goods (StallBought: the goods out of the vendor, the spurs paid into it), and a vendor touching the desk \
+        is the town's own, shown what the Merchant lists (Shelf) and counted again with a lot bought and its coin \
+        collected. A vendor put up for the town's board is paid for; a deed shop for a rent that isn't there is refused. \
+        What the screens show comes from Shops and Deeds. Saved and loaded, the shops are as they were; a vendor broken \
+        takes its shop with it.");
+    const IRON: GoodNo = 4;
+    let desk = at(PointKind::Desk, 27, 27);
+    let (order, stall, own, board) = (at(PointKind::Shop, 30, 20), at(PointKind::Shop, 32, 20), at(PointKind::Shop, 27, 28),
+        at(PointKind::Shop, 25, 28));
+    let idle = VendorRead { mode: VendorMode::Idle, good: None, deed: None, lot: 0, price: 0, stock: 0, room: 0, purse: 0,
+        coins: 0, touches: false };
+    let shops_of = |s: &mut Script, note: &str| s.ask(note, vec![Query::Shops { town: 0 }, Query::Deeds { town: 0 }]);
+    let r = s.say("a society from a pack with paper, iron and wheat", Command::Create { pack: full_pack(), seed: 7 });
+    assert_eq!(r, Response::Done { outputs: vec![], answers: vec![] });
+    s.apply("a town at its desk with a master Merchant, 64 wheat and ten emeralds; four vendors by it", vec![
+        Input::AddTown { name: "Ashford".into(), desk: desk.clone() },
+        Input::AddHand { town: 0, trade: "merchant".into(), level: 5, tag: "villager-m".into() },
+        Input::Deliver { town: 0, good: WHEAT, count: 64.0 },
+        Input::Pay { town: 0, money: Fixed::from(10.0) },
+        Input::AddPoint { point: order.clone(), town: 0 },
+        Input::AddPoint { point: stall.clone(), town: 0 },
+        Input::AddPoint { point: own.clone(), town: 0 },
+        Input::AddPoint { point: board.clone(), town: 0 },
+    ]);
+    let out = s.apply("a look: a vendor buying 4 iron at 24 spurs with 48 on its card, a stall selling 8 iron, the town's own \
+        shop empty, then time", vec![
+        Input::Vendor { point: order.clone(), read: VendorRead { mode: VendorMode::Buy, good: Some(IRON), lot: 4, price: 24,
+            room: 54, purse: 48, ..idle.clone() } },
+        Input::Vendor { point: stall.clone(), read: VendorRead { mode: VendorMode::Sell, good: Some(IRON), lot: 4, price: 12,
+            stock: 8, ..idle.clone() } },
+        Input::Vendor { point: own.clone(), read: VendorRead { touches: true, ..idle.clone() } },
+        Input::Advance { to: 1_200 },
+    ]);
+    assert!(out.iter().any(|o| matches!(o, Output::StallBought { lots: 2, point, .. } if *point == stall)), "{out:?}");
+    assert!(out.iter().any(|o| matches!(o, Output::Shelf { point, .. } if *point == own)), "{out:?}");
+    shops_of(&mut s, "its shops: the order, the stall, the own shop");
+    let out = s.apply("the next day: the order counted again, the stall emptied; the own shop \
+        sold a lot and its box was emptied of 9 spurs; the board's vendor put up", vec![
+        Input::Board { point: board.clone() },
+        Input::Vendor { point: order.clone(), read: VendorRead { mode: VendorMode::Buy, good: Some(IRON), lot: 4, price: 24,
+            room: 54, purse: 48, ..idle.clone() } },
+        Input::Vendor { point: stall.clone(), read: VendorRead { mode: VendorMode::Sell, good: Some(IRON), lot: 4, price: 12,
+            ..idle.clone() } },
+        Input::Vendor { point: own.clone(), read: VendorRead { mode: VendorMode::Sell, good: Some(WHEAT), lot: 16, price: 3,
+            stock: 48, coins: 9, touches: true, ..idle.clone() } },
+        Input::Vendor { point: board.clone(), read: idle.clone() },
+        Input::Advance { to: 1_200 + DAY },
+    ]);
+    assert!(out.iter().any(|o| matches!(o, Output::OrderFilled { .. })), "{out:?}");
+    shops_of(&mut s, "the shops a day on");
+    s.apply("a deed brought to a desk for a rent that isn't there is a stale view: ignored", vec![
+        Input::DeedBrought { town: 0, rent: 9 },
+    ]);
+    let r = s.say("a deed shop for a rent that isn't there: refused", Command::Apply { inputs: vec![
+        Input::DeedShop { rent: 0, point: Some(order.clone()) },
+    ] });
+    assert!(matches!(s.refused("no rent", r), Refusal::Input { at: 0, .. }));
+    let r = s.say("a vendor counted at the desk: refused", Command::Apply { inputs: vec![
+        Input::Vendor { point: desk.clone(), read: idle.clone() },
+    ] });
+    assert!(matches!(s.refused("a desk", r), Refusal::Input { at: 0, .. }));
+    s.save("saved");
+    s.load("loaded");
+    shops_of(&mut s, "the same after the load");
+    s.apply("the order's vendor and the stall's broken", vec![
+        Input::RemovePoint { point: order.clone() },
+        Input::RemovePoint { point: stall.clone() },
+    ]);
+    let a = shops_of(&mut s, "their shops gone, the own shop and the board's left");
+    assert!(matches!(&a[0], Answer::Shops { shops, .. } if shops.len() == 2), "{a:?}");
+    let r = s.say("the shops of a town that isn't there", Command::Ask { queries: vec![Query::Shops { town: 3 }] });
+    assert!(matches!(s.refused("no town", r), Refusal::Query { at: 0, .. }));
+    s.scenario
+}
+
 /// Every way the core refuses, each leaving the society as it was.
 fn refusals() -> Scenario {
     let mut s = Script::new("refusals", "Every refusal, each a message and nothing applied.");
@@ -1247,7 +1328,7 @@ fn refusals() -> Scenario {
 }
 
 fn scenarios() -> Vec<Scenario> {
-    vec![stocktake(), inputs(), content(), refusals(), hands(), people(), chests(), money(), land(), lockers(), wagons(), pallets(), books(), commands()]
+    vec![stocktake(), inputs(), content(), refusals(), hands(), people(), chests(), money(), land(), lockers(), wagons(), pallets(), books(), commands(), shops()]
 }
 
 fn text(scenario: &Scenario) -> String {
@@ -1274,7 +1355,7 @@ fn the_scenarios_play_as_their_files_say() {
         return;
     }
     let mut wrong = Vec::new();
-    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people", "chests", "money", "land", "lockers", "wagons", "pallets", "books", "commands"] {
+    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people", "chests", "money", "land", "lockers", "wagons", "pallets", "books", "commands", "shops"] {
         let scenario = read(name);
         assert!(!scenario.steps.is_empty(), "{name}: no steps");
         wrong.extend(play(&scenario));
@@ -1332,9 +1413,9 @@ fn every_message_appears_in_a_scenario() {
         }
     }
     let set = |names: &[&str]| names.iter().map(|s| s.to_string()).collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost", "Census", "TagHand", "Unmoved", "Cashcount", "CashUnmoved", "Ground", "Crops", "Survey", "Built", "Switch", "Locker", "Route", "Pack", "Stowed"]));
+    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost", "Census", "TagHand", "Unmoved", "Cashcount", "CashUnmoved", "Ground", "Crops", "Survey", "Built", "Switch", "Locker", "Route", "Pack", "Stowed", "Vendor", "Board", "DeedShop", "DeedBrought"]));
     assert_eq!(commands, set(&["Apply", "Ask", "Create", "Load", "Save"]));
-    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands", "Chests", "Cash", "Mint", "Land", "Ground", "Lockers", "Routes", "Pallets", "Pallet", "Stow", "Manifest", "CashBook", "Books", "Whys", "Trust", "Contracts", "Territory", "War", "RouteBooks"]));
+    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands", "Chests", "Cash", "Mint", "Land", "Ground", "Lockers", "Routes", "Pallets", "Pallet", "Stow", "Manifest", "CashBook", "Books", "Whys", "Trust", "Contracts", "Territory", "War", "RouteBooks", "Shops", "Deeds"]));
     assert_eq!(refusals, set(&["Abi", "Input", "NoSociety", "Pack", "Query", "Save", "SaveFormat", "Schema", "Unreadable"]));
     // A child born, the chests' moves, the till's, a field to lay, a locker's trades levelling its villager and the
     // Merchant, a wagon's trip with its crew away and back, pallets packed, moved and opened (`Pack`), and a master
@@ -1342,5 +1423,5 @@ fn every_message_appears_in_a_scenario() {
     // (Signal) or a party of settlers or the rules taking a hand (Settled, Departed, HandGone), and no wire input makes
     // any. When one does, a scenario shows each and its name goes here.
     assert_eq!(outputs, set(&["Born", "Cash", "Moved", "Build", "HandLevel", "WagonLeft", "WagonSold", "WagonHome",
-        "HandAway", "HandBack", "PalletPacked", "PalletMoved", "PalletOpened", "OrderFilled"]));
+        "HandAway", "HandBack", "PalletPacked", "PalletMoved", "PalletOpened", "OrderFilled", "StallBought", "Shelf"]));
 }

@@ -115,6 +115,11 @@ public final class StockAdapter {
         return n == null ? null : n.longValue();
     }
 
+    /** The number of the core's good that {@code item} is, or -1 if it isn't one of the core's goods. */
+    public int good(Item item) {
+        return numbers.getOrDefault(item, -1);
+    }
+
     /** Whether the core's moves are written to the chests here. */
     public boolean writes() {
         return writes;

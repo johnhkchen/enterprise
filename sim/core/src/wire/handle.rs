@@ -98,6 +98,18 @@ pub fn handle(society: &mut Option<Society>, request: Request) -> Response {
                 })
                 .collect();
             outputs.extend(s.show_land(&surveyed));
+            // The towns' shops: the boards' shelves kept for the towns counted in this look, and the vendors counted told
+            // what they show (`shop_host.rs`).
+            let read: Vec<Spot> = inputs.iter()
+                .filter_map(|i| match i {
+                    Input::Vendor { point, .. } => Some(point.spot()),
+                    _ => None,
+                })
+                .collect();
+            let shopped: Vec<usize> = counted.iter().chain(read.iter())
+                .filter_map(|at| s.point(at).map(|p| p.town))
+                .collect();
+            outputs.extend(s.show_shops(&shopped, &read));
             done(outputs, Vec::new())
         }
         Command::Ask { queries } => {
@@ -243,6 +255,18 @@ fn answer(s: &Society, query: &Query) -> Result<Answer, String> {
         }
         Query::War => s.war_answer(),
         Query::RouteBooks => s.route_books_answer(),
+        &Query::Shops { town } => {
+            if town as usize >= s.town_count() {
+                return Err(format!("no town {town}"));
+            }
+            s.shop_lines(town as usize)
+        }
+        &Query::Deeds { town } => {
+            if town as usize >= s.town_count() {
+                return Err(format!("no town {town}"));
+            }
+            s.deed_lines(town as usize)
+        }
     })
 }
 
@@ -445,6 +469,33 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
                 }
                 same_kind(stands(&points, &point.spot()), point).map_err(wrong)?;
             }
+            Input::Vendor { point, read } => {
+                if point.kind() != Kind::Shop {
+                    return Err(wrong(format!("a vendor counted at a {:?}", point.kind)));
+                }
+                same_kind(stands(&points, &point.spot()), point).map_err(wrong)?;
+                if let Some(g) = read.good {
+                    good(g)?;
+                }
+            }
+            Input::Board { point } => {
+                if point.kind() != Kind::Shop {
+                    return Err(wrong(format!("a board's vendor that's a {:?}", point.kind)));
+                }
+                same_kind(stands(&points, &point.spot()), point).map_err(wrong)?;
+            }
+            Input::DeedShop { rent, point } => {
+                if *rent as usize >= s.rents().len() {
+                    return Err(wrong(format!("no rent {rent}")));
+                }
+                if let Some(point) = point {
+                    if point.kind() != Kind::Shop {
+                        return Err(wrong(format!("a deed's shop that's a {:?}", point.kind)));
+                    }
+                    same_kind(stands(&points, &point.spot()), point).map_err(wrong)?;
+                }
+            }
+            Input::DeedBrought { town: t, .. } => town(*t)?,
             Input::Locker { at, .. } => {
                 if let Some(point) = at {
                     if point.kind() != Kind::Locker {

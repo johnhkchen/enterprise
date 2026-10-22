@@ -3,6 +3,7 @@ package dev.b28.enterprise.wire;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * What happened, for the host to show.
@@ -25,7 +26,12 @@ public sealed interface Output
                 Output.Cash,
                 Output.Build,
                 Output.HandAway,
-                Output.HandBack {
+                Output.HandBack,
+                Output.StallBought,
+                Output.Shelf,
+                Output.Deed,
+                Output.DeedPaid,
+                Output.BuildShop {
     void encode(PostcardOut out);
 
     static Output decode(PostcardIn in) {
@@ -34,7 +40,7 @@ public sealed interface Output
             case 0 -> new WagonLeft(in.u32(), in.u32(), in.f64());
             case 1 -> new WagonSold(in.u32(), in.f64(), in.i64());
             case 2 -> new WagonHome(in.u32(), in.i64());
-            case 3 -> new OrderFilled(in.u32(), in.u32(), in.u32(), in.u32(), in.f64(), in.f64());
+            case 3 -> new OrderFilled(in.u32(), in.u32(), in.u32(), in.u32(), in.f64(), in.f64(), in.option(Point::decode));
             case 4 -> new Signal(in.u32(), in.u32(), in.f64(), in.f64());
             case 5 -> new PalletPacked(in.u64(), Place.decode(in), in.list(10, PackageLine::decode));
             case 6 -> new PalletMoved(in.u64(), Place.decode(in));
@@ -49,6 +55,11 @@ public sealed interface Output
             case 15 -> new Build(in.u32(), Work.decode(in), in.f64());
             case 16 -> new HandAway(in.u32(), in.u32(), in.string());
             case 17 -> new HandBack(in.u32(), in.u32(), in.string(), in.string(), in.u8(), in.u32());
+            case 18 -> new StallBought(Point.decode(in), in.u32(), in.u32(), in.f64(), in.f64());
+            case 19 -> new Shelf(Point.decode(in), in.option(PostcardIn::u32), in.u32(), in.u32(), in.i64(), in.bool());
+            case 20 -> new Deed(Point.decode(in), in.u32(), in.bool(), in.u32(), in.u64());
+            case 21 -> new DeedPaid(in.u32(), in.u32(), in.u32(), in.u32(), in.u32());
+            case 22 -> new BuildShop(in.u32());
             default -> throw in.unknownVariant("Output", at);
         };
     }
@@ -92,9 +103,14 @@ public sealed interface Output
     }
 
     /**
-     * A master Merchant filled a player's order: {@code lots} lots, {@code count} goods, for {@code spurs}.
+     * A master Merchant filled a player's order: {@code lots} lots, {@code count} goods, for {@code spurs}. The host puts the goods in the
+     * vendor ({@code point}, if the order came through one) and takes the spurs off its bank card.
      */
-    record OrderFilled(long town, long order, long good, long lots, double count, double spurs) implements Output {
+    record OrderFilled(long town, long order, long good, long lots, double count, double spurs, Optional<Point> point) implements Output {
+        public OrderFilled {
+            Objects.requireNonNull(point, "point");
+        }
+
         @Override
         public void encode(PostcardOut out) {
             out.variant(3);
@@ -104,6 +120,7 @@ public sealed interface Output
             out.u32(this.lots);
             out.f64(this.count);
             out.f64(this.spurs);
+            out.option(this.point, (o1, e1) -> e1.encode(o1));
         }
     }
 
@@ -354,6 +371,96 @@ public sealed interface Output
             out.string(this.trade);
             out.u8(this.level);
             out.u32(this.xp);
+        }
+    }
+
+    /**
+     * A master Merchant bought from a player's selling shop ({@code point}): {@code lots} lots, {@code count} goods out of the vendor, and
+     * {@code spurs} paid into it as coin.
+     */
+    record StallBought(Point point, long good, long lots, double count, double spurs) implements Output {
+        public StallBought {
+            Objects.requireNonNull(point, "point");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(18);
+            this.point.encode(out);
+            out.u32(this.good);
+            out.u32(this.lots);
+            out.f64(this.count);
+            out.f64(this.spurs);
+        }
+    }
+
+    /**
+     * What a shop the town keeps (its own, or its board's) shows now: {@code good} (none: nothing) in lots of {@code lot} at {@code price}
+     * spurs a lot, with {@code add} more items on its shelf (below nothing: taken off it). {@code clear}: whatever else is in it is
+     * taken out (the old listing's shelf, which the town has back). Only what changed since it was shown.
+     */
+    record Shelf(Point point, Optional<Long> good, long lot, long price, long add, boolean clear) implements Output {
+        public Shelf {
+            Objects.requireNonNull(point, "point");
+            Objects.requireNonNull(good, "good");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(19);
+            this.point.encode(out);
+            out.option(this.good, PostcardOut::u32);
+            out.u32(this.lot);
+            out.u32(this.price);
+            out.i64(this.add);
+            out.bool(this.clear);
+        }
+    }
+
+    /**
+     * What a rent's deed shop shows now: {@code selling} (the deed on its shelf at {@code price} spurs, its card taken out) or buying
+     * it back (at {@code price}, from the dealer's card, which is paid {@code fund} spurs more first).
+     */
+    record Deed(Point point, long rent, boolean selling, long price, long fund) implements Output {
+        public Deed {
+            Objects.requireNonNull(point, "point");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(20);
+            this.point.encode(out);
+            out.u32(this.rent);
+            out.bool(this.selling);
+            out.u32(this.price);
+            out.u64(this.fund);
+        }
+    }
+
+    /**
+     * A rent's deed was brought to its holder's desk: {@code count} of {@code good} for the player, {@code owed} more to come when it's in.
+     */
+    record DeedPaid(long town, long rent, long good, long count, long owed) implements Output {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(21);
+            out.u32(this.town);
+            out.u32(this.rent);
+            out.u32(this.good);
+            out.u32(this.count);
+            out.u32(this.owed);
+        }
+    }
+
+    /**
+     * A town's shop board wants another vendor by its desk (it lists more than it has shops for and can pay for one): the
+     * host puts one up and says so ({@code Input::Board}).
+     */
+    record BuildShop(long town) implements Output {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(22);
+            out.u32(this.town);
         }
     }
 }

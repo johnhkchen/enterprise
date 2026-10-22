@@ -32,7 +32,9 @@ public sealed interface Query
                 Query.Contracts,
                 Query.Territory,
                 Query.War,
-                Query.RouteBooks {
+                Query.RouteBooks,
+                Query.Shops,
+                Query.Deeds {
     void encode(PostcardOut out);
 
     static Query decode(PostcardIn in) {
@@ -62,6 +64,8 @@ public sealed interface Query
             case 21 -> new Territory(in.u32());
             case 22 -> new War();
             case 23 -> new RouteBooks();
+            case 24 -> new Shops(in.u32());
+            case 25 -> new Deeds(in.u32());
             default -> throw in.unknownVariant("Query", at);
         };
     }
@@ -361,6 +365,29 @@ public sealed interface Query
         @Override
         public void encode(PostcardOut out) {
             out.variant(23);
+        }
+    }
+
+    /**
+     * A town's shops: the vendors the core keeps for it and what each is, what its open orders want, what it has posted
+     * as wanted, what its shop board lists and its trade with the shops.
+     */
+    record Shops(long town) implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(24);
+            out.u32(this.town);
+        }
+    }
+
+    /**
+     * The rents a town holds as a dealer (a freight hub), with the price of each deed and the vendor it's sold at.
+     */
+    record Deeds(long town) implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(25);
+            out.u32(this.town);
         }
     }
 }

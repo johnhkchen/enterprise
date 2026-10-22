@@ -12964,5 +12964,248 @@
         }
       ]
     }
+  },
+  {
+    "Shops": {
+      "town": 0,
+      "shops": [],
+      "wanted": [],
+      "signals": [],
+      "listings": [],
+      "tally": {
+        "lots_sold": 0.0,
+        "spurs_from_sales": 0.0,
+        "lots_bought": 0.0,
+        "spurs_on_purchases": 0.0,
+        "spurs_from_own_shops": 0.0
+      }
+    }
+  },
+  {
+    "Shops": {
+      "town": 1,
+      "shops": [
+        {
+          "point": {
+            "kind": "Shop",
+            "dim": "minecraft:overworld",
+            "x": 33,
+            "y": -60,
+            "z": 20
+          },
+          "role": "Order",
+          "good": 0,
+          "lot": 16.0,
+          "price": 9.0,
+          "purse": 8.0,
+          "open": 20.0,
+          "delivered": 32.0,
+          "paid": 32.0,
+          "stock": 48.0,
+          "rent": null
+        },
+        {
+          "point": {
+            "kind": "Shop",
+            "dim": "minecraft:overworld",
+            "x": 33,
+            "y": -60,
+            "z": 20
+          },
+          "role": "Stall",
+          "good": 1,
+          "lot": 16.0,
+          "price": 9.0,
+          "purse": 8.0,
+          "open": 20.0,
+          "delivered": 32.0,
+          "paid": 32.0,
+          "stock": 48.0,
+          "rent": null
+        },
+        {
+          "point": {
+            "kind": "Shop",
+            "dim": "minecraft:overworld",
+            "x": 33,
+            "y": -60,
+            "z": 20
+          },
+          "role": "Own",
+          "good": 2,
+          "lot": 16.0,
+          "price": 9.0,
+          "purse": 8.0,
+          "open": 20.0,
+          "delivered": 32.0,
+          "paid": 32.0,
+          "stock": 48.0,
+          "rent": null
+        },
+        {
+          "point": {
+            "kind": "Shop",
+            "dim": "minecraft:overworld",
+            "x": 33,
+            "y": -60,
+            "z": 20
+          },
+          "role": "Board",
+          "good": null,
+          "lot": 16.0,
+          "price": 9.0,
+          "purse": 8.0,
+          "open": 20.0,
+          "delivered": 32.0,
+          "paid": 32.0,
+          "stock": 48.0,
+          "rent": null
+        },
+        {
+          "point": {
+            "kind": "Shop",
+            "dim": "minecraft:overworld",
+            "x": 33,
+            "y": -60,
+            "z": 20
+          },
+          "role": "Deed",
+          "good": null,
+          "lot": 16.0,
+          "price": 9.0,
+          "purse": 8.0,
+          "open": 20.0,
+          "delivered": 32.0,
+          "paid": 32.0,
+          "stock": 48.0,
+          "rent": 4
+        },
+        {
+          "point": {
+            "kind": "Shop",
+            "dim": "minecraft:overworld",
+            "x": 33,
+            "y": -60,
+            "z": 20
+          },
+          "role": "Idle",
+          "good": 4294967295,
+          "lot": 16.0,
+          "price": 9.0,
+          "purse": 8.0,
+          "open": 20.0,
+          "delivered": 32.0,
+          "paid": 32.0,
+          "stock": 48.0,
+          "rent": 4294967295
+        }
+      ],
+      "wanted": [
+        {
+          "good": 0,
+          "count": 20.0
+        },
+        {
+          "good": 3,
+          "count": 2.5
+        }
+      ],
+      "signals": [
+        {
+          "good": 3,
+          "count": 20.0,
+          "spurs_each": 3.0,
+          "why": "a player's order"
+        },
+        {
+          "good": 4294967295,
+          "count": 1.7976931348623157e+308,
+          "spurs_each": 0.0,
+          "why": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ],
+      "listings": [
+        {
+          "good": 2,
+          "lot": 16,
+          "spurs": 9
+        },
+        {
+          "good": 4294967295,
+          "lot": 4294967295,
+          "spurs": 4294967295
+        }
+      ],
+      "tally": {
+        "lots_sold": 2.0,
+        "spurs_from_sales": 48.0,
+        "lots_bought": 2.0,
+        "spurs_on_purchases": 24.0,
+        "spurs_from_own_shops": 9.0
+      }
+    }
+  },
+  {
+    "Deeds": {
+      "town": 0,
+      "hub": false,
+      "deeds": []
+    }
+  },
+  {
+    "Deeds": {
+      "town": 4294967295,
+      "hub": true,
+      "deeds": [
+        {
+          "rent": 0,
+          "farm": 2,
+          "farm_name": "Ashford",
+          "crop": 4,
+          "quantity": 64.0,
+          "ask": 1290,
+          "bid": 1056,
+          "bearer": false,
+          "accrued": 0.0,
+          "point": {
+            "kind": "Shop",
+            "dim": "minecraft:overworld",
+            "x": 21,
+            "y": -60,
+            "z": 33
+          }
+        },
+        {
+          "rent": 3,
+          "farm": 1,
+          "farm_name": "",
+          "crop": 0,
+          "quantity": 32.0,
+          "ask": 512,
+          "bid": 400,
+          "bearer": true,
+          "accrued": 12.5,
+          "point": null
+        },
+        {
+          "rent": 4294967295,
+          "farm": 4294967295,
+          "farm_name": "🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾",
+          "crop": 4294967295,
+          "quantity": 1.7976931348623157e+308,
+          "ask": 4294967295,
+          "bid": 0,
+          "bearer": true,
+          "accrued": 1.7976931348623157e+308,
+          "point": {
+            "kind": "Shop",
+            "dim": "minecraft:overworld",
+            "x": -2147483648,
+            "y": 2147483647,
+            "z": -2147483648
+          }
+        }
+      ]
+    }
   }
 ]

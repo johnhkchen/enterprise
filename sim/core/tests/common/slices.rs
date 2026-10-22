@@ -59,4 +59,5 @@ slices! {
     locker_host,
     wagon_host,
     pallet_host,
+    shop_host,
 }

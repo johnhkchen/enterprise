@@ -312,6 +312,32 @@ Answer:
           - routes:
               SEQ:
                 TYPENAME: RouteBook
+    24:
+      Shops:
+        STRUCT:
+          - town: U32
+          - shops:
+              SEQ:
+                TYPENAME: ShopLine
+          - wanted:
+              SEQ:
+                TYPENAME: Count
+          - signals:
+              SEQ:
+                TYPENAME: SignalLine
+          - listings:
+              SEQ:
+                TYPENAME: ListingLine
+          - tally:
+              TYPENAME: TallyLine
+    25:
+      Deeds:
+        STRUCT:
+          - town: U32
+          - hub: BOOL
+          - deeds:
+              SEQ:
+                TYPENAME: DeedLine
 BookLine:
   STRUCT:
     - day: U64
@@ -390,6 +416,20 @@ Count:
   STRUCT:
     - good: U32
     - count: F64
+DeedLine:
+  STRUCT:
+    - rent: U32
+    - farm: U32
+    - farm_name: STR
+    - crop: U32
+    - quantity: F64
+    - ask: U32
+    - bid: U32
+    - bearer: BOOL
+    - accrued: F64
+    - point:
+        OPTION:
+          TYPENAME: Point
 DialView:
   STRUCT:
     - name: STR
@@ -641,6 +681,30 @@ Input:
           - point:
               TYPENAME: Point
           - pallet: U64
+    31:
+      Vendor:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+          - read:
+              TYPENAME: VendorRead
+    32:
+      Board:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+    33:
+      DeedShop:
+        STRUCT:
+          - rent: U32
+          - point:
+              OPTION:
+                TYPENAME: Point
+    34:
+      DeedBrought:
+        STRUCT:
+          - town: U32
+          - rent: U32
 LandKind:
   ENUM:
     0:
@@ -657,6 +721,11 @@ LandKind:
       Hills: UNIT
     6:
       Water: UNIT
+ListingLine:
+  STRUCT:
+    - good: U32
+    - lot: U32
+    - spurs: U32
 LockerView:
   STRUCT:
     - hand: U32
@@ -737,6 +806,9 @@ Output:
           - lots: U32
           - count: F64
           - spurs: F64
+          - point:
+              OPTION:
+                TYPENAME: Point
     4:
       Signal:
         STRUCT:
@@ -831,6 +903,47 @@ Output:
           - trade: STR
           - level: U8
           - xp: U32
+    18:
+      StallBought:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+          - good: U32
+          - lots: U32
+          - count: F64
+          - spurs: F64
+    19:
+      Shelf:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+          - good:
+              OPTION: U32
+          - lot: U32
+          - price: U32
+          - add: I64
+          - clear: BOOL
+    20:
+      Deed:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+          - rent: U32
+          - selling: BOOL
+          - price: U32
+          - fund: U64
+    21:
+      DeedPaid:
+        STRUCT:
+          - town: U32
+          - rent: U32
+          - good: U32
+          - count: U32
+          - owed: U32
+    22:
+      BuildShop:
+        STRUCT:
+          - town: U32
 PackAmount:
   STRUCT:
     - good: STR
@@ -1049,6 +1162,14 @@ Query:
       War: UNIT
     23:
       RouteBooks: UNIT
+    24:
+      Shops:
+        STRUCT:
+          - town: U32
+    25:
+      Deeds:
+        STRUCT:
+          - town: U32
 Refusal:
   ENUM:
     0:
@@ -1186,6 +1307,43 @@ SaveFile:
     - core: STR
     - blob:
         SEQ: U8
+ShopLine:
+  STRUCT:
+    - point:
+        TYPENAME: Point
+    - role:
+        TYPENAME: ShopRole
+    - good:
+        OPTION: U32
+    - lot: F64
+    - price: F64
+    - purse: F64
+    - open: F64
+    - delivered: F64
+    - paid: F64
+    - stock: F64
+    - rent:
+        OPTION: U32
+ShopRole:
+  ENUM:
+    0:
+      Order: UNIT
+    1:
+      Stall: UNIT
+    2:
+      Own: UNIT
+    3:
+      Board: UNIT
+    4:
+      Deed: UNIT
+    5:
+      Idle: UNIT
+SignalLine:
+  STRUCT:
+    - good: U32
+    - count: F64
+    - spurs_each: F64
+    - why: STR
 SummaryLine:
   STRUCT:
     - kind: STR
@@ -1193,6 +1351,13 @@ SummaryLine:
     - good: STR
     - count: F64
     - money: I64
+TallyLine:
+  STRUCT:
+    - lots_sold: F64
+    - spurs_from_sales: F64
+    - lots_bought: F64
+    - spurs_on_purchases: F64
+    - spurs_from_own_shops: F64
 TownPoint:
   STRUCT:
     - point:
@@ -1206,6 +1371,29 @@ TrustLine:
     - trust: F64
     - kept: F64
     - missed: F64
+VendorMode:
+  ENUM:
+    0:
+      Idle: UNIT
+    1:
+      Buy: UNIT
+    2:
+      Sell: UNIT
+VendorRead:
+  STRUCT:
+    - mode:
+        TYPENAME: VendorMode
+    - good:
+        OPTION: U32
+    - deed:
+        OPTION: U32
+    - lot: U32
+    - price: U32
+    - stock: U32
+    - room: U32
+    - purse: U64
+    - coins: U64
+    - touches: BOOL
 WagonLine:
   STRUCT:
     - out: BOOL

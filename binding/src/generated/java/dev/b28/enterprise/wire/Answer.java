@@ -32,7 +32,9 @@ public sealed interface Answer
                 Answer.Contracts,
                 Answer.Territory,
                 Answer.War,
-                Answer.RouteBooks {
+                Answer.RouteBooks,
+                Answer.Shops,
+                Answer.Deeds {
     void encode(PostcardOut out);
 
     static Answer decode(PostcardIn in) {
@@ -62,6 +64,8 @@ public sealed interface Answer
             case 21 -> new Territory(in.u32(), in.string(), in.f64(), in.list(2, HexAt::decode), in.f64(), in.f64(), in.list(9, NameCount::decode), in.list(9, NameCount::decode), in.list(17, ForwardLine::decode), in.f64(), in.f64(), in.f64(), in.i64(), in.i64(), in.f64(), in.f64(), in.string(), in.i64(), in.i64(), in.u32(), in.f64(), in.i64(), in.u64(), in.f64(), in.f64(), in.f64(), in.list(9, NameCount::decode), in.f64(), in.f64(), in.list(11, ProjectLine::decode), in.option(ProjectLine::decode), in.list(11, ProjectLine::decode), in.f64(), in.f64(), in.u32(), in.u32(), in.f64(), in.f64(), in.f64(), in.i64(), in.i64(), in.u32(), in.list(2, HexAt::decode), in.f64(), in.u32(), in.u32(), in.u64());
             case 22 -> new War(in.string(), in.string(), in.f64(), in.option(PostcardIn::u32), in.i64(), in.f64(), in.f64(), in.u32(), in.f64(), in.u32(), in.u32(), in.u32(), in.u32(), in.f64(), in.f64(), in.f64(), in.u32(), in.u32(), in.u32(), in.list(9, NameCount::decode), in.list(1, PostcardIn::string), in.list(32, WarTown::decode), in.list(9, NameCount::decode), in.f64(), in.f64());
             case 23 -> new RouteBooks(in.f64(), in.list(88, RouteBook::decode));
+            case 24 -> new Shops(in.u32(), in.list(64, ShopLine::decode), in.list(9, Count::decode), in.list(18, SignalLine::decode), in.list(3, ListingLine::decode), TallyLine.decode(in));
+            case 25 -> new Deeds(in.u32(), in.bool(), in.list(24, DeedLine::decode));
             default -> throw in.unknownVariant("Answer", at);
         };
     }
@@ -656,6 +660,53 @@ public sealed interface Answer
             out.variant(23);
             out.f64(this.rate);
             out.list(this.routes, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * A town's shops: its vendors (in the order of their places), {@code wanted} (what its open orders still want, by good),
+     * {@code signals} (posted, biggest first), {@code listings} (its board's, most wanted first, at the rate now) and its {@code tally}.
+     */
+    record Shops(long town, List<ShopLine> shops, List<Count> wanted, List<SignalLine> signals, List<ListingLine> listings, TallyLine tally) implements Answer {
+        public Shops {
+            Objects.requireNonNull(shops, "shops");
+            shops = List.copyOf(shops);
+            Objects.requireNonNull(wanted, "wanted");
+            wanted = List.copyOf(wanted);
+            Objects.requireNonNull(signals, "signals");
+            signals = List.copyOf(signals);
+            Objects.requireNonNull(listings, "listings");
+            listings = List.copyOf(listings);
+            Objects.requireNonNull(tally, "tally");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(24);
+            out.u32(this.town);
+            out.list(this.shops, (o1, e1) -> e1.encode(o1));
+            out.list(this.wanted, (o1, e1) -> e1.encode(o1));
+            out.list(this.signals, (o1, e1) -> e1.encode(o1));
+            out.list(this.listings, (o1, e1) -> e1.encode(o1));
+            this.tally.encode(out);
+        }
+    }
+
+    /**
+     * A town's rents as a dealer: {@code hub} whether it deals in them (a freight hub), and the rents it holds.
+     */
+    record Deeds(long town, boolean hub, List<DeedLine> deeds) implements Answer {
+        public Deeds {
+            Objects.requireNonNull(deeds, "deeds");
+            deeds = List.copyOf(deeds);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(25);
+            out.u32(this.town);
+            out.bool(this.hub);
+            out.list(this.deeds, (o1, e1) -> e1.encode(o1));
         }
     }
 }

@@ -1,0 +1,116 @@
+[
+  {
+    "point": {
+      "kind": "Shop",
+      "dim": "minecraft:overworld",
+      "x": 33,
+      "y": -60,
+      "z": 20
+    },
+    "role": "Order",
+    "good": 0,
+    "lot": 16.0,
+    "price": 9.0,
+    "purse": 8.0,
+    "open": 20.0,
+    "delivered": 32.0,
+    "paid": 32.0,
+    "stock": 48.0,
+    "rent": null
+  },
+  {
+    "point": {
+      "kind": "Shop",
+      "dim": "minecraft:overworld",
+      "x": 33,
+      "y": -60,
+      "z": 20
+    },
+    "role": "Stall",
+    "good": 1,
+    "lot": 16.0,
+    "price": 9.0,
+    "purse": 8.0,
+    "open": 20.0,
+    "delivered": 32.0,
+    "paid": 32.0,
+    "stock": 48.0,
+    "rent": null
+  },
+  {
+    "point": {
+      "kind": "Shop",
+      "dim": "minecraft:overworld",
+      "x": 33,
+      "y": -60,
+      "z": 20
+    },
+    "role": "Own",
+    "good": 2,
+    "lot": 16.0,
+    "price": 9.0,
+    "purse": 8.0,
+    "open": 20.0,
+    "delivered": 32.0,
+    "paid": 32.0,
+    "stock": 48.0,
+    "rent": null
+  },
+  {
+    "point": {
+      "kind": "Shop",
+      "dim": "minecraft:overworld",
+      "x": 33,
+      "y": -60,
+      "z": 20
+    },
+    "role": "Board",
+    "good": null,
+    "lot": 16.0,
+    "price": 9.0,
+    "purse": 8.0,
+    "open": 20.0,
+    "delivered": 32.0,
+    "paid": 32.0,
+    "stock": 48.0,
+    "rent": null
+  },
+  {
+    "point": {
+      "kind": "Shop",
+      "dim": "minecraft:overworld",
+      "x": 33,
+      "y": -60,
+      "z": 20
+    },
+    "role": "Deed",
+    "good": null,
+    "lot": 16.0,
+    "price": 9.0,
+    "purse": 8.0,
+    "open": 20.0,
+    "delivered": 32.0,
+    "paid": 32.0,
+    "stock": 48.0,
+    "rent": 4
+  },
+  {
+    "point": {
+      "kind": "Shop",
+      "dim": "minecraft:overworld",
+      "x": 33,
+      "y": -60,
+      "z": 20
+    },
+    "role": "Idle",
+    "good": 4294967295,
+    "lot": 16.0,
+    "price": 9.0,
+    "purse": 8.0,
+    "open": 20.0,
+    "delivered": 32.0,
+    "paid": 32.0,
+    "stock": 48.0,
+    "rent": 4294967295
+  }
+]

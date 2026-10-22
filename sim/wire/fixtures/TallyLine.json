@@ -1,0 +1,16 @@
+[
+  {
+    "lots_sold": 0.0,
+    "spurs_from_sales": 0.0,
+    "lots_bought": 0.0,
+    "spurs_on_purchases": 0.0,
+    "spurs_from_own_shops": 0.0
+  },
+  {
+    "lots_sold": 2.0,
+    "spurs_from_sales": 48.0,
+    "lots_bought": 2.0,
+    "spurs_on_purchases": 24.0,
+    "spurs_from_own_shops": 9.0
+  }
+]

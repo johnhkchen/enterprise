@@ -2384,6 +2384,196 @@
     }
   },
   {
+    "Vendor": {
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": 30,
+        "y": -60,
+        "z": 20
+      },
+      "read": {
+        "mode": "Idle",
+        "good": null,
+        "deed": null,
+        "lot": 0,
+        "price": 0,
+        "stock": 0,
+        "room": 0,
+        "purse": 0,
+        "coins": 0,
+        "touches": false
+      }
+    }
+  },
+  {
+    "Vendor": {
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": 31,
+        "y": -60,
+        "z": 20
+      },
+      "read": {
+        "mode": "Buy",
+        "good": 1,
+        "deed": null,
+        "lot": 16,
+        "price": 16,
+        "stock": 0,
+        "room": 54,
+        "purse": 40,
+        "coins": 0,
+        "touches": false
+      }
+    }
+  },
+  {
+    "Vendor": {
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": 32,
+        "y": -60,
+        "z": 20
+      },
+      "read": {
+        "mode": "Sell",
+        "good": 3,
+        "deed": null,
+        "lot": 4,
+        "price": 12,
+        "stock": 8,
+        "room": 0,
+        "purse": 0,
+        "coins": 24,
+        "touches": false
+      }
+    }
+  },
+  {
+    "Vendor": {
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": 33,
+        "y": -60,
+        "z": 20
+      },
+      "read": {
+        "mode": "Sell",
+        "good": 2,
+        "deed": null,
+        "lot": 16,
+        "price": 9,
+        "stock": 64,
+        "room": 0,
+        "purse": 0,
+        "coins": 9,
+        "touches": true
+      }
+    }
+  },
+  {
+    "Vendor": {
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": 34,
+        "y": -60,
+        "z": 20
+      },
+      "read": {
+        "mode": "Buy",
+        "good": null,
+        "deed": 7,
+        "lot": 1,
+        "price": 480,
+        "stock": 1,
+        "room": 26,
+        "purse": 960,
+        "coins": 0,
+        "touches": false
+      }
+    }
+  },
+  {
+    "Vendor": {
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": 35,
+        "y": -60,
+        "z": 20
+      },
+      "read": {
+        "mode": "Sell",
+        "good": 4294967295,
+        "deed": 4294967295,
+        "lot": 4294967295,
+        "price": 4294967295,
+        "stock": 4294967295,
+        "room": 4294967295,
+        "purse": 18446744073709551615,
+        "coins": 18446744073709551615,
+        "touches": true
+      }
+    }
+  },
+  {
+    "Board": {
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": 27,
+        "y": -60,
+        "z": 28
+      }
+    }
+  },
+  {
+    "Board": {
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": -2147483648,
+        "y": 2147483647,
+        "z": -2147483648
+      }
+    }
+  },
+  {
+    "DeedShop": {
+      "rent": 0,
+      "point": {
+        "kind": "Shop",
+        "dim": "minecraft:overworld",
+        "x": 21,
+        "y": -60,
+        "z": 33
+      }
+    }
+  },
+  {
+    "DeedShop": {
+      "rent": 4294967295,
+      "point": null
+    }
+  },
+  {
+    "DeedBrought": {
+      "town": 0,
+      "rent": 3
+    }
+  },
+  {
+    "DeedBrought": {
+      "town": 4294967295,
+      "rent": 4294967295
+    }
+  },
+  {
     "Built": {
       "town": 0,
       "work": {

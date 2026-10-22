@@ -70,6 +70,12 @@ pub struct Order {
     /// How much of the contract's judging the record has taken in: installments judged, and misses counted.
     #[serde(default)]
     pub seen: (u32, u32),
+    /// The vendor it is, when a host told the core of it (`shop_host.rs`): where it stands.
+    #[serde(default)]
+    pub at: Option<crate::points::Spot>,
+    /// Lots the vendor has room for, as the host last counted (`None`: no host counts: no limit).
+    #[serde(default)]
+    pub room: Option<f64>,
 }
 
 /// A player's selling shop: `stock` of `good` for sale in lots of `lot` at `price` spurs a lot.
@@ -81,6 +87,9 @@ pub struct Stall {
     pub lot: f64,
     pub price: f64,
     pub stock: f64,
+    /// The vendor it is, when a host told the core of it (`shop_host.rs`).
+    #[serde(default)]
+    pub at: Option<crate::points::Spot>,
 }
 
 impl Stall {
@@ -102,6 +111,15 @@ pub struct OwnShop {
     /// Goods on its shelf: out of the warehouse, not yet bought.
     pub shelf: f64,
     pub takings: f64,
+    /// The vendor it is, when a host told the core of it (`shop_host.rs`): where it stands.
+    #[serde(default)]
+    pub at: Option<crate::points::Spot>,
+    /// One of the town's shop board's (its listing is the board's, `shop_host.rs`), not its Merchant's surplus shop.
+    #[serde(default)]
+    pub board: bool,
+    /// What the host was last told it shows: the good, its lot and price, and the shelf as the host last had it.
+    #[serde(default)]
+    pub shown: Option<(Option<GoodId>, f64, f64, f64)>,
 }
 
 /// What a desk wants that no market it knows holds, and the premium it will pay (`Exchange.Signal`): work for players
@@ -220,7 +238,7 @@ impl Society {
         let id = orders.next;
         orders.next += 1;
         orders.stalls.push(Stall { id, town, good, lot: lot.max(1.0).floor(), price: price.max(0.0).floor(),
-            stock: stock.max(0.0).floor() });
+            stock: stock.max(0.0).floor(), at: None });
         id
     }
 

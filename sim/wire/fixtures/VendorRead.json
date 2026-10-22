@@ -1,0 +1,74 @@
+[
+  {
+    "mode": "Idle",
+    "good": null,
+    "deed": null,
+    "lot": 0,
+    "price": 0,
+    "stock": 0,
+    "room": 0,
+    "purse": 0,
+    "coins": 0,
+    "touches": false
+  },
+  {
+    "mode": "Buy",
+    "good": 1,
+    "deed": null,
+    "lot": 16,
+    "price": 16,
+    "stock": 0,
+    "room": 54,
+    "purse": 40,
+    "coins": 0,
+    "touches": false
+  },
+  {
+    "mode": "Sell",
+    "good": 3,
+    "deed": null,
+    "lot": 4,
+    "price": 12,
+    "stock": 8,
+    "room": 0,
+    "purse": 0,
+    "coins": 24,
+    "touches": false
+  },
+  {
+    "mode": "Sell",
+    "good": 2,
+    "deed": null,
+    "lot": 16,
+    "price": 9,
+    "stock": 64,
+    "room": 0,
+    "purse": 0,
+    "coins": 9,
+    "touches": true
+  },
+  {
+    "mode": "Buy",
+    "good": null,
+    "deed": 7,
+    "lot": 1,
+    "price": 480,
+    "stock": 1,
+    "room": 26,
+    "purse": 960,
+    "coins": 0,
+    "touches": false
+  },
+  {
+    "mode": "Sell",
+    "good": 4294967295,
+    "deed": 4294967295,
+    "lot": 4294967295,
+    "price": 4294967295,
+    "stock": 4294967295,
+    "room": 4294967295,
+    "purse": 18446744073709551615,
+    "coins": 18446744073709551615,
+    "touches": true
+  }
+]

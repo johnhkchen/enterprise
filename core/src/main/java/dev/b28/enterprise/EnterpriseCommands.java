@@ -39,7 +39,6 @@ final class EnterpriseCommands {
 
     /** The tasks that move the commands still on the Java rules (docs/binding-plan.md 3): what core mode says they wait for. */
     private static final String RULES = "B5.1 delete-java-rules";
-    private static final String SHOPS = "B4.9 shop-adapter";
     private static final String CROWN = "B4.10 crown-views";
 
     /** In core mode, a command that is still the Java rules' says so and does nothing (it would show data nothing updates). */
@@ -130,7 +129,10 @@ final class EnterpriseCommands {
                                         .then(Commands.argument("to", BlockPosArgument.blockPos())
                                                 .then(Commands.argument("item", net.minecraft.commands.arguments.ResourceLocationArgument.id())
                                                         .then(Commands.argument("count", IntegerArgumentType.integer(1))
-                                                                .executes(EnterpriseCommands::corePack)))))))
+                                                                .executes(EnterpriseCommands::corePack))))))
+                        .then(Commands.literal("shops")
+                                .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                        .executes(EnterpriseCommands::coreShops))))
                 .then(Commands.literal("mint").executes(EnterpriseCommands::mint))
                 .then(Commands.literal("census")
                         .then(Commands.argument("bell", BlockPosArgument.blockPos())
@@ -505,7 +507,7 @@ final class EnterpriseCommands {
                         .then(Commands.literal("open")
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos()).executes(context -> {
                                     if (dev.b28.enterprise.binding.Society.isCore()) {
-                                        return refuse(context, "bank open", SHOPS);
+                                        return refuse(context, "bank open", RULES);
                                     }
                                     var source = context.getSource();
                                     GlobalPos desk = GlobalPos.of(source.getLevel().dimension(),
@@ -517,7 +519,7 @@ final class EnterpriseCommands {
                                 }))))
                 .then(Commands.literal("tenders").executes(context -> {
                     if (dev.b28.enterprise.binding.Society.isCore()) {
-                        return refuse(context, "tenders", SHOPS);
+                        return refuse(context, "tenders", RULES);
                     }
                     var source = context.getSource();
                     var all = dev.b28.enterprise.market.Tenders.get(source.getServer()).all();
@@ -824,6 +826,26 @@ final class EnterpriseCommands {
         };
         source.sendSuccess(() -> Component.literal(String.join("\n", lines)), false);
         return lines.size();
+    }
+
+    /** A desk's town's shops in the core ({@code /enterprise core shops <desk>}, and {@code /enterprise market} in core mode). */
+    private static int coreShops(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        ServerLevel level = source.getLevel();
+        BlockPos desk = BlockPosArgument.getBlockPos(context, "desk");
+        var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+        if (host == null || host.pausedWhy() != null) {
+            source.sendFailure(Component.literal(host == null ? "The core isn't running" : host.pausedWhy()));
+            return 0;
+        }
+        Long town = host.stock().townAt(GlobalPos.of(level.dimension(), desk));
+        if (town == null) {
+            source.sendFailure(Component.literal("The core keeps no town at " + desk.toShortString()));
+            return 0;
+        }
+        List<String> lines = host.shops().lines(town);
+        source.sendSuccess(() -> Component.literal(String.join("\n", lines)), false);
+        return lines.size() - 1;
     }
 
     /** A desk's town's routes in the core ({@code /enterprise core routes <desk>}): its wagons, the markets it knows, its squad. */
@@ -1538,7 +1560,7 @@ final class EnterpriseCommands {
     /** Each bank: bills it bought, loans it made and what's been repaid, and the loans still owed. */
     private static int bank(CommandContext<CommandSourceStack> context) {
         if (dev.b28.enterprise.binding.Society.isCore()) {
-            return refuse(context, "bank", SHOPS);
+            return refuse(context, "bank", RULES);
         }
         CommandSourceStack source = context.getSource();
         var bank = dev.b28.enterprise.market.Bank.get(source.getServer());
@@ -1651,11 +1673,11 @@ final class EnterpriseCommands {
     }
 
     /** A master Merchant's dealings with the players' shops round its desk. */
-    private static int market(CommandContext<CommandSourceStack> context) {
-        if (dev.b28.enterprise.binding.Society.isCore()) {
-            return refuse(context, "market", SHOPS);
-        }
+    private static int market(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         CommandSourceStack source = context.getSource();
+        if (dev.b28.enterprise.binding.Society.isCore()) {
+            return coreShops(context); // the core's Merchant brokers at its looks; this is what it has done
+        }
         GlobalPos desk = GlobalPos.of(source.getLevel().dimension(), BlockPosArgument.getBlockPos(context, "desk"));
         var exchange = dev.b28.enterprise.market.Exchange.get(source.getServer());
         if (source.getLevel().isLoaded(desk.pos())) {

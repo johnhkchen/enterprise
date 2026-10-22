@@ -1341,6 +1341,284 @@ public final class CoreBindingTests {
         helper.succeed();
     }
 
+    // ---- shops (B4.9) -----------------------------------------------------------------------------------------------
+
+    private static final net.minecraft.world.level.block.Block VENDOR = net.minecraft.core.registries.BuiltInRegistries.BLOCK
+            .get(net.minecraft.resources.ResourceLocation.parse("numismatics:vendor"));
+
+    /** A vendor at {@code at}, buying or selling lots of {@code lot} for {@code spurs}. */
+    private static dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity vendor(GameTestHelper helper, BlockPos at,
+            dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity.Mode mode, ItemStack lot, int spurs) {
+        helper.setBlock(at, VENDOR);
+        var vendor = (dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity) helper.getLevel()
+                .getBlockEntity(helper.absolutePos(at));
+        vendor.setMode(mode);
+        vendor.filterContainer.setItem(0, lot);
+        dev.b28.enterprise.market.Shops.setPrice(vendor, spurs);
+        return vendor;
+    }
+
+    /** A bank card in the vendor's card slot, its account holding {@code spurs}. */
+    private static dev.ithundxr.createnumismatics.content.backend.BankAccount card(
+            dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity vendor, int spurs) {
+        var account = dev.ithundxr.createnumismatics.Numismatics.BANK.getOrCreateAccount(java.util.UUID.randomUUID(),
+                dev.ithundxr.createnumismatics.content.backend.BankAccount.Type.PLAYER);
+        account.deposit(spurs);
+        ItemStack card = new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM
+                .get(net.minecraft.resources.ResourceLocation.parse("numismatics:white_card")));
+        dev.ithundxr.createnumismatics.content.bank.CardItem.set(card, account.id);
+        vendor.cardContainer.setItem(0, card);
+        return account;
+    }
+
+    private static int inVendor(dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity vendor, net.minecraft.world.item.Item item) {
+        return vendor.items.stream().filter(i -> i.is(item)).mapToInt(ItemStack::getCount).sum();
+    }
+
+    /** The shops the core has for a town, by the vendor's place. */
+    private static Answer.Shops shopsOf(CoreHost host, long town) {
+        return (Answer.Shops) host.ask(List.of(new Query.Shops(town))).get(0);
+    }
+
+    /**
+     * A player's buying vendor is a standing order the core's master Merchant fills (B4.9; MarketTests.aMasterMerchantFillsAPlayersOrder's
+     * twin): a vendor buying 16 paper for 16 spurs with 40 spurs on its card, by a desk whose chest holds 64 paper. The look
+     * that counts it drafts the contract and fills the first lot (the vendor holds 16 paper, its card 24, the desk's chest 48),
+     * the next day's look the second (32 paper, 8 spurs, 32 in the chest). A vendor with no room for a lot is handed none; one
+     * whose block is broken is gone from the core's shops.
+     */
+    @GameTest(template = "floor")
+    public static void aBuyingVendorIsAStandingOrderTheCoreFillsAndTheVendorIsHandedTheGoods(GameTestHelper helper) {
+        var level = helper.getLevel();
+        helper.setBlock(DESK, Merchant.DESK.get());
+        helper.setBlock(DESK.east(), Blocks.CHEST);
+        ChestBlockEntity chest = chestAt(helper, DESK.east());
+        chest.setItem(0, new ItemStack(Items.PAPER, 64));
+        Villager merchant = villager(helper, Merchant.PROFESSION.get(), 5, new BlockPos(3, 2, 5));
+        var order = vendor(helper, new BlockPos(6, 2, 6), dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity.Mode.BUY,
+                new ItemStack(Items.PAPER, 16), 16);
+        var account = card(order, 40);
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, helper.absolutePos(DESK), "Testford");
+            host.hands().join(town, merchant);
+            long t = level.getGameTime();
+            host.look(level.getServer(), t + 1_200);
+            host.settle();
+            helper.assertTrue(host.points().of(PointsAdapter.Kind.SHOP).containsKey(GlobalPos.of(level.dimension(), helper.absolutePos(new BlockPos(6, 2, 6)))),
+                    "the vendor isn't a shop point of the core's");
+            helper.assertTrue(inVendor(order, Items.PAPER) == 16 && account.getBalance() == 24 && inChest(chest, Items.PAPER) == 48,
+                    "the first lot: " + inVendor(order, Items.PAPER) + " in the vendor, " + account.getBalance() + " on its card, "
+                            + inChest(chest, Items.PAPER) + " in the chest");
+            var line = shopsOf(host, town).shops().get(0);
+            helper.assertTrue(line.role() == dev.b28.enterprise.wire.ShopRole.Order && line.delivered() == 16 && line.paid() == 16,
+                    "the core's order: " + line);
+            host.look(level.getServer(), t + 1_200 + DAY);
+            host.settle();
+            helper.assertTrue(inVendor(order, Items.PAPER) == 32 && account.getBalance() == 8 && inChest(chest, Items.PAPER) == 32,
+                    "the second lot tomorrow: " + inVendor(order, Items.PAPER) + " in the vendor, " + account.getBalance()
+                            + " on its card, " + inChest(chest, Items.PAPER) + " in the chest");
+            helper.setBlock(new BlockPos(6, 2, 6), Blocks.AIR);
+            host.look(level.getServer(), t + 1_200 + DAY + 1_200);
+            helper.assertTrue(shopsOf(host, town).shops().isEmpty() && host.points().of(PointsAdapter.Kind.SHOP).isEmpty(),
+                    "its block broken, the core still has a shop: " + shopsOf(host, town).shops());
+            if (System.getenv("ENTERPRISE_CORE_MEASURE") != null) {
+                helper.setBlock(new BlockPos(6, 2, 6), VENDOR);
+                host.look(level.getServer(), t + 1_200 + DAY + 2_400);
+                host.settle();
+                measureAShop(host, level.getServer(), town);
+            }
+        } finally {
+            delete(dir);
+            merchant.discard();
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A player's selling vendor is supply (B4.9; MarketTests.itBuysFromAPlayersStallForItsOrders' twin): a stall of 8 iron in
+     * lots of 4 for 12 spurs, beside an order for iron the desk's treasury can pay for. The look takes the stall's two lots
+     * out of the vendor and pays 24 spurs into its box; the iron is the town's, in the desk's chest.
+     */
+    @GameTest(template = "floor")
+    public static void aSellingVendorIsBoughtFromForTheOrdersAndPaidIntoItsBox(GameTestHelper helper) {
+        var level = helper.getLevel();
+        helper.setBlock(DESK, Merchant.DESK.get());
+        helper.setBlock(DESK.east(), Blocks.CHEST);
+        ChestBlockEntity chest = chestAt(helper, DESK.east());
+        chest.setItem(0, new ItemStack(Items.EMERALD, 10));
+        Villager merchant = villager(helper, Merchant.PROFESSION.get(), 5, new BlockPos(3, 2, 5));
+        var order = vendor(helper, new BlockPos(6, 2, 6), dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity.Mode.BUY,
+                new ItemStack(Items.IRON_INGOT, 4), 24);
+        card(order, 48);
+        var stall = vendor(helper, new BlockPos(6, 2, 1), dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity.Mode.SELL,
+                new ItemStack(Items.IRON_INGOT, 4), 12);
+        dev.b28.enterprise.market.Shops.stock(stall, new ItemStack(Items.IRON_INGOT, 8));
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, helper.absolutePos(DESK), "Testford");
+            host.hands().join(town, merchant);
+            long t = level.getGameTime();
+            host.look(level.getServer(), t + 1_200);
+            host.settle();
+            helper.assertTrue(dev.b28.enterprise.market.Shops.lots(stall) == 0 && inVendor(stall, Items.IRON_INGOT) == 0,
+                    "it buys the stall's two lots for the order: " + inVendor(stall, Items.IRON_INGOT) + " left");
+            int spurs = dev.b28.enterprise.market.Shops.box(stall);
+            helper.assertTrue(spurs == 24, "and pays 24 spurs into its box: " + spurs);
+            host.look(level.getServer(), t + 1_200 + DAY);
+            host.settle();
+            helper.assertTrue(inVendor(order, Items.IRON_INGOT) >= 4, "and fills the order, a lot a day: " + inVendor(order, Items.IRON_INGOT));
+            var tally = shopsOf(host, town).tally();
+            helper.assertTrue(tally.spursFromSales() - tally.spursOnPurchases() >= 24 - 1e-9 && tally.lotsBought() == 2,
+                    "at a profit: " + tally);
+        } finally {
+            delete(dir);
+            merchant.discard();
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The town's own shop (B4.9; MarketTests.itsOwnShopSellsTheSurplus' twin): a vendor touching the desk is shown the
+     * town's sticks (the surplus beside a master Merchant), a stack of them from the desk's chest. A player bought a lot
+     * (16 sticks gone, nine spurs in its box): the next look takes the coin out of the box and the town banks it.
+     */
+    @GameTest(template = "floor")
+    public static void theTownsOwnShopIsShownItsSurplusAndItsTakingsAreBanked(GameTestHelper helper) {
+        var level = helper.getLevel();
+        helper.setBlock(DESK, Merchant.DESK.get());
+        helper.setBlock(DESK.east(), Blocks.CHEST);
+        ChestBlockEntity chest = chestAt(helper, DESK.east());
+        chest.setItem(0, new ItemStack(Items.STICK, 64));
+        Villager merchant = villager(helper, Merchant.PROFESSION.get(), 5, new BlockPos(3, 2, 5));
+        helper.setBlock(DESK.north(), VENDOR);
+        var own = (dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity) level.getBlockEntity(helper.absolutePos(DESK.north()));
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, helper.absolutePos(DESK), "Testford");
+            host.hands().join(town, merchant);
+            long t = level.getGameTime();
+            host.look(level.getServer(), t + 1_200);
+            host.settle();
+            helper.assertTrue(own.getMode() == dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity.Mode.SELL
+                            && own.getFilterItem().is(Items.STICK) && inVendor(own, Items.STICK) == 64 && inChest(chest, Items.STICK) == 0,
+                    "the town's shop sells its sticks: " + own.getFilterItem() + ", " + inVendor(own, Items.STICK) + " on the shelf, "
+                            + inChest(chest, Items.STICK) + " in the chest");
+            helper.assertTrue(own.getTotalPrice() == 9 && own.getFilterItem().getCount() == 16, "in lots of 16 at nine spurs");
+            own.addCoin(dev.ithundxr.createnumismatics.content.backend.Coin.SPUR, 9); // a player bought a lot
+            for (int i = 0; i < own.items.size() && i < 1; i++) {
+                own.items.get(i).shrink(16);
+            }
+            host.look(level.getServer(), t + 2_400);
+            host.settle();
+            int afterTwo = dev.b28.enterprise.market.Shops.box(own);
+            host.look(level.getServer(), t + 3_600);
+            host.settle();
+            var tally = shopsOf(host, town).tally();
+            helper.assertTrue(afterTwo == 0 && dev.b28.enterprise.market.Shops.box(own) == 0 && tally.spursFromOwnShops() == 9,
+                    "the box was to be emptied into the town's and banked once: " + afterTwo + " spurs left after the look, "
+                            + dev.b28.enterprise.market.Shops.box(own) + " after the next, banked " + tally.spursFromOwnShops() + ", the vendor "
+                            + own.getMode() + " " + own.getFilterItem() + " at " + own.getTotalPrice());
+        } finally {
+            delete(dir);
+            merchant.discard();
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The board's vendor (B4.9; MoodTests.theShopListsWhatTheTownIsAfterAtWhatItWouldPay's twin, in part): a town the core
+     * asks a vendor for (`BuildShop`) has one put up touching its desk at the next look, on open floor, registered as the
+     * board's, and the vendor stands.
+     */
+    @GameTest(template = "floor")
+    public static void aVendorTheCoreAsksForIsPutUpByTheDeskAsTheBoards(GameTestHelper helper) {
+        var level = helper.getLevel();
+        helper.setBlock(DESK, Merchant.DESK.get());
+        helper.setBlock(DESK.east(), Blocks.CHEST);
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, helper.absolutePos(DESK), "Testford");
+            host.shops().show(new Output.BuildShop(town));
+            long t = level.getGameTime();
+            host.look(level.getServer(), t + 1_200);
+            host.settle();
+            var shops = shopsOf(host, town).shops();
+            helper.assertTrue(shops.size() == 1 && shops.get(0).role() == dev.b28.enterprise.wire.ShopRole.Board,
+                    "the core has no board vendor: " + shops);
+            var p = shops.get(0).point();
+            BlockPos at = new BlockPos(p.x(), p.y(), p.z());
+            helper.assertTrue(level.getBlockEntity(at) instanceof dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity v
+                    && dev.b28.enterprise.market.Shops.own(v, helper.absolutePos(DESK)), "no vendor touches the desk");
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A rent's deed shop (B4.9; MarketTests.aPlayerBuysARentsDeedCollectsItsCropAndSellsItBack's twin, the vendor's half: the
+     * core's rents are made by its rules, so the outputs are the ones its tests show). Told to sell, the vendor offers the
+     * deed document at the ask with one on its shelf; told to buy it back, it takes the dealer's red card, funded, at the bid; a
+     * player given the crop gets it in the inventory.
+     */
+    @GameTest(template = "floor")
+    public static void aDeedShopSellsTheDeedAtTheAskBuysItBackAtTheBidAndTheCropIsHandedOver(GameTestHelper helper) {
+        var level = helper.getLevel();
+        helper.setBlock(DESK, Merchant.DESK.get());
+        helper.setBlock(new BlockPos(6, 2, 6), VENDOR);
+        var shop = (dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity) level.getBlockEntity(helper.absolutePos(new BlockPos(6, 2, 6)));
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            var point = PointsAdapter.point(PointsAdapter.Kind.SHOP, GlobalPos.of(level.dimension(), helper.absolutePos(new BlockPos(6, 2, 6))));
+            var line = new dev.b28.enterprise.wire.DeedLine(3, 1, "Farley", good(host, "minecraft:wheat"), 64.0, 1_290, 1_056, false, 0.0,
+                    java.util.Optional.of(point));
+            host.shops().showDeed(shop, new Output.Deed(point, 3, true, 1_290, 0), line);
+            ItemStack deed = dev.b28.enterprise.market.RentDeeds.deed(3, "64 wheat a season from Farley");
+            helper.assertTrue(shop.getMode() == dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity.Mode.SELL
+                            && shop.getTotalPrice() == 1_290 && dev.b28.enterprise.market.Shops.lots(shop) == 1 && shop.matchesFilterItem(deed),
+                    "the deed on sale at the ask: " + shop.getTotalPrice() + ", " + dev.b28.enterprise.market.Shops.lots(shop) + " lots");
+            ItemStack bought = dev.b28.enterprise.market.Shops.buyFrom(shop); // a player buys it
+            helper.assertTrue(dev.b28.enterprise.market.RentDeeds.rentOf(bought).orElse(-1) == 3, "the deed names the rent");
+            host.shops().showDeed(shop, new Output.Deed(point, 3, false, 1_056, 1_100), line);
+            helper.assertTrue(shop.getMode() == dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity.Mode.BUY
+                            && shop.getTotalPrice() == 1_056 && dev.b28.enterprise.market.Shops.purse(shop).map(a -> a.getBalance()).orElse(0) >= 1_056,
+                    "bought back at the bid from a funded card: " + shop.getTotalPrice());
+            int paid = dev.b28.enterprise.market.Shops.sellTo(shop, bought); // the player sells it back
+            helper.assertTrue(paid == 1_056, "the vendor paid for it from its card: " + paid);
+            var player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+            int n = host.shops().handOver(player, new Output.DeedPaid(0, 3, good(host, "minecraft:wheat"), 40, 24));
+            helper.assertTrue(n == 40 && player.getInventory().countItem(Items.WHEAT) == 40, "the crop is handed over: " + n);
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /** What the shops cost the server's tick, logged: the vendors near a desk registered, counted, and a town's shops asked. */
+    private static void measureAShop(CoreHost host, net.minecraft.server.MinecraftServer server, long town) {
+        int n = 50;
+        long a = System.nanoTime();
+        for (int i = 0; i < n; i++) {
+            host.shops().place(server);
+        }
+        long placed = System.nanoTime() - a;
+        a = System.nanoTime();
+        int read = 0;
+        for (int i = 0; i < n; i++) {
+            read = host.shops().happenings(server).size();
+        }
+        long counted = System.nanoTime() - a;
+        a = System.nanoTime();
+        for (int i = 0; i < n; i++) {
+            host.shops().lines(town);
+        }
+        long asked = System.nanoTime() - a;
+        Enterprise.LOGGER.info("shops: a look's vendors registered (the desks' reach scanned, the deeds asked) {} ms; {} vendor(s)"
+                + " counted {} ms; a town's shops asked {} ms", "%.3f".formatted(placed / 1e6 / n), read, "%.3f".formatted(counted / 1e6 / n),
+                "%.3f".formatted(asked / 1e6 / n));
+    }
+
     /** The core's number for the good called {@code name}. */
     private static long good(CoreHost host, String name) {
         List<String> goods = ((Answer.Goods) host.ask(List.of(new Query.Goods())).get(0)).goods();

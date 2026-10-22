@@ -11,8 +11,9 @@ pub enum Output {
     WagonLeft { route: RouteNo, stacks: u32, worth: f64 },
     WagonSold { route: RouteNo, sold: f64, takings: Fixed },
     WagonHome { route: RouteNo, takings: Fixed },
-    /// A master Merchant filled a player's order: `lots` lots, `count` goods, for `spurs`.
-    OrderFilled { town: TownNo, order: u32, good: GoodNo, lots: u32, count: f64, spurs: f64 },
+    /// A master Merchant filled a player's order: `lots` lots, `count` goods, for `spurs`. The host puts the goods in the
+    /// vendor (`point`, if the order came through one) and takes the spurs off its bank card.
+    OrderFilled { town: TownNo, order: u32, good: GoodNo, lots: u32, count: f64, spurs: f64, point: Option<Point> },
     /// A desk newly posted a want no market it knows holds, at `spurs_each` an item.
     Signal { town: TownNo, good: GoodNo, count: f64, spurs_each: f64 },
     /// A pallet was packed at `at`, of these packages in order: the host shows its crates there.
@@ -59,4 +60,19 @@ pub enum Output {
     /// if the host never named it) back in the world by its town's desk, with the trade, level and XP the core has for it
     /// now (it may have earned some on the road). A host with no villager kept for it spawns one and names it (`TagHand`).
     HandBack { town: TownNo, hand: HandNo, tag: String, trade: String, level: u8, xp: u32 },
+    /// A master Merchant bought from a player's selling shop (`point`): `lots` lots, `count` goods out of the vendor, and
+    /// `spurs` paid into it as coin.
+    StallBought { point: Point, good: GoodNo, lots: u32, count: f64, spurs: f64 },
+    /// What a shop the town keeps (its own, or its board's) shows now: `good` (none: nothing) in lots of `lot` at `price`
+    /// spurs a lot, with `add` more items on its shelf (below nothing: taken off it). `clear`: whatever else is in it is
+    /// taken out (the old listing's shelf, which the town has back). Only what changed since it was shown.
+    Shelf { point: Point, good: Option<GoodNo>, lot: u32, price: u32, add: i64, clear: bool },
+    /// What a rent's deed shop shows now: `selling` (the deed on its shelf at `price` spurs, its card taken out) or buying
+    /// it back (at `price`, from the dealer's card, which is paid `fund` spurs more first).
+    Deed { point: Point, rent: u32, selling: bool, price: u32, fund: u64 },
+    /// A rent's deed was brought to its holder's desk: `count` of `good` for the player, `owed` more to come when it's in.
+    DeedPaid { town: TownNo, rent: u32, good: GoodNo, count: u32, owed: u32 },
+    /// A town's shop board wants another vendor by its desk (it lists more than it has shops for and can pay for one): the
+    /// host puts one up and says so (`Input::Board`).
+    BuildShop { town: TownNo },
 }

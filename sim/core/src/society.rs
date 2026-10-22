@@ -291,6 +291,8 @@ impl Society {
             self.open_freight_runs(); // runs the hubs and route owners opened at its reviews (`freight.rs`)
             self.open_call_runs(); // runs on call the hubs booked by post (`post.rs`)
         }
+        // A host's vendors are dealt with only in the time after they were counted (`shop_host.rs`).
+        self.world.resource_mut::<crate::shop_host::Vendors>().counted.clear();
         std::mem::take(&mut self.world.resource_mut::<Outbox>().0)
     }
 
@@ -526,6 +528,9 @@ impl Society {
             Input::Pack { .. } | Input::Stowed { .. } => {
                 self.apply_pallet_host(input);
                 Vec::new()
+            }
+            Input::Vendor { .. } | Input::Board { .. } | Input::DeedShop { .. } | Input::DeedBrought { .. } => {
+                self.apply_vendors(input)
             }
             Input::Route { from, to, send } => {
                 self.host_route(from as TownId, to as TownId, send);

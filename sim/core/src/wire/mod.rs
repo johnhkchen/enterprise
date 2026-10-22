@@ -31,6 +31,7 @@ mod books;
 mod commands;
 mod query;
 mod save_file;
+mod shop;
 mod wagon;
 
 pub use crate::content::GoodId;
@@ -45,6 +46,7 @@ pub use pallet::{ManifestLine, PackageLine, PalletView, Place};
 pub use point::{Point, PointKind};
 pub use query::{Answer, DialView, HandView, LockerView, OfferView, Query, TownPoint};
 pub use save_file::SaveFile;
+pub use shop::{DeedLine, ListingLine, ShopLine, ShopRole, SignalLine, TallyLine, VendorMode, VendorRead};
 pub use wagon::{MarketLine, RouteLine, WagonLine};
 
 /// A town, by its place in the order towns were added: stable across saves and hosts, unlike an ECS entity.

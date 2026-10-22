@@ -220,10 +220,22 @@ public final class Shops {
         return out;
     }
 
+    /** The coins a vendor holds from its sales, in spurs (what {@link #collect} would take). */
+    public static int box(VendorBlockEntity vendor) {
+        var coins = ((VendorAccess) vendor).enterprise$coins();
+        // (Not coins.getValue(): Numismatics' clear() empties the bag but leaves that cached sum, so a box emptied once
+        // would read as full again at every collection until a coin next went in.)
+        int spurs = 0;
+        for (Coin coin : Coin.values()) {
+            spurs += coins.getDiscrete(coin) * coin.value;
+        }
+        return spurs;
+    }
+
     /** The coins a vendor took from its sales, emptied out, in spurs. */
     public static int collect(VendorBlockEntity vendor) {
         var coins = ((VendorAccess) vendor).enterprise$coins();
-        int spurs = coins.getValue();
+        int spurs = box(vendor);
         coins.clear();
         vendor.setChanged();
         return spurs;

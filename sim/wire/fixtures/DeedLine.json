@@ -1,0 +1,50 @@
+[
+  {
+    "rent": 0,
+    "farm": 2,
+    "farm_name": "Ashford",
+    "crop": 4,
+    "quantity": 64.0,
+    "ask": 1290,
+    "bid": 1056,
+    "bearer": false,
+    "accrued": 0.0,
+    "point": {
+      "kind": "Shop",
+      "dim": "minecraft:overworld",
+      "x": 21,
+      "y": -60,
+      "z": 33
+    }
+  },
+  {
+    "rent": 3,
+    "farm": 1,
+    "farm_name": "",
+    "crop": 0,
+    "quantity": 32.0,
+    "ask": 512,
+    "bid": 400,
+    "bearer": true,
+    "accrued": 12.5,
+    "point": null
+  },
+  {
+    "rent": 4294967295,
+    "farm": 4294967295,
+    "farm_name": "🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾",
+    "crop": 4294967295,
+    "quantity": 1.7976931348623157e+308,
+    "ask": 4294967295,
+    "bid": 0,
+    "bearer": true,
+    "accrued": 1.7976931348623157e+308,
+    "point": {
+      "kind": "Shop",
+      "dim": "minecraft:overworld",
+      "x": -2147483648,
+      "y": 2147483647,
+      "z": -2147483648
+    }
+  }
+]

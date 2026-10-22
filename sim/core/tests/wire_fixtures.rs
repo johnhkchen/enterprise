@@ -295,9 +295,53 @@ fn inputs() -> Vec<Input> {
         Input::Stowed { point: point(PointKind::Desk, 27, -60, 27), pallet: 12 },
         Input::Stowed { point: point(PointKind::Desk, i32::MIN, i32::MIN, i32::MIN), pallet: u64::MAX },
     ]);
+    all.extend(vendor_reads().into_iter().enumerate().map(|(i, read)| Input::Vendor {
+        point: point(PointKind::Shop, 30 + i as i32, -60, 20), read }));
+    all.extend([
+        Input::Board { point: point(PointKind::Shop, 27, -60, 28) },
+        Input::Board { point: point(PointKind::Shop, i32::MIN, i32::MAX, i32::MIN) },
+        Input::DeedShop { rent: 0, point: Some(point(PointKind::Shop, 21, -60, 33)) },
+        Input::DeedShop { rent: u32::MAX, point: None },
+        Input::DeedBrought { town: 0, rent: 3 },
+        Input::DeedBrought { town: BIGGEST_ID, rent: u32::MAX },
+    ]);
     all.extend(works().into_iter().enumerate().map(|(i, work)| Input::Built { town: i as TownNo, work, share: 0.25 * i as f64 }));
     all.push(Input::Built { town: BIGGEST_ID, work: Work::Wall, share: 1.0 });
     all
+}
+
+fn vendor_reads() -> Vec<VendorRead> {
+    vec![
+        VendorRead { mode: VendorMode::Idle, good: None, deed: None, lot: 0, price: 0, stock: 0, room: 0, purse: 0, coins: 0,
+            touches: false },
+        VendorRead { mode: VendorMode::Buy, good: Some(1), deed: None, lot: 16, price: 16, stock: 0, room: 54, purse: 40, coins: 0,
+            touches: false },
+        VendorRead { mode: VendorMode::Sell, good: Some(3), deed: None, lot: 4, price: 12, stock: 8, room: 0, purse: 0, coins: 24,
+            touches: false },
+        VendorRead { mode: VendorMode::Sell, good: Some(2), deed: None, lot: 16, price: 9, stock: 64, room: 0, purse: 0, coins: 9,
+            touches: true },
+        VendorRead { mode: VendorMode::Buy, good: None, deed: Some(7), lot: 1, price: 480, stock: 1, room: 26, purse: 960, coins: 0,
+            touches: false },
+        VendorRead { mode: VendorMode::Sell, good: Some(BIGGEST_ID), deed: Some(u32::MAX), lot: u32::MAX, price: u32::MAX,
+            stock: u32::MAX, room: u32::MAX, purse: u64::MAX, coins: u64::MAX, touches: true },
+    ]
+}
+
+fn shop_lines() -> Vec<ShopLine> {
+    let line = |role, good, rent| ShopLine { point: point(PointKind::Shop, 33, -60, 20), role, good, lot: 16.0, price: 9.0, purse: 8.0,
+        open: 20.0, delivered: 32.0, paid: 32.0, stock: 48.0, rent };
+    vec![line(ShopRole::Order, Some(0), None), line(ShopRole::Stall, Some(1), None), line(ShopRole::Own, Some(2), None),
+        line(ShopRole::Board, None, None), line(ShopRole::Deed, None, Some(4)), line(ShopRole::Idle, Some(BIGGEST_ID), Some(u32::MAX))]
+}
+
+fn deed_lines() -> Vec<DeedLine> {
+    vec![
+        DeedLine { rent: 0, farm: 2, farm_name: "Ashford".into(), crop: 4, quantity: 64.0, ask: 1_290, bid: 1_056, bearer: false, accrued: 0.0,
+            point: Some(point(PointKind::Shop, 21, -60, 33)) },
+        DeedLine { rent: 3, farm: 1, farm_name: String::new(), crop: 0, quantity: 32.0, ask: 512, bid: 400, bearer: true, accrued: 12.5, point: None },
+        DeedLine { rent: u32::MAX, farm: BIGGEST_ID, farm_name: "\u{1f33e}".repeat(40), crop: BIGGEST_ID, quantity: f64::MAX, ask: u32::MAX, bid: 0, bearer: true,
+            accrued: f64::MAX, point: Some(point(PointKind::Shop, i32::MIN, i32::MAX, i32::MIN)) },
+    ]
 }
 
 fn hex(q: i32, r: i32) -> HexAt {
@@ -339,8 +383,10 @@ fn outputs() -> Vec<Output> {
         Output::WagonSold { route: 2, sold: 96.0, takings: Fixed::emeralds(12) },
         Output::WagonSold { route: 2, sold: 0.0, takings: Fixed::from_millis(-1) },
         Output::WagonHome { route: 1, takings: Fixed::MAX },
-        Output::OrderFilled { town: 0, order: 3, good: 1, lots: 2, count: 32.0, spurs: 80.0 },
-        Output::OrderFilled { town: BIGGEST_ID, order: BIGGEST_ID, good: BIGGEST_ID, lots: u32::MAX, count: f64::MAX, spurs: 0.0 },
+        Output::OrderFilled { town: 0, order: 3, good: 1, lots: 2, count: 32.0, spurs: 80.0, point: None },
+        Output::OrderFilled { town: BIGGEST_ID, order: BIGGEST_ID, good: BIGGEST_ID, lots: u32::MAX, count: f64::MAX, spurs: 0.0,
+            point: Some(point(PointKind::Shop, i32::MIN, i32::MAX, i32::MIN)) },
+        Output::OrderFilled { town: 1, order: 0, good: 0, lots: 1, count: 16.0, spurs: 16.0, point: Some(point(PointKind::Shop, 33, -60, 20)) },
         Output::Signal { town: 1, good: 4, count: 12.0, spurs_each: 0.25 },
         Output::PalletPacked { id: 0, at: Place::Town { town: 0 }, packages: vec![] },
         Output::PalletPacked { id: 7, at: Place::Custody { town: 2 }, packages: vec![
@@ -378,6 +424,22 @@ fn outputs() -> Vec<Output> {
             level: 1, xp: 1 },
         Output::HandBack { town: BIGGEST_ID, hand: u32::MAX, tag: String::new(), trade: "x".repeat(300), level: u8::MAX,
             xp: u32::MAX },
+        Output::StallBought { point: point(PointKind::Shop, 33, -60, 14), good: 1, lots: 2, count: 8.0, spurs: 24.0 },
+        Output::StallBought { point: point(PointKind::Shop, i32::MIN, i32::MAX, i32::MIN), good: BIGGEST_ID, lots: u32::MAX,
+            count: f64::MAX, spurs: f64::MAX },
+        Output::Shelf { point: point(PointKind::Shop, 27, -60, 28), good: Some(2), lot: 16, price: 9, add: 64, clear: false },
+        Output::Shelf { point: point(PointKind::Shop, 28, -60, 28), good: Some(0), lot: 8, price: 5, add: -3, clear: true },
+        Output::Shelf { point: point(PointKind::Shop, 29, -60, 28), good: None, lot: 0, price: 0, add: 0, clear: true },
+        Output::Shelf { point: point(PointKind::Shop, i32::MAX, 0, i32::MAX), good: Some(BIGGEST_ID), lot: u32::MAX, price: u32::MAX,
+            add: i64::MIN, clear: false },
+        Output::Deed { point: point(PointKind::Shop, 21, -60, 33), rent: 0, selling: true, price: 1_290, fund: 0 },
+        Output::Deed { point: point(PointKind::Shop, 21, -60, 33), rent: 0, selling: false, price: 1_056, fund: 1_100 },
+        Output::Deed { point: point(PointKind::Shop, i32::MIN, i32::MAX, i32::MIN), rent: u32::MAX, selling: false, price: u32::MAX,
+            fund: u64::MAX },
+        Output::DeedPaid { town: 0, rent: 3, good: 4, count: 12, owed: 0 },
+        Output::DeedPaid { town: BIGGEST_ID, rent: u32::MAX, good: BIGGEST_ID, count: u32::MAX, owed: u32::MAX },
+        Output::BuildShop { town: 0 },
+        Output::BuildShop { town: BIGGEST_ID },
     ]
 }
 
@@ -407,7 +469,8 @@ fn queries() -> Vec<Query> {
         Query::CashBook { town: BIGGEST_ID, days: u32::MAX }, Query::Books { town: 0 }, Query::Books { town: BIGGEST_ID },
         Query::Whys { town: 0 }, Query::Whys { town: BIGGEST_ID }, Query::Trust, Query::Contracts { town: None },
         Query::Contracts { town: Some(2) }, Query::Contracts { town: Some(BIGGEST_ID) }, Query::Territory { town: 0 },
-        Query::Territory { town: BIGGEST_ID }, Query::War, Query::RouteBooks]
+        Query::Territory { town: BIGGEST_ID }, Query::War, Query::RouteBooks,
+        Query::Shops { town: 0 }, Query::Shops { town: BIGGEST_ID }, Query::Deeds { town: 0 }, Query::Deeds { town: BIGGEST_ID }]
 }
 
 fn offer_views() -> Vec<OfferView> {
@@ -549,6 +612,16 @@ fn answers() -> Vec<Answer> {
             towns: war_towns(), issued: vec![], eaten: f64::MAX, heartiness: 1.0 },
         Answer::RouteBooks { rate: 16.0, routes: vec![] },
         Answer::RouteBooks { rate: 15.5, routes: route_books() },
+        Answer::Shops { town: 0, shops: vec![], wanted: vec![], signals: vec![], listings: vec![],
+            tally: TallyLine { lots_sold: 0.0, spurs_from_sales: 0.0, lots_bought: 0.0, spurs_on_purchases: 0.0, spurs_from_own_shops: 0.0 } },
+        Answer::Shops { town: 1, shops: shop_lines(), wanted: vec![count(0, 20.0), count(3, 2.5)], signals: vec![
+            SignalLine { good: 3, count: 20.0, spurs_each: 3.0, why: "a player's order".into() },
+            SignalLine { good: BIGGEST_ID, count: f64::MAX, spurs_each: 0.0, why: "x".repeat(300) }],
+            listings: vec![ListingLine { good: 2, lot: 16, spurs: 9 }, ListingLine { good: BIGGEST_ID, lot: u32::MAX, spurs: u32::MAX }],
+            tally: TallyLine { lots_sold: 2.0, spurs_from_sales: 48.0, lots_bought: 2.0, spurs_on_purchases: 24.0,
+                spurs_from_own_shops: 9.0 } },
+        Answer::Deeds { town: 0, hub: false, deeds: vec![] },
+        Answer::Deeds { town: BIGGEST_ID, hub: true, deeds: deed_lines() },
     ]
 }
 
@@ -831,6 +904,18 @@ fixtures! {
     pack_package_fixtures: PackPackage = pack_packages();
     pallet_view_fixtures: PalletView = pallet_views();
     manifest_line_fixtures: ManifestLine = manifest_lines();
+    vendor_read_fixtures: VendorRead = vendor_reads();
+    vendor_mode_fixtures: VendorMode = vec![VendorMode::Idle, VendorMode::Buy, VendorMode::Sell];
+    shop_role_fixtures: ShopRole = vec![ShopRole::Order, ShopRole::Stall, ShopRole::Own, ShopRole::Board, ShopRole::Deed, ShopRole::Idle];
+    shop_line_fixtures: ShopLine = shop_lines();
+    deed_line_fixtures: DeedLine = deed_lines();
+    listing_line_fixtures: ListingLine = vec![ListingLine { good: 2, lot: 16, spurs: 9 },
+        ListingLine { good: BIGGEST_ID, lot: u32::MAX, spurs: u32::MAX }];
+    signal_line_fixtures: SignalLine = vec![SignalLine { good: 3, count: 20.0, spurs_each: 3.0, why: "a player's order".into() },
+        SignalLine { good: BIGGEST_ID, count: f64::MAX, spurs_each: 0.0, why: "x".repeat(300) }];
+    tally_line_fixtures: TallyLine = vec![
+        TallyLine { lots_sold: 0.0, spurs_from_sales: 0.0, lots_bought: 0.0, spurs_on_purchases: 0.0, spurs_from_own_shops: 0.0 },
+        TallyLine { lots_sold: 2.0, spurs_from_sales: 48.0, lots_bought: 2.0, spurs_on_purchases: 24.0, spurs_from_own_shops: 9.0 }];
 }
 
 // Every variant of a wire enum appears in its file. The matches are exhaustive: a variant added to a wire type is a
@@ -869,6 +954,10 @@ fn input_place(i: &Input) -> usize {
         Input::Route { .. } => 28,
         Input::Pack { .. } => 29,
         Input::Stowed { .. } => 30,
+        Input::Vendor { .. } => 31,
+        Input::Board { .. } => 32,
+        Input::DeedShop { .. } => 33,
+        Input::DeedBrought { .. } => 34,
     }
 }
 
@@ -892,6 +981,11 @@ fn output_place(o: &Output) -> usize {
         Output::Build { .. } => 15,
         Output::HandAway { .. } => 16,
         Output::HandBack { .. } => 17,
+        Output::StallBought { .. } => 18,
+        Output::Shelf { .. } => 19,
+        Output::Deed { .. } => 20,
+        Output::DeedPaid { .. } => 21,
+        Output::BuildShop { .. } => 22,
     }
 }
 
@@ -921,6 +1015,8 @@ fn query_place(q: &Query) -> usize {
         Query::Territory { .. } => 21,
         Query::War => 22,
         Query::RouteBooks => 23,
+        Query::Shops { .. } => 24,
+        Query::Deeds { .. } => 25,
     }
 }
 
@@ -950,6 +1046,8 @@ fn answer_place(a: &Answer) -> usize {
         Answer::Territory { .. } => 21,
         Answer::War { .. } => 22,
         Answer::RouteBooks { .. } => 23,
+        Answer::Shops { .. } => 24,
+        Answer::Deeds { .. } => 25,
     }
 }
 
@@ -996,10 +1094,10 @@ fn covers<T>(what: &str, samples: &[T], variants: usize, place: fn(&T) -> usize)
 
 #[test]
 fn every_variant_of_every_wire_enum_has_a_sample() {
-    covers("Input", &inputs(), 31, input_place);
-    covers("Output", &outputs(), 18, output_place);
-    covers("Query", &queries(), 24, query_place);
-    covers("Answer", &answers(), 24, answer_place);
+    covers("Input", &inputs(), 35, input_place);
+    covers("Output", &outputs(), 23, output_place);
+    covers("Query", &queries(), 26, query_place);
+    covers("Answer", &answers(), 26, answer_place);
     covers("Command", &commands(), 5, command_place);
     covers("Response", &responses(), 3, response_place);
     covers("Refusal", &refusals(), 9, refusal_place);

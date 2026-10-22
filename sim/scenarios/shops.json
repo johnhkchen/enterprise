@@ -1,0 +1,1300 @@
+{
+  "name": "shops",
+  "about": "A town whose Merchant is a master (level 5) deals with the vendors its host counts: a buying vendor is a standing order the Merchant fills a lot a day from its warehouse (OrderFilled names the vendor, for the host to put the goods in and take the spurs off its card), a selling vendor is bought from for the order's goods (StallBought: the goods out of the vendor, the spurs paid into it), and a vendor touching the desk is the town's own, shown what the Merchant lists (Shelf) and counted again with a lot bought and its coin collected. A vendor put up for the town's board is paid for; a deed shop for a rent that isn't there is refused. What the screens show comes from Shops and Deeds. Saved and loaded, the shops are as they were; a vendor broken takes its shop with it.",
+  "steps": [
+    {
+      "note": "a society from a pack with paper, iron and wheat",
+      "request": {
+        "abi": 1,
+        "schema": 15886328621364068703,
+        "command": {
+          "Create": {
+            "pack": {
+              "day_ticks": 24000,
+              "goods": [
+                {
+                  "name": "minecraft:wheat",
+                  "worth": 0.05,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [
+                    "Crop"
+                  ],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:bread",
+                  "worth": 0.2,
+                  "stack": 64,
+                  "food": 5.0,
+                  "saturation": 6.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:book",
+                  "worth": 0.5,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": "reading",
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:cooked_beef",
+                  "worth": 0.3,
+                  "stack": 64,
+                  "food": 8.0,
+                  "saturation": 12.8,
+                  "comfort": null,
+                  "flags": [
+                    "Meat"
+                  ],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:iron_ingot",
+                  "worth": 0.25,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 4.0
+                },
+                {
+                  "name": "minecraft:sugar_cane",
+                  "worth": 0.04,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 0.5
+                },
+                {
+                  "name": "minecraft:paper",
+                  "worth": 0.04,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 1.0
+                }
+              ],
+              "comforts": [
+                "clothing",
+                "reading"
+              ],
+              "trades": [
+                "merchant",
+                "farmer",
+                "librarian",
+                "shepherd",
+                "none",
+                "nitwit"
+              ],
+              "recipes": [
+                {
+                  "trades": [
+                    "farmer"
+                  ],
+                  "inputs": [
+                    {
+                      "good": "minecraft:wheat",
+                      "count": 3.0
+                    }
+                  ],
+                  "output": "minecraft:bread",
+                  "makes": 1.0
+                },
+                {
+                  "trades": [
+                    "librarian"
+                  ],
+                  "inputs": [
+                    {
+                      "good": "minecraft:sugar_cane",
+                      "count": 1.0
+                    }
+                  ],
+                  "output": "minecraft:paper",
+                  "makes": 1.0
+                }
+              ],
+              "animals": [
+                {
+                  "name": "cow",
+                  "feed": [
+                    "minecraft:wheat"
+                  ],
+                  "feed_per_day": 0.25,
+                  "meat": "minecraft:cooked_beef",
+                  "meat_each": 2.0,
+                  "wool": null,
+                  "hide": null
+                }
+              ],
+              "dials": [
+                {
+                  "name": "birth_mood",
+                  "value": 0.5
+                },
+                {
+                  "name": "wagon_slots",
+                  "value": 30.0
+                }
+              ],
+              "packages": []
+            },
+            "seed": 7
+          }
+        }
+      },
+      "request_postcard": "01df829bace3f6e4bbdc0100c0bb01070f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f146d696e6563726166743a69726f6e5f696e676f74000000000000d03f400000000000000000000000000000000000000000000000001040146d696e6563726166743a73756761725f63616e657b14ae47e17aa43f40000000000000000000000000000000000000000000000000e03f0f6d696e6563726166743a70617065727b14ae47e17aa43f40000000000000000000000000000000000000000000000000f03f0208636c6f7468696e670772656164696e6706086d65726368616e74066661726d6572096c696272617269616e087368657068657264046e6f6e65066e69747769740201066661726d6572010f6d696e6563726166743a776865617400000000000008400f6d696e6563726166743a6272656164000000000000f03f01096c696272617269616e01146d696e6563726166743a73756761725f63616e65000000000000f03f0f6d696e6563726166743a7061706572000000000000f03f0103636f77010f6d696e6563726166743a7768656174000000000000d03f01156d696e6563726166743a636f6f6b65645f6265656600000000000000400000020a62697274685f6d6f6f64000000000000e03f0b7761676f6e5f736c6f74730000000000003e400007",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "a town at its desk with a master Merchant, 64 wheat and ten emeralds; four vendors by it",
+      "request": {
+        "abi": 1,
+        "schema": 15886328621364068703,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "AddTown": {
+                  "name": "Ashford",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 0,
+                  "trade": "merchant",
+                  "level": 5,
+                  "tag": "villager-m"
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 0,
+                  "good": 0,
+                  "count": 64.0
+                }
+              },
+              {
+                "Pay": {
+                  "town": 0,
+                  "money": 10000
+                }
+              },
+              {
+                "AddPoint": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 30,
+                    "y": -60,
+                    "z": 20
+                  },
+                  "town": 0
+                }
+              },
+              {
+                "AddPoint": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 32,
+                    "y": -60,
+                    "z": 20
+                  },
+                  "town": 0
+                }
+              },
+              {
+                "AddPoint": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 28
+                  },
+                  "town": 0
+                }
+              },
+              {
+                "AddPoint": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 25,
+                    "y": -60,
+                    "z": 28
+                  },
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01df829bace3f6e4bbdc0103080707417368666f726400136d696e6563726166743a6f766572776f726c643677360f00086d65726368616e74050a76696c6c616765722d6d01000000000000000050400200a09c010802136d696e6563726166743a6f766572776f726c643c7728000802136d696e6563726166743a6f766572776f726c64407728000802136d696e6563726166743a6f766572776f726c64367738000802136d696e6563726166743a6f766572776f726c6432773800",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "a look: a vendor buying 4 iron at 24 spurs with 48 on its card, a stall selling 8 iron, the town's own shop empty, then time",
+      "request": {
+        "abi": 1,
+        "schema": 15886328621364068703,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Vendor": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 30,
+                    "y": -60,
+                    "z": 20
+                  },
+                  "read": {
+                    "mode": "Buy",
+                    "good": 4,
+                    "deed": null,
+                    "lot": 4,
+                    "price": 24,
+                    "stock": 0,
+                    "room": 54,
+                    "purse": 48,
+                    "coins": 0,
+                    "touches": false
+                  }
+                }
+              },
+              {
+                "Vendor": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 32,
+                    "y": -60,
+                    "z": 20
+                  },
+                  "read": {
+                    "mode": "Sell",
+                    "good": 4,
+                    "deed": null,
+                    "lot": 4,
+                    "price": 12,
+                    "stock": 8,
+                    "room": 0,
+                    "purse": 0,
+                    "coins": 0,
+                    "touches": false
+                  }
+                }
+              },
+              {
+                "Vendor": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 28
+                  },
+                  "read": {
+                    "mode": "Idle",
+                    "good": null,
+                    "deed": null,
+                    "lot": 0,
+                    "price": 0,
+                    "stock": 0,
+                    "room": 0,
+                    "purse": 0,
+                    "coins": 0,
+                    "touches": true
+                  }
+                }
+              },
+              {
+                "Advance": {
+                  "to": 1200
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01df829bace3f6e4bbdc0103041f02136d696e6563726166743a6f766572776f726c643c772801010400041800363000001f02136d696e6563726166743a6f766572776f726c6440772802010400040c08000000001f02136d696e6563726166743a6f766572776f726c643677380000000000000000000100b009",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "StallBought": {
+                "point": {
+                  "kind": "Shop",
+                  "dim": "minecraft:overworld",
+                  "x": 32,
+                  "y": -60,
+                  "z": 20
+                },
+                "good": 4,
+                "lots": 2,
+                "count": 8.0,
+                "spurs": 24.0
+              }
+            },
+            {
+              "Shelf": {
+                "point": {
+                  "kind": "Shop",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 28
+                },
+                "good": 0,
+                "lot": 16,
+                "price": 15,
+                "add": 64,
+                "clear": false
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "00021202136d696e6563726166743a6f766572776f726c644077280402000000000000204000000000000038401302136d696e6563726166743a6f766572776f726c643677380100100f80010000"
+    },
+    {
+      "note": "its shops: the order, the stall, the own shop",
+      "request": {
+        "abi": 1,
+        "schema": 15886328621364068703,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Shops": {
+                  "town": 0
+                }
+              },
+              {
+                "Deeds": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01df829bace3f6e4bbdc01040218001900",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Shops": {
+                "town": 0,
+                "shops": [
+                  {
+                    "point": {
+                      "kind": "Shop",
+                      "dim": "minecraft:overworld",
+                      "x": 25,
+                      "y": -60,
+                      "z": 28
+                    },
+                    "role": "Idle",
+                    "good": null,
+                    "lot": 0.0,
+                    "price": 0.0,
+                    "purse": 0.0,
+                    "open": 0.0,
+                    "delivered": 0.0,
+                    "paid": 0.0,
+                    "stock": 0.0,
+                    "rent": null
+                  },
+                  {
+                    "point": {
+                      "kind": "Shop",
+                      "dim": "minecraft:overworld",
+                      "x": 27,
+                      "y": -60,
+                      "z": 28
+                    },
+                    "role": "Own",
+                    "good": 0,
+                    "lot": 16.0,
+                    "price": 15.0,
+                    "purse": 0.0,
+                    "open": 0.0,
+                    "delivered": 0.0,
+                    "paid": 0.0,
+                    "stock": 64.0,
+                    "rent": null
+                  },
+                  {
+                    "point": {
+                      "kind": "Shop",
+                      "dim": "minecraft:overworld",
+                      "x": 30,
+                      "y": -60,
+                      "z": 20
+                    },
+                    "role": "Order",
+                    "good": 4,
+                    "lot": 4.0,
+                    "price": 24.0,
+                    "purse": 48.0,
+                    "open": 8.0,
+                    "delivered": 0.0,
+                    "paid": 0.0,
+                    "stock": 0.0,
+                    "rent": null
+                  },
+                  {
+                    "point": {
+                      "kind": "Shop",
+                      "dim": "minecraft:overworld",
+                      "x": 32,
+                      "y": -60,
+                      "z": 20
+                    },
+                    "role": "Stall",
+                    "good": 4,
+                    "lot": 4.0,
+                    "price": 12.0,
+                    "purse": 0.0,
+                    "open": 0.0,
+                    "delivered": 0.0,
+                    "paid": 0.0,
+                    "stock": 0.0,
+                    "rent": null
+                  }
+                ],
+                "wanted": [
+                  {
+                    "good": 4,
+                    "count": 8.0
+                  }
+                ],
+                "signals": [],
+                "listings": [],
+                "tally": {
+                  "lots_sold": 0.0,
+                  "spurs_from_sales": 0.0,
+                  "lots_bought": 2.0,
+                  "spurs_on_purchases": 24.0,
+                  "spurs_from_own_shops": 0.0
+                }
+              }
+            },
+            {
+              "Deeds": {
+                "town": 0,
+                "hub": false,
+                "deeds": []
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "00000218000402136d696e6563726166743a6f766572776f726c64327738050000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002136d696e6563726166743a6f766572776f726c6436773802010000000000000030400000000000002e40000000000000000000000000000000000000000000000000000000000000000000000000000050400002136d696e6563726166743a6f766572776f726c643c772800010400000000000010400000000000003840000000000000484000000000000020400000000000000000000000000000000000000000000000000002136d696e6563726166743a6f766572776f726c644077280101040000000000001040000000000000284000000000000000000000000000000000000000000000000000000000000000000000000000000000000104000000000000204000000000000000000000000000000000000000000000000000400000000000003840000000000000000019000000"
+    },
+    {
+      "note": "the next day: the order counted again, the stall emptied; the own shop sold a lot and its box was emptied of 9 spurs; the board's vendor put up",
+      "request": {
+        "abi": 1,
+        "schema": 15886328621364068703,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Board": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 25,
+                    "y": -60,
+                    "z": 28
+                  }
+                }
+              },
+              {
+                "Vendor": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 30,
+                    "y": -60,
+                    "z": 20
+                  },
+                  "read": {
+                    "mode": "Buy",
+                    "good": 4,
+                    "deed": null,
+                    "lot": 4,
+                    "price": 24,
+                    "stock": 0,
+                    "room": 54,
+                    "purse": 48,
+                    "coins": 0,
+                    "touches": false
+                  }
+                }
+              },
+              {
+                "Vendor": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 32,
+                    "y": -60,
+                    "z": 20
+                  },
+                  "read": {
+                    "mode": "Sell",
+                    "good": 4,
+                    "deed": null,
+                    "lot": 4,
+                    "price": 12,
+                    "stock": 0,
+                    "room": 0,
+                    "purse": 0,
+                    "coins": 0,
+                    "touches": false
+                  }
+                }
+              },
+              {
+                "Vendor": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 28
+                  },
+                  "read": {
+                    "mode": "Sell",
+                    "good": 0,
+                    "deed": null,
+                    "lot": 16,
+                    "price": 3,
+                    "stock": 48,
+                    "room": 0,
+                    "purse": 0,
+                    "coins": 9,
+                    "touches": true
+                  }
+                }
+              },
+              {
+                "Vendor": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 25,
+                    "y": -60,
+                    "z": 28
+                  },
+                  "read": {
+                    "mode": "Idle",
+                    "good": null,
+                    "deed": null,
+                    "lot": 0,
+                    "price": 0,
+                    "stock": 0,
+                    "room": 0,
+                    "purse": 0,
+                    "coins": 0,
+                    "touches": false
+                  }
+                }
+              },
+              {
+                "Advance": {
+                  "to": 25200
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01df829bace3f6e4bbdc0103062002136d696e6563726166743a6f766572776f726c643277381f02136d696e6563726166743a6f766572776f726c643c772801010400041800363000001f02136d696e6563726166743a6f766572776f726c6440772802010400040c00000000001f02136d696e6563726166743a6f766572776f726c6436773802010000100330000009011f02136d696e6563726166743a6f766572776f726c643277380000000000000000000000f0c401",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "OrderFilled": {
+                "town": 0,
+                "order": 0,
+                "good": 4,
+                "lots": 1,
+                "count": 4.0,
+                "spurs": 24.0,
+                "point": {
+                  "kind": "Shop",
+                  "dim": "minecraft:overworld",
+                  "x": 30,
+                  "y": -60,
+                  "z": 20
+                }
+              }
+            },
+            {
+              "OrderFilled": {
+                "town": 0,
+                "order": 0,
+                "good": 4,
+                "lots": 1,
+                "count": 4.0,
+                "spurs": 24.0,
+                "point": {
+                  "kind": "Shop",
+                  "dim": "minecraft:overworld",
+                  "x": 30,
+                  "y": -60,
+                  "z": 20
+                }
+              }
+            },
+            {
+              "Shelf": {
+                "point": {
+                  "kind": "Shop",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 28
+                },
+                "good": 0,
+                "lot": 16,
+                "price": 15,
+                "add": 0,
+                "clear": false
+              }
+            },
+            {
+              "Shelf": {
+                "point": {
+                  "kind": "Shop",
+                  "dim": "minecraft:overworld",
+                  "x": 25,
+                  "y": -60,
+                  "z": 28
+                },
+                "good": null,
+                "lot": 0,
+                "price": 0,
+                "add": 0,
+                "clear": false
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "00040300000401000000000000104000000000000038400102136d696e6563726166743a6f766572776f726c643c77280300000401000000000000104000000000000038400102136d696e6563726166743a6f766572776f726c643c77281302136d696e6563726166743a6f766572776f726c643677380100100f00001302136d696e6563726166743a6f766572776f726c64327738000000000000"
+    },
+    {
+      "note": "the shops a day on",
+      "request": {
+        "abi": 1,
+        "schema": 15886328621364068703,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Shops": {
+                  "town": 0
+                }
+              },
+              {
+                "Deeds": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01df829bace3f6e4bbdc01040218001900",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Shops": {
+                "town": 0,
+                "shops": [
+                  {
+                    "point": {
+                      "kind": "Shop",
+                      "dim": "minecraft:overworld",
+                      "x": 25,
+                      "y": -60,
+                      "z": 28
+                    },
+                    "role": "Board",
+                    "good": null,
+                    "lot": 0.0,
+                    "price": 0.0,
+                    "purse": 0.0,
+                    "open": 0.0,
+                    "delivered": 0.0,
+                    "paid": 0.0,
+                    "stock": 0.0,
+                    "rent": null
+                  },
+                  {
+                    "point": {
+                      "kind": "Shop",
+                      "dim": "minecraft:overworld",
+                      "x": 27,
+                      "y": -60,
+                      "z": 28
+                    },
+                    "role": "Own",
+                    "good": 0,
+                    "lot": 16.0,
+                    "price": 15.0,
+                    "purse": 0.0,
+                    "open": 0.0,
+                    "delivered": 0.0,
+                    "paid": 0.0,
+                    "stock": 48.0,
+                    "rent": null
+                  },
+                  {
+                    "point": {
+                      "kind": "Shop",
+                      "dim": "minecraft:overworld",
+                      "x": 30,
+                      "y": -60,
+                      "z": 20
+                    },
+                    "role": "Order",
+                    "good": 4,
+                    "lot": 4.0,
+                    "price": 24.0,
+                    "purse": 0.0,
+                    "open": 0.0,
+                    "delivered": 8.0,
+                    "paid": 48.0,
+                    "stock": 0.0,
+                    "rent": null
+                  },
+                  {
+                    "point": {
+                      "kind": "Shop",
+                      "dim": "minecraft:overworld",
+                      "x": 32,
+                      "y": -60,
+                      "z": 20
+                    },
+                    "role": "Stall",
+                    "good": 4,
+                    "lot": 4.0,
+                    "price": 12.0,
+                    "purse": 0.0,
+                    "open": 0.0,
+                    "delivered": 0.0,
+                    "paid": 0.0,
+                    "stock": 0.0,
+                    "rent": null
+                  }
+                ],
+                "wanted": [],
+                "signals": [],
+                "listings": [],
+                "tally": {
+                  "lots_sold": 2.0,
+                  "spurs_from_sales": 48.0,
+                  "lots_bought": 2.0,
+                  "spurs_on_purchases": 24.0,
+                  "spurs_from_own_shops": 9.0
+                }
+              }
+            },
+            {
+              "Deeds": {
+                "town": 0,
+                "hub": false,
+                "deeds": []
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "00000218000402136d696e6563726166743a6f766572776f726c64327738030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002136d696e6563726166743a6f766572776f726c6436773802010000000000000030400000000000002e40000000000000000000000000000000000000000000000000000000000000000000000000000048400002136d696e6563726166743a6f766572776f726c643c772800010400000000000010400000000000003840000000000000000000000000000000000000000000002040000000000000484000000000000000000002136d696e6563726166743a6f766572776f726c644077280101040000000000001040000000000000284000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000040000000000000484000000000000000400000000000003840000000000000224019000000"
+    },
+    {
+      "note": "a deed brought to a desk for a rent that isn't there is a stale view: ignored",
+      "request": {
+        "abi": 1,
+        "schema": 15886328621364068703,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "DeedBrought": {
+                  "town": 0,
+                  "rent": 9
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01df829bace3f6e4bbdc010301220009",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "a deed shop for a rent that isn't there: refused",
+      "request": {
+        "abi": 1,
+        "schema": 15886328621364068703,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "DeedShop": {
+                  "rent": 0,
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 30,
+                    "y": -60,
+                    "z": 20
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01df829bace3f6e4bbdc01030121000102136d696e6563726166743a6f766572776f726c643c7728",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "no rent 0"
+            }
+          }
+        }
+      },
+      "response_postcard": "020700096e6f2072656e742030"
+    },
+    {
+      "note": "a vendor counted at the desk: refused",
+      "request": {
+        "abi": 1,
+        "schema": 15886328621364068703,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Vendor": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "read": {
+                    "mode": "Idle",
+                    "good": null,
+                    "deed": null,
+                    "lot": 0,
+                    "price": 0,
+                    "stock": 0,
+                    "room": 0,
+                    "purse": 0,
+                    "coins": 0,
+                    "touches": false
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01df829bace3f6e4bbdc0103011f00136d696e6563726166743a6f766572776f726c6436773600000000000000000000",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "a vendor counted at a Desk"
+            }
+          }
+        }
+      },
+      "response_postcard": "0207001a612076656e646f7220636f756e7465642061742061204465736b"
+    },
+    {
+      "note": "saved",
+      "request": {
+        "abi": 1,
+        "schema": 15886328621364068703,
+        "command": "Save"
+      },
+      "request_postcard": "01df829bace3f6e4bbdc0102",
+      "saved": {
+        "format": 1,
+        "schema": 15886328621364068703,
+        "blob_len": 5688,
+        "blob_fnv": "6e11c29973671e32"
+      }
+    },
+    {
+      "note": "loaded",
+      "load": "saved",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "the same after the load",
+      "request": {
+        "abi": 1,
+        "schema": 15886328621364068703,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Shops": {
+                  "town": 0
+                }
+              },
+              {
+                "Deeds": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01df829bace3f6e4bbdc01040218001900",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Shops": {
+                "town": 0,
+                "shops": [
+                  {
+                    "point": {
+                      "kind": "Shop",
+                      "dim": "minecraft:overworld",
+                      "x": 25,
+                      "y": -60,
+                      "z": 28
+                    },
+                    "role": "Board",
+                    "good": null,
+                    "lot": 0.0,
+                    "price": 0.0,
+                    "purse": 0.0,
+                    "open": 0.0,
+                    "delivered": 0.0,
+                    "paid": 0.0,
+                    "stock": 0.0,
+                    "rent": null
+                  },
+                  {
+                    "point": {
+                      "kind": "Shop",
+                      "dim": "minecraft:overworld",
+                      "x": 27,
+                      "y": -60,
+                      "z": 28
+                    },
+                    "role": "Own",
+                    "good": 0,
+                    "lot": 16.0,
+                    "price": 15.0,
+                    "purse": 0.0,
+                    "open": 0.0,
+                    "delivered": 0.0,
+                    "paid": 0.0,
+                    "stock": 48.0,
+                    "rent": null
+                  },
+                  {
+                    "point": {
+                      "kind": "Shop",
+                      "dim": "minecraft:overworld",
+                      "x": 30,
+                      "y": -60,
+                      "z": 20
+                    },
+                    "role": "Order",
+                    "good": 4,
+                    "lot": 4.0,
+                    "price": 24.0,
+                    "purse": 0.0,
+                    "open": 0.0,
+                    "delivered": 8.0,
+                    "paid": 48.0,
+                    "stock": 0.0,
+                    "rent": null
+                  },
+                  {
+                    "point": {
+                      "kind": "Shop",
+                      "dim": "minecraft:overworld",
+                      "x": 32,
+                      "y": -60,
+                      "z": 20
+                    },
+                    "role": "Stall",
+                    "good": 4,
+                    "lot": 4.0,
+                    "price": 12.0,
+                    "purse": 0.0,
+                    "open": 0.0,
+                    "delivered": 0.0,
+                    "paid": 0.0,
+                    "stock": 0.0,
+                    "rent": null
+                  }
+                ],
+                "wanted": [],
+                "signals": [],
+                "listings": [],
+                "tally": {
+                  "lots_sold": 2.0,
+                  "spurs_from_sales": 48.0,
+                  "lots_bought": 2.0,
+                  "spurs_on_purchases": 24.0,
+                  "spurs_from_own_shops": 9.0
+                }
+              }
+            },
+            {
+              "Deeds": {
+                "town": 0,
+                "hub": false,
+                "deeds": []
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "00000218000402136d696e6563726166743a6f766572776f726c64327738030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002136d696e6563726166743a6f766572776f726c6436773802010000000000000030400000000000002e40000000000000000000000000000000000000000000000000000000000000000000000000000048400002136d696e6563726166743a6f766572776f726c643c772800010400000000000010400000000000003840000000000000000000000000000000000000000000002040000000000000484000000000000000000002136d696e6563726166743a6f766572776f726c644077280101040000000000001040000000000000284000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000040000000000000484000000000000000400000000000003840000000000000224019000000"
+    },
+    {
+      "note": "the order's vendor and the stall's broken",
+      "request": {
+        "abi": 1,
+        "schema": 15886328621364068703,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "RemovePoint": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 30,
+                    "y": -60,
+                    "z": 20
+                  }
+                }
+              },
+              {
+                "RemovePoint": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 32,
+                    "y": -60,
+                    "z": 20
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01df829bace3f6e4bbdc0103020902136d696e6563726166743a6f766572776f726c643c77280902136d696e6563726166743a6f766572776f726c64407728",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "their shops gone, the own shop and the board's left",
+      "request": {
+        "abi": 1,
+        "schema": 15886328621364068703,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Shops": {
+                  "town": 0
+                }
+              },
+              {
+                "Deeds": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01df829bace3f6e4bbdc01040218001900",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Shops": {
+                "town": 0,
+                "shops": [
+                  {
+                    "point": {
+                      "kind": "Shop",
+                      "dim": "minecraft:overworld",
+                      "x": 25,
+                      "y": -60,
+                      "z": 28
+                    },
+                    "role": "Board",
+                    "good": null,
+                    "lot": 0.0,
+                    "price": 0.0,
+                    "purse": 0.0,
+                    "open": 0.0,
+                    "delivered": 0.0,
+                    "paid": 0.0,
+                    "stock": 0.0,
+                    "rent": null
+                  },
+                  {
+                    "point": {
+                      "kind": "Shop",
+                      "dim": "minecraft:overworld",
+                      "x": 27,
+                      "y": -60,
+                      "z": 28
+                    },
+                    "role": "Own",
+                    "good": 0,
+                    "lot": 16.0,
+                    "price": 15.0,
+                    "purse": 0.0,
+                    "open": 0.0,
+                    "delivered": 0.0,
+                    "paid": 0.0,
+                    "stock": 48.0,
+                    "rent": null
+                  }
+                ],
+                "wanted": [],
+                "signals": [],
+                "listings": [],
+                "tally": {
+                  "lots_sold": 2.0,
+                  "spurs_from_sales": 48.0,
+                  "lots_bought": 2.0,
+                  "spurs_on_purchases": 24.0,
+                  "spurs_from_own_shops": 9.0
+                }
+              }
+            },
+            {
+              "Deeds": {
+                "town": 0,
+                "hub": false,
+                "deeds": []
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "00000218000202136d696e6563726166743a6f766572776f726c64327738030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002136d696e6563726166743a6f766572776f726c6436773802010000000000000030400000000000002e4000000000000000000000000000000000000000000000000000000000000000000000000000004840000000000000000000000040000000000000484000000000000000400000000000003840000000000000224019000000"
+    },
+    {
+      "note": "the shops of a town that isn't there",
+      "request": {
+        "abi": 1,
+        "schema": 15886328621364068703,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Shops": {
+                  "town": 3
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01df829bace3f6e4bbdc0104011803",
+      "response": {
+        "Refused": {
+          "why": {
+            "Query": {
+              "at": 0,
+              "why": "no town 3"
+            }
+          }
+        }
+      },
+      "response_postcard": "020800096e6f20746f776e2033"
+    }
+  ]
+}

@@ -268,7 +268,8 @@ is one question and its lines out, in the Java commands' words so the studies' r
 | `name` (list), `depot` (list), `autoswitch` | the core's (`Points` and `Territory`'s names; `Lockers` and `Switch`); `depot add/remove` already sync the core |
 | `census <bell>` | refused: a census is the core's, each look (`/enterprise core census <desk>` takes one now) |
 | `toll`, `hex`, `bridge`, `cottage`, `survey`, `services`, `expeditions`, `settlements`, `switch`, `name <desk> <name>`, `freight`, `post`, `forwarder`, `paperwork` (the crates and papers stay Java mode's: `pallet-views` drew the core's pallets without them) | "Java mode only until B5.1 delete-java-rules" |
-| `market`, `tenders`, `bank`, `bank open` | "Java mode only until B4.9 shop-adapter" |
+| `market <desk>` | the core's (`Shops`: the town's vendors, orders, signals, board listings and tally) |
+| `tenders`, `bank`, `bank open` (no core rules shown for them: `shop-adapter` took the vendors only) | "Java mode only until B5.1 delete-java-rules" |
 | `metals`, `realms`, `realms open`, `war capital`, `war mobilise`, `war declare`, `war peace` | "Java mode only until B4.10 crown-views" |
 
 **Studies.** John, 2026-10-18: most Java-server studies retire for `sim/host` (`just study`); one in-game study is kept as a
@@ -686,6 +687,48 @@ tick (two crossings), a pallet of three crates drawn 0.03 ms. Left: the superbil
 yet a paper a player holds; empty crates (`Shipments.empties`) aren't shown; depots and lockers hold no pallets; the
 Merchant's screen doesn't list pallets; the kinds of packing are read from the mod's table, not asked of the core after
 a load; `cargo/Crates`, `Papers` and `Paperwork` stay Java mode's until `delete-java-rules`.
+
+**Built (B4.9 `shop-adapter`).** The shops' rules were the core's already (a master Merchant's brokering, the board's
+listings, rents and a dealer's prices); what the core lacked was which vendor was which. In the core (`shop_host.rs`,
+`Vendors` in `saved!`; `Order.at`/`room`, `Stall.at`, `OwnShop.at`/`board`/`shown` in `orders.rs`): `Input::Vendor { point,
+read }` is a host's count of one Numismatics vendor (a `Shop` point of a town's: mode, the filter's good or the rent it is
+the deed to, lot and price in spurs, the items it holds, the lots it has room for, the bank card's balance, the coin the
+host took out of its box, whether it touches a desk), and the core says what the vendor is: a buying vendor a player's
+standing order, kept by where it stands so each count updates it in place (a good, a lot or a price changed is a new order and the
+old contract closes), with the vendor's room a limit on the lots filled; a selling vendor a stall, its stock as counted; one
+touching a desk the town's own shop (a shelf counted lower than the core's was bought from: used; coin collected is its
+takings, banked by the master Merchant), or, told by `Input::Board`, one of the shop board's (paid four emeralds, its
+takings banked at once and entered in the books as a sale, the listing at its place shown, a listed good the town can spare
+beyond its keep and what other markets want on the shelf, a stack at most). `Output::OrderFilled` gained `point`;
+`StallBought`, `Shelf { good, lot, price, add, clear }` (only what changed since the vendor was shown, only for a vendor
+counted in the look), `Deed { selling, price, fund }`, `DeedPaid` and `BuildShop` are new. A freight hub's rents are its
+dealer's: `Query::Deeds` lists them with the ask and bid in spurs and the vendor where each deed is sold (`Input::DeedShop`);
+a deed bought (the vendor sold out, its takings paid in) makes the rent a player's and the vendor buys it back at the bid
+from a card the core says to fund from the treasury (`fund`); a deed sold back makes it the dealer's again; `Input::
+DeedBrought` hands a bearer the crop collected for them as far as the stock goes. `Query::Shops` is what `/enterprise
+market` shows. A vendor point removed takes its shop with it (a shelf is used). Schema `dc7793b63586c15f` (on
+`commands-and-studies`': Input 31-34, Query/Answer 24-25), FORMAT 1 (the save grew: dev worlds' `enterprise_core.dat` are rebuilt). Base worlds' behaviour unmoved
+(`just core-fingerprint`), the replay digest written again for the save's shape and the new random-worlds slice
+(`shop_host`). `sim/scenarios/shops.json`, the first to show `OrderFilled`, `StallBought` and `Shelf`. In the mod:
+`adapters/ShopAdapter` (in core mode, each look registers the vendors within reach of a loaded desk as `Shop` points,
+puts up the board vendors the core asked for and the hubs' deed vendors in the row by the desk, reads every vendor whose
+town's desk and own chunk are loaded, and shows the outputs: goods into a vendor and the price off its card, lots out of a
+stall and their price into its box, a listing set and a shelf added to or cleared, a deed offered or a dealer's red card set
+and funded, the crop put in a player's hands), `RentDeeds` (the deed document as a view; right-clicking a desk with one
+asks the core in core mode), `StockAdapter.good(Item)`, `/enterprise core shops <desk>` and `/enterprise market` on the
+core in core mode. Five game tests (core-mode twins of MarketTests' order, stall, own shop and deed tests and MoodTests'
+shop board, skip-listed as the binding's own); no existing game test changed. 958 tests pass, All 300 required tests
+passed, core mode 300 of 300 (baseline written again). Measured in the game-test server: a look's vendors registered (the
+desks' reach scanned, the deeds asked) 0.033 ms, a vendor counted 0.005 ms, a town's shops asked 0.099 ms. `Shops.collect`
+read Numismatics' cached coin sum, which `clear()` leaves behind, so a box emptied once read as full at every later
+collection (the Java board banked phantom takings every look): it sums the coins now (`Shops.box`). Left: enchanted commissions (the vendor
+deals in nothing the core knows), the dealer's trades in rents between towns (the core has none), the vendors of the crown,
+the metal exchange, the requisitions and the freight hubs (`crown-views`), a deed vendor driven end to end in the world
+(the core's rents come from its rules; the game test shows the vendor's half with the outputs the Rust tests pin). At landing: a look deals only with the vendors counted for it (`Vendors.counted`, cleared as each
+`Advance` ends), so a vendor whose chunk unloaded isn't filled, bought from or stocked on the books while the world can't
+show it; a vendor's box is emptied only where the core says the coin is the town's (touching the desk, or a deed shop in
+its `Query::Deeds`), never a player's own vendor reselling a deed; a buying vendor's price changed is a new order, as
+`Broker.contractFor` matches a delivery by its price.
 
 ### 3.6 Wave B5: closing
 

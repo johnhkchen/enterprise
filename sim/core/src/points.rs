@@ -121,6 +121,10 @@ impl Society {
                 self.withdraw(placed.town, good, n);
             }
         }
+        if placed.kind == Kind::Shop {
+            // A vendor's shop goes with it (`shop_host.rs`).
+            self.forget_shop_point(at);
+        }
         if placed.kind == Kind::Desk {
             // Its money goes with its chests (`till.rs`), and its place is remembered.
             self.forget_till(at, placed.town);
