@@ -64,7 +64,10 @@ public final class CrownAdapter {
     private final CoreHost host;
     /** Whether the core's crown is written to the world (core mode, a test's host); Java mode shows nothing. */
     private final boolean writes;
-    /** Towns the core asked a gold shop of, for the next look (the capital's desk wasn't loaded, or just now asked). */
+    /**
+     * Towns the core asked a gold shop of, put up before the next look. Not saved, and needn't be: while the crown wants one
+     * and none stands, the core asks again at every look that counts its capital ({@code crown_host.rs want_crown_shop}).
+     */
     private final Set<Long> toBuild = new LinkedHashSet<>();
     /** What the last command's outputs said: the towns levied, the soldiers sent home. */
     private int levies;
@@ -204,7 +207,8 @@ public final class CrownAdapter {
             toBuild.remove(town);
             BlockPos pos = site(level, desk.pos());
             if (pos == null) {
-                Enterprise.LOGGER.warn("No open floor near the capital's desk at {} for the crown's gold shop", desk.pos().toShortString());
+                // Asked again next look; quiet, as it comes every look until there's floor.
+                Enterprise.LOGGER.debug("No open floor near the capital's desk at {} for the crown's gold shop", desk.pos().toShortString());
                 continue;
             }
             level.setBlock(pos, BuiltInRegistries.BLOCK.get(ResourceLocation.parse("numismatics:vendor")).defaultBlockState(), 3);
@@ -212,11 +216,18 @@ public final class CrownAdapter {
                 shop.setMode(VendorBlockEntity.Mode.BUY);
                 GlobalPos at = GlobalPos.of(level.dimension(), pos);
                 String why = host.points().at(at) != null ? null : host.points().add(at, PointsAdapter.Kind.SHOP, town);
-                if (why != null) {
-                    Enterprise.LOGGER.warn("The core wouldn't take the crown's shop at {}: {}", pos.toShortString(), why);
+                Response r = why != null ? null
+                        : host.apply(List.of(new Input.CrownShop(PointsAdapter.point(PointsAdapter.Kind.SHOP, at))));
+                if (why != null || r instanceof Response.Refused) {
+                    // Not the crown's: taken away again, or the core's next ask would put a second one up beside it.
+                    Enterprise.LOGGER.warn("The core wouldn't take the crown's shop at {}: {}", pos.toShortString(),
+                            why != null ? why : refusal(r));
+                    if (why == null) {
+                        host.points().remove(at);
+                    }
+                    level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
                     continue;
                 }
-                host.apply(List.of(new Input.CrownShop(PointsAdapter.point(PointsAdapter.Kind.SHOP, at))));
                 Enterprise.LOGGER.info("The crown's gold shop stands at {}", pos.toShortString());
             }
         }
@@ -312,12 +323,18 @@ public final class CrownAdapter {
         vendor.setChanged();
     }
 
-    /** Peace: the vendor comes down, and the core's point for it is removed. */
+    /**
+     * Peace: the vendor comes down, and the core's point for it is removed. Not loaded, the point stays: the core says
+     * {@code CrownShopDown} again whenever the vendor is next counted, so it's never taken for a player's.
+     */
     private void down(Output.CrownShopDown o) {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         GlobalPos at = PointsAdapter.place(o.point());
         ServerLevel level = server == null ? null : server.getLevel(at.dimension());
-        if (level != null && level.isLoaded(at.pos()) && level.getBlockEntity(at.pos()) instanceof VendorBlockEntity) {
+        if (level != null && !level.isLoaded(at.pos())) {
+            return;
+        }
+        if (level != null && level.getBlockEntity(at.pos()) instanceof VendorBlockEntity) {
             level.setBlock(at.pos(), Blocks.AIR.defaultBlockState(), 3);
         }
         host.points().remove(at);

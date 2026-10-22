@@ -738,15 +738,16 @@ in `points.rs`): `Input::Capital`, `Mobilise`, `Declare` (a theatre by name) and
 market off the map at a `Market` point (a host's own, a realm "coast" or "march", money paid in at the mint's rate, its roads
 to the towns it trades with); the front and the market across the sea the core opens itself are `Market` points too
 (`mark_off_map`, beside the capital's desk's dimension), so `Query::Points` lists every market off the map. The gold shop:
-mobilising, the core asks for a vendor by the capital's desk (`Output::BuildCrownShop`), the host puts one up and says so
-(`Input::CrownShop`), and from then each look's `Input::Vendor` count of it is the crown's (`read_crown_shop`): it shows 8 gold at
+mobilising, the core asks for a vendor by the capital's desk (`Output::BuildCrownShop`, asked again at each look that counts the
+capital while none stands: nothing waits in the host), the host puts one up and says so (`Input::CrownShop`), and from then each look's `Input::Vendor` count of it is the crown's (`read_crown_shop`): it shows 8 gold at
 `gold_premium` times its worth (`Output::CrownShop { point, good, lot, price, fund, taken }`), its card kept funded to two lots'
 price from the capital's treasury (`cash_book::post`, "gold shop"), the gold sold into it the crown's (delivered and sent to the
-mint: `Ledger`), and at peace it comes down (`CrownShopDown`). `Query::Realms` and `Query::Metals` are what `/enterprise realms`
+mint: `Ledger`), and at peace it comes down (`CrownShopDown`, said again at each count of it until the host removes its point,
+so a vendor out of reach at peace is never taken for a player's). `Query::Realms` and `Query::Metals` are what `/enterprise realms`
 and `metals` show. Schema `41c307f6fa0993a8` (Input 35-40, Output 23-27, Query/Answer 26-27, `PointKind::Market`, `RealmLine`,
 `MetalLine`), FORMAT 1 (the save grew: dev worlds' `enterprise_core.dat` are rebuilt). Base worlds' behaviour unmoved
 (`just core-fingerprint` `d8a270619eff9cdb`), the replay digest written again for the save's shape. `sim/scenarios/crown.json`
-(capital, realm, mobilising with the gold shop, war, peace, every refusal), `tests/crown_host.rs` (12), a `crown_host`
+(capital, realm, mobilising with the gold shop, war, peace, every refusal), `tests/crown_host.rs` (13), a `crown_host`
 random-worlds slice (a capital named, mobilised, the gold shop counted, peace). In the mod: `adapters/CrownAdapter` (the commands,
 the realm opened at a block, the gold shop put up on open floor near the capital's desk and shown, the books), `PointsAdapter.Kind.MARKET`;
 in core mode `/enterprise war capital|mobilise|declare|peace`, `realms`, `realms open` and `metals` are the core's.

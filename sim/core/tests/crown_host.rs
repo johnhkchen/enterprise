@@ -316,7 +316,11 @@ fn war_is_declared_levies_the_towns_the_capital_reaches_and_peace_takes_the_gold
     assert!(out.contains(&Output::CrownShopDown { point: shop.clone() }), "{out:?}");
     let Answer::War { phase, .. } = h.ask(Query::War) else { panic!() };
     assert_eq!(phase, "peace");
-    // A vendor counted after peace is no crown shop: it was forgotten, and it's counted as any vendor.
+    // A vendor counted after peace whose point the host hasn't removed is told to come down again; once its point is
+    // removed and put back, it is no crown shop and is counted as any vendor.
+    let out = h.apply(vec![Input::Vendor { point: shop.clone(), read: read() }]);
+    assert_eq!(out, vec![Output::CrownShopDown { point: shop.clone() }]);
+    h.apply(vec![Input::RemovePoint { point: shop.clone() }, Input::AddPoint { point: shop.clone(), town: 0 }]);
     let out = h.apply(vec![Input::Vendor { point: shop, read: read() }]);
     assert!(!out.iter().any(|o| matches!(o, Output::CrownShop { .. } | Output::CrownShopDown { .. })), "{out:?}");
     // War with no capital does nothing but say so.
@@ -332,10 +336,43 @@ fn a_gold_shop_counted_in_peace_comes_down_and_a_broken_vendor_is_forgotten() {
     h.s().peace();
     let out = h.apply(vec![Input::Vendor { point: shop.clone(), read: read() }]);
     assert_eq!(out, vec![Output::CrownShopDown { point: shop.clone() }]);
+    // Its point still stands (the host couldn't reach the vendor): counted again, it is told to come down again, and
+    // never taken for a player's order.
+    let gold = h.gold();
+    let out = h.apply(vec![Input::Vendor { point: shop.clone(), read: VendorRead { mode: VendorMode::Buy, good: Some(gold),
+        lot: 8, price: 40, stock: 0, room: 54, purse: 100, ..read() } }]);
+    assert_eq!(out, vec![Output::CrownShopDown { point: shop.clone() }]);
+    let Answer::Shops { shops, .. } = h.ask(Query::Shops { town: 0 }) else { panic!() };
+    assert!(shops.iter().all(|l| l.role == ShopRole::Idle), "{shops:?}");
+    h.apply(vec![Input::RemovePoint { point: shop.clone() }]);
+    assert!(h.s().world.resource::<enterprise_core::crown_host::CrownShop>().down.is_empty());
     // A vendor broken forgets it too.
     let (mut h, shop) = mobilised();
     h.apply(vec![Input::RemovePoint { point: shop.clone() }]);
     assert_eq!(h.apply(vec![Input::Peace]).len(), 1, "only PeaceMade: no shop left to take down");
+}
+
+#[test]
+fn a_gold_shop_wanted_is_asked_for_again_at_each_look_the_capital_is_counted() {
+    let mut h = Host::new();
+    let want = Output::BuildCrownShop { town: 0 };
+    let look = |x| Input::Stocktake { point: at(PointKind::Desk, x, 27), counts: vec![], free: 27 };
+    h.apply(vec![Input::Capital { town: 0, spurs_per_day: 16 }]);
+    assert!(!h.apply(vec![look(27)]).contains(&want), "in peace no shop is wanted");
+    assert_eq!(h.apply(vec![Input::Mobilise { town: 0, spurs_per_day: 480 }]), vec![want.clone()]);
+    // The host lost the request (restarted before the desk loaded, or no floor by it): nothing waits in the host, the
+    // core asks again at the next look that counts the capital, and only that.
+    assert!(!h.apply(vec![look(67)]).contains(&want), "Vale counted: not the capital");
+    assert!(h.apply(vec![look(27)]).contains(&want));
+    assert!(h.apply(vec![look(27)]).contains(&want), "and again, until one stands");
+    let shop = at(PointKind::Shop, 27, 17);
+    h.apply(vec![Input::AddPoint { point: shop.clone(), town: 0 }, Input::CrownShop { point: shop.clone() }]);
+    assert!(!h.apply(vec![look(27)]).contains(&want), "one stands");
+    // Broken: wanted again.
+    h.apply(vec![Input::RemovePoint { point: shop }]);
+    assert!(h.apply(vec![look(27)]).contains(&want));
+    h.apply(vec![Input::Peace]);
+    assert!(!h.apply(vec![look(27)]).contains(&want), "at peace none is wanted");
 }
 
 #[test]

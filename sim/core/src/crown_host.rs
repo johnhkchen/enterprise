@@ -15,9 +15,10 @@
 //!   dimension, so a host lists every market off the map from `Query::Points`. A host's own reaches no further than a point.
 //! - **The sovereign's gold shop** (`Sovereign.mobilise`'s Numismatics vendor, [`CrownShop`], `Output::BuildCrownShop`,
 //!   `Input::CrownShop`): mobilising, the crown buys gold at `gold_premium` times its worth at a vendor by the capital. The
-//!   host puts the vendor up and tells the core; each look it counts it as any vendor (`Input::Vendor`) and the core, which
-//!   knows it is the crown's, keeps its card funded from the capital's treasury and takes the gold sold into it (`CrownShop`),
-//!   sent to the mint, which is all the mod did with it. At peace it comes down (`CrownShopDown`).
+//!   host puts the vendor up and tells the core; while none stands the core asks again at each look its capital is
+//!   counted in ([`Society::want_crown_shop`]). Each look the host counts it as any vendor (`Input::Vendor`) and the core,
+//!   which knows it is the crown's, keeps its card funded from the capital's treasury and takes the gold sold into it
+//!   (`CrownShop`), sent to the mint, which is all the mod did with it. At peace it comes down (`CrownShopDown`).
 //!
 //! **Where the core differs from the mod.** The card's money is spent out of the treasury when it is put on the card, as
 //! a deed vendor's is (`shop_host.rs`): what a card holds beyond what its gold shop pays out stays on it. The metal
@@ -45,12 +46,14 @@ pub const GOLD_LOT: u32 = 8;
 const CARD_LOTS: u64 = 2;
 
 /// The crown's gold shop: where it stands (a `Shop` point of the capital's, once the host has put one up), the price it
-/// last showed, and the gold it has bought in all.
+/// last showed, and the gold it has bought in all; and the shops taken down whose points the host hasn't removed yet (it
+/// couldn't reach the vendor), told to come down again whenever they're counted.
 #[derive(Resource, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct CrownShop {
     pub at: Option<Spot>,
     pub shown: Option<u32>,
     pub bought: f64,
+    pub down: Vec<Spot>,
 }
 
 /// Spurs, to the nearest thousandth of an emerald at the mint's rate.
@@ -105,7 +108,9 @@ impl Society {
             }
             Input::CrownShop { point } => {
                 let mut shop = self.world.resource_mut::<CrownShop>();
-                shop.at = Some(point.spot());
+                let at = point.spot();
+                shop.down.retain(|d| *d != at);
+                shop.at = Some(at);
                 shop.shown = None;
                 Vec::new()
             }
@@ -151,23 +156,44 @@ impl Society {
         let _ = self.add_point(Kind::Market, spot, town);
     }
 
-    /// Takes the crown's gold shop down: it is forgotten, and the host told to take the vendor away.
+    /// Takes the crown's gold shop down: it is forgotten, and the host told to take the vendor away. Until the host removes
+    /// its point (it may not reach the vendor now: peace is made from anywhere), each count of it says so again, so a
+    /// vendor with the crown's card is never taken for a player's.
     fn take_down_crown_shop(&mut self) -> Vec<Output> {
         let mut shop = self.world.resource_mut::<CrownShop>();
         shop.shown = None;
         match shop.at.take() {
-            Some(at) => vec![Output::CrownShopDown { point: Point::of(&at, Kind::Shop) }],
+            Some(at) => {
+                if !shop.down.contains(&at) {
+                    shop.down.push(at.clone());
+                }
+                vec![Output::CrownShopDown { point: Point::of(&at, Kind::Shop) }]
+            }
             None => Vec::new(),
         }
     }
 
+    /// After a look (`wire::handle`): while the crown is mobilised or at war and has no gold shop, it asks for one again
+    /// whenever its capital is counted, as a board asks for a vendor (`keep_board`). Nothing waits in the host: a request
+    /// it lost (restarted, or no floor yet by the desk) comes again at the next look.
+    pub(crate) fn want_crown_shop(&self, towns: &[TownId]) -> Vec<Output> {
+        let Some(capital) = self.capital() else { return Vec::new() };
+        if self.sovereign().phase == Phase::Peace || self.world.resource::<CrownShop>().at.is_some() || !towns.contains(&capital) {
+            return Vec::new();
+        }
+        vec![Output::BuildCrownShop { town: no(capital) }]
+    }
+
+    /// The crown's gold shop, or one taken down whose point still stands.
     pub(crate) fn is_crown_shop(&self, at: &Spot) -> bool {
-        self.world.resource::<CrownShop>().at.as_ref() == Some(at)
+        let shop = self.world.resource::<CrownShop>();
+        shop.at.as_ref() == Some(at) || shop.down.contains(at)
     }
 
     /// A point removed that was the crown's gold shop: it stands no more.
     pub(crate) fn forget_crown_shop(&mut self, at: &Spot) {
         let mut shop = self.world.resource_mut::<CrownShop>();
+        shop.down.retain(|d| d != at);
         if shop.at.as_ref() == Some(at) {
             shop.at = None;
             shop.shown = None;
@@ -177,6 +203,9 @@ impl Society {
     /// The gold shop counted (see the module's doc): its gold bought, its card funded, its price shown.
     pub(crate) fn read_crown_shop(&mut self, at: &Spot, town: TownId, read: &VendorRead) -> Vec<Output> {
         let point = Point::of(at, Kind::Shop);
+        if self.world.resource::<CrownShop>().down.contains(at) {
+            return vec![Output::CrownShopDown { point }];
+        }
         let gold = army::good_named(self.content(), "gold_ingot");
         let (Some(gold), true) = (gold, self.capital() == Some(town) && self.sovereign().phase != Phase::Peace) else {
             return self.take_down_crown_shop();

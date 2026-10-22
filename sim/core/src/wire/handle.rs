@@ -110,6 +110,8 @@ pub fn handle(society: &mut Option<Society>, request: Request) -> Response {
                 .filter_map(|at| s.point(at).map(|p| p.town))
                 .collect();
             outputs.extend(s.show_shops(&shopped, &read));
+            // The crown's gold shop, asked for again while it's wanted and none stands (`crown_host.rs`).
+            outputs.extend(s.want_crown_shop(&shopped));
             done(outputs, Vec::new())
         }
         Command::Ask { queries } => {

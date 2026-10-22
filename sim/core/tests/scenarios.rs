@@ -1068,7 +1068,7 @@ fn books() -> Scenario {
         Input::Deliver { town: 0, good: BREAD, count: 128.0 },
         Input::Deliver { town: 1, good: BREAD, count: 128.0 },
         Input::Deliver { town: 1, good: BOOK, count: 64.0 },
-        Input::Pay { town: 0, money: Fixed::from(500.0) },
+        Input::Pay { town: 0, money: Fixed::from(50.0) },
         Input::Pay { town: 1, money: Fixed::from(50.0) },
         Input::Route { from: 0, to: 1, send: true },
     ]);
