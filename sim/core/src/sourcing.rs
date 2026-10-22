@@ -630,6 +630,7 @@ impl Society {
         self.open_exchange(town);
         let far = self.add_off_map("the market across the sea", hex.center_x() - OVERSEAS_DISTANCE, hex.center_z(), money);
         self.set_off_map_sells(far, true);
+        self.mark_off_map(far, town);
         self.world.resource_mut::<MetalExchange>().overseas = Some(far);
         let blocks = self.places().distance(town, far)?;
         let days = blocks.max(1) as f64 / crate::map::BLOCKS_PER_DAY;

@@ -165,6 +165,34 @@ pub enum Input {
     /// the town's stock goes (`Output::DeedPaid`). Ignored for a rent that isn't a player's or isn't this town's (the
     /// host's view was stale).
     DeedBrought { town: TownNo, rent: u32 },
+    /// A market off the map opened (`crown_host.rs`, `merchant/OffMap.java`, `trade/Realms.java` `open`): a `Market` point
+    /// at a real position (its roads are planned from there) with a town of its own and no one in it, called `name`,
+    /// holding `spurs` of money paid in from outside, selling food and goods to caravans if `sells`. A `realm` ("coast":
+    /// pipe tobacco, leaf, cocoa and bread, wanting wheat, paper, iron and books; "march": leather, wool and bread, wanting
+    /// wheat, bread, carrots and iron; empty: none) makes what it makes and wants what it wants (it sells, whatever
+    /// `sells` says, and is called as the realm is). Its wagons go to each of the `partners` it is routed to, each
+    /// knowing the other. Refused for a point that isn't a free `Market` place, a realm the core hasn't, or a partner that
+    /// isn't a town.
+    OffMap { name: String, at: Point, sells: bool, realm: String, spurs: u64, partners: Vec<TownNo> },
+    /// The sovereign's capital named in peacetime (`/enterprise war capital`; `Sovereign.establish`): the town's treasury
+    /// takes `spurs_per_day` a day, its port's metal exchange opens, and its bank. A gold shop at another town's desk comes
+    /// down (`Output::CrownShopDown`). Refused for a town that isn't there.
+    Capital { town: TownNo, spurs_per_day: u64 },
+    /// Mobilisation (`/enterprise war mobilise`; `Sovereign.mobilise`): peace first, then the capital mints `spurs_per_day`
+    /// a day into its treasury and stockpiles. The core asks for a shop to buy gold by the capital (`Output::BuildCrownShop`).
+    /// Refused for a town that isn't there.
+    Mobilise { town: TownNo, spurs_per_day: u64 },
+    /// War (`/enterprise war declare`; `Sovereign.declare`) against a `theatre` ("faction", "undead" or "nether"): the
+    /// front opens and the towns the capital's wagons reach are levied (`Output::WarDeclared` says how many). Nothing
+    /// happens with no capital. Refused for another theatre.
+    Declare { theatre: String },
+    /// Peace (`/enterprise war peace`; `Sovereign.peace`): the army walks home, the gold shop comes down
+    /// (`Output::CrownShopDown`), the minting falls back to the crown's revenue.
+    Peace,
+    /// The vendor the host put up for the crown to buy gold at (`Output::BuildCrownShop`): a `Shop` point of the capital's,
+    /// placed. The crown's treasury funds its card and the core takes what is sold into it. Refused for a point that isn't
+    /// a shop.
+    CrownShop { point: Point },
 }
 
 /// A villager a census saw: the host's tag for it (its UUID), its trade by the host's name (with or without the host's

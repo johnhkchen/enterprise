@@ -2,8 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{Count, DeedLine, GoodNo, GroundView, HandNo, HexAt, ListingLine, ManifestLine, MarketLine, PalletView, Point, RouteLine, RouteNo,
-    ShopLine, SignalLine, TallyLine, TownNo, WorkView};
+use super::{Count, DeedLine, GoodNo, GroundView, HandNo, HexAt, ListingLine, ManifestLine, MarketLine, MetalLine, PalletView, Point, RouteLine, RouteNo,
+    RealmLine, ShopLine, SignalLine, TallyLine, TownNo, WorkView};
 use super::{BookLine, ContractLine, ForTotal, ForwardLine, NameCount, ProjectLine, RentLine, RouteBook, SummaryLine, TrustLine, WarTown, WhyView};
 use crate::fixed::Fixed;
 
@@ -72,6 +72,10 @@ pub enum Query {
     Shops { town: TownNo },
     /// The rents a town holds as a dealer (a freight hub), with the price of each deed and the vendor it's sold at.
     Deeds { town: TownNo },
+    /// The realms beyond the border and their trade (`/enterprise realms`).
+    Realms,
+    /// The capital's metal exchange (`/enterprise metals`).
+    Metals,
 }
 
 /// An answer, in the place of its question.
@@ -170,6 +174,11 @@ pub enum Answer {
         tally: TallyLine },
     /// A town's rents as a dealer: `hub` whether it deals in them (a freight hub), and the rents it holds.
     Deeds { town: TownNo, hub: bool, deeds: Vec<DeedLine> },
+    /// Each realm's trade (`Realms.report`).
+    Realms { realms: Vec<RealmLine> },
+    /// The metal exchange: the town whose desk it is at (`None`: no capital named), the sovereign's phase in words, and each
+    /// metal it keeps.
+    Metals { desk: Option<TownNo>, phase: String, metals: Vec<MetalLine> },
 }
 
 /// A hand's locker as the Merchant's screen shows it: the hand, whether the Merchant manages it now and has taken it on

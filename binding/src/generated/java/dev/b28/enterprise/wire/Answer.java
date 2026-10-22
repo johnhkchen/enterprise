@@ -34,7 +34,9 @@ public sealed interface Answer
                 Answer.War,
                 Answer.RouteBooks,
                 Answer.Shops,
-                Answer.Deeds {
+                Answer.Deeds,
+                Answer.Realms,
+                Answer.Metals {
     void encode(PostcardOut out);
 
     static Answer decode(PostcardIn in) {
@@ -66,6 +68,8 @@ public sealed interface Answer
             case 23 -> new RouteBooks(in.f64(), in.list(88, RouteBook::decode));
             case 24 -> new Shops(in.u32(), in.list(64, ShopLine::decode), in.list(9, Count::decode), in.list(18, SignalLine::decode), in.list(3, ListingLine::decode), TallyLine.decode(in));
             case 25 -> new Deeds(in.u32(), in.bool(), in.list(24, DeedLine::decode));
+            case 26 -> new Realms(in.list(44, RealmLine::decode));
+            case 27 -> new Metals(in.option(PostcardIn::u32), in.string(), in.list(34, MetalLine::decode));
             default -> throw in.unknownVariant("Answer", at);
         };
     }
@@ -707,6 +711,43 @@ public sealed interface Answer
             out.u32(this.town);
             out.bool(this.hub);
             out.list(this.deeds, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * Each realm's trade ({@code Realms.report}).
+     */
+    record Realms(List<RealmLine> realms) implements Answer {
+        public Realms {
+            Objects.requireNonNull(realms, "realms");
+            realms = List.copyOf(realms);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(26);
+            out.list(this.realms, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * The metal exchange: the town whose desk it is at ({@code None}: no capital named), the sovereign's phase in words, and each
+     * metal it keeps.
+     */
+    record Metals(Optional<Long> desk, String phase, List<MetalLine> metals) implements Answer {
+        public Metals {
+            Objects.requireNonNull(desk, "desk");
+            Objects.requireNonNull(phase, "phase");
+            Objects.requireNonNull(metals, "metals");
+            metals = List.copyOf(metals);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(27);
+            out.option(this.desk, PostcardOut::u32);
+            out.string(this.phase);
+            out.list(this.metals, (o1, e1) -> e1.encode(o1));
         }
     }
 }

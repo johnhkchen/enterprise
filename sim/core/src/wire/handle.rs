@@ -255,6 +255,8 @@ fn answer(s: &Society, query: &Query) -> Result<Answer, String> {
         }
         Query::War => s.war_answer(),
         Query::RouteBooks => s.route_books_answer(),
+        Query::Realms => s.realms_answer(),
+        Query::Metals => s.metals_answer(),
         &Query::Shops { town } => {
             if town as usize >= s.town_count() {
                 return Err(format!("no town {town}"));
@@ -496,6 +498,37 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
                 }
             }
             Input::DeedBrought { town: t, .. } => town(*t)?,
+            Input::OffMap { at, realm, partners, .. } => {
+                if at.kind() != Kind::Market {
+                    return Err(wrong(format!("a market off the map that's a {:?}", at.kind)));
+                }
+                let spot = at.spot();
+                if stands(&points, &spot).is_some() {
+                    return Err(wrong(format!("a point already stands at {spot:?}")));
+                }
+                if !matches!(realm.as_str(), "" | "coast" | "march") {
+                    return Err(wrong(format!("no realm called {realm}")));
+                }
+                for p in partners {
+                    town(*p)?;
+                }
+                towns += 1;
+                former.insert(spot.clone(), false);
+                points.insert(spot, Some(Kind::Market));
+            }
+            Input::Capital { town: t, .. } | Input::Mobilise { town: t, .. } => town(*t)?,
+            Input::Declare { theatre } => {
+                if crate::crown::Theatre::named(theatre).is_none() {
+                    return Err(wrong(format!("no theatre called {theatre}")));
+                }
+            }
+            Input::Peace => {}
+            Input::CrownShop { point } => {
+                if point.kind() != Kind::Shop {
+                    return Err(wrong(format!("the crown's shop that's a {:?}", point.kind)));
+                }
+                same_kind(stands(&points, &point.spot()), point).map_err(wrong)?;
+            }
             Input::Locker { at, .. } => {
                 if let Some(point) = at {
                     if point.kind() != Kind::Locker {

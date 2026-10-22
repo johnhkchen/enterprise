@@ -31,6 +31,9 @@ pub enum PointKind {
     Banker,
     /// A depot (a station's or a dock's store).
     Depot,
+    /// A market off the map (a realm's, the front, the market across the sea): a town at a real position that no one
+    /// builds or visits. Nothing of it is in the host's world; the point is where its roads are planned from.
+    Market,
 }
 
 impl Point {
@@ -46,6 +49,7 @@ impl Point {
             PointKind::Shop => Kind::Shop,
             PointKind::Banker => Kind::Banker,
             PointKind::Depot => Kind::Depot,
+            PointKind::Market => Kind::Market,
         }
     }
 
@@ -57,6 +61,7 @@ impl Point {
             Kind::Shop => PointKind::Shop,
             Kind::Banker => PointKind::Banker,
             Kind::Depot => PointKind::Depot,
+            Kind::Market => PointKind::Market,
         };
         Point { kind, dim: spot.dim.clone(), x: spot.x, y: spot.y, z: spot.z }
     }

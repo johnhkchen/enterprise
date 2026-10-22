@@ -70,7 +70,7 @@ impl Society {
     }
 
     /// The first route from `from` to `to`, open or wound down.
-    fn route_from_to(&self, from: TownId, to: TownId) -> Option<RouteId> {
+    pub(crate) fn route_from_to(&self, from: TownId, to: TownId) -> Option<RouteId> {
         self.routes.iter().position(|&e| self.world.get::<Route>(e).is_some_and(|r| r.from_id == from && r.to_id == to))
     }
 
@@ -191,9 +191,11 @@ impl Society {
         }
     }
 
-    /// The desk a town's host placed for it (the first desk point of the town's), if any.
+    /// The desk a town's host placed for it (the first desk point of the town's; a market off the map's point if it has no
+    /// desk), if any.
     pub(crate) fn desk_of(&self, town: TownId) -> Option<Point> {
         self.points().0.iter().find(|(_, p)| p.town == town && p.kind == crate::points::Kind::Desk)
+            .or_else(|| self.points().0.iter().find(|(_, p)| p.town == town && p.kind == crate::points::Kind::Market))
             .map(|(spot, p)| Point::of(spot, p.kind))
     }
 }

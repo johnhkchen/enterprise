@@ -39,7 +39,6 @@ final class EnterpriseCommands {
 
     /** The tasks that move the commands still on the Java rules (docs/binding-plan.md 3): what core mode says they wait for. */
     private static final String RULES = "B5.1 delete-java-rules";
-    private static final String CROWN = "B4.10 crown-views";
 
     /** In core mode, a command that is still the Java rules' says so and does nothing (it would show data nothing updates). */
     private static int refuse(CommandContext<CommandSourceStack> context, String command, String task) {
@@ -207,7 +206,14 @@ final class EnterpriseCommands {
                         })))
                 .then(Commands.literal("realms").executes(context -> {
                     if (dev.b28.enterprise.binding.Society.isCore()) {
-                        return refuse(context, "realms", CROWN);
+                        var host = coreHost(context.getSource());
+                        if (host == null) {
+                            return 0;
+                        }
+                        var core = host.crown().realms();
+                        context.getSource().sendSuccess(() -> Component.literal("Realms (%d):\n  ".formatted(core.size())
+                                + String.join("\n  ", core)), false);
+                        return core.size();
                     }
                     // The realms beyond the border: their trade with ours, and the customs paid.
                     var lines = dev.b28.enterprise.trade.Realms.get(context.getSource().getServer())
@@ -221,13 +227,29 @@ final class EnterpriseCommands {
                                         .then(Commands.argument("home", BlockPosArgument.blockPos())
                                                 .then(Commands.argument("partners", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
                                                         .executes(context -> {
-                    if (dev.b28.enterprise.binding.Society.isCore()) {
-                        return refuse(context, "realms open", CROWN);
-                    }
                     // Opens a realm's market off the map at {home}, trading with the desks listed ("x y z; x y z").
                     var level = context.getSource().getLevel();
                     String id = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "realm");
                     var home = BlockPosArgument.getBlockPos(context, "home");
+                    if (dev.b28.enterprise.binding.Society.isCore()) {
+                        var host = coreHost(context.getSource());
+                        if (host == null) {
+                            return 0;
+                        }
+                        java.util.List<BlockPos> desks = new java.util.ArrayList<>();
+                        for (String part : com.mojang.brigadier.arguments.StringArgumentType.getString(context, "partners").split(";")) {
+                            String[] xyz = part.trim().split("\\s+");
+                            desks.add(new BlockPos(Integer.parseInt(xyz[0]), Integer.parseInt(xyz[1]), Integer.parseInt(xyz[2])));
+                        }
+                        String why = host.crown().openRealm(level, id, home, desks);
+                        if (why != null) {
+                            context.getSource().sendFailure(Component.literal(why));
+                            return 0;
+                        }
+                        context.getSource().sendSuccess(() -> Component.literal("%s opens trade with %d of our markets"
+                                .formatted(id, desks.size())), false);
+                        return 1;
+                    }
                     java.util.List<net.minecraft.core.GlobalPos> partners = new java.util.ArrayList<>();
                     for (String part : com.mojang.brigadier.arguments.StringArgumentType.getString(context, "partners").split(";")) {
                         String[] xyz = part.trim().split("\\s+");
@@ -320,10 +342,24 @@ final class EnterpriseCommands {
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                         .then(Commands.argument("spursPerDay", IntegerArgumentType.integer(0))
                                                 .executes(context -> {
-                                                    if (dev.b28.enterprise.binding.Society.isCore()) {
-                                                        return refuse(context, "war capital", CROWN);
-                                                    }
                                                     var source = context.getSource();
+                                                    if (dev.b28.enterprise.binding.Society.isCore()) {
+                                                        var host = coreHost(source);
+                                                        if (host == null) {
+                                                            return 0;
+                                                        }
+                                                        String why = host.crown().capital(source.getLevel(),
+                                                                BlockPosArgument.getBlockPos(context, "desk"),
+                                                                IntegerArgumentType.getInteger(context, "spursPerDay"));
+                                                        if (why != null) {
+                                                            source.sendFailure(Component.literal(why));
+                                                            return 0;
+                                                        }
+                                                        source.sendSuccess(() -> Component.literal(
+                                                                "The capital: its treasury takes the crown's revenue, its port's "
+                                                                        + "metal exchange is open"), true);
+                                                        return 1;
+                                                    }
                                                     dev.b28.enterprise.market.Sovereign.get(source.getServer()).establish(
                                                             source.getLevel(), GlobalPos.of(source.getLevel().dimension(),
                                                                     BlockPosArgument.getBlockPos(context, "desk")),
@@ -337,10 +373,23 @@ final class EnterpriseCommands {
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                         .then(Commands.argument("spursPerDay", IntegerArgumentType.integer(0))
                                                 .executes(context -> {
-                                                    if (dev.b28.enterprise.binding.Society.isCore()) {
-                                                        return refuse(context, "war mobilise", CROWN);
-                                                    }
                                                     var source = context.getSource();
+                                                    if (dev.b28.enterprise.binding.Society.isCore()) {
+                                                        var host = coreHost(source);
+                                                        if (host == null) {
+                                                            return 0;
+                                                        }
+                                                        String why = host.crown().mobilise(source.getLevel(),
+                                                                BlockPosArgument.getBlockPos(context, "desk"),
+                                                                IntegerArgumentType.getInteger(context, "spursPerDay"));
+                                                        if (why != null) {
+                                                            source.sendFailure(Component.literal(why));
+                                                            return 0;
+                                                        }
+                                                        source.sendSuccess(() -> Component.literal(
+                                                                "Mobilising: the treasury mints, the stockpile is ordered"), true);
+                                                        return 1;
+                                                    }
                                                     dev.b28.enterprise.market.Sovereign.get(source.getServer()).mobilise(
                                                             source.getLevel(), GlobalPos.of(source.getLevel().dimension(),
                                                                     BlockPosArgument.getBlockPos(context, "desk")),
@@ -352,10 +401,24 @@ final class EnterpriseCommands {
                         .then(Commands.literal("declare")
                                 .then(Commands.argument("theatre", com.mojang.brigadier.arguments.StringArgumentType.word())
                                         .executes(context -> {
-                                            if (dev.b28.enterprise.binding.Society.isCore()) {
-                                                return refuse(context, "war declare", CROWN);
-                                            }
                                             var source = context.getSource();
+                                            if (dev.b28.enterprise.binding.Society.isCore()) {
+                                                var host = coreHost(source);
+                                                if (host == null) {
+                                                    return 0;
+                                                }
+                                                String theatre = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "theatre");
+                                                String[] why = new String[1];
+                                                int levies = host.crown().declare(source.getLevel(), theatre, why);
+                                                if (levies < 0) {
+                                                    source.sendFailure(Component.literal(why[0]));
+                                                    return 0;
+                                                }
+                                                source.sendSuccess(() -> Component.literal(
+                                                        "War against %s: %d towns levied".formatted(theatre.toUpperCase(java.util.Locale.ROOT),
+                                                                levies)), true);
+                                                return levies;
+                                            }
                                             var theatre = dev.b28.enterprise.army.Army.Theatre.valueOf(
                                                     com.mojang.brigadier.arguments.StringArgumentType.getString(context, "theatre")
                                                             .toUpperCase(java.util.Locale.ROOT));
@@ -367,7 +430,14 @@ final class EnterpriseCommands {
                                         })))
                         .then(Commands.literal("peace").executes(context -> {
                             if (dev.b28.enterprise.binding.Society.isCore()) {
-                                return refuse(context, "war peace", CROWN);
+                                var host = coreHost(context.getSource());
+                                if (host == null) {
+                                    return 0;
+                                }
+                                int soldiers = host.crown().peace(context.getSource().getLevel());
+                                context.getSource().sendSuccess(() -> Component.literal(
+                                        "Peace: %d soldiers walk home".formatted(soldiers)), true);
+                                return soldiers;
                             }
                             int home = dev.b28.enterprise.market.Sovereign.get(context.getSource().getServer())
                                     .peace(context.getSource().getLevel());
@@ -1533,10 +1603,20 @@ final class EnterpriseCommands {
 
     /** The capital's metal exchange: each metal's stock, its prices, and what it has imported, bought and sold. */
     private static int metals(CommandContext<CommandSourceStack> context) {
-        if (dev.b28.enterprise.binding.Society.isCore()) {
-            return refuse(context, "metals", CROWN);
-        }
         CommandSourceStack source = context.getSource();
+        if (dev.b28.enterprise.binding.Society.isCore()) {
+            var host = coreHost(source);
+            if (host == null) {
+                return 0;
+            }
+            var lines = host.crown().metals();
+            if (lines.isEmpty()) {
+                source.sendFailure(Component.literal("No metal exchange: name a capital with /enterprise war capital"));
+                return 0;
+            }
+            source.sendSuccess(() -> Component.literal(String.join("\n", lines)), false);
+            return 1;
+        }
         var server = source.getServer();
         var exchange = dev.b28.enterprise.market.MetalExchange.get(server);
         if (exchange.desk().isEmpty()) {

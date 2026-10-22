@@ -24,7 +24,12 @@ public enum PointKind {
     /**
      * A depot (a station's or a dock's store).
      */
-    Depot;
+    Depot,
+    /**
+     * A market off the map (a realm's, the front, the market across the sea): a town at a real position that no one
+     * builds or visits. Nothing of it is in the host's world; the point is where its roads are planned from.
+     */
+    Market;
 
     public void encode(PostcardOut out) {
         out.variant(switch (this) {
@@ -33,6 +38,7 @@ public enum PointKind {
             case Shop -> 2;
             case Banker -> 3;
             case Depot -> 4;
+            case Market -> 5;
         });
     }
 
@@ -44,6 +50,7 @@ public enum PointKind {
             case 2 -> Shop;
             case 3 -> Banker;
             case 4 -> Depot;
+            case 5 -> Market;
             default -> throw in.unknownVariant("PointKind", at);
         };
     }

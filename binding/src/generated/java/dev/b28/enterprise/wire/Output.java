@@ -31,7 +31,12 @@ public sealed interface Output
                 Output.Shelf,
                 Output.Deed,
                 Output.DeedPaid,
-                Output.BuildShop {
+                Output.BuildShop,
+                Output.WarDeclared,
+                Output.PeaceMade,
+                Output.BuildCrownShop,
+                Output.CrownShop,
+                Output.CrownShopDown {
     void encode(PostcardOut out);
 
     static Output decode(PostcardIn in) {
@@ -60,6 +65,11 @@ public sealed interface Output
             case 20 -> new Deed(Point.decode(in), in.u32(), in.bool(), in.u32(), in.u64());
             case 21 -> new DeedPaid(in.u32(), in.u32(), in.u32(), in.u32(), in.u32());
             case 22 -> new BuildShop(in.u32());
+            case 23 -> new WarDeclared(in.u32());
+            case 24 -> new PeaceMade(in.u32());
+            case 25 -> new BuildCrownShop(in.u32());
+            case 26 -> new CrownShop(Point.decode(in), in.u32(), in.u32(), in.u32(), in.u64(), in.u32());
+            case 27 -> new CrownShopDown(Point.decode(in));
             default -> throw in.unknownVariant("Output", at);
         };
     }
@@ -461,6 +471,76 @@ public sealed interface Output
         public void encode(PostcardOut out) {
             out.variant(22);
             out.u32(this.town);
+        }
+    }
+
+    /**
+     * War was declared: {@code levies} towns were levied (none with no capital named).
+     */
+    record WarDeclared(long levies) implements Output {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(23);
+            out.u32(this.levies);
+        }
+    }
+
+    /**
+     * Peace: {@code home} soldiers and recruits were sent home.
+     */
+    record PeaceMade(long home) implements Output {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(24);
+            out.u32(this.home);
+        }
+    }
+
+    /**
+     * The crown wants a vendor to buy gold at, by its capital's desk (mobilising): the host puts one up and says so
+     * ({@code Input::CrownShop}).
+     */
+    record BuildCrownShop(long town) implements Output {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(25);
+            out.u32(this.town);
+        }
+    }
+
+    /**
+     * What the crown's gold shop shows now: it buys {@code lot} of {@code good} at {@code price} spurs a lot, its card paid {@code fund} spurs
+     * more from the capital's treasury first, and the {@code taken} items in it now the crown's (the host takes them out).
+     */
+    record CrownShop(Point point, long good, long lot, long price, long fund, long taken) implements Output {
+        public CrownShop {
+            Objects.requireNonNull(point, "point");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(26);
+            this.point.encode(out);
+            out.u32(this.good);
+            out.u32(this.lot);
+            out.u32(this.price);
+            out.u64(this.fund);
+            out.u32(this.taken);
+        }
+    }
+
+    /**
+     * Peace: the crown's gold shop comes down. What its card holds is the host's.
+     */
+    record CrownShopDown(Point point) implements Output {
+        public CrownShopDown {
+            Objects.requireNonNull(point, "point");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(27);
+            this.point.encode(out);
         }
     }
 }

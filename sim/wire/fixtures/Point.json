@@ -35,6 +35,13 @@
     "z": 2147483647
   },
   {
+    "kind": "Market",
+    "dim": "minecraft:overworld",
+    "x": -2400,
+    "y": 64,
+    "z": 27
+  },
+  {
     "kind": "Desk",
     "dim": "",
     "x": 1,

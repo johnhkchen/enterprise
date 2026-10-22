@@ -43,7 +43,13 @@ public sealed interface Input
                 Input.Vendor,
                 Input.Board,
                 Input.DeedShop,
-                Input.DeedBrought {
+                Input.DeedBrought,
+                Input.OffMap,
+                Input.Capital,
+                Input.Mobilise,
+                Input.Declare,
+                Input.Peace,
+                Input.CrownShop {
     void encode(PostcardOut out);
 
     static Input decode(PostcardIn in) {
@@ -84,6 +90,12 @@ public sealed interface Input
             case 32 -> new Board(Point.decode(in));
             case 33 -> new DeedShop(in.u32(), in.option(Point::decode));
             case 34 -> new DeedBrought(in.u32(), in.u32());
+            case 35 -> new OffMap(in.string(), Point.decode(in), in.bool(), in.string(), in.u64(), in.list(1, PostcardIn::u32));
+            case 36 -> new Capital(in.u32(), in.u64());
+            case 37 -> new Mobilise(in.u32(), in.u64());
+            case 38 -> new Declare(in.string());
+            case 39 -> new Peace();
+            case 40 -> new CrownShop(Point.decode(in));
             default -> throw in.unknownVariant("Input", at);
         };
     }
@@ -718,6 +730,110 @@ public sealed interface Input
             out.variant(34);
             out.u32(this.town);
             out.u32(this.rent);
+        }
+    }
+
+    /**
+     * A market off the map opened ({@code crown_host.rs}, {@code merchant/OffMap.java}, {@code trade/Realms.java} {@code open}): a {@code Market} point
+     * at a real position (its roads are planned from there) with a town of its own and no one in it, called {@code name},
+     * holding {@code spurs} of money paid in from outside, selling food and goods to caravans if {@code sells}. A {@code realm} ("coast":
+     * pipe tobacco, leaf, cocoa and bread, wanting wheat, paper, iron and books; "march": leather, wool and bread, wanting
+     * wheat, bread, carrots and iron; empty: none) makes what it makes and wants what it wants (it sells, whatever
+     * {@code sells} says, and is called as the realm is). Its wagons go to each of the {@code partners} it is routed to, each
+     * knowing the other. Refused for a point that isn't a free {@code Market} place, a realm the core hasn't, or a partner that
+     * isn't a town.
+     */
+    record OffMap(String name, Point at, boolean sells, String realm, long spurs, List<Long> partners) implements Input {
+        public OffMap {
+            Objects.requireNonNull(name, "name");
+            Objects.requireNonNull(at, "at");
+            Objects.requireNonNull(realm, "realm");
+            Objects.requireNonNull(partners, "partners");
+            partners = List.copyOf(partners);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(35);
+            out.string(this.name);
+            this.at.encode(out);
+            out.bool(this.sells);
+            out.string(this.realm);
+            out.u64(this.spurs);
+            out.list(this.partners, PostcardOut::u32);
+        }
+    }
+
+    /**
+     * The sovereign's capital named in peacetime ({@code /enterprise war capital}; {@code Sovereign.establish}): the town's treasury
+     * takes {@code spurs_per_day} a day, its port's metal exchange opens, and its bank. A gold shop at another town's desk comes
+     * down ({@code Output::CrownShopDown}). Refused for a town that isn't there.
+     */
+    record Capital(long town, long spursPerDay) implements Input {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(36);
+            out.u32(this.town);
+            out.u64(this.spursPerDay);
+        }
+    }
+
+    /**
+     * Mobilisation ({@code /enterprise war mobilise}; {@code Sovereign.mobilise}): peace first, then the capital mints {@code spurs_per_day}
+     * a day into its treasury and stockpiles. The core asks for a shop to buy gold by the capital ({@code Output::BuildCrownShop}).
+     * Refused for a town that isn't there.
+     */
+    record Mobilise(long town, long spursPerDay) implements Input {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(37);
+            out.u32(this.town);
+            out.u64(this.spursPerDay);
+        }
+    }
+
+    /**
+     * War ({@code /enterprise war declare}; {@code Sovereign.declare}) against a {@code theatre} ("faction", "undead" or "nether"): the
+     * front opens and the towns the capital's wagons reach are levied ({@code Output::WarDeclared} says how many). Nothing
+     * happens with no capital. Refused for another theatre.
+     */
+    record Declare(String theatre) implements Input {
+        public Declare {
+            Objects.requireNonNull(theatre, "theatre");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(38);
+            out.string(this.theatre);
+        }
+    }
+
+    /**
+     * Peace ({@code /enterprise war peace}; {@code Sovereign.peace}): the army walks home, the gold shop comes down
+     * ({@code Output::CrownShopDown}), the minting falls back to the crown's revenue.
+     */
+    record Peace() implements Input {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(39);
+        }
+    }
+
+    /**
+     * The vendor the host put up for the crown to buy gold at ({@code Output::BuildCrownShop}): a {@code Shop} point of the capital's,
+     * placed. The crown's treasury funds its card and the core takes what is sold into it. Refused for a point that isn't
+     * a shop.
+     */
+    record CrownShop(Point point) implements Input {
+        public CrownShop {
+            Objects.requireNonNull(point, "point");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(40);
+            this.point.encode(out);
         }
     }
 }

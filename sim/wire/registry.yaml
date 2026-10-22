@@ -338,6 +338,21 @@ Answer:
           - deeds:
               SEQ:
                 TYPENAME: DeedLine
+    26:
+      Realms:
+        STRUCT:
+          - realms:
+              SEQ:
+                TYPENAME: RealmLine
+    27:
+      Metals:
+        STRUCT:
+          - desk:
+              OPTION: U32
+          - phase: STR
+          - metals:
+              SEQ:
+                TYPENAME: MetalLine
 BookLine:
   STRUCT:
     - day: U64
@@ -705,6 +720,38 @@ Input:
         STRUCT:
           - town: U32
           - rent: U32
+    35:
+      OffMap:
+        STRUCT:
+          - name: STR
+          - at:
+              TYPENAME: Point
+          - sells: BOOL
+          - realm: STR
+          - spurs: U64
+          - partners:
+              SEQ: U32
+    36:
+      Capital:
+        STRUCT:
+          - town: U32
+          - spurs_per_day: U64
+    37:
+      Mobilise:
+        STRUCT:
+          - town: U32
+          - spurs_per_day: U64
+    38:
+      Declare:
+        STRUCT:
+          - theatre: STR
+    39:
+      Peace: UNIT
+    40:
+      CrownShop:
+        STRUCT:
+          - point:
+              TYPENAME: Point
 LandKind:
   ENUM:
     0:
@@ -757,6 +804,14 @@ MarketLine:
     - settlement: BOOL
     - reachable: BOOL
     - routed: BOOL
+MetalLine:
+  STRUCT:
+    - good: U32
+    - name: STR
+    - held: F64
+    - target: F64
+    - coming: F64
+    - premium: F64
 NameCount:
   STRUCT:
     - name: STR
@@ -944,6 +999,33 @@ Output:
       BuildShop:
         STRUCT:
           - town: U32
+    23:
+      WarDeclared:
+        STRUCT:
+          - levies: U32
+    24:
+      PeaceMade:
+        STRUCT:
+          - home: U32
+    25:
+      BuildCrownShop:
+        STRUCT:
+          - town: U32
+    26:
+      CrownShop:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+          - good: U32
+          - lot: U32
+          - price: U32
+          - fund: U64
+          - taken: U32
+    27:
+      CrownShopDown:
+        STRUCT:
+          - point:
+              TYPENAME: Point
 PackAmount:
   STRUCT:
     - good: STR
@@ -1064,6 +1146,8 @@ PointKind:
       Banker: UNIT
     4:
       Depot: UNIT
+    5:
+      Market: UNIT
 ProjectLine:
   STRUCT:
     - what: STR
@@ -1170,6 +1254,21 @@ Query:
       Deeds:
         STRUCT:
           - town: U32
+    26:
+      Realms: UNIT
+    27:
+      Metals: UNIT
+RealmLine:
+  STRUCT:
+    - town: U32
+    - name: STR
+    - trips: U32
+    - partners: U32
+    - sold_spurs: F64
+    - bought_spurs: F64
+    - customs_spurs: F64
+    - made: F64
+    - in_hand_spurs: F64
 Refusal:
   ENUM:
     0:

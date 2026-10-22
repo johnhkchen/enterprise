@@ -70,6 +70,7 @@ pub mod land;
 pub mod locker_host;
 pub mod wagon_host;
 pub mod commands_host;
+pub mod crown_host;
 pub mod shop_host;
 pub mod wire;
 

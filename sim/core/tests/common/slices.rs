@@ -60,4 +60,5 @@ slices! {
     wagon_host,
     pallet_host,
     shop_host,
+    crown_host,
 }

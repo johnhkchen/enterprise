@@ -60,6 +60,7 @@ crate::saved! {
         land_book: crate::land::LandBook = crate::land::LandBook::default(),
         stowage: crate::pallet_host::Stowage = crate::pallet_host::Stowage::default(),
         vendors: crate::shop_host::Vendors = crate::shop_host::Vendors::default(),
+        crown_shop: crate::crown_host::CrownShop = crate::crown_host::CrownShop::default(),
     }
     town {
         town: Town,

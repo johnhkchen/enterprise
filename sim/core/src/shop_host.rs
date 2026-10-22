@@ -107,6 +107,9 @@ impl Society {
         let town = placed.town;
         let rate = self.mint_rate();
         self.world.resource_mut::<Vendors>().counted.insert(at.clone());
+        if self.is_crown_shop(at) {
+            return self.read_crown_shop(at, town, read);
+        }
         if let Some(&rent) = self.world.resource::<Vendors>().deeds.get(at) {
             return self.read_deed(at, town, rent, read, rate);
         }
@@ -256,6 +259,7 @@ impl Society {
 
     /// A vendor point broken: its shop goes (`remove_point`).
     pub(crate) fn forget_shop_point(&mut self, at: &Spot) {
+        self.forget_crown_shop(at);
         self.forget_vendor(at);
     }
 

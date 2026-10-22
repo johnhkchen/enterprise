@@ -532,6 +532,8 @@ impl Society {
             Input::Vendor { .. } | Input::Board { .. } | Input::DeedShop { .. } | Input::DeedBrought { .. } => {
                 self.apply_vendors(input)
             }
+            Input::OffMap { .. } | Input::Capital { .. } | Input::Mobilise { .. } | Input::Declare { .. } | Input::Peace
+            | Input::CrownShop { .. } => self.apply_crown(input),
             Input::Route { from, to, send } => {
                 self.host_route(from as TownId, to as TownId, send);
                 Vec::new()

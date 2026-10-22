@@ -2760,6 +2760,156 @@
           }
         },
         {
+          "OffMap": {
+            "name": "the front",
+            "at": {
+              "kind": "Market",
+              "dim": "minecraft:overworld",
+              "x": 27,
+              "y": 64,
+              "z": -1473
+            },
+            "sells": false,
+            "realm": "",
+            "spurs": 0,
+            "partners": []
+          }
+        },
+        {
+          "OffMap": {
+            "name": "the Coast",
+            "at": {
+              "kind": "Market",
+              "dim": "minecraft:overworld",
+              "x": -2400,
+              "y": 64,
+              "z": 27
+            },
+            "sells": true,
+            "realm": "coast",
+            "spurs": 20000,
+            "partners": [
+              0,
+              1,
+              2
+            ]
+          }
+        },
+        {
+          "OffMap": {
+            "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "at": {
+              "kind": "Market",
+              "dim": "minecraft:overworld",
+              "x": -2147483648,
+              "y": 2147483647,
+              "z": -2147483648
+            },
+            "sells": true,
+            "realm": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "spurs": 18446744073709551615,
+            "partners": [
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295,
+              4294967295
+            ]
+          }
+        },
+        {
+          "Capital": {
+            "town": 0,
+            "spurs_per_day": 16
+          }
+        },
+        {
+          "Capital": {
+            "town": 4294967295,
+            "spurs_per_day": 18446744073709551615
+          }
+        },
+        {
+          "Mobilise": {
+            "town": 0,
+            "spurs_per_day": 480
+          }
+        },
+        {
+          "Mobilise": {
+            "town": 4294967295,
+            "spurs_per_day": 18446744073709551615
+          }
+        },
+        {
+          "Declare": {
+            "theatre": "faction"
+          }
+        },
+        {
+          "Declare": {
+            "theatre": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          }
+        },
+        "Peace",
+        {
+          "CrownShop": {
+            "point": {
+              "kind": "Shop",
+              "dim": "minecraft:overworld",
+              "x": 27,
+              "y": -60,
+              "z": 17
+            }
+          }
+        },
+        {
+          "CrownShop": {
+            "point": {
+              "kind": "Shop",
+              "dim": "minecraft:overworld",
+              "x": -2147483648,
+              "y": 2147483647,
+              "z": -2147483648
+            }
+          }
+        },
+        {
           "Built": {
             "town": 0,
             "work": {
@@ -3354,7 +3504,9 @@
           "Deeds": {
             "town": 4294967295
           }
-        }
+        },
+        "Realms",
+        "Metals"
       ]
     }
   }

@@ -270,7 +270,7 @@ is one question and its lines out, in the Java commands' words so the studies' r
 | `toll`, `hex`, `bridge`, `cottage`, `survey`, `services`, `expeditions`, `settlements`, `switch`, `name <desk> <name>`, `freight`, `post`, `forwarder`, `paperwork` (the crates and papers stay Java mode's: `pallet-views` drew the core's pallets without them) | "Java mode only until B5.1 delete-java-rules" |
 | `market <desk>` | the core's (`Shops`: the town's vendors, orders, signals, board listings and tally) |
 | `tenders`, `bank`, `bank open` (no core rules shown for them: `shop-adapter` took the vendors only) | "Java mode only until B5.1 delete-java-rules" |
-| `metals`, `realms`, `realms open`, `war capital`, `war mobilise`, `war declare`, `war peace` | "Java mode only until B4.10 crown-views" |
+| `metals`, `realms`, `realms open`, `war capital`, `war mobilise`, `war declare`, `war peace` | the core's (`Metals`, `Realms`, `OffMap`, `Capital`, `Mobilise`, `Declare`, `Peace`: `adapters/CrownAdapter`) |
 
 **Studies.** John, 2026-10-18: most Java-server studies retire for `sim/host` (`just study`); one in-game study is kept as a
 check. Kept: `network_study.py` with its default flags (and `--save-at`, `--label`, `--resume`, `--stop-when`), the same
@@ -729,6 +729,36 @@ the metal exchange, the requisitions and the freight hubs (`crown-views`), a dee
 show it; a vendor's box is emptied only where the core says the coin is the town's (touching the desk, or a deed shop in
 its `Query::Deeds`), never a player's own vendor reselling a deed; a buying vendor's price changed is a new order, as
 `Broker.contractFor` matches a delivery by its price.
+
+**Built (B4.10 `crown-views`).** The crown's rules were the core's already (`crown.rs`, `army.rs`, `realms.rs`,
+`sourcing.rs`: mint, stockpile, levies, requisitions, the front, the exchange, realms); what the core lacked was a way for a host to
+start them and a place to show them. In the core (`crown_host.rs`, `CrownShop` in `saved!`; `Kind::Market` / `PointKind::Market`
+in `points.rs`): `Input::Capital`, `Mobilise`, `Declare` (a theatre by name) and `Peace` are the sovereign's commands
+(`Output::WarDeclared { levies }`, `PeaceMade { home }`); `Input::OffMap { name, at, sells, realm, spurs, partners }` opens a
+market off the map at a `Market` point (a host's own, a realm "coast" or "march", money paid in at the mint's rate, its roads
+to the towns it trades with); the front and the market across the sea the core opens itself are `Market` points too
+(`mark_off_map`, beside the capital's desk's dimension), so `Query::Points` lists every market off the map. The gold shop:
+mobilising, the core asks for a vendor by the capital's desk (`Output::BuildCrownShop`), the host puts one up and says so
+(`Input::CrownShop`), and from then each look's `Input::Vendor` count of it is the crown's (`read_crown_shop`): it shows 8 gold at
+`gold_premium` times its worth (`Output::CrownShop { point, good, lot, price, fund, taken }`), its card kept funded to two lots'
+price from the capital's treasury (`cash_book::post`, "gold shop"), the gold sold into it the crown's (delivered and sent to the
+mint: `Ledger`), and at peace it comes down (`CrownShopDown`). `Query::Realms` and `Query::Metals` are what `/enterprise realms`
+and `metals` show. Schema `41c307f6fa0993a8` (Input 35-40, Output 23-27, Query/Answer 26-27, `PointKind::Market`, `RealmLine`,
+`MetalLine`), FORMAT 1 (the save grew: dev worlds' `enterprise_core.dat` are rebuilt). Base worlds' behaviour unmoved
+(`just core-fingerprint` `d8a270619eff9cdb`), the replay digest written again for the save's shape. `sim/scenarios/crown.json`
+(capital, realm, mobilising with the gold shop, war, peace, every refusal), `tests/crown_host.rs` (12), a `crown_host`
+random-worlds slice (a capital named, mobilised, the gold shop counted, peace). In the mod: `adapters/CrownAdapter` (the commands,
+the realm opened at a block, the gold shop put up on open floor near the capital's desk and shown, the books), `PointsAdapter.Kind.MARKET`;
+in core mode `/enterprise war capital|mobilise|declare|peace`, `realms`, `realms open` and `metals` are the core's.
+Three game tests (core-mode twins of WarTests' gold shop and Realms.open, skip-listed as the binding's own); no existing game
+test changed. 972 Rust tests pass, All 308 required tests passed, core mode 308 of 308 (baseline written again), 411 JVM
+tests (`just binding-test`). Measured in the game-test server: the gold shop's place check 0.00005 ms a look, the realms and metals
+asked 0.177 ms. The Java `Sovereign`, `Requisitions`, `Army`, `Realms`, `OffMap` and `MetalExchange` are unused in core mode (their ticks
+were never registered there) and go with `delete-java-rules`. Left: the metal exchange's vendors and the requisitions' buying vendors
+(players selling metals or kit at the capital's port: the core's exchange and requisitions deal with markets' own Merchants only),
+the gold shop's leftover card balance when it comes down (money parked on a card, as a deed vendor's), the front and the market
+across the sea have no block to show (the war is shown by its soldiers, hands away and back), a realm's roads need the
+host to give its partners at opening.
 
 ### 3.6 Wave B5: closing
 

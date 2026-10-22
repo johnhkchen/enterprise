@@ -80,6 +80,7 @@ fn points() -> Vec<Point> {
         point(PointKind::Shop, -1, -64, -1),
         point(PointKind::Banker, i32::MAX, 319, i32::MIN),
         point(PointKind::Depot, i32::MIN, i32::MIN, i32::MAX),
+        point(PointKind::Market, -2_400, 64, 27),
         Point { kind: PointKind::Desk, dim: String::new(), x: 1, y: 2, z: 3 },
         Point { kind: PointKind::Locker, dim: "minecraft:the_nether".into(), x: -30_000_000, y: 0, z: 30_000_000 },
         Point { kind: PointKind::Shop, dim: "mod:dimension_\u{e9}\u{4e16}\u{1f33e}".into(), x: 5, y: 5, z: 5 },
@@ -304,6 +305,21 @@ fn inputs() -> Vec<Input> {
         Input::DeedShop { rent: u32::MAX, point: None },
         Input::DeedBrought { town: 0, rent: 3 },
         Input::DeedBrought { town: BIGGEST_ID, rent: u32::MAX },
+        Input::OffMap { name: "the front".into(), at: point(PointKind::Market, 27, 64, -1_473), sells: false, realm: String::new(),
+            spurs: 0, partners: vec![] },
+        Input::OffMap { name: "the Coast".into(), at: point(PointKind::Market, -2_400, 64, 27), sells: true, realm: "coast".into(),
+            spurs: 20_000, partners: vec![0, 1, 2] },
+        Input::OffMap { name: "x".repeat(300), at: point(PointKind::Market, i32::MIN, i32::MAX, i32::MIN), sells: true,
+            realm: "x".repeat(300), spurs: u64::MAX, partners: vec![BIGGEST_ID; 40] },
+        Input::Capital { town: 0, spurs_per_day: 16 },
+        Input::Capital { town: BIGGEST_ID, spurs_per_day: u64::MAX },
+        Input::Mobilise { town: 0, spurs_per_day: 480 },
+        Input::Mobilise { town: BIGGEST_ID, spurs_per_day: u64::MAX },
+        Input::Declare { theatre: "faction".into() },
+        Input::Declare { theatre: "x".repeat(300) },
+        Input::Peace,
+        Input::CrownShop { point: point(PointKind::Shop, 27, -60, 17) },
+        Input::CrownShop { point: point(PointKind::Shop, i32::MIN, i32::MAX, i32::MIN) },
     ]);
     all.extend(works().into_iter().enumerate().map(|(i, work)| Input::Built { town: i as TownNo, work, share: 0.25 * i as f64 }));
     all.push(Input::Built { town: BIGGEST_ID, work: Work::Wall, share: 1.0 });
@@ -440,6 +456,17 @@ fn outputs() -> Vec<Output> {
         Output::DeedPaid { town: BIGGEST_ID, rent: u32::MAX, good: BIGGEST_ID, count: u32::MAX, owed: u32::MAX },
         Output::BuildShop { town: 0 },
         Output::BuildShop { town: BIGGEST_ID },
+        Output::WarDeclared { levies: 0 },
+        Output::WarDeclared { levies: u32::MAX },
+        Output::PeaceMade { home: 24 },
+        Output::PeaceMade { home: u32::MAX },
+        Output::BuildCrownShop { town: 0 },
+        Output::BuildCrownShop { town: BIGGEST_ID },
+        Output::CrownShop { point: point(PointKind::Shop, 27, -60, 17), good: 5, lot: 8, price: 1_200, fund: 2_400, taken: 3 },
+        Output::CrownShop { point: point(PointKind::Shop, i32::MIN, i32::MAX, i32::MIN), good: BIGGEST_ID, lot: u32::MAX,
+            price: u32::MAX, fund: u64::MAX, taken: u32::MAX },
+        Output::CrownShopDown { point: point(PointKind::Shop, 27, -60, 17) },
+        Output::CrownShopDown { point: point(PointKind::Shop, i32::MIN, i32::MAX, i32::MIN) },
     ]
 }
 
@@ -470,7 +497,8 @@ fn queries() -> Vec<Query> {
         Query::Whys { town: 0 }, Query::Whys { town: BIGGEST_ID }, Query::Trust, Query::Contracts { town: None },
         Query::Contracts { town: Some(2) }, Query::Contracts { town: Some(BIGGEST_ID) }, Query::Territory { town: 0 },
         Query::Territory { town: BIGGEST_ID }, Query::War, Query::RouteBooks,
-        Query::Shops { town: 0 }, Query::Shops { town: BIGGEST_ID }, Query::Deeds { town: 0 }, Query::Deeds { town: BIGGEST_ID }]
+        Query::Shops { town: 0 }, Query::Shops { town: BIGGEST_ID }, Query::Deeds { town: 0 }, Query::Deeds { town: BIGGEST_ID },
+        Query::Realms, Query::Metals]
 }
 
 fn offer_views() -> Vec<OfferView> {
@@ -622,6 +650,28 @@ fn answers() -> Vec<Answer> {
                 spurs_from_own_shops: 9.0 } },
         Answer::Deeds { town: 0, hub: false, deeds: vec![] },
         Answer::Deeds { town: BIGGEST_ID, hub: true, deeds: deed_lines() },
+        Answer::Realms { realms: vec![] },
+        Answer::Realms { realms: realm_lines() },
+        Answer::Metals { desk: None, phase: "peace".into(), metals: vec![] },
+        Answer::Metals { desk: Some(0), phase: "war".into(), metals: metal_lines() },
+        Answer::Metals { desk: Some(BIGGEST_ID), phase: "x".repeat(300), metals: vec![MetalLine { good: BIGGEST_ID,
+            name: "x".repeat(300), held: f64::MAX, target: f64::MAX, coming: f64::MAX, premium: f64::MIN_POSITIVE }; 12] },
+    ]
+}
+
+fn realm_lines() -> Vec<RealmLine> {
+    vec![
+        RealmLine { town: 7, name: "the Coast".into(), trips: 12, partners: 3, sold_spurs: 4_800.0, bought_spurs: 2_300.5,
+            customs_spurs: 230.0, made: 1_840.0, in_hand_spurs: 21_400.25 },
+        RealmLine { town: BIGGEST_ID, name: "x".repeat(300), trips: u32::MAX, partners: u32::MAX, sold_spurs: f64::MAX,
+            bought_spurs: f64::MAX, customs_spurs: f64::MAX, made: f64::MAX, in_hand_spurs: f64::MIN_POSITIVE },
+    ]
+}
+
+fn metal_lines() -> Vec<MetalLine> {
+    vec![
+        MetalLine { good: 3, name: "minecraft:iron_ingot".into(), held: 120.0, target: 384.0, coming: 64.0, premium: 1.35 },
+        MetalLine { good: 8, name: "minecraft:gold_ingot".into(), held: 0.0, target: 96.0, coming: 0.0, premium: 1.5 },
     ]
 }
 
@@ -860,7 +910,7 @@ fixtures! {
     answer_fixtures: Answer = answers();
     refusal_fixtures: Refusal = refusals();
     point_fixtures: Point = points();
-    point_kind_fixtures: PointKind = vec![PointKind::Desk, PointKind::Locker, PointKind::Shop, PointKind::Banker, PointKind::Depot];
+    point_kind_fixtures: PointKind = vec![PointKind::Desk, PointKind::Locker, PointKind::Shop, PointKind::Banker, PointKind::Depot, PointKind::Market];
     place_fixtures: Place = vec![Place::Town { town: 0 }, Place::Custody { town: 1 }, Place::Wagon { route: BIGGEST_ID },
         Place::Container { container: u64::MAX }];
     package_line_fixtures: PackageLine = vec![PackageLine { kind: 0, good: 0, count: 0.0 },
@@ -908,6 +958,8 @@ fixtures! {
     vendor_mode_fixtures: VendorMode = vec![VendorMode::Idle, VendorMode::Buy, VendorMode::Sell];
     shop_role_fixtures: ShopRole = vec![ShopRole::Order, ShopRole::Stall, ShopRole::Own, ShopRole::Board, ShopRole::Deed, ShopRole::Idle];
     shop_line_fixtures: ShopLine = shop_lines();
+    realm_line_fixtures: RealmLine = realm_lines();
+    metal_line_fixtures: MetalLine = metal_lines();
     deed_line_fixtures: DeedLine = deed_lines();
     listing_line_fixtures: ListingLine = vec![ListingLine { good: 2, lot: 16, spurs: 9 },
         ListingLine { good: BIGGEST_ID, lot: u32::MAX, spurs: u32::MAX }];
@@ -958,6 +1010,12 @@ fn input_place(i: &Input) -> usize {
         Input::Board { .. } => 32,
         Input::DeedShop { .. } => 33,
         Input::DeedBrought { .. } => 34,
+        Input::OffMap { .. } => 35,
+        Input::Capital { .. } => 36,
+        Input::Mobilise { .. } => 37,
+        Input::Declare { .. } => 38,
+        Input::Peace => 39,
+        Input::CrownShop { .. } => 40,
     }
 }
 
@@ -986,6 +1044,11 @@ fn output_place(o: &Output) -> usize {
         Output::Deed { .. } => 20,
         Output::DeedPaid { .. } => 21,
         Output::BuildShop { .. } => 22,
+        Output::WarDeclared { .. } => 23,
+        Output::PeaceMade { .. } => 24,
+        Output::BuildCrownShop { .. } => 25,
+        Output::CrownShop { .. } => 26,
+        Output::CrownShopDown { .. } => 27,
     }
 }
 
@@ -1017,6 +1080,8 @@ fn query_place(q: &Query) -> usize {
         Query::RouteBooks => 23,
         Query::Shops { .. } => 24,
         Query::Deeds { .. } => 25,
+        Query::Realms => 26,
+        Query::Metals => 27,
     }
 }
 
@@ -1048,6 +1113,8 @@ fn answer_place(a: &Answer) -> usize {
         Answer::RouteBooks { .. } => 23,
         Answer::Shops { .. } => 24,
         Answer::Deeds { .. } => 25,
+        Answer::Realms { .. } => 26,
+        Answer::Metals { .. } => 27,
     }
 }
 
@@ -1094,10 +1161,10 @@ fn covers<T>(what: &str, samples: &[T], variants: usize, place: fn(&T) -> usize)
 
 #[test]
 fn every_variant_of_every_wire_enum_has_a_sample() {
-    covers("Input", &inputs(), 35, input_place);
-    covers("Output", &outputs(), 23, output_place);
-    covers("Query", &queries(), 26, query_place);
-    covers("Answer", &answers(), 26, answer_place);
+    covers("Input", &inputs(), 41, input_place);
+    covers("Output", &outputs(), 28, output_place);
+    covers("Query", &queries(), 28, query_place);
+    covers("Answer", &answers(), 28, answer_place);
     covers("Command", &commands(), 5, command_place);
     covers("Response", &responses(), 3, response_place);
     covers("Refusal", &refusals(), 9, refusal_place);
@@ -1129,7 +1196,7 @@ fn a_variant_is_named_by_its_place() {
     for r in responses() {
         assert_eq!(postcard::to_allocvec(&r).unwrap()[0] as usize, response_place(&r));
     }
-    for (i, k) in [PointKind::Desk, PointKind::Locker, PointKind::Shop, PointKind::Banker, PointKind::Depot].iter().enumerate() {
+    for (i, k) in [PointKind::Desk, PointKind::Locker, PointKind::Shop, PointKind::Banker, PointKind::Depot, PointKind::Market].iter().enumerate() {
         assert_eq!(postcard::to_allocvec(k).unwrap(), vec![i as u8], "{k:?}");
     }
     for (i, p) in [Place::Town { town: 0 }, Place::Custody { town: 0 }, Place::Wagon { route: 0 }, Place::Container { container: 0 }]

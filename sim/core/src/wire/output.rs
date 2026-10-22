@@ -75,4 +75,16 @@ pub enum Output {
     /// A town's shop board wants another vendor by its desk (it lists more than it has shops for and can pay for one): the
     /// host puts one up and says so (`Input::Board`).
     BuildShop { town: TownNo },
+    /// War was declared: `levies` towns were levied (none with no capital named).
+    WarDeclared { levies: u32 },
+    /// Peace: `home` soldiers and recruits were sent home.
+    PeaceMade { home: u32 },
+    /// The crown wants a vendor to buy gold at, by its capital's desk (mobilising): the host puts one up and says so
+    /// (`Input::CrownShop`).
+    BuildCrownShop { town: TownNo },
+    /// What the crown's gold shop shows now: it buys `lot` of `good` at `price` spurs a lot, its card paid `fund` spurs
+    /// more from the capital's treasury first, and the `taken` items in it now the crown's (the host takes them out).
+    CrownShop { point: Point, good: GoodNo, lot: u32, price: u32, fund: u64, taken: u32 },
+    /// Peace: the crown's gold shop comes down. What its card holds is the host's.
+    CrownShopDown { point: Point },
 }

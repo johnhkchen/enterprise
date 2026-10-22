@@ -1,0 +1,18 @@
+[
+  {
+    "good": 3,
+    "name": "minecraft:iron_ingot",
+    "held": 120.0,
+    "target": 384.0,
+    "coming": 64.0,
+    "premium": 1.35
+  },
+  {
+    "good": 8,
+    "name": "minecraft:gold_ingot",
+    "held": 0.0,
+    "target": 96.0,
+    "coming": 0.0,
+    "premium": 1.5
+  }
+]

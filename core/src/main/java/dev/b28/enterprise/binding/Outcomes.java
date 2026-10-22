@@ -1,6 +1,7 @@
 package dev.b28.enterprise.binding;
 
 import dev.b28.enterprise.Enterprise;
+import dev.b28.enterprise.binding.adapters.CrownAdapter;
 import dev.b28.enterprise.binding.adapters.LandAdapter;
 import dev.b28.enterprise.binding.adapters.MoneyAdapter;
 import dev.b28.enterprise.binding.adapters.PalletAdapter;
@@ -21,7 +22,8 @@ import dev.b28.enterprise.wire.Output;
  * works to lay ({@code Build}) to {@code adapters/LandAdapter}, a wagon's and its crew's (a hand away, a hand back) to
  * {@code adapters/WagonAdapter}, the pallets' (packed, moved, opened) to {@code adapters/PalletAdapter}, which draws them
  * as tagged crates in the desks' chests, and a master Merchant's shops' (an order filled, a stall bought from, a shelf,
- * a deed, a vendor to build) to {@code adapters/ShopAdapter}.
+ * a deed, a vendor to build) to {@code adapters/ShopAdapter}, and the crown's (war declared, peace made, the gold shop to
+ * build, show or take down) to {@code adapters/CrownAdapter}.
  */
 final class Outcomes {
     private final PeopleAdapter people;
@@ -31,10 +33,11 @@ final class Outcomes {
     private final WagonAdapter wagons;
     private final PalletAdapter pallets;
     private final ShopAdapter shops;
+    private final CrownAdapter crown;
     private long unshown;
 
     Outcomes(PeopleAdapter people, StockAdapter stock, MoneyAdapter money, LandAdapter land, WagonAdapter wagons,
-            PalletAdapter pallets, ShopAdapter shops) {
+            PalletAdapter pallets, ShopAdapter shops, CrownAdapter crown) {
         this.people = people;
         this.stock = stock;
         this.money = money;
@@ -42,6 +45,7 @@ final class Outcomes {
         this.wagons = wagons;
         this.pallets = pallets;
         this.shops = shops;
+        this.crown = crown;
     }
 
     void show(Output output) {
@@ -58,6 +62,11 @@ final class Outcomes {
             case Output.Deed o -> shops.show(o);
             case Output.DeedPaid o -> shops.show(o);
             case Output.BuildShop o -> shops.show(o);
+            case Output.WarDeclared o -> crown.show(o);
+            case Output.PeaceMade o -> crown.show(o);
+            case Output.BuildCrownShop o -> crown.show(o);
+            case Output.CrownShop o -> crown.show(o);
+            case Output.CrownShopDown o -> crown.show(o);
             case Output.PalletPacked o -> pallets.show(o);
             case Output.PalletMoved o -> pallets.show(o);
             case Output.PalletOpened o -> pallets.show(o);

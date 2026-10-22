@@ -160,7 +160,7 @@ fn save(len: usize) -> SaveFile {
 
 fn samples() -> Samples {
     let mut s = Samples::default();
-    for kind in [PointKind::Desk, PointKind::Locker, PointKind::Shop, PointKind::Banker, PointKind::Depot] {
+    for kind in [PointKind::Desk, PointKind::Locker, PointKind::Shop, PointKind::Banker, PointKind::Depot, PointKind::Market] {
         s.ok("PointKind", &kind);
     }
     s.ok("GoodFlag", &GoodFlag::Crop);
@@ -248,7 +248,7 @@ fn samples() -> Samples {
     s.trailing::<Request>("Request", &more);
     // An unknown variant.
     s.bad::<Input>("Input", &[11]);
-    s.bad::<PointKind>("PointKind", &[5]);
+    s.bad::<PointKind>("PointKind", &[6]);
     s.bad::<Command>("Command", &[0x80, 0x01]);
     s.bad::<Command>("Command", &[0xff, 0xff, 0xff, 0xff, 0x0f]);
     // A u64 varint of eleven bytes, and one whose tenth byte holds more than its last bit.

@@ -1,0 +1,24 @@
+[
+  {
+    "town": 7,
+    "name": "the Coast",
+    "trips": 12,
+    "partners": 3,
+    "sold_spurs": 4800.0,
+    "bought_spurs": 2300.5,
+    "customs_spurs": 230.0,
+    "made": 1840.0,
+    "in_hand_spurs": 21400.25
+  },
+  {
+    "town": 4294967295,
+    "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "trips": 4294967295,
+    "partners": 4294967295,
+    "sold_spurs": 1.7976931348623157e+308,
+    "bought_spurs": 1.7976931348623157e+308,
+    "customs_spurs": 1.7976931348623157e+308,
+    "made": 1.7976931348623157e+308,
+    "in_hand_spurs": 2.2250738585072014e-308
+  }
+]

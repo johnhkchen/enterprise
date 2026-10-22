@@ -51,6 +51,9 @@ pub enum Kind {
     Shop,
     Banker,
     Depot,
+    /// A market off the map (`merchant/OffMap.java`): a town no one builds or visits, at a real position. It has no chests
+    /// to count; its goods and money are the core's alone.
+    Market,
 }
 
 /// A point: what it is, its town, and its chests as the core takes them to be.

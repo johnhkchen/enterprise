@@ -34,7 +34,9 @@ public sealed interface Query
                 Query.War,
                 Query.RouteBooks,
                 Query.Shops,
-                Query.Deeds {
+                Query.Deeds,
+                Query.Realms,
+                Query.Metals {
     void encode(PostcardOut out);
 
     static Query decode(PostcardIn in) {
@@ -66,6 +68,8 @@ public sealed interface Query
             case 23 -> new RouteBooks();
             case 24 -> new Shops(in.u32());
             case 25 -> new Deeds(in.u32());
+            case 26 -> new Realms();
+            case 27 -> new Metals();
             default -> throw in.unknownVariant("Query", at);
         };
     }
@@ -388,6 +392,26 @@ public sealed interface Query
         public void encode(PostcardOut out) {
             out.variant(25);
             out.u32(this.town);
+        }
+    }
+
+    /**
+     * The realms beyond the border and their trade ({@code /enterprise realms}).
+     */
+    record Realms() implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(26);
+        }
+    }
+
+    /**
+     * The capital's metal exchange ({@code /enterprise metals}).
+     */
+    record Metals() implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(27);
         }
     }
 }

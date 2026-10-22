@@ -2555,6 +2555,169 @@ public final class CoreBindingTests {
         Enterprise.LOGGER.info(out.toString());
     }
 
+    // ---- the crown (B4.10) ------------------------------------------------------------------------------------------
+
+    /**
+     * The crown mobilises and buys gold at a vendor (B4.10; WarTests.mobilisingTheSovereignMintsAndBuysGoldThroughAShop's
+     * twin): the hub is named the capital and mobilised through the core, which asks for a gold shop; the next look puts a
+     * vendor up on open floor by the desk and registers it as the crown's, the one after shows it buying 8 gold for the
+     * core's price and funds its card from the treasury; 16 gold a player left in it is taken out, the crown's; peace
+     * takes the vendor down.
+     */
+    @GameTest(template = "floor")
+    public static void aMobilisedCrownBuysGoldAtAVendorItsTreasuryFunds(GameTestHelper helper) {
+        Path dir = folder();
+        Wagons w = null;
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            w = wagons(helper, host);
+            var level = helper.getLevel();
+            BlockPos hubDesk = helper.absolutePos(HUB_DESK);
+            // The treasury is the desk's emeralds: a chest of them beside it, counted at the first look.
+            helper.setBlock(HUB_DESK.north(), Blocks.CHEST);
+            ChestBlockEntity treasury = chestAt(helper, HUB_DESK.north());
+            for (int i = 0; i < 10; i++) {
+                treasury.setItem(i, new ItemStack(Items.EMERALD, 64));
+            }
+            helper.assertTrue(host.crown().capital(level, hubDesk, 16) == null, "the capital wasn't named");
+            helper.assertTrue(host.crown().mobilise(level, hubDesk, 480) == null, "the crown wouldn't mobilise");
+            long t = level.getGameTime();
+            host.look(level.getServer(), t + 1_200);
+            host.settle();
+            var shops = host.points().of(PointsAdapter.Kind.SHOP);
+            GlobalPos at = shops.keySet().stream().filter(p -> level.getBlockEntity(p.pos())
+                    instanceof dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity v && v.getFilterItem().is(Items.GOLD_INGOT))
+                    .findFirst().orElse(null);
+            helper.assertTrue(at != null && shops.get(at) == w.hub(), "the crown's vendor isn't the capital's shop point: " + shops);
+            var vendor = (dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity) level.getBlockEntity(at.pos());
+            helper.assertTrue(vendor != null && vendor.getMode() == dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity.Mode.BUY
+                    && vendor.getFilterItem().is(Items.GOLD_INGOT) && vendor.getFilterItem().getCount() == 8 && vendor.getTotalPrice() > 0,
+                    "the vendor doesn't buy 8 gold: " + vendor + " " + (vendor == null ? "" : vendor.getFilterItem() + " at " + vendor.getTotalPrice()));
+            host.look(level.getServer(), t + 2_400);
+            host.settle();
+            long card = dev.b28.enterprise.market.Shops.purse(vendor).map(a -> (long) a.getBalance()).orElse(-1L);
+            helper.assertTrue(card >= 2L * vendor.getTotalPrice(), "the card holds " + card + " spurs, not two lots' price of "
+                    + 2L * vendor.getTotalPrice() + "; " + host.commands().war());
+            // A player sells 16 gold into it: the crown's, taken out; the card made up.
+            vendor.items.set(0, new ItemStack(Items.GOLD_INGOT, 16));
+            vendor.setChanged();
+            host.look(level.getServer(), t + 3_600);
+            host.settle();
+            helper.assertTrue(inVendor(vendor, Items.GOLD_INGOT) == 0, "the gold sold into it is still in it: "
+                    + inVendor(vendor, Items.GOLD_INGOT));
+            helper.assertTrue(host.commands().war().startsWith("war: mobilising"), "the war: " + host.commands().war());
+            // Peace takes the vendor down, and the core's point for it.
+            host.crown().peace(level);
+            helper.assertTrue(level.getBlockState(at.pos()).isAir() && host.points().at(at) == null,
+                    "the vendor stands at peace: " + level.getBlockState(at.pos()) + " " + host.points().at(at));
+            helper.assertTrue(host.commands().war().startsWith("war: peace"), "the war: " + host.commands().war());
+            if (System.getenv("ENTERPRISE_CORE_MEASURE") != null) {
+                measureTheCrown(host, level.getServer(), t + 3_600);
+            }
+        } finally {
+            delete(dir);
+            if (w != null) {
+                w.discard();
+            }
+        }
+        helper.succeed();
+    }
+
+    /** What the crown costs a look, logged: the gold shop's place check with nothing to build, the books asked, and a look at war. */
+    private static void measureTheCrown(CoreHost host, net.minecraft.server.MinecraftServer server, long from) {
+        int n = 1000;
+        long a = System.nanoTime();
+        for (int i = 0; i < n; i++) {
+            host.crown().place(server);
+        }
+        long placed = System.nanoTime() - a;
+        int m = 50;
+        a = System.nanoTime();
+        for (int i = 0; i < m; i++) {
+            host.crown().realms();
+            host.crown().metals();
+        }
+        long asked = System.nanoTime() - a;
+        Enterprise.LOGGER.info("crown: the gold shop's place check {} ms a look, the realms and metals asked {} ms",
+                "%.5f".formatted(placed / 1e6 / n), "%.3f".formatted(asked / 1e6 / m));
+    }
+
+    /**
+     * War is declared and peace made through the core (B4.10): the hub is the capital with a road to Farley, so declaring
+     * levies Farley and opens the front, a market off the map that is a point of the core's; the war's line says war;
+     * peace says how many walk home. A theatre the core hasn't is refused.
+     */
+    @GameTest(template = "floor")
+    public static void warIsDeclaredLeviesTheTownsTheCapitalReachesAndPeaceEndsIt(GameTestHelper helper) {
+        Path dir = folder();
+        Wagons w = null;
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            w = wagons(helper, host);
+            var level = helper.getLevel();
+            BlockPos hubDesk = helper.absolutePos(HUB_DESK);
+            host.crown().capital(level, hubDesk, 16);
+            host.crown().mobilise(level, hubDesk, 480);
+            helper.assertTrue(host.wagons().addRoute(w.hub(), w.far()).getKey() >= 0, "no road to Farley");
+            String[] why = new String[1];
+            helper.assertTrue(host.crown().declare(level, "sea", why) < 0 && why[0] != null, "war on the sea was declared");
+            int levies = host.crown().declare(level, "faction", why);
+            helper.assertTrue(levies == 1, "levies " + levies + " " + why[0]);
+            helper.assertTrue(host.commands().war().startsWith("war: war"), "the war: " + host.commands().war());
+            long markets = host.points().all().values().stream().filter(p -> p.kind() == PointsAdapter.Kind.MARKET).count();
+            helper.assertTrue(markets == 2, "the front and the market across the sea aren't both points: " + host.points().all());
+            helper.assertTrue(host.commands().warTally().get(0).equals("War tally, against faction"), "the tally: " + host.commands().warTally());
+            host.crown().peace(level);
+            helper.assertTrue(host.commands().war().startsWith("war: peace"), "the war: " + host.commands().war());
+        } finally {
+            delete(dir);
+            if (w != null) {
+                w.discard();
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A realm opened off the map is a market point of the core's (B4.10; CaravanTests.aCaravanDeliversToAMarketOffTheMap's
+     * and Realms.open's twin): the Coast, opened 2,400 blocks off with the hub and Farley as the markets it trades with, is
+     * a {@code Market} point with a town of its own, and {@code /enterprise realms} tells of it. A place taken, and a
+     * partner that isn't a desk of the core's, are refused.
+     */
+    @GameTest(template = "floor")
+    public static void aRealmOpenedOffTheMapIsAMarketPointTheCoreTradesWith(GameTestHelper helper) {
+        Path dir = folder();
+        Wagons w = null;
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            w = wagons(helper, host);
+            var level = helper.getLevel();
+            BlockPos hubDesk = helper.absolutePos(HUB_DESK);
+            BlockPos farDesk = helper.absolutePos(FAR_DESK);
+            BlockPos coast = hubDesk.offset(-2_400, 0, 0);
+            String why = host.crown().openRealm(level, "coast", coast, List.of(hubDesk, farDesk));
+            helper.assertTrue(why == null, "the Coast wouldn't open: " + why);
+            var markets = host.points().of(PointsAdapter.Kind.MARKET);
+            helper.assertTrue(markets.size() == 1 && markets.containsKey(GlobalPos.of(level.dimension(), coast)),
+                    "the Coast isn't a market point: " + markets);
+            var realms = host.crown().realms();
+            helper.assertTrue(realms.size() == 1 && realms.get(0).startsWith("the Coast: 0 trips to 2 markets, "),
+                    "realms: " + realms);
+            helper.assertTrue(host.crown().openRealm(level, "coast", coast, List.of(hubDesk)) != null, "a place taken was opened");
+            helper.assertTrue(host.crown().openRealm(level, "march", coast.offset(0, 0, 100), List.of(hubDesk.offset(30, 0, 30))) != null,
+                    "a partner that is no desk was taken");
+            helper.assertTrue(host.crown().openRealm(level, "narnia", coast.offset(0, 0, 100), List.of(hubDesk)) != null,
+                    "a realm the core hasn't was opened");
+            helper.assertTrue(host.crown().metals().isEmpty(), "a metal exchange with no capital named");
+            host.crown().capital(level, hubDesk, 16);
+            var metals = host.crown().metals();
+            helper.assertTrue(metals.size() > 1 && metals.get(0).endsWith("(peace)"), "metals: " + metals);
+        } finally {
+            delete(dir);
+            if (w != null) {
+                w.discard();
+            }
+        }
+        helper.succeed();
+    }
+
     private static Path folder() {
         try {
             return Files.createTempDirectory("enterprise-core-test");

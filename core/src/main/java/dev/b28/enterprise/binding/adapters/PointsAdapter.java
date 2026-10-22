@@ -24,7 +24,7 @@ import net.minecraft.world.level.Level;
 /**
  * Trade points, from the core (docs/binding-plan.md 1.3 and 2, concern 2; {@code docs/architecture.md} convention 3):
  * the places in the world where the society meets it, a Merchant's desk, a villager's locker, a shop, a banker, a
- * depot, each a town's. The core keeps them ({@code AddTown}, {@code AddPoint}, {@code RemovePoint}) and this adapter
+ * depot, or a market off the map (a realm's, the front: no chests, nowhere to see), each a town's. The core keeps them ({@code AddTown}, {@code AddPoint}, {@code RemovePoint}) and this adapter
  * keeps none of its own: its lookup by place is the core's {@code Query.Points}, read again when the host starts (a
  * world loaded) and after every change, so the core's save is the only record of which block is which town's.
  *
@@ -35,7 +35,7 @@ import net.minecraft.world.level.Level;
  */
 public final class PointsAdapter {
     /** What a trade point is: the adapters' own names for the core's kinds. */
-    public enum Kind { DESK, LOCKER, SHOP, BANKER, DEPOT }
+    public enum Kind { DESK, LOCKER, SHOP, BANKER, DEPOT, MARKET }
 
     /** A point: what it is, and its town's number in the core. */
     public record Placed(Kind kind, long town) {}
@@ -156,6 +156,7 @@ public final class PointsAdapter {
             case SHOP -> PointKind.Shop;
             case BANKER -> PointKind.Banker;
             case DEPOT -> PointKind.Depot;
+            case MARKET -> PointKind.Market;
         };
     }
 
@@ -166,6 +167,7 @@ public final class PointsAdapter {
             case Shop -> Kind.SHOP;
             case Banker -> Kind.BANKER;
             case Depot -> Kind.DEPOT;
+            case Market -> Kind.MARKET;
         };
     }
 }

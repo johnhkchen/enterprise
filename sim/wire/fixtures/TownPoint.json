@@ -51,6 +51,16 @@
   },
   {
     "point": {
+      "kind": "Market",
+      "dim": "minecraft:overworld",
+      "x": -2400,
+      "y": 64,
+      "z": 27
+    },
+    "town": 0
+  },
+  {
+    "point": {
       "kind": "Desk",
       "dim": "",
       "x": 1,

@@ -82,6 +82,7 @@ public final class CoreHost implements AutoCloseable {
     private final dev.b28.enterprise.binding.adapters.BooksAdapter books = new dev.b28.enterprise.binding.adapters.BooksAdapter(this);
     private final dev.b28.enterprise.binding.adapters.CommandsAdapter commands = new dev.b28.enterprise.binding.adapters.CommandsAdapter(this);
     private final ShopAdapter shops;
+    private final dev.b28.enterprise.binding.adapters.CrownAdapter crown;
     private final Outcomes outcomes;
     private final List<CompletableFuture<Response>> looks = new ArrayList<>();
     private String pausedWhy;
@@ -100,7 +101,8 @@ public final class CoreHost implements AutoCloseable {
         this.wagons = new WagonAdapter(this, ownsChests, dir);
         this.pallets = new PalletAdapter(this, ownsChests);
         this.shops = new ShopAdapter(this, ownsChests);
-        this.outcomes = new Outcomes(people, stock, money, land, wagons, pallets, shops);
+        this.crown = new dev.b28.enterprise.binding.adapters.CrownAdapter(this, ownsChests);
+        this.outcomes = new Outcomes(people, stock, money, land, wagons, pallets, shops, crown);
         try {
             switch (store.open()) {
                 case SaveStore.Opened.Fresh fresh -> {
@@ -275,6 +277,11 @@ public final class CoreHost implements AutoCloseable {
         return shops;
     }
 
+    /** The crown adapter: the sovereign's commands, the markets off the map as points, the gold shop. */
+    public dev.b28.enterprise.binding.adapters.CrownAdapter crown() {
+        return crown;
+    }
+
     /** Why the host is paused (the save refused, the core stuck), or null while it runs. */
     public String pausedWhy() {
         return pausedWhy;
@@ -296,6 +303,7 @@ public final class CoreHost implements AutoCloseable {
             stock.joinDepots(server); // a building's containers the core doesn't keep yet, its depots now (counted as they join)
             lockers.place(server); // where the loaded villagers' lockers stand (core mode), before their chests are counted
             shops.place(server); // the vendors by the desks registered, the board's and the deeds' put up (core mode)
+            crown.place(server); // the crown's gold shop, if the core asked for one (core mode)
         }
         wagons.catchUp(server); // crews stowed and let out whose chunks loaded since, before the census counts them
         List<Input> inputs = pending();

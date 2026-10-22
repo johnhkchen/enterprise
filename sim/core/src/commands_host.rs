@@ -28,7 +28,7 @@ use crate::wire::{no, Answer, BookLine, ContractLine, ForTotal, ForwardLine, Hex
 
 impl Society {
     /// A town's name for the commands, "the town" for one that isn't there.
-    fn named(&self, town: TownId) -> String {
+    pub(crate) fn named(&self, town: TownId) -> String {
         self.towns.get(town).and_then(|&e| self.world.get::<Town>(e)).map_or_else(|| "the town".to_string(), |t| t.name.clone())
     }
 

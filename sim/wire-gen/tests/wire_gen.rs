@@ -53,7 +53,7 @@ fn every_wire_type_is_traced_and_carried() {
     // Every enum traced to its last variant.
     let variants = registry::variants(&registry);
     assert_eq!(variants["Command"], ["Create", "Load", "Save", "Apply", "Ask"]);
-    assert_eq!(variants["PointKind"], ["Desk", "Locker", "Shop", "Banker", "Depot"]);
+    assert_eq!(variants["PointKind"], ["Desk", "Locker", "Shop", "Banker", "Depot", "Market"]);
 }
 
 #[test]

@@ -299,13 +299,23 @@
         },
         {
           "point": {
+            "kind": "Market",
+            "dim": "minecraft:overworld",
+            "x": -2400,
+            "y": 64,
+            "z": 27
+          },
+          "town": 5
+        },
+        {
+          "point": {
             "kind": "Desk",
             "dim": "",
             "x": 1,
             "y": 2,
             "z": 3
           },
-          "town": 5
+          "town": 6
         },
         {
           "point": {
@@ -315,7 +325,7 @@
             "y": 0,
             "z": 30000000
           },
-          "town": 6
+          "town": 7
         },
         {
           "point": {
@@ -325,7 +335,7 @@
             "y": 5,
             "z": 5
           },
-          "town": 7
+          "town": 8
         }
       ]
     }
@@ -13204,6 +13214,174 @@
             "y": 2147483647,
             "z": -2147483648
           }
+        }
+      ]
+    }
+  },
+  {
+    "Realms": {
+      "realms": []
+    }
+  },
+  {
+    "Realms": {
+      "realms": [
+        {
+          "town": 7,
+          "name": "the Coast",
+          "trips": 12,
+          "partners": 3,
+          "sold_spurs": 4800.0,
+          "bought_spurs": 2300.5,
+          "customs_spurs": 230.0,
+          "made": 1840.0,
+          "in_hand_spurs": 21400.25
+        },
+        {
+          "town": 4294967295,
+          "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "trips": 4294967295,
+          "partners": 4294967295,
+          "sold_spurs": 1.7976931348623157e+308,
+          "bought_spurs": 1.7976931348623157e+308,
+          "customs_spurs": 1.7976931348623157e+308,
+          "made": 1.7976931348623157e+308,
+          "in_hand_spurs": 2.2250738585072014e-308
+        }
+      ]
+    }
+  },
+  {
+    "Metals": {
+      "desk": null,
+      "phase": "peace",
+      "metals": []
+    }
+  },
+  {
+    "Metals": {
+      "desk": 0,
+      "phase": "war",
+      "metals": [
+        {
+          "good": 3,
+          "name": "minecraft:iron_ingot",
+          "held": 120.0,
+          "target": 384.0,
+          "coming": 64.0,
+          "premium": 1.35
+        },
+        {
+          "good": 8,
+          "name": "minecraft:gold_ingot",
+          "held": 0.0,
+          "target": 96.0,
+          "coming": 0.0,
+          "premium": 1.5
+        }
+      ]
+    }
+  },
+  {
+    "Metals": {
+      "desk": 4294967295,
+      "phase": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "metals": [
+        {
+          "good": 4294967295,
+          "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "held": 1.7976931348623157e+308,
+          "target": 1.7976931348623157e+308,
+          "coming": 1.7976931348623157e+308,
+          "premium": 2.2250738585072014e-308
+        },
+        {
+          "good": 4294967295,
+          "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "held": 1.7976931348623157e+308,
+          "target": 1.7976931348623157e+308,
+          "coming": 1.7976931348623157e+308,
+          "premium": 2.2250738585072014e-308
+        },
+        {
+          "good": 4294967295,
+          "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "held": 1.7976931348623157e+308,
+          "target": 1.7976931348623157e+308,
+          "coming": 1.7976931348623157e+308,
+          "premium": 2.2250738585072014e-308
+        },
+        {
+          "good": 4294967295,
+          "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "held": 1.7976931348623157e+308,
+          "target": 1.7976931348623157e+308,
+          "coming": 1.7976931348623157e+308,
+          "premium": 2.2250738585072014e-308
+        },
+        {
+          "good": 4294967295,
+          "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "held": 1.7976931348623157e+308,
+          "target": 1.7976931348623157e+308,
+          "coming": 1.7976931348623157e+308,
+          "premium": 2.2250738585072014e-308
+        },
+        {
+          "good": 4294967295,
+          "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "held": 1.7976931348623157e+308,
+          "target": 1.7976931348623157e+308,
+          "coming": 1.7976931348623157e+308,
+          "premium": 2.2250738585072014e-308
+        },
+        {
+          "good": 4294967295,
+          "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "held": 1.7976931348623157e+308,
+          "target": 1.7976931348623157e+308,
+          "coming": 1.7976931348623157e+308,
+          "premium": 2.2250738585072014e-308
+        },
+        {
+          "good": 4294967295,
+          "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "held": 1.7976931348623157e+308,
+          "target": 1.7976931348623157e+308,
+          "coming": 1.7976931348623157e+308,
+          "premium": 2.2250738585072014e-308
+        },
+        {
+          "good": 4294967295,
+          "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "held": 1.7976931348623157e+308,
+          "target": 1.7976931348623157e+308,
+          "coming": 1.7976931348623157e+308,
+          "premium": 2.2250738585072014e-308
+        },
+        {
+          "good": 4294967295,
+          "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "held": 1.7976931348623157e+308,
+          "target": 1.7976931348623157e+308,
+          "coming": 1.7976931348623157e+308,
+          "premium": 2.2250738585072014e-308
+        },
+        {
+          "good": 4294967295,
+          "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "held": 1.7976931348623157e+308,
+          "target": 1.7976931348623157e+308,
+          "coming": 1.7976931348623157e+308,
+          "premium": 2.2250738585072014e-308
+        },
+        {
+          "good": 4294967295,
+          "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "held": 1.7976931348623157e+308,
+          "target": 1.7976931348623157e+308,
+          "coming": 1.7976931348623157e+308,
+          "premium": 2.2250738585072014e-308
         }
       ]
     }

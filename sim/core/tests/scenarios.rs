@@ -1068,7 +1068,7 @@ fn books() -> Scenario {
         Input::Deliver { town: 0, good: BREAD, count: 128.0 },
         Input::Deliver { town: 1, good: BREAD, count: 128.0 },
         Input::Deliver { town: 1, good: BOOK, count: 64.0 },
-        Input::Pay { town: 0, money: Fixed::from(50.0) },
+        Input::Pay { town: 0, money: Fixed::from(500.0) },
         Input::Pay { town: 1, money: Fixed::from(50.0) },
         Input::Route { from: 0, to: 1, send: true },
     ]);
@@ -1221,6 +1221,122 @@ fn shops() -> Scenario {
     s.scenario
 }
 
+/// The crown through the wire: a capital named, mobilised, at war and at peace, a realm opened as a point, the gold shop.
+fn crown() -> Scenario {
+    let mut s = Script::new("crown", "The sovereign and its markets off the map. A capital is named (its treasury takes the \
+        crown's revenue, its metal exchange opens and with it the market across the sea, a Market point beside the capital's \
+        desk's dimension). A realm, the Coast, is opened by its host as a Market point with its roads to the capital: a \
+        market off the map with money and goods and no one in it. Mobilising, the capital mints and asks for a gold shop \
+        (BuildCrownShop); the host puts a vendor up and tells the core (CrownShop), counts it each look as any vendor, and \
+        the core, which knows it is the crown's, funds its card from the treasury and takes the gold sold into it \
+        (CrownShop). Declared, war levies the towns the capital's wagons reach (WarDeclared) and opens the front, a \
+        Market point north of the capital. Peace sends the soldiers home (PeaceMade) and takes the gold shop down \
+        (CrownShopDown). Realms and Metals show the realm's trade and the exchange. A market on a place taken, a realm the \
+        core hasn't, a theatre it hasn't, and a crown shop that is no shop are refused. Saved and loaded, the crown is as it was.");
+    const GOLD: GoodNo = 7;
+    let capital = at(PointKind::Desk, 27, 27);
+    let vale = at(PointKind::Desk, 67, 27);
+    let coast = at(PointKind::Market, -2_400, 27);
+    let shop = at(PointKind::Shop, 27, 17);
+    let mut pack = full_pack();
+    pack.goods.push(PackGood::new("minecraft:gold_ingot", 3.0, 64));
+    let r = s.say("a society from a pack with gold", Command::Create { pack, seed: 7 });
+    assert_eq!(r, Response::Done { outputs: vec![], answers: vec![] });
+    s.apply("two towns forty blocks apart, the capital with its Merchant and a vendor by it, Vale with its Merchant and \
+        four idle hands; bread and money in both", vec![
+        Input::AddTown { name: "Crownmere".into(), desk: capital.clone() },
+        Input::AddTown { name: "Vale".into(), desk: vale.clone() },
+        Input::AddPoint { point: shop.clone(), town: 0 },
+        Input::AddHand { town: 0, trade: "merchant".into(), level: 3, tag: "villager-capital".into() },
+        Input::AddHand { town: 1, trade: "merchant".into(), level: 3, tag: "villager-vale".into() },
+        Input::AddHand { town: 1, trade: "none".into(), level: 1, tag: "villager-a".into() },
+        Input::AddHand { town: 1, trade: "none".into(), level: 1, tag: "villager-b".into() },
+        Input::AddHand { town: 1, trade: "none".into(), level: 1, tag: "villager-c".into() },
+        Input::AddHand { town: 1, trade: "none".into(), level: 1, tag: "villager-d".into() },
+        Input::Deliver { town: 0, good: BREAD, count: 128.0 },
+        Input::Deliver { town: 1, good: BREAD, count: 128.0 },
+        Input::Pay { town: 0, money: Fixed::from(500.0) },
+        Input::Pay { town: 1, money: Fixed::from(50.0) },
+        Input::Route { from: 0, to: 1, send: true },
+    ]);
+    s.ask("no realms, no exchange yet", vec![Query::Realms, Query::Metals, Query::War]);
+    s.apply("the Coast opened by its host at a Market point, 20,000 spurs in its account, trading with the capital", vec![
+        Input::OffMap { name: "the Coast".into(), at: coast.clone(), sells: true, realm: "coast".into(), spurs: 20_000,
+            partners: vec![0] },
+    ]);
+    let a = s.ask("the Coast is a town of its own at a Market point; Realms tells of it", vec![Query::Points, Query::Realms]);
+    assert!(matches!(&a[0], Answer::Points { points } if points.iter().any(|p| p.point == coast && p.town == 2)), "{a:?}");
+    assert!(matches!(&a[1], Answer::Realms { realms } if realms.len() == 1 && realms[0].name == "the Coast"
+        && realms[0].in_hand_spurs > 19_000.0), "{a:?}");
+    s.apply("the capital named in peacetime, 16 spurs a day; its exchange opens the market across the sea", vec![
+        Input::Capital { town: 0, spurs_per_day: 16 },
+    ]);
+    let a = s.ask("the market across the sea is a point too; the exchange at the capital, in peace", vec![Query::Points, Query::Metals]);
+    assert!(matches!(&a[0], Answer::Points { points } if points.iter().filter(|p| p.point.kind == PointKind::Market).count() == 2), "{a:?}");
+    assert!(matches!(&a[1], Answer::Metals { desk: Some(0), phase, metals } if phase == "peace" && !metals.is_empty()), "{a:?}");
+    let out = s.apply("mobilising at 480 spurs a day: the capital mints, and asks for a gold shop", vec![
+        Input::Advance { to: 1_200 },
+        Input::Mobilise { town: 0, spurs_per_day: 480 },
+    ]);
+    assert!(out.contains(&Output::BuildCrownShop { town: 0 }), "{out:?}");
+    s.apply("the host put a vendor up by the capital for the crown", vec![Input::CrownShop { point: shop.clone() }]);
+    let idle = VendorRead { mode: VendorMode::Idle, good: None, deed: None, lot: 0, price: 0, stock: 0, room: 0, purse: 0,
+        coins: 0, touches: false };
+    let out = s.apply("a look: the vendor, new, set to nothing: the core says what it shows, its card funded", vec![
+        Input::Vendor { point: shop.clone(), read: idle.clone() },
+        Input::Advance { to: 1_300 },
+    ]);
+    assert!(out.iter().any(|o| matches!(o, Output::CrownShop { point, good: GOLD, lot: 8, .. } if *point == shop)), "{out:?}");
+    let price = out.iter().find_map(|o| match o { Output::CrownShop { price, .. } => Some(*price), _ => None }).unwrap();
+    let out = s.apply("a look: a player sold 16 gold into the vendor, its card paid out", vec![
+        Input::Vendor { point: shop.clone(), read: VendorRead { mode: VendorMode::Buy, good: Some(GOLD), lot: 8, price,
+            stock: 16, room: 54, purse: 0, ..idle.clone() } },
+        Input::Advance { to: 1_400 },
+    ]);
+    assert!(out.iter().any(|o| matches!(o, Output::CrownShop { taken: 16, fund, .. } if *fund > 0)), "{out:?}");
+    s.ask("the war, mobilising", vec![Query::War, Query::Metals]);
+    let out = s.apply("war against a faction: Vale is levied", vec![Input::Declare { theatre: "faction".into() }]);
+    assert!(out.contains(&Output::WarDeclared { levies: 1 }), "{out:?}");
+    let a = s.ask("the front is a Market point north of the capital", vec![Query::Points, Query::War]);
+    assert!(matches!(&a[0], Answer::Points { points } if points.iter().filter(|p| p.point.kind == PointKind::Market).count() == 3), "{a:?}");
+    s.apply("ten days of war", vec![Input::Advance { to: 1_400 + 10 * DAY }]);
+    s.ask("the war ten days on", vec![Query::War, Query::Realms]);
+    s.save("saved at war");
+    s.load("loaded");
+    s.ask("the same after the load", vec![Query::War, Query::Realms, Query::Metals]);
+    let out = s.apply("peace", vec![Input::Peace]);
+    assert!(out.iter().any(|o| matches!(o, Output::PeaceMade { .. })), "{out:?}");
+    assert!(out.contains(&Output::CrownShopDown { point: shop.clone() }), "{out:?}");
+    let a = s.ask("the war over", vec![Query::War]);
+    assert!(matches!(&a[0], Answer::War { phase, .. } if phase == "peace"), "{a:?}");
+    let r = s.say("a market on a place taken: refused", Command::Apply { inputs: vec![
+        Input::OffMap { name: "Again".into(), at: coast.clone(), sells: true, realm: String::new(), spurs: 0, partners: vec![] },
+    ] });
+    assert!(matches!(s.refused("taken", r), Refusal::Input { at: 0, .. }));
+    let r = s.say("a market that is a desk: refused", Command::Apply { inputs: vec![
+        Input::OffMap { name: "Nowhere".into(), at: at(PointKind::Desk, 90, 90), sells: true, realm: String::new(), spurs: 0,
+            partners: vec![] },
+    ] });
+    assert!(matches!(s.refused("kind", r), Refusal::Input { at: 0, .. }));
+    let r = s.say("a realm the core hasn't: refused", Command::Apply { inputs: vec![
+        Input::OffMap { name: "Atlantis".into(), at: at(PointKind::Market, 90, 90), sells: true, realm: "atlantis".into(),
+            spurs: 0, partners: vec![] },
+    ] });
+    assert!(matches!(s.refused("realm", r), Refusal::Input { at: 0, .. }));
+    let r = s.say("a market trading with a town that isn't there: refused", Command::Apply { inputs: vec![
+        Input::OffMap { name: "Lonely".into(), at: at(PointKind::Market, 90, 90), sells: true, realm: String::new(), spurs: 0,
+            partners: vec![9] },
+    ] });
+    assert!(matches!(s.refused("partner", r), Refusal::Input { at: 0, .. }));
+    let r = s.say("a theatre the core hasn't: refused", Command::Apply { inputs: vec![Input::Declare { theatre: "sea".into() }] });
+    assert!(matches!(s.refused("theatre", r), Refusal::Input { at: 0, .. }));
+    let r = s.say("a capital that isn't a town: refused", Command::Apply { inputs: vec![Input::Capital { town: 9, spurs_per_day: 1 }] });
+    assert!(matches!(s.refused("capital", r), Refusal::Input { at: 0, .. }));
+    let r = s.say("the crown's shop at a desk: refused", Command::Apply { inputs: vec![Input::CrownShop { point: capital.clone() }] });
+    assert!(matches!(s.refused("shop", r), Refusal::Input { at: 0, .. }));
+    s.scenario
+}
+
 /// Every way the core refuses, each leaving the society as it was.
 fn refusals() -> Scenario {
     let mut s = Script::new("refusals", "Every refusal, each a message and nothing applied.");
@@ -1328,7 +1444,7 @@ fn refusals() -> Scenario {
 }
 
 fn scenarios() -> Vec<Scenario> {
-    vec![stocktake(), inputs(), content(), refusals(), hands(), people(), chests(), money(), land(), lockers(), wagons(), pallets(), books(), commands(), shops()]
+    vec![stocktake(), inputs(), content(), refusals(), hands(), people(), chests(), money(), land(), lockers(), wagons(), pallets(), books(), commands(), shops(), crown()]
 }
 
 fn text(scenario: &Scenario) -> String {
@@ -1355,7 +1471,7 @@ fn the_scenarios_play_as_their_files_say() {
         return;
     }
     let mut wrong = Vec::new();
-    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people", "chests", "money", "land", "lockers", "wagons", "pallets", "books", "commands", "shops"] {
+    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people", "chests", "money", "land", "lockers", "wagons", "pallets", "books", "commands", "shops", "crown"] {
         let scenario = read(name);
         assert!(!scenario.steps.is_empty(), "{name}: no steps");
         wrong.extend(play(&scenario));
@@ -1413,9 +1529,9 @@ fn every_message_appears_in_a_scenario() {
         }
     }
     let set = |names: &[&str]| names.iter().map(|s| s.to_string()).collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost", "Census", "TagHand", "Unmoved", "Cashcount", "CashUnmoved", "Ground", "Crops", "Survey", "Built", "Switch", "Locker", "Route", "Pack", "Stowed", "Vendor", "Board", "DeedShop", "DeedBrought"]));
+    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost", "Census", "TagHand", "Unmoved", "Cashcount", "CashUnmoved", "Ground", "Crops", "Survey", "Built", "Switch", "Locker", "Route", "Pack", "Stowed", "Vendor", "Board", "DeedShop", "DeedBrought", "OffMap", "Capital", "Mobilise", "Declare", "Peace", "CrownShop"]));
     assert_eq!(commands, set(&["Apply", "Ask", "Create", "Load", "Save"]));
-    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands", "Chests", "Cash", "Mint", "Land", "Ground", "Lockers", "Routes", "Pallets", "Pallet", "Stow", "Manifest", "CashBook", "Books", "Whys", "Trust", "Contracts", "Territory", "War", "RouteBooks", "Shops", "Deeds"]));
+    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands", "Chests", "Cash", "Mint", "Land", "Ground", "Lockers", "Routes", "Pallets", "Pallet", "Stow", "Manifest", "CashBook", "Books", "Whys", "Trust", "Contracts", "Territory", "War", "RouteBooks", "Shops", "Deeds", "Realms", "Metals"]));
     assert_eq!(refusals, set(&["Abi", "Input", "NoSociety", "Pack", "Query", "Save", "SaveFormat", "Schema", "Unreadable"]));
     // A child born, the chests' moves, the till's, a field to lay, a locker's trades levelling its villager and the
     // Merchant, a wagon's trip with its crew away and back, pallets packed, moved and opened (`Pack`), and a master
@@ -1423,5 +1539,5 @@ fn every_message_appears_in_a_scenario() {
     // (Signal) or a party of settlers or the rules taking a hand (Settled, Departed, HandGone), and no wire input makes
     // any. When one does, a scenario shows each and its name goes here.
     assert_eq!(outputs, set(&["Born", "Cash", "Moved", "Build", "HandLevel", "WagonLeft", "WagonSold", "WagonHome",
-        "HandAway", "HandBack", "PalletPacked", "PalletMoved", "PalletOpened", "OrderFilled", "StallBought", "Shelf"]));
+        "HandAway", "HandBack", "PalletPacked", "PalletMoved", "PalletOpened", "OrderFilled", "StallBought", "Shelf", "BuildShop", "WarDeclared", "PeaceMade", "BuildCrownShop", "CrownShop", "CrownShopDown"]));
 }

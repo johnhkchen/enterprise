@@ -68,8 +68,10 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
  *       its desk for each, are asked of the core ({@code Query.Deeds}) and the vendors put up.
  * </ul>
  *
- * <p>Not here: enchanted commissions (a vendor whose filter asks for enchantments deals in nothing the core knows), and the
- * vendors of the crown, the metal exchange, the requisitions and the freight hubs ({@code crown-views}). In Java mode the
+ * <p>The crown's gold shop is the core's to name ({@code Input.CrownShop}): counted here like any vendor, the core says it
+ * is the crown's and {@code CrownAdapter} shows it. Not here: enchanted commissions (a vendor whose filter asks for
+ * enchantments deals in nothing the core knows), and vendors for the metal exchange, the requisitions and the freight hubs
+ * (the core's exchange and requisitions deal with the markets' own Merchants; no mod puts such vendors up in core mode). In Java mode the
  * Java rules ({@code Broker}, {@code ShopBoard}, {@code RentDeeds}) keep the vendors and this adapter does nothing.
  */
 public final class ShopAdapter {

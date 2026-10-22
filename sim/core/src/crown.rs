@@ -108,6 +108,16 @@ pub enum Theatre {
 }
 
 impl Theatre {
+    /// The theatre called this ("faction", "undead", "nether"; any case).
+    pub fn named(name: &str) -> Option<Theatre> {
+        match name.to_ascii_lowercase().as_str() {
+            "faction" => Some(Theatre::Faction),
+            "undead" => Some(Theatre::Undead),
+            "nether" => Some(Theatre::Nether),
+            _ => None,
+        }
+    }
+
     /// The weapon's enchantment suited to the enemy (`weaponEnchant`).
     pub fn weapon_enchant(self) -> Enchant {
         match self {
@@ -754,6 +764,7 @@ impl Society {
                 let (x, z) = self.town_hex(capital).map_or((0.0, 0.0), |h| (h.center_x(), h.center_z()));
                 let distance = self.content().dials.front_distance;
                 let f = self.add_off_map("the front", x, z - distance, 0.0);
+                self.mark_off_map(f, capital);
                 self.world.resource_mut::<Sovereign>().front = Some(f);
                 f
             }

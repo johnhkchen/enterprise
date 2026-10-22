@@ -32,7 +32,7 @@ pub fn daily(s: &mut Society, r: &mut Rng, _day: u64) {
     let mut counts = Vec::new();
     for (g, n) in stock.iter().enumerate() {
         if r.below(4) != 0 {
-            counts.push((g, (n * r.range(0.0, 1.5)).floor()));
+            counts.push((g, (n.max(0.0) * r.range(0.0, 1.5)).floor()));
         }
     }
     s.take_stock(&at, &counts, 27).unwrap();

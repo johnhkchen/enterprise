@@ -1,0 +1,1699 @@
+{
+  "name": "crown",
+  "about": "The sovereign and its markets off the map. A capital is named (its treasury takes the crown's revenue, its metal exchange opens and with it the market across the sea, a Market point beside the capital's desk's dimension). A realm, the Coast, is opened by its host as a Market point with its roads to the capital: a market off the map with money and goods and no one in it. Mobilising, the capital mints and asks for a gold shop (BuildCrownShop); the host puts a vendor up and tells the core (CrownShop), counts it each look as any vendor, and the core, which knows it is the crown's, funds its card from the treasury and takes the gold sold into it (CrownShop). Declared, war levies the towns the capital's wagons reach (WarDeclared) and opens the front, a Market point north of the capital. Peace sends the soldiers home (PeaceMade) and takes the gold shop down (CrownShopDown). Realms and Metals show the realm's trade and the exchange. A market on a place taken, a realm the core hasn't, a theatre it hasn't, and a crown shop that is no shop are refused. Saved and loaded, the crown is as it was.",
+  "steps": [
+    {
+      "note": "a society from a pack with gold",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Create": {
+            "pack": {
+              "day_ticks": 24000,
+              "goods": [
+                {
+                  "name": "minecraft:wheat",
+                  "worth": 0.05,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [
+                    "Crop"
+                  ],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:bread",
+                  "worth": 0.2,
+                  "stack": 64,
+                  "food": 5.0,
+                  "saturation": 6.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:book",
+                  "worth": 0.5,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": "reading",
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:cooked_beef",
+                  "worth": 0.3,
+                  "stack": 64,
+                  "food": 8.0,
+                  "saturation": 12.8,
+                  "comfort": null,
+                  "flags": [
+                    "Meat"
+                  ],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:iron_ingot",
+                  "worth": 0.25,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 4.0
+                },
+                {
+                  "name": "minecraft:sugar_cane",
+                  "worth": 0.04,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 0.5
+                },
+                {
+                  "name": "minecraft:paper",
+                  "worth": 0.04,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:gold_ingot",
+                  "worth": 3.0,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 1.0
+                }
+              ],
+              "comforts": [
+                "clothing",
+                "reading"
+              ],
+              "trades": [
+                "merchant",
+                "farmer",
+                "librarian",
+                "shepherd",
+                "none",
+                "nitwit"
+              ],
+              "recipes": [
+                {
+                  "trades": [
+                    "farmer"
+                  ],
+                  "inputs": [
+                    {
+                      "good": "minecraft:wheat",
+                      "count": 3.0
+                    }
+                  ],
+                  "output": "minecraft:bread",
+                  "makes": 1.0
+                },
+                {
+                  "trades": [
+                    "librarian"
+                  ],
+                  "inputs": [
+                    {
+                      "good": "minecraft:sugar_cane",
+                      "count": 1.0
+                    }
+                  ],
+                  "output": "minecraft:paper",
+                  "makes": 1.0
+                }
+              ],
+              "animals": [
+                {
+                  "name": "cow",
+                  "feed": [
+                    "minecraft:wheat"
+                  ],
+                  "feed_per_day": 0.25,
+                  "meat": "minecraft:cooked_beef",
+                  "meat_each": 2.0,
+                  "wool": null,
+                  "hide": null
+                }
+              ],
+              "dials": [
+                {
+                  "name": "birth_mood",
+                  "value": 0.5
+                },
+                {
+                  "name": "wagon_slots",
+                  "value": 30.0
+                }
+              ],
+              "packages": []
+            },
+            "seed": 7
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e14100c0bb01080f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f146d696e6563726166743a69726f6e5f696e676f74000000000000d03f400000000000000000000000000000000000000000000000001040146d696e6563726166743a73756761725f63616e657b14ae47e17aa43f40000000000000000000000000000000000000000000000000e03f0f6d696e6563726166743a70617065727b14ae47e17aa43f40000000000000000000000000000000000000000000000000f03f146d696e6563726166743a676f6c645f696e676f74000000000000084040000000000000000000000000000000000000000000000000f03f0208636c6f7468696e670772656164696e6706086d65726368616e74066661726d6572096c696272617269616e087368657068657264046e6f6e65066e69747769740201066661726d6572010f6d696e6563726166743a776865617400000000000008400f6d696e6563726166743a6272656164000000000000f03f01096c696272617269616e01146d696e6563726166743a73756761725f63616e65000000000000f03f0f6d696e6563726166743a7061706572000000000000f03f0103636f77010f6d696e6563726166743a7768656174000000000000d03f01156d696e6563726166743a636f6f6b65645f6265656600000000000000400000020a62697274685f6d6f6f64000000000000e03f0b7761676f6e5f736c6f74730000000000003e400007",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "two towns forty blocks apart, the capital with its Merchant and a vendor by it, Vale with its Merchant and four idle hands; bread and money in both",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "AddTown": {
+                  "name": "Crownmere",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "AddTown": {
+                  "name": "Vale",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 67,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "AddPoint": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 17
+                  },
+                  "town": 0
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 0,
+                  "trade": "merchant",
+                  "level": 3,
+                  "tag": "villager-capital"
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 1,
+                  "trade": "merchant",
+                  "level": 3,
+                  "tag": "villager-vale"
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 1,
+                  "trade": "none",
+                  "level": 1,
+                  "tag": "villager-a"
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 1,
+                  "trade": "none",
+                  "level": 1,
+                  "tag": "villager-b"
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 1,
+                  "trade": "none",
+                  "level": 1,
+                  "tag": "villager-c"
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 1,
+                  "trade": "none",
+                  "level": 1,
+                  "tag": "villager-d"
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 0,
+                  "good": 1,
+                  "count": 128.0
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 1,
+                  "good": 1,
+                  "count": 128.0
+                }
+              },
+              {
+                "Pay": {
+                  "town": 0,
+                  "money": 500000
+                }
+              },
+              {
+                "Pay": {
+                  "town": 1,
+                  "money": 50000
+                }
+              },
+              {
+                "Route": {
+                  "from": 0,
+                  "to": 1,
+                  "send": true
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e141030e070943726f776e6d65726500136d696e6563726166743a6f766572776f726c64367736070456616c6500136d696e6563726166743a6f766572776f726c64860177360802136d696e6563726166743a6f766572776f726c64367722000f00086d65726368616e74031076696c6c616765722d6361706974616c0f01086d65726368616e74030d76696c6c616765722d76616c650f01046e6f6e65010a76696c6c616765722d610f01046e6f6e65010a76696c6c616765722d620f01046e6f6e65010a76696c6c616765722d630f01046e6f6e65010a76696c6c616765722d64010001000000000000604001010100000000000060400200c0843d0201a08d061c000101",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "no realms, no exchange yet",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Ask": {
+            "queries": [
+              "Realms",
+              "Metals",
+              "War"
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e14104031a1b16",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Realms": {
+                "realms": []
+              }
+            },
+            {
+              "Metals": {
+                "desk": null,
+                "phase": "peace",
+                "metals": [
+                  {
+                    "good": 4,
+                    "name": "minecraft:iron_ingot",
+                    "held": 0.0,
+                    "target": 192.0,
+                    "coming": 0.0,
+                    "premium": 1.5
+                  },
+                  {
+                    "good": 7,
+                    "name": "minecraft:gold_ingot",
+                    "held": 0.0,
+                    "target": 32.0,
+                    "coming": 0.0,
+                    "premium": 1.5
+                  }
+                ]
+              }
+            },
+            {
+              "War": {
+                "phase": "peace",
+                "theatre": "faction",
+                "days": 0.0,
+                "capital": null,
+                "treasury": 0,
+                "treasury_spurs": 0.0,
+                "minted": 0.0,
+                "contracts": 0,
+                "delivered": 0.0,
+                "serving": 0,
+                "waiting": 0,
+                "raised": 0,
+                "fallen": 0,
+                "bills": 0.0,
+                "rate": 16.0,
+                "debasement": 1.0,
+                "levies": 0,
+                "hired": 0,
+                "awarded": 0,
+                "depot": [],
+                "unmet": [],
+                "towns": [],
+                "issued": [],
+                "eaten": 0.0,
+                "heartiness": 0.0
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000031a001b000570656163650204146d696e6563726166743a69726f6e5f696e676f74000000000000000000000000000068400000000000000000000000000000f83f07146d696e6563726166743a676f6c645f696e676f74000000000000000000000000000040400000000000000000000000000000f83f160570656163650766616374696f6e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003040000000000000f03f0000000000000000000000000000000000000000000000"
+    },
+    {
+      "note": "the Coast opened by its host at a Market point, 20,000 spurs in its account, trading with the capital",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "OffMap": {
+                  "name": "the Coast",
+                  "at": {
+                    "kind": "Market",
+                    "dim": "minecraft:overworld",
+                    "x": -2400,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "sells": true,
+                  "realm": "coast",
+                  "spurs": 20000,
+                  "partners": [
+                    0
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e1410301230974686520436f61737405136d696e6563726166743a6f766572776f726c64bf2577360105636f617374a09c010100",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "the Coast is a town of its own at a Market point; Realms tells of it",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Ask": {
+            "queries": [
+              "Points",
+              "Realms"
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e1410402011a",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Points": {
+                "points": [
+                  {
+                    "point": {
+                      "kind": "Market",
+                      "dim": "minecraft:overworld",
+                      "x": -2400,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "town": 2
+                  },
+                  {
+                    "point": {
+                      "kind": "Shop",
+                      "dim": "minecraft:overworld",
+                      "x": 27,
+                      "y": -60,
+                      "z": 17
+                    },
+                    "town": 0
+                  },
+                  {
+                    "point": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 27,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "town": 0
+                  },
+                  {
+                    "point": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 67,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "town": 1
+                  }
+                ]
+              }
+            },
+            {
+              "Realms": {
+                "realms": [
+                  {
+                    "town": 2,
+                    "name": "the Coast",
+                    "trips": 0,
+                    "partners": 1,
+                    "sold_spurs": 0.0,
+                    "bought_spurs": 0.0,
+                    "customs_spurs": 0.0,
+                    "made": 192.0,
+                    "in_hand_spurs": 20000.0
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "000002010405136d696e6563726166743a6f766572776f726c64bf2577360202136d696e6563726166743a6f766572776f726c643677220000136d696e6563726166743a6f766572776f726c643677360000136d696e6563726166743a6f766572776f726c6486017736011a01020974686520436f61737400010000000000000000000000000000000000000000000000000000000000006840000000000088d340"
+    },
+    {
+      "note": "the capital named in peacetime, 16 spurs a day; its exchange opens the market across the sea",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Capital": {
+                  "town": 0,
+                  "spurs_per_day": 16
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e1410301240010",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "the market across the sea is a point too; the exchange at the capital, in peace",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Ask": {
+            "queries": [
+              "Points",
+              "Metals"
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e1410402011b",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Points": {
+                "points": [
+                  {
+                    "point": {
+                      "kind": "Market",
+                      "dim": "minecraft:overworld",
+                      "x": -2400,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "town": 2
+                  },
+                  {
+                    "point": {
+                      "kind": "Market",
+                      "dim": "minecraft:overworld",
+                      "x": -2400,
+                      "y": 0,
+                      "z": 0
+                    },
+                    "town": 3
+                  },
+                  {
+                    "point": {
+                      "kind": "Shop",
+                      "dim": "minecraft:overworld",
+                      "x": 27,
+                      "y": -60,
+                      "z": 17
+                    },
+                    "town": 0
+                  },
+                  {
+                    "point": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 27,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "town": 0
+                  },
+                  {
+                    "point": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 67,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "town": 1
+                  }
+                ]
+              }
+            },
+            {
+              "Metals": {
+                "desk": 0,
+                "phase": "peace",
+                "metals": [
+                  {
+                    "good": 4,
+                    "name": "minecraft:iron_ingot",
+                    "held": 0.0,
+                    "target": 192.0,
+                    "coming": -0.0,
+                    "premium": 1.5
+                  },
+                  {
+                    "good": 7,
+                    "name": "minecraft:gold_ingot",
+                    "held": 0.0,
+                    "target": 32.0,
+                    "coming": -0.0,
+                    "premium": 1.5
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "000002010505136d696e6563726166743a6f766572776f726c64bf2577360205136d696e6563726166743a6f766572776f726c64bf2500000302136d696e6563726166743a6f766572776f726c643677220000136d696e6563726166743a6f766572776f726c643677360000136d696e6563726166743a6f766572776f726c6486017736011b01000570656163650204146d696e6563726166743a69726f6e5f696e676f74000000000000000000000000000068400000000000000080000000000000f83f07146d696e6563726166743a676f6c645f696e676f74000000000000000000000000000040400000000000000080000000000000f83f"
+    },
+    {
+      "note": "mobilising at 480 spurs a day: the capital mints, and asks for a gold shop",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Advance": {
+                  "to": 1200
+                }
+              },
+              {
+                "Mobilise": {
+                  "town": 0,
+                  "spurs_per_day": 480
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e141030200b0092500e003",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "BuildCrownShop": {
+                "town": 0
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "0001190000"
+    },
+    {
+      "note": "the host put a vendor up by the capital for the crown",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "CrownShop": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 17
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e14103012802136d696e6563726166743a6f766572776f726c64367722",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "a look: the vendor, new, set to nothing: the core says what it shows, its card funded",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Vendor": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 17
+                  },
+                  "read": {
+                    "mode": "Idle",
+                    "good": null,
+                    "deed": null,
+                    "lot": 0,
+                    "price": 0,
+                    "stock": 0,
+                    "room": 0,
+                    "purse": 0,
+                    "coins": 0,
+                    "touches": false
+                  }
+                }
+              },
+              {
+                "Advance": {
+                  "to": 1300
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e14103021f02136d696e6563726166743a6f766572776f726c643677220000000000000000000000940a",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "CrownShop": {
+                "point": {
+                  "kind": "Shop",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 17
+                },
+                "good": 7,
+                "lot": 8,
+                "price": 1173,
+                "fund": 0,
+                "taken": 0
+              }
+            },
+            {
+              "BuildShop": {
+                "town": 0
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "00021a02136d696e6563726166743a6f766572776f726c64367722070895090000160000"
+    },
+    {
+      "note": "a look: a player sold 16 gold into the vendor, its card paid out",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Vendor": {
+                  "point": {
+                    "kind": "Shop",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 17
+                  },
+                  "read": {
+                    "mode": "Buy",
+                    "good": 7,
+                    "deed": null,
+                    "lot": 8,
+                    "price": 1173,
+                    "stock": 16,
+                    "room": 54,
+                    "purse": 0,
+                    "coins": 0,
+                    "touches": false
+                  }
+                }
+              },
+              {
+                "Advance": {
+                  "to": 1400
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e14103021f02136d696e6563726166743a6f766572776f726c6436772201010700089509103600000000f80a",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "CrownShop": {
+                "point": {
+                  "kind": "Shop",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 17
+                },
+                "good": 7,
+                "lot": 8,
+                "price": 1173,
+                "fund": 2346,
+                "taken": 16
+              }
+            },
+            {
+              "BuildShop": {
+                "town": 0
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "00021a02136d696e6563726166743a6f766572776f726c6436772207089509aa1210160000"
+    },
+    {
+      "note": "the war, mobilising",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Ask": {
+            "queries": [
+              "War",
+              "Metals"
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e1410402161b",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "War": {
+                "phase": "mobilising",
+                "theatre": "faction",
+                "days": 0.008333333333333333,
+                "capital": 0,
+                "treasury": 379739,
+                "treasury_spurs": 6184.802172633619,
+                "minted": 495.9045089150535,
+                "contracts": 1,
+                "delivered": 0.0,
+                "serving": 0,
+                "waiting": 0,
+                "raised": 0,
+                "fallen": 0,
+                "bills": 0.0,
+                "rate": 16.28698177599251,
+                "debasement": 1.0179363609995318,
+                "levies": 0,
+                "hired": 0,
+                "awarded": 0,
+                "depot": [
+                  {
+                    "name": "minecraft:bread",
+                    "count": 128.0
+                  }
+                ],
+                "unmet": [],
+                "towns": [],
+                "issued": [],
+                "eaten": 0.0,
+                "heartiness": 0.0
+              }
+            },
+            {
+              "Metals": {
+                "desk": 0,
+                "phase": "mobilising",
+                "metals": [
+                  {
+                    "good": 4,
+                    "name": "minecraft:iron_ingot",
+                    "held": 0.0,
+                    "target": 384.0,
+                    "coming": 192.0,
+                    "premium": 1.5
+                  },
+                  {
+                    "good": 7,
+                    "name": "minecraft:gold_ingot",
+                    "held": 0.0,
+                    "target": 64.0,
+                    "coming": -0.0,
+                    "premium": 1.5
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "000002160a6d6f62696c6973696e670766616374696f6e111111111111813f0100b6ad2e248b2f5bcd28b840861157de78fe7e40010000000000000000000000000000000000000000926f3ea377493040926f3ea37749f03f000000010f6d696e6563726166743a62726561640000000000006040000000000000000000000000000000000000001b01000a6d6f62696c6973696e670204146d696e6563726166743a69726f6e5f696e676f74000000000000000000000000000078400000000000006840000000000000f83f07146d696e6563726166743a676f6c645f696e676f74000000000000000000000000000050400000000000000080000000000000f83f"
+    },
+    {
+      "note": "war against a faction: Vale is levied",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Declare": {
+                  "theatre": "faction"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e1410301260766616374696f6e",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "WarDeclared": {
+                "levies": 1
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "0001170100"
+    },
+    {
+      "note": "the front is a Market point north of the capital",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Ask": {
+            "queries": [
+              "Points",
+              "War"
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e14104020116",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Points": {
+                "points": [
+                  {
+                    "point": {
+                      "kind": "Market",
+                      "dim": "minecraft:overworld",
+                      "x": -2400,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "town": 2
+                  },
+                  {
+                    "point": {
+                      "kind": "Market",
+                      "dim": "minecraft:overworld",
+                      "x": -2400,
+                      "y": 0,
+                      "z": 0
+                    },
+                    "town": 3
+                  },
+                  {
+                    "point": {
+                      "kind": "Market",
+                      "dim": "minecraft:overworld",
+                      "x": 0,
+                      "y": 0,
+                      "z": -1500
+                    },
+                    "town": 4
+                  },
+                  {
+                    "point": {
+                      "kind": "Shop",
+                      "dim": "minecraft:overworld",
+                      "x": 27,
+                      "y": -60,
+                      "z": 17
+                    },
+                    "town": 0
+                  },
+                  {
+                    "point": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 27,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "town": 0
+                  },
+                  {
+                    "point": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 67,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "town": 1
+                  }
+                ]
+              }
+            },
+            {
+              "War": {
+                "phase": "war",
+                "theatre": "faction",
+                "days": 0.0,
+                "capital": 0,
+                "treasury": 379739,
+                "treasury_spurs": 6184.802172633619,
+                "minted": 495.9045089150535,
+                "contracts": 1,
+                "delivered": 0.0,
+                "serving": 0,
+                "waiting": 0,
+                "raised": 0,
+                "fallen": 0,
+                "bills": 0.0,
+                "rate": 16.28698177599251,
+                "debasement": 1.0179363609995318,
+                "levies": 1,
+                "hired": 0,
+                "awarded": 0,
+                "depot": [
+                  {
+                    "name": "minecraft:bread",
+                    "count": 128.0
+                  }
+                ],
+                "unmet": [],
+                "towns": [],
+                "issued": [],
+                "eaten": 0.0,
+                "heartiness": 0.0
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "000002010605136d696e6563726166743a6f766572776f726c64bf2577360205136d696e6563726166743a6f766572776f726c64bf2500000305136d696e6563726166743a6f766572776f726c640000b7170402136d696e6563726166743a6f766572776f726c643677220000136d696e6563726166743a6f766572776f726c643677360000136d696e6563726166743a6f766572776f726c64860177360116037761720766616374696f6e00000000000000000100b6ad2e248b2f5bcd28b840861157de78fe7e40010000000000000000000000000000000000000000926f3ea377493040926f3ea37749f03f010000010f6d696e6563726166743a6272656164000000000000604000000000000000000000000000000000000000"
+    },
+    {
+      "note": "ten days of war",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Advance": {
+                  "to": 241400
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e141030100f8dd0e",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "the war ten days on",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Ask": {
+            "queries": [
+              "War",
+              "Realms"
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e1410402161a",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "War": {
+                "phase": "war",
+                "theatre": "faction",
+                "days": 10.0,
+                "capital": 0,
+                "treasury": 655986,
+                "treasury_spurs": 12290.740318008662,
+                "minted": 4728.299600172822,
+                "contracts": 1,
+                "delivered": 0.0,
+                "serving": 0,
+                "waiting": 0,
+                "raised": 0,
+                "fallen": 0,
+                "bills": 0.0,
+                "rate": 18.736284490840752,
+                "debasement": 1.171017780677547,
+                "levies": 1,
+                "hired": 8,
+                "awarded": 0,
+                "depot": [
+                  {
+                    "name": "minecraft:bread",
+                    "count": 128.0
+                  }
+                ],
+                "unmet": [
+                  "minecraft:bread",
+                  "minecraft:cooked_beef"
+                ],
+                "towns": [],
+                "issued": [],
+                "eaten": 0.0,
+                "heartiness": 0.0
+              }
+            },
+            {
+              "Realms": {
+                "realms": [
+                  {
+                    "town": 2,
+                    "name": "the Coast",
+                    "trips": 0,
+                    "partners": 1,
+                    "sold_spurs": 0.0,
+                    "bought_spurs": 0.0,
+                    "customs_spurs": 0.0,
+                    "made": 192.0,
+                    "in_hand_spurs": 23420.35561355094
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "00000216037761720766616374696f6e00000000000024400100e48950ec91bdc25e01c84025d098b24c78b2400100000000000000000000000000000000000000008ab6f0237dbc32408ab6f0237dbcf23f010800010f6d696e6563726166743a62726561640000000000006040020f6d696e6563726166743a6272656164156d696e6563726166743a636f6f6b65645f626565660000000000000000000000000000000000001a01020974686520436f61737400010000000000000000000000000000000000000000000000000000000000006840d3565fc216dfd640"
+    },
+    {
+      "note": "saved at war",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": "Save"
+      },
+      "request_postcard": "01a8a7a6d0effec1e14102",
+      "saved": {
+        "format": 1,
+        "schema": 4738639990262174632,
+        "blob_len": 11326,
+        "blob_fnv": "80c063a11ee80ba7"
+      }
+    },
+    {
+      "note": "loaded",
+      "load": "saved",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "the same after the load",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Ask": {
+            "queries": [
+              "War",
+              "Realms",
+              "Metals"
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e1410403161a1b",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "War": {
+                "phase": "war",
+                "theatre": "faction",
+                "days": 10.0,
+                "capital": 0,
+                "treasury": 655986,
+                "treasury_spurs": 12290.740318008662,
+                "minted": 4728.299600172822,
+                "contracts": 1,
+                "delivered": 0.0,
+                "serving": 0,
+                "waiting": 0,
+                "raised": 0,
+                "fallen": 0,
+                "bills": 0.0,
+                "rate": 18.736284490840752,
+                "debasement": 1.171017780677547,
+                "levies": 1,
+                "hired": 8,
+                "awarded": 0,
+                "depot": [
+                  {
+                    "name": "minecraft:bread",
+                    "count": 128.0
+                  }
+                ],
+                "unmet": [
+                  "minecraft:bread",
+                  "minecraft:cooked_beef"
+                ],
+                "towns": [],
+                "issued": [],
+                "eaten": 0.0,
+                "heartiness": 0.0
+              }
+            },
+            {
+              "Realms": {
+                "realms": [
+                  {
+                    "town": 2,
+                    "name": "the Coast",
+                    "trips": 0,
+                    "partners": 1,
+                    "sold_spurs": 0.0,
+                    "bought_spurs": 0.0,
+                    "customs_spurs": 0.0,
+                    "made": 192.0,
+                    "in_hand_spurs": 23420.35561355094
+                  }
+                ]
+              }
+            },
+            {
+              "Metals": {
+                "desk": 0,
+                "phase": "war",
+                "metals": [
+                  {
+                    "good": 4,
+                    "name": "minecraft:iron_ingot",
+                    "held": 0.0,
+                    "target": 576.0,
+                    "coming": 192.0,
+                    "premium": 1.5
+                  },
+                  {
+                    "good": 7,
+                    "name": "minecraft:gold_ingot",
+                    "held": 0.0,
+                    "target": 96.0,
+                    "coming": -0.0,
+                    "premium": 1.5
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "00000316037761720766616374696f6e00000000000024400100e48950ec91bdc25e01c84025d098b24c78b2400100000000000000000000000000000000000000008ab6f0237dbc32408ab6f0237dbcf23f010800010f6d696e6563726166743a62726561640000000000006040020f6d696e6563726166743a6272656164156d696e6563726166743a636f6f6b65645f626565660000000000000000000000000000000000001a01020974686520436f61737400010000000000000000000000000000000000000000000000000000000000006840d3565fc216dfd6401b0100037761720204146d696e6563726166743a69726f6e5f696e676f74000000000000000000000000000082400000000000006840000000000000f83f07146d696e6563726166743a676f6c645f696e676f74000000000000000000000000000058400000000000000080000000000000f83f"
+    },
+    {
+      "note": "peace",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Apply": {
+            "inputs": [
+              "Peace"
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e141030127",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "PeaceMade": {
+                "home": 0
+              }
+            },
+            {
+              "CrownShopDown": {
+                "point": {
+                  "kind": "Shop",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 17
+                }
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "000218001b02136d696e6563726166743a6f766572776f726c6436772200"
+    },
+    {
+      "note": "the war over",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Ask": {
+            "queries": [
+              "War"
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e141040116",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "War": {
+                "phase": "peace",
+                "theatre": "faction",
+                "days": 0.0,
+                "capital": 0,
+                "treasury": 655986,
+                "treasury_spurs": 12290.740318008662,
+                "minted": 4728.299600172822,
+                "contracts": 1,
+                "delivered": 0.0,
+                "serving": 0,
+                "waiting": 0,
+                "raised": 0,
+                "fallen": 0,
+                "bills": 0.0,
+                "rate": 18.736284490840752,
+                "debasement": 1.171017780677547,
+                "levies": 1,
+                "hired": 8,
+                "awarded": 0,
+                "depot": [
+                  {
+                    "name": "minecraft:bread",
+                    "count": 128.0
+                  }
+                ],
+                "unmet": [],
+                "towns": [],
+                "issued": [],
+                "eaten": 0.0,
+                "heartiness": 0.0
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "000001160570656163650766616374696f6e00000000000000000100e48950ec91bdc25e01c84025d098b24c78b2400100000000000000000000000000000000000000008ab6f0237dbc32408ab6f0237dbcf23f010800010f6d696e6563726166743a6272656164000000000000604000000000000000000000000000000000000000"
+    },
+    {
+      "note": "a market on a place taken: refused",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "OffMap": {
+                  "name": "Again",
+                  "at": {
+                    "kind": "Market",
+                    "dim": "minecraft:overworld",
+                    "x": -2400,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "sells": true,
+                  "realm": "",
+                  "spurs": 0,
+                  "partners": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e14103012305416761696e05136d696e6563726166743a6f766572776f726c64bf25773601000000",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "a point already stands at Spot { dim: \"minecraft:overworld\", x: -2400, y: -60, z: 27 }"
+            }
+          }
+        }
+      },
+      "response_postcard": "020700566120706f696e7420616c7265616479207374616e64732061742053706f74207b2064696d3a20226d696e6563726166743a6f766572776f726c64222c20783a202d323430302c20793a202d36302c207a3a203237207d"
+    },
+    {
+      "note": "a market that is a desk: refused",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "OffMap": {
+                  "name": "Nowhere",
+                  "at": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 90,
+                    "y": -60,
+                    "z": 90
+                  },
+                  "sells": true,
+                  "realm": "",
+                  "spurs": 0,
+                  "partners": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e141030123074e6f776865726500136d696e6563726166743a6f766572776f726c64b40177b40101000000",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "a market off the map that's a Desk"
+            }
+          }
+        }
+      },
+      "response_postcard": "0207002261206d61726b6574206f666620746865206d6170207468617427732061204465736b"
+    },
+    {
+      "note": "a realm the core hasn't: refused",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "OffMap": {
+                  "name": "Atlantis",
+                  "at": {
+                    "kind": "Market",
+                    "dim": "minecraft:overworld",
+                    "x": 90,
+                    "y": -60,
+                    "z": 90
+                  },
+                  "sells": true,
+                  "realm": "atlantis",
+                  "spurs": 0,
+                  "partners": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e1410301230841746c616e74697305136d696e6563726166743a6f766572776f726c64b40177b401010861746c616e7469730000",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "no realm called atlantis"
+            }
+          }
+        }
+      },
+      "response_postcard": "020700186e6f207265616c6d2063616c6c65642061746c616e746973"
+    },
+    {
+      "note": "a market trading with a town that isn't there: refused",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "OffMap": {
+                  "name": "Lonely",
+                  "at": {
+                    "kind": "Market",
+                    "dim": "minecraft:overworld",
+                    "x": 90,
+                    "y": -60,
+                    "z": 90
+                  },
+                  "sells": true,
+                  "realm": "",
+                  "spurs": 0,
+                  "partners": [
+                    9
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e141030123064c6f6e656c7905136d696e6563726166743a6f766572776f726c64b40177b4010100000109",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "no town 9"
+            }
+          }
+        }
+      },
+      "response_postcard": "020700096e6f20746f776e2039"
+    },
+    {
+      "note": "a theatre the core hasn't: refused",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Declare": {
+                  "theatre": "sea"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e14103012603736561",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "no theatre called sea"
+            }
+          }
+        }
+      },
+      "response_postcard": "020700156e6f20746865617472652063616c6c656420736561"
+    },
+    {
+      "note": "a capital that isn't a town: refused",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Capital": {
+                  "town": 9,
+                  "spurs_per_day": 1
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e1410301240901",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "no town 9"
+            }
+          }
+        }
+      },
+      "response_postcard": "020700096e6f20746f776e2039"
+    },
+    {
+      "note": "the crown's shop at a desk: refused",
+      "request": {
+        "abi": 1,
+        "schema": 4738639990262174632,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "CrownShop": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a8a7a6d0effec1e14103012800136d696e6563726166743a6f766572776f726c64367736",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "the crown's shop that's a Desk"
+            }
+          }
+        }
+      },
+      "response_postcard": "0207001e7468652063726f776e27732073686f70207468617427732061204465736b"
+    }
+  ]
+}
