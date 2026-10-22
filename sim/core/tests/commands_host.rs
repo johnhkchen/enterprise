@@ -80,7 +80,7 @@ fn a_contract_tells_its_history_from_its_state_and_a_rent_is_listed_with_its_far
     assert!(h[0].starts_with("day 0: drafted, 64 paper") && h[0].ends_with("DDP"), "{h:?}");
     assert!(h.iter().any(|l| l.contains(&format!("{:.0} delivered", contracts[0].delivered))), "{h:?}");
     assert!(h.last().unwrap().ends_with("completed"), "{h:?}");
-    // A rent: the scribes buy a season's paper from the mill; both are parties to it, a third town isn't.
+    // A rent: the scribes buy a season's paper from the mill; both towns are parties to it.
     s.pay(1, 100.0);
     let id = s.sell_rent(0, 1, 0, 8.0, 0.04).expect("the holder can pay");
     s.advance(DAY);

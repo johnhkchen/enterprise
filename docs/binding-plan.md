@@ -267,10 +267,9 @@ is one question and its lines out, in the Java commands' words so the studies' r
 | `atlas <desk>` | the core's (`Routes`: the markets the town knows) |
 | `name` (list), `depot` (list), `autoswitch` | the core's (`Points` and `Territory`'s names; `Lockers` and `Switch`); `depot add/remove` already sync the core |
 | `census <bell>` | refused: a census is the core's, each look (`/enterprise core census <desk>` takes one now) |
-| `toll`, `hex`, `bridge`, `cottage`, `survey`, `services`, `expeditions`, `settlements`, `switch`, `name <desk> <name>` | "Java mode only until B5.1 delete-java-rules" |
+| `toll`, `hex`, `bridge`, `cottage`, `survey`, `services`, `expeditions`, `settlements`, `switch`, `name <desk> <name>`, `freight`, `post`, `forwarder`, `paperwork` (the crates and papers stay Java mode's: `pallet-views` drew the core's pallets without them) | "Java mode only until B5.1 delete-java-rules" |
 | `market`, `tenders`, `bank`, `bank open` | "Java mode only until B4.9 shop-adapter" |
-| `metals`, `realms`, `realms open`, `war capital|mobilise|declare|peace` | "Java mode only until B4.10 crown-views" |
-| `freight`, `post`, `forwarder`, `paperwork` | "Java mode only until B4.12 pallet-views" |
+| `metals`, `realms`, `realms open`, `war capital`, `war mobilise`, `war declare`, `war peace` | "Java mode only until B4.10 crown-views" |
 
 **Studies.** John, 2026-10-18: most Java-server studies retire for `sim/host` (`just study`); one in-game study is kept as a
 check. Kept: `network_study.py` with its default flags (and `--save-at`, `--label`, `--resume`, `--stop-when`), the same
@@ -279,8 +278,9 @@ rate, each town's row from `Territory`, each route's from `RouteBooks`, the cash
 mode only (retired for sim/host)". `trace.py` works in either mode (it asks `territory` and `contracts`, the core's under
 `society=core`). `forks.py` and `compare_lanes.py` run the kept study and read its CSV: unchanged. Retired (Java mode only; under
 `society=core` they exit saying "Java mode only (retired for sim/host)"): `merchant_ramp.py`, `farm_wages.py`,
-`caravan_network.py`, `standalone_town.py`, `paper_report.py` (it refuses a checkpoint whose `study.json` says `"core": true`),
-and `world_map.py` (it reads the Java rules' saved data). Their questions are asked of `sim/host` (`docs/architecture.md`).
+`caravan_network.py`, `standalone_town.py`, `paper_report.py` (it refuses a checkpoint whose `study.json` says `"core": true`);
+and `world_map.py`, which reads the Java rules' saved data and is only noted Java mode only (it reads files, not the server,
+so it can't tell the mode: on a core world it draws what the Java rules last saved). Their questions are asked of `sim/host` (`docs/architecture.md`).
 
 ## 3. Tasks
 

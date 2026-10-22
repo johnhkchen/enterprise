@@ -41,7 +41,6 @@ final class EnterpriseCommands {
     private static final String RULES = "B5.1 delete-java-rules";
     private static final String SHOPS = "B4.9 shop-adapter";
     private static final String CROWN = "B4.10 crown-views";
-    private static final String PALLETS = "B4.12 pallet-views";
 
     /** In core mode, a command that is still the Java rules' says so and does nothing (it would show data nothing updates). */
     private static int refuse(CommandContext<CommandSourceStack> context, String command, String task) {
@@ -295,7 +294,7 @@ final class EnterpriseCommands {
                                         .then(Commands.argument("to", BlockPosArgument.blockPos())
                                                 .executes(EnterpriseCommands::addRoute))))
                         .then(Commands.literal("remove")
-                                .then(Commands.argument("id", IntegerArgumentType.integer(1))
+                                .then(Commands.argument("id", IntegerArgumentType.integer(0))
                                         .executes(EnterpriseCommands::removeRoute))))
                 .then(Commands.literal("routes").executes(EnterpriseCommands::routes))
                 .then(Commands.literal("dial")
@@ -421,7 +420,7 @@ final class EnterpriseCommands {
                                 .executes(context -> cashbook(context, IntegerArgumentType.getInteger(context, "days"))))))
                 .then(Commands.literal("forwarder").executes(context -> {
                     if (dev.b28.enterprise.binding.Society.isCore()) {
-                        return refuse(context, "forwarder", PALLETS);
+                        return refuse(context, "forwarder", RULES);
                     }
                     var server = context.getSource().getServer();
                     String out = String.join("\n", dev.b28.enterprise.market.Forwarder.get(server).report(server));
@@ -430,7 +429,7 @@ final class EnterpriseCommands {
                 }))
                 .then(Commands.literal("post").executes(context -> {
                     if (dev.b28.enterprise.binding.Society.isCore()) {
-                        return refuse(context, "post", PALLETS);
+                        return refuse(context, "post", RULES);
                     }
                     var server = context.getSource().getServer();
                     String out = String.join("\n", dev.b28.enterprise.market.Post.get(server).report(server));
@@ -439,7 +438,7 @@ final class EnterpriseCommands {
                 }))
                 .then(Commands.literal("paperwork").executes(context -> {
                     if (dev.b28.enterprise.binding.Society.isCore()) {
-                        return refuse(context, "paperwork", PALLETS);
+                        return refuse(context, "paperwork", RULES);
                     }
                     var server = context.getSource().getServer();
                     StringBuilder out = new StringBuilder("Paperwork (documents, paper, ink, quills used; scribes paid):");
@@ -452,7 +451,7 @@ final class EnterpriseCommands {
                 }))
                 .then(Commands.literal("freight").executes(context -> {
                     if (dev.b28.enterprise.binding.Society.isCore()) {
-                        return refuse(context, "freight", PALLETS);
+                        return refuse(context, "freight", RULES);
                     }
                     var server = context.getSource().getServer();
                     var freight = dev.b28.enterprise.market.Freight.get(server);

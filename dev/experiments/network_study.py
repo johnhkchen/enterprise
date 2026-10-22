@@ -563,6 +563,9 @@ def main():
         ours = {a for a in sys.argv if a in shaping}
         if theirs != ours:
             sys.exit(f"the checkpoint was set up with {sorted(theirs)}, not {sorted(ours)}")
+        if saved.get("core", False) != CORE:
+            mode = lambda core: "society=core" if core else "Java mode"
+            sys.exit(f"the checkpoint was a {mode(saved.get('core', False))} study; this server runs {mode(CORE)}")
         print(f"resumed from {flag('--resume')}: day {saved['day']} done, carrying on from day {first}")
     else:
         if "--river" in sys.argv:

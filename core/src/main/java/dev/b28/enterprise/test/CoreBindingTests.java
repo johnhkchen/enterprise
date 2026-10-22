@@ -1324,7 +1324,11 @@ public final class CoreBindingTests {
             helper.assertTrue(commands.atlas(w.hub()).get(0).startsWith("The desk of Hubford knows "), "atlas: " + commands.atlas(w.hub()));
             helper.assertTrue(commands.names().stream().anyMatch(l -> l.startsWith("  Hubford at ")), "names: " + commands.names());
             helper.assertTrue(commands.depots().get(0).endsWith("building(s)"), "depots: " + commands.depots());
-            helper.assertTrue(commands.autoswitch(w.hub(), false) >= 0, "autoswitch");
+            // Autoswitch turns on what earns emeralds at the lockers with nothing on yet, through the core at once: asked
+            // again, every locker has something on and nothing more is switched.
+            int switched = commands.autoswitch(w.hub(), false);
+            helper.assertTrue(switched > 0 && commands.autoswitch(w.hub(), false) == 0,
+                    "autoswitch switched " + switched + " offer(s), then switched more: " + host.lockers().town(w.hub()).lockers());
             // A desk the core keeps no town at has no town near it.
             helper.assertTrue(commands.townNear(GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(new BlockPos(40, 2, 40))), 8) == null,
                     "a town near nothing");
