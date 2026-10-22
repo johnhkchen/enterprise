@@ -954,6 +954,100 @@ fn wagons() -> Scenario {
     s.scenario
 }
 
+fn pallets() -> Scenario {
+    let mut s = Script::new("pallets", "A town's pallets as its host shows them (pallet_host.rs). Pallets made with two \
+        dials raised so one holds three crates. A player has Far's Merchant pack paper for Mid (a pallet of three crates) \
+        and for Hub (one crate): pallets in Far's warehouse (PalletPacked), a bill each. Asked what to put in Far's desk's \
+        chests with two slots free, the core offers only Hub's pallet: a chest takes a pallet whole or not at all; with \
+        four, both, and the host says it put them there (Stowed). A player carries Mid's pallet to Hub, a town on the way \
+        that isn't its consignee: it waits there, packed (PalletMoved), shown nowhere until Hub's chests take it. Two of \
+        its three crates reach Mid: at Mid's next look the pallet is received short, its seal broken, Mid taking what came \
+        and the third crate a loss in the books (PalletOpened; the registry's lost goods). Hub's wagon to Far fetches the \
+        crate packed for Hub, sealed as it leaves (on the manifest, one line, no superbill), and Hub receives it home.");
+    const PAPER: GoodNo = 6;
+    let (hub, far, mid) = (at(PointKind::Desk, 27, 27), at(PointKind::Desk, 67, 27), at(PointKind::Desk, 47, 27));
+    let r = s.say("a society from a pack with paper and Merchants", Command::Create { pack: full_pack(), seed: 7 });
+    assert_eq!(r, Response::Done { outputs: vec![], answers: vec![] });
+    s.apply("three towns, Hub, Far and Mid; Hub with its Merchant and a villager of no trade to lead its wagon, Far with its \
+        Merchant, books and paper; bread and money in each; pallets of up to 27 stacks", vec![
+        Input::AddTown { name: "Hub".into(), desk: hub.clone() },
+        Input::AddTown { name: "Far".into(), desk: far.clone() },
+        Input::AddTown { name: "Mid".into(), desk: mid.clone() },
+        Input::AddHand { town: 0, trade: "merchant".into(), level: 1, tag: "villager-hub".into() },
+        Input::AddHand { town: 0, trade: "none".into(), level: 1, tag: "villager-lead".into() },
+        Input::AddHand { town: 1, trade: "merchant".into(), level: 1, tag: "villager-far".into() },
+        Input::Deliver { town: 0, good: BREAD, count: 128.0 },
+        Input::Deliver { town: 1, good: BREAD, count: 128.0 },
+        Input::Deliver { town: 1, good: BOOK, count: 64.0 },
+        Input::Deliver { town: 1, good: PAPER, count: 1300.0 },
+        Input::Pay { town: 0, money: Fixed::from(50.0) },
+        Input::Pay { town: 1, money: Fixed::from(50.0) },
+        Input::Pay { town: 2, money: Fixed::from(10.0) },
+        Input::SetDial { name: "pallet_slots".into(), value: Some(27.0) },
+        Input::SetDial { name: "pallet_weight".into(), value: Some(27.0) },
+    ]);
+    let out = s.apply("Far packs 1,200 paper for Mid and 100 for Hub", vec![
+        Input::Pack { town: 1, consignee: 2, goods: counts(&[(PAPER, 1200.0)]) },
+        Input::Pack { town: 1, consignee: 0, goods: counts(&[(PAPER, 100.0)]) },
+    ]);
+    let ids: Vec<u64> = out.iter().filter_map(|o| match o { Output::PalletPacked { id, .. } => Some(*id), _ => None }).collect();
+    assert_eq!(ids.len(), 2, "{out:?}");
+    let (for_mid, for_hub) = (ids[0], ids[1]);
+    s.ask("Far's pallets", vec![Query::Pallets { town: 1 }]);
+    let a = s.ask("what Far's chests take with two slots free: only Hub's, whole", vec![Query::Stow { point: far.clone(), free: 2 }]);
+    assert!(matches!(&a[0], Answer::Stow { pallets, .. } if pallets.len() == 1 && pallets[0].id == for_hub), "{a:?}");
+    s.ask("with four: both", vec![Query::Stow { point: far.clone(), free: 4 }]);
+    s.apply("the host put both in Far's chests", vec![
+        Input::Stowed { point: far.clone(), pallet: for_mid },
+        Input::Stowed { point: far.clone(), pallet: for_hub },
+    ]);
+    let a = s.ask("nothing more to put there", vec![Query::Stow { point: far.clone(), free: 27 }]);
+    assert!(matches!(&a[0], Answer::Stow { pallets, .. } if pallets.is_empty()), "{a:?}");
+    let out = s.apply("a player carries Mid's pallet to Hub's desk: it waits there, packed", vec![
+        Input::PalletBrought { town: 0, id: for_mid },
+    ]);
+    assert_eq!(out, vec![Output::PalletMoved { id: for_mid, to: Place::Town { town: 0 } }]);
+    s.ask("Hub holds it, shown nowhere yet; Mid's inbound", vec![Query::Pallets { town: 0 }, Query::Pallets { town: 2 },
+        Query::Stow { point: hub.clone(), free: 27 }]);
+    s.apply("and on to Mid with two of its three crates", vec![
+        Input::PackageBrought { town: 2, pallet: for_mid, package: 0 },
+        Input::PackageBrought { town: 2, pallet: for_mid, package: 2 },
+    ]);
+    let out = s.apply("Mid's next look: received short", vec![Input::Advance { to: 1_200 }]);
+    assert!(out.contains(&Output::PalletOpened { id: for_mid, at: Place::Town { town: 0 } }), "{out:?}");
+    let a = s.ask("Mid's paper, and the crate that didn't come lost in the books", vec![Query::Stock { town: 2 },
+        Query::Pallets { town: 2 }, Query::Pallet { id: for_mid }]);
+    assert!(matches!(&a[0], Answer::Stock { stock, .. } if stock[PAPER as usize] == 576.0 + 48.0), "{a:?}");
+    assert!(matches!(&a[1], Answer::Pallets { lost_goods, .. } if lost_goods == &counts(&[(PAPER, 576.0)])), "{a:?}");
+    s.apply("Hub's host starts wagons to Far", vec![Input::Route { from: 0, to: 1, send: true }]);
+    let mut fetched = false;
+    for look in 2..=4u64 {
+        let out = s.apply("a look", vec![Input::Advance { to: look * 1_200 }]);
+        fetched |= out.contains(&Output::PalletMoved { id: for_hub, to: Place::Wagon { route: 0 } });
+        let a = s.ask("Hub's wagon's manifest", vec![Query::Manifest { route: 0 }]);
+        if fetched && look == 3 {
+            assert!(matches!(&a[0], Answer::Manifest { lines, superbill: false, .. } if lines.len() == 1 && lines[0].pallet.sealed), "{a:?}");
+        }
+    }
+    assert!(fetched, "Hub's wagon fetched its crate");
+    let a = s.ask("home: Hub's paper, every pallet gone", vec![Query::Stock { town: 0 }, Query::Pallets { town: 0 }]);
+    assert!(matches!(&a[0], Answer::Stock { stock, .. } if stock[PAPER as usize] == 100.0), "{a:?}");
+    s.save("saved");
+    s.load("loaded");
+    s.ask("the same after the load", vec![Query::Pallets { town: 1 }]);
+    let r = s.say("a pallet stowed at a point that isn't a desk: refused", Command::Apply { inputs: vec![
+        Input::Stowed { point: at(PointKind::Desk, 5, 5), pallet: 0 },
+    ] });
+    assert!(matches!(s.refused("no desk", r), Refusal::Input { at: 0, .. }));
+    let r = s.say("goods packed for the town itself: refused", Command::Apply { inputs: vec![
+        Input::Pack { town: 1, consignee: 1, goods: vec![] },
+    ] });
+    assert!(matches!(s.refused("itself", r), Refusal::Input { at: 0, .. }));
+    let r = s.say("the manifest of a route that isn't there", Command::Ask { queries: vec![Query::Manifest { route: 9 }] });
+    assert!(matches!(s.refused("no route", r), Refusal::Query { at: 0, .. }));
+    s.scenario
+}
+
 /// Every way the core refuses, each leaving the society as it was.
 fn refusals() -> Scenario {
     let mut s = Script::new("refusals", "Every refusal, each a message and nothing applied.");
@@ -1061,7 +1155,7 @@ fn refusals() -> Scenario {
 }
 
 fn scenarios() -> Vec<Scenario> {
-    vec![stocktake(), inputs(), content(), refusals(), hands(), people(), chests(), money(), land(), lockers(), wagons()]
+    vec![stocktake(), inputs(), content(), refusals(), hands(), people(), chests(), money(), land(), lockers(), wagons(), pallets()]
 }
 
 fn text(scenario: &Scenario) -> String {
@@ -1088,7 +1182,7 @@ fn the_scenarios_play_as_their_files_say() {
         return;
     }
     let mut wrong = Vec::new();
-    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people", "chests", "money", "land", "lockers", "wagons"] {
+    for name in ["stocktake", "inputs", "content", "refusals", "hands", "people", "chests", "money", "land", "lockers", "wagons", "pallets"] {
         let scenario = read(name);
         assert!(!scenario.steps.is_empty(), "{name}: no steps");
         wrong.extend(play(&scenario));
@@ -1146,15 +1240,14 @@ fn every_message_appears_in_a_scenario() {
         }
     }
     let set = |names: &[&str]| names.iter().map(|s| s.to_string()).collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost", "Census", "TagHand", "Unmoved", "Cashcount", "CashUnmoved", "Ground", "Crops", "Survey", "Built", "Switch", "Locker", "Route"]));
+    assert_eq!(inputs, set(&["Advance", "AddPoint", "AddTown", "Buy", "Deliver", "Order", "OwnShop", "PackageBrought", "PackageLost", "PalletBrought", "Pay", "RemovePoint", "SetDial", "Stall", "Stocktake", "AddHand", "HandLost", "Census", "TagHand", "Unmoved", "Cashcount", "CashUnmoved", "Ground", "Crops", "Survey", "Built", "Switch", "Locker", "Route", "Pack", "Stowed"]));
     assert_eq!(commands, set(&["Apply", "Ask", "Create", "Load", "Save"]));
-    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands", "Chests", "Cash", "Mint", "Land", "Ground", "Lockers", "Routes"]));
+    assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands", "Chests", "Cash", "Mint", "Land", "Ground", "Lockers", "Routes", "Pallets", "Pallet", "Stow", "Manifest"]));
     assert_eq!(refusals, set(&["Abi", "Input", "NoSociety", "Pack", "Query", "Save", "SaveFormat", "Schema", "Unreadable"]));
     // A child born, the chests' moves, the till's, a field to lay, a locker's trades levelling its villager and the
-    // Merchant, and a wagon's trip with its crew away and back: the others need a master Merchant (OrderFilled, Signal),
-    // a pallet (the pallets' three: a wagon packs one only for a sale it ships crated, which the scenario's shopping trip
-    // isn't) or a party of settlers or the rules taking a hand (Settled, Departed, HandGone), and no wire input makes
-    // any. When one does, a scenario shows each and its name goes here.
+    // Merchant, a wagon's trip with its crew away and back, and pallets packed, moved and opened (`Pack`): the others
+    // need a master Merchant (OrderFilled, Signal) or a party of settlers or the rules taking a hand (Settled, Departed,
+    // HandGone), and no wire input makes any. When one does, a scenario shows each and its name goes here.
     assert_eq!(outputs, set(&["Born", "Cash", "Moved", "Build", "HandLevel", "WagonLeft", "WagonSold", "WagonHome",
-        "HandAway", "HandBack"]));
+        "HandAway", "HandBack", "PalletPacked", "PalletMoved", "PalletOpened"]));
 }

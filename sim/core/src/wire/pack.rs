@@ -27,6 +27,11 @@ pub struct ContentPack {
     pub animals: Vec<PackAnimal>,
     /// The dials the game sets for a new world, where it isn't the core's default (also what `reset` puts one back to).
     pub dials: Vec<PackDial>,
+    /// The kinds of packing the game shows a pallet's packages in (`docs/pallets.md`: a crate, a barrel, a bundle), each
+    /// an item kind of the host's: none, the core's own four (loose, crate, barrel, bundle). The core packs in crates by
+    /// default, so a pack that lists any lists `loose` first (stacks lying on the pallet, no slots of its own) and
+    /// `crate` second; the rest are the game's.
+    pub packages: Vec<PackPackage>,
 }
 
 impl ContentPack {
@@ -41,8 +46,21 @@ impl ContentPack {
             recipes: Vec::new(),
             animals: Vec::new(),
             dials: Vec::new(),
+            packages: Vec::new(),
         }
     }
+}
+
+/// A kind of packing: its name (no namespace: `crate`, not `enterprise:crate`), the stacks one holds at most (0 for
+/// `loose`, which is no package), what an empty one weighs, what a new one costs in emeralds, and whether it comes back
+/// empty to its consignee to ship with again (a crate does; a bundle is cut and gone).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PackPackage {
+    pub name: String,
+    pub slots: u32,
+    pub tare: f64,
+    pub emeralds: f64,
+    pub returnable: bool,
 }
 
 /// A good: its name in the host's game, what one is worth (in emeralds), how many make a stack (a wagon's slot holds a
@@ -120,7 +138,9 @@ impl Content {
     /// points, saturation or weight that isn't a number, or below nothing (a weight of nothing too); a comfort the pack
     /// doesn't list; a kind of comfort or a trade named twice, with no name or with a namespace; no Merchant, `none` or
     /// `nitwit` among the trades; a recipe or animal naming a good or trade the pack lacks, a recipe with nothing in
-    /// or out; an amount that isn't a number above nothing; a dial the core doesn't have or won't take the value of.
+    /// or out; an amount that isn't a number above nothing; a dial the core doesn't have or won't take the value of; a
+    /// kind of packing with no name or another's, a namespace, stacks it can't hold (loose none, the rest some), a tare
+    /// or price that isn't a number at or above nothing, or lists that don't start with loose and the crate.
     pub fn from_pack(pack: &ContentPack) -> Result<Content, String> {
         let mut wrong = Vec::new();
         if pack.day_ticks == 0 {
@@ -286,6 +306,43 @@ impl Content {
                 meat_each: a.meat_each, wool, hide });
         }
 
+        // The kinds of packing: the core's own, or the pack's, loose and the crate first (the rules pack in crates).
+        let packages = if pack.packages.is_empty() {
+            crate::pallet::base_packages()
+        } else {
+            let mut kinds = Vec::with_capacity(pack.packages.len());
+            for (i, k) in pack.packages.iter().enumerate() {
+                let mut bad = |what: String| wrong.push(format!("package {i} ({:?}): {what}", k.name));
+                if k.name.trim().is_empty() {
+                    bad("no name".to_string());
+                } else if k.name.contains(':') {
+                    bad("named with a namespace (a package is `crate`, not `enterprise:crate`)".to_string());
+                } else if pack.packages[..i].iter().any(|o| o.name == k.name) {
+                    bad("named as another is".to_string());
+                }
+                let first = [(0, "loose"), (1, "crate")];
+                if let Some((_, name)) = first.iter().find(|(at, _)| *at == i) {
+                    if k.name != *name {
+                        bad(format!("the {} package must be {name:?}, which the core packs with", if i == 0 { "first" } else { "second" }));
+                    }
+                }
+                if i == 0 && k.slots != 0 {
+                    bad(format!("loose holds {} stacks: it's no package, so none", k.slots));
+                } else if i > 0 && k.slots == 0 {
+                    bad("holds no stacks".to_string());
+                }
+                if !(k.tare.is_finite() && k.tare >= 0.0) {
+                    bad(format!("weighs {} empty", k.tare));
+                }
+                if !(k.emeralds.is_finite() && k.emeralds >= 0.0) {
+                    bad(format!("costs {} emeralds", k.emeralds));
+                }
+                kinds.push(crate::pallet::PackageKind { name: k.name.clone(), slots: k.slots, tare: k.tare, emeralds: k.emeralds,
+                    returnable: k.returnable });
+            }
+            kinds
+        };
+
         let mut dials = crate::dials::Dials::default();
         for (i, d) in pack.dials.iter().enumerate() {
             if pack.dials[..i].iter().any(|e| e.name == d.name) {
@@ -303,6 +360,7 @@ impl Content {
         content.trades = trades;
         content.conversions = conversions;
         content.animals = animals;
+        content.packages = packages;
         content.dial_defaults = dials.clone();
         content.dials = dials;
         // The villagers' trades, vanilla's, for the pack's goods and trades (`lockers.rs`).

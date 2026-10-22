@@ -20,7 +20,11 @@ public sealed interface Answer
                 Answer.Land,
                 Answer.Ground,
                 Answer.Lockers,
-                Answer.Routes {
+                Answer.Routes,
+                Answer.Pallets,
+                Answer.Pallet,
+                Answer.Stow,
+                Answer.Manifest {
     void encode(PostcardOut out);
 
     static Answer decode(PostcardIn in) {
@@ -38,6 +42,10 @@ public sealed interface Answer
             case 9 -> new Ground(in.list(20, GroundView::decode));
             case 10 -> new Lockers(in.u32(), in.u32(), in.bool(), in.list(13, LockerView::decode));
             case 11 -> new Routes(in.u32(), in.list(33, RouteLine::decode), in.list(6, MarketLine::decode), in.list(1, PostcardIn::string));
+            case 12 -> new Pallets(in.u32(), in.list(25, PalletView::decode), in.list(25, PalletView::decode), in.u64(), in.u64(), in.list(9, Count::decode));
+            case 13 -> new Pallet(in.u64(), in.option(PalletView::decode));
+            case 14 -> new Stow(Point.decode(in), in.list(25, PalletView::decode));
+            case 15 -> new Manifest(in.u32(), in.list(27, ManifestLine::decode), in.bool());
             default -> throw in.unknownVariant("Answer", at);
         };
     }
@@ -288,6 +296,89 @@ public sealed interface Answer
             out.list(this.routes, (o1, e1) -> e1.encode(o1));
             out.list(this.markets, (o1, e1) -> e1.encode(o1));
             out.list(this.squad, PostcardOut::string);
+        }
+    }
+
+    /**
+     * A town's pallets: those {@code held} in its warehouse (in arrival order, the order a wagon loads them) and those made out
+     * to it elsewhere ({@code inbound}, by id); and the registry's tallies: pallets {@code received} by their consignees, pallets
+     * {@code lost} whole, and the goods lost off pallets ({@code lost_goods}, by good: booked as used, reason lost), in the world.
+     */
+    record Pallets(long town, List<PalletView> held, List<PalletView> inbound, long received, long lost, List<Count> lostGoods) implements Answer {
+        public Pallets {
+            Objects.requireNonNull(held, "held");
+            held = List.copyOf(held);
+            Objects.requireNonNull(inbound, "inbound");
+            inbound = List.copyOf(inbound);
+            Objects.requireNonNull(lostGoods, "lostGoods");
+            lostGoods = List.copyOf(lostGoods);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(12);
+            out.u32(this.town);
+            out.list(this.held, (o1, e1) -> e1.encode(o1));
+            out.list(this.inbound, (o1, e1) -> e1.encode(o1));
+            out.u64(this.received);
+            out.u64(this.lost);
+            out.list(this.lostGoods, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * A pallet as it is now, or {@code None}: gone (opened by its consignee, taken apart by its holder, every package lost).
+     */
+    record Pallet(long id, Optional<PalletView> pallet) implements Answer {
+        public Pallet {
+            Objects.requireNonNull(pallet, "pallet");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(13);
+            out.u64(this.id);
+            out.option(this.pallet, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * The pallets to put in a desk's chests now, whole, in the order to put them: those of its town's warehouse whose
+     * packages are nowhere the core knows of (never put in chests, or moved or changed since), in arrival order, each
+     * taken whole if its {@code items} fit in what's left of the free slots, else passed over. The host puts each in and says
+     * so ({@code Input::Stowed}).
+     */
+    record Stow(Point point, List<PalletView> pallets) implements Answer {
+        public Stow {
+            Objects.requireNonNull(point, "point");
+            Objects.requireNonNull(pallets, "pallets");
+            pallets = List.copyOf(pallets);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(14);
+            this.point.encode(out);
+            out.list(this.pallets, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * A route's wagon's manifest, by line (none while it's home), and whether it needs a superbill: two lines or more,
+     * a document drawn at its home as it leaves (one pallet's bill is its own manifest).
+     */
+    record Manifest(long route, List<ManifestLine> lines, boolean superbill) implements Answer {
+        public Manifest {
+            Objects.requireNonNull(lines, "lines");
+            lines = List.copyOf(lines);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(15);
+            out.u32(this.route);
+            out.list(this.lines, (o1, e1) -> e1.encode(o1));
+            out.bool(this.superbill);
         }
     }
 }

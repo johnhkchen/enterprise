@@ -1,0 +1,30 @@
+[
+  {
+    "name": "loose",
+    "slots": 0,
+    "tare": 0.0,
+    "emeralds": 0.0,
+    "returnable": false
+  },
+  {
+    "name": "crate",
+    "slots": 9,
+    "tare": 0.5,
+    "emeralds": 0.125,
+    "returnable": true
+  },
+  {
+    "name": "Bröly 🌾",
+    "slots": 4294967295,
+    "tare": 1.7976931348623157e+308,
+    "emeralds": 2.2250738585072014e-308,
+    "returnable": false
+  },
+  {
+    "name": "",
+    "slots": 1,
+    "tare": -0.5,
+    "emeralds": -1.0,
+    "returnable": true
+  }
+]

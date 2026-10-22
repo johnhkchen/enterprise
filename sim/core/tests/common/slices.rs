@@ -58,4 +58,5 @@ slices! {
     land,
     locker_host,
     wagon_host,
+    pallet_host,
 }

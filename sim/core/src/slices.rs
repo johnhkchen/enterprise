@@ -58,6 +58,7 @@ crate::saved! {
         former_desks: crate::chests::FormerDesks = crate::chests::FormerDesks::default(),
         tills: crate::till::Tills = crate::till::Tills::default(),
         land_book: crate::land::LandBook = crate::land::LandBook::default(),
+        stowage: crate::pallet_host::Stowage = crate::pallet_host::Stowage::default(),
     }
     town {
         town: Town,

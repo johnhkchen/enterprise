@@ -194,6 +194,26 @@ fn answer(s: &Society, query: &Query) -> Result<Answer, String> {
             }
             s.route_lines(town as usize)
         }
+        &Query::Pallets { town } => {
+            if town as usize >= s.town_count() {
+                return Err(format!("no town {town}"));
+            }
+            s.pallets_view(town as usize)
+        }
+        &Query::Pallet { id } => Answer::Pallet { id, pallet: s.pallets().get(id).map(|p| s.pallet_view(p)) },
+        Query::Stow { point, free } => {
+            if point.kind() != Kind::Desk {
+                return Err(format!("pallets stowed at a {:?}", point.kind));
+            }
+            same_kind(s.point(&point.spot()).map(|p| p.kind), point)?;
+            s.stow_view(point, *free).expect("a desk that stands")
+        }
+        &Query::Manifest { route } => {
+            if route as usize >= s.route_count() {
+                return Err(format!("no route {route}"));
+            }
+            s.manifest_view(route as usize)
+        }
     })
 }
 
@@ -375,6 +395,23 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
                 if from == to {
                     return Err(wrong(format!("a route from town {from} to itself")));
                 }
+            }
+            Input::Pack { town: t, consignee, goods: lines } => {
+                town(*t)?;
+                town(*consignee)?;
+                if t == consignee {
+                    return Err(wrong(format!("goods packed at town {t} for itself")));
+                }
+                for c in lines {
+                    good(c.good)?;
+                    amount("a count of", c.count)?;
+                }
+            }
+            Input::Stowed { point, .. } => {
+                if point.kind() != Kind::Desk {
+                    return Err(wrong(format!("a pallet stowed at a {:?}", point.kind)));
+                }
+                same_kind(stands(&points, &point.spot()), point).map_err(wrong)?;
             }
             Input::Locker { at, .. } => {
                 if let Some(point) = at {

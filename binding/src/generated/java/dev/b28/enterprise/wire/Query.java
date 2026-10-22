@@ -19,7 +19,11 @@ public sealed interface Query
                 Query.Land,
                 Query.Ground,
                 Query.Lockers,
-                Query.Routes {
+                Query.Routes,
+                Query.Pallets,
+                Query.Pallet,
+                Query.Stow,
+                Query.Manifest {
     void encode(PostcardOut out);
 
     static Query decode(PostcardIn in) {
@@ -37,6 +41,10 @@ public sealed interface Query
             case 9 -> new Ground(in.list(2, HexAt::decode));
             case 10 -> new Lockers(in.u32());
             case 11 -> new Routes(in.u32());
+            case 12 -> new Pallets(in.u32());
+            case 13 -> new Pallet(in.u64());
+            case 14 -> new Stow(Point.decode(in), in.u32());
+            case 15 -> new Manifest(in.u32());
             default -> throw in.unknownVariant("Query", at);
         };
     }
@@ -192,6 +200,58 @@ public sealed interface Query
         public void encode(PostcardOut out) {
             out.variant(11);
             out.u32(this.town);
+        }
+    }
+
+    /**
+     * A town's pallets: those in its warehouse, and those made out to it elsewhere (on wagons, in a hub's custody, in
+     * another town's warehouse): what the Merchant's desk lists and {@code /enterprise core pallets} prints.
+     */
+    record Pallets(long town) implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(12);
+            out.u32(this.town);
+        }
+    }
+
+    /**
+     * One pallet, by its id: as it is now, or gone (opened, lost).
+     */
+    record Pallet(long id) implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(13);
+            out.u64(this.id);
+        }
+    }
+
+    /**
+     * The pallets of a desk's town to put in its chests now, whole, with {@code free} of their slots empty: a chest takes a
+     * pallet whole or not at all, and the core says which ({@code pallet_host.rs}).
+     */
+    record Stow(Point point, long free) implements Query {
+        public Stow {
+            Objects.requireNonNull(point, "point");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(14);
+            this.point.encode(out);
+            out.u32(this.free);
+        }
+    }
+
+    /**
+     * A route's wagon's manifest: the pallets aboard, by line, and whether it needs a superbill of its own (two lines or
+     * more).
+     */
+    record Manifest(long route) implements Query {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(15);
+            out.u32(this.route);
         }
     }
 }

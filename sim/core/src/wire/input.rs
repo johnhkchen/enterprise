@@ -134,6 +134,18 @@ pub enum Input {
     /// none can be; stopped, an open route is wound down (its wagon on the road comes home and stays). `Answer::Routes`
     /// says what came of it. Refused for a town that isn't there, or a town to itself.
     Route { from: TownNo, to: TownNo, send: bool },
+    /// A player has a town's Merchant pack goods from its stock for another town (`pallet_host.rs`): `goods` (no more of
+    /// each than the town holds, whole items) on pallets made out to `consignee`, under no contract, each pallet within
+    /// its kind's caps with a bill of lading of its own, in packages of each good's kind (the town's empty crates first,
+    /// else new ones as far as it can spare the money; what can't be crated stays in stock). The pallets wait in the
+    /// town's warehouse (`PalletPacked`) for a carrier: a wagon of the consignee's fetching them, or a player
+    /// (`PalletBrought`). Refused for a town that isn't there, or a town to itself.
+    Pack { town: TownNo, consignee: TownNo, goods: Vec<Count> },
+    /// The host put a pallet's packages in a desk's chests (as `Answer::Stow` offered them): its crates are there now,
+    /// one item a package, and the core won't offer it again while it stays where it is, as it is (`PalletView.shown`).
+    /// Ignored for a pallet that isn't in that desk's town's warehouse by the time it applies (moved on, opened: a stale
+    /// view). Refused for a point that isn't a desk standing there.
+    Stowed { point: Point, pallet: u64 },
 }
 
 /// A villager a census saw: the host's tag for it (its UUID), its trade by the host's name (with or without the host's

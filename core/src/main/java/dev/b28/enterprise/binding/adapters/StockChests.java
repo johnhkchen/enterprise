@@ -28,8 +28,9 @@ import net.neoforged.neoforge.items.ItemHandlerHelper;
  * Moved}); where in the chests is Minecraft's, as the mod's {@code merchant/MerchantStock} has it (loose stacks first,
  * merging into the good's stacks, then shulker boxes with room; taken loose first, then out of boxes).
  *
- * <p>Crates (the mod's cargo items) aren't opened: a crate is a handling unit, one of the core's pallets, which {@code
- * pallet-views} draws from the core; its goods aren't the chests' loose stock. Items that aren't goods (dirt, coins,
+ * <p>Crates (the mod's cargo items) aren't opened: a crate is a handling unit, a package of one of the core's pallets,
+ * which {@code PalletAdapter} draws from the core ({@link #packages}, {@link #putWhole}); its goods aren't the chests'
+ * loose stock. Items that aren't goods (dirt, coins,
  * crates) are left alone and take their slots.
  */
 final class StockChests {
@@ -264,6 +265,55 @@ final class StockChests {
             }
         }
         return held + delta < 0 ? held + delta : 0;
+    }
+
+    /** A package of one of the core's pallets lying loose in the chests: where, and its tag. */
+    record Packed(IItemHandlerModifiable handler, int slot, dev.b28.enterprise.cargo.PackageTag tag) {
+        /** Takes it out of the chests. */
+        void clear() {
+            handler.setStackInSlot(slot, ItemStack.EMPTY);
+        }
+
+        /** Its tag written again (the same package of its pallet, as the core has it now). */
+        void retag(dev.b28.enterprise.cargo.PackageTag again) {
+            ItemStack copy = handler.getStackInSlot(slot).copy();
+            copy.set(dev.b28.enterprise.cargo.Cargo.PACKAGE.get(), again);
+            handler.setStackInSlot(slot, copy);
+        }
+    }
+
+    /** Every package of a pallet lying loose in the chests (never in a shulker box: a crate doesn't go in one), in slot order. */
+    List<Packed> packages() {
+        List<Packed> out = new ArrayList<>();
+        for (IItemHandlerModifiable h : handlers) {
+            for (int slot = 0; slot < h.getSlots(); slot++) {
+                var tag = h.getStackInSlot(slot).get(dev.b28.enterprise.cargo.Cargo.PACKAGE.get());
+                if (tag != null) {
+                    out.add(new Packed(h, slot, tag));
+                }
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Puts {@code items} in, one to an empty slot, all or none: a chest takes a pallet whole or not at all (the core said
+     * which pallets, from the empty slots counted; this only finds the slots). False, and nothing put, if there are
+     * fewer empty slots than items.
+     */
+    boolean putWhole(List<ItemStack> items) {
+        if (free() < items.size()) {
+            return false;
+        }
+        int next = 0;
+        for (IItemHandlerModifiable h : handlers) {
+            for (int slot = 0; slot < h.getSlots() && next < items.size(); slot++) {
+                if (h.getStackInSlot(slot).isEmpty()) {
+                    h.setStackInSlot(slot, items.get(next++));
+                }
+            }
+        }
+        return true;
     }
 
     /** A shulker box (one to a slot): the chests' goods in it are theirs. */

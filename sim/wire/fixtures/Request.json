@@ -1,7 +1,7 @@
 [
   {
     "abi": 1,
-    "schema": 12432014802387144748,
+    "schema": 13330218520298609697,
     "command": {
       "Create": {
         "pack": {
@@ -120,7 +120,8 @@
           ],
           "recipes": [],
           "animals": [],
-          "dials": []
+          "dials": [],
+          "packages": []
         },
         "seed": 7
       }
@@ -128,7 +129,7 @@
   },
   {
     "abi": 1,
-    "schema": 12432014802387144748,
+    "schema": 13330218520298609697,
     "command": {
       "Create": {
         "pack": {
@@ -161,7 +162,8 @@
           ],
           "recipes": [],
           "animals": [],
-          "dials": []
+          "dials": [],
+          "packages": []
         },
         "seed": 18446744073709551615
       }
@@ -169,7 +171,7 @@
   },
   {
     "abi": 1,
-    "schema": 12432014802387144748,
+    "schema": 13330218520298609697,
     "command": {
       "Load": {
         "save": {
@@ -188,12 +190,12 @@
   },
   {
     "abi": 1,
-    "schema": 12432014802387144748,
+    "schema": 13330218520298609697,
     "command": "Save"
   },
   {
     "abi": 1,
-    "schema": 12432014802387144748,
+    "schema": 13330218520298609697,
     "command": {
       "Apply": {
         "inputs": []
@@ -202,7 +204,7 @@
   },
   {
     "abi": 1,
-    "schema": 12432014802387144748,
+    "schema": 13330218520298609697,
     "command": {
       "Apply": {
         "inputs": [
@@ -2500,6 +2502,97 @@
             }
           },
           {
+            "Pack": {
+              "town": 0,
+              "consignee": 1,
+              "goods": []
+            }
+          },
+          {
+            "Pack": {
+              "town": 2,
+              "consignee": 0,
+              "goods": [
+                {
+                  "good": 0,
+                  "count": 1200.0
+                },
+                {
+                  "good": 3,
+                  "count": 0.5
+                }
+              ]
+            }
+          },
+          {
+            "Pack": {
+              "town": 4294967295,
+              "consignee": 4294967295,
+              "goods": [
+                {
+                  "good": 0,
+                  "count": 0.0
+                },
+                {
+                  "good": 1,
+                  "count": 1.0
+                },
+                {
+                  "good": 2,
+                  "count": 0.1
+                },
+                {
+                  "good": 3,
+                  "count": 0.05
+                },
+                {
+                  "good": 4,
+                  "count": 63.999
+                },
+                {
+                  "good": 5,
+                  "count": 1e-300
+                },
+                {
+                  "good": 6,
+                  "count": 4503599627370496.0
+                },
+                {
+                  "good": 7,
+                  "count": 1.7976931348623157e+308
+                },
+                {
+                  "good": 8,
+                  "count": 2.2250738585072014e-308
+                }
+              ]
+            }
+          },
+          {
+            "Stowed": {
+              "point": {
+                "kind": "Desk",
+                "dim": "minecraft:overworld",
+                "x": 27,
+                "y": -60,
+                "z": 27
+              },
+              "pallet": 12
+            }
+          },
+          {
+            "Stowed": {
+              "point": {
+                "kind": "Desk",
+                "dim": "minecraft:overworld",
+                "x": -2147483648,
+                "y": -2147483648,
+                "z": -2147483648
+              },
+              "pallet": 18446744073709551615
+            }
+          },
+          {
             "Built": {
               "town": 0,
               "work": {
@@ -2607,7 +2700,7 @@
   },
   {
     "abi": 1,
-    "schema": 12432014802387144748,
+    "schema": 13330218520298609697,
     "command": {
       "Ask": {
         "queries": []
@@ -2616,7 +2709,7 @@
   },
   {
     "abi": 1,
-    "schema": 12432014802387144748,
+    "schema": 13330218520298609697,
     "command": {
       "Ask": {
         "queries": [
@@ -2967,6 +3060,60 @@
           {
             "Routes": {
               "town": 4294967295
+            }
+          },
+          {
+            "Pallets": {
+              "town": 0
+            }
+          },
+          {
+            "Pallets": {
+              "town": 4294967295
+            }
+          },
+          {
+            "Pallet": {
+              "id": 0
+            }
+          },
+          {
+            "Pallet": {
+              "id": 18446744073709551615
+            }
+          },
+          {
+            "Stow": {
+              "point": {
+                "kind": "Desk",
+                "dim": "minecraft:overworld",
+                "x": 27,
+                "y": -60,
+                "z": 27
+              },
+              "free": 27
+            }
+          },
+          {
+            "Stow": {
+              "point": {
+                "kind": "Desk",
+                "dim": "minecraft:overworld",
+                "x": 2147483647,
+                "y": -2147483648,
+                "z": 2147483647
+              },
+              "free": 4294967295
+            }
+          },
+          {
+            "Manifest": {
+              "route": 0
+            }
+          },
+          {
+            "Manifest": {
+              "route": 4294967295
             }
           }
         ]
@@ -3331,6 +3478,60 @@
           {
             "Routes": {
               "town": 4294967295
+            }
+          },
+          {
+            "Pallets": {
+              "town": 0
+            }
+          },
+          {
+            "Pallets": {
+              "town": 4294967295
+            }
+          },
+          {
+            "Pallet": {
+              "id": 0
+            }
+          },
+          {
+            "Pallet": {
+              "id": 18446744073709551615
+            }
+          },
+          {
+            "Stow": {
+              "point": {
+                "kind": "Desk",
+                "dim": "minecraft:overworld",
+                "x": 27,
+                "y": -60,
+                "z": 27
+              },
+              "free": 27
+            }
+          },
+          {
+            "Stow": {
+              "point": {
+                "kind": "Desk",
+                "dim": "minecraft:overworld",
+                "x": 2147483647,
+                "y": -2147483648,
+                "z": 2147483647
+              },
+              "free": 4294967295
+            }
+          },
+          {
+            "Manifest": {
+              "route": 0
+            }
+          },
+          {
+            "Manifest": {
+              "route": 4294967295
             }
           }
         ]

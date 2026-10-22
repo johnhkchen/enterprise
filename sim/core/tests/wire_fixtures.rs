@@ -166,8 +166,45 @@ fn packs() -> Vec<ContentPack> {
         ContentPack::new(0, (0..130).map(|i| PackGood::new(&format!("test:good_{i}"), 1.0 + i as f64, 64)).collect()),
         ContentPack { day_ticks: 24_000, goods: goods(), comforts: vec!["reading".into(), "treats".into(), String::new()],
             trades: vec!["merchant".into(), "farmer".into(), "none".into(), "nitwit".into()], recipes: recipes(), animals: animals(),
-            dials: pack_dials() },
-        ContentPack { day_ticks: 1, goods: vec![], comforts: vec![], trades: vec![], recipes: vec![], animals: vec![], dials: vec![] },
+            dials: pack_dials(), packages: pack_packages() },
+        ContentPack { day_ticks: 1, goods: vec![], comforts: vec![], trades: vec![], recipes: vec![], animals: vec![], dials: vec![],
+            packages: vec![] },
+    ]
+}
+
+fn pack_packages() -> Vec<PackPackage> {
+    vec![
+        PackPackage { name: "loose".into(), slots: 0, tare: 0.0, emeralds: 0.0, returnable: false },
+        PackPackage { name: "crate".into(), slots: 9, tare: 0.5, emeralds: 0.125, returnable: true },
+        PackPackage { name: "Br\u{f6}ly \u{1f33e}".into(), slots: u32::MAX, tare: f64::MAX, emeralds: f64::MIN_POSITIVE, returnable: false },
+        PackPackage { name: String::new(), slots: 1, tare: -0.5, emeralds: -1.0, returnable: true },
+    ]
+}
+
+fn pallet_views() -> Vec<PalletView> {
+    vec![
+        PalletView { id: 0, at: Place::Town { town: 0 }, since: 0, shipper: 0, consignee: 1, from: String::new(), to: String::new(),
+            contract: None, paid: false, issued: 0, sealed: false, intact: false, digest: 0, packages: vec![], items: 0,
+            weight: 0.0, shown: None, arriving: vec![] },
+        PalletView { id: 12, at: Place::Town { town: 2 }, since: 24_000, shipper: 2, consignee: 1, from: "Ashford".into(),
+            to: "Br\u{f6}ly \u{1f33e}".into(), contract: Some(7), paid: true, issued: 23_000, sealed: true, intact: true,
+            digest: 0xcbf2_9ce4_8422_2325, packages: vec![PackageLine { kind: 1, good: 3, count: 576.0 },
+                PackageLine { kind: 1, good: 3, count: 48.0 }, PackageLine { kind: 0, good: 0, count: 0.5 }],
+            items: 3, weight: 9.75, shown: Some(point(PointKind::Desk, 27, -60, 27)), arriving: vec![2, 0] },
+        PalletView { id: u64::MAX, at: Place::Container { container: u64::MAX }, since: u64::MAX, shipper: BIGGEST_ID,
+            consignee: BIGGEST_ID, from: "x".repeat(300), to: "\u{1f33e}".repeat(40), contract: Some(BIGGEST_ID), paid: false,
+            issued: u64::MAX, sealed: true, intact: false, digest: u64::MAX, packages: (0..40)
+            .map(|i| PackageLine { kind: i % 4, good: i, count: i as f64 * 9.0 }).collect(), items: u32::MAX, weight: f64::MAX,
+            shown: Some(point(PointKind::Desk, i32::MIN, i32::MAX, i32::MIN)), arriving: (0..40).collect() },
+    ]
+}
+
+fn manifest_lines() -> Vec<ManifestLine> {
+    let v = pallet_views();
+    vec![
+        ManifestLine { pallet: v[0].clone(), drop: None, container: None },
+        ManifestLine { pallet: v[1].clone(), drop: Some(1), container: Some(0) },
+        ManifestLine { pallet: v[2].clone(), drop: Some(BIGGEST_ID), container: Some(u64::MAX) },
     ]
 }
 
@@ -252,6 +289,11 @@ fn inputs() -> Vec<Input> {
         Input::Locker { hand: u32::MAX, at: Some(point(PointKind::Locker, i32::MIN, i32::MAX, i32::MIN)) },
         Input::Route { from: 0, to: 1, send: true },
         Input::Route { from: BIGGEST_ID, to: 0, send: false },
+        Input::Pack { town: 0, consignee: 1, goods: vec![] },
+        Input::Pack { town: 2, consignee: 0, goods: vec![count(0, 1200.0), count(3, 0.5)] },
+        Input::Pack { town: BIGGEST_ID, consignee: BIGGEST_ID, goods: counts().remove(2) },
+        Input::Stowed { point: point(PointKind::Desk, 27, -60, 27), pallet: 12 },
+        Input::Stowed { point: point(PointKind::Desk, i32::MIN, i32::MIN, i32::MIN), pallet: u64::MAX },
     ]);
     all.extend(works().into_iter().enumerate().map(|(i, work)| Input::Built { town: i as TownNo, work, share: 0.25 * i as f64 }));
     all.push(Input::Built { town: BIGGEST_ID, work: Work::Wall, share: 1.0 });
@@ -357,7 +399,10 @@ fn queries() -> Vec<Query> {
         Query::Land { town: BIGGEST_ID }, Query::Ground { hexes: vec![] },
         Query::Ground { hexes: (0..60).map(|i| hex(i - 30, 30 - i)).collect() },
         Query::Lockers { town: 0 }, Query::Lockers { town: BIGGEST_ID }, Query::Routes { town: 0 },
-        Query::Routes { town: BIGGEST_ID }]
+        Query::Routes { town: BIGGEST_ID }, Query::Pallets { town: 0 }, Query::Pallets { town: BIGGEST_ID },
+        Query::Pallet { id: 0 }, Query::Pallet { id: u64::MAX }, Query::Stow { point: point(PointKind::Desk, 27, -60, 27), free: 27 },
+        Query::Stow { point: point(PointKind::Desk, i32::MAX, i32::MIN, i32::MAX), free: u32::MAX }, Query::Manifest { route: 0 },
+        Query::Manifest { route: BIGGEST_ID }]
 }
 
 fn offer_views() -> Vec<OfferView> {
@@ -445,6 +490,19 @@ fn answers() -> Vec<Answer> {
         Answer::Routes { town: 1, routes: route_lines(), markets: market_lines(), squad: vec!["merchant".into(), "librarian".into()] },
         Answer::Routes { town: BIGGEST_ID, routes: vec![], markets: (0..60).map(|i| MarketLine { town: i, desk: None,
             blocks: Some(i * 40), settlement: i % 2 == 0, reachable: i < 30, routed: i % 7 == 0 }).collect(), squad: vec!["x".repeat(300)] },
+        Answer::Pallets { town: 0, held: vec![], inbound: vec![], received: 0, lost: 0, lost_goods: vec![] },
+        Answer::Pallets { town: 1, held: pallet_views()[..2].to_vec(), inbound: pallet_views()[2..].to_vec(), received: 3, lost: 1,
+            lost_goods: vec![count(3, 576.0)] },
+        Answer::Pallets { town: BIGGEST_ID, held: (0..30).map(|i| PalletView { id: i, ..pallet_views().remove(1) }).collect(),
+            inbound: vec![], received: u64::MAX, lost: u64::MAX, lost_goods: counts().remove(2) },
+        Answer::Pallet { id: 0, pallet: None },
+        Answer::Pallet { id: 12, pallet: Some(pallet_views().remove(1)) },
+        Answer::Pallet { id: u64::MAX, pallet: Some(pallet_views().remove(2)) },
+        Answer::Stow { point: point(PointKind::Desk, 27, -60, 27), pallets: vec![] },
+        Answer::Stow { point: point(PointKind::Desk, i32::MIN, 0, i32::MAX), pallets: pallet_views() },
+        Answer::Manifest { route: 0, lines: vec![], superbill: false },
+        Answer::Manifest { route: 3, lines: manifest_lines()[..1].to_vec(), superbill: false },
+        Answer::Manifest { route: BIGGEST_ID, lines: manifest_lines(), superbill: true },
     ]
 }
 
@@ -572,6 +630,9 @@ fixtures! {
     work_fixtures: Work = works();
     work_view_fixtures: WorkView = work_views();
     ground_view_fixtures: GroundView = ground_views();
+    pack_package_fixtures: PackPackage = pack_packages();
+    pallet_view_fixtures: PalletView = pallet_views();
+    manifest_line_fixtures: ManifestLine = manifest_lines();
 }
 
 // Every variant of a wire enum appears in its file. The matches are exhaustive: a variant added to a wire type is a
@@ -608,6 +669,8 @@ fn input_place(i: &Input) -> usize {
         Input::Switch { .. } => 26,
         Input::Locker { .. } => 27,
         Input::Route { .. } => 28,
+        Input::Pack { .. } => 29,
+        Input::Stowed { .. } => 30,
     }
 }
 
@@ -648,6 +711,10 @@ fn query_place(q: &Query) -> usize {
         Query::Ground { .. } => 9,
         Query::Lockers { .. } => 10,
         Query::Routes { .. } => 11,
+        Query::Pallets { .. } => 12,
+        Query::Pallet { .. } => 13,
+        Query::Stow { .. } => 14,
+        Query::Manifest { .. } => 15,
     }
 }
 
@@ -665,6 +732,10 @@ fn answer_place(a: &Answer) -> usize {
         Answer::Ground { .. } => 9,
         Answer::Lockers { .. } => 10,
         Answer::Routes { .. } => 11,
+        Answer::Pallets { .. } => 12,
+        Answer::Pallet { .. } => 13,
+        Answer::Stow { .. } => 14,
+        Answer::Manifest { .. } => 15,
     }
 }
 
@@ -711,10 +782,10 @@ fn covers<T>(what: &str, samples: &[T], variants: usize, place: fn(&T) -> usize)
 
 #[test]
 fn every_variant_of_every_wire_enum_has_a_sample() {
-    covers("Input", &inputs(), 29, input_place);
+    covers("Input", &inputs(), 31, input_place);
     covers("Output", &outputs(), 18, output_place);
-    covers("Query", &queries(), 12, query_place);
-    covers("Answer", &answers(), 12, answer_place);
+    covers("Query", &queries(), 16, query_place);
+    covers("Answer", &answers(), 16, answer_place);
     covers("Command", &commands(), 5, command_place);
     covers("Response", &responses(), 3, response_place);
     covers("Refusal", &refusals(), 9, refusal_place);

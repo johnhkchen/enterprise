@@ -3,6 +3,7 @@ package dev.b28.enterprise.binding;
 import dev.b28.enterprise.Enterprise;
 import dev.b28.enterprise.binding.adapters.LandAdapter;
 import dev.b28.enterprise.binding.adapters.MoneyAdapter;
+import dev.b28.enterprise.binding.adapters.PalletAdapter;
 import dev.b28.enterprise.binding.adapters.PeopleAdapter;
 import dev.b28.enterprise.binding.adapters.StockAdapter;
 import dev.b28.enterprise.binding.adapters.WagonAdapter;
@@ -17,9 +18,9 @@ import dev.b28.enterprise.wire.Output;
  * to {@code adapters/MoneyAdapter}, which writes it to a desk's chests and Blaze Banker. The people's
  * outputs (a child born, a hand settled, departed or gone, a hand's level) go to {@code adapters/PeopleAdapter}, a town's
  * works to lay ({@code Build}) to {@code adapters/LandAdapter}, a wagon's and its crew's (a hand away, a hand back) to
- * {@code adapters/WagonAdapter}. The rest are the master Merchant's and the pallets', each routed to {@link #unshown}
- * until its adapter lands (the pallets' with {@code pallet-views}: the mod's crates and their papers drawn from these,
- * with no pallet rules in Java; the orders' with {@code shop-adapter}).
+ * {@code adapters/WagonAdapter}, the pallets' (packed, moved, opened) to {@code adapters/PalletAdapter}, which draws them
+ * as tagged crates in the desks' chests. The rest are the master Merchant's, routed to {@link #unshown} until its adapter
+ * lands ({@code shop-adapter}).
  */
 final class Outcomes {
     private final PeopleAdapter people;
@@ -27,14 +28,17 @@ final class Outcomes {
     private final MoneyAdapter money;
     private final LandAdapter land;
     private final WagonAdapter wagons;
+    private final PalletAdapter pallets;
     private long unshown;
 
-    Outcomes(PeopleAdapter people, StockAdapter stock, MoneyAdapter money, LandAdapter land, WagonAdapter wagons) {
+    Outcomes(PeopleAdapter people, StockAdapter stock, MoneyAdapter money, LandAdapter land, WagonAdapter wagons,
+            PalletAdapter pallets) {
         this.people = people;
         this.stock = stock;
         this.money = money;
         this.land = land;
         this.wagons = wagons;
+        this.pallets = pallets;
     }
 
     void show(Output output) {
@@ -46,9 +50,9 @@ final class Outcomes {
             case Output.WagonHome o -> wagons.show(o);
             case Output.OrderFilled o -> unshown(o);
             case Output.Signal o -> unshown(o);
-            case Output.PalletPacked o -> unshown(o);
-            case Output.PalletMoved o -> unshown(o);
-            case Output.PalletOpened o -> unshown(o);
+            case Output.PalletPacked o -> pallets.show(o);
+            case Output.PalletMoved o -> pallets.show(o);
+            case Output.PalletOpened o -> pallets.show(o);
             case Output.Born o -> people.show(o);
             case Output.Settled o -> people.show(o);
             case Output.Departed o -> people.show(o);

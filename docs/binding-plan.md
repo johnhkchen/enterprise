@@ -625,6 +625,36 @@ lading are the core's pallets; the mod's crate items, blocks and documents are d
 `pallet-views`, with no crate or paper rules in Java, so `cargo/Crates`, `Papers` and `Paperwork` stay Java mode's
 until `delete-java-rules` and the row's crate and paper views go to `pallet-views`.
 
+**Built (B4.12 `pallet-views`).** The core implements pallets and the mod draws them: no pallet rules in Java. In the
+core (`pallet_host.rs`, `Stowage` in `saved!`): what the core keeps of a pallet's showing is where the host put its
+packages (a desk) and the pallet as it was then (`since`, its digest), held while it stays there (a package lost keeps
+it: the host's other crates are where they were) and gone when it moves, is opened or repacked. `Input::Pack { town,
+consignee, goods }` (a player has the Merchant pack goods from stock for another town: `pack_pallets`, under no contract,
+only what can be crated, a bill a pallet) and `Input::Stowed { point, pallet }` (the host put a pallet's packages in a
+desk's chests); `Query::Stow { point, free }` (a chest takes a pallet whole or not at all: the town's pallets shown
+nowhere, in arrival order, each whole if its packages fit the free slots, one slot a package, else passed over),
+`Query::Pallets { town }` (held and inbound, with the registry's received, lost and lost goods), `Query::Pallet { id }`,
+`Query::Manifest { route }` (a wagon's lines and whether it needs a superbill); `PalletView`, `ManifestLine`; the content
+pack's `packages` (`PackPackage`: the kinds of packing, checked by the core, loose and the crate first; none listed, the
+core's own four). Schema `b8fe731e20bb5c21`, FORMAT 1 (the save grew: dev worlds' `enterprise_core.dat` are rebuilt);
+`just core-fingerprint` unmoved (`5e6b6d51a3b4061e`); the replay digest written again for the save's shape and the new
+random-worlds slice (`pallet_host`). `sim/scenarios/pallets.json` is the first scenario with the three pallet outputs.
+In the mod: `adapters/PalletAdapter` (core mode, at each look before the counts: crates destroyed told as `PackageLost`
+and applied at once; every loaded desk's crates matched to their pallets as the core has them, stale ones taken out,
+crates a player carried from another town's warehouse said as `PalletBrought` or `PackageBrought`, after the look's
+`Advance` so a pallet brought in parts has a look for the rest; then `Query::Stow` with each desk's empty slots and the
+offered pallets put in, `Stowed`; `PalletOpened` and `PalletMoved` off a warehouse take a pallet's crates out of every
+loaded desk at once), `cargo/PackageTag` (the `enterprise:package` component: pallet, place, of, kind, consignee,
+contract, since, digest, good, count; "1 of 3, to Wheatfell, contract 7"), the bill of lading as a `Papers` document in
+the first package's documents slot, `ModPack.PACKAGES` (the pack's kinds of packing, one table: an item registered for
+each kind the mod hasn't, `enterprise:barrel` and `enterprise:bundle`), a tagged crate never placed as a block,
+`/enterprise core pallets <desk>` and `/enterprise core pack <desk> <to> <item> <count>`. Three game tests (298 both
+modes). Measured in the game-test server: a look's pallet happenings with two desks and a pallet shown 0.185 ms of the
+tick (two crossings), a pallet of three crates drawn 0.03 ms. Left: the superbill is a query and a command's line, not
+yet a paper a player holds; empty crates (`Shipments.empties`) aren't shown; depots and lockers hold no pallets; the
+Merchant's screen doesn't list pallets; the kinds of packing are read from the mod's table, not asked of the core after
+a load; `cargo/Crates`, `Papers` and `Paperwork` stay Java mode's until `delete-java-rules`.
+
 ### 3.6 Wave B5: closing
 
 | Order | Task | Goal | Waits for | Java | Model / effort |

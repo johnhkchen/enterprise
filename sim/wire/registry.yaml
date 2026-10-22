@@ -108,6 +108,44 @@ Answer:
                 TYPENAME: MarketLine
           - squad:
               SEQ: STR
+    12:
+      Pallets:
+        STRUCT:
+          - town: U32
+          - held:
+              SEQ:
+                TYPENAME: PalletView
+          - inbound:
+              SEQ:
+                TYPENAME: PalletView
+          - received: U64
+          - lost: U64
+          - lost_goods:
+              SEQ:
+                TYPENAME: Count
+    13:
+      Pallet:
+        STRUCT:
+          - id: U64
+          - pallet:
+              OPTION:
+                TYPENAME: PalletView
+    14:
+      Stow:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+          - pallets:
+              SEQ:
+                TYPENAME: PalletView
+    15:
+      Manifest:
+        STRUCT:
+          - route: U32
+          - lines:
+              SEQ:
+                TYPENAME: ManifestLine
+          - superbill: BOOL
 Command:
   ENUM:
     0:
@@ -154,6 +192,9 @@ ContentPack:
     - dials:
         SEQ:
           TYPENAME: PackDial
+    - packages:
+        SEQ:
+          TYPENAME: PackPackage
 Count:
   STRUCT:
     - good: U32
@@ -386,6 +427,20 @@ Input:
           - from: U32
           - to: U32
           - send: BOOL
+    29:
+      Pack:
+        STRUCT:
+          - town: U32
+          - consignee: U32
+          - goods:
+              SEQ:
+                TYPENAME: Count
+    30:
+      Stowed:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+          - pallet: U64
 LandKind:
   ENUM:
     0:
@@ -414,6 +469,14 @@ LockerView:
     - offers:
         SEQ:
           TYPENAME: OfferView
+ManifestLine:
+  STRUCT:
+    - pallet:
+        TYPENAME: PalletView
+    - drop:
+        OPTION: U32
+    - container:
+        OPTION: U64
 MarketLine:
   STRUCT:
     - town: U32
@@ -598,6 +661,13 @@ PackGood:
         SEQ:
           TYPENAME: GoodFlag
     - weight: F64
+PackPackage:
+  STRUCT:
+    - name: STR
+    - slots: U32
+    - tare: F64
+    - emeralds: F64
+    - returnable: BOOL
 PackRecipe:
   STRUCT:
     - trades:
@@ -612,6 +682,33 @@ PackageLine:
     - kind: U32
     - good: U32
     - count: F64
+PalletView:
+  STRUCT:
+    - id: U64
+    - at:
+        TYPENAME: Place
+    - since: U64
+    - shipper: U32
+    - consignee: U32
+    - from: STR
+    - to: STR
+    - contract:
+        OPTION: U32
+    - paid: BOOL
+    - issued: U64
+    - sealed: BOOL
+    - intact: BOOL
+    - digest: U64
+    - packages:
+        SEQ:
+          TYPENAME: PackageLine
+    - items: U32
+    - weight: F64
+    - shown:
+        OPTION:
+          TYPENAME: Point
+    - arriving:
+        SEQ: U32
 Place:
   ENUM:
     0:
@@ -696,6 +793,24 @@ Query:
       Routes:
         STRUCT:
           - town: U32
+    12:
+      Pallets:
+        STRUCT:
+          - town: U32
+    13:
+      Pallet:
+        STRUCT:
+          - id: U64
+    14:
+      Stow:
+        STRUCT:
+          - point:
+              TYPENAME: Point
+          - free: U32
+    15:
+      Manifest:
+        STRUCT:
+          - route: U32
 Refusal:
   ENUM:
     0:

@@ -33,5 +33,10 @@
   "item.enterprise.documents": "Documents",
   "item.enterprise.documents.blank": "Blank: a merchant fills these in",
   "item.enterprise.tobacco_leaf": "Tobacco Leaf",
-  "item.enterprise.pipe_tobacco": "Pipe Tobacco"
+  "item.enterprise.pipe_tobacco": "Pipe Tobacco",
+  "item.enterprise.barrel": "Barrel of Goods",
+  "item.enterprise.bundle": "Bundle of Goods",
+  "item.enterprise.package.of": "%s of %s, to %s",
+  "item.enterprise.package.under": "%s of %s, to %s, contract %s",
+  "item.enterprise.package.pallet": "Pallet %s, packed in a %s"
 }

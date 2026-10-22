@@ -318,6 +318,10 @@ The binding doesn't run the core yet (architecture step 3). When it does:
   a loss on the bill (in the books as lost, the carrier's report shows it). A player is a carrier: one who brings every
   package keeps the seal.
 - **The mod's crates stay as they are** until the binding replaces its cargo code (see "For John").
+- **Built** (`pallet-views`, `pallet_host.rs`, `adapters/PalletAdapter`): the mod draws the core's pallets in core mode,
+  as above: a crate (or the item of its kind of packing) a package, tagged, the bill in the first's documents slot; a
+  chest takes a pallet whole or not at all, the core saying which (`Query::Stow`); a player packs goods for another town
+  at a desk (`Input::Pack`) and carries them; a destroyed crate is `PackageLost`. `binding-plan.md` B4.12 has the rest.
 
 ## 5. Behaviour and tests
 

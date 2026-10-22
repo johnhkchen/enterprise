@@ -37,7 +37,9 @@ public sealed interface Input
                 Input.Built,
                 Input.Switch,
                 Input.Locker,
-                Input.Route {
+                Input.Route,
+                Input.Pack,
+                Input.Stowed {
     void encode(PostcardOut out);
 
     static Input decode(PostcardIn in) {
@@ -72,6 +74,8 @@ public sealed interface Input
             case 26 -> new Switch(in.u32(), in.u32(), in.u32(), in.bool());
             case 27 -> new Locker(in.u32(), in.option(Point::decode));
             case 28 -> new Route(in.u32(), in.u32(), in.bool());
+            case 29 -> new Pack(in.u32(), in.u32(), in.list(9, Count::decode));
+            case 30 -> new Stowed(Point.decode(in), in.u64());
             default -> throw in.unknownVariant("Input", at);
         };
     }
@@ -593,6 +597,48 @@ public sealed interface Input
             out.u32(this.from);
             out.u32(this.to);
             out.bool(this.send);
+        }
+    }
+
+    /**
+     * A player has a town's Merchant pack goods from its stock for another town ({@code pallet_host.rs}): {@code goods} (no more of
+     * each than the town holds, whole items) on pallets made out to {@code consignee}, under no contract, each pallet within
+     * its kind's caps with a bill of lading of its own, in packages of each good's kind (the town's empty crates first,
+     * else new ones as far as it can spare the money; what can't be crated stays in stock). The pallets wait in the
+     * town's warehouse ({@code PalletPacked}) for a carrier: a wagon of the consignee's fetching them, or a player
+     * ({@code PalletBrought}). Refused for a town that isn't there, or a town to itself.
+     */
+    record Pack(long town, long consignee, List<Count> goods) implements Input {
+        public Pack {
+            Objects.requireNonNull(goods, "goods");
+            goods = List.copyOf(goods);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(29);
+            out.u32(this.town);
+            out.u32(this.consignee);
+            out.list(this.goods, (o1, e1) -> e1.encode(o1));
+        }
+    }
+
+    /**
+     * The host put a pallet's packages in a desk's chests (as {@code Answer::Stow} offered them): its crates are there now,
+     * one item a package, and the core won't offer it again while it stays where it is, as it is ({@code PalletView.shown}).
+     * Ignored for a pallet that isn't in that desk's town's warehouse by the time it applies (moved on, opened: a stale
+     * view). Refused for a point that isn't a desk standing there.
+     */
+    record Stowed(Point point, long pallet) implements Input {
+        public Stowed {
+            Objects.requireNonNull(point, "point");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(30);
+            this.point.encode(out);
+            out.u64(this.pallet);
         }
     }
 }

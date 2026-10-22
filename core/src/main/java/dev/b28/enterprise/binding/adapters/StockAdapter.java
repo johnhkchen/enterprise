@@ -109,6 +109,12 @@ public final class StockAdapter {
         return good >= 0 && good < items.size() ? items.get((int) good) : Items.AIR;
     }
 
+    /** The core's number for {@code item}, or null for an item that isn't one of its goods. */
+    public Long number(Item item) {
+        Integer n = numbers.get(item);
+        return n == null ? null : n.longValue();
+    }
+
     /** Whether the core's moves are written to the chests here. */
     public boolean writes() {
         return writes;
@@ -466,7 +472,7 @@ public final class StockAdapter {
     }
 
     /** The block at {@code pos} and the six touching it are in loaded chunks (a look never loads a chunk to count a chest). */
-    private static boolean loaded(ServerLevel level, BlockPos pos) {
+    static boolean loaded(ServerLevel level, BlockPos pos) {
         if (!level.isLoaded(pos)) {
             return false;
         }

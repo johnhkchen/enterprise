@@ -990,6 +990,265 @@ public final class CoreBindingTests {
         helper.succeed();
     }
 
+    /**
+     * A look of a test's own host as the server's would run it for the pallets and the chests (CoreHost.look without the
+     * census, the land and the money, whose emeralds and coin would take the chests' slots): the pallets' crates seen to
+     * (lost, carried, stale or put in), the points counted, time passed to {@code tick}, then what the crates came to;
+     * its outputs shown.
+     */
+    private static Response palletLook(CoreHost host, net.minecraft.server.level.ServerLevel level, long tick) {
+        var server = level.getServer();
+        List<Input> pallets = host.pallets().happenings(server);
+        List<Input> inputs = new java.util.ArrayList<>(host.stock().stocktakes(server));
+        inputs.add(new Input.Advance(tick));
+        inputs.addAll(pallets);
+        Response r = host.apply(inputs);
+        if (!(r instanceof Response.Done)) {
+            throw new AssertionError("the core refused a look: " + r);
+        }
+        return r;
+    }
+
+    /** The packages of pallets in a chest, in slot order. */
+    private static List<ItemStack> packages(ChestBlockEntity chest) {
+        List<ItemStack> out = new java.util.ArrayList<>();
+        for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+            if (dev.b28.enterprise.cargo.Cargo.isPackage(chest.getItem(slot))) {
+                out.add(chest.getItem(slot));
+            }
+        }
+        return out;
+    }
+
+    private static dev.b28.enterprise.cargo.PackageTag tag(ItemStack stack) {
+        return stack.get(dev.b28.enterprise.cargo.Cargo.PACKAGE.get());
+    }
+
+    /** Takes the package at {@code place} of pallet {@code pallet} out of a chest. */
+    private static ItemStack takePackage(ChestBlockEntity chest, long pallet, int place) {
+        for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+            var t = tag(chest.getItem(slot));
+            if (t != null && t.pallet() == pallet && t.place() == place) {
+                return chest.removeItemNoUpdate(slot);
+            }
+        }
+        throw new AssertionError("no package " + place + " of pallet " + pallet + " in the chest");
+    }
+
+    private static void putInEmptySlot(ChestBlockEntity chest, ItemStack stack) {
+        for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+            if (chest.getItem(slot).isEmpty()) {
+                chest.setItem(slot, stack);
+                return;
+            }
+        }
+        throw new AssertionError("a full chest");
+    }
+
+    /**
+     * A pallet packed at a desk is tagged crates in its chests and goes with the wagon that fetches it (pallet-views; the
+     * core-mode twin of CargoTests' crates with their papers, now the core's pallets): Far's Merchant packs 100 bread for
+     * Hub (Input.Pack, a player's doing at the desk), and at the next look its crate is in Far's chest, tagged "1 of 1, to
+     * Hubford", its bread inside and the bill of lading in its documents slot, the core showing it there; it isn't put in
+     * twice. Hub's wagon, sent to Far, fetches it (sealed, the core moves it aboard: the crate leaves Far's chest), and
+     * home again Hub receives it: the pallet is gone, Hub's chest shows its bread as the core has it.
+     */
+    @GameTest(template = "floor", timeoutTicks = 400)
+    public static void aPalletPackedAtADeskIsTaggedCratesThatGoWithTheWagonThatFetchesIt(GameTestHelper helper) {
+        var level = helper.getLevel();
+        Path dir = folder();
+        Wagons w = null;
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            w = wagons(helper, host);
+            helper.setBlock(HUB_DESK.north(), Blocks.CHEST);
+            helper.setBlock(FAR_DESK.north(), Blocks.CHEST);
+            ChestBlockEntity hubChest = chestAt(helper, HUB_DESK.north());
+            ChestBlockEntity farChest = chestAt(helper, FAR_DESK.north());
+            long t = level.getGameTime();
+            palletLook(host, level, t + 1);
+            List<Long> ids = host.pallets().pack(w.far(), w.hub(), Map.of(Items.BREAD, 100L));
+            helper.assertTrue(ids.size() == 1, "one pallet of one crate: " + ids);
+            long id = ids.get(0);
+            helper.assertTrue(packages(farChest).isEmpty(), "drawn at the next look, not at once");
+            palletLook(host, level, t + 2);
+            List<ItemStack> crates = packages(farChest);
+            helper.assertTrue(crates.size() == 1, "Far's chest holds " + crates.size() + " crates");
+            var tag = tag(crates.get(0));
+            helper.assertTrue(tag.pallet() == id && tag.place() == 0 && tag.of() == 1 && tag.to().equals("Hubford")
+                    && tag.contract() == -1 && crates.get(0).is(dev.b28.enterprise.cargo.Cargo.CRATE_ITEM.get()), "tagged " + tag);
+            int bread = dev.b28.enterprise.cargo.Crates.goods(crates.get(0)).stream().filter(s -> s.is(Items.BREAD))
+                    .mapToInt(ItemStack::getCount).sum();
+            helper.assertTrue(bread == 100, "the crate holds " + bread + " bread");
+            var bill = dev.b28.enterprise.cargo.Crates.papers(crates.get(0)).first(dev.b28.enterprise.cargo.Papers.BILL_OF_LADING);
+            helper.assertTrue(bill.isPresent() && bill.get().data().getLong("pallet") == id
+                    && dev.b28.enterprise.cargo.Crates.papers(crates.get(0)).consignee().isPresent(), "no bill of lading in its documents slot");
+            helper.assertTrue(host.pallets().pallet(id).flatMap(v -> v.shown()).isPresent(), "the core doesn't show it at Far's desk");
+            helper.assertTrue(inChest(farChest, Items.BREAD) == held(host, w.far(), "minecraft:bread"),
+                    "Far's chest shows its stock's bread beside the crate");
+            palletLook(host, level, t + 3);
+            helper.assertTrue(packages(farChest).size() == 1, "put in twice");
+            long received = host.pallets().town(w.hub()).received();
+            host.wagons().send(w.hub(), w.far(), true);
+            long at = t + 3;
+            for (int i = 0; i < 6 && !packages(farChest).isEmpty(); i++) {
+                palletLook(host, level, at += 1200);
+            }
+            helper.assertTrue(packages(farChest).isEmpty(), "the wagon never fetched the crate: " + host.pallets().lines(w.hub()));
+            for (int i = 0; i < 6 && host.pallets().pallet(id).isPresent(); i++) {
+                palletLook(host, level, at += 1200);
+            }
+            helper.assertTrue(host.pallets().pallet(id).isEmpty() && host.pallets().town(w.hub()).received() == received + 1,
+                    "Hub never received it: " + host.pallets().lines(w.hub()));
+            palletLook(host, level, at + 1200);
+            helper.assertTrue(inChest(hubChest, Items.BREAD) == held(host, w.hub(), "minecraft:bread") && packages(hubChest).isEmpty(),
+                    "Hub's chest shows " + inChest(hubChest, Items.BREAD) + " bread, the core " + held(host, w.hub(), "minecraft:bread"));
+        } finally {
+            delete(dir);
+            if (w != null) {
+                w.discard();
+                if (level.getEntity(w.librarian().getUUID()) != null) {
+                    level.getEntity(w.librarian().getUUID()).discard();
+                }
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * What the pallets cost the server's tick at a look, logged: a look's pallet happenings with two desks loaded and a
+     * pallet of three crates shown (its chests read, the crates' pallet asked, the desks' room offered: two crossings),
+     * and a pallet of three crates drawn as items.
+     */
+    private static void measurePallets(CoreHost host, net.minecraft.server.level.ServerLevel level) {
+        int n = 50;
+        long a = System.nanoTime();
+        for (int i = 0; i < n; i++) {
+            if (!host.pallets().happenings(level.getServer()).isEmpty()) {
+                throw new AssertionError("a look found something to say with nothing moved");
+            }
+        }
+        long looked = System.nanoTime() - a;
+        var v = host.pallets().town(0).held().get(0);
+        a = System.nanoTime();
+        for (int i = 0; i < n; i++) {
+            host.pallets().items(v);
+        }
+        long drawn = System.nanoTime() - a;
+        Enterprise.LOGGER.info("pallets: a look's happenings (two desks, a pallet of three crates shown) {} ms; a pallet of "
+                + "three crates drawn {} ms", "%.3f".formatted(looked / 1e6 / n), "%.3f".formatted(drawn / 1e6 / n));
+    }
+
+    /** Two towns in one arena: Ashby at {@link #DESK} with a chest east of it, Bexley at (1, 2, 1) with one south of it. */
+    private record TwoTowns(long a, long b, ChestBlockEntity aChest, ChestBlockEntity bChest) {}
+
+    private static final BlockPos B_DESK = new BlockPos(1, 2, 1);
+
+    /**
+     * Ashby and Bexley, money in Ashby for crates, 1,200 wheat delivered to it, pallets of up to 27 stacks (so one holds
+     * three crates), and Ashby's Merchant packing the wheat for Bexley: one pallet of three crates (576, 576, 48).
+     */
+    private static TwoTowns twoTowns(GameTestHelper helper, CoreHost host) {
+        var level = helper.getLevel();
+        helper.setBlock(DESK, Merchant.DESK.get());
+        helper.setBlock(DESK.east(), Blocks.CHEST);
+        helper.setBlock(B_DESK, Merchant.DESK.get());
+        helper.setBlock(B_DESK.south(), Blocks.CHEST);
+        long a = host.stock().found(level, helper.absolutePos(DESK), "Ashby");
+        long b = host.stock().found(level, helper.absolutePos(B_DESK), "Bexley");
+        Response r = host.apply(List.of(new Input.SetDial("pallet_slots", java.util.Optional.of(27.0)),
+                new Input.SetDial("pallet_weight", java.util.Optional.of(27.0)), new Input.Pay(a, 20_000),
+                new Input.Deliver(a, good(host, "minecraft:wheat"), 1200)));
+        helper.assertTrue(r instanceof Response.Done, "the towns weren't set up: " + r);
+        return new TwoTowns(a, b, chestAt(helper, DESK.east()), chestAt(helper, B_DESK.south()));
+    }
+
+    /**
+     * A chest takes a pallet whole or not at all (pallet-views; the race the pallets plan ends): Ashby's pallet of three
+     * crates waits while its desk's chest has two slots free (the core, asked with the free slots, offers none of it: no
+     * crate of it goes in), and the look after a third slot is cleared all three go in, tagged 1, 2 and 3 of 3.
+     */
+    @GameTest(template = "floor")
+    public static void aDesksChestTakesAPalletWholeOrNotAtAll(GameTestHelper helper) {
+        var level = helper.getLevel();
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            TwoTowns w = twoTowns(helper, host);
+            for (int slot = 0; slot < 25; slot++) {
+                w.aChest().setItem(slot, new ItemStack(Items.DIRT, 64));
+            }
+            List<Long> ids = host.pallets().pack(w.a(), w.b(), Map.of(Items.WHEAT, 1200L));
+            helper.assertTrue(ids.size() == 1 && host.pallets().pallet(ids.get(0)).get().items() == 3,
+                    "one pallet of three crates: " + host.pallets().lines(w.a()));
+            long id = ids.get(0);
+            long t = level.getGameTime();
+            palletLook(host, level, t + 1);
+            helper.assertTrue(packages(w.aChest()).isEmpty(), "part of the pallet went in: " + packages(w.aChest()).size());
+            helper.assertTrue(host.pallets().pallet(id).get().shown().isEmpty(), "the core shows it with no room for it");
+            w.aChest().setItem(24, ItemStack.EMPTY);
+            palletLook(host, level, t + 2);
+            List<ItemStack> crates = packages(w.aChest());
+            helper.assertTrue(crates.size() == 3, "the chest holds " + crates.size() + " crates of the pallet, not 3");
+            for (int place = 0; place < 3; place++) {
+                int p = place;
+                helper.assertTrue(crates.stream().anyMatch(c -> tag(c).place() == p && tag(c).of() == 3 && tag(c).pallet() == id
+                        && tag(c).to().equals("Bexley")), "no crate " + (place + 1) + " of 3");
+            }
+            helper.assertTrue(host.pallets().pallet(id).get().shown().isPresent(), "the core doesn't show it in the chest");
+            measurePallets(host, level);
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A missing crate is the core's to judge (pallet-views; pallet-messages' short pallet in the world): of Ashby's three
+     * crates for Bexley, a player burns one (its item destroyed: PackageLost, the core books its 576 wheat lost and the
+     * pallet goes on short) and carries another to Bexley's desk (PackageBrought); the third never comes. At Bexley's next
+     * look the core receives the pallet short: Bexley takes the 576 that came, into its chest as wheat, and the 48 left
+     * behind are lost too (the seal broken), the crates gone from both chests.
+     */
+    @GameTest(template = "floor")
+    public static void aMissingCrateBooksALossInTheCore(GameTestHelper helper) {
+        var level = helper.getLevel();
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            TwoTowns w = twoTowns(helper, host);
+            long id = host.pallets().pack(w.a(), w.b(), Map.of(Items.WHEAT, 1200L)).get(0);
+            long t = level.getGameTime();
+            palletLook(host, level, t + 1);
+            helper.assertTrue(packages(w.aChest()).size() == 3, "the pallet's crates aren't in Ashby's chest");
+            // A player burns the second crate: its item destroyed, as PalletAdapter.onLeave hears it (and hands it to the
+            // server's host; this test's own is told here).
+            ItemStack burnt = takePackage(w.aChest(), id, 1);
+            host.pallets().destroyed(burnt);
+            // And carries the first to Bexley's desk.
+            putInEmptySlot(w.bChest(), takePackage(w.aChest(), id, 0));
+            palletLook(host, level, t + 2);
+            var pallets = host.pallets().town(w.b());
+            long wheat = good(host, "minecraft:wheat");
+            helper.assertTrue(pallets.lostGoods().equals(List.of(new dev.b28.enterprise.wire.Count(wheat, 576.0))),
+                    "the burnt crate isn't booked lost: " + pallets.lostGoods());
+            var v = host.pallets().pallet(id).orElseThrow();
+            helper.assertTrue(v.items() == 2 && !v.sealed() && v.arriving().equals(List.of(0L)),
+                    "the pallet short, its first crate arriving at Bexley: " + host.pallets().describe(v));
+            helper.assertTrue(tag(packages(w.aChest()).get(0)).place() == 1 && tag(packages(w.aChest()).get(0)).of() == 2,
+                    "the crate left at Ashby isn't retagged 2 of 2");
+            palletLook(host, level, t + 1202);
+            helper.assertTrue(host.pallets().pallet(id).isEmpty(), "Bexley didn't receive it short at its next look");
+            pallets = host.pallets().town(w.b());
+            helper.assertTrue(pallets.lostGoods().equals(List.of(new dev.b28.enterprise.wire.Count(wheat, 624.0))),
+                    "the crate that never came isn't booked lost: " + pallets.lostGoods());
+            helper.assertTrue(held(host, w.b(), "minecraft:wheat") == 576, "Bexley holds " + held(host, w.b(), "minecraft:wheat"));
+            helper.assertTrue(inChest(w.bChest(), Items.WHEAT) == 576 && packages(w.bChest()).isEmpty() && packages(w.aChest()).isEmpty(),
+                    "the chests show " + inChest(w.bChest(), Items.WHEAT) + " wheat at Bexley, crates " + packages(w.bChest()).size()
+                    + " and " + packages(w.aChest()).size());
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
     /** The core's number for the good called {@code name}. */
     private static long good(CoreHost host, String name) {
         List<String> goods = ((Answer.Goods) host.ask(List.of(new Query.Goods())).get(0)).goods();

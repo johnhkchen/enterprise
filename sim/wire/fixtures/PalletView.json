@@ -1,0 +1,347 @@
+[
+  {
+    "id": 0,
+    "at": {
+      "Town": {
+        "town": 0
+      }
+    },
+    "since": 0,
+    "shipper": 0,
+    "consignee": 1,
+    "from": "",
+    "to": "",
+    "contract": null,
+    "paid": false,
+    "issued": 0,
+    "sealed": false,
+    "intact": false,
+    "digest": 0,
+    "packages": [],
+    "items": 0,
+    "weight": 0.0,
+    "shown": null,
+    "arriving": []
+  },
+  {
+    "id": 12,
+    "at": {
+      "Town": {
+        "town": 2
+      }
+    },
+    "since": 24000,
+    "shipper": 2,
+    "consignee": 1,
+    "from": "Ashford",
+    "to": "Bröly 🌾",
+    "contract": 7,
+    "paid": true,
+    "issued": 23000,
+    "sealed": true,
+    "intact": true,
+    "digest": 14695981039346656037,
+    "packages": [
+      {
+        "kind": 1,
+        "good": 3,
+        "count": 576.0
+      },
+      {
+        "kind": 1,
+        "good": 3,
+        "count": 48.0
+      },
+      {
+        "kind": 0,
+        "good": 0,
+        "count": 0.5
+      }
+    ],
+    "items": 3,
+    "weight": 9.75,
+    "shown": {
+      "kind": "Desk",
+      "dim": "minecraft:overworld",
+      "x": 27,
+      "y": -60,
+      "z": 27
+    },
+    "arriving": [
+      2,
+      0
+    ]
+  },
+  {
+    "id": 18446744073709551615,
+    "at": {
+      "Container": {
+        "container": 18446744073709551615
+      }
+    },
+    "since": 18446744073709551615,
+    "shipper": 4294967295,
+    "consignee": 4294967295,
+    "from": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "to": "🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾🌾",
+    "contract": 4294967295,
+    "paid": false,
+    "issued": 18446744073709551615,
+    "sealed": true,
+    "intact": false,
+    "digest": 18446744073709551615,
+    "packages": [
+      {
+        "kind": 0,
+        "good": 0,
+        "count": 0.0
+      },
+      {
+        "kind": 1,
+        "good": 1,
+        "count": 9.0
+      },
+      {
+        "kind": 2,
+        "good": 2,
+        "count": 18.0
+      },
+      {
+        "kind": 3,
+        "good": 3,
+        "count": 27.0
+      },
+      {
+        "kind": 0,
+        "good": 4,
+        "count": 36.0
+      },
+      {
+        "kind": 1,
+        "good": 5,
+        "count": 45.0
+      },
+      {
+        "kind": 2,
+        "good": 6,
+        "count": 54.0
+      },
+      {
+        "kind": 3,
+        "good": 7,
+        "count": 63.0
+      },
+      {
+        "kind": 0,
+        "good": 8,
+        "count": 72.0
+      },
+      {
+        "kind": 1,
+        "good": 9,
+        "count": 81.0
+      },
+      {
+        "kind": 2,
+        "good": 10,
+        "count": 90.0
+      },
+      {
+        "kind": 3,
+        "good": 11,
+        "count": 99.0
+      },
+      {
+        "kind": 0,
+        "good": 12,
+        "count": 108.0
+      },
+      {
+        "kind": 1,
+        "good": 13,
+        "count": 117.0
+      },
+      {
+        "kind": 2,
+        "good": 14,
+        "count": 126.0
+      },
+      {
+        "kind": 3,
+        "good": 15,
+        "count": 135.0
+      },
+      {
+        "kind": 0,
+        "good": 16,
+        "count": 144.0
+      },
+      {
+        "kind": 1,
+        "good": 17,
+        "count": 153.0
+      },
+      {
+        "kind": 2,
+        "good": 18,
+        "count": 162.0
+      },
+      {
+        "kind": 3,
+        "good": 19,
+        "count": 171.0
+      },
+      {
+        "kind": 0,
+        "good": 20,
+        "count": 180.0
+      },
+      {
+        "kind": 1,
+        "good": 21,
+        "count": 189.0
+      },
+      {
+        "kind": 2,
+        "good": 22,
+        "count": 198.0
+      },
+      {
+        "kind": 3,
+        "good": 23,
+        "count": 207.0
+      },
+      {
+        "kind": 0,
+        "good": 24,
+        "count": 216.0
+      },
+      {
+        "kind": 1,
+        "good": 25,
+        "count": 225.0
+      },
+      {
+        "kind": 2,
+        "good": 26,
+        "count": 234.0
+      },
+      {
+        "kind": 3,
+        "good": 27,
+        "count": 243.0
+      },
+      {
+        "kind": 0,
+        "good": 28,
+        "count": 252.0
+      },
+      {
+        "kind": 1,
+        "good": 29,
+        "count": 261.0
+      },
+      {
+        "kind": 2,
+        "good": 30,
+        "count": 270.0
+      },
+      {
+        "kind": 3,
+        "good": 31,
+        "count": 279.0
+      },
+      {
+        "kind": 0,
+        "good": 32,
+        "count": 288.0
+      },
+      {
+        "kind": 1,
+        "good": 33,
+        "count": 297.0
+      },
+      {
+        "kind": 2,
+        "good": 34,
+        "count": 306.0
+      },
+      {
+        "kind": 3,
+        "good": 35,
+        "count": 315.0
+      },
+      {
+        "kind": 0,
+        "good": 36,
+        "count": 324.0
+      },
+      {
+        "kind": 1,
+        "good": 37,
+        "count": 333.0
+      },
+      {
+        "kind": 2,
+        "good": 38,
+        "count": 342.0
+      },
+      {
+        "kind": 3,
+        "good": 39,
+        "count": 351.0
+      }
+    ],
+    "items": 4294967295,
+    "weight": 1.7976931348623157e+308,
+    "shown": {
+      "kind": "Desk",
+      "dim": "minecraft:overworld",
+      "x": -2147483648,
+      "y": 2147483647,
+      "z": -2147483648
+    },
+    "arriving": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39
+    ]
+  }
+]

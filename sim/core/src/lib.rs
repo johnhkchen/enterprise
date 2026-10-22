@@ -37,6 +37,7 @@ pub mod messages;
 pub mod orders;
 pub mod pallet;
 pub mod pallet_messages;
+pub mod pallet_host;
 pub mod mint;
 pub mod people;
 pub mod post;

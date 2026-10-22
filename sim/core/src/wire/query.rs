@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{Count, GoodNo, GroundView, HandNo, HexAt, MarketLine, Point, RouteLine, TownNo, WorkView};
+use super::{Count, GoodNo, GroundView, HandNo, HexAt, ManifestLine, MarketLine, PalletView, Point, RouteLine, RouteNo, TownNo, WorkView};
 use crate::fixed::Fixed;
 
 /// A question for the core.
@@ -36,6 +36,17 @@ pub enum Query {
     /// A town's routes (from it and to it), the markets it knows and its squad at home: what the Merchant's screen shows
     /// of its caravans, and the route commands.
     Routes { town: TownNo },
+    /// A town's pallets: those in its warehouse, and those made out to it elsewhere (on wagons, in a hub's custody, in
+    /// another town's warehouse): what the Merchant's desk lists and `/enterprise core pallets` prints.
+    Pallets { town: TownNo },
+    /// One pallet, by its id: as it is now, or gone (opened, lost).
+    Pallet { id: u64 },
+    /// The pallets of a desk's town to put in its chests now, whole, with `free` of their slots empty: a chest takes a
+    /// pallet whole or not at all, and the core says which (`pallet_host.rs`).
+    Stow { point: Point, free: u32 },
+    /// A route's wagon's manifest: the pallets aboard, by line, and whether it needs a superbill of its own (two lines or
+    /// more).
+    Manifest { route: RouteNo },
 }
 
 /// An answer, in the place of its question.
@@ -79,6 +90,20 @@ pub enum Answer {
     /// atlas has them); and the trades of the hands at home who could go with its wagons (`squad`, in the squad's order:
     /// the core's names).
     Routes { town: TownNo, routes: Vec<RouteLine>, markets: Vec<MarketLine>, squad: Vec<String> },
+    /// A town's pallets: those `held` in its warehouse (in arrival order, the order a wagon loads them) and those made out
+    /// to it elsewhere (`inbound`, by id); and the registry's tallies: pallets `received` by their consignees, pallets
+    /// `lost` whole, and the goods lost off pallets (`lost_goods`, by good: booked as used, reason lost), in the world.
+    Pallets { town: TownNo, held: Vec<PalletView>, inbound: Vec<PalletView>, received: u64, lost: u64, lost_goods: Vec<Count> },
+    /// A pallet as it is now, or `None`: gone (opened by its consignee, taken apart by its holder, every package lost).
+    Pallet { id: u64, pallet: Option<PalletView> },
+    /// The pallets to put in a desk's chests now, whole, in the order to put them: those of its town's warehouse whose
+    /// packages are nowhere the core knows of (never put in chests, or moved or changed since), in arrival order, each
+    /// taken whole if its `items` fit in what's left of the free slots, else passed over. The host puts each in and says
+    /// so (`Input::Stowed`).
+    Stow { point: Point, pallets: Vec<PalletView> },
+    /// A route's wagon's manifest, by line (none while it's home), and whether it needs a superbill: two lines or more,
+    /// a document drawn at its home as it leaves (one pallet's bill is its own manifest).
+    Manifest { route: RouteNo, lines: Vec<ManifestLine>, superbill: bool },
 }
 
 /// A hand's locker as the Merchant's screen shows it: the hand, whether the Merchant manages it now and has taken it on

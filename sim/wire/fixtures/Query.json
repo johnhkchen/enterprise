@@ -347,5 +347,59 @@
     "Routes": {
       "town": 4294967295
     }
+  },
+  {
+    "Pallets": {
+      "town": 0
+    }
+  },
+  {
+    "Pallets": {
+      "town": 4294967295
+    }
+  },
+  {
+    "Pallet": {
+      "id": 0
+    }
+  },
+  {
+    "Pallet": {
+      "id": 18446744073709551615
+    }
+  },
+  {
+    "Stow": {
+      "point": {
+        "kind": "Desk",
+        "dim": "minecraft:overworld",
+        "x": 27,
+        "y": -60,
+        "z": 27
+      },
+      "free": 27
+    }
+  },
+  {
+    "Stow": {
+      "point": {
+        "kind": "Desk",
+        "dim": "minecraft:overworld",
+        "x": 2147483647,
+        "y": -2147483648,
+        "z": 2147483647
+      },
+      "free": 4294967295
+    }
+  },
+  {
+    "Manifest": {
+      "route": 0
+    }
+  },
+  {
+    "Manifest": {
+      "route": 4294967295
+    }
   }
 ]

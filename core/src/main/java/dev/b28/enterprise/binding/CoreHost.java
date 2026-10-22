@@ -4,6 +4,7 @@ import dev.b28.enterprise.Enterprise;
 import dev.b28.enterprise.binding.adapters.HandsAdapter;
 import dev.b28.enterprise.binding.adapters.LandAdapter;
 import dev.b28.enterprise.binding.adapters.LockerAdapter;
+import dev.b28.enterprise.binding.adapters.PalletAdapter;
 import dev.b28.enterprise.binding.adapters.MoneyAdapter;
 import dev.b28.enterprise.binding.adapters.PeopleAdapter;
 import dev.b28.enterprise.binding.adapters.PointsAdapter;
@@ -42,7 +43,7 @@ import net.neoforged.neoforge.event.server.ServerStoppedEvent;
  * ({@link CoreWorker}), saved with the world. The host makes the society from the mod's content pack at a new world
  * ({@link ModPack}, seeded with the world's seed) or loads the world's {@value SaveStore#FILE}, saves it when the world
  * saves, and drops it when the server stops. Its adapters ({@link PointsAdapter}, {@link HandsAdapter}, {@link
- * PeopleAdapter}, {@link StockAdapter}, {@link MoneyAdapter}, {@link LandAdapter}, {@link LockerAdapter}, {@link WagonAdapter}) turn Minecraft's happenings into the core's inputs and its outputs into things
+ * PeopleAdapter}, {@link StockAdapter}, {@link MoneyAdapter}, {@link LandAdapter}, {@link LockerAdapter}, {@link WagonAdapter}, {@link PalletAdapter}) turn Minecraft's happenings into the core's inputs and its outputs into things
  * in the world; {@link CoreClock} hands them a look at a time. The host keeps no society ids: which block is which town's and which villager
  * is which hand are the core's, read back by the adapters when it starts.
  *
@@ -76,6 +77,7 @@ public final class CoreHost implements AutoCloseable {
     private final LandAdapter land;
     private final LockerAdapter lockers;
     private final WagonAdapter wagons;
+    private final PalletAdapter pallets;
     private final Outcomes outcomes;
     private final List<CompletableFuture<Response>> looks = new ArrayList<>();
     private String pausedWhy;
@@ -92,7 +94,8 @@ public final class CoreHost implements AutoCloseable {
         this.land = new LandAdapter(this, ownsChests);
         this.lockers = new LockerAdapter(this, ownsChests);
         this.wagons = new WagonAdapter(this, ownsChests, dir);
-        this.outcomes = new Outcomes(people, stock, money, land, wagons);
+        this.pallets = new PalletAdapter(this, ownsChests);
+        this.outcomes = new Outcomes(people, stock, money, land, wagons, pallets);
         try {
             switch (store.open()) {
                 case SaveStore.Opened.Fresh fresh -> {
@@ -158,6 +161,7 @@ public final class CoreHost implements AutoCloseable {
         // After the Terrain survey of the chunk (heard at the normal priority).
         bus.addListener(EventPriority.LOWEST, LandAdapter::onChunkLoad);
         bus.addListener(EventPriority.LOWEST, LandAdapter::onChunkUnload);
+        bus.addListener(PalletAdapter::onLeave);
     }
 
     private static void onStarted(ServerStartedEvent event) {
@@ -246,6 +250,11 @@ public final class CoreHost implements AutoCloseable {
         return wagons;
     }
 
+    /** The pallet adapter: the core's pallets drawn as tagged crates in the desks' chests, and what players do with them. */
+    public PalletAdapter pallets() {
+        return pallets;
+    }
+
     /** Why the host is paused (the save refused, the core stuck), or null while it runs. */
     public String pausedWhy() {
         return pausedWhy;
@@ -274,10 +283,15 @@ public final class CoreHost implements AutoCloseable {
         // The ground in both modes; the towns surveyed (their crops, their bell) only in core mode, where their land is the core's.
         List<Input> landInputs = land.happenings(server, Society.isCore());
         inputs.addAll(landInputs);
+        List<Input> palletInputs = List.of();
         if (looks.isEmpty()) {
+            // The pallets' crates first (lost, carried, stale or put in since), so the counts after them see the chests as
+            // left; what they come to is said after the time passed, so a pallet brought in part has a look for the rest.
+            palletInputs = pallets.happenings(server);
             inputs.addAll(money.withCash(stock.stocktakes(server)));
         }
         inputs.add(new Input.Advance(now));
+        inputs.addAll(palletInputs);
         looks.add(land.watch(worker.submit(Wire.request(new Command.Apply(inputs))), landInputs));
     }
 

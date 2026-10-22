@@ -507,7 +507,7 @@ impl Society {
                 Vec::new()
             }
             Input::PackageLost { pallet, package } => {
-                self.package_lost(pallet, package);
+                self.package_lost_shown(pallet, package); // `package_lost`, its crates still shown (`pallet_host.rs`)
                 Vec::new()
             }
             Input::AddHand { .. } | Input::HandLost { .. } => {
@@ -521,6 +521,10 @@ impl Society {
             }
             Input::Switch { .. } | Input::Locker { .. } => {
                 self.apply_lockers(input);
+                Vec::new()
+            }
+            Input::Pack { .. } | Input::Stowed { .. } => {
+                self.apply_pallet_host(input);
                 Vec::new()
             }
             Input::Route { from, to, send } => {

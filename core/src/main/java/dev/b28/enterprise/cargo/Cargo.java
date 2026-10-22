@@ -11,6 +11,8 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.registries.DeferredBlock;
@@ -31,6 +33,9 @@ public final class Cargo {
     /** The papers a bundle of documents holds. */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Papers>> PAPERS =
             COMPONENTS.registerComponentType("papers", b -> b.persistent(Papers.CODEC).networkSynchronized(Papers.STREAM_CODEC));
+    /** The pallet a package belongs to (one of the core's: {@link PackageTag}). */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<PackageTag>> PACKAGE =
+            COMPONENTS.registerComponentType("package", b -> b.persistent(PackageTag.CODEC).networkSynchronized(PackageTag.STREAM_CODEC));
 
     public static final DeferredBlock<CrateBlock> CRATE = BLOCKS.register("crate", () -> new CrateBlock(
             BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0f).sound(SoundType.WOOD).ignitedByLava()));
@@ -38,6 +43,32 @@ public final class Cargo {
             () -> new CrateItem(CRATE.get(), new Item.Properties().stacksTo(Crates.EMPTIES_KEPT)));
     public static final DeferredItem<DocumentsItem> DOCUMENTS = ITEMS.register("documents",
             () -> new DocumentsItem(new Item.Properties().stacksTo(1)));
+
+    /**
+     * An item for each kind of packing the content pack lists that has none of its own here ({@code
+     * binding/ModPack.PACKAGES}, the table the core checks): a barrel, a bundle. Loose stacks and the crate are shown as
+     * the crate ({@link #packageItem}).
+     */
+    private static final Map<String, DeferredItem<PackageItem>> PACKAGE_ITEMS = new LinkedHashMap<>();
+
+    static {
+        for (var kind : dev.b28.enterprise.binding.ModPack.PACKAGES) {
+            if (!kind.name().equals("loose") && !kind.name().equals("crate")) {
+                PACKAGE_ITEMS.put(kind.name(), ITEMS.register(kind.name(), () -> new PackageItem(new Item.Properties().stacksTo(1))));
+            }
+        }
+    }
+
+    /** The item a package of the kind called {@code kind} is shown as: its own, or the crate. */
+    public static Item packageItem(String kind) {
+        DeferredItem<PackageItem> own = PACKAGE_ITEMS.get(kind);
+        return own != null ? own.get() : CRATE_ITEM.get();
+    }
+
+    /** Whether {@code stack} is a package of one of the core's pallets. */
+    public static boolean isPackage(net.minecraft.world.item.ItemStack stack) {
+        return stack.has(PACKAGE.get());
+    }
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CrateBlockEntity>> CRATE_ENTITY =
             BLOCK_ENTITIES.register("crate",

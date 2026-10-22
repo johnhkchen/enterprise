@@ -1,0 +1,1740 @@
+{
+  "name": "pallets",
+  "about": "A town's pallets as its host shows them (pallet_host.rs). Pallets made with two dials raised so one holds three crates. A player has Far's Merchant pack paper for Mid (a pallet of three crates) and for Hub (one crate): pallets in Far's warehouse (PalletPacked), a bill each. Asked what to put in Far's desk's chests with two slots free, the core offers only Hub's pallet: a chest takes a pallet whole or not at all; with four, both, and the host says it put them there (Stowed). A player carries Mid's pallet to Hub, a town on the way that isn't its consignee: it waits there, packed (PalletMoved), shown nowhere until Hub's chests take it. Two of its three crates reach Mid: at Mid's next look the pallet is received short, its seal broken, Mid taking what came and the third crate a loss in the books (PalletOpened; the registry's lost goods). Hub's wagon to Far fetches the crate packed for Hub, sealed as it leaves (on the manifest, one line, no superbill), and Hub receives it home.",
+  "steps": [
+    {
+      "note": "a society from a pack with paper and Merchants",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Create": {
+            "pack": {
+              "day_ticks": 24000,
+              "goods": [
+                {
+                  "name": "minecraft:wheat",
+                  "worth": 0.05,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [
+                    "Crop"
+                  ],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:bread",
+                  "worth": 0.2,
+                  "stack": 64,
+                  "food": 5.0,
+                  "saturation": 6.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:book",
+                  "worth": 0.5,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": "reading",
+                  "flags": [],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:cooked_beef",
+                  "worth": 0.3,
+                  "stack": 64,
+                  "food": 8.0,
+                  "saturation": 12.8,
+                  "comfort": null,
+                  "flags": [
+                    "Meat"
+                  ],
+                  "weight": 1.0
+                },
+                {
+                  "name": "minecraft:iron_ingot",
+                  "worth": 0.25,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 4.0
+                },
+                {
+                  "name": "minecraft:sugar_cane",
+                  "worth": 0.04,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 0.5
+                },
+                {
+                  "name": "minecraft:paper",
+                  "worth": 0.04,
+                  "stack": 64,
+                  "food": 0.0,
+                  "saturation": 0.0,
+                  "comfort": null,
+                  "flags": [],
+                  "weight": 1.0
+                }
+              ],
+              "comforts": [
+                "clothing",
+                "reading"
+              ],
+              "trades": [
+                "merchant",
+                "farmer",
+                "librarian",
+                "shepherd",
+                "none",
+                "nitwit"
+              ],
+              "recipes": [
+                {
+                  "trades": [
+                    "farmer"
+                  ],
+                  "inputs": [
+                    {
+                      "good": "minecraft:wheat",
+                      "count": 3.0
+                    }
+                  ],
+                  "output": "minecraft:bread",
+                  "makes": 1.0
+                },
+                {
+                  "trades": [
+                    "librarian"
+                  ],
+                  "inputs": [
+                    {
+                      "good": "minecraft:sugar_cane",
+                      "count": 1.0
+                    }
+                  ],
+                  "output": "minecraft:paper",
+                  "makes": 1.0
+                }
+              ],
+              "animals": [
+                {
+                  "name": "cow",
+                  "feed": [
+                    "minecraft:wheat"
+                  ],
+                  "feed_per_day": 0.25,
+                  "meat": "minecraft:cooked_beef",
+                  "meat_each": 2.0,
+                  "wool": null,
+                  "hide": null
+                }
+              ],
+              "dials": [
+                {
+                  "name": "birth_mood",
+                  "value": 0.5
+                },
+                {
+                  "name": "wagon_slots",
+                  "value": 30.0
+                }
+              ],
+              "packages": []
+            },
+            "seed": 7
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80100c0bb01070f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f146d696e6563726166743a69726f6e5f696e676f74000000000000d03f400000000000000000000000000000000000000000000000001040146d696e6563726166743a73756761725f63616e657b14ae47e17aa43f40000000000000000000000000000000000000000000000000e03f0f6d696e6563726166743a70617065727b14ae47e17aa43f40000000000000000000000000000000000000000000000000f03f0208636c6f7468696e670772656164696e6706086d65726368616e74066661726d6572096c696272617269616e087368657068657264046e6f6e65066e69747769740201066661726d6572010f6d696e6563726166743a776865617400000000000008400f6d696e6563726166743a6272656164000000000000f03f01096c696272617269616e01146d696e6563726166743a73756761725f63616e65000000000000f03f0f6d696e6563726166743a7061706572000000000000f03f0103636f77010f6d696e6563726166743a7768656174000000000000d03f01156d696e6563726166743a636f6f6b65645f6265656600000000000000400000020a62697274685f6d6f6f64000000000000e03f0b7761676f6e5f736c6f74730000000000003e400007",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "three towns, Hub, Far and Mid; Hub with its Merchant and a villager of no trade to lead its wagon, Far with its Merchant, books and paper; bread and money in each; pallets of up to 27 stacks",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "AddTown": {
+                  "name": "Hub",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "AddTown": {
+                  "name": "Far",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 67,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "AddTown": {
+                  "name": "Mid",
+                  "desk": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 47,
+                    "y": -60,
+                    "z": 27
+                  }
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 0,
+                  "trade": "merchant",
+                  "level": 1,
+                  "tag": "villager-hub"
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 0,
+                  "trade": "none",
+                  "level": 1,
+                  "tag": "villager-lead"
+                }
+              },
+              {
+                "AddHand": {
+                  "town": 1,
+                  "trade": "merchant",
+                  "level": 1,
+                  "tag": "villager-far"
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 0,
+                  "good": 1,
+                  "count": 128.0
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 1,
+                  "good": 1,
+                  "count": 128.0
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 1,
+                  "good": 2,
+                  "count": 64.0
+                }
+              },
+              {
+                "Deliver": {
+                  "town": 1,
+                  "good": 6,
+                  "count": 1300.0
+                }
+              },
+              {
+                "Pay": {
+                  "town": 0,
+                  "money": 50000
+                }
+              },
+              {
+                "Pay": {
+                  "town": 1,
+                  "money": 50000
+                }
+              },
+              {
+                "Pay": {
+                  "town": 2,
+                  "money": 10000
+                }
+              },
+              {
+                "SetDial": {
+                  "name": "pallet_slots",
+                  "value": 27.0
+                }
+              },
+              {
+                "SetDial": {
+                  "name": "pallet_weight",
+                  "value": 27.0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb801030f070348756200136d696e6563726166743a6f766572776f726c64367736070346617200136d696e6563726166743a6f766572776f726c648601773607034d696400136d696e6563726166743a6f766572776f726c645e77360f00086d65726368616e74010c76696c6c616765722d6875620f00046e6f6e65010d76696c6c616765722d6c6561640f01086d65726368616e74010c76696c6c616765722d66617201000100000000000060400101010000000000006040010102000000000000504001010600000000005094400200a08d060201a08d060202a09c010e0c70616c6c65745f736c6f7473010000000000003b400e0d70616c6c65745f776569676874010000000000003b40",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "Far packs 1,200 paper for Mid and 100 for Hub",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Pack": {
+                  "town": 1,
+                  "consignee": 2,
+                  "goods": [
+                    {
+                      "good": 6,
+                      "count": 1200.0
+                    }
+                  ]
+                }
+              },
+              {
+                "Pack": {
+                  "town": 1,
+                  "consignee": 0,
+                  "goods": [
+                    {
+                      "good": 6,
+                      "count": 100.0
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80103021d010201060000000000c092401d010001060000000000005940",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "PalletPacked": {
+                "id": 0,
+                "at": {
+                  "Town": {
+                    "town": 1
+                  }
+                },
+                "packages": [
+                  {
+                    "kind": 1,
+                    "good": 6,
+                    "count": 576.0
+                  },
+                  {
+                    "kind": 1,
+                    "good": 6,
+                    "count": 576.0
+                  },
+                  {
+                    "kind": 1,
+                    "good": 6,
+                    "count": 48.0
+                  }
+                ]
+              }
+            },
+            {
+              "PalletPacked": {
+                "id": 1,
+                "at": {
+                  "Town": {
+                    "town": 1
+                  }
+                },
+                "packages": [
+                  {
+                    "kind": 1,
+                    "good": 6,
+                    "count": 100.0
+                  }
+                ]
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "0002050000010301060000000000008240010600000000000082400106000000000000484005010001010106000000000000594000"
+    },
+    {
+      "note": "Far's pallets",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Pallets": {
+                  "town": 1
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80104010c01",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Pallets": {
+                "town": 1,
+                "held": [
+                  {
+                    "id": 0,
+                    "at": {
+                      "Town": {
+                        "town": 1
+                      }
+                    },
+                    "since": 0,
+                    "shipper": 1,
+                    "consignee": 2,
+                    "from": "Far",
+                    "to": "Mid",
+                    "contract": null,
+                    "paid": false,
+                    "issued": 0,
+                    "sealed": false,
+                    "intact": false,
+                    "digest": 11584730222132274150,
+                    "packages": [
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 576.0
+                      },
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 576.0
+                      },
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 48.0
+                      }
+                    ],
+                    "items": 3,
+                    "weight": 18.75,
+                    "shown": null,
+                    "arriving": []
+                  },
+                  {
+                    "id": 1,
+                    "at": {
+                      "Town": {
+                        "town": 1
+                      }
+                    },
+                    "since": 0,
+                    "shipper": 1,
+                    "consignee": 0,
+                    "from": "Far",
+                    "to": "Hub",
+                    "contract": null,
+                    "paid": false,
+                    "issued": 0,
+                    "sealed": false,
+                    "intact": false,
+                    "digest": 11242679880384050287,
+                    "packages": [
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 100.0
+                      }
+                    ],
+                    "items": 1,
+                    "weight": 1.5625,
+                    "shown": null,
+                    "arriving": []
+                  }
+                ],
+                "inbound": [],
+                "received": 0,
+                "lost": 0,
+                "lost_goods": []
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010c010200000100010203466172034d69640000000000e6c7b4e7a2d8cee2a00103010600000000000082400106000000000000824001060000000000004840030000000000c03240000001000100010003466172034875620000000000efe8e38d8fb981839c01010106000000000000594001000000000000f93f000000000000"
+    },
+    {
+      "note": "what Far's chests take with two slots free: only Hub's, whole",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Stow": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 67,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "free": 2
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80104010e00136d696e6563726166743a6f766572776f726c648601773602",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Stow": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 67,
+                  "y": -60,
+                  "z": 27
+                },
+                "pallets": [
+                  {
+                    "id": 1,
+                    "at": {
+                      "Town": {
+                        "town": 1
+                      }
+                    },
+                    "since": 0,
+                    "shipper": 1,
+                    "consignee": 0,
+                    "from": "Far",
+                    "to": "Hub",
+                    "contract": null,
+                    "paid": false,
+                    "issued": 0,
+                    "sealed": false,
+                    "intact": false,
+                    "digest": 11242679880384050287,
+                    "packages": [
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 100.0
+                      }
+                    ],
+                    "items": 1,
+                    "weight": 1.5625,
+                    "shown": null,
+                    "arriving": []
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010e00136d696e6563726166743a6f766572776f726c64860177360101000100010003466172034875620000000000efe8e38d8fb981839c01010106000000000000594001000000000000f93f0000"
+    },
+    {
+      "note": "with four: both",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Stow": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 67,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "free": 4
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80104010e00136d696e6563726166743a6f766572776f726c648601773604",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Stow": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 67,
+                  "y": -60,
+                  "z": 27
+                },
+                "pallets": [
+                  {
+                    "id": 0,
+                    "at": {
+                      "Town": {
+                        "town": 1
+                      }
+                    },
+                    "since": 0,
+                    "shipper": 1,
+                    "consignee": 2,
+                    "from": "Far",
+                    "to": "Mid",
+                    "contract": null,
+                    "paid": false,
+                    "issued": 0,
+                    "sealed": false,
+                    "intact": false,
+                    "digest": 11584730222132274150,
+                    "packages": [
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 576.0
+                      },
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 576.0
+                      },
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 48.0
+                      }
+                    ],
+                    "items": 3,
+                    "weight": 18.75,
+                    "shown": null,
+                    "arriving": []
+                  },
+                  {
+                    "id": 1,
+                    "at": {
+                      "Town": {
+                        "town": 1
+                      }
+                    },
+                    "since": 0,
+                    "shipper": 1,
+                    "consignee": 0,
+                    "from": "Far",
+                    "to": "Hub",
+                    "contract": null,
+                    "paid": false,
+                    "issued": 0,
+                    "sealed": false,
+                    "intact": false,
+                    "digest": 11242679880384050287,
+                    "packages": [
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 100.0
+                      }
+                    ],
+                    "items": 1,
+                    "weight": 1.5625,
+                    "shown": null,
+                    "arriving": []
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010e00136d696e6563726166743a6f766572776f726c64860177360200000100010203466172034d69640000000000e6c7b4e7a2d8cee2a00103010600000000000082400106000000000000824001060000000000004840030000000000c03240000001000100010003466172034875620000000000efe8e38d8fb981839c01010106000000000000594001000000000000f93f0000"
+    },
+    {
+      "note": "the host put both in Far's chests",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Stowed": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 67,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "pallet": 0
+                }
+              },
+              {
+                "Stowed": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 67,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "pallet": 1
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80103021e00136d696e6563726166743a6f766572776f726c6486017736001e00136d696e6563726166743a6f766572776f726c648601773601",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "nothing more to put there",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Stow": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 67,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "free": 27
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80104010e00136d696e6563726166743a6f766572776f726c64860177361b",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Stow": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 67,
+                  "y": -60,
+                  "z": 27
+                },
+                "pallets": []
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010e00136d696e6563726166743a6f766572776f726c648601773600"
+    },
+    {
+      "note": "a player carries Mid's pallet to Hub's desk: it waits there, packed",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "PalletBrought": {
+                  "town": 0,
+                  "id": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80103010b0000",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "PalletMoved": {
+                "id": 0,
+                "to": {
+                  "Town": {
+                    "town": 0
+                  }
+                }
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "00010600000000"
+    },
+    {
+      "note": "Hub holds it, shown nowhere yet; Mid's inbound",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Pallets": {
+                  "town": 0
+                }
+              },
+              {
+                "Pallets": {
+                  "town": 2
+                }
+              },
+              {
+                "Stow": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 27,
+                    "y": -60,
+                    "z": 27
+                  },
+                  "free": 27
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80104030c000c020e00136d696e6563726166743a6f766572776f726c643677361b",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Pallets": {
+                "town": 0,
+                "held": [
+                  {
+                    "id": 0,
+                    "at": {
+                      "Town": {
+                        "town": 0
+                      }
+                    },
+                    "since": 0,
+                    "shipper": 1,
+                    "consignee": 2,
+                    "from": "Far",
+                    "to": "Mid",
+                    "contract": null,
+                    "paid": false,
+                    "issued": 0,
+                    "sealed": false,
+                    "intact": false,
+                    "digest": 11584730222132274150,
+                    "packages": [
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 576.0
+                      },
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 576.0
+                      },
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 48.0
+                      }
+                    ],
+                    "items": 3,
+                    "weight": 18.75,
+                    "shown": null,
+                    "arriving": []
+                  }
+                ],
+                "inbound": [
+                  {
+                    "id": 1,
+                    "at": {
+                      "Town": {
+                        "town": 1
+                      }
+                    },
+                    "since": 0,
+                    "shipper": 1,
+                    "consignee": 0,
+                    "from": "Far",
+                    "to": "Hub",
+                    "contract": null,
+                    "paid": false,
+                    "issued": 0,
+                    "sealed": false,
+                    "intact": false,
+                    "digest": 11242679880384050287,
+                    "packages": [
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 100.0
+                      }
+                    ],
+                    "items": 1,
+                    "weight": 1.5625,
+                    "shown": {
+                      "kind": "Desk",
+                      "dim": "minecraft:overworld",
+                      "x": 67,
+                      "y": -60,
+                      "z": 27
+                    },
+                    "arriving": []
+                  }
+                ],
+                "received": 0,
+                "lost": 0,
+                "lost_goods": []
+              }
+            },
+            {
+              "Pallets": {
+                "town": 2,
+                "held": [],
+                "inbound": [
+                  {
+                    "id": 0,
+                    "at": {
+                      "Town": {
+                        "town": 0
+                      }
+                    },
+                    "since": 0,
+                    "shipper": 1,
+                    "consignee": 2,
+                    "from": "Far",
+                    "to": "Mid",
+                    "contract": null,
+                    "paid": false,
+                    "issued": 0,
+                    "sealed": false,
+                    "intact": false,
+                    "digest": 11584730222132274150,
+                    "packages": [
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 576.0
+                      },
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 576.0
+                      },
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 48.0
+                      }
+                    ],
+                    "items": 3,
+                    "weight": 18.75,
+                    "shown": null,
+                    "arriving": []
+                  }
+                ],
+                "received": 0,
+                "lost": 0,
+                "lost_goods": []
+              }
+            },
+            {
+              "Stow": {
+                "point": {
+                  "kind": "Desk",
+                  "dim": "minecraft:overworld",
+                  "x": 27,
+                  "y": -60,
+                  "z": 27
+                },
+                "pallets": [
+                  {
+                    "id": 0,
+                    "at": {
+                      "Town": {
+                        "town": 0
+                      }
+                    },
+                    "since": 0,
+                    "shipper": 1,
+                    "consignee": 2,
+                    "from": "Far",
+                    "to": "Mid",
+                    "contract": null,
+                    "paid": false,
+                    "issued": 0,
+                    "sealed": false,
+                    "intact": false,
+                    "digest": 11584730222132274150,
+                    "packages": [
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 576.0
+                      },
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 576.0
+                      },
+                      {
+                        "kind": 1,
+                        "good": 6,
+                        "count": 48.0
+                      }
+                    ],
+                    "items": 3,
+                    "weight": 18.75,
+                    "shown": null,
+                    "arriving": []
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000030c000100000000010203466172034d69640000000000e6c7b4e7a2d8cee2a00103010600000000000082400106000000000000824001060000000000004840030000000000c0324000000101000100010003466172034875620000000000efe8e38d8fb981839c01010106000000000000594001000000000000f93f0100136d696e6563726166743a6f766572776f726c6486017736000000000c02000100000000010203466172034d69640000000000e6c7b4e7a2d8cee2a00103010600000000000082400106000000000000824001060000000000004840030000000000c0324000000000000e00136d696e6563726166743a6f766572776f726c643677360100000000010203466172034d69640000000000e6c7b4e7a2d8cee2a00103010600000000000082400106000000000000824001060000000000004840030000000000c032400000"
+    },
+    {
+      "note": "and on to Mid with two of its three crates",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "PackageBrought": {
+                  "town": 2,
+                  "pallet": 0,
+                  "package": 0
+                }
+              },
+              {
+                "PackageBrought": {
+                  "town": 2,
+                  "pallet": 0,
+                  "package": 2
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80103020c0200000c020002",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "Mid's next look: received short",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Advance": {
+                  "to": 1200
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb801030100b009",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "PalletOpened": {
+                "id": 0,
+                "at": {
+                  "Town": {
+                    "town": 0
+                  }
+                }
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "00010700000000"
+    },
+    {
+      "note": "Mid's paper, and the crate that didn't come lost in the books",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Stock": {
+                  "town": 2
+                }
+              },
+              {
+                "Pallets": {
+                  "town": 2
+                }
+              },
+              {
+                "Pallet": {
+                  "id": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb801040300020c020d00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Stock": {
+                "town": 2,
+                "stock": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  624.0
+                ]
+              }
+            },
+            {
+              "Pallets": {
+                "town": 2,
+                "held": [],
+                "inbound": [],
+                "received": 1,
+                "lost": 0,
+                "lost_goods": [
+                  {
+                    "good": 6,
+                    "count": 576.0
+                  }
+                ]
+              }
+            },
+            {
+              "Pallet": {
+                "id": 0,
+                "pallet": null
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "00000300020700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008083400c0200000100010600000000000082400d0000"
+    },
+    {
+      "note": "Hub's host starts wagons to Far",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Route": {
+                  "from": 0,
+                  "to": 1,
+                  "send": true
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80103011c000101",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "a look",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Advance": {
+                  "to": 2400
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb801030100e012",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "WagonLeft": {
+                "route": 0,
+                "stacks": 0,
+                "worth": 2.4
+              }
+            },
+            {
+              "HandAway": {
+                "town": 0,
+                "hand": 2,
+                "tag": "villager-lead"
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "000200000033333333333303401000020d76696c6c616765722d6c65616400"
+    },
+    {
+      "note": "Hub's wagon's manifest",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Manifest": {
+                  "route": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80104010f00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Manifest": {
+                "route": 0,
+                "lines": [],
+                "superbill": false
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010f000000"
+    },
+    {
+      "note": "a look",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Advance": {
+                  "to": 3600
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb801030100901c",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "WagonSold": {
+                "route": 0,
+                "sold": 0.0,
+                "takings": 0
+              }
+            },
+            {
+              "PalletMoved": {
+                "id": 1,
+                "to": {
+                  "Wagon": {
+                    "route": 0
+                  }
+                }
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "000201000000000000000000000601020000"
+    },
+    {
+      "note": "Hub's wagon's manifest",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Manifest": {
+                  "route": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80104010f00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Manifest": {
+                "route": 0,
+                "lines": [
+                  {
+                    "pallet": {
+                      "id": 1,
+                      "at": {
+                        "Wagon": {
+                          "route": 0
+                        }
+                      },
+                      "since": 3600,
+                      "shipper": 1,
+                      "consignee": 0,
+                      "from": "Far",
+                      "to": "Hub",
+                      "contract": null,
+                      "paid": false,
+                      "issued": 0,
+                      "sealed": true,
+                      "intact": true,
+                      "digest": 11242679880384050287,
+                      "packages": [
+                        {
+                          "kind": 1,
+                          "good": 6,
+                          "count": 100.0
+                        }
+                      ],
+                      "items": 1,
+                      "weight": 1.5625,
+                      "shown": null,
+                      "arriving": []
+                    },
+                    "drop": 0,
+                    "container": null
+                  }
+                ],
+                "superbill": false
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010f0001010200901c010003466172034875620000000101efe8e38d8fb981839c01010106000000000000594001000000000000f93f000001000000"
+    },
+    {
+      "note": "a look",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Advance": {
+                  "to": 4800
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb801030100c025",
+      "response": {
+        "Done": {
+          "outputs": [
+            {
+              "WagonHome": {
+                "route": 0,
+                "takings": 1225
+              }
+            },
+            {
+              "HandBack": {
+                "town": 0,
+                "hand": 2,
+                "tag": "villager-lead",
+                "trade": "merchant",
+                "level": 1,
+                "xp": 1
+              }
+            },
+            {
+              "PalletOpened": {
+                "id": 1,
+                "at": {
+                  "Wagon": {
+                    "route": 0
+                  }
+                }
+              }
+            }
+          ],
+          "answers": []
+        }
+      },
+      "response_postcard": "0003020092131100020d76696c6c616765722d6c656164086d65726368616e7401010701020000"
+    },
+    {
+      "note": "Hub's wagon's manifest",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Manifest": {
+                  "route": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80104010f00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Manifest": {
+                "route": 0,
+                "lines": [],
+                "superbill": false
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010f000000"
+    },
+    {
+      "note": "home: Hub's paper, every pallet gone",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Stock": {
+                  "town": 0
+                }
+              },
+              {
+                "Pallets": {
+                  "town": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb801040200000c00",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Stock": {
+                "town": 0,
+                "stock": [
+                  0.0,
+                  127.0,
+                  3.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  100.0
+                ]
+              }
+            },
+            {
+              "Pallets": {
+                "town": 0,
+                "held": [],
+                "inbound": [],
+                "received": 2,
+                "lost": 0,
+                "lost_goods": [
+                  {
+                    "good": 6,
+                    "count": 576.0
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "00000200000700000000000000000000000000c05f40000000000000084000000000000000000000000000000000000000000000000000000000000059400c000000020001060000000000008240"
+    },
+    {
+      "note": "saved",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": "Save"
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80102",
+      "saved": {
+        "format": 1,
+        "schema": 13330218520298609697,
+        "blob_len": 7415,
+        "blob_fnv": "31ff7aad8ccb77ac"
+      }
+    },
+    {
+      "note": "loaded",
+      "load": "saved",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": []
+        }
+      },
+      "response_postcard": "000000"
+    },
+    {
+      "note": "the same after the load",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Pallets": {
+                  "town": 1
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80104010c01",
+      "response": {
+        "Done": {
+          "outputs": [],
+          "answers": [
+            {
+              "Pallets": {
+                "town": 1,
+                "held": [],
+                "inbound": [],
+                "received": 2,
+                "lost": 0,
+                "lost_goods": [
+                  {
+                    "good": 6,
+                    "count": 576.0
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "response_postcard": "0000010c010000020001060000000000008240"
+    },
+    {
+      "note": "a pallet stowed at a point that isn't a desk: refused",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Stowed": {
+                  "point": {
+                    "kind": "Desk",
+                    "dim": "minecraft:overworld",
+                    "x": 5,
+                    "y": -60,
+                    "z": 5
+                  },
+                  "pallet": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80103011e00136d696e6563726166743a6f766572776f726c640a770a00",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "no point at Spot { dim: \"minecraft:overworld\", x: 5, y: -60, z: 5 }"
+            }
+          }
+        }
+      },
+      "response_postcard": "020700436e6f20706f696e742061742053706f74207b2064696d3a20226d696e6563726166743a6f766572776f726c64222c20783a20352c20793a202d36302c207a3a2035207d"
+    },
+    {
+      "note": "goods packed for the town itself: refused",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Apply": {
+            "inputs": [
+              {
+                "Pack": {
+                  "town": 1,
+                  "consignee": 1,
+                  "goods": []
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80103011d010100",
+      "response": {
+        "Refused": {
+          "why": {
+            "Input": {
+              "at": 0,
+              "why": "goods packed at town 1 for itself"
+            }
+          }
+        }
+      },
+      "response_postcard": "02070021676f6f6473207061636b656420617420746f776e203120666f7220697473656c66"
+    },
+    {
+      "note": "the manifest of a route that isn't there",
+      "request": {
+        "abi": 1,
+        "schema": 13330218520298609697,
+        "command": {
+          "Ask": {
+            "queries": [
+              {
+                "Manifest": {
+                  "route": 9
+                }
+              }
+            ]
+          }
+        }
+      },
+      "request_postcard": "01a1b8ed85e2e39cffb80104010f09",
+      "response": {
+        "Refused": {
+          "why": {
+            "Query": {
+              "at": 0,
+              "why": "no route 9"
+            }
+          }
+        }
+      },
+      "response_postcard": "0208000a6e6f20726f7574652039"
+    }
+  ]
+}

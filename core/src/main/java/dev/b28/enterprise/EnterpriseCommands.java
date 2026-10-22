@@ -73,7 +73,16 @@ final class EnterpriseCommands {
                                         .executes(EnterpriseCommands::coreLockers)))
                         .then(Commands.literal("routes")
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos())
-                                        .executes(EnterpriseCommands::coreRoutes))))
+                                        .executes(EnterpriseCommands::coreRoutes)))
+                        .then(Commands.literal("pallets")
+                                .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                        .executes(EnterpriseCommands::corePallets)))
+                        .then(Commands.literal("pack")
+                                .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                        .then(Commands.argument("to", BlockPosArgument.blockPos())
+                                                .then(Commands.argument("item", net.minecraft.commands.arguments.ResourceLocationArgument.id())
+                                                        .then(Commands.argument("count", IntegerArgumentType.integer(1))
+                                                                .executes(EnterpriseCommands::corePack)))))))
                 .then(Commands.literal("mint").executes(EnterpriseCommands::mint))
                 .then(Commands.literal("census")
                         .then(Commands.argument("bell", BlockPosArgument.blockPos())
@@ -677,6 +686,64 @@ final class EnterpriseCommands {
         List<String> lines = host.wagons().lines(town);
         source.sendSuccess(() -> Component.literal(String.join("\n", lines)), false);
         return lines.size() - 1;
+    }
+
+    /**
+     * A desk's town's pallets in the core ({@code /enterprise core pallets <desk>}): those in its warehouse and those made
+     * out to it elsewhere, each with its bill, packages, seal and where its crates are; its wagons' manifests and whether
+     * each needs a superbill; the goods lost off pallets in the world.
+     */
+    private static int corePallets(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        ServerLevel level = source.getLevel();
+        BlockPos desk = BlockPosArgument.getBlockPos(context, "desk");
+        var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+        if (host == null || host.pausedWhy() != null) {
+            source.sendFailure(Component.literal(host == null ? "The core isn't running" : host.pausedWhy()));
+            return 0;
+        }
+        Long town = host.stock().townAt(GlobalPos.of(level.dimension(), desk));
+        if (town == null) {
+            source.sendFailure(Component.literal("The core keeps no town at " + desk.toShortString()));
+            return 0;
+        }
+        List<String> lines = host.pallets().lines(town);
+        source.sendSuccess(() -> Component.literal(String.join("\n", lines)), false);
+        return lines.size() - 1;
+    }
+
+    /**
+     * A player has the Merchant at a desk pack goods from its town's stock for the town at another desk ({@code
+     * /enterprise core pack <desk> <to> <item> <count>}): pallets made out there, a bill each, drawn as tagged crates in
+     * the desk's chests at the next look, for the far town's wagon or a player to carry.
+     */
+    private static int corePack(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        ServerLevel level = source.getLevel();
+        BlockPos desk = BlockPosArgument.getBlockPos(context, "desk");
+        BlockPos to = BlockPosArgument.getBlockPos(context, "to");
+        var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+        if (host == null || host.pausedWhy() != null) {
+            source.sendFailure(Component.literal(host == null ? "The core isn't running" : host.pausedWhy()));
+            return 0;
+        }
+        Long town = host.stock().townAt(GlobalPos.of(level.dimension(), desk));
+        Long consignee = host.stock().townAt(GlobalPos.of(level.dimension(), to));
+        if (town == null || consignee == null) {
+            source.sendFailure(Component.literal("The core keeps no town at " + (town == null ? desk : to).toShortString()));
+            return 0;
+        }
+        var item = BuiltInRegistries.ITEM.get(net.minecraft.commands.arguments.ResourceLocationArgument.getId(context, "item"));
+        int count = IntegerArgumentType.getInteger(context, "count");
+        try {
+            List<Long> ids = host.pallets().pack(town, consignee, Map.of(item, (long) count));
+            source.sendSuccess(() -> Component.literal(ids.isEmpty() ? "Nothing packed (none held, or no crates to be had)"
+                    : "Packed as pallet" + (ids.size() == 1 ? " " : "s ") + ids), false);
+            return ids.size();
+        } catch (IllegalStateException e) {
+            source.sendFailure(Component.literal(e.getMessage()));
+            return 0;
+        }
     }
 
     /**

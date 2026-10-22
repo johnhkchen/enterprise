@@ -15,6 +15,7 @@ import dev.b28.enterprise.wire.PackAmount;
 import dev.b28.enterprise.wire.PackAnimal;
 import dev.b28.enterprise.wire.PackDial;
 import dev.b28.enterprise.wire.PackGood;
+import dev.b28.enterprise.wire.PackPackage;
 import dev.b28.enterprise.wire.PackRecipe;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +47,8 @@ import net.minecraft.world.item.Items;
  * <li><b>Recipes and herds</b>: what the trades make ({@link Workshop#CONVERSIONS}) and the animals a town keeps
  * ({@link Husbandry#KINDS}), by the names of their goods. One list for the Java rules (Java mode) and the pack, until
  * the delete wave moves them here.</li>
+ * <li><b>Packing</b>: the kinds of package a pallet's goods are shown in ({@link #PACKAGES}), each an item of the
+ * mod's.</li>
  * <li><b>Dials</b>: the mod's settings ({@link Dials}) as the world starts with them. Where the mod's default differs
  * from the core's (the families' {@code birth_mood}, 0.5 here) the pack says so; a dial the mod has and the core has no
  * rule for ({@link #JAVA_ONLY}) isn't sent.</li>
@@ -93,6 +96,18 @@ public final class ModPack {
     public static final Set<String> JAVA_ONLY = Set.of("dealer_take_profit", "discount_days", "correspondent_floor", "wagon_pays",
             "call_start", "pastures_max", "feed_days");
 
+    /**
+     * The kinds of packing a pallet's packages are shown in (docs/pallets.md section 4): loose stacks strapped together,
+     * the crate (nine stacks, returnable: {@code cargo/Crates}' own), the barrel and the bundle. One table for the core,
+     * which checks it with the pack, and for the mod, which registers an item for each kind it hasn't one for already
+     * ({@code cargo/Cargo.packageItem}): a new kind is a line here, nothing else.
+     */
+    public static final List<PackPackage> PACKAGES = List.of(
+            new PackPackage("loose", 0, 0.0, 0.0, false),
+            new PackPackage("crate", 9, 0.0, 0.5, true),
+            new PackPackage("barrel", 9, 0.0, 0.5, true),
+            new PackPackage("bundle", 3, 0.0, 0.0, false));
+
     private ModPack() {}
 
     /** The name of a game id in the core: without its namespace ({@code minecraft:farmer} is {@code farmer}). */
@@ -135,7 +150,7 @@ public final class ModPack {
         if (kinds.isEmpty()) {
             throw new IllegalStateException("no item tags under enterprise:comforts/: the tags aren't loaded yet");
         }
-        return new ContentPack(DAY_TICKS, goods, kinds, trades(), recipes, animals, dials());
+        return new ContentPack(DAY_TICKS, goods, kinds, trades(), recipes, animals, dials(), PACKAGES);
     }
 
     private static PackGood good(String id, Item item) {
