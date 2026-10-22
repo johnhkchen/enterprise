@@ -130,12 +130,21 @@ public final class PalletAdapter {
             here.forEach(p -> ids.add(p.tag().pallet()));
         }
         Map<Long, Optional<PalletView>> pallets = pallets(ids);
+        // Pallets whose crates were found and said to be somewhere: the Stow asked below comes before those inputs apply,
+        // so the core may still offer one of them, and it mustn't be drawn a second time beside its crates.
+        Set<Long> said = new TreeSet<>();
         for (Desk d : desks) {
             Map<Long, List<StockChests.Packed>> byPallet = new TreeMap<>();
             for (StockChests.Packed p : found.get(d)) {
                 byPallet.computeIfAbsent(p.tag().pallet(), k -> new ArrayList<>()).add(p);
             }
-            byPallet.forEach((id, packed) -> inputs.addAll(found(d, pallets.getOrDefault(id, Optional.empty()), packed)));
+            byPallet.forEach((id, packed) -> {
+                List<Input> of = found(d, pallets.getOrDefault(id, Optional.empty()), packed);
+                if (of.stream().anyMatch(i -> i instanceof Input.Stowed)) {
+                    said.add(id);
+                }
+                inputs.addAll(of);
+            });
         }
         List<Query> stow = desks.stream().<Query>map(d -> new Query.Stow(d.point(), d.chests().free())).toList();
         List<Answer> answers = host.ask(stow);
@@ -143,7 +152,7 @@ public final class PalletAdapter {
             Desk d = desks.get(i);
             if (answers.get(i) instanceof Answer.Stow s) {
                 for (PalletView v : s.pallets()) {
-                    if (d.chests().putWhole(items(v))) {
+                    if (!said.contains(v.id()) && d.chests().putWhole(items(v))) {
                         inputs.add(new Input.Stowed(d.point(), v.id()));
                     }
                 }

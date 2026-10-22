@@ -340,6 +340,9 @@ public final class MerchantStock {
      * bill of lading is a shipment, someone's goods, and stays shut).
      */
     private static boolean isBox(ItemStack stack) {
+        if (dev.b28.enterprise.cargo.Cargo.isPackage(stack)) { // a package of one of the core's pallets: never stock
+            return false;
+        }
         if (dev.b28.enterprise.cargo.Crates.isCrate(stack)) {
             return stack.getCount() == 1 && dev.b28.enterprise.cargo.Crates.papers(stack).documents().isEmpty()
                     && !dev.b28.enterprise.cargo.Crates.goods(stack).isEmpty();

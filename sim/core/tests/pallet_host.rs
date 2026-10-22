@@ -146,6 +146,8 @@ fn goods_packed_at_a_desk_are_pallets_in_its_warehouse_a_bill_each() {
         Refusal::Input { at: 0, .. }));
     assert!(matches!(h.refused(Command::Apply { inputs: vec![Input::Pack { town: FAR, consignee: HUB, goods: paper(-1.0) }] }),
         Refusal::Input { at: 0, .. }));
+    assert!(matches!(h.refused(Command::Apply { inputs: vec![Input::Pack { town: FAR, consignee: HUB, goods: paper(0.5) }] }),
+        Refusal::Input { at: 0, .. }));
     // More than the town holds packs what it holds.
     h.apply(vec![Input::Pack { town: FAR, consignee: HUB, goods: paper(5000.0) }]);
     assert_eq!(h.stock(FAR, PAPER), 0.0);

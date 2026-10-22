@@ -405,6 +405,9 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
                 for c in lines {
                     good(c.good)?;
                     amount("a count of", c.count)?;
+                    if c.count.fract() != 0.0 {
+                        return Err(wrong(format!("{} of good {} packed: only whole items are", c.count, c.good)));
+                    }
                 }
             }
             Input::Stowed { point, .. } => {
