@@ -1276,3 +1276,13 @@ The cotton chain, chocolate, the cold chain and the exchange follow later.
   pass count is the gate and only falls by tests named on that list.
 - **One concern a tree** (`docs/binding-plan.md` B4c): caravans, freight and logistics, post and counting houses,
   markets and money, land and work, people and war; then `delete-java-rules` again on top of them.
+- **Lean, revised the same day (John: "lean for now").** One-for-one rewrites cost more than they prove: the rules
+  are pinned by their Rust twins (188 of the retired tests have a full one), and what only a game test shows is the
+  binding's plumbing for a concern. So each concern keeps **3 to 6 representative in-world tests** through the core
+  (about 30 in all, plus the fixtures already rewritten), each a different path through its adapter; the rest retire
+  against their twins in `scripts/parity-retired.txt`. **Kept, given core rules:** the post (a contract's copy where a
+  wagon runs), tolls (landing as coin, set by command, `bridge`), the master services' enchanting and book copying,
+  stalls built by Jobs, mine heads and pastures, and any feature whose rule the core already has and only lacks its view
+  or wire message (the freight hubs', metal exchange's and requisitions' vendors, renaming a market). **Lost:** the
+  `bank` and `tenders` commands and the Merchant's cold-storage repacking. Anything else a tree finds it would drop goes
+  on this list with why, for John to see. The core-mode gate falls only by tests named retired or lost.
