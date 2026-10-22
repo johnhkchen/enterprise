@@ -1,21 +1,42 @@
 # Binding progress: where the Minecraft binding stands
 
 The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md`; how trees work is
-`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-19, `wagon-adapter` landed.
+`docs/worktrees.md`). Updated by the integrator at each landing. Last update: 2026-10-22, `pallet-views` landed.
 
 ## Now
 
-- **Paused 2026-10-19** after `wagon-adapter`, to rest usage until later in the week. No trees open; the workflow
-  (`pallets-and-binding`, run `wf_e42bacdd-ada`) was stopped between landings, so resuming it re-runs nothing landed.
-  Left, in order: `shop-adapter`, `commands-and-studies` and `pallet-views` (all three can start at once), then
-  `crown-views`, then `delete-java-rules`, `scenarios-in-game`, `upgrade-drill`. Core mode now has stock, money,
-  people, land, lockers and caravans from the core; shops, the crown's views and pallets in the world are still Java's.
+- **Resumed 2026-10-22.** `pallet-views` landed (28 of 35). Left: `shop-adapter` and `commands-and-studies` (can start
+  at once), then `crown-views`, then `delete-java-rules`, `scenarios-in-game`, `upgrade-drill`. Core mode now has
+  stock, money, people, land, lockers, caravans and pallets from the core; shops and the crown's views are still Java's.
 
-- **Main:** `cbe2285`. 906 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
-  `just wire-check` passes (schema `ac8763985aaf102c`, 41 files); `just scenarios-wasm` (39) and `just binding-test` pass.
-  Game tests: "All 295 required tests passed" in Java mode, and `just gametest-core`: 295 of 295 (baseline now 295).
-  `just core-fingerprint`: `5e6b6d51a3b4061e` (unmoved by `wagon-adapter`). Flaky: `TerritoryTests.farmersProduceWhatGrowsInTheirHex`
-  ("counted 8", neighbours trampling its plots) failed once in each mode across this landing's runs, then passed.
+- **Main:** `650078e`. 916 tests pass (`cd sim && cargo test --release`); `just core-wasm-replay` matches native;
+  `just wire-check` passes (schema `b8fe731e20bb5c21`, 44 files); `just scenarios-wasm` (42) and `just binding-test` pass.
+  Game tests: "All 298 required tests passed" in Java mode, and `just gametest-core`: 298 of 298 (baseline now 298).
+  `just core-fingerprint`: `5e6b6d51a3b4061e` (unmoved by `pallet-views`; the replay digest moved with the save's shape
+  and the new `pallet_host` random-worlds slice). Flaky: `TerritoryTests.farmersProduceWhatGrowsInTheirHex` ("counted 8",
+  neighbours trampling its plots) failed once in core mode in the tree's gate run, then passed.
+- **Pallets** (B4.12, `adapters/PalletAdapter`, `sim/core/src/pallet_host.rs`, `Stowage` saved at FORMAT 1: dev worlds'
+  `enterprise_core.dat` rebuilt): the core implements pallets, the mod draws them, no pallet rules in Java. Each package
+  is an item tagged `enterprise:package` (`PackageTag`: "1 of 3, to Wheatfell, contract 7"), the bill of lading in the
+  first's documents slot, in its town's desk's chests. Each look in core mode: destroyed package items told as
+  `PackageLost` (applied at once); crates found in loaded desks matched to the core's pallets (stale ones taken out,
+  carried ones told as `PalletBrought`/`PackageBrought` after the look's `Advance`); `Query::Stow` with each desk's
+  empty slots (whole or not at all, the core's say), the offered pallets put in and told `Stowed`. `PalletOpened` and
+  `PalletMoved` off a warehouse clear the crates at once. Wire: `Input::Pack` (29, `/enterprise core pack`),
+  `Input::Stowed` (30), `Query`/`Answer::Pallets`/`Pallet`/`Stow`/`Manifest` (12-15), `PalletView`, `ManifestLine`,
+  `PackPackage` (the content pack's packing kinds, `ModPack.PACKAGES`, which also registers `enterprise:barrel` and
+  `bundle`). `/enterprise core pallets <desk>`. Measured: a look's pallet happenings with two desks and a pallet of three
+  crates 0.185 ms of the tick; a pallet drawn as items 0.03 ms. **For John:** in core mode the warehouse's pallets take
+  desk chest slots at each look before the stocktake, ahead of loose goods (what then doesn't fit stays on the books as
+  `Unmoved`), so desks with many pallets show less loose stock; a lost package books goods (used, reason lost), no money.
+  **Open:** the superbill is only `Query::Manifest` and a command line, not a paper; no crates appear at a wagon's
+  unloading (a pallet made out home is opened as it unloads; no wire input drops one at a town not its consignee);
+  empty crates, depots and lockers show no pallets, nor does the Merchant's screen; `CrateMenu`/`CrateScreen` untouched;
+  `PackGood` has no package or handling (every Minecraft good packs in crates); package kinds read by index from the
+  mod's table, not the save's content; destroyed crates are kept in memory until the next look (a stop in between loses
+  the `PackageLost`); Create's belts and funnels discarding a crate item untested; `cargo/Cargo` reads
+  `binding/ModPack.PACKAGES` at registration; no player-facing Pack (op command only); `cargo/Crates`, `Papers`,
+  `Paperwork` stay Java mode's until `delete-java-rules`.
 - **Wagons** (B4.8, `adapters/WagonAdapter`, `sim/core/src/wagon_host.rs`, no new saved state in the core): the caravans
   are the core's; the world shows a wagon's crew. `Input::Route { from, to, send }` (Input 28: the Merchant's screen's
   Send/Stop and `/enterprise route add`/`remove` in core mode) opens a route if a leg's food reaches desk to desk and
@@ -327,7 +348,7 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 | B4.9 | `shop-adapter` | sonnet / high | `money-adapter`, `wagon-adapter` | | |
 | B4.10 | `crown-views` | sonnet / medium | `wagon-adapter`, `shop-adapter` | | |
 | B4.11 | `commands-and-studies` | sonnet / medium | `wagon-adapter` | | |
-| B4.12 | `pallet-views` | opus / high | `stock-adapter`, `content-weights` | | Placed at `points-and-hands`' landing: the mod's crates and chests drawn from the core's pallet outputs, no pallet rules in Java; `PackPallets`, `Good.package`/`.handling` and the manifest on the wire. Widened at `wagon-adapter`'s landing: also row 8's crate and paper views, `CrateItem`, the crate block, `CrateMenu` and `client/CrateScreen`, and the post's papers (`DocumentsItem`: a pallet's bill of lading, a wagon's superbill), all from `PalletPacked`/`PalletMoved`/`PalletOpened`; `cargo/Crates`, `Papers`, `Paperwork` stay Java mode's until `delete-java-rules` |
+| B4.12 | `pallet-views` | opus / high | `stock-adapter`, `content-weights` | `650078e` | Placed at `points-and-hands`' landing: the mod's crates and chests drawn from the core's pallet outputs, no pallet rules in Java; `PackPallets`, `Good.package`/`.handling` and the manifest on the wire. Widened at `wagon-adapter`'s landing: also row 8's crate and paper views, `CrateItem`, the crate block, `CrateMenu` and `client/CrateScreen`, and the post's papers (`DocumentsItem`: a pallet's bill of lading, a wagon's superbill), all from `PalletPacked`/`PalletMoved`/`PalletOpened`; `cargo/Crates`, `Papers`, `Paperwork` stay Java mode's until `delete-java-rules`. Built: the core's pallets drawn as tagged package items in the desks' chests (`pallet_host.rs`, `Stowage` saved; `PalletAdapter`), `Input::Pack`/`Stowed`, `Query`/`Answer::Pallets`/`Pallet`/`Stow`/`Manifest`, `PalletView`, `ManifestLine`, `PackPackage`; `pallets.json` scenario; 3 game tests (298 both modes), fingerprint unchanged, schema `b8fe731e20bb5c21`. At landing: a pallet found at its desk and said `Stowed` isn't drawn a second time by the same look's `Stow` (it was asked before the inputs applied); package crates aren't storage boxes to `MerchantStock` (`/enterprise stock` and the Java rules reached into packages 2..n); `Input::Pack` refuses a fractional count. Left: the superbill as a paper, crates at a wagon's unloading, `CrateMenu`/`CrateScreen` and empties, `Good.package`/`.handling` on the wire, the save's own package kinds, destroyed crates unsaved between looks, John to confirm pallets take chest slots ahead of loose goods |
 | B5.1 | `delete-java-rules` | opus / high | all of B4 | | |
 | B5.2 | `scenarios-in-game` | sonnet / medium | `delete-java-rules` | | |
 | B5.3 | `upgrade-drill` | sonnet / medium | `delete-java-rules` | | |
