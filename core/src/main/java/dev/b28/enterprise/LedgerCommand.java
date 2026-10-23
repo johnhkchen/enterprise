@@ -28,7 +28,76 @@ final class LedgerCommand {
                 .requires(source -> source.hasPermission(2))
                 .then(Commands.literal("ledger")
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
-                                .executes(LedgerCommand::ledger))));
+                                .executes(LedgerCommand::ledger)))
+                .then(Commands.literal("core")
+                        .then(Commands.literal("version").executes(LedgerCommand::version))
+                        .then(Commands.literal("report").executes(LedgerCommand::report))));
+    }
+
+    /**
+     * {@code /enterprise core version} (docs/alpha-plan.md 4): the mod's version, the core's commit and the save format it
+     * writes (as a save made now says), the wire's schema and the society this game runs.
+     */
+    private static int version(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        source.sendSuccess(() -> Component.literal(versionLine(CoreHost.of(source.getServer()))), false);
+        return 1;
+    }
+
+    static String versionLine(CoreHost host) {
+        String mod = net.neoforged.fml.ModList.get().getModContainerById(Enterprise.MOD_ID)
+                .map(c -> c.getModInfo().getVersion().toString()).orElse("?");
+        var save = host == null ? null : host.saveNow();
+        String core = save == null ? "core ? (not running)" : "core %s · format %d".formatted(save.core(), save.format());
+        return "enterprise %s · %s · schema %016x · society %s".formatted(mod, core, dev.b28.enterprise.wire.Wire.SCHEMA,
+                dev.b28.enterprise.binding.Society.mode().name().toLowerCase(java.util.Locale.ROOT));
+    }
+
+    /**
+     * {@code /enterprise core report} (docs/alpha-plan.md 4): a bug report's folder, {@code
+     * world/enterprise-reports/day<N>-<time>/}, with the version line and why the society is paused (if it is), every
+     * town's ledger, its cash book for 30 days and its whys, and a copy of the core's save. The core is deterministic, so
+     * the save and the steps are a reproduction.
+     */
+    private static int report(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        var server = source.getServer();
+        CoreHost host = CoreHost.of(server);
+        java.nio.file.Path world = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                .toAbsolutePath().normalize();
+        String stamp = "day%d-%s".formatted(server.overworld().getDayTime() / 24000,
+                java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HHmmss")));
+        java.nio.file.Path dir = world.resolve("enterprise-reports").resolve(stamp);
+        java.util.List<String> out = new java.util.ArrayList<>();
+        out.add(versionLine(host)); // a save made now: the copy below is this moment's
+        String why = dev.b28.enterprise.binding.PausedNotice.why(host);
+        out.add(why == null ? "running" : why);
+        if (why == null) {
+            var books = host.books();
+            host.points().of(dev.b28.enterprise.binding.adapters.PointsAdapter.Kind.DESK).forEach((desk, town) -> {
+                out.add("");
+                out.add("######## town " + town + " at " + desk.pos().toShortString());
+                out.addAll(new LedgerAdapter(host).view(desk).toText());
+                out.add("== Cash book, 30 days ==");
+                out.addAll(books.cashBook(town, 30));
+                out.add("== Whys ==");
+                out.addAll(books.whys(town));
+            });
+        }
+        try {
+            java.nio.file.Files.createDirectories(dir);
+            java.nio.file.Files.write(dir.resolve("report.txt"), out);
+            java.nio.file.Path save = world.resolve(dev.b28.enterprise.core.SaveStore.FILE);
+            if (java.nio.file.Files.isRegularFile(save)) {
+                java.nio.file.Files.copy(save, dir.resolve(save.getFileName()));
+            }
+        } catch (java.io.IOException e) {
+            source.sendFailure(Component.literal("Couldn't write the report to " + dir + ": " + e));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("A bug report is in " + dir
+                + ". Zip that folder with logs/latest.log and send both."), false);
+        return 1;
     }
 
     private static int ledger(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {

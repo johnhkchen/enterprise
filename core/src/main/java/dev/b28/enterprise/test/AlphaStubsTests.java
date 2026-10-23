@@ -3,6 +3,8 @@ package dev.b28.enterprise.test;
 import dev.b28.enterprise.Enterprise;
 import dev.b28.enterprise.binding.CoreHost;
 import dev.b28.enterprise.binding.PausedNotice;
+import dev.b28.enterprise.binding.Society;
+import dev.b28.enterprise.binding.WorldMode;
 import dev.b28.enterprise.binding.adapters.CommandsAdapter;
 import dev.b28.enterprise.core.SaveStore;
 import dev.b28.enterprise.merchant.LedgerView;
@@ -55,6 +57,34 @@ public final class AlphaStubsTests {
                 .equals("/enterprise toll: not in the alpha yet. No tolls in the alpha."), "the not-yet words");
         helper.assertTrue(CommandsAdapter.gone("tenders", "See the contracts.")
                 .equals("/enterprise tenders: gone. See the contracts."), "the gone words");
+        helper.succeed();
+    }
+
+    /**
+     * The world mode marker: a fresh world takes the mode it starts in, opens again in it, and won't in the other; a
+     * world with no marker but the Java rules' saved data and no core save began in Java mode.
+     */
+    @GameTest(template = "floor")
+    public static void aWorldKeepsTheModeItBeganIn(GameTestHelper helper) {
+        Path fresh = folder();
+        Path old = folder();
+        try {
+            helper.assertTrue(WorldMode.check(fresh, Society.CORE) == null, "a fresh world refused");
+            helper.assertTrue(Files.readString(fresh.resolve(WorldMode.FILE)).strip().equals("core"), "no core marker");
+            helper.assertTrue(WorldMode.check(fresh, Society.CORE) == null, "a core world refused in core mode");
+            String why = WorldMode.check(fresh, Society.JAVA);
+            helper.assertTrue(why != null && why.contains("began in core mode") && why.contains("society=core"),
+                    "a core world in Java mode: " + why);
+            Files.createDirectories(old.resolve("data"));
+            Files.writeString(old.resolve("data/enterprise_settlements.dat"), "");
+            helper.assertTrue(WorldMode.check(old, Society.CORE) != null, "an old Java world opened in core mode");
+            helper.assertTrue(WorldMode.check(old, Society.JAVA) == null, "an old Java world refused in Java mode");
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        } finally {
+            delete(fresh);
+            delete(old);
+        }
         helper.succeed();
     }
 

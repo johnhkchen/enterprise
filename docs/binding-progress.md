@@ -5,6 +5,14 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-23, A3 landed: the alpha build.** Core is the default society (only `java` picks the Java rules); a world
+  keeps the mode it began in (`binding/WorldMode`, `enterprise_society.txt`; a marker-less world with Java data and no
+  core save is Java); `0.1.0-alpha.1` in gradle.properties and pack.toml; `/enterprise core version` and `core report`
+  (`world/enterprise-reports/day<N>-<time>/`: version, every town's ledger, cash book 30, whys, the save);
+  `prism_sync.py` writes `society=core`; the testbench cottage built by blocks; `docs/alpha.md` and two welcome lines.
+  Checked live: default mode core, the marker, version, report, the cottage, and a core world opened in Java mode
+  pausing. Both suites 311 of 311. The ledger footer still shows mod version and schema, not the core's commit (that
+  needs a save; `core version` has it). Next: A4 `alpha-smoke`.
 - **2026-10-23, A2 landed: the stubs.** In core mode: the 17 refused commands say "not in the alpha yet" (or "gone" for
   `bank` and `tenders`) and what to use instead; the Merchant screen's coin rate is the core mint's; no Java locker count
   where the core keeps no town (0); a crate says once that packed goods aren't counted; a villager's death leaves the Java

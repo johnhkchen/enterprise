@@ -32,7 +32,9 @@ Monorepo: our mods, the pack definition, and design docs.
 - `just check`: the gates for what changed since origin/main (scripts/check.py): the touched Rust test targets, a compile, the changed game test classes (`--only A,B` for more). `just check --full` runs everything; once, before pushing, not while building.
 - `just gametest [A,B]`: run the in-game tests headless (only those classes when named) (`core/src/main/java/dev/b28/enterprise/test/`).
 - Headless dev server: `just server-setup` (flat world, testbench, wipes `core/run/world`; first says when it was last set up and whether a server still holds the world, and fails after 60s rather than waiting on one), then `just server` in the
-  background, then `just rcon "<command>" ...` to drive it. It listens on localhost only: game 25599, RCON 25598.
+  background, then `just rcon "<command>" ...` to drive it. It runs the core (the default since the alpha;
+  `ENTERPRISE_SOCIETY=java` for the Java rules), and a world keeps the mode it began in (`world/enterprise_society.txt`):
+  opened in the other mode, the core pauses and says why. It listens on localhost only: game 25599, RCON 25598.
   Other local servers use 25565/25575 (claude_plays_mc_create) and 25566/25576 (redshelf): never point RCON at those.
 
 ## Game test gotchas

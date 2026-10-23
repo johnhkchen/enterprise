@@ -70,6 +70,7 @@ public final class CoreHost implements AutoCloseable {
     private static volatile String startFailure;
 
     private final CoreWorker worker;
+    private final Path dir;
     private final SaveStore store;
     private final PointsAdapter points;
     private final HandsAdapter hands;
@@ -91,6 +92,7 @@ public final class CoreHost implements AutoCloseable {
 
     private CoreHost(Path dir, long seed, boolean ownsChests) {
         this.worker = CoreWorker.start(module());
+        this.dir = dir;
         this.store = new SaveStore(dir, this::callNow);
         this.points = new PointsAdapter(this);
         this.hands = new HandsAdapter(this);
@@ -184,6 +186,10 @@ public final class CoreHost implements AutoCloseable {
         try {
             running = open(server.getWorldPath(LevelResource.ROOT), server.getWorldData().worldGenOptions().seed(),
                     Society.isCore());
+            String otherMode = WorldMode.check(server.getWorldPath(LevelResource.ROOT), Society.mode());
+            if (otherMode != null) {
+                running.pause(otherMode);
+            }
             running.stock().takeUnseenDesks();
             // The core brought to the world's time at once, on its own thread: a society new to an old world catches
             // up before its first desk, not in that desk's first look.
@@ -192,7 +198,8 @@ public final class CoreHost implements AutoCloseable {
                 // The Java rules read the world's dials; the core beside them follows what the world had set.
                 dev.b28.enterprise.binding.adapters.DialAdapter.sync(running, dev.b28.enterprise.Dials.get(server).settings());
             }
-            Enterprise.LOGGER.info("The core is running ({} ms to start)", (System.nanoTime() - started) / 1_000_000);
+            Enterprise.LOGGER.info(running.pausedWhy() == null ? "The core is running ({} ms to start)"
+                    : "The core started paused ({} ms)", (System.nanoTime() - started) / 1_000_000);
         } catch (RuntimeException | LinkageError e) {
             // The game runs on without the society the core keeps: the Java rules are what plays (Java mode).
             Enterprise.LOGGER.error("The core didn't start; the world runs without it", e);
@@ -448,6 +455,27 @@ public final class CoreHost implements AutoCloseable {
         } catch (RuntimeException e) {
             Enterprise.LOGGER.error("The core's save failed; the world's last save of it stands", e);
             return false;
+        }
+    }
+
+    /** The world folder the host keeps the core's save in. */
+    public Path dir() {
+        return dir;
+    }
+
+    /**
+     * The core that runs (its commit) and the save format it writes, as its save says: saved now, so the file is this
+     * core's. Null when paused (nothing written: the file, if any, is another core's).
+     */
+    public dev.b28.enterprise.wire.SaveFile saveNow() {
+        if (!save()) {
+            return null;
+        }
+        try {
+            return dev.b28.enterprise.wire.SaveFile.fromBytes(java.nio.file.Files.readAllBytes(dir.resolve(SaveStore.FILE)));
+        } catch (java.io.IOException | RuntimeException e) {
+            Enterprise.LOGGER.warn("couldn't read the save just written: {}", e.toString());
+            return null;
         }
     }
 

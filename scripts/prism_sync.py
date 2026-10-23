@@ -4,7 +4,7 @@
 The pack in pack/ (packwiz) is the source of truth for which mods ship. This script
 mirrors it into a Prism instance and drops in the locally built core jar, so the
 instance always plays the current pack plus the current build. The testbench datapack
-(dev/testbench) is copied into the instance's "testing" world.
+(dev/testbench) is copied into the instance's "testing" world, and config/enterprise.properties says society=core.
 
     python3 scripts/prism_sync.py             # full sync: instance files, pack mods, core jar, testbench
     python3 scripts/prism_sync.py --prelaunch # core jar and testbench only (Prism pre-launch hook)
@@ -140,6 +140,17 @@ def copy_core_jar() -> None:
     print(f"core jar: {newest.name}")
 
 
+def write_society_config() -> None:
+    """The instance runs the core (docs/alpha-plan.md 4): core is the mod's default too; this is belt and braces.
+    Other keys in config/enterprise.properties are kept."""
+    path = GAME / "config" / "enterprise.properties"
+    lines = path.read_text().splitlines() if path.exists() else []
+    lines = [l for l in lines if not l.strip().startswith("society")] + ["society=core"]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n")
+    print("config: society=core")
+
+
 def copy_testbench() -> None:
     if not TEST_WORLD.exists():
         return  # Create a world named "testing" in the instance to get the testbench.
@@ -159,6 +170,7 @@ def main() -> None:
         write_instance_files(pack)
         sync_pack_mods()
     copy_core_jar()
+    write_society_config()
     copy_testbench()
 
 

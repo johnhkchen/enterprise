@@ -10,13 +10,13 @@ import java.util.Properties;
 import net.neoforged.fml.loading.FMLPaths;
 
 /**
- * Which society runs the world's rules (docs/binding-plan.md B3.2): the Java rule classes ({@link #JAVA}, today's
- * default) or the Rust core ({@link #CORE}), whose adapters make the mod a view. Chosen once, as the mod loads, so the
+ * Which society runs the world's rules (docs/binding-plan.md B3.2): the Rust core ({@link #CORE}, the default since the
+ * alpha, docs/alpha-plan.md 4), whose adapters make the mod a view, or the Java rule classes ({@link #JAVA}). Chosen once, as the mod loads, so the
  * rule tick listeners are registered or not and never change under a running server.
  *
  * <p>The choice is read in this order: the system property {@value #PROPERTY} (what {@code just gametest-core} sets),
- * the environment variable {@value #ENV}, then {@code society=java|core} in {@code config/enterprise.properties}. Anything
- * else, or nothing, is Java.
+ * the environment variable {@value #ENV}, then {@code society=java|core} in {@code config/enterprise.properties}. Only
+ * {@code java} is Java; anything else, or nothing, is the core.
  */
 public enum Society {
     JAVA,
@@ -41,14 +41,14 @@ public enum Society {
         return mode() == CORE;
     }
 
-    /** The first of the three that says something, as a society; Java if none does or it's not a society's name. */
+    /** The first of the three that says something, as a society; the core if none does or it isn't {@code java}. */
     static Society parse(String property, String env, String file) {
         for (String s : new String[] {property, env, file}) {
             if (s != null && !s.isBlank()) {
-                return "core".equals(s.strip().toLowerCase(Locale.ROOT)) ? CORE : JAVA;
+                return "java".equals(s.strip().toLowerCase(Locale.ROOT)) ? JAVA : CORE;
             }
         }
-        return JAVA;
+        return CORE;
     }
 
     private static String fromConfigFile() {
