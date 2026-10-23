@@ -218,6 +218,11 @@ up) are the next tasks, chosen by what the ledger shows.
    - stopping a route winds it down;
    - the census never taking a lost profession.
 
+### One tree at a time (John, 2026-10-23)
+
+The four fixture trees are parked, not finished first: A1 to A4 run one after another with no other tree beside them.
+This replaces "after the B4c trees" below.
+
 ### Decided (integrator, 2026-10-23, on John's go-ahead for the alpha and the in-game screen)
 
 1. As planned: A1 now; A2 and A3 after the four B4c trees land; `fixtures-post` and `delete-java-rules` held until

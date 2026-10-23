@@ -5,6 +5,13 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-23, later: one tree at a time (John).** Five agents shared the efficiency cores the CPU cap leaves while
+  John is at the Mac: each full test run took 25 to 60 minutes and the agents sat idle, spending tokens, waiting on the
+  same CPU. The fixture trees are parked (`fixtures-caravans`, `-land`, `-people` with a WIP commit each,
+  `fixtures-market` at its commit; their worktrees stay). The alpha goes first, one tree at a time: `alpha-ledger`,
+  then `alpha-stubs`, `alpha-build`, `alpha-smoke`. A tree runs only its own tests while it builds; the full suite runs
+  once, at landing. The fixture trees resume after the alpha.
+
 - **2026-10-23.** `crown-views` landed (31 of 35): all of B4 is in. Left: `delete-java-rules`, then
   `scenarios-in-game`, `upgrade-drill`. Core mode now has stock, money, people, land, lockers, caravans, pallets, the
   commands' books, the players' shops and the crown (the sovereign, its realms, the markets off the map, the gold
