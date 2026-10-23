@@ -171,6 +171,11 @@ def bell(corner):
 
 
 def area(corner, size):
+    """The square from a town's corner to `size` past it; in core mode at least everything within the census's 48
+    blocks of its centre (its bell, or the hub's desk), or the core never counts the town's people: no hands, no
+    caravans."""
+    if CORE:
+        return f"{corner[0] - 48} {corner[1] - 48} {corner[0] + max(size, 8) + 48} {corner[1] + max(size, 8) + 48}"
     return f"{corner[0] - 1} {corner[1] - 1} {corner[0] + size} {corner[1] + size}"
 
 
@@ -415,6 +420,11 @@ def setup():
             for i, trade in enumerate(trades):
                 rcon(f"summon minecraft:villager {b[0] + 1 + i}.5 {b[1]} {b[2] + 1}.5 {{PersistenceRequired:1b,Xp:1,"
                      f"VillagerData:{{profession:\"minecraft:{trade}\",level:2,type:\"minecraft:plains\"}}}}")
+    if CORE:
+        # A desk set by command in a chunk already loaded is unseen by the core until that chunk loads again: each
+        # town founded at its desk now, as the testbench's load does (`enterprise core stock` founds one).
+        for at in [hub_desk] + [desk(corner) for corner in TOWNS.values()]:
+            rcon(f"enterprise core stock {at}")
     rcon("time set 1000")
     sprint(300)
     for corner in TOWNS.values():

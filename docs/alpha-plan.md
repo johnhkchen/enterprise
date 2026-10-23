@@ -167,7 +167,7 @@ the Mac awake (`pmset -g log | grep Sleep` if a day stalls).
    launch outside a dev run. If no installer is cached, say so: John's first Prism launch is then the test.
 2. `just server-setup`, `just server` in the background, then `just rcon "enterprise core version"` (mode core) and
    `"enterprise mint"` ("The core's mint").
-3. The testbench market: `just rcon "forceload add 19 19 35 35" "function testbench:fixture/switch"`. Then 10 game
+3. The testbench market: `just rcon "forceload add -21 -24 75 72" "function testbench:fixture/switch"` (the whole town loaded, or its census never runs). Then 10 game
    days of `tick sprint 1d`, with `enterprise ledger 27 -60 27` after each, kept to a file.
 4. The kept study, for the first time under core: `python3 dev/experiments/network_study.py 30 OUT.csv --stop-when
    any.treasury<5 --save-at 0,10 --label alpha`. It prints each town's cash book and whys.

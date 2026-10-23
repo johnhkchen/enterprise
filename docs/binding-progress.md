@@ -5,6 +5,12 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-23, A4: the smoke run (docs/alpha-smoke.md).** The alpha passes section 5: the jar runs outside the dev run
+  (a plain NeoForge server), no trap, pause or exception, cash books explained, no negatives, a restart reads the same,
+  the report writes, no Java rule wrote data. **Not yet playable as a trading game: no caravan left in 30 days.** Each
+  hub route waits "for a fuller load" with 0 items (the core's `plan.rs`: a load must be worth the road). Next: why
+  the sale load is empty, with a Rust test of a fresh hub and town that must trade within ten days. Also fixed: the
+  network study under the core (its towns founded by `enterprise core stock`; their census areas loaded).
 - **2026-10-23, A3 landed: the alpha build.** Core is the default society (only `java` picks the Java rules); a world
   keeps the mode it began in (`binding/WorldMode`, `enterprise_society.txt`; a marker-less world with Java data and no
   core save is Java); `0.1.0-alpha.1` in gradle.properties and pack.toml; `/enterprise core version` and `core report`
