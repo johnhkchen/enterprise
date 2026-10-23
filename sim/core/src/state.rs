@@ -347,13 +347,15 @@ pub struct RouteState {
     pub last_plan: Option<PlanNote>,
 }
 
-/// A plan as it was decided: when, what its load was worth against the road's cost, whether it was full, on its day
-/// or pressing, whether it went, its stacks, and why each good went or stayed in it (as [`RouteState::whys`]).
+/// A plan as it was decided: when, what its load was worth against the road's cost, the purse it takes (to buy with
+/// at the far end, and what it owes there), whether it was full, on its day or pressing, whether it went, its stacks,
+/// and why each good went or stayed in it (as [`RouteState::whys`]).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PlanNote {
     pub at: u64,
     pub worth: f64,
     pub cost: f64,
+    pub purse: f64,
     pub full: bool,
     pub on_its_day: bool,
     pub pressing: bool,

@@ -16,6 +16,10 @@
 //! - Each plan a route decided, as it decided it: `plans` (its load's worth against the road's cost, full, on its day,
 //!   whether it went) and `plan_whys` (why each good went or stayed in it), the reasons of a wagon that stayed home too,
 //!   which the core's own tally keeps only for one that went.
+//! - Each wagon's trip, once it's home: `trips` (what it took out: stacks, worth, purse; what it sold there and took
+//!   for it; what it bought there and paid; the items on pallets it carried, either way: contract goods and crated
+//!   sales). A trip's worth out counts only what it took to sell (and advances it paid): what it brought home is here.
+//!   A wagon that left before the journal began has only its route, its homecoming and its takings.
 //! - At the end of the run: `cash` (each town's cash book, every line).
 //!
 //! A journal written by a core of another wire schema is refused: replay it with the core that wrote it (`git log` for
@@ -76,8 +80,11 @@ create table outputs (seq integer, i integer, tick integer, day integer, kind te
 create table towns (day integer, town integer, name text, villagers real, beds real, mood real, money real);
 create table stock (day integer, town integer, good text, count real);
 create table routes (day integer, route integer, from_town integer, to_town integer, blocks integer, trips integer,
-    sold real, carried real, on_road integer, stayed text, far_purse real);
-create table plans (tick integer, day integer, route integer, worth real, cost real, full integer, on_its_day integer,
+    sold real, carried real, bought real, paid real, on_road integer, stayed text, far_purse real);
+create table trips (route integer, from_town integer, to_town integer, left_tick integer, left_day integer, home_tick integer,
+    home_day integer, stacks integer, worth real, purse real, sold real, takings real, bought real, paid real,
+    pallet_items real);
+create table plans (tick integer, day integer, route integer, worth real, cost real, purse real, full integer, on_its_day integer,
     pressing integer, went integer, stacks integer);
 create table plan_whys (tick integer, day integer, route integer, good text, why text, count real);
 create table lockers (day integer, town integer, hand integer, managed integer, client integer, placed text, offer integer,
@@ -96,6 +103,8 @@ pub fn trace(requests: &[&[u8]], conn: &mut Connection) -> Result<Traced, String
     let mut snapped: Option<u64> = None;
     let mut asking: Option<(u32, u64)> = None;
     let mut planned: BTreeMap<usize, u64> = BTreeMap::new();
+    let mut out_on_road: BTreeMap<usize, Trip> = BTreeMap::new();
+    let mut pallets: BTreeMap<u64, f64> = BTreeMap::new();
     for (seq, bytes) in requests.iter().enumerate() {
         let request: Request = postcard::from_bytes(bytes).map_err(|e| format!("request {seq} unreadable: {e}"))?;
         if request.schema != wire::SCHEMA {
@@ -130,6 +139,7 @@ pub fn trace(requests: &[&[u8]], conn: &mut Connection) -> Result<Traced, String
             row(&tx, "outputs", seq, i, now, now / day_ticks, v, &goods)?;
         }
         plans(&tx, society.as_mut().unwrap(), &mut planned, &goods)?;
+        trips(&tx, society.as_mut().unwrap(), &outputs, &mut out_on_road, &mut pallets)?;
         traced.refused += refused.is_some() as usize;
         tx.execute("insert into requests values (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             params![seq, command, now, now / day_ticks, inputs.len(), outputs.len(), refused]).map_err(sql)?;
@@ -202,8 +212,9 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
         routes.insert(r.seq, (*r, st.clone()));
     }
     for (seq, (r, st)) in routes {
-        tx.execute("insert into routes values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
-            params![day, seq, r.from_id, r.to_id, r.blocks, st.trips, st.sold, st.carried, st.wagon.is_some(),
+        tx.execute("insert into routes values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+            params![day, seq, r.from_id, r.to_id, r.blocks, st.trips, st.sold, st.carried, st.bought,
+                st.purchases.to_f64(), st.wagon.is_some(),
                 st.stayed.map(|w| format!("{w:?}")), st.far_purse.map(|p| p.to_f64())]).map_err(sql)?;
     }
     let towns = s.town_count() as u32;
@@ -241,13 +252,78 @@ fn plans(tx: &rusqlite::Transaction, s: &mut Society, planned: &mut BTreeMap<usi
             continue;
         }
         planned.insert(r.seq, p.at);
-        tx.execute("insert into plans values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-            params![p.at, p.at / day_ticks, r.seq, p.worth, p.cost, p.full, p.on_its_day, p.pressing, p.went, p.stacks])
+        tx.execute("insert into plans values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            params![p.at, p.at / day_ticks, r.seq, p.worth, p.cost, p.purse, p.full, p.on_its_day, p.pressing, p.went,
+                p.stacks])
             .map_err(sql)?;
         for (good, why, count) in &p.whys {
             tx.execute("insert into plan_whys values (?1, ?2, ?3, ?4, ?5, ?6)",
                 params![p.at, p.at / day_ticks, r.seq, good.and_then(|g| goods.get(g).cloned()), format!("{why:?}"), count])
                 .map_err(sql)?;
+        }
+    }
+    Ok(())
+}
+
+/// A wagon on the road, from its `WagonLeft`: its route's counters as it left, to tell its trip's share at `WagonHome`.
+struct Trip {
+    /// None: it left before the journal began (a server started with a wagon out): what it took out is unknown.
+    left: Option<u64>,
+    stacks: u32,
+    worth: f64,
+    purse: f64,
+    sold: f64,
+    bought: f64,
+    paid: f64,
+    takings: f64,
+    /// Items on the pallets put on this wagon while it was out (or as it left): contract goods, crated sales.
+    pallet_items: f64,
+}
+
+/// Each wagon's trip, written when it's home: what it took out (stacks, worth, purse), sold there and took for it, and
+/// bought there and paid (its route's counters, home less leaving).
+fn trips(tx: &rusqlite::Transaction, s: &mut Society, outputs: &[Value], out: &mut BTreeMap<usize, Trip>,
+        pallets: &mut BTreeMap<u64, f64>) -> Result<(), String> {
+    let now = s.now();
+    let day_ticks = s.content().day_ticks.max(1);
+    let mut q = s.world.query::<(&Route, &RouteState)>();
+    let routes: BTreeMap<usize, (Route, RouteState)> = q.iter(&s.world).map(|(r, st)| (r.seq, (*r, st.clone()))).collect();
+    let field = |v: &Value, kind: &str, f: &str| v.get(kind).and_then(|o| o.get(f)).cloned();
+    let fixed = |v: Option<Value>| v.and_then(|v| v.as_f64()).unwrap_or(0.0) / 1000.0;
+    let blank = || Trip { left: None, stacks: 0, worth: 0.0, purse: 0.0, sold: 0.0, bought: 0.0, paid: 0.0, takings: 0.0,
+        pallet_items: 0.0 };
+    for v in outputs {
+        if let Some(id) = field(v, "PalletPacked", "id").and_then(|i| i.as_u64()) {
+            let items = field(v, "PalletPacked", "packages").and_then(|p| p.as_array().cloned()).unwrap_or_default().iter()
+                .filter_map(|p| p.get("count").and_then(Value::as_f64)).sum();
+            pallets.insert(id, items);
+        } else if let Some(route) = field(v, "PalletMoved", "to").and_then(|to| to.get("Wagon").and_then(|w| w.get("route"))
+                .and_then(Value::as_u64)) {
+            let id = field(v, "PalletMoved", "id").and_then(|i| i.as_u64()).unwrap_or(u64::MAX);
+            out.entry(route as usize).or_insert_with(blank).pallet_items += pallets.get(&id).copied().unwrap_or(0.0);
+        } else if let Some(route) = field(v, "WagonLeft", "route").and_then(|r| r.as_u64()) {
+            let Some((_, st)) = routes.get(&(route as usize)) else { continue };
+            // (Pallets loaded as it left come in the same look's outputs, before or after this.)
+            let loaded = out.get(&(route as usize)).map_or(0.0, |t| t.pallet_items);
+            out.insert(route as usize, Trip { left: Some(now), pallet_items: loaded,
+                stacks: field(v, "WagonLeft", "stacks").and_then(|n| n.as_u64()).unwrap_or(0) as u32,
+                worth: field(v, "WagonLeft", "worth").and_then(|n| n.as_f64()).unwrap_or(0.0),
+                purse: st.last_plan.as_ref().map_or(0.0, |p| p.purse),
+                sold: st.sold, bought: st.bought, paid: st.purchases.to_f64(), takings: 0.0 });
+        } else if let Some(route) = field(v, "WagonSold", "route").and_then(|r| r.as_u64()) {
+            let t = out.entry(route as usize).or_insert_with(blank);
+            t.takings += fixed(field(v, "WagonSold", "takings"));
+        } else if let Some(route) = field(v, "WagonHome", "route").and_then(|r| r.as_u64()) {
+            let Some((r, st)) = routes.get(&(route as usize)) else { continue };
+            let t = out.remove(&(route as usize));
+            // (One that left before the journal: only its takings are known.)
+            let known = t.as_ref().filter(|t| t.left.is_some());
+            tx.execute("insert into trips values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+                params![r.seq, r.from_id, r.to_id, known.map(|t| t.left), known.map(|t| t.left.unwrap() / day_ticks), now,
+                    now / day_ticks, known.map(|t| t.stacks), known.map(|t| t.worth), known.map(|t| t.purse),
+                    known.map(|t| st.sold - t.sold), t.as_ref().map_or(0.0, |t| t.takings), known.map(|t| st.bought - t.bought),
+                    known.map(|t| st.purchases.to_f64() - t.paid), t.as_ref().map_or(0.0, |t| t.pallet_items)])
+                .map_err(|e| e.to_string())?;
         }
     }
     Ok(())
@@ -347,6 +423,12 @@ mod tests {
         assert!(count("select count(*) from plans where went = 1") > 0 && count("select count(*) from plans where went = 0") > 0,
             "plans that went and stayed");
         assert!(count("select count(*) from plan_whys") > 0, "no plan's reasons");
+        assert_eq!(count("select count(*) from trips"), count("select count(*) from outputs where kind = 'WagonHome'"),
+            "a row a trip home");
+        let out = count("select count(*) from routes where on_road = 1 and day = (select max(day) from routes)");
+        assert_eq!(count("select count(*) from trips where left_tick is not null"),
+            count("select count(*) from outputs where kind = 'WagonLeft'") - out, "a known start a trip left and home");
+        assert!(count("select count(*) from trips where sold > 0") > 0, "no trip sold anything");
     }
 
     #[test]

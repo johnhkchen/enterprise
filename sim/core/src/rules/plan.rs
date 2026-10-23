@@ -446,7 +446,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         } else {
             plan.pressing || (full || on_its_day) && pays
         };
-        state.last_plan = Some(crate::state::PlanNote { at: now, worth: plan.worth, cost, full, on_its_day,
+        state.last_plan = Some(crate::state::PlanNote { at: now, worth: plan.worth, cost, purse: wagon_purse.to_f64(), full, on_its_day,
             pressing: plan.pressing, went: goes, stacks: plan.stacks, whys: state.whys.clone() });
         if !goes {
             state.stayed = Some(Stay::WaitingForALoad);
