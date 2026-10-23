@@ -47,6 +47,8 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
             systemProperty 'enterprise.society', 'java'  // an exported ENTERPRISE_SOCIETY=core mustn't switch this run
             systemProperty 'enterprise.gametest.report', file('run/gametest/report.tsv').absolutePath
+            // `-Ponly=LedgerTests,LockerTests`: only those test classes (mixin/GameTestOnly)
+            systemProperty 'enterprise.gametest.only', providers.gradleProperty('only').getOrElse('')
         }
         // The same suite with the Rust core running the society (society = core, binding/Society.java): its own folder,
         // so its world and ledgers never meet the Java-mode run's. `just gametest-core`.
@@ -56,6 +58,7 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
             systemProperty 'enterprise.society', 'core'
             systemProperty 'enterprise.gametest.report', file('run/gametest-core/report.tsv').absolutePath
+            systemProperty 'enterprise.gametest.only', providers.gradleProperty('only').getOrElse('')
         }
         data {
             data()

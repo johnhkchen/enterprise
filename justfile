@@ -18,17 +18,21 @@ run:
 server:
     ./gradlew :core:runServer
 
-# Run game tests headless
-gametest:
+# The gates for what changed since origin/main (scripts/check.py): `just check`, `--only A,B`, `--full` before pushing
+check *flags:
+    python3 scripts/check.py {{flags}}
+
+# Run game tests headless; `just gametest LedgerTests,LockerTests` runs only those classes
+gametest only="":
     rm -rf core/run/gametest/world  # a fresh world each run: saved data (the mint, trust, contracts) would carry over
-    ./gradlew :core:runGameTestServer
+    ./gradlew :core:runGameTestServer {{ if only != "" { "-Ponly=" + only } else { "" } }}
 
 # The same game tests with the Rust core running the society (society = core): passes per class against
 # scripts/gametest-core-baseline.txt, failing if one that passed there falls. Its own folder, core/run/gametest-core.
-gametest-core:
+gametest-core only="":
     rm -rf core/run/gametest-core/world core/run/gametest-core/report.tsv  # no last run's passes if this one never starts
-    -./gradlew :core:runGameTestServerCore
-    python3 scripts/gametest_core.py core/run/gametest-core/report.tsv
+    -./gradlew :core:runGameTestServerCore {{ if only != "" { "-Ponly=" + only } else { "" } }}
+    python3 scripts/gametest_core.py core/run/gametest-core/report.tsv {{ if only != "" { "--only=" + only } else { "" } }}
 
 # Rewrite the core-mode baseline from a fresh run (when tests newly pass; never to excuse a fall)
 gametest-core-baseline:

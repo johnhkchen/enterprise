@@ -29,7 +29,8 @@ Monorepo: our mods, the pack definition, and design docs.
 - `just run`: dev client with only the core mod.
 - `just prism`: build, then sync the Prism instance with the full pack. Launching from Prism re-copies the latest jar.
 - `just add <modrinth-slug>`: add a mod to the pack.
-- `just gametest`: run the in-game tests headless (`core/src/main/java/dev/b28/enterprise/test/`).
+- `just check`: the gates for what changed since origin/main (scripts/check.py): the touched Rust test targets, a compile, the changed game test classes (`--only A,B` for more). `just check --full` runs everything; once, before pushing, not while building.
+- `just gametest [A,B]`: run the in-game tests headless (only those classes when named) (`core/src/main/java/dev/b28/enterprise/test/`).
 - Headless dev server: `just server-setup` (flat world, testbench, wipes `core/run/world`; first says when it was last set up and whether a server still holds the world, and fails after 60s rather than waiting on one), then `just server` in the
   background, then `just rcon "<command>" ...` to drive it. It listens on localhost only: game 25599, RCON 25598.
   Other local servers use 25565/25575 (claude_plays_mc_create) and 25566/25576 (redshelf): never point RCON at those.

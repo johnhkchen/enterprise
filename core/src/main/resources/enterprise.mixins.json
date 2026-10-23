@@ -3,7 +3,7 @@
   "minVersion": "0.8",
   "package": "dev.b28.enterprise.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": ["VendorAccess", "VillagerMixin"],
+  "mixins": ["GameTestOnly", "VendorAccess", "VillagerMixin"],
   "injectors": {
     "defaultRequire": 1
   }

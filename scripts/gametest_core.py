@@ -3,6 +3,7 @@
 
     python3 scripts/gametest_core.py REPORT.tsv                 print passes per class, fail if a baseline pass fell
     python3 scripts/gametest_core.py REPORT.tsv --write-baseline  write scripts/gametest-core-baseline.txt from it
+    python3 scripts/gametest_core.py REPORT.tsv --only A,B      a run of only those classes: only their baseline counts
 
 REPORT.tsv is core/run/gametest-core/report.tsv (Java: core/run/gametest/report.tsv): `pass|fail|optional-fail<TAB>test`
 per line, written by the mod's GameTestReport. The baseline lists the tests that passed in core mode, one name a line;
@@ -45,6 +46,8 @@ def cls(name):
 
 
 def main():
+    only = next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--only=")), "")
+    only = {c for c in only.split(",") if c}
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if not args:
         sys.exit(__doc__)
@@ -62,6 +65,8 @@ def main():
         BASELINE.write_text("".join(n + "\n" for n in passed))
         print(f"baseline written: {len(passed)} of {len(results)} tests pass -> {BASELINE}")
     base = set(BASELINE.read_text().split()) if BASELINE.exists() else set()
+    if only:
+        base = {n for n in base if cls(n) in only}
     fell = sorted(base - set(passed))
     base_per = defaultdict(int)
     for n in base:

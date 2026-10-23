@@ -5,6 +5,13 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-23, later still: no worktrees this phase (John).** The CPU went to rebuilding and rerunning everything:
+  each tree its own Rust build from scratch, and every check the whole Rust suite plus both game test suites, run by the
+  building, auditing and landing agents in turn (up to 10 full checks a task). Work is now on main, one task at a time,
+  gated by `just check` (scripts/check.py): only what changed since origin/main, the slow Rust tests and the full game
+  suites only with `--full`, once before a push. `just gametest A,B` runs only those classes (mixin/GameTestOnly). The
+  parked trees (`alpha-ledger` and the four fixture trees, WIP commits on their branches) are brought onto main one at a
+  time. No fan-out until the CPU per task is under control.
 - **2026-10-23, later: one tree at a time (John).** Five agents shared the efficiency cores the CPU cap leaves while
   John is at the Mac: each full test run took 25 to 60 minutes and the agents sat idle, spending tokens, waiting on the
   same CPU. The fixture trees are parked (`fixtures-caravans`, `-land`, `-people` with a WIP commit each,
