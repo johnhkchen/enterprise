@@ -1,5 +1,6 @@
 package dev.b28.enterprise.client;
 
+import dev.b28.enterprise.merchant.LedgerView;
 import dev.b28.enterprise.merchant.MerchantMenu;
 import dev.b28.enterprise.merchant.MerchantView;
 import dev.b28.enterprise.merchant.MerchantView.LockerView;
@@ -17,12 +18,15 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
- * Two tabs. Lockers: the lockers on the left, the selected locker's trades on the right, each with an On/Off switch.
+ * Three tabs. Ledger: the town's books in six sections (Money, Goods, People, Wagons, Papers, Mint) listed on the left, the
+ * selected section's lines on the right (scroll for more), each line naming the question it came from on hover; asked once when
+ * the screen opened. Lockers: the lockers on the left, the selected locker's trades on the right, each with an On/Off switch.
  * Caravans: the markets this desk knows on the left, the selected one on the right with a button to send caravans
  * there or stop, and who is at home to go.
  */
@@ -38,10 +42,23 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
     private static final int SWITCH_X = 222;
     private static final int TEXT = 0x404040;
     private static final int TAB_W = 64;
+    private static final int LEDGER_LIST_W = 56;
+    private static final int LEDGER_X = LIST_X + LEDGER_LIST_W + 8;
+    private static final int LEDGER_ROW = 10;
+    /** The ledger's panes start lower: the town's heading and its till (two lines) stand above them. */
+    private static final int LEDGER_Y = 50;
+    private static final int LEDGER_H = 202 - LEDGER_Y - 20;
 
     private final Map<BlockPos, Set<String>> enabled = new HashMap<>();
     private final Set<BlockPos> routed = new HashSet<>();
     private boolean caravansTab;
+    private boolean ledgerTab;
+    private int section;
+    private int ledgerScroll;
+    /** The selected section's lines wrapped to the pane, each with the question it came from. */
+    private List<Row> rows = List.of();
+
+    private record Row(FormattedCharSequence text, String source) {}
     private int selected;
     private int selectedTown;
     private int scroll;
@@ -78,12 +95,22 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
 
     private void rebuildSwitches() {
         clearWidgets();
-        addRenderableWidget(Button.builder(Component.translatable("screen.enterprise.merchant.tab.lockers",
-                                lockers().size(), menu.view().limit()), button -> showCaravans(false))
-                .bounds(leftPos + imageWidth - 8 - 2 * TAB_W - 4, topPos + 3, TAB_W, 14).build()).active = caravansTab;
+        int ledgerW = 44;
+        int caravansW = 54;
+        int lockersW = 62;
+        int right = leftPos + imageWidth - 8;
+        addRenderableWidget(Button.builder(Component.translatable("screen.enterprise.merchant.tab.ledger"),
+                        button -> showTab(false, true))
+                .bounds(right - ledgerW, topPos + 3, ledgerW, 14).build()).active = !ledgerTab;
         addRenderableWidget(Button.builder(Component.translatable("screen.enterprise.merchant.tab.caravans"),
-                        button -> showCaravans(true))
-                .bounds(leftPos + imageWidth - 8 - TAB_W, topPos + 3, TAB_W, 14).build()).active = !caravansTab;
+                        button -> showTab(true, false))
+                .bounds(right - ledgerW - caravansW, topPos + 3, caravansW, 14).build()).active = ledgerTab || !caravansTab;
+        addRenderableWidget(Button.builder(Component.translatable("screen.enterprise.merchant.tab.lockers",
+                                lockers().size(), menu.view().limit()), button -> showTab(false, false))
+                .bounds(right - ledgerW - caravansW - lockersW, topPos + 3, lockersW, 14).build()).active = ledgerTab || caravansTab;
+        if (ledgerTab) {
+            return;
+        }
         if (caravansTab) {
             TownView town = selectedTown < towns().size() ? towns().get(selectedTown) : null;
             if (town != null && (town.inRange() || routed.contains(town.desk()))) {
@@ -110,9 +137,38 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
         }
     }
 
-    private void showCaravans(boolean caravans) {
+    private void showTab(boolean caravans, boolean ledger) {
         caravansTab = caravans;
+        ledgerTab = ledger;
+        if (ledger) {
+            wrapSection();
+        }
         rebuildSwitches();
+    }
+
+    private LedgerView ledger() {
+        return menu.view().ledger();
+    }
+
+    /** The selected section's lines (or the ledger's one word) wrapped to the pane. */
+    private void wrapSection() {
+        ledgerScroll = 0;
+        int width = imageWidth - LEDGER_X - 12;
+        List<Row> out = new java.util.ArrayList<>();
+        if (ledger().isEmpty()) {
+            font.split(Component.literal(ledger().heading().isBlank()
+                    ? "No ledger: the core keeps no town here." : ledger().heading()), width)
+                    .forEach(part -> out.add(new Row(part, "")));
+        } else if (section < ledger().sections().size()) {
+            for (LedgerView.Line line : ledger().sections().get(section).lines()) {
+                font.split(Component.literal(line.text()), width).forEach(part -> out.add(new Row(part, line.source())));
+            }
+        }
+        rows = out;
+    }
+
+    private int ledgerRows() {
+        return (LEDGER_H - 6) / LEDGER_ROW;
     }
 
     private void commission(TownView town, boolean send) {
@@ -143,6 +199,11 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
         int y = topPos;
         graphics.fill(x, y, x + imageWidth, y + imageHeight, 0xFF373737);
         graphics.fill(x + 1, y + 1, x + imageWidth - 1, y + imageHeight - 1, 0xFFC6C6C6);
+        if (ledgerTab) {
+            well(graphics, x + LIST_X, y + LEDGER_Y, LEDGER_LIST_W, LEDGER_H);
+            well(graphics, x + LEDGER_X - 4, y + LEDGER_Y, imageWidth - LEDGER_X - 4, LEDGER_H);
+            return;
+        }
         well(graphics, x + LIST_X, y + LIST_Y, LIST_W, imageHeight - LIST_Y - 8);
         well(graphics, x + TRADES_X - 4, y + LIST_Y, imageWidth - TRADES_X - 4, imageHeight - LIST_Y - 8);
     }
@@ -157,6 +218,20 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
         graphics.drawString(font, title, 8, 7, TEXT, false);
+        if (ledgerTab) {
+            if (!ledger().isEmpty()) {
+                graphics.drawString(font, font.plainSubstrByWidth(ledger().heading(), imageWidth - 16), 8, 19, TEXT, false);
+                int line = 29;
+                for (FormattedCharSequence part : font.split(Component.literal(ledger().till()), imageWidth - 16)) {
+                    if (line > 38) {
+                        break;
+                    }
+                    graphics.drawString(font, part, 8, line, TEXT, false);
+                    line += 9;
+                }
+            }
+            return;
+        }
 
         Component rate = Component.translatable(
                 "screen.enterprise.merchant.rate", String.format("%.1f", menu.view().rate()));
@@ -170,12 +245,49 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         super.render(graphics, mouseX, mouseY, partialTick);
-        if (caravansTab) {
+        if (ledgerTab) {
+            renderLedger(graphics, mouseX, mouseY);
+        } else if (caravansTab) {
             renderTownList(graphics);
             renderTown(graphics);
         } else {
             renderLockerList(graphics);
             renderTrades(graphics, mouseX, mouseY);
+        }
+    }
+
+    private void renderLedger(GuiGraphics graphics, int mouseX, int mouseY) {
+        LedgerView ledger = ledger();
+        for (int i = 0; i < ledger.sections().size(); i++) {
+            int x = leftPos + LIST_X;
+            int y = topPos + LEDGER_Y + i * LIST_ROW;
+            if (i == section) {
+                graphics.fill(x, y, x + LEDGER_LIST_W, y + LIST_ROW, 0xFFC6C6C6);
+            }
+            graphics.drawString(font, ledger.sections().get(i).name(), x + 4, y + 4, i == section ? TEXT : 0xFFFFFF, i != section);
+        }
+        int x = leftPos + LEDGER_X;
+        int top = topPos + LEDGER_Y + 4;
+        String hovered = "";
+        for (int r = 0; r < ledgerRows() && ledgerScroll + r < rows.size(); r++) {
+            Row row = rows.get(ledgerScroll + r);
+            int y = top + r * LEDGER_ROW;
+            graphics.drawString(font, row.text(), x, y, 0xFFFFFF, true);
+            if (mouseX >= x && mouseX < leftPos + imageWidth - 8 && mouseY >= y && mouseY < y + LEDGER_ROW) {
+                hovered = row.source();
+            }
+        }
+        if (!hovered.isEmpty()) {
+            graphics.renderTooltip(font, Component.translatable("screen.enterprise.ledger.from", hovered), mouseX, mouseY);
+        }
+        if (rows.size() > ledgerRows()) {
+            String more = (ledgerScroll > 0 ? "↑ " : "") + (ledgerScroll + ledgerRows() < rows.size() ? "↓" : "");
+            graphics.drawString(font, more, leftPos + imageWidth - 8 - font.width(more) - 4,
+                    topPos + LEDGER_Y + LEDGER_H - LEDGER_ROW, 0xE0E0E0, true);
+        }
+        if (!ledger.footer().isEmpty()) {
+            graphics.drawString(font, font.plainSubstrByWidth(ledger.footer(), imageWidth - 16), leftPos + 8,
+                    topPos + imageHeight - 13, 0x606060, false);
         }
     }
 
@@ -287,6 +399,18 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         int x = leftPos + LIST_X;
         int y = topPos + LIST_Y;
+        if (ledgerTab) {
+            int ly = topPos + LEDGER_Y;
+            if (mouseX >= x && mouseX < x + LEDGER_LIST_W && mouseY >= ly) {
+                int row = (int) ((mouseY - ly) / LIST_ROW);
+                if (row < ledger().sections().size()) {
+                    section = row;
+                    wrapSection();
+                    return true;
+                }
+            }
+            return super.mouseClicked(mouseX, mouseY, button);
+        }
         if (caravansTab) {
             if (mouseX >= x && mouseX < x + LIST_W && mouseY >= y) {
                 int row = (int) ((mouseY - y) / LIST_ROW);
@@ -312,6 +436,11 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (ledgerTab) {
+            int next = Math.clamp(ledgerScroll - (int) Math.signum(scrollY), 0, Math.max(0, rows.size() - ledgerRows()));
+            ledgerScroll = next;
+            return true;
+        }
         LockerView locker = current();
         if (locker != null) {
             int max = Math.max(0, locker.trades().size() - TRADE_ROWS);

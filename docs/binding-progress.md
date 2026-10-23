@@ -5,6 +5,10 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-23, A1 landed: the ledger.** The Merchant screen's Ledger tab and `/enterprise ledger <desk>` (one set of
+  lines, from existing queries, no wire change): Money, Goods, People, Wagons, Papers, Mint, each line naming its query.
+  `LedgerTests` passes in both modes (its one fix: the command indents a section's lines, so a good prints `    wheat 30`);
+  both suites 309 of 309, core baseline now 309. Checked over RCON on the testbench desk. Next: A2 `alpha-stubs`.
 - **2026-10-23, later still: no worktrees this phase (John).** The CPU went to rebuilding and rerunning everything:
   each tree its own Rust build from scratch, and every check the whole Rust suite plus both game test suites, run by the
   building, auditing and landing agents in turn (up to 10 full checks a task). Work is now on main, one task at a time,

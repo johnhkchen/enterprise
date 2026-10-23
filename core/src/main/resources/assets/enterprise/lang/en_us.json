@@ -13,6 +13,8 @@
   "message.enterprise.merchant.no_desk": "This Merchant has lost its desk.",
   "screen.enterprise.merchant.tab.lockers": "Lockers %s/%s",
   "screen.enterprise.merchant.tab.caravans": "Caravans",
+  "screen.enterprise.merchant.tab.ledger": "Ledger",
+  "screen.enterprise.ledger.from": "from %s",
   "screen.enterprise.merchant.no_towns": "No other markets known yet. Caravans, the towns they cross and Cartographers bring news of more.",
   "screen.enterprise.merchant.town": "Town",
   "screen.enterprise.merchant.market": "Market",
