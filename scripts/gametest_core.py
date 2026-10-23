@@ -7,7 +7,8 @@
 
 REPORT.tsv is core/run/gametest-core/report.tsv (Java: core/run/gametest/report.tsv): `pass|fail|optional-fail<TAB>test`
 per line, written by the mod's GameTestReport. The baseline lists the tests that passed in core mode, one name a line;
-a test that is in it and doesn't pass now is a fall (a test that newly passes is not, and is printed).
+a test that is in it and doesn't pass now is a fall (a test that newly passes is not, and is printed); so is any failing
+test of a class with none in the baseline (a new class).
 """
 import re
 import sys
@@ -67,13 +68,15 @@ def main():
     base = set(BASELINE.read_text().split()) if BASELINE.exists() else set()
     if only:
         base = {n for n in base if cls(n) in only}
-    fell = sorted(base - set(passed))
     base_per = defaultdict(int)
-    for n in base:
+    for n in (set(BASELINE.read_text().split()) if BASELINE.exists() else set()):
         base_per[cls(n)] += 1
+    # A class the baseline doesn't know yet (a new one) has no fall to measure: every test of it must pass.
+    fresh = {n for n in results if base_per[cls(n)] == 0}
+    fell = sorted((base | fresh) - set(passed))
     print(f"{'class':28} {'pass':>5} {'of':>4} {'baseline':>9}")
     for c in sorted(per):
-        mark = "  <- fell" if per[c][0] < base_per[c] else ""
+        mark = "  <- fell" if per[c][0] < (base_per[c] or per[c][1]) else ""
         print(f"{c:28} {per[c][0]:5} {per[c][1]:4} {base_per[c]:9}{mark}")
     print(f"total: {len(passed)} of {len(results)} pass; baseline {len(base)}")
     new = sorted(set(passed) - base)
