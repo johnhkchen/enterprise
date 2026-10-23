@@ -4,7 +4,7 @@
 //! holds anything but numbers, strings, ids, vectors and other wire types is `wire-gen`'s to check, by the registry
 //! it traces (`sim/wire-gen/tests/wire_gen.rs`).
 
-mod common;
+use crate::common;
 
 use common::{world, DAY};
 use enterprise_core::wire::*;

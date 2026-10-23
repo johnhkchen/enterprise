@@ -2,7 +2,7 @@
 //! Money before the goods: a share of a contract's worth paid up front, carried by the buyer's wagon with the copy,
 //! worked off at the same share of each delivery, owed back when the contract breaks.
 
-mod common;
+use crate::common;
 
 use enterprise_core::contracts::Book;
 use enterprise_core::{Content, Good, Incoterm, Society, State};
@@ -174,7 +174,7 @@ fn a_broken_contract_is_paid_back_by_the_next_wagon_between_the_two() {
 #[test]
 fn the_random_worlds_pay_work_off_and_refund_advances() {
     let (mut paid, mut worked, mut refunded, mut broken) = (0, 0, 0, 0);
-    for (p, w, r, b) in common::each_seed(0..300, |seed| {
+    for (p, w, r, b) in common::each_seed(common::seeds(300), |seed| {
         let mut s = common::world(seed);
         let mut owed = std::collections::BTreeSet::new();
         for day in 1..=120 {

@@ -1,7 +1,7 @@
 //! The cash book and the Accountant: every transfer a posting between accounts, noted on both sides by day and by
 //! what for, and the town's day's budget shared by all its spenders.
 
-mod common;
+use crate::common;
 
 use enterprise_core::cash_book::{Account, Reason, KEPT_DAYS};
 use enterprise_core::state::Money;
@@ -167,7 +167,7 @@ fn households_are_paid_wages_and_pay_for_comforts() {
 #[test]
 fn each_towns_book_explains_its_treasury_in_random_worlds() {
     use common::{world, DAY};
-    common::each_seed(0..100, |seed| {
+    common::each_seed(common::seeds(100), |seed| {
         let mut s = world(seed);
         let mut at_90 = Vec::new();
         for day in 1..=120 {

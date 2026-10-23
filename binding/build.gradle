@@ -23,7 +23,10 @@ def chicoryVersion = chicory_version // gradle.properties: the mod's jar-in-jar 
 def sim = rootProject.file('sim')
 // The module as `just wasm` builds it (release, panic = abort, stripped, linked whole), and the same with its names
 // kept (for the spike's report of what wouldn't compile: function indexes are the same, only the name section differs).
-def coreWasmFile = new File(sim, 'target/wasm32-wasip1/wasm/enterprise_wasm.wasm')
+// `-PwasmProfile=wasm-dev`: the module built fast, not linked whole (the game tests: `just gametest`); `wasm`, the
+// default, for every jar that ships.
+def wasmProfile = providers.gradleProperty('wasmProfile').getOrElse('wasm')
+def coreWasmFile = new File(sim, "target/wasm32-wasip1/${wasmProfile}/enterprise_wasm.wasm")
 def namedWasmFile = new File(sim, 'target/wasm-named/wasm32-wasip1/wasm/enterprise_wasm.wasm')
 def chicoryDir = layout.buildDirectory.dir('chicory').get().asFile
 def machineClasses = new File(chicoryDir, 'classes')
@@ -90,6 +93,7 @@ def coreWasm = tasks.register('coreWasm', Exec) {
     coreSources(it)
     inputs.property('wasmOpt', wasmOpt.getOrElse(''))
     inputs.property('wasmRustflags', wasmRustflags.getOrElse(''))
+    inputs.property('wasmProfile', wasmProfile)
     outputs.file(coreWasmFile)
     workingDir sim
     if (wasmOpt.isPresent()) {
@@ -98,7 +102,7 @@ def coreWasm = tasks.register('coreWasm', Exec) {
     if (wasmRustflags.isPresent()) {
         environment 'CARGO_TARGET_WASM32_WASIP1_RUSTFLAGS', wasmRustflags.get()
     }
-    commandLine 'cargo', 'build', '--profile', 'wasm', '-q', '-p', 'enterprise-wasm', '--target', 'wasm32-wasip1',
+    commandLine 'cargo', 'build', '--profile', wasmProfile, '-q', '-p', 'enterprise-wasm', '--target', 'wasm32-wasip1',
             '--target-dir', 'target'
 }
 
@@ -134,6 +138,12 @@ tasks.register('compileCoreWasm', JavaExec) {
     outputs.file(compileReport)
     classpath = sourceSets.tool.runtimeClasspath
     mainClass = 'dev.b28.enterprise.tool.CompileCore'
+    // Not linked whole, one function of the module is too big for the compiler (2026-10-23: 28816 instructions) and
+    // runs interpreted: fine for the game tests, never for a jar that ships (`wasm` still fails on it).
+    inputs.property('wasmProfile', wasmProfile)
+    if (wasmProfile == 'wasm-dev') {
+        environment 'ENT_ALLOW_INTERPRETED', '1'
+    }
     args coreWasmFile.path, machineClasses.path, machineMeta.path, compileReport.path, namedWasmFile.path
     maxHeapSize = '2g'
 }

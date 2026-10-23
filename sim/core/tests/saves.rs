@@ -11,7 +11,7 @@
 //! before the bump); `SAVES=digest` writes every golden's digest (after a migration lands, and whenever the rules
 //! move, as `replay_digest.txt` is).
 
-mod common;
+use crate::common;
 
 use common::{world, DAY};
 use enterprise_core::save::{self, migrate, Resources, SavedRoute, SavedTown};

@@ -6,6 +6,8 @@ resolver = "2"
 
 [profile.release]
 debug = false
+# A core edit rebuilds in seconds, not 45 (John, 2026-10-23); the same code, so the same worlds.
+incremental = true
 
 # The WebAssembly module (`just wasm`): a panic aborts (no unwinding tables), debug info stripped, optimised and linked
 # whole. Its own profile, so the native builds and the tests are as they were.
@@ -15,3 +17,12 @@ panic = "abort"
 strip = "symbols"
 lto = true
 codegen-units = 1
+incremental = false
+
+# The same module built fast, for the game tests (John, 2026-10-23: 7s after an edit, not a minute): not linked whole.
+# The release jar keeps `wasm`; binding/build.gradle picks one by -PwasmProfile.
+[profile.wasm-dev]
+inherits = "wasm"
+lto = false
+codegen-units = 16
+incremental = true

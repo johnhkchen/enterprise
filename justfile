@@ -25,13 +25,13 @@ check *flags:
 # Run game tests headless; `just gametest LedgerTests,LockerTests` runs only those classes
 gametest only="":
     rm -rf core/run/gametest/world  # a fresh world each run: saved data (the mint, trust, contracts) would carry over
-    ./gradlew :core:runGameTestServer {{ if only != "" { "-Ponly=" + only } else { "" } }}
+    ./gradlew :core:runGameTestServer -PwasmProfile=wasm-dev {{ if only != "" { "-Ponly=" + only } else { "" } }}
 
 # The same game tests with the Rust core running the society (society = core): passes per class against
 # scripts/gametest-core-baseline.txt, failing if one that passed there falls. Its own folder, core/run/gametest-core.
 gametest-core only="":
     rm -rf core/run/gametest-core/world core/run/gametest-core/report.tsv  # no last run's passes if this one never starts
-    -./gradlew :core:runGameTestServerCore {{ if only != "" { "-Ponly=" + only } else { "" } }}
+    -./gradlew :core:runGameTestServerCore -PwasmProfile=wasm-dev {{ if only != "" { "-Ponly=" + only } else { "" } }}
     python3 scripts/gametest_core.py core/run/gametest-core/report.tsv {{ if only != "" { "--only=" + only } else { "" } }}
 
 # Rewrite the core-mode baseline from a fresh run (when tests newly pass; never to excuse a fall)
@@ -125,7 +125,7 @@ core-test:
 
 # One hash of 300 random worlds' 120 days: a refactor that mustn't change behaviour compares it before and after.
 core-fingerprint:
-    cd sim && cargo test --release -q --test fingerprint -- --ignored --nocapture 2>&1 | grep '^fingerprint'
+    cd sim && cargo test --release -q -p enterprise-core --test all -- fingerprint:: --ignored --nocapture 2>&1 | grep '^fingerprint'
 
 # The 200-day replay built for WebAssembly (wasm32-wasip1, under Node's WASI): its digest must be the native one's
 core-wasm-replay:

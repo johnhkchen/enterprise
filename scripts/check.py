@@ -4,23 +4,23 @@
     python3 scripts/check.py [--base REF] [--only A,B] [--full]     (`just check`, `just check --full`)
 
 What changed is everything since REF (default origin/main: what isn't pushed yet), committed or not. Then:
-- the Rust core (sim/): untouched, its tests don't run. A test file alone changed: only that test target. Its sources
-  changed: the crate's tests, but not the slow ones (SLOW, minutes each); `--full` runs those too. The wire's sources
-  changed: `just wire-check` as well.
-- the mod (core/, pack/): untouched, no game tests. Changed: it compiles, then the game test classes whose files changed,
+- the Rust core (sim/): untouched, its tests don't run. Test files alone changed: only theirs. Its sources changed: the
+  crate's tests, the random-worlds sweeps short (a tenth of the worlds, tests/common `seeds`); `--full` runs them whole
+  (SWEEP=full). The wire's sources changed: `just wire-check` as well.
+- the mod (core/, pack/, binding/: its JUnit tests first): untouched, no game tests. Changed: it compiles, then the game test classes whose files changed,
   and any named by `--only`, in Java mode; in core mode too when the binding or the Rust core changed. A change that
   touches no test class compiles only: name the classes it affects with `--only`.
 - `--full`: everything, the whole Rust suite and both game test suites. Run it once, before a landing or a push, not
   while building.
 """
 import argparse
+import os
 import subprocess
 import sys
 import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SLOW = {"random_worlds", "random_worlds_sweep"}  # minutes each under the CPU cap: --full only
 TESTS = "core/src/main/java/dev/b28/enterprise/test/"
 
 
@@ -43,24 +43,27 @@ def run(label, cmd, cwd=ROOT):
 
 
 def rust(paths, full):
-    """Cargo invocations for the Rust changes: [(label, args)]."""
+    """Cargo invocations for the Rust changes: [(label, args)]. The core's tests are one binary, `all` (its
+    tests/all.rs), beside `replay`, `scenarios` and `wire_fixtures`; a file's tests are its module's (`lockers::`)."""
     if full:
-        return [("rust (all)", ["cargo", "test", "--release", "-q"])]
+        return [("rust (all, SWEEP=full)", ["cargo", "test", "--release", "-q"])]
     crates = {p.split("/")[1] for p in paths if p.count("/") >= 2}
+    own = {"replay", "scenarios", "wire_fixtures"}
     jobs = []
     for crate in sorted(crates):
         mine = [p for p in paths if p.startswith(f"sim/{crate}/")]
-        tests_dir = ROOT / "sim" / crate / "tests"
-        sources = [p for p in mine if not p.startswith(f"sim/{crate}/tests/")]
-        if sources or any(p.startswith("sim/Cargo") for p in paths):
-            targets = sorted(f.stem for f in tests_dir.glob("*.rs") if f.stem not in SLOW) if tests_dir.exists() else []
-            args = ["--lib"] + [a for t in targets for a in ("--test", t)]
-        else:
-            targets = sorted({Path(p).stem for p in mine if p.endswith(".rs") and p.count("/") == 3} - SLOW)
-            if not targets:
-                continue
-            args = [a for t in targets for a in ("--test", t)]
-        jobs.append((f"rust {crate}", ["cargo", "test", "--release", "-q", "-p", package(crate)] + args))
+        base = ["cargo", "test", "--release", "-q", "-p", package(crate)]
+        if crate != "core" or any(not p.startswith("sim/core/tests/") for p in mine) \
+                or any(p.startswith("sim/core/tests/common/") for p in mine):
+            jobs.append((f"rust {crate}", base))
+            continue
+        files = sorted({Path(p).stem for p in mine if p.endswith(".rs") and p.count("/") == 3})
+        alone = [a for f in files if f in own for a in ("--test", f)]
+        if alone:  # their own binaries: a filter after `--` would apply to them too
+            jobs.append((f"rust core: {', '.join(f for f in files if f in own)}", base + alone))
+        modules = [f"{f}::" for f in files if f not in own and f != "all"]
+        if modules:
+            jobs.append((f"rust core: {', '.join(modules)}", base + ["--test", "all", "--", *modules]))
     return jobs
 
 
@@ -79,11 +82,13 @@ def main():
     a = ap.parse_args()
     paths = changed(a.base)
     sim = {p for p in paths if p.startswith("sim/")}
-    mod = {p for p in paths if p.startswith(("core/", "pack/"))}
+    mod = {p for p in paths if p.startswith(("core/", "pack/", "binding/"))}
     print(f"since {a.base}: {len(paths)} files changed, {len(sim)} in sim/, {len(mod)} in the mod"
           + (" (--full: everything runs)" if a.full else ""), flush=True)
     ok = True
     if sim or a.full:
+        if a.full:
+            os.environ["SWEEP"] = "full"
         for label, cmd in rust(sim, a.full):
             ok &= run(label, cmd, ROOT / "sim")
         if a.full or any("wire" in p for p in sim):
@@ -97,8 +102,10 @@ def main():
         return ok
     classes = {Path(p).stem for p in mod if p.startswith(TESTS) and p.endswith("Tests.java")}
     classes |= {c for c in a.only.split(",") if c}
+    if any(p.startswith("binding/") for p in mod):
+        ok &= run("binding tests", ["./gradlew", ":binding:test", "-PwasmProfile=wasm-dev", "-q"])
     if mod or sim:
-        ok &= run("compile", ["./gradlew", ":core:compileJava", "-q"])
+        ok &= run("compile", ["./gradlew", ":core:compileJava", "-PwasmProfile=wasm-dev", "-q"])
     if not ok:
         return ok
     if not classes:
@@ -107,7 +114,7 @@ def main():
     only = ",".join(sorted(classes))
     if mod:
         ok &= run(f"game tests, Java mode: {only}", ["just", "gametest", only])
-    if sim or any("/binding/" in p for p in mod):
+    if sim or any(p.startswith("binding/") or "/binding/" in p for p in mod):
         ok &= run(f"game tests, core mode: {only}", ["just", "gametest-core", only])
     return ok
 

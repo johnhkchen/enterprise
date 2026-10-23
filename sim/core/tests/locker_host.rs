@@ -3,7 +3,7 @@
 //! broken, a hand gone or a point tied to another hand takes the tie; the restocks a town missed are traded at its next
 //! look with nothing counted (no rounds, no catch-up on load); all kept by a save.
 
-mod common;
+use crate::common;
 
 use common::DAY;
 use enterprise_core::points::Spot;

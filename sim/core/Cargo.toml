@@ -3,6 +3,8 @@ name = "enterprise-core"
 version = "0.1.0"
 edition = "2021"
 description = "The Enterprise society: towns, goods, money and wagons, for any game to host"
+# The tests are one binary (tests/all.rs lists them) and replay its own: not one a file.
+autotests = false
 
 [dependencies]
 # Bevy's ECS alone: entities, components, systems. Single-threaded (no multi_threaded): the same inputs always give
@@ -17,3 +19,19 @@ serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 # Tests only: the ECS with type names, so a test naming state the save misses can say which.
 bevy_ecs = { version = "0.20", default-features = false, features = ["std", "debug"] }
+
+[[test]]
+name = "all"
+path = "tests/all.rs"
+
+[[test]]
+name = "replay"
+path = "tests/replay.rs"
+
+[[test]]
+name = "scenarios"
+path = "tests/scenarios.rs"
+
+[[test]]
+name = "wire_fixtures"
+path = "tests/wire_fixtures.rs"

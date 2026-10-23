@@ -3,7 +3,7 @@
 //! town's bills not yet due for coin now, lends against a contract in force and is repaid from the payment first; a
 //! hub's desk prices a bill by the goods behind it and caps its book; a bill no one can carry lapses.
 
-mod common;
+use crate::common;
 
 use enterprise_core::bank::{discount_price, loan_cap, to_come, Discounts};
 use enterprise_core::bills::{BillState, Bills, Held, LAPSE_DAYS};
@@ -315,7 +315,7 @@ fn the_banks_are_saved_whole() {
 #[test]
 fn the_random_worlds_bank() {
     let (mut bought, mut lent, mut repaid) = (0, 0, 0);
-    for (b, l, r) in common::each_seed(0..300, |seed| {
+    for (b, l, r) in common::each_seed(common::seeds(300), |seed| {
         let mut s = common::world(seed);
         let start = s.totals();
         for day in 1..=120 {

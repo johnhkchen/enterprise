@@ -501,12 +501,12 @@ fn every_kind_is_in_the_order_a_town_builds_them() {
     assert_eq!(Kind::StoneDocks.mason_level(), 4);
 }
 
-mod common;
+use crate::common;
 
 #[test]
 fn the_random_worlds_exercise_the_works() {
     let (mut walls, mut bridges, mut halls, mut started_by_towns) = (0, 0, 0, 0);
-    for (w, b, h, st) in common::each_seed(0..60, |seed| {
+    for (w, b, h, st) in common::each_seed(common::seeds(60), |seed| {
         let (mut walls, mut bridges, mut halls, mut started_by_towns) = (0, 0, 0, 0);
         let mut s = common::world(seed);
         for day in 1..=80 {

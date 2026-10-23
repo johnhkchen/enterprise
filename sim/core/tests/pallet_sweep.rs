@@ -3,7 +3,7 @@
 //! purpose; and the host's doings there shown to bring each kind of pallet. The 300 seeds themselves run in
 //! `random_worlds.rs`.
 
-mod common;
+use crate::common;
 
 use common::slices::pallets as sweep;
 use common::slices::pallets::{View, WagonView, CAPS_BIND};

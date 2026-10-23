@@ -667,14 +667,14 @@ fn the_books_survive_a_save() {
     let _ = &mut loaded;
 }
 
-mod common;
+use crate::common;
 
 /// The random worlds exercise it: hubs that run to markets, stale bills, closed roads, wagons that call; across the seeds the
 /// hubs buy paper from towns and from wagons, carry goods on credit, and the books balance every day.
 #[test]
 fn the_random_worlds_strand_paper_and_the_hubs_buy_it() {
     let (mut deals, mut crates, mut credit, mut bills, mut borrowed, mut coined) = (0, 0, 0.0, 0, 0.0, 0.0);
-    for (d, c, cr, b, bo, co) in common::each_seed(0..60, |seed| {
+    for (d, c, cr, b, bo, co) in common::each_seed(common::seeds(60), |seed| {
         let (mut deals, mut crates, mut credit, mut bills, mut borrowed, mut coined) = (0, 0, 0.0, 0, 0.0, 0.0);
         let mut s = common::world(seed);
         let start = s.totals();

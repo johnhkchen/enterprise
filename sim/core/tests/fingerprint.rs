@@ -4,7 +4,7 @@
 //! writing what it hashes to a [`Tape`]; the tapes are hashed in the seeds' order, a batch at a time, so the value is
 //! the one a single loop over the seeds gives.
 
-mod common;
+use crate::common;
 
 use common::{world, Rng, DAY};
 use std::hash::{DefaultHasher, Hash, Hasher};

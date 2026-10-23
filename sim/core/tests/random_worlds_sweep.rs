@@ -2,7 +2,7 @@
 //! sweep's invariants (`common/slices/random_worlds_sweep.rs`) hold in a plain world and catch each kind of stall
 //! they're for, and a sweep's tally counts what a world did. No Java: it hardens every slice's claims.
 
-mod common;
+use crate::common;
 
 use common::slices::random_worlds_sweep as sweep_checks;
 use common::DAY;

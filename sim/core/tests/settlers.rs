@@ -2,7 +2,6 @@
 //! to found a town on open ground; the party is off the world on the road, and the new market opens with the capital
 //! and a road home.
 
-mod common;
 
 use enterprise_core::cash_book::Account;
 use enterprise_core::settlers::{capital, Kind};

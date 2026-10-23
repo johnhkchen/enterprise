@@ -1,7 +1,7 @@
 //! The state as one blob (`save.rs`): saved, loaded and run on, a society comes out as if never saved, to the bit;
 //! dials set by name are saved with the world (`Dials.java`); a contract's whole state survives.
 
-mod common;
+use crate::common;
 
 use common::{world, DAY};
 use enterprise_core::{Content, Dials, Good, Incoterm, Society, State};
@@ -39,7 +39,7 @@ fn load_then_run_equals_never_saved_to_the_bit() {
 fn every_piece_of_state_in_a_world_is_in_saved() {
     // Every slice's state, as the random worlds make and run it: a component or resource not in `slices.rs`'s
     // `saved!` would be lost by a save.
-    common::each_seed(0..60, |seed| {
+    common::each_seed(common::seeds(60), |seed| {
         let mut s = world(seed);
         for day in 1..=40 {
             s.advance(day * DAY);

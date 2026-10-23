@@ -5,7 +5,7 @@
 //! emeralds and coin (stacks of 64, coin in the fewest coins), and a Banker's balance, written as the mod's adapter
 //! writes them.
 
-mod common;
+use crate::common;
 
 use common::DAY;
 use enterprise_core::cash_book::{Account, Reason};

@@ -47,6 +47,18 @@ pub fn sellers(seed: u64) -> Vec<u64> {
     (0..r.below(4)).map(|_| (1 + r.below(4)) * 64 + r.below(64)).collect()
 }
 
+/// The seeds a random-worlds sweep runs: a tenth of its `full` count (at least 10) while building, every one with
+/// `SWEEP=full` (`just check --full`, before a push), or the first N with `SWEEP=N` (John, 2026-10-23: the sweeps were
+/// most of the suite's time, every run).
+pub fn seeds(full: u64) -> std::ops::Range<u64> {
+    let n = match std::env::var("SWEEP").as_deref() {
+        Ok("full") => full,
+        Ok(v) => v.parse().unwrap_or(full),
+        Err(_) => (full / 10).max(10).min(full),
+    };
+    0..n
+}
+
 /// Runs `f` for each seed across the machine's cores (`std::thread::scope`, no dependency) and returns the results in
 /// the seeds' order. Each thread takes the next seed not yet taken; a seed that panics stops the rest from starting
 /// and fails the call with its seed named (its own message first, as the default hook prints it).

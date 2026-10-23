@@ -3,7 +3,7 @@
 //! before it's written; a point broken taking its chests' goods with it, and a desk put back being its town again. A
 //! host here is a few chests of so many slots (`Chests`), written as a host would.
 
-mod common;
+use crate::common;
 
 use common::DAY;
 use enterprise_core::points::{Kind, Spot};

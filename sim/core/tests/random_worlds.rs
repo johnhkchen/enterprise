@@ -5,7 +5,7 @@
 //! (`common::each_seed`); what the worlds did is printed (`--nocapture`). A small generator of our own, so no
 //! dependency.
 
-mod common;
+use crate::common;
 
 use common::{sellers, world, DAY};
 use enterprise_core::sweep::Sweep;
@@ -74,7 +74,7 @@ fn run(seed: u64) -> Ran {
 fn the_books_balance_and_nobody_goes_into_debt_in_any_world() {
     let (mut roads, mut detours, mut road_trips) = (0, 0, 0);
     let mut sweep = Sweep::new();
-    for ran in common::each_seed(0..300, run) {
+    for ran in common::each_seed(common::seeds(300), run) {
         roads += ran.roads;
         detours += ran.detours;
         road_trips += ran.road_trips;

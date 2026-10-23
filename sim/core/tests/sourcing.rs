@@ -3,7 +3,7 @@
 //! its Merchant buys from its lockers what its contracts want within two days, a contract's inputs raise the par so
 //! wagons bring them, and the capital's metal exchange buys nearest holder first at a premium that rises as it runs short.
 
-mod common;
+use crate::common;
 
 use enterprise_core::contracts::{Book, MIN_TRUST};
 use enterprise_core::lockers::Offer;
@@ -457,7 +457,7 @@ fn the_random_worlds_source_and_the_exchange_buys() {
     // The generator exercises it: over sixty worlds, towns sourced goods, some of those came into force, the
     // exchange contracted metal, and the jobs heard of wants nobody supplies.
     let (mut sourced, mut in_force, mut trial, mut advances, mut exchange, mut signals) = (0, 0, 0, 0, 0, 0);
-    for n in common::each_seed(0..60, |seed| {
+    for n in common::each_seed(common::seeds(60), |seed| {
         let (mut sourced, mut in_force, mut trial, mut advances, mut exchange, mut signals) = (0, 0, 0, 0, 0, 0);
         let mut s = common::world(seed);
         for day in 1..=45 {
