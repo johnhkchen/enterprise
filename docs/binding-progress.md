@@ -5,6 +5,10 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-23, the hub's wagons go.** The A4 "no caravan in 30 days" was the study, not the core: under the core a
+  town wants only what its switched-on lockers buy, a locker counts only once a loaded villager has claimed its
+  workstation, and the study switched trades on (and unloaded its towns) before any had. It now waits, then
+  switches: 19 hub trips and about 15,000 items sold in 30 days, S1-S3 moods +1.2 to +1.4 (docs/alpha-smoke.md 1).
 - **2026-10-23, A4: the smoke run (docs/alpha-smoke.md).** The alpha passes section 5: the jar runs outside the dev run
   (a plain NeoForge server), no trap, pause or exception, cash books explained, no negatives, a restart reads the same,
   the report writes, no Java rule wrote data. **Not yet playable as a trading game: no caravan left in 30 days.** Each

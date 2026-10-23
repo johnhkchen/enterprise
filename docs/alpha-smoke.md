@@ -21,14 +21,19 @@ docs/alpha-plan.md section 5, run headless on main at 3d27fcd plus this commit's
 
 ## Findings
 
-1. **No caravan left in 30 days (the big one).** The hub holds 16 kinds of goods and 64 emeralds; each of its three
-   routes says, all 30 days, "no trip: waiting for a fuller load: 120 times, 0 items". The core's rule
-   (`rules/plan.rs`) sends a wagon when it is full or on its day *and its load is worth the road*; the planned load is
-   0 items, so it never pays. The far towns' managed lockers came late (S1 manages 0 of its 2 until a look after the
-   study; see below), and with no lockers buying and no price news from a first wagon, nothing is worth carrying.
-   Next task: why the sale load is empty (the far end's wants, its last purse, the first trip's price news), with a
-   Rust test of a fresh hub and town that must trade within ten days.
-
+1. **No caravan left in 30 days (the big one). Fixed in the study, not the core.** Each hub route said, all 30 days,
+   "no trip: waiting for a fuller load: 120 times, 0 items". The core was right: the far towns wanted only comforts
+   (22 books, worth 3.75 emeralds) and the road costs 6 to 24 emeralds of food. A town wants a good only if its
+   switched-on lockers buy it (the wire never sets `Trades.uses`; only the fast host's study does). And the core
+   knows a locker only where a *loaded* villager has claimed its workstation with a chest touching it
+   (`LockerAdapter`). The study switched trades on 300 ticks after building each town, before any villager had
+   claimed one (0 switched on), then unloaded the towns: 3 of 4 never had a locker placed. Java mode never needed
+   the placement, so only core mode broke. Proved twice: the day-30 save loaded in the Rust core and run 10 days
+   with lockers counted and switched on sent 8 wagons (7,500 items; the hub 64 to 332 emeralds); and live, the
+   towns loaded for a minute, `autoswitch`, then unloaded, sent 6 wagons in 8 days. Fix: the study (core mode)
+   waits 1,200 ticks, then switches trades on, before it unloads the towns. The 30-day study then ran 19 hub trips
+   and sold about 15,000 items; S1-S3 end with moods of +1.2 to +1.4 (were -0.75). `docs/alpha.md` tells players a
+   locker needs a chest by its workstation.
    S1 (Meadowworth) on day 30:
    ```
    Meadowworth · day 30 · mood -0.75 · 6 people

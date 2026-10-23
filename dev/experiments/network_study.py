@@ -427,8 +427,9 @@ def setup():
             rcon(f"enterprise core stock {at}")
     rcon("time set 1000")
     sprint(300)
-    for corner in TOWNS.values():
-        rcon(f"enterprise autoswitch {desk(corner)} selling")
+    if not CORE:
+        for corner in TOWNS.values():
+            rcon(f"enterprise autoswitch {desk(corner)} selling")
     if "--war" in sys.argv:
         # The capital's Merchant a master again (it manages ten lockers).
         rcon(f"execute as @e[type=villager,x={HUB[0]},y=-61,z={HUB[1]},dx=8,dy=3,dz=8] "
@@ -499,6 +500,12 @@ def setup():
               .strip().splitlines()[-1])
         print("route S2 -> S3: " + rcon(f"enterprise route add {desk(TOWNS['S2'])} {desk(TOWNS['S3'])}")
               .strip().splitlines()[-1])
+    if CORE:
+        # The core knows a locker only where a loaded villager has claimed its workstation (the binding's lockers),
+        # and switches on only lockers it knows: so after the villagers settle, before their towns unload.
+        sprint(1200)
+        for corner in TOWNS.values():
+            print(f"{desk(corner)}: " + rcon(f"enterprise autoswitch {desk(corner)} selling").strip().splitlines()[-1])
     for corner in [*([] if "--war" in sys.argv else [HUB]), *TOWNS.values()]:
         rcon(f"forceload remove {area(corner, 27)}")
 
