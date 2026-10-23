@@ -107,7 +107,10 @@ public record MerchantView(BlockPos desk, int limit, List<LockerView> lockers, d
             // No core town here (or no core running): no lockers and no caravans, never the Java rules' (their switches
             // and routes the core never reads); the caravans are the core's (binding/adapters/WagonAdapter).
             CaravanView caravans = running ? host.wagons().caravans(level, desk) : new CaravanView(List.of(), List.of());
-            return build(level, desk, limit, lockers == null ? List.of() : lockers, caravans, ledger(level, desk, host));
+            // The coin's rate is the core's mint's (0 with no core running: the ledger says why), never the Java Mint's.
+            double rate = running ? host.money().mint().rate() : 0;
+            return build(level, desk, limit, lockers == null ? List.of() : lockers, caravans, ledger(level, desk, host),
+                    rate);
         }
         return build(level, desk, limit);
     }
@@ -117,11 +120,9 @@ public record MerchantView(BlockPos desk, int limit, List<LockerView> lockers, d
      * word when the core is paused or never started, so a failed start shows on the first launch.
      */
     private static LedgerView ledger(ServerLevel level, BlockPos desk, dev.b28.enterprise.binding.CoreHost host) {
-        if (host == null) {
-            return LedgerView.note("The core didn't start; the world runs without it. See logs/latest.log.");
-        }
-        if (host.pausedWhy() != null) {
-            return LedgerView.note("The society is paused: " + host.pausedWhy());
+        String why = dev.b28.enterprise.binding.PausedNotice.why(host);
+        if (why != null) {
+            return LedgerView.note(why);
         }
         try {
             return new dev.b28.enterprise.binding.adapters.LedgerAdapter(host).view(GlobalPos.of(level.dimension(), desk));
@@ -160,13 +161,12 @@ public record MerchantView(BlockPos desk, int limit, List<LockerView> lockers, d
                 })
                 .toList();
         return build(level, desk, limit, lockers, caravans(level, GlobalPos.of(level.dimension(), desk), range),
-                LedgerView.EMPTY);
+                LedgerView.EMPTY, Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, level.getGameTime()));
     }
 
-    /** The view with these lockers and caravans, and the rest of the screen (the rate, the bank) the other concerns'. */
+    /** The view with these lockers, caravans, ledger and coin rate, and the Banker's balance (physical: read from the block). */
     private static MerchantView build(ServerLevel level, BlockPos desk, int limit, List<LockerView> lockers,
-            CaravanView caravans, LedgerView ledger) {
-        double rate = Mint.get(level.getServer()).rate(Mint.DEFAULT_FACTION, level.getGameTime());
+            CaravanView caravans, LedgerView ledger, double rate) {
         int bankSpurs = MoneyChanger.bankAt(level, desk).map(BankAccount::getBalance).orElse(NO_BANK);
         return new MerchantView(desk, limit, lockers, rate, bankSpurs, caravans, ledger);
     }

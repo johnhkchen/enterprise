@@ -1,7 +1,11 @@
 package dev.b28.enterprise.cargo;
 
 import com.mojang.serialization.MapCodec;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -42,9 +46,21 @@ public final class CrateBlock extends BaseEntityBlock {
             BlockHitResult hit) {
         if (!level.isClientSide && level.getBlockEntity(pos) instanceof CrateBlockEntity crate) {
             player.openMenu(crate);
+            if (dev.b28.enterprise.binding.Society.isCore() && TOLD.add(player.getUUID())) {
+                player.sendSystemMessage(Component.literal(UNCOUNTED));
+            }
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }
+
+    /**
+     * In core mode a crate is plain storage (docs/alpha-plan.md 2): the core counts no packed goods, so a player is told,
+     * once a server run, the first time they open one.
+     */
+    public static final String UNCOUNTED =
+            "Crates you pack aren't counted in the alpha: keep goods loose in the desk's chests.";
+
+    private static final Set<UUID> TOLD = ConcurrentHashMap.newKeySet();
 
     @Override
     protected boolean hasAnalogOutputSignal(BlockState state) {

@@ -5,6 +5,12 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-23, A2 landed: the stubs.** In core mode: the 17 refused commands say "not in the alpha yet" (or "gone" for
+  `bank` and `tenders`) and what to use instead; the Merchant screen's coin rate is the core mint's; no Java locker count
+  where the core keeps no town (0); a crate says once that packed goods aren't counted; a villager's death leaves the Java
+  roster alone; an operator who joins a paused or unstarted core is told why (`binding/PausedNotice`, also the ledger's
+  line). `AlphaStubsTests` both modes; both suites 310 of 310 (one trample flake in `TerritoryTests` passed on rerun).
+  Next: A3 `alpha-build`.
 - **2026-10-23, A1 landed: the ledger.** The Merchant screen's Ledger tab and `/enterprise ledger <desk>` (one set of
   lines, from existing queries, no wire change): Money, Goods, People, Wagons, Papers, Mint, each line naming its query.
   `LedgerTests` passes in both modes (its one fix: the command indents a section's lines, so a good prints `    wheat 30`);

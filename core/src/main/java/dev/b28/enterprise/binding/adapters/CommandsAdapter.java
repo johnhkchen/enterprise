@@ -37,9 +37,17 @@ public final class CommandsAdapter {
         return millis / 1000.0;
     }
 
-    /** The refusal a command that is still the Java rules' gives in core mode. */
-    public static String javaOnly(String command, String task) {
-        return "/enterprise %s is Java mode only until %s".formatted(command, task);
+    /**
+     * The refusal a command that is still the Java rules' gives in core mode (docs/alpha-plan.md 2): not in the alpha yet,
+     * and what to do instead.
+     */
+    public static String notYet(String command, String instead) {
+        return "/enterprise %s: not in the alpha yet. %s".formatted(command, instead);
+    }
+
+    /** The refusal of a command core mode has dropped for good (docs/decisions.md, the lost list), and where its figures went. */
+    public static String gone(String command, String instead) {
+        return "/enterprise %s: gone. %s".formatted(command, instead);
     }
 
     /** The mint: what an emerald fetches, and what moves it. The first words are the Java command's, for the scripts. */

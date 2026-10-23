@@ -36,9 +36,9 @@ final class LedgerCommand {
         ServerLevel level = source.getLevel();
         BlockPos desk = BlockPosArgument.getLoadedBlockPos(context, "desk");
         CoreHost host = CoreHost.of(source.getServer());
-        if (host == null || host.pausedWhy() != null) {
-            source.sendFailure(Component.literal(host == null ? "The core didn't start; the world runs without it" :
-                    "The society is paused: " + host.pausedWhy()));
+        String why = dev.b28.enterprise.binding.PausedNotice.why(host);
+        if (why != null) {
+            source.sendFailure(Component.literal(why));
             return 0;
         }
         GlobalPos at = GlobalPos.of(level.dimension(), desk);

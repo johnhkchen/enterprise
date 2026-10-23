@@ -134,7 +134,11 @@ public final class Settlements extends SavedData {
         }
     }
 
+    /** A villager's death leaves the Java roster; in core mode the census owns the roster, so not here (docs/alpha-plan.md 2). */
     public static void onDeath(net.neoforged.neoforge.event.entity.living.LivingDeathEvent event) {
+        if (dev.b28.enterprise.binding.Society.isCore()) {
+            return;
+        }
         if (event.getEntity() instanceof net.minecraft.world.entity.npc.Villager villager
                 && villager.level() instanceof net.minecraft.server.level.ServerLevel level) {
             get(level.getServer()).died(villager.getUUID());

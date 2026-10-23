@@ -51,6 +51,7 @@ public final class Enterprise {
         // and a look handed to it each game minute.
         NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.test.GameTestReport::onServerStarting);
         dev.b28.enterprise.binding.CoreHost.register(NeoForge.EVENT_BUS);
+        NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.binding.PausedNotice::onJoin);
         NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.binding.CoreClock::onServerTick);
     }
 

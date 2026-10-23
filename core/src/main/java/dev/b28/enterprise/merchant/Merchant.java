@@ -113,21 +113,21 @@ public final class Merchant {
 
     /**
      * How many lockers the Merchant at {@code desk} manages: in core mode the core's count for the desk's town (the
-     * Merchant joined as its hand on this touch, if the core hasn't it yet), else the Java rule's by its level; the
-     * Java rule's too while the core keeps no town at the desk.
+     * Merchant joined as its hand on this touch, if the core hasn't it yet), else the Java rule's by its level. In core
+     * mode with no town at the desk, or no core running, 0: never the Java rule's (docs/alpha-plan.md 2); the ledger
+     * says why.
      */
     public static int lockersAt(ServerLevel level, BlockPos desk, Villager merchant) {
-        int java = lockerLimit(merchant.getVillagerData().getLevel());
         if (!dev.b28.enterprise.binding.Society.isCore()) {
-            return java;
+            return lockerLimit(merchant.getVillagerData().getLevel());
         }
         var host = dev.b28.enterprise.binding.CoreHost.of(level.getServer());
         if (host == null || host.pausedWhy() != null) {
-            return java;
+            return 0;
         }
         Long town = host.stock().townAt(GlobalPos.of(level.dimension(), desk));
         Long core = town == null ? null : host.hands().lockersOf(town, merchant);
-        return core == null ? java : (int) Math.min(core, Integer.MAX_VALUE);
+        return core == null ? 0 : (int) Math.min(core, Integer.MAX_VALUE);
     }
 
     public static boolean isMerchant(Villager villager) {

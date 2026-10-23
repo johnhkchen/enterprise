@@ -37,14 +37,21 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 final class EnterpriseCommands {
     private EnterpriseCommands() {}
 
-    /** The tasks that move the commands still on the Java rules (docs/binding-plan.md 3): what core mode says they wait for. */
-    private static final String RULES = "B5.1 delete-java-rules";
-
-    /** In core mode, a command that is still the Java rules' says so and does nothing (it would show data nothing updates). */
-    private static int refuse(CommandContext<CommandSourceStack> context, String command, String task) {
-        context.getSource().sendFailure(Component.literal(
-                dev.b28.enterprise.binding.adapters.CommandsAdapter.javaOnly(command, task)));
+    /**
+     * In core mode, a command that is still the Java rules' says so and does nothing (it would show data nothing updates):
+     * {@code why}, from {@code CommandsAdapter.notYet} or {@code gone}, says what to do instead.
+     */
+    private static int refuse(CommandContext<CommandSourceStack> context, String why) {
+        context.getSource().sendFailure(Component.literal(why));
         return 0;
+    }
+
+    private static String notYet(String command, String instead) {
+        return dev.b28.enterprise.binding.adapters.CommandsAdapter.notYet(command, instead);
+    }
+
+    private static String gone(String command, String instead) {
+        return dev.b28.enterprise.binding.adapters.CommandsAdapter.gone(command, instead);
     }
 
     /** The running core, or null after telling the source why not (core mode's commands all begin here). */
@@ -141,7 +148,8 @@ final class EnterpriseCommands {
                         .then(Commands.argument("from", BlockPosArgument.blockPos())
                                 .then(Commands.argument("to", BlockPosArgument.blockPos()).executes(context -> {
                                     if (dev.b28.enterprise.binding.Society.isCore()) {
-                                        return refuse(context, "survey", RULES);
+                                        return refuse(context, notYet("survey",
+                                                "The town's fields and works: /enterprise core land <desk>."));
                                     }
                                     // The land in a box surveyed now (water and heights), for chunks that are loaded:
                                     // otherwise it's seen only as chunks load and unload.
@@ -263,7 +271,8 @@ final class EnterpriseCommands {
                 }))))))
                 .then(Commands.literal("expeditions").executes(context -> {
                     if (dev.b28.enterprise.binding.Society.isCore()) {
-                        return refuse(context, "expeditions", RULES);
+                        return refuse(context, notYet("expeditions",
+                                "A desk's caravans are on the Merchant screen's Caravans tab, or /enterprise core routes."));
                     }
                     // Settlers on the road, and the villages settled and towns founded.
                     var server = context.getSource().getServer();
@@ -275,7 +284,8 @@ final class EnterpriseCommands {
                 .then(Commands.literal("cottage")
                         .then(Commands.argument("corner", BlockPosArgument.blockPos()).executes(context -> {
                             if (dev.b28.enterprise.binding.Society.isCore()) {
-                                return refuse(context, "cottage", RULES);
+                                return refuse(context, notYet("cottage",
+                                        "Place beds by hand: the core counts them at its next census."));
                             }
                             // A family's cottage (two beds) with its corner at {corner}: a settlement's starter home.
                             var level = context.getSource().getLevel();
@@ -289,7 +299,8 @@ final class EnterpriseCommands {
                         .then(Commands.argument("at", BlockPosArgument.blockPos())
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos()).executes(context -> {
                                     if (dev.b28.enterprise.binding.Society.isCore()) {
-                                        return refuse(context, "bridge", RULES);
+                                        return refuse(context, notYet("bridge",
+                                                "No toll bridges in the alpha; caravans cross for free."));
                                     }
                                     // A finished bridge on the hex at {at}, its town's (the market at {desk}): a deck
                                     // across the hex, between the neighbours either side of the way through.
@@ -475,7 +486,8 @@ final class EnterpriseCommands {
                                 .then(Commands.argument("name", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
                                         .executes(context -> {
                                             if (dev.b28.enterprise.binding.Society.isCore()) {
-                                                return refuse(context, "name", RULES);
+                                                return refuse(context, notYet("name",
+                                                        "A market keeps the name the core gave it; /enterprise ledger <desk> shows it."));
                                             }
                                             var server = context.getSource().getServer();
                                             var desk = net.minecraft.core.GlobalPos.of(context.getSource().getLevel().dimension(),
@@ -492,7 +504,8 @@ final class EnterpriseCommands {
                                 .executes(context -> cashbook(context, IntegerArgumentType.getInteger(context, "days"))))))
                 .then(Commands.literal("forwarder").executes(context -> {
                     if (dev.b28.enterprise.binding.Society.isCore()) {
-                        return refuse(context, "forwarder", RULES);
+                        return refuse(context, notYet("forwarder",
+                                "Goods between markets go by caravan: the Merchant screen's Caravans tab."));
                     }
                     var server = context.getSource().getServer();
                     String out = String.join("\n", dev.b28.enterprise.market.Forwarder.get(server).report(server));
@@ -501,7 +514,7 @@ final class EnterpriseCommands {
                 }))
                 .then(Commands.literal("post").executes(context -> {
                     if (dev.b28.enterprise.binding.Society.isCore()) {
-                        return refuse(context, "post", RULES);
+                        return refuse(context, notYet("post", "A town's contracts: /enterprise core contracts <desk>."));
                     }
                     var server = context.getSource().getServer();
                     String out = String.join("\n", dev.b28.enterprise.market.Post.get(server).report(server));
@@ -510,7 +523,8 @@ final class EnterpriseCommands {
                 }))
                 .then(Commands.literal("paperwork").executes(context -> {
                     if (dev.b28.enterprise.binding.Society.isCore()) {
-                        return refuse(context, "paperwork", RULES);
+                        return refuse(context, notYet("paperwork",
+                                "A town's papers: the Papers lines of /enterprise ledger <desk>."));
                     }
                     var server = context.getSource().getServer();
                     StringBuilder out = new StringBuilder("Paperwork (documents, paper, ink, quills used; scribes paid):");
@@ -523,7 +537,7 @@ final class EnterpriseCommands {
                 }))
                 .then(Commands.literal("freight").executes(context -> {
                     if (dev.b28.enterprise.binding.Society.isCore()) {
-                        return refuse(context, "freight", RULES);
+                        return refuse(context, notYet("freight", "Caravans carry the freight: /enterprise core routes."));
                     }
                     var server = context.getSource().getServer();
                     var freight = dev.b28.enterprise.market.Freight.get(server);
@@ -577,7 +591,8 @@ final class EnterpriseCommands {
                         .then(Commands.literal("open")
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos()).executes(context -> {
                                     if (dev.b28.enterprise.binding.Society.isCore()) {
-                                        return refuse(context, "bank open", RULES);
+                                        return refuse(context, gone("bank open",
+                                                "A desk's Blaze Banker balance is on the Money lines of /enterprise ledger <desk>."));
                                     }
                                     var source = context.getSource();
                                     GlobalPos desk = GlobalPos.of(source.getLevel().dimension(),
@@ -589,7 +604,7 @@ final class EnterpriseCommands {
                                 }))))
                 .then(Commands.literal("tenders").executes(context -> {
                     if (dev.b28.enterprise.binding.Society.isCore()) {
-                        return refuse(context, "tenders", RULES);
+                        return refuse(context, gone("tenders", "A town's contracts: /enterprise core contracts <desk>."));
                     }
                     var source = context.getSource();
                     var all = dev.b28.enterprise.market.Tenders.get(source.getServer()).all();
@@ -615,7 +630,7 @@ final class EnterpriseCommands {
                                 .then(Commands.argument("percent", com.mojang.brigadier.arguments.DoubleArgumentType.doubleArg(0, 25))
                                         .executes(context -> {
                                             if (dev.b28.enterprise.binding.Society.isCore()) {
-                                                return refuse(context, "toll", RULES);
+                                                return refuse(context, notYet("toll", "No tolls in the alpha."));
                                             }
                                             GlobalPos bell = GlobalPos.of(context.getSource().getLevel().dimension(),
                                                     BlockPosArgument.getBlockPos(context, "bell"));
@@ -1098,7 +1113,7 @@ final class EnterpriseCommands {
 
     private static int hex(CommandContext<CommandSourceStack> context, BlockPos pos) {
         if (dev.b28.enterprise.binding.Society.isCore()) {
-            return refuse(context, "hex", RULES);
+            return refuse(context, notYet("hex", "A town's hexes: /enterprise core land <desk>."));
         }
         CommandSourceStack source = context.getSource();
         Hex hex = Hex.at(pos);
@@ -1415,7 +1430,8 @@ final class EnterpriseCommands {
      */
     private static int services(CommandContext<CommandSourceStack> context, BlockPos deskPos) {
         if (dev.b28.enterprise.binding.Society.isCore()) {
-            return refuse(context, "services", RULES);
+            return refuse(context, notYet("services",
+                    "What a town's workshop could make and is short of: /enterprise core whys <desk>."));
         }
         CommandSourceStack source = context.getSource();
         var all = dev.b28.enterprise.service.Services.all();
@@ -1640,7 +1656,8 @@ final class EnterpriseCommands {
     /** Each bank: bills it bought, loans it made and what's been repaid, and the loans still owed. */
     private static int bank(CommandContext<CommandSourceStack> context) {
         if (dev.b28.enterprise.binding.Society.isCore()) {
-            return refuse(context, "bank", RULES);
+            return refuse(context, gone("bank",
+                    "A desk's Blaze Banker balance is on the Money lines of /enterprise ledger <desk>."));
         }
         CommandSourceStack source = context.getSource();
         var bank = dev.b28.enterprise.market.Bank.get(source.getServer());
@@ -1863,7 +1880,7 @@ final class EnterpriseCommands {
     /** Every settlement with a census on record. */
     private static int settlements(CommandContext<CommandSourceStack> context) {
         if (dev.b28.enterprise.binding.Society.isCore()) {
-            return refuse(context, "settlements", RULES);
+            return refuse(context, notYet("settlements", "One town's people: /enterprise core census <desk>."));
         }
         CommandSourceStack source = context.getSource();
         var all = Settlements.get(source.getServer()).all();
@@ -1943,7 +1960,7 @@ final class EnterpriseCommands {
     /** Switches one locker trade on or off without the screen (for servers and tests). */
     private static int switchTrade(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         if (dev.b28.enterprise.binding.Society.isCore()) {
-            return refuse(context, "switch", RULES);
+            return refuse(context, notYet("switch", "Switch trades on the Merchant screen's Lockers tab."));
         }
         CommandSourceStack source = context.getSource();
         BlockPos desk = BlockPosArgument.getLoadedBlockPos(context, "desk");

@@ -67,6 +67,7 @@ public final class CoreHost implements AutoCloseable {
 
     private static CoreModule module;
     private static CoreHost running;
+    private static volatile String startFailure;
 
     private final CoreWorker worker;
     private final SaveStore store;
@@ -142,6 +143,11 @@ public final class CoreHost implements AutoCloseable {
         return open(dir, seed, true);
     }
 
+    /** Why the server's host didn't start (the error, as a line), or null when it started or hasn't been tried. */
+    public static String startFailure() {
+        return startFailure;
+    }
+
     /** The running server's host, or null when there's none (no server, or before it started). */
     public static CoreHost of(MinecraftServer server) {
         return running;
@@ -174,6 +180,7 @@ public final class CoreHost implements AutoCloseable {
     private static void onStarted(ServerStartedEvent event) {
         MinecraftServer server = event.getServer();
         long started = System.nanoTime();
+        startFailure = null;
         try {
             running = open(server.getWorldPath(LevelResource.ROOT), server.getWorldData().worldGenOptions().seed(),
                     Society.isCore());
@@ -190,6 +197,7 @@ public final class CoreHost implements AutoCloseable {
             // The game runs on without the society the core keeps: the Java rules are what plays (Java mode).
             Enterprise.LOGGER.error("The core didn't start; the world runs without it", e);
             running = null;
+            startFailure = e.toString();
         }
     }
 
