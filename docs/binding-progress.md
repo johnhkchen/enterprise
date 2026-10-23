@@ -5,6 +5,14 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-23, runs traced.** The server's core writes a journal of every request it took (`binding/core/Journal`,
+  `world/enterprise-journal/<time>.ejl`, one a server run, 10 kept, `journal=off` for none; `/enterprise core journal`;
+  `core report` copies it). `enterprise-sim --trace FILE run.db` replays it through the native core and writes SQLite
+  (`sim/host/src/trace.rs`): inputs, outputs, each day's towns, stock, routes, lockers and whys, every decided plan
+  (worth vs cost, went or stayed) with its per-good reasons, and the cash books. A stayed plan's reasons are kept on
+  `RouteState.last_plan` (not saved, never a rule): the core's tally drops them. The 30-day study: 165 KB, 663
+  requests, replayed in 0.5 s to the same trips and sales. Tests: `JournalTest` (17, a replay through a trap saves
+  the run's bytes), `trace::tests` (a traced run ends where the native run did).
 - **2026-10-23, the hub's wagons go.** The A4 "no caravan in 30 days" was the study, not the core: under the core a
   town wants only what its switched-on lockers buy, a locker counts only once a loaded villager has claimed its
   workstation, and the study switched trades on (and unloaded its towns) before any had. It now waits, then

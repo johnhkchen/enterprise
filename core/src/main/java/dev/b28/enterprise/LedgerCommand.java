@@ -31,7 +31,8 @@ final class LedgerCommand {
                                 .executes(LedgerCommand::ledger)))
                 .then(Commands.literal("core")
                         .then(Commands.literal("version").executes(LedgerCommand::version))
-                        .then(Commands.literal("report").executes(LedgerCommand::report))));
+                        .then(Commands.literal("report").executes(LedgerCommand::report))
+                        .then(Commands.literal("journal").executes(LedgerCommand::journal))));
     }
 
     /**
@@ -56,8 +57,8 @@ final class LedgerCommand {
     /**
      * {@code /enterprise core report} (docs/alpha-plan.md 4): a bug report's folder, {@code
      * world/enterprise-reports/day<N>-<time>/}, with the version line and why the society is paused (if it is), every
-     * town's ledger, its cash book for 30 days and its whys, and a copy of the core's save. The core is deterministic, so
-     * the save and the steps are a reproduction.
+     * town's ledger, its cash book for 30 days and its whys, a copy of the core's save, and this run's journal so far
+     * (`enterprise-sim trace` replays it). The core is deterministic, so the save and the steps are a reproduction.
      */
     private static int report(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
@@ -91,12 +92,30 @@ final class LedgerCommand {
             if (java.nio.file.Files.isRegularFile(save)) {
                 java.nio.file.Files.copy(save, dir.resolve(save.getFileName()));
             }
+            java.nio.file.Path journal = host == null ? null : host.journal();
+            if (journal != null && java.nio.file.Files.isRegularFile(journal)) {
+                java.nio.file.Files.copy(journal, dir.resolve(journal.getFileName()));
+            }
         } catch (java.io.IOException e) {
             source.sendFailure(Component.literal("Couldn't write the report to " + dir + ": " + e));
             return 0;
         }
         source.sendSuccess(() -> Component.literal("A bug report is in " + dir
                 + ". Zip that folder with logs/latest.log and send both."), false);
+        return 1;
+    }
+
+    /** {@code /enterprise core journal}: where this run's journal is, and how to read it. */
+    private static int journal(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        CoreHost host = CoreHost.of(source.getServer());
+        java.nio.file.Path journal = host == null ? null : host.journal();
+        if (journal == null) {
+            source.sendFailure(Component.literal("No journal this run (journal=off, or it failed: see logs/latest.log)"));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("The core's journal: " + journal.toAbsolutePath().normalize()
+                + ". Read it with: cd sim && cargo run --release -p enterprise-sim -- --trace <that file> run.db"), false);
         return 1;
     }
 

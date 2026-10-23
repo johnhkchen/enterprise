@@ -44,3 +44,7 @@ No Merchant at a desk? `/enterprise ledger <desk>` prints the same lines.
 2. Zip that folder with `logs/latest.log` and send both.
 
 `/enterprise core version` says which build you're on.
+
+The folder holds a record of everything the towns did this session (the journal), so we can play your session back
+exactly. Each world keeps its last 10 in `enterprise-journal/`, about 200 KB for a month of game days. Don't want one? Put `journal=off` in
+`config/enterprise.properties`.

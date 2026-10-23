@@ -341,6 +341,25 @@ pub struct RouteState {
     /// What the far end could spend on goods when its wagon last sold there (`Route.farPurse`, set in `Caravans.sell`
     /// 2445–2449): what makes the next wagon full is what it could pay for (`saleLoad`). `None` until it has sold there.
     pub far_purse: Option<Fixed>,
+    /// The last plan decided (`rules/plan.rs`'s `decide`), whether its wagon went or stayed: what a trace reads
+    /// (`enterprise-sim --trace`), never a rule. Not saved: a world loaded has none until its next try.
+    #[serde(skip)]
+    pub last_plan: Option<PlanNote>,
+}
+
+/// A plan as it was decided: when, what its load was worth against the road's cost, whether it was full, on its day
+/// or pressing, whether it went, its stacks, and why each good went or stayed in it (as [`RouteState::whys`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct PlanNote {
+    pub at: u64,
+    pub worth: f64,
+    pub cost: f64,
+    pub full: bool,
+    pub on_its_day: bool,
+    pub pressing: bool,
+    pub went: bool,
+    pub stacks: u32,
+    pub whys: Vec<(Option<usize>, crate::atlas::Why, f64)>,
 }
 
 /// A route's ends, before a load links them to their towns' entities again (from `from_id` and `to_id`).

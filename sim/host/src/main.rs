@@ -16,6 +16,9 @@
 //!
 //!     cargo run --release -p enterprise-sim -- 30 --wire-looks target/spike/study.looks
 //!
+//! `--trace JOURNAL OUT.db` replays a journal the mod wrote (a world's `enterprise-journal/`) and writes what happened
+//! into SQLite (`trace.rs` has the tables).
+//!
 //! `--world SEED DAYS FILE` does the same for one of the random worlds (the core tests' generator, every slice on by
 //! seed, each day's doings), run DAYS days: a bigger world than the study's, with a bigger save.
 //!
@@ -30,6 +33,7 @@
 mod flags;
 mod goods;
 mod report;
+mod trace;
 mod world;
 
 use std::time::Instant;
@@ -62,6 +66,22 @@ fn main() {
         let n = args.get(1).and_then(|a| a.parse().ok()).unwrap_or(300);
         let days = args.get(2).and_then(|a| a.parse().ok()).unwrap_or(120);
         return random_worlds(n, days);
+    }
+    if args.first().map(String::as_str) == Some("--trace") {
+        let (Some(journal), Some(db)) = (args.get(1), args.get(2)) else {
+            eprintln!("enterprise-sim --trace JOURNAL OUT.db");
+            std::process::exit(2);
+        };
+        let started = Instant::now();
+        match trace::trace_file(journal.as_ref(), db.as_ref()) {
+            Ok(t) => println!("{db}: {} requests replayed ({} refused), {} days, {} towns, {} routes, in {:.1}s",
+                t.requests, t.refused, t.days, t.towns, t.routes, started.elapsed().as_secs_f64()),
+            Err(e) => {
+                eprintln!("--trace {journal}: {e}");
+                std::process::exit(1);
+            }
+        }
+        return;
     }
     if args.first().map(String::as_str) == Some("--world") {
         let n = |i: usize| args.get(i).and_then(|a| a.parse::<u64>().ok());

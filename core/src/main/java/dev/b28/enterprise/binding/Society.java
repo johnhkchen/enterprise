@@ -51,7 +51,26 @@ public enum Society {
         return CORE;
     }
 
+    /**
+     * Whether the server's core writes a journal of the run (`binding/core/Journal`, in the world's folder): yes unless
+     * the system property {@code enterprise.journal}, the environment variable {@code ENTERPRISE_JOURNAL} or {@code
+     * journal=} in {@code config/enterprise.properties}, the first that says something, says {@code off}.
+     */
+    public static boolean journaling() {
+        for (String s : new String[] {System.getProperty("enterprise.journal"), System.getenv("ENTERPRISE_JOURNAL"),
+                fromConfigFile("journal")}) {
+            if (s != null && !s.isBlank()) {
+                return !"off".equals(s.strip().toLowerCase(Locale.ROOT));
+            }
+        }
+        return true;
+    }
+
     private static String fromConfigFile() {
+        return fromConfigFile("society");
+    }
+
+    private static String fromConfigFile(String key) {
         Path file = FMLPaths.CONFIGDIR.get().resolve(FILE);
         if (!Files.isRegularFile(file)) {
             return null;
@@ -59,7 +78,7 @@ public enum Society {
         try (Reader in = Files.newBufferedReader(file)) {
             Properties p = new Properties();
             p.load(in);
-            return p.getProperty("society");
+            return p.getProperty(key);
         } catch (IOException e) {
             Enterprise.LOGGER.warn("couldn't read {}: {}", file, e.toString());
             return null;

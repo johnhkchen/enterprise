@@ -22,6 +22,13 @@ Monorepo: our mods, the pack definition, and design docs.
 - Why a town went broke: every emerald in and out of a market's treasury is in its cash book (`/enterprise cashbook <desk> [days]`), by what for and by day, reconciled against its opening balance (what the book can't explain is printed: a few emeralds is normal). `--stop-when any.treasury<5` (or `E2.treasury<5`, `S3.mood<0`, `E3.villagers>=12`) ends a study at the first day a town meets it, saves that day's checkpoint and prints the town's cash book: a broke town in two minutes, not a 120-day run.
 - Following one town while a lane runs: `python3 dev/experiments/trace.py LANE TOWN --every 3 --out FILE` (read-only; start it once forks.py says the lane's server is up): its farm plan, idle plots, crops sold forward, mood, and its contracts and rents with their latest history, every few game days.
 - Each Merchant's reasons: `/enterprise whys <desk>` (and at the end of `enterprise books`) tallies why goods were sent or not, why the far end wouldn't buy, why no caravan left (and why each one went: `went: full`, `on its day`, `goods owed, by porter`...), and what its workshop could make but is short of. The study prints them for every market. Each route also keeps how full its caravans really ran (`loadOut`/`loadHome`: full stacks of goods, all trips told; `slotsOut`/`slotsHome`: slots taken) in `enterprise_caravans.dat`.
+- Tracing a run (core mode): the server writes every request its core took to `world/enterprise-journal/<time>.ejl`
+  (one a server run, the last 10 kept; `journal=off` in `config/enterprise.properties` or `ENTERPRISE_JOURNAL=off` for
+  none; `/enterprise core journal` says where). The core is deterministic, so `cd sim && cargo run --release -p
+  enterprise-sim -- --trace FILE run.db` replays it exactly and writes SQLite: `requests`, `inputs`, `outputs`, each
+  day's `towns`, `stock`, `routes`, `lockers`, `whys`, every decided `plans` (load worth vs road cost, went or stayed)
+  with `plan_whys` (why each good went or stayed, stays too), and `cash`. Then `sqlite3 run.db`. The tables:
+  `sim/host/src/trace.rs`. A journal replays only on the core of its wire schema.
 - Long runs stall when the Mac sleeps: a closed lid on battery sleeps it even under `caffeinate`, and the server freezes mid-tick. The study reports a day that takes six times the usual; `pmset -g log | grep Sleep` confirms it.
 
 ## Commands (`just`)

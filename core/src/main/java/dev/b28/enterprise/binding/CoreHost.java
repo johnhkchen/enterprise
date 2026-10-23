@@ -11,9 +11,11 @@ import dev.b28.enterprise.binding.adapters.PointsAdapter;
 import dev.b28.enterprise.binding.adapters.ShopAdapter;
 import dev.b28.enterprise.binding.adapters.StockAdapter;
 import dev.b28.enterprise.binding.adapters.WagonAdapter;
+import dev.b28.enterprise.core.Core;
 import dev.b28.enterprise.core.CoreModule;
 import dev.b28.enterprise.core.CoreTrap;
 import dev.b28.enterprise.core.CoreWorker;
+import dev.b28.enterprise.core.Journal;
 import dev.b28.enterprise.core.SaveStore;
 import dev.b28.enterprise.wire.Answer;
 import dev.b28.enterprise.wire.Command;
@@ -23,6 +25,8 @@ import dev.b28.enterprise.wire.Query;
 import dev.b28.enterprise.wire.Request;
 import dev.b28.enterprise.wire.Response;
 import dev.b28.enterprise.wire.Wire;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -88,11 +92,16 @@ public final class CoreHost implements AutoCloseable {
     private final Outcomes outcomes;
     private final List<CompletableFuture<Response>> looks = new ArrayList<>();
     private String pausedWhy;
+    private final Path journal;
+    /** Journals a world keeps: one a server run, the newest. */
+    private static final int JOURNALS_KEPT = 10;
     private long looked = -1;
 
-    private CoreHost(Path dir, long seed, boolean ownsChests) {
+    private CoreHost(Path dir, long seed, boolean ownsChests, boolean journaled) {
         this.worker = CoreWorker.start(module());
         this.dir = dir;
+        // Before the society is made or loaded: that request is the journal's first.
+        this.journal = journaled ? startJournal(dir) : null;
         this.store = new SaveStore(dir, this::callNow);
         this.points = new PointsAdapter(this);
         this.hands = new HandsAdapter(this);
@@ -137,7 +146,12 @@ public final class CoreHost implements AutoCloseable {
      * server's own is {@link #of}; a test makes its own.
      */
     public static CoreHost open(Path dir, long seed, boolean ownsChests) {
-        return new CoreHost(dir, seed, ownsChests);
+        return new CoreHost(dir, seed, ownsChests, false);
+    }
+
+    /** As {@link #open(Path, long, boolean)}, writing a journal of the run in {@code dir}'s {@value Journal#DIR}. */
+    public static CoreHost openJournaled(Path dir, long seed, boolean ownsChests) {
+        return new CoreHost(dir, seed, ownsChests, true);
     }
 
     /** A host of its own for the world folder {@code dir}, writing its moves to the chests (a test's). */
@@ -184,8 +198,9 @@ public final class CoreHost implements AutoCloseable {
         long started = System.nanoTime();
         startFailure = null;
         try {
-            running = open(server.getWorldPath(LevelResource.ROOT), server.getWorldData().worldGenOptions().seed(),
-                    Society.isCore());
+            Path world = server.getWorldPath(LevelResource.ROOT);
+            long seed = server.getWorldData().worldGenOptions().seed();
+            running = Society.journaling() ? openJournaled(world, seed, Society.isCore()) : open(world, seed, Society.isCore());
             String otherMode = WorldMode.check(server.getWorldPath(LevelResource.ROOT), Society.mode());
             if (otherMode != null) {
                 running.pause(otherMode);
@@ -506,6 +521,48 @@ public final class CoreHost implements AutoCloseable {
             failed("a request", e.getCause());
             throw e.getCause() instanceof RuntimeException r ? r : new IllegalStateException(e.getCause());
         }
+    }
+
+    /**
+     * A new journal for this run in the world's {@value Journal#DIR} (named for when it began), given to the core; the
+     * oldest past {@value #JOURNALS_KEPT} deleted. Null, said in the log, if it can't be made: the core runs without.
+     */
+    private Path startJournal(Path dir) {
+        Path folder = dir.resolve(Journal.DIR);
+        try {
+            Files.createDirectories(folder);
+            try (var old = Files.list(folder)) {
+                List<Path> runs = old.filter(p -> p.getFileName().toString().endsWith(".ejl")).sorted().toList();
+                for (int i = 0; i <= runs.size() - JOURNALS_KEPT; i++) {
+                    Files.deleteIfExists(runs.get(i));
+                }
+            }
+            String name = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+            Path file = folder.resolve(name + ".ejl");
+            Journal journal = Journal.create(file);
+            worker.inspect(core -> {
+                core.journal(journal);
+                return null;
+            }).join();
+            Enterprise.LOGGER.info("The core's journal: {}", file);
+            return file;
+        } catch (IOException | RuntimeException e) {
+            Enterprise.LOGGER.warn("The core runs without a journal: {}", e.toString());
+            return null;
+        }
+    }
+
+    /** This run's journal, or null when it keeps none (or it failed to write: see the log). */
+    public Path journal() {
+        if (journal == null) {
+            return null;
+        }
+        String failed = worker.inspect(Core::journalFailure).join();
+        if (failed != null) {
+            Enterprise.LOGGER.warn("The core's journal stopped: {}", failed);
+            return null;
+        }
+        return journal;
     }
 
     private void failed(String what, Throwable cause) {

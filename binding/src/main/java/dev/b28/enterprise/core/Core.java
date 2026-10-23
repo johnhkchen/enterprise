@@ -38,6 +38,10 @@ import java.util.Objects;
  * <p>Asking ({@code Ask}) and saving change nothing, so they aren't kept; nor is a refused request (nothing of it was
  * applied). A host that saves at each autosave keeps a day or so of looks: a few KB each.
  *
+ * <p><b>A journal.</b> Given one ({@link #journal}), every request it keeps for a trap is written there too, as it's taken:
+ * the whole run, to replay off the game. A journal that fails to write is dropped, and the core runs on without it
+ * ({@link #journalFailure}).
+ *
  * <p>Not thread-safe: one server thread calls it (Chicory instances aren't shared).
  */
 public final class Core implements AutoCloseable {
@@ -55,6 +59,8 @@ public final class Core implements AutoCloseable {
     private byte[] checkpoint;
     private final List<byte[]> since = new ArrayList<>();
     private CoreTrap stuck;
+    private Journal journal;
+    private String journalFailure;
     private int traps;
     private int trapsToMake;
 
@@ -143,9 +149,28 @@ public final class Core implements AutoCloseable {
         return (long) instance.memory().pages() * 65_536L;
     }
 
+    /** Writes every request the core takes from now on to {@code journal} (null: none), and closes it with the core. */
+    public void journal(Journal journal) {
+        this.journal = journal;
+        this.journalFailure = null;
+    }
+
+    /** Why the journal was dropped (it failed to write), or null. */
+    public String journalFailure() {
+        return journalFailure;
+    }
+
     @Override
     public void close() {
         dropInstance();
+        if (journal != null) {
+            try {
+                journal.close();
+            } catch (java.io.IOException e) {
+                journalFailure = "closing " + journal.file() + ": " + e.getMessage();
+            }
+            journal = null;
+        }
     }
 
     /** For tests: the next {@code calls} calls into the module trap (a read past its memory's end: a real trap). */
@@ -271,13 +296,39 @@ public final class Core implements AutoCloseable {
             }
             case Response.Done done -> {
                 switch (command(request)) {
-                    case Command.Create c -> setCheckpoint(request);
-                    case Command.Load l -> setCheckpoint(request);
-                    case Command.Apply a -> since.add(request.clone());
+                    case Command.Create c -> {
+                        setCheckpoint(request);
+                        journal(request);
+                    }
+                    case Command.Load l -> {
+                        setCheckpoint(request);
+                        journal(request);
+                    }
+                    case Command.Apply a -> {
+                        since.add(request.clone());
+                        journal(request);
+                    }
                     case null, default -> { }
                 }
             }
             case Response.Refused refused -> { }
+        }
+    }
+
+    private void journal(byte[] request) {
+        if (journal == null) {
+            return;
+        }
+        try {
+            journal.write(request);
+        } catch (java.io.IOException e) {
+            journalFailure = "writing " + journal.file() + ": " + e.getMessage();
+            try {
+                journal.close();
+            } catch (java.io.IOException ignored) {
+                // already failing
+            }
+            journal = null;
         }
     }
 
