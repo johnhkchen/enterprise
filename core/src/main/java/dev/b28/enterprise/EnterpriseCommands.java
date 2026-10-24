@@ -643,8 +643,9 @@ final class EnterpriseCommands {
                                         }))))
                 .then(Commands.literal("autoswitch")
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
-                                .then(Commands.literal("selling").executes(context -> autoswitch(context, false)))
-                                .then(Commands.literal("all").executes(context -> autoswitch(context, true)))))
+                                .then(Commands.literal("selling").executes(context -> autoswitch(context, false, false)))
+                                .then(Commands.literal("unlocked").executes(context -> autoswitch(context, false, true)))
+                                .then(Commands.literal("all").executes(context -> autoswitch(context, true, false)))))
                 .then(Commands.literal("switch")
                         .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                 .then(Commands.argument("workstation", BlockPosArgument.blockPos())
@@ -1916,10 +1917,12 @@ final class EnterpriseCommands {
 
     /**
      * Switches on, for every locker in reach of a desk (managed or waiting) that has nothing switched on yet, the
-     * trades that earn emeralds, or every trade. Lockers someone has already set up are left alone. For test worlds
-     * and servers setting up a market.
+     * trades that earn emeralds, or every trade. Lockers someone has already set up are left alone; with {@code unlocked},
+     * their buying trades still off are switched on too (what a villager unlocked by levelling up). For test worlds and
+     * servers setting up a market.
      */
-    private static int autoswitch(CommandContext<CommandSourceStack> context, boolean all) throws CommandSyntaxException {
+    private static int autoswitch(CommandContext<CommandSourceStack> context, boolean all, boolean unlocked)
+            throws CommandSyntaxException {
         CommandSourceStack source = context.getSource();
         ServerLevel level = source.getLevel();
         BlockPos desk = BlockPosArgument.getLoadedBlockPos(context, "desk");
@@ -1934,7 +1937,7 @@ final class EnterpriseCommands {
                 return 0;
             }
             host.lockers().placeNow(level, town);
-            int count = host.commands().autoswitch(town, all);
+            int count = host.commands().autoswitch(town, all, unlocked);
             source.sendSuccess(() -> Component.literal("Switched on %d trade(s)".formatted(count)), true);
             return count;
         }
@@ -1942,7 +1945,7 @@ final class EnterpriseCommands {
         MerchantBook book = MerchantBook.get(source.getServer());
         int switched = 0;
         for (MerchantView.LockerView locker : MerchantView.build(level, desk, Integer.MAX_VALUE).lockers()) {
-            if (!book.enabledTrades(deskPos, locker.workstation()).isEmpty()) {
+            if (!unlocked && !book.enabledTrades(deskPos, locker.workstation()).isEmpty()) {
                 continue;
             }
             for (MerchantView.TradeView trade : locker.trades()) {

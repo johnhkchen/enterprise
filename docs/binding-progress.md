@@ -5,6 +5,15 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-24, the network trades past day 17.** From day 17 no wagon went anywhere: the hub's warehouse is a fixed
+  stock (the study's design: no restock without `--inject`), and its towns bought only 7 of its 15 goods, since the
+  study switched trades on once at setup and offers a villager unlocks by levelling up stayed off (flint, pumpkin,
+  melon, ink, compass: 1,728 each, never sold). `/enterprise autoswitch <desk> unlocked` switches on buying offers
+  still off at lockers already set up; the study runs it every 4 days in core mode. 30 days: 26,320 items sold
+  (12,071 before), wagon takings 1,473 (373), trips to day 28, hub mood -1.82 (-2.83), S1-S3 treasuries 352/738/633
+  (about 120 before). Game test: `aTownsTerritoryAndTheWarAreTheCoresForTheStudies` checks `unlocked`. Found with
+  the trace's `stock` and `lockers`. Also seen: `CoreBindingTests` run alone fails its buying-vendor test (all 311
+  pass together).
 - **2026-10-24, no wagon goes for its purse alone.** A shopping trip's money counted as its load's worth whenever the
   far end held any comfort it wanted, so from day 20 the hub sent empty wagons every 4 days, 6-12 of road food each,
   to bring home 14 items for 0.68 (found with the trace's `trips`). Now the purse counts only up to what the far end

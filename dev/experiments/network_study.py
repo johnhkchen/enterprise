@@ -611,6 +611,14 @@ def main():
             print("day %d: " % day + rcon("enterprise war declare faction").strip().splitlines()[-1])
         if war and day == war[2]:
             print("day %d: " % day + rcon("enterprise war peace").strip().splitlines()[-1])
+        if CORE and day % 4 == 1 and day > 1:
+            # The offers a villager unlocked by levelling up, switched on as a player would on the Merchant's screen.
+            for name, corner in TOWNS.items():
+                rcon(f"forceload add {desk(corner).replace(' -60', '')}")  # the command reads a loaded desk
+                said = rcon(f"enterprise autoswitch {desk(corner)} unlocked").strip().splitlines()
+                rcon(f"forceload remove {desk(corner).replace(' -60', '')}")
+                if said and not said[-1].startswith("Switched on 0 "):
+                    print(f"day {day}: {name} {said[-1]}")
         if inject == day:
             open_spring()
         elif inject is not None and day > inject:

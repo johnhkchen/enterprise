@@ -194,9 +194,17 @@ public final class CommandsAdapter {
      * switches. Returns how many it switched on.
      */
     public int autoswitch(long town, boolean all) {
+        return autoswitch(town, all, false);
+    }
+
+    /**
+     * As {@link #autoswitch(long, boolean)}, and with {@code unlocked} at lockers that have something on too: the buying
+     * offers a villager unlocked since (a level up), as a player switching on what's new.
+     */
+    public int autoswitch(long town, boolean all, boolean unlocked) {
         int switched = 0;
         for (var locker : host.lockers().town(town).lockers()) {
-            if (locker.offers().stream().anyMatch(dev.b28.enterprise.wire.OfferView::on)) {
+            if (!unlocked && locker.offers().stream().anyMatch(dev.b28.enterprise.wire.OfferView::on)) {
                 continue;
             }
             for (var offer : locker.offers()) {

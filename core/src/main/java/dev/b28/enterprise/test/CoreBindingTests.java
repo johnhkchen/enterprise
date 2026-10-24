@@ -1329,6 +1329,16 @@ public final class CoreBindingTests {
             int switched = commands.autoswitch(w.hub(), false);
             helper.assertTrue(switched > 0 && commands.autoswitch(w.hub(), false) == 0,
                     "autoswitch switched " + switched + " offer(s), then switched more: " + host.lockers().town(w.hub()).lockers());
+            // An offer off at a locker with another on (as one a villager unlocks by levelling up): only `unlocked` takes it.
+            var both = host.lockers().town(w.hub()).lockers().stream()
+                    .filter(l -> l.offers().stream().filter(o -> o.on() && !o.sells()).count() >= 2).findFirst();
+            helper.assertTrue(both.isPresent(), "no locker with two offers on: " + host.lockers().town(w.hub()).lockers());
+            {
+                var off = both.get().offers().stream().filter(o -> o.on() && !o.sells()).findFirst().orElseThrow();
+                helper.assertTrue(host.lockers().flip(dev.b28.enterprise.binding.adapters.LockerAdapter.key(both.get().hand(), off), false), "switched off");
+                helper.assertTrue(commands.autoswitch(w.hub(), false) == 0, "the locker has another on: autoswitch leaves it");
+                helper.assertTrue(commands.autoswitch(w.hub(), false, true) == 1, "unlocked switches it back on");
+            }
             // A desk the core keeps no town at has no town near it.
             helper.assertTrue(commands.townNear(GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(new BlockPos(40, 2, 40))), 8) == null,
                     "a town near nothing");
