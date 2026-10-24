@@ -12,6 +12,9 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
   a town, made at its first roll from the world's seed (never rolled itself) and its id (splitmix64); the locker XP
   roll and the jobs draw take the town's. Save shape changed (FORMAT stays 1, alpha: no compatibility): checkpoints
   from before don't open. Test `jobs::a_towns_dice_are_its_own`; replay digest and scenarios' saves written again.
+  Checked: the Leatherworker fork again from a new day-0 checkpoint (`dice`), three lanes each: Greenwick and Hayfield
+  (no road to S1) come out the same to the hundredth with or without S1's new hand (-0.32, 0.28; money 60, 50);
+  Meadowworth +2.62 to +3.66 (reading 0.77 to 0.90), the hub -0.14 to +0.58, Hollowwick 1.21 to 1.41.
 - **2026-10-24, a Leatherworker gives S1 reading.** `network_study.py --add-hand S1:leatherworker` (S1:none, the
   fair side) forked from a recipes day-0 checkpoint, three lanes each (identical within a side): Meadowworth's cows
   give leather its Librarian binds at once (leather never above 3 held), reading met 0.84 of days (0.52), mood
