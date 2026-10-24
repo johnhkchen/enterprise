@@ -5,6 +5,19 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-24, villagers work the game's recipes.** A trade may craft or smelt what it deals in (buys or sells in
+  its vanilla trades), from the game's crafting-table and furnace recipes (`binding/VillagerCrafts`): on top of the
+  mod's 7 conversions (which keep their outputs), recipes over goods the economy already prices, with no input that
+  comes back from the bench and none that undoes another; plus `EXTRAS` the game has no recipe for (a Librarian breaks
+  a bookshelf into 3 books) and a `DENIED` list. 41 recipes in the dev pack: arrows and bows, tools and armour, smelted
+  iron and gold, leather armour, rabbit hide into leather, wool from string, paintings, banners, writable books. No
+  wire change (the pack carried any recipes already); a world keeps the recipes it was made with. Books from bought
+  bookshelves cost 3 emeralds each against a book's 0.25, so no town buys them (the margin rule stays, John's call):
+  reading comes from paper and leather, and the study's towns have no Leatherworker, so none. A fresh 30-day study:
+  Greenwick spins the hub's string into wool and carpets (mood -0.31 to +1.41), writable books in four towns, bows in
+  three; hub mood -0.88 (-1.82); two fresh worlds with different routes, so partly noise. Game test
+  `theModsContentPackIsTakenWholeByTheCore` checks the bookshelf, the arrows and that every recipe's trades deal in
+  its output.
 - **2026-10-24, the network trades past day 17.** From day 17 no wagon went anywhere: the hub's warehouse is a fixed
   stock (the study's design: no restock without `--inject`), and its towns bought only 7 of its 15 goods, since the
   study switched trades on once at setup and offers a villager unlocks by levelling up stayed off (flint, pumpkin,

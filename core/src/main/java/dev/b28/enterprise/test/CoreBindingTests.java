@@ -4,6 +4,8 @@ import dev.b28.enterprise.Enterprise;
 import dev.b28.enterprise.binding.CoreHost;
 import dev.b28.enterprise.binding.ModPack;
 import dev.b28.enterprise.binding.Society;
+import dev.b28.enterprise.binding.VillagerCrafts;
+import dev.b28.enterprise.wire.PackRecipe;
 import dev.b28.enterprise.binding.adapters.DialAdapter;
 import dev.b28.enterprise.binding.adapters.HandsAdapter;
 import dev.b28.enterprise.binding.adapters.LandAdapter;
@@ -162,8 +164,20 @@ public final class CoreBindingTests {
                 "kinds of comfort: " + pack.comforts());
         helper.assertTrue(pack.trades().size() == 16 && pack.trades().get(0).equals("merchant") && pack.trades().contains("farmer")
                 && pack.trades().get(14).equals("none") && pack.trades().get(15).equals("nitwit"), "trades: " + pack.trades());
-        helper.assertTrue(pack.recipes().size() == dev.b28.enterprise.territory.Workshop.CONVERSIONS.size()
+        int own = dev.b28.enterprise.territory.Workshop.CONVERSIONS.size();
+        helper.assertTrue(pack.recipes().size() > own + VillagerCrafts.EXTRAS.size()
                 && pack.animals().size() == dev.b28.enterprise.territory.Husbandry.KINDS.size(), "recipes or animals missing");
+        // The game's recipes the villagers work: a Librarian breaks bookshelves into books, a Fletcher (who sells arrows)
+        // fletches them from the game's recipe; every one is worked by a trade that deals in what it makes.
+        helper.assertTrue(pack.recipes().stream().anyMatch(r -> r.output().equals("minecraft:book") && r.trades().equals(List.of("librarian"))
+                && r.inputs().equals(List.of(new dev.b28.enterprise.wire.PackAmount("minecraft:bookshelf", 1)))), "no bookshelf into books");
+        helper.assertTrue(pack.recipes().stream().anyMatch(r -> r.output().equals("minecraft:arrow") && r.trades().contains("fletcher")),
+                "the Fletcher doesn't fletch arrows: " + pack.recipes().stream().map(PackRecipe::output).toList());
+        var dealsIn = VillagerCrafts.dealsIn(helper.getLevel().getServer(), new java.util.HashSet<>(pack.trades()));
+        for (PackRecipe r : pack.recipes().subList(own + VillagerCrafts.EXTRAS.size(), pack.recipes().size())) {
+            helper.assertTrue(r.trades().stream().allMatch(t -> dealsIn.getOrDefault(r.output(), java.util.Set.of()).contains(t)),
+                    r + ": made by a trade that doesn't deal in it");
+        }
 
         Path dir = folder();
         try (CoreHost host = CoreHost.open(dir, 7)) {

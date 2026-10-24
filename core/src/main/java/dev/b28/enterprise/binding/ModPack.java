@@ -177,7 +177,10 @@ public final class ModPack {
         return trades;
     }
 
-    /** What the trades make: the mod's workshop conversions, in their order. */
+    /**
+     * What the trades make: the mod's workshop conversions, in their order, then the game's recipes the villagers work
+     * ({@link VillagerCrafts}: what each trade deals in), from the running server's recipes.
+     */
     static List<PackRecipe> recipes() {
         List<PackRecipe> recipes = new ArrayList<>();
         for (Workshop.Conversion c : Workshop.CONVERSIONS) {
@@ -188,6 +191,8 @@ public final class ModPack {
             }
             recipes.add(new PackRecipe(c.trades().stream().map(ModPack::bare).sorted().toList(), inputs, id(c.output()), c.out()));
         }
+        recipes.addAll(VillagerCrafts.of(net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer(),
+                new java.util.HashSet<>(trades())));
         return recipes;
     }
 
