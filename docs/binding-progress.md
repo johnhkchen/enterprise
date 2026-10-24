@@ -5,6 +5,13 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-24, each town rolls its own dice.** One world `Rng` drawn by every town meant a change in one town
+  re-rolled every other's: S1's Leatherworker did more locker trades (each rolls for the Merchant's XP), so roadless
+  Greenwick's slack Fletcher retrained as a Leatherworker (cows, no wool, furnishings 0) where the base run drew a
+  Shepherd (sheep, carpets, furnishings 0.77): its mood 0.22 against 1.42 was dice. Now `Dice` (saved) holds a stream
+  a town, made at its first roll from the world's seed (never rolled itself) and its id (splitmix64); the locker XP
+  roll and the jobs draw take the town's. Save shape changed (FORMAT stays 1, alpha: no compatibility): checkpoints
+  from before don't open. Test `jobs::a_towns_dice_are_its_own`; replay digest and scenarios' saves written again.
 - **2026-10-24, a Leatherworker gives S1 reading.** `network_study.py --add-hand S1:leatherworker` (S1:none, the
   fair side) forked from a recipes day-0 checkpoint, three lanes each (identical within a side): Meadowworth's cows
   give leather its Librarian binds at once (leather never above 3 held), reading met 0.84 of days (0.52), mood

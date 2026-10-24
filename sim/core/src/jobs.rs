@@ -20,7 +20,7 @@
 //!
 //! **Not as the mod:** there is no ground to find a site on, so a stall needs none; the mod's `Villager` is a
 //! [`Hand`] here. The caller gates it as the mod's `Territory.grow` does (see `rules/jobs.rs`); `review_jobs` doesn't.
-//! The draw uses the world's seeded [`Rng`], not the level's.
+//! The draw uses the town's own seeded dice ([`Dice`]), not the level's.
 
 use std::collections::BTreeMap;
 
@@ -354,9 +354,10 @@ impl crate::society::Society {
         let bills = self.world.resource::<Bills>().clone();
         let mut ledger = std::mem::take(&mut *self.world.resource_mut::<Ledger>());
         let mut book = std::mem::take(&mut *self.world.resource_mut::<crate::cash_book::CashBook>());
-        let mut rng = std::mem::take(&mut *self.world.resource_mut::<Rng>());
+        let seed = self.world.resource::<Rng>().clone();
+        let mut dice = std::mem::take(&mut *self.world.resource_mut::<Dice>());
         let hired = {
-            let mut books = Books { ledger: &mut ledger, book: &mut book, rng: &mut rng };
+            let mut books = Books { ledger: &mut ledger, book: &mut book, rng: dice.of(town, &seed) };
             let (met, mut purse) = (people.comfort_met.clone(), people.purse);
             let mut place = Place { town, money: &mut money.0, purse: &mut purse, deposits: &mut deposits,
                 budget: &mut budget, stock: &stock, trades: &trades, farm: &farm, met: &met,
@@ -367,7 +368,7 @@ impl crate::society::Society {
         };
         *self.world.resource_mut::<Ledger>() = ledger;
         *self.world.resource_mut::<crate::cash_book::CashBook>() = book;
-        *self.world.resource_mut::<Rng>() = rng;
+        *self.world.resource_mut::<Dice>() = dice;
         self.world.entity_mut(e).insert((roster, lockers, money, people, budget, deposits));
         let content = self.content();
         hired.map(|h| (h.hand, content.trades[h.trade].name.clone(), h.retrained))

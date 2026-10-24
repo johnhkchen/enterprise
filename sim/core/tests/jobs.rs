@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use enterprise_core::cash_book::{Account, Reason};
 use enterprise_core::jobs::{bag, comfort_marbles, draw, Marbles};
 use enterprise_core::roster::{Hand, Roster};
-use enterprise_core::state::Rng;
+use enterprise_core::state::{Dice, Rng};
 use enterprise_core::{Content, Good, Society};
 
 const DAY: u64 = 24_000;
@@ -395,4 +395,22 @@ fn a_town_raising_settlers_keeps_its_idle_hands_for_them() {
     };
     assert_eq!(idle_after(6), 1, "raising settlers: the hand waits for them");
     assert_eq!(idle_after(2), 0, "not grown: it takes a stall");
+}
+
+#[test]
+fn a_towns_dice_are_its_own() {
+    // Town 1's rolls are the same whether town 0 has rolled a hundred times or never: a change in one town doesn't
+    // move another's draws.
+    let seed = Rng::new(7);
+    let mut alone = Dice::default();
+    let first: Vec<u64> = (0..5).map(|_| alone.of(1, &seed).next()).collect();
+    let mut busy = Dice::default();
+    for _ in 0..100 {
+        busy.of(0, &seed).next();
+    }
+    let after: Vec<u64> = (0..5).map(|_| busy.of(1, &seed).next()).collect();
+    assert_eq!(first, after);
+    // Each town's stream is its own, and the world's seed isn't rolled.
+    assert_ne!(Dice::default().of(0, &seed).next(), Dice::default().of(1, &seed).next());
+    assert_eq!(seed.0, 7);
 }

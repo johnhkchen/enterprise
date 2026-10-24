@@ -27,6 +27,7 @@ crate::saved! {
         territory: crate::territory::Territory = crate::territory::Territory::default(),
         settlers: crate::settlers::Settlers = crate::settlers::Settlers::default(),
         rng: crate::state::Rng = crate::state::Rng::default(),
+        dice: crate::state::Dice = crate::state::Dice::default(),
         rents: crate::harvest::Rents = crate::harvest::Rents::default(),
         signals: crate::jobs::Signals = crate::jobs::Signals::default(),
         hiring: crate::jobs::Hiring = crate::jobs::Hiring::default(),

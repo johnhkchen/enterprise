@@ -218,7 +218,7 @@ pub struct Lockers {
     pub placed: Option<std::collections::BTreeMap<HandId, crate::points::Spot>>,
 }
 
-/// The books a locker trade writes in: the ledger (goods used and made), the cash book, and the world's dice.
+/// The books a locker trade writes in: the ledger (goods used and made), the cash book, and the town's dice.
 pub struct Books<'a> {
     pub ledger: &'a mut Ledger,
     pub book: &'a mut CashBook,
@@ -867,14 +867,15 @@ impl crate::society::Society {
         let mut money = *self.world.get::<Money>(e).unwrap();
         let mut ledger = std::mem::take(&mut *self.world.resource_mut::<Ledger>());
         let mut book = std::mem::take(&mut *self.world.resource_mut::<CashBook>());
-        let mut rng = std::mem::take(&mut *self.world.resource_mut::<Rng>());
+        let seed = self.world.resource::<Rng>().clone();
+        let mut dice = std::mem::take(&mut *self.world.resource_mut::<crate::state::Dice>());
         let made = {
-            let mut books = Books { ledger: &mut ledger, book: &mut book, rng: &mut rng };
+            let mut books = Books { ledger: &mut ledger, book: &mut book, rng: dice.of(town, &seed) };
             f(self.content(), &mut books, now, town, &mut roster, &mut lockers, &mut stock, &mut money)
         };
         *self.world.resource_mut::<Ledger>() = ledger;
         *self.world.resource_mut::<CashBook>() = book;
-        *self.world.resource_mut::<Rng>() = rng;
+        *self.world.resource_mut::<crate::state::Dice>() = dice;
         self.world.entity_mut(e).insert((roster, stock, money, lockers));
         made
     }

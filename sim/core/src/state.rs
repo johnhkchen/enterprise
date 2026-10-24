@@ -30,9 +30,9 @@ pub struct Ledger {
     pub spent: Fixed,
 }
 
-/// The world's dice (decision 8 of `docs/core-plan.md`): xorshift64*, seeded, saved with the state, and drawn only
-/// where the mod rolls dice (the Merchant's XP from a locker trade, `lockers.rs`; the jobs draw). Seeded 1 unless the
-/// host seeds it (`Society::seed`).
+/// Dice (decision 8 of `docs/core-plan.md`): xorshift64*, seeded, saved with the state. The world's own is its seed,
+/// never rolled (seeded 1 unless the host seeds it: `Society::seed`); each town rolls its own ([`Dice`]), where the mod
+/// rolls dice (the Merchant's XP from a locker trade, `lockers.rs`; the jobs draw).
 #[derive(Resource, Clone, Debug, Serialize, Deserialize)]
 pub struct Rng(pub u64);
 
@@ -58,6 +58,24 @@ impl Rng {
     /// A roll of 0 to `n - 1`, as Java's `nextInt(n)` (0 when `n` is 0).
     pub fn below(&mut self, n: u64) -> u64 {
         if n == 0 { 0 } else { self.next() % n }
+    }
+}
+
+/// Each town's dice, a stream of its own: what one town rolls never moves another's, so a change in one town leaves the
+/// others' draws as they were. A town's are made at its first roll, from the world's seed ([`Rng`]) and its id.
+#[derive(Resource, Clone, Debug, Default, Serialize, Deserialize)]
+pub struct Dice(pub std::collections::BTreeMap<usize, Rng>);
+
+impl Dice {
+    /// The town's dice, made from the world's `seed` and its id at its first roll.
+    pub fn of(&mut self, town: usize, seed: &Rng) -> &mut Rng {
+        self.0.entry(town).or_insert_with(|| {
+            // splitmix64 of seed and town: streams that start far apart for neighbouring ids.
+            let mut z = seed.0.wrapping_add((town as u64 + 1).wrapping_mul(0x9E37_79B9_7F4A_7C15));
+            z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+            z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+            Rng::new(z ^ (z >> 31))
+        })
     }
 }
 
