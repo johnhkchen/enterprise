@@ -26,6 +26,10 @@ Fletcher (a temple and a watchtower to build with the Mason; the Fletcher hunts)
 the square), with beds for them; T takes in two Nitwits, who stand watch at its posts as militia (with --river). The
 towns' buildings, hands and services are printed at the end.
 
+With --add-hand TOWN:TRADE (e.g. S1:leatherworker), on the study's first day that town is loaded, a villager of the
+trade put by its bell with a bed, and the town held loaded 1,200 ticks so the core counts it, then let go;
+TOWN:none loads and lets go the same way with no one put there, the fair side to fork against.
+
 With --master, the hub's Merchant is a master: it brokers with players' shops (Numismatics vendors) round its desk,
 and its market (orders, signals, takings) is printed at the end.
 
@@ -189,7 +193,7 @@ _trades = {}
 CORE = False  # society=core: every number comes from the core's own answers (set by main from the server's own words)
 
 # Flags that shape the world or read what is still the Java rules': Java mode only. Core mode runs the default world.
-CORE_FLAGS = {"--save-at", "--label", "--resume", "--stop-when"}
+CORE_FLAGS = {"--save-at", "--label", "--resume", "--stop-when", "--add-hand"}
 
 
 def census(corner):
@@ -564,7 +568,7 @@ def main():
         retired = sorted(a for a in sys.argv[3:] if a.startswith("--") and a not in CORE_FLAGS)
         if retired:
             sys.exit(f"{' '.join(retired)}: Java mode only (retired for sim/host); under society=core this study runs the "
-                     f"default world (with --save-at, --label, --resume, --stop-when)")
+                     f"default world (with --save-at, --label, --resume, --stop-when, --add-hand)")
     inject = int(sys.argv[sys.argv.index("--inject") + 1]) if "--inject" in sys.argv else None
     save_at = {int(d) for d in flag("--save-at", "").split(",") if d}
     started = time.time()
@@ -611,6 +615,20 @@ def main():
             print("day %d: " % day + rcon("enterprise war declare faction").strip().splitlines()[-1])
         if war and day == war[2]:
             print("day %d: " % day + rcon("enterprise war peace").strip().splitlines()[-1])
+        if "--add-hand" in sys.argv and day == first:
+            name, trade = flag("--add-hand").split(":")
+            corner = TOWNS[name]
+            b = [int(v) for v in bell(corner).split()]
+            rcon(f"forceload add {area(corner, 27)}")
+            sprint(20)  # the chunks load
+            if trade != "none":
+                rcon(f"summon minecraft:villager {b[0] + 2}.5 {b[1]} {b[2] + 2}.5 {{PersistenceRequired:1b,Xp:1,"
+                     f"VillagerData:{{profession:\"minecraft:{trade}\",level:1,type:\"minecraft:plains\"}}}}",
+                     f"setblock {b[0] + 4} -60 {b[2] + 2} minecraft:white_bed[facing=north,part=head]",
+                     f"setblock {b[0] + 4} -60 {b[2] + 3} minecraft:white_bed[facing=north,part=foot]")
+            sprint(1200)
+            rcon(f"forceload remove {area(corner, 27)}")
+            print(f"day {day}: {name} " + (f"takes in a {trade}" if trade != "none" else "loaded and let go"))
         if CORE and day % 4 == 1 and day > 1:
             # The offers a villager unlocked by levelling up, switched on as a player would on the Merchant's screen.
             for name, corner in TOWNS.items():

@@ -5,6 +5,12 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-24, a Leatherworker gives S1 reading.** `network_study.py --add-hand S1:leatherworker` (S1:none, the
+  fair side) forked from a recipes day-0 checkpoint, three lanes each (identical within a side): Meadowworth's cows
+  give leather its Librarian binds at once (leather never above 3 held), reading met 0.84 of days (0.52), mood
+  +3.01 (+1.57), money 838 (800), beef 69 by day 30. The core opened 11 routes, not 9, once S1 had its new hand, so
+  the rest moved too: Wheatfield mood 1.84 (2.71), Greenwick 0.22 (1.42), Hollowwick 1.55 (1.38), network sales
+  24,110 (22,679).
 - **2026-10-24, villagers work the game's recipes.** A trade may craft or smelt what it deals in (buys or sells in
   its vanilla trades), from the game's crafting-table and furnace recipes (`binding/VillagerCrafts`): on top of the
   mod's 7 conversions (which keep their outputs), recipes over goods the economy already prices, with no input that
