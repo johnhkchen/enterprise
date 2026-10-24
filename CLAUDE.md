@@ -26,7 +26,7 @@ Monorepo: our mods, the pack definition, and design docs.
   (one a server run, the last 10 kept; `journal=off` in `config/enterprise.properties` or `ENTERPRISE_JOURNAL=off` for
   none; `/enterprise core journal` says where). The core is deterministic, so `cd sim && cargo run --release -p
   enterprise-sim -- --trace FILE run.db` replays it exactly and writes SQLite: `requests`, `inputs`, `outputs`, each
-  day's `towns`, `stock`, `routes`, `lockers`, `whys`, every decided `plans` (load worth vs road cost, purse, went or
+  day's `towns` (with mood's target, comforts met, paid share), `comforts` (met by kind), `stock`, `routes`, `lockers`, `whys`, every decided `plans` (load worth vs road cost, purse, went or
   stayed) with `plan_whys` (why each good went or stayed, stays too), each wagon's `trips` (out: stacks, worth, purse;
   there: sold, takings, bought, paid; pallet items either way), and `cash`. A trip's worth counts only what it took to
   sell: a buying trip's goods are in `bought` and `pallet_items`. Then `sqlite3 run.db`. The tables:
