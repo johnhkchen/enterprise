@@ -9,7 +9,7 @@
 //! - `requests`: each request replayed, its command, the tick after it, and its inputs and outputs counted.
 //! - `inputs`, `outputs`: each input the mod sent and each output the core gave back, by kind, with its town, route
 //!   and good when it names one, and the whole of it as JSON.
-//! - Each day as the first request to reach it left it (the last day as the run ended): `towns` (name, people, beds, mood, money), `stock` (each good a town
+//! - Each day as the first request to reach it left it (the last day as the run ended): `towns` (name, people, beds, mood, money, mood target, comforts met, paid share), `comforts` (each kind met), `stock` (each good a town
 //!   holds), `routes` (trips, what's sold and carried, whether a wagon is out, why it stayed, the far end's last purse),
 //!   `lockers` (each hand's offers: placed, managed, switched on), `whys` (each town's reasons, tallied so far: a
 //!   day's are the difference from the day before's).
@@ -77,7 +77,8 @@ const SCHEMA_SQL: &str = "
 create table requests (seq integer, command text, tick integer, day integer, inputs integer, outputs integer, refused text);
 create table inputs (seq integer, i integer, tick integer, day integer, kind text, town integer, route integer, good text, json text);
 create table outputs (seq integer, i integer, tick integer, day integer, kind text, town integer, route integer, good text, json text);
-create table towns (day integer, town integer, name text, villagers real, beds real, mood real, money real);
+create table towns (day integer, town integer, name text, villagers real, beds real, mood real, money real, target real, comforts real, paid_share real);
+create table comforts (day integer, town integer, kind text, met real);
 create table stock (day integer, town integer, good text, count real);
 create table routes (day integer, route integer, from_town integer, to_town integer, blocks integer, trips integer,
     sold real, carried real, bought real, paid real, on_road integer, stayed text, far_purse real);
@@ -154,7 +155,7 @@ pub fn trace(requests: &[&[u8]], conn: &mut Connection) -> Result<Traced, String
     let Some(s) = society.as_ref() else { return Err("the journal has no requests".into()) };
     let day = s.now() / s.content().day_ticks.max(1);
     // The last day as the run ended, in place of its first look's.
-    for table in ["towns", "stock", "routes", "lockers", "whys"] {
+    for table in ["towns", "comforts", "stock", "routes", "lockers", "whys"] {
         tx.execute(&format!("delete from {table} where day = ?1"), params![day]).map_err(|e| e.to_string())?;
     }
     snapshot(&tx, &mut society, day, asking.unwrap())?;
@@ -198,8 +199,14 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
     let goods: Vec<String> = s.content().goods.iter().map(|g| bare(&g.name)).collect();
     for t in 0..s.town_count() {
         let v = s.town(t);
-        tx.execute("insert into towns values (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-            params![day, t, v.name, v.people.villagers, v.people.beds, v.people.mood, v.money.to_f64()]).map_err(sql)?;
+        let target = s.mood_target(t);
+        tx.execute("insert into towns values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            params![day, t, v.name, v.people.villagers, v.people.beds, v.people.mood, v.money.to_f64(), target,
+                v.people.comfort_met.iter().sum::<f64>(), v.people.paid_share]).map_err(sql)?;
+        for (k, met) in v.people.comfort_met.iter().enumerate() {
+            let kind = s.content().comforts.get(k).cloned().unwrap_or_default();
+            tx.execute("insert into comforts values (?1, ?2, ?3, ?4)", params![day, t, kind, met]).map_err(sql)?;
+        }
         for (g, n) in v.stock.iter().enumerate() {
             if n.abs() >= 1e-9 {
                 tx.execute("insert into stock values (?1, ?2, ?3, ?4)", params![day, t, goods[g], n]).map_err(sql)?;
