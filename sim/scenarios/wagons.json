@@ -513,7 +513,7 @@
               "WagonLeft": {
                 "route": 0,
                 "stacks": 0,
-                "worth": 2.4
+                "worth": 1.2000000000000002
               }
             },
             {
@@ -527,7 +527,7 @@
           "answers": []
         }
       },
-      "response_postcard": "000200000033333333333303401000020d76696c6c616765722d6c65616400"
+      "response_postcard": "0002000000343333333333f33f1000020d76696c6c616765722d6c65616400"
     },
     {
       "note": "its wagon on the way out, its crew the lead",

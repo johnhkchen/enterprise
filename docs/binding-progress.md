@@ -5,6 +5,14 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-24, no wagon goes for its purse alone.** A shopping trip's money counted as its load's worth whenever the
+  far end held any comfort it wanted, so from day 20 the hub sent empty wagons every 4 days, 6-12 of road food each,
+  to bring home 14 items for 0.68 (found with the trace's `trips`). Now the purse counts only up to what the far end
+  would sell of the list beyond its own keep (`buy_for_home`'s rule), plus a glut there home uses, at its discount on
+  what the money buys (`buy_backhaul`'s rule, shared as `glut_of`/`used_at_home`). The study's journal replayed as a
+  what-if: the hub's empty runs stay home; Wheatfield's and Meadowworth's glut runs (141, 133, 512 items) still go. A
+  core-only change: the Java rules keep the old count. Test `desires::a_shopping_trip_is_worth_what_the_far_end_would_sell_not_the_money`;
+  replay digest written again.
 - **2026-10-23, runs traced.** The server's core writes a journal of every request it took (`binding/core/Journal`,
   `world/enterprise-journal/<time>.ejl`, one a server run, 10 kept, `journal=off` for none; `/enterprise core journal`;
   `core report` copies it). `enterprise-sim --trace FILE run.db` replays it through the native core and writes SQLite

@@ -518,3 +518,44 @@ fn a_merchant_buys_a_comfort_a_town_on_its_routes_is_short_of_where_it_pays() {
     assert!(s.books(HUB).iter().any(|e| e.kind == Kind::Bought && e.good == Some(COOKIE) && e.with == Some(DEST)),
         "{:?}", s.books(HUB));
 }
+
+/// A hub of five with nothing to sell and 20 emeralds, shopping at a far end four blocks off holding `cookies` and
+/// `wheat` (a par of 64: a glut beyond 128), with wheat used at home.
+fn shopper(cookies: f64, wheat: f64) -> Society {
+    let mut s = Society::new(content());
+    s.content_mut().dials.standing_orders = false;
+    let hub = s.add_town("Hub", 20.0);
+    let dest = s.add_town("Dest", 12.0);
+    s.deliver(hub, BREAD, 2.0);
+    s.deliver(dest, BREAD, 2.0);
+    if cookies > 0.0 {
+        s.deliver(dest, COOKIE, cookies);
+    }
+    if wheat > 0.0 {
+        s.deliver(dest, WHEAT, wheat);
+    }
+    s.set_trade(hub, WHEAT, 0.0, 10.0);
+    town_of_five(&mut s, HUB);
+    s.add_route(hub, dest, 4.0 / 1200.0, 0.0, 4.0);
+    s
+}
+
+#[test]
+fn a_shopping_trip_is_worth_what_the_far_end_would_sell_not_the_money() {
+    let plan = |cookies: f64, wheat: f64| {
+        let mut s = shopper(cookies, wheat);
+        s.advance(LOOK);
+        let note = s.route_state(0).1.last_plan.clone().expect("it planned");
+        note
+    };
+    // A cookie there: the purse goes for its par of treats, but the trip is worth the one cookie, not the road.
+    let one = plan(1.0, 0.0);
+    assert!(close(one.worth, 1.0 / 18.0), "{}", one.worth);
+    assert!(!one.went && one.cost > one.worth, "{one:?}");
+    // Plenty there: worth its par of treats.
+    let plenty = plan(64.0, 0.0);
+    assert!(close(plenty.worth, PAR) && plenty.went, "{plenty:?}");
+    // No treats, but a glut of wheat home uses: worth the glut's discount on what the money buys.
+    let glut = plan(1.0, 1000.0);
+    assert!(glut.worth > one.worth + 1.0 && glut.went, "{glut:?}");
+}

@@ -111,7 +111,7 @@ pub fn sight(mut listings: ResMut<Listings>, routes: Query<(Entity, &Route, &Rou
 /// A town sending its own wagon gives it money to bring home the comforts it lacks (`Caravans.dispatch` 326–337): the
 /// kinds it holds less than its par of, as much as it can spare beyond its reserve, the road and what every plan from
 /// it carries already, if that's worth twice the road food (and at least half an emerald), as far as its Accountant
-/// allows today. The money goes in the purse and counts toward the trip's worth.
+/// allows today. The money goes in the purse and counts toward the trip's worth up to what the far end would sell.
 #[allow(clippy::type_complexity)]
 pub fn plan_shopping(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, stocktakes: Res<Stocktakes>,
         mut routes: Query<(Entity, &Route, &mut RouteState)>, realms: Query<&Realm>,
@@ -146,12 +146,16 @@ pub fn plan_shopping(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>
         }
         // Is there anything to shop for there (`hasShoppingAt`): the far end's last stocktake holds some of a kind on the
         // list (a home with a roster reads it while it's fresh; else the far end as it stands).
+        // What it would sell of them is worth the trip, no more: each kind beyond its own keep (`buy_for_home`).
         let seen = if crate::squad::crewed(roster) { stocktakes.fresh(&content, route.to_id, now) } else { None };
-        let there = match (seen, towns.get(route.to)) {
-            (Some(t), _) => held_goods(&content, &t.stock, &list),
-            (None, Ok((_, far, ..))) => held_goods(&content, &far.0, &list),
-            _ => false,
+        let far = towns.get(route.to).ok();
+        let their_keep = far.map_or(0.0, |(_, _, _, _, people, ..)| comfort_keep(&content, people));
+        let far_stock = match (seen, far) {
+            (Some(t), _) => Some(&t.stock[..]),
+            (None, Some((_, far, ..))) => Some(&far.0[..]),
+            _ => None,
         };
+        let for_sale = far_stock.map_or(0.0, |s| for_sale(&content, s, &list, their_keep));
         // Worth twice the road food: a round trip's, or the road's cost where content has no food.
         let mouths = plan.crew.len().max(1) as f64;
         let least = if crate::road::road_food(&content) {
@@ -179,17 +183,78 @@ pub fn plan_shopping(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>
         plan.shopping = list;
         plan.shopping_money = shopping;
         plan.purse += shopping;
-        // (A trip with nothing there to shop for isn't worth the road for the money alone: no empty trips.)
-        if there {
-            plan.worth += shopping.to_f64();
-        }
+        // (Money alone isn't worth the road: a trip counts what it would bring home, so a far end with little to spare
+        // doesn't send the wagon out for it. No empty trips.) And with the money left, a glut there home can use
+        // (`buy_backhaul`), worth its discount: home sells it on, or uses it, at its worth.
+        let bought = shopping.to_f64().min(for_sale);
+        let gluts = match (far_stock, far) {
+            (Some(s), Some((_, _, far_trades, ..))) => {
+                let short: Vec<bool> = (0..content.comforts.len())
+                    .map(|k| people.villagers > 0.0 && people.comfort_met.get(k).copied().unwrap_or(0.0) < 1.0).collect();
+                glut_margin(&content, s, far_trades, trades, crate::road::held(&content, &stock.0), &short,
+                    shopping.to_f64() - bought)
+            }
+            _ => 0.0,
+        };
+        plan.worth += bought + gluts;
     }
 }
 
-/// Does a market hold some of a good of a kind on the shopping list?
-fn held_goods(content: &Content, stock: &[f64], list: &[f64]) -> bool {
-    (0..content.goods.len()).any(|g| content.goods[g].comfort.is_some_and(|k| list[k] > 0.0)
-        && stock.get(g).copied().unwrap_or(0.0) > 0.0)
+/// What a glut at a market holding `stock` would bring home for `money` (`buy_backhaul`'s): each good home uses that it
+/// holds a glut of, in the goods' order, as much as the money left buys at the glut's price, worth its discount. (The
+/// wagon's room isn't counted: the money runs out first.)
+fn glut_margin(content: &Content, stock: &[f64], far_trades: &Trades, home_trades: &Trades, home_food: f64, short: &[bool],
+        mut money: f64) -> f64 {
+    let mut margin = 0.0;
+    for g in 0..content.goods.len() {
+        let held = stock.get(g).copied().unwrap_or(0.0).floor().max(0.0);
+        if money <= 0.0 {
+            break;
+        }
+        if held <= 0.0 || !used_at_home(content, home_trades, home_food, short, g) {
+            continue;
+        }
+        let Some((glut, each)) = glut_of(content, far_trades, g, held) else { continue };
+        let taken = glut.min((money / each.max(1e-9)).floor());
+        if taken > 0.0 {
+            money -= taken * each;
+            margin += taken * (content.goods[g].value - each);
+        }
+    }
+    margin
+}
+
+/// Does home have a use for a good (`buy_backhaul`): an input its lockers or crafts take, food while its own runs short,
+/// a comfort its people are short of.
+fn used_at_home(content: &Content, home_trades: &Trades, home_food: f64, short: &[bool], g: usize) -> bool {
+    want_per_day(home_trades, g) > 0.0
+        || crate::road::points(content, g) > 0.0 && home_food < 2.0 * crate::road::FOOD_PAR_POINTS
+        || content.goods[g].comfort.is_some_and(|k| short[k])
+}
+
+/// A market's glut of a good it holds `held` of: how many beyond [`GLUT_PARS`] of its par (food: never under the 320
+/// points it keeps), and each one's price at the glut's discount; none without one.
+fn glut_of(content: &Content, trades: &Trades, g: usize, held: f64) -> Option<(f64, f64)> {
+    let points = crate::road::points(content, g);
+    let per_day = want_per_day(trades, g);
+    let stack = content.goods[g].stack as f64;
+    let mut par = stack.max(crate::bargain::par(content, per_day, per_day > 0.0));
+    if points > 0.0 {
+        par = par.max((2.0 * crate::road::FOOD_PAR_POINTS / points).floor()); // the far end's own food, and callers'
+    }
+    let glut = held - (GLUT_PARS * par).floor();
+    if glut <= 0.0 {
+        return None;
+    }
+    let discount = MOST_GLUT_DISCOUNT.min(GLUT_DISCOUNT * (held / par - GLUT_PARS));
+    Some((glut, content.goods[g].value * (1.0 - discount)))
+}
+
+/// What a market would sell of the kinds on a shopping list, in emeralds' worth: each kind it holds beyond its own keep,
+/// up to the list's worth of it (`buy_for_home`'s budget).
+fn for_sale(content: &Content, stock: &[f64], list: &[f64], their_keep: f64) -> f64 {
+    list.iter().enumerate().filter(|(_, w)| **w > 0.0)
+        .map(|(kind, &want)| want.min(held_in(content, stock, kind) - their_keep).max(0.0)).sum()
 }
 
 /// A wagon gone with shopping money: counted spent off its town's day's budget (the Accountant allowed it at the plan).
@@ -462,26 +527,10 @@ pub fn buy_backhaul(clock: Res<Clock>, content: Res<Content>, stocktakes: Res<St
                 break;
             }
             let held = stock.0[g].floor().max(0.0);
-            let points = crate::road::points(&content, g);
-            let is_food = points > 0.0;
-            let used_at_home = want_per_day(&home_trades, g) > 0.0
-                || is_food && home_food < 2.0 * crate::road::FOOD_PAR_POINTS
-                || content.goods[g].comfort.is_some_and(|k| short_at_home[k]);
-            if held <= 0.0 || !used_at_home {
+            if held <= 0.0 || !used_at_home(&content, &home_trades, home_food, &short_at_home, g) {
                 continue;
             }
-            let per_day = want_per_day(trades, g);
-            let stack = content.goods[g].stack as f64;
-            let mut par = stack.max(crate::bargain::par(&content, per_day, per_day > 0.0));
-            if is_food {
-                par = par.max((2.0 * crate::road::FOOD_PAR_POINTS / points).floor()); // the far end's own food, and callers'
-            }
-            let glut = held - (GLUT_PARS * par).floor();
-            if glut <= 0.0 {
-                continue;
-            }
-            let discount = MOST_GLUT_DISCOUNT.min(GLUT_DISCOUNT * (held / par - GLUT_PARS));
-            let each = content.goods[g].value * (1.0 - discount);
+            let Some((glut, each)) = glut_of(&content, trades, g, held) else { continue };
             let mut quantity = glut.min(room.loose(&content, g));
             quantity = quantity.min(((wagon.purse - keep).to_f64() / each.max(1e-9)).floor());
             if quantity <= 0.0 {
