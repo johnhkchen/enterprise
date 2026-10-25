@@ -137,13 +137,23 @@ public final class Grounds {
                     continue;
                 }
                 boolean drop = false;
+                int above = 0;
                 for (int a = Math.max(0, i - 1); a <= Math.min(n - 1, i + 1); a++) {
                     for (int b = Math.max(0, j - 1); b <= Math.min(n - 1, j + 1); b++) {
                         drop |= free[a][b] != Integer.MIN_VALUE && free[a][b] <= h - DROP;
+                        if (free[a][b] != Integer.MIN_VALUE && natural[a][b]) {
+                            above = Math.max(above, Math.min(DROP - 1, free[a][b] - h));
+                        }
                     }
                 }
-                if (drop && fence(level, new BlockPos(x0 + i, h, z0 + j))) {
-                    fenced++;
+                // As high as the ground beside it, and one more: a fence lower than its neighbour is a step onto its
+                // top, and over (where a ring round a hole steps down a slope).
+                for (int y = 0; drop && y <= above; y++) {
+                    if (fence(level, new BlockPos(x0 + i, h + y, z0 + j))) {
+                        fenced++;
+                    } else {
+                        break;
+                    }
                 }
             }
         }

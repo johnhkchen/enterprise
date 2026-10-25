@@ -44,6 +44,8 @@ SettlementTests.cagedVillagerIsNotFree # villagers' walkability
 SettlementTests.aTrenchByTheDeskIsFilledAndWhoeverIsInItLiftedOut # block placement: the ground is the binding's
 SettlementTests.aDropTooWideToFillIsFencedAtTheTop # block placement: the ground is the binding's
 SettlementTests.anAlleyBetweenAHouseAndAHillIsFilledAndFencedOffTheRoof # block placement: the ground is the binding's
+SettlementTests.aFenceBelowTheGroundBesideItStandsAsHighAsThatGround # block placement: the ground is the binding's
+SettlementTests.theTownsBellHealsItsHurtVillagers # mob effects: healing is the binding's
 
 # Numismatics coins and bank
 MoneyTests.surplusEmeraldsBecomeCoinsInStock # coin items: the emerald/coin split is the binding's

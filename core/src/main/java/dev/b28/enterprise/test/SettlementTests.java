@@ -225,4 +225,38 @@ public final class SettlementTests {
         helper.assertTrue(made.filled() == 7 && made.fenced() == 7, "the alley's 7 columns filled and fenced: " + made);
         helper.succeed();
     }
+
+    @GameTest(template = "floor")
+    public static void aFenceBelowTheGroundBesideItStandsAsHighAsThatGround(GameTestHelper helper) {
+        ground(helper, 0, 2, 8);
+        ground(helper, 3, 3, 6); // fenced: 4 above the valley, but 2 below the ground at x=2
+        ground(helper, 4, 6, 2);
+        dev.b28.enterprise.settlement.Grounds.make(helper.getLevel(), helper.absolutePos(new BlockPos(3, 2, 3)), 3);
+        for (int z = 0; z <= 6; z++) {
+            for (int y = 7; y <= 9; y++) {
+                helper.assertBlockPresent(Blocks.OAK_FENCE, new BlockPos(3, y, z));
+            }
+            helper.assertBlockPresent(Blocks.AIR, new BlockPos(3, 10, z));
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor", timeoutTicks = 200)
+    public static void theTownsBellHealsItsHurtVillagers(GameTestHelper helper) {
+        Villager hurt = helper.spawn(EntityType.VILLAGER, new BlockPos(2, 2, 2));
+        Villager well = helper.spawn(EntityType.VILLAGER, new BlockPos(4, 2, 4));
+        hurt.setNoAi(true); // jobless, they'd wander into a neighbouring test's field
+        well.setNoAi(true);
+        hurt.setHealth(10);
+        int healed = dev.b28.enterprise.settlement.Beacon.heal(helper.getLevel(), helper.absolutePos(BELL), RADIUS);
+        helper.assertTrue(healed == 1 && hurt.hasEffect(net.minecraft.world.effect.MobEffects.REGENERATION)
+                && !well.hasEffect(net.minecraft.world.effect.MobEffects.REGENERATION),
+                "only the hurt villager is given Regeneration: " + healed);
+        helper.runAfterDelay(120, () -> {
+            helper.assertTrue(hurt.getHealth() > 10, "the hurt villager hasn't healed: " + hurt.getHealth());
+            hurt.discard();
+            well.discard();
+            helper.succeed();
+        });
+    }
 }

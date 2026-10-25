@@ -78,7 +78,8 @@ public final class PeopleAdapter {
      * A look's happenings: (in core mode) a census of every town that can be counted whole (its desk a desk, its
      * settlement's chunks and their villagers loaded: a look never loads a chunk to count, and a census of half a town
      * would have the other half leave in ten days), a villager spawned for each of its hands with none (not in this
-     * census: counted at the next), and before them the names of the villagers spawned since the last look.
+     * census: counted at the next), and before them the names of the villagers spawned since the last look. Each town
+     * counted heals its hurt villagers too ({@link dev.b28.enterprise.settlement.Beacon}).
      */
     public List<Input> happenings(MinecraftServer server, boolean census) {
         List<Input> counts = new ArrayList<>();
@@ -95,6 +96,7 @@ public final class PeopleAdapter {
                     named(server, desk.getValue(), roster);
                     counts.add(census(level, desk.getValue(), centre, CensusTaker.RADIUS, roster));
                     views(level, desk.getValue(), centre, roster);
+                    dev.b28.enterprise.settlement.Beacon.heal(level, centre, CensusTaker.RADIUS);
                 }
             }
         }

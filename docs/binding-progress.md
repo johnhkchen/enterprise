@@ -5,6 +5,14 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-25, a fence as high as the ground beside it; a town's bell heals.** (1) A drop's fence stands as high as the
+  natural ground beside it (side or corner), and one more, up to 4 (`Grounds.make`): a fence lower than its neighbour
+  was a step onto its top and over, where the ring round a sinkhole steps down a slope (game test
+  `aFenceBelowTheGroundBesideItStandsAsHighAsThatGround`). (2) At each look that counts a town, every hurt villager
+  within its reach (48 blocks of the bell) is given Regeneration I for 10 seconds (`settlement/Beacon`, from
+  `PeopleAdapter.happenings`; game test `theTownsBellHealsItsHurtVillagers`): falls and bites heal instead of adding
+  up. Not a beacon block: vanilla's give effects to players only, and one per village is a nether star free. Core mode
+  only. 30 days on seed 12345: Greenfell 7 people throughout, no deaths, 8 falls of 1 or 2 hearts; 384 fences.
 - **2026-10-25, a town's hands that wander past its reach are still counted.** Greenfell's roster fell from 7 to 4 by
   day 14 with no one dead: three villagers had walked up the hill 64 to 80 blocks east and stopped where the study's
   loaded ground stops ticking. The census looks 48 blocks round the bell, and a villager not seen there was kept only if
