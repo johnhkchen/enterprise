@@ -164,7 +164,7 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
         List<Row> out = new java.util.ArrayList<>();
         if (ledger().isEmpty()) {
             font.split(Component.literal(ledger().heading().isBlank()
-                    ? "No ledger: the core keeps no town here." : ledger().heading()), width)
+                    ? "No town here yet: use a Town Charter on this desk to found one (Charter, above, sells one for a block of diamond)." : ledger().heading()), width)
                     .forEach(part -> out.add(new Row(part, "")));
         } else if (section < ledger().sections().size()) {
             for (LedgerView.Line line : ledger().sections().get(section).lines()) {
