@@ -3,7 +3,7 @@
 
     just server-setup-survival 12345     # a normal world of that seed, no testbench
     just server                          # in the background
-    python3 dev/experiments/survival_study.py DAYS OUT.log [--loaded]
+    python3 dev/experiments/survival_study.py DAYS OUT.log [--loaded] [--chests]
 
 The nearest village to spawn and the nearest one to it beyond SPREAD blocks are found (`locate structure`), each
 loaded a minute while its villagers settle, and given what a player gives a village to trade: a Merchant's Desk at
@@ -11,7 +11,8 @@ the surface by the village's centre, a chest by it with STARTING emeralds, and a
 each desk, a route opens from the first to the second, and the trades the villagers' lockers would buy are switched
 on (a locker needs a chest touching its workstation: a generated village has none, so most have no locker, as a
 player finds it). Then the days run, the first village kept loaded as a player standing in it would (`--loaded`:
-both), the other left to the core. Every five days each town's ledger is logged; at the end, where the core's journal
+both), the other left to the core. With --chests, the player reads each town's ledger and puts a chest by each
+workstation it names (one with no chest touching it), as the ledger asks, before the trades are switched on. Every five days each town's ledger is logged; at the end, where the core's journal
 is (`enterprise-sim --trace` it into SQLite).
 """
 
@@ -136,6 +137,15 @@ def main():
         say(f"{d}: " + rcon(f"enterprise core stock {d}").strip().splitlines()[0])
     say("route: " + rcon(f"enterprise route add {desks[0]} {desks[1]}").strip().splitlines()[-1])
     sprint(1200)  # the villagers settle: their workstations claimed, the census counts them
+    if "--chests" in sys.argv:
+        for d in desks:
+            for x, y, z in re.findall(r"at (-?\d+) (-?\d+) (-?\d+): no chest touching it", rcon(f"enterprise ledger {d}")):
+                x, y, z = int(x), int(y), int(z)
+                for dx, dz in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+                    if "Changed the block" in rcon(f"setblock {x + dx} {y} {z + dz} minecraft:chest keep"):
+                        say(f"{d}: a chest by the workstation at {x} {y} {z}")
+                        break
+        sprint(200)  # the lockers placed at the next looks
     for d in desks:
         say(f"{d}: " + rcon(f"enterprise autoswitch {d} selling").strip().splitlines()[-1])
         say(f"{d}: " + rcon(f"enterprise core lockers {d}").strip().splitlines()[0])
