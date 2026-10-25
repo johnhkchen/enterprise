@@ -193,9 +193,23 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
         mut ledger: ResMut<Ledger>,
         mut book: ResMut<CashBook>,
         mut farms: Query<(&Town, &mut Farm, &mut Money, &mut People, &Stock, &Trades, &mut Budget, Option<&Roster>,
-            Option<&crate::lockers::Lockers>)>, routes: Query<&Route>) {
+            Option<&crate::lockers::Lockers>)>, routes: Query<&Route>,
+        far: Query<(&Roster, &crate::lockers::Lockers)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let today = now / day;
+    // What the villagers at the managed lockers of each town's routes' far ends would buy a day (in the routes'
+    // order: a sum's last bit mustn't hang on archetypes): a market its caravans reach, for its farm to grow for.
+    let mut reached: BTreeMap<usize, BTreeMap<crate::GoodId, f64>> = BTreeMap::new();
+    let mut ordered: Vec<&Route> = routes.iter().collect();
+    ordered.sort_by_key(|r| r.seq);
+    for route in ordered {
+        if let Ok((r, l)) = far.get(route.to) {
+            let into = reached.entry(route.from_id).or_default();
+            for (g, n) in crate::lockers::census_demand(r, l) {
+                *into.entry(g).or_insert(0.0) += n;
+            }
+        }
+    }
     for (town, mut farm, mut money, mut people, stock, trades, mut budget, roster, lockers) in &mut farms {
         if !farm.set_up || farm.reviewed == Some(today) {
             continue;
@@ -222,6 +236,14 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
             }
             None => BTreeMap::new(),
         };
+        // And what the far ends of its routes out buy, at its worth (a town grows the crops the town down its road
+        // buys: seed 2024's Amberfell grew only cane while Dustfell's Farmers bought every crop it could have).
+        for (&g, &n) in reached.get(&t).into_iter().flatten() {
+            let each = content.goods[g].value;
+            let d = farm.draws.entry(g).or_insert((0.0, each));
+            d.0 += n;
+            d.1 = d.1.max(each);
+        }
         let farmers = farmers(&content, roster);
         let food = food_points(&content, stock);
         let fed = food >= 2.0 * FOOD_PAR_POINTS;

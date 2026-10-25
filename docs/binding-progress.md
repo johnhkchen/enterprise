@@ -5,6 +5,14 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-26, a farm grows for the towns down its roads.** What the villagers at the lockers managed at the far ends
+  of a town's routes out would buy is among its farm's draws (`rules/farms.rs` `review`; test
+  `farms::a_farm_grows_what_the_town_down_its_road_buys`). Seed 2024 (two desert villages 480 apart, both loaded), 45
+  days, before and after: no trips either way. Amberfell has 8 villagers in 5 beds and never holds a home's 10 beyond
+  its reserve (a shop, a stall and two fields took 26 of its 32 by day 1); its one or two Farmers work 32 of its 190
+  plots (80 carrot and 80 cane plots idle), and its idle hands took up cartography (4 Cartographers by day 45 in one
+  run). Open: what a town's jobs draw makes of a far end's demand, and whether a new town should spend its founding
+  money on a shop and a stall before beds.
 - **2026-10-26, a villager born or sent for is put on open ground.** Seed 8675309, 90 days: both towns grew (7 to 9,
   7 to 8) and the wagon went 19 times (1,151 items, 65.8 emeralds taken), but Wheatfell lost seven newborns, each
   suffocated in the block over its bell: the bell's four sides were walled, and the child was put on top of it.

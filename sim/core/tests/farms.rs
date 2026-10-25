@@ -510,3 +510,22 @@ fn a_town_with_nothing_for_its_wagon_keeps_no_road_money_from_a_field() {
     assert_eq!(road, 0.0, "nothing to take: nothing kept for the road");
     assert_eq!(the_farm(&s).fields_planted, 1, "its 10 emeralds buy a field at 4");
 }
+
+/// A town's farm grows for the far ends of its routes out too: what the villagers at the lockers their Merchants manage
+/// would buy is among its draws (seed 2024's Amberfell grew only cane while Dustfell's Farmers bought every crop).
+#[test]
+fn a_farm_grows_what_the_town_down_its_road_buys() {
+    let mut s = Society::new(content());
+    let t = s.add_town("Meadowworth", 20.0);
+    let far = s.add_town("Farfield", 0.0);
+    s.set_roster(t, &[("farmer", 1), ("farmer", 1)]);
+    s.set_people(t, 2.0, 2.0, 2.0);
+    s.set_farm_demand(t, WHEAT, 1.0); // (a farm set up: its own village wants a little wheat)
+    s.set_roster(far, &[("farmer", 1), ("merchant", 1)]);
+    s.set_offers(far, 0, vec![enterprise_core::lockers::Offer::buys(POTATO, 26, 1, 16, 2, 0.05)]);
+    s.switch(far, 0, 0, true);
+    s.add_route(t, far, 0.25, 0.0, 1.0);
+    s.advance(2 * DAY);
+    let farm = the_farm(&s);
+    assert!(farm.draws.get(&POTATO).is_some_and(|d| d.0 > 0.0), "Farfield's Farmer buys potatoes: {:?}", farm.draws);
+}
