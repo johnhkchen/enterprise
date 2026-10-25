@@ -566,4 +566,10 @@ dials! {
     wagon_weight: f64 = 27.0,
     wagon_pallets: u32 = 27,
     pack_weight: f64 = 9.0,
+
+    // founding
+    /// Emeralds a town a host founds (a player's desk) starts with, from outside the society. At 32, two generated
+    /// villages spent all of it on a shop, a stall and fields before either had an income and never traded (seed
+    /// 2024's survival study); at 64 both grew and their wagons went. A charter a player pays for is to stand behind it.
+    founding_purse: u32 = 64,
 }

@@ -398,7 +398,10 @@ fn money() -> Scenario {
     let desk = at(PointKind::Desk, 27, 27);
     let till = |s: &mut Script, note: &str| s.ask(note, vec![Query::Cash { point: desk.clone() }, Query::Mint]);
     s.create("a society from a pack of four goods");
-    s.apply("a town at its desk", vec![Input::AddTown { name: "Ashford".into(), desk: desk.clone() }]);
+    s.apply("a town at its desk, founded with no purse (the dial at 0): what its chests hold is all its money", vec![
+        Input::SetDial { name: "founding_purse".into(), value: Some(0.0) },
+        Input::AddTown { name: "Ashford".into(), desk: desk.clone() },
+    ]);
     s.apply("the desk's chests count 40 emeralds and 8 spurs of coin, its Banker's account 160, and the host only counts: \
         the money is paid in, the mint untouched", vec![
         Input::Stocktake { point: desk.clone(), counts: counts(&[]), free: 20 },

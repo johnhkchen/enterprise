@@ -17,8 +17,11 @@ use enterprise_core::{Content, Fixed, Good, Society};
 
 const WHEAT: usize = 0;
 
+/// No founding purse: these count a desk's money from nothing (`a_new_town_is_given_its_founding_purse` has the purse).
 fn pack() -> ContentPack {
-    ContentPack::new(DAY, vec![PackGood::new("minecraft:wheat", 0.05, 64), PackGood::new("minecraft:bread", 0.2, 64)])
+    let mut pack = ContentPack::new(DAY, vec![PackGood::new("minecraft:wheat", 0.05, 64), PackGood::new("minecraft:bread", 0.2, 64)]);
+    pack.dials = vec![PackDial { name: "founding_purse".into(), value: 0.0 }];
+    pack
 }
 
 fn desk() -> Point {
@@ -546,4 +549,27 @@ fn a_month_of_takings_and_spending_through_a_till_conserves_the_money() {
         assert!(t - shown < Fixed::from(3.0) || purse.free() == 0, "day {day}: {} of {t} waits on the books", t - shown);
         assert_eq!((purse.emeralds as u64, purse.coins as u64), (e, view(&mut s).2), "day {day}: the till is what the host holds");
     }
+}
+
+#[test]
+fn a_new_town_is_given_its_founding_purse() {
+    let mut pack = pack();
+    pack.dials.clear();
+    let mut s = None;
+    call(&mut s, Command::Create { pack, seed: 7 });
+    call(&mut s, Command::Apply { inputs: vec![Input::AddTown { name: "Ashford".into(), desk: desk() }] });
+    assert_eq!(treasury(&s), Fixed::emeralds(64), "64 emeralds from outside the society");
+    assert_eq!(society(&mut s).cash_book(0, 1), vec![(0, "founding purse".to_string(), Fixed::emeralds(64))]);
+    // Shown in the desk's chests at its looks, as the treasury always is.
+    let mut purse = Purse::new(0, 0, None);
+    let mut unmoved = Vec::new();
+    purse.look(&mut s, &mut unmoved, None);
+    purse.look(&mut s, &mut unmoved, None);
+    let (held, emeralds, _, coin_worth, _, _) = view(&mut s);
+    assert_eq!((held, Fixed::emeralds(emeralds as i64) + coin_worth), (Fixed::emeralds(64), Fixed::emeralds(64)));
+    // The desk broken with the purse in its chests (taken out with them) and put back where it stood: the same town,
+    // no second purse.
+    apply(&mut s, vec![Input::RemovePoint { point: desk() }]);
+    apply(&mut s, vec![Input::AddTown { name: "Ashford".into(), desk: desk() }]);
+    assert_eq!((society(&mut s).town_count(), treasury(&s)), (1, Fixed::ZERO));
 }

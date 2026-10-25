@@ -76,6 +76,8 @@ pub enum Reason {
     Other(String),
     /// Money taken out of a town's chests or Banker by someone outside the society (`till.rs`).
     Withdrawn,
+    /// A host's new town's founding purse (`Input::AddTown`, the dial `founding_purse`).
+    Founded,
 }
 
 impl Reason {
@@ -94,6 +96,7 @@ impl Reason {
             Reason::Home => "home".into(),
             Reason::Child => "child".into(),
             Reason::PaidIn => "paid in".into(),
+            Reason::Founded => "founding purse".into(),
             Reason::Unlabelled => "?".into(),
             Reason::Other(s) => s.clone(),
             Reason::Withdrawn => "taken out".into(),
@@ -106,7 +109,8 @@ impl Reason {
             return Reason::Sold(g);
         }
         let known = [Reason::Wages, Reason::Comforts, Reason::RoadFood, Reason::WagonPurse, Reason::Sale, Reason::Contract,
-            Reason::Bill, Reason::Takings, Reason::Home, Reason::Child, Reason::PaidIn, Reason::Withdrawn];
+            Reason::Bill, Reason::Takings, Reason::Home, Reason::Child, Reason::PaidIn, Reason::Withdrawn,
+            Reason::Founded];
         known.into_iter().find(|r| r.label(content) == label).unwrap_or_else(|| Reason::Other(label.to_string()))
     }
 }

@@ -292,6 +292,15 @@
         "Done": {
           "outputs": [
             {
+              "HandLevel": {
+                "hand": 3,
+                "tag": "villager-c",
+                "trade": "mason",
+                "level": 1,
+                "xp": 0
+              }
+            },
+            {
               "Born": {
                 "town": 0,
                 "hand": 4
@@ -301,7 +310,7 @@
           "answers": []
         }
       },
-      "response_postcard": "000108000400"
+      "response_postcard": "00020c030a76696c6c616765722d63056d61736f6e010008000400"
     },
     {
       "note": "the child is a hand with no tag",
@@ -353,7 +362,7 @@
                   {
                     "hand": 3,
                     "tag": "villager-c",
-                    "trade": "none",
+                    "trade": "mason",
                     "level": 1,
                     "xp": 0,
                     "baby": false,
@@ -376,7 +385,7 @@
           ]
         }
       },
-      "response_postcard": "00000104000204010a76696c6c616765722d6d086d65726368616e740100000001020a76696c6c616765722d66066661726d6572020a000000030a76696c6c616765722d63046e6f6e6501000000000400046e6f6e650100010000"
+      "response_postcard": "00000104000204010a76696c6c616765722d6d086d65726368616e740100000001020a76696c6c616765722d66066661726d6572020a000000030a76696c6c616765722d63056d61736f6e01000000000400046e6f6e650100010000"
     },
     {
       "note": "the host spawns a villager for it and names it; its next census sees it as that hand",
@@ -487,7 +496,7 @@
                   {
                     "hand": 3,
                     "tag": "villager-c",
-                    "trade": "none",
+                    "trade": "mason",
                     "level": 1,
                     "xp": 0,
                     "baby": false,
@@ -510,7 +519,7 @@
           ]
         }
       },
-      "response_postcard": "00000104000204010a76696c6c616765722d6d086d65726368616e740100000001020a76696c6c616765722d66066661726d6572020a000000030a76696c6c616765722d63046e6f6e650100000000040a76696c6c616765722d6e046e6f6e650100010000"
+      "response_postcard": "00000104000204010a76696c6c616765722d6d086d65726368616e740100000001020a76696c6c616765722d66066661726d6572020a000000030a76696c6c616765722d63056d61736f6e0100000000040a76696c6c616765722d6e046e6f6e650100010000"
     },
     {
       "note": "eleven days on, a census that doesn't see the farmer: it has left",
@@ -604,7 +613,7 @@
                   {
                     "hand": 3,
                     "tag": "villager-c",
-                    "trade": "none",
+                    "trade": "mason",
                     "level": 1,
                     "xp": 0,
                     "baby": false,
@@ -627,7 +636,7 @@
           ]
         }
       },
-      "response_postcard": "00000104000203010a76696c6c616765722d6d086d65726368616e740100000001030a76696c6c616765722d63046e6f6e650100000000040a76696c6c616765722d6e046e6f6e650100000000"
+      "response_postcard": "00000104000203010a76696c6c616765722d6d086d65726368616e740100000001030a76696c6c616765722d63056d61736f6e0100000000040a76696c6c616765722d6e046e6f6e650100000000"
     },
     {
       "note": "a census of a town that isn't there",
@@ -765,7 +774,7 @@
                   {
                     "hand": 3,
                     "tag": "villager-c",
-                    "trade": "none",
+                    "trade": "mason",
                     "level": 1,
                     "xp": 0,
                     "baby": false,
@@ -788,7 +797,7 @@
           ]
         }
       },
-      "response_postcard": "00000104000203010a76696c6c616765722d6d086d65726368616e740100000001030a76696c6c616765722d63046e6f6e650100000000040a76696c6c616765722d6e046e6f6e650100000000"
+      "response_postcard": "00000104000203010a76696c6c616765722d6d086d65726368616e740100000001030a76696c6c616765722d63056d61736f6e0100000000040a76696c6c616765722d6e046e6f6e650100000000"
     }
   ]
 }

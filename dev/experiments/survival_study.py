@@ -8,7 +8,8 @@
 
 The nearest village to spawn and the nearest one to it beyond SPREAD blocks (looking round it 300 to 700 blocks out, twelve ways) are found (`locate structure`), each
 loaded a minute while its villagers settle, and given what a player gives a village to trade: a Merchant's Desk at
-the surface by the village's centre, a chest by it with STARTING emeralds (`--starting N`: N), and a Merchant. The core founds a town at
+the surface by the village's centre, a chest by it (the core gives the town its founding purse; `--starting N` puts
+N emeralds more in it), and a Merchant. The core founds a town at
 each desk, a route opens from the first to the second, and the trades the villagers' lockers would buy are switched
 on (a locker needs a chest touching its workstation: a generated village has none, so most have no locker, as a
 player finds it). Then the days run, the first village kept loaded as a player standing in it would (`--loaded`:
@@ -28,7 +29,7 @@ sys.path.insert(0, str(REPO / "scripts"))
 import rcon as rcon_client  # noqa: E402
 
 SPREAD = 400  # the second village at least this far from the first
-STARTING = 64  # emeralds in each desk's chest (32 left seed 2024's desert pair broke and trading nothing)
+STARTING = 0  # emeralds a player puts in each desk's chest, beyond the founding purse the core gives a town (64)
 _sock = None
 
 

@@ -78,6 +78,15 @@ Decisions made after the brief (`docs/brief.md`). Where this file and the brief 
 - **It surveys routes and runs caravans.**
 - Wages are paid in coins.
 
+- **A new town's founding purse (2026-10-26): 64 emeralds, from outside the society.** A town a player founds (a
+  Merchant's Desk the core hadn't seen: `Input::AddTown`) starts with 64 in its treasury, booked "founding purse", and
+  the desk's chests show it at the next look. The dial `founding_purse` sets it for a world. A desk put back where one
+  stood is the same town again and gets none. Why: at 32 (what the survival study's player put in), seed 2024's two
+  desert villages spent all of it on a shop, a stall and fields before either had an income, and never traded; at 64
+  both grew (8 to 11 and 14 people, moods +0.59 and +1.54 by day 45) and their wagons went 4 and 6 times. **To come:
+  a town charter a player pays diamonds for**, so a purse isn't free: until then, breaking a desk and placing one
+  somewhere new founds another town with another 64.
+
 ## Settlements (2026-10-13)
 
 - **A settlement is anchored by a bell plus at least 3 beds and 3 workstations** within 48 blocks (built 2026-10-14). The Merchant's Desk counts as a workstation.

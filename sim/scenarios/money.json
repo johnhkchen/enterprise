@@ -101,13 +101,19 @@
       "response_postcard": "000000"
     },
     {
-      "note": "a town at its desk",
+      "note": "a town at its desk, founded with no purse (the dial at 0): what its chests hold is all its money",
       "request": {
         "abi": 1,
         "schema": 12296532634885365436,
         "command": {
           "Apply": {
             "inputs": [
+              {
+                "SetDial": {
+                  "name": "founding_purse",
+                  "value": 0.0
+                }
+              },
               {
                 "AddTown": {
                   "name": "Ashford",
@@ -124,7 +130,7 @@
           }
         }
       },
-      "request_postcard": "01bcbddcba81e983d3aa0103010707417368666f726400136d696e6563726166743a6f766572776f726c64367736",
+      "request_postcard": "01bcbddcba81e983d3aa0103020e0e666f756e64696e675f70757273650100000000000000000707417368666f726400136d696e6563726166743a6f766572776f726c64367736",
       "response": {
         "Done": {
           "outputs": [],
@@ -676,8 +682,8 @@
       "saved": {
         "format": 1,
         "schema": 12296532634885365436,
-        "blob_len": 4435,
-        "blob_fnv": "290bf0b5e6c0abfb"
+        "blob_len": 4437,
+        "blob_fnv": "09da4ae8d917b4af"
       }
     },
     {

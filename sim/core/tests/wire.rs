@@ -93,7 +93,7 @@ fn a_society_from_a_pack_takes_a_delivery_and_says_its_stock() {
     let society = s.as_ref().unwrap();
     assert_eq!(society.town(0).name, "Ashford");
     assert_eq!(society.town_hex(0), Some(enterprise_core::Hex::at(27.0, 27.0)), "the town stands at its desk");
-    assert_eq!(society.town(0).money, Fixed::ZERO, "no money until it's paid some");
+    assert_eq!(society.town(0).money, Fixed::emeralds(64), "a new town's founding purse");
 }
 
 #[test]

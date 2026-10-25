@@ -1850,6 +1850,7 @@ public final class CoreBindingTests {
         GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
         Path dir = folder();
         CoreHost host = CoreHost.open(dir, 7);
+        noPurse(host);
         long town = host.stock().found(level, desk.pos(), "Testford");
         long t = level.getGameTime();
         host.apply(List.of(new Input.Deliver(town, good(host, "minecraft:bread"), 64)));
@@ -1900,6 +1901,7 @@ public final class CoreBindingTests {
         GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(at));
         Path dir = folder();
         try (CoreHost host = CoreHost.open(dir, 7)) {
+            noPurse(host);
             long town = host.stock().found(level, desk.pos(), "Testford");
             var depots = host.stock().addDepots(level, desk.pos(), helper.absolutePos(new BlockPos(4, 2, 3)),
                     helper.absolutePos(new BlockPos(6, 3, 5)));
@@ -2164,6 +2166,7 @@ public final class CoreBindingTests {
             // The desk's first count is from nothing: 100 emeralds, 192 + 40 spurs of coin at 16 spurs an emerald make 114.5
             // emeralds in the treasury, and the same look shows them: the emeralds are sold to the mint for coin.
             int quote = new dev.b28.enterprise.money.Mint().quote(COMMONS, 100, level.getGameTime());
+            noPurse(host);
             host.stock().found(level, desk.pos(), "Testford");
             long t = level.getGameTime();
             helper.assertTrue(inChest(chest, Items.EMERALD) == 0, "the emeralds are still in the chest: " + inChest(chest, Items.EMERALD));
@@ -2212,6 +2215,7 @@ public final class CoreBindingTests {
         GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
         Path dir = folder();
         try (CoreHost host = CoreHost.open(dir, 7)) {
+            noPurse(host);
             host.stock().found(level, desk.pos(), "Testford");
             long t = level.getGameTime();
             int quote = new dev.b28.enterprise.money.Mint().quote(COMMONS, 164, t + 1);
@@ -2248,6 +2252,7 @@ public final class CoreBindingTests {
         GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
         Path dir = folder();
         try (CoreHost host = CoreHost.open(dir, 7, false)) {
+            noPurse(host);
             host.stock().found(level, desk.pos(), "Testford");
             helper.assertTrue(Math.abs(host.money().cashAt(desk).treasury() - 20) < 1e-9, "10 emeralds and 160 spurs: " + host.money().cashAt(desk));
             long t = level.getGameTime();
@@ -2281,6 +2286,7 @@ public final class CoreBindingTests {
         GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
         Path dir = folder();
         try (CoreHost host = CoreHost.open(dir, 7)) {
+            noPurse(host);
             long town = host.stock().found(level, desk.pos(), "Testford");
             long t = level.getGameTime();
             host.apply(List.of(new Input.Pay(town, 7_400))); // 7.4 emeralds, in thousandths
@@ -2319,6 +2325,7 @@ public final class CoreBindingTests {
         GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
         Path dir = folder();
         try (CoreHost host = CoreHost.open(dir, 7)) {
+            noPurse(host);
             long town = host.stock().found(level, desk.pos(), "Testford");
             long t = level.getGameTime();
             host.apply(List.of(new Input.Pay(town, 5_000)));
@@ -2338,6 +2345,11 @@ public final class CoreBindingTests {
         helper.succeed();
     }
 
+    /** A town founded in this core gets no founding purse: the money tests count a desk's money from nothing. */
+    private static void noPurse(CoreHost host) {
+        host.apply(List.of(new Input.SetDial("founding_purse", java.util.Optional.of(0.0))));
+    }
+
     /** A desk broken takes its chests' and Banker's money out of its town, and put back where it stood counts them in once (B4.4). */
     @GameTest(template = "floor")
     public static void aDeskBrokenTakesItsMoneyAndOnePutBackCountsItOnce(GameTestHelper helper) {
@@ -2347,6 +2359,7 @@ public final class CoreBindingTests {
         GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
         Path dir = folder();
         try (CoreHost host = CoreHost.open(dir, 7, false)) {
+            noPurse(host);
             long town = host.stock().found(level, desk.pos(), "Testford");
             helper.assertTrue(Math.abs(host.money().cashAt(desk).treasury() - 30) < 1e-9, "30 emeralds: " + host.money().cashAt(desk));
             host.stock().forget(level, desk.pos());

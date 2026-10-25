@@ -40,6 +40,7 @@ impl Host {
     fn new(level: u8, emeralds: f64) -> Host {
         let mut society = Society::new(content());
         society.content_mut().dials.standing_orders = false;
+        society.content_mut().dials.founding_purse = 0; // the town has what it's paid here
         let mut h = Host { society: Some(society) };
         h.apply(vec![Input::AddTown { name: "Desk".into(), desk: at(PointKind::Desk, 27, 27) }]);
         h.s().set_roster(DESK as usize, &[("merchant", level)]);

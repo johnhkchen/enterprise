@@ -348,8 +348,8 @@ fn a_point_broken_takes_its_chests_goods_and_a_desk_put_back_is_its_town_again()
     // The desk broken: its 30 wheat go with its chests; the depot's bread and the half loaf stay the town's.
     apply(&mut s, vec![Input::RemovePoint { point: desk(0) }]);
     assert_eq!(stock(&s, 0), vec![0.0, 8.5]);
-    // Put back where it stood (with its chests as they are, in the same look): the same town, its name and money kept,
-    // its chests counted in afresh: the 30 wheat once.
+    // Put back where it stood (with its chests as they are, in the same look): the same town, its name and money kept
+    // (its founding purse and the 5 paid it, no second purse), its chests counted in afresh: the 30 wheat once.
     let out = apply(&mut s, vec![
         Input::AddTown { name: "Newton".into(), desk: desk(0) },
         Input::Deliver { town: 0, good: WHEAT, count: 2.0 },
@@ -358,7 +358,7 @@ fn a_point_broken_takes_its_chests_goods_and_a_desk_put_back_is_its_town_again()
     assert_eq!(moved(&out), vec![(0, WHEAT, 2)], "the delivery shown");
     let society = s.as_mut().unwrap();
     assert_eq!((society.town_count(), society.town(0).name.as_str()), (1, "Ashford"));
-    assert_eq!(society.town(0).money, enterprise_core::Fixed::emeralds(5));
+    assert_eq!(society.town(0).money, enterprise_core::Fixed::emeralds(64 + 5));
     assert_eq!(society.town(0).stock, vec![32.0, 8.5]);
     society.conserved(&start).unwrap();
     // Broken and put back in one look: still the same town, and a look's checks know it (town 1 is still no town).

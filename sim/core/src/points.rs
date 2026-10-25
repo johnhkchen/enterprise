@@ -222,7 +222,16 @@ impl Society {
         use crate::wire::Input;
         match input {
             Input::AddTown { name, desk } => {
+                let again = self.world.resource::<crate::chests::FormerDesks>().0.contains_key(&desk.spot());
                 let town = self.found(name, desk.spot()).expect("a town's desk where no point stands");
+                if !again {
+                    // A new town's founding purse, from outside the society: the till shows it at the desk's next look.
+                    let purse = crate::fixed::Fixed::emeralds(self.content().dials.founding_purse as i64);
+                    if purse.is_positive() {
+                        self.post(crate::cash_book::Account::Outside, crate::cash_book::Account::Treasury(town), purse,
+                            crate::cash_book::Reason::Founded);
+                    }
+                }
                 // A host's town: its lockers are where the host places them (`locker_host.rs`), and its land holds as
                 // many beds as a town its settlers found (the host lays its homes where there's room: `land.rs`).
                 self.host_places_lockers(town);
