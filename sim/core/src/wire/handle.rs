@@ -98,6 +98,8 @@ pub fn handle(society: &mut Option<Society>, request: Request) -> Response {
                 })
                 .collect();
             outputs.extend(s.show_land(&surveyed));
+            // The towns a host's settlers founded and the host hasn't built yet (`settlers.rs`).
+            outputs.extend(s.show_founded());
             // The towns' shops: the boards' shelves kept for the towns counted in this look, and the vendors counted told
             // what they show (`shop_host.rs`).
             let read: Vec<Spot> = inputs.iter()

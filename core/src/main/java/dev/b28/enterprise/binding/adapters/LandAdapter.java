@@ -1,6 +1,7 @@
 package dev.b28.enterprise.binding.adapters;
 
 import dev.b28.enterprise.Enterprise;
+import dev.b28.enterprise.caravan.Expeditions;
 import dev.b28.enterprise.binding.CoreClock;
 import dev.b28.enterprise.binding.CoreHost;
 import dev.b28.enterprise.hex.Hex;
@@ -122,6 +123,8 @@ public final class LandAdapter {
     private final java.util.concurrent.ConcurrentLinkedQueue<Input> unsaid = new java.util.concurrent.ConcurrentLinkedQueue<>();
     /** The builds the core asked for since the last look, by town and work (the largest share asked), laid at the next. */
     private final Map<List<Object>, Output.Build> asked = new LinkedHashMap<>();
+    /** The towns a host's settlers founded that the core asked to have built, by town, till the next look. */
+    private final Map<Long, Output.Found> founding = new LinkedHashMap<>();
 
     public LandAdapter(CoreHost host, boolean ownsLand) {
         this.host = host;
@@ -187,6 +190,7 @@ public final class LandAdapter {
      */
     public List<Input> happenings(MinecraftServer server, boolean survey) {
         layAsked(server);
+        buildFounded(server);
         List<Input> inputs = takePending();
         ServerLevel overworld = server.overworld();
         for (var desk : host.points().of(PointsAdapter.Kind.DESK).entrySet()) {
@@ -458,6 +462,62 @@ public final class LandAdapter {
             asked.merge(List.of(build.town(), build.work()), build, (a, b) -> b.share() >= a.share() ? b : a);
         }
     }
+
+    /**
+     * A town the core's settlers founded, to build where they settled at the start of the next look (core mode): the
+     * Java rules' square ({@link Expeditions#buildTown}) round the core's spot, and its desk told to the core.
+     */
+    public void show(Output.Found found) {
+        if (ownsLand) {
+            founding.put(found.town(), found);
+        }
+    }
+
+    /**
+     * The founded towns the core asked for built in the overworld, each whose ground is loaded (held loaded if it isn't,
+     * and built when the core asks again): a bell, the Merchant's desk with its chest, a Farmer's stall, two cottages,
+     * found round the core's spot on open ground; its desk a point of the town's, so the core asks no more and its
+     * settlers are spawned there once it's counted. With no open ground there, it's left: the core asks again.
+     */
+    private void buildFounded(MinecraftServer server) {
+        if (founding.isEmpty() || server == null) {
+            return;
+        }
+        host.settle();
+        List<Output.Found> todo = new ArrayList<>(founding.values());
+        founding.clear();
+        ServerLevel level = server.overworld();
+        for (Output.Found f : todo) {
+            if (host.points().of(PointsAdapter.Kind.DESK).containsValue(f.town())) {
+                continue; // built, and said, since it was asked
+            }
+            ChunkPos centre = new ChunkPos(new BlockPos(f.x(), 0, f.z()));
+            List<ChunkPos> chunks = new ArrayList<>();
+            for (int dx = -FOUND_CHUNKS; dx <= FOUND_CHUNKS; dx++) {
+                for (int dz = -FOUND_CHUNKS; dz <= FOUND_CHUNKS; dz++) {
+                    chunks.add(new ChunkPos(centre.x + dx, centre.z + dz));
+                }
+            }
+            if (!loadedFor(level, chunks)) {
+                continue;
+            }
+            int y = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, f.x(), f.z());
+            var town = Expeditions.buildTown(level, new BlockPos(f.x(), y, f.z()));
+            if (town.isEmpty()) {
+                Enterprise.LOGGER.info("No open ground to build {} at {} {}: asked again", f.name(), f.x(), f.z());
+                continue;
+            }
+            String why = host.points().add(GlobalPos.of(level.dimension(), town.get().desk()), PointsAdapter.Kind.DESK, f.town());
+            if (why != null) {
+                Enterprise.LOGGER.warn("The core wouldn't take {}'s desk at {}: {}", f.name(), town.get().desk().toShortString(), why);
+            } else {
+                Enterprise.LOGGER.info("{} founded at {}", f.name(), town.get().desk().toShortString());
+            }
+        }
+    }
+
+    /** Chunks either side of a founded town's spot held loaded to build it: its square, desk and cottages within reach. */
+    static final int FOUND_CHUNKS = 2;
 
     /**
      * The builds the core asked for laid, once every look sent is shown: each but those laid and not yet said (asked for

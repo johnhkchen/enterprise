@@ -5,6 +5,16 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-25, settlers' towns are built in the world.** The founding view: a town a host's town's settlers found
+  is the host's too (its lockers the host's), and is asked for at every look (`Output::Found { town, name, x, z }`,
+  `Settlers.unbuilt`) until a desk of its stands (`Input::AddPoint`). `LandAdapter` loads its ground (5x5 chunks,
+  held till built) and builds the Java rules' settlement round the spot (`Expeditions.buildTown`, now shared: a bell,
+  the desk and its chest, a Farmer's stall, a lectern and a cartography table, two cottages), then gives the core the
+  desk; its settlers are spawned by the census once it's counted. The hold on host towns' settlers is lifted.
+  Schema `aaa60f4817571ebc`. A 120-day study with realms: 17 towns founded and built (`Newfound 0 founded at 723, -60,
+  1525`...), 3-4 villagers each in their 4 beds; the young ones spend their capital on a field, a stall, walls and
+  children (moods -1 to +1); the old towns 17-22 villagers, moods +1.4 to +2.7 (the hub +1.92). Test
+  `settlers::a_hosts_settlers_town_is_asked_of_the_host_until_its_desk_stands`.
 - **2026-10-25, Masons learn from building, and core studies open realms.** Size costs a point a 8 villagers by
   design (John: the extra people are soldiers); halls offset some of it, but four towns with a Mason never built a
   square in 120 days: a square needs a level-2 Mason, and a Mason levels only at its locker, whose first trade buys

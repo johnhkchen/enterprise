@@ -231,6 +231,10 @@ impl Society {
             }
             Input::AddPoint { point, town } => {
                 self.add_point(point.kind(), point.spot(), *town as usize).expect("a point of a town's where none stands");
+                // A founded town's desk: the host has built it (`Output::Found`).
+                if point.kind() == crate::points::Kind::Desk {
+                    self.world.resource_mut::<crate::settlers::Settlers>().unbuilt.retain(|&t| t != *town as usize);
+                }
             }
             Input::RemovePoint { point } => {
                 self.remove_point(&point.spot()).expect("a point that stands");

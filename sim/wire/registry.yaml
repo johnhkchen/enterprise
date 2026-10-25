@@ -1026,6 +1026,13 @@ Output:
         STRUCT:
           - point:
               TYPENAME: Point
+    28:
+      Found:
+        STRUCT:
+          - town: U32
+          - name: STR
+          - x: I32
+          - z: I32
 PackAmount:
   STRUCT:
     - good: STR

@@ -319,6 +319,38 @@ public final class Expeditions extends SavedData {
         return arrive(level, party, censusRadius, now);
     }
 
+    /** What a party builds where it founds a town: the bell, the Merchant's desk (a chest by it), the Farmer's stall. */
+    public record Founding(BlockPos bell, BlockPos desk, BlockPos farm) {}
+
+    /**
+     * A new town built round {@code target} (core mode's founding view too, `binding/adapters/LandAdapter`): a bell on
+     * open ground, the Merchant's desk with a chest by it, a Farmer's stall, a lectern and a cartography table, and two
+     * cottages. Empty, with nothing built, where there's no open ground for the bell or no room for the desk by it.
+     */
+    public static Optional<Founding> buildTown(ServerLevel level, BlockPos target) {
+        Optional<BlockPos> square = Growth.site(level, target, 3, 0);
+        if (square.isEmpty()) {
+            return Optional.empty();
+        }
+        BlockPos bell = square.get().offset(1, 1, 1);
+        Optional<BlockPos> stall = Growth.site(level, bell, 2, 3);
+        if (stall.isEmpty()) {
+            return Optional.empty();
+        }
+        level.setBlock(bell, Blocks.BELL.defaultBlockState().setValue(BellBlock.ATTACHMENT, BellAttachType.FLOOR), 3);
+        BlockPos desk = stall.get().above();
+        level.setBlock(desk, Merchant.DESK.get().defaultBlockState(), 3);
+        level.setBlock(desk.east(), Blocks.CHEST.defaultBlockState(), 3);
+        BlockPos farm = Growth.site(level, bell, 3, 4).map(plot -> Jobs.buildStall(level, plot, FARMER)).orElse(null);
+        for (var workstation : List.of(Blocks.LECTERN, Blocks.CARTOGRAPHY_TABLE)) {
+            Growth.site(level, bell, 1, 4).ifPresent(at -> level.setBlock(at.above(), workstation.defaultBlockState(), 3));
+        }
+        for (int i = 0; i < 2; i++) {
+            Growth.homeSite(level, bell).ifPresent(at -> Growth.buildHome(level, at));
+        }
+        return Optional.of(new Founding(bell, desk, farm));
+    }
+
     /** The party settles: by a village's bell, or on its open ground. What came of it, for the books. */
     String arrive(ServerLevel level, Party party, long now) {
         return arrive(level, party, CensusTaker.RADIUS, now);
@@ -334,33 +366,24 @@ public final class Expeditions extends SavedData {
             // A Merchant alone, bound for a village that isn't there: no town without a Farmer to feed it.
             return homeAgain(level, party, "no village at " + party.target.toShortString() + ", and no Farmer along");
         }
-        if (bell == null) {
-            Optional<BlockPos> square = Growth.site(level, party.target, 3, 0);
-            if (square.isEmpty()) {
-                return homeAgain(level, party, "no open ground at " + party.target.toShortString());
-            }
-            bell = square.get().offset(1, 1, 1);
-            level.setBlock(bell, Blocks.BELL.defaultBlockState().setValue(BellBlock.ATTACHMENT, BellAttachType.FLOOR), 3);
-        }
-        Optional<BlockPos> stall = Growth.site(level, bell, 2, 3);
-        if (stall.isEmpty()) {
-            return homeAgain(level, party, "no room for a desk by the bell at " + bell.toShortString());
-        }
-        BlockPos desk = stall.get().above();
-        level.setBlock(desk, Merchant.DESK.get().defaultBlockState(), 3);
-        level.setBlock(desk.east(), Blocks.CHEST.defaultBlockState(), 3);
+        BlockPos desk;
         BlockPos farm = null; // the Farmer's stall, where the settler works
         if (kind == Kind.FOUND) {
-            Optional<BlockPos> plot = Growth.site(level, bell, 3, 4);
-            if (plot.isPresent()) {
-                farm = Jobs.buildStall(level, plot.get(), FARMER);
+            Optional<Founding> town = buildTown(level, party.target);
+            if (town.isEmpty()) {
+                return homeAgain(level, party, "no open ground at " + party.target.toShortString());
             }
-            for (var workstation : List.of(Blocks.LECTERN, Blocks.CARTOGRAPHY_TABLE)) {
-                Growth.site(level, bell, 1, 4).ifPresent(at -> level.setBlock(at.above(), workstation.defaultBlockState(), 3));
+            bell = town.get().bell();
+            desk = town.get().desk();
+            farm = town.get().farm();
+        } else {
+            Optional<BlockPos> stall = Growth.site(level, bell, 2, 3);
+            if (stall.isEmpty()) {
+                return homeAgain(level, party, "no room for a desk by the bell at " + bell.toShortString());
             }
-            for (int i = 0; i < 2; i++) {
-                Growth.homeSite(level, bell).ifPresent(at -> Growth.buildHome(level, at));
-            }
+            desk = stall.get().above();
+            level.setBlock(desk, Merchant.DESK.get().defaultBlockState(), 3);
+            level.setBlock(desk.east(), Blocks.CHEST.defaultBlockState(), 3);
         }
         MerchantStock stock = MerchantStock.at(level, desk);
         if (party.emeralds > 0) {

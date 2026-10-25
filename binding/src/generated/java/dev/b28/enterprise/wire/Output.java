@@ -36,7 +36,8 @@ public sealed interface Output
                 Output.PeaceMade,
                 Output.BuildCrownShop,
                 Output.CrownShop,
-                Output.CrownShopDown {
+                Output.CrownShopDown,
+                Output.Found {
     void encode(PostcardOut out);
 
     static Output decode(PostcardIn in) {
@@ -70,6 +71,7 @@ public sealed interface Output
             case 25 -> new BuildCrownShop(in.u32());
             case 26 -> new CrownShop(Point.decode(in), in.u32(), in.u32(), in.u32(), in.u64(), in.u32());
             case 27 -> new CrownShopDown(Point.decode(in));
+            case 28 -> new Found(in.u32(), in.string(), in.i32(), in.i32());
             default -> throw in.unknownVariant("Output", at);
         };
     }
@@ -541,6 +543,27 @@ public sealed interface Output
         public void encode(PostcardOut out) {
             out.variant(27);
             this.point.encode(out);
+        }
+    }
+
+    /**
+     * A party of a host's town's settlers founded {@code town} ({@code settlers.rs}), called {@code name}, on open ground round the block
+     * ({@code x}, {@code z}): for the host to build there (a bell, the Merchant's desk, cottages) and say where its desk stands
+     * ({@code Input::AddPoint}, a desk of the town's). Asked at every look until it does; the settlers come out as
+     * {@code Settled} when they arrive, for the host to spawn by the desk once it stands.
+     */
+    record Found(long town, String name, int x, int z) implements Output {
+        public Found {
+            Objects.requireNonNull(name, "name");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(28);
+            out.u32(this.town);
+            out.string(this.name);
+            out.i32(this.x);
+            out.i32(this.z);
         }
     }
 }

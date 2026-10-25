@@ -87,4 +87,9 @@ pub enum Output {
     CrownShop { point: Point, good: GoodNo, lot: u32, price: u32, fund: u64, taken: u32 },
     /// Peace: the crown's gold shop comes down. What its card holds is the host's.
     CrownShopDown { point: Point },
+    /// A party of a host's town's settlers founded `town` (`settlers.rs`), called `name`, on open ground round the block
+    /// (`x`, `z`): for the host to build there (a bell, the Merchant's desk, cottages) and say where its desk stands
+    /// (`Input::AddPoint`, a desk of the town's). Asked at every look until it does; the settlers come out as
+    /// `Settled` when they arrive, for the host to spawn by the desk once it stands.
+    Found { town: TownNo, name: String, x: i32, z: i32 },
 }

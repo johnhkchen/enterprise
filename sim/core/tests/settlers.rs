@@ -62,19 +62,33 @@ fn the_capital_is_half_the_spare_between_the_least_and_the_dial() {
     assert_eq!(capital(Kind::Found, 42.0, enterprise_core::Fixed::from(60.0)), 30.0);
 }
 
-// parity-partial: ExpeditionTests.aMerchantSettlesAVillageNobodyTradesWith (the bell, beds and desk placed in the world are Minecraft's: the capital, the route home and the roster are pinned)
 #[test]
-fn a_hosts_town_sends_no_settlers_until_the_host_can_show_what_they_found() {
-    // The village nobody trades with, as below; but the market is a host's (its lockers the host's to place).
-    let (mut s, home) = world(14.0);
-    village(&mut s, Hex::new(5, 0));
+fn a_hosts_settlers_town_is_asked_of_the_host_until_its_desk_stands() {
+    // A host's town (its lockers the host's) with nobody's village near: its party founds a town on open ground,
+    // which is the host's too, and is asked for (`Found`) at every look until the host says where its desk stands.
+    use enterprise_core::wire::{self, Command, Input, Output, Point, PointKind, Request, Response};
+    let (mut s, home) = world(100.0);
     s.host_places_lockers(home);
-    assert!(s.raising(home), "grown past growing");
-    s.advance(DAY);
-    assert!(s.parties().is_empty() && s.settled().is_empty(), "a host's town sent settlers");
-    assert_eq!(s.town(home).people.villagers, 10.0, "its villagers stay home");
+    s.advance(2 * DAY);
+    let founded = s.settled();
+    assert_eq!(founded.len(), 1, "a town founded: {:?}", s.parties());
+    let t = founded[0];
+    let found = |s: &Society| s.show_founded().into_iter().filter(|o| matches!(o, Output::Found { town, .. } if *town as usize == t)).count();
+    assert_eq!(found(&s), 1);
+    let hex = s.town_hex(t).unwrap();
+    assert!(matches!(&s.show_founded()[0], Output::Found { x, z, .. }
+        if (*x as f64 - hex.center_x()).abs() < 1.0 && (*z as f64 - hex.center_z()).abs() < 1.0), "at its hex's centre");
+    assert!(s.lockers(t).is_some_and(|l| l.placed.is_some()), "a host's town: its lockers where the host places them");
+    let mut host = Some(s);
+    let desk = Point { kind: PointKind::Desk, dim: "minecraft:overworld".into(), x: hex.center_x() as i32, y: 64, z: hex.center_z() as i32 };
+    match wire::handle(&mut host, Request::new(Command::Apply { inputs: vec![Input::AddPoint { point: desk, town: t as u32 }] })) {
+        Response::Done { outputs, .. } => assert!(!outputs.iter().any(|o| matches!(o, Output::Found { .. })), "built: {outputs:?}"),
+        other => panic!("{other:?}"),
+    }
+    assert_eq!(found(host.as_ref().unwrap()), 0, "not asked again");
 }
 
+// parity-partial: ExpeditionTests.aMerchantSettlesAVillageNobodyTradesWith (the bell, beds and desk placed in the world are Minecraft's: the capital, the route home and the roster are pinned)
 #[test]
 fn a_merchant_settles_a_village_nobody_trades_with() {
     // 14 emeralds in all, the floor: 4 for the desk, 10 of capital. The Java test settles by hand (the bell and desk are

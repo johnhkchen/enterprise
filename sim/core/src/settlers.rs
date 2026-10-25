@@ -96,6 +96,8 @@ pub struct Settlers {
     /// The villages among them: the search for the nearest village still finds them (and, a market now, passes on).
     pub villages: Vec<TownId>,
     pub came_home: u32,
+    /// Towns a host's settlers founded that the host hasn't built yet (`Output::Found`): until a desk of theirs stands.
+    pub unbuilt: Vec<TownId>,
 }
 
 /// What a party on the road looks like to a host.
@@ -165,6 +167,17 @@ pub fn travel_ticks(blocks: f64) -> u64 {
 }
 
 impl Society {
+    /// What the host is to build of the towns its settlers founded (`Output::Found`): each not yet built, at the centre
+    /// of its hex.
+    pub fn show_founded(&self) -> Vec<crate::wire::Output> {
+        self.world.resource::<Settlers>().unbuilt.iter().filter_map(|&t| {
+            let hex = self.town_hex(t)?;
+            let name = self.world.get::<crate::state::Town>(self.towns[t])?.name.clone();
+            Some(crate::wire::Output::Found { town: crate::wire::no(t), name, x: hex.center_x().round() as i32,
+                z: hex.center_z().round() as i32 })
+        }).collect()
+    }
+
     /// A village nobody trades with, at the point (x, z) in blocks: a placed town of three idle villagers with no
     /// Merchant and no route, which a town's settlers may make a market of.
     pub fn add_village(&mut self, x: f64, z: f64) -> TownId {
@@ -256,6 +269,12 @@ impl Society {
             _ => {
                 let t = self.add_town(&format!("Newfound {}", party.id), 0.0);
                 self.place_town(t, party.target.center_x(), party.target.center_z());
+                // A host's settlers' town is the host's too: its lockers where the host places them, and built in its
+                // world where they settled (`Output::Found`, until a desk of the town's stands).
+                if self.world.get::<crate::lockers::Lockers>(self.towns[party.from]).is_some_and(|l| l.placed.is_some()) {
+                    self.host_places_lockers(t);
+                    self.world.resource_mut::<Settlers>().unbuilt.push(t);
+                }
                 t
             }
         };
