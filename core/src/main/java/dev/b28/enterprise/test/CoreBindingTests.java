@@ -1434,9 +1434,13 @@ public final class CoreBindingTests {
             helper.assertTrue(inVendor(order, Items.PAPER) == 16 && account.getBalance() == 24 && inChest(chest, Items.PAPER) == 48,
                     "the first lot: " + inVendor(order, Items.PAPER) + " in the vendor, " + account.getBalance() + " on its card, "
                             + inChest(chest, Items.PAPER) + " in the chest");
-            var line = shopsOf(host, town).shops().get(0);
-            helper.assertTrue(line.role() == dev.b28.enterprise.wire.ShopRole.Order && line.delivered() == 16 && line.paid() == 16,
-                    "the core's order: " + line);
+            // Its own vendor's line, in world space: a neighbouring test's vendor may be in the desk's reach too.
+            BlockPos at = helper.absolutePos(new BlockPos(6, 2, 6));
+            java.util.function.Predicate<dev.b28.enterprise.wire.ShopLine> here =
+                    l -> l.point().x() == at.getX() && l.point().y() == at.getY() && l.point().z() == at.getZ();
+            var line = shopsOf(host, town).shops().stream().filter(here).findFirst().orElse(null);
+            helper.assertTrue(line != null && line.role() == dev.b28.enterprise.wire.ShopRole.Order && line.delivered() == 16
+                    && line.paid() == 16, "the core's order: " + line + "; all: " + shopsOf(host, town).shops());
             host.look(level.getServer(), t + 1_200 + DAY);
             host.settle();
             helper.assertTrue(inVendor(order, Items.PAPER) == 32 && account.getBalance() == 8 && inChest(chest, Items.PAPER) == 32,
@@ -1444,7 +1448,8 @@ public final class CoreBindingTests {
                             + " on its card, " + inChest(chest, Items.PAPER) + " in the chest");
             helper.setBlock(new BlockPos(6, 2, 6), Blocks.AIR);
             host.look(level.getServer(), t + 1_200 + DAY + 1_200);
-            helper.assertTrue(shopsOf(host, town).shops().isEmpty() && host.points().of(PointsAdapter.Kind.SHOP).isEmpty(),
+            helper.assertTrue(shopsOf(host, town).shops().stream().noneMatch(here)
+                    && !host.points().of(PointsAdapter.Kind.SHOP).containsKey(GlobalPos.of(level.dimension(), at)),
                     "its block broken, the core still has a shop: " + shopsOf(host, town).shops());
             if (System.getenv("ENTERPRISE_CORE_MEASURE") != null) {
                 helper.setBlock(new BlockPos(6, 2, 6), VENDOR);
