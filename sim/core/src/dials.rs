@@ -195,10 +195,11 @@ dials! {
     settling_capital: f64 = 30.0,
     founding_capital: f64 = 42.0,
     /// Days between a town's parties of settlers, and the hexes out a village or open ground must be (from every
-    /// market, and at most from home).
+    /// market, and at most from home): 6 to 10, about 480 to 800 blocks, vanilla villages' spacing (the mod's
+    /// `Expeditions` 4 and 8 put 18 towns in 120 days of the network study, 6 and 10 put 14).
     days_between: f64 = 8.0,
-    min_hexes: u32 = 4,
-    max_hexes: u32 = 8,
+    min_hexes: u32 = 6,
+    max_hexes: u32 = 10,
     // farms-and-wages (`farms.rs`)
     /// Share of its households' savings a town's treasury may borrow, to honour its bills or buy paper.
     deposit_share: f64 = 0.5,

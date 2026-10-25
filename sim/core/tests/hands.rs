@@ -126,7 +126,7 @@ fn settlers_carry_their_ids_and_names_to_the_village_they_settle() {
     s.set_people(home, 10.0, 12.0, 12.0);
     s.deliver(home, 0, 150.0);
     s.place_town(home, Hex::new(0, 0).center_x(), Hex::new(0, 0).center_z());
-    let v = s.add_village(Hex::new(5, 0).center_x(), Hex::new(5, 0).center_z());
+    let v = s.add_village(Hex::new(7, 0).center_x(), Hex::new(7, 0).center_z());
     let at_home = ids(&s, home);
     s.advance(DAY / 4);
     assert_eq!(s.parties().len(), 1, "a party left");

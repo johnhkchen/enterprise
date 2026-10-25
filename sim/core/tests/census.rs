@@ -182,7 +182,7 @@ fn a_party_of_settlers_departs_its_villagers_and_settles_new_ones() {
     let mut s = Society::new(content());
     s.content_mut().dials.budget_share = 1.0;
     let home = grown(&mut s);
-    let v = s.add_village(Hex::new(5, 0).center_x(), Hex::new(5, 0).center_z());
+    let v = s.add_village(Hex::new(7, 0).center_x(), Hex::new(7, 0).center_z());
     let villagers: Vec<u32> = s.roster(v).hands.iter().map(|h| h.id).collect();
     let out = s.apply(&Input::Advance { to: DAY / 4 });
     assert_eq!(s.parties()[0].hands, 1);

@@ -5,6 +5,11 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-25, towns found 6 to 10 hexes out.** Three lanes from the same day 0, 120 days with realms, the dials
+  `min_hexes`/`max_hexes` set a lane each: 4-8 (the mod's) founded 18 towns, new towns' mood -0.21, old towns' 1.92;
+  6-10: 14, -0.52, 1.69; 8-12: 11, -0.68, 1.30; trade the same (113-120 trips, about 27,500 items). 6-10 (480 to 800
+  blocks, about vanilla villages' spacing) is the core's default now (John). The settlers tests pin the mod's 4-8.
+  How often a town founds is `days_between` (8), the stronger knob for fewer towns.
 - **2026-10-25, settlers' towns are built in the world.** The founding view: a town a host's town's settlers found
   is the host's too (its lockers the host's), and is asked for at every look (`Output::Found { town, name, x, z }`,
   `Settlers.unbuilt`) until a desk of its stands (`Input::AddPoint`). `LandAdapter` loads its ground (5x5 chunks,

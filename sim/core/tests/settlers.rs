@@ -41,6 +41,9 @@ fn village(s: &mut Society, hex: Hex) -> usize {
 fn world(money: f64) -> (Society, usize) {
     let mut s = Society::new(content());
     s.content_mut().dials.budget_share = 1.0;
+    // The mod's spacing (`Expeditions.MIN_HEXES`, `MAX_HEXES`), as its tests pin it.
+    s.content_mut().dials.min_hexes = 4;
+    s.content_mut().dials.max_hexes = 8;
     let t = home(&mut s, money);
     (s, t)
 }

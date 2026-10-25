@@ -65,6 +65,16 @@ server-setup:
     cp -R dev/testbench core/run/world/datapacks/enterprise-testbench
     @date +%s > core/run/.last-setup
 
+# A survival world for the dev server: normally generated from SEED, no testbench (its market is the flat world's), the
+# same ports. Then `just server` and `dev/experiments/survival_study.py`.
+server-setup-survival seed:
+    @scripts/server-check
+    mkdir -p core/run
+    echo "eula=true" > core/run/eula.txt
+    printf '%s\n' 'level-type=minecraft\:normal' 'level-seed={{seed}}' 'enable-rcon=true' 'rcon.password=dev' 'rcon.port=25598' 'online-mode=false' 'spawn-protection=0' 'difficulty=normal' 'server-ip=127.0.0.1' 'server-port=25599' > core/run/server.properties
+    rm -rf core/run/world
+    @date +%s > core/run/.last-setup
+
 # The dev server's world put back as a study checkpoint left it (`network_study.py --save-at`), to fork a run from there
 server-restore checkpoint:
     @scripts/server-check
