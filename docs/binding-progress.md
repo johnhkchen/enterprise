@@ -5,6 +5,14 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-25, a town's hands that wander past its reach are still counted.** Greenfell's roster fell from 7 to 4 by
+  day 14 with no one dead: three villagers had walked up the hill 64 to 80 blocks east and stopped where the study's
+  loaded ground stops ticking. The census looks 48 blocks round the bell, and a villager not seen there was kept only if
+  it couldn't be looked for (its last chunk unloaded); these could be, alive, so they were dropped as gone. Now a hand
+  whose villager is alive anywhere is counted as it is (`PeopleAdapter.census`; game test
+  `aHandWanderedPastItsTownsReachIsStillCounted`). 30 days on seed 12345: Greenfell 7 at the end (6 from day 15 to
+  24: one Farmer died falling 20 blocks into a sinkhole inside the fenced ring, likely onto a lower fence's top where
+  the ring steps down a slope).
 - **2026-10-25, a town's ground made safe when it's founded (`settlement/Grounds`).** In the survival world (seed
   12345) Greenfell's villagers died over and over in a 1-wide alley a village left between a house and a hill cut:
   they stepped off the hill onto the roof's eave and fell 4 to 6 blocks into the alley (a server-side fall log found

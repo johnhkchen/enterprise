@@ -463,6 +463,36 @@ public final class CoreBindingTests {
     }
 
     /**
+     * A hand that wandered past its town's reach, alive (in the survival world, up a hill to where the loaded ground
+     * stopped ticking), is still counted, as it is: eleven days out of reach and it's still the town's hand.
+     */
+    @GameTest(template = "floor")
+    public static void aHandWanderedPastItsTownsReachIsStillCounted(GameTestHelper helper) {
+        var level = helper.getLevel();
+        BlockPos desk = settlement(helper, 3);
+        BlockPos bell = helper.absolutePos(BELL);
+        Villager farmer = villager(helper, VillagerProfession.FARMER, 2, new BlockPos(4, 2, 4));
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, desk, "Testford");
+            PeopleAdapter people = host.people();
+            people.countNow(level, town, bell, CENSUS_RADIUS);
+            helper.assertTrue(host.hands().of(farmer.getUUID()) != null, "the Farmer isn't a hand");
+            farmer.teleportTo(farmer.getX(), farmer.getY() + 30, farmer.getZ()); // out of reach, over no one's arena
+            var census = (Input.Census) people.census(level, town, bell, CENSUS_RADIUS);
+            helper.assertTrue(census.residents().stream().anyMatch(r -> r.tag().equals(farmer.getUUID().toString())
+                    && r.trade().equals("minecraft:farmer") && r.level() == 2), "out of reach, the Farmer isn't counted: " + census);
+            advance(host, level.getGameTime() + 11 * DAY);
+            people.countNow(level, town, bell, CENSUS_RADIUS);
+            helper.assertTrue(host.hands().of(farmer.getUUID()) != null, "eleven days out of reach and the Farmer has left");
+        } finally {
+            delete(dir);
+            farmer.discard();
+        }
+        helper.succeed();
+    }
+
+    /**
      * A child is born in the core and the binding spawns it (B4.5): a town of two with four beds and bread, where the
      * dials make children come easily, has a child within five days; the core's {@code Born} is a hand with no villager,
      * and the people adapter spawns a baby by the bell for it and names it, so the core's hand is that baby's and the

@@ -69,6 +69,7 @@ CoreBindingTests.theDialCommandIsRoutedToTheCoreOrTheJavaRules # the binding's o
 CoreBindingTests.aTownsTradePointsAreTheCoresThroughASaveAndLoad # the binding's own: the points adapter's lookup rebuilt from the core's save (Rust: scenarios/inputs.json, stocktake.json)
 CoreBindingTests.aVillagerIsItsTownsHandByAnIdThatOutlivesItsNeighbours # the binding's own: villagers tied to the core's hands by UUID (Rust: tests/hands.rs, scenarios/hands.json)
 CoreBindingTests.aTownsCensusIsItsRosterAndAVillagerUnseenForTenDaysHasLeft # the binding's own: villagers counted round the bell into the core's census (Rust: tests/census.rs, scenarios/people.json)
+CoreBindingTests.aHandWanderedPastItsTownsReachIsStillCounted # the binding's own: which villagers the mod counts into the core's census
 CoreBindingTests.aChildBornInTheCoreIsSpawnedByItsTownsBellAndNamed # the binding's own: the core's Born spawned as a baby and named (Rust: tests/census.rs, scenarios/people.json)
 CoreBindingTests.theCoresWordOnAHandIsWrittenToItsVillager # the binding's own: HandLevel and HandGone written to the villager
 CoreBindingTests.aVillagerSpawnedForAHandIsItsHandsInTheSave # the binding's own: names of villagers just spawned sent before the core saves

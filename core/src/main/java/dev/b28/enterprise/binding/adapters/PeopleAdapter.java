@@ -153,8 +153,9 @@ public final class PeopleAdapter {
 
     /**
      * A town's census: the beds and villagers within {@code radius} of {@code centre} (but those spawned for hands and
-     * not yet named), and each of the town's villagers that can't be looked for (not loaded, last seen in a chunk whose
-     * entities aren't loaded: wandered off the loaded ground) as the core has it, so it isn't taken to have left.
+     * not yet named), each of the town's villagers alive farther off (wandered past its reach), and each that can't be
+     * looked for (not loaded, last seen in a chunk whose entities aren't loaded: wandered off the loaded ground) as the
+     * core has it, so it isn't taken to have left.
      */
     private Input census(ServerLevel level, long town, BlockPos centre, int radius, HandsAdapter.Roster roster) {
         java.util.Set<UUID> pending = new java.util.HashSet<>();
@@ -176,11 +177,22 @@ public final class PeopleAdapter {
             if (h.away() || h.villager() == null || after.containsKey(h.villager())) {
                 continue;
             }
+            Entity found = find(level.getServer(), h.villager().toString());
+            if (found instanceof Villager v && v.isAlive()) {
+                // Wandered past the town's reach, alive: still the town's, as it is now (it stops where the ground
+                // round a player stops ticking, and would be dropped as gone).
+                var data = v.getVillagerData();
+                residents.add(new Resident(v.getUUID().toString(),
+                        BuiltInRegistries.VILLAGER_PROFESSION.getKey(data.getProfession()).toString(),
+                        Math.clamp(data.getLevel(), 1, 5), v.isBaby()));
+                after.put(v.getUUID(), v.chunkPosition().toLong());
+                continue;
+            }
             Long chunk = before.get(h.villager());
             if (chunk != null) {
                 after.put(h.villager(), chunk);
             }
-            if (find(level.getServer(), h.villager().toString()) == null && (chunk == null || !level.areEntitiesLoaded(chunk))) {
+            if (found == null && (chunk == null || !level.areEntitiesLoaded(chunk))) {
                 residents.add(new Resident(h.villager().toString(), h.trade(), Math.clamp(h.level(), 1, 5), h.baby()));
             }
         }
