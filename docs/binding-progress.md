@@ -5,6 +5,13 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-26, a new town starts with 64 emeralds, not 32.** John's call: more money, not cheaper stalls. The survival
+  study's desk chest now holds 64 (`--starting N` for others). Seed 2024, 45 days, the same code: at 32 neither
+  desert town ever sent a wagon, Amberfell ended at 2 emeralds and mood -1.50 (8 people), Dustfell at 0 and -2.75; at
+  64 the wagons went 4 and 6 times (134 items sold), Amberfell ended at 19.1 emeralds and +0.59 (11 people), Dustfell
+  at 52.2 and +1.54 (14). At 32 a town spends its money on a shop, a stall and fields before it has an income; at 64
+  it has some left to hire and trade with until the wagons pay.
+
 - **2026-10-26, homes and fields laid on a hillside.** Every survival run logged its town's homes and fields "can't
   be laid yet" hundreds of times (seed 31337, 10 days: 239 homes, 181 fields; with the ground pass off, the same): the
   core paid for them and counted their beds and plots, and the world never got them. A home wants a level 7 x 7

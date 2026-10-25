@@ -4,11 +4,11 @@
     just server-setup-survival 8675309   # a normal world of that seed, no testbench (its villages 496 blocks apart;
                                          # 12345's nearest pair are 1,488 apart, a road no load pays for)
     just server                          # in the background
-    python3 dev/experiments/survival_study.py DAYS OUT.log [--loaded] [--chests]
+    python3 dev/experiments/survival_study.py DAYS OUT.log [--loaded] [--chests] [--starting N]
 
 The nearest village to spawn and the nearest one to it beyond SPREAD blocks (looking round it 300 to 700 blocks out, twelve ways) are found (`locate structure`), each
 loaded a minute while its villagers settle, and given what a player gives a village to trade: a Merchant's Desk at
-the surface by the village's centre, a chest by it with STARTING emeralds, and a Merchant. The core founds a town at
+the surface by the village's centre, a chest by it with STARTING emeralds (`--starting N`: N), and a Merchant. The core founds a town at
 each desk, a route opens from the first to the second, and the trades the villagers' lockers would buy are switched
 on (a locker needs a chest touching its workstation: a generated village has none, so most have no locker, as a
 player finds it). Then the days run, the first village kept loaded as a player standing in it would (`--loaded`:
@@ -28,7 +28,7 @@ sys.path.insert(0, str(REPO / "scripts"))
 import rcon as rcon_client  # noqa: E402
 
 SPREAD = 400  # the second village at least this far from the first
-STARTING = 32  # emeralds in each desk's chest
+STARTING = 64  # emeralds in each desk's chest (32 left seed 2024's desert pair broke and trading nothing)
 _sock = None
 
 
@@ -103,13 +103,17 @@ def market(village):
     y = surface(x, z)
     rcon(f"setblock {x} {y} {z} enterprise:merchants_desk",
          f"setblock {x + 1} {y} {z} minecraft:chest",
-         f"item replace block {x + 1} {y} {z} container.0 with minecraft:emerald {STARTING}",
+         *(f"item replace block {x + 1} {y} {z} container.{i} with minecraft:emerald {min(64, STARTING - 64 * i)}"
+           for i in range((STARTING + 63) // 64)),
          f"summon minecraft:villager {x}.5 {y} {z + 1}.5 {{PersistenceRequired:1b,Xp:1,"
          f"VillagerData:{{profession:\"enterprise:merchant\",level:1,type:\"minecraft:plains\"}}}}")
     return f"{x} {y} {z}"
 
 
 def main():
+    global STARTING
+    if "--starting" in sys.argv:
+        STARTING = int(sys.argv[sys.argv.index("--starting") + 1])
     days = int(sys.argv[1])
     out = Path(sys.argv[2])
     log = out.open("w")
