@@ -113,6 +113,11 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: 
         if roster.merchant.is_none() {
             continue;
         }
+        // A host's town (its lockers placed by the host: `locker_host.rs`) sends none for now: the host can't yet show
+        // the town a party founds, so its settlers would leave the world for a town nobody sees (John, 2026-10-25).
+        if lockers.as_ref().is_some_and(|l| l.placed.is_some()) {
+            continue;
+        }
         if !raising(&content, &settlers, t, &people, &stock, now) {
             continue;
         }

@@ -13,6 +13,11 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
   `Growth.homeSite`); a census counts the beds it found plus an unlaid home's two. Schema `81d6ff04f74eef89`. Tests:
   `census::a_home_the_core_builds_is_laid_by_the_host_and_its_beds_count_till_then`,
   `aHomeTheCoreBuiltIsLaidWithItsTwoBeds` (312 both modes).
+  Grown, the towns sent settlers: 15 core-only towns (`Newfound`, 2 villagers each, mood -0.25, never growing) in
+  120 days, their 30 villagers gone from the world for towns nobody sees (the mod can't show a founded town yet).
+  Held for now (John): a host's town (its lockers the host's, `locker_host.rs`) sends no settlers
+  (`rules/settlers.rs`); the founding view (bell, desk, cottages built where the party goes) is the next step for
+  settlers. Test `settlers::a_hosts_town_sends_no_settlers_until_the_host_can_show_what_they_found`.
 - **2026-10-24, each town rolls its own dice.** One world `Rng` drawn by every town meant a change in one town
   re-rolled every other's: S1's Leatherworker did more locker trades (each rolls for the Merchant's XP), so roadless
   Greenwick's slack Fletcher retrained as a Leatherworker (cows, no wool, furnishings 0) where the base run drew a

@@ -64,6 +64,18 @@ fn the_capital_is_half_the_spare_between_the_least_and_the_dial() {
 
 // parity-partial: ExpeditionTests.aMerchantSettlesAVillageNobodyTradesWith (the bell, beds and desk placed in the world are Minecraft's: the capital, the route home and the roster are pinned)
 #[test]
+fn a_hosts_town_sends_no_settlers_until_the_host_can_show_what_they_found() {
+    // The village nobody trades with, as below; but the market is a host's (its lockers the host's to place).
+    let (mut s, home) = world(14.0);
+    village(&mut s, Hex::new(5, 0));
+    s.host_places_lockers(home);
+    assert!(s.raising(home), "grown past growing");
+    s.advance(DAY);
+    assert!(s.parties().is_empty() && s.settled().is_empty(), "a host's town sent settlers");
+    assert_eq!(s.town(home).people.villagers, 10.0, "its villagers stay home");
+}
+
+#[test]
 fn a_merchant_settles_a_village_nobody_trades_with() {
     // 14 emeralds in all, the floor: 4 for the desk, 10 of capital. The Java test settles by hand (the bell and desk are
     // Minecraft's); here the capital lands in the new market's treasury and a route opens home.
