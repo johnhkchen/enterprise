@@ -161,4 +161,68 @@ public final class SettlementTests {
                 "a confined villager is worth " + Census.CONFINED_WEIGHT + ", got " + census.value());
         helper.succeed();
     }
+
+    /**
+     * Dirt from y=2 up to {@code top} over the arena's columns x0..x1, every z, open sky over it (the framework's
+     * barriers round the arena taken off, or they'd be its ground).
+     */
+    private static void ground(GameTestHelper helper, int x0, int x1, int top) {
+        for (int x = x0; x <= x1; x++) {
+            for (int z = 0; z <= 6; z++) {
+                for (int y = 2; y <= 12; y++) {
+                    helper.setBlock(new BlockPos(x, y, z), y <= top ? Blocks.DIRT : Blocks.AIR);
+                }
+            }
+        }
+    }
+
+    @GameTest(template = "floor")
+    public static void aTrenchByTheDeskIsFilledAndWhoeverIsInItLiftedOut(GameTestHelper helper) {
+        ground(helper, 0, 2, 6);
+        ground(helper, 3, 3, 2); // a trench 4 deep down x=3
+        ground(helper, 4, 6, 6);
+        Villager stuck = helper.spawn(EntityType.VILLAGER, new BlockPos(3, 3, 3));
+        var made = dev.b28.enterprise.settlement.Grounds.make(helper.getLevel(), helper.absolutePos(new BlockPos(3, 2, 3)), 3);
+        for (int z = 0; z <= 6; z++) {
+            helper.assertBlockPresent(Blocks.DIRT, new BlockPos(3, 6, z));
+        }
+        helper.assertTrue(made.filled() == 7 && made.fenced() == 0, "the trench's 7 columns filled, no fences: " + made);
+        helper.assertTrue(stuck.getY() >= helper.absolutePos(new BlockPos(3, 7, 3)).getY(),
+                "the villager in the trench stands on its new ground: y " + stuck.getY());
+        stuck.discard();
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void aDropTooWideToFillIsFencedAtTheTop(GameTestHelper helper) {
+        ground(helper, 0, 3, 6);
+        ground(helper, 4, 6, 2); // 4 down, 3 wide to the arena's edge: a valley, not a pit
+        var made = dev.b28.enterprise.settlement.Grounds.make(helper.getLevel(), helper.absolutePos(new BlockPos(3, 2, 3)), 3);
+        for (int z = 0; z <= 6; z++) {
+            helper.assertBlockPresent(Blocks.OAK_FENCE, new BlockPos(3, 7, z));
+            helper.assertBlockPresent(Blocks.AIR, new BlockPos(5, 3, z));
+        }
+        helper.assertTrue(made.filled() == 0 && made.fenced() == 7, "the 7 columns at the edge fenced, none filled: " + made);
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
+    public static void anAlleyBetweenAHouseAndAHillIsFilledAndFencedOffTheRoof(GameTestHelper helper) {
+        for (int x = 0; x <= 2; x++) {
+            for (int z = 0; z <= 6; z++) {
+                for (int y = 2; y <= 12; y++) {
+                    helper.setBlock(new BlockPos(x, y, z), y <= 7 ? Blocks.OAK_PLANKS : Blocks.AIR); // a house's wall
+                }
+            }
+        }
+        ground(helper, 3, 3, 2); // the alley, 5 down from the hill
+        ground(helper, 4, 6, 6);
+        var made = dev.b28.enterprise.settlement.Grounds.make(helper.getLevel(), helper.absolutePos(new BlockPos(3, 2, 3)), 3);
+        for (int z = 0; z <= 6; z++) {
+            helper.assertBlockPresent(Blocks.DIRT, new BlockPos(3, 6, z));
+            helper.assertBlockPresent(Blocks.OAK_FENCE, new BlockPos(3, 7, z));
+        }
+        helper.assertTrue(made.filled() == 7 && made.fenced() == 7, "the alley's 7 columns filled and fenced: " + made);
+        helper.succeed();
+    }
 }

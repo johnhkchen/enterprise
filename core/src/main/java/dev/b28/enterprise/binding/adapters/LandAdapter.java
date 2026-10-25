@@ -512,6 +512,7 @@ public final class LandAdapter {
                 Enterprise.LOGGER.warn("The core wouldn't take {}'s desk at {}: {}", f.name(), town.get().desk().toShortString(), why);
             } else {
                 Enterprise.LOGGER.info("{} founded at {}", f.name(), town.get().desk().toShortString());
+                dev.b28.enterprise.settlement.Grounds.founded(level, town.get().desk(), f.name());
             }
         }
     }

@@ -5,6 +5,19 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-25, a town's ground made safe when it's founded (`settlement/Grounds`).** In the survival world (seed
+  12345) Greenfell's villagers died over and over in a 1-wide alley a village left between a house and a hill cut:
+  they stepped off the hill onto the roof's eave and fell 4 to 6 blocks into the alley (a server-side fall log found
+  where each fall began). Now, once a desk is founded (and once a founded town is built), the ground within 40 blocks
+  is gone over at the server's next tick: pits up to 3 wide and 2 or more deep between natural banks filled with the
+  bank's block, a 1-wide alley between natural ground and a building filled and fenced on top (or its new ground leads
+  onto the roof), never a column a door opens onto; then natural ground with a drop of 4 or more beside it, side or
+  corner, fenced; anyone in a filled pit lifted out. Greenfell: 62 columns filled, 178 fences; 30 days, no villager
+  died and no fall hurt more than 1 (it was 2 deaths and 27 falls of 3 to 6.6 by day 4). Game tests
+  `aTrenchByTheDeskIsFilledAndWhoeverIsInItLiftedOut`, `aDropTooWideToFillIsFencedAtTheTop`,
+  `anAlleyBetweenAHouseAndAHillIsFilledAndFencedOffTheRoof`. Still open from the same run: Greenfell's roster falls
+  from 7 to 4 by day 14 with no one dead (its census sees only 4 from day 11, 3 beds counted), and its wagon never
+  goes (the hub can't fund the trip: 0 emeralds from day 5).
 - **2026-10-25, the survival world's findings fixed.** (1) A town keeps back the road money a round trip on each of
   its routes out takes (`Trades.road_reserve`, set first at each touch, in `reserve`): fields, stalls, lessons and homes
   can't spend its wagon (test `farms::a_town_keeps_its_wagons_road_money_from_a_field`). (2) A villager that dies is its

@@ -167,6 +167,7 @@ public final class StockAdapter {
         if (r instanceof Response.Refused refused) {
             throw new IllegalStateException("the core wouldn't count the desk at " + desk.toShortString() + ": " + refused.why());
         }
+        dev.b28.enterprise.settlement.Grounds.founded(level, desk, name);
         return town;
     }
 
