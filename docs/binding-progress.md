@@ -9,7 +9,9 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
   and the core gives it, not the player (a charter paid in diamonds to come, decisions.md "Merchant money"). A town
   founded by `AddTown` gets the dial `founding_purse` (64) in its treasury, booked "founding purse"; a desk put back is
   its old town and gets none (till test `a_new_town_is_given_its_founding_purse`). The survival study puts nothing in
-  the chest now (`--starting N` for more). Measured first with the player's chest at 64 and 32: Seed 2024, 45 days, the same code: at 32 neither
+  the chest now (`--starting N` for more). With the core's purse, seed 2024, 45 days: Amberfell +0.81 (8 people,
+  19.4 emeralds), Dustfell +0.23 (14, 71.3), 7 trips out (721 items sold). Measured first with the player's chest at
+  64 and 32: Seed 2024, 45 days, the same code: at 32 neither
   desert town ever sent a wagon, Amberfell ended at 2 emeralds and mood -1.50 (8 people), Dustfell at 0 and -2.75; at
   64 the wagons went 4 and 6 times (134 items sold), Amberfell ended at 19.1 emeralds and +0.59 (11 people), Dustfell
   at 52.2 and +1.54 (14). At 32 a town spends its money on a shop, a stall and fields before it has an income; at 64
