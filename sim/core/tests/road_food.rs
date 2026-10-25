@@ -447,3 +447,32 @@ fn the_team_eats_home_s_hay_or_spare_wheat_else_its_fodder_is_bought() {
         }
     }
 }
+
+/// A town whose wagon would go but can't pay for the road (`Stay::CantFund`, a load worth the road aboard) saves up for
+/// it: a home for its homeless waits (`road_reserve`, kept back with its trading capital). With nothing worth taking it
+/// keeps nothing back, and builds. (A survival world's new town built two homes on the money its first trip wanted; its
+/// wagon had nothing to take, and the reserve that would have kept its homes from it would have kept them for nothing.)
+#[test]
+fn a_town_saves_up_for_a_loaded_wagon_it_cant_send_but_not_for_an_empty_one() {
+    let homeless = |paper: f64| {
+        let mut s = Society::new(content());
+        s.content_mut().dials.standing_orders = false;
+        let hub = s.add_town("Hub", 20.0);
+        let dest = s.add_town("Dest", 1e5);
+        s.record_capacity(dest, 1, &[(PAPER, 2048.0 / 5.0)]); // a par of 32 stacks
+        s.set_trade(dest, PAPER, 0.0, 1e-9);
+        if paper > 0.0 {
+            s.deliver(hub, PAPER, paper);
+        }
+        s.add_route(hub, dest, 1.0, 0.0, 4.0); // a day each way: about 30 emeralds of road food and purse
+        s.set_people(hub, 5.0, 0.0, 40.0);
+        s
+    };
+    let mut loaded = homeless(2048.0);
+    loaded.advance(5 * DAY);
+    assert_eq!(loaded.road_food(0).stayed, Some(Stay::CantFund), "the wagon can't be funded");
+    assert_eq!(loaded.town(HUB).people.homes_built, 0, "a home would spend the trip");
+    let mut empty = homeless(0.0);
+    empty.advance(5 * DAY);
+    assert_eq!(empty.town(HUB).people.homes_built, 1, "nothing for the road to save: a home");
+}

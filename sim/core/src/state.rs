@@ -317,6 +317,9 @@ pub struct RouteState {
     pub food_eaten: f64,
     pub food_paid: Fixed,
     pub stayed: Option<crate::road::Stay>,
+    /// Whether its last plan would have gone, funded: a load worth the road, full or on its day, or pressing (set
+    /// before it's asked whether home can fund it, `rules/plan.rs`).
+    pub would_go: bool,
     /// The look a wagon was last tried (`Caravans.poll` 173 calling `dispatch`): a plan reached `Decide`. A try that
     /// sent none is a "no trip" in the books (`poll` 182–184).
     pub tried_at: Option<u64>,

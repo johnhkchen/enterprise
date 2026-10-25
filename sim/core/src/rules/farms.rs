@@ -68,18 +68,25 @@ pub fn reserve(content: &Content, trades: &Trades, farm: Option<&Farm>) -> Fixed
     super::trading_capital(content, trades) + farm.map_or(Fixed::ZERO, |f| wage_float(content, f)) + trades.road_reserve
 }
 
-/// Each town's road reserve ([`Trades::road_reserve`]): the road money a round trip on each of its routes out takes
-/// (its food for a crew of one, or the road's cost where content has no food), so what it spends on fields, stalls,
-/// lessons and homes leaves its wagons able to go (a survival world's new town spent its 32 emeralds in four days and
-/// never sent its first).
-pub fn road_reserve(content: Res<Content>, routes: Query<&Route>, mut towns: Query<(&Town, &mut Trades, &Stock)>) {
+/// Each town's road reserve ([`Trades::road_reserve`]): what home must hold to send each of its wagons that would go
+/// but can't pay for it (`Stay::CantFund`: its food for a crew of one and the purse for the road home's, as `plan.rs`
+/// asks, or the road's cost where content has no food), so what it spends on fields, stalls, lessons, homes and
+/// children saves up for the trip; a wagon with nothing worth taking holds nothing back (homes for the homeless before
+/// a wagon with no load).
+pub fn road_reserve(content: Res<Content>, routes: Query<(&Route, &crate::state::RouteState)>,
+        mut towns: Query<(&Town, &mut Trades, &Stock)>) {
     let mut by_town: BTreeMap<usize, Fixed> = BTreeMap::new();
     // (In the routes' order: a sum's last bit mustn't hang on archetypes, which a load reorders.)
-    let mut ordered: Vec<&Route> = routes.iter().collect();
-    ordered.sort_by_key(|r| r.seq);
-    for route in ordered {
+    let mut ordered: Vec<(&Route, &crate::state::RouteState)> = routes.iter().collect();
+    ordered.sort_by_key(|(r, _)| r.seq);
+    for (route, state) in ordered {
+        // Only a wagon with a load worth the road, waiting on its money: one with nothing to take holds none back.
+        if state.stayed != Some(crate::road::Stay::CantFund) || !state.would_go {
+            continue;
+        }
         let Ok((_, _, stock)) = towns.get(route.from) else { continue };
-        *by_town.entry(route.from_id).or_default() += crate::road::road_money(&content, route, &stock.0, false, 1.0);
+        *by_town.entry(route.from_id).or_default() += crate::road::road_money(&content, route, &stock.0, false, 1.0)
+            + crate::road::purse_keep(&content, route, 1.0);
     }
     for (town, mut trades, _) in &mut towns {
         let want = by_town.get(&town.id).copied().unwrap_or_default();

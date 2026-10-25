@@ -431,6 +431,8 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         // (Where content has food, a purse the plan filled to all home has beyond the road may be a few thousandths
         // over it: the road's food is rounded up leg by leg here and as one sum where the plan reckoned it.)
         let slack = if provision.is_some() { Fixed::from_millis(3) } else { Fixed::ZERO };
+        // (Would it go, were it funded: what its town saves up for, `rules/farms.rs` `road_reserve`.)
+        state.would_go = foreign || plan.pressing || (full || on_its_day) && pays;
         if money.0 + slack < road_money + wagon_purse || money.0 < road_money {
             state.stayed = Some(Stay::CantFund);
             state.recheck_at = now + recheck_ticks(&content); // `dispatch` 374: "the hub can't fund the trip"

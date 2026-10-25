@@ -5,6 +5,17 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-25, a town saves up only for a wagon that would go.** Greenfell's wagon said "the hub can't fund the trip"
+  every look for 30 days, but its load was worth 0 against 22.2 of road: Elmfell wants none of what it holds (sugar
+  cane, paper, cookies), and the mod's order (`dispatch` 374) asks about money before the load. The road reserve held
+  back only the road's food, not the purse for the road home's (a trip asks 27.75, not 22.2), and homes and children
+  spent past it (they kept back only the trading capital). Now: the reserve is what the trip asks (road money and
+  purse), counted only for a route whose wagon would have gone, funded (`RouteState.would_go`, set before the money is
+  asked), and homes and children spend only beyond it (`people.rs`). Tests
+  `road_food::a_town_saves_up_for_a_loaded_wagon_it_cant_send_but_not_for_an_empty_one`,
+  `farms::a_town_with_nothing_for_its_wagon_keeps_no_road_money_from_a_field`. Seed 12345, 30 days: Greenfell builds a
+  home and a shop stall, 7 people, mood -0.64; with the reserve for a load that never comes it built none and sank to
+  -2.37. Open: the two villages have nothing to trade with each other; the ledger still says "can't fund".
 - **2026-10-25, a fence as high as the ground beside it; a town's bell heals.** (1) A drop's fence stands as high as the
   natural ground beside it (side or corner), and one more, up to 4 (`Grounds.make`): a fence lower than its neighbour
   was a step onto its top and over, where the ring round a sinkhole steps down a slope (game test

@@ -11,7 +11,7 @@ use bevy_ecs::prelude::*;
 use crate::cash_book::{post, CashBook, Reason, Side};
 use crate::content::Content;
 use crate::fixed::Fixed;
-use crate::rules::{trading_capital, Step};
+use crate::rules::Step;
 use crate::state::*;
 
 /// What a town holds of a kind of comfort, in emeralds' worth.
@@ -132,7 +132,8 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
         // A home, once the beds are full, as far as the land holds: the households pay what they can, the town the rest.
         // Villagers without a bed get one whatever the mood (not as the mod's `Territory`, whose homeless town, its
         // mood sunk by them, never builds); content with every bed full, the town grows.
-        let spare = money.0 - trading_capital(&content, trades);
+        // (What the treasury holds beyond its reserve: its trading capital, wage float and wagons' road money.)
+        let spare = money.0 - crate::rules::farms::reserve(&content, trades, farm);
         let homeless = people.villagers > people.beds;
         if (homeless || people.mood >= d.home_mood && people.villagers >= people.beds) && people.beds + 2.0 <= people.land {
             people.home_progress = (people.home_progress + days / d.home_days).min(1.0);
@@ -153,7 +154,7 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
         if people.mood >= d.birth_mood && people.villagers < people.beds {
             people.birth_progress = (people.birth_progress + days / d.birth_days).min(1.0);
         }
-        let spare = money.0 - trading_capital(&content, trades);
+        let spare = money.0 - crate::rules::farms::reserve(&content, trades, farm);
         let birth_cost = Fixed::ceil(d.birth_cost);
         if people.birth_progress >= 1.0 && people.villagers < people.beds && spare >= birth_cost
             && food_points(&content, &stock) >= d.birth_food {

@@ -493,29 +493,20 @@ fn a_busy_town_plants_a_crop_it_has_none_of_not_more_of_one_lying_idle() {
     assert_eq!(f.plots.get(&BEETROOT).copied(), Some(80), "a field of what it has none of: {:?}", f.plots);
 }
 
-/// A town keeps back the road money a round trip on its route takes (`road_reserve`): it buys a field only with what's
-/// beyond, so its wagon can still go (a survival world's new town spent its 32 emeralds in four days and never sent it).
+/// A town whose wagon has nothing worth the road to take keeps no road money back (`road_reserve`): it buys its field
+/// with what it has (a town saves up only for a wagon that would go: `road_food.rs`).
 #[test]
-fn a_town_keeps_its_wagons_road_money_from_a_field() {
-    let town = |money: f64| {
-        let mut s = Society::new(content());
-        let t = s.add_town("Meadowworth", money);
-        let far = s.add_town("Farfield", 0.0);
-        s.set_roster(t, &[("farmer", 1), ("farmer", 1)]);
-        s.set_people(t, 2.0, 2.0, 2.0);
-        s.set_farm_demand(t, POTATO, 10.0);
-        s.add_route(t, far, 1.0, 0.0, 4.0); // a day each way
-        s
-    };
-    let mut probe = town(500.0);
-    probe.advance(1200);
-    let road = probe.world.get::<enterprise_core::state::Trades>(probe.world.resource::<enterprise_core::state::Towns>().0[0])
+fn a_town_with_nothing_for_its_wagon_keeps_no_road_money_from_a_field() {
+    let mut s = Society::new(content());
+    let t = s.add_town("Meadowworth", 10.0);
+    let far = s.add_town("Farfield", 0.0);
+    s.set_roster(t, &[("farmer", 1), ("farmer", 1)]);
+    s.set_people(t, 2.0, 2.0, 2.0);
+    s.set_farm_demand(t, POTATO, 10.0);
+    s.add_route(t, far, 1.0, 0.0, 4.0); // a day each way
+    s.advance(1200);
+    let road = s.world.get::<enterprise_core::state::Trades>(s.world.resource::<enterprise_core::state::Towns>().0[0])
         .unwrap().road_reserve.to_f64();
-    assert!(road > 1.0, "a day's road each way: {road}");
-    let mut short = town(road + 3.0);
-    short.advance(1200);
-    assert_eq!(the_farm(&short).fields_planted, 0, "{road} kept for the road, 3 left: no field at 4");
-    let mut enough = town(road + 5.0);
-    enough.advance(1200);
-    assert_eq!(the_farm(&enough).fields_planted, 1, "5 beyond the road: a field");
+    assert_eq!(road, 0.0, "nothing to take: nothing kept for the road");
+    assert_eq!(the_farm(&s).fields_planted, 1, "its 10 emeralds buy a field at 4");
 }
