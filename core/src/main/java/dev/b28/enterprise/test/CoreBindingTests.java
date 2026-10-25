@@ -2419,6 +2419,41 @@ public final class CoreBindingTests {
     }
 
     /**
+     * A home the core's households built is laid in the world (a cottage, as the Java rules build one: two beds) and said
+     * to be, at a site in the arena (a home's site is found round the bell in a world; here given).
+     */
+    @GameTest(template = "floor")
+    public static void aHomeTheCoreBuiltIsLaidWithItsTwoBeds(GameTestHelper helper) {
+        var level = helper.getLevel();
+        helper.setBlock(DESK, Merchant.DESK.get());
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, helper.absolutePos(DESK), "Testford");
+            LandAdapter land = host.land();
+            var home = new dev.b28.enterprise.wire.Work.Home();
+            BlockPos corner = helper.absolutePos(new BlockPos(0, 1, 0));
+            helper.assertTrue(land.lay(level, town, helper.absolutePos(DESK), home, 1.0, java.util.Optional.of(corner)),
+                    "the home wasn't laid");
+            int beds = 0;
+            for (BlockPos p : BlockPos.betweenClosed(corner, corner.offset(dev.b28.enterprise.territory.Growth.HOME_SIZE - 1, 3,
+                    dev.b28.enterprise.territory.Growth.HOME_SIZE - 1))) {
+                var state = level.getBlockState(p);
+                if (state.getBlock() instanceof net.minecraft.world.level.block.BedBlock
+                        && state.getValue(net.minecraft.world.level.block.BedBlock.PART) == net.minecraft.world.level.block.state.properties.BedPart.HEAD) {
+                    beds++;
+                }
+            }
+            helper.assertTrue(beds == 2, "a home has " + beds + " beds, not two");
+            helper.assertTrue(land.pending().equals(List.of(new Input.Built(town, home, 1.0))), "waiting to be said: " + land.pending());
+            land.sayNow();
+            helper.assertTrue(land.pending().isEmpty(), "still waiting: " + land.pending());
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
+    /**
      * What a look's land costs the server's tick, logged: the first look of a run (the ground of up to 64 hexes near a
      * town first seen, its crops counted in its hexes, its survey), then a look with only the survey (the crops are
      * counted every 20 looks), and one town's crops counted on their own.

@@ -69,7 +69,7 @@ pub fn register(schedule: &mut Schedule) {
 /// The town's people live the time since they were last counted: wages, comforts, mood, a home, a child.
 #[allow(clippy::type_complexity)]
 pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
-        mut ids: ResMut<crate::roster::Hands>,
+        mut ids: ResMut<crate::roster::Hands>, mut land: ResMut<crate::land::LandBook>,
         mut towns: Query<(&Town, &mut People, &mut Stock, &mut Money, &Trades, Option<&mut Roster>, Option<&crate::farms::Farm>,
             Option<&crate::works::Works>)>) {
     let d = &content.dials;
@@ -143,6 +143,7 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
             people.beds += 2.0;
             people.home_progress = 0.0;
             people.homes_built += 1;
+            *land.homes.entry(t).or_default() += 1; // for the host to lay (`land.rs`)
         }
         // A child, once a bed is free: food for it, and the town's money.
         if people.mood >= d.birth_mood && people.villagers < people.beds {

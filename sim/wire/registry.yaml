@@ -1541,6 +1541,8 @@ Work:
       Field:
         STRUCT:
           - crop: U32
+    4:
+      Home: UNIT
 WorkView:
   STRUCT:
     - work:

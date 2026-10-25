@@ -6,7 +6,7 @@
       "note": "a question before there is a society",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Ask": {
             "queries": [
@@ -15,7 +15,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e141040101",
+      "request_postcard": "0189dfbbbacfe0bfeb8101040101",
       "response": {
         "Refused": {
           "why": "NoSociety"
@@ -27,10 +27,10 @@
       "note": "a save before there is a society",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": "Save"
       },
-      "request_postcard": "01a8a7a6d0effec1e14102",
+      "request_postcard": "0189dfbbbacfe0bfeb810102",
       "response": {
         "Refused": {
           "why": "NoSociety"
@@ -42,7 +42,7 @@
       "note": "a pack with a day of no ticks",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Create": {
             "pack": {
@@ -127,7 +127,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e1410000040f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e69747769740000000001",
+      "request_postcard": "0189dfbbbacfe0bfeb81010000040f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e69747769740000000001",
       "response": {
         "Refused": {
           "why": {
@@ -143,7 +143,7 @@
       "note": "a pack with a recipe for trades and goods it hasn't",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Create": {
             "pack": {
@@ -237,7 +237,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e14100c0bb01040f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e697477697401010562616b6572000f6d696e6563726166743a676c617373000000000000000000000001",
+      "request_postcard": "0189dfbbbacfe0bfeb810100c0bb01040f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e697477697401010562616b6572000f6d696e6563726166743a676c617373000000000000000000000001",
       "response": {
         "Refused": {
           "why": {
@@ -253,10 +253,10 @@
       "note": "built against another ABI",
       "request": {
         "abi": 0,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": "Save"
       },
-      "request_postcard": "00a8a7a6d0effec1e14102",
+      "request_postcard": "0089dfbbbacfe0bfeb810102",
       "response": {
         "Refused": {
           "why": {
@@ -281,13 +281,13 @@
         "Refused": {
           "why": {
             "Schema": {
-              "core": 4738639990262174632,
+              "core": 9355945672702881673,
               "request": 18446744073709551615
             }
           }
         }
       },
-      "response_postcard": "0202a8a7a6d0effec1e141ffffffffffffffffff01"
+      "response_postcard": "020289dfbbbacfe0bfeb8101ffffffffffffffffff01"
     },
     {
       "note": "bytes that are no request",
@@ -319,7 +319,7 @@
     },
     {
       "note": "a request cut short",
-      "request_hex": "01a8a7a6d0effec1e14100c0bb01040f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e69747769740000",
+      "request_hex": "0189dfbbbacfe0bfeb810100c0bb01040f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e69747769740000",
       "response": {
         "Refused": {
           "why": {
@@ -335,7 +335,7 @@
       "note": "a society",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Create": {
             "pack": {
@@ -420,7 +420,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e14100c0bb01040f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e69747769740000000007",
+      "request_postcard": "0189dfbbbacfe0bfeb810100c0bb01040f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e69747769740000000007",
       "response": {
         "Done": {
           "outputs": [],
@@ -433,7 +433,7 @@
       "note": "a town with some wheat",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Apply": {
             "inputs": [
@@ -460,7 +460,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e14103020707417368666f726400136d696e6563726166743a6f766572776f726c643677360100000000000000004440",
+      "request_postcard": "0189dfbbbacfe0bfeb810103020707417368666f726400136d696e6563726166743a6f766572776f726c643677360100000000000000004440",
       "response": {
         "Done": {
           "outputs": [],
@@ -473,7 +473,7 @@
       "note": "its stock",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Ask": {
             "queries": [
@@ -486,7 +486,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e14104010000",
+      "request_postcard": "0189dfbbbacfe0bfeb810104010000",
       "response": {
         "Done": {
           "outputs": [],
@@ -511,12 +511,12 @@
       "note": "a save of another format",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Load": {
             "save": {
               "format": 4294967295,
-              "schema": 4738639990262174632,
+              "schema": 9355945672702881673,
               "core": "other",
               "blob": [
                 1,
@@ -527,7 +527,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e14101ffffffff0fa8a7a6d0effec1e141056f7468657203010203",
+      "request_postcard": "0189dfbbbacfe0bfeb810101ffffffff0f89dfbbbacfe0bfeb8101056f7468657203010203",
       "response": {
         "Refused": {
           "why": {
@@ -544,12 +544,12 @@
       "note": "a save of the next format, from a newer core",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Load": {
             "save": {
               "format": 2,
-              "schema": 4738639990262174633,
+              "schema": 9355945672702881672,
               "core": "a newer core",
               "blob": [
                 1,
@@ -560,7 +560,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e1410102a9a7a6d0effec1e1410c61206e6577657220636f726503010203",
+      "request_postcard": "0189dfbbbacfe0bfeb8101010288dfbbbacfe0bfeb81010c61206e6577657220636f726503010203",
       "response": {
         "Refused": {
           "why": {
@@ -577,12 +577,12 @@
       "note": "a save of a format older than the core brings forward",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Load": {
             "save": {
               "format": 0,
-              "schema": 4738639990262174632,
+              "schema": 9355945672702881673,
               "core": "an older core",
               "blob": [
                 1,
@@ -593,7 +593,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e1410100a8a7a6d0effec1e1410d616e206f6c64657220636f726503010203",
+      "request_postcard": "0189dfbbbacfe0bfeb8101010089dfbbbacfe0bfeb81010d616e206f6c64657220636f726503010203",
       "response": {
         "Refused": {
           "why": {
@@ -610,12 +610,12 @@
       "note": "a save the core can't read",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Load": {
             "save": {
               "format": 1,
-              "schema": 4738639990262174632,
+              "schema": 9355945672702881673,
               "core": "other",
               "blob": [
                 1,
@@ -626,7 +626,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e1410101a8a7a6d0effec1e141056f7468657203010203",
+      "request_postcard": "0189dfbbbacfe0bfeb8101010189dfbbbacfe0bfeb8101056f7468657203010203",
       "response": {
         "Refused": {
           "why": {
@@ -642,7 +642,7 @@
       "note": "a refused load keeps the society",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Ask": {
             "queries": [
@@ -655,7 +655,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e14104010000",
+      "request_postcard": "0189dfbbbacfe0bfeb810104010000",
       "response": {
         "Done": {
           "outputs": [],
@@ -680,7 +680,7 @@
       "note": "a delivery to a town that isn't there, after one that would be fine",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Apply": {
             "inputs": [
@@ -702,7 +702,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e141030201000000000000000014400109000000000000001440",
+      "request_postcard": "0189dfbbbacfe0bfeb8101030201000000000000000014400109000000000000001440",
       "response": {
         "Refused": {
           "why": {
@@ -719,7 +719,7 @@
       "note": "a pallet brought to a town that isn't there",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Apply": {
             "inputs": [
@@ -733,7 +733,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e14103010b0900",
+      "request_postcard": "0189dfbbbacfe0bfeb810103010b0900",
       "response": {
         "Refused": {
           "why": {
@@ -750,7 +750,7 @@
       "note": "a package brought to a town that isn't there",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Apply": {
             "inputs": [
@@ -765,7 +765,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e14103010c090000",
+      "request_postcard": "0189dfbbbacfe0bfeb810103010c090000",
       "response": {
         "Refused": {
           "why": {
@@ -782,7 +782,7 @@
       "note": "a good that isn't there",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Apply": {
             "inputs": [
@@ -797,7 +797,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e1410301010063000000000000f03f",
+      "request_postcard": "0189dfbbbacfe0bfeb81010301010063000000000000f03f",
       "response": {
         "Refused": {
           "why": {
@@ -814,7 +814,7 @@
       "note": "a count below nothing",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Apply": {
             "inputs": [
@@ -829,7 +829,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e1410301060000000000000000f0bf",
+      "request_postcard": "0189dfbbbacfe0bfeb81010301060000000000000000f0bf",
       "response": {
         "Refused": {
           "why": {
@@ -846,7 +846,7 @@
       "note": "money below nothing",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Apply": {
             "inputs": [
@@ -860,7 +860,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e1410301020001",
+      "request_postcard": "0189dfbbbacfe0bfeb81010301020001",
       "response": {
         "Refused": {
           "why": {
@@ -877,7 +877,7 @@
       "note": "a stocktake of a point that isn't there",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Apply": {
             "inputs": [
@@ -898,7 +898,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e14103010a01136d696e6563726166743a6f766572776f726c64027702001b",
+      "request_postcard": "0189dfbbbacfe0bfeb810103010a01136d696e6563726166743a6f766572776f726c64027702001b",
       "response": {
         "Refused": {
           "why": {
@@ -915,7 +915,7 @@
       "note": "a stocktake naming another kind than the point standing there",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Apply": {
             "inputs": [
@@ -936,7 +936,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e14103010a02136d696e6563726166743a6f766572776f726c64367736001b",
+      "request_postcard": "0189dfbbbacfe0bfeb810103010a02136d696e6563726166743a6f766572776f726c64367736001b",
       "response": {
         "Refused": {
           "why": {
@@ -953,7 +953,7 @@
       "note": "a point where one stands already",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Apply": {
             "inputs": [
@@ -973,7 +973,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e14103010801136d696e6563726166743a6f766572776f726c6436773600",
+      "request_postcard": "0189dfbbbacfe0bfeb810103010801136d696e6563726166743a6f766572776f726c6436773600",
       "response": {
         "Refused": {
           "why": {
@@ -990,7 +990,7 @@
       "note": "a town whose desk isn't a desk",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Apply": {
             "inputs": [
@@ -1010,7 +1010,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e141030107074e6f776865726501136d696e6563726166743a6f766572776f726c640a770a",
+      "request_postcard": "0189dfbbbacfe0bfeb8101030107074e6f776865726501136d696e6563726166743a6f766572776f726c640a770a",
       "response": {
         "Refused": {
           "why": {
@@ -1027,7 +1027,7 @@
       "note": "an advance past a hundred years",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Apply": {
             "inputs": [
@@ -1040,7 +1040,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e141030100ffffffffffffffffff01",
+      "request_postcard": "0189dfbbbacfe0bfeb8101030100ffffffffffffffffff01",
       "response": {
         "Refused": {
           "why": {
@@ -1057,7 +1057,7 @@
       "note": "a dial the core hasn't, after one it has",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Apply": {
             "inputs": [
@@ -1077,7 +1077,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e14103020e0a7368656c665f64617973010000000000001c400e0c6e6f5f737563685f6469616c01000000000000f03f",
+      "request_postcard": "0189dfbbbacfe0bfeb810103020e0a7368656c665f64617973010000000000001c400e0c6e6f5f737563685f6469616c01000000000000f03f",
       "response": {
         "Refused": {
           "why": {
@@ -1094,7 +1094,7 @@
       "note": "a count dial set below nothing",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Apply": {
             "inputs": [
@@ -1108,7 +1108,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e14103010e0b7761676f6e5f736c6f747301000000000000f0bf",
+      "request_postcard": "0189dfbbbacfe0bfeb810103010e0b7761676f6e5f736c6f747301000000000000f0bf",
       "response": {
         "Refused": {
           "why": {
@@ -1125,7 +1125,7 @@
       "note": "a dial that isn't there put back",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Apply": {
             "inputs": [
@@ -1139,7 +1139,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e14103010e0c6e6f5f737563685f6469616c00",
+      "request_postcard": "0189dfbbbacfe0bfeb810103010e0c6e6f5f737563685f6469616c00",
       "response": {
         "Refused": {
           "why": {
@@ -1154,7 +1154,7 @@
     },
     {
       "note": "a count of NaN, as bytes",
-      "request_hex": "01a8a7a6d0effec1e1410301010000000000000000f87f",
+      "request_hex": "0189dfbbbacfe0bfeb81010301010000000000000000f87f",
       "response": {
         "Refused": {
           "why": {
@@ -1169,7 +1169,7 @@
     },
     {
       "note": "a price of infinity, as bytes",
-      "request_hex": "01a8a7a6d0effec1e1410301030000000000000000f03f000000000000f07f000000000000f03f",
+      "request_hex": "0189dfbbbacfe0bfeb81010301030000000000000000f03f000000000000f07f000000000000f03f",
       "response": {
         "Refused": {
           "why": {
@@ -1186,7 +1186,7 @@
       "note": "a question about a town that isn't there",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Ask": {
             "queries": [
@@ -1200,7 +1200,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e1410402010004",
+      "request_postcard": "0189dfbbbacfe0bfeb81010402010004",
       "response": {
         "Refused": {
           "why": {
@@ -1217,7 +1217,7 @@
       "note": "nothing of any refused request applied",
       "request": {
         "abi": 1,
-        "schema": 4738639990262174632,
+        "schema": 9355945672702881673,
         "command": {
           "Ask": {
             "queries": [
@@ -1230,7 +1230,7 @@
           }
         }
       },
-      "request_postcard": "01a8a7a6d0effec1e14104010000",
+      "request_postcard": "0189dfbbbacfe0bfeb810104010000",
       "response": {
         "Done": {
           "outputs": [],

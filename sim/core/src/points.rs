@@ -223,8 +223,11 @@ impl Society {
         match input {
             Input::AddTown { name, desk } => {
                 let town = self.found(name, desk.spot()).expect("a town's desk where no point stands");
-                // A host's town: its lockers are where the host places them (`locker_host.rs`).
+                // A host's town: its lockers are where the host places them (`locker_host.rs`), and its land holds as
+                // many beds as a town its settlers found (the host lays its homes where there's room: `land.rs`).
                 self.host_places_lockers(town);
+                let e = self.towns[town];
+                self.world.get_mut::<crate::state::People>(e).expect("a town").land = crate::settlers::OPEN_LAND;
             }
             Input::AddPoint { point, town } => {
                 self.add_point(point.kind(), point.spot(), *town as usize).expect("a point of a town's where none stands");

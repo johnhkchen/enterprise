@@ -86,7 +86,9 @@ impl Society {
         let now = self.now();
         let forget = FORGET_AFTER_DAYS * self.content().day_ticks;
         let e = self.towns[town];
-        self.world.get_mut::<People>(e).expect("a town").beds = beds as f64;
+        // The beds it found, and those of the homes it built that the host hasn't laid yet (`land.rs`).
+        let unlaid = self.world.resource::<crate::land::LandBook>().unlaid_beds(town);
+        self.world.get_mut::<People>(e).expect("a town").beds = beds as f64 + unlaid;
         let seen: Vec<Seen> = {
             let content = self.content();
             let mut tags = BTreeSet::new();

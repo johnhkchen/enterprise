@@ -73,7 +73,8 @@ import net.neoforged.neoforge.event.level.ChunkEvent;
  *       ({@code Build}): a bridge's deck ({@link Works#layDeck}), a wall's columns from what's shown to what's due a
  *       quarter at a time ({@link Works#raiseColumns}, round the bell), a hall at its site ({@link Buildings#site},
  *       {@link Buildings#build}), a field of its crop on zoned ground in the town's land ({@link Growth#farmSite},
- *       {@link Fields#plant}, its hex's crops counted at once), at the start of the next look, once every look sent is
+ *       {@link Fields#plant}, its hex's crops counted at once), a family's home by the bell ({@link Growth#homeSite},
+ *       {@link Growth#buildHome}, as the Java rules build one), at the start of the next look, once every look sent is
  *       shown (so asking the core while laying never shows a look inside another's outcomes, and a work laid and not yet
  *       said is never laid again). Laid, it's said ({@code Built}, with that look); not yet laid (its chunks not loaded:
  *       they're held loaded past the look after, so the look that asks again finds them; no site), it's asked for
@@ -514,6 +515,7 @@ public final class LandAdapter {
                 Optional<BlockPos> site = Growth.farmSite(level, bell, Fields.SIZE, 8);
                 yield site.filter(c -> held.isEmpty() || held.contains(Hex.at(c.offset(Fields.SIZE / 2, 0, Fields.SIZE / 2))));
             }
+            case Work.Home h -> Growth.homeSite(level, bell);
             default -> Optional.empty();
         };
     }
@@ -560,6 +562,18 @@ public final class LandAdapter {
                     yield false;
                 }
                 Buildings.build(level, kind.get(), corner);
+                yield true;
+            }
+            case Work.Home h -> {
+                if (site.isEmpty()) {
+                    yield false;
+                }
+                BlockPos corner = site.get();
+                if (!loadedFor(level, List.of(new ChunkPos(corner), new ChunkPos(corner.offset(Growth.HOME_SIZE, 0, Growth.HOME_SIZE)))
+                        .stream().distinct().toList())) {
+                    yield false;
+                }
+                Growth.buildHome(level, corner);
                 yield true;
             }
             case Work.Field f -> {

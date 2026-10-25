@@ -5,6 +5,14 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-25, towns grow in core mode.** A 120-day study's towns never grew: every one sat at its bed count (6-7
+  villagers) for 120 days with moods above +1. A wire-founded town's `People.land` was 0, so the core's home rule
+  (`beds + 2 <= land`) never fired; and a home it built had no output (filed at people-adapter as "beds the next census
+  overwrites"). Now `AddTown` gives a host's town a settlers' town's open land (40 beds); a home the households build
+  is a work the host lays (`Work::Home`, `LandBook.homes` until `Built`; `LandAdapter` builds the Java rules' cottage at
+  `Growth.homeSite`); a census counts the beds it found plus an unlaid home's two. Schema `81d6ff04f74eef89`. Tests:
+  `census::a_home_the_core_builds_is_laid_by_the_host_and_its_beds_count_till_then`,
+  `aHomeTheCoreBuiltIsLaidWithItsTwoBeds` (312 both modes).
 - **2026-10-24, each town rolls its own dice.** One world `Rng` drawn by every town meant a change in one town
   re-rolled every other's: S1's Leatherworker did more locker trades (each rolls for the Merchant's XP), so roadless
   Greenwick's slack Fletcher retrained as a Leatherworker (cows, no wool, furnishings 0) where the base run drew a

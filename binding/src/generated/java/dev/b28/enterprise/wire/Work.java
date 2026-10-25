@@ -6,9 +6,10 @@ import java.util.Objects;
 /**
  * Something a town builds that the host lays in its world: a bridge's deck on a hex, between two of its neighbours;
  * the town's wall round its bell; a hall (by its name: {@code square}, {@code granary}, {@code root_cellar}, {@code counting_house}, {@code temple},
- * {@code library}, {@code smithy}, {@code watchtower}, {@code stone_docks}, {@code caravanserai}); a field of a crop.
+ * {@code library}, {@code smithy}, {@code watchtower}, {@code stone_docks}, {@code caravanserai}); a field of a crop; a family's home (two beds,
+ * {@code people.rs}), where the host finds room by the bell.
  */
-public sealed interface Work permits Work.Bridge, Work.Wall, Work.Hall, Work.Field {
+public sealed interface Work permits Work.Bridge, Work.Wall, Work.Hall, Work.Field, Work.Home {
     void encode(PostcardOut out);
 
     static Work decode(PostcardIn in) {
@@ -18,6 +19,7 @@ public sealed interface Work permits Work.Bridge, Work.Wall, Work.Hall, Work.Fie
             case 1 -> new Wall();
             case 2 -> new Hall(in.string());
             case 3 -> new Field(in.u32());
+            case 4 -> new Home();
             default -> throw in.unknownVariant("Work", at);
         };
     }
@@ -71,6 +73,13 @@ public sealed interface Work permits Work.Bridge, Work.Wall, Work.Hall, Work.Fie
         public void encode(PostcardOut out) {
             out.variant(3);
             out.u32(this.crop);
+        }
+    }
+
+    record Home() implements Work {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(4);
         }
     }
 }

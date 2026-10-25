@@ -283,3 +283,35 @@ fn sightings_survive_a_save() {
     loaded.census(t, 4, &[seen("a", "farmer", 1)]);
     assert_eq!(loaded.roster(t).residents(), 1, "{:?}", loaded.hand_views(t));
 }
+
+#[test]
+fn a_home_the_core_builds_is_laid_by_the_host_and_its_beds_count_till_then() {
+    // A host's town (its land holds a settlers' town's 40 beds), full and content: it builds a home, two beds.
+    let pack = ContentPack::new(DAY, vec![PackGood::new("minecraft:bread", 0.2, 64)]);
+    let mut s = None;
+    assert!(matches!(wire::handle(&mut s, request(Command::Create { pack, seed: 7 })), Response::Done { .. }));
+    let desk = wire::Point { kind: wire::PointKind::Desk, dim: "minecraft:overworld".into(), x: 0, y: 64, z: 0 };
+    let both = || vec![seen("m", "enterprise:merchant", 1), seen("f", "farmer", 1)];
+    apply(&mut s, vec![
+        Input::AddTown { name: "Ashford".into(), desk },
+        Input::SetDial { name: "home_mood".into(), value: Some(-100.0) },
+        Input::SetDial { name: "home_cost".into(), value: Some(0.0) },
+        Input::SetDial { name: "birth_mood".into(), value: Some(100.0) },
+        Input::Census { town: 0, beds: 2, residents: both() },
+    ]);
+    let beds = |s: &Option<Society>| s.as_ref().unwrap().town(0).people.beds;
+    let homes = |out: &[Output]| out.iter().filter(|o| matches!(o, Output::Build { town: 0, work: wire::Work::Home, .. })).count();
+    let survey = Input::Survey { town: 0, bell_x: 0, bell_z: 4 };
+    let out = apply(&mut s, vec![Input::Advance { to: 6 * DAY }, survey.clone()]);
+    assert_eq!(homes(&out), 1, "a home for the host to lay: {out:?}");
+    assert_eq!(beds(&s), 4.0);
+    // A census before the host has laid it finds the old two beds: the home's two still count.
+    apply(&mut s, vec![Input::Census { town: 0, beds: 2, residents: both() }]);
+    assert_eq!(beds(&s), 4.0, "the census took the unlaid home's beds away");
+    assert_eq!(homes(&apply(&mut s, vec![survey.clone()])), 1, "asked again until it's laid");
+    // Laid: not asked again, and the census counts its beds in the world.
+    let out = apply(&mut s, vec![Input::Built { town: 0, work: wire::Work::Home, share: 1.0 }, survey,
+        Input::Census { town: 0, beds: 4, residents: both() }]);
+    assert_eq!(homes(&out), 0);
+    assert_eq!(beds(&s), 4.0);
+}

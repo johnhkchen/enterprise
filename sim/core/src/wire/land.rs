@@ -71,13 +71,15 @@ impl LandKind {
 
 /// Something a town builds that the host lays in its world: a bridge's deck on a hex, between two of its neighbours;
 /// the town's wall round its bell; a hall (by its name: `square`, `granary`, `root_cellar`, `counting_house`, `temple`,
-/// `library`, `smithy`, `watchtower`, `stone_docks`, `caravanserai`); a field of a crop.
+/// `library`, `smithy`, `watchtower`, `stone_docks`, `caravanserai`); a field of a crop; a family's home (two beds,
+/// `people.rs`), where the host finds room by the bell.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Work {
     Bridge { hex: HexAt, from: HexAt, to: HexAt },
     Wall,
     Hall { kind: String },
     Field { crop: GoodNo },
+    Home,
 }
 
 /// One of a town's works as the core has it: how much of it is laid by its masons (0 to 1), whether it's finished, and

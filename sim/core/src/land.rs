@@ -17,7 +17,8 @@
 //! - **Works shown** (`Output::Build`, `Input::Built`): a bridge or a hall once its masons have finished it, a wall a
 //!   quarter at a time as they lay it (`Works.onServerTick`: "a quarter at a time, and the last stretch when done"), a
 //!   field the town planted (the farm's review, `Fields.consider`, or a household's, `freehold`) as soon as it's
-//!   planted. Each is asked for at every look that surveys its town until the host says it has laid it, so nothing
+//!   planted, a home its households built (`people.rs`: two beds, `Growth.buildHome`) as soon as it's paid for. A
+//!   home not yet laid still counts its beds: a census adds them to the beds it found ([`LandBook::homes`]). Each is asked for at every look that surveys its town until the host says it has laid it, so nothing
 //!   waits in the host and a town unloaded when its work finished is shown it when it loads. Where a hall or a field
 //!   goes is the host's to find (`Buildings.site`, `Growth.farmSite`): the core counts their blocks, not their place.
 //!
@@ -54,9 +55,16 @@ pub struct LandBook {
     pub unlaid: BTreeMap<TownId, Vec<GoodId>>,
     /// How much of each of a town's projects the host has shown (0 to 1), by what it is.
     pub shown: BTreeMap<TownId, Vec<(What, f64)>>,
+    /// The homes each town built that the host hasn't laid yet.
+    pub homes: BTreeMap<TownId, u32>,
 }
 
 impl LandBook {
+    /// The beds of the homes a town built that the host hasn't laid yet: a census can't see them.
+    pub fn unlaid_beds(&self, town: TownId) -> f64 {
+        2.0 * self.homes.get(&town).copied().unwrap_or(0) as f64
+    }
+
     fn shown(&self, town: TownId, what: &What) -> f64 {
         self.shown.get(&town).and_then(|s| s.iter().find(|(w, _)| w == what)).map_or(0.0, |(_, share)| *share)
     }
@@ -180,6 +188,9 @@ impl Society {
             for &crop in book.unlaid.get(&t).into_iter().flatten() {
                 out.push(Output::Build { town: crate::wire::no(t), work: Work::Field { crop: crate::wire::no(crop) }, share: 1.0 });
             }
+            for _ in 0..book.homes.get(&t).copied().unwrap_or(0) {
+                out.push(Output::Build { town: crate::wire::no(t), work: Work::Home, share: 1.0 });
+            }
         }
         out
     }
@@ -188,6 +199,16 @@ impl Society {
     /// of its crop). A work the town hasn't is a stale view: ignored.
     pub fn laid(&mut self, town: TownId, work: &Work, share: f64) {
         let share = share.clamp(0.0, 1.0);
+        if *work == Work::Home {
+            let mut book = self.world.resource_mut::<LandBook>();
+            if let Some(n) = book.homes.get_mut(&town) {
+                *n = n.saturating_sub(1);
+                if *n == 0 {
+                    book.homes.remove(&town);
+                }
+            }
+            return;
+        }
         if let Work::Field { crop } = *work {
             let mut book = self.world.resource_mut::<LandBook>();
             if let Some(unlaid) = book.unlaid.get_mut(&town) {
@@ -221,6 +242,9 @@ impl Society {
         }).collect();
         for &crop in book.unlaid.get(&town).into_iter().flatten() {
             works.push(WorkView { work: Work::Field { crop: crate::wire::no(crop) }, laid: 1.0, done: true, shown: 0.0 });
+        }
+        for _ in 0..book.homes.get(&town).copied().unwrap_or(0) {
+            works.push(WorkView { work: Work::Home, laid: 1.0, done: true, shown: 0.0 });
         }
         let plots = self.farm(town).map(|f| f.farm.plots).unwrap_or_default().into_iter()
             .filter(|&(_, n)| n > 0)

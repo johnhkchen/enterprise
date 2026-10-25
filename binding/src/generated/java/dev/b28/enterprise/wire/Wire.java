@@ -12,7 +12,7 @@ public final class Wire {
     public static final long ABI = 1L;
 
     /** The schema: the FNV-1a 64 of sim/wire/registry.yaml. */
-    public static final long SCHEMA = 0x41c307f6fa0993a8L;
+    public static final long SCHEMA = 0x81d6ff04f74eef89L;
 
     /** A request for {@code command}, built against this {@link #ABI} and {@link #SCHEMA}. */
     public static Request request(Command command) {
