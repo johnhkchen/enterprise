@@ -42,10 +42,11 @@ fn a_failing_seed_is_named() {
 fn the_mood_floor_is_its_size_its_crowding_its_unpaid_wages_and_its_grief() {
     let d = Dials::default();
     let people = People { villagers: 16.0, beds: 10.0, ..Default::default() };
-    // 16 / 8 villagers a want, 6 without beds at half a point, 2 for wages unpaid, 2 for grief at its most.
-    assert_eq!(mood_floor(&d, &people), -2.0 - 3.0 - 2.0 - 2.0);
-    // With a bed each and 32 villagers it's -8: a town that size or smaller is never below it.
-    assert_eq!(mood_floor(&d, &People { villagers: 32.0, beds: 32.0, ..Default::default() }), -8.0);
+    // 16 / 8 villagers a want, every one of the 16 without a bed at half a point (beds can come faster than mood
+    // follows), 2 for wages unpaid, 2 for grief at its most.
+    assert_eq!(mood_floor(&d, &people), -2.0 - 8.0 - 2.0 - 2.0);
+    // Its beds don't move it: 32 villagers, a bed each or none, -24.
+    assert_eq!(mood_floor(&d, &People { villagers: 32.0, beds: 32.0, ..Default::default() }), -24.0);
 }
 
 #[test]
@@ -159,8 +160,8 @@ fn a_mood_below_its_floor_or_wages_left_owed_are_caught() {
     s.advance(5 * DAY);
     assert!(sweep_checks::mood(&s).is_ok() && sweep_checks::wages(&s).is_ok());
     let town = s.world.resource::<Towns>().0[1];
-    s.world.get_mut::<People>(town).unwrap().mood = -12.0; // its floor: -6/8 - 2 - 2
-    assert!(sweep_checks::mood(&s).unwrap_err().contains("town 1: mood -12 below its floor -4.75"));
+    s.world.get_mut::<People>(town).unwrap().mood = -12.0; // its floor: -6/8 - 6/2 - 2 - 2
+    assert!(sweep_checks::mood(&s).unwrap_err().contains("town 1: mood -12 below its floor -7.75"));
     s.world.get_mut::<People>(town).unwrap().mood = 0.0;
     s.world.get_mut::<People>(town).unwrap().paid_share = 1.5;
     assert!(sweep_checks::wages(&s).unwrap_err().contains("paid share 1.5"));

@@ -28,11 +28,12 @@ impl Society {
 }
 
 /// The lowest mood target a town's people can have (`Territory.moodTarget` with no comforts met, no works, no
-/// blessing, its wages unpaid and its grief at the most): its size and its villagers without beds. Mood heads toward
-/// its target, so it could fall below this only while the town has just shrunk (a lag of days, not a slide).
+/// blessing, its wages unpaid and its grief at the most): its size, every villager without a bed (beds can come faster
+/// than mood follows: a homeless town builds), unpaid and grieving. Mood heads toward its target, so it could fall
+/// below this only while the town has just shrunk (a lag of days, not a slide).
 pub fn mood_floor(d: &crate::content::Dials, people: &crate::state::People) -> f64 {
     -people.villagers / d.villagers_per_want
-        - d.crowding_mood * (people.villagers - people.beds).max(0.0)
+        - d.crowding_mood * people.villagers
         - d.unpaid_mood
         - d.grief_most
 }

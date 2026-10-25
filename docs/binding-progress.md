@@ -5,6 +5,15 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-25, a town short of beds builds homes at any mood.** The network study's hub (its pen has no beds:
+  `network/hub`, `network/squad`) held 5 villagers and 0 beds for 120 days, mood -2.16: half a point a villager
+  without a bed kept it under the 0.5 a home needs, so it never built one (the mod's `Territory` has the same gate).
+  Now villagers short of beds get homes whatever the mood (`people.rs`); the mood gate is for growing past them.
+  Forked 120 days from the same day 0: the hub 5/0 to 21/22, mood -2.16 to -0.24; Hollowwick, short of two beds,
+  -0.25 to +0.13. The sweep's mood floor counts every villager as one that may be without a bed (beds can now come
+  faster than mood follows). Also: the scenarios' checker read its files with serde_json's default float parsing,
+  which can come back a bit off (`0.9621110847109535` read as `...536`): `float_roundtrip` in the core's
+  dev-dependencies. Test `people::villagers_without_beds_get_homes_whatever_the_mood`.
 - **2026-10-25, farms grow what the town's comforts need.** Wheatfield's farm (2 Farmers, about 96 items a day) had
   planted 10 fields of potatoes nobody worked, for a Farmer's locker that would buy 832 a day: a busy town planted for
   "a crop it would buy and grows none of", and unworked plots never counted as grown. And cane (its paper, so its

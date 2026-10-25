@@ -96,6 +96,17 @@ fn a_content_town_builds_homes_and_has_children() {
 }
 
 #[test]
+fn villagers_without_beds_get_homes_whatever_the_mood() {
+    // Five villagers, no beds and no comforts: their mood sinks under the half a content town builds at, but a town
+    // whose villagers are short of beds builds for them anyway (the network study's hub: -2.1 for 120 days).
+    let mut s = town(5.0, 0.0, 40.0, 0.0, 60.0);
+    s.advance(20 * DAY);
+    let p = s.town(0).people;
+    assert!(p.mood < s.content().dials.home_mood, "not content: {}", p.mood);
+    assert!(p.beds >= 6.0 && p.homes_built >= 3, "a bed for each: {} beds, {} homes", p.beds, p.homes_built);
+}
+
+#[test]
 fn its_land_is_the_most_it_can_grow_to() {
     let mut s = town(6.0, 6.0, 10.0, 200.0, 200.0);
     s.deliver(0, BREAD, 6400.0);

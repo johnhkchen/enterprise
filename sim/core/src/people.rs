@@ -1,7 +1,8 @@
 //! A town's people, as the mod keeps them (`territory/Territory.java`, `Growth.java`): the households earn a share
 //! of what the town makes as wages, and pay for the comforts they use from the warehouse, each villager a ration of
 //! each kind a day. Mood heads toward the comforts met, less the town's size, villagers without beds and unpaid
-//! wages. A content town grows: a home once its beds are full, a child once a bed is free, each after a few days and
+//! wages. A content town grows: a home once its beds are full (a town with villagers short of beds builds at any mood),
+//! a child once a bed is free, each after a few days and
 //! for a price; its land is the most beds it can hold (its carrying capacity).
 //! A town with a [`Roster`] counts its villagers from it, and a child born there is a baby hand.
 
@@ -129,8 +130,11 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
         let target = mood_target(d, people, works);
         people.mood += (target - people.mood) * (1.0 - crate::fixed::halved(days, d.mood_half_life_days));
         // A home, once the beds are full, as far as the land holds: the households pay what they can, the town the rest.
+        // Villagers without a bed get one whatever the mood (not as the mod's `Territory`, whose homeless town, its
+        // mood sunk by them, never builds); content with every bed full, the town grows.
         let spare = money.0 - trading_capital(&content, trades);
-        if people.mood >= d.home_mood && people.villagers >= people.beds && people.beds + 2.0 <= people.land {
+        let homeless = people.villagers > people.beds;
+        if (homeless || people.mood >= d.home_mood && people.villagers >= people.beds) && people.beds + 2.0 <= people.land {
             people.home_progress = (people.home_progress + days / d.home_days).min(1.0);
         }
         let home_cost = Fixed::ceil(d.home_cost);
