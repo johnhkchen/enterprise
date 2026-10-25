@@ -186,12 +186,14 @@ pub struct Potential {
 /// earn per emerald of inputs, each run as far as its output is wanted. What is wanted is reckoned for all of them
 /// before any runs. Returns the items made.
 pub fn convert(content: &Content, roster: &Roster, people: &People, stock: &mut Stock, ledger: &mut Ledger,
-        routes_out: usize, hooks: Option<&Workshop>) -> f64 {
+        routes_out: usize, hooks: Option<&Workshop>, far: Option<&[f64]>) -> f64 {
     let mut ranked: Vec<(Potential, f64)> = content.conversions.iter().enumerate()
         .filter(|(_, c)| can_do(c, roster))
         .map(|(i, c)| {
             let par = hooks.map_or(0.0, |h| h.par_of(c.output));
-            let w = wanted(content, c.output, people, stock, routes_out, par);
+            // What the far ends want and lack of it, on top of its own lockers' par (`rules/workshop.rs`).
+            let far = far.and_then(|f| f.get(c.output)).copied().unwrap_or(0.0);
+            let w = wanted(content, c.output, people, stock, routes_out, par + far);
             (Potential { conversion: i, wanted: w }, gain(content, c, content.goods[c.output].value))
         })
         .collect();

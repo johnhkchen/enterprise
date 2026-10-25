@@ -82,6 +82,8 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
         let payroll = super::farms::payroll(&content, farms.get(route.to).ok(), posts);
         // Its lockers, for the trades it has switched on (`Caravans.wantedAt`).
         let far_lockers = lockers.get(route.to).ok().zip(rosters.get(route.to).ok());
+        let far_taken = far_lockers.map(|(l, r)| l.taken(&content, r, content.goods.len()));
+        let far_roster = rosters.get(route.to).ok();
         let (mut stock, mut money, trades, mut budget, people) = towns.get_mut(route.to).expect("the far end");
         if !realm_buys {
             // What it can spend on goods, as the travelling Merchant sees it: the next load is sized to it (`sell`
@@ -110,7 +112,10 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
                     // A good a trade it has switched on takes, its people using none, has the warehouse's par for a
                     // wanted good (`Warehouse.par(desk, item, true)`: a stack at least). One wanted only because a
                     // player's shop here ordered it has a stack's room, not its order's count on top of a shelf.
+                    // Or a raw good its trades press into one its lockers take and lack (`lockers::craft_par`).
                     let aim = crate::lockers::wanted_par(&content, trades, far_lockers, g)
+                        .or_else(|| crate::lockers::craft_par(&content, far_roster, trades, far_taken.as_deref(),
+                            &|o| stock.0[o], g))
                         .unwrap_or_else(|| shelf(&content, trades, g));
                     let aim = if aim <= 0.0 && !realm_buys && orders.wanted_of(route.to_id, g) > 0.0 {
                         crate::bargain::par(&content, 0.0, true)

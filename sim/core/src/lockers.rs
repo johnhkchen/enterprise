@@ -452,6 +452,22 @@ pub fn wanted_par(content: &Content, trades: &Trades, lockers: Option<(&Lockers,
     wanted_par_by(content, trades, |g| lockers.is_some_and(|(l, r)| l.takes(content, r, g)), good)
 }
 
+/// What a town wants of `good` as the one input of a conversion its roster can do whose output a locker of its takes
+/// and it lacks ([`wanted_par_of`] of the output, less what it holds of it, `held`), in the input: cane for its
+/// Cartographer's paper. `None` if no such conversion; the first such, in content's order. A wagon brings it
+/// (`rules/plan.rs`), the town buys it (`rules/arrive.rs`), its workshop makes it up (`rules/workshop.rs`).
+pub fn craft_par(content: &Content, roster: Option<&Roster>, trades: &Trades, taken: Option<&[bool]>,
+        held: &impl Fn(GoodId) -> f64, good: GoodId) -> Option<f64> {
+    let roster = roster?;
+    content.conversions.iter()
+        .filter(|c| c.inputs.len() == 1 && c.inputs[0].0 == good && crate::workshop::can_do(c, roster))
+        .find_map(|c| {
+            let par = wanted_par_of(content, trades, taken, c.output)?;
+            let lack = (par - held(c.output)).max(0.0);
+            (lack > 0.0).then(|| (lack / c.out).ceil() * c.inputs[0].1)
+        })
+}
+
 /// [`wanted_par`] with what the town's lockers take already known, by good ([`Lockers::taken`]): for a caller asking
 /// of every good in turn.
 pub fn wanted_par_of(content: &Content, trades: &Trades, taken: Option<&[bool]>, good: GoodId) -> Option<f64> {

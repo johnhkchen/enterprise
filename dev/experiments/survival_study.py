@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Two generated villages of a survival world, made towns as a player would, run day by day under the core.
 
-    just server-setup-survival 12345     # a normal world of that seed, no testbench
+    just server-setup-survival 8675309   # a normal world of that seed, no testbench (its villages 496 blocks apart;
+                                         # 12345's nearest pair are 1,488 apart, a road no load pays for)
     just server                          # in the background
     python3 dev/experiments/survival_study.py DAYS OUT.log [--loaded] [--chests]
 
-The nearest village to spawn and the nearest one to it beyond SPREAD blocks are found (`locate structure`), each
+The nearest village to spawn and the nearest one to it beyond SPREAD blocks (looking round it 300 to 700 blocks out, twelve ways) are found (`locate structure`), each
 loaded a minute while its villagers settle, and given what a player gives a village to trade: a Merchant's Desk at
 the surface by the village's centre, a chest by it with STARTING emeralds, and a Merchant. The core founds a town at
 each desk, a route opens from the first to the second, and the trades the villagers' lockers would buy are switched
@@ -16,6 +17,7 @@ workstation it names (one with no chest touching it), as the ledger asks, before
 is (`enterprise-sim --trace` it into SQLite).
 """
 
+import math
 import re
 import sys
 import time
@@ -123,12 +125,16 @@ def main():
     first = locate(0, 0)
     if first is None:
         sys.exit("no village near spawn: try another seed")
-    second = None
-    for dx, dz in [(1, 0), (0, 1), (-1, 0), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)]:
-        v = locate(first[0] + dx * SPREAD, first[1] + dz * SPREAD)
-        if v and abs(v[0] - first[0]) + abs(v[1] - first[1]) >= SPREAD:
-            second = v
-            break
+    # The nearest village at least SPREAD out, looking each way (a player founds a town's neighbour near, not the first
+    # one found: the first study's pair were 1,488 blocks apart, a road its wagon's goods never paid for).
+    found = set()
+    for r in (SPREAD - 100, SPREAD + 100, SPREAD + 300):
+        for k in range(12):
+            a = 2 * math.pi * k / 12
+            v = locate(int(first[0] + r * math.cos(a)), int(first[1] + r * math.sin(a)))
+            if v and abs(v[0] - first[0]) + abs(v[1] - first[1]) >= SPREAD:
+                found.add(v)
+    second = min(found, key=lambda v: abs(v[0] - first[0]) + abs(v[1] - first[1])) if found else None
     if second is None:
         sys.exit(f"no second village beyond {SPREAD} blocks of {first}")
     say(f"villages at {first} and {second}, {abs(first[0] - second[0]) + abs(first[1] - second[1])} blocks apart")

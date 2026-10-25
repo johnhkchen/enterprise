@@ -202,7 +202,10 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
             let planned = plan.cargo[g];
             // A trade it has switched on takes it, and its people don't use it: its par is the warehouse's for a
             // wanted good (`Warehouse.par(to, item, true)`), a stack at least (`wantsAt`, `pickCargo`).
-            let locker_par = crate::lockers::wanted_par_of(&content, far_trades, far_taken.as_deref(), g);
+            // Or a raw good its own trades turn into one its lockers take and lack (cane for its Cartographer's paper):
+            // as much as makes up the lack (`rules/workshop.rs` makes it there).
+            let locker_par = crate::lockers::wanted_par_of(&content, far_trades, far_taken.as_deref(), g)
+                .or_else(|| crate::lockers::craft_par(&content, rosters.get(route.to).ok(), far_trades, far_taken.as_deref(), &held, g));
             match content.goods[g].comfort.filter(|_| far_realm.is_none()) {
                 Some(_) => continue, // (the comforts went first)
                 None if far_trades.uses[g] > 0.0 || needs_input(g) || far_realm.is_some_and(|r| r.wants.contains(&g))

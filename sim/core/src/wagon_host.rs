@@ -139,13 +139,16 @@ impl Society {
                 Some(_) => "on the way home".to_string(),
                 None if !open => "wound down".to_string(),
                 None => {
-                    // The last reason no wagon left on it, if that was today (`poll` 183's status).
+                    // Why no wagon left on it at its last try, if a try today sent none (`poll` 183's status): the
+                    // route's own reason, not the first of the day's in the tally's order.
                     let today = now / day;
-                    whys.tally.get(&r.from_id).into_iter().flatten()
-                        .filter(|((with, _, why), t)| *with == Some(r.to_id) && t.last == today
-                            && matches!(why, crate::atlas::Why::NoTrip(_)))
-                        .map(|((_, _, why), _)| format!("home: {}", why.label(content)))
-                        .next().unwrap_or_else(|| "home".to_string())
+                    let tried_today = whys.tally.get(&r.from_id).into_iter().flatten()
+                        .any(|((with, _, why), t)| *with == Some(r.to_id) && t.last == today
+                            && matches!(why, crate::atlas::Why::NoTrip(_)));
+                    match state.and_then(|s| s.stayed.map(|stay| (stay, s))) {
+                        Some((stay, s)) if tried_today => format!("home: {}", crate::rules::atlas::stay_words(stay, s)),
+                        _ => "home".to_string(),
+                    }
                 }
             };
             routes.push(RouteLine {

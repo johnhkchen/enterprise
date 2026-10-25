@@ -91,7 +91,9 @@ pub fn depart(clock: Res<Clock>, content: Res<Content>, mut atlas: ResMut<Atlas>
             // reasons, good by good, aren't: the mod reckons them only for a wagon that goes (`dispatch` 469–510,
             // `pickCargo` 2368–2398, past its waiting at 433–441). (A route home within the day, or waiting out its
             // recheck, isn't tried: `poll` 173.)
-            whys.why(route.from_id, Some(route.to_id), None, Why::NoTrip(stay_label(stay).to_string()), 0.0, today);
+            // A wagon home can't fund that wouldn't go funded either: its load isn't worth the road, the first reason
+            // (the mod asks about money first, `dispatch` 374, and says only that).
+            whys.why(route.from_id, Some(route.to_id), None, Why::NoTrip(stay_words(stay, state).to_string()), 0.0, today);
         }
     }
 }
@@ -113,6 +115,8 @@ pub fn log_sales(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut 
         let Some(wagon) = state.wagon.as_mut() else { continue };
         let Ok((stock, trades, people, roster, works)) = towns.get(route.to) else { continue };
         let far_lockers = lockers.get(route.to).ok().zip(roster);
+        let far_taken = far_lockers.map(|(l, r)| l.taken(&content, r, content.goods.len()));
+        let crafts = |g: usize| crate::lockers::craft_par(&content, roster, trades, far_taken.as_deref(), &|o| stock.0[o], g);
         let mut bought = Vec::new();
         for g in 0..wagon.sold_here.len() {
             let n = wagon.sold_here[g];
@@ -137,9 +141,10 @@ pub fn log_sales(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut 
                 Some(_) => Why::UnsoldCantPay,
                 None if trades.uses[g] > 0.0 || trades.capacity.get(g).is_some_and(|c| *c > 0.0)
                     || crate::road::points(&content, g) > 0.0
-                    || crate::lockers::wanted_par(&content, trades, far_lockers, g).is_some() => {
+                    || crate::lockers::wanted_par(&content, trades, far_lockers, g).is_some()
+                    || crafts(g).is_some() => {
                     // (A good a trade there has switched on takes has the warehouse's par for it, as `sell` read it.)
-                    let aim = crate::lockers::wanted_par(&content, trades, far_lockers, g)
+                    let aim = crate::lockers::wanted_par(&content, trades, far_lockers, g).or_else(|| crafts(g))
                         .unwrap_or_else(|| super::shelf(&content, trades, g));
                     if aim - stock.0[g] < 1.0 { Why::UnsoldFull(None) } else { Why::UnsoldCantPay }
                 }
@@ -266,5 +271,18 @@ fn crated_into(pallets: &crate::pallet::Pallets, route: usize, wagon: &Wagon, go
         if l.good() < goods.len() {
             goods[l.good()] += l.count();
         }
+    }
+}
+
+/// Why a wagon stayed that home couldn't fund, and that wouldn't have gone funded.
+pub const NOTHING_WORTH_THE_ROAD: &str = "nothing worth the road to take, nor money for it";
+
+/// The words for why a route's wagon stayed (`stay_label`), but a wagon home can't fund that wouldn't have gone funded
+/// either: its load isn't worth the road, the first reason.
+pub fn stay_words(stay: crate::road::Stay, state: &RouteState) -> &'static str {
+    if stay == crate::road::Stay::CantFund && !state.would_go {
+        NOTHING_WORTH_THE_ROAD
+    } else {
+        stay_label(stay)
     }
 }

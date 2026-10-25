@@ -5,6 +5,19 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-25, goods made for the town down the road; the survival study on a seed whose villages are neighbours.**
+  (1) A town's workshop makes what the far ends of its routes out take at their lockers and lack (`rules/workshop.rs`):
+  seed 12345's Greenfell, with a Cartographer, pressed its 453 cane into paper for Elmfell's Librarian (test
+  `workshop::a_town_makes_what_the_town_down_its_road_buys`). (2) A far end wants the one input of a conversion its own
+  trades can do whose output its lockers take and lack (`lockers::craft_par`): the wagon plans it, the far end buys it,
+  its workshop makes it up (test `workshop::a_wagon_takes_cane_to_the_cartographer_down_the_road`). (3) A wagon that
+  can't be funded and wouldn't go funded says "nothing worth the road to take, nor money for it", and a route's status
+  is its own last reason, not the first of the day's in the tally's order (`rules/atlas.rs` `stay_words`). (4)
+  `survival_study.py` takes the nearest village beyond 400 blocks, looking round the first 300 to 700 out: seed
+  12345's nearest pair are 1,488 apart (a 1,103-block road, 27.75 emeralds a trip, more than its paper is worth);
+  seed 8675309's are 496 apart. Seed 8675309, 30 days: Wheatfell's wagon went 4 times (cane, cookies, boots) and sold
+  303 items to Redfell, moods +0.88 and +1.50, no deaths. Open: each trip took in 2 to 7 emeralds of 8 to 15 planned;
+  Redfell holds about 6 to buy with.
 - **2026-10-25, a town saves up only for a wagon that would go.** Greenfell's wagon said "the hub can't fund the trip"
   every look for 30 days, but its load was worth 0 against 22.2 of road: Elmfell wants none of what it holds (sugar
   cane, paper, cookies), and the mod's order (`dispatch` 374) asks about money before the load. The road reserve held

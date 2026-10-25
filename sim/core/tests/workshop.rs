@@ -275,3 +275,48 @@ fn a_short_comforts_inputs_are_worth_what_a_short_town_pays_for_it() {
     assert!((each(0.0) - 2.0 * each(1.0)).abs() < 1e-12, "short: {}, met: {}", each(0.0), each(1.0));
     assert!((each(0.5) - 1.5 * each(1.0)).abs() < 1e-12, "half met: half again");
 }
+
+/// A town makes what the far end of a route out takes at its lockers and lacks, as its wagon's plan sees it: cane and a
+/// Cartographer, and a Librarian down the road who buys paper, make paper; with nobody there buying it, none (a
+/// survival world's town sat on 453 cane for 30 days while the town down its road bought paper).
+#[test]
+fn a_town_makes_what_the_town_down_its_road_buys() {
+    let road = |buys: bool| {
+        let mut s = town(&[("cartographer", 1)], &[(CANE, 200.0)]);
+        let far = s.add_town("Farfield", 50.0);
+        s.set_people(far, 1.0, 1.0, 20.0);
+        s.set_roster(far, &[("librarian", 1)]);
+        if buys {
+            s.record_capacity(far, 1, &[(PAPER, 64.0 / 5.0)]); // its locker takes a stack of paper
+        }
+        s.add_route(0, far, 1.0, 0.0, 4.0);
+        s.advance(DAY);
+        s
+    };
+    assert_eq!(made(&road(false), PAPER), 0.0, "nobody down the road buys paper: none made");
+    let s = road(true);
+    assert!(made(&s, PAPER) >= 64.0, "a stack for the Librarian down the road: {}", made(&s, PAPER));
+}
+
+/// A wagon takes the far end a raw good its own trades turn into what its lockers buy: cane, from a town with nobody to
+/// press it, for the Cartographer down the road whose locker takes paper; there it's made into paper (a survival
+/// world's leatherworkers' town held 406 cane, and its wagon's best load was worth 4.5 against an 8-emerald road).
+#[test]
+fn a_wagon_takes_cane_to_the_cartographer_down_the_road() {
+    let road = |cartographer: bool| {
+        let mut s = town(&[], &[(CANE, 640.0)]); // (no roster: no squad to muster, a wagon of its own)
+        let far = s.add_town("Farfield", 50.0);
+        s.set_people(far, 2.0, 2.0, 20.0);
+        s.set_roster(far, &[("merchant", 1), (if cartographer { "cartographer" } else { "mason" }, 1)]);
+        s.record_capacity(far, 1, &[(PAPER, 64.0 * 4.0 / 5.0)]); // its locker takes paper: a par of 4 stacks
+        s.set_locker_par(far, PAPER, 256.0);
+        s.add_route(0, far, 0.25, 0.0, 1.0);
+        s.advance(3 * DAY);
+        s
+    };
+    let s = road(true);
+    assert!(s.town(0).stock[CANE] < 640.0, "the cane went down the road: {} left", s.town(0).stock[CANE]);
+    assert!(made(&s, PAPER) > 0.0, "and was made into paper there");
+    let s = road(false);
+    assert_eq!(s.town(0).stock[CANE], 640.0, "nobody there to press it: the cane stays");
+}
