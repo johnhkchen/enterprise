@@ -43,6 +43,7 @@ impl Host {
         let mut h = Host { society: Some(society) };
         h.apply(vec![Input::AddTown { name: "Desk".into(), desk: at(PointKind::Desk, 27, 27) }]);
         h.s().set_roster(DESK as usize, &[("merchant", level)]);
+        h.s().set_people(DESK as usize, 1.0, 1.0, 1.0); // its Merchant in a bed (a homeless town keeps a home's price)
         h.s().pay(DESK as usize, emeralds);
         h
     }

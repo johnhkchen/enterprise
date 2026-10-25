@@ -66,6 +66,7 @@ pub fn payroll(content: &Content, farm: Option<&Farm>, posts: usize) -> Fixed {
 /// (`Territory.reserve`).
 pub fn reserve(content: &Content, trades: &Trades, farm: Option<&Farm>) -> Fixed {
     super::trading_capital(content, trades) + farm.map_or(Fixed::ZERO, |f| wage_float(content, f)) + trades.road_reserve
+        + trades.home_reserve
 }
 
 /// Each town's road reserve ([`Trades::road_reserve`]): what home must hold to send each of its wagons that would go
@@ -74,7 +75,7 @@ pub fn reserve(content: &Content, trades: &Trades, farm: Option<&Farm>) -> Fixed
 /// children saves up for the trip; a wagon with nothing worth taking holds nothing back (homes for the homeless before
 /// a wagon with no load).
 pub fn road_reserve(content: Res<Content>, routes: Query<(&Route, &crate::state::RouteState)>,
-        mut towns: Query<(&Town, &mut Trades, &Stock)>) {
+        mut towns: Query<(&Town, &mut Trades, &Stock, Option<&crate::state::People>)>) {
     let mut by_town: BTreeMap<usize, Fixed> = BTreeMap::new();
     // (In the routes' order: a sum's last bit mustn't hang on archetypes, which a load reorders.)
     let mut ordered: Vec<(&Route, &crate::state::RouteState)> = routes.iter().collect();
@@ -84,14 +85,21 @@ pub fn road_reserve(content: Res<Content>, routes: Query<(&Route, &crate::state:
         if state.stayed != Some(crate::road::Stay::CantFund) || !state.would_go {
             continue;
         }
-        let Ok((_, _, stock)) = towns.get(route.from) else { continue };
+        let Ok((_, _, stock, _)) = towns.get(route.from) else { continue };
         *by_town.entry(route.from_id).or_default() += crate::road::road_money(&content, route, &stock.0, false, 1.0)
             + crate::road::purse_keep(&content, route, 1.0);
     }
-    for (town, mut trades, _) in &mut towns {
+    for (town, mut trades, _, people) in &mut towns {
         let want = by_town.get(&town.id).copied().unwrap_or_default();
         if trades.road_reserve != want {
             trades.road_reserve = want;
+        }
+        // A homeless town's home (as `people.rs` builds it: villagers without beds, land for two more), less what its
+        // households would pay of it (a new town spent its 32 on stalls and vendors by day 1 and stayed homeless).
+        let home = people.filter(|p| p.villagers > p.beds && p.beds + 2.0 <= p.land)
+            .map_or(Fixed::ZERO, |p| (Fixed::ceil(content.dials.home_cost) - p.purse.at_least_zero()).at_least_zero());
+        if trades.home_reserve != home {
+            trades.home_reserve = home;
         }
     }
 }

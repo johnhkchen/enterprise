@@ -1160,11 +1160,12 @@ fn shops() -> Scenario {
     let shops_of = |s: &mut Script, note: &str| s.ask(note, vec![Query::Shops { town: 0 }, Query::Deeds { town: 0 }]);
     let r = s.say("a society from a pack with paper, iron and wheat", Command::Create { pack: full_pack(), seed: 7 });
     assert_eq!(r, Response::Done { outputs: vec![], answers: vec![] });
-    s.apply("a town at its desk with a master Merchant, 64 wheat and ten emeralds; four vendors by it", vec![
+    s.apply("a town at its desk with a master Merchant, 64 wheat and twenty emeralds (ten kept for its Merchant's home); four \
+        vendors by it", vec![
         Input::AddTown { name: "Ashford".into(), desk: desk.clone() },
         Input::AddHand { town: 0, trade: "merchant".into(), level: 5, tag: "villager-m".into() },
         Input::Deliver { town: 0, good: WHEAT, count: 64.0 },
-        Input::Pay { town: 0, money: Fixed::from(10.0) },
+        Input::Pay { town: 0, money: Fixed::from(20.0) },
         Input::AddPoint { point: order.clone(), town: 0 },
         Input::AddPoint { point: stall.clone(), town: 0 },
         Input::AddPoint { point: own.clone(), town: 0 },

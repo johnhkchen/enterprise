@@ -414,3 +414,21 @@ fn a_towns_dice_are_its_own() {
     assert_ne!(Dice::default().of(0, &seed).next(), Dice::default().of(1, &seed).next());
     assert_eq!(seed.0, 7);
 }
+
+/// A town with villagers short of beds and land for a home keeps a home's price back from a stall (`home_reserve`),
+/// and builds the home with it: a new town spent its founding money on stalls and vendors by day 1 and stayed homeless.
+#[test]
+fn a_homeless_town_builds_its_home_before_a_stall() {
+    let (mut s, t) = town(14.0, 72.0);
+    s.set_people(t, 2.0, 0.0, 20.0);
+    s.advance(1200); // a touch: the reserve set
+    assert!(s.review_jobs(t).is_none() && stall_paid(&s, t) == enterprise_core::Fixed::ZERO,
+        "14 emeralds, 10 kept for a home: no stall at 6");
+    s.advance(6 * DAY);
+    assert_eq!(s.town(t).people.homes_built, 1, "the home, out of what was kept for it");
+    let (mut beds, t) = town(14.0, 72.0);
+    beds.set_people(t, 2.0, 2.0, 20.0);
+    beds.advance(1200);
+    beds.review_jobs(t);
+    assert_eq!(stall_paid(&beds, t), -6.0, "in beds, the stall");
+}

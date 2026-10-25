@@ -166,7 +166,7 @@
       "response_postcard": "000000"
     },
     {
-      "note": "a town at its desk with a master Merchant, 64 wheat and ten emeralds; four vendors by it",
+      "note": "a town at its desk with a master Merchant, 64 wheat and twenty emeralds (ten kept for its Merchant's home); four vendors by it",
       "request": {
         "abi": 1,
         "schema": 12296532634885365436,
@@ -203,7 +203,7 @@
               {
                 "Pay": {
                   "town": 0,
-                  "money": 10000
+                  "money": 20000
                 }
               },
               {
@@ -258,7 +258,7 @@
           }
         }
       },
-      "request_postcard": "01bcbddcba81e983d3aa0103080707417368666f726400136d696e6563726166743a6f766572776f726c643677360f00086d65726368616e74050a76696c6c616765722d6d01000000000000000050400200a09c010802136d696e6563726166743a6f766572776f726c643c7728000802136d696e6563726166743a6f766572776f726c64407728000802136d696e6563726166743a6f766572776f726c64367738000802136d696e6563726166743a6f766572776f726c6432773800",
+      "request_postcard": "01bcbddcba81e983d3aa0103080707417368666f726400136d696e6563726166743a6f766572776f726c643677360f00086d65726368616e74050a76696c6c616765722d6d01000000000000000050400200c0b8020802136d696e6563726166743a6f766572776f726c643c7728000802136d696e6563726166743a6f766572776f726c64407728000802136d696e6563726166743a6f766572776f726c64367738000802136d696e6563726166743a6f766572776f726c6432773800",
       "response": {
         "Done": {
           "outputs": [],
@@ -982,8 +982,8 @@
       "saved": {
         "format": 1,
         "schema": 12296532634885365436,
-        "blob_len": 5715,
-        "blob_fnv": "4a17e74d7f554c8c"
+        "blob_len": 5721,
+        "blob_fnv": "c7abd59ce32a5ecc"
       }
     },
     {

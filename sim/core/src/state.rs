@@ -151,6 +151,10 @@ pub struct Trades {
     /// at each look's touch): kept back with its trading capital ([`crate::rules::farms::reserve`]), so a town that
     /// spends on fields and stalls can still send its wagons.
     pub road_reserve: crate::fixed::Fixed,
+    /// A home's price, less what its households hold toward it, while it has villagers without beds and land for one
+    /// (`rules/farms.rs` `road_reserve`, set at each look's touch): kept back with its trading capital, so its stalls,
+    /// fields, vendors and lessons leave it able to build; the home itself spends it (`people.rs`).
+    pub home_reserve: crate::fixed::Fixed,
 }
 
 /// When a town was last brought up to date.

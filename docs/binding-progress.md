@@ -5,6 +5,13 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-26, a homeless town keeps a home's price.** While a town has villagers without beds and land for a home,
+  its reserve holds a home's price less what its households hold toward it (`Trades.home_reserve`, set at touch with
+  the road reserve), so stalls, fields, vendors and lessons leave it able to build; the home spends it (test
+  `jobs::a_homeless_town_builds_its_home_before_a_stall`). Seed 2024, 45 days: Amberfell built homes on days 10 and 33
+  (none before) and its mood rose to -0.03 (-1.50 and -2.27 in the runs before). Open: the board's vendors are bought
+  in the first look, before the first touch sets the reserve (Amberfell's 12); Dustfell spent 28 of its 32 by day 4,
+  has no income after and sinks to -2.75; still no trips between the two.
 - **2026-10-26, a farm grows for the towns down its roads.** What the villagers at the lockers managed at the far ends
   of a town's routes out would buy is among its farm's draws (`rules/farms.rs` `review`; test
   `farms::a_farm_grows_what_the_town_down_its_road_buys`). Seed 2024 (two desert villages 480 apart, both loaded), 45

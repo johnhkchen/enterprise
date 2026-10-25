@@ -1549,7 +1549,7 @@ public final class CoreBindingTests {
         helper.setBlock(DESK, Merchant.DESK.get());
         helper.setBlock(DESK.east(), Blocks.CHEST);
         ChestBlockEntity chest = chestAt(helper, DESK.east());
-        chest.setItem(0, new ItemStack(Items.EMERALD, 10));
+        chest.setItem(0, new ItemStack(Items.EMERALD, 20)); // (10 of it kept for a home: its Merchant has no bed)
         Villager merchant = villager(helper, Merchant.PROFESSION.get(), 5, new BlockPos(3, 2, 5));
         var order = vendor(helper, new BlockPos(6, 2, 6), dev.ithundxr.createnumismatics.content.vendor.VendorBlockEntity.Mode.BUY,
                 new ItemStack(Items.IRON_INGOT, 4), 24);
