@@ -77,6 +77,7 @@ const SCHEMA_SQL: &str = "
 create table requests (seq integer, command text, tick integer, day integer, inputs integer, outputs integer, refused text);
 create table inputs (seq integer, i integer, tick integer, day integer, kind text, town integer, route integer, good text, json text);
 create table outputs (seq integer, i integer, tick integer, day integer, kind text, town integer, route integer, good text, json text);
+create table goods (good integer, name text, crop integer, value real);
 create table towns (day integer, town integer, name text, villagers real, beds real, mood real, money real, target real, comforts real, paid_share real, land real);
 create table comforts (day integer, town integer, kind text, met real);
 create table herds (day integer, town integer, animal text, count real, pastures integer);
@@ -202,6 +203,13 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
     let sql = |e: rusqlite::Error| e.to_string();
     let s = society.as_mut().expect("a society");
     let goods: Vec<String> = s.content().goods.iter().map(|g| bare(&g.name)).collect();
+    // The goods by number, once (a work's or an output's good is its number: `Field { crop }`).
+    let listed: i64 = tx.query_row("select count(*) from goods", [], |r| r.get(0)).map_err(sql)?;
+    if listed == 0 {
+        for (i, g) in s.content().goods.iter().enumerate() {
+            tx.execute("insert into goods values (?1, ?2, ?3, ?4)", params![i, bare(&g.name), g.crop, g.value]).map_err(sql)?;
+        }
+    }
     for t in 0..s.town_count() {
         let v = s.town(t);
         let target = s.mood_target(t);

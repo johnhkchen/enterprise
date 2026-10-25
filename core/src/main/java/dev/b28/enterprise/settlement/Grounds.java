@@ -213,7 +213,7 @@ public final class Grounds {
     }
 
     /** Ground as the world made it: not a village's planks and cobbles, nor a player's. */
-    static boolean natural(BlockState state) {
+    public static boolean natural(BlockState state) {
         return state.is(BlockTags.DIRT) || state.is(BlockTags.BASE_STONE_OVERWORLD) || state.is(BlockTags.SAND)
                 || state.is(BlockTags.TERRACOTTA) || state.is(Blocks.GRAVEL) || state.is(Blocks.DIRT_PATH)
                 || state.is(Blocks.FARMLAND) || state.is(Blocks.CLAY) || state.is(Blocks.SNOW_BLOCK)

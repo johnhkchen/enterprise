@@ -184,6 +184,7 @@ public final class Fields {
      * waters 4 blocks out), seedlings on it. Sugar cane: three water channels with cane along both banks.
      */
     public static void plant(ServerLevel level, BlockPos corner, Item crop) {
+        Growth.level(level, corner, SIZE);
         for (int dx = 0; dx < SIZE; dx++) {
             for (int dz = 0; dz < SIZE; dz++) {
                 BlockPos ground = corner.offset(dx, 0, dz);

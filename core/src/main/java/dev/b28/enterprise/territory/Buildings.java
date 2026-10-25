@@ -147,6 +147,7 @@ public final class Buildings {
             paveDock(level, corner);
             return;
         }
+        Growth.level(level, corner, kind.size());
         if (kind == WATCHTOWER) {
             tower(level, corner, kind);
             return;

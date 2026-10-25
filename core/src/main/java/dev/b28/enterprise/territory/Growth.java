@@ -59,7 +59,7 @@ public final class Growth {
 
     /** The nearest corner where a {@code size} x {@code size} building fits, at least {@code nearest} from the bell. */
     public static Optional<BlockPos> site(ServerLevel level, BlockPos bell, int size, int nearest) {
-        return site(level, bell, size, nearest, corner -> true);
+        return site(level, bell, size, nearest, FARTHEST, RISE, corner -> true);
     }
 
     /** Ground kept clear round each home, workstation and the bell: no field, pasture or pit within it. */
@@ -75,11 +75,25 @@ public final class Growth {
      */
     public static Optional<BlockPos> farmSite(ServerLevel level, BlockPos bell, int size, int nearest) {
         List<BlockPos> town = level.getPoiManager()
-                .getInRange(type -> true, bell, FARTHEST + NEIGHBOURHOOD + size, PoiManager.Occupancy.ANY)
+                .getInRange(type -> true, bell, FIELD_FARTHEST + NEIGHBOURHOOD + size, PoiManager.Occupancy.ANY)
                 .map(PoiRecord::getPos)
                 .toList();
-        return site(level, bell, size, nearest, corner -> zoned(bell, corner, size, town));
+        return site(level, bell, size, nearest, FIELD_FARTHEST, FIELD_RISE, corner -> zoned(bell, corner, size, town));
     }
+
+    /**
+     * How far from the bell a field (or a pasture, a pit) may go: past a generated village's last house, which a
+     * field must be beyond to ring it ({@link #zoned}); a village spreads past {@link #FARTHEST}, and its town's fields
+     * were never laid.
+     */
+    static final int FIELD_FARTHEST = 56;
+    /**
+     * How far above or below the bell a field's ground may be (a home's within {@link #RISE}): a hilltop village's flat
+     * ground is down the slope, and nobody lives in a field.
+     */
+    static final int FIELD_RISE = 10;
+    /** How far above or below the bell a home or a hall's ground may be. */
+    static final int RISE = 4;
 
     /** Is a {@code size} x {@code size} footprint with this corner clear of the town's places, and outside them? */
     public static boolean zoned(BlockPos bell, BlockPos corner, int size, List<BlockPos> town) {
@@ -106,28 +120,110 @@ public final class Growth {
         return (double) dx * dx + (double) dz * dz;
     }
 
-    private static Optional<BlockPos> site(ServerLevel level, BlockPos bell, int size, int nearest,
+    private static Optional<BlockPos> site(ServerLevel level, BlockPos bell, int size, int nearest, int farthest, int rise,
             java.util.function.Predicate<BlockPos> allowed) {
         List<BlockPos> corners = new ArrayList<>();
-        for (int dx = -FARTHEST; dx <= FARTHEST; dx++) {
-            for (int dz = -FARTHEST; dz <= FARTHEST; dz++) {
+        for (int dx = -farthest; dx <= farthest; dx++) {
+            for (int dz = -farthest; dz <= farthest; dz++) {
                 double fromBell = Math.hypot(dx + size / 2.0, dz + size / 2.0);
-                if (fromBell >= nearest && fromBell <= FARTHEST) {
+                if (fromBell >= nearest && fromBell <= farthest) {
                     corners.add(bell.offset(dx, 0, dz));
                 }
             }
         }
         corners.sort(Comparator.comparingDouble((BlockPos c) -> c.distSqr(bell)).thenComparing(c -> c));
+        // (Where it's allowed first: a footprint's place among the town's is cheaper to ask than its ground.)
+        corners.removeIf(c -> !allowed.test(c));
         for (BlockPos corner : corners) {
             int ground = surface(level, corner.getX(), corner.getZ());
-            if (ground != Integer.MIN_VALUE && Math.abs(ground - bell.getY()) <= 4) {
+            if (ground != Integer.MIN_VALUE && Math.abs(ground - bell.getY()) <= rise) {
                 BlockPos site = new BlockPos(corner.getX(), ground, corner.getZ());
-                if (fits(level, site, size) && allowed.test(site)) {
+                if (fits(level, site, size)) {
                     return Optional.of(site);
                 }
             }
         }
+        // No ground level enough: the nearest natural ground within LEVELLED of it, at its top, to be filled up to it as
+        // it's built ({@link #level}). A village on a hillside has no flat 7 x 7 near its bell, and the homes its town
+        // paid for were never built.
+        for (BlockPos corner : corners) {
+            int top = levelled(level, corner, size);
+            if (top != Integer.MIN_VALUE && Math.abs(top - bell.getY()) <= rise) {
+                return Optional.of(new BlockPos(corner.getX(), top, corner.getZ()));
+            }
+        }
         return Optional.empty();
+    }
+
+    /** How much a site's natural ground may rise and fall across its footprint and a block round, to be filled level. */
+    static final int LEVELLED = 2;
+
+    /**
+     * The top of the natural ground under a {@code size} x {@code size} footprint with this corner (x and z) and a block
+     * round it, if it can be filled level there: loaded, within {@link #LEVELLED} of its top everywhere, every column's
+     * top natural ground (no village's or player's blocks, no water, no field) and open for four blocks over the top;
+     * else {@link Integer#MIN_VALUE}. Changes nothing.
+     */
+    public static int levelled(ServerLevel level, BlockPos corner, int size) {
+        int top = Integer.MIN_VALUE;
+        int bottom = Integer.MAX_VALUE;
+        for (int dx = -1; dx <= size; dx++) {
+            for (int dz = -1; dz <= size; dz++) {
+                int ground = surface(level, corner.getX() + dx, corner.getZ() + dz);
+                if (ground == Integer.MIN_VALUE) {
+                    return Integer.MIN_VALUE;
+                }
+                BlockPos floor = new BlockPos(corner.getX() + dx, ground, corner.getZ() + dz);
+                BlockState under = level.getBlockState(floor);
+                if (!dev.b28.enterprise.settlement.Grounds.natural(under) || under.is(Blocks.FARMLAND)
+                        || !under.getFluidState().isEmpty()) {
+                    return Integer.MIN_VALUE;
+                }
+                top = Math.max(top, ground);
+                bottom = Math.min(bottom, ground);
+            }
+        }
+        if (top - bottom > LEVELLED) {
+            return Integer.MIN_VALUE;
+        }
+        for (int dx = -1; dx <= size; dx++) {
+            for (int dz = -1; dz <= size; dz++) {
+                for (int up = 1; up <= 4; up++) {
+                    BlockState above = level.getBlockState(new BlockPos(corner.getX() + dx, top + up, corner.getZ() + dz));
+                    if (!above.canBeReplaced() || !above.getFluidState().isEmpty()) {
+                        return Integer.MIN_VALUE;
+                    }
+                }
+            }
+        }
+        return top;
+    }
+
+    /**
+     * The natural ground under a {@code size} x {@code size} footprint at {@code corner} and a block round it filled up
+     * to the corner's height, with the ground's own block (dirt under grass): a site {@link #site} found by its
+     * fallback, made level for what's built on it. Ground already at the corner's height, or over it, is left.
+     */
+    public static void level(ServerLevel level, BlockPos corner, int size) {
+        for (int dx = -1; dx <= size; dx++) {
+            for (int dz = -1; dz <= size; dz++) {
+                int x = corner.getX() + dx;
+                int z = corner.getZ() + dz;
+                int ground = surface(level, x, z);
+                if (ground == Integer.MIN_VALUE || ground >= corner.getY()) {
+                    continue;
+                }
+                BlockState top = level.getBlockState(new BlockPos(x, ground, z));
+                BlockState fill = top.is(Blocks.GRASS_BLOCK) || top.is(Blocks.DIRT_PATH) ? Blocks.DIRT.defaultBlockState() : top;
+                for (int y = ground; y <= corner.getY(); y++) {
+                    BlockPos at = new BlockPos(x, y, z);
+                    if (y > ground && !level.getBlockState(at).canBeReplaced()) {
+                        break;
+                    }
+                    level.setBlock(at, y == corner.getY() ? top : fill, net.minecraft.world.level.block.Block.UPDATE_ALL);
+                }
+            }
+        }
     }
 
     /**
@@ -179,6 +275,7 @@ public final class Growth {
      * claim it.
      */
     public static BlockPos buildHome(ServerLevel level, BlockPos corner) {
+        level(level, corner, HOME_SIZE);
         int g = corner.getY();
         for (int dx = 0; dx < HOME_SIZE; dx++) {
             for (int dz = 0; dz < HOME_SIZE; dz++) {

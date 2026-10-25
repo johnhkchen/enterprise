@@ -5,6 +5,15 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-26, homes and fields laid on a hillside.** Every survival run logged its town's homes and fields "can't
+  be laid yet" hundreds of times (seed 31337, 10 days: 239 homes, 181 fields; with the ground pass off, the same): the
+  core paid for them and counted their beds and plots, and the world never got them. A home wants a level 7 x 7
+  within 4 of the bell's height, which a hillside village hasn't; a field must stand beyond the houses near it, and a
+  generated village spreads past the 32 blocks the search went to. Now: no level ground, the nearest natural ground
+  rising no more than 2 across the footprint is taken at its top and filled level as it's built (`Growth.levelled`,
+  `Growth.level`, from `buildHome`, `Fields.plant`, `Buildings.build`; game test `aHillsideSiteIsFilledLevelForAHome`);
+  a field's search goes to 56 blocks and 10 above or below the bell, its zoning asked first. Seed 31337, 10 days: none
+  unlaid. The trace's new `goods` table gives each good's number (a work's crop is its number).
 - **2026-10-26, a homeless town keeps a home's price.** While a town has villagers without beds and land for a home,
   its reserve holds a home's price less what its households hold toward it (`Trades.home_reserve`, set at touch with
   the road reserve), so stalls, fields, vendors and lessons leave it able to build; the home spends it (test

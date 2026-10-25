@@ -25,7 +25,7 @@ Monorepo: our mods, the pack definition, and design docs.
 - Tracing a run (core mode): the server writes every request its core took to `world/enterprise-journal/<time>.ejl`
   (one a server run, the last 10 kept; `journal=off` in `config/enterprise.properties` or `ENTERPRISE_JOURNAL=off` for
   none; `/enterprise core journal` says where). The core is deterministic, so `cd sim && cargo run --release -p
-  enterprise-sim -- --trace FILE run.db` replays it exactly and writes SQLite: `requests`, `inputs`, `outputs`, each
+  enterprise-sim -- --trace FILE run.db` replays it exactly and writes SQLite: `requests`, `inputs`, `outputs`, `goods` (each good's number, as works and outputs give it), each
   day's `towns` (with mood's target, comforts met, paid share, land), `comforts` (met by kind), `herds`, `hands` (each town's roster), `works`, `farms`, `stock`, `routes`, `lockers`, `whys`, every decided `plans` (load worth vs road cost, purse, went or
   stayed) with `plan_whys` (why each good went or stayed, stays too), each wagon's `trips` (out: stacks, worth, purse;
   there: sold, takings, bought, paid; pallet items either way), and `cash`. A trip's worth counts only what it took to

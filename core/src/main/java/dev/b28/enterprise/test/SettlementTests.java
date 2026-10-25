@@ -280,4 +280,24 @@ public final class SettlementTests {
         child.discard();
         helper.succeed();
     }
+
+    @GameTest(template = "floor")
+    public static void aHillsideSiteIsFilledLevelForAHome(GameTestHelper helper) {
+        var level = helper.getLevel();
+        ground(helper, 0, 2, 4); // a slope of natural ground: 4, 3, 2 high across the footprint
+        ground(helper, 3, 4, 3);
+        ground(helper, 5, 6, 2);
+        BlockPos corner = helper.absolutePos(new BlockPos(1, 0, 1));
+        int top = dev.b28.enterprise.territory.Growth.levelled(level, corner, dev.b28.enterprise.territory.Growth.HOME_SIZE);
+        helper.assertTrue(top == helper.absolutePos(new BlockPos(0, 4, 0)).getY(), "levelled at the slope's top: " + top);
+        BlockPos site = new BlockPos(corner.getX(), top, corner.getZ());
+        helper.assertFalse(dev.b28.enterprise.territory.Growth.fits(level, site), "not level as it stands");
+        dev.b28.enterprise.territory.Growth.level(level, site, dev.b28.enterprise.territory.Growth.HOME_SIZE);
+        helper.assertTrue(dev.b28.enterprise.territory.Growth.fits(level, site), "filled level, a cottage fits");
+        ground(helper, 0, 2, 6); // a fall of 4 across it: too steep to fill
+        ground(helper, 3, 6, 2);
+        helper.assertTrue(dev.b28.enterprise.territory.Growth.levelled(level, corner, dev.b28.enterprise.territory.Growth.HOME_SIZE)
+                == Integer.MIN_VALUE, "a fall of 4 isn't filled");
+        helper.succeed();
+    }
 }

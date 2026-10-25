@@ -47,6 +47,7 @@ SettlementTests.anAlleyBetweenAHouseAndAHillIsFilledAndFencedOffTheRoof # block 
 SettlementTests.aFenceBelowTheGroundBesideItStandsAsHighAsThatGround # block placement: the ground is the binding's
 SettlementTests.theTownsBellHealsItsHurtVillagers # mob effects: healing is the binding's
 SettlementTests.aChildBornByAWalledInBellStandsInTheOpen # entity placement: where a villager is put is the binding's
+SettlementTests.aHillsideSiteIsFilledLevelForAHome # block placement: the ground is the binding's
 
 # Numismatics coins and bank
 MoneyTests.surplusEmeraldsBecomeCoinsInStock # coin items: the emerald/coin split is the binding's
