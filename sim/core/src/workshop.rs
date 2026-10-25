@@ -222,16 +222,21 @@ pub struct Demand {
 /// of it earns there (`Workshop.inputDemand`): each comfort at the town's ration (`villagers * ration`, and as much
 /// again for each route out), in the inputs that make it, and back through what its own trades make of those (books
 /// from paper, paper from cane). An input earns its share of the output's worth, by the inputs' worth; where two
-/// outputs draw on one input it keeps the higher worth. Its farmers grow for this as for any demand. By good.
-pub fn input_demand(content: &Content, roster: &Roster, villagers: f64, routes_out: usize) -> Vec<Demand> {
+/// outputs draw on one input it keeps the higher worth. A comfort the town is short of is worth what a short town
+/// pays for it (`desires::will_pay`'s eagerness: up to `desire_most` times its worth with none of its kind met, by
+/// `met`, the town's comforts met by kind; none given, its worth), so its inputs outrank a locker's crops while its
+/// people go without (not as the mod, whose ranking takes the plain worth). Its farmers grow for this as for any
+/// demand. By good.
+pub fn input_demand(content: &Content, roster: &Roster, villagers: f64, routes_out: usize, met: &[f64]) -> Vec<Demand> {
     let towns = (1 + routes_out) as f64;
     let mut out: Vec<Demand> = Vec::new();
     // The frontier: (conversion, items of its output made a day, worth of one).
     let mut frontier: Vec<(usize, f64, f64)> = Vec::new();
     for (i, c) in content.conversions.iter().enumerate() {
-        if can_do(c, roster) && content.goods[c.output].comfort.is_some() {
+        if let Some(kind) = content.goods[c.output].comfort.filter(|_| can_do(c, roster)) {
             let value = content.goods[c.output].value;
-            frontier.push((i, villagers * content.dials.ration * towns / value.max(1e-9), value));
+            let eager = 1.0 + (content.dials.desire_most - 1.0) * (1.0 - met.get(kind).copied().unwrap_or(1.0).clamp(0.0, 1.0));
+            frontier.push((i, villagers * content.dials.ration * towns / value.max(1e-9), value * eager));
         }
     }
     // Two steps back: A d, then A (A d).
@@ -304,7 +309,7 @@ impl Society {
         let e = self.towns[town];
         let roster = self.roster(town);
         let people = self.world.get::<People>(e).expect("a town");
-        input_demand(self.content(), &roster, people.villagers, self.routes_out(town))
+        input_demand(self.content(), &roster, people.villagers, self.routes_out(town), &people.comfort_met)
     }
 
     /// Routes that start at the town: where its comforts can be sold.

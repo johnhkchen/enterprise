@@ -186,7 +186,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
         farm.draws = match roster {
             Some(r) => {
                 let out = routes.iter().filter(|r| r.from_id == t).count();
-                crate::workshop::input_demand(&content, r, people.villagers, out).into_iter()
+                crate::workshop::input_demand(&content, r, people.villagers, out, &people.comfort_met).into_iter()
                     .map(|d| (d.good, (d.per_day, d.each))).collect()
             }
             None => BTreeMap::new(),
@@ -217,7 +217,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
         let land = Fixed::ceil(LAND_EMERALDS);
         if people.purse + farm.credit >= land && farm.spare_plots >= FIELD_SIZE * FIELD_SIZE / 3
             && room_for_a_field(farm) {
-            let crop = choose(&content, &Wants { needs: BTreeMap::new(), ..wants.clone() }, &farm.per_day, food,
+            let crop = choose(&content, &Wants { needs: BTreeMap::new(), ..wants.clone() }, &planted(farm), food,
                 farm.focus.food_only()).or_else(|| content.good("wheat"));
             if let Some(crop) = crop {
                 let from_credit = farm.credit.min(land);
@@ -236,7 +236,8 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
 
 /// The crop of the field the town would plant now, if any (`Fields.consider`, before the money): its Farmers have
 /// room for [`SPARE_PLOTS`] more plots, or there's a crop it would buy and grows none of (or feed it's short of) and
-/// it has planted fewer than two fields a Farmer level; and there's room for it.
+/// it has planted fewer than two fields a Farmer level; and there's room for it. A crop it grows counts its plots no
+/// Farmer works too (not as the mod's `consider`, whose busy town plants the same unworked crop up to its cap).
 fn field_wanted(content: &Content, farm: &Farm, farmers: &[u8], wants: &Wants, food: f64) -> Option<usize> {
     if farmers.is_empty() || !room_for_a_field(farm) {
         return None;
@@ -245,16 +246,38 @@ fn field_wanted(content: &Content, farm: &Farm, farmers: &[u8], wants: &Wants, f
     let levels: u32 = farmers.iter().map(|l| (*l).max(1) as u32).sum();
     let worked = farm.per_day.values().sum::<f64>() / YIELD_PER_PLOT_PER_DAY;
     let food_only = farm.focus.food_only();
-    let grown = |g: usize| farm.per_day.get(&g).copied().unwrap_or(0.0);
+    // What it grows, and what its plots no Farmer works would: a crop planted and lying idle isn't one it grows none
+    // of, or a town short of hands plants field after field of it.
+    let planted = planted(farm);
+    let grown = |g: usize| planted.get(&g).copied().unwrap_or(0.0);
     let all = field_crops(content);
-    let mut unmet = all.iter().filter(|&&c| allowed(content, c, wants, food, food_only)).any(|&crop| {
+    let unmet: Vec<usize> = all.iter().copied().filter(|&c| allowed(content, c, wants, food, food_only)).filter(|&crop| {
         wanted(content, crop, wants, food_only) > 0.0
             && all.iter().filter(|&&c| sold_as(content, c) == sold_as(content, crop)).all(|&c| grown(c) <= 0.0)
-    });
-    unmet |= wants.needs.iter().any(|(g, n)| *n > grown(*g));
+    }).collect();
+    let short_of_feed = wants.needs.iter().any(|(g, n)| *n > grown(*g));
     let spare = capacity - worked >= SPARE_PLOTS as f64;
-    if !(spare || unmet && farm.fields_planted < 2 * levels) {
+    if spare {
+        return choose(content, wants, &planted, food, food_only);
+    }
+    if (unmet.is_empty() && !short_of_feed) || farm.fields_planted >= 2 * levels {
         return None;
     }
-    choose(content, wants, &farm.per_day, food, food_only)
+    // Busy, it plants for a crop it has no plots of (or the feed it's short of), not more of what it has.
+    if short_of_feed {
+        return choose(content, wants, &planted, food, food_only);
+    }
+    unmet.into_iter().max_by(|&a, &b| {
+        let worth = |c: usize| wanted(content, c, wants, food_only) * content.goods[sold_as(content, c)].value;
+        worth(a).total_cmp(&worth(b)).then(b.cmp(&a))
+    })
+}
+
+/// Items a day of each crop the town's plots would give: what its Farmers grow, and what its untended plots would.
+fn planted(farm: &Farm) -> BTreeMap<usize, f64> {
+    let mut out = farm.per_day.clone();
+    for (&g, &n) in &farm.idle {
+        *out.entry(g).or_insert(0.0) += n;
+    }
+    out
 }

@@ -474,3 +474,21 @@ fn farmers_with_no_plan_left_are_not_left_unpaid() {
     assert_eq!(the_farm(&s).paid_share, 1.0, "no wage running, nothing unpaid");
     assert_eq!(s.town(0).people.paid_share, 1.0, "and the town's people paid as far as the farm goes");
 }
+
+/// Busy, a town plants for a crop it has no plots of, not more of one it has lying idle: Wheatfield's ten fields of
+/// potatoes nobody worked, for a Farmer's locker that would buy far more than its hands grow.
+#[test]
+fn a_busy_town_plants_a_crop_it_has_none_of_not_more_of_one_lying_idle() {
+    let mut s = Society::new(content());
+    let t = s.add_town("Wheatfield", 200.0);
+    s.set_roster(t, &[("farmer", 3)]);
+    s.set_people(t, 1.0, 1.0, 1.0);
+    s.set_plots(t, CARROT, 2000); // its hands all on carrots (short of food, they work what they have)
+    s.set_plots(t, POTATO, 80); // a field of potatoes lying idle
+    s.set_farm_demand(t, POTATO, 2000.0); // a Farmer's locker would buy far more potatoes...
+    s.set_farm_demand(t, BEETROOT, 480.0); // ...and beetroot, which it grows none of
+    s.advance(1200);
+    let f = the_farm(&s);
+    assert_eq!(f.plots.get(&POTATO).copied(), Some(80), "no more potatoes while one field of them lies idle");
+    assert_eq!(f.plots.get(&BEETROOT).copied(), Some(80), "a field of what it has none of: {:?}", f.plots);
+}

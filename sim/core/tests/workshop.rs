@@ -263,3 +263,15 @@ fn a_workshop_keeps_back_from_the_lockers_what_its_comforts_short_need() {
     met.comfort_met = vec![1.0; c.comforts.len()];
     assert_eq!(workshop::keeps(&c, &roster, &met, &stock(2.0))[PAPER], 0.0);
 }
+
+#[test]
+fn a_short_comforts_inputs_are_worth_what_a_short_town_pays_for_it() {
+    // A Librarian's books (reading): with none of it met, its paper and leather earn twice their share of a book's
+    // worth (`desire_most`, as `desires::will_pay`); met, its worth.
+    let c = content();
+    let roster = town(&[("librarian", 1)], &[]).roster(0);
+    let each = |met: f64| workshop::input_demand(&c, &roster, 4.0, 0, &[met; 2]).into_iter()
+        .find(|d| d.good == PAPER).expect("paper drawn").each;
+    assert!((each(0.0) - 2.0 * each(1.0)).abs() < 1e-12, "short: {}, met: {}", each(0.0), each(1.0));
+    assert!((each(0.5) - 1.5 * each(1.0)).abs() < 1e-12, "half met: half again");
+}

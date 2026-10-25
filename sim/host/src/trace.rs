@@ -9,7 +9,7 @@
 //! - `requests`: each request replayed, its command, the tick after it, and its inputs and outputs counted.
 //! - `inputs`, `outputs`: each input the mod sent and each output the core gave back, by kind, with its town, route
 //!   and good when it names one, and the whole of it as JSON.
-//! - Each day as the first request to reach it left it (the last day as the run ended): `towns` (name, people, beds, mood, money, mood target, comforts met, paid share), `comforts` (each kind met), `herds` (each kind's count and the pastures), `hands` (each town's roster), `stock` (each good a town
+//! - Each day as the first request to reach it left it (the last day as the run ended): `towns` (name, people, beds, mood, money, mood target, comforts met, paid share), `comforts` (each kind met), `herds` (each kind's count and the pastures), `hands` (each town's roster), `farms` (each crop's plots, plan, idle yield, demand, census, workshop draws and needs) and `farm_towns` (focus, fields planted), `stock` (each good a town
 //!   holds), `routes` (trips, what's sold and carried, whether a wagon is out, why it stayed, the far end's last purse),
 //!   `lockers` (each hand's offers: placed, managed, switched on), `whys` (each town's reasons, tallied so far: a
 //!   day's are the difference from the day before's).
@@ -81,6 +81,8 @@ create table towns (day integer, town integer, name text, villagers real, beds r
 create table comforts (day integer, town integer, kind text, met real);
 create table herds (day integer, town integer, animal text, count real, pastures integer);
 create table hands (day integer, town integer, hand integer, trade text, level integer, away integer);
+create table farms (day integer, town integer, crop text, plots integer, per_day real, demand real, idle real, census real, draws real, needs real);
+create table farm_towns (day integer, town integer, focus text, fields_planted integer, fallow integer, spare_plots integer, harvested real);
 create table stock (day integer, town integer, good text, count real);
 create table routes (day integer, route integer, from_town integer, to_town integer, blocks integer, trips integer,
     sold real, carried real, bought real, paid real, on_road integer, stayed text, far_purse real);
@@ -157,7 +159,7 @@ pub fn trace(requests: &[&[u8]], conn: &mut Connection) -> Result<Traced, String
     let Some(s) = society.as_ref() else { return Err("the journal has no requests".into()) };
     let day = s.now() / s.content().day_ticks.max(1);
     // The last day as the run ended, in place of its first look's.
-    for table in ["towns", "comforts", "herds", "hands", "stock", "routes", "lockers", "whys"] {
+    for table in ["towns", "comforts", "herds", "hands", "farms", "farm_towns", "stock", "routes", "lockers", "whys"] {
         tx.execute(&format!("delete from {table} where day = ?1"), params![day]).map_err(|e| e.to_string())?;
     }
     snapshot(&tx, &mut society, day, asking.unwrap())?;
@@ -209,6 +211,19 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
             let trade = s.content().trades.get(h.trade).map(|x| x.name.clone()).unwrap_or_default();
             tx.execute("insert into hands values (?1, ?2, ?3, ?4, ?5, ?6)", params![day, t, h.id, trade, h.level, h.away])
                 .map_err(sql)?;
+        }
+        if let Some(f) = s.farm(t) {
+            let f = f.farm;
+            tx.execute("insert into farm_towns values (?1, ?2, ?3, ?4, ?5, ?6, ?7)", params![day, t, format!("{:?}", f.focus),
+                f.fields_planted, f.fallow, f.spare_plots, f.harvested]).map_err(sql)?;
+            let crops: std::collections::BTreeSet<usize> = f.plots.keys().chain(f.per_day.keys()).chain(f.demand.keys())
+                .chain(f.idle.keys()).chain(f.census.keys()).chain(f.draws.keys()).chain(f.needs.keys()).copied().collect();
+            for g in crops {
+                let get = |m: &BTreeMap<usize, f64>| m.get(&g).copied().unwrap_or(0.0);
+                tx.execute("insert into farms values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)", params![day, t, goods[g],
+                    f.plots.get(&g).copied().unwrap_or(0), get(&f.per_day), get(&f.demand), get(&f.idle), get(&f.census),
+                    f.draws.get(&g).map_or(0.0, |d| d.0), get(&f.needs)]).map_err(sql)?;
+            }
         }
         let herds = s.herds(t);
         for (a, n) in herds.count.iter().enumerate() {

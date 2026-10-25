@@ -5,6 +5,18 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-25, farms grow what the town's comforts need.** Wheatfield's farm (2 Farmers, about 96 items a day) had
+  planted 10 fields of potatoes nobody worked, for a Farmer's locker that would buy 832 a day: a busy town planted for
+  "a crop it would buy and grows none of", and unworked plots never counted as grown. And cane (its paper, so its
+  books) scored 0.8 against potatoes' 32: a comfort's inputs ranked at the item's plain price. Now a busy farm plants
+  only for a crop it has no plots of (`rules/farms.rs` `field_wanted`; plots lying idle count as grown), and a comfort
+  the town is short of makes its inputs worth what a short town pays for it (`input_demand`, `will_pay`'s eagerness:
+  up to `desire_most`, 2x, with none of it met). Forked from the same day 0, 120 days: Wheatfield 6 to 25 villagers,
+  mood -0.68 to +1.02, treats met 0.03 to 0.96, furnishings 0.81, reading 0.45; one field of each crop. Hollowwick
+  18 villagers, mood -0.25 (a point a villager past 8 costs mood). Tests
+  `farms::a_busy_town_plants_a_crop_it_has_none_of_not_more_of_one_lying_idle`,
+  `workshop::a_short_comforts_inputs_are_worth_what_a_short_town_pays_for_it`. The trace's `farms` and
+  `farm_towns` tables (plots, plan, idle, demand, census, draws, needs; focus, fields planted).
 - **2026-10-25, a workshop's comfort inputs before its lockers.** Wheatfield ended a 120-day study with 1,610
   emeralds, 19 leather and no comforts (reading met 0.29 of days, mood -0.68): its Librarian's and Cartographer's
   lockers bought every paper that came, so its books (3 paper and a leather) had none. Now before each restock a town
