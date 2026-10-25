@@ -420,3 +420,26 @@ fn the_shops_survive_a_save() {
     let mut loaded = Host { society: Some(Society::load(&bytes).expect("loads")) };
     assert_eq!(loaded.shops().0, shops);
 }
+
+/// A homeless town isn't asked for a board's vendor out of a home's price, from its first look: the reserve for the
+/// home is reckoned from its people as they are, not as the last touch left it (a new town spent 12 of its 32 on its
+/// board's vendors before any touch, and stayed homeless).
+#[test]
+fn a_homeless_town_keeps_a_homes_price_from_its_boards_vendors() {
+    let asked = |beds: f64| {
+        let mut h = Host::new(1, 13.0);
+        {
+            let s = h.s();
+            s.set_people(DESK as usize, 5.0, beds, 20.0);
+            let far = s.add_town("Far", 10.0);
+            s.add_route(DESK as usize, far, 4.0 / 1200.0, 0.0, 4.0);
+            s.deliver(far, WHEAT as usize, 4.0);
+        }
+        h.place(&[shop(0)]);
+        let desk = at(PointKind::Desk, 27, 27);
+        let outs = h.apply(vec![Input::Stocktake { point: desk, counts: vec![], free: 20 }, Input::Advance { to: LOOK }]);
+        outs.contains(&Output::BuildShop { town: DESK })
+    };
+    assert!(asked(5.0), "in beds, 13 emeralds: a vendor at 4");
+    assert!(!asked(0.0), "five without beds: 10 of the 13 kept for a home, 3 left");
+}

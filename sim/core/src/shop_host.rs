@@ -364,9 +364,12 @@ impl Society {
     /// A town's money beyond its reserve (negative under it): what it may spend on a shop or a deed's card.
     pub fn spare_money(&self, town: TownId) -> Fixed {
         let e = self.world.entity(self.towns[town]);
-        let reserve = crate::rules::farms::reserve(self.content(), e.get::<crate::state::Trades>().expect("a town"),
-            e.get::<crate::farms::Farm>());
-        e.get::<crate::state::Money>().expect("a town").0 - reserve
+        let trades = e.get::<crate::state::Trades>().expect("a town");
+        let reserve = crate::rules::farms::reserve(self.content(), trades, e.get::<crate::farms::Farm>());
+        // Its home's reserve as its people are now, not as the last touch set it: a new town's first look asks for its
+        // board's vendors before any touch (one spent 12 of its 32 so, and stayed homeless).
+        let home = e.get::<crate::state::People>().map_or(Fixed::ZERO, |p| crate::rules::farms::home_reserve(self.content(), p));
+        e.get::<crate::state::Money>().expect("a town").0 - reserve + trades.home_reserve - home
     }
 
     /// A player brought a rent's deed to its holder's desk: the crop collected for it handed over, as far as the stock goes.

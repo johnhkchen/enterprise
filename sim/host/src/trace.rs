@@ -77,7 +77,7 @@ const SCHEMA_SQL: &str = "
 create table requests (seq integer, command text, tick integer, day integer, inputs integer, outputs integer, refused text);
 create table inputs (seq integer, i integer, tick integer, day integer, kind text, town integer, route integer, good text, json text);
 create table outputs (seq integer, i integer, tick integer, day integer, kind text, town integer, route integer, good text, json text);
-create table towns (day integer, town integer, name text, villagers real, beds real, mood real, money real, target real, comforts real, paid_share real);
+create table towns (day integer, town integer, name text, villagers real, beds real, mood real, money real, target real, comforts real, paid_share real, land real);
 create table comforts (day integer, town integer, kind text, met real);
 create table herds (day integer, town integer, animal text, count real, pastures integer);
 create table hands (day integer, town integer, hand integer, trade text, level integer, away integer);
@@ -205,9 +205,9 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
     for t in 0..s.town_count() {
         let v = s.town(t);
         let target = s.mood_target(t);
-        tx.execute("insert into towns values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        tx.execute("insert into towns values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
             params![day, t, v.name, v.people.villagers, v.people.beds, v.people.mood, v.money.to_f64(), target,
-                v.people.comfort_met.iter().sum::<f64>(), v.people.paid_share]).map_err(sql)?;
+                v.people.comfort_met.iter().sum::<f64>(), v.people.paid_share, v.people.land]).map_err(sql)?;
         for h in s.roster(t).hands {
             let trade = s.content().trades.get(h.trade).map(|x| x.name.clone()).unwrap_or_default();
             tx.execute("insert into hands values (?1, ?2, ?3, ?4, ?5, ?6)", params![day, t, h.id, trade, h.level, h.away])

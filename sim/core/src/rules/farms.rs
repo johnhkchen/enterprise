@@ -96,11 +96,20 @@ pub fn road_reserve(content: Res<Content>, routes: Query<(&Route, &crate::state:
         }
         // A homeless town's home (as `people.rs` builds it: villagers without beds, land for two more), less what its
         // households would pay of it (a new town spent its 32 on stalls and vendors by day 1 and stayed homeless).
-        let home = people.filter(|p| p.villagers > p.beds && p.beds + 2.0 <= p.land)
-            .map_or(Fixed::ZERO, |p| (Fixed::ceil(content.dials.home_cost) - p.purse.at_least_zero()).at_least_zero());
+        let home = people.map_or(Fixed::ZERO, |p| home_reserve(&content, p));
         if trades.home_reserve != home {
             trades.home_reserve = home;
         }
+    }
+}
+
+/// A home's price less what the households hold toward it, while the town has villagers without beds and land for two
+/// more (as `people.rs` builds one): [`Trades::home_reserve`], as it is now.
+pub fn home_reserve(content: &Content, people: &crate::state::People) -> Fixed {
+    if people.villagers > people.beds && people.beds + 2.0 <= people.land {
+        (Fixed::ceil(content.dials.home_cost) - people.purse.at_least_zero()).at_least_zero()
+    } else {
+        Fixed::ZERO
     }
 }
 
