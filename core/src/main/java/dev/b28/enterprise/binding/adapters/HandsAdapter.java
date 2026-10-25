@@ -133,9 +133,15 @@ public final class HandsAdapter {
     public boolean lose(UUID villager) {
         Where where = lookup().get(villager);
         if (where == null) {
+            reload(); // a hand a census joined since the last reload (a survival village's villager dying in its first minute)
+            where = byVillager.get(villager);
+        }
+        // Or one spawned for a hand and not yet named in the core: that hand is lost, and no villager spawned again for it.
+        Long hand = where != null ? Long.valueOf(where.hand()) : host.people().unnamed(villager);
+        if (hand == null) {
             return false;
         }
-        Response r = host.apply(List.of(new Input.HandLost(where.hand())));
+        Response r = host.apply(List.of(new Input.HandLost(hand)));
         reload();
         return r instanceof Response.Done;
     }

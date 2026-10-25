@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.Direction;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.network.chat.Component;
@@ -26,6 +27,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -189,6 +191,43 @@ public final class LockerAdapter {
             }
         }
         return inputs;
+    }
+
+    /**
+     * What keeps a town's villagers from having lockers, for the player (the ledger's): each loaded villager of a
+     * trade with a workstation but no chest touching it ("a chest touching it makes a locker"), and each with no
+     * workstation at all. A generated village's workstations have none: a player puts them there.
+     */
+    public List<String> noLockers(net.minecraft.server.MinecraftServer server, long town) {
+        List<String> out = new ArrayList<>();
+        if (server == null) {
+            return out;
+        }
+        for (var h : host.hands().roster(town).hands()) {
+            if (h.villager() == null || h.merchant() || h.away() || h.baby()) {
+                continue;
+            }
+            for (ServerLevel level : server.getAllLevels()) {
+                if (!(level.getEntity(h.villager()) instanceof Villager v)) {
+                    continue;
+                }
+                var profession = v.getVillagerData().getProfession();
+                if (profession == VillagerProfession.NONE || profession == VillagerProfession.NITWIT) {
+                    break;
+                }
+                String trade = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession).getPath();
+                var site = v.getBrain().getMemory(MemoryModuleType.JOB_SITE).filter(s -> s.dimension() == level.dimension());
+                if (site.isEmpty()) {
+                    out.add("a %s with no workstation".formatted(trade));
+                } else if (loaded(level, site.get().pos()) && Lockers.touchingContainers(level, site.get().pos()).isEmpty()) {
+                    BlockPos at = site.get().pos();
+                    out.add("the %s's %s at %d %d %d: no chest touching it".formatted(trade,
+                            BuiltInRegistries.BLOCK.getKey(level.getBlockState(at).getBlock()).getPath(), at.getX(), at.getY(), at.getZ()));
+                }
+                break;
+            }
+        }
+        return out;
     }
 
     /** The villager's workstation, if it has one in this dimension, loaded, with a container touching it: its locker. */

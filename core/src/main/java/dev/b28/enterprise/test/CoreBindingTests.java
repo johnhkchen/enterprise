@@ -554,6 +554,50 @@ public final class CoreBindingTests {
     }
 
     /**
+     * A villager spawned for a hand that dies before the core has its name (a newborn, a replacement in a survival
+     * village) is that hand lost: off the roster at once, and no villager spawned for it again.
+     */
+    @GameTest(template = "floor", timeoutTicks = 400)
+    public static void aVillagerThatDiesBeforeItsNameIsTakenIsItsHandLost(GameTestHelper helper) {
+        var level = helper.getLevel();
+        BlockPos desk = settlement(helper, 4);
+        BlockPos bell = helper.absolutePos(BELL);
+        Villager merchant = villager(helper, Merchant.PROFESSION.get(), 1, new BlockPos(2, 2, 4));
+        Villager farmer = villager(helper, VillagerProfession.FARMER, 1, new BlockPos(4, 2, 4));
+        AABB near = new AABB(bell).inflate(CENSUS_RADIUS - 1);
+        List<Villager> babies = List.of();
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, desk, "Testford");
+            host.apply(List.of(new Input.SetDial("birth_mood", java.util.Optional.of(-100.0)),
+                    new Input.SetDial("birth_cost", java.util.Optional.of(0.0))));
+            host.people().countNow(level, town, bell, CENSUS_RADIUS);
+            for (int day = 1; day <= 6 && babies.isEmpty(); day++) {
+                advance(host, level.getGameTime() + day * DAY);
+                babies = level.getEntitiesOfClass(Villager.class, near, Villager::isBaby);
+            }
+            helper.assertTrue(babies.size() == 1, babies.size() + " babies by the bell, not one");
+            int before = host.hands().roster(town).hands().size();
+            Villager baby = babies.get(0);
+            helper.assertTrue(host.hands().of(baby.getUUID()) == null, "the baby's name was taken already: the test needs it not");
+            helper.assertTrue(host.hands().lose(baby.getUUID()), "the baby's death wasn't the core's");
+            baby.discard();
+            helper.assertTrue(host.hands().roster(town).hands().size() == before - 1, "its hand is still the town's: "
+                    + host.hands().roster(town).hands());
+            advance(host, level.getGameTime() + 7 * DAY);
+            babies = level.getEntitiesOfClass(Villager.class, near, Villager::isBaby);
+            helper.assertTrue(host.hands().roster(town).hands().stream().allMatch(h -> h.villager() != null || h.baby()),
+                    "a hand with no villager: " + host.hands().roster(town).hands());
+        } finally {
+            delete(dir);
+            merchant.discard();
+            farmer.discard();
+            babies.forEach(Villager::discard);
+        }
+        helper.succeed();
+    }
+
+    /**
      * The core's word on a hand is written to its villager (B4.5): a trade taken up and a level earned in the core
      * ({@code HandLevel}) become the villager's profession, level and XP; a hand the core took from the world ({@code
      * HandGone}) takes its villager away, with no death for the core to hear.

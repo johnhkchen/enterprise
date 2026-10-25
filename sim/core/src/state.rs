@@ -147,6 +147,10 @@ pub struct Trades {
     /// What the town needs of each good to make what it has contracted to sell (`Warehouse.inputs`, set from its
     /// contracts' recipes: `sourcing.rs`): its shelf and its par are at least this, so wagons bring it.
     pub inputs: Vec<f64>,
+    /// The road money a round trip on each of its routes out takes, all told (`rules/farms.rs` `road_reserve`, set
+    /// at each look's touch): kept back with its trading capital ([`crate::rules::farms::reserve`]), so a town that
+    /// spends on fields and stalls can still send its wagons.
+    pub road_reserve: crate::fixed::Fixed,
 }
 
 /// When a town was last brought up to date.

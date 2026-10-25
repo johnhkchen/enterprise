@@ -103,6 +103,20 @@ public final class PeopleAdapter {
         return inputs;
     }
 
+    /**
+     * The hand a villager was spawned for and isn't yet named as in the core, if it's one: taken off the names to send
+     * (it died before the core took its name), so the hand can be lost.
+     */
+    public Long unnamed(UUID villager) {
+        for (var e : naming.entrySet()) {
+            if (e.getValue().villager().equals(villager)) {
+                naming.remove(e.getKey());
+                return e.getKey();
+            }
+        }
+        return null;
+    }
+
     /** The names of the villagers spawned for hands and not yet taken by the core: each hand's villager from now on. */
     private List<Input> names() {
         List<Input> inputs = new ArrayList<>(naming.size());

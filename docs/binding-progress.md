@@ -5,6 +5,14 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-25, the survival world's findings fixed.** (1) A town keeps back the road money a round trip on each of
+  its routes out takes (`Trades.road_reserve`, set first at each touch, in `reserve`): fields, stalls, lessons and homes
+  can't spend its wagon (test `farms::a_town_keeps_its_wagons_road_money_from_a_field`). (2) A villager that dies is its
+  hand lost even when the core hasn't its name yet or the hands' cache is stale (`HandsAdapter.lose` reloads, then
+  `PeopleAdapter.unnamed`): no replacement spawned for a dead hand (game test
+  `aVillagerThatDiesBeforeItsNameIsTakenIsItsHandLost`). (3) The ledger's People section names what keeps villagers
+  from lockers: each workstation with no chest touching it, where it stands, and each villager with no workstation
+  (`LockerAdapter.noLockers`; game test `theLedgerNamesTheWorkstationsWithNoChest`).
 - **2026-10-25, the first survival world (findings, nothing fixed yet).** `just server-setup-survival 12345`,
   `survival_study.py 30`: two generated villages 1,488 blocks apart made towns as a player would (a desk at the
   surface by the centre, a chest of 32 emeralds, a Merchant), a route between, the first village loaded:

@@ -10,7 +10,8 @@ leave it as it was.
 
 1. Put a Merchant's Desk by a bell and some beds, and let a villager take the job.
 2. Put emeralds and goods in the desk's chests.
-3. Give each villager a chest touching its workstation (its locker), then switch its trades on in the Merchant's
+3. Give each villager a chest touching its workstation (its locker; the Ledger tab lists the workstations that
+   have none), then switch its trades on in the Merchant's
    Lockers tab. A caravan only carries what a town's lockers buy (and comforts it's short of).
 4. Build a second desk 300 blocks away and send a caravan from the Caravans tab.
 5. Put a Numismatics vendor by the desk. After a game day, read the Ledger tab: the town's money, goods, people,

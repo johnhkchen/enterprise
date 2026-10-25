@@ -31,6 +31,9 @@ use crate::state::*;
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
+        // First in the touch: the reserve as the routes stand, before anything spends or the stock moves.
+        road_reserve.in_set(Step::Touch).before(super::touch::catch_up).before(crate::people::live)
+            .before(super::cargo::reckon).before(super::lockers::follow),
         work.in_set(Step::Work),
         pay.in_set(Step::Pay),
         settle_deposits.in_set(Step::Pay).after(pay),
@@ -62,7 +65,28 @@ pub fn payroll(content: &Content, farm: Option<&Farm>, posts: usize) -> Fixed {
 /// The reserve a town keeps back before repaying its households or planting: its trading capital and its wage float
 /// (`Territory.reserve`).
 pub fn reserve(content: &Content, trades: &Trades, farm: Option<&Farm>) -> Fixed {
-    super::trading_capital(content, trades) + farm.map_or(Fixed::ZERO, |f| wage_float(content, f))
+    super::trading_capital(content, trades) + farm.map_or(Fixed::ZERO, |f| wage_float(content, f)) + trades.road_reserve
+}
+
+/// Each town's road reserve ([`Trades::road_reserve`]): the road money a round trip on each of its routes out takes
+/// (its food for a crew of one, or the road's cost where content has no food), so what it spends on fields, stalls,
+/// lessons and homes leaves its wagons able to go (a survival world's new town spent its 32 emeralds in four days and
+/// never sent its first).
+pub fn road_reserve(content: Res<Content>, routes: Query<&Route>, mut towns: Query<(&Town, &mut Trades, &Stock)>) {
+    let mut by_town: BTreeMap<usize, Fixed> = BTreeMap::new();
+    // (In the routes' order: a sum's last bit mustn't hang on archetypes, which a load reorders.)
+    let mut ordered: Vec<&Route> = routes.iter().collect();
+    ordered.sort_by_key(|r| r.seq);
+    for route in ordered {
+        let Ok((_, _, stock)) = towns.get(route.from) else { continue };
+        *by_town.entry(route.from_id).or_default() += crate::road::road_money(&content, route, &stock.0, false, 1.0);
+    }
+    for (town, mut trades, _) in &mut towns {
+        let want = by_town.get(&town.id).copied().unwrap_or_default();
+        if trades.road_reserve != want {
+            trades.road_reserve = want;
+        }
+    }
 }
 
 /// Wages settled, produce handed over, stores banking (`Territory.payWages`, `touch`, `bank`).

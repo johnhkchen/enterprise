@@ -234,6 +234,12 @@ public final class LedgerAdapter {
         }
         long managed = l.lockers().stream().filter(x -> x.managed()).count();
         out.add(new Line("%d lockers managed".formatted(managed), "Lockers"));
+        // What keeps the rest from being lockers: a chest touching a workstation makes one.
+        List<String> none = host.lockers().noLockers(net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer(), h.town());
+        if (!none.isEmpty()) {
+            out.add(new Line("  Not lockers yet (a chest touching a workstation makes one):", "Lockers"));
+            none.forEach(n -> out.add(new Line("    " + n, "Lockers")));
+        }
         for (var locker : l.lockers()) {
             if (!locker.managed()) {
                 continue;

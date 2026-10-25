@@ -61,7 +61,7 @@ pub fn register(schedule: &mut Schedule) {
 }
 
 /// Each town's paperwork reckoned as it's touched, in town order: stationery from its stock, a scribe for the rest.
-fn reckon(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
+pub(crate) fn reckon(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
         mut towns: Query<(&Town, &mut Money, &mut Stock, &mut Paperwork, Option<&crate::works::Works>)>) {
     let mut order: Vec<_> = towns.iter_mut().filter(|(_, _, _, p, _)| p.owed >= 1.0).collect();
     order.sort_by_key(|(town, ..)| town.id);

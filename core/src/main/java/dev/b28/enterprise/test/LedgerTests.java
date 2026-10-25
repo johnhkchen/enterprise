@@ -116,6 +116,51 @@ public final class LedgerTests {
         helper.succeed();
     }
 
+    /**
+     * The ledger says what keeps a town's villagers from having lockers: a Librarian's lectern with no chest touching it
+     * is named, with where it stands, and a Cartographer's table with one isn't (it's a locker).
+     */
+    @GameTest(template = "floor")
+    public static void theLedgerNamesTheWorkstationsWithNoChest(GameTestHelper helper) {
+        helper.setBlock(DESK, Merchant.DESK.get());
+        helper.setBlock(DESK.east(), Blocks.CHEST);
+        var level = helper.getLevel();
+        BlockPos lectern = new BlockPos(1, 2, 5);
+        BlockPos table = new BlockPos(5, 2, 5);
+        helper.setBlock(lectern, Blocks.LECTERN);
+        helper.setBlock(table, Blocks.CARTOGRAPHY_TABLE);
+        helper.setBlock(table.east(), Blocks.CHEST);
+        var librarian = helper.spawn(net.minecraft.world.entity.EntityType.VILLAGER, new BlockPos(1, 2, 4));
+        librarian.setVillagerData(librarian.getVillagerData().setProfession(net.minecraft.world.entity.npc.VillagerProfession.LIBRARIAN));
+        librarian.setVillagerXp(1);
+        librarian.getBrain().setMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.JOB_SITE,
+                GlobalPos.of(level.dimension(), helper.absolutePos(lectern)));
+        var cartographer = helper.spawn(net.minecraft.world.entity.EntityType.VILLAGER, new BlockPos(5, 2, 4));
+        cartographer.setVillagerData(cartographer.getVillagerData().setProfession(net.minecraft.world.entity.npc.VillagerProfession.CARTOGRAPHER));
+        cartographer.setVillagerXp(1);
+        cartographer.getBrain().setMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.JOB_SITE,
+                GlobalPos.of(level.dimension(), helper.absolutePos(table)));
+        GlobalPos desk = GlobalPos.of(level.dimension(), helper.absolutePos(DESK));
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            long town = host.stock().found(level, desk.pos(), "Testford");
+            host.hands().join(town, librarian);
+            host.hands().join(town, cartographer);
+            LedgerView.Section people = new LedgerAdapter(host).view(desk).section("People");
+            helper.assertTrue(people != null, "no People section");
+            BlockPos at = helper.absolutePos(lectern);
+            has(helper, people, "    the librarian's lectern at %d %d %d: no chest touching it".formatted(at.getX(), at.getY(), at.getZ()),
+                    "Lockers");
+            helper.assertTrue(people.lines().stream().noneMatch(l -> l.text().contains("cartographer's")),
+                    "a workstation with a chest named: " + people.lines());
+        } finally {
+            delete(dir);
+            librarian.discard();
+            cartographer.discard();
+        }
+        helper.succeed();
+    }
+
     private static void has(GameTestHelper helper, LedgerView.Section section, String text, String source) {
         helper.assertTrue(section.lines().stream().anyMatch(l -> l.text().equals(text) && l.source().equals(source)),
                 "no line '%s' (from %s) in %s: %s".formatted(text, source, section.name(), section.lines()));
