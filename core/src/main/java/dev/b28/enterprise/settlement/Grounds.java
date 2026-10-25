@@ -160,6 +160,40 @@ public final class Grounds {
         return new Made(filled, fenced, lifted);
     }
 
+    /** How far round a bell a villager born or sent for is put, looking for open ground. */
+    static final int STAND_REACH = 8;
+
+    /**
+     * The nearest open ground round {@code centre} for a villager to stand on (two blocks with nothing to collide with
+     * and no water, over a sturdy top), within {@link #STAND_REACH} blocks across and 4 up or down; else the ground
+     * over the centre's column. A bell under a roof or walled in by its stand has no room beside it, and a villager put
+     * on top of it suffocates in the block above (seed 8675309's Wheatfell lost seven newborns so).
+     */
+    public static BlockPos standing(ServerLevel level, BlockPos centre) {
+        for (int r = 1; r <= STAND_REACH; r++) {
+            for (int dx = -r; dx <= r; dx++) {
+                for (int dz = -r; dz <= r; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != r) {
+                        continue; // this ring only
+                    }
+                    for (int dy : new int[] {0, 1, -1, 2, -2, 3, -3, 4, -4}) {
+                        BlockPos spot = centre.offset(dx, dy, dz);
+                        if (open(level, spot) && open(level, spot.above())
+                                && level.getBlockState(spot.below()).isFaceSturdy(level, spot.below(), Direction.UP)) {
+                            return spot;
+                        }
+                    }
+                }
+            }
+        }
+        return new BlockPos(centre.getX(), level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, centre.getX(),
+                centre.getZ()), centre.getZ());
+    }
+
+    private static boolean open(ServerLevel level, BlockPos at) {
+        return level.getBlockState(at).getCollisionShape(level, at).isEmpty() && level.getFluidState(at).isEmpty();
+    }
+
     /** The first free height over the ground at (x, z), natural or built, or MIN where it's water or not loaded. */
     private static int top(ServerLevel level, int x, int z) {
         if (!level.hasChunk(x >> 4, z >> 4)) {

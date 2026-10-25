@@ -5,6 +5,12 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-26, a villager born or sent for is put on open ground.** Seed 8675309, 90 days: both towns grew (7 to 9,
+  7 to 8) and the wagon went 19 times (1,151 items, 65.8 emeralds taken), but Wheatfell lost seven newborns, each
+  suffocated in the block over its bell: the bell's four sides were walled, and the child was put on top of it.
+  Now a child and a hand's villager are put on the nearest open ground within 8 blocks across and 4 up or down
+  (`Grounds.standing`, from `Growth.bear` and `PeopleAdapter.spawn`; game test
+  `aChildBornByAWalledInBellStandsInTheOpen`). 45 days again: no deaths.
 - **2026-10-25, goods made for the town down the road; the survival study on a seed whose villages are neighbours.**
   (1) A town's workshop makes what the far ends of its routes out take at their lockers and lack (`rules/workshop.rs`):
   seed 12345's Greenfell, with a Cartographer, pressed its 453 cane into paper for Elmfell's Librarian (test

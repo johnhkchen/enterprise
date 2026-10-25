@@ -259,4 +259,25 @@ public final class SettlementTests {
             helper.succeed();
         });
     }
+
+    @GameTest(template = "floor")
+    public static void aChildBornByAWalledInBellStandsInTheOpen(GameTestHelper helper) {
+        helper.setBlock(BELL, Blocks.BELL);
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                for (int y = 2; y <= 3; y++) {
+                    if (dx != 0 || dz != 0 || y == 3) {
+                        helper.setBlock(BELL.offset(dx, y - 2, dz), Blocks.STONE); // its stand: walls and a roof
+                    }
+                }
+            }
+        }
+        Villager child = dev.b28.enterprise.territory.Growth.bear(helper.getLevel(), helper.absolutePos(BELL));
+        BlockPos at = child.blockPosition();
+        helper.assertTrue(helper.getLevel().getBlockState(at).getCollisionShape(helper.getLevel(), at).isEmpty()
+                && helper.getLevel().getBlockState(at.above()).getCollisionShape(helper.getLevel(), at.above()).isEmpty()
+                && !child.isInWall(), "the child stands in a wall at " + helper.relativePos(at));
+        child.discard();
+        helper.succeed();
+    }
 }

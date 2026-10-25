@@ -217,7 +217,7 @@ public final class Growth {
 
     /** A baby villager by the bell, of the local kind, marked with its birth time so it can grow up while away. */
     public static Villager bear(ServerLevel level, BlockPos bell) {
-        BlockPos at = besideBell(level, bell);
+        BlockPos at = dev.b28.enterprise.settlement.Grounds.standing(level, bell);
         Villager child = EntityType.VILLAGER.create(level);
         child.moveTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, level.random.nextFloat() * 360, 0);
         child.finalizeSpawn(level, level.getCurrentDifficultyAt(at), MobSpawnType.BREEDING, null);
@@ -226,18 +226,6 @@ public final class Growth {
         child.getPersistentData().putLong(BORN, level.getGameTime());
         level.addFreshEntity(child);
         return child;
-    }
-
-    /** Open ground next to the bell (two blocks of air over something solid), or on top of it. */
-    private static BlockPos besideBell(ServerLevel level, BlockPos bell) {
-        for (Direction side : Direction.Plane.HORIZONTAL) {
-            BlockPos spot = bell.relative(side);
-            if (level.getBlockState(spot).isAir() && level.getBlockState(spot.above()).isAir()
-                    && level.getBlockState(spot.below()).isFaceSturdy(level, spot.below(), Direction.UP)) {
-                return spot;
-            }
-        }
-        return bell.above();
     }
 
     /** A child loaded back in grows by the time it was away: babies only age while their chunk ticks. */

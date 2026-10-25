@@ -262,7 +262,7 @@ public final class PeopleAdapter {
             Enterprise.LOGGER.warn("The core's hand {} is a {}, which no profession here is", h.id(), h.trade());
             return null;
         }
-        BlockPos at = beside(level, centre);
+        BlockPos at = dev.b28.enterprise.settlement.Grounds.standing(level, centre);
         Villager v = EntityType.VILLAGER.create(level);
         if (v == null) {
             return null;
@@ -291,18 +291,6 @@ public final class PeopleAdapter {
             return null;
         }
         return spawn(level, at, new HandsAdapter.Hand(hand, id, trade, lvl, xp, false, false, false));
-    }
-
-    /** Open ground beside {@code centre} (two blocks of air over something solid), or on top of it. */
-    private static BlockPos beside(ServerLevel level, BlockPos centre) {
-        for (Direction side : Direction.Plane.HORIZONTAL) {
-            BlockPos spot = centre.relative(side);
-            if (level.getBlockState(spot).isAir() && level.getBlockState(spot.above()).isAir()
-                    && level.getBlockState(spot.below()).isFaceSturdy(level, spot.below(), Direction.UP)) {
-                return spot;
-            }
-        }
-        return centre.above();
     }
 
     /** The profession the core calls {@code trade} (a registry path), the vanilla one first. */
