@@ -5,6 +5,13 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-26, a town costs a charter.** John's call: a block of diamond, bought from a Merchant, for now. A Town
+  Charter item (`merchant/Charters`, `CharterItem`, `CharterPayload`; the Charter button beside the Merchant screen's
+  tabs). A desk a player places waits for one (`StockAdapter.placedByPlayer`, saved in `enterprise_charters.dat`, and
+  skipped by the unseen-desk catch-up); a desk put back where a town's stood is that town's again; desks placed unseen
+  found as before; the desk can't be pushed by pistons. Game tests `aCharterIsBoughtForABlockOfDiamond`,
+  `aDeskAPlayerPlacesWaitsForACharterAndPutBackIsItsTownAgain`. Not tried by hand in a client.
+
 - **2026-10-26, a new town's founding purse: 64 emeralds from the core.** John's call: more money, not cheaper stalls,
   and the core gives it, not the player (a charter paid in diamonds to come, decisions.md "Merchant money"). A town
   founded by `AddTown` gets the dial `founding_purse` (64) in its treasury, booked "founding purse"; a desk put back is

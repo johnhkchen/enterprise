@@ -6,6 +6,7 @@ import dev.b28.enterprise.merchant.MerchantView;
 import dev.b28.enterprise.merchant.MerchantView.LockerView;
 import dev.b28.enterprise.merchant.MerchantView.TownView;
 import dev.b28.enterprise.merchant.MerchantView.TradeView;
+import dev.b28.enterprise.merchant.CharterPayload;
 import dev.b28.enterprise.merchant.CommissionPayload;
 import dev.b28.enterprise.merchant.ToggleTradePayload;
 import java.util.HashMap;
@@ -28,7 +29,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * selected section's lines on the right (scroll for more), each line naming the question it came from on hover; asked once when
  * the screen opened. Lockers: the lockers on the left, the selected locker's trades on the right, each with an On/Off switch.
  * Caravans: the markets this desk knows on the left, the selected one on the right with a button to send caravans
- * there or stop, and who is at home to go.
+ * there or stop, and who is at home to go. Beside the tabs, a button to buy a town charter for a block of diamond.
  */
 public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> {
     private static final int LIST_X = 8;
@@ -108,6 +109,12 @@ public final class MerchantScreen extends AbstractContainerScreen<MerchantMenu> 
         addRenderableWidget(Button.builder(Component.translatable("screen.enterprise.merchant.tab.lockers",
                                 lockers().size(), menu.view().limit()), button -> showTab(false, false))
                 .bounds(right - ledgerW - caravansW - lockersW, topPos + 3, lockersW, 14).build()).active = ledgerTab || caravansTab;
+        int charterW = 44;
+        addRenderableWidget(Button.builder(Component.translatable("screen.enterprise.merchant.charter"),
+                        button -> PacketDistributor.sendToServer(new CharterPayload()))
+                .tooltip(net.minecraft.client.gui.components.Tooltip.create(
+                        Component.translatable("screen.enterprise.merchant.charter.tooltip")))
+                .bounds(right - ledgerW - caravansW - lockersW - 4 - charterW, topPos + 3, charterW, 14).build());
         if (ledgerTab) {
             return;
         }

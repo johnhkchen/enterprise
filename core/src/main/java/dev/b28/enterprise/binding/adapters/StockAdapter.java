@@ -2,6 +2,7 @@ package dev.b28.enterprise.binding.adapters;
 
 import dev.b28.enterprise.Enterprise;
 import dev.b28.enterprise.binding.CoreHost;
+import dev.b28.enterprise.merchant.Charters;
 import dev.b28.enterprise.merchant.Depots;
 import dev.b28.enterprise.merchant.Merchant;
 import dev.b28.enterprise.settlement.Names;
@@ -60,7 +61,8 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
  * ({@link PointsAdapter}), the goods' numbers the core's content, read back when the host starts ({@link #reload}), and
  * what a town holds the core's to say ({@link #stockAt}). An item that isn't one of the core's goods isn't counted. A
  * desk or depot gone without the host seeing it (an explosion, a piston, {@code /setblock}) is removed at the next look
- * that finds it loaded; a desk placed unseen (a datapack, a structure) is founded when its chunk next loads.
+ * that finds it loaded; a desk placed unseen (a datapack, a structure) is founded when its chunk next loads. A desk a
+ * player places waits for a town charter ({@link Charters}).
  */
 public final class StockAdapter {
     private final CoreHost host;
@@ -258,9 +260,22 @@ public final class StockAdapter {
     }
 
     /**
-     * A Merchant's desk placed by a player (or anything that places as one): a town in the core, its chests counted.
-     * Heard last ({@code EventPriority.LOWEST}, cancelled events not heard), so a placement another listener cancels
-     * founds nothing. The core's failures stay here: logged, never thrown into the placement.
+     * The desk at {@code desk} placed by a player: founded only where a town's desk stood (that town's again), else it
+     * waits for a charter ({@link Charters}). Returns its town, or null while it waits.
+     */
+    public Long placedByPlayer(ServerLevel level, BlockPos desk) {
+        GlobalPos at = GlobalPos.of(level.dimension(), desk);
+        if (!Charters.get(level.getServer()).placed(at)) {
+            return null;
+        }
+        return found(level, desk, Names.of(level.getServer(), at));
+    }
+
+    /**
+     * A Merchant's desk placed: by a player, a town in the core only with a charter or where a town's desk stood
+     * ({@link #placedByPlayer}); by anything else that places as one, a town at once, its chests counted. Heard last
+     * ({@code EventPriority.LOWEST}, cancelled events not heard), so a placement another listener cancels founds
+     * nothing. The core's failures stay here: logged, never thrown into the placement.
      */
     public static void onPlaced(BlockEvent.EntityPlaceEvent event) {
         if (event.getLevel() instanceof ServerLevel level && event.getPlacedBlock().is(Merchant.DESK.get())) {
@@ -268,7 +283,14 @@ public final class StockAdapter {
             if (host != null && host.pausedWhy() == null) {
                 try {
                     GlobalPos at = GlobalPos.of(level.dimension(), event.getPos());
-                    host.stock().found(level, event.getPos(), Names.of(level.getServer(), at));
+                    if (event.getEntity() instanceof net.minecraft.world.entity.player.Player player) {
+                        if (host.stock().placedByPlayer(level, event.getPos()) == null) {
+                            player.displayClientMessage(
+                                    net.minecraft.network.chat.Component.translatable("message.enterprise.charter.wanted"), false);
+                        }
+                    } else {
+                        host.stock().found(level, event.getPos(), Names.of(level.getServer(), at));
+                    }
                 } catch (RuntimeException e) {
                     Enterprise.LOGGER.error("The core didn't take the desk at {}; the world goes on without it",
                             event.getPos().toShortString(), e);
@@ -286,6 +308,8 @@ public final class StockAdapter {
             CoreHost host = CoreHost.of(level.getServer());
             if (host != null && host.pausedWhy() == null) {
                 try {
+                    GlobalPos at = GlobalPos.of(level.dimension(), event.getPos());
+                    Charters.get(level.getServer()).broken(at, host.stock().townAt(at) != null);
                     host.stock().forget(level, event.getPos());
                 } catch (RuntimeException e) {
                     Enterprise.LOGGER.error("The core didn't forget the desk at {}", event.getPos().toShortString(), e);
@@ -377,6 +401,7 @@ public final class StockAdapter {
         level.getPoiManager().getInChunk(type -> type.is(Merchant.DESK_POI.getKey()), chunk, PoiManager.Occupancy.ANY)
                 .map(poi -> poi.getPos().immutable())
                 .filter(pos -> host.points().at(GlobalPos.of(level.dimension(), pos)) == null)
+                .filter(pos -> !Charters.get(level.getServer()).waits(GlobalPos.of(level.dimension(), pos)))
                 .filter(pos -> level.getBlockState(pos).is(Merchant.DESK.get()) && loaded(level, pos))
                 .toList()
                 .forEach(pos -> {

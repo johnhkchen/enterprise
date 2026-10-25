@@ -2345,6 +2345,54 @@ public final class CoreBindingTests {
         helper.succeed();
     }
 
+    /** A town charter is bought for a block of diamond: none without one, and the block is taken. */
+    @GameTest(template = "floor")
+    public static void aCharterIsBoughtForABlockOfDiamond(GameTestHelper helper) {
+        var player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+        var inventory = player.getInventory();
+        helper.assertFalse(dev.b28.enterprise.merchant.Charters.buy(inventory), "no diamonds, no charter");
+        inventory.add(new ItemStack(net.minecraft.world.item.Items.DIAMOND_BLOCK, 2));
+        helper.assertTrue(dev.b28.enterprise.merchant.Charters.buy(inventory), "a charter for a block");
+        helper.assertTrue(inventory.countItem(net.minecraft.world.item.Items.DIAMOND_BLOCK) == 1
+                && inventory.countItem(Merchant.CHARTER.get()) == 1, "one block taken, one charter given");
+        helper.succeed();
+    }
+
+    /**
+     * A desk a player places is no town until a charter is used on it, and a charter used on it founds one with its
+     * founding purse and is used up. Broken and put back where it stood, it's the same town, no charter asked and no
+     * second purse.
+     */
+    @GameTest(template = "floor")
+    public static void aDeskAPlayerPlacesWaitsForACharterAndPutBackIsItsTownAgain(GameTestHelper helper) {
+        var level = helper.getLevel();
+        emptyDesk(helper);
+        BlockPos pos = helper.absolutePos(DESK);
+        GlobalPos desk = GlobalPos.of(level.dimension(), pos);
+        var charters = dev.b28.enterprise.merchant.Charters.get(level.getServer());
+        Path dir = folder();
+        try (CoreHost host = CoreHost.open(dir, 7)) {
+            helper.assertTrue(host.stock().placedByPlayer(level, pos) == null && host.stock().townAt(desk) == null
+                    && charters.waits(desk), "a desk placed with no charter waits for one");
+            ItemStack charter = new ItemStack(Merchant.CHARTER.get());
+            dev.b28.enterprise.merchant.Charters.use(host, level, pos, charter, false);
+            Long town = host.stock().townAt(desk);
+            helper.assertTrue(town != null && charter.isEmpty() && !charters.waits(desk), "founded, the charter used up");
+            helper.assertTrue(Math.abs(host.money().cashAt(desk).treasury() - 64) < 1e-9, "its purse: " + host.money().cashAt(desk));
+            charters.broken(desk, true);
+            host.stock().forget(level, pos);
+            Long again = host.stock().placedByPlayer(level, pos);
+            helper.assertTrue(town.equals(again), "put back where it stood: town " + again + ", not " + town);
+            // The first purse, shown in the chest as coin, is counted in again (at the mint's rate now): nothing more.
+            var cash = host.money().cashAt(desk);
+            helper.assertTrue(Math.abs(cash.treasury() - cash.emeralds() - cash.coinWorth()) < 1e-9 && cash.treasury() < 100,
+                    "no second purse: " + cash);
+        } finally {
+            delete(dir);
+        }
+        helper.succeed();
+    }
+
     /** A town founded in this core gets no founding purse: the money tests count a desk's money from nothing. */
     private static void noPurse(CoreHost host) {
         host.apply(List.of(new Input.SetDial("founding_purse", java.util.Optional.of(0.0))));

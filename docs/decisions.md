@@ -83,9 +83,14 @@ Decisions made after the brief (`docs/brief.md`). Where this file and the brief 
   the desk's chests show it at the next look. The dial `founding_purse` sets it for a world. A desk put back where one
   stood is the same town again and gets none. Why: at 32 (what the survival study's player put in), seed 2024's two
   desert villages spent all of it on a shop, a stall and fields before either had an income, and never traded; at 64
-  both grew (8 to 11 and 14 people, moods +0.59 and +1.54 by day 45) and their wagons went 4 and 6 times. **To come:
-  a town charter a player pays diamonds for**, so a purse isn't free: until then, breaking a desk and placing one
-  somewhere new founds another town with another 64.
+  both grew (8 to 11 and 14 people, moods +0.59 and +1.54 by day 45) and their wagons went 4 and 6 times.
+- **A town costs a charter (2026-10-26): a block of diamond, bought from any Merchant** (the Charter button on its
+  screen), so the purse isn't free. A desk a player places is only a workstation until a Town Charter is used on it:
+  a villager can take it and become the Merchant who sells charters. The charter founds the town, purse and all, and is
+  used up. A desk put back where a town's desk stood (broken by a player) is that town's again with no charter. A desk
+  placed unseen (a command, a datapack, a structure: an operator's) founds a town as before, so studies and the
+  testbench need none; pistons can't move a desk. "For now": the price and whether a charter is the right gate are to
+  be seen in play. Not covered: a desk lost unseen (an explosion) and put back needs a charter again.
 
 ## Settlements (2026-10-13)
 

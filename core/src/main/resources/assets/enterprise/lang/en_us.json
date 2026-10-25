@@ -40,5 +40,15 @@
   "item.enterprise.bundle": "Bundle of Goods",
   "item.enterprise.package.of": "%s of %s, to %s",
   "item.enterprise.package.under": "%s of %s, to %s, contract %s",
-  "item.enterprise.package.pallet": "Pallet %s, packed in a %s"
+  "item.enterprise.package.pallet": "Pallet %s, packed in a %s",
+  "item.enterprise.town_charter": "Town Charter",
+  "item.enterprise.town_charter.hint": "Use it on a Merchant's Desk to found a town there, with 64 emeralds to start",
+  "screen.enterprise.merchant.charter": "Charter",
+  "screen.enterprise.merchant.charter.tooltip": "Buy a town charter for a block of diamond. Use it on a Merchant's Desk to found a town there.",
+  "message.enterprise.charter.bought": "A town charter: use it on a Merchant's Desk to found a town",
+  "message.enterprise.charter.no_diamonds": "A town charter costs a block of diamond",
+  "message.enterprise.charter.wanted": "This desk founds a town once you use a Town Charter on it. Any Merchant sells one for a block of diamond.",
+  "message.enterprise.charter.already": "This desk is a town's already",
+  "message.enterprise.charter.no_core": "No town can be founded now: the society isn't running",
+  "message.enterprise.charter.founded": "%s is founded"
 }

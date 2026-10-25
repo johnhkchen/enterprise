@@ -56,9 +56,15 @@ public final class Merchant {
                     .mapColor(MapColor.WOOD)
                     .strength(2.5F)
                     .sound(SoundType.WOOD)
-                    .ignitedByLava());
+                    .ignitedByLava()
+                    // Never moved unseen by a piston: a desk placed unseen founds a town (Charters).
+                    .pushReaction(net.minecraft.world.level.material.PushReaction.BLOCK));
 
     public static final DeferredItem<BlockItem> DESK_ITEM = ITEMS.registerSimpleBlockItem(DESK);
+
+    /** A town charter, sold by any Merchant for a block of diamond ({@link Charters}). */
+    public static final DeferredItem<CharterItem> CHARTER = ITEMS.register("town_charter",
+            () -> new CharterItem(new net.minecraft.world.item.Item.Properties().stacksTo(16)));
 
     // One villager per desk, like every vanilla workstation.
     public static final DeferredHolder<PoiType, PoiType> DESK_POI = POI_TYPES.register(
@@ -170,11 +176,15 @@ public final class Merchant {
                 ToggleTradePayload.TYPE, ToggleTradePayload.STREAM_CODEC, ToggleTradePayload::handle);
         event.registrar("1").playToServer(
                 CommissionPayload.TYPE, CommissionPayload.STREAM_CODEC, CommissionPayload::handle);
+        event.registrar("1").playToServer(CharterPayload.TYPE, CharterPayload.STREAM_CODEC, CharterPayload::handle);
     }
 
     private static void addToCreativeTabs(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
             event.accept(DESK_ITEM);
+        }
+        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
+            event.accept(CHARTER);
         }
     }
 }
