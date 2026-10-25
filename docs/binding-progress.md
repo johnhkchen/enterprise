@@ -5,6 +5,16 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-25, the first survival world (findings, nothing fixed yet).** `just server-setup-survival 12345`,
+  `survival_study.py 30`: two generated villages 1,488 blocks apart made towns as a player would (a desk at the
+  surface by the centre, a chest of 32 emeralds, a Merchant), a route between, the first village loaded:
+  1. Greenfell (loaded) spent its 32 emeralds on day 0 to day 4 (a field 4, a shop stall 12, training 4, signing 2,
+     a home 10) and couldn't fund its wagon from then on ("the hub can't fund the trip", 43 times).
+  2. Its villagers died: four fell at a ledge 23 blocks from the bell ("Merchant hit the ground too hard", twice:
+     the second the replacement the census spawned); the hands no census saw for 10 days left the roster, 7 to 2 by
+     day 25, both Merchants gone by day 12 ("no Merchant at the hub" 381 times). Only 3 beds counted for 7.
+  3. No lockers in either town: a generated village's workstations have no chest touching them (0 of 2 managed).
+  4. Elmfell (unloaded) kept its 8, spent 24 on stalls and a mine, mood -2 (no comforts, no trade).
 - **2026-10-25, towns found 6 to 10 hexes out.** Three lanes from the same day 0, 120 days with realms, the dials
   `min_hexes`/`max_hexes` set a lane each: 4-8 (the mod's) founded 18 towns, new towns' mood -0.21, old towns' 1.92;
   6-10: 14, -0.52, 1.69; 8-12: 11, -0.68, 1.30; trade the same (113-120 trips, about 27,500 items). 6-10 (480 to 800
