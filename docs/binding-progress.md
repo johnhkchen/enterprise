@@ -5,6 +5,15 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-25, Masons learn from building, and core studies open realms.** Size costs a point a 8 villagers by
+  design (John: the extra people are soldiers); halls offset some of it, but four towns with a Mason never built a
+  square in 120 days: a square needs a level-2 Mason, and a Mason levels only at its locker, whose first trade buys
+  clay no town has (all four stayed level 1). Now a day a town's works are laid, its Masons at home earn a trade's XP
+  (`MASON_WORK_XP`, 2: an Apprentice in five days of wall). Leisure is pipe tobacco, imported from the Coast by design:
+  `network_study.py --realms` now runs in core mode (it builds the coast's sea and Fishermen, opens the Coast with the
+  hub; the March only with `--ridge`). 60 days: the Coast's fleets made 11 trips to the hub (293 items), leisure met
+  0.67 of days at the hub, 0.22-0.23 in S1 and S2, 0 where no wagon of the hub's goes. The trace's `works` table.
+  Test `works::a_mason_learns_from_the_works_it_builds`.
 - **2026-10-25, a town short of beds builds homes at any mood.** The network study's hub (its pen has no beds:
   `network/hub`, `network/squad`) held 5 villagers and 0 beds for 120 days, mood -2.16: half a point a villager
   without a bed kept it under the 0.5 a home needs, so it never built one (the mod's `Territory` has the same gate).

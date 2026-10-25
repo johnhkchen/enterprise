@@ -26,6 +26,9 @@ use crate::state::*;
 use crate::territory::Territory;
 use crate::works::*;
 
+/// The XP a town's Masons earn a day they lay its works: a level-1 Mason's trade's (clay for an emerald, 2).
+pub const MASON_WORK_XP: u32 = 2;
+
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
         pay.in_set(Step::Pay).after(super::territory::upkeep).before(super::farms::pay),
@@ -38,19 +41,29 @@ pub fn register(schedule: &mut Schedule) {
 }
 
 /// The masons are paid and lay their blocks, towns in their order, once a day each (`Works.work`, at each touch in the
-/// mod: after the guards' upkeep, before the farm's wages). The first look at a project only starts its clock.
+/// mod: after the guards' upkeep, before the farm's wages). The first look at a project only starts its clock. A day
+/// they lay blocks, the town's Masons at home learn from it as from a trade ([`MASON_WORK_XP`]): with no clay to trade
+/// for, a Mason would never reach the level a square needs (not as the mod, whose Masons learn only at their lockers).
 #[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub fn pay(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, territory: Res<Territory>, mut map: ResMut<Map>,
         mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
-        mut q: Query<(&Town, &mut Works, &mut Money, &mut Trades, &mut Budget, Option<&mut Farm>)>) {
+        mut q: Query<(&Town, &mut Works, &mut Money, &mut Trades, &mut Budget, Option<&mut Farm>,
+            Option<&mut crate::roster::Roster>)>) {
     let (now, day) = (clock.now, content.day_ticks);
+    let mason = content.trade("mason");
     for &e in &towns.0 {
-        let Ok((town, mut works, mut money, mut trades, mut budget, mut farm)) = q.get_mut(e) else { continue };
+        let Ok((town, mut works, mut money, mut trades, mut budget, mut farm, roster)) = q.get_mut(e) else { continue };
         if let Some(i) = works.underway() {
             let hexes = territory.holding(town.id).map_or(0, |h| h.hexes.len());
             let p = &mut works.projects[i];
             if p.started.is_none_or(|t| now >= t + day) {
+                let before = p.laid;
                 let paid = work(p, &content.dials, hexes, now, day, money.0);
+                if let (true, Some(mut roster), Some(mason)) = (p.laid > before, roster, mason) {
+                    for h in roster.hands.iter_mut().filter(|h| h.trade == mason && !h.away && !h.is_baby()) {
+                        h.reward_trade_xp(MASON_WORK_XP);
+                    }
+                }
                 post(&mut ledger, &mut book, Side::treasury(town.id, &mut money.0), Side::outside(), paid,
                     Reason::Other("masons".into()), now, day);
             }

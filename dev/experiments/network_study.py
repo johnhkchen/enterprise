@@ -193,7 +193,7 @@ _trades = {}
 CORE = False  # society=core: every number comes from the core's own answers (set by main from the server's own words)
 
 # Flags that shape the world or read what is still the Java rules': Java mode only. Core mode runs the default world.
-CORE_FLAGS = {"--save-at", "--label", "--resume", "--stop-when", "--add-hand"}
+CORE_FLAGS = {"--save-at", "--label", "--resume", "--stop-when", "--add-hand", "--realms"}
 
 
 def census(corner):
@@ -461,8 +461,9 @@ def setup():
     if "--war" in sys.argv:
         rcon(f"enterprise census {HUB[0] + 4} -60 {HUB[1] + 16}")
         print(rcon(f"enterprise war capital {hub_desk} 500").strip())
+    if "--ridge" in sys.argv or "--realms" in sys.argv:
+        build_coast()  # the sea west of the hub, and its Fishermen to captain the Coast's boats
     if "--ridge" in sys.argv:
-        build_coast()
         build_ridge()
         # The pass town's carrying trade: Leatherworkers (packs), a Shepherd to lead, idle hands (porters, draymen),
         # and llamas in a pen by its desk.
@@ -568,7 +569,7 @@ def main():
         retired = sorted(a for a in sys.argv[3:] if a.startswith("--") and a not in CORE_FLAGS)
         if retired:
             sys.exit(f"{' '.join(retired)}: Java mode only (retired for sim/host); under society=core this study runs the "
-                     f"default world (with --save-at, --label, --resume, --stop-when, --add-hand)")
+                     f"default world (with --save-at, --label, --resume, --stop-when, --add-hand, --realms)")
     inject = int(sys.argv[sys.argv.index("--inject") + 1]) if "--inject" in sys.argv else None
     save_at = {int(d) for d in flag("--save-at", "").split(",") if d}
     started = time.time()
@@ -578,7 +579,7 @@ def main():
         first = saved["day"] + 1
         _trades.update(saved.get("trades", {}))
         # Flags that shape the world before the first day must match the checkpoint's.
-        shaping = {"--river", "--river-bridge", "--ridge", "--war", "--comforts", "--fleet", "--services", "--metal",
+        shaping = {"--river", "--river-bridge", "--ridge", "--realms", "--war", "--comforts", "--fleet", "--services", "--metal",
                    "--trades", "--master"}
         theirs = {a for a in saved["argv"] if a in shaping}
         ours = {a for a in sys.argv if a in shaping}
@@ -607,8 +608,9 @@ def main():
             # capital's port; the March overland to the east, its caravans to the eastern towns.
             print(rcon(f"enterprise realms open coast {HUB[0] - 2398} -60 {HUB[1] + 2} {HUB[0] + 2} -60 {HUB[1] + 2}")
                   .strip().splitlines()[-1])
-            print(rcon(f"enterprise realms open march 3400 -60 1350 {desk(TOWNS['E3'])}; {desk(TOWNS['E1'])}")
-                  .strip().splitlines()[-1])
+            if "E3" in TOWNS:  # the eastern towns are the ridge's (--ridge)
+                print(rcon(f"enterprise realms open march 3400 -60 1350 {desk(TOWNS['E3'])}; {desk(TOWNS['E1'])}")
+                      .strip().splitlines()[-1])
         if war and day == war[0]:
             print("day %d: " % day + rcon(f"enterprise war mobilise {HUB[0] + 2} -60 {HUB[1] + 2} 1000").strip().splitlines()[-1])
         if war and day == war[1]:

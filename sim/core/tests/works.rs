@@ -532,3 +532,23 @@ fn the_random_worlds_exercise_the_works() {
     }
     assert!(walls > 0 && bridges > 0 && halls > 0 && started_by_towns > 20, "{walls} walls, {bridges} bridges, {halls} halls");
 }
+
+#[test]
+fn a_mason_learns_from_the_works_it_builds() {
+    // A Novice Mason and the town's wall under way: a day of laying is a trade's XP (2), so in five days it's an
+    // Apprentice (10), the level a square needs, with no clay to trade for at its locker.
+    let mut s = Society::new(Content::new(vec![Good::new("bread", 0.2, 64)], DAY));
+    let t = s.add_town("Stoneby", 100.0);
+    s.set_roster(t, &[("merchant", 1), ("mason", 1)]);
+    for hex in [Hex::new(0, 0), Hex::new(1, 0), Hex::new(0, 1), Hex::new(1, -1)] {
+        assert!(s.claim_hex(t, hex));
+    }
+    s.start_project(t, What::Wall);
+    look(&mut s); // starts the clock
+    let t0 = s.now();
+    let mason = |s: &Society| s.roster(t).hands.iter().find(|h| s.content().trades[h.trade].name == "mason").cloned().unwrap();
+    s.advance(t0 + 2 * DAY);
+    assert_eq!((mason(&s).level, mason(&s).xp), (1, 4), "two days' work");
+    s.advance(t0 + 5 * DAY);
+    assert_eq!(mason(&s).level, 2, "five days: an Apprentice ({} XP)", mason(&s).xp);
+}
