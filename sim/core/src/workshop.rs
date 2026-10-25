@@ -111,6 +111,27 @@ pub fn gain(content: &Content, conversion: &Conversion, each: f64) -> f64 {
     conversion.out * each / inputs_worth(content, conversion).max(1e-9)
 }
 
+/// What the town's workshop keeps back from its lockers (`lockers.rs`), by good: of each input, what the comforts its
+/// trades can make and it is short of would take to bring each up to its par, so its lockers don't buy up the paper
+/// its books need: as many batches as the other inputs it holds would make (no leather, no paper kept for books).
+/// Nothing of a comfort it has met.
+pub fn keeps(content: &Content, roster: &Roster, people: &People, stock: &Stock) -> Vec<f64> {
+    let mut keep: Vec<f64> = vec![0.0; content.goods.len()];
+    for c in content.conversions.iter().filter(|c| can_do(c, roster)) {
+        let Some(kind) = content.goods[c.output].comfort else { continue };
+        if people.comfort_met.get(kind).copied().unwrap_or(1.0) >= 1.0 {
+            continue;
+        }
+        let wanted = (comfort_wanted(content, people, stock, kind, c.output) / c.out).ceil();
+        for &(g, n) in &c.inputs {
+            let others = c.inputs.iter().filter(|&&(h, _)| h != g)
+                .map(|&(h, m)| (stock.0.get(h).copied().unwrap_or(0.0) / m).floor()).fold(f64::INFINITY, f64::min);
+            keep[g] = keep[g].max(wanted.min(others) * n);
+        }
+    }
+    keep
+}
+
 /// How many more of a comfort the town wants: its par less what it holds of the kind, in items (`comfortWanted`).
 pub fn comfort_wanted(content: &Content, people: &People, stock: &Stock, kind: usize, output: GoodId) -> f64 {
     let short = comfort_par(content, people) - comfort_held(content, stock, kind);

@@ -216,6 +216,11 @@ pub struct Lockers {
     /// host says one stands (a workstation with a chest touching it, `docs/decisions.md` "Lockers"). `None` (a town the
     /// core keeps as numbers, the study's): every hand with a trade has one.
     pub placed: Option<std::collections::BTreeMap<HandId, crate::points::Spot>>,
+    /// Of each good, what its workshop needs for the comforts it can make and is short of (`workshop::keeps`), set
+    /// before each restock: a locker buying the good leaves that much (the paper its books need). Not saved: worked out
+    /// again at each restock.
+    #[serde(skip)]
+    pub workshop_keeps: Vec<f64>,
 }
 
 /// The books a locker trade writes in: the ledger (goods used and made), the cash book, and the town's dice.
@@ -556,7 +561,9 @@ fn trade(content: &Content, books: &mut Books, now: u64, town: usize, roster: &m
         let g = o.good;
         let mut ran = 0u32;
         while ran < runs[n] && lockers.hands[i].offers[k].used < o.uses {
-            if !o.sells && stock.0[g] < price as f64 {
+            // (What the workshop needs for a comfort the town is short of stays: its lockers buy what's beyond it.)
+            let keep = lockers.workshop_keeps.get(g).copied().unwrap_or(0.0);
+            if !o.sells && stock.0[g] - keep < price as f64 {
                 break;
             }
             if o.sells {

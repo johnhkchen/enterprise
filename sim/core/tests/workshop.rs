@@ -240,3 +240,26 @@ fn the_workshop_state_is_saved() {
     assert_eq!(loaded.town(0).stock, s.town(0).stock);
     assert_eq!(loaded.content().conversions.len(), s.content().conversions.len());
 }
+
+#[test]
+fn a_workshop_keeps_back_from_the_lockers_what_its_comforts_short_need() {
+    // A town of four short of reading (none met), its Librarian binding books of 3 paper and 1 leather: it keeps back
+    // 3 paper for each leather it holds, as far as its par of books goes; with no leather, no paper.
+    let c = content();
+    let roster = town(&[("librarian", 1), ("farmer", 1), ("farmer", 1), ("farmer", 1)], &[]).roster(0);
+    let people = People { villagers: 4.0, comfort_met: vec![0.0; c.comforts.len()], ..Default::default() };
+    let stock = |leather: f64| {
+        let mut s = Stock(vec![0.0; c.goods.len()]);
+        s.0[PAPER] = 100.0;
+        s.0[LEATHER] = leather;
+        s
+    };
+    // Its par: 4 x 0.1 x 6 days, 2.4 emeralds of reading, 10 books at a quarter each.
+    assert_eq!(workshop::keeps(&c, &roster, &people, &stock(2.0))[PAPER], 6.0, "two leather: two books' paper");
+    assert_eq!(workshop::keeps(&c, &roster, &people, &stock(50.0))[PAPER], 30.0, "its par of ten books' paper");
+    assert_eq!(workshop::keeps(&c, &roster, &people, &stock(0.0))[PAPER], 0.0, "no leather: no paper kept");
+    // Reading met: nothing kept.
+    let mut met = people.clone();
+    met.comfort_met = vec![1.0; c.comforts.len()];
+    assert_eq!(workshop::keeps(&c, &roster, &met, &stock(2.0))[PAPER], 0.0);
+}

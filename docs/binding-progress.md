@@ -5,6 +5,14 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-25, a workshop's comfort inputs before its lockers.** Wheatfield ended a 120-day study with 1,610
+  emeralds, 19 leather and no comforts (reading met 0.29 of days, mood -0.68): its Librarian's and Cartographer's
+  lockers bought every paper that came, so its books (3 paper and a leather) had none. Now before each restock a town
+  keeps back of each input what the comforts its trades make and it's short of would take, as far as its other inputs
+  go (no leather, no paper kept), and its lockers buy beyond it (`workshop::keeps`, `Lockers.workshop_keeps`, not
+  saved). Forked from the same day 0: Wheatfield's reading still 0.29, mood -0.63: no paper comes after the hub's
+  wagons stop (day 57), and nobody grows the cane paper is made of. Test
+  `workshop::a_workshop_keeps_back_from_the_lockers_what_its_comforts_short_need`.
 - **2026-10-25, towns grow in core mode.** A 120-day study's towns never grew: every one sat at its bed count (6-7
   villagers) for 120 days with moods above +1. A wire-founded town's `People.land` was 0, so the core's home rule
   (`beds + 2 <= land`) never fired; and a home it built had no output (filed at people-adapter as "beds the next census
