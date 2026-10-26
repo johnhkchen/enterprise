@@ -246,27 +246,28 @@ fn hands_work_the_hexes_by_q_then_r_not_as_claimed() {
 }
 
 #[test]
-fn hands_stop_gathering_at_sixteen_of_a_good_the_town_does_not_use_and_sixty_four_of_one_it_does() {
+fn hands_stop_gathering_at_sixteen_of_a_good_the_town_does_not_use_and_sixty_four_of_one_it_or_a_neighbour_does() {
     let c = content();
     let sticks = good(&c, "stick");
     let mut trades = enterprise_core::state::Trades { makes: vec![0.0; c.goods.len()], uses: vec![0.0; c.goods.len()],
         capacity: vec![0.0; c.goods.len()], ..Default::default() };
     let mut held = vec![0.0; c.goods.len()];
     held[sticks] = 15.0;
-    assert!(kit::room(&c, &trades, &held, 0, sticks, 0.0), "15 of 16: room");
-    assert!(!kit::room(&c, &trades, &held, 0, sticks, 1.0), "15 and 1 owed: none");
+    assert!(kit::room(&c, &trades, &held, 0, sticks, 0.0, false), "15 of 16: room");
+    assert!(!kit::room(&c, &trades, &held, 0, sticks, 1.0, false), "15 and 1 owed: none");
     held[sticks] = 16.0;
-    assert!(!kit::room(&c, &trades, &held, 0, sticks, 0.0), "16: enough");
+    assert!(!kit::room(&c, &trades, &held, 0, sticks, 0.0, false), "16: enough");
+    assert!(kit::room(&c, &trades, &held, 0, sticks, 0.0, true), "16, and the towns down its roads buy them: room for 64");
     trades.capacity[sticks] = 5.0; // its lockers take sticks
     held[sticks] = 63.0;
-    assert!(kit::room(&c, &trades, &held, 0, sticks, 0.0), "63 of the 64 it keeps of what it uses");
+    assert!(kit::room(&c, &trades, &held, 0, sticks, 0.0, false), "63 of the 64 it keeps of what it uses");
     held[sticks] = 64.0;
-    assert!(!kit::room(&c, &trades, &held, 0, sticks, 0.0), "64: enough");
+    assert!(!kit::room(&c, &trades, &held, 0, sticks, 0.0, false), "64: enough");
     // The warehouse keeps its 5 free slots and 4 more for the goods it trades (54 slots in all).
     held[sticks] = 0.0;
     trades.capacity[sticks] = 0.0;
-    assert!(kit::room(&c, &trades, &held, 44, sticks, 0.0), "10 slots free: room");
-    assert!(!kit::room(&c, &trades, &held, 45, sticks, 0.0), "9 free: none to spare");
+    assert!(kit::room(&c, &trades, &held, 44, sticks, 0.0, false), "10 slots free: room");
+    assert!(!kit::room(&c, &trades, &held, 45, sticks, 0.0, false), "9 free: none to spare");
     assert_eq!(kit::free_slots(&c, &held, 45), 9);
 }
 

@@ -14,6 +14,7 @@ const DAY: u64 = 24_000;
 const PAPER: usize = 0;
 const CARROT: usize = 1;
 const WHEAT: usize = 2;
+const LEATHER: usize = 5;
 const N: usize = 10;
 // (goods 3 to 9: wool, carpets, leather, boots, cookies, cane, books)
 
@@ -431,4 +432,23 @@ fn a_homeless_town_builds_its_home_before_a_stall() {
     beds.advance(1200);
     beds.review_jobs(t);
     assert_eq!(stall_paid(&beds, t), -6.0, "in beds, the stall");
+}
+
+/// What the town down a road buys, a town makes for it: Farfield's Leatherworker buys leather, so the Fletcher who
+/// hunts it is in the bag of the town at the road's other end (a survival network's leatherworkers wanted 480 leather
+/// that no town made).
+#[test]
+fn the_trade_that_makes_what_the_town_down_the_road_buys_is_in_the_bag() {
+    let (mut s, t) = town(20.0, 0.0);
+    let far = s.add_town("Farfield", 0.0);
+    s.set_roster(far, &[("leatherworker", 1), ("merchant", 1)]);
+    s.set_offers(far, 0, vec![enterprise_core::lockers::Offer::buys(LEATHER, 6, 1, 16, 2, 1.0 / 6.0)]);
+    s.switch(far, 0, 0, true);
+    let of = |s: &Society, name: &str| s.job_bag(t).iter().filter(|(n, _)| n == name).map(|(_, m)| *m).sum::<f64>();
+    assert_eq!(of(&s, "fletcher"), 0.0, "no road: nothing heard");
+    s.add_route(t, far, 0.25, 0.0, 1.0);
+    // 2 x 6 leather x 16 uses a day: four days' is more than a stack, so a stack, at a sixth of an emerald.
+    assert!((of(&s, "fletcher") - 64.0 / 6.0).abs() < 1e-9, "a stack of leather's worth: {}", of(&s, "fletcher"));
+    s.set_roster(t, &[("merchant", 1), ("none", 1), ("fletcher", 1)]);
+    assert!((of(&s, "fletcher") - 64.0 / 12.0).abs() < 1e-9, "shared with the Fletcher it has");
 }

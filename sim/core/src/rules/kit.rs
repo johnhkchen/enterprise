@@ -80,10 +80,20 @@ fn owe(content: &Content, kits: &mut Kits, name: &str, amount: f64) {
 /// A day's work, for the days since the last (`Territory.touch`): see the module.
 #[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: Res<Territory>, order: Res<Towns>,
-        mut ledger: ResMut<Ledger>, pallets: Res<crate::pallet::Pallets>,
+        mut ledger: ResMut<Ledger>, pallets: Res<crate::pallet::Pallets>, routes: Query<&Route>,
+        far: Query<(&Roster, &crate::lockers::Lockers)>,
         mut towns: Query<(&Town, &mut Kits, &mut Stock, &Trades, Option<&Roster>, Option<&Works>, Option<&Shipments>)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let d = &content.dials;
+    // What the towns down each town's roads (either way) buy at their managed lockers: kept for them.
+    let mut far_wants: std::collections::BTreeMap<usize, std::collections::BTreeSet<usize>> = Default::default();
+    for r in routes.iter() {
+        for (near, there) in [(r.from_id, r.to), (r.to_id, r.from)] {
+            if let Ok((roster, lockers)) = far.get(there) {
+                far_wants.entry(near).or_default().extend(crate::lockers::census_demand(roster, lockers).into_keys());
+            }
+        }
+    }
     for &e in &order.0 {
         let Ok((town, mut kits, mut stock, trades, roster, works, shipments)) = towns.get_mut(e) else { continue };
         if now < kits.last + day {
@@ -95,6 +105,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
         let (kits, stock) = (&mut *kits, &mut stock.0);
         let crates = shipments.map_or(0, |_| crate::cargo::crates_held(&pallets, town.id));
         let holding = territory.holdings.get(&town.id);
+        let wanted_far = |g: usize| far_wants.get(&town.id).is_some_and(|w| w.contains(&g));
         let smithy = works.is_some_and(|w| w.built(Kind::Smithy));
         kits.fit(&content, stock);
         // Hands working the land without a tool are given one, an axe first (`ColdStore.equipHands`).
@@ -139,7 +150,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
                 for &(name, per_day) in hauls(land) {
                     let Some(g) = content.good(name) else { continue };
                     let owed = kits.pending.get(&g).copied().unwrap_or(0.0);
-                    if room(&content, trades, stock, crates, g, owed) {
+                    if room(&content, trades, stock, crates, g, owed, wanted_far(g)) {
                         owe(&content, kits, name, per_day * weight * (1.0 + d.tool_bonus * with_tools) * days);
                     }
                 }
@@ -156,7 +167,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
             for &(name, per_day) in game(land) {
                 let Some(g) = content.good(name) else { continue };
                 let owed = kits.pending.get(&g).copied().unwrap_or(0.0);
-                if room(&content, trades, stock, crates, g, owed) {
+                if room(&content, trades, stock, crates, g, owed, wanted_far(g)) {
                     owe(&content, kits, name, per_day * hunters * days);
                 }
             }

@@ -208,6 +208,37 @@ pub fn town_bag(content: &Content, signals: &Signals, town: usize, stock: &Stock
     bag(content, &supply(content, &farm.per_day, stock), roster, &farm.idle, signals.build_work_of(town), &all)
 }
 
+/// The trade that would make a good for a neighbour: one whose people sell it, else one that makes it of `recipes`
+/// (`rules/sourcing.rs` `supplier_trade_in`), else, for game, the Fletcher, who hunts ([`crate::kit::game`]).
+pub fn maker_of(content: &Content, recipes: &[crate::services::Recipe], good: GoodId) -> Option<TradeId> {
+    crate::rules::sourcing::supplier_trade_in(content, recipes, good).or_else(|| {
+        let name = content.goods.get(good)?.name.rsplit(':').next()?;
+        let lands = [crate::map::Land::Plains, crate::map::Land::Woods, crate::map::Land::Taiga, crate::map::Land::Desert,
+            crate::map::Land::Hills, crate::map::Land::Shore, crate::map::Land::Water];
+        lands.iter().any(|&l| crate::kit::game(l).iter().any(|(n, _)| *n == name)).then(|| content.trade("fletcher")).flatten()
+    })
+}
+
+/// Marbles for what the towns down a town's roads want (`demands`: each one's villagers' buying a day, by good, at the
+/// lockers its Merchant manages, [`crate::lockers::census_demand`]): the trade that would make each good for them
+/// ([`maker_of`]), four days of it (no more than a stack) at its worth, shared with the hands of the trade the town has.
+/// A town makes what its neighbours buy, as its fields grow it (`rules/farms.rs`).
+pub fn far_marbles<'a>(content: &Content, recipes: &[crate::services::Recipe], roster: &Roster,
+        demands: impl IntoIterator<Item = &'a BTreeMap<GoodId, f64>>) -> Marbles {
+    let mut marbles = Marbles::new();
+    for demand in demands {
+        for (&g, &per_day) in demand {
+            let Some(trade) = maker_of(content, recipes, g).filter(|&t| job_trade(content, t).is_some()) else { continue };
+            let good = &content.goods[g];
+            let m = (per_day * 4.0).min(good.stack.max(1) as f64) * good.value / (1 + roster.count(trade)) as f64;
+            if m > 0.0 {
+                put(&mut marbles, trade, m);
+            }
+        }
+    }
+    marbles
+}
+
 /// A town's place for its stalls: the borrowed pieces of it (the system and the host's call each lend them).
 pub struct Place<'a> {
     pub town: usize,
@@ -224,6 +255,8 @@ pub struct Place<'a> {
     pub lockers: &'a mut Lockers,
     /// Whether a route starts or ends at the town.
     pub roads: bool,
+    /// What the towns down its roads want, as marbles ([`far_marbles`]).
+    pub far: Marbles,
 }
 
 /// A hand that took up a trade.
@@ -273,8 +306,11 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
         return None;
     }
     let trade = for_contracts(content, place).or_else(|| {
-        let marbles = town_bag(content, signals, place.town, place.stock, place.farm, place.met, place.purse.to_f64(),
+        let mut marbles = town_bag(content, signals, place.town, place.stock, place.farm, place.met, place.purse.to_f64(),
             place.roster);
+        for &(t, m) in &place.far {
+            put(&mut marbles, t, m);
+        }
         draw(&marbles, books.rng)
     })?;
     if retraining && place.roster.count(trade) > 0 {
@@ -319,6 +355,19 @@ impl crate::society::Society {
         self.world.resource_mut::<Signals>().build_work.insert(town, emeralds.max(0.0));
     }
 
+    /// What the towns down a town's roads (either way) buy a day at their managed lockers, by good, each once.
+    pub fn far_demands(&self, town: usize) -> Vec<BTreeMap<GoodId, f64>> {
+        let mut far: Vec<usize> = self.routes.iter().filter_map(|&r| self.world.get::<Route>(r))
+            .filter_map(|r| if r.from_id == town { Some(r.to_id) } else if r.to_id == town { Some(r.from_id) } else { None })
+            .collect();
+        far.sort_unstable();
+        far.dedup();
+        far.into_iter().filter_map(|t| {
+            let e = self.world.entity(self.towns[t]);
+            Some(crate::lockers::census_demand(e.get::<Roster>()?, e.get::<Lockers>()?))
+        }).collect()
+    }
+
     /// The bag an idle hand of the town would draw from now, by trade name.
     pub fn job_bag(&self, town: usize) -> Vec<(String, f64)> {
         let e = self.world.entity(self.towns[town]);
@@ -327,8 +376,13 @@ impl crate::society::Society {
             return Vec::new();
         };
         let content = self.content();
-        town_bag(content, self.world.resource::<Signals>(), town, stock, farm, &people.comfort_met, people.purse.to_f64(), &roster).into_iter()
-            .map(|(t, m)| (content.trades[t].name.clone(), m)).collect()
+        let mut bag = town_bag(content, self.world.resource::<Signals>(), town, stock, farm, &people.comfort_met,
+            people.purse.to_f64(), &roster);
+        let recipes = crate::services::recipes(content);
+        for (t, m) in far_marbles(content, &recipes, &roster, &self.far_demands(town)) {
+            put(&mut bag, t, m);
+        }
+        bag.into_iter().map(|(t, m)| (content.trades[t].name.clone(), m)).collect()
     }
 
     /// Whether a route starts or ends at the town.
@@ -343,6 +397,7 @@ impl crate::society::Society {
         let e = self.towns[town];
         let now = self.now();
         let roads = self.has_roads(town);
+        let far_demands = self.far_demands(town);
         let mut roster = self.world.get::<Roster>(e)?.clone();
         let mut lockers = self.world.get::<Lockers>(e)?.clone();
         let (mut money, mut people, mut budget) = (*self.world.get::<Money>(e)?, self.world.get::<People>(e)?.clone(),
@@ -359,9 +414,10 @@ impl crate::society::Society {
         let hired = {
             let mut books = Books { ledger: &mut ledger, book: &mut book, rng: dice.of(town, &seed) };
             let (met, mut purse) = (people.comfort_met.clone(), people.purse);
+            let far = far_marbles(self.content(), &crate::services::recipes(self.content()), &roster, &far_demands);
             let mut place = Place { town, money: &mut money.0, purse: &mut purse, deposits: &mut deposits,
                 budget: &mut budget, stock: &stock, trades: &trades, farm: &farm, met: &met,
-                roster: &mut roster, lockers: &mut lockers, roads };
+                roster: &mut roster, lockers: &mut lockers, roads, far };
             let hired = employ(self.content(), &mut books, &bills, &signals, now, &mut place);
             people.purse = purse;
             hired

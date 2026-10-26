@@ -351,13 +351,14 @@ pub fn crew(content: &Content, territory: &Territory, town: usize, roster: Optio
 }
 
 /// Is there room to bring in more of a good: below what the town keeps of it (with what's owed), and slots to spare
-/// (`Labour.room`)? A good is wanted when it's food, a comfort, or its lockers can take it.
-pub fn room(content: &Content, trades: &Trades, stock: &[f64], crates: u32, good: GoodId, owed: f64) -> bool {
+/// (`Labour.room`)? A good is wanted when it's food, a comfort, its lockers can take it, or (`far`) the towns down its
+/// roads buy it: its hands keep it for them as for itself.
+pub fn room(content: &Content, trades: &Trades, stock: &[f64], crates: u32, good: GoodId, owed: f64, far: bool) -> bool {
     if free_slots(content, stock, crates) <= content.dials.free_slots as i64 + SPARE_SLOTS {
         return false;
     }
     let g = &content.goods[good];
-    let wanted = g.food > 0.0 || g.comfort.is_some() || trades.capacity.get(good).is_some_and(|&c| c > 0.0);
+    let wanted = far || g.food > 0.0 || g.comfort.is_some() || trades.capacity.get(good).is_some_and(|&c| c > 0.0);
     stock[good] + owed < if wanted { KEEP_WANTED } else { KEEP }
 }
 
