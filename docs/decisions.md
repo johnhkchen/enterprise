@@ -628,8 +628,19 @@ help breed more as needed."
   river with a dry crossing leave the hex open; a hex mostly water stays impassable as before.
 - **Each carrier has its own way** (`map.rs` `Carrier`, `Gait`). A wagon: steps of 16 blocks at most, a cliff at 32
   relief, and no way through a river's hex unless a bridge stands on it (a bridged river is open ground). Llamas: steps
-  of 32 blocks (the steepest three times open ground), relief up to 64, and a river forded at 1.5 times the hex's
-  cost. A boat: a wagon's way on land, rivers and water sailed at 0.8. `Map::plan` takes the carrier.
+  of 32 blocks (the steepest three times open ground), relief up to 64, and a river forded at 4 times the hex's
+  cost: heavy, so once a bridge stands a few hexes off their way, trains take it too (John: "make sure llama paths
+  also prefer bridges over river crossings"); one far off (seven hexes) is still worth wading round. A boat: a wagon's way on land, rivers and water sailed at 0.8. `Map::plan` takes the carrier.
+- **A road is a wagon's where a wagon has a way, else a llama train's** (`Society::best_road`, `Route.carrier`), and
+  plans again daily while its carrier is home: a bridge over its ford makes it a wagon road the next day.
+- **Llamas** (`llamas.rs`, counted with the town's herds). The town's Merchant brings two, once. A train is as many as
+  the road's load wants at 9 stacks, 9 weight and a pallet each (a middling llama's chest), at most 6 and no more than
+  are home, in a wagon's stead (27 stacks): its crew and their packs go as with a wagon, its llamas away with it and
+  home with it; none home, the road stays ("no llamas at home"). While the town's llama roads want more llamas than it
+  has (their last loads' trains, all told), a Farmer breeds one every 4 days from 9 wheat (a hay bale's). They eat on
+  the road as a wagon's team does, nothing at home. Dials: `llama_slots`, `llama_weight`, `llama_train`,
+  `merchant_llamas`, `llama_breed_days`, `llama_breed_wheat`. **Not yet:** the llamas as entities in the world (the
+  herds have none either), and the freight hubs' and the post's sizing, which still reckon a wagon's 27 stacks.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 

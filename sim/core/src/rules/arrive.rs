@@ -206,7 +206,8 @@ pub(crate) fn draft(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<B
 #[allow(clippy::too_many_arguments)]
 pub fn turn(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
         mut book: ResMut<Book>, mut bills: ResMut<Bills>, mut outbox: ResMut<Outbox>,
-        mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<TownData>) {
+        mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<TownData>,
+        mut herds: Query<&mut crate::herds::Herds>) {
     let now = clock.now;
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(entity).unwrap();
@@ -236,6 +237,13 @@ pub fn turn(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
                     book.deliver_copy(*id, route.from_id);
                 }
                 bills.home(&wagon.bills, route.from_id);
+                // Its llamas home with it (`llamas.rs`).
+                if wagon.llamas > 0 {
+                    if let Ok(mut h) = herds.get_mut(route.from) {
+                        h.llamas.away = h.llamas.away.saturating_sub(wagon.llamas);
+                        h.llamas.home += wagon.llamas;
+                    }
+                }
                 state.trips += 1;
                 outbox.0.push(Output::WagonHome { route: crate::wire::no(route.seq), takings });
             }

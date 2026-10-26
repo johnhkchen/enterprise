@@ -433,6 +433,26 @@ fn a_river_stops_a_wagon_unless_bridged_and_llamas_ford_it() {
 }
 
 #[test]
+fn llamas_go_a_few_hexes_round_to_a_bridge_rather_than_ford() {
+    let mut m = Map::default();
+    for r in -20..=20 {
+        m.set_ground(Hex::new(6, r), 0.2, 0.0);
+        m.set_river(Hex::new(6, r), true);
+    }
+    let bridge = Hex::new(6, -2); // off the straight way along r = 0
+    m.bridge(bridge);
+    let llamas = m.plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), Carrier::Llama, &none()).unwrap();
+    assert!(llamas.hexes.contains(&bridge), "round to the bridge: {:?}", llamas.hexes);
+    assert!(llamas.hexes.iter().all(|h| h.q != 6 || *h == bridge), "no ford");
+    // Far enough off, the ford is the cheaper way still.
+    let mut far = m.clone();
+    far.ground.get_mut(&bridge).unwrap().bridged = false;
+    far.bridge(Hex::new(6, -9));
+    let wading = far.plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), Carrier::Llama, &none()).unwrap();
+    assert!(!wading.hexes.contains(&Hex::new(6, -9)), "a long way round isn't worth it: {:?}", wading.hexes);
+}
+
+#[test]
 fn llamas_climb_twice_as_steeply_and_pick_their_way_over_rougher_ground() {
     let mut m = Map::default();
     let (a, b) = (Hex::new(0, 0), Hex::new(1, 0));

@@ -86,9 +86,11 @@ fn training() -> Reason {
 
 /// What a trip calls for of a town's hands at home (`dispatch` 249–270): the trades wanted there that a hand at home
 /// has (`Services.wantedAbroad`, a hook); a Leatherworker, and porters, for more stacks of what the far end wants than
-/// a wagon holds; and how many may go beyond a lead for every route `waiting` here (this one too).
+/// a wagon (or the train of `llamas`) holds; and how many may go beyond a lead for every route `waiting` here (this one
+/// too).
+#[allow(clippy::too_many_arguments)]
 pub fn call(content: &Content, roster: &Roster, home: &[usize], stacks: u32, weight: f64, wanted_trades: &[TradeId],
-        waiting: usize) -> (Needs, usize) {
+        waiting: usize, llamas: u32) -> (Needs, usize) {
     let mut wanted: Vec<TradeId> = Vec::new();
     for &t in wanted_trades {
         if !wanted.contains(&t) && home.iter().any(|&i| roster.hands[i].trade == t) {
@@ -98,14 +100,15 @@ pub fn call(content: &Content, roster: &Roster, home: &[usize], stacks: u32, wei
     let leatherworker = content.trade(LEATHERWORKER);
     let mut porters = 0;
     // (More than a wagon holds in stacks, or in weight: `pallet-caps`.)
-    if stacks > content.dials.wagon_slots || weight > content.dials.wagon_weight + 1e-9 {
+    let (team_slots, team_weight, _) = crate::llamas::team_caps(content, llamas);
+    if stacks > team_slots || weight > team_weight + 1e-9 {
         if let Some(lw) = leatherworker {
             if !wanted.contains(&lw) {
                 wanted.push(lw);
             }
         }
         let packs = home.iter().any(|&i| Some(roster.hands[i].trade) == leatherworker);
-        porters = porters_needed(content, stacks, weight, packs);
+        porters = porters_needed(content, stacks, weight, packs, llamas);
     }
     (Needs { wanted, water: false, porters }, home.len().saturating_sub(waiting))
 }
@@ -116,8 +119,9 @@ pub fn call(content: &Content, roster: &Roster, home: &[usize], stacks: u32, wei
 /// feeds. Nobody's hired and nobody's kept back: the route musters its squad for good as it leaves ([`crew`]).
 pub fn size_up(content: Res<Content>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         homes: Query<(&Roster, Option<&Lockers>, &Stock), Without<crate::realms::Realm>>,
-        fars: Query<(&Trades, Option<&Lockers>, Option<&Roster>)>) {
+        fars: Query<(&Trades, Option<&Lockers>, Option<&Roster>)>, mut herds_of: Query<&mut crate::herds::Herds>) {
     let food_mode = road_food(&content);
+    let mut wanted: Vec<(Entity, usize, u32)> = Vec::new();
     let mut idle: BTreeMap<usize, usize> = BTreeMap::new();
     for (_, route, state) in routes.iter() {
         *idle.entry(route.from_id).or_default() += state.wagon.is_none() as usize;
@@ -136,13 +140,28 @@ pub fn size_up(content: Res<Content>, mut routes: Query<(Entity, &Route, &mut Ro
         let home = available(&content, roster, lockers);
         let (stacks, weight) = wanted_load(&content, &stock.0, far, far_lockers.zip(far_roster));
         let waiting = idle.get(&route.from_id).copied().unwrap_or(0);
-        let (needs, extras) = call(&content, roster, &home, stacks, weight, &wants, waiting);
+        // A llama road takes a train for the load, of the llamas home (`llamas.rs`); what it wants, its farmers breed
+        // toward.
+        plan.llamas = 0;
+        if route.carrier == crate::map::Carrier::Llama {
+            let llamas = herds_of.get(route.from).map_or(0, |h| h.llamas.home);
+            plan.llamas = crate::llamas::train(&content, stacks, weight, llamas);
+            wanted.push((route.from, route.seq, crate::llamas::wanted(&content, stacks, weight)));
+        }
+        let (needs, extras) = call(&content, roster, &home, stacks, weight, &wants, waiting, plan.llamas);
         plan.crew = crate::squad::muster(&content, roster, &home, &needs, extras);
         plan.wanted = needs.wanted;
         plan.porters = needs.porters;
         plan.slots = 0;
         if !plan.crew.is_empty() {
             trim(&content, roster, plan, food_mode.then(|| held(&content, &stock.0)), route.blocks, false);
+        }
+    }
+    for (town, seq, n) in wanted {
+        if let Ok(mut herds) = herds_of.get_mut(town) {
+            if herds.llamas.wanted.get(&seq) != Some(&n) {
+                herds.llamas.wanted.insert(seq, n);
+            }
         }
     }
 }
@@ -158,7 +177,7 @@ pub fn crew(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u6
         waiting: usize, routes: usize, money: &mut Money, free: impl Fn(&Money) -> crate::fixed::Fixed) -> Result<(), Stay> {
     let d = &content.dials;
     let mut home = available(content, roster, lockers.as_deref());
-    let (needs, extras) = call(content, roster, &home, stacks, weight, wanted_trades, waiting);
+    let (needs, extras) = call(content, roster, &home, stacks, weight, wanted_trades, waiting, plan.llamas);
     let mut squad = crate::squad::muster(content, roster, &home, &needs, extras);
     if squad.is_empty() {
         let out = routes.saturating_sub(waiting);
@@ -180,7 +199,7 @@ pub fn crew(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u6
     plan.crew = squad;
     plan.wanted = needs.wanted;
     plan.porters = needs.porters;
-    plan.slots = capacity(content, plan.crew.iter().map(|&i| roster.hands[i].trade), false);
+    plan.slots = capacity(content, plan.crew.iter().map(|&i| roster.hands[i].trade), false, plan.llamas);
     Ok(())
 }
 
@@ -193,7 +212,7 @@ pub fn trim(content: &Content, roster: &Roster, plan: &mut Plan, home_food: Opti
             plan.crew.pop();
         }
     }
-    plan.slots = capacity(content, plan.crew.iter().map(|&i| roster.hands[i].trade), porter);
+    plan.slots = capacity(content, plan.crew.iter().map(|&i| roster.hands[i].trade), porter, plan.llamas);
 }
 
 /// A small load goes on a porter's back (`Caravans.porterRun`, as `dispatch` asks it): a town with a roster whose
@@ -219,7 +238,7 @@ pub fn porter_run(content: &Content, state: &RouteState, plan: &Plan, owed_stack
 pub fn to_porter(content: &Content, plan: &mut Plan, roster: &Roster) {
     let pick = plan.crew.iter().copied().find(|&i| plan.wanted.contains(&roster.hands[i].trade)).unwrap_or(plan.crew[0]);
     plan.crew = vec![pick];
-    plan.slots = capacity(content, [roster.hands[pick].trade], true);
+    plan.slots = capacity(content, [roster.hands[pick].trade], true, plan.llamas);
 }
 
 /// A porter run has no team to feed: its road is only the crew's food.
@@ -270,19 +289,19 @@ pub fn send_porters_home(clock: Res<Clock>, content: Res<Content>, pallets: Res<
         if porters == 0 || porters == wagon.crew.len() {
             continue;
         }
-        let capacity = capacity(&content, wagon.crew.iter().map(|h| h.trade), wagon.porter);
+        let capacity = capacity(&content, wagon.crew.iter().map(|h| h.trade), wagon.porter, wagon.llamas);
         // What's aboard, crates too (`Crates.stacks`): unsold lots crated again, pallets fetched for home; its weight and
         // pallets within what the wagon holds without the porters' packs too (`pallet-caps`).
         let load = crate::cargo::wagon_load(&content, &pallets, route.seq, wagon);
         let caps = crate::pallet::Caps::of(&content, wagon.crew.iter().filter(|h| !porter(&content, h.trade)).map(|h| h.trade),
-            wagon.porter);
+            wagon.porter, wagon.llamas);
         if load.slots as i64 > capacity as i64 - (d.pack_stacks as usize * porters) as i64
                 || load.weight > caps.weight + 1e-9 || load.pallets > caps.pallets {
             continue;
         }
         let (walking, staying): (Vec<Hand>, Vec<Hand>) = wagon.crew.drain(..).partition(|h| porter(&content, h.trade));
         wagon.crew = staying;
-        wagon.slots = crate::squad::capacity(&content, wagon.crew.iter().map(|h| h.trade), wagon.porter);
+        wagon.slots = crate::squad::capacity(&content, wagon.crew.iter().map(|h| h.trade), wagon.porter, wagon.llamas);
         let arrives = clock.now + route.travel_ticks;
         state.porters_sent += walking.len() as u32;
         state.walkers.extend(walking.into_iter().map(|hand| Walker { hand, arrives }));

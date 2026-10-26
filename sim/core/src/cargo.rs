@@ -598,7 +598,7 @@ pub fn count_of(pallets: &Pallets, ids: &[PalletId]) -> f64 {
 /// pack), its slots those it was sent out with (`Wagon.slots`, when set: `squad::capacity` as it left or was last
 /// trimmed).
 pub fn wagon_caps(content: &Content, wagon: &Wagon) -> Caps {
-    let mut caps = Caps::of(content, wagon.crew.iter().map(|h| h.trade), wagon.porter);
+    let mut caps = Caps::of(content, wagon.crew.iter().map(|h| h.trade), wagon.porter, wagon.llamas);
     if wagon.slots > 0 {
         caps.slots = wagon.slots;
     }

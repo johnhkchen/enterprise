@@ -171,7 +171,7 @@ fn plan_crated(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, mut pa
     // Merchant or squad, is out of range) goes in the second pass, so it doesn't hold a pallet a route that can go could take.
     let order = in_order(routes.iter().map(|(e, r, _)| (e, r)));
     let stuck = |routes: &Query<(Entity, &Route, &mut RouteState)>, e: Entity| routes.get(e).is_ok_and(|(_, _, s)| matches!(
-        s.stayed, Some(Stay::CantFund | Stay::NoMerchant | Stay::OutOfRange | Stay::NoSquad)));
+        s.stayed, Some(Stay::CantFund | Stay::NoMerchant | Stay::OutOfRange | Stay::NoSquad | Stay::NoLlamas)));
     let (second, first): (Vec<Entity>, Vec<Entity>) = order.into_iter().partition(|e| stuck(&routes, *e));
     for entity in first.into_iter().chain(second) {
         let (_, route, mut state) = routes.get_mut(entity).unwrap();

@@ -70,8 +70,9 @@ pub const BOAT_FACTOR: f64 = 0.8;
 pub const LLAMA_MAX_GRADE: f64 = 0.4;
 /// A hex with this much relief or more stops even a llama: a mountain's face.
 pub const LLAMA_CLIFF: f64 = 64.0;
-/// Fording a river makes its hex this much harder again for llamas: they wade, their packs held high.
-pub const FORD_FACTOR: f64 = 1.5;
+/// Fording a river makes its hex this much harder again for llamas: they wade, their packs held high, slowly and with
+/// losses. Heavy, so a train takes a bridge a few hexes off its way over the ford (a wagon has no way without one).
+pub const FORD_FACTOR: f64 = 4.0;
 
 /// What carries a road's goods, and so the way it can take (see the module's note).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]

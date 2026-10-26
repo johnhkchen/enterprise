@@ -27,6 +27,7 @@ pub mod contracts;
 pub mod crown;
 pub mod desires;
 pub mod herds;
+pub mod llamas;
 pub mod harvest;
 pub mod hex;
 pub mod jobs;

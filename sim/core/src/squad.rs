@@ -212,29 +212,30 @@ pub fn muster(content: &Content, roster: &Roster, candidates: &[usize], needs: &
     squad
 }
 
-/// The stacks a wagon with this crew carries (`Caravan.capacity`): `wagon_slots`, and `pack_stacks` more for each
-/// Leatherworker and porter; a porter run, one pack.
-pub fn capacity(content: &Content, crew: impl IntoIterator<Item = TradeId>, porter_run: bool) -> u32 {
+/// The stacks a wagon with this crew carries (`Caravan.capacity`): `wagon_slots` (a train of `llamas`, if any, its
+/// llamas' instead: `llamas.rs`), and `pack_stacks` more for each Leatherworker and porter; a porter run, one pack.
+pub fn capacity(content: &Content, crew: impl IntoIterator<Item = TradeId>, porter_run: bool, llamas: u32) -> u32 {
     let d = &content.dials;
     if porter_run {
         return d.pack_stacks;
     }
-    d.wagon_slots + d.pack_stacks * crew.into_iter().filter(|&t| carries(content, t)).count() as u32
+    crate::llamas::team_caps(content, llamas).0 + d.pack_stacks * crew.into_iter().filter(|&t| carries(content, t)).count() as u32
 }
 
 /// Porters a load of `stacks` weighing `weight` wants beyond the wagon and, if a Leatherworker is at home, its packs
 /// (`dispatch`): `ceil((stacks - wagon_slots - packs) / pack_stacks)`, or by weight `ceil((weight - wagon_weight - packs)
 /// / pack_weight)` if more (`pallet-caps`: the larger of the two); none for a load the wagon holds. With a stack weighing 1
 /// (the base content) the two are the same.
-pub fn porters_needed(content: &Content, stacks: u32, weight: f64, packs: bool) -> usize {
+pub fn porters_needed(content: &Content, stacks: u32, weight: f64, packs: bool, llamas: u32) -> usize {
     let d = &content.dials;
-    if (stacks <= d.wagon_slots && weight <= d.wagon_weight + 1e-9) || d.pack_stacks == 0 {
+    let (team_slots, team_weight, _) = crate::llamas::team_caps(content, llamas);
+    if (stacks <= team_slots && weight <= team_weight + 1e-9) || d.pack_stacks == 0 {
         return 0;
     }
-    let beyond = stacks as f64 - d.wagon_slots as f64 - if packs { d.pack_stacks as f64 } else { 0.0 };
+    let beyond = stacks as f64 - team_slots as f64 - if packs { d.pack_stacks as f64 } else { 0.0 };
     let by_slots = (beyond / d.pack_stacks as f64).ceil().max(0.0) as usize;
     let by_weight = if d.pack_weight > 0.0 {
-        let beyond = weight - d.wagon_weight - if packs { d.pack_weight } else { 0.0 };
+        let beyond = weight - team_weight - if packs { d.pack_weight } else { 0.0 };
         (beyond / d.pack_weight - 1e-9).ceil().max(0.0) as usize
     } else {
         0
@@ -389,6 +390,8 @@ pub struct CrewView {
     pub slots: u32,
     pub porter: bool,
     pub saddled: bool,
+    /// The llamas carrying it in a wagon's stead (0: a wagon, or home).
+    pub llamas: u32,
     /// When its wagon gets where it's going, if it's on the road.
     pub arrives: Option<u64>,
     /// Porters walking home from its far end, and when the first gets there.
@@ -413,6 +416,7 @@ impl Society {
             slots: w.map_or(0, |w| w.slots),
             porter: w.is_some_and(|w| w.porter),
             saddled: w.is_some_and(|w| w.saddled),
+            llamas: w.map_or(0, |w| w.llamas),
             arrives: w.map(|w| w.arrives),
             walkers: s.walkers.len(),
             walker_home_at: s.walkers.iter().map(|w| w.arrives).min(),

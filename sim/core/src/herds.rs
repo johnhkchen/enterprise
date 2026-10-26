@@ -103,6 +103,9 @@ pub struct Herds {
     pub seeded: Vec<bool>,
     pub pastures: u32,
     pub last: u64,
+    /// Its llamas (`llamas.rs`): the trains its roads use where a wagon can't go.
+    #[serde(default)]
+    pub llamas: crate::llamas::Llamas,
 }
 
 impl Herds {

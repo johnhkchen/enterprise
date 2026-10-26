@@ -211,6 +211,9 @@ pub struct Wagon {
     pub porter: bool,
     pub slots: u32,
     pub saddled: bool,
+    /// Llamas (`llamas.rs`): the train that carries it in a wagon's stead (0: a wagon), home with it.
+    #[serde(default)]
+    pub llamas: u32,
     /// The atlas and books (`atlas.rs`): its log of its dealings at the far end and why the rest didn't sell, handed in
     /// at home; and its takings for each good there this visit.
     pub log: Vec<crate::atlas::Entry>,
@@ -262,6 +265,9 @@ pub struct Route {
     /// (`Route.onCall`).
     #[serde(default)]
     pub on_call: bool,
+    /// What carries its goods (`map.rs`): a wagon, or where a wagon has no way, a train of llamas (`llamas.rs`).
+    #[serde(default)]
+    pub carrier: crate::map::Carrier,
 }
 
 /// The hexes a route's wagons cross, start to goal: on a road planned over the map (`Society::add_road`), not on a
@@ -287,6 +293,9 @@ pub struct Plan {
     pub slots: u32,
     pub wanted: Vec<crate::roster::TradeId>,
     pub porters: usize,
+    /// Llamas (`llamas.rs`): the train it would take on a llama road (0: a wagon).
+    #[serde(default)]
+    pub llamas: u32,
     /// What the sale load put aboard, in the order it went (good, count, worth each: what it counts for in the plan's
     /// worth): a squad that leaves with fewer slots than the plan was made for leaves the last of it home.
     pub sale: Vec<(usize, f64, f64)>,

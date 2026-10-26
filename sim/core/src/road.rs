@@ -78,6 +78,8 @@ pub enum Stay {
     NoSquad,
     /// A town with a roster and no Merchant at its desk sends no wagon (`squad.rs`: "no Merchant at the hub").
     NoMerchant,
+    /// A llama road whose town has no llama at home (`llamas.rs`: "no llamas at home").
+    NoLlamas,
     /// Home within a day of its last wagon's leaving: it plans again once the day is out (`Caravans.poll` 172,
     /// `DEPARTURE_INTERVAL`; `arriveHome` 1212: "home").
     Home,

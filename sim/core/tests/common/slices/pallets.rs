@@ -81,7 +81,7 @@ impl<'a> View<'a> {
             let Some(manifest) = s.wagon_manifest(route) else { continue };
             let crew = s.crew(route);
             let trades = crew.crew.iter().filter_map(|(name, _)| content.trade(name));
-            let mut caps = Caps::of(content, trades, crew.porter);
+            let mut caps = Caps::of(content, trades, crew.porter, crew.llamas);
             if crew.slots > 0 {
                 caps.slots = crew.slots;
             }

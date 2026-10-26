@@ -28,6 +28,7 @@ mod harvest;
 mod herds;
 mod hex_map;
 mod itinerary_drops;
+mod llamas;
 mod jobs;
 mod kit;
 mod land;

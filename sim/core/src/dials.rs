@@ -572,4 +572,17 @@ dials! {
     /// villages spent all of it on a shop, a stall and fields before either had an income and never traded (seed
     /// 2024's survival study); at 64 both grew and their wagons went. A charter a player pays for is to stand behind it.
     founding_purse: u32 = 64,
+
+    // llamas
+    /// Stacks, weight and pallets a llama carries: a middling llama's chest, three columns of three. A train is the
+    /// llamas a road's load wants, at most `llama_train`, in place of a wagon where a wagon can't go (`llamas.rs`).
+    llama_slots: u32 = 9,
+    llama_weight: f64 = 9.0,
+    llama_train: u32 = 6,
+    /// Llamas a town's Merchant brings, its class's animals, once.
+    merchant_llamas: u32 = 2,
+    /// A town's Farmer breeds a llama every this many days while its trains want more than it has, from this much
+    /// wheat (a hay bale's nine).
+    llama_breed_days: f64 = 4.0,
+    llama_breed_wheat: f64 = 9.0,
 }

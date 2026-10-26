@@ -35,6 +35,8 @@ pub struct RouteView {
     pub sold: f64,
     pub carried: f64,
     pub on_the_road: bool,
+    /// Why its wagon last stayed home, if it did.
+    pub stayed: Option<crate::road::Stay>,
 }
 
 impl Society {
@@ -193,6 +195,7 @@ impl Society {
             every_ticks: (every_days * day).round() as u64,
             blocks: (days * crate::map::BLOCKS_PER_DAY).round().max(0.0) as u32,
             on_call: false,
+            carrier: Default::default(),
         };
         let e = self.world.spawn((route, RouteState::default())).id();
         self.routes.push(e);
@@ -227,6 +230,11 @@ impl Society {
         self.world.resource_mut::<crate::map::Map>().set_ground(hex, water_share, relief);
     }
 
+    /// Whether a river cuts a hex (`map.rs`: no way for a wagon without a bridge; llamas ford it). Its ground stays.
+    pub fn set_river(&mut self, hex: crate::hex::Hex, river: bool) {
+        self.world.resource_mut::<crate::map::Map>().set_river(hex, river);
+    }
+
     /// A finished bridge on a hex: if it's mostly water, caravans cross it as open ground.
     pub fn bridge(&mut self, hex: crate::hex::Hex) {
         self.world.resource_mut::<crate::map::Map>().bridge(hex);
@@ -242,36 +250,50 @@ impl Society {
         crate::map::per_hex_at_bread(self.content())
     }
 
-    /// The cheapest way between two placed towns over the map (no tolls yet), or `None` if either isn't placed or
-    /// there is no way through.
-    pub fn plan_road(&self, from: TownId, to: TownId) -> Option<crate::map::Path> {
+    /// The cheapest way for `carrier` between two placed towns over the map (no tolls yet), or `None` if either isn't
+    /// placed or there is no way through.
+    pub fn plan_road(&self, from: TownId, to: TownId, carrier: crate::map::Carrier) -> Option<crate::map::Path> {
         let (a, b) = (self.town_hex(from)?, self.town_hex(to)?);
         let free = [from, to].into_iter().collect();
-        self.map().plan(a, b, self.per_hex(), 0.0, &Default::default(), &free, crate::map::Carrier::Wagon, &Default::default())
+        self.map().plan(a, b, self.per_hex(), 0.0, &Default::default(), &free, carrier, &Default::default())
     }
 
-    /// A road from one placed town to another over the map, a wagon every `every_days` on its timetable: its path is
-    /// the cheapest way (`plan_road`), its time the path's blocks (80 a hex) at 1,200 blocks a day (20 ticks a block),
-    /// its road food the path's cost. `None` when there's no way through (or a town isn't placed), or where content has
-    /// road food, when the way is too long for one leg's food (`road.rs`).
+    /// The road between two placed towns and what goes on it: a wagon's way if there's one, else a llama train's
+    /// (`map.rs`: a river with no bridge, too steep a flank), its path and its length in blocks; where content has road
+    /// food, only a way short enough for one leg's food (`road.rs`). `None`: no way for either.
+    pub fn best_road(&self, from: TownId, to: TownId) -> Option<(crate::map::Carrier, crate::map::Path, f64)> {
+        [crate::map::Carrier::Wagon, crate::map::Carrier::Llama].into_iter().find_map(|carrier| {
+            let path = self.plan_road(from, to, carrier)?;
+            let blocks = self.road_blocks(from, to, &path);
+            let short = !crate::road::road_food(self.content()) || crate::road::in_range(self.content(), blocks.round() as u32);
+            short.then_some((carrier, path, blocks))
+        })
+    }
+
+    /// A road from one placed town to another over the map, a wagon (or a llama train) every `every_days` on its
+    /// timetable: its carrier and path the best way (`best_road`), its time the path's blocks (80 a hex) at 1,200
+    /// blocks a day (20 ticks a block), its road food the path's cost. `None` when there's no way through (or a town
+    /// isn't placed), or where content has road food, when the way is too long for one leg's food (`road.rs`).
     pub fn add_road(&mut self, from: TownId, to: TownId, every_days: f64) -> Option<RouteId> {
-        let path = self.plan_road(from, to)?;
-        let blocks = self.road_blocks(from, to, &path);
-        // Too long for one leg's food: no road (`road.rs`).
-        if crate::road::road_food(self.content()) && !crate::road::in_range(self.content(), blocks.round() as u32) {
-            return None;
-        }
+        let (carrier, path, blocks) = self.best_road(from, to)?;
         let days = blocks.max(1.0) / crate::map::BLOCKS_PER_DAY;
         // The road food the path costs, rounded up to the thousandth (a cost).
         let id = self.add_route(from, to, days, Fixed::ceil(path.cost), every_days);
+        self.world.get_mut::<Route>(self.routes[id]).expect("a route").carrier = carrier;
         self.world.entity_mut(self.routes[id]).insert(RoutePath(path.hexes));
         Some(id)
     }
 
+    /// What carries a route's goods (`map.rs`): a wagon, or a llama train.
+    pub fn route_carrier(&self, route: RouteId) -> crate::map::Carrier {
+        self.world.get::<Route>(self.routes[route]).expect("a route").carrier
+    }
+
     /// Roads' wear and their paths (`map.rs`): each road whose wagon left since the last look wears every hex of its
     /// path by a round trip's two crossings, and a hex worn to a trail is said (`Output::Trail`); once a day, each road
-    /// whose wagon is home takes the cheapest way now if it's cheaper than its own (trails worn, ground surveyed, a
-    /// wall built since), its days and road food with it, if one leg's food still carries it.
+    /// whose wagon is home takes the best way now (`best_road`): a wagon's where there's one now (a bridge built over
+    /// the river its llamas forded), a llama train's where a wagon's is gone, or the same carrier's if it's cheaper than
+    /// its own (trails worn, ground surveyed, a wall built since), its days and road food with it.
     fn wear_roads(&mut self) {
         let now = self.now();
         let day_ticks = self.content().day_ticks;
@@ -306,12 +328,9 @@ impl Society {
                 continue;
             }
             let route = *self.world.get::<Route>(e).expect("a route");
-            let Some(better) = self.plan_road(route.from_id, route.to_id) else { continue };
-            if better.hexes == path || better.cost >= self.map().path_cost(&path, per_hex, crate::map::Carrier::Wagon) - 1e-9 {
-                continue;
-            }
-            let blocks = self.road_blocks(route.from_id, route.to_id, &better);
-            if crate::road::road_food(self.content()) && !crate::road::in_range(self.content(), blocks.round() as u32) {
+            let Some((carrier, better, blocks)) = self.best_road(route.from_id, route.to_id) else { continue };
+            if carrier == route.carrier && (better.hexes == path
+                    || better.cost >= self.map().path_cost(&path, per_hex, carrier) - 1e-9) {
                 continue;
             }
             let days = blocks.max(1.0) / crate::map::BLOCKS_PER_DAY;
@@ -319,7 +338,15 @@ impl Society {
             r.travel_ticks = (days * day_ticks as f64).round().max(1.0) as u64;
             r.blocks = (days * crate::map::BLOCKS_PER_DAY).round().max(0.0) as u32;
             r.road_cost = Fixed::ceil(better.cost);
+            r.carrier = carrier;
             self.world.entity_mut(e).insert(RoutePath(better.hexes));
+            if carrier != crate::map::Carrier::Llama {
+                // Its llamas no longer wanted for it.
+                let mut herds = self.world.get_mut::<crate::herds::Herds>(route.from).expect("a town");
+                if herds.llamas.wanted.contains_key(&route.seq) {
+                    herds.llamas.wanted.remove(&route.seq);
+                }
+            }
         }
     }
 
@@ -617,7 +644,7 @@ impl Society {
 
     pub fn route(&self, route: RouteId) -> RouteView {
         let s = self.world.get::<RouteState>(self.routes[route]).unwrap();
-        RouteView { trips: s.trips, sold: s.sold, carried: s.carried, on_the_road: s.wagon.is_some() }
+        RouteView { trips: s.trips, sold: s.sold, carried: s.carried, on_the_road: s.wagon.is_some(), stayed: s.stayed }
     }
 
     /// A contract drafted at one party's (`at_seller`: the seller's; `both`: both hold copies, in force at once):

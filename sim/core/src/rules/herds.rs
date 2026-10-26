@@ -8,4 +8,6 @@ use super::Step;
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems(crate::herds::tend_towns.in_set(Step::Work).after(super::farms::work).before(super::workshop::work));
+    schedule.add_systems(crate::llamas::tend_towns.in_set(Step::Work).after(crate::herds::tend_towns)
+        .before(super::kit::work).before(super::cargo::earmark).before(super::workshop::work));
 }

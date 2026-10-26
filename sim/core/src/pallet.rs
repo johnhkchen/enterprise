@@ -723,20 +723,22 @@ pub struct Caps {
 }
 
 impl Caps {
-    /// `squad::capacity` extended (its slots, the one source): a wagon its dials' slots, weight and pallets; each pack
-    /// (Leatherworker, porter) adds `pack_stacks`, `pack_weight` and one pallet; a porter run is one pack.
-    pub fn of(content: &Content, crew: impl IntoIterator<Item = TradeId>, porter_run: bool) -> Caps {
+    /// `squad::capacity` extended (its slots, the one source): a wagon its dials' slots, weight and pallets (a train of
+    /// `llamas`, if any, its llamas': `llamas.rs`); each pack (Leatherworker, porter) adds `pack_stacks`, `pack_weight`
+    /// and one pallet; a porter run is one pack.
+    pub fn of(content: &Content, crew: impl IntoIterator<Item = TradeId>, porter_run: bool, llamas: u32) -> Caps {
         let d = &content.dials;
         let crew: Vec<TradeId> = crew.into_iter().collect();
-        let slots = crate::squad::capacity(content, crew.iter().copied(), porter_run);
+        let slots = crate::squad::capacity(content, crew.iter().copied(), porter_run, llamas);
         if porter_run {
             return Caps { slots, weight: d.pack_weight, pallets: 1 };
         }
         let packs = crew.iter().filter(|&&t| crate::squad::carries(content, t)).count() as u32;
+        let (_, weight, pallets) = crate::llamas::team_caps(content, llamas);
         Caps {
             slots,
-            weight: d.wagon_weight + d.pack_weight * packs as f64,
-            pallets: d.wagon_pallets + packs,
+            weight: weight + d.pack_weight * packs as f64,
+            pallets: pallets + packs,
         }
     }
 
@@ -747,7 +749,7 @@ impl Caps {
 
     /// A plain wagon's: its dials' slots, weight and pallets, no packs (`squad::capacity` with no crew).
     pub fn wagon(content: &Content) -> Caps {
-        Caps::of(content, [], false)
+        Caps::of(content, [], false, 0)
     }
 
     /// No cap at all (a caller that only counts).

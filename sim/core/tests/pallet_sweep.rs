@@ -40,7 +40,7 @@ impl Fixture {
         pallets.seal(aboard, 0, 2);
         pallets.seal(held, 0, 2);
         let manifest = Manifest { lines: vec![Line { pallet: aboard, ..Default::default() }], ..Default::default() };
-        let caps = Caps::of(&content, [], false);
+        let caps = Caps::of(&content, [], false, 0);
         let wagons = BTreeMap::from([(0, WagonView { manifest, cargo: vec![0.0, 0.0], caps })]);
         Fixture {
             content,
@@ -247,7 +247,7 @@ fn a_bill_that_names_nobody_real_fails_the_bills() {
 fn a_wagon_over_its_carriers_caps_fails_the_wagon_caps() {
     // Slots: 3 crates' worth of 9 stacks on a porter's pack of 9, over the nine.
     let mut f = Fixture::new();
-    f.wagons.get_mut(&0).unwrap().caps = Caps::of(&f.content, [], true);
+    f.wagons.get_mut(&0).unwrap().caps = Caps::of(&f.content, [], true, 0);
     let id = f.aboard;
     f.pallet(id).packages = vec![Package::new(CRATE, 1, 64.0 * 9.0), Package::new(CRATE, 1, 64.0 * 9.0)];
     fails(sweep::wagon_caps, &f, "over its carrier's");
@@ -262,7 +262,7 @@ fn a_wagon_over_its_carriers_caps_fails_the_wagon_caps() {
     fails(sweep::wagon_caps, &f, "over its carrier's");
     // Pallets: a porter's one pack takes one pallet.
     let mut f = Fixture::new();
-    f.wagons.get_mut(&0).unwrap().caps = Caps::of(&f.content, [], true);
+    f.wagons.get_mut(&0).unwrap().caps = Caps::of(&f.content, [], true, 0);
     let id = f.shelf;
     f.pallets.move_to(id, At::Wagon(0), 3);
     fails(sweep::wagon_caps, &f, "over its carrier's");

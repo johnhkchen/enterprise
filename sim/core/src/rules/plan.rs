@@ -290,7 +290,8 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
 pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<Book>, mut bills: ResMut<Bills>,
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut outbox: ResMut<Outbox>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<TownData>, mut rosters: Query<&mut crate::roster::Roster>, mut lockers: Query<&mut crate::lockers::Lockers>,
-        places: Query<(Option<&OffMap>, Option<&Realm>, Option<&crate::freight::Hub>)>, mut pallets: ResMut<crate::pallet::Pallets>) {
+        places: Query<(Option<&OffMap>, Option<&Realm>, Option<&crate::freight::Hub>)>, mut pallets: ResMut<crate::pallet::Pallets>,
+        mut herds: Query<&mut crate::herds::Herds>) {
     let now = clock.now;
     let d = &content.dials;
     // Squads (`squad.rs`): each town's routes, and those of them without a wagon (`dispatch`'s `waiting`).
@@ -332,6 +333,20 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             state.stayed = Some(Stay::NoMerchant);
             for id in &plan.pallets { pallets.release(*id); }
             continue;
+        }
+        // A llama road goes with a train, of the llamas still home (another road's may have gone with some this look):
+        // the train it sized up, else what its load wants (`llamas.rs`); none home, it stays.
+        if route.carrier == crate::map::Carrier::Llama {
+            let home = herds.get(route.from).map_or(0, |h| h.llamas.home);
+            let want = if plan.llamas > 0 { plan.llamas } else { crate::llamas::wanted(&content, plan.stacks, 0.0) };
+            plan.llamas = want.min(home);
+            if plan.llamas == 0 {
+                state.stayed = Some(Stay::NoLlamas);
+                for id in &plan.pallets { pallets.release(*id); }
+                continue;
+            }
+        } else {
+            plan.llamas = 0;
         }
         // A realm's wagon is its own people's: no squad, two mouths' road food, no team, never home's poverty counted.
         // An off-map market that sells no food feeds no one (`OffMap.sells`): its wagons pack the road home's food.
@@ -381,6 +396,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
                 .map(|(g, n)| (n / content.goods[g].stack as f64).ceil() as u32).sum();
             porter = crate::rules::squad::porter_run(&content, &state, &plan, owed_stacks, on_its_day, Some(roster), &load);
             if porter {
+                plan.llamas = 0; // a porter on foot: the llamas stay home
                 crate::rules::squad::to_porter(&content, &mut plan, roster);
             }
         }
@@ -490,6 +506,13 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         ], now, content.day_ticks);
         // The crew go away from home (`squad.rs`); a saddle in the warehouse, it rides a third faster.
         let crew = crate::rules::squad::depart(roster.as_deref_mut(), &plan.crew);
+        // Its llamas go with it (`llamas.rs`).
+        if plan.llamas > 0 {
+            if let Ok(mut h) = herds.get_mut(route.from) {
+                h.llamas.home -= plan.llamas;
+                h.llamas.away += plan.llamas;
+            }
+        }
         if let Some(w) = waiting.get_mut(&route.from_id) {
             *w -= 1;
         }
@@ -518,6 +541,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             crew,
             porter,
             slots,
+            llamas: plan.llamas,
             saddled,
             shopping: plan.shopping,
             full,
@@ -535,8 +559,9 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
 pub(crate) fn plan_caps(content: &Content, plan: &Plan, roster: Option<&crate::roster::Roster>, porter: bool)
         -> crate::pallet::Caps {
     let mut caps = match roster.filter(|_| !plan.crew.is_empty()) {
-        Some(r) => crate::pallet::Caps::of(content, plan.crew.iter().filter_map(|&i| r.hands.get(i).map(|h| h.trade)), porter),
-        None => crate::pallet::Caps::wagon(content),
+        Some(r) => crate::pallet::Caps::of(content, plan.crew.iter().filter_map(|&i| r.hands.get(i).map(|h| h.trade)), porter,
+            plan.llamas),
+        None => crate::pallet::Caps::of(content, [], false, plan.llamas),
     };
     if plan.slots > 0 {
         caps.slots = plan.slots;

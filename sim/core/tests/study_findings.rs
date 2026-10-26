@@ -328,7 +328,7 @@ fn a_road_is_as_long_as_the_straight_way_between_desks_and_its_detours() {
     s.place_town(b, 600.0, 0.0);
     let line = enterprise_core::Hex::line(s.town_hex(a).unwrap(), s.town_hex(b).unwrap());
     s.set_ground(line[line.len() / 2], 1.0, 0.0);
-    let path = s.plan_road(a, b).expect("a way round");
+    let path = s.plan_road(a, b, enterprise_core::map::Carrier::Wagon).expect("a way round");
     assert!(path.hexes.len() > line.len(), "a detour");
     let r = s.add_road(a, b, 4.0).unwrap();
     assert_eq!(s.route_road_blocks(r) as f64, 600.0 + ((path.hexes.len() - line.len()) as f64 * 80.0).round());

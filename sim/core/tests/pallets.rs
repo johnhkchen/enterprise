@@ -122,17 +122,17 @@ fn caps_for_a_wagon_a_squad_with_two_packs_and_a_porter_run() {
     let porter = c.trades.iter().position(|t| t.idle()).expect("an idle trade");
     let plain = c.trades.iter().position(|t| !t.idle() && t.name != enterprise_core::squad::LEATHERWORKER).unwrap();
 
-    let wagon = Caps::of(&c, [plain], false);
+    let wagon = Caps::of(&c, [plain], false, 0);
     assert_eq!((wagon.slots, wagon.weight, wagon.pallets), (d.wagon_slots, d.wagon_weight, d.wagon_pallets));
-    assert_eq!(wagon.slots, enterprise_core::squad::capacity(&c, [plain], false), "the slots are squad::capacity's");
+    assert_eq!(wagon.slots, enterprise_core::squad::capacity(&c, [plain], false, 0), "the slots are squad::capacity's");
 
-    let squad = Caps::of(&c, [leather, porter, plain], false);
+    let squad = Caps::of(&c, [leather, porter, plain], false, 0);
     assert_eq!(squad.slots, d.wagon_slots + 2 * d.pack_stacks);
-    assert_eq!(squad.slots, enterprise_core::squad::capacity(&c, [leather, porter, plain], false));
+    assert_eq!(squad.slots, enterprise_core::squad::capacity(&c, [leather, porter, plain], false, 0));
     assert!((squad.weight - (d.wagon_weight + 2.0 * d.pack_weight)).abs() < 1e-9);
     assert_eq!(squad.pallets, d.wagon_pallets + 2);
 
-    let run = Caps::of(&c, [porter], true);
+    let run = Caps::of(&c, [porter], true, 0);
     assert_eq!((run.slots, run.weight, run.pallets), (d.pack_stacks, d.pack_weight, 1));
 
     assert!(wagon.holds(&Load { slots: wagon.slots, weight: wagon.weight, pallets: wagon.pallets }));

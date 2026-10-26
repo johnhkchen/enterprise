@@ -9,8 +9,9 @@
 //! - `requests`: each request replayed, its command, the tick after it, and its inputs and outputs counted.
 //! - `inputs`, `outputs`: each input the mod sent and each output the core gave back, by kind, with its town, route
 //!   and good when it names one, and the whole of it as JSON.
-//! - Each day as the first request to reach it left it (the last day as the run ended): `towns` (name, people, beds, mood, money, mood target, comforts met, paid share), `comforts` (each kind met), `herds` (each kind's count and the pastures), `hands` (each town's roster), `farms` (each crop's plots, plan, idle yield, demand, census, workshop draws and needs) and `farm_towns` (focus, fields planted), `works` (each project's progress, done, the works' mood), `stock` (each good a town
-//!   holds), `routes` (trips, what's sold and carried, whether a wagon is out, why it stayed, the far end's last purse),
+//! - Each day as the first request to reach it left it (the last day as the run ended): `towns` (name, people, beds, mood, money, mood target, comforts met, paid share), `comforts` (each kind met), `herds` (each kind's count, llamas home and away too, and the pastures), `hands` (each town's roster), `farms` (each crop's plots, plan, idle yield, demand, census, workshop draws and needs) and `farm_towns` (focus, fields planted), `works` (each project's progress, done, the works' mood), `stock` (each good a town
+//!   holds), `routes` (trips, what's sold and carried, whether a wagon is out, why it stayed, the far end's last purse,
+//!   its carrier: wagon or llama),
 //!   `lockers` (each hand's offers: placed, managed, switched on), `whys` (each town's reasons, tallied so far: a
 //!   day's are the difference from the day before's).
 //! - Each plan a route decided, as it decided it: `plans` (its load's worth against the road's cost, full, on its day,
@@ -87,7 +88,7 @@ create table works (day integer, town integer, what text, progress real, done in
 create table farm_towns (day integer, town integer, focus text, fields_planted integer, fallow integer, spare_plots integer, harvested real);
 create table stock (day integer, town integer, good text, count real);
 create table routes (day integer, route integer, from_town integer, to_town integer, blocks integer, trips integer,
-    sold real, carried real, bought real, paid real, on_road integer, stayed text, far_purse real);
+    sold real, carried real, bought real, paid real, on_road integer, stayed text, far_purse real, carrier text);
 create table trips (route integer, from_town integer, to_town integer, left_tick integer, left_day integer, home_tick integer,
     home_day integer, stacks integer, worth real, purse real, sold real, takings real, bought real, paid real,
     pallet_items real);
@@ -246,6 +247,11 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
             let animal = s.content().animals.get(a).map(|x| x.name.clone()).unwrap_or_default();
             tx.execute("insert into herds values (?1, ?2, ?3, ?4, ?5)", params![day, t, animal, n, herds.pastures]).map_err(sql)?;
         }
+        if herds.llamas.seeded {
+            let l = &herds.llamas;
+            tx.execute("insert into herds values (?1, ?2, ?3, ?4, ?5)",
+                params![day, t, "llama", (l.home + l.away) as f64, herds.pastures]).map_err(sql)?;
+        }
         for (k, met) in v.people.comfort_met.iter().enumerate() {
             let kind = s.content().comforts.get(k).cloned().unwrap_or_default();
             tx.execute("insert into comforts values (?1, ?2, ?3, ?4)", params![day, t, kind, met]).map_err(sql)?;
@@ -262,10 +268,10 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
         routes.insert(r.seq, (*r, st.clone()));
     }
     for (seq, (r, st)) in routes {
-        tx.execute("insert into routes values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+        tx.execute("insert into routes values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
             params![day, seq, r.from_id, r.to_id, r.blocks, st.trips, st.sold, st.carried, st.bought,
                 st.purchases.to_f64(), st.wagon.is_some(),
-                st.stayed.map(|w| format!("{w:?}")), st.far_purse.map(|p| p.to_f64())]).map_err(sql)?;
+                st.stayed.map(|w| format!("{w:?}")), st.far_purse.map(|p| p.to_f64()), r.carrier.name()]).map_err(sql)?;
     }
     let towns = s.town_count() as u32;
     let mut queries: Vec<Query> = (0..towns).map(|town| Query::Lockers { town }).collect();

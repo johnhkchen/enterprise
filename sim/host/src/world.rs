@@ -109,10 +109,11 @@ impl Study {
 
     /// A route as `enterprise route add` makes one: refused where the road is too long for a leg's food.
     fn route(&mut self, from: TownId, to: TownId, label: &str) -> Option<usize> {
-        let blocks = self.s.plan_road(from, to).map(|p| self.s.road_blocks(from, to, &p));
-        if let Some(b) = blocks {
-            if enterprise_core::road::road_food(self.s.content())
-                && !enterprise_core::road::in_range(self.s.content(), b.round() as u32) {
+        use enterprise_core::map::Carrier;
+        if self.s.best_road(from, to).is_none() {
+            let blocks = [Carrier::Wagon, Carrier::Llama].into_iter()
+                .find_map(|c| self.s.plan_road(from, to, c)).map(|p| self.s.road_blocks(from, to, &p));
+            if let Some(b) = blocks {
                 self.setup_log.push(format!("route {label}: refused, {b:.0} blocks is more than a wagon's food carries"));
                 return None;
             }
@@ -120,7 +121,11 @@ impl Study {
         match self.s.open_route(from, to) {
             Some(r) => {
                 let (ticks, food) = self.s.route_road(r);
-                let how = if self.s.route_path(r).is_some() { "road" } else { "bare route" };
+                let how = match (self.s.route_path(r).is_some(), self.s.route_carrier(r)) {
+                    (false, _) => "bare route",
+                    (true, Carrier::Llama) => "llama road",
+                    (true, _) => "road",
+                };
                 self.setup_log.push(format!("route {label}: #{r}, a {how} of {} blocks, {:.1} days each way, {food:.2} emeralds of road food a round trip",
                     self.s.route_road_blocks(r), ticks as f64 / DAY as f64));
                 Some(r)

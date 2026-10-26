@@ -119,11 +119,11 @@ fn porters_are_sized_by_the_larger_of_slots_and_weight() {
     let mut c = goods(&["iron_ore", "paper"]);
     let d = c.dials.clone();
     assert_eq!((d.wagon_slots, d.wagon_weight, d.pack_stacks, d.pack_weight), (27, 27.0, 9, 9.0));
-    assert_eq!(squad::porters_needed(&c, 36, 36.0, false), 1, "a stack weighs 1: slots and weight agree");
-    assert_eq!(squad::porters_needed(&c, 12, 12.0, false), 0, "a wagon holds it");
-    assert_eq!(squad::porters_needed(&c, 12, 48.0, false), 3, "twelve stacks of ore at 4: 21 weight beyond the wagon");
-    assert_eq!(squad::porters_needed(&c, 12, 48.0, true), 2, "a Leatherworker's pack carries nine of it");
-    assert_eq!(squad::porters_needed(&c, 45, 30.0, false), 2, "and slots, where they're the larger");
+    assert_eq!(squad::porters_needed(&c, 36, 36.0, false, 0), 1, "a stack weighs 1: slots and weight agree");
+    assert_eq!(squad::porters_needed(&c, 12, 12.0, false, 0), 0, "a wagon holds it");
+    assert_eq!(squad::porters_needed(&c, 12, 48.0, false, 0), 3, "twelve stacks of ore at 4: 21 weight beyond the wagon");
+    assert_eq!(squad::porters_needed(&c, 12, 48.0, true, 0), 2, "a Leatherworker's pack carries nine of it");
+    assert_eq!(squad::porters_needed(&c, 45, 30.0, false, 0), 2, "and slots, where they're the larger");
     // What the far end wants, by weight: twelve stacks of home's ore weigh 48.
     heavy(&mut c, 0, 4.0);
     let home = vec![12.0 * 64.0, 0.0];
@@ -131,7 +131,7 @@ fn porters_are_sized_by_the_larger_of_slots_and_weight() {
     let (stacks, weight) = squad::wanted_load(&c, &home, &far, None);
     assert_eq!(stacks, 12);
     assert!((weight - 48.0).abs() < 1e-9, "{weight}");
-    assert_eq!(squad::porters_needed(&c, stacks, weight, false), 3);
+    assert_eq!(squad::porters_needed(&c, stacks, weight, false, 0), 3);
 }
 
 // --- A porter run: one pack, one pallet ---------------------------------------------------------------------------
@@ -188,7 +188,7 @@ fn a_porter_run_of_nine_slots_takes_one_pallet() {
     let crew = s.crew(0);
     assert!(crew.porter && crew.slots == 9, "{crew:?}");
     assert_eq!(s.wagon_pallets(0).0.len(), 1, "its one pallet");
-    let caps = Caps::of(s.content(), [s.content().trade("librarian").unwrap()], true);
+    let caps = Caps::of(s.content(), [s.content().trade("librarian").unwrap()], true, 0);
     assert_eq!((caps.slots, caps.pallets), (9, 1), "a porter run's caps: a pack, a pallet");
     // Two contracts owed, a pallet each (a bill each, one contract to a bill): within the pack's slots, but two pallets
     // are more than a porter carries, so the wagon goes.
