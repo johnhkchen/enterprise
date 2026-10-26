@@ -5,6 +5,11 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-26, a town makes what its neighbours buy.** `jobs::far_marbles`/`maker_of` (the job draw), `kit::room`'s
+  `far` (gathering and hunting kept for them). The 5-village network, 45 days: 7 trips (none before), four of five
+  towns above 0. Tests `jobs::the_trade_that_makes_what_the_town_down_the_road_buys_is_in_the_bag`,
+  `kit::hands_stop_gathering_at_sixteen_..._or_a_neighbour_does`.
+
 - **2026-10-26, a five-village network; relief retuned.** `survival_study.py --villages N` (roads to each town's two
   nearest within 800). Seed 8675309, 5 towns, 10 roads, 45 days: no trips (loads 0-6 emeralds against 8+ a trip; the
   far ends want hides and leather nobody makes). `map.rs` `RELIEF_PER_FACTOR` 24, `GRADE_PER_FACTOR` 0.2.

@@ -599,6 +599,15 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   The demand is there and nobody makes it: Meadowfell's Leatherworker wants 1,920 rabbit hide and 480 leather, and
   Dustfell can send only cookies. Dustfell (+3.0, 11 people) and Wheatfell (+1.9) did well alone; the others stayed
   below 0. What a network's towns can make for each other is the open question, not the roads.
+- **A town makes what the towns down its roads buy (2026-10-26).** The job draw takes marbles for what the villagers
+  at the managed lockers of the towns at a road's other end (either way) buy a day: the trade that makes each good
+  (one whose people sell it, else one whose recipe makes it, else the keeper of the herd it comes of: a Shepherd's
+  wool, a Leatherworker's cows' leather, a Butcher's meat; else the Fletcher for game), four days of it (no more than a
+  stack) at its worth, shared with that trade's hands the town has (`jobs::far_marbles`, `maker_of`). And its hands
+  keep up to 64 of what they gather and hunt that a neighbour buys, not 16 (`kit::room`). Same seed and network, 45
+  days: 7 trips (625 items sold Wheatfell to Redfell), none before; four towns' moods above 0 (two before): Wheatfell
+  +1.9, Redfell +0.8, Dustfell +0.5, Ryegate +0.3, Meadowfell -0.6. With the Fletcher as leather's maker (no herds)
+  one trip.
 - **Land never loaded has its hills from the start.** A chunk never surveyed takes its height from the world's
   generator (its noise at the chunk's middle, the chunk not generated), for the hex's height and its relief; the
   survey replaces it once the chunk loads. Seed 8675309, the 298 hexes round two villages 496 apart: all with heights

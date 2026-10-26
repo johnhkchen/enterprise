@@ -209,9 +209,23 @@ pub fn town_bag(content: &Content, signals: &Signals, town: usize, stock: &Stock
 }
 
 /// The trade that would make a good for a neighbour: one whose people sell it, else one that makes it of `recipes`
-/// (`rules/sourcing.rs` `supplier_trade_in`), else, for game, the Fletcher, who hunts ([`crate::kit::game`]).
+/// (`rules/sourcing.rs` `supplier_trade_in`), else the keeper of the herd it comes of (`herds.rs`: a Shepherd's wool, a
+/// Leatherworker's cows' leather, a Butcher's meat), else, for game, the Fletcher, who hunts ([`crate::kit::game`]).
 pub fn maker_of(content: &Content, recipes: &[crate::services::Recipe], good: GoodId) -> Option<TradeId> {
     crate::rules::sourcing::supplier_trade_in(content, recipes, good).or_else(|| {
+        let keeper = crate::herds::mod_animals(content).iter().find_map(|a| {
+            if a.wool == Some(good) {
+                Some("shepherd")
+            } else if a.hide == Some(good) {
+                Some("leatherworker")
+            } else if a.meat == Some(good) {
+                Some("butcher")
+            } else {
+                None
+            }
+        });
+        keeper.and_then(|k| content.trade(k))
+    }).or_else(|| {
         let name = content.goods.get(good)?.name.rsplit(':').next()?;
         let lands = [crate::map::Land::Plains, crate::map::Land::Woods, crate::map::Land::Taiga, crate::map::Land::Desert,
             crate::map::Land::Hills, crate::map::Land::Shore, crate::map::Land::Water];

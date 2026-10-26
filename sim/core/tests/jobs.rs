@@ -434,9 +434,9 @@ fn a_homeless_town_builds_its_home_before_a_stall() {
     assert_eq!(stall_paid(&beds, t), -6.0, "in beds, the stall");
 }
 
-/// What the town down a road buys, a town makes for it: Farfield's Leatherworker buys leather, so the Fletcher who
-/// hunts it is in the bag of the town at the road's other end (a survival network's leatherworkers wanted 480 leather
-/// that no town made).
+/// What the town down a road buys, a town makes for it: Farfield's Leatherworker buys leather, so a Leatherworker, whose
+/// cows give it, is in the bag of the town at the road's other end (a survival network's leatherworkers wanted 480
+/// leather that no town made).
 #[test]
 fn the_trade_that_makes_what_the_town_down_the_road_buys_is_in_the_bag() {
     let (mut s, t) = town(20.0, 0.0);
@@ -445,10 +445,11 @@ fn the_trade_that_makes_what_the_town_down_the_road_buys_is_in_the_bag() {
     s.set_offers(far, 0, vec![enterprise_core::lockers::Offer::buys(LEATHER, 6, 1, 16, 2, 1.0 / 6.0)]);
     s.switch(far, 0, 0, true);
     let of = |s: &Society, name: &str| s.job_bag(t).iter().filter(|(n, _)| n == name).map(|(_, m)| *m).sum::<f64>();
-    assert_eq!(of(&s, "fletcher"), 0.0, "no road: nothing heard");
+    let before = of(&s, "leatherworker");
     s.add_route(t, far, 0.25, 0.0, 1.0);
     // 2 x 6 leather x 16 uses a day: four days' is more than a stack, so a stack, at a sixth of an emerald.
-    assert!((of(&s, "fletcher") - 64.0 / 6.0).abs() < 1e-9, "a stack of leather's worth: {}", of(&s, "fletcher"));
-    s.set_roster(t, &[("merchant", 1), ("none", 1), ("fletcher", 1)]);
-    assert!((of(&s, "fletcher") - 64.0 / 12.0).abs() < 1e-9, "shared with the Fletcher it has");
+    let far_marbles = of(&s, "leatherworker") - before;
+    assert!((far_marbles - 64.0 / 6.0).abs() < 1e-9, "a stack of leather's worth: {far_marbles}");
+    s.set_roster(t, &[("merchant", 1), ("none", 1), ("leatherworker", 1)]);
+    assert!((of(&s, "leatherworker") - 64.0 / 12.0).abs() < 1e-9, "shared with the Leatherworker it has: {}", of(&s, "leatherworker"));
 }
