@@ -32,12 +32,15 @@ public final class Journal implements AutoCloseable {
 
     private final Path file;
     private final DataOutputStream out;
+    /** Beside it ({@code FILE.fnv}): each request's response, its FNV-1a a line, to find where a replay parts from the run. */
+    private final java.io.Writer answers;
     private long requests;
     private long bytes;
 
-    private Journal(Path file, DataOutputStream out) {
+    private Journal(Path file, DataOutputStream out, java.io.Writer answers) {
         this.file = file;
         this.out = out;
+        this.answers = answers;
     }
 
     /** A new journal at {@code file} (its folder made if missing; a file there already is replaced). */
@@ -49,14 +52,33 @@ public final class Journal implements AutoCloseable {
         DataOutputStream out = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(file), 1 << 16));
         out.write(MAGIC);
         out.flush();
-        return new Journal(file, out);
+        java.io.Writer answers = Files.newBufferedWriter(file.resolveSibling(file.getFileName() + ".fnv"));
+        return new Journal(file, out, answers);
     }
 
     /** Writes one request's bytes, flushed. */
     public synchronized void write(byte[] request) throws IOException {
+        write(request, null);
+    }
+
+    /**
+     * Writes one request's bytes, flushed, and its response's FNV-1a beside it (`enterprise-sim --responses` prints a
+     * replay's, a line each: the first line that differs is the first request the replay answered otherwise).
+     */
+    public synchronized void write(byte[] request, byte[] response) throws IOException {
         out.writeInt(request.length);
         out.write(request);
         out.flush();
+        if (response != null) {
+            long h = 0xcbf29ce484222325L;
+            for (byte b : response) {
+                h ^= b & 0xff;
+                h *= 0x100000001b3L;
+            }
+            answers.write(Long.toHexString(h));
+            answers.write('\n');
+            answers.flush();
+        }
         requests++;
         bytes += 4 + request.length;
     }
@@ -78,6 +100,7 @@ public final class Journal implements AutoCloseable {
     @Override
     public synchronized void close() throws IOException {
         out.close();
+        answers.close();
     }
 
     /**

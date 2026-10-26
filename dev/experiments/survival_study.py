@@ -117,6 +117,28 @@ def market(village):
     return f"{x} {y} {z}"
 
 
+def replay_check(said):
+    """Whether the journal's replay answers every request as the game's core did (the `.fnv` beside it: each response's
+    FNV-1a), or the first request it parts at: a replay's figures (`--trace`) are the game's only when they match."""
+    import subprocess
+    found = re.search(r"journal: (\S+\.ejl)", said)
+    if not found:
+        return "replay: no journal named"
+    journal = Path(found.group(1))
+    fnv = journal.with_name(journal.name + ".fnv")
+    if not fnv.exists():
+        return f"replay: no {fnv.name} beside the journal"
+    ran = subprocess.run(["cargo", "run", "--release", "-q", "-p", "enterprise-sim", "--", "--responses", str(journal)],
+                         cwd=REPO / "sim", capture_output=True, text=True)
+    game, replay = fnv.read_text().split(), ran.stdout.split()
+    for i, (a, b) in enumerate(zip(game, replay)):
+        if a != b:
+            return f"replay PARTS from the game at request {i} of {len(game)}: keep this world (don't set up another) to find why"
+    if len(game) != len(replay):
+        return f"replay: {len(replay)} responses, the game {len(game)}"
+    return f"replay: all {len(game)} responses as the game's"
+
+
 def dist(a, b):
     return math.hypot(a[0] - b[0], a[1] - b[1])
 
@@ -176,7 +198,9 @@ def network(first, many, days, say):
                 say(f"-- day {day}, {d}\n" + rcon(f"enterprise ledger {d}").strip())
                 if v != first and "--loaded" not in sys.argv:
                     unload(*v, r=8)
-    say(rcon("enterprise core journal").strip())
+    said = rcon("enterprise core journal").strip()
+    say(said)
+    say(replay_check(said))
 
 
 def main():
@@ -252,7 +276,9 @@ def main():
                 say(f"-- day {day}, {d}\n" + rcon(f"enterprise ledger {d}").strip())
                 if v == second and "--loaded" not in sys.argv:
                     unload(*v, r=8)
-    say(rcon("enterprise core journal").strip())
+    said = rcon("enterprise core journal").strip()
+    say(said)
+    say(replay_check(said))
 
 
 if __name__ == "__main__":

@@ -298,15 +298,15 @@ public final class Core implements AutoCloseable {
                 switch (command(request)) {
                     case Command.Create c -> {
                         setCheckpoint(request);
-                        journal(request);
+                        journal(request, response);
                     }
                     case Command.Load l -> {
                         setCheckpoint(request);
-                        journal(request);
+                        journal(request, response);
                     }
                     case Command.Apply a -> {
                         since.add(request.clone());
-                        journal(request);
+                        journal(request, response);
                     }
                     case null, default -> { }
                 }
@@ -315,12 +315,12 @@ public final class Core implements AutoCloseable {
         }
     }
 
-    private void journal(byte[] request) {
+    private void journal(byte[] request, byte[] response) {
         if (journal == null) {
             return;
         }
         try {
-            journal.write(request);
+            journal.write(request, response);
         } catch (java.io.IOException e) {
             journalFailure = "writing " + journal.file() + ": " + e.getMessage();
             try {

@@ -698,7 +698,10 @@ help breed more as needed."
   in. A 2-day run of the same seed replays exactly, saves mid-replay change nothing, and no trap was logged. Until it's
   found, check a replay's money against the game's (`enterprise-sim --cashbook enterprise_core.dat TOWN` reads a
   world's save; the host now logs any till that moved outside the core's moves, and logged none). The cash figures of
-  this section's replays (Redfell's breakdown, Wheatfell's wall money) are the replay's, and may be off.
+  this section's replays (Redfell's breakdown, Wheatfell's wall money) are the replay's, and may be off. Since, the
+  journal keeps each response's FNV-1a beside it (`FILE.ejl.fnv`), and `survival_study.py` ends by replaying it and
+  saying whether every response is the game's, or the first request it parts at. The next run of the same seed, 45 days,
+  replayed to the byte (1,010 responses), with no "taken out" or "paid in" anywhere: the split hasn't come back.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 

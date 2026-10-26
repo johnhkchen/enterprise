@@ -28,7 +28,7 @@ Monorepo: our mods, the pack definition, and design docs.
   enterprise-sim -- --trace FILE run.db` replays it exactly and writes SQLite: `requests`, `inputs`, `outputs`, `goods` (each good's number, as works and outputs give it), each
   day's `towns` (with mood's target, comforts met, paid share, land), `comforts` (met by kind), `herds`, `hands` (each town's roster), `works`, `farms`, `stock`, `routes`, `lockers`, `whys`, every decided `plans` (load worth vs road cost, purse, went or
   stayed) with `plan_whys`, each road's hex `paths` and the `trails` its wagons wore (at the end), (why each good went or stayed, stays too), each wagon's `trips` (out: stacks, worth, purse;
-  there: sold, takings, bought, paid; pallet items either way), and `cash`. A trip's worth counts only what it took to
+  there: sold, takings, bought, paid; pallet items either way), and `cash`. Beside the journal, `FILE.ejl.fnv` holds each response's FNV-1a as the game got it: `enterprise-sim --responses FILE` prints the replay's, and the first line that differs is where the replay parts from the game (`survival_study.py` checks it at the end; a replay once parted from day 0, cause not found: check its money against the world's save, `enterprise-sim --cashbook world/enterprise_core.dat TOWN`). A trip's worth counts only what it took to
   sell: a buying trip's goods are in `bought` and `pallet_items`. Then `sqlite3 run.db`. The tables:
   `sim/host/src/trace.rs`. A journal replays only on the core of its wire schema.
 - Long runs stall when the Mac sleeps: a closed lid on battery sleeps it even under `caffeinate`, and the server freezes mid-tick. The study reports a day that takes six times the usual; `pmset -g log | grep Sleep` confirms it.
