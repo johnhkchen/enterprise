@@ -654,6 +654,15 @@ help breed more as needed."
   along llama routes"): a ridge the llamas climb to their ford sends the wagon round, and its bridge with it. Once it's built the
   road plans again as a wagon's, and the host lays its deck as it does a toll bridge's. A toll bridge may now stand on a
   river's hex too.
+- **Rivers on against rivers off, one game** (`enterprise-sim --trace JOURNAL OUT.db --no-rivers`: the same journal
+  replayed with every hex's river cleared as it comes in; the game's own counts, cash among them, are still the
+  river run's, so a treasury the core spent differently is squared by "taken out"). Seed 8675309's 45 days at full
+  wages and the buffer: three bridges with rivers (16 emeralds each from Dustfell, Meadowfell and Ryegate), none
+  without, and **no trip either way**: every road stayed for want of a purse or a load. Ryegate's road to Wheatfell
+  goes by wagon without rivers, still unfunded; two roads stay llamas' on the hills alone. What stopped the trade was
+  the game's: Wheatfell's census had a farmer turned Merchant (1 Farmer, 2 Merchants; the run before rivers, 2 and 1),
+  so its spare farmer's sugar cane for Redfell never came (1 against 321 by day 45). Which villager takes the desk is
+  the villagers' own doing in the game, not a dice roll of the core's.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 

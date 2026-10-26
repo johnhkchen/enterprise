@@ -30,7 +30,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use enterprise_core::state::{Route, RouteState};
-use enterprise_core::wire::{self, Answer, Command, Query, Request, Response};
+use enterprise_core::wire::{self, Answer, Command, Input, Query, Request, Response};
 use enterprise_core::Society;
 use rusqlite::{params, Connection};
 use serde_json::Value;
@@ -64,14 +64,15 @@ pub fn read(bytes: &[u8]) -> Result<Vec<&[u8]>, String> {
     Ok(out)
 }
 
-/// The journal at `journal` replayed into a new database at `db` (one there already is replaced).
-pub fn trace_file(journal: &Path, db: &Path) -> Result<Traced, String> {
+/// The journal at `journal` replayed into a new database at `db` (one there already is replaced); with `no_rivers`,
+/// as though the host had found no river (every hex's `river` cleared as it comes in): the same game, rivers off.
+pub fn trace_file(journal: &Path, db: &Path, no_rivers: bool) -> Result<Traced, String> {
     let bytes = std::fs::read(journal).map_err(|e| format!("{}: {e}", journal.display()))?;
     if db.exists() {
         std::fs::remove_file(db).map_err(|e| format!("{}: {e}", db.display()))?;
     }
     let mut conn = Connection::open(db).map_err(|e| e.to_string())?;
-    trace(&read(&bytes)?, &mut conn)
+    trace(&read(&bytes)?, &mut conn, no_rivers)
 }
 
 const SCHEMA_SQL: &str = "
@@ -103,8 +104,8 @@ create table paths (route integer, step integer, q integer, r integer);
 create table trails (q integer, r integer, width integer, wear real);
 ";
 
-/// Replays `requests` into `conn`, writing the tables above.
-pub fn trace(requests: &[&[u8]], conn: &mut Connection) -> Result<Traced, String> {
+/// Replays `requests` into `conn`, writing the tables above (`no_rivers`: as [`trace_file`]'s).
+pub fn trace(requests: &[&[u8]], conn: &mut Connection, no_rivers: bool) -> Result<Traced, String> {
     let sql = |e: rusqlite::Error| e.to_string();
     conn.execute_batch(SCHEMA_SQL).map_err(sql)?;
     let tx = conn.transaction().map_err(sql)?;
@@ -116,7 +117,14 @@ pub fn trace(requests: &[&[u8]], conn: &mut Connection) -> Result<Traced, String
     let mut out_on_road: BTreeMap<usize, Trip> = BTreeMap::new();
     let mut pallets: BTreeMap<u64, f64> = BTreeMap::new();
     for (seq, bytes) in requests.iter().enumerate() {
-        let request: Request = postcard::from_bytes(bytes).map_err(|e| format!("request {seq} unreadable: {e}"))?;
+        let mut request: Request = postcard::from_bytes(bytes).map_err(|e| format!("request {seq} unreadable: {e}"))?;
+        if let (true, Command::Apply { inputs }) = (no_rivers, &mut request.command) {
+            for input in inputs.iter_mut() {
+                if let Input::Ground { river, .. } = input {
+                    *river = false;
+                }
+            }
+        }
         if request.schema != wire::SCHEMA {
             return Err(format!("request {seq} is of wire schema {:016x}, this core's is {:016x}: replay it with the core \
                 that wrote it", request.schema, wire::SCHEMA));
@@ -467,7 +475,7 @@ mod tests {
         let ran = ran.unwrap();
 
         let mut conn = Connection::open_in_memory().unwrap();
-        let t = trace(&read(&journal).unwrap(), &mut conn).unwrap();
+        let t = trace(&read(&journal).unwrap(), &mut conn, false).unwrap();
         assert_eq!((t.requests, t.refused), (requests.len(), 0));
         assert_eq!(t.days, ran.now() / DAY);
         let last = t.days as i64;

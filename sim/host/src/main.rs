@@ -17,7 +17,7 @@
 //!     cargo run --release -p enterprise-sim -- 30 --wire-looks target/spike/study.looks
 //!
 //! `--trace JOURNAL OUT.db` replays a journal the mod wrote (a world's `enterprise-journal/`) and writes what happened
-//! into SQLite (`trace.rs` has the tables).
+//! into SQLite (`trace.rs` has the tables); `--no-rivers` after them replays it as though the host had found no river.
 //!
 //! `--world SEED DAYS FILE` does the same for one of the random worlds (the core tests' generator, every slice on by
 //! seed, each day's doings), run DAYS days: a bigger world than the study's, with a bigger save.
@@ -69,11 +69,11 @@ fn main() {
     }
     if args.first().map(String::as_str) == Some("--trace") {
         let (Some(journal), Some(db)) = (args.get(1), args.get(2)) else {
-            eprintln!("enterprise-sim --trace JOURNAL OUT.db");
+            eprintln!("enterprise-sim --trace JOURNAL OUT.db [--no-rivers]");
             std::process::exit(2);
         };
         let started = Instant::now();
-        match trace::trace_file(journal.as_ref(), db.as_ref()) {
+        match trace::trace_file(journal.as_ref(), db.as_ref(), args.iter().any(|a| a == "--no-rivers")) {
             Ok(t) => println!("{db}: {} requests replayed ({} refused), {} days, {} towns, {} routes, in {:.1}s",
                 t.requests, t.refused, t.days, t.towns, t.routes, started.elapsed().as_secs_f64()),
             Err(e) => {
