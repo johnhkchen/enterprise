@@ -589,4 +589,10 @@ dials! {
     /// them and its reserve (John: "full wages plus a buffer"): at half the wages, two poor towns of seed 8675309's
     /// network spent down to nothing on bridges and their trains never left.
     river_bridge_buffer: f64 = 16.0,
+    /// A town walls itself in only when it can pay all the masons' wages, keep this much beyond them, and keep what it
+    /// spends on goods brought in (its last `imports_days` days' worth, a day) for as long as the wall takes (John:
+    /// "full wages plus a buffer" and "imports"): seed 8675309's Redfell started its wall with 46 emeralds, and its
+    /// wages beside the sugar cane it bought left it nothing to pay Wheatfell's next wagon with.
+    wall_buffer: f64 = 16.0,
+    imports_days: f64 = 8.0,
 }

@@ -5,7 +5,9 @@
 use std::collections::BTreeMap;
 
 use enterprise_core::cargo::LADING;
-use enterprise_core::cash_book::{Account, Reason};
+use enterprise_core::cash_book::{Account, CashBook, Reason};
+use enterprise_core::fixed::Fixed;
+use enterprise_core::rules::works::imports_per_day;
 use enterprise_core::works::{deck_size, ring_size, Kind, What, KINDS};
 use enterprise_core::{Content, Good, Hex, Society};
 
@@ -340,6 +342,27 @@ fn a_content_town_with_money_to_spare_walls_itself_in_and_a_poor_one_doesnt() {
     let mut s = content_town(5.0, 4, &CONTENT_ROSTER);
     s.advance(25 * DAY);
     assert!(s.works(0).projects.is_empty(), "a poor town builds nothing: {:?}", s.works(0).projects);
+}
+
+#[test]
+fn a_town_walls_itself_in_only_with_the_wages_a_buffer_and_its_imports_to_spare() {
+    // 756 blocks at 64 a day, two masons at 1 a day: about 24 emeralds of wages, and 16 beyond them.
+    let mut s = content_town(30.0, 4, &CONTENT_ROSTER);
+    s.advance(25 * DAY);
+    assert!(s.works(0).wall().is_none(), "30 emeralds: short of the wages and the buffer: {:?}", s.works(0).projects);
+    s.content_mut().dials.wall_buffer = 0.0;
+    s.advance(35 * DAY);
+    assert!(s.works(0).wall().is_some(), "no buffer asked: it walls itself in");
+    // What a town bought off wagons and under contract, a day over its last `imports_days`; not what it sold.
+    let c = Content::new(vec![Good::new("wheat", 0.05, 64)], DAY);
+    let mut book = CashBook::default();
+    let t = Account::Treasury(0);
+    book.note(t, Reason::Sale, Fixed::from(-6.0), 2 * DAY, DAY);
+    book.note(t, Reason::Contract, Fixed::from(-2.0), 6 * DAY, DAY);
+    book.note(t, Reason::Sale, Fixed::from(5.0), 6 * DAY, DAY);
+    book.note(t, Reason::Home, Fixed::from(-10.0), 6 * DAY, DAY);
+    assert!((imports_per_day(&c, &book, 0, 8 * DAY) - 1.0).abs() < 1e-9, "8 over 8 days");
+    assert!((imports_per_day(&c, &book, 0, 13 * DAY) - 0.25).abs() < 1e-9, "the sale of day 2 too old");
 }
 
 #[test]

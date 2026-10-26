@@ -672,6 +672,20 @@ help breed more as needed."
   `Territory.grow` trained first and held the town's hiring while its squad was short; the core no longer does. Seed
   8675309 again, 45 days: Wheatfell had its 2 Farmers and 1 Merchant, 254 sugar cane by day 45, and its road to Redfell
   ran 7 trips (676 sold); Dustfell's to Meadowfell 1 (44). Two bridges stood (Dustfell's, Meadowfell's).
+- **Why that run's llama roads stayed, and Redfell went broke.** The llama roads had nothing worth a trip: Meadowfell's
+  best load for Ryegate was worth 1.5 emeralds against a road of 13, and Ryegate had nothing either of its roads' far
+  ends buys. Redfell started its wall on day 31 with 46 emeralds (the gate was 12 to spare); the masons' 22, the sugar
+  cane it bought (19) and a home, a child and a training (17) took it to nothing by day 45, and Wheatfell's last wagon
+  sold it nothing.
+- **A wall waits for its wages, a buffer and the town's imports** (John: "1, 2": full wages plus a buffer, and what it
+  buys in; `rules/works.rs`, `imports_per_day`). A content town walls itself in only when it can pay all the masons'
+  wages, keep `wall_buffer` (16) beyond, and keep paying for what it brings in for as long as the wall takes: what its
+  money paid off wagons and under contracts a day, over its last `imports_days` (8). Redfell's case: about 24 of
+  wages, 16, and 1.5 a day for 16 days, 64 against its 46: it waits. The rerun (a game run of its own: Redfell had 5 villagers, not 7,
+  and bought little): Redfell's wall waited until day 40 and it ended with 30 emeralds; but Wheatfell, buying nothing
+  in, walled itself in from day 22 on about 42 emeralds, was down to 1 by day 27, and its wagon to Redfell ran 3 trips
+  (5 sold) for want of a purse. Its chests also lost 48 emeralds the core didn't spend ("taken out") and gained 54 it
+  didn't take in ("paid in"): not yet traced.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 

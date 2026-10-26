@@ -100,6 +100,18 @@ fn wanted(content: &Content, farm: Option<&Farm>, paperwork: &Paperwork, now: u6
     }
 }
 
+/// What a town's money paid a day for goods brought in, over its last `imports_days` days: what it bought off
+/// wagons, and under its contracts.
+pub fn imports_per_day(content: &Content, book: &CashBook, town: usize, now: u64) -> f64 {
+    let days = content.dials.imports_days.max(1.0);
+    let today = now / content.day_ticks.max(1);
+    let from = today.saturating_sub(days as u64);
+    let paid: f64 = book.entries(crate::cash_book::Account::Treasury(town), from, today).iter()
+        .filter(|(_, r, v)| matches!(r, Reason::Sale | Reason::Contract) && v.to_f64() < 0.0)
+        .map(|(_, _, v)| -v.to_f64()).sum();
+    paid / days
+}
+
 /// The halls a town could build now: not started, its partners at home, wanted (and a pier for stone docks).
 #[allow(clippy::too_many_arguments)]
 fn buildable(content: &Content, works: &Works, roster: Option<&Roster>, farm: Option<&Farm>, paperwork: &Paperwork,
@@ -238,10 +250,15 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
                 continue;
             }
         }
-        // Nothing that pays: a content town with money to spare walls itself in.
+        // Nothing that pays: a content town with money to spare walls itself in, if it can pay all the masons'
+        // wages, keep `wall_buffer` beyond, and keep buying what it brings in while the wall goes up.
         if toll_review && works.wall().is_none() && people.mood >= MOOD_TO_START && spare >= d.wall_start_emeralds {
-            works.start(What::Wall, d.wall_blocks);
-            continue;
+            let days = d.wall_blocks as f64 / per_day;
+            let wages = days * d.masons as f64 * d.mason_pay;
+            if spare >= wages + d.wall_buffer + imports_per_day(&content, &book, t, now) * days {
+                works.start(What::Wall, d.wall_blocks);
+                continue;
+            }
         }
         // Else the next hall it wants, with its Mason's skill each day or hired builders' at a toll review
         // (`BuildServices.next`, `hire`).
