@@ -1,7 +1,8 @@
 //! Squads through the look (`squad.rs`; `Caravans.dispatch`, `sendPortersHome`, `arriveHome`, `poll`'s walkers,
 //! `Commissions.train`):
 //!
-//! - **Review:** once a day, a town with routes, a desk's Merchant and a squad short of leads trains one ([`train`]).
+//! - **Review:** once a day, after the idle find work, a town with routes, a desk's Merchant and a squad short of leads
+//!   trains one of the idle the job draw left without work ([`train`]).
 //! - **Arrive:** porters walking home get there ([`walk_home`]).
 //! - **Buy:** at the far end, once the cargo fits without them, porters leave and walk home ([`send_porters_home`]),
 //!   before the wagon buys for home or eats there (`rules/road.rs`).
@@ -32,7 +33,7 @@ use crate::state::*;
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
         train.in_set(Step::Review).after(super::settlers::review).after(super::lockers::review)
-            .after(super::farms::review).before(super::jobs::review)
+            .after(super::farms::review).after(super::jobs::review).before(super::kit::dig)
             .after(super::works::review), // pinned as main ran it before atlas-and-books' `consider` moved it
         walk_home.in_set(Step::Arrive).after(super::arrive::mark),
         send_porters_home.in_set(Step::Buy),
@@ -344,10 +345,12 @@ pub fn come_home(content: Res<Content>, pallets: Res<crate::pallet::Pallets>, mu
 }
 
 /// Once a day: every town with a roster and routes of its own trains a hand for its squad, while it's short of leads;
-/// before the idle find work (`rules/jobs.rs`), which waits on it (`Territory.grow`: squads before anything).
+/// after the idle find work (`rules/jobs.rs`), and only on a day that left one of them without it (`Hiring::left_idle`).
+/// The mod trained first (`Territory.grow`: squads before anything): on a town's first day, the villager who'd have
+/// taken the village's second composter was a second Merchant instead (seed 8675309's Wheatfell, John: "jobs first").
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn train(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, towns_order: Res<Towns>, mut squads: ResMut<Squads>,
-        mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, routes: Query<&Route>,
+        hiring: Res<crate::jobs::Hiring>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, routes: Query<&Route>,
         mut towns: Query<(&Town, &mut Roster, Option<&mut Lockers>, &mut Money, &Trades)>) {
     let now = clock.now;
     let today = now / content.day_ticks.max(1);
@@ -362,7 +365,7 @@ pub fn train(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, towns_
     for &e in towns_order.0.iter() {
         let Ok((town, mut roster, lockers, mut money, trades)) = towns.get_mut(e) else { continue };
         let routes = count.get(&town.id).copied().unwrap_or(0);
-        if routes == 0 || !crewed(Some(&roster)) {
+        if routes == 0 || !crewed(Some(&roster)) || hiring.left_idle.get(&town.id) != Some(&today) {
             continue;
         }
         let spare = free(&content, trades, &money, &bills, town.id, now);

@@ -28,7 +28,7 @@ use crate::works::Works;
 
 pub fn register(schedule: &mut Schedule) {
     schedule.add_systems((
-        consider.in_set(Step::Review).after(super::works::review).after(super::squad::train).after(super::training::lapse)
+        consider.in_set(Step::Review).after(super::works::review).after(super::training::lapse)
             .before(super::jobs::review),
         log_sales.in_set(Step::Sell).after(super::arrive::sell).after(super::harvest::offer).before(super::cargo::relot),
         copy_books.in_set(Step::Services).after(super::territory::tolls).after(super::training::copies),

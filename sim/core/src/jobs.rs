@@ -83,6 +83,10 @@ impl Signals {
 #[derive(Resource, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Hiring {
     pub reviewed: BTreeMap<usize, u64>,
+    /// The day each town's review last left an idle adult without work (no stall it could pay for, nothing drawn): a
+    /// hand the squad may train that day (`rules/squad.rs` `train`).
+    #[serde(default)]
+    pub left_idle: BTreeMap<usize, u64>,
 }
 
 /// A good by name, with or without the host's namespace (`paper`, `minecraft:paper`).

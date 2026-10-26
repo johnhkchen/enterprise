@@ -3,8 +3,9 @@
 //! settlers' (trained adults go with caravans first): one unemployed adult, or a slack one, takes a trade drawn from
 //! the town's bag of marbles when the town can pay for its stall. Not while the town is raising a party of settlers
 //! (`Territory.grow`: its idle hands wait for that), nor on the day one left (the mod's `grow` hires before `consider`
-//! sends, so the party's day hires nobody). Nor while its squad waits for hands (`squad.rs` `hiring_waits`: the town
-//! trained one today, or its squad is short of leads: `Territory.grow` trains the squad before anything).
+//! sends, so the party's day hires nobody). An idle adult it leaves without work is noted ([`Hiring::left_idle`]): the
+//! squad trains only such a hand, after this (`rules/squad.rs` `train`; the mod's `Territory.grow` trained the squad
+//! before anything, and a town's first day turned the villager who'd have farmed into a second Merchant).
 
 use bevy_ecs::prelude::*;
 
@@ -26,7 +27,7 @@ pub fn register(schedule: &mut Schedule) {
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signals: Res<Signals>, order: Res<Towns>,
-        settlers: Res<Settlers>, squads: Res<crate::squad::Squads>, mut hiring: ResMut<Hiring>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, seed: Res<Rng>,
+        settlers: Res<Settlers>, mut hiring: ResMut<Hiring>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, seed: Res<Rng>,
         mut dice: ResMut<Dice>, mut recipes: Local<Option<Vec<crate::services::Recipe>>>,
         routes: Query<&Route>,
         mut towns: Query<(&Town, &mut Money, &mut People, &Stock, &Trades, &Farm, &mut Deposits, &mut Budget,
@@ -52,10 +53,6 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
         if sent_today || raising(&content, &settlers, town.id, &*people, stock, now) {
             continue;
         }
-        let own = routes.iter().filter(|r| r.from_id == town.id).count();
-        if crate::squad::hiring_waits(&content, &squads, town.id, today, &roster, Some(&*lockers), own) {
-            continue;
-        }
         let roads = routes.iter().any(|r| r.from_id == town.id || r.to_id == town.id);
         let mut far: Vec<usize> = routes.iter()
             .filter_map(|r| if r.from_id == town.id { Some(r.to_id) } else if r.to_id == town.id { Some(r.from_id) } else { None })
@@ -68,6 +65,9 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
             deposits: &mut deposits, budget: &mut budget, stock, trades, farm, met: &people.comfort_met,
             roster: &mut roster, lockers: &mut lockers, roads, far };
         let mut books = Books { ledger: &mut ledger, book: &mut book, rng: dice.of(town.id, &seed) };
-        employ(&content, &mut books, &bills, &signals, now, &mut place);
+        let idle = place.roster.hands.iter().any(|h| !h.is_baby() && !h.away && content.trades.get(h.trade).is_some_and(|t| t.none));
+        if employ(&content, &mut books, &bills, &signals, now, &mut place).is_none() && idle {
+            hiring.left_idle.insert(town.id, today);
+        }
     }
 }

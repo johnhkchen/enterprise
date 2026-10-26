@@ -193,8 +193,10 @@ fn a_town_with_a_route_trains_its_squad() {
 }
 
 #[test]
-fn a_town_trains_once_a_day_in_its_review() {
+fn a_town_trains_once_a_day_in_its_review_of_the_idle_its_jobs_leave() {
+    // No stall it can pay for: the job draw leaves its idle hands idle, and the squad trains one a day of them.
     let mut s = network(2.0, 20.0, 192.0, &["none", "none", "none"]);
+    s.content_mut().dials.stall_emeralds = 1000.0;
     s.advance(LOOK);
     let roster = s.roster(HUB);
     let named: Vec<String> = (1..4).map(|i| s.hand(HUB, i).unwrap().0).collect();
@@ -202,10 +204,16 @@ fn a_town_trains_once_a_day_in_its_review() {
     assert!(s.route(0).on_the_road, "and the trained Merchant leads the day's wagon");
     s.advance(DAY + LOOK);
     assert_eq!(s.hand(HUB, 2).unwrap().0, "cartographer", "the next day, the next lead");
-    assert_eq!(s.hand(HUB, 3).unwrap().0, "none", "and the idle wait for the squad: no stall while it's short");
+    assert_eq!(s.hand(HUB, 3).unwrap().0, "none");
     s.advance(2 * DAY + LOOK);
     let trainings = s.cash_book(HUB, 3).iter().filter(|(_, why, _)| why == "training").count();
-    assert_eq!(trainings, 2, "a lead and a spare for one route: no more (the last idle hand may find work now)");
+    assert_eq!(trainings, 2, "a lead and a spare for one route: no more");
+    // A stall it can pay for: jobs first (John: "jobs first"), the squad training nobody on a day the draw placed one.
+    let mut s = network(2.0, 20.0, 192.0, &["none"]);
+    s.advance(LOOK);
+    let (trade, ..) = s.hand(HUB, 1).unwrap();
+    assert!(trade != "none" && trade != "merchant", "the idle hand took a job, not the squad's: {trade}");
+    assert!(!s.cash_book(HUB, 1).iter().any(|(_, why, _)| why == "training"), "nobody trained");
 }
 
 // parity-partial: CaravanTests.theSquadLeavesTheWorldAndComesBack (why both go is set by hand, `want_trades`, where the mod

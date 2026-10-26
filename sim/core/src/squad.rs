@@ -22,7 +22,8 @@
 //!   `Caravan.mouths`, `Caravan.capacity`.
 //! - `caravan/CaravanLedger.java` `walkHome` (42), `walkersHome`, `arrived`.
 //! - `territory/Territory.java` `grow` 1614: the squad trains before anything, and the idle find work
-//!   (`Jobs.employ`) only when it trained nobody and isn't short ([`hiring_waits`]).
+//!   (`Jobs.employ`) only when it trained nobody and isn't short. **Differs on purpose:** here the idle find work
+//!   first, and the squad trains only a hand the job draw left idle (`rules/squad.rs` `train`).
 //!
 //! A hand on the road is known by its id ([`stamp`]; `roster.rs`, as the mod knows a villager by its UUID): its place in
 //! the roster shifts while it's away, as settlers leave (`settlers::take_hand`).
@@ -56,21 +57,12 @@ pub const CARTOGRAPHER: &str = "cartographer";
 pub const SADDLE: &str = "saddle";
 
 /// The day towns last trained their squads (`Commissions.train`, once a count: here once a day), and the day each town
-/// last trained a hand (its hiring waits that day: `Territory.grow`).
+/// last trained a hand.
 #[derive(Resource, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Squads {
     pub trained: Option<u64>,
     #[serde(default)]
     pub trained_hand: std::collections::BTreeMap<TownId, u64>,
-}
-
-/// Does a town's hiring wait for its squad today (`Territory.grow`: `Jobs.employ` only when `Commissions.train` trained
-/// nobody and the squad isn't short)? It trained a hand today, or it has `routes` of its own, a Merchant at its desk to
-/// train one, and its squad is short of leads.
-pub fn hiring_waits(content: &Content, squads: &Squads, town: TownId, today: u64, roster: &Roster,
-        lockers: Option<&Lockers>, routes: usize) -> bool {
-    squads.trained_hand.get(&town) == Some(&today)
-        || crewed(Some(roster)) && roster.merchant.is_some() && squad_short(content, roster, lockers, routes)
 }
 
 /// A squad member walking home on its own, a porter whose load is delivered (`CaravanLedger.Walker`): home at

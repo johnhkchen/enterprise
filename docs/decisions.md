@@ -662,7 +662,16 @@ help breed more as needed."
   goes by wagon without rivers, still unfunded; two roads stay llamas' on the hills alone. What stopped the trade was
   the game's: Wheatfell's census had a farmer turned Merchant (1 Farmer, 2 Merchants; the run before rivers, 2 and 1),
   so its spare farmer's sugar cane for Redfell never came (1 against 321 by day 45). Which villager takes the desk is
-  the villagers' own doing in the game, not a dice roll of the core's.
+  the villagers' own doing in the game, not a dice roll of the core's. **Corrected the same day:** the saved world
+  showed the summoned Merchant at the desk; the second Merchant was the core's, trained on day 1 for the squad
+  (`Commissions.train`'s rule: a town short of leads trains its first idle adult, before anything) from a villager
+  who in the run before rivers had taken the village's second composter by then.
+- **Jobs first, then the squad** (John: "jobs first"; `rules/squad.rs` `train`, `Hiring::left_idle`). The idle find
+  work before the squad trains: each day the job draw has the first go at a town's idle adults (one a day, as before),
+  and the squad trains only on a day it left one idle (no stall the town could pay for, nothing drawn). The mod's
+  `Territory.grow` trained first and held the town's hiring while its squad was short; the core no longer does. Seed
+  8675309 again, 45 days: Wheatfell had its 2 Farmers and 1 Merchant, 254 sugar cane by day 45, and its road to Redfell
+  ran 7 trips (676 sold); Dustfell's to Meadowfell 1 (44). Two bridges stood (Dustfell's, Meadowfell's).
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 
