@@ -8,6 +8,8 @@ every day with 9 shulkers of goods) opens near S1 that day and sends caravans to
 runs east-west through T's row of hexes before anything is built: 31 hexes flooded, the two by T left dry as its
 bridges, so the roads to S2 and S3 cross T's land or go far around. With --river-bridge, the river runs through the row
 south of T instead, with no dry crossing at all: S3 can't be reached until a town bridges it.
+With --wall (core mode too), a player's wall runs north to south through T, cobblestone 4 high and 1 thick for
+4,800 blocks, its one gateway T's own plot: the roads east (to S3, S4) go through T or round the wall's ends.
 
 Each day it writes one row per town and one per route to the CSV (ledger reads only; nothing is loaded).
 
@@ -193,7 +195,7 @@ _trades = {}
 CORE = False  # society=core: every number comes from the core's own answers (set by main from the server's own words)
 
 # Flags that shape the world or read what is still the Java rules': Java mode only. Core mode runs the default world.
-CORE_FLAGS = {"--save-at", "--label", "--resume", "--stop-when", "--add-hand", "--realms"}
+CORE_FLAGS = {"--save-at", "--label", "--resume", "--stop-when", "--add-hand", "--realms", "--wall"}
 
 
 def census(corner):
@@ -330,6 +332,42 @@ def build_ridge():
     print(rcon(f"enterprise bridge {tx} -60 {tz} {tx} -60 {tz}").strip().splitlines()[-1])
     rcon(f"forceload remove {cx - 48} {cz - 48} {cx + 48} {cz + 48}")
     print(f"ridge: {raised} hexes raised, the pass at T a ravine with one bridge")
+
+
+WALL_X = 1400  # through T's plot, between the hub's side (S1, S2) and S3's and S4's
+WALL_REACH = 2400  # blocks north and south of T
+
+
+def build_wall():
+    """A player's wall across the land, north to south through T: cobblestone 4 high and 1 thick, 4,800 blocks long,
+    its one gateway T's own plot. The core reads it only from the survey of built walls (the chunks surveyed as they
+    unload), as it would a player's."""
+    t = TOWNS["T"]
+    gate = (t[1] - 2, t[1] + 29)
+    z0, z1 = t[1] - WALL_REACH, t[1] + WALL_REACH
+    built = 0
+    for start in range(z0, z1, 256):
+        end = min(start + 255, z1)
+        load_area(WALL_X - 8, start, WALL_X + 8, end)
+        for a, b in [(start, min(end, gate[0] - 1)), (max(start, gate[1] + 1), end)]:
+            if a <= b:
+                rcon(f"fill {WALL_X} -60 {a} {WALL_X} -57 {b} minecraft:cobblestone")
+                built += b - a + 1
+        rcon(f"forceload remove {WALL_X - 8} {start} {WALL_X + 8} {end}")
+    sprint(400)  # the chunks unload: each surveyed as it goes
+    print(f"wall: {built} blocks long at x {WALL_X}, z {z0} to {z1}, its gate T's plot (z {gate[0]} to {gate[1]})")
+    hexes = {}
+    for z in range(z0, z1 + 1, 8):
+        for x in (WALL_X - 8, WALL_X + 8):
+            said = rcon(f"enterprise hex {x} -60 {z}").strip().splitlines()[-1]
+            found = re.search(r"Hex (\(-?\d+, -?\d+\))", said)
+            if found:
+                hexes[found.group(1)] = said
+    shut = [h for h, said in hexes.items() if "walled shut" in said]
+    print(f"wall: {len(shut)} of the {len(hexes)} hexes either side of it walled shut")
+    for h, said in hexes.items():
+        if "walled shut" not in said:
+            print("  open: " + said)
 
 
 def build_coast():
@@ -569,7 +607,7 @@ def main():
         retired = sorted(a for a in sys.argv[3:] if a.startswith("--") and a not in CORE_FLAGS)
         if retired:
             sys.exit(f"{' '.join(retired)}: Java mode only (retired for sim/host); under society=core this study runs the "
-                     f"default world (with --save-at, --label, --resume, --stop-when, --add-hand, --realms)")
+                     f"default world (with --save-at, --label, --resume, --stop-when, --add-hand, --realms, --wall)")
     inject = int(sys.argv[sys.argv.index("--inject") + 1]) if "--inject" in sys.argv else None
     save_at = {int(d) for d in flag("--save-at", "").split(",") if d}
     started = time.time()
@@ -579,7 +617,7 @@ def main():
         first = saved["day"] + 1
         _trades.update(saved.get("trades", {}))
         # Flags that shape the world before the first day must match the checkpoint's.
-        shaping = {"--river", "--river-bridge", "--ridge", "--realms", "--war", "--comforts", "--fleet", "--services", "--metal",
+        shaping = {"--river", "--river-bridge", "--ridge", "--wall", "--realms", "--war", "--comforts", "--fleet", "--services", "--metal",
                    "--trades", "--master"}
         theirs = {a for a in saved["argv"] if a in shaping}
         ours = {a for a in sys.argv if a in shaping}
@@ -590,6 +628,8 @@ def main():
             sys.exit(f"the checkpoint was a {mode(saved.get('core', False))} study; this server runs {mode(CORE)}")
         print(f"resumed from {flag('--resume')}: day {saved['day']} done, carrying on from day {first}")
     else:
+        if "--wall" in sys.argv:
+            build_wall()
         if "--river" in sys.argv:
             build_river(RIVER_ROW, BRIDGES)
         elif "--river-bridge" in sys.argv:

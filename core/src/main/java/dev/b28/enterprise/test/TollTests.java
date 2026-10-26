@@ -363,6 +363,78 @@ public final class TollTests {
         helper.succeed();
     }
 
+    /** A built column of two blocks or more (a fence counts two) is a wall; a door, a step or the ground isn't. */
+    @GameTest(template = "floor")
+    public static void theSurveyFindsBuiltWallsButNotDoorsOrSteps(GameTestHelper helper) {
+        BlockPos wall = new BlockPos(1, 2, 1), fence = new BlockPos(2, 2, 1), step = new BlockPos(3, 2, 1),
+                door = new BlockPos(1, 2, 3), ground = new BlockPos(3, 2, 3);
+        for (var at : List.of(wall, fence, step, door, ground)) {
+            for (int y = 2; y <= 12; y++) {
+                helper.setBlock(at.atY(y), Blocks.AIR); // the arena's barriers off
+            }
+        }
+        helper.setBlock(wall, Blocks.COBBLESTONE);
+        helper.setBlock(wall.above(), Blocks.COBBLESTONE);
+        helper.setBlock(fence, Blocks.OAK_FENCE);
+        helper.setBlock(step, Blocks.COBBLESTONE);
+        helper.setBlock(door, Blocks.OAK_DOOR);
+        helper.setBlock(door.above(), Blocks.OAK_DOOR.defaultBlockState()
+                .setValue(net.minecraft.world.level.block.DoorBlock.HALF,
+                        net.minecraft.world.level.block.state.properties.DoubleBlockHalf.UPPER));
+        java.util.function.Predicate<BlockPos> walled = at -> {
+            BlockPos abs = helper.absolutePos(at);
+            long[] bits = Terrain.surveyWalls(helper.getLevel().getChunkAt(abs));
+            int i = (abs.getX() & 15) + 16 * (abs.getZ() & 15);
+            return bits != null && (bits[i >> 6] & (1L << (i & 63))) != 0;
+        };
+        helper.assertTrue(walled.test(wall) && walled.test(fence), "two cobbles and a fence: walls");
+        helper.assertFalse(walled.test(step) || walled.test(door) || walled.test(ground), "a step, a door, the ground: open");
+        helper.succeed();
+    }
+
+    /** A hex's walls drawn from a rule on its blocks: each of its chunks' columns where {@code walled} holds. */
+    private static void drawWalls(Terrain terrain, net.minecraft.server.level.ServerLevel level, Hex hex,
+            java.util.function.BiPredicate<Integer, Integer> walled) {
+        for (long chunk : Terrain.chunksOf(hex)) {
+            long[] bits = new long[4];
+            boolean any = false;
+            for (int i = 0; i < 256; i++) {
+                int x = net.minecraft.world.level.ChunkPos.getX(chunk) * 16 + (i & 15);
+                int z = net.minecraft.world.level.ChunkPos.getZ(chunk) * 16 + (i >> 4);
+                if (walled.test(x, z)) {
+                    bits[i >> 6] |= 1L << (i & 63);
+                    any = true;
+                }
+            }
+            terrain.recordWalls(level, chunk, any ? bits : null);
+        }
+    }
+
+    /**
+     * A wall right across a hex shuts it (a cliff to a caravan); a gateway opens it again; walled yards on its edges
+     * leave it open.
+     */
+    @GameTest(template = "floor")
+    public static void aWallAcrossAHexShutsItAndAGateOpensIt(GameTestHelper helper) {
+        Terrain terrain = new Terrain();
+        var level = helper.getLevel();
+        Hex hex = new Hex(7000, 7000);
+        int cx = (int) Math.round(hex.centerX()), cz = (int) Math.round(hex.centerZ());
+        helper.assertTrue(terrain.relief(level, hex) == 0, "flat and open");
+        drawWalls(terrain, level, hex, (x, z) -> x == cx);
+        helper.assertTrue(terrain.walledShut(level, hex) && terrain.relief(level, hex) == Terrain.CLIFF
+                && Double.isInfinite(terrain.crossingFactor(level, hex)), "a wall across: shut");
+        drawWalls(terrain, level, hex, (x, z) -> x == cx && Math.abs(z - cz) > 1);
+        helper.assertFalse(terrain.walledShut(level, hex), "a gateway three wide: open");
+        // Yards walled round on the hex's west and east edges: pockets, however many.
+        int west = Terrain.chunksOf(hex).stream().mapToInt(c -> net.minecraft.world.level.ChunkPos.getX(c) * 16).min().getAsInt();
+        int east = Terrain.chunksOf(hex).stream().mapToInt(c -> net.minecraft.world.level.ChunkPos.getX(c) * 16 + 15).max().getAsInt();
+        drawWalls(terrain, level, hex, (x, z) -> (x == west + 8 && Math.abs(z - cz) <= 6) || (x <= west + 8 && Math.abs(z - cz) == 6)
+                || (x == east - 8 && Math.abs(z - cz) <= 6) || (x >= east - 8 && Math.abs(z - cz) == 6));
+        helper.assertFalse(terrain.walledShut(level, hex), "yards on its edges: open");
+        helper.succeed();
+    }
+
     @GameTest(template = "floor")
     public static void aRouteFindsThePassThroughAMountainRange(GameTestHelper helper) {
         // A range of impassable hexes across the way, one gap off the straight line: the plan goes through the gap.

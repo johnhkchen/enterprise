@@ -551,6 +551,21 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   of drayage; Haygate forwarded 6 stacks and ended with 150 emeralds (broke in runs 35-36). Haygate posted no guard:
   a second gap beside the town (the study's ridge skirts town land) lets caravans round its hex for 3 spurs.
 
+## Walls a player builds stop wagons (built 2026-10-26)
+
+- **The survey finds built walls.** As a chunk is surveyed (as it loads and unloads), every column whose surface is
+  built (not ground as the world made it), two blocks or more of it (a fence or a wall block counts two), is a wall
+  column; a door, fence gate or trapdoor on top is a way through (`Terrain.surveyWalls`).
+- **A hex a wall shuts is a cliff to a wagon.** Its open ground flooded into stretches; a stretch that is the only way
+  into some neighbouring hex is a way out; two ways out that aren't one stretch shut the hex, sent to the core as a
+  cliff's relief (32: no wire change). A wall across the hex shuts it; a wall just inside its edge shuts it too (the
+  strip beyond is the only way to the next hex); a gateway, door or fence gate opens it; a walled yard or a house on
+  its edge leaves it open, as does a wall ending inside it (`Terrain.walledShut`).
+- **Measured** (`network_study.py --wall`, core mode, 30 days): a cobblestone wall 4 high and 1 thick, 4,769 blocks
+  north to south through T, its one gateway T's plot. Every hex the wall crosses read shut but the gateway's. From
+  day 12 T posted guards and set its toll at 25% (5% without the wall all 30 days); by day 30 it held 351 emeralds
+  (89 without) and made 316 locker trades (34), and S3 beyond the wall 219 emeralds (527-636).
+
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 
 - **Terrain known when it's made.** Chunks were surveyed only as they loaded or unloaded, so routes were planned through

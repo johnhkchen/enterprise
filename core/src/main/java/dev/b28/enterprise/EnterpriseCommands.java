@@ -165,6 +165,7 @@ final class EnterpriseCommands {
                                                 long pos = net.minecraft.world.level.ChunkPos.asLong(cx, cz);
                                                 terrain.record(level, pos, dev.b28.enterprise.territory.Terrain.survey(chunk));
                                                 terrain.recordHeights(level, pos, dev.b28.enterprise.territory.Terrain.surveyHeights(chunk));
+                                                terrain.recordWalls(level, pos, dev.b28.enterprise.territory.Terrain.surveyWalls(chunk));
                                                 surveyed++;
                                             }
                                         }
@@ -1113,11 +1114,17 @@ final class EnterpriseCommands {
     }
 
     private static int hex(CommandContext<CommandSourceStack> context, BlockPos pos) {
-        if (dev.b28.enterprise.binding.Society.isCore()) {
-            return refuse(context, notYet("hex", "A town's hexes: /enterprise core land <desk>."));
-        }
         CommandSourceStack source = context.getSource();
         Hex hex = Hex.at(pos);
+        if (dev.b28.enterprise.binding.Society.isCore()) {
+            // The ground as the world's survey has it, what the core is sent (its towns' land: /enterprise core land).
+            var terrain = dev.b28.enterprise.territory.Terrain.get(source.getServer());
+            var level = source.getLevel();
+            source.sendSuccess(() -> Component.literal("Hex %s, centre %.0f %.0f; %.0f%% water, relief %d%s".formatted(
+                    hex, hex.centerX(), hex.centerZ(), terrain.waterShare(level, hex) * 100, terrain.relief(level, hex),
+                    terrain.walledShut(level, hex) ? ", walled shut" : "")), false);
+            return 1;
+        }
         String owner = dev.b28.enterprise.territory.Territory.get(source.getServer())
                 .owner(source.getLevel().dimension(), hex)
                 .map(bell -> "held by " + dev.b28.enterprise.settlement.Names.label(bell))

@@ -5,6 +5,13 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-26, walls a player builds stop wagons.** `Terrain.surveyWalls`/`walledShut`: a hex a built wall shuts is
+  sent as a cliff (decisions.md "Walls a player builds stop wagons"); `/enterprise hex` works in core mode (the survey:
+  water, relief, walled shut). `network_study.py --wall` (core mode): a 4,769-block wall with one gateway at T; T
+  tolled at 25% from day 12 and took 351 emeralds by day 30 (89 without). Game tests
+  `theSurveyFindsBuiltWallsButNotDoorsOrSteps`, `aWallAcrossAHexShutsItAndAGateOpensIt`. Not tried on a survival
+  world's own villages (their houses are walls: pockets, open).
+
 - **2026-10-26, a town costs a charter.** John's call: a block of diamond, bought from a Merchant, for now. A Town
   Charter item (`merchant/Charters`, `CharterItem`, `CharterPayload`; the Charter button beside the Merchant screen's
   tabs). A desk a player places waits for one (`StockAdapter.placedByPlayer`, saved in `enterprise_charters.dat`, and
