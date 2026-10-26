@@ -51,7 +51,7 @@ public sealed interface Answer
             case 6 -> new Cash(Point.decode(in), in.u32(), in.i64(), in.u64(), in.u64(), in.i64(), in.option(PostcardIn::u64), in.i64(), in.u64());
             case 7 -> new Mint(in.f64(), in.f64(), in.f64(), in.f64());
             case 8 -> new Land(in.u32(), in.list(2, HexAt::decode), in.f64(), in.f64(), in.list(9, Count::decode), in.list(18, WorkView::decode));
-            case 9 -> new Ground(in.list(21, GroundView::decode));
+            case 9 -> new Ground(in.list(22, GroundView::decode));
             case 10 -> new Lockers(in.u32(), in.u32(), in.bool(), in.list(13, LockerView::decode));
             case 11 -> new Routes(in.u32(), in.list(33, RouteLine::decode), in.list(6, MarketLine::decode), in.list(1, PostcardIn::string));
             case 12 -> new Pallets(in.u32(), in.list(25, PalletView::decode), in.list(25, PalletView::decode), in.u64(), in.u64(), in.list(9, Count::decode));

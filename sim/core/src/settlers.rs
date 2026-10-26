@@ -257,7 +257,7 @@ impl Society {
                 let near = (0..self.town_count())
                     .any(|t| self.town_hex(t).is_some_and(|h| h.distance(party.target) < content.dials.min_hexes as i32));
                 let way = self.town_hex(party.from).and_then(|h| self.map().plan(h, party.target, per_hex(&content), 0.0,
-                    &Default::default(), &Default::default(), false, &Default::default()));
+                    &Default::default(), &Default::default(), crate::map::Carrier::Wagon, &Default::default()));
                 !near && way.is_some()
             }
         };

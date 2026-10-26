@@ -2349,7 +2349,8 @@
             "water": 0.0,
             "relief": 0.0,
             "land": "Plains",
-            "height": null
+            "height": null,
+            "river": false
           }
         },
         {
@@ -2361,7 +2362,8 @@
             "water": 0.5625,
             "relief": 31.0,
             "land": "Water",
-            "height": -64.0
+            "height": -64.0,
+            "river": true
           }
         },
         {
@@ -2373,7 +2375,8 @@
             "water": 1.0,
             "relief": 1.7976931348623157e+308,
             "land": "Hills",
-            "height": 1.7976931348623157e+308
+            "height": 1.7976931348623157e+308,
+            "river": false
           }
         },
         {

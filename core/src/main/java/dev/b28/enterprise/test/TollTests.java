@@ -436,6 +436,46 @@ public final class TollTests {
         helper.succeed();
     }
 
+    /** Each chunk of the hex's survey columns marked wet where {@code wet} says (block x, z of the column). */
+    private static void drawWater(Terrain terrain, net.minecraft.server.level.ServerLevel level, Hex hex,
+            java.util.function.BiPredicate<Integer, Integer> wet) {
+        for (long chunk : Terrain.chunksOf(hex)) {
+            int bits = 0;
+            for (int i = 0; i < 16; i++) {
+                int x = net.minecraft.world.level.ChunkPos.getX(chunk) * 16 + 2 + 4 * (i & 3);
+                int z = net.minecraft.world.level.ChunkPos.getZ(chunk) * 16 + 2 + 4 * (i >> 2);
+                if (wet.test(x, z)) {
+                    bits |= 1 << i;
+                }
+            }
+            terrain.recordWet(level, chunk, bits);
+        }
+    }
+
+    /**
+     * A river right across a hex cuts it (the core's wagons need a bridge there, its llamas ford it); one with a dry
+     * crossing doesn't, nor does a pond in the middle or a river along the hex's edge.
+     */
+    @GameTest(template = "floor")
+    public static void aRiverAcrossAHexCutsItAndAPondDoesNot(GameTestHelper helper) {
+        Terrain terrain = new Terrain();
+        var level = helper.getLevel();
+        Hex hex = new Hex(7100, 7000);
+        int cx = (int) Math.round(hex.centerX()), cz = (int) Math.round(hex.centerZ());
+        helper.assertFalse(terrain.river(level, hex), "dry land");
+        drawWater(terrain, level, hex, (x, z) -> Math.abs(x - cx) < 8);
+        helper.assertTrue(terrain.river(level, hex) && terrain.waterShare(level, hex) <= Terrain.IMPASSABLE,
+                "a river across: cut, " + terrain.waterShare(level, hex));
+        drawWater(terrain, level, hex, (x, z) -> Math.abs(x - cx) < 8 && Math.abs(z - cz) > 6);
+        helper.assertFalse(terrain.river(level, hex), "a dry crossing in its middle: open");
+        drawWater(terrain, level, hex, (x, z) -> Math.abs(x - cx) < 12 && Math.abs(z - cz) < 12);
+        helper.assertFalse(terrain.river(level, hex), "a pond: open");
+        int west = Terrain.chunksOf(hex).stream().mapToInt(c -> net.minecraft.world.level.ChunkPos.getX(c) * 16).min().getAsInt();
+        drawWater(terrain, level, hex, (x, z) -> x < west + 8);
+        helper.assertFalse(terrain.river(level, hex), "along its west edge: open");
+        helper.succeed();
+    }
+
     /**
      * A trail laid along a row of grass: trodden to dirt path two wide, the grass growing on it cleared, a lone block's
      * bump on the way cut level and a tree in its way felled; laid again three wide, its edges trodden too.

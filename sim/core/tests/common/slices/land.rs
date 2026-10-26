@@ -34,7 +34,7 @@ fn survey(s: &mut Society, r: &mut Rng, _day: u64) {
             1 => (0.0, r.range(32.0, 60.0)),
             _ => (r.range(0.0, 0.3), r.range(0.0, 12.0)),
         };
-        inputs.push(Input::Ground { hex: at(hex), water, relief, land: LANDS[r.below(7) as usize], height: None });
+        inputs.push(Input::Ground { hex: at(hex), water, relief, land: LANDS[r.below(7) as usize], height: None, river: false });
     }
     // The crops in a chunk or two of its hexes, or of a hex beside them nobody may hold.
     let hexes = s.field_hexes(t);

@@ -57,7 +57,7 @@ fn fixture(toll: f64) -> (Society, usize, usize) {
 
 /// The cheapest way from START to GOAL past the towns' posts, nobody free (`TollTests.plan`).
 fn plan(s: &Society) -> Option<Path> {
-    s.map().plan(START, GOAL, PER_HEX, VALUE, &s.toll_posts(), &BTreeSet::new(), false, &BTreeSet::new())
+    s.map().plan(START, GOAL, PER_HEX, VALUE, &s.toll_posts(), &BTreeSet::new(), enterprise_core::map::Carrier::Wagon, &BTreeSet::new())
 }
 
 /// Three days of a wagon a day carrying 1,000 spurs past the town, after its toll clock starts.

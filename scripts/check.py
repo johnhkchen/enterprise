@@ -47,7 +47,10 @@ def rust(paths, full):
     tests/all.rs), beside `replay`, `scenarios` and `wire_fixtures`; a file's tests are its module's (`lockers::`)."""
     if full:
         return [("rust (all, SWEEP=full)", ["cargo", "test", "--release", "-q"])]
+    # A crate is a folder with a Cargo.toml (sim/scenarios and sim/wire are the core's data, its tests read them).
     crates = {p.split("/")[1] for p in paths if p.count("/") >= 2}
+    if crates - {c for c in crates if (ROOT / "sim" / c / "Cargo.toml").exists()}:
+        crates = {c for c in crates if (ROOT / "sim" / c / "Cargo.toml").exists()} | {"core"}
     own = {"replay", "scenarios", "wire_fixtures"}
     jobs = []
     for crate in sorted(crates):

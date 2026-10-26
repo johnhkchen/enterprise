@@ -114,3 +114,4 @@ CoreBindingTests.aDeskAPlayerPlacesWaitsForACharterAndPutBackIsItsTownAgain # th
 TollTests.theSurveyFindsBuiltWallsButNotDoorsOrSteps # the binding's own: the host's survey of blocks (Rust: none, the core sees a hex's relief)
 TollTests.aWallAcrossAHexShutsItAndAGateOpensIt # the binding's own: a walled-shut hex sent as a cliff's relief (Rust: tests for impassable relief in routing)
 TollTests.aTrailIsTroddenToPathItsBumpLevelledItsTreeFelled # the binding's own: the dirt path laid in the world (Rust: tests/hex_map.rs a_busy_road_wears_trails_that_the_host_is_told_of_once)
+TollTests.aRiverAcrossAHexCutsItAndAPondDoesNot # the binding's own: the host's survey of water parting a hex (Rust: tests/hex_map.rs a_river_stops_a_wagon_unless_bridged_and_llamas_ford_it)

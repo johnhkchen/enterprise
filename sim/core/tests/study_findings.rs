@@ -278,7 +278,7 @@ fn equal_roads_across_open_ground_go_the_mods_way() {
     let map = enterprise_core::Map::default();
     let (hub, s3) = (enterprise_core::Hex::at(1002.5, 1002.5), enterprise_core::Hex::at(1851.5, 1851.5));
     let path = map.plan(hub, s3, enterprise_core::map::per_hex(1.0 / 30.0), 0.0, &Default::default(),
-        &Default::default(), false, &Default::default()).expect("a way");
+        &Default::default(), enterprise_core::map::Carrier::Wagon, &Default::default()).expect("a way");
     let hexes: Vec<(i32, i32)> = path.hexes.iter().map(|h| (h.q, h.r)).collect();
     assert_eq!(hexes, vec![(5, 15), (6, 15), (6, 16), (6, 17), (6, 18), (6, 19), (7, 19), (8, 19), (9, 19), (9, 20),
         (9, 21), (9, 22), (9, 23), (9, 24), (9, 25), (9, 26), (10, 26), (10, 27)],

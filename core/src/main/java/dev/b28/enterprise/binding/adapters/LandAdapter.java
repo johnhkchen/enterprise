@@ -260,7 +260,7 @@ public final class LandAdapter {
                 Input.Ground g = wanted.get(i);
                 GroundView h = had.get(i);
                 if (h.water() != g.water() || h.relief() != g.relief() || h.land() != g.land()
-                        || !h.height().equals(g.height())) {
+                        || !h.height().equals(g.height()) || h.river() != g.river()) {
                     out.add(g);
                 }
             }
@@ -276,7 +276,7 @@ public final class LandAdapter {
     /** A hex's ground as {@code terrain} has surveyed it, with its biome's land at its centre. */
     public static Input.Ground ground(Terrain terrain, ServerLevel level, Hex hex) {
         return new Input.Ground(new HexAt(hex.q(), hex.r()), terrain.waterShare(level, hex), terrain.relief(level, hex),
-                kind(Labour.biome(level, hex)), terrain.height(level, hex));
+                kind(Labour.biome(level, hex)), terrain.height(level, hex), terrain.river(level, hex));
     }
 
     /**

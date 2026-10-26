@@ -614,6 +614,23 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   (32 before), 117 of 833 steps too steep for a wagon, 78 hexes water and 60 too rugged (relief 32 or more; the median
   dry hex's is 17); the two towns' road 400 blocks. Fifteen days' run took 82 s (81 before).
 
+## Rivers, llamas and bridges (built 2026-10-26)
+
+John: "Let's allow towns to pay a mason to build a bridge across rivers. Otherwise wagons shouldn't be able to pass.
+What we could allow is the lighter llama trading unit to handle those terrain plus hillier paths. Set up llama pathing
+and wagon pathing as separate logic." Then: "We'll have merchants bring 2 llamas as their class animals, and farmers can
+help breed more as needed."
+
+- **A river cuts a hex.** The host keeps which of each chunk's 16 survey columns are water (a chunk never loaded:
+  which stand in a river's or an ocean's biome, from the generator), floods the hex's dry cells (4 blocks a side) into
+  stretches, and a hex with two stretches each the only way to some neighbour is cut by a river: the walls' reckoning
+  with water for the wall (`Terrain.river`, sent as `Input::Ground.river`). A river along a hex's edge, a pond, or a
+  river with a dry crossing leave the hex open; a hex mostly water stays impassable as before.
+- **Each carrier has its own way** (`map.rs` `Carrier`, `Gait`). A wagon: steps of 16 blocks at most, a cliff at 32
+  relief, and no way through a river's hex unless a bridge stands on it (a bridged river is open ground). Llamas: steps
+  of 32 blocks (the steepest three times open ground), relief up to 64, and a river forded at 1.5 times the hex's
+  cost. A boat: a wagon's way on land, rivers and water sailed at 0.8. `Map::plan` takes the carrier.
+
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 
 - **Terrain known when it's made.** Chunks were surveyed only as they loaded or unloaded, so routes were planned through

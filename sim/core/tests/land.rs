@@ -80,9 +80,9 @@ fn plots(host: &mut Option<Society>) -> Vec<Count> {
 fn a_surveyed_hexs_ground_is_the_maps() {
     let mut host = town(0.0);
     apply(&mut host, vec![
-        Input::Ground { hex: at(1, 0), water: 0.75, relief: 3.0, land: LandKind::Water, height: None },
-        Input::Ground { hex: at(0, 1), water: 0.0, relief: 40.0, land: LandKind::Hills, height: None },
-        Input::Ground { hex: at(-1, 0), water: 2.0, relief: 0.0, land: LandKind::Woods, height: None }, // clamped to all water
+        Input::Ground { hex: at(1, 0), water: 0.75, relief: 3.0, land: LandKind::Water, height: None, river: false },
+        Input::Ground { hex: at(0, 1), water: 0.0, relief: 40.0, land: LandKind::Hills, height: None, river: false },
+        Input::Ground { hex: at(-1, 0), water: 2.0, relief: 0.0, land: LandKind::Woods, height: None, river: false }, // clamped to all water
     ]);
     let s = host.as_ref().unwrap();
     assert_eq!(s.map().crossing_factor(Hex::new(1, 0)), f64::INFINITY, "a hex mostly under water can't be crossed");
@@ -94,7 +94,7 @@ fn a_surveyed_hexs_ground_is_the_maps() {
     assert_eq!((ground[2].water, ground[2].relief, ground[2].land), (0.0, 0.0, LandKind::Plains), "never surveyed: dry, flat plains");
     // A bridge the core finished stays when the hex is surveyed again.
     host.as_mut().unwrap().bridge(Hex::new(1, 0));
-    apply(&mut host, vec![Input::Ground { hex: at(1, 0), water: 0.8, relief: 3.0, land: LandKind::Water, height: None }]);
+    apply(&mut host, vec![Input::Ground { hex: at(1, 0), water: 0.8, relief: 3.0, land: LandKind::Water, height: None, river: false }]);
     assert_eq!(host.as_ref().unwrap().map().crossing_factor(Hex::new(1, 0)), 1.0, "a bridged hex that's mostly water is open ground");
 }
 
@@ -102,9 +102,9 @@ fn a_surveyed_hexs_ground_is_the_maps() {
 fn ground_and_crops_that_arent_numbers_are_refused() {
     let mut host = town(0.0);
     for bad in [
-        Input::Ground { hex: at(0, 0), water: f64::NAN, relief: 0.0, land: LandKind::Plains, height: None },
-        Input::Ground { hex: at(0, 0), water: 0.0, relief: -1.0, land: LandKind::Plains, height: None },
-        Input::Ground { hex: at(0, 0), water: 0.0, relief: 0.0, land: LandKind::Plains, height: Some(f64::INFINITY) },
+        Input::Ground { hex: at(0, 0), water: f64::NAN, relief: 0.0, land: LandKind::Plains, height: None, river: false },
+        Input::Ground { hex: at(0, 0), water: 0.0, relief: -1.0, land: LandKind::Plains, height: None, river: false },
+        Input::Ground { hex: at(0, 0), water: 0.0, relief: 0.0, land: LandKind::Plains, height: Some(f64::INFINITY), river: false },
         Input::Crops { hex: at(0, 0), chunk_x: 0, chunk_z: 0, counts: vec![Count { good: 99, count: 1.0 }] },
         Input::Crops { hex: at(0, 0), chunk_x: 0, chunk_z: 0, counts: vec![wheat(-1.0)] },
         Input::Survey { town: 3, bell_x: 0, bell_z: 0 },

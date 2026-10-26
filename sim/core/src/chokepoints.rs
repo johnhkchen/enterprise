@@ -208,7 +208,7 @@ pub fn post_options(map: &Map, territory: &Territory, posts: &Posts, town: TownI
     let mut free: BTreeSet<TownId> = ends.iter().copied().collect();
     free.insert(town);
     let none = BTreeSet::new();
-    let Some(through) = map.plan(start, goal, per_hex, value, posts, &free, false, &none) else { return Vec::new() };
+    let Some(through) = map.plan(start, goal, per_hex, value, posts, &free, crate::map::Carrier::Wagon, &none) else { return Vec::new() };
     let mut options = Vec::new();
     let mut tried: Vec<Hex> = Vec::new();
     let mut path = Some(through.clone());
@@ -226,7 +226,7 @@ pub fn post_options(map: &Map, territory: &Territory, posts: &Posts, town: TownI
         for hex in land {
             let mut trial: BTreeSet<Hex> = tried.iter().copied().collect();
             trial.insert(hex);
-            let around = map.plan(start, goal, per_hex, value, posts, &free, false, &trial);
+            let around = map.plan(start, goal, per_hex, value, posts, &free, crate::map::Carrier::Wagon, &trial);
             let take = match &pick {
                 None => true,
                 Some((than, around_than)) => better(map, &around, hex, around_than, *than, home),
@@ -389,8 +389,8 @@ pub fn bridge_value(map: &Map, posts: &Posts, routes: &[RouteEnds], town: TownId
         }
         // The town's own posts count for nothing: a bridge that lets wagons dodge its other posts gains it nothing.
         let free: BTreeSet<TownId> = [r.ends[0], r.ends[1], town].into_iter().collect();
-        let without = map.plan(r.start, r.goal, per_hex, r.value, posts, &free, false, &none);
-        let Some(with) = bridged.plan(r.start, r.goal, per_hex, r.value, posts, &free, false, &none) else { continue };
+        let without = map.plan(r.start, r.goal, per_hex, r.value, posts, &free, crate::map::Carrier::Wagon, &none);
+        let Some(with) = bridged.plan(r.start, r.goal, per_hex, r.value, posts, &free, crate::map::Carrier::Wagon, &none) else { continue };
         let Some(at) = with.hexes.iter().position(|&x| x == hex) else { continue };
         if at == 0 || at + 1 >= with.hexes.len() {
             continue; // the bridge wouldn't be on this route's way

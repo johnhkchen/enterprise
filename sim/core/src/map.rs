@@ -19,6 +19,12 @@
 //! route's own towns are always reached and left (their step only harder going); a hex of unknown height counts no
 //! climb.
 //!
+//! **Carriers.** Not in the mod: what carries a road's goods picks its own way ([`Carrier`], [`Gait`]). A wagon holds
+//! the most but takes only gentle ground: no step steeper than [`MAX_GRADE`], no cliff, and no river (a hex the host
+//! found cut in two by water: [`Ground::river`]) unless a bridge stands on it. A string of llamas carries less, but
+//! climbs twice as steeply, picks its way over rougher ground and fords a river. A boat (a Fisherman's) goes a wagon's
+//! way on land and sails what's water.
+//!
 //! **The heuristic.** The mod's A* guesses the rest of the way as `distance × perHex`, which never overestimates on
 //! land (every hex costs at least open ground). By boat a water hex costs 0.8 of open ground, so that guess can
 //! overestimate and A* could miss the cheapest way. Here the guess is scaled by the cheapest a hex can cost (0.8 when
@@ -60,6 +66,51 @@ pub const TRAIL_WIDEST: u32 = 4;
 pub const TRAIL_EASE: f64 = 0.5;
 /// Sailing a water hex costs this much a hex of open ground: boats are quick.
 pub const BOAT_FACTOR: f64 = 0.8;
+/// A llama climbs from one hex to the next at most this steeply: 32 blocks over a hex, twice a wagon's.
+pub const LLAMA_MAX_GRADE: f64 = 0.4;
+/// A hex with this much relief or more stops even a llama: a mountain's face.
+pub const LLAMA_CLIFF: f64 = 64.0;
+/// Fording a river makes its hex this much harder again for llamas: they wade, their packs held high.
+pub const FORD_FACTOR: f64 = 1.5;
+
+/// What carries a road's goods, and so the way it can take (see the module's note).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum Carrier {
+    /// A wagon: the most it carries, on gentle ground, over rivers only by a bridge.
+    #[default]
+    Wagon,
+    /// A string of llamas: less, but steeper, rougher, and through a river's ford.
+    Llama,
+    /// A wagon's way on land, and water sailed at [`BOAT_FACTOR`].
+    Boat,
+}
+
+/// How a carrier goes: the steepest step it takes between hexes, the relief that stops it, and how much harder a
+/// river makes a hex (infinite: no way without a bridge).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Gait {
+    pub max_grade: f64,
+    pub cliff: f64,
+    pub ford: f64,
+}
+
+impl Carrier {
+    pub fn gait(self) -> Gait {
+        match self {
+            Carrier::Wagon | Carrier::Boat => Gait { max_grade: MAX_GRADE, cliff: CLIFF, ford: f64::INFINITY },
+            Carrier::Llama => Gait { max_grade: LLAMA_MAX_GRADE, cliff: LLAMA_CLIFF, ford: FORD_FACTOR },
+        }
+    }
+
+    /// Its name, as the host and the trace print it.
+    pub fn name(self) -> &'static str {
+        match self {
+            Carrier::Wagon => "wagon",
+            Carrier::Llama => "llama",
+            Carrier::Boat => "boat",
+        }
+    }
+}
 /// Hexes either side of the straight line the search may stray.
 pub const MARGIN: i32 = 6;
 /// Blocks a food point carries a caravan.
@@ -114,8 +165,9 @@ pub enum Land {
 }
 
 /// A hex's ground: its share under water (0 to 1), its relief in blocks (highest surface less lowest), whether a
-/// finished bridge stands on it, what its land gives (`Land`), and the height of its ground (none where the host
-/// hasn't surveyed it: no climb is counted to or from it).
+/// finished bridge stands on it, what its land gives (`Land`), the height of its ground (none where the host
+/// hasn't surveyed it: no climb is counted to or from it), and whether a river cuts it (water parting its land so that
+/// a wagon can't go from the one side to the other: no way for one without a bridge).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Ground {
     pub water_share: f64,
@@ -124,26 +176,32 @@ pub struct Ground {
     pub land: Land,
     #[serde(default)]
     pub height: Option<f64>,
+    #[serde(default)]
+    pub river: bool,
 }
 
 impl Ground {
-    /// How much harder the hex is to cross than open ground on foot: 1 on dry, flat land, up to 2 with water to skirt,
-    /// as hard again every [`RELIEF_PER_FACTOR`] blocks of relief, infinite when mostly water or a cliff; a bridged hex that's mostly
-    /// water is open ground.
+    /// How much harder the hex is for a wagon to cross than open ground: [`Ground::factor`] for a wagon.
     pub fn crossing_factor(&self) -> f64 {
-        if self.bridged && self.water_share > IMPASSABLE {
-            return 1.0;
-        }
-        if self.water_share > IMPASSABLE || self.relief >= CLIFF {
-            return f64::INFINITY;
-        }
-        (1.0 + 2.0 * self.water_share) * (1.0 + self.relief / RELIEF_PER_FACTOR)
+        self.factor(Carrier::Wagon)
     }
 
-    /// As [`Ground::crossing_factor`]; `boat`: a hex a caravan can't walk is sailed at [`BOAT_FACTOR`].
-    pub fn factor(&self, boat: bool) -> f64 {
-        let hard = self.crossing_factor();
-        if boat && hard.is_infinite() {
+    /// How much harder the hex is for `carrier` to cross than open ground: 1 on dry, flat land, up to 2 with water to
+    /// skirt, as hard again every [`RELIEF_PER_FACTOR`] blocks of relief, infinite when mostly water or past its cliff;
+    /// a river cutting it is a wagon's end and a llama's ford ([`Gait::ford`]); a bridged hex that's mostly water, or
+    /// cut by a river, is open ground. By boat, a hex that can't be walked is sailed at [`BOAT_FACTOR`].
+    pub fn factor(&self, carrier: Carrier) -> f64 {
+        if self.bridged && (self.water_share > IMPASSABLE || self.river) {
+            return 1.0;
+        }
+        let gait = carrier.gait();
+        let hard = if self.water_share > IMPASSABLE || self.relief >= gait.cliff {
+            f64::INFINITY
+        } else {
+            let ford = if self.river { gait.ford } else { 1.0 };
+            (1.0 + 2.0 * self.water_share) * (1.0 + self.relief / RELIEF_PER_FACTOR) * ford
+        };
+        if carrier == Carrier::Boat && hard.is_infinite() {
             BOAT_FACTOR
         } else {
             hard
@@ -310,24 +368,26 @@ impl Map {
         self.trails.contains(&hex)
     }
 
-    /// What a road along `hexes` (start to goal) costs in road food over the map as it is now, at `per_hex` a hex of
-    /// open ground and no tolls: as [`Map::plan`] prices each step. Infinite where a step has no way now.
-    pub fn path_cost(&self, hexes: &[Hex], per_hex: f64) -> f64 {
+    /// What a road along `hexes` (start to goal) costs `carrier` in road food over the map as it is now, at `per_hex` a
+    /// hex of open ground and no tolls: as [`Map::plan`] prices each step. Infinite where a step has no way now.
+    pub fn path_cost(&self, hexes: &[Hex], per_hex: f64, carrier: Carrier) -> f64 {
         let (Some(&start), Some(&goal)) = (hexes.first(), hexes.last()) else { return 0.0 };
-        hexes.windows(2).map(|w| per_hex * self.step(start, goal, w[0], w[1], false)).sum()
+        hexes.windows(2).map(|w| per_hex * self.step(start, goal, w[0], w[1], carrier)).sum()
     }
 
-    /// How much a step from `hex` into `next` costs a share of open ground, on a road from `start` to `goal`: the next
-    /// hex's ground and the climb, a trail easing both; into or out of the road's own ends, only the climb, and never
-    /// none (infinite: no way).
-    fn step(&self, start: Hex, goal: Hex, hex: Hex, next: Hex, boat: bool) -> f64 {
+    /// How much a step from `hex` into `next` costs `carrier` a share of open ground, on a road from `start` to `goal`:
+    /// the next hex's ground and the climb, a trail easing both; into or out of the road's own ends, only the climb,
+    /// and never none (infinite: no way).
+    fn step(&self, start: Hex, goal: Hex, hex: Hex, next: Hex, carrier: Carrier) -> f64 {
         let end = next == goal || next == start;
-        // A wagon climbs gently: a step too steep has no way (by boat, water is level). Into or out of the route's own
-        // ends, only harder going: a town on a hill's edge is reached and left by its steep flank; one in the middle
-        // of a plateau isn't.
-        let climb = if boat && self.ground(next).factor(false).is_infinite() { 1.0 } else { self.climb_factor(hex, next) };
-        let climb = if (end || hex == start) && climb.is_infinite() { 1.0 + MAX_GRADE / GRADE_PER_FACTOR } else { climb };
-        let hard = if end { climb } else { self.ground(next).factor(boat) * climb };
+        // A wagon climbs gently, a llama less so: a step too steep has no way (by boat, water is level). Into or out of
+        // the route's own ends, only harder going: a town on a hill's edge is reached and left by its steep flank; one
+        // in the middle of a plateau isn't.
+        let gait = carrier.gait();
+        let sailed = carrier == Carrier::Boat && self.ground(next).factor(Carrier::Wagon).is_infinite();
+        let climb = if sailed { 1.0 } else { self.climb_factor(hex, next, carrier) };
+        let climb = if (end || hex == start) && climb.is_infinite() { 1.0 + gait.max_grade / GRADE_PER_FACTOR } else { climb };
+        let hard = if end { climb } else { self.ground(next).factor(carrier) * climb };
         if self.trail(next) && hard.is_finite() && hard > 1.0 {
             1.0 + (hard - 1.0) * (1.0 - TRAIL_EASE)
         } else {
@@ -340,12 +400,12 @@ impl Map {
         self.ground.entry(hex).or_default().height = height;
     }
 
-    /// How much harder the step from `here` to `next` is for its climb: 1 on the level or where either height is
-    /// unknown, as hard again every [`GRADE_PER_FACTOR`] of grade, infinite past [`MAX_GRADE`].
-    pub fn climb_factor(&self, here: Hex, next: Hex) -> f64 {
+    /// How much harder the step from `here` to `next` is for `carrier`'s climb: 1 on the level or where either height
+    /// is unknown, as hard again every [`GRADE_PER_FACTOR`] of grade, infinite past its [`Gait::max_grade`].
+    pub fn climb_factor(&self, here: Hex, next: Hex, carrier: Carrier) -> f64 {
         let (Some(a), Some(b)) = (self.ground(here).height, self.ground(next).height) else { return 1.0 };
         let grade = (b - a).abs() / ACROSS;
-        if grade > MAX_GRADE + 1e-9 {
+        if grade > carrier.gait().max_grade + 1e-9 {
             f64::INFINITY
         } else {
             1.0 + grade / GRADE_PER_FACTOR
@@ -362,6 +422,11 @@ impl Map {
         self.ground.get(&hex).map_or(Land::Plains, |g| g.land)
     }
 
+    /// Whether a river cuts the hex, keeping the rest of its ground.
+    pub fn set_river(&mut self, hex: Hex, river: bool) {
+        self.ground.entry(hex).or_default().river = river;
+    }
+
     /// A finished bridge on the hex.
     pub fn bridge(&mut self, hex: Hex) {
         self.ground.entry(hex).or_default().bridged = true;
@@ -375,13 +440,14 @@ impl Map {
     ///
     /// `per_hex`: road food both ways across a hex of open ground; `value`: the coins the caravan expects to carry home
     /// (tolls are a share of it); `posts`: toll posts; `free`: towns that charge this caravan nothing (the route's own
-    /// ends); `boat`: it can sail water; `avoid`: hexes treated as impassable (the start and goal never are).
+    /// ends); `carrier`: what goes, and so the way it can take; `avoid`: hexes treated as impassable (the start and goal
+    /// never are).
     #[allow(clippy::too_many_arguments)]
     pub fn plan(&self, start: Hex, goal: Hex, per_hex: f64, value: f64, posts: &Posts, free: &BTreeSet<TownId>,
-            boat: bool, avoid: &BTreeSet<Hex>) -> Option<Path> {
+            carrier: Carrier, avoid: &BTreeSet<Hex>) -> Option<Path> {
         let direct = start.distance(goal);
         // The cheapest a hex can cost, a share of open ground: the heuristic's scale (see the module's note).
-        let cheapest = if boat { BOAT_FACTOR.min(1.0) } else { 1.0 };
+        let cheapest = if carrier == Carrier::Boat { BOAT_FACTOR.min(1.0) } else { 1.0 };
         let guess = |hex: Hex| hex.distance(goal) as f64 * per_hex * cheapest;
         let mut open = OpenSet::default();
         let mut best: BTreeMap<Hex, f64> = BTreeMap::new();
@@ -411,7 +477,7 @@ impl Map {
                 if !end && avoid.contains(&next) {
                     continue;
                 }
-                let hard = self.step(start, goal, hex, next, boat);
+                let hard = self.step(start, goal, hex, next, carrier);
                 if hard.is_infinite() {
                     continue;
                 }

@@ -99,10 +99,12 @@ pub enum Input {
     /// A hex's ground as the host surveyed it (`territory/Terrain.java`: its chunks' surface columns under water and
     /// their heights, a chunk never loaded guessed from its biome): its share under water (0 to 1), its relief in blocks
     /// (highest surface less lowest), what its land gives (its biome at its centre) and the height of its ground (its
-    /// chunks' lowest surfaces' median; none where none is surveyed). Caravans go round water and cliffs by it and
-    /// climb from hex to hex only so steeply (`map.rs`), a town's hands gather what its land gives (`kit.rs`) and
-    /// bridges go where it's wet (`works.rs`). A bridge the core finished stays.
-    Ground { hex: HexAt, water: f64, relief: f64, land: LandKind, height: Option<f64> },
+    /// chunks' lowest surfaces' median; none where none is surveyed), and whether a river cuts it (`Terrain.river`:
+    /// water parting its land into sides that each alone reach some neighbour). Caravans go round water and cliffs by
+    /// it and climb from hex to hex only so steeply, a wagon crosses a river only by a bridge and llamas ford it
+    /// (`map.rs`), a town's hands gather what its land gives (`kit.rs`) and bridges go where it's wet (`works.rs`). A
+    /// bridge the core finished stays.
+    Ground { hex: HexAt, water: f64, relief: f64, land: LandKind, height: Option<f64>, river: bool },
     /// The crop plots the host counted in one chunk's part of a hex (`territory/Crops.java`: crop blocks within 16 of
     /// the bell's height, by the good working them gives), every crop there (one not listed has none). The core keeps
     /// each chunk's last count, so a chunk not loaded keeps what it last had; a town's fields are the plots counted in

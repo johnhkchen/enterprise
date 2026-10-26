@@ -5,10 +5,10 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * A hex's ground as the core has it: its share under water, its relief in blocks, what its land gives, and whether a
- * finished bridge stands on it.
+ * A hex's ground as the core has it: its share under water, its relief in blocks, what its land gives, whether a
+ * finished bridge stands on it, its ground's height, and whether a river cuts it.
  */
-public record GroundView(HexAt hex, double water, double relief, LandKind land, boolean bridged, Optional<Double> height) {
+public record GroundView(HexAt hex, double water, double relief, LandKind land, boolean bridged, Optional<Double> height, boolean river) {
     public GroundView {
         Objects.requireNonNull(hex, "hex");
         Objects.requireNonNull(land, "land");
@@ -22,10 +22,11 @@ public record GroundView(HexAt hex, double water, double relief, LandKind land, 
         this.land.encode(out);
         out.bool(this.bridged);
         out.option(this.height, PostcardOut::f64);
+        out.bool(this.river);
     }
 
     public static GroundView decode(PostcardIn in) {
-        return new GroundView(HexAt.decode(in), in.f64(), in.f64(), LandKind.decode(in), in.bool(), in.option(PostcardIn::f64));
+        return new GroundView(HexAt.decode(in), in.f64(), in.f64(), LandKind.decode(in), in.bool(), in.option(PostcardIn::f64), in.bool());
     }
 
     public byte[] toBytes() {

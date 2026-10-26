@@ -29,6 +29,10 @@ import net.neoforged.neoforge.event.level.ChunkEvent;
  * surface water?), and the counts are kept; a chunk never loaded is guessed from its biome (ocean is water, a river is
  * half water). A hex mostly under water is impassable, so a lake or an arm of the sea makes the land around it a
  * chokepoint. Only counts that differ from the biome's guess are stored.
+ * <p>
+ * Rivers: which of those 16 columns are water is kept too (a chunk never loaded guessed from its biome at each, a
+ * river's or an ocean's being water), and a hex whose water parts its land into sides that each alone lead to some
+ * neighbour is cut by a river ({@link #river}): the core's wagons cross it only by a bridge, its llamas ford it.
  */
 public final class Terrain extends SavedData {
     private static final String NAME = "enterprise_terrain";
@@ -48,6 +52,10 @@ public final class Terrain extends SavedData {
     private final Map<ResourceKey<Level>, Map<Long, Integer>> heights = new HashMap<>();
     // dimension -> chunk -> its columns a built wall stands in (256 bits, x + 16 z); only chunks with any
     private final Map<ResourceKey<Level>, Map<Long, long[]>> walls = new HashMap<>();
+    // dimension -> chunk -> which of its 16 survey columns are water (bit x / 4 + 4 (z / 4)); only where not the guess
+    private final Map<ResourceKey<Level>, Map<Long, Integer>> wet = new HashMap<>();
+    // Wet-column guesses for chunks never surveyed, from the biome at each column (deterministic, not saved).
+    private final Map<ResourceKey<Level>, Map<Long, Integer>> wetGuesses = new HashMap<>();
     // Height guesses for chunks never surveyed: the generator's surface at the chunk's middle (deterministic, not saved).
     private final Map<ResourceKey<Level>, Map<Long, Integer>> heightGuesses = new HashMap<>();
     // Biome guesses for chunks never surveyed (deterministic, so not saved).
@@ -67,7 +75,94 @@ public final class Terrain extends SavedData {
             terrain.record(level, chunk, survey(event.getChunk()));
             terrain.recordHeights(level, chunk, surveyHeights(event.getChunk()));
             terrain.recordWalls(level, chunk, surveyWalls(event.getChunk()));
+            terrain.recordWet(level, chunk, surveyWet(event.getChunk()));
         }
+    }
+
+    /** Which surface columns of the chunk's 4 x 4 survey grid are water (or any fluid): bit {@code x / 4 + 4 (z / 4)}. */
+    public static int surveyWet(ChunkAccess chunk) {
+        int bits = 0;
+        for (int x = 2; x < 16; x += 4) {
+            for (int z = 2; z < 16; z += 4) {
+                int top = chunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
+                if (!chunk.getFluidState(chunk.getPos().getBlockAt(x, top, z)).isEmpty()) {
+                    bits |= 1 << (x / 4 + 4 * (z / 4));
+                }
+            }
+        }
+        return bits;
+    }
+
+    /** A chunk's surveyed wet columns ({@link #surveyWet}); stored only where they differ from the biomes' guess. */
+    public void recordWet(ServerLevel level, long chunk, int bits) {
+        Map<Long, Integer> surveyed = wet.computeIfAbsent(level.dimension(), d -> new HashMap<>());
+        Integer before = bits == wetGuess(level, chunk) ? surveyed.remove(chunk) : surveyed.put(chunk, bits);
+        if (before == null ? surveyed.containsKey(chunk) : before != bits) {
+            setDirty();
+        }
+    }
+
+    /** Open survey cells on the edge a neighbour must have, and a side of the river touch it by, to count. */
+    public static final int RIVER_TOUCH = 2;
+
+    /**
+     * Whether a river cuts the hex: its survey cells (4 x 4 blocks each, a chunk's 16 survey columns) that are dry
+     * flooded into stretches of land, and two stretches, each the only way into some neighbouring hex
+     * ({@link #walledShut}'s reckoning, the water standing for the wall). A river along the hex's edge, a pond or a
+     * lake inside it leave one side: no cut. A hex mostly water isn't a river's: it's impassable as it is.
+     */
+    public boolean river(ServerLevel level, Hex hex) {
+        if (waterShare(level, hex) > IMPASSABLE) {
+            return false;
+        }
+        Map<Long, Integer> surveyed = wet.getOrDefault(level.dimension(), Map.of());
+        java.util.List<Long> chunks = chunksOf(hex);
+        int[] box = box(chunks);
+        int w = (box[2] - box[0] + 1) * 4, h = (box[3] - box[1] + 1) * 4;
+        byte[] cell = new byte[w * h];
+        boolean any = false;
+        for (long c : chunks) {
+            Integer counted = surveyed.get(c);
+            int bits = counted != null ? counted : wetGuess(level, c);
+            any |= bits != 0;
+            int ox = (ChunkPos.getX(c) - box[0]) * 4, oz = (ChunkPos.getZ(c) - box[1]) * 4;
+            for (int i = 0; i < 16; i++) {
+                cell[(ox + (i & 3)) + w * (oz + (i >> 2))] = (byte) ((bits & (1 << i)) != 0 ? 2 : 1);
+            }
+        }
+        return any && ways(cell, w, h, box[0] * 16, box[1] * 16, 4, RIVER_TOUCH) > 1;
+    }
+
+    /** The chunks' least and greatest x and z: {minX, minZ, maxX, maxZ}. */
+    private static int[] box(java.util.List<Long> chunks) {
+        int minX = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
+        for (long c : chunks) {
+            minX = Math.min(minX, ChunkPos.getX(c));
+            maxX = Math.max(maxX, ChunkPos.getX(c));
+            minZ = Math.min(minZ, ChunkPos.getZ(c));
+            maxZ = Math.max(maxZ, ChunkPos.getZ(c));
+        }
+        return new int[] {minX, minZ, maxX, maxZ};
+    }
+
+    /** A chunk never surveyed: which of its survey columns stand in a river's or an ocean's biome. */
+    private int wetGuess(ServerLevel level, long chunk) {
+        return wetGuesses.computeIfAbsent(level.dimension(), d -> new HashMap<>()).computeIfAbsent(chunk, c -> {
+            ChunkPos pos = new ChunkPos(c);
+            var source = level.getChunkSource();
+            int bits = 0;
+            for (int x = 2; x < 16; x += 4) {
+                for (int z = 2; z < 16; z += 4) {
+                    var biome = source.getGenerator().getBiomeSource().getNoiseBiome(
+                            QuartPos.fromBlock(pos.getBlockX(x)), QuartPos.fromBlock(level.getSeaLevel()),
+                            QuartPos.fromBlock(pos.getBlockZ(z)), source.randomState().sampler());
+                    if (biome.is(BiomeTags.IS_RIVER) || biome.is(BiomeTags.IS_OCEAN) || biome.is(BiomeTags.IS_DEEP_OCEAN)) {
+                        bits |= 1 << (x / 4 + 4 * (z / 4));
+                    }
+                }
+            }
+            return bits;
+        });
     }
 
     /** Surface columns of the chunk's 4 x 4 survey grid that are water (or any fluid). */
@@ -168,25 +263,29 @@ public final class Terrain extends SavedData {
         if (chunks.stream().noneMatch(surveyed::containsKey)) {
             return false;
         }
-        int minX = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
-        for (long c : chunks) {
-            minX = Math.min(minX, ChunkPos.getX(c));
-            maxX = Math.max(maxX, ChunkPos.getX(c));
-            minZ = Math.min(minZ, ChunkPos.getZ(c));
-            maxZ = Math.max(maxZ, ChunkPos.getZ(c));
-        }
-        int w = (maxX - minX + 1) * 16, h = (maxZ - minZ + 1) * 16;
+        int[] box = box(chunks);
+        int w = (box[2] - box[0] + 1) * 16, h = (box[3] - box[1] + 1) * 16;
         // 0: not the hex's; 1: open; 2: wall
         byte[] cell = new byte[w * h];
         for (long c : chunks) {
             long[] bits = surveyed.get(c);
-            int ox = (ChunkPos.getX(c) - minX) * 16, oz = (ChunkPos.getZ(c) - minZ) * 16;
+            int ox = (ChunkPos.getX(c) - box[0]) * 16, oz = (ChunkPos.getZ(c) - box[1]) * 16;
             for (int i = 0; i < 256; i++) {
                 boolean walled = bits != null && (bits[i >> 6] & (1L << (i & 63))) != 0;
                 cell[(ox + (i & 15)) + w * (oz + (i >> 4))] = (byte) (walled ? 2 : 1);
             }
         }
-        int baseX = minX * 16, baseZ = minZ * 16;
+        int ways = ways(cell, w, h, box[0] * 16, box[1] * 16, 1, WALLED_TOUCH);
+        return ways < 0 || ways > 1;
+    }
+
+    /**
+     * A hex's cells ({@code cell}: 0 not the hex's, 1 open, 2 shut; {@code w} by {@code h}, each {@code scale} blocks
+     * a side, the first at block {@code baseX, baseZ}) flooded from each open cell into stretches, and how many are the
+     * way into some neighbouring hex: the only stretch touching it by {@code touch} cells (or the one touching it most,
+     * when none does by that many). -1 when no neighbour is touched by that many: shut in all round.
+     */
+    static int ways(byte[] cell, int w, int h, int baseX, int baseZ, int scale, int touch) {
         Map<Long, Hex> beyond = new HashMap<>(); // the hex of each chunk outside this one's, by chunk
         // Each stretch of open ground's touches on each neighbour, and every neighbour's in all.
         java.util.List<Map<Hex, Integer>> touches = new java.util.ArrayList<>();
@@ -207,7 +306,7 @@ public final class Terrain extends SavedData {
                 for (int d = 0; d < 4; d++) {
                     int nx = x + (d == 0 ? 1 : d == 1 ? -1 : 0), nz = z + (d == 2 ? 1 : d == 3 ? -1 : 0);
                     if (nx < 0 || nz < 0 || nx >= w || nz >= h || cell[nx + w * nz] == 0) {
-                        long chunk = ChunkPos.asLong((baseX + nx) >> 4, (baseZ + nz) >> 4);
+                        long chunk = ChunkPos.asLong((baseX + nx * scale) >> 4, (baseZ + nz * scale) >> 4);
                         Hex next = beyond.computeIfAbsent(chunk, c -> {
                             ChunkPos pos = new ChunkPos(c);
                             return Hex.at(pos.getMiddleBlockX() + 0.5, pos.getMiddleBlockZ() + 0.5);
@@ -226,11 +325,11 @@ public final class Terrain extends SavedData {
             touches.add(touched);
         }
         // A stretch of open ground is the way to a neighbour when it's the only one touching it (or touches it most,
-        // when none touches it by WALLED_TOUCH). Two such ways that aren't one stretch: the hex is shut.
-        java.util.List<Hex> ways = total.entrySet().stream().filter(e -> e.getValue() >= WALLED_TOUCH)
+        // when none touches it by `touch`). Two such ways that aren't one stretch: the hex is parted.
+        java.util.List<Hex> ways = total.entrySet().stream().filter(e -> e.getValue() >= touch)
                 .map(Map.Entry::getKey).toList();
         if (ways.isEmpty()) {
-            return true; // walled in all round
+            return -1;
         }
         java.util.Set<Integer> only = new java.util.HashSet<>();
         for (Hex way : ways) {
@@ -240,7 +339,7 @@ public final class Terrain extends SavedData {
                 if (most < 0 || n > touches.get(most).getOrDefault(way, 0)) {
                     most = i;
                 }
-                if (n >= WALLED_TOUCH) {
+                if (n >= touch) {
                     touching++;
                     last = i;
                 }
@@ -249,7 +348,7 @@ public final class Terrain extends SavedData {
                 only.add(touching == 1 ? last : most);
             }
         }
-        return only.size() > 1;
+        return only.size();
     }
 
     /** A chunk's surveyed lowest and highest surface (a flat one too: it marks its hex's ground level). */
@@ -420,6 +519,15 @@ public final class Terrain extends SavedData {
             built.add(entry);
         });
         tag.put("walls", built);
+        ListTag rivers = new ListTag();
+        wet.forEach((dimension, chunks) -> {
+            CompoundTag entry = new CompoundTag();
+            entry.putString("dimension", dimension.location().toString());
+            entry.putLongArray("chunks", chunks.keySet().stream().mapToLong(Long::longValue).toArray());
+            entry.putIntArray("bits", chunks.values().stream().mapToInt(Integer::intValue).toArray());
+            rivers.add(entry);
+        });
+        tag.put("wet", rivers);
         return tag;
     }
 
@@ -456,6 +564,17 @@ public final class Terrain extends SavedData {
             Map<Long, long[]> chunks = terrain.walls.computeIfAbsent(dimension, d -> new HashMap<>());
             for (int i = 0; i < positions.length && 4 * i + 4 <= bits.length; i++) {
                 chunks.put(positions[i], java.util.Arrays.copyOfRange(bits, 4 * i, 4 * i + 4));
+            }
+        }
+        for (Tag t : tag.getList("wet", Tag.TAG_COMPOUND)) {
+            CompoundTag entry = (CompoundTag) t;
+            ResourceKey<Level> dimension =
+                    ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(entry.getString("dimension")));
+            long[] positions = entry.getLongArray("chunks");
+            int[] bits = entry.getIntArray("bits");
+            Map<Long, Integer> chunks = terrain.wet.computeIfAbsent(dimension, d -> new HashMap<>());
+            for (int i = 0; i < Math.min(positions.length, bits.length); i++) {
+                chunks.put(positions[i], bits[i]);
             }
         }
         return terrain;

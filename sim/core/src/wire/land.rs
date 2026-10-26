@@ -93,8 +93,8 @@ pub struct WorkView {
     pub shown: f64,
 }
 
-/// A hex's ground as the core has it: its share under water, its relief in blocks, what its land gives, and whether a
-/// finished bridge stands on it.
+/// A hex's ground as the core has it: its share under water, its relief in blocks, what its land gives, whether a
+/// finished bridge stands on it, its ground's height, and whether a river cuts it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct GroundView {
     pub hex: HexAt,
@@ -103,4 +103,5 @@ pub struct GroundView {
     pub land: LandKind,
     pub bridged: bool,
     pub height: Option<f64>,
+    pub river: bool,
 }

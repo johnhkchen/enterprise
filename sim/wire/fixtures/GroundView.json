@@ -8,7 +8,8 @@
     "relief": 0.0,
     "land": "Plains",
     "bridged": true,
-    "height": -0.0
+    "height": -0.0,
+    "river": false
   },
   {
     "hex": {
@@ -19,7 +20,8 @@
     "relief": 1.0,
     "land": "Woods",
     "bridged": false,
-    "height": null
+    "height": null,
+    "river": true
   },
   {
     "hex": {
@@ -30,7 +32,8 @@
     "relief": 0.1,
     "land": "Taiga",
     "bridged": false,
-    "height": -0.1
+    "height": -0.1,
+    "river": false
   },
   {
     "hex": {
@@ -41,7 +44,8 @@
     "relief": 0.05,
     "land": "Desert",
     "bridged": true,
-    "height": null
+    "height": null,
+    "river": false
   },
   {
     "hex": {
@@ -52,7 +56,8 @@
     "relief": 63.999,
     "land": "Shore",
     "bridged": false,
-    "height": -63.999
+    "height": -63.999,
+    "river": false
   },
   {
     "hex": {
@@ -63,7 +68,8 @@
     "relief": 1e-300,
     "land": "Hills",
     "bridged": false,
-    "height": null
+    "height": null,
+    "river": true
   },
   {
     "hex": {
@@ -74,6 +80,7 @@
     "relief": 4503599627370496.0,
     "land": "Water",
     "bridged": true,
-    "height": -4503599627370496.0
+    "height": -4503599627370496.0,
+    "river": false
   }
 ]

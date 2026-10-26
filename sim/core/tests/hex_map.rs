@@ -3,7 +3,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use enterprise_core::map::{self, Ground, Post, Posts};
+use enterprise_core::map::{self, Carrier, Ground, Post, Posts};
 use enterprise_core::{Content, Good, Hex, Map, Society};
 
 const DAY: u64 = 24_000;
@@ -98,7 +98,7 @@ fn points_round_into_their_hex_as_the_mod_rounds() {
 // parity: TollTests.withNoTollsThePathIsStraight
 #[test]
 fn with_no_tolls_the_path_is_straight() {
-    let path = Map::default().plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), false, &none()).unwrap();
+    let path = Map::default().plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), Carrier::Wagon, &none()).unwrap();
     assert_eq!(path.hexes.len() as i32, START.distance(GOAL) + 1, "straight: {:?}", path.hexes);
     assert!((path.cost - 12.0 * PER_HEX).abs() < 1e-9, "12 hexes of road food: {}", path.cost);
     assert_eq!(path.blocks(), 960.0);
@@ -108,7 +108,7 @@ fn with_no_tolls_the_path_is_straight() {
 #[test]
 fn a_pricey_town_is_gone_around() {
     let posts = town_across_the_road(0.25); // 250 a crossing
-    let path = Map::default().plan(START, GOAL, PER_HEX, VALUE, &posts, &nobody(), false, &none()).unwrap();
+    let path = Map::default().plan(START, GOAL, PER_HEX, VALUE, &posts, &nobody(), Carrier::Wagon, &none()).unwrap();
     assert!(path.hexes.iter().all(|h| !posts.contains_key(h)), "the path skirts the town: {:?}", path.hexes);
     assert!(path.hexes.len() as i32 > START.distance(GOAL) + 1, "taking a few more hexes");
     assert!(path.cost < 12.0 * PER_HEX + 250.0, "cheaper than the toll: {}", path.cost);
@@ -118,7 +118,7 @@ fn a_pricey_town_is_gone_around() {
 #[test]
 fn a_cheap_toll_is_paid() {
     let posts = town_across_the_road(0.01); // 10 a crossing, less than any detour
-    let path = Map::default().plan(START, GOAL, PER_HEX, VALUE, &posts, &nobody(), false, &none()).unwrap();
+    let path = Map::default().plan(START, GOAL, PER_HEX, VALUE, &posts, &nobody(), Carrier::Wagon, &none()).unwrap();
     assert_eq!(path.hexes.len() as i32, START.distance(GOAL) + 1, "straight through: {:?}", path.hexes);
     assert!((path.cost - (12.0 * PER_HEX + 10.0)).abs() < 1e-9, "the toll once, not at each post: {}", path.cost);
 }
@@ -127,12 +127,12 @@ fn a_cheap_toll_is_paid() {
 fn a_route_s_own_towns_charge_it_nothing_and_a_post_charges_its_fee() {
     let posts = town_across_the_road(0.25);
     let free: BTreeSet<usize> = [7].into_iter().collect();
-    let path = Map::default().plan(START, GOAL, PER_HEX, VALUE, &posts, &free, false, &none()).unwrap();
+    let path = Map::default().plan(START, GOAL, PER_HEX, VALUE, &posts, &free, Carrier::Wagon, &none()).unwrap();
     assert_eq!(path.hexes.len(), 13, "free: straight through");
     assert!((path.cost - 12.0 * PER_HEX).abs() < 1e-9);
     // One post with a fee and no rate: the fee alone, once.
     let one: Posts = [(Hex::new(1, 0), Post { owner: 3, rate: 0.0, fee: 2.0 })].into_iter().collect();
-    let path = Map::default().plan(Hex::new(0, 0), Hex::new(2, 0), 100.0, VALUE, &one, &nobody(), false, &none()).unwrap();
+    let path = Map::default().plan(Hex::new(0, 0), Hex::new(2, 0), 100.0, VALUE, &one, &nobody(), Carrier::Wagon, &none()).unwrap();
     assert_eq!(path.hexes, vec![Hex::new(0, 0), Hex::new(1, 0), Hex::new(2, 0)], "2 is cheaper than going round");
     assert!((path.cost - 202.0).abs() < 1e-9, "{}", path.cost);
     // The mod's rule: charged on stepping onto a town's post from somewhere that isn't its post.
@@ -145,11 +145,11 @@ fn a_route_s_own_towns_charge_it_nothing_and_a_post_charges_its_fee() {
 #[test]
 fn water_cant_be_crossed() {
     let m = river(true);
-    let path = m.plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), false, &none()).unwrap();
+    let path = m.plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), Carrier::Wagon, &none()).unwrap();
     assert!(path.hexes.contains(&BRIDGE), "the way over is the bridge: {:?}", path.hexes);
     let avoid: BTreeSet<Hex> = [BRIDGE].into_iter().collect();
-    assert!(m.plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), false, &avoid).is_none(), "no way without it");
-    assert!(river(false).plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), false, &none()).is_none(),
+    assert!(m.plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), Carrier::Wagon, &avoid).is_none(), "no way without it");
+    assert!(river(false).plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), Carrier::Wagon, &none()).is_none(),
         "no bridge, no way");
 }
 
@@ -183,7 +183,7 @@ fn a_route_finds_the_pass_through_a_mountain_range() {
             m.set_ground(Hex::new(4, r), 0.0, 40.0);
         }
     }
-    let path = m.plan(start, goal, 1.0, 0.0, &Posts::new(), &nobody(), false, &none()).unwrap();
+    let path = m.plan(start, goal, 1.0, 0.0, &Posts::new(), &nobody(), Carrier::Wagon, &none()).unwrap();
     assert!(path.hexes.contains(&pass), "through the pass: {:?}", path.hexes);
 }
 
@@ -227,16 +227,16 @@ fn a_bridged_hex_is_open_ground() {
 #[test]
 fn a_fisherman_sails_where_caravans_cant_walk() {
     let m = river(false);
-    assert!(m.plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), false, &none()).is_none(), "no way by land");
-    let by_boat = m.plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), true, &none()).unwrap();
+    assert!(m.plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), Carrier::Wagon, &none()).is_none(), "no way by land");
+    let by_boat = m.plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), Carrier::Boat, &none()).unwrap();
     assert!(by_boat.hexes.iter().any(|h| h.q == 6), "a Fisherman sails across: {:?}", by_boat.hexes);
     assert!((by_boat.cost - PER_HEX * (11.0 + map::BOAT_FACTOR)).abs() < 1e-9, "the water hex at 0.8: {}", by_boat.cost);
-    assert_eq!(Ground { water_share: 1.0, ..Default::default() }.factor(true), map::BOAT_FACTOR);
-    assert_eq!(Ground { water_share: 0.4, ..Default::default() }.factor(true), 1.8, "walkable water is walked");
+    assert_eq!(Ground { water_share: 1.0, ..Default::default() }.factor(Carrier::Boat), map::BOAT_FACTOR);
+    assert_eq!(Ground { water_share: 0.4, ..Default::default() }.factor(Carrier::Boat), 1.8, "walkable water is walked");
 }
 
 /// The cheapest cost by Dijkstra (no heuristic), over the same corridor and ground, no tolls.
-fn dijkstra(m: &Map, start: Hex, goal: Hex, per_hex: f64, boat: bool) -> Option<f64> {
+fn dijkstra(m: &Map, start: Hex, goal: Hex, per_hex: f64, boat: Carrier) -> Option<f64> {
     let direct = start.distance(goal);
     let mut best: BTreeMap<Hex, f64> = [(start, 0.0)].into_iter().collect();
     let mut done = BTreeSet::new();
@@ -279,12 +279,12 @@ fn the_plan_is_the_cheapest_way_by_land_and_by_boat() {
             }
         }
         let goal = Hex::new(8, (next() * 6.0) as i32 - 3);
-        for boat in [false, true] {
+        for boat in [Carrier::Wagon, Carrier::Boat] {
             let plan = m.plan(START, goal, 1.0, 0.0, &Posts::new(), &nobody(), boat, &none());
             let want = dijkstra(&m, START, goal, 1.0, boat);
-            assert_eq!(plan.is_some(), want.is_some(), "boat {boat}: found the same");
+            assert_eq!(plan.is_some(), want.is_some(), "{boat:?}: found the same");
             if let (Some(p), Some(w)) = (plan, want) {
-                assert!((p.cost - w).abs() < 1e-9, "boat {boat}: {} against {w}", p.cost);
+                assert!((p.cost - w).abs() < 1e-9, "{boat:?}: {} against {w}", p.cost);
                 let walked: f64 = p.hexes.windows(2).map(|s| {
                     if s[1] == goal { 1.0 } else { m.ground(s[1]).factor(boat) }
                 }).sum();
@@ -374,15 +374,15 @@ fn a_road_goes_around_and_costs_more_or_there_is_none() {
 fn a_wagon_climbs_gently_from_hex_to_hex() {
     let mut m = Map::default();
     let (a, b) = (Hex::new(0, 0), Hex::new(1, 0));
-    assert_eq!(m.climb_factor(a, b), 1.0, "heights unknown: no climb counted");
+    assert_eq!(m.climb_factor(a, b, Carrier::Wagon), 1.0, "heights unknown: no climb counted");
     m.set_height(a, Some(-60.0));
     m.set_height(b, Some(-52.0));
-    assert_eq!(m.climb_factor(a, b), 1.5, "8 blocks over a hex: half as hard again");
-    assert_eq!(m.climb_factor(b, a), 1.5, "down as up: a wagon brakes");
+    assert_eq!(m.climb_factor(a, b, Carrier::Wagon), 1.5, "8 blocks over a hex: half as hard again");
+    assert_eq!(m.climb_factor(b, a, Carrier::Wagon), 1.5, "down as up: a wagon brakes");
     m.set_height(b, Some(-44.0));
-    assert_eq!(m.climb_factor(a, b), 2.0, "16 blocks: the steepest a wagon takes, twice as hard");
+    assert_eq!(m.climb_factor(a, b, Carrier::Wagon), 2.0, "16 blocks: the steepest a wagon takes, twice as hard");
     m.set_height(b, Some(-43.0));
-    assert!(m.climb_factor(a, b).is_infinite(), "17: too steep");
+    assert!(m.climb_factor(a, b, Carrier::Wagon).is_infinite(), "17: too steep");
 }
 
 #[test]
@@ -399,29 +399,79 @@ fn a_steep_hill_is_gone_around_and_a_town_on_its_edge_still_reached() {
     for &h in &hill {
         m.set_height(h, Some(-30.0));
     }
-    let path = m.plan(start, goal, 1.0, 0.0, &Posts::new(), &nobody(), false, &none()).unwrap();
+    let path = m.plan(start, goal, 1.0, 0.0, &Posts::new(), &nobody(), Carrier::Wagon, &none()).unwrap();
     assert!(path.hexes.iter().all(|h| !hill.contains(h)), "round the hill: {:?}", path.hexes);
     assert!(path.cost > 8.0, "longer than the straight way: {}", path.cost);
     // A town on the hill's edge is reached and left by its steep flank, only harder going; one in the middle of it
     // can't be reached by wagon.
     let edge = Hex::new(3, 0);
-    let up = m.plan(start, edge, 1.0, 0.0, &Posts::new(), &nobody(), false, &none()).unwrap();
+    let up = m.plan(start, edge, 1.0, 0.0, &Posts::new(), &nobody(), Carrier::Wagon, &none()).unwrap();
     assert_eq!(up.hexes.last(), Some(&edge));
-    assert!(m.plan(edge, start, 1.0, 0.0, &Posts::new(), &nobody(), false, &none()).is_some(), "and left");
-    assert!(m.plan(start, Hex::new(4, 0), 1.0, 0.0, &Posts::new(), &nobody(), false, &none()).is_none(), "the middle: no way");
+    assert!(m.plan(edge, start, 1.0, 0.0, &Posts::new(), &nobody(), Carrier::Wagon, &none()).is_some(), "and left");
+    assert!(m.plan(start, Hex::new(4, 0), 1.0, 0.0, &Posts::new(), &nobody(), Carrier::Wagon, &none()).is_none(), "the middle: no way");
+}
+
+#[test]
+fn a_river_stops_a_wagon_unless_bridged_and_llamas_ford_it() {
+    // A river along q = 6, every hex of it cut in two (its water a share too small to make it impassable).
+    let mut m = Map::default();
+    for r in -20..=20 {
+        m.set_ground(Hex::new(6, r), 0.2, 0.0);
+        m.set_river(Hex::new(6, r), true);
+    }
+    let ford = m.ground(BRIDGE);
+    assert!(ford.crossing_factor().is_infinite(), "no way for a wagon");
+    assert!((ford.factor(Carrier::Llama) - 1.4 * map::FORD_FACTOR).abs() < 1e-12, "llamas wade: {}", ford.factor(Carrier::Llama));
+    assert_eq!(ford.factor(Carrier::Boat), map::BOAT_FACTOR, "a boat sails it");
+    assert!(m.plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), Carrier::Wagon, &none()).is_none(), "no wagon road");
+    let llamas = m.plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), Carrier::Llama, &none()).unwrap();
+    assert!((llamas.cost - PER_HEX * (11.0 + 1.4 * map::FORD_FACTOR)).abs() < 1e-9, "straight through the ford: {}", llamas.cost);
+    m.bridge(BRIDGE);
+    let wagon = m.plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), Carrier::Wagon, &none()).unwrap();
+    assert!(wagon.hexes.contains(&BRIDGE), "over the bridge: {:?}", wagon.hexes);
+    assert!((wagon.cost - PER_HEX * 12.0).abs() < 1e-9, "a bridge is open ground: {}", wagon.cost);
+}
+
+#[test]
+fn llamas_climb_twice_as_steeply_and_pick_their_way_over_rougher_ground() {
+    let mut m = Map::default();
+    let (a, b) = (Hex::new(0, 0), Hex::new(1, 0));
+    m.set_height(a, Some(-60.0));
+    m.set_height(b, Some(-28.0));
+    assert!(m.climb_factor(a, b, Carrier::Wagon).is_infinite(), "32 blocks: too steep for a wagon");
+    assert_eq!(m.climb_factor(a, b, Carrier::Llama), 3.0, "the steepest a llama takes, three times as hard");
+    m.set_height(b, Some(-27.0));
+    assert!(m.climb_factor(a, b, Carrier::Llama).is_infinite(), "33: too steep for llamas too");
+    let rough = Ground { relief: 40.0, ..Default::default() };
+    assert!(rough.crossing_factor().is_infinite(), "a cliff to a wagon");
+    assert!((rough.factor(Carrier::Llama) - (1.0 + 40.0 / map::RELIEF_PER_FACTOR)).abs() < 1e-12, "hard going for llamas");
+    assert!(Ground { relief: map::LLAMA_CLIFF, ..Default::default() }.factor(Carrier::Llama).is_infinite(), "a mountain's face");
+    // The plateau of the steep-hill test: a llama string goes up its flank and over it, a wagon round.
+    let (start, goal) = (Hex::new(0, 0), Hex::new(8, 0));
+    let mut m = Map::default();
+    for q in -4..=12 {
+        for r in -8..=8 {
+            let up = (3..=5).contains(&q) && (-1..=1).contains(&r);
+            m.set_height(Hex::new(q, r), Some(if up { -30.0 } else { -60.0 }));
+        }
+    }
+    let wagon = m.plan(start, goal, 1.0, 0.0, &Posts::new(), &nobody(), Carrier::Wagon, &none()).unwrap();
+    assert!(wagon.hexes.len() > 9, "the wagon goes round: {:?}", wagon.hexes);
+    assert!(m.plan(start, Hex::new(4, 0), 1.0, 0.0, &Posts::new(), &nobody(), Carrier::Llama, &none()).is_some(),
+        "llamas reach the plateau's middle");
 }
 
 #[test]
 fn a_gentle_slope_is_climbed_and_costs_more_than_the_flat() {
     let (start, goal) = (Hex::new(0, 0), Hex::new(4, 0));
     let mut m = Map::default();
-    let flat = m.plan(start, goal, 1.0, 0.0, &Posts::new(), &nobody(), false, &none()).unwrap();
+    let flat = m.plan(start, goal, 1.0, 0.0, &Posts::new(), &nobody(), Carrier::Wagon, &none()).unwrap();
     for q in 0..=4 {
         for r in -6..=6 {
             m.set_height(Hex::new(q, r), Some(-60.0 + 8.0 * q as f64)); // 8 blocks a hex, all the way up
         }
     }
-    let slope = m.plan(start, goal, 1.0, 0.0, &Posts::new(), &nobody(), false, &none()).unwrap();
+    let slope = m.plan(start, goal, 1.0, 0.0, &Posts::new(), &nobody(), Carrier::Wagon, &none()).unwrap();
     assert_eq!(slope.hexes.len(), flat.hexes.len(), "straight up the slope");
     assert!((slope.cost - flat.cost * 1.5).abs() < 1e-9, "half again: {} vs {}", slope.cost, flat.cost);
 }
@@ -447,7 +497,7 @@ fn wagons_wear_a_trail_that_fades_unless_used_and_eases_the_way() {
     assert!(m.wear(&[hill], 64.0, 5 * DAY, DAY).is_empty(), "four at most");
     // The trail takes half of what the hill adds: 1.5 a hex, not 2.
     let path = [Hex::new(2, 0), hill, Hex::new(4, 0), Hex::new(5, 0)];
-    assert!((m.path_cost(&path, 1.0) - (1.5 + 1.0 + 1.0)).abs() < 1e-12, "{}", m.path_cost(&path, 1.0));
+    assert!((m.path_cost(&path, 1.0, Carrier::Wagon) - (1.5 + 1.0 + 1.0)).abs() < 1e-12, "{}", m.path_cost(&path, 1.0, Carrier::Wagon));
 }
 
 #[test]

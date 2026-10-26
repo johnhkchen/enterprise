@@ -247,7 +247,7 @@ impl Society {
     pub fn plan_road(&self, from: TownId, to: TownId) -> Option<crate::map::Path> {
         let (a, b) = (self.town_hex(from)?, self.town_hex(to)?);
         let free = [from, to].into_iter().collect();
-        self.map().plan(a, b, self.per_hex(), 0.0, &Default::default(), &free, false, &Default::default())
+        self.map().plan(a, b, self.per_hex(), 0.0, &Default::default(), &free, crate::map::Carrier::Wagon, &Default::default())
     }
 
     /// A road from one placed town to another over the map, a wagon every `every_days` on its timetable: its path is
@@ -307,7 +307,7 @@ impl Society {
             }
             let route = *self.world.get::<Route>(e).expect("a route");
             let Some(better) = self.plan_road(route.from_id, route.to_id) else { continue };
-            if better.hexes == path || better.cost >= self.map().path_cost(&path, per_hex) - 1e-9 {
+            if better.hexes == path || better.cost >= self.map().path_cost(&path, per_hex, crate::map::Carrier::Wagon) - 1e-9 {
                 continue;
             }
             let blocks = self.road_blocks(route.from_id, route.to_id, &better);

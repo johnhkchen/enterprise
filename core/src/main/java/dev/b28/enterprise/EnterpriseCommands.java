@@ -166,6 +166,7 @@ final class EnterpriseCommands {
                                                 terrain.record(level, pos, dev.b28.enterprise.territory.Terrain.survey(chunk));
                                                 terrain.recordHeights(level, pos, dev.b28.enterprise.territory.Terrain.surveyHeights(chunk));
                                                 terrain.recordWalls(level, pos, dev.b28.enterprise.territory.Terrain.surveyWalls(chunk));
+                                                terrain.recordWet(level, pos, dev.b28.enterprise.territory.Terrain.surveyWet(chunk));
                                                 surveyed++;
                                             }
                                         }
@@ -1162,7 +1163,8 @@ final class EnterpriseCommands {
             var level = source.getLevel();
             source.sendSuccess(() -> Component.literal("Hex %s, centre %.0f %.0f; %.0f%% water, relief %d%s".formatted(
                     hex, hex.centerX(), hex.centerZ(), terrain.waterShare(level, hex) * 100, terrain.relief(level, hex),
-                    terrain.walledShut(level, hex) ? ", walled shut" : "")), false);
+                    (terrain.walledShut(level, hex) ? ", walled shut" : "")
+                            + (terrain.river(level, hex) ? ", a river across it" : ""))), false);
             return 1;
         }
         String owner = dev.b28.enterprise.territory.Territory.get(source.getServer())

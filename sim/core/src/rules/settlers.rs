@@ -139,7 +139,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: 
             (Kind::Found, None, hex)
         };
         // The road: planned over the hexes as a caravan's would be; no way there, nobody goes.
-        let Some(path) = map.plan(home, target_hex, per_hex(&content), 0.0, &Default::default(), &Default::default(), false,
+        let Some(path) = map.plan(home, target_hex, per_hex(&content), 0.0, &Default::default(), &Default::default(), crate::map::Carrier::Wagon,
             &Default::default()) else { continue };
         let jumpstart = if kind == Kind::Village { d.settling_capital } else { d.founding_capital };
         let set_up = set_up(kind);

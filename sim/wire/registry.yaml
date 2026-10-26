@@ -477,6 +477,7 @@ GroundView:
     - bridged: BOOL
     - height:
         OPTION: F64
+    - river: BOOL
 HandView:
   STRUCT:
     - hand: U32
@@ -643,6 +644,7 @@ Input:
               TYPENAME: LandKind
           - height:
               OPTION: F64
+          - river: BOOL
     23:
       Crops:
         STRUCT:
