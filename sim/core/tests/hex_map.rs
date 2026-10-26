@@ -433,6 +433,35 @@ fn a_river_stops_a_wagon_unless_bridged_and_llamas_ford_it() {
 }
 
 #[test]
+fn the_bridge_goes_where_the_wagons_way_crosses_not_where_the_llamas_wade() {
+    // A river along q = 6, and a ridge 20 up across the straight way (r from -3 to 3, q from 4 to 8): llamas climb it
+    // and wade straight across; a wagon can't climb it and goes round, so its bridge is off the ridge.
+    let mut m = Map::default();
+    for q in -6..=18 {
+        for r in -14..=14 {
+            let ridge = (4..=8).contains(&q) && (-3..=3).contains(&r);
+            m.set_height(Hex::new(q, r), Some(if ridge { -40.0 } else { -60.0 }));
+        }
+    }
+    for r in -20..=20 {
+        m.set_ground(Hex::new(6, r), 0.2, 0.0);
+        m.set_river(Hex::new(6, r), true);
+    }
+    let llamas = m.plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), Carrier::Llama, &none()).unwrap();
+    let wade = *llamas.hexes.iter().find(|h| h.q == 6).unwrap();
+    assert!((-3..=3).contains(&wade.r), "llamas wade on the ridge: {:?}", llamas.hexes);
+    let crossings = m.river_crossings(START, GOAL, PER_HEX);
+    assert_eq!(crossings.len(), 1, "{crossings:?}");
+    let (bridge, from, to) = crossings[0];
+    assert!(bridge.q == 6 && !(-3..=3).contains(&bridge.r), "the bridge on the wagon's way round: {bridge:?}");
+    assert_ne!(bridge, wade);
+    assert!(from.distance(bridge) == 1 && to.distance(bridge) == 1);
+    m.bridge(bridge);
+    let wagon = m.plan(START, GOAL, PER_HEX, VALUE, &Posts::new(), &nobody(), Carrier::Wagon, &none()).unwrap();
+    assert!(wagon.hexes.contains(&bridge), "and a wagon takes it: {:?}", wagon.hexes);
+}
+
+#[test]
 fn llamas_go_a_few_hexes_round_to_a_bridge_rather_than_ford() {
     let mut m = Map::default();
     for r in -20..=20 {

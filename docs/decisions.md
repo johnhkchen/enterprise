@@ -644,7 +644,9 @@ help breed more as needed."
 - **Masons bridge the river a town's llamas ford** (`rules/works.rs`, `Map::river_crossings`). At its toll reviews
   (every 3 days), before a toll bridge, a town with one of its own roads on llamas looks for the wagon's way with every
   river bridged, and starts a bridge on the first river hex on it nobody is bridging, its deck between the hexes before
-  and after, if it can pay half the masons' wages now (no payback asked: the road is the point). Once it's built the
+  and after, if it can pay half the masons' wages now (no payback asked: the road is the point). The bridge goes on the
+  wagon's best way, not where the llamas wade (John: "build bridges where the new route would be most efficient, not
+  along llama routes"): a ridge the llamas climb to their ford sends the wagon round, and its bridge with it. Once it's built the
   road plans again as a wagon's, and the host lays its deck as it does a toll bridge's. A toll bridge may now stand on a
   river's hex too.
 
