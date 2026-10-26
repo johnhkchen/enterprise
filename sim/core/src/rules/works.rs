@@ -178,8 +178,8 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
         let spurs = mint.rate(now, day);
         let per_day = per_day(d, hexes);
         // A bridge over the river that keeps one of its roads to llamas (`map.rs`: a wagon has no way over a river
-        // without one): the first river on the wagon's way that nobody's bridging, if the town can pay half its masons'
-        // wages now. Its road takes wagons once it's built.
+        // without one): the first river on the wagon's way that nobody's bridging, if the town can pay all its masons'
+        // wages and keep `river_bridge_buffer` beyond. Its road takes wagons once it's built.
         if toll_review {
             let mut in_seq: Vec<&Route> = routes.iter()
                 .filter(|r| r.from_id == t && r.carrier == crate::map::Carrier::Llama).collect();
@@ -192,7 +192,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
             if let Some((hex, from, to)) = crossing {
                 let deck = deck_size(hex, from, to);
                 let wages = deck as f64 / per_day * d.masons as f64 * d.mason_pay;
-                if spare >= wages / 2.0 {
+                if spare >= wages + d.river_bridge_buffer {
                     underway.insert(hex);
                     works.start(What::Bridge { hex, from, to }, deck);
                     continue;

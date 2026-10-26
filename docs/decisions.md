@@ -625,7 +625,9 @@ help breed more as needed."
   which stand in a river's or an ocean's biome, from the generator), floods the hex's dry cells (4 blocks a side) into
   stretches, and a hex with two stretches each the only way to some neighbour is cut by a river: the walls' reckoning
   with water for the wall (`Terrain.river`, sent as `Input::Ground.river`). A river along a hex's edge, a pond, or a
-  river with a dry crossing leave the hex open; a hex mostly water stays impassable as before.
+  river with a dry crossing leave the hex open; a hex mostly water stays impassable as before. The sea isn't a river:
+  water in an ocean's biome counts as open, so a coast, a bay or a headland cuts nothing (at first it did: the
+  coasts of seed 8675309 read as rivers and blocked wagons along them).
 - **Each carrier has its own way** (`map.rs` `Carrier`, `Gait`). A wagon: steps of 16 blocks at most, a cliff at 32
   relief, and no way through a river's hex unless a bridge stands on it (a bridged river is open ground). Llamas: steps
   of 32 blocks (the steepest three times open ground), relief up to 64, and a river forded at 4 times the hex's
@@ -644,7 +646,10 @@ help breed more as needed."
 - **Masons bridge the river a town's llamas ford** (`rules/works.rs`, `Map::river_crossings`). At its toll reviews
   (every 3 days), before a toll bridge, a town with one of its own roads on llamas looks for the wagon's way with every
   river bridged, and starts a bridge on the first river hex on it nobody is bridging, its deck between the hexes before
-  and after, if it can pay half the masons' wages now (no payback asked: the road is the point). The bridge goes on the
+  and after, if it can pay all the masons' wages and keep 16 emeralds beyond them and its reserve
+  (`river_bridge_buffer`; no payback asked: the road is the point). At half the wages (the first try), seed 8675309's
+  network spent Meadowfell and Ryegate down to 0 and 1 emeralds on bridges, and their llama roads never ran (John:
+  "full wages plus a buffer"). The bridge goes on the
   wagon's best way, not where the llamas wade (John: "build bridges where the new route would be most efficient, not
   along llama routes"): a ridge the llamas climb to their ford sends the wagon round, and its bridge with it. Once it's built the
   road plans again as a wagon's, and the host lays its deck as it does a toll bridge's. A toll bridge may now stand on a

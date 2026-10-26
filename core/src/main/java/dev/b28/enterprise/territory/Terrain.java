@@ -56,6 +56,8 @@ public final class Terrain extends SavedData {
     private final Map<ResourceKey<Level>, Map<Long, Integer>> wet = new HashMap<>();
     // Wet-column guesses for chunks never surveyed, from the biome at each column (deterministic, not saved).
     private final Map<ResourceKey<Level>, Map<Long, Integer>> wetGuesses = new HashMap<>();
+    // Which survey columns stand in an ocean's biome, by chunk (deterministic, not saved).
+    private final Map<ResourceKey<Level>, Map<Long, Integer>> seaGuesses = new HashMap<>();
     // Height guesses for chunks never surveyed: the generator's surface at the chunk's middle (deterministic, not saved).
     private final Map<ResourceKey<Level>, Map<Long, Integer>> heightGuesses = new HashMap<>();
     // Biome guesses for chunks never surveyed (deterministic, so not saved).
@@ -109,7 +111,9 @@ public final class Terrain extends SavedData {
      * Whether a river cuts the hex: its survey cells (4 x 4 blocks each, a chunk's 16 survey columns) that are dry
      * flooded into stretches of land, and two stretches, each the only way into some neighbouring hex
      * ({@link #walledShut}'s reckoning, the water standing for the wall). A river along the hex's edge, a pond or a
-     * lake inside it leave one side: no cut. A hex mostly water isn't a river's: it's impassable as it is.
+     * lake inside it leave one side: no cut. A hex mostly water isn't a river's: it's impassable as it is. The sea isn't
+     * a river: water in an ocean's biome is open here, so a coast, a bay or a headland cuts nothing (a river's mouth
+     * neither).
      */
     public boolean river(ServerLevel level, Hex hex) {
         if (waterShare(level, hex) > IMPASSABLE) {
@@ -123,7 +127,7 @@ public final class Terrain extends SavedData {
         boolean any = false;
         for (long c : chunks) {
             Integer counted = surveyed.get(c);
-            int bits = counted != null ? counted : wetGuess(level, c);
+            int bits = (counted != null ? counted : wetGuess(level, c)) & ~sea(level, c);
             any |= bits != 0;
             int ox = (ChunkPos.getX(c) - box[0]) * 4, oz = (ChunkPos.getZ(c) - box[1]) * 4;
             for (int i = 0; i < 16; i++) {
@@ -143,6 +147,26 @@ public final class Terrain extends SavedData {
             maxZ = Math.max(maxZ, ChunkPos.getZ(c));
         }
         return new int[] {minX, minZ, maxX, maxZ};
+    }
+
+    /** Which of a chunk's survey columns stand in an ocean's biome (the generator's, so the same loaded or not). */
+    private int sea(ServerLevel level, long chunk) {
+        return seaGuesses.computeIfAbsent(level.dimension(), d -> new HashMap<>()).computeIfAbsent(chunk, c -> {
+            ChunkPos pos = new ChunkPos(c);
+            var source = level.getChunkSource();
+            int bits = 0;
+            for (int x = 2; x < 16; x += 4) {
+                for (int z = 2; z < 16; z += 4) {
+                    var biome = source.getGenerator().getBiomeSource().getNoiseBiome(
+                            QuartPos.fromBlock(pos.getBlockX(x)), QuartPos.fromBlock(level.getSeaLevel()),
+                            QuartPos.fromBlock(pos.getBlockZ(z)), source.randomState().sampler());
+                    if (biome.is(BiomeTags.IS_OCEAN) || biome.is(BiomeTags.IS_DEEP_OCEAN)) {
+                        bits |= 1 << (x / 4 + 4 * (z / 4));
+                    }
+                }
+            }
+            return bits;
+        });
     }
 
     /** A chunk never surveyed: which of its survey columns stand in a river's or an ocean's biome. */

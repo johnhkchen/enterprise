@@ -585,4 +585,8 @@ dials! {
     /// wheat (a hay bale's nine).
     llama_breed_days: f64 = 4.0,
     llama_breed_wheat: f64 = 9.0,
+    /// A town bridges the river its llamas ford only when it can pay all the masons' wages and keep this much beyond
+    /// them and its reserve (John: "full wages plus a buffer"): at half the wages, two poor towns of seed 8675309's
+    /// network spent down to nothing on bridges and their trains never left.
+    river_bridge_buffer: f64 = 16.0,
 }

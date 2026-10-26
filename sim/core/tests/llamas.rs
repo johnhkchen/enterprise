@@ -17,10 +17,15 @@ const FORD: Hex = Hex::new(6, 0);
 
 /// A farm and a mill twelve hexes apart, a river cutting every hex along q = 6 (a fifth of each under water).
 fn across_the_river() -> (Society, usize) {
+    across_the_river_with(20.0)
+}
+
+/// As [`across_the_river`], the farm starting with `money`.
+fn across_the_river_with(money: f64) -> (Society, usize) {
     let goods = vec![Good::new("wheat", 0.05, 64), Good::new("bread", 0.2, 64).food(5.0)];
     let mut s = Society::new(Content::new(goods, DAY));
     s.content_mut().dials.standing_orders = false;
-    let farm = s.add_town("Wheatfield", 20.0);
+    let farm = s.add_town("Wheatfield", money);
     let mill = s.add_town("Hayford", 40.0);
     s.set_trade(farm, 0, 128.0, 0.0);
     s.set_trade(mill, 0, 0.0, 128.0);
@@ -137,7 +142,7 @@ fn a_train_is_what_the_load_wants_of_the_llamas_home() {
 
 #[test]
 fn a_town_pays_masons_to_bridge_the_river_its_llamas_ford_and_wagons_take_the_road() {
-    let (mut s, road) = across_the_river();
+    let (mut s, road) = across_the_river_with(60.0);
     for hex in [START, Hex::new(1, 0), Hex::new(0, 1), Hex::new(1, -1)] {
         assert!(s.claim_hex(0, hex));
     }
@@ -162,4 +167,22 @@ fn a_town_pays_masons_to_bridge_the_river_its_llamas_ford_and_wagons_take_the_ro
     assert!(s.route_path(road).unwrap().contains(&hex), "over the bridge");
     assert!(s.works(1).projects.is_empty(), "the far end builds none: its road isn't the llamas'");
     s.conserved(&before).unwrap();
+}
+
+#[test]
+fn a_town_bridges_the_river_only_with_the_wages_and_a_buffer_to_spare() {
+    let (mut s, _) = across_the_river();
+    for hex in [START, Hex::new(1, 0), Hex::new(0, 1), Hex::new(1, -1)] {
+        assert!(s.claim_hex(0, hex));
+    }
+    s.content_mut().dials.river_bridge_buffer = 1000.0;
+    for day in 1..=10 {
+        s.advance(day * DAY);
+    }
+    assert!(s.works(0).projects.is_empty(), "too poor to keep a buffer: no bridge");
+    s.content_mut().dials.river_bridge_buffer = 0.0;
+    for day in 11..=20 {
+        s.advance(day * DAY);
+    }
+    assert!(!s.works(0).projects.is_empty(), "with the wages to spare, it builds");
 }
