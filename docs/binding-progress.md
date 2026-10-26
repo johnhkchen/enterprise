@@ -5,6 +5,12 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-26, wagons climb gently.** `Input::Ground` and `GroundView` carry the hex's ground height
+  (`Terrain.height`: its chunks' lowest surfaces' median); the core's planner prices the climb between hexes and has
+  no way past a 16-block rise (decisions.md "Wagons climb gently"). Schema `3db5bfb318735582`. Rust tests
+  `hex_map::a_wagon_climbs_gently_from_hex_to_hex`, `a_steep_hill_is_gone_around_and_a_town_on_its_edge_still_reached`,
+  `a_gentle_slope_is_climbed_and_costs_more_than_the_flat`.
+
 - **2026-10-26, walls a player builds stop wagons.** `Terrain.surveyWalls`/`walledShut`: a hex a built wall shuts is
   sent as a cliff (decisions.md "Walls a player builds stop wagons"); `/enterprise hex` works in core mode (the survey:
   water, relief, walled shut). `network_study.py --wall` (core mode): a 4,769-block wall with one gateway at T; T

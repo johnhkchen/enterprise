@@ -475,6 +475,8 @@ GroundView:
     - land:
         TYPENAME: LandKind
     - bridged: BOOL
+    - height:
+        OPTION: F64
 HandView:
   STRUCT:
     - hand: U32
@@ -639,6 +641,8 @@ Input:
           - relief: F64
           - land:
               TYPENAME: LandKind
+          - height:
+              OPTION: F64
     23:
       Crops:
         STRUCT:

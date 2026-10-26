@@ -566,6 +566,17 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   day 12 T posted guards and set its toll at 25% (5% without the wall all 30 days); by day 30 it held 351 emeralds
   (89 without) and made 316 locker trades (34), and S3 beyond the wall 219 emeralds (527-636).
 
+## Wagons climb gently (built 2026-10-26)
+
+- **A hex's ground has a height**: the median of its surveyed chunks' lowest surfaces (above them stand trees,
+  houses and walls), sent with its ground (`Input::Ground.height`, none where nothing is surveyed).
+- **A step from hex to hex costs its climb.** As hard again every 8 blocks of rise between the two (a grade of 0.1
+  over the hex's 80 blocks), up or down; past 16 blocks (0.2) there's no way for a wagon (`map.rs` `MAX_GRADE`,
+  `GRADE_PER_FACTOR`, `Map::climb_factor`). Routes follow valleys and gentle flanks, and the hexes wagons can cross
+  between natural terrain's slopes are the routes a world offers. A route's own towns are always reached and left,
+  their step only harder going: a town on a hill's edge has its road; one in a plateau's middle has none. By boat,
+  water is level. Desire paths (wear that eases a well-used way) and paving by masons are to build on this.
+
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 
 - **Terrain known when it's made.** Chunks were surveyed only as they loaded or unloaded, so routes were planned through

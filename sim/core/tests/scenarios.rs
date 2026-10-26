@@ -749,8 +749,8 @@ fn land() -> Scenario {
         Input::AddTown { name: "Ashford".into(), desk: at(PointKind::Desk, 8, 8) },
         Input::Pay { town: 0, money: Fixed::emeralds(200) },
         Input::AddHand { town: 0, trade: "minecraft:farmer".into(), level: 3, tag: "villager-f".into() },
-        Input::Ground { hex: hex_at(0, 0), water: 0.0, relief: 2.0, land: LandKind::Plains },
-        Input::Ground { hex: hex_at(1, 0), water: 0.875, relief: 1.0, land: LandKind::Water },
+        Input::Ground { hex: hex_at(0, 0), water: 0.0, relief: 2.0, land: LandKind::Plains, height: None },
+        Input::Ground { hex: hex_at(1, 0), water: 0.875, relief: 1.0, land: LandKind::Water, height: None },
     ]);
     s.ask("the ground of its hex, the lake's, and one never surveyed", vec![
         Query::Ground { hexes: vec![hex_at(0, 0), hex_at(1, 0), hex_at(0, 1)] },
@@ -783,7 +783,7 @@ fn land() -> Scenario {
     ]);
     s.ask("its land: 20 wheat and 80 carrot plots, counted once", vec![Query::Land { town: 0 }]);
     let r = s.say("ground that isn't a number", Command::Apply { inputs: vec![
-        Input::Ground { hex: hex_at(0, 0), water: -0.5, relief: 0.0, land: LandKind::Plains },
+        Input::Ground { hex: hex_at(0, 0), water: -0.5, relief: 0.0, land: LandKind::Plains, height: None },
     ] });
     assert!(matches!(s.refused("ground", r), Refusal::Input { at: 0, .. }));
     let r = s.say("a hall the core has no name for", Command::Apply { inputs: vec![

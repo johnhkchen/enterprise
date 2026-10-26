@@ -77,7 +77,7 @@ public sealed interface Input
             case 19 -> new Unmoved(Point.decode(in), in.u32(), in.i64());
             case 20 -> new Cashcount(Point.decode(in), in.u64(), in.u64(), in.option(PostcardIn::u64), in.bool(), in.bool());
             case 21 -> new CashUnmoved(Point.decode(in), in.i64(), in.i64(), in.i64());
-            case 22 -> new Ground(HexAt.decode(in), in.f64(), in.f64(), LandKind.decode(in));
+            case 22 -> new Ground(HexAt.decode(in), in.f64(), in.f64(), LandKind.decode(in), in.option(PostcardIn::f64));
             case 23 -> new Crops(HexAt.decode(in), in.i32(), in.i32(), in.list(9, Count::decode));
             case 24 -> new Survey(in.u32(), in.i32(), in.i32());
             case 25 -> new Built(in.u32(), Work.decode(in), in.f64());
@@ -487,14 +487,16 @@ public sealed interface Input
     /**
      * A hex's ground as the host surveyed it ({@code territory/Terrain.java}: its chunks' surface columns under water and
      * their heights, a chunk never loaded guessed from its biome): its share under water (0 to 1), its relief in blocks
-     * (highest surface less lowest) and what its land gives (its biome at its centre). Caravans go round water and
-     * cliffs by it ({@code map.rs}), a town's hands gather what its land gives ({@code kit.rs}) and bridges go where it's wet
-     * ({@code works.rs}). A bridge the core finished stays.
+     * (highest surface less lowest), what its land gives (its biome at its centre) and the height of its ground (its
+     * chunks' lowest surfaces' median; none where none is surveyed). Caravans go round water and cliffs by it and
+     * climb from hex to hex only so steeply ({@code map.rs}), a town's hands gather what its land gives ({@code kit.rs}) and
+     * bridges go where it's wet ({@code works.rs}). A bridge the core finished stays.
      */
-    record Ground(HexAt hex, double water, double relief, LandKind land) implements Input {
+    record Ground(HexAt hex, double water, double relief, LandKind land, Optional<Double> height) implements Input {
         public Ground {
             Objects.requireNonNull(hex, "hex");
             Objects.requireNonNull(land, "land");
+            Objects.requireNonNull(height, "height");
         }
 
         @Override
@@ -504,6 +506,7 @@ public sealed interface Input
             out.f64(this.water);
             out.f64(this.relief);
             this.land.encode(out);
+            out.option(this.height, PostcardOut::f64);
         }
     }
 

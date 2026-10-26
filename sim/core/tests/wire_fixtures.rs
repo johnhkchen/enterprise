@@ -276,9 +276,9 @@ fn inputs() -> Vec<Input> {
         Input::CashUnmoved { point: point(PointKind::Desk, 27, -60, 27), emeralds: -2, coins: -4_096, bank: -1 },
         Input::CashUnmoved { point: point(PointKind::Desk, i32::MAX, i32::MAX, i32::MAX), emeralds: i64::MIN, coins: i64::MAX,
             bank: i64::MIN },
-        Input::Ground { hex: hex(0, 0), water: 0.0, relief: 0.0, land: LandKind::Plains },
-        Input::Ground { hex: hex(-3, 7), water: 0.5625, relief: 31.0, land: LandKind::Water },
-        Input::Ground { hex: hex(i32::MIN, i32::MAX), water: 1.0, relief: f64::MAX, land: LandKind::Hills },
+        Input::Ground { hex: hex(0, 0), water: 0.0, relief: 0.0, land: LandKind::Plains, height: None },
+        Input::Ground { hex: hex(-3, 7), water: 0.5625, relief: 31.0, land: LandKind::Water, height: Some(-64.0) },
+        Input::Ground { hex: hex(i32::MIN, i32::MAX), water: 1.0, relief: f64::MAX, land: LandKind::Hills, height: Some(f64::MAX) },
         Input::Crops { hex: hex(0, 0), chunk_x: 0, chunk_z: -1, counts: vec![] },
         Input::Crops { hex: hex(2, -1), chunk_x: i32::MIN, chunk_z: i32::MAX, counts: vec![count(3, 80.0), count(BIGGEST_ID, 1.0)] },
         Input::Survey { town: 0, bell_x: 27, bell_z: 24 },
@@ -388,7 +388,7 @@ fn work_views() -> Vec<WorkView> {
 fn ground_views() -> Vec<GroundView> {
     LANDS.iter().enumerate()
         .map(|(i, &land)| GroundView { hex: hex(i as i32, -(i as i32)), water: i as f64 / 7.0, relief: EDGE_F64[i], land,
-            bridged: i % 3 == 0 })
+            bridged: i % 3 == 0, height: if i % 2 == 0 { Some(-EDGE_F64[i]) } else { None } })
         .collect()
 }
 

@@ -102,4 +102,5 @@ pub struct GroundView {
     pub relief: f64,
     pub land: LandKind,
     pub bridged: bool,
+    pub height: Option<f64>,
 }

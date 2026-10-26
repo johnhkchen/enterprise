@@ -2162,7 +2162,8 @@
       },
       "water": 0.0,
       "relief": 0.0,
-      "land": "Plains"
+      "land": "Plains",
+      "height": null
     }
   },
   {
@@ -2173,7 +2174,8 @@
       },
       "water": 0.5625,
       "relief": 31.0,
-      "land": "Water"
+      "land": "Water",
+      "height": -64.0
     }
   },
   {
@@ -2184,7 +2186,8 @@
       },
       "water": 1.0,
       "relief": 1.7976931348623157e+308,
-      "land": "Hills"
+      "land": "Hills",
+      "height": 1.7976931348623157e+308
     }
   },
   {

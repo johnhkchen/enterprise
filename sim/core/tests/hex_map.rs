@@ -369,3 +369,59 @@ fn a_road_goes_around_and_costs_more_or_there_is_none() {
     let c = s.add_town("C", 0.0);
     assert!(s.add_road(a, c, 1.0).is_none());
 }
+
+#[test]
+fn a_wagon_climbs_gently_from_hex_to_hex() {
+    let mut m = Map::default();
+    let (a, b) = (Hex::new(0, 0), Hex::new(1, 0));
+    assert_eq!(m.climb_factor(a, b), 1.0, "heights unknown: no climb counted");
+    m.set_height(a, Some(-60.0));
+    m.set_height(b, Some(-52.0));
+    assert_eq!(m.climb_factor(a, b), 2.0, "8 blocks over a hex: as hard again");
+    assert_eq!(m.climb_factor(b, a), 2.0, "down as up: a wagon brakes");
+    m.set_height(b, Some(-44.0));
+    assert_eq!(m.climb_factor(a, b), 3.0, "16 blocks: the steepest a wagon takes");
+    m.set_height(b, Some(-43.0));
+    assert!(m.climb_factor(a, b).is_infinite(), "17: too steep");
+}
+
+#[test]
+fn a_steep_hill_is_gone_around_and_a_town_on_its_edge_still_reached() {
+    // Flat ground at -60 from (0, 0) to (8, 0); a hill 30 up across the straight way, its flanks too steep to climb.
+    let (start, goal) = (Hex::new(0, 0), Hex::new(8, 0));
+    let mut m = Map::default();
+    for q in -4..=12 {
+        for r in -8..=8 {
+            m.set_height(Hex::new(q, r), Some(-60.0));
+        }
+    }
+    let hill: Vec<Hex> = (3..=5).flat_map(|q| (-1..=1).map(move |r| Hex::new(q, r))).collect();
+    for &h in &hill {
+        m.set_height(h, Some(-30.0));
+    }
+    let path = m.plan(start, goal, 1.0, 0.0, &Posts::new(), &nobody(), false, &none()).unwrap();
+    assert!(path.hexes.iter().all(|h| !hill.contains(h)), "round the hill: {:?}", path.hexes);
+    assert!(path.cost > 8.0, "longer than the straight way: {}", path.cost);
+    // A town on the hill's edge is reached and left by its steep flank, only harder going; one in the middle of it
+    // can't be reached by wagon.
+    let edge = Hex::new(3, 0);
+    let up = m.plan(start, edge, 1.0, 0.0, &Posts::new(), &nobody(), false, &none()).unwrap();
+    assert_eq!(up.hexes.last(), Some(&edge));
+    assert!(m.plan(edge, start, 1.0, 0.0, &Posts::new(), &nobody(), false, &none()).is_some(), "and left");
+    assert!(m.plan(start, Hex::new(4, 0), 1.0, 0.0, &Posts::new(), &nobody(), false, &none()).is_none(), "the middle: no way");
+}
+
+#[test]
+fn a_gentle_slope_is_climbed_and_costs_more_than_the_flat() {
+    let (start, goal) = (Hex::new(0, 0), Hex::new(4, 0));
+    let mut m = Map::default();
+    let flat = m.plan(start, goal, 1.0, 0.0, &Posts::new(), &nobody(), false, &none()).unwrap();
+    for q in 0..=4 {
+        for r in -6..=6 {
+            m.set_height(Hex::new(q, r), Some(-60.0 + 4.0 * q as f64)); // 4 blocks a hex, all the way up
+        }
+    }
+    let slope = m.plan(start, goal, 1.0, 0.0, &Posts::new(), &nobody(), false, &none()).unwrap();
+    assert_eq!(slope.hexes.len(), flat.hexes.len(), "straight up the slope");
+    assert!((slope.cost - flat.cost * 1.5).abs() < 1e-9, "half again: {} vs {}", slope.cost, flat.cost);
+}

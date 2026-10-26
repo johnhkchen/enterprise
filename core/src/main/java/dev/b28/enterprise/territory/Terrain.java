@@ -287,6 +287,22 @@ public final class Terrain extends SavedData {
         return high < low ? 0 : high - low;
     }
 
+    /**
+     * The height of the hex's ground: the median of its surveyed chunks' lowest surfaces (trees, houses and walls stand
+     * above a chunk's lowest; a ravine is one chunk of many), or none where none is surveyed. The core's wagons climb
+     * from hex to hex by it ({@code map.rs}).
+     */
+    public java.util.Optional<Double> height(ServerLevel level, Hex hex) {
+        Map<Long, Integer> surveyed = heights.getOrDefault(level.dimension(), Map.of());
+        int[] lows = chunksOf(hex).stream().map(surveyed::get).filter(java.util.Objects::nonNull)
+                .mapToInt(packed -> (packed >>> 16) - 512).sorted().toArray();
+        if (lows.length == 0) {
+            return java.util.Optional.empty();
+        }
+        int n = lows.length;
+        return java.util.Optional.of(n % 2 == 1 ? lows[n / 2] : (lows[n / 2 - 1] + lows[n / 2]) / 2.0);
+    }
+
     /** A chunk's surveyed water count; stored only where it differs from the biome's guess. */
     public void record(ServerLevel level, long chunk, int wet) {
         Map<Long, Integer> surveyed = water.computeIfAbsent(level.dimension(), d -> new HashMap<>());

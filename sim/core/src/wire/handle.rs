@@ -423,9 +423,12 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
                 same_kind(stands(&points, &point.spot()), point).map_err(wrong)?;
             }
             Input::CashUnmoved { .. } => {}
-            Input::Ground { water, relief, .. } => {
+            Input::Ground { water, relief, height, .. } => {
                 amount("a share under water of", *water)?;
                 amount("a relief of", *relief)?;
+                if let Some(h) = height.filter(|h| !h.is_finite()) {
+                    return Err(wrong(format!("a ground height of {h}")));
+                }
             }
             Input::Crops { counts, .. } => {
                 for c in counts {

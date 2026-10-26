@@ -2444,11 +2444,12 @@ public final class CoreBindingTests {
             terrain.recordHeights(level, chunks.get(0), new int[] {-60, -60});
             terrain.recordHeights(level, chunks.get(1), new int[] {-60, -20});
             Input.Ground sent = LandAdapter.ground(terrain, level, far);
-            helper.assertTrue(sent.water() == 0.75 && sent.relief() == 40, "the survey reads " + sent);
+            helper.assertTrue(sent.water() == 0.75 && sent.relief() == 40 && sent.height().equals(java.util.Optional.of(-60.0)),
+                    "the survey reads " + sent);
             host.apply(List.of(sent));
             var core = host.land().groundOf(List.of(sent.hex())).get(0);
             helper.assertTrue(core.water() == sent.water() && core.relief() == sent.relief() && core.land() == sent.land()
-                    && !core.bridged(), "the core has " + core + " for the survey's " + sent);
+                    && core.height().equals(sent.height()) && !core.bridged(), "the core has " + core + " for the survey's " + sent);
 
             dev.b28.enterprise.hex.Hex home = dev.b28.enterprise.hex.Hex.at(helper.absolutePos(DESK));
             host.land().surveyed(level, new net.minecraft.world.level.ChunkPos(helper.absolutePos(DESK)));

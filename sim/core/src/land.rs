@@ -262,16 +262,18 @@ impl Society {
     /// A hex's ground, as `Query::Ground` answers it.
     pub fn ground_view(&self, hex: HexAt) -> GroundView {
         let g = self.map().ground(hex.hex());
-        GroundView { hex, water: g.water_share, relief: g.relief, land: LandKind::of(g.land), bridged: g.bridged }
+        GroundView { hex, water: g.water_share, relief: g.relief, land: LandKind::of(g.land), bridged: g.bridged,
+            height: g.height }
     }
 
     /// Applies a land happening (`Input::Ground`, `Crops`, `Survey`, `Built`); false for any other. The wire checks
     /// them first (`wire::handle`).
     pub(crate) fn apply_land(&mut self, input: &Input) -> bool {
         match input {
-            Input::Ground { hex, water, relief, land } => {
+            Input::Ground { hex, water, relief, land, height } => {
                 self.set_ground(hex.hex(), *water, *relief);
                 self.set_land(hex.hex(), land.land());
+                self.world.resource_mut::<crate::map::Map>().set_height(hex.hex(), *height);
             }
             Input::Crops { hex, chunk_x, chunk_z, counts } => {
                 let mut plots: BTreeMap<GoodId, u32> = BTreeMap::new();

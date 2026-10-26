@@ -13,6 +13,12 @@
 //!   same town next to it, never for a town in `free`).
 //! - `territory/Works.java` `bridged`: a finished bridge on the hex (the flag here; building it is `works`).
 //!
+//! **The climb.** Not in the mod: a wagon climbs gently. The host sends each hex's ground height; a step from one hex
+//! to the next is as hard again every [`GRADE_PER_FACTOR`] of grade between them and has no way past [`MAX_GRADE`]
+//! ([`Map::climb_factor`]), so routes follow valleys and gentle flanks, and a plateau's middle has no wagon road. A
+//! route's own towns are always reached and left (their step only harder going); a hex of unknown height counts no
+//! climb.
+//!
 //! **The heuristic.** The mod's A* guesses the rest of the way as `distance × perHex`, which never overestimates on
 //! land (every hex costs at least open ground). By boat a water hex costs 0.8 of open ground, so that guess can
 //! overestimate and A* could miss the cheapest way. Here the guess is scaled by the cheapest a hex can cost (0.8 when
@@ -33,6 +39,12 @@ pub const IMPASSABLE: f64 = 0.5;
 pub const RELIEF_PER_FACTOR: f64 = 8.0;
 /// A hex with this much relief or more (a cliff, a mountain's flank) can't be crossed by a caravan.
 pub const CLIFF: f64 = 32.0;
+/// A wagon climbs from one hex to the next at most this steeply (the rise between their grounds over the hex's width,
+/// 80 blocks): 16 blocks. Steeper, there's no way from the one to the other for a wagon; a valley or a gentler flank
+/// may still lead round.
+pub const MAX_GRADE: f64 = 0.2;
+/// Every this much grade (8 blocks over a hex) makes the step as hard again as open ground.
+pub const GRADE_PER_FACTOR: f64 = 0.1;
 /// Sailing a water hex costs this much a hex of open ground: boats are quick.
 pub const BOAT_FACTOR: f64 = 0.8;
 /// Hexes either side of the straight line the search may stray.
@@ -89,13 +101,16 @@ pub enum Land {
 }
 
 /// A hex's ground: its share under water (0 to 1), its relief in blocks (highest surface less lowest), whether a
-/// finished bridge stands on it, and what its land gives (`Land`).
+/// finished bridge stands on it, what its land gives (`Land`), and the height of its ground (none where the host
+/// hasn't surveyed it: no climb is counted to or from it).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Ground {
     pub water_share: f64,
     pub relief: f64,
     pub bridged: bool,
     pub land: Land,
+    #[serde(default)]
+    pub height: Option<f64>,
 }
 
 impl Ground {
@@ -227,6 +242,23 @@ impl Map {
         g.relief = relief.max(0.0);
     }
 
+    /// The height of a hex's ground (none: unknown), keeping the rest of it.
+    pub fn set_height(&mut self, hex: Hex, height: Option<f64>) {
+        self.ground.entry(hex).or_default().height = height;
+    }
+
+    /// How much harder the step from `here` to `next` is for its climb: 1 on the level or where either height is
+    /// unknown, as hard again every [`GRADE_PER_FACTOR`] of grade, infinite past [`MAX_GRADE`].
+    pub fn climb_factor(&self, here: Hex, next: Hex) -> f64 {
+        let (Some(a), Some(b)) = (self.ground(here).height, self.ground(next).height) else { return 1.0 };
+        let grade = (b - a).abs() / ACROSS;
+        if grade > MAX_GRADE + 1e-9 {
+            f64::INFINITY
+        } else {
+            1.0 + grade / GRADE_PER_FACTOR
+        }
+    }
+
     /// What the hex's land gives its town's hands, keeping the rest of its ground.
     pub fn set_land(&mut self, hex: Hex, land: Land) {
         self.ground.entry(hex).or_default().land = land;
@@ -286,7 +318,12 @@ impl Map {
                 if !end && avoid.contains(&next) {
                     continue;
                 }
-                let hard = if end { 1.0 } else { self.ground(next).factor(boat) };
+                // A wagon climbs gently: a step too steep has no way (by boat, water is level). Into or out of the
+                // route's own ends, only harder going: a town on a hill's edge is reached and left by its steep
+                // flank; one in the middle of a plateau isn't.
+                let climb = if boat && self.ground(next).factor(false).is_infinite() { 1.0 } else { self.climb_factor(hex, next) };
+                let climb = if (end || hex == start) && climb.is_infinite() { 1.0 + MAX_GRADE / GRADE_PER_FACTOR } else { climb };
+                let hard = if end { climb } else { self.ground(next).factor(boat) * climb };
                 if hard.is_infinite() {
                     continue;
                 }
