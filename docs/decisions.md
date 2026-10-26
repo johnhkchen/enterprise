@@ -684,8 +684,21 @@ help breed more as needed."
   wages, 16, and 1.5 a day for 16 days, 64 against its 46: it waits. The rerun (a game run of its own: Redfell had 5 villagers, not 7,
   and bought little): Redfell's wall waited until day 40 and it ended with 30 emeralds; but Wheatfell, buying nothing
   in, walled itself in from day 22 on about 42 emeralds, was down to 1 by day 27, and its wagon to Redfell ran 3 trips
-  (5 sold) for want of a purse. Its chests also lost 48 emeralds the core didn't spend ("taken out") and gained 54 it
-  didn't take in ("paid in"): not yet traced.
+  (5 sold) for want of a purse. (Its "taken out" and "paid in" there were the replay's, not the game's: below.)
+- **A wall keeps its roads' round trips too** (John: "both"; `Trades::road_keep`, `rules/farms.rs` `road_reserve`, dial
+  `wall_road_trips` 2). Beside the wages, the buffer and the imports, a wall leaves two round trips on each of the
+  town's roads with trade on them (one that has run, or whose last plan was worth anything): the road's food for a crew
+  of one, the purse for the road home's, and the buying purse its last plan took. Seed 8675309 again, 45 days (the
+  game's own ledgers): Wheatfell to Redfell 7 trips, 802 sold; Dustfell to Meadowfell 3, 108; Wheatfell ended on 16.7
+  emeralds, Redfell on 3.3.
+- **A journal replay can part from the game's run, and its money then lies** (not yet explained). The game's saved
+  books of that 45-day run had Wheatfell pay a stall on days 0 and 1 and book nothing "taken out" or "paid in"; its
+  journal replayed (natively, and through Chicory as the game runs it: the same 1,022 responses, `JournalResponsesTest`,
+  `enterprise-sim --responses`) paid no stall, so it read the game's coin moves as money a player moved: 47 out and 70
+  in. A 2-day run of the same seed replays exactly, saves mid-replay change nothing, and no trap was logged. Until it's
+  found, check a replay's money against the game's (`enterprise-sim --cashbook enterprise_core.dat TOWN` reads a
+  world's save; the host now logs any till that moved outside the core's moves, and logged none). The cash figures of
+  this section's replays (Redfell's breakdown, Wheatfell's wall money) are the replay's, and may be off.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 

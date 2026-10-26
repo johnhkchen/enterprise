@@ -189,6 +189,9 @@ tasks.named('test', Test) {
     inputs.dir(new File(sim, 'scenarios')).withPropertyName('scenarios').withPathSensitivity(PathSensitivity.RELATIVE)
     systemProperty 'enterprise.wasm', coreWasmFile.path
     systemProperty 'enterprise.sim', sim.path
+    // `-Pjournal=FILE -PjournalOut=OUT`: a world's journal's responses as the game's core gives them (JournalResponsesTest).
+    systemProperty 'enterprise.journal', providers.gradleProperty('journal').getOrElse('')
+    systemProperty 'enterprise.journalOut', providers.gradleProperty('journalOut').getOrElse('')
     maxHeapSize = '1g'
     testLogging {
         events = ['passed', 'skipped', 'failed']

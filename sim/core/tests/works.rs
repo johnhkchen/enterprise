@@ -353,6 +353,23 @@ fn a_town_walls_itself_in_only_with_the_wages_a_buffer_and_its_imports_to_spare(
     s.content_mut().dials.wall_buffer = 0.0;
     s.advance(35 * DAY);
     assert!(s.works(0).wall().is_some(), "no buffer asked: it walls itself in");
+    // And round trips on its roads with trade on them: a road to a town that buys its logs, with no trips to spare.
+    let mut s = content_town(300.0, 4, &CONTENT_ROSTER);
+    let logs = 5;
+    s.deliver(0, logs, 64.0);
+    let dest = s.add_town("Logbuyer", 100.0);
+    s.place_town(dest, Hex::new(6, 0).center_x(), Hex::new(6, 0).center_z());
+    s.set_trade(0, logs, 64.0, 0.0);
+    s.set_trade(dest, logs, 0.0, 64.0);
+    s.add_route(0, dest, 4.0 / 1200.0, 0.0, 4.0);
+    s.content_mut().dials.wall_road_trips = 1e6;
+    s.advance(25 * DAY);
+    assert!(s.works(0).wall().is_none(), "its roads' trips first: {:?}", s.works(0).projects);
+    assert!(s.town(0).money > 100.0, "with money to spare: {}", s.town(0).money);
+    assert!(s.route(0).trips > 0 || s.route(0).on_the_road, "the road has trade on it");
+    s.content_mut().dials.wall_road_trips = 0.0;
+    s.advance(40 * DAY);
+    assert!(s.works(0).wall().is_some(), "none kept: it walls itself in: {:?} mood {} money {}", s.works(0).projects, s.town(0).people.mood, s.town(0).money);
     // What a town bought off wagons and under contract, a day over its last `imports_days`; not what it sold.
     let c = Content::new(vec![Good::new("wheat", 0.05, 64)], DAY);
     let mut book = CashBook::default();

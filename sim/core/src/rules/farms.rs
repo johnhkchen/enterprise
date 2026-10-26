@@ -77,10 +77,18 @@ pub fn reserve(content: &Content, trades: &Trades, farm: Option<&Farm>) -> Fixed
 pub fn road_reserve(content: Res<Content>, routes: Query<(&Route, &crate::state::RouteState)>,
         mut towns: Query<(&Town, &mut Trades, &Stock, Option<&crate::state::People>)>) {
     let mut by_town: BTreeMap<usize, Fixed> = BTreeMap::new();
+    let mut keep: BTreeMap<usize, Fixed> = BTreeMap::new();
     // (In the routes' order: a sum's last bit mustn't hang on archetypes, which a load reorders.)
     let mut ordered: Vec<(&Route, &crate::state::RouteState)> = routes.iter().collect();
     ordered.sort_by_key(|(r, _)| r.seq);
     for (route, state) in ordered {
+        let worth = state.plan.as_ref().map_or(0.0, |p| p.worth);
+        if state.trips > 0 || worth > 0.0 {
+            if let Ok((_, _, stock, _)) = towns.get(route.from) {
+                *keep.entry(route.from_id).or_default() += crate::road::road_money(&content, route, &stock.0, false, 1.0)
+                    + crate::road::purse_keep(&content, route, 1.0) + state.plan.as_ref().map_or(Fixed::ZERO, |p| p.purse);
+            }
+        }
         // Only a wagon with a load worth the road, waiting on its money: one with nothing to take holds none back.
         if state.stayed != Some(crate::road::Stay::CantFund) || !state.would_go {
             continue;
@@ -93,6 +101,10 @@ pub fn road_reserve(content: Res<Content>, routes: Query<(&Route, &crate::state:
         let want = by_town.get(&town.id).copied().unwrap_or_default();
         if trades.road_reserve != want {
             trades.road_reserve = want;
+        }
+        let kept = keep.get(&town.id).copied().unwrap_or_default();
+        if trades.road_keep != kept {
+            trades.road_keep = kept;
         }
         // A homeless town's home (as `people.rs` builds it: villagers without beds, land for two more), less what its
         // households would pay of it (a new town spent its 32 on stalls and vendors by day 1 and stayed homeless).

@@ -83,6 +83,43 @@ fn main() {
         }
         return;
     }
+    if args.first().map(String::as_str) == Some("--cashbook") {
+        // A world's saved society's cash book for a town, every day it keeps: what the game's core booked.
+        let (Some(file), Some(town)) = (args.get(1), args.get(2).and_then(|t| t.parse::<usize>().ok())) else {
+            eprintln!("enterprise-sim --cashbook SAVE TOWN");
+            std::process::exit(2);
+        };
+        let bytes = std::fs::read(file).unwrap_or_else(|e| panic!("{file}: {e}"));
+        let save: enterprise_core::wire::SaveFile = postcard::from_bytes(&bytes).expect("a save");
+        let s = enterprise_core::Society::load(&save.blob).expect("a society");
+        for (day, why, amount) in s.cash_book(town, 1000) {
+            println!("{day}\t{why}\t{amount}");
+        }
+        return;
+    }
+    if args.first().map(String::as_str) == Some("--responses") {
+        // Each response to a journal's requests, its FNV-1a a line: against the binding's JournalResponsesTest, the
+        // first request the game's core answered otherwise.
+        let Some(journal) = args.get(1) else {
+            eprintln!("enterprise-sim --responses JOURNAL");
+            std::process::exit(2);
+        };
+        let bytes = std::fs::read(journal).unwrap_or_else(|e| panic!("{journal}: {e}"));
+        let mut society: Option<enterprise_core::Society> = None;
+        // `SAVE_EVERY=N`: a save asked every N requests, as a host's autosave does (saves aren't journaled).
+        let every: usize = std::env::var("SAVE_EVERY").ok().and_then(|v| v.parse().ok()).unwrap_or(0);
+        for (i, request) in trace::read(&bytes).unwrap_or_else(|e| panic!("{journal}: {e}")).into_iter().enumerate() {
+            if every > 0 && i > 0 && i % every == 0 {
+                if let Some(s) = society.as_mut() {
+                    s.save();
+                }
+            }
+            let out = enterprise_core::wire::handle_bytes(&mut society, request);
+            let h = out.iter().fold(0xcbf29ce484222325u64, |h, &b| (h ^ b as u64).wrapping_mul(0x100000001b3));
+            println!("{h:x}");
+        }
+        return;
+    }
     if args.first().map(String::as_str) == Some("--world") {
         let n = |i: usize| args.get(i).and_then(|a| a.parse::<u64>().ok());
         let (Some(seed), Some(days), Some(path)) = (n(1), n(2), args.get(3)) else {

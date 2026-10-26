@@ -595,4 +595,7 @@ dials! {
     /// wages beside the sugar cane it bought left it nothing to pay Wheatfell's next wagon with.
     wall_buffer: f64 = 16.0,
     imports_days: f64 = 8.0,
+    /// And round trips on each of its roads with trade on them (John: "keep its wagons' purses before building"):
+    /// seed 8675309's Wheatfell walled itself in before its first wagon left, and its wagon then had no purse.
+    wall_road_trips: f64 = 2.0,
 }

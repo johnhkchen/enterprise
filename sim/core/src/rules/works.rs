@@ -251,11 +251,13 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
             }
         }
         // Nothing that pays: a content town with money to spare walls itself in, if it can pay all the masons'
-        // wages, keep `wall_buffer` beyond, and keep buying what it brings in while the wall goes up.
+        // wages, keep `wall_buffer` beyond, keep buying what it brings in while the wall goes up, and keep its roads'
+        // round trips (`Trades::road_keep`).
         if toll_review && works.wall().is_none() && people.mood >= MOOD_TO_START && spare >= d.wall_start_emeralds {
             let days = d.wall_blocks as f64 / per_day;
             let wages = days * d.masons as f64 * d.mason_pay;
-            if spare >= wages + d.wall_buffer + imports_per_day(&content, &book, t, now) * days {
+            let roads = trades.road_keep.to_f64() * d.wall_road_trips;
+            if spare >= wages + d.wall_buffer + imports_per_day(&content, &book, t, now) * days + roads {
                 works.start(What::Wall, d.wall_blocks);
                 continue;
             }

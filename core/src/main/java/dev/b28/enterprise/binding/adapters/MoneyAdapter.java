@@ -9,7 +9,9 @@ import dev.b28.enterprise.wire.Output;
 import dev.b28.enterprise.wire.PointKind;
 import dev.b28.enterprise.wire.Query;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
@@ -45,6 +47,11 @@ public final class MoneyAdapter {
     private final boolean writes;
     /** What the host couldn't do of the core's moves, for the next look. */
     private final List<Input> pending = new ArrayList<>();
+    /**
+     * Each desk's till as its last count left it and the core's moves since made it (emeralds, spurs of coin): a count
+     * that finds otherwise is money moved by something outside the core, logged with what stands and moves by the desk.
+     */
+    private final Map<GlobalPos, long[]> expected = new HashMap<>();
 
     public MoneyAdapter(CoreHost host, boolean writes) {
         this.host = host;
@@ -82,6 +89,11 @@ public final class MoneyAdapter {
         StockChests chests = StockChests.at(level, PointsAdapter.Kind.DESK, at.pos());
         long emeralds = chests.held().getOrDefault(Items.EMERALD, 0L);
         Optional<Long> bank = MoneyChanger.bankAt(level, at.pos()).map(account -> (long) account.getBalance());
+        long[] was = expected.put(at, new long[] {emeralds, chests.coinSpurs()});
+        if (was != null && (was[0] != emeralds || was[1] != chests.coinSpurs())) {
+            Enterprise.LOGGER.info("Till at {} moved outside the core: {} emeralds and {} spurs counted, {} and {} expected; by it: {}",
+                    at.pos().toShortString(), emeralds, chests.coinSpurs(), was[0], was[1], around(level, at.pos()));
+        }
         return new Input.Cashcount(PointsAdapter.point(PointsAdapter.Kind.DESK, at), emeralds, chests.coinSpurs(), bank,
                 chests.coinRoom(), writes);
     }
@@ -125,11 +137,31 @@ public final class MoneyAdapter {
                 leftEmeralds = -chests.take(Items.EMERALD, -emeralds);
             }
         }
+        long[] till = expected.get(at);
+        if (till != null) {
+            till[0] += emeralds - leftEmeralds;
+            till[1] += coins - leftCoins;
+        }
         if (leftEmeralds != 0 || leftCoins != 0 || leftBank != 0) {
             Enterprise.LOGGER.debug("Cash not moved at {}: {} emeralds, {} spurs of coin, {} in the bank", at.pos().toShortString(),
                     leftEmeralds, leftCoins, leftBank);
             pending.add(new Input.CashUnmoved(cash.point(), leftEmeralds, leftCoins, leftBank));
         }
+    }
+
+    /** What touches the desk and what moves within 8 blocks of it, for the log of a till moved outside the core. */
+    private static String around(ServerLevel level, BlockPos desk) {
+        StringBuilder out = new StringBuilder();
+        for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.values()) {
+            BlockPos at = desk.relative(dir);
+            out.append(dir.getName()).append('=')
+                    .append(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(level.getBlockState(at).getBlock()).getPath())
+                    .append(' ');
+        }
+        level.getEntities((net.minecraft.world.entity.Entity) null, new net.minecraft.world.phys.AABB(desk).inflate(8))
+                .forEach(e -> out.append(net.minecraft.world.entity.EntityType.getKey(e.getType()).getPath()).append('@')
+                        .append(e.blockPosition().toShortString()).append(' '));
+        return out.toString().trim();
     }
 
     /** Spurs paid into the Banker's account (above nothing) or drawn from it; what wasn't done is returned as {@code CashUnmoved} says it. */

@@ -155,6 +155,11 @@ pub struct Trades {
     /// (`rules/farms.rs` `road_reserve`, set at each look's touch): kept back with its trading capital, so its stalls,
     /// fields, vendors and lessons leave it able to build; the home itself spends it (`people.rs`).
     pub home_reserve: crate::fixed::Fixed,
+    /// What a round trip takes on each of its roads out with trade on it (one that has run, or whose last plan was worth
+    /// anything), its buying purse too, all told (`rules/farms.rs` `road_reserve`): what a wall leaves it for its
+    /// wagons, `wall_road_trips` times over (`rules/works.rs`).
+    #[serde(default)]
+    pub road_keep: crate::fixed::Fixed,
 }
 
 /// When a town was last brought up to date.
