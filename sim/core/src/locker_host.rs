@@ -57,6 +57,7 @@ impl Society {
             Some(spot) => {
                 placed.retain(|&h, s| h == hand || *s != spot);
                 placed.insert(hand, spot);
+                lockers.stalls.remove(&hand); // its stall stands now (`Lockers::stalls`)
             }
             None => {
                 placed.remove(&hand);

@@ -75,6 +75,7 @@ final class Outcomes {
             case Output.Departed o -> people.show(o);
             case Output.HandGone o -> people.show(o);
             case Output.HandLevel o -> people.show(o);
+            case Output.Stall o -> people.show(o);
             case Output.Build o -> land.show(o);
             case Output.Found o -> land.show(o);
             case Output.Trail o -> land.show(o);

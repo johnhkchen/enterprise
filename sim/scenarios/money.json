@@ -6,7 +6,7 @@
       "note": "a society from a pack of four goods",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Create": {
             "pack": {
@@ -91,7 +91,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20100c0bb01040f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e69747769740000000007",
+      "request_postcard": "01bcdbd6878b8e85a73a00c0bb01040f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e69747769740000000007",
       "response": {
         "Done": {
           "outputs": [],
@@ -104,7 +104,7 @@
       "note": "a town at its desk, founded with no purse (the dial at 0): what its chests hold is all its money",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Apply": {
             "inputs": [
@@ -130,7 +130,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20103020e0e666f756e64696e675f70757273650100000000000000000707417368666f726400136d696e6563726166743a6f766572776f726c64367736",
+      "request_postcard": "01bcdbd6878b8e85a73a03020e0e666f756e64696e675f70757273650100000000000000000707417368666f726400136d696e6563726166743a6f766572776f726c64367736",
       "response": {
         "Done": {
           "outputs": [],
@@ -143,7 +143,7 @@
       "note": "the desk's chests count 40 emeralds and 8 spurs of coin, its Banker's account 160, and the host only counts: the money is paid in, the mint untouched",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Apply": {
             "inputs": [
@@ -180,7 +180,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20103020a00136d696e6563726166743a6f766572776f726c6436773600141400136d696e6563726166743a6f766572776f726c64367736280801a0010100",
+      "request_postcard": "01bcdbd6878b8e85a73a03020a00136d696e6563726166743a6f766572776f726c6436773600141400136d696e6563726166743a6f766572776f726c64367736280801a0010100",
       "response": {
         "Done": {
           "outputs": [],
@@ -193,7 +193,7 @@
       "note": "40 emeralds, 8 spurs worth half an emerald and 160 spurs worth ten: 50.5 in the treasury",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Ask": {
             "queries": [
@@ -213,7 +213,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20104020600136d696e6563726166743a6f766572776f726c6436773607",
+      "request_postcard": "01bcdbd6878b8e85a73a04020600136d696e6563726166743a6f766572776f726c6436773607",
       "response": {
         "Done": {
           "outputs": [],
@@ -254,7 +254,7 @@
       "note": "the host writes now: no trade of the town's costs emeralds, so all 40 are sold to the mint for coin, into the Banker's account",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Apply": {
             "inputs": [
@@ -291,7 +291,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20103020a00136d696e6563726166743a6f766572776f726c6436773600141400136d696e6563726166743a6f766572776f726c64367736280801a0010101",
+      "request_postcard": "01bcdbd6878b8e85a73a03020a00136d696e6563726166743a6f766572776f726c6436773600141400136d696e6563726166743a6f766572776f726c64367736280801a0010101",
       "response": {
         "Done": {
           "outputs": [
@@ -319,7 +319,7 @@
       "note": "the Banker's account holds 792 spurs standing for 50 emeralds, and the mint's rate has fallen",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Ask": {
             "queries": [
@@ -339,7 +339,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20104020600136d696e6563726166743a6f766572776f726c6436773607",
+      "request_postcard": "01bcdbd6878b8e85a73a04020600136d696e6563726166743a6f766572776f726c6436773607",
       "response": {
         "Done": {
           "outputs": [],
@@ -380,7 +380,7 @@
       "note": "the host could take only 30 of the 40 emeralds sold out of the chests (a hopper): it says so, and counts again; the ten left are the coin's already, so they are taken out once more",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Apply": {
             "inputs": [
@@ -431,7 +431,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20103031500136d696e6563726166743a6f766572776f726c643677361300000a00136d696e6563726166743a6f766572776f726c6436773600141400136d696e6563726166743a6f766572776f726c643677360a080198060101",
+      "request_postcard": "01bcdbd6878b8e85a73a03031500136d696e6563726166743a6f766572776f726c643677361300000a00136d696e6563726166743a6f766572776f726c6436773600141400136d696e6563726166743a6f766572776f726c643677360a080198060101",
       "response": {
         "Done": {
           "outputs": [
@@ -459,7 +459,7 @@
       "note": "the treasury is the same: nothing was paid in, and nothing is in the chests twice",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Ask": {
             "queries": [
@@ -479,7 +479,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20104020600136d696e6563726166743a6f766572776f726c6436773607",
+      "request_postcard": "01bcdbd6878b8e85a73a04020600136d696e6563726166743a6f766572776f726c6436773607",
       "response": {
         "Done": {
           "outputs": [],
@@ -520,7 +520,7 @@
       "note": "the desk broken: its money goes with it",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Apply": {
             "inputs": [
@@ -539,7 +539,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20103010900136d696e6563726166743a6f766572776f726c64367736",
+      "request_postcard": "01bcdbd6878b8e85a73a03010900136d696e6563726166743a6f766572776f726c64367736",
       "response": {
         "Done": {
           "outputs": [],
@@ -552,7 +552,7 @@
       "note": "and put back where it stood: the same town, its money counted in once",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Apply": {
             "inputs": [
@@ -601,7 +601,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc201030307064e6577746f6e00136d696e6563726166743a6f766572776f726c643677360a00136d696e6563726166743a6f766572776f726c6436773600141400136d696e6563726166743a6f766572776f726c643677360500000100",
+      "request_postcard": "01bcdbd6878b8e85a73a030307064e6577746f6e00136d696e6563726166743a6f766572776f726c643677360a00136d696e6563726166743a6f766572776f726c6436773600141400136d696e6563726166743a6f766572776f726c643677360500000100",
       "response": {
         "Done": {
           "outputs": [],
@@ -614,7 +614,7 @@
       "note": "five emeralds in the treasury",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Ask": {
             "queries": [
@@ -634,7 +634,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20104020600136d696e6563726166743a6f766572776f726c6436773607",
+      "request_postcard": "01bcdbd6878b8e85a73a04020600136d696e6563726166743a6f766572776f726c6436773607",
       "response": {
         "Done": {
           "outputs": [],
@@ -675,15 +675,15 @@
       "note": "saved",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": "Save"
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20102",
+      "request_postcard": "01bcdbd6878b8e85a73a02",
       "saved": {
         "format": 1,
-        "schema": 14031843287339140811,
-        "blob_len": 4592,
-        "blob_fnv": "9ad97d652f88d2c3"
+        "schema": 4201317976621034940,
+        "blob_len": 4593,
+        "blob_fnv": "6a73c563e2892997"
       }
     },
     {
@@ -701,7 +701,7 @@
       "note": "asked again after the load",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Ask": {
             "queries": [
@@ -721,7 +721,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20104020600136d696e6563726166743a6f766572776f726c6436773607",
+      "request_postcard": "01bcdbd6878b8e85a73a04020600136d696e6563726166743a6f766572776f726c6436773607",
       "response": {
         "Done": {
           "outputs": [],

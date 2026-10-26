@@ -1049,6 +1049,13 @@ Output:
           - to:
               TYPENAME: HexAt
           - width: U32
+    30:
+      Stall:
+        STRUCT:
+          - town: U32
+          - hand: U32
+          - tag: STR
+          - trade: STR
 PackAmount:
   STRUCT:
     - good: STR

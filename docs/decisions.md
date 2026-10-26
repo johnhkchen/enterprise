@@ -733,6 +733,27 @@ help breed more as needed."
   paper once it's fed (`farms::allowed`, `choose`). The same seed's next 90 days: Wheatfell 113 (7.5 before), Redfell
   17.3 (2.0), Dustfell 125.7 (94.6), Meadowfell 9.2 (4.0), Ryegate 25.0 (2.8); 35 trips and 3,172 sold (29 and
   1,857); wages paid 743 (555), following the sales. One game run each: the game's villagers differ run to run.
+- **A hired hand's stall stands, in the world or in the books** (John: "shouldn't farmers be able to convert their own
+  crop to emeralds?"; `Output::Stall`, `jobs::employ`, `Lockers::stalls`, the binding's `PeopleAdapter.stall`). They
+  could: a Farmer buys crops for emeralds at its locker, Dustfell's 486 in 90 days. But a hand the job draw hired paid
+  6 emeralds for a stall the core never asked the host to build, so it had no locker: Redfell's three Farmers bought
+  none of its melons. Now the core says `Stall` and the host puts it up by the bell (the workstation, a chest against
+  it) and gives the villager the job, once both are loaded; until the host places the locker the stall stands in the
+  books, a locker the Merchant can manage (four of the study's five towns are unloaded). The same seed's 90 days:
+  Redfell's lockers took 499 for its crops (melons 367, wheat 105; nothing the run before) and it ended on 72.
+- **A trade that does nothing gives way where the roads don't carry** (John: "fix that", Meadowfell; `jobs::carries`).
+  A slack hand retrains only in a town with no roads (`Jobs.slack`); now a road counts only while it carries (a wagon
+  on it, or one gone within `slack_days`). Meadowfell (no Farmer, its two Leatherworkers with no leather to buy, its
+  roads unfunded) earned nothing in 90 days. It didn't retrain in the run after: its Leatherworkers' trades are worth
+  something on paper (a little leather and flint in its warehouse) but its level-1 Merchant manages only two lockers,
+  its Toolsmith's and Weaponsmith's, so they never trade. Its Mason's clay brought 28 and it ended on 21.5 (9.2).
+  A retrained hand's old locker is untied as its new stall goes in the books, and the host takes its old workstation
+  down (`Jobs.leaveTrade`). On the final build's 90 days (the replay all 2,148 responses the game's): Meadowfell's
+  Leatherworker became a Librarian; the towns' lockers took 1,287 for their goods (Redfell 652, Dustfell 466); Redfell
+  ended on 182.9, Ryegate 44.8, Dustfell 38.0, Wheatfell 16.6, Meadowfell 12.6 (its mood -0.8: one comfort met).
+- **The replay's split was the build** (`docs`: "A journal replay can part"): editing a core rule after `just build`
+  while a study ran made its replay part at request 172; with that rule off, all 1,962 responses were the game's. A
+  replay matches only on the core the game ran.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 

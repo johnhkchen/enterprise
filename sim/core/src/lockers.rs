@@ -216,6 +216,12 @@ pub struct Lockers {
     /// host says one stands (a workstation with a chest touching it, `docs/decisions.md` "Lockers"). `None` (a town the
     /// core keeps as numbers, the study's): every hand with a trade has one.
     pub placed: Option<std::collections::BTreeMap<HandId, crate::points::Spot>>,
+    /// Hands whose stall the town paid for (`jobs.rs` `employ`, `Output::Stall`) and its host hasn't placed yet: each
+    /// has its locker in the books meanwhile, so a town its host hasn't loaded since trades at it as it paid to (John:
+    /// "shouldn't farmers be able to convert their own crop to emeralds?": four of seed 8675309's five towns, left
+    /// unloaded, paid for stalls that never stood). The host placing it (`tie_locker`) takes it off.
+    #[serde(default)]
+    pub stalls: std::collections::BTreeSet<HandId>,
     /// Of each good, what its workshop needs for the comforts it can make and is short of (`workshop::keeps`), set
     /// before each restock: a locker buying the good leaves that much (the paper its books need). Not saved: worked out
     /// again at each restock.
@@ -299,6 +305,7 @@ impl Lockers {
             // A hand gone takes its locker's place with it (the point stays the host's to remove, `locker_host.rs`).
             placed.retain(|&id, _| roster.place(id).is_some());
         }
+        self.stalls.retain(|&id| roster.place(id).is_some());
         let clients: Vec<HandId> = std::mem::take(&mut self.clients);
         self.clients = clients.into_iter().filter(|&id| roster.place(id).is_some_and(|i| self.has(content, roster, i))).collect();
         self.managed = self.order(content, roster, roster.locker_limit() as usize);
@@ -309,7 +316,8 @@ impl Lockers {
     /// host placed it if the host places this town's lockers ([`Lockers::placed`]).
     pub fn has(&self, content: &Content, roster: &Roster, i: usize) -> bool {
         has_locker(content, roster, i)
-            && self.placed.as_ref().is_none_or(|placed| roster.hands.get(i).is_some_and(|h| placed.contains_key(&h.id)))
+            && self.placed.as_ref().is_none_or(|placed| roster.hands.get(i)
+                .is_some_and(|h| placed.contains_key(&h.id) || self.stalls.contains(&h.id)))
     }
 
     /// Whether the hand at `i` is one of the Merchant's clients.

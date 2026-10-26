@@ -179,6 +179,19 @@ fn an_idle_hand_takes_the_trade_its_stall_is_paid_for() {
 }
 
 #[test]
+fn a_hand_the_draw_puts_to_a_trade_has_its_stall_put_up_by_the_host() {
+    // The day's review hires the idle hand, and says so: the host builds the workstation and a chest against it.
+    let (mut s, t) = town(20.0, 72.0);
+    let out = s.advance(DAY);
+    let stalls: Vec<_> = out.iter().filter_map(|o| match o {
+        enterprise_core::Output::Stall { town, trade, .. } => Some((*town as usize, trade.clone())),
+        _ => None,
+    }).collect();
+    let trade = s.content().trades[s.roster(t).hands[1].trade].name.clone();
+    assert_eq!(stalls, vec![(t, trade)], "one stall, of the trade it took");
+}
+
+#[test]
 fn no_supply_no_stall() {
     let (mut s, t) = town(20.0, 0.0);
     assert!(s.job_bag(t).iter().all(|(_, m)| *m == 0.0), "nothing to sell, no savings to spend on comforts");
@@ -297,11 +310,21 @@ fn a_slack_trade_gives_way_to_one_the_town_needs() {
 }
 
 #[test]
-fn a_slack_trade_stays_where_roads_come() {
+fn a_slack_trade_stays_where_roads_carry_and_gives_way_where_they_dont() {
+    use enterprise_core::jobs::carries;
+    use enterprise_core::state::RouteState;
+    // Where wagons come and go a trade's work may be its workshop's, or goods carried away: it stays.
+    let c = content();
+    let lately = RouteState { last_departure: Some(10 * DAY), ..Default::default() };
+    assert!(carries(&c, &lately, 12 * DAY), "a wagon gone two days ago: the road carries");
+    assert!(!carries(&c, &lately, 16 * DAY), "six days ago: not lately (`slack_days`, 5)");
+    assert!(!carries(&c, &RouteState::default(), 16 * DAY), "never: not at all");
+    // A road no wagon has taken is no reason to keep it (John: "fix that": Meadowfell's Leatherworkers).
     let (mut s, t) = slack_town("fletcher", 6);
     let other = s.add_town("Elsewhere", 0.0);
     s.add_route(t, other, 1.0, 0.0, 4.0);
-    assert!(s.review_jobs(t).is_none(), "elsewhere a trade's work may be its workshop's, or goods carried away");
+    let (_, _, retrained) = s.review_jobs(t).expect("it retrains");
+    assert!(retrained);
 }
 
 #[test]
@@ -452,4 +475,23 @@ fn the_trade_that_makes_what_the_town_down_the_road_buys_is_in_the_bag() {
     assert!((far_marbles - 64.0 / 6.0).abs() < 1e-9, "a stack of leather's worth: {far_marbles}");
     s.set_roster(t, &[("merchant", 1), ("none", 1), ("leatherworker", 1)]);
     assert!((of(&s, "leatherworker") - 64.0 / 12.0).abs() < 1e-9, "shared with the Leatherworker it has: {}", of(&s, "leatherworker"));
+}
+
+#[test]
+fn a_stall_paid_for_is_a_locker_until_the_host_places_it() {
+    // A town whose host places its lockers, unloaded: the hand the draw hires has its locker in the books at once.
+    let (mut s, t) = town(20.0, 72.0);
+    s.host_places_lockers(t);
+    let (hand, _, _) = s.review_jobs(t).expect("a stall");
+    let roster = s.roster(t);
+    let lockers = s.lockers(t).unwrap();
+    assert!(lockers.has(s.content(), &roster, hand), "paid for: a locker the Merchant can manage");
+    assert!(lockers.stalls.contains(&roster.hands[hand].id));
+    // The host puts it up and places it: the books' stall gives way to the real one.
+    let id = roster.hands[hand].id;
+    let spot = enterprise_core::points::Spot { dim: "minecraft:overworld".into(), x: 1, y: 64, z: 1 };
+    s.add_point(enterprise_core::points::Kind::Locker, spot.clone(), t).unwrap();
+    assert!(s.tie_locker(id, Some(spot)));
+    assert!(s.lockers(t).unwrap().stalls.is_empty());
+    assert!(s.lockers(t).unwrap().has(s.content(), &s.roster(t), hand));
 }

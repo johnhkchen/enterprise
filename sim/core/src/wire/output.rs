@@ -97,4 +97,10 @@ pub enum Output {
     /// with `to` (the hexes before and after it on the road that wore it), across its ground where it's soil, felling
     /// what grows in its way. Said once a width.
     Trail { hex: HexAt, from: HexAt, to: HexAt, width: u32 },
+    /// The job draw put `town`'s idle `hand` (its villager `tag`) to `trade`, and the town paid for its stall
+    /// (`jobs.rs` `employ`): for the host to put one up by its bell, the trade's workstation with a chest against it,
+    /// and give the villager the job there, as the mod's `Jobs.buildStall` and `hire` do. The chest makes it a locker
+    /// its Merchant can manage (John: "shouldn't farmers be able to convert their own crop to emeralds?": seed
+    /// 8675309's Redfell paid for three Farmers' stalls that never stood, so its crops never sold to them). Said once.
+    Stall { town: TownNo, hand: HandNo, tag: String, trade: String },
 }

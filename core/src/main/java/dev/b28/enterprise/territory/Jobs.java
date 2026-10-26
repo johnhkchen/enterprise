@@ -59,8 +59,8 @@ public final class Jobs {
             new Trade(VillagerProfession.WEAPONSMITH, Blocks.GRINDSTONE, List.of(Items.COAL, Items.IRON_INGOT, Items.FLINT)));
 
     /** Stalls are 3 x 3 (a block of clearance around), at least this far from the bell. */
-    private static final int STALL_SIZE = 3;
-    private static final int NEAREST = 6;
+    public static final int STALL_SIZE = 3;
+    public static final int STALL_NEAREST = 6;
 
     private Jobs() {}
 
@@ -214,7 +214,7 @@ public final class Jobs {
         if (retraining && (trade.isEmpty() || present.containsKey(trade.get().profession()))) {
             return Optional.empty(); // nothing it needs that the town hasn't: the hand keeps its trade
         }
-        Optional<BlockPos> site = trade.isPresent() ? Growth.site(level, bell, STALL_SIZE, NEAREST) : Optional.empty();
+        Optional<BlockPos> site = trade.isPresent() ? Growth.site(level, bell, STALL_SIZE, STALL_NEAREST) : Optional.empty();
         // Out of its own money, the accountant's say; on its households' savings, theirs.
         if (site.isEmpty() || cash >= STALL_EMERALDS && !dev.b28.enterprise.money.Accountant.approve(level, desk, stock, "a stall",
                 STALL_EMERALDS, level.getGameTime())) {

@@ -90,9 +90,14 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
         }
         for &i in &lockers.managed {
             let id = roster.hands.get(i).map(|h| h.id);
-            if !id.is_some_and(|id| placed.contains_key(&id)) {
+            // (Or a stall the town paid for that its host hasn't put up yet: `Lockers::stalls`.)
+            if !id.is_some_and(|id| placed.contains_key(&id) || lockers.stalls.contains(&id)) {
                 return Err(format!("town {t}: the Merchant manages hand {id:?}'s locker, which stands nowhere"));
             }
+        }
+        // A stall in the books is a hired hand's whose locker isn't placed: never one placed too.
+        if let Some(id) = lockers.stalls.iter().find(|id| placed.contains_key(id)) {
+            return Err(format!("town {t}: hand {id}'s stall is in the books and its locker placed"));
         }
     }
     Ok(())

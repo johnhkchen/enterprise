@@ -133,7 +133,8 @@ def replay_check(said):
     game, replay = fnv.read_text().split(), ran.stdout.split()
     for i, (a, b) in enumerate(zip(game, replay)):
         if a != b:
-            return f"replay PARTS from the game at request {i} of {len(game)}: keep this world (don't set up another) to find why"
+            return (f"replay PARTS from the game at request {i} of {len(game)}: keep this world (don't set up another); "
+                    "first check sim/core wasn't changed since the server's `just build`")
     if len(game) != len(replay):
         return f"replay: {len(replay)} responses, the game {len(game)}"
     return f"replay: all {len(game)} responses as the game's"

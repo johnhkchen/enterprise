@@ -1547,5 +1547,5 @@ fn every_message_appears_in_a_scenario() {
     // (`wagons`): the others need a master Merchant with an order nothing holds (Signal) or the rules taking a hand
     // (Departed, HandGone), and no wire input makes any. When one does, a scenario shows each and its name goes here.
     assert_eq!(outputs, set(&["Born", "Cash", "Moved", "Build", "HandLevel", "WagonLeft", "WagonSold", "WagonHome",
-        "HandAway", "HandBack", "PalletPacked", "PalletMoved", "PalletOpened", "OrderFilled", "StallBought", "Shelf", "BuildShop", "WarDeclared", "PeaceMade", "BuildCrownShop", "CrownShop", "CrownShopDown", "Trail", "Settled"]));
+        "HandAway", "HandBack", "PalletPacked", "PalletMoved", "PalletOpened", "OrderFilled", "StallBought", "Shelf", "BuildShop", "WarDeclared", "PeaceMade", "BuildCrownShop", "CrownShop", "CrownShopDown", "Trail", "Settled", "Stall"]));
 }

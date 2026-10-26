@@ -6,7 +6,7 @@
       "note": "a society from a pack with paper and Librarians",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Create": {
             "pack": {
@@ -156,7 +156,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20100c0bb01070f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f146d696e6563726166743a69726f6e5f696e676f74000000000000d03f400000000000000000000000000000000000000000000000001040146d696e6563726166743a73756761725f63616e657b14ae47e17aa43f40000000000000000000000000000000000000000000000000e03f0f6d696e6563726166743a70617065727b14ae47e17aa43f40000000000000000000000000000000000000000000000000f03f0208636c6f7468696e670772656164696e6706086d65726368616e74066661726d6572096c696272617269616e087368657068657264046e6f6e65066e69747769740201066661726d6572010f6d696e6563726166743a776865617400000000000008400f6d696e6563726166743a6272656164000000000000f03f01096c696272617269616e01146d696e6563726166743a73756761725f63616e65000000000000f03f0f6d696e6563726166743a7061706572000000000000f03f0103636f77010f6d696e6563726166743a7768656174000000000000d03f01156d696e6563726166743a636f6f6b65645f6265656600000000000000400000020a62697274685f6d6f6f64000000000000e03f0b7761676f6e5f736c6f74730000000000003e400007",
+      "request_postcard": "01bcdbd6878b8e85a73a00c0bb01070f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f146d696e6563726166743a69726f6e5f696e676f74000000000000d03f400000000000000000000000000000000000000000000000001040146d696e6563726166743a73756761725f63616e657b14ae47e17aa43f40000000000000000000000000000000000000000000000000e03f0f6d696e6563726166743a70617065727b14ae47e17aa43f40000000000000000000000000000000000000000000000000f03f0208636c6f7468696e670772656164696e6706086d65726368616e74066661726d6572096c696272617269616e087368657068657264046e6f6e65066e69747769740201066661726d6572010f6d696e6563726166743a776865617400000000000008400f6d696e6563726166743a6272656164000000000000f03f01096c696272617269616e01146d696e6563726166743a73756761725f63616e65000000000000f03f0f6d696e6563726166743a7061706572000000000000f03f0103636f77010f6d696e6563726166743a7768656174000000000000d03f01156d696e6563726166743a636f6f6b65645f6265656600000000000000400000020a62697274685f6d6f6f64000000000000e03f0b7761676f6e5f736c6f74730000000000003e400007",
       "response": {
         "Done": {
           "outputs": [],
@@ -169,7 +169,7 @@
       "note": "a town at its desk, its Merchant and a Librarian, the desk's empty chests counted",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Apply": {
             "inputs": [
@@ -218,7 +218,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20103040707417368666f726400136d696e6563726166743a6f766572776f726c643677360f00086d65726368616e74010a76696c6c616765722d6d0f00136d696e6563726166743a6c696272617269616e010a76696c6c616765722d6c0a00136d696e6563726166743a6f766572776f726c64367736001b",
+      "request_postcard": "01bcdbd6878b8e85a73a03040707417368666f726400136d696e6563726166743a6f766572776f726c643677360f00086d65726368616e74010a76696c6c616765722d6d0f00136d696e6563726166743a6c696272617269616e010a76696c6c616765722d6c0a00136d696e6563726166743a6f766572776f726c64367736001b",
       "response": {
         "Done": {
           "outputs": [],
@@ -231,7 +231,7 @@
       "note": "its hands",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Ask": {
             "queries": [
@@ -244,7 +244,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20104010400",
+      "request_postcard": "01bcdbd6878b8e85a73a04010400",
       "response": {
         "Done": {
           "outputs": [],
@@ -286,7 +286,7 @@
       "note": "its lockers: the host places them, and the Librarian has none yet, so isn't managed",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Ask": {
             "queries": [
@@ -299,7 +299,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20104010a00",
+      "request_postcard": "01bcdbd6878b8e85a73a04010a00",
       "response": {
         "Done": {
           "outputs": [],
@@ -348,7 +348,7 @@
       "note": "its locker placed at the Librarian's workstation, and a look's count: 64 paper a player left in the locker are the town's, carried to the desk's chests",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Apply": {
             "inputs": [
@@ -411,7 +411,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20103040801136d696e6563726166743a6f766572776f726c64327736001b020101136d696e6563726166743a6f766572776f726c643277360a00136d696e6563726166743a6f766572776f726c64367736001b0a01136d696e6563726166743a6f766572776f726c64327736010600000000000050401a",
+      "request_postcard": "01bcdbd6878b8e85a73a03040801136d696e6563726166743a6f766572776f726c64327736001b020101136d696e6563726166743a6f766572776f726c643277360a00136d696e6563726166743a6f766572776f726c64367736001b0a01136d696e6563726166743a6f766572776f726c64327736010600000000000050401a",
       "response": {
         "Done": {
           "outputs": [
@@ -451,7 +451,7 @@
       "note": "the Librarian's locker stands there, and the Merchant manages it",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Ask": {
             "queries": [
@@ -464,7 +464,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20104010a00",
+      "request_postcard": "01bcdbd6878b8e85a73a04010a00",
       "response": {
         "Done": {
           "outputs": [],
@@ -519,7 +519,7 @@
       "note": "the screen switches its paper trade on, and a stale switch (a hand that isn't there, another good) is ignored",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Apply": {
             "inputs": [
@@ -551,7 +551,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20103031a020006011a630006011a02000000",
+      "request_postcard": "01bcdbd6878b8e85a73a03031a020006011a630006011a02000000",
       "response": {
         "Done": {
           "outputs": [],
@@ -564,7 +564,7 @@
       "note": "two days: the locker trades the town's paper, its chests counted as the look ends",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Apply": {
             "inputs": [
@@ -608,7 +608,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20103030a00136d696e6563726166743a6f766572776f726c64367736010600000000000050401a0a01136d696e6563726166743a6f766572776f726c64327736001b0080f702",
+      "request_postcard": "01bcdbd6878b8e85a73a03030a00136d696e6563726166743a6f766572776f726c64367736010600000000000050401a0a01136d696e6563726166743a6f766572776f726c64327736001b0080f702",
       "response": {
         "Done": {
           "outputs": [
@@ -653,7 +653,7 @@
       "note": "its offers, the paper trade used",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Ask": {
             "queries": [
@@ -666,7 +666,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20104010a00",
+      "request_postcard": "01bcdbd6878b8e85a73a04010a00",
       "response": {
         "Done": {
           "outputs": [],
@@ -721,15 +721,15 @@
       "note": "saved",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": "Save"
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20102",
+      "request_postcard": "01bcdbd6878b8e85a73a02",
       "saved": {
         "format": 1,
-        "schema": 14031843287339140811,
-        "blob_len": 5444,
-        "blob_fnv": "0fced0432a090229"
+        "schema": 4201317976621034940,
+        "blob_len": 5445,
+        "blob_fnv": "f9c867304d7a743f"
       }
     },
     {
@@ -747,7 +747,7 @@
       "note": "the same after the load",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Ask": {
             "queries": [
@@ -760,7 +760,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20104010a00",
+      "request_postcard": "01bcdbd6878b8e85a73a04010a00",
       "response": {
         "Done": {
           "outputs": [],
@@ -815,7 +815,7 @@
       "note": "the locker's chest broken: untied, then its point removed",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Apply": {
             "inputs": [
@@ -840,7 +840,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20103021b02000901136d696e6563726166743a6f766572776f726c64327736",
+      "request_postcard": "01bcdbd6878b8e85a73a03021b02000901136d696e6563726166743a6f766572776f726c64327736",
       "response": {
         "Done": {
           "outputs": [],
@@ -853,7 +853,7 @@
       "note": "no locker, not managed",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Ask": {
             "queries": [
@@ -866,7 +866,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20104010a00",
+      "request_postcard": "01bcdbd6878b8e85a73a04010a00",
       "response": {
         "Done": {
           "outputs": [],
@@ -915,7 +915,7 @@
       "note": "a locker at a desk: refused",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Apply": {
             "inputs": [
@@ -935,7 +935,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20103011b020101136d696e6563726166743a6f766572776f726c64367736",
+      "request_postcard": "01bcdbd6878b8e85a73a03011b020101136d696e6563726166743a6f766572776f726c64367736",
       "response": {
         "Refused": {
           "why": {
@@ -952,7 +952,7 @@
       "note": "a locker where no point stands: refused",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Apply": {
             "inputs": [
@@ -972,7 +972,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20103011b020101136d696e6563726166743a6f766572776f726c64327736",
+      "request_postcard": "01bcdbd6878b8e85a73a03011b020101136d696e6563726166743a6f766572776f726c64327736",
       "response": {
         "Refused": {
           "why": {
@@ -989,7 +989,7 @@
       "note": "the lockers of a town that isn't there",
       "request": {
         "abi": 1,
-        "schema": 14031843287339140811,
+        "schema": 4201317976621034940,
         "command": {
           "Ask": {
             "queries": [
@@ -1002,7 +1002,7 @@
           }
         }
       },
-      "request_postcard": "01cb8db2ee83e4c7ddc20104010a03",
+      "request_postcard": "01bcdbd6878b8e85a73a04010a03",
       "response": {
         "Refused": {
           "why": {

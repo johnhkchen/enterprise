@@ -38,7 +38,8 @@ public sealed interface Output
                 Output.CrownShop,
                 Output.CrownShopDown,
                 Output.Found,
-                Output.Trail {
+                Output.Trail,
+                Output.Stall {
     void encode(PostcardOut out);
 
     static Output decode(PostcardIn in) {
@@ -74,6 +75,7 @@ public sealed interface Output
             case 27 -> new CrownShopDown(Point.decode(in));
             case 28 -> new Found(in.u32(), in.string(), in.i32(), in.i32());
             case 29 -> new Trail(HexAt.decode(in), HexAt.decode(in), HexAt.decode(in), in.u32());
+            case 30 -> new Stall(in.u32(), in.u32(), in.string(), in.string());
             default -> throw in.unknownVariant("Output", at);
         };
     }
@@ -589,6 +591,29 @@ public sealed interface Output
             this.from.encode(out);
             this.to.encode(out);
             out.u32(this.width);
+        }
+    }
+
+    /**
+     * The job draw put {@code town}'s idle {@code hand} (its villager {@code tag}) to {@code trade}, and the town paid for its stall
+     * ({@code jobs.rs} {@code employ}): for the host to put one up by its bell, the trade's workstation with a chest against it,
+     * and give the villager the job there, as the mod's {@code Jobs.buildStall} and {@code hire} do. The chest makes it a locker
+     * its Merchant can manage (John: "shouldn't farmers be able to convert their own crop to emeralds?": seed
+     * 8675309's Redfell paid for three Farmers' stalls that never stood, so its crops never sold to them). Said once.
+     */
+    record Stall(long town, long hand, String tag, String trade) implements Output {
+        public Stall {
+            Objects.requireNonNull(tag, "tag");
+            Objects.requireNonNull(trade, "trade");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(30);
+            out.u32(this.town);
+            out.u32(this.hand);
+            out.string(this.tag);
+            out.string(this.trade);
         }
     }
 }

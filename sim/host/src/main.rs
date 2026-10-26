@@ -117,7 +117,11 @@ fn main() {
             if shown != Some(day) && town < s.town_count() {
                 shown = Some(day);
                 let bag: Vec<String> = s.job_bag(town).iter().map(|(t, m)| format!("{t} {m:.2}")).collect();
-                println!("day {day}: {} | money {} held back {:?}", bag.join(", "), s.town(town).money, s.held_back(town, 1));
+                let r = s.roster(town);
+                let slack: Vec<String> = s.lockers(town).map(|l| l.hands.iter().enumerate()
+                    .map(|(i, h)| format!("{}:{}:{:.2}", s.content().trades[r.hands[i].trade].name, h.slack, h.worth)).collect())
+                    .unwrap_or_default();
+                println!("day {day}: {} | money {} | slack {:?}", bag.join(", "), s.town(town).money, slack);
             }
         }
         return;

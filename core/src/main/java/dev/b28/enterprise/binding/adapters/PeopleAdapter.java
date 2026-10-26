@@ -5,6 +5,7 @@ import dev.b28.enterprise.binding.CoreHost;
 import dev.b28.enterprise.merchant.Merchant;
 import dev.b28.enterprise.settlement.CensusTaker;
 import dev.b28.enterprise.territory.Growth;
+import dev.b28.enterprise.territory.Jobs;
 import dev.b28.enterprise.wire.Input;
 import dev.b28.enterprise.wire.Output;
 import dev.b28.enterprise.wire.Resident;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -24,6 +26,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.npc.VillagerType;
@@ -64,6 +67,8 @@ public final class PeopleAdapter {
     private final Map<Long, Named> naming = new LinkedHashMap<>();
     /** Where each town's census last saw each of its villagers (a chunk), by town: not saved, rebuilt as they're seen. */
     private final Map<Long, Map<UUID, Long>> lastChunk = new HashMap<>();
+    /** Stalls the core paid for whose villager or bell wasn't loaded yet: put up at a later look, when they are. */
+    private final List<Output.Stall> stalls = new ArrayList<>();
     /** The professions by the core's names for them (a registry path: {@code farmer}, {@code merchant}). */
     private Map<String, VillagerProfession> professions;
 
@@ -82,6 +87,9 @@ public final class PeopleAdapter {
      * counted heals its hurt villagers too ({@link dev.b28.enterprise.settlement.Beacon}).
      */
     public List<Input> happenings(MinecraftServer server, boolean census) {
+        if (ownsVillagers) {
+            stalls.removeIf(o -> stall(server, o));
+        }
         List<Input> counts = new ArrayList<>();
         if (census) {
             for (var desk : host.points().of(PointsAdapter.Kind.DESK).entrySet()) {
@@ -327,8 +335,56 @@ public final class PeopleAdapter {
                 host.wagons().forget(o.hand()); // a hand gone while away (a soldier fallen) takes its stowed villager
             }
             case Output.HandLevel o -> write(server, o);
+            case Output.Stall o -> {
+                if (!stall(server, o)) {
+                    stalls.add(o);
+                }
+            }
             default -> {}
         }
+    }
+
+    /**
+     * A stall the core paid for (`Stall`): the trade's workstation with a chest against it, on a free plot by the town's
+     * bell ({@link Jobs#buildStall}), and the hand's villager given the job there, as the mod's {@code Jobs.hire} does:
+     * the chest makes it a locker its Merchant can manage. False while its villager or bell isn't loaded (tried again
+     * at a later look); true once it's done, or there's nothing to do (no workstation for the trade, no plot free).
+     */
+    private boolean stall(MinecraftServer server, Output.Stall o) {
+        VillagerProfession profession = profession(o.trade());
+        var trade = Jobs.TRADES.stream().filter(t -> t.profession() == profession).findFirst();
+        if (trade.isEmpty()) {
+            return true;
+        }
+        if (!(find(server, o.tag()) instanceof Villager v) || !(v.level() instanceof ServerLevel level)) {
+            return false;
+        }
+        for (var desk : host.points().of(PointsAdapter.Kind.DESK).entrySet()) {
+            if (desk.getValue() != o.town() || !desk.getKey().dimension().equals(level.dimension())) {
+                continue;
+            }
+            BlockPos bell = centre(level, desk.getKey().pos());
+            if (!level.isLoaded(bell)) {
+                return false;
+            }
+            var site = Growth.site(level, bell, Jobs.STALL_SIZE, Jobs.STALL_NEAREST);
+            if (site.isEmpty()) {
+                Enterprise.LOGGER.info("No room by {}'s bell for its {}'s stall", o.town(), o.trade());
+                return true;
+            }
+            // A hand that left a trade for this one: its old workstation comes down (`Jobs.leaveTrade`).
+            v.getBrain().getMemory(MemoryModuleType.JOB_SITE).filter(s -> s.dimension().equals(level.dimension()))
+                    .ifPresent(old -> {
+                        level.getPoiManager().release(old.pos());
+                        level.setBlock(old.pos(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
+                    });
+            BlockPos workstation = Jobs.buildStall(level, site.get(), trade.get());
+            level.getPoiManager().take(type -> true, (type, at) -> at.equals(workstation), workstation, 1);
+            v.getBrain().setMemory(MemoryModuleType.JOB_SITE, GlobalPos.of(level.dimension(), workstation));
+            Enterprise.LOGGER.info("Town {} puts up a {} stall at {}", o.town(), o.trade(), workstation.toShortString());
+            return true;
+        }
+        return true;
     }
 
     /** A hand came to the town: a villager for it (and any other with none) by its bell, if the town is loaded. */

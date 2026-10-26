@@ -27,7 +27,7 @@ pub fn register(schedule: &mut Schedule) {
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signals: Res<Signals>, order: Res<Towns>,
-        settlers: Res<Settlers>, mut hiring: ResMut<Hiring>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, seed: Res<Rng>,
+        settlers: Res<Settlers>, hands: Res<crate::roster::Hands>, mut outbox: ResMut<Outbox>, mut hiring: ResMut<Hiring>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, seed: Res<Rng>,
         mut dice: ResMut<Dice>, mut recipes: Local<Option<Vec<crate::services::Recipe>>>,
         routes: Query<(&Route, &RouteState)>,
         mut towns: Query<(&Town, &mut Money, &mut People, &Stock, &Trades, &Farm, &mut Deposits, &mut Budget,
@@ -65,7 +65,12 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
         if sent_today || raising(&content, &settlers, town.id, &*people, stock, now) {
             continue;
         }
-        let roads = routes.iter().any(|(r, _)| r.from_id == town.id || r.to_id == town.id);
+        // A road counts while it carries: a wagon on it, or one gone down it within `slack_days`. Roads that have
+        // carried nothing that long are no reason to keep a trade that does nothing (John: "fix that": seed
+        // 8675309's Meadowfell, its roads unfunded, kept two Leatherworkers with no leather to buy and earned nothing
+        // in 90 days).
+        let roads = routes.iter()
+            .any(|(r, st)| (r.from_id == town.id || r.to_id == town.id) && crate::jobs::carries(&content, st, now));
         let mut far: Vec<usize> = routes.iter().map(|(r, _)| r)
             .filter_map(|r| if r.from_id == town.id { Some(r.to_id) } else if r.to_id == town.id { Some(r.from_id) } else { None })
             .collect();
@@ -81,8 +86,17 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
             roster: &mut roster, lockers: &mut lockers, roads, far };
         let mut books = Books { ledger: &mut ledger, book: &mut book, rng: dice.of(town.id, &seed) };
         let idle = place.roster.hands.iter().any(|h| !h.is_baby() && !h.away && content.trades.get(h.trade).is_some_and(|t| t.none));
-        if employ(&content, &mut books, &bills, &signals, now, &mut place).is_none() && idle {
-            hiring.left_idle.insert(town.id, today);
+        match employ(&content, &mut books, &bills, &signals, now, &mut place) {
+            None if idle => {
+                hiring.left_idle.insert(town.id, today);
+            }
+            // A stall paid for, for the host to put up (a caravan's lead has none: `employ`).
+            Some(hired) if !content.trades[hired.trade].merchant => {
+                let id = place.roster.hands[hired.hand].id;
+                outbox.0.push(crate::messages::Output::Stall { town: crate::wire::no(town.id), hand: id,
+                    tag: hands.tag(id).unwrap_or_default().to_string(), trade: content.trades[hired.trade].name.clone() });
+            }
+            _ => {}
         }
     }
 }

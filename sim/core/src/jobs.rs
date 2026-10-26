@@ -291,7 +291,15 @@ fn for_contracts(content: &Content, place: &Place) -> Option<TradeId> {
     place.lockers.needed.iter().copied().find(|&t| job_trade(content, t).is_some() && place.roster.count(t) == 0)
 }
 
-/// A hand whose trade has done nothing for the town for `slack_days` reviews, in a town with no roads (`Jobs.slack`).
+/// Does a road carry, for its towns' job draws ([`slack`]): a wagon on it, or one gone down it within `slack_days`?
+/// One that has carried nothing that long is no reason to keep a trade that does nothing.
+pub fn carries(content: &Content, state: &RouteState, now: u64) -> bool {
+    let lately = (content.dials.slack_days as u64 * content.day_ticks).max(1);
+    state.wagon.is_some() || state.last_departure.is_some_and(|t| now.saturating_sub(t) < lately)
+}
+
+/// A hand whose trade has done nothing for the town for `slack_days` reviews, in a town with no roads (`Jobs.slack`),
+/// or none that have carried anything lately (`rules/jobs.rs`).
 fn slack(content: &Content, place: &Place) -> Option<usize> {
     if place.roads {
         return None;
@@ -364,6 +372,13 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
     // time to get going (its herd to breed, its first goods) before it is judged slack.
     // The same villager in a new trade: its id stays.
     place.roster.hands[hand] = Hand { id: place.roster.hands[hand].id, ..Hand::new(content, trade, 1) };
+    // Its stall paid for: its locker in the books until the host puts the stall up and places it (`Lockers::stalls`);
+    // a locker it had stood at its old trade's workstation, which the host takes down (`Jobs.leaveTrade`).
+    let id = place.roster.hands[hand].id;
+    if let Some(placed) = place.lockers.placed.as_mut() {
+        placed.remove(&id);
+    }
+    place.lockers.stalls.insert(id);
     place.lockers.sync(content, place.roster);
     let locker = &mut place.lockers.hands[hand];
     for o in locker.offers.iter_mut().filter(|o| !o.sells && o.level <= 1) {
@@ -430,8 +445,9 @@ impl crate::society::Society {
 
     /// Whether a route starts or ends at the town.
     pub fn has_roads(&self, town: usize) -> bool {
-        self.routes.iter().filter_map(|&r| self.world.get::<Route>(r))
-            .any(|r| r.from_id == town || r.to_id == town)
+        let now = self.now();
+        self.routes.iter().filter_map(|&r| Some((self.world.get::<Route>(r)?, self.world.get::<RouteState>(r)?)))
+            .any(|(r, st)| (r.from_id == town || r.to_id == town) && carries(self.content(), st, now))
     }
 
     /// The review of a town's idle hands now, whatever the day (as its look does once a day). Returns who took which
