@@ -214,8 +214,12 @@ pub fn town_bag(content: &Content, signals: &Signals, town: usize, stock: &Stock
 
 /// The trade that would make a good for a neighbour: one whose people sell it, else one that makes it of `recipes`
 /// (`rules/sourcing.rs` `supplier_trade_in`), else the keeper of the herd it comes of (`herds.rs`: a Shepherd's wool, a
-/// Leatherworker's cows' leather, a Butcher's meat), else, for game, the Fletcher, who hunts ([`crate::kit::game`]).
+/// Leatherworker's cows' leather, a Butcher's meat), else, for game, the Fletcher, who hunts ([`crate::kit::game`]). A
+/// crop is the Farmer's: its people only buy crops, so no offer of theirs sells one.
 pub fn maker_of(content: &Content, recipes: &[crate::services::Recipe], good: GoodId) -> Option<TradeId> {
+    if content.goods.get(good).is_some_and(|g| g.crop) {
+        return content.trade("farmer");
+    }
     crate::rules::sourcing::supplier_trade_in(content, recipes, good).or_else(|| {
         let keeper = crate::herds::mod_animals(content).iter().find_map(|a| {
             if a.wool == Some(good) {

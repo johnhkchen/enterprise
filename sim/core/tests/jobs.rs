@@ -477,6 +477,27 @@ fn the_trade_that_makes_what_the_town_down_the_road_buys_is_in_the_bag() {
     assert!((of(&s, "leatherworker") - 64.0 / 12.0).abs() < 1e-9, "shared with the Leatherworker it has: {}", of(&s, "leatherworker"));
 }
 
+/// A crop the town down a road buys is a Farmer's to grow: Farmers only buy crops, so no trade's offer sells one, and a
+/// survival network's Meadowfell, with six fields idle and its neighbours' Farmers buying thousands, never drew one.
+#[test]
+fn a_crop_the_town_down_the_road_buys_puts_a_farmer_in_the_bag() {
+    let mut c = content();
+    c.goods[CARROT] = c.goods[CARROT].clone().crop();
+    let mut s = Society::new(c);
+    s.seed(1);
+    let t = s.add_town("Inkwell", 20.0);
+    s.set_roster(t, &[("merchant", 1), ("none", 1)]);
+    let far = s.add_town("Farfield", 0.0);
+    s.set_roster(far, &[("farmer", 1), ("merchant", 1)]);
+    s.set_offers(far, 0, vec![enterprise_core::lockers::Offer::buys(CARROT, 22, 1, 16, 2, 1.0 / 22.0)]);
+    s.switch(far, 0, 0, true);
+    let of = |s: &Society| s.job_bag(t).iter().filter(|(n, _)| n == "farmer").map(|(_, m)| *m).sum::<f64>();
+    let before = of(&s);
+    s.add_route(t, far, 0.25, 0.0, 1.0);
+    let far_marbles = of(&s) - before;
+    assert!((far_marbles - 64.0 / 22.0).abs() < 1e-9, "a stack of carrots' worth: {far_marbles}");
+}
+
 #[test]
 fn a_stall_paid_for_is_a_locker_until_the_host_places_it() {
     // A town whose host places its lockers, unloaded: the hand the draw hires has its locker in the books at once.
