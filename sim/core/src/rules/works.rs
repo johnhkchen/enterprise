@@ -122,6 +122,12 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
             Option<&Roster>, &Paperwork)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let d = &content.dials;
+    // The bridges every town has started or finished: a river is bridged once.
+    let mut underway: std::collections::BTreeSet<crate::hex::Hex> = q.iter()
+        .flat_map(|(_, w, ..)| w.projects.iter().filter_map(|p| match p.what {
+            What::Bridge { hex, .. } => Some(hex),
+            _ => None,
+        }).collect::<Vec<_>>()).collect();
     for &e in &towns.0 {
         let Ok((town, mut works, mut money, mut stock, trades, mut budget, people, farm, roster, paperwork)) = q.get_mut(e)
             else { continue };
@@ -171,6 +177,28 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
         }
         let spurs = mint.rate(now, day);
         let per_day = per_day(d, hexes);
+        // A bridge over the river that keeps one of its roads to llamas (`map.rs`: a wagon has no way over a river
+        // without one): the first river on the wagon's way that nobody's bridging, if the town can pay half its masons'
+        // wages now. Its road takes wagons once it's built.
+        if toll_review {
+            let mut in_seq: Vec<&Route> = routes.iter()
+                .filter(|r| r.from_id == t && r.carrier == crate::map::Carrier::Llama).collect();
+            in_seq.sort_by_key(|r| r.seq);
+            let hex_of = |id: usize| towns.0.get(id).and_then(|&x| places.get(x).ok()).and_then(|p| p.hex);
+            let per_hex = crate::map::per_hex_at_bread(&content);
+            let crossing = in_seq.iter().filter_map(|r| Some((hex_of(r.from_id)?, hex_of(r.to_id)?)))
+                .flat_map(|(a, b)| map.river_crossings(a, b, per_hex))
+                .find(|(hex, ..)| !underway.contains(hex));
+            if let Some((hex, from, to)) = crossing {
+                let deck = deck_size(hex, from, to);
+                let wages = deck as f64 / per_day * d.masons as f64 * d.mason_pay;
+                if spare >= wages / 2.0 {
+                    underway.insert(hex);
+                    works.start(What::Bridge { hex, from, to }, deck);
+                    continue;
+                }
+            }
+        }
         // A bridge whose tolls repay its wages soonest, within `payback_days`, if the town can pay half of them now.
         if toll_review {
             // In the routes' order: a load (or a component added mid-run) reorders the query, and the first best
@@ -188,7 +216,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
             let mut best_payback = d.payback_days;
             for &hex in territory.holding(t).map_or(&[][..], |h| &h.hexes[..]) {
                 let g = map.ground(hex);
-                if works.has_bridge(hex) || g.bridged || g.water_share <= IMPASSABLE || g.relief >= CLIFF {
+                if works.has_bridge(hex) || g.bridged || (g.water_share <= IMPASSABLE && !g.river) || g.relief >= CLIFF {
                     continue;
                 }
                 let value = bridge_value(&map, &posts, &ends, t, hex, per_hex, d.max_toll_rate, d.detour_share);

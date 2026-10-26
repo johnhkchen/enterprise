@@ -641,6 +641,12 @@ help breed more as needed."
   the road as a wagon's team does, nothing at home. Dials: `llama_slots`, `llama_weight`, `llama_train`,
   `merchant_llamas`, `llama_breed_days`, `llama_breed_wheat`. **Not yet:** the llamas as entities in the world (the
   herds have none either), and the freight hubs' and the post's sizing, which still reckon a wagon's 27 stacks.
+- **Masons bridge the river a town's llamas ford** (`rules/works.rs`, `Map::river_crossings`). At its toll reviews
+  (every 3 days), before a toll bridge, a town with one of its own roads on llamas looks for the wagon's way with every
+  river bridged, and starts a bridge on the first river hex on it nobody is bridging, its deck between the hexes before
+  and after, if it can pay half the masons' wages now (no payback asked: the road is the point). Once it's built the
+  road plans again as a wagon's, and the host lays its deck as it does a toll bridge's. A toll bridge may now stand on a
+  river's hex too.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 

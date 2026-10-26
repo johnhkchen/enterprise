@@ -494,6 +494,25 @@ impl Map {
     }
 }
 
+impl Map {
+    /// The rivers a wagon's way from `start` to `goal` would want bridged: the cheapest way for a wagon with every
+    /// river's hex bridged (no tolls), and each river hex on it with no bridge yet, in the order it's crossed, with the
+    /// hexes before and after it (a deck runs between them). Empty when a wagon needs none, or has no way even so.
+    pub fn river_crossings(&self, start: Hex, goal: Hex, per_hex: f64) -> Vec<(Hex, Hex, Hex)> {
+        let rivers: BTreeSet<Hex> = self.ground.iter().filter(|(_, g)| g.river && !g.bridged).map(|(h, _)| *h).collect();
+        if rivers.is_empty() {
+            return Vec::new();
+        }
+        let mut bridged = Map { ground: self.ground.clone(), trails: self.trails.clone(), ..Default::default() };
+        for &h in &rivers {
+            bridged.bridge(h);
+        }
+        let Some(path) = bridged.plan(start, goal, per_hex, 0.0, &Posts::new(), &BTreeSet::new(), Carrier::Wagon,
+            &BTreeSet::new()) else { return Vec::new() };
+        path.hexes.windows(3).filter(|w| rivers.contains(&w[1])).map(|w| (w[1], w[0], w[2])).collect()
+    }
+}
+
 /// The toll for stepping from `here` into `next`: charged on reaching a town's toll post, not again at a post of the
 /// same town next to it, and never by a town in `free` (`RoutePlanner.postToll`).
 pub fn post_toll(posts: &Posts, here: Hex, next: Hex, free: &BTreeSet<TownId>, value: f64) -> f64 {

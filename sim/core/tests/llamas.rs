@@ -134,3 +134,32 @@ fn a_train_is_what_the_load_wants_of_the_llamas_home() {
     assert_eq!(llamas::team_caps(&c, 0), (c.dials.wagon_slots, c.dials.wagon_weight, c.dials.wagon_pallets), "a wagon");
     assert_eq!(llamas::team_caps(&c, 2), (18, 18.0, 2));
 }
+
+#[test]
+fn a_town_pays_masons_to_bridge_the_river_its_llamas_ford_and_wagons_take_the_road() {
+    let (mut s, road) = across_the_river();
+    for hex in [START, Hex::new(1, 0), Hex::new(0, 1), Hex::new(1, -1)] {
+        assert!(s.claim_hex(0, hex));
+    }
+    s.set_llamas(0, 2);
+    let before = s.totals();
+    let mut bridged = None;
+    for day in 1..=60 {
+        s.advance(day * DAY);
+        let works = s.works(0);
+        bridged = works.projects.iter().find_map(|p| match p.what {
+            enterprise_core::works::What::Bridge { hex, .. } => Some(hex),
+            _ => None,
+        });
+        if bridged.is_some_and(|h| s.map().ground(h).bridged) && s.route_carrier(road) == Carrier::Wagon {
+            break;
+        }
+    }
+    let hex = bridged.expect("a bridge started");
+    assert_eq!(hex.q, 6, "on the river: {hex:?}");
+    assert!(s.works(0).bridged(hex) && s.map().ground(hex).bridged, "built and on the map");
+    assert_eq!(s.route_carrier(road), Carrier::Wagon, "a wagon road now");
+    assert!(s.route_path(road).unwrap().contains(&hex), "over the bridge");
+    assert!(s.works(1).projects.is_empty(), "the far end builds none: its road isn't the llamas'");
+    s.conserved(&before).unwrap();
+}
