@@ -1037,6 +1037,15 @@ Output:
           - name: STR
           - x: I32
           - z: I32
+    29:
+      Trail:
+        STRUCT:
+          - hex:
+              TYPENAME: HexAt
+          - from:
+              TYPENAME: HexAt
+          - to:
+              TYPENAME: HexAt
 PackAmount:
   STRUCT:
     - good: STR

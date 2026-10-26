@@ -7,6 +7,7 @@ import dev.b28.enterprise.caravan.Route;
 import dev.b28.enterprise.caravan.RoutePlanner;
 import dev.b28.enterprise.hex.Hex;
 import dev.b28.enterprise.territory.Terrain;
+import dev.b28.enterprise.territory.Trails;
 import dev.b28.enterprise.territory.Territory;
 import java.util.List;
 import java.util.Set;
@@ -432,6 +433,35 @@ public final class TollTests {
         drawWalls(terrain, level, hex, (x, z) -> (x == west + 8 && Math.abs(z - cz) <= 6) || (x <= west + 8 && Math.abs(z - cz) == 6)
                 || (x == east - 8 && Math.abs(z - cz) <= 6) || (x >= east - 8 && Math.abs(z - cz) == 6));
         helper.assertFalse(terrain.walledShut(level, hex), "yards on its edges: open");
+        helper.succeed();
+    }
+
+    /**
+     * A trail laid along a row of grass: trodden to dirt path two wide, the grass growing on it cleared and a lone
+     * block's bump on the way cut level.
+     */
+    @GameTest(template = "floor")
+    public static void aTrailIsTroddenToPathItsBumpLevelled(GameTestHelper helper) {
+        for (int x = 0; x <= 6; x++) {
+            for (int z = 3; z <= 4; z++) {
+                for (int y = 2; y <= 12; y++) {
+                    helper.setBlock(new BlockPos(x, y, z), Blocks.AIR); // the arena's barriers off
+                }
+                helper.setBlock(new BlockPos(x, 0, z), Blocks.DIRT);
+                helper.setBlock(new BlockPos(x, 1, z), Blocks.GRASS_BLOCK);
+            }
+        }
+        helper.setBlock(new BlockPos(1, 2, 3), Blocks.SHORT_GRASS);
+        helper.setBlock(new BlockPos(3, 1, 3), Blocks.DIRT);
+        helper.setBlock(new BlockPos(3, 2, 3), Blocks.GRASS_BLOCK); // a bump
+        BlockPos a = helper.absolutePos(new BlockPos(0, 1, 3)), b = helper.absolutePos(new BlockPos(6, 1, 3));
+        // Along the row as the test is turned (a step across it the second block's side).
+        Trails.layLine(helper.getLevel(), new double[][] {{a.getX() + 0.5, a.getZ() + 0.5}, {b.getX() + 0.5, b.getZ() + 0.5}});
+        for (int x = 0; x <= 6; x++) {
+            helper.assertBlockPresent(Blocks.DIRT_PATH, new BlockPos(x, 1, 3));
+        }
+        helper.assertBlockPresent(Blocks.AIR, new BlockPos(1, 2, 3));
+        helper.assertBlockPresent(Blocks.AIR, new BlockPos(3, 2, 3));
         helper.succeed();
     }
 

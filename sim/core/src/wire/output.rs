@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{GoodNo, HandNo, PackageLine, Place, Point, RouteNo, TownNo, Work};
+use super::{GoodNo, HandNo, HexAt, PackageLine, Place, Point, RouteNo, TownNo, Work};
 use crate::fixed::Fixed;
 
 /// What happened, for the host to show.
@@ -92,4 +92,8 @@ pub enum Output {
     /// (`Input::AddPoint`, a desk of the town's). Asked at every look until it does; the settlers come out as
     /// `Settled` when they arrive, for the host to spawn by the desk once it stands.
     Found { town: TownNo, name: String, x: i32, z: i32 },
+    /// Wagons have worn a trail across `hex` (`map.rs`: crossings enough that its way is trodden level): for the host to
+    /// lay a desire path through it, from its edge with `from` to its edge with `to` (the hexes before and after it on
+    /// the road that wore it), across its ground where it's soil. Said once.
+    Trail { hex: HexAt, from: HexAt, to: HexAt },
 }

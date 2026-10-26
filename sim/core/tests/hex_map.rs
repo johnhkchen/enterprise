@@ -425,3 +425,65 @@ fn a_gentle_slope_is_climbed_and_costs_more_than_the_flat() {
     assert_eq!(slope.hexes.len(), flat.hexes.len(), "straight up the slope");
     assert!((slope.cost - flat.cost * 1.5).abs() < 1e-9, "half again: {} vs {}", slope.cost, flat.cost);
 }
+
+#[test]
+fn wagons_wear_a_trail_that_fades_unless_used_and_eases_the_way() {
+    let mut m = Map::default();
+    let hill = Hex::new(3, 0);
+    m.set_ground(hill, 0.0, 8.0); // as hard again
+    assert!(m.wear(&[hill], 2.0, 0, DAY).is_empty());
+    assert!((m.wear[&hill].at(20 * DAY, DAY) - 1.0).abs() < 1e-12, "half gone in 20 days");
+    // Four more round trips a day apart (the wear fading meanwhile): worn to a trail on the last.
+    let mut made = Vec::new();
+    for day in 1..=4 {
+        made.extend(m.wear(&[hill], 2.0, day * DAY, DAY));
+    }
+    assert_eq!(made, vec![hill], "a trail once");
+    assert!(m.trail(hill));
+    assert!(m.wear(&[hill], 2.0, 5 * DAY, DAY).is_empty(), "not said again");
+    // The trail takes half of what the hill adds: 1.5 a hex, not 2.
+    let path = [Hex::new(2, 0), hill, Hex::new(4, 0), Hex::new(5, 0)];
+    assert!((m.path_cost(&path, 1.0) - (1.5 + 1.0 + 1.0)).abs() < 1e-12, "{}", m.path_cost(&path, 1.0));
+}
+
+#[test]
+fn a_busy_road_wears_trails_that_the_host_is_told_of_once() {
+    let (mut s, road) = farm_and_mill_by_road(true);
+    let path = s.route_path(road.unwrap()).unwrap();
+    let mut trails = Vec::new();
+    for day in 1..=60 {
+        for o in s.advance(day * DAY) {
+            if let enterprise_core::Output::Trail { hex, from, to } = o {
+                trails.push((Hex::new(hex.q, hex.r), Hex::new(from.q, from.r), Hex::new(to.q, to.r)));
+            }
+        }
+    }
+    let trips = s.route(road.unwrap()).trips;
+    assert!(trips >= 6, "wagons enough to wear it: {trips}");
+    assert_eq!(trails.len(), path.len(), "every hex of the road a trail, each said once: {trails:?}");
+    for (hex, from, to) in &trails {
+        let at = path.iter().position(|h| h == hex).unwrap();
+        assert_eq!((*from, *to), (path[at.saturating_sub(1)], path[(at + 1).min(path.len() - 1)]), "its way through");
+    }
+}
+
+#[test]
+fn a_road_takes_a_better_way_once_its_wagon_is_home() {
+    // A straight road; then a cliff surveyed across its middle: the next day it goes round, longer.
+    let goods = vec![Good::new("wheat", 0.05, 64)];
+    let mut s = Society::new(Content::new(goods, DAY));
+    let (a, b) = (s.add_town("A", 0.0), s.add_town("B", 0.0));
+    s.place_town(a, 0.0, 0.0);
+    s.place_town(b, GOAL.center_x(), 0.0);
+    let road = s.add_road(a, b, 1.0).unwrap();
+    let (before, blocks) = (s.route_path(road).unwrap(), s.route_road_blocks(road));
+    assert_eq!(before.len(), 13);
+    s.set_ground(Hex::new(6, 0), 0.0, 40.0);
+    s.advance(DAY);
+    let after = s.route_path(road).unwrap();
+    assert!(!after.contains(&Hex::new(6, 0)) && after.len() > before.len(), "round the cliff: {after:?}");
+    assert!(s.route_road_blocks(road) > blocks, "longer: {} blocks, was {blocks}", s.route_road_blocks(road));
+    // Nothing better since: it keeps its way.
+    s.advance(2 * DAY);
+    assert_eq!(s.route_path(road).unwrap(), after);
+}

@@ -576,6 +576,15 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   between natural terrain's slopes are the routes a world offers. A route's own towns are always reached and left,
   their step only harder going: a town on a hill's edge has its road; one in a plateau's middle has none. By boat,
   water is level. Desire paths (wear that eases a well-used way) and paving by masons are to build on this.
+- **Desire paths.** Each road's departure wears every hex of its path by a round trip's two crossings, fading by half
+  every 20 days (worked out on touch); a hex worn to 8 is a trail for good (a wagon every four days wears one in five
+  or six round trips): its ground's and climb's cost over open ground halved, and the host told once
+  (`Output::Trail`, with the hexes before and after it on the road) to lay a dirt path two wide through it, edge to
+  centre to edge, where the ground is soil, plants cleared and lone one-block bumps and dips levelled
+  (`territory/Trails.java`, saved until its ground loads). Roads now plan again once a day while their wagon is home,
+  taking a cheaper way if there is one (trails, ground surveyed since, a wall), with their days and food. Measured
+  (`network_study.py`, core mode, 40 days): 30 trails laid, about 160 blocks of path a hex. Paving them is the
+  masons' to come.
 - **Land never loaded has its hills from the start.** A chunk never surveyed takes its height from the world's
   generator (its noise at the chunk's middle, the chunk not generated), for the hex's height and its relief; the
   survey replaces it once the chunk loads. Seed 8675309, the 298 hexes round two villages 496 apart: all with heights

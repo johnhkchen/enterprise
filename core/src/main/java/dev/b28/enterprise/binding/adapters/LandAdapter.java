@@ -13,6 +13,7 @@ import dev.b28.enterprise.territory.Fields;
 import dev.b28.enterprise.territory.Growth;
 import dev.b28.enterprise.territory.Labour;
 import dev.b28.enterprise.territory.Terrain;
+import dev.b28.enterprise.territory.Trails;
 import dev.b28.enterprise.territory.Works;
 import dev.b28.enterprise.wire.Answer;
 import dev.b28.enterprise.wire.Count;
@@ -125,6 +126,8 @@ public final class LandAdapter {
     private final Map<List<Object>, Output.Build> asked = new LinkedHashMap<>();
     /** The towns a host's settlers founded that the core asked to have built, by town, till the next look. */
     private final Map<Long, Output.Found> founding = new LinkedHashMap<>();
+    /** Trails shown since the last look, for the world's {@link Trails}. */
+    private final List<Trails.Trail> trailsShown = new ArrayList<>();
 
     public LandAdapter(CoreHost host, boolean ownsLand) {
         this.host = host;
@@ -191,6 +194,7 @@ public final class LandAdapter {
     public List<Input> happenings(MinecraftServer server, boolean survey) {
         layAsked(server);
         buildFounded(server);
+        layTrails(server);
         List<Input> inputs = takePending();
         ServerLevel overworld = server.overworld();
         for (var desk : host.points().of(PointsAdapter.Kind.DESK).entrySet()) {
@@ -461,6 +465,43 @@ public final class LandAdapter {
     public void show(Output.Build build) {
         if (ownsLand) {
             asked.merge(List.of(build.town(), build.work()), build, (a, b) -> b.share() >= a.share() ? b : a);
+        }
+    }
+
+    /** A trail the core's wagons wore, to keep (saved) and lay once its ground is loaded (core mode: {@link Trails}). */
+    public void show(Output.Trail trail) {
+        if (ownsLand) {
+            trailsShown.add(new Trails.Trail(new Hex(trail.hex().q(), trail.hex().r()),
+                    new Hex(trail.from().q(), trail.from().r()), new Hex(trail.to().q(), trail.to().r())));
+        }
+    }
+
+    /** Trails at most laid a look: each a hex's worth of path. */
+    static final int TRAILS_PER_LOOK = 2;
+
+    /**
+     * The trails shown since the last look kept with the world's, and up to {@value #TRAILS_PER_LOOK} of those waiting
+     * laid whose ground is loaded (the rest held loaded, laid at a later look).
+     */
+    private void layTrails(MinecraftServer server) {
+        if (server == null) {
+            return;
+        }
+        Trails trails = Trails.get(server);
+        trailsShown.forEach(trails::add);
+        trailsShown.clear();
+        ServerLevel level = server.overworld();
+        int laid = 0;
+        for (Trails.Trail t : trails.waiting()) {
+            if (laid >= TRAILS_PER_LOOK) {
+                break;
+            }
+            if (loadedFor(level, Trails.chunks(t))) {
+                int blocks = Trails.lay(level, t);
+                trails.laid(t);
+                dev.b28.enterprise.Enterprise.LOGGER.info("A trail laid across hex {} ({} blocks of path)", t.hex(), blocks);
+                laid++;
+            }
         }
     }
 

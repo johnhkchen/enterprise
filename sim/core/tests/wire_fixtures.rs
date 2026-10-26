@@ -469,6 +469,8 @@ fn outputs() -> Vec<Output> {
         Output::CrownShopDown { point: point(PointKind::Shop, i32::MIN, i32::MAX, i32::MIN) },
         Output::Found { town: 7, name: "Newfound 3".into(), x: 1640, z: -360 },
         Output::Found { town: u32::MAX, name: String::new(), x: i32::MIN, z: i32::MAX },
+        Output::Trail { hex: hex(3, -2), from: hex(2, -2), to: hex(4, -2) },
+        Output::Trail { hex: hex(i32::MIN, i32::MAX), from: hex(i32::MIN, i32::MAX), to: hex(i32::MAX, i32::MIN) },
     ]
 }
 
@@ -1052,6 +1054,7 @@ fn output_place(o: &Output) -> usize {
         Output::CrownShop { .. } => 26,
         Output::CrownShopDown { .. } => 27,
         Output::Found { .. } => 28,
+        Output::Trail { .. } => 29,
     }
 }
 
@@ -1165,7 +1168,7 @@ fn covers<T>(what: &str, samples: &[T], variants: usize, place: fn(&T) -> usize)
 #[test]
 fn every_variant_of_every_wire_enum_has_a_sample() {
     covers("Input", &inputs(), 41, input_place);
-    covers("Output", &outputs(), 29, output_place);
+    covers("Output", &outputs(), 30, output_place);
     covers("Query", &queries(), 28, query_place);
     covers("Answer", &answers(), 28, answer_place);
     covers("Command", &commands(), 5, command_place);

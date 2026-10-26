@@ -268,6 +268,61 @@ impl Society {
         Some(id)
     }
 
+    /// Roads' wear and their paths (`map.rs`): each road whose wagon left since the last look wears every hex of its
+    /// path by a round trip's two crossings, and a hex worn to a trail is said (`Output::Trail`); once a day, each road
+    /// whose wagon is home takes the cheapest way now if it's cheaper than its own (trails worn, ground surveyed, a
+    /// wall built since), its days and road food with it, if one leg's food still carries it.
+    fn wear_roads(&mut self) {
+        let now = self.now();
+        let day_ticks = self.content().day_ticks;
+        for id in 0..self.routes.len() {
+            let e = self.routes[id];
+            let (Some(path), Some(left)) = (self.world.get::<RoutePath>(e).map(|p| p.0.clone()),
+                self.world.get::<RouteState>(e).and_then(|s| s.last_departure)) else { continue };
+            let mut map = self.world.resource_mut::<crate::map::Map>();
+            if map.worn.get(&id).is_some_and(|&t| t >= left) {
+                continue;
+            }
+            map.worn.insert(id, left);
+            let new = map.wear(&path, 2.0, now, day_ticks);
+            for hex in new {
+                let at = path.iter().position(|&h| h == hex).expect("worn on the path");
+                let from = path[at.saturating_sub(1)];
+                let to = path[(at + 1).min(path.len() - 1)];
+                self.world.resource_mut::<Outbox>().0.push(Output::Trail { hex: crate::wire::HexAt::of(hex),
+                    from: crate::wire::HexAt::of(from), to: crate::wire::HexAt::of(to) });
+            }
+        }
+        let today = now / day_ticks.max(1);
+        if self.map().replanned >= today {
+            return;
+        }
+        self.world.resource_mut::<crate::map::Map>().replanned = today;
+        let per_hex = self.per_hex();
+        for id in 0..self.routes.len() {
+            let e = self.routes[id];
+            let Some(path) = self.world.get::<RoutePath>(e).map(|p| p.0.clone()) else { continue };
+            if self.world.get::<RouteState>(e).is_some_and(|s| s.wagon.is_some()) {
+                continue;
+            }
+            let route = *self.world.get::<Route>(e).expect("a route");
+            let Some(better) = self.plan_road(route.from_id, route.to_id) else { continue };
+            if better.hexes == path || better.cost >= self.map().path_cost(&path, per_hex) - 1e-9 {
+                continue;
+            }
+            let blocks = self.road_blocks(route.from_id, route.to_id, &better);
+            if crate::road::road_food(self.content()) && !crate::road::in_range(self.content(), blocks.round() as u32) {
+                continue;
+            }
+            let days = blocks.max(1.0) / crate::map::BLOCKS_PER_DAY;
+            let mut r = self.world.get_mut::<Route>(e).expect("a route");
+            r.travel_ticks = (days * day_ticks as f64).round().max(1.0) as u64;
+            r.blocks = (days * crate::map::BLOCKS_PER_DAY).round().max(0.0) as u32;
+            r.road_cost = Fixed::ceil(better.cost);
+            self.world.entity_mut(e).insert(RoutePath(better.hexes));
+        }
+    }
+
     /// The hexes a route's wagons cross, if it's a road over the map.
     pub fn route_path(&self, route: RouteId) -> Option<Vec<crate::hex::Hex>> {
         self.world.get::<RoutePath>(self.routes[route]).map(|p| p.0.clone())
@@ -286,6 +341,7 @@ impl Society {
             let next = ((self.now() / look + 1) * look).min(to);
             self.world.resource_mut::<Clock>().now = next;
             self.look.run(&mut self.world);
+            self.wear_roads();
             self.land_parties();
             self.open_commissions(); // routes towns commissioned at its reviews (`atlas.rs`)
             self.open_freight_runs(); // runs the hubs and route owners opened at its reviews (`freight.rs`)

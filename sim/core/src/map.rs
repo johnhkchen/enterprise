@@ -45,6 +45,13 @@ pub const CLIFF: f64 = 32.0;
 pub const MAX_GRADE: f64 = 0.2;
 /// Every this much grade (8 blocks over a hex) makes the step as hard again as open ground.
 pub const GRADE_PER_FACTOR: f64 = 0.1;
+/// Wagons' wear on a hex fades by half in this many days.
+pub const WEAR_HALF_LIFE_DAYS: f64 = 20.0;
+/// A hex worn by this many crossings at once (a round trip crosses it twice) is a trail, for good: a desire path the
+/// host lays in dirt. A wagon every four days wears one in five or six round trips, three weeks or so.
+pub const TRAIL_WEAR: f64 = 8.0;
+/// A trail takes off this share of what its ground and its climb add to open ground's cost: the way is trodden level.
+pub const TRAIL_EASE: f64 = 0.5;
 /// Sailing a water hex costs this much a hex of open ground: boats are quick.
 pub const BOAT_FACTOR: f64 = 0.8;
 /// Hexes either side of the straight line the search may stray.
@@ -138,10 +145,36 @@ impl Ground {
     }
 }
 
-/// The ground of every hex the host has described; the rest are dry and flat.
+/// The ground of every hex the host has described (the rest are dry and flat), how worn each is by wagons, and the
+/// trails their wear has made.
 #[derive(Resource, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Map {
     pub ground: BTreeMap<Hex, Ground>,
+    #[serde(default)]
+    pub wear: BTreeMap<Hex, Wear>,
+    #[serde(default)]
+    pub trails: BTreeSet<Hex>,
+    /// Each road's last departure whose wear is counted (by route), and the day roads were last planned again.
+    #[serde(default)]
+    pub worn: BTreeMap<usize, u64>,
+    #[serde(default)]
+    pub replanned: u64,
+}
+
+/// A hex's wear by wagons: so many crossings as of a tick, fading by half every [`WEAR_HALF_LIFE_DAYS`] (worked out on
+/// touch, never per tick).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Wear {
+    pub crossings: f64,
+    pub at: u64,
+}
+
+impl Wear {
+    /// The wear left at `now`.
+    pub fn at(&self, now: u64, day_ticks: u64) -> f64 {
+        let days = now.saturating_sub(self.at) as f64 / day_ticks.max(1) as f64;
+        self.crossings * 0.5f64.powf(days / WEAR_HALF_LIFE_DAYS)
+    }
 }
 
 /// A town's toll post on a hex: whose, its rate on the coins carried home, and its passage fee.
@@ -242,6 +275,50 @@ impl Map {
         g.relief = relief.max(0.0);
     }
 
+    /// Wagons crossed these hexes (each by `crossings`) at `now`: their wear grows, and those worn to [`TRAIL_WEAR`] for
+    /// the first time are trails from now on, returned in the order crossed.
+    pub fn wear(&mut self, hexes: &[Hex], crossings: f64, now: u64, day_ticks: u64) -> Vec<Hex> {
+        let mut new = Vec::new();
+        for &hex in hexes {
+            let w = self.wear.entry(hex).or_default();
+            *w = Wear { crossings: w.at(now, day_ticks) + crossings, at: now };
+            if w.crossings >= TRAIL_WEAR && self.trails.insert(hex) {
+                new.push(hex);
+            }
+        }
+        new
+    }
+
+    /// Whether wagons have worn a trail across the hex.
+    pub fn trail(&self, hex: Hex) -> bool {
+        self.trails.contains(&hex)
+    }
+
+    /// What a road along `hexes` (start to goal) costs in road food over the map as it is now, at `per_hex` a hex of
+    /// open ground and no tolls: as [`Map::plan`] prices each step. Infinite where a step has no way now.
+    pub fn path_cost(&self, hexes: &[Hex], per_hex: f64) -> f64 {
+        let (Some(&start), Some(&goal)) = (hexes.first(), hexes.last()) else { return 0.0 };
+        hexes.windows(2).map(|w| per_hex * self.step(start, goal, w[0], w[1], false)).sum()
+    }
+
+    /// How much a step from `hex` into `next` costs a share of open ground, on a road from `start` to `goal`: the next
+    /// hex's ground and the climb, a trail easing both; into or out of the road's own ends, only the climb, and never
+    /// none (infinite: no way).
+    fn step(&self, start: Hex, goal: Hex, hex: Hex, next: Hex, boat: bool) -> f64 {
+        let end = next == goal || next == start;
+        // A wagon climbs gently: a step too steep has no way (by boat, water is level). Into or out of the route's own
+        // ends, only harder going: a town on a hill's edge is reached and left by its steep flank; one in the middle
+        // of a plateau isn't.
+        let climb = if boat && self.ground(next).factor(false).is_infinite() { 1.0 } else { self.climb_factor(hex, next) };
+        let climb = if (end || hex == start) && climb.is_infinite() { 1.0 + MAX_GRADE / GRADE_PER_FACTOR } else { climb };
+        let hard = if end { climb } else { self.ground(next).factor(boat) * climb };
+        if self.trail(next) && hard.is_finite() && hard > 1.0 {
+            1.0 + (hard - 1.0) * (1.0 - TRAIL_EASE)
+        } else {
+            hard
+        }
+    }
+
     /// The height of a hex's ground (none: unknown), keeping the rest of it.
     pub fn set_height(&mut self, hex: Hex, height: Option<f64>) {
         self.ground.entry(hex).or_default().height = height;
@@ -318,12 +395,7 @@ impl Map {
                 if !end && avoid.contains(&next) {
                     continue;
                 }
-                // A wagon climbs gently: a step too steep has no way (by boat, water is level). Into or out of the
-                // route's own ends, only harder going: a town on a hill's edge is reached and left by its steep
-                // flank; one in the middle of a plateau isn't.
-                let climb = if boat && self.ground(next).factor(false).is_infinite() { 1.0 } else { self.climb_factor(hex, next) };
-                let climb = if (end || hex == start) && climb.is_infinite() { 1.0 + MAX_GRADE / GRADE_PER_FACTOR } else { climb };
-                let hard = if end { climb } else { self.ground(next).factor(boat) * climb };
+                let hard = self.step(start, goal, hex, next, boat);
                 if hard.is_infinite() {
                     continue;
                 }

@@ -886,7 +886,8 @@ fn wagons() -> Scenario {
         on as its travelling Merchant, goes away with it (HandAway: the host stows its villager). The route shows the \
         wagon on its way out with its crew by hand; on its way home; and home, its crew back (HandBack, with the trade it \
         was taken on for, for the host's villager let out by the desk). Stopped, the route is wound down and no wagon \
-        leaves; started again, it's the same route, open. A route to itself, or from a town that isn't there, is \
+        leaves; started again, it's the same route, open, and forty days of its wagons wear its road's hexes to trails \
+        (Trail). A route to itself, or from a town that isn't there, is \
         refused; one to a far end beyond a leg's food opens nothing. Saved and loaded, the routes are as they were.");
     const BREAD: GoodNo = 1;
     let hub = at(PointKind::Desk, 27, 27);
@@ -941,6 +942,9 @@ fn wagons() -> Scenario {
     s.apply("started again", vec![Input::Route { from: 0, to: 1, send: true }]);
     let a = routes_of(&mut s, "the same route, open");
     assert!(matches!(&a[0], Answer::Routes { routes, .. } if routes.len() == 1 && routes[0].open), "{a:?}");
+    let out = s.apply("forty days of wagons to Far: the road's hexes worn by their round trips to trails, each said once \
+        with the way through it (Trail)", vec![Input::Advance { to: 45 * DAY }]);
+    assert!(out.iter().any(|o| matches!(o, Output::Trail { .. })), "{out:?}");
     s.save("saved");
     s.load("loaded");
     routes_of(&mut s, "the same after the load");
@@ -1538,10 +1542,10 @@ fn every_message_appears_in_a_scenario() {
     assert_eq!(queries, set(&["Dials", "Goods", "Points", "Stock", "Hands", "Chests", "Cash", "Mint", "Land", "Ground", "Lockers", "Routes", "Pallets", "Pallet", "Stow", "Manifest", "CashBook", "Books", "Whys", "Trust", "Contracts", "Territory", "War", "RouteBooks", "Shops", "Deeds", "Realms", "Metals"]));
     assert_eq!(refusals, set(&["Abi", "Input", "NoSociety", "Pack", "Query", "Save", "SaveFormat", "Schema", "Unreadable"]));
     // A child born, the chests' moves, the till's, a field to lay, a locker's trades levelling its villager and the
-    // Merchant, a wagon's trip with its crew away and back, pallets packed, moved and opened (`Pack`), and a master
-    // Merchant filling a player's order (`commands`): the others need a master Merchant with an order nothing holds
-    // (Signal) or a party of settlers or the rules taking a hand (Settled, Departed, HandGone), and no wire input makes
-    // any. When one does, a scenario shows each and its name goes here.
+    // Merchant, a wagon's trip with its crew away and back, pallets packed, moved and opened (`Pack`), a master
+    // Merchant filling a player's order (`commands`), a road's trails and the hands that settle while its wagons run
+    // (`wagons`): the others need a master Merchant with an order nothing holds (Signal) or the rules taking a hand
+    // (Departed, HandGone), and no wire input makes any. When one does, a scenario shows each and its name goes here.
     assert_eq!(outputs, set(&["Born", "Cash", "Moved", "Build", "HandLevel", "WagonLeft", "WagonSold", "WagonHome",
-        "HandAway", "HandBack", "PalletPacked", "PalletMoved", "PalletOpened", "OrderFilled", "StallBought", "Shelf", "BuildShop", "WarDeclared", "PeaceMade", "BuildCrownShop", "CrownShop", "CrownShopDown"]));
+        "HandAway", "HandBack", "PalletPacked", "PalletMoved", "PalletOpened", "OrderFilled", "StallBought", "Shelf", "BuildShop", "WarDeclared", "PeaceMade", "BuildCrownShop", "CrownShop", "CrownShopDown", "Trail", "Settled"]));
 }

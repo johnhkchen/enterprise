@@ -5,6 +5,12 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-26, desire paths.** `map.rs` wear and trails, `Society::wear_roads` (wear at departures; roads planned
+  again daily while their wagon's home), `Output::Trail` (schema `9eedaf36c1154304`), `territory/Trails.java` and
+  `LandAdapter.layTrails` (two a look, held loaded). Tests `hex_map::wagons_wear_a_trail_that_fades_unless_used_and_eases_the_way`,
+  `a_busy_road_wears_trails_that_the_host_is_told_of_once`, `a_road_takes_a_better_way_once_its_wagon_is_home`, the
+  wagons scenario's forty days, game test `aTrailIsTroddenToPathItsBumpLevelled`. Network study, 40 days: 30 trails laid.
+
 - **2026-10-26, wagons climb gently.** `Input::Ground` and `GroundView` carry the hex's ground height
   (`Terrain.height`: its chunks' lowest surfaces' median); the core's planner prices the climb between hexes and has
   no way past a 16-block rise (decisions.md "Wagons climb gently"). Schema `3db5bfb318735582`. Rust tests

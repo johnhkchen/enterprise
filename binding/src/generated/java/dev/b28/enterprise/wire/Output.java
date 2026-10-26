@@ -37,7 +37,8 @@ public sealed interface Output
                 Output.BuildCrownShop,
                 Output.CrownShop,
                 Output.CrownShopDown,
-                Output.Found {
+                Output.Found,
+                Output.Trail {
     void encode(PostcardOut out);
 
     static Output decode(PostcardIn in) {
@@ -72,6 +73,7 @@ public sealed interface Output
             case 26 -> new CrownShop(Point.decode(in), in.u32(), in.u32(), in.u32(), in.u64(), in.u32());
             case 27 -> new CrownShopDown(Point.decode(in));
             case 28 -> new Found(in.u32(), in.string(), in.i32(), in.i32());
+            case 29 -> new Trail(HexAt.decode(in), HexAt.decode(in), HexAt.decode(in));
             default -> throw in.unknownVariant("Output", at);
         };
     }
@@ -564,6 +566,27 @@ public sealed interface Output
             out.string(this.name);
             out.i32(this.x);
             out.i32(this.z);
+        }
+    }
+
+    /**
+     * Wagons have worn a trail across {@code hex} ({@code map.rs}: crossings enough that its way is trodden level): for the host to
+     * lay a desire path through it, from its edge with {@code from} to its edge with {@code to} (the hexes before and after it on
+     * the road that wore it), across its ground where it's soil. Said once.
+     */
+    record Trail(HexAt hex, HexAt from, HexAt to) implements Output {
+        public Trail {
+            Objects.requireNonNull(hex, "hex");
+            Objects.requireNonNull(from, "from");
+            Objects.requireNonNull(to, "to");
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(29);
+            this.hex.encode(out);
+            this.from.encode(out);
+            this.to.encode(out);
         }
     }
 }
