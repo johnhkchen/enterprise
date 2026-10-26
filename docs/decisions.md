@@ -754,6 +754,38 @@ help breed more as needed."
 - **The replay's split was the build** (`docs`: "A journal replay can part"): editing a core rule after `just build`
   while a study ran made its replay part at request 172; with that rule off, all 1,962 responses were the game's. A
   replay matches only on the core the game ran.
+- **A crop the town down the road buys is a Farmer's to grow** (`jobs::maker_of`). A Merchant levelling faster or
+  managing more lockers wouldn't have helped Meadowfell: the lockers it couldn't manage wanted coal and paper it hadn't.
+  It had no Farmer, six wheat plots idle, and its neighbours' Farmers buying crops by the thousand; but no trade's offer
+  sells a crop (Farmers only buy them), so the far ends' crops put no Farmer in its job draw (0.1 against the Butcher's
+  17). Now a crop's maker is the Farmer. Seed 8675309's 90 days (replay all 2,077 the game's): every town's mood above
+  nought (Meadowfell +0.09, from -0.8; Wheatfell +1.58 and 100.6 emeralds); lockers took 1,858 (1,287), 76 trips (26).
+- **Pastures, as the mod fences them** (`rules/farms.rs` `review`, `pastures_max`, no longer Java-only). The core had no
+  rule for a pasture, so every herd stopped at one pasture's sixteen; the Leatherworkers' clothing took every hide and
+  books (three paper and a leather) never had one: reading went unmet everywhere, Ryegate holding 961 paper. Now a town
+  with animals fences a pasture (4 emeralds beyond its reserve, "a pasture" in its book) and another as the herd fills
+  those, to three; the pastures are the books' only (the host fences none in core mode yet). The next 90 days (replay
+  all 2,052): comforts met across the five towns 13 (9), reading in two; moods +2.3, +3.1, +2.5, -0.1, +0.5.
+- **With nothing spare, a farm turns plots to its own workshop's draw** (`farms::rotate_for_workshop`). Rotation turns
+  plots only from a crop grown beyond its uses, and a town's own Farmers' lockers want every crop by the thousand, so
+  nothing ever turned: Meadowfell's 48 cows ate the 12 wheat a day its fields gave, its cookies (two wheat and a cane)
+  never had wheat, 1,563 cane piled, and it met one comfort of five for 90 days, its mood under `home_mood`, so it never
+  built a home and never grew. Now, where rotation turned nothing, plots go a field's worth a review from the crop
+  whose best use earns least to one its own workshop draws for (for its own people alone, the draw's worth raised while
+  they go without) while that earns more, up to what the draw and the crop's feed want: bounded, so no monoculture
+  (not as the mod). The next 90 days (replay all 2,098): every town met three or four comforts; Meadowfell +2.0 (from
+  -0.1) and 17 villagers (9); villagers 81 (63); trips sold 5,495 (2,734).
+- **A town raising settlers keeps two idle hands, not all** (`rules/jobs.rs` `review`, `PARTY_MOST`). A town past
+  growing and fed is raising a party and its job draw kept every idle hand for it; with no village and no clear ground
+  4 to 8 hexes out the party never went, and by day 90 Meadowfell held eight idle (the five towns 23), with 85 emeralds
+  and Librarians and Farmers in its draw. A party takes two at most (a Merchant and a settler), so the draw keeps two
+  and hires the rest. On round 2's journal (a replay, not a run): idle 9, stalls 27 (11). Its own 90 days (replay all
+  2,128): idle 8 (23), stalls 23 (11); but comforts met fell to 12 (16): the world rolled other villagers (no Shepherd
+  in Dustfell till day 33) and its one flock was lost on day 45, see the next.
+- **Open: a Shepherd's wagon drives off the whole flock** (`services::drivable`). A wagon with a Shepherd aboard takes
+  every whole animal of each kind, up to eight; the far end turns them out only where its pastures have room, and a
+  flock is seeded once. Dustfell's three sheep left on day 45 and never came back: no wool, no carpets, furnishings
+  unmet in three towns. To fix next: drive only what's beyond `breeding_stock`.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 
