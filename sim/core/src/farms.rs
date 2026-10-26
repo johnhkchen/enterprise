@@ -559,11 +559,13 @@ pub fn rotate(content: &Content, farm: &mut Farm, wants: &Wants, fed: bool) {
 }
 
 /// Rotation for the workshop, where [`rotate`] turned nothing over because no crop is grown beyond its uses (the town's
-/// own Farmers' lockers take every crop it grows): a field's worth a review from the crop whose best use earns least to
-/// the one its own workshop draws for (`own`: per day and what an item earns there, [`crate::workshop::input_demand`]
-/// for its own people alone) and grows too little of, while that earns more, up to the plots the draw and the crop's
-/// feed want (not as the mod). Seed 8675309's Meadowfell grew its cows' wheat and none for its cookies, its lockers
-/// buying every beetroot, and met one comfort of five for 90 days.
+/// own Farmers' lockers take every crop it grows): a field's worth a review from the plots lying untended under the last
+/// plan, of the crop with most of them that earns less, to the one its own workshop draws for (`own`: per day and what
+/// an item earns there, [`crate::workshop::input_demand`] for its own people alone) and grows too little of, up to the
+/// plots the draw and the crop's feed want (not as the mod). Seed 8675309's Meadowfell grew its cows' wheat and none for
+/// its cookies, its lockers buying every beetroot, and met one comfort of five for 90 days. Only untended plots: the
+/// plan shares the Farmers among the crops by what each earns, and turning tended ones took Ryegate's carrots, potatoes
+/// and beetroot, which its people buy at its lockers, and a beetroot field the day it was bought, all for wheat.
 pub fn rotate_for_workshop(content: &Content, farm: &mut Farm, own: &BTreeMap<GoodId, (f64, f64)>, wants: &Wants) {
     let plots = plots(farm);
     let have = |g: GoodId| plots.get(&g).copied().unwrap_or(0) as i64;
@@ -578,15 +580,15 @@ pub fn rotate_for_workshop(content: &Content, farm: &mut Farm, own: &BTreeMap<Go
         }
     }
     let Some((to, short, to_each)) = to else { return };
-    let mut from: Option<(GoodId, f64)> = None;
-    for &c in rotation.iter().filter(|&&c| c != to && have(c) > 0) {
-        let each = best_each(c);
-        if each < to_each && from.is_none_or(|(_, e)| each < e) {
-            from = Some((c, each));
+    let untended = |c: GoodId| ((farm.idle.get(&c).copied().unwrap_or(0.0) / YIELD_PER_PLOT_PER_DAY) as i64).min(have(c));
+    let mut from: Option<(GoodId, i64)> = None;
+    for &c in rotation.iter().filter(|&&c| c != to && untended(c) > 0 && best_each(c) < to_each) {
+        if from.is_none_or(|(_, n)| untended(c) > n) {
+            from = Some((c, untended(c)));
         }
     }
-    let Some((from, _)) = from else { return };
-    let n = (content.dials.rotate_plots as i64).min(have(from)).min(short);
+    let Some((from, spare)) = from else { return };
+    let n = (content.dials.rotate_plots as i64).min(spare).min(short);
     if n > 0 {
         *farm.turned.entry(from).or_insert(0) -= n;
         *farm.turned.entry(to).or_insert(0) += n;
