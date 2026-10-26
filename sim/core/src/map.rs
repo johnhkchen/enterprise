@@ -50,6 +50,9 @@ pub const WEAR_HALF_LIFE_DAYS: f64 = 20.0;
 /// A hex worn by this many crossings at once (a round trip crosses it twice) is a trail, for good: a desire path the
 /// host lays in dirt. A wagon every four days wears one in five or six round trips, three weeks or so.
 pub const TRAIL_WEAR: f64 = 8.0;
+/// A trail is two blocks wide, and a block wider each time its wear doubles past [`TRAIL_WEAR`], up to four.
+pub const TRAIL_WIDTH: u32 = 2;
+pub const TRAIL_WIDEST: u32 = 4;
 /// A trail takes off this share of what its ground and its climb add to open ground's cost: the way is trodden level.
 pub const TRAIL_EASE: f64 = 0.5;
 /// Sailing a water hex costs this much a hex of open ground: boats are quick.
@@ -154,6 +157,9 @@ pub struct Map {
     pub wear: BTreeMap<Hex, Wear>,
     #[serde(default)]
     pub trails: BTreeSet<Hex>,
+    /// Each trail's width in blocks, as the host was last told (wider as it's worn more).
+    #[serde(default)]
+    pub widths: BTreeMap<Hex, u32>,
     /// Each road's last departure whose wear is counted (by route), and the day roads were last planned again.
     #[serde(default)]
     pub worn: BTreeMap<usize, u64>,
@@ -275,15 +281,22 @@ impl Map {
         g.relief = relief.max(0.0);
     }
 
-    /// Wagons crossed these hexes (each by `crossings`) at `now`: their wear grows, and those worn to [`TRAIL_WEAR`] for
-    /// the first time are trails from now on, returned in the order crossed.
-    pub fn wear(&mut self, hexes: &[Hex], crossings: f64, now: u64, day_ticks: u64) -> Vec<Hex> {
+    /// Wagons crossed these hexes (each by `crossings`) at `now`: their wear grows; those worn to [`TRAIL_WEAR`] are
+    /// trails from now on, and a trail widens a block each time its wear doubles again (to [`TRAIL_WIDEST`]). Returned
+    /// in the order crossed: each hex that became a trail or widened, with its width now.
+    pub fn wear(&mut self, hexes: &[Hex], crossings: f64, now: u64, day_ticks: u64) -> Vec<(Hex, u32)> {
         let mut new = Vec::new();
         for &hex in hexes {
             let w = self.wear.entry(hex).or_default();
             *w = Wear { crossings: w.at(now, day_ticks) + crossings, at: now };
-            if w.crossings >= TRAIL_WEAR && self.trails.insert(hex) {
-                new.push(hex);
+            if w.crossings < TRAIL_WEAR {
+                continue;
+            }
+            let width = (TRAIL_WIDTH + (w.crossings / TRAIL_WEAR).log2().floor() as u32).min(TRAIL_WIDEST);
+            self.trails.insert(hex);
+            if self.widths.get(&hex).is_none_or(|&had| width > had) {
+                self.widths.insert(hex, width);
+                new.push((hex, width));
             }
         }
         new

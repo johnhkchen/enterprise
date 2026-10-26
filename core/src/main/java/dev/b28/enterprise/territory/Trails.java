@@ -19,19 +19,20 @@ import net.minecraft.world.level.saveddata.SavedData;
 /**
  * Desire paths: the trails the core's wagons wore ({@code Output.Trail}, {@code map.rs}), laid in the world as dirt
  * path. A trail runs through its hex from its edge with the hex the road came from, by the hex's centre, to its edge
- * with the hex it goes on to, two blocks wide; where the ground is soil (grass, dirt, podzol and the like) it's trodden
- * to path, what grows on it cleared, and a lone block's bump or dip on the way levelled. Sand, stone, water and anything
- * built are left as they are.
+ * with the hex it goes on to, as wide as the core says (two blocks, wider as it's worn more: laid again each time);
+ * where the ground is soil (grass, dirt, podzol and the like) it's trodden to path, a tree in its way felled (its trunk
+ * in the way cut down: its leaves, with no trunk, fall on their own), what grows on it and the leaves over it cleared,
+ * and a lone block's bump or dip on the way levelled. Sand, stone, water and anything built are left as they are.
  *
  * <p>Saved with the world: the trails not yet laid (their ground not loaded), laid as it is.
  */
 public final class Trails extends SavedData {
     private static final String NAME = "enterprise_trails";
-    /** Blocks either side of the line a trail treads: two wide. */
-    public static final int WIDTH = 2;
+    /** Blocks over a trail's ground cleared of leaves: a wagon's height and its load. */
+    static final int HEADROOM = 4;
 
-    /** A trail to lay: its hex and the hexes before and after it on the road (the same hex at a road's end). */
-    public record Trail(Hex hex, Hex from, Hex to) {}
+    /** A trail to lay: its hex, the hexes before and after it on the road (the same hex at a road's end), its width. */
+    public record Trail(Hex hex, Hex from, Hex to, int width) {}
 
     private final List<Trail> waiting = new ArrayList<>();
 
@@ -66,7 +67,7 @@ public final class Trails extends SavedData {
     /** The chunks a trail's line crosses (to be loaded before it's laid). */
     public static List<ChunkPos> chunks(Trail t) {
         List<ChunkPos> out = new ArrayList<>();
-        for (BlockPos p : columns(line(t))) {
+        for (BlockPos p : columns(line(t), t.width())) {
             ChunkPos c = new ChunkPos(p);
             if (!out.contains(c)) {
                 out.add(c);
@@ -75,8 +76,8 @@ public final class Trails extends SavedData {
         return out;
     }
 
-    /** The columns along a polyline, in order, each once: a block's step at a time, {@link #WIDTH} wide. */
-    static List<BlockPos> columns(double[][] points) {
+    /** The columns along a polyline, in order, each once: a block's step at a time, {@code width} wide about it. */
+    static List<BlockPos> columns(double[][] points, int width) {
         List<BlockPos> out = new ArrayList<>();
         java.util.Set<Long> seen = new java.util.HashSet<>();
         for (int i = 0; i + 1 < points.length; i++) {
@@ -87,7 +88,7 @@ public final class Trails extends SavedData {
             double sx = length == 0 ? 0 : -(z1 - z0) / length, sz = length == 0 ? 0 : (x1 - x0) / length;
             for (int k = 0; k <= steps; k++) {
                 double x = x0 + (x1 - x0) * k / steps, z = z0 + (z1 - z0) * k / steps;
-                for (int w = 0; w < WIDTH; w++) {
+                for (int w = -(width / 2); w < width - width / 2; w++) {
                     BlockPos p = BlockPos.containing(x + sx * w, 0, z + sz * w);
                     if (seen.add(p.asLong())) {
                         out.add(p);
@@ -100,19 +101,25 @@ public final class Trails extends SavedData {
 
     /** Laid in the world: a trail's line trodden to path where it's soil. Its chunks must be loaded. */
     public static int lay(ServerLevel level, Trail t) {
-        return layLine(level, line(t));
+        return layLine(level, line(t), t.width());
     }
 
     /**
-     * The columns along {@code points} (block x, z) trodden to path where their top is soil: what grows there cleared, a
-     * lone block's bump cut and dip filled to the ground either side. Returns the columns laid.
+     * The columns along {@code points} (block x, z), {@code width} wide, trodden to path where their top is soil: a
+     * trunk standing there felled, what grows there and the leaves over it cleared, a lone block's bump cut and dip
+     * filled to the ground either side. Returns the columns laid.
      */
-    public static int layLine(ServerLevel level, double[][] points) {
-        List<BlockPos> cols = columns(points);
+    public static int layLine(ServerLevel level, double[][] points, int width) {
+        List<BlockPos> cols = columns(points, width);
         int[] top = new int[cols.size()];
         for (int i = 0; i < cols.size(); i++) {
             BlockPos c = cols.get(i);
-            top[i] = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, c.getX(), c.getZ()) - 1;
+            int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, c.getX(), c.getZ()) - 1;
+            while (level.getBlockState(c.atY(y)).is(net.minecraft.tags.BlockTags.LOGS)) {
+                level.setBlock(c.atY(y), Blocks.AIR.defaultBlockState(), 3); // a trunk in the way, felled
+                y--;
+            }
+            top[i] = y;
         }
         int laid = 0;
         for (int i = 0; i < cols.size(); i++) {
@@ -123,7 +130,7 @@ public final class Trails extends SavedData {
                 continue;
             }
             // A lone block's bump or dip along the way (the columns a step before and after, WIDTH apart, both level).
-            int before = i >= WIDTH ? top[i - WIDTH] : y, after = i + WIDTH < cols.size() ? top[i + WIDTH] : y;
+            int before = i >= width ? top[i - width] : y, after = i + width < cols.size() ? top[i + width] : y;
             if (before == after && y == before + 1 && soil(level.getBlockState(c.atY(y - 1)))) {
                 level.setBlock(c.atY(y), Blocks.AIR.defaultBlockState(), 3);
                 y -= 1;
@@ -138,6 +145,11 @@ public final class Trails extends SavedData {
                 BlockState higher = level.getBlockState(c.atY(y + 2)); // a tall plant's top half
                 if (!higher.isAir() && higher.canBeReplaced() && level.getFluidState(c.atY(y + 2)).isEmpty()) {
                     level.setBlock(c.atY(y + 2), Blocks.AIR.defaultBlockState(), 3);
+                }
+            }
+            for (int h = y + 1; h <= y + HEADROOM; h++) {
+                if (level.getBlockState(c.atY(h)).is(net.minecraft.tags.BlockTags.LEAVES)) {
+                    level.setBlock(c.atY(h), Blocks.AIR.defaultBlockState(), 3);
                 }
             }
             level.setBlock(c.atY(y), Blocks.DIRT_PATH.defaultBlockState(), 3);
@@ -159,6 +171,7 @@ public final class Trails extends SavedData {
         for (Trail t : waiting) {
             CompoundTag e = new CompoundTag();
             e.putIntArray("hexes", new int[] {t.hex().q(), t.hex().r(), t.from().q(), t.from().r(), t.to().q(), t.to().r()});
+            e.putInt("width", t.width());
             list.add(e);
         }
         tag.put("waiting", list);
@@ -169,8 +182,9 @@ public final class Trails extends SavedData {
         Trails trails = new Trails();
         for (Tag t : tag.getList("waiting", Tag.TAG_COMPOUND)) {
             int[] h = ((CompoundTag) t).getIntArray("hexes");
+            int width = ((CompoundTag) t).contains("width") ? ((CompoundTag) t).getInt("width") : 2;
             if (h.length == 6) {
-                trails.waiting.add(new Trail(new Hex(h[0], h[1]), new Hex(h[2], h[3]), new Hex(h[4], h[5])));
+                trails.waiting.add(new Trail(new Hex(h[0], h[1]), new Hex(h[2], h[3]), new Hex(h[4], h[5]), width));
             }
         }
         return trails;

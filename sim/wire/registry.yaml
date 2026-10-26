@@ -1046,6 +1046,7 @@ Output:
               TYPENAME: HexAt
           - to:
               TYPENAME: HexAt
+          - width: U32
 PackAmount:
   STRUCT:
     - good: STR

@@ -472,7 +472,8 @@ public final class LandAdapter {
     public void show(Output.Trail trail) {
         if (ownsLand) {
             trailsShown.add(new Trails.Trail(new Hex(trail.hex().q(), trail.hex().r()),
-                    new Hex(trail.from().q(), trail.from().r()), new Hex(trail.to().q(), trail.to().r())));
+                    new Hex(trail.from().q(), trail.from().r()), new Hex(trail.to().q(), trail.to().r()),
+                    (int) Math.min(trail.width(), 8)));
         }
     }
 
@@ -499,7 +500,8 @@ public final class LandAdapter {
             if (loadedFor(level, Trails.chunks(t))) {
                 int blocks = Trails.lay(level, t);
                 trails.laid(t);
-                dev.b28.enterprise.Enterprise.LOGGER.info("A trail laid across hex {} ({} blocks of path)", t.hex(), blocks);
+                dev.b28.enterprise.Enterprise.LOGGER.info("A trail laid across hex {}, {} wide ({} blocks of path)", t.hex(),
+                        t.width(), blocks);
                 laid++;
             }
         }

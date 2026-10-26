@@ -585,6 +585,10 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   taking a cheaper way if there is one (trails, ground surveyed since, a wall), with their days and food. Measured
   (`network_study.py`, core mode, 40 days): 30 trails laid, about 160 blocks of path a hex. Paving them is the
   masons' to come.
+- **Trails widen and clear their way.** A trail widens a block each time its wear doubles past 8 (three wide at 16,
+  four at 32: a road two routes share, or a hub's), the host told again with its width and laying it again wider. As
+  it's laid, a tree trunk standing on its line is felled (the leaves, with no trunk, fall on their own) and leaves
+  within four blocks over the path cleared.
 - **Land never loaded has its hills from the start.** A chunk never surveyed takes its height from the world's
   generator (its noise at the chunk's middle, the chunk not generated), for the hex's height and its relief; the
   survey replaces it once the chunk loads. Seed 8675309, the 298 hexes round two villages 496 apart: all with heights

@@ -285,12 +285,12 @@ impl Society {
             }
             map.worn.insert(id, left);
             let new = map.wear(&path, 2.0, now, day_ticks);
-            for hex in new {
+            for (hex, width) in new {
                 let at = path.iter().position(|&h| h == hex).expect("worn on the path");
                 let from = path[at.saturating_sub(1)];
                 let to = path[(at + 1).min(path.len() - 1)];
                 self.world.resource_mut::<Outbox>().0.push(Output::Trail { hex: crate::wire::HexAt::of(hex),
-                    from: crate::wire::HexAt::of(from), to: crate::wire::HexAt::of(to) });
+                    from: crate::wire::HexAt::of(from), to: crate::wire::HexAt::of(to), width });
             }
         }
         let today = now / day_ticks.max(1);

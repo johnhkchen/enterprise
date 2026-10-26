@@ -437,13 +437,13 @@ public final class TollTests {
     }
 
     /**
-     * A trail laid along a row of grass: trodden to dirt path two wide, the grass growing on it cleared and a lone
-     * block's bump on the way cut level.
+     * A trail laid along a row of grass: trodden to dirt path two wide, the grass growing on it cleared, a lone block's
+     * bump on the way cut level and a tree in its way felled; laid again three wide, its edges trodden too.
      */
     @GameTest(template = "floor")
-    public static void aTrailIsTroddenToPathItsBumpLevelled(GameTestHelper helper) {
+    public static void aTrailIsTroddenToPathItsBumpLevelledItsTreeFelled(GameTestHelper helper) {
         for (int x = 0; x <= 6; x++) {
-            for (int z = 3; z <= 4; z++) {
+            for (int z = 2; z <= 4; z++) {
                 for (int y = 2; y <= 12; y++) {
                     helper.setBlock(new BlockPos(x, y, z), Blocks.AIR); // the arena's barriers off
                 }
@@ -454,14 +454,30 @@ public final class TollTests {
         helper.setBlock(new BlockPos(1, 2, 3), Blocks.SHORT_GRASS);
         helper.setBlock(new BlockPos(3, 1, 3), Blocks.DIRT);
         helper.setBlock(new BlockPos(3, 2, 3), Blocks.GRASS_BLOCK); // a bump
+        helper.setBlock(new BlockPos(5, 1, 3), Blocks.DIRT);
+        for (int y = 2; y <= 5; y++) {
+            helper.setBlock(new BlockPos(5, y, 3), Blocks.OAK_LOG); // a tree's trunk
+        }
+        helper.setBlock(new BlockPos(5, 6, 3), Blocks.OAK_LEAVES);
+        helper.setBlock(new BlockPos(4, 4, 3), Blocks.OAK_LEAVES); // hanging over the way
         BlockPos a = helper.absolutePos(new BlockPos(0, 1, 3)), b = helper.absolutePos(new BlockPos(6, 1, 3));
-        // Along the row as the test is turned (a step across it the second block's side).
-        Trails.layLine(helper.getLevel(), new double[][] {{a.getX() + 0.5, a.getZ() + 0.5}, {b.getX() + 0.5, b.getZ() + 0.5}});
+        double[][] line = {{a.getX() + 0.5, a.getZ() + 0.5}, {b.getX() + 0.5, b.getZ() + 0.5}};
+        Trails.layLine(helper.getLevel(), line, 2);
         for (int x = 0; x <= 6; x++) {
             helper.assertBlockPresent(Blocks.DIRT_PATH, new BlockPos(x, 1, 3));
         }
         helper.assertBlockPresent(Blocks.AIR, new BlockPos(1, 2, 3));
         helper.assertBlockPresent(Blocks.AIR, new BlockPos(3, 2, 3));
+        helper.assertBlockPresent(Blocks.AIR, new BlockPos(5, 2, 3));
+        helper.assertBlockPresent(Blocks.AIR, new BlockPos(5, 5, 3));
+        helper.assertBlockPresent(Blocks.AIR, new BlockPos(4, 4, 3));
+        // Three wide: the rows either side of the line trodden too.
+        Trails.layLine(helper.getLevel(), line, 3);
+        for (int x = 0; x <= 6; x++) {
+            for (int z = 2; z <= 4; z++) {
+                helper.assertBlockPresent(Blocks.DIRT_PATH, new BlockPos(x, 1, z));
+            }
+        }
         helper.succeed();
     }
 

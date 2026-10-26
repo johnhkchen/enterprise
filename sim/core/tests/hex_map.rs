@@ -438,23 +438,33 @@ fn wagons_wear_a_trail_that_fades_unless_used_and_eases_the_way() {
     for day in 1..=4 {
         made.extend(m.wear(&[hill], 2.0, day * DAY, DAY));
     }
-    assert_eq!(made, vec![hill], "a trail once");
+    assert_eq!(made, vec![(hill, 2)], "a trail, two wide");
     assert!(m.trail(hill));
     assert!(m.wear(&[hill], 2.0, 5 * DAY, DAY).is_empty(), "not said again");
+    // Worn on to twice the wear, then four times: a block wider each; no wider than four.
+    assert_eq!(m.wear(&[hill], 6.0, 5 * DAY, DAY), vec![(hill, 3)]);
+    assert_eq!(m.wear(&[hill], 16.0, 5 * DAY, DAY), vec![(hill, 4)]);
+    assert!(m.wear(&[hill], 64.0, 5 * DAY, DAY).is_empty(), "four at most");
     // The trail takes half of what the hill adds: 1.5 a hex, not 2.
     let path = [Hex::new(2, 0), hill, Hex::new(4, 0), Hex::new(5, 0)];
     assert!((m.path_cost(&path, 1.0) - (1.5 + 1.0 + 1.0)).abs() < 1e-12, "{}", m.path_cost(&path, 1.0));
 }
 
 #[test]
-fn a_busy_road_wears_trails_that_the_host_is_told_of_once() {
+fn a_busy_road_wears_trails_that_the_host_is_told_of_once_a_width() {
     let (mut s, road) = farm_and_mill_by_road(true);
     let path = s.route_path(road.unwrap()).unwrap();
     let mut trails = Vec::new();
+    let mut widths = BTreeMap::new();
     for day in 1..=60 {
         for o in s.advance(day * DAY) {
-            if let enterprise_core::Output::Trail { hex, from, to } = o {
-                trails.push((Hex::new(hex.q, hex.r), Hex::new(from.q, from.r), Hex::new(to.q, to.r)));
+            if let enterprise_core::Output::Trail { hex, from, to, width } = o {
+                let hex = Hex::new(hex.q, hex.r);
+                if let Some(had) = widths.insert(hex, width) {
+                    assert!(width > had, "said again only wider: {hex:?} {had} then {width}");
+                    continue;
+                }
+                trails.push((hex, Hex::new(from.q, from.r), Hex::new(to.q, to.r)));
             }
         }
     }
