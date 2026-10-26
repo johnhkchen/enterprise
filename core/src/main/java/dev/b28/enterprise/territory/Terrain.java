@@ -48,6 +48,8 @@ public final class Terrain extends SavedData {
     private final Map<ResourceKey<Level>, Map<Long, Integer>> heights = new HashMap<>();
     // dimension -> chunk -> its columns a built wall stands in (256 bits, x + 16 z); only chunks with any
     private final Map<ResourceKey<Level>, Map<Long, long[]>> walls = new HashMap<>();
+    // Height guesses for chunks never surveyed: the generator's surface at the chunk's middle (deterministic, not saved).
+    private final Map<ResourceKey<Level>, Map<Long, Integer>> heightGuesses = new HashMap<>();
     // Biome guesses for chunks never surveyed (deterministic, so not saved).
     private final Map<ResourceKey<Level>, Map<Long, Integer>> guesses = new HashMap<>();
 
@@ -265,7 +267,7 @@ public final class Terrain extends SavedData {
     }
 
     /**
-     * The ground's relief in the hex: its highest surveyed surface less its lowest (0 where none is surveyed). A hex
+     * The ground's relief in the hex: its highest surface less its lowest (a chunk never surveyed guessed). A hex
      * built walls shut ({@link #walledShut}) reads as a cliff: no way across for a wagon.
      */
     public int relief(ServerLevel level, Hex hex) {
@@ -282,20 +284,40 @@ public final class Terrain extends SavedData {
             if (packed != null) {
                 low = Math.min(low, (packed >>> 16) - 512);
                 high = Math.max(high, (packed & 0xFFFF) - 512);
+            } else {
+                int guess = heightGuess(level, chunk);
+                low = Math.min(low, guess);
+                high = Math.max(high, guess);
             }
         }
         return high < low ? 0 : high - low;
     }
 
     /**
-     * The height of the hex's ground: the median of its surveyed chunks' lowest surfaces (trees, houses and walls stand
-     * above a chunk's lowest; a ravine is one chunk of many), or none where none is surveyed. The core's wagons climb
-     * from hex to hex by it ({@code map.rs}).
+     * A chunk never surveyed: the height of its surface at its middle, as the world's generator would make it (from its
+     * noise, without generating the chunk). What players built there since isn't in it; the survey replaces it once
+     * the chunk loads.
+     */
+    private int heightGuess(ServerLevel level, long chunk) {
+        return heightGuesses.computeIfAbsent(level.dimension(), d -> new HashMap<>()).computeIfAbsent(chunk, c -> {
+            ChunkPos pos = new ChunkPos(c);
+            var source = level.getChunkSource();
+            return source.getGenerator().getBaseHeight(pos.getMiddleBlockX(), pos.getMiddleBlockZ(),
+                    Heightmap.Types.WORLD_SURFACE_WG, level, source.randomState()) - 1;
+        });
+    }
+
+    /**
+     * The height of the hex's ground: the median of its chunks' lowest surfaces (trees, houses and walls stand above a
+     * chunk's lowest; a ravine is one chunk of many), a chunk never surveyed guessed from the world's generator. The
+     * core's wagons climb from hex to hex by it ({@code map.rs}): so the land between towns, never loaded, has its
+     * hills and valleys from the start.
      */
     public java.util.Optional<Double> height(ServerLevel level, Hex hex) {
         Map<Long, Integer> surveyed = heights.getOrDefault(level.dimension(), Map.of());
-        int[] lows = chunksOf(hex).stream().map(surveyed::get).filter(java.util.Objects::nonNull)
-                .mapToInt(packed -> (packed >>> 16) - 512).sorted().toArray();
+        int[] lows = chunksOf(hex).stream()
+                .mapToInt(chunk -> surveyed.containsKey(chunk) ? (surveyed.get(chunk) >>> 16) - 512 : heightGuess(level, chunk))
+                .sorted().toArray();
         if (lows.length == 0) {
             return java.util.Optional.empty();
         }

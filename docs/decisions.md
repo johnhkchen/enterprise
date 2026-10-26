@@ -576,6 +576,11 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   between natural terrain's slopes are the routes a world offers. A route's own towns are always reached and left,
   their step only harder going: a town on a hill's edge has its road; one in a plateau's middle has none. By boat,
   water is level. Desire paths (wear that eases a well-used way) and paving by masons are to build on this.
+- **Land never loaded has its hills from the start.** A chunk never surveyed takes its height from the world's
+  generator (its noise at the chunk's middle, the chunk not generated), for the hex's height and its relief; the
+  survey replaces it once the chunk loads. Seed 8675309, the 298 hexes round two villages 496 apart: all with heights
+  (32 before), 117 of 833 steps too steep for a wagon, 78 hexes water and 60 too rugged (relief 32 or more; the median
+  dry hex's is 17); the two towns' road 400 blocks. Fifteen days' run took 82 s (81 before).
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 

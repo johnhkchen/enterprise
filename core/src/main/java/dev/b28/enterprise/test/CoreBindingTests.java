@@ -2441,7 +2441,9 @@ public final class CoreBindingTests {
                 terrain.record(level, chunk, dev.b28.enterprise.territory.Terrain.SAMPLES * 3 / 4);
             }
             var chunks = dev.b28.enterprise.territory.Terrain.chunksOf(far);
-            terrain.recordHeights(level, chunks.get(0), new int[] {-60, -60});
+            for (long chunk : chunks) {
+                terrain.recordHeights(level, chunk, new int[] {-60, -60}); // all of it surveyed: none guessed
+            }
             terrain.recordHeights(level, chunks.get(1), new int[] {-60, -20});
             Input.Ground sent = LandAdapter.ground(terrain, level, far);
             helper.assertTrue(sent.water() == 0.75 && sent.relief() == 40 && sent.height().equals(java.util.Optional.of(-60.0)),
