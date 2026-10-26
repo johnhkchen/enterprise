@@ -410,6 +410,28 @@ fn a_crop_owed_is_turned_over_from_the_idlest() {
         "from the carrots lying idle, all of theirs (up to 162)");
 }
 
+/// Every crop wanted beyond what it grows (its own Farmers' lockers buy them all), plots go from the crop earning least
+/// to the one its workshop draws for and earns more, up to what the draw wants; with no such draw, nothing turns.
+#[test]
+fn with_nothing_spare_the_workshop_draw_takes_plots_from_the_least_earning_crop() {
+    let c = content();
+    let mut f = Farm { plots: [(WHEAT, 6), (CARROT, 100), (BEETROOT, 100)].into_iter().collect(), ..Default::default() };
+    f.census = [(WHEAT, 1000.0), (CARROT, 1000.0), (BEETROOT, 1000.0)].into_iter().collect();
+    let w = Wants::of(&f, &[0.0; 8]);
+    farms::rotate(&c, &mut f, &w, true);
+    assert!(f.turned.is_empty(), "nothing grown beyond its uses: {:?}", f.turned);
+    farms::rotate_for_workshop(&c, &mut f, &BTreeMap::new(), &w);
+    assert!(f.turned.is_empty(), "no draw of its own, no turn");
+    // Cookies want 12 wheat a day (24 plots), each wheat earning more there than any locker pays for a crop.
+    let own: BTreeMap<usize, (f64, f64)> = [(WHEAT, (12.0, 1.0))].into_iter().collect();
+    farms::rotate_for_workshop(&c, &mut f, &own, &w);
+    let least = if c.goods[CARROT].value < c.goods[BEETROOT].value { CARROT } else { BEETROOT };
+    assert_eq!((f.turned.get(&least).copied(), f.turned.get(&WHEAT).copied()), (Some(-18), Some(18)),
+        "from the crop earning least, as many as the draw wants");
+    farms::rotate_for_workshop(&c, &mut f, &own, &w);
+    assert_eq!(f.turned.get(&WHEAT).copied(), Some(18), "and no further");
+}
+
 /// A household with eight emeralds buys a field of its own where the Farmers have hands for it; on it they take at
 /// least three quarters.
 #[test]

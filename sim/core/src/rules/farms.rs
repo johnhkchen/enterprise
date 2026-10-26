@@ -273,6 +273,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
             }
             None => BTreeMap::new(),
         };
+        let own = farm.draws.clone();
         // And what the far ends of its routes out buy, at its worth (a town grows the crops the town down its road
         // buys: seed 2024's Amberfell grew only cane while Dustfell's Farmers bought every crop it could have).
         for (&g, &n) in reached.get(&t).into_iter().flatten() {
@@ -284,7 +285,11 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
         let farmers = farmers(&content, roster);
         let food = food_points(&content, stock);
         let fed = food >= 2.0 * FOOD_PAR_POINTS;
+        let turned = farm.turned.clone();
         rotate(&content, farm, &Wants::of(farm, &trades.uses), fed);
+        if fed && farm.turned == turned {
+            crate::farms::rotate_for_workshop(&content, farm, &own, &Wants::of(farm, &trades.uses));
+        }
         replan(&content, farm, &farmers, &trades.uses, fed);
         farm.focus = Focus::of(people.villagers, people.beds, food);
         farm.stores_wanted = Store::ALL.into_iter()

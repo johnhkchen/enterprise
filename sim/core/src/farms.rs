@@ -558,6 +558,41 @@ pub fn rotate(content: &Content, farm: &mut Farm, wants: &Wants, fed: bool) {
     }
 }
 
+/// Rotation for the workshop, where [`rotate`] turned nothing over because no crop is grown beyond its uses (the town's
+/// own Farmers' lockers take every crop it grows): a field's worth a review from the crop whose best use earns least to
+/// the one its own workshop draws for (`own`: per day and what an item earns there, [`crate::workshop::input_demand`]
+/// for its own people alone) and grows too little of, while that earns more, up to the plots the draw and the crop's
+/// feed want (not as the mod). Seed 8675309's Meadowfell grew its cows' wheat and none for its cookies, its lockers
+/// buying every beetroot, and met one comfort of five for 90 days.
+pub fn rotate_for_workshop(content: &Content, farm: &mut Farm, own: &BTreeMap<GoodId, (f64, f64)>, wants: &Wants) {
+    let plots = plots(farm);
+    let have = |g: GoodId| plots.get(&g).copied().unwrap_or(0) as i64;
+    let rotation: Vec<GoodId> = ROTATION.iter().filter_map(|n| content.good(n)).collect();
+    let best_each = |c: GoodId| uses_of(content, c, wants).iter().map(|u| u.each).fold(0.0, f64::max);
+    let mut to: Option<(GoodId, i64, f64)> = None;
+    for &c in &rotation {
+        let Some(&(per_day, each)) = own.get(&c).filter(|d| d.0 > 0.0) else { continue };
+        let short = ((wants.need(c) + per_day) / YIELD_PER_PLOT_PER_DAY).ceil() as i64 - have(c);
+        if short > 0 && to.is_none_or(|(_, _, e)| each > e) {
+            to = Some((c, short, each));
+        }
+    }
+    let Some((to, short, to_each)) = to else { return };
+    let mut from: Option<(GoodId, f64)> = None;
+    for &c in rotation.iter().filter(|&&c| c != to && have(c) > 0) {
+        let each = best_each(c);
+        if each < to_each && from.is_none_or(|(_, e)| each < e) {
+            from = Some((c, each));
+        }
+    }
+    let Some((from, _)) = from else { return };
+    let n = (content.dials.rotate_plots as i64).min(have(from)).min(short);
+    if n > 0 {
+        *farm.turned.entry(from).or_insert(0) -= n;
+        *farm.turned.entry(to).or_insert(0) += n;
+    }
+}
+
 /// What a crop sells as at a locker (`Fields.SOLD_AS`): paper for cane (where the host has paper), else itself.
 pub fn sold_as(content: &Content, crop: GoodId) -> GoodId {
     let name = content.goods[crop].name.as_str();
