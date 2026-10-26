@@ -552,3 +552,14 @@ fn a_crew_on_the_road_survives_a_save() {
     assert_eq!(s.balance(Account::Wagon(0)).is_some(), s.route(0).on_the_road);
 }
 
+
+#[test]
+fn a_road_that_stays_home_for_want_of_a_squad_puts_a_caravan_lead_in_the_job_draw() {
+    // A Nitwit can't lead: the road stays home with its load, and the town's job draw weighs a caravan's lead by it
+    // (John: "crew as a job choice").
+    let mut s = network(2.0, 20.0, 192.0, &["nitwit"]);
+    s.advance(LOOK);
+    assert_eq!(s.route(0).stayed, Some(enterprise_core::road::Stay::NoSquad));
+    let lead = s.job_bag(HUB).into_iter().find(|(t, _)| t == "merchant").map_or(0.0, |(_, m)| m);
+    assert!(lead > 0.0, "a lead in the bag: {:?}", s.job_bag(HUB));
+}

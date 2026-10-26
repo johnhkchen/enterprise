@@ -278,6 +278,20 @@ pub fn wanted_load(content: &Content, home: &[f64], far: &Trades,
     (stacks, weight)
 }
 
+/// What a road's wagon could take of what the far end wants, at the goods' worth: of each good home holds (not a
+/// comfort) that [`wanted_load`] counts, up to `WANT_PER_ITEM` items. A road that stays home for want of a squad puts
+/// its town's job draw this much toward a caravan's lead (`rules/jobs.rs`; John: "crew as a job choice").
+pub fn wanted_worth(content: &Content, home: &[f64], far: &Trades,
+        far_lockers: Option<(&crate::lockers::Lockers, &Roster)>) -> f64 {
+    let taken = far_lockers.map(|(l, r)| l.taken(content, r, content.goods.len()));
+    (0..content.goods.len()).filter(|&g| content.goods[g].comfort.is_none())
+        .filter(|&g| far.uses[g] > 0.0 || far.capacity.get(g).is_some_and(|c| *c > 0.0)
+            || far.inputs.get(g).is_some_and(|n| *n > 0.0) || taken.as_ref().is_some_and(|t| t[g]))
+        .map(|g| home.get(g).copied().unwrap_or(0.0).max(0.0).floor().min(crate::rules::plan::WANT_PER_ITEM)
+            * content.goods[g].value)
+        .sum()
+}
+
 /// The hand a town with routes and nobody to lead them takes on as a travelling Merchant (`Squad.hire`): the first
 /// adult waiting for work (not a Nitwit: it can't learn a trade) among those who could go, while the leads at home
 /// and those out on the road are fewer than its routes. The caller pays the signing.

@@ -711,6 +711,17 @@ help breed more as needed."
   again (its replay all 1,025 responses the game's): Redfell paid 4.5 in wages and its people 4.0 back for comforts,
   of about 20 of comforts it bought; it ended on 3.2. Its paper earned 12 this run (25 the last); homes, children, a
   square, a stall and a training took 51 of its 64 founding emeralds.
+- **Jobs first for a caravan's hire too, and a caravan's lead a job of the draw** (John: "give Redfell something to
+  make", then "crew as a job choice"; `rules/squad.rs` `crew`'s `may_hire`, `squad::wanted_worth`, `rules/jobs.rs`,
+  `jobs::employ`). Redfell held 251 idle wheat plots and never had a Farmer: its idle villager of day 1 was signed as
+  a travelling Merchant by a road leaving before the day's job draw (whose bag was a Farmer's, 56 of 80 marbles;
+  `enterprise-sim --bag JOURNAL DAY TOWN` shows it). Now a caravan signs a hand only on a day the draw left it idle.
+  That alone left Redfell Farmers and no squad: 524 melons unsold, broke. So a road that stays home for want of a
+  squad puts its town's job draw toward a caravan's lead, as many marbles as what its wagon could take of what the far
+  end wants is worth; drawn, the hand is signed on (the signing fee, no stall). Seed 8675309 again (replay all 1,016
+  responses the game's): Redfell's first idle hand farmed; as its melons piled the lead's marbles grew (0.1 on day 5,
+  22.6 by day 30) and on day 32 one was signed; its first wagon sold 178 at Dustfell and was on its way home at day
+  45, Redfell on 0 till its takings come. Its Farmers' wages (52 in all) are paid on what they grow, eaten or sold.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 

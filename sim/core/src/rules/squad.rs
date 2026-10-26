@@ -77,7 +77,7 @@ pub fn unmanned(clock: Res<Clock>, content: Res<Content>, mut routes: Query<(&Ro
     }
 }
 
-fn signing() -> Reason {
+pub(crate) fn signing() -> Reason {
     Reason::Other("signing".into())
 }
 
@@ -171,16 +171,20 @@ pub fn size_up(content: Res<Content>, mut routes: Query<(Entity, &Route, &mut Ro
 /// home (those of the routes gone before it this look are away), keeping a lead for each of the `waiting` routes here
 /// without a wagon (those that stayed too); nobody to lead it, the Merchant takes on a hand waiting for work as a
 /// travelling Merchant while the leads at home and on the road are fewer than its `routes`, if the town can pay one
-/// (`free`), and musters again; still nobody, "no squad". The crew, the trades wanted and the porters go on the plan.
+/// (`free`) and its job draw left that hand without work today (`may_hire`: jobs first, John: "jobs first"; the mod
+/// took the hand at once, and seed 8675309's Redfell signed the idle villager who'd have farmed its 251 idle wheat
+/// plots on day one), and musters again; still nobody, "no squad". The crew, the trades wanted and the porters go on
+/// the plan.
 #[allow(clippy::too_many_arguments)]
 pub fn crew(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u64, town: usize, plan: &mut Plan,
         roster: &mut Roster, mut lockers: Option<&mut Lockers>, (stacks, weight): (u32, f64), wanted_trades: &[TradeId],
-        waiting: usize, routes: usize, money: &mut Money, free: impl Fn(&Money) -> crate::fixed::Fixed) -> Result<(), Stay> {
+        waiting: usize, routes: usize, may_hire: bool, money: &mut Money, free: impl Fn(&Money) -> crate::fixed::Fixed)
+        -> Result<(), Stay> {
     let d = &content.dials;
     let mut home = available(content, roster, lockers.as_deref());
     let (needs, extras) = call(content, roster, &home, stacks, weight, wanted_trades, waiting, plan.llamas);
     let mut squad = crate::squad::muster(content, roster, &home, &needs, extras);
-    if squad.is_empty() {
+    if squad.is_empty() && may_hire {
         let out = routes.saturating_sub(waiting);
         if let (Some(i), Some(merchant)) = (to_hire(content, roster, &home, routes, out), content.trade(MERCHANT)) {
             let signing_fee = crate::fixed::Fixed::ceil(d.signing_emeralds);

@@ -29,7 +29,7 @@ pub fn register(schedule: &mut Schedule) {
 pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signals: Res<Signals>, order: Res<Towns>,
         settlers: Res<Settlers>, mut hiring: ResMut<Hiring>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, seed: Res<Rng>,
         mut dice: ResMut<Dice>, mut recipes: Local<Option<Vec<crate::services::Recipe>>>,
-        routes: Query<&Route>,
+        routes: Query<(&Route, &RouteState)>,
         mut towns: Query<(&Town, &mut Money, &mut People, &Stock, &Trades, &Farm, &mut Deposits, &mut Budget,
             Option<&mut Roster>, &mut Lockers)>) {
     let (now, today) = (clock.now, clock.now / content.day_ticks.max(1));
@@ -41,6 +41,18 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
         *recipes = None;
     }
     let recipes = recipes.get_or_insert_with(|| crate::services::recipes(&content));
+    // Each town's roads that stayed home for want of a squad, at what their wagons could take: a caravan's lead in its
+    // job draw, as likely as that's worth (John: "crew as a job choice"). (In the routes' order: a sum's last bit
+    // mustn't hang on archetypes.)
+    let mut stuck: Vec<&Route> = routes.iter().filter(|(_, st)| st.stayed == Some(crate::road::Stay::NoSquad))
+        .map(|(r, _)| r).collect();
+    stuck.sort_by_key(|r| r.seq);
+    let mut unmanned: std::collections::BTreeMap<usize, f64> = std::collections::BTreeMap::new();
+    for r in stuck {
+        let (Ok(home), Ok(far)) = (towns.get(r.from), towns.get(r.to)) else { continue };
+        *unmanned.entry(r.from_id).or_default() += crate::squad::wanted_worth(&content, &home.3 .0, far.4,
+            far.8.map(|r| (&*far.9, &*r)));
+    }
     for &e in order.0.iter() {
         let Ok((town, mut money, mut people, stock, trades, farm, mut deposits, mut budget, roster, mut lockers)) =
             towns.get_mut(e) else { continue };
@@ -53,13 +65,16 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
         if sent_today || raising(&content, &settlers, town.id, &*people, stock, now) {
             continue;
         }
-        let roads = routes.iter().any(|r| r.from_id == town.id || r.to_id == town.id);
-        let mut far: Vec<usize> = routes.iter()
+        let roads = routes.iter().any(|(r, _)| r.from_id == town.id || r.to_id == town.id);
+        let mut far: Vec<usize> = routes.iter().map(|(r, _)| r)
             .filter_map(|r| if r.from_id == town.id { Some(r.to_id) } else if r.to_id == town.id { Some(r.from_id) } else { None })
             .collect();
         far.sort_unstable();
         far.dedup();
-        let far = crate::jobs::far_marbles(&content, recipes, &roster, far.iter().filter_map(|t| demand.get(t)));
+        let mut far = crate::jobs::far_marbles(&content, recipes, &roster, far.iter().filter_map(|t| demand.get(t)));
+        if let (Some(&worth), Some(merchant)) = (unmanned.get(&town.id), content.trade(crate::roster::MERCHANT)) {
+            far.push((merchant, worth));
+        }
         let people = &mut *people;
         let mut place = Place { town: town.id, money: &mut money.0, purse: &mut people.purse,
             deposits: &mut deposits, budget: &mut budget, stock, trades, farm, met: &people.comfort_met,

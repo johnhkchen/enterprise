@@ -291,8 +291,9 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>, mut outbox: ResMut<Outbox>, mut routes: Query<(Entity, &Route, &mut RouteState)>,
         mut towns: Query<TownData>, mut rosters: Query<&mut crate::roster::Roster>, mut lockers: Query<&mut crate::lockers::Lockers>,
         places: Query<(Option<&OffMap>, Option<&Realm>, Option<&crate::freight::Hub>)>, mut pallets: ResMut<crate::pallet::Pallets>,
-        mut herds: Query<&mut crate::herds::Herds>) {
+        mut herds: Query<&mut crate::herds::Herds>, hiring: Res<crate::jobs::Hiring>) {
     let now = clock.now;
+    let today = now / content.day_ticks.max(1);
     let d = &content.dials;
     // Squads (`squad.rs`): each town's routes, and those of them without a wagon (`dispatch`'s `waiting`).
     let (mut routes_at, mut waiting): (BTreeMap<usize, usize>, BTreeMap<usize, usize>) = Default::default();
@@ -385,7 +386,8 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             let routes_here = routes_at.get(&route.from_id).copied().unwrap_or(0);
             let mustered = crate::rules::squad::crew(&content, &mut ledger, &mut cash, now, route.from_id, &mut plan,
                 roster, lockers.get_mut(route.from).ok().map(|l| l.into_inner()), stacks_wanted, &wanted_trades,
-                waiting_here, routes_here, &mut money, |m| free(&content, trades, m, &bills, route.from_id, now));
+                waiting_here, routes_here, hiring.left_idle.get(&route.from_id) == Some(&today), &mut money,
+                |m| free(&content, trades, m, &bills, route.from_id, now));
             if let Err(stay) = mustered {
                 state.stayed = Some(stay);
                 for id in &plan.pallets { pallets.release(*id); }

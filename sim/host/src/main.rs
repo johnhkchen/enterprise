@@ -97,6 +97,31 @@ fn main() {
         }
         return;
     }
+    if args.first().map(String::as_str) == Some("--bag") {
+        // The bag a town's idle hand would draw its trade from, each day of a journal's replay up to DAY.
+        let (Some(journal), Some(last), Some(town)) = (args.get(1), args.get(2).and_then(|d| d.parse::<u64>().ok()),
+            args.get(3).and_then(|t| t.parse::<usize>().ok())) else {
+            eprintln!("enterprise-sim --bag JOURNAL DAY TOWN");
+            std::process::exit(2);
+        };
+        let bytes = std::fs::read(journal).unwrap_or_else(|e| panic!("{journal}: {e}"));
+        let mut society: Option<enterprise_core::Society> = None;
+        let mut shown = None;
+        for request in trace::read(&bytes).unwrap_or_else(|e| panic!("{journal}: {e}")) {
+            enterprise_core::wire::handle_bytes(&mut society, request);
+            let Some(s) = society.as_ref() else { continue };
+            let day = s.now() / s.content().day_ticks.max(1);
+            if day > last {
+                break;
+            }
+            if shown != Some(day) && town < s.town_count() {
+                shown = Some(day);
+                let bag: Vec<String> = s.job_bag(town).iter().map(|(t, m)| format!("{t} {m:.2}")).collect();
+                println!("day {day}: {} | money {} held back {:?}", bag.join(", "), s.town(town).money, s.held_back(town, 1));
+            }
+        }
+        return;
+    }
     if args.first().map(String::as_str) == Some("--responses") {
         // Each response to a journal's requests, its FNV-1a a line: against the binding's JournalResponsesTest, the
         // first request the game's core answered otherwise.

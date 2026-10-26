@@ -334,6 +334,19 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
     if retraining && place.roster.count(trade) > 0 {
         return None; // nothing it needs that the town hasn't: the hand keeps its trade
     }
+    // A caravan's lead (drawn for its roads that stayed home with no squad, `rules/jobs.rs`): signed on as the squad
+    // signs one (`squad.rs` `sign_on`, the signing fee), no stall: it keeps its trade with no workstation.
+    if content.trades.get(trade).is_some_and(|t| t.merchant) {
+        let fee = crate::fixed::Fixed::ceil(content.dials.signing_emeralds);
+        if retraining || cash < fee {
+            return None;
+        }
+        post(books.ledger, books.book, Side::treasury(place.town, place.money), Side::outside(), fee,
+            crate::rules::squad::signing(), now, content.day_ticks);
+        crate::squad::sign_on(content, place.roster, Some(&mut *place.lockers), hand, trade);
+        place.roster.hands[hand].xp = 1;
+        return Some(Hired { hand, trade, retrained: false });
+    }
     // Out of its own money, the Accountant's say; on its households' savings, theirs.
     if cash >= stall {
         let free = crate::rules::free(content, place.trades, &Money(*place.money), bills, place.town, now);
@@ -399,6 +412,18 @@ impl crate::society::Society {
         let recipes = crate::services::recipes(content);
         for (t, m) in far_marbles(content, &recipes, &roster, &self.far_demands(town)) {
             put(&mut bag, t, m);
+        }
+        let unmanned: f64 = self.routes.iter().filter_map(|&r| Some((self.world.get::<crate::state::Route>(r)?,
+                self.world.get::<crate::state::RouteState>(r)?)))
+            .filter(|(r, st)| r.from_id == town && st.stayed == Some(crate::road::Stay::NoSquad))
+            .filter_map(|(r, _)| {
+                let (home, far) = (self.world.entity(r.from), self.world.entity(r.to));
+                Some(crate::squad::wanted_worth(content, &home.get::<Stock>()?.0, far.get::<crate::state::Trades>()?,
+                    far.get::<crate::lockers::Lockers>().zip(far.get::<crate::roster::Roster>())))
+            })
+            .sum();
+        if let (true, Some(merchant)) = (unmanned > 0.0, content.trade(crate::roster::MERCHANT)) {
+            put(&mut bag, merchant, unmanned);
         }
         bag.into_iter().map(|(t, m)| (content.trades[t].name.clone(), m)).collect()
     }
