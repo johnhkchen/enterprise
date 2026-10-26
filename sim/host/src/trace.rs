@@ -98,6 +98,8 @@ create table lockers (day integer, town integer, hand integer, managed integer, 
     good text, sells integer, count integer, emeralds integer, uses integer, used integer, level integer, \"on\" integer);
 create table whys (day integer, town integer, name text, line text, times integer, items real, last integer);
 create table cash (town integer, name text, day integer, what text, amount real);
+create table paths (route integer, step integer, q integer, r integer);
+create table trails (q integer, r integer, width integer, wear real);
 ";
 
 /// Replays `requests` into `conn`, writing the tables above.
@@ -377,9 +379,23 @@ fn trips(tx: &rusqlite::Transaction, s: &mut Society, outputs: &[Value], out: &m
     Ok(())
 }
 
-/// Each town's whole cash book, at the run's end.
+/// Each town's whole cash book, each road's path over the hexes and the trails its wagons wore, at the run's end.
 fn finals(tx: &rusqlite::Transaction, society: &mut Option<Society>, (abi, schema): (u32, u64)) -> Result<(), String> {
     let sql = |e: rusqlite::Error| e.to_string();
+    {
+        let s = society.as_ref().expect("a society");
+        for route in 0..s.route_count() {
+            for (step, hex) in s.route_path(route).unwrap_or_default().into_iter().enumerate() {
+                tx.execute("insert into paths values (?1, ?2, ?3, ?4)", params![route, step, hex.q, hex.r]).map_err(sql)?;
+            }
+        }
+        let (map, now, day) = (s.map(), s.now(), s.content().day_ticks);
+        for &hex in &map.trails {
+            let wear = map.wear.get(&hex).map_or(0.0, |w| w.at(now, day));
+            tx.execute("insert into trails values (?1, ?2, ?3, ?4)",
+                params![hex.q, hex.r, map.widths.get(&hex).copied().unwrap_or(0), wear]).map_err(sql)?;
+        }
+    }
     let towns = society.as_ref().expect("a society").town_count() as u32;
     // (Every day there is: the book keeps them all.)
     let queries: Vec<Query> = (0..towns).map(|town| Query::CashBook { town, days: 1_000_000 }).collect();

@@ -320,6 +320,11 @@ final class EnterpriseCommands {
                                             + dev.b28.enterprise.settlement.Names.label(desk) + "'s"), true);
                                     return 1;
                                 }))))
+                .then(Commands.literal("terrainmap")
+                        .then(Commands.argument("from", BlockPosArgument.blockPos())
+                                .then(Commands.argument("to", BlockPosArgument.blockPos())
+                                        .then(Commands.argument("step", IntegerArgumentType.integer(1, 64))
+                                                .executes(EnterpriseCommands::terrainMap)))))
                 .then(Commands.literal("hex")
                         .executes(context -> hex(context, BlockPos.containing(context.getSource().getPosition())))
                         .then(Commands.argument("pos", BlockPosArgument.blockPos())
@@ -1111,6 +1116,41 @@ final class EnterpriseCommands {
                 () -> Component.literal("  Blaze Banker: %d spurs".formatted(bank.getBalance())), false));
         totals.forEach((item, count) -> source.sendSuccess(() -> Component.literal("  %s %d".formatted(item, count)), false));
         return totals.size();
+    }
+
+    /**
+     * The land in a box as the world's generator makes it, every {@code step} blocks (no chunk generated): its surface's
+     * height and its biome, written to {@code enterprise-terrain.csv} in the world's folder, for maps.
+     */
+    private static int terrainMap(CommandContext<CommandSourceStack> context) {
+        var level = context.getSource().getLevel();
+        BlockPos a = BlockPosArgument.getBlockPos(context, "from"), b = BlockPosArgument.getBlockPos(context, "to");
+        int step = IntegerArgumentType.getInteger(context, "step");
+        var source = level.getChunkSource();
+        var generator = source.getGenerator();
+        java.nio.file.Path out = level.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                .resolve("enterprise-terrain.csv");
+        int rows = 0;
+        try (var w = java.nio.file.Files.newBufferedWriter(out)) {
+            w.write("x,z,height,biome\n");
+            for (int x = Math.min(a.getX(), b.getX()); x <= Math.max(a.getX(), b.getX()); x += step) {
+                for (int z = Math.min(a.getZ(), b.getZ()); z <= Math.max(a.getZ(), b.getZ()); z += step) {
+                    int y = generator.getBaseHeight(x, z, net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE_WG,
+                            level, source.randomState()) - 1;
+                    String biome = generator.getBiomeSource().getNoiseBiome(net.minecraft.core.QuartPos.fromBlock(x),
+                                    net.minecraft.core.QuartPos.fromBlock(y), net.minecraft.core.QuartPos.fromBlock(z),
+                                    source.randomState().sampler())
+                            .unwrapKey().map(k -> k.location().getPath()).orElse("?");
+                    w.write(x + "," + z + "," + y + "," + biome + "\n");
+                    rows++;
+                }
+            }
+        } catch (java.io.IOException e) {
+            return refuse(context, "Couldn't write " + out + ": " + e.getMessage());
+        }
+        int done = rows;
+        context.getSource().sendSuccess(() -> Component.literal(done + " points written to " + out), false);
+        return done;
     }
 
     private static int hex(CommandContext<CommandSourceStack> context, BlockPos pos) {
