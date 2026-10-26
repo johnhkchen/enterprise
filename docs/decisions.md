@@ -782,10 +782,11 @@ help breed more as needed."
   and hires the rest. On round 2's journal (a replay, not a run): idle 9, stalls 27 (11). Its own 90 days (replay all
   2,128): idle 8 (23), stalls 23 (11); but comforts met fell to 12 (16): the world rolled other villagers (no Shepherd
   in Dustfell till day 33) and its one flock was lost on day 45, see the next.
-- **Open: a Shepherd's wagon drives off the whole flock** (`services::drivable`). A wagon with a Shepherd aboard takes
+- **A Shepherd's wagon leaves the breeding stock home** (`services::drivable`). A wagon with a Shepherd aboard took
   every whole animal of each kind, up to eight; the far end turns them out only where its pastures have room, and a
   flock is seeded once. Dustfell's three sheep left on day 45 and never came back: no wool, no carpets, furnishings
-  unmet in three towns. To fix next: drive only what's beyond `breeding_stock`.
+  unmet in three towns. Now she drives only what's beyond `breeding_stock` (the mod's drives the market pen's, never
+  the pasture's). On round 3's journal (a replay): Dustfell kept its flock (5.4 at day 90, none before).
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 

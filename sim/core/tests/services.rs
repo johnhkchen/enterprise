@@ -343,10 +343,10 @@ fn a_cleric_stays_home_from_a_town_with_its_own() {
 fn a_shepherd_sells_sheep_where_the_pasture_is_short() {
     let mut s = network(2.0, 5.0, 192.0, &["shepherd"]);
     s.deliver(0, WHEAT, 64.0); // their feed
-    assert!(s.set_herd(0, "sheep", 3.0));
+    assert!(s.set_herd(0, "sheep", 7.0));
     s.advance(LOOK);
     assert_eq!(s.wagon_herd(0), vec!["sheep"; 3], "she drives 3 sheep");
-    assert!(s.herds(0).count_of(0) < 1.0, "out of home's flock");
+    assert!((4.0..5.0).contains(&s.herds(0).count_of(0)), "out of home's flock, its four to breed from kept: {:?}", s.herds(0));
     s.advance(2 * LOOK);
     let (_, _, sold, paid) = s.route_services(0);
     assert_eq!(sold, 3, "the town buys all three: its five want ten");
@@ -354,19 +354,31 @@ fn a_shepherd_sells_sheep_where_the_pasture_is_short() {
     assert!((s.herds(1).count_of(0) - 3.0).abs() < 1e-6, "and they're its sheep now");
 }
 
+/// A Shepherd leaves the town its breeding stock: a flock of three stays home (a flock is seeded once).
+#[test]
+fn a_shepherd_leaves_the_breeding_stock_home() {
+    let mut s = network(2.0, 5.0, 192.0, &["shepherd"]);
+    s.deliver(0, WHEAT, 64.0);
+    assert!(s.set_herd(0, "sheep", 3.0));
+    s.advance(LOOK);
+    assert!(s.wagon_herd(0).is_empty(), "none to spare: {:?}", s.wagon_herd(0));
+    assert!(s.herds(0).count_of(0) >= 3.0, "the flock is home: {:?}", s.herds(0));
+}
+
 #[test]
 fn unsold_animals_come_home() {
     let mut s = network(2.0, 5.0, 192.0, &["shepherd"]);
     s.deliver(0, WHEAT, 64.0);
     s.set_people(1, 1.0, 1.0, 1.0); // a town of one wants two
-    assert!(s.set_herd(0, "sheep", 3.0));
+    assert!(s.set_herd(0, "sheep", 7.0));
     s.advance(LOOK);
+    let kept = s.herds(0).count_of(0);
     s.advance(2 * LOOK);
     assert_eq!(s.route_services(0).2, 2, "two sold");
     s.advance(3 * LOOK);
     assert_eq!(s.route(0).trips, 1);
     let home = s.herds(0).count_of(0);
-    assert!((1.0..1.1).contains(&home), "the third is home (and breeding, fed): {:?}", s.herds(0));
+    assert!(home >= kept + 1.0, "the third is home with the four kept (and breeding, fed): {:?}", s.herds(0));
 }
 
 /// Two towns far apart on open ground (a road of 24 hexes), and a third a hex off the road, beyond word of mouth and

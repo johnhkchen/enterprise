@@ -555,14 +555,17 @@ fn animal_value(content: &Content, kind: usize) -> f64 {
     ANIMAL_VALUE.iter().find(|(n, _)| *n == name).map_or(0.0, |(_, v)| *v)
 }
 
-/// The whole animals in a herd a Shepherd could drive, up to [`HERD`], a kind each, in the content's order (`Squad.herd`).
+/// The whole animals in a herd a Shepherd could drive, up to [`HERD`], a kind each, in the content's order (`Squad.herd`):
+/// those beyond the `breeding_stock` the town keeps of each kind. (The mod's Shepherd drives the market pen's, not the
+/// pasture's; driving the pasture's whole flock left seed 8675309's Dustfell, its flock seeded once, no sheep after
+/// day 45, and no carpets.)
 pub fn drivable(content: &Content, herds: &Herds) -> Vec<usize> {
     let mut out = Vec::new();
     for k in 0..content.animals.len() {
         if animal_value(content, k) <= 0.0 {
             continue;
         }
-        let n = whole(herds.count_of(k)) as usize;
+        let n = whole(herds.count_of(k) - content.dials.breeding_stock).max(0.0) as usize;
         let take = n.min(HERD - out.len());
         out.extend((0..take).map(|_| k));
         if out.len() >= HERD {
