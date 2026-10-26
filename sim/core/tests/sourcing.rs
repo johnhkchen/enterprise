@@ -483,5 +483,6 @@ fn the_random_worlds_source_and_the_exchange_buys() {
         signals += n[5];
     }
     println!("sourced {sourced}, in force {in_force}, trial {trial}, advances {advances}, exchange {exchange}, signals {signals}");
-    assert!(sourced > 100 && in_force > 20 && exchange > 20 && signals > 5, "{sourced} {in_force} {exchange} {signals}");
+    // (98 once a town's people took a share of its lockers' takings as wages: a little less free money for contracts.)
+    assert!(sourced > 90 && in_force > 20 && exchange > 20 && signals > 5, "{sourced} {in_force} {exchange} {signals}");
 }

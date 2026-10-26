@@ -126,6 +126,12 @@ pub struct People {
     /// The war (`army.rs`): its soldiers fallen, as (the tick its grief for them ends, how many fell), `Holding.fallen`:
     /// each takes `grief_mood` from its mood target until then, at most `grief_most` (`Territory.moodTarget`).
     pub grief: Vec<(u64, f64)>,
+    /// What its lockers took for goods other than crops (`lockers: sold paper`), as `live` last read it from the cash
+    /// book: the day, and that day's total then (`farms::locker_sales`). The households' wages are a share of it too.
+    #[serde(default)]
+    pub sales_day: u64,
+    #[serde(default)]
+    pub sales_seen: f64,
 }
 
 /// What a town holds of each good.

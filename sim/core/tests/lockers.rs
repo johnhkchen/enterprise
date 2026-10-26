@@ -178,7 +178,9 @@ fn a_towns_lockers_trade_on_their_own_two_restocks_a_day() {
     let mut s = market(Some(1), 0, true, 27.0 * 64.0);
     s.advance(3 * DAY + 1200);
     assert_eq!(s.lockers(0).unwrap().restocked_until, Some(3 * DAY + 1200));
-    assert_eq!(s.town(0).money, 48.0, "16 trades a day");
+    // 16 trades a day, 48 emeralds in 3 days; the households' wages a half share of it (a town that makes nothing pays
+    // its people so), 16 of it paid by now.
+    assert_eq!(s.town(0).money, 32.0, "16 trades a day, less its people's wages");
     let start = s.totals();
     s.advance(20 * DAY);
     s.conserved(&start).unwrap();
@@ -367,4 +369,22 @@ fn a_hand_that_leaves_takes_its_locker() {
     assert_eq!(l.hands.len(), 3);
     assert_eq!(l.hands[2].worth, 7.0, "the last hand's locker moved down with it");
     assert_eq!((l.clients, l.managed), (vec![14], vec![2, 0]));
+}
+
+#[test]
+fn a_town_that_makes_nothing_pays_its_people_a_share_of_what_its_lockers_take() {
+    // Paper sold to its Librarian, nothing made: half the 2 emeralds the lockers took goes to the households as wages.
+    let mut s = market(Some(1), 0, true, 64.0);
+    s.set_people(0, 4.0, 4.0, 4.0);
+    s.advance(1);
+    assert_eq!(s.restock(0), 2);
+    s.advance(DAY / 2);
+    let book = s.cash_book(0, 1);
+    let wages: f64 = book.iter().filter(|(_, why, _)| why == "wages").map(|(_, _, v)| v.to_f64()).sum();
+    assert!((wages + 1.0).abs() < 1e-9, "a half share of 2, paid out once: {book:?}");
+    s.advance(DAY);
+    let book = s.cash_book(0, 2);
+    let wages: f64 = book.iter().filter(|(_, why, _)| why == "wages").map(|(_, _, v)| v.to_f64()).sum();
+    let sold: f64 = book.iter().filter(|(_, why, _)| why == "lockers: sold paper").map(|(_, _, v)| v.to_f64()).sum();
+    assert!((wages + sold / 2.0).abs() < 1e-9, "not twice: {book:?}");
 }

@@ -702,6 +702,15 @@ help breed more as needed."
   journal keeps each response's FNV-1a beside it (`FILE.ejl.fnv`), and `survival_study.py` ends by replaying it and
   saying whether every response is the game's, or the first request it parts at. The next run of the same seed, 45 days,
   replayed to the byte (1,010 responses), with no "taken out" or "paid in" anywhere: the split hasn't come back.
+- **Why Redfell ends near broke, and its people paid** (John: "pay its people"; `people.rs` `live`,
+  `farms::locker_sales`). Redfell makes nothing: its income is paper sold to its Cartographers, so it paid no wages, its
+  households had no purse, and the comforts its wagons brought (boots, cookies) were the treasury's gift: its mood rose
+  from -1 to +1.7 while its money fell to 2.4. (The cane it buys pays back at about its cost: a buyer pays at most a
+  good's value, and the Cartographer pays that for paper.) Now a town's households' wages are `labour_share` of what it
+  makes and of what its lockers took for goods other than crops (the Farmers are paid from the crops'). Seed 8675309
+  again (its replay all 1,025 responses the game's): Redfell paid 4.5 in wages and its people 4.0 back for comforts,
+  of about 20 of comforts it bought; it ended on 3.2. Its paper earned 12 this run (25 the last); homes, children, a
+  square, a stall and a training took 51 of its 64 founding emeralds.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 

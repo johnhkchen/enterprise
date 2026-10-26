@@ -90,8 +90,13 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
         }
         // Wages: a share of the worth of what the town makes (rounded down to the thousandth: a share paid out), as far
         // as its money goes. The part of a thousandth rounded off isn't carried to the next look (the comforts below,
-        // rounded up, likewise): at most a thousandth a look each way stays with the treasury.
-        let due = Fixed::floor(d.labour_share * trades.makes.iter().zip(&content.goods).map(|(m, g)| m * g.value).sum::<f64>() * days);
+        // rounded up, likewise): at most a thousandth a look each way stays with the treasury. And the same share of
+        // what its lockers took for goods other than crops since (the Farmers are paid from the crops'): a town that
+        // makes nothing, selling its Cartographers paper, pays its people too (John: "pay its people"), so they buy
+        // their comforts as other towns' do rather than the treasury giving them away.
+        let sold = crate::farms::locker_sales(&content, &book, t, (&mut people.sales_day, &mut people.sales_seen), now, false);
+        let due = Fixed::floor(d.labour_share * (trades.makes.iter().zip(&content.goods).map(|(m, g)| m * g.value).sum::<f64>()
+            * days + sold));
         let paid = due.min(money.0.at_least_zero());
         post(&mut ledger, &mut book, Side::treasury(t, &mut money.0), Side::households(t, &mut people.purse), paid,
             Reason::Wages, now, day);

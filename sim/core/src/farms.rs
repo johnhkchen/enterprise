@@ -739,20 +739,28 @@ pub fn farmers(content: &Content, roster: Option<&crate::roster::Roster>) -> Vec
 /// The town's crop sales since the farm last read them, from its cash book: what its lockers took for crops
 /// (`recordCropSale`, as the lockers note it).
 pub fn crop_sales(content: &Content, book: &crate::cash_book::CashBook, town: usize, farm: &mut Farm, now: u64) -> f64 {
+    locker_sales(content, book, town, (&mut farm.sales_day, &mut farm.sales_seen), now, true)
+}
+
+/// What a town's lockers took for its crops (`crops`) or for its other goods since `mark` (the day last read, and that
+/// day's total then) was last moved on, from its cash book; `mark` moved on to now.
+pub fn locker_sales(content: &Content, book: &crate::cash_book::CashBook, town: usize, mark: (&mut u64, &mut f64), now: u64,
+        crops: bool) -> f64 {
     use crate::cash_book::{Account, Reason};
+    let (sales_day, sales_seen) = mark;
     let today = now / content.day_ticks.max(1);
     let on = |day: u64| -> f64 {
         book.books.get(&Account::Treasury(town)).map_or(0.0, |b| {
-            content.goods.iter().enumerate().filter(|(_, g)| g.crop)
+            content.goods.iter().enumerate().filter(|(_, g)| g.crop == crops)
                 .map(|(i, _)| b.get(&(day, Reason::Sold(i))).copied().unwrap_or_default()).sum::<Fixed>().to_f64()
         })
     };
-    let mut since = on(farm.sales_day) - farm.sales_seen;
-    if today != farm.sales_day {
+    let mut since = on(*sales_day) - *sales_seen;
+    if today != *sales_day {
         since += on(today);
-        farm.sales_day = today;
+        *sales_day = today;
     }
-    farm.sales_seen = on(today);
+    *sales_seen = on(today);
     since.max(0.0)
 }
 
