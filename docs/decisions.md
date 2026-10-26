@@ -786,7 +786,10 @@ help breed more as needed."
   every whole animal of each kind, up to eight; the far end turns them out only where its pastures have room, and a
   flock is seeded once. Dustfell's three sheep left on day 45 and never came back: no wool, no carpets, furnishings
   unmet in three towns. Now she drives only what's beyond `breeding_stock` (the mod's drives the market pen's, never
-  the pasture's). On round 3's journal (a replay): Dustfell kept its flock (5.4 at day 90, none before).
+  the pasture's). On round 3's journal (a replay): Dustfell kept its flock (5.4 at day 90, none before). Its own 90 days (replay all
+  2,082 the game's): every town with a Shepherd kept a flock (Redfell 22.5, Meadowfell 14, Ryegate 30.5); furnishings
+  met in all five towns, reading in three, 17 comforts met in all (the most yet); moods +2.4, +2.6, +2.8, +2.4, +0.9;
+  idle hands two or three a town.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 
