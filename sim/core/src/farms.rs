@@ -40,7 +40,8 @@ pub const YIELD_PER_PLOT_PER_DAY: f64 = 0.5;
 /// The Farmers' starting share of what they grow is worth, and the customary wage credit is reckoned at
 /// (`Territory.LABOR_SHARE`).
 pub const LABOR_SHARE: f64 = 0.5;
-/// The share floats between these (`Territory.MIN_LABOR_SHARE`, `MAX_LABOR_SHARE`).
+/// The share floats between these (`Territory.MIN_LABOR_SHARE`, `MAX_LABOR_SHARE`); the mod's floor, a quarter, is the
+/// dial `min_labor_share`'s, now none: the Farmers are paid on what sells (John: "farm wages only on what sells").
 pub const MIN_LABOR_SHARE: f64 = 0.25;
 pub const MAX_LABOR_SHARE: f64 = 1.0;
 /// Days for the share to close half its gap, and for crop sales and the harvest's worth to be averaged over.
@@ -574,10 +575,12 @@ pub fn rotation(content: &Content) -> Vec<GoodId> {
 }
 
 /// Can a town plant this crop now (`Fields.allowed`): anything while it trades; while it grows or builds, food crops,
-/// and cane where its own workshop wants it once its food is in hand.
+/// and cane where its own workshop or its lockers want it once its food is in hand: the cane, or the paper it sells as
+/// (the mod's asked only for cane: seed 8675309's Redfell, its Cartographers taking 768 paper a day, planted none
+/// while it grew and bought its cane off Wheatfell's wagons).
 pub fn allowed(content: &Content, crop: GoodId, wants: &Wants, food_points: f64, food_only: bool) -> bool {
     !food_only || content.goods[crop].name != "sugar_cane"
-        || wants.demand(crop) > 0.0 && food_points >= 2.0 * FOOD_PAR_POINTS
+        || wanted(content, crop, wants, false) > 0.0 && food_points >= 2.0 * FOOD_PAR_POINTS
 }
 
 /// Items a day the town wants of a crop (`Fields.wanted`): as itself, and, while it trades, as what a locker takes
@@ -605,7 +608,9 @@ pub fn choose(content: &Content, wants: &Wants, grown: &BTreeMap<GoodId, f64>, f
     let (mut best, mut best_value) = (None, 0.0);
     for &crop in &crops {
         let already: f64 = all.iter().filter(|&&c| sold_as(content, c) == sold_as(content, crop)).map(|&c| grown_of(c)).sum();
-        let value = (wanted(content, crop, wants, food_only) - already) * content.goods[sold_as(content, crop)].value;
+        // (Fed, a growing town counts what its lockers take for a crop too: cane for its Cartographers' paper.)
+        let fed = food_points >= 2.0 * FOOD_PAR_POINTS;
+        let value = (wanted(content, crop, wants, food_only && !fed) - already) * content.goods[sold_as(content, crop)].value;
         if value > best_value {
             best = Some(crop);
             best_value = value;
@@ -703,7 +708,8 @@ pub fn accrue(content: &Content, farm: &mut Farm, mood: f64, now: u64) {
             farm.value_per_day += (value_per_day(content, &farm.per_day) - farm.value_per_day) * weight;
             farm.sales_since = 0.0;
             if farm.value_per_day > 0.0 {
-                let target = (farm.sales_per_day / farm.value_per_day * farm.tightness).clamp(MIN_LABOR_SHARE, MAX_LABOR_SHARE);
+                let floor = content.dials.min_labor_share.min(MAX_LABOR_SHARE);
+                let target = (farm.sales_per_day / farm.value_per_day * farm.tightness).clamp(floor, MAX_LABOR_SHARE);
                 farm.labor_share += (target - farm.labor_share) * (1.0 - crate::fixed::halved(days, SHARE_HALF_LIFE_DAYS));
             }
         }

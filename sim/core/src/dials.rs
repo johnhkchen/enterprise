@@ -598,4 +598,9 @@ dials! {
     /// And round trips on each of its roads with trade on them (John: "keep its wagons' purses before building"):
     /// seed 8675309's Wheatfell walled itself in before its first wagon left, and its wagon then had no purse.
     wall_road_trips: f64 = 2.0,
+    /// The least share of the harvest's worth the Farmers are paid, whatever sells (`Territory.MIN_LABOR_SHARE`, a
+    /// quarter in the mod): none, so a farm whose crops nobody buys pays no wages for them (John: "farm wages only on
+    /// what sells"; seed 8675309's Redfell paid its Farmers 98 in 90 days for melons nobody bought). What sells counts
+    /// its crops sold at its lockers, to shops, and off its own wagons (`rules/arrive.rs` `turn`).
+    min_labor_share: f64 = 0.0,
 }

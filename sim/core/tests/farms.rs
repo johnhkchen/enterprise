@@ -40,6 +40,8 @@ const BREAD: usize = 7;
 fn farm(money: f64) -> Society {
     let mut s = Society::new(content());
     s.content_mut().dials.villagers_per_want = f64::INFINITY;
+    // The mod's floor on the Farmers' share, as its tests read it (the core's is none: `wages_follow_what_sells`).
+    s.content_mut().dials.min_labor_share = farms::MIN_LABOR_SHARE;
     let t = s.add_town("Meadowworth", money);
     s.set_roster(t, &[("farmer", 1)]);
     s.set_people(t, 1.0, 1.0, 1.0);
@@ -194,6 +196,19 @@ fn wages_ease_to_the_floor_when_nothing_sells() {
     assert!((farms::MIN_LABOR_SHARE..0.27).contains(&share), "farmers' share eases toward 25% when nothing sells: {share}");
 }
 
+#[test]
+fn wages_follow_what_sells_down_to_nothing_when_nothing_does() {
+    // The core's floor: none (John: "farm wages only on what sells").
+    let mut s = farm(5.0 * 64.0);
+    s.content_mut().dials.min_labor_share = 0.0;
+    touch_every(&mut s, 1);
+    for day in 1..=20 {
+        s.advance(day * DAY);
+    }
+    let share = the_farm(&s).labor_share;
+    assert!(share < 0.01, "nothing sells, next to nothing paid: {share}");
+}
+
 /// The town's own lockers' crop sales are read from its cash book: what its people paid for the wheat they use.
 #[test]
 fn crop_sales_at_the_towns_lockers_are_read_from_its_cash_book() {
@@ -324,7 +339,9 @@ fn fields_grow_what_the_village_would_buy() {
     let potatoes: BTreeMap<usize, f64> = [(POTATO, 640.0)].into_iter().collect();
     assert_eq!(choose(&both, &potatoes, false), Some(CANE), "potatoes grown already: cane next");
     assert_eq!(choose(&wants(&[(BERRIES, 20.0)]), &none, false), Some(BERRIES), "a Master Butcher: berries");
-    assert_ne!(choose(&both, &potatoes, true), Some(CANE), "a town still growing: no cane yet");
+    // A town still growing plants cane for its Librarians' paper once it's fed, not before.
+    assert_eq!(choose(&both, &potatoes, true), Some(CANE), "a town still growing, fed: cane for its lockers' paper");
+    assert_ne!(farms::choose(&c, &both, &potatoes, 100.0, true), Some(CANE), "short of food: no cane yet");
     let biscuits = wants(&[(POTATO, 640.0), (CANE, 4.0)]);
     assert_eq!(choose(&biscuits, &potatoes, true), Some(CANE), "its workshop's cane: planted while it grows");
     assert_eq!(Focus::of(5.0, 8.0, 2000.0), Focus::Grow, "five villagers: it grows first");
@@ -419,6 +436,7 @@ fn unpaid_farmers_sour_the_mood() {
     let mut s = Society::new(content());
     // No baking: bread from the wheat would feed the town, and its unwanted wheat would lie fallow.
     s.content_mut().conversions.clear();
+    s.content_mut().dials.min_labor_share = farms::MIN_LABOR_SHARE; // the mod's floor: owed whether or not it sells
     let t = s.add_town("Meadowworth", 0.0);
     s.set_roster(t, &[("farmer", 1)]);
     s.set_people(t, 1.0, 1.0, 1.0);
@@ -518,8 +536,8 @@ fn a_farm_grows_what_the_town_down_its_road_buys() {
     let mut s = Society::new(content());
     let t = s.add_town("Meadowworth", 20.0);
     let far = s.add_town("Farfield", 0.0);
-    s.set_roster(t, &[("farmer", 1), ("farmer", 1)]);
-    s.set_people(t, 2.0, 2.0, 2.0);
+    s.set_roster(t, &[("farmer", 1), ("farmer", 1), ("merchant", 1), ("merchant", 1)]);
+    s.set_people(t, 4.0, 4.0, 4.0);
     s.set_farm_demand(t, WHEAT, 1.0); // (a farm set up: its own village wants a little wheat)
     s.set_roster(far, &[("farmer", 1), ("merchant", 1)]);
     s.set_offers(far, 0, vec![enterprise_core::lockers::Offer::buys(POTATO, 26, 1, 16, 2, 0.05)]);
@@ -527,5 +545,13 @@ fn a_farm_grows_what_the_town_down_its_road_buys() {
     s.add_route(t, far, 0.25, 0.0, 1.0);
     s.advance(2 * DAY);
     let farm = the_farm(&s);
-    assert!(farm.draws.get(&POTATO).is_some_and(|d| d.0 > 0.0), "Farfield's Farmer buys potatoes: {:?}", farm.draws);
+    assert!(farm.draws.get(&POTATO).is_some_and(|d| d.0 > 0.0), "Farfield's Farmer buys potatoes: {:?} ({:?})", farm.draws,
+        s.route(0).stayed);
+    // A road its wagon can't take (no Merchant at the desk to send one): what's wanted there lies at home, so its
+    // Farmers don't grow for it (John: "let the farmers be smarter about what to grow").
+    s.set_roster(t, &[("farmer", 1), ("farmer", 1)]);
+    s.advance(4 * DAY);
+    assert_eq!(s.route(0).stayed, Some(enterprise_core::road::Stay::NoMerchant));
+    assert!(the_farm(&s).draws.get(&POTATO).is_none_or(|d| d.0 <= 0.0), "not for a road it can't take: {:?}",
+        the_farm(&s).draws);
 }

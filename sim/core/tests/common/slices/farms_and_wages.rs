@@ -69,7 +69,8 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
     for t in 0..s.town_count() {
         let Some(v) = s.farm(t) else { continue };
         let f = &v.farm;
-        if !(farms::MIN_LABOR_SHARE - 1e-12..=farms::MAX_LABOR_SHARE + 1e-12).contains(&f.labor_share) {
+        let floor = s.content().dials.min_labor_share.min(farms::MAX_LABOR_SHARE);
+        if !(floor - 1e-12..=farms::MAX_LABOR_SHARE + 1e-12).contains(&f.labor_share) {
             return Err(format!("town {t}: labour share {}", f.labor_share));
         }
         if f.credit < -1e-9 || f.wage_owed < -1e-9 || v.deposits < -1e-9 {

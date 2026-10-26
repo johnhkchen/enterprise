@@ -207,7 +207,7 @@ pub(crate) fn draft(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<B
 pub fn turn(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
         mut book: ResMut<Book>, mut bills: ResMut<Bills>, mut outbox: ResMut<Outbox>,
         mut routes: Query<(Entity, &Route, &mut RouteState)>, mut towns: Query<TownData>,
-        mut herds: Query<&mut crate::herds::Herds>) {
+        mut herds: Query<&mut crate::herds::Herds>, mut farms: Query<&mut crate::farms::Farm>) {
     let now = clock.now;
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
         let (_, route, mut state) = routes.get_mut(entity).unwrap();
@@ -233,6 +233,12 @@ pub fn turn(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
                 let takings = wagon.purse;
                 post(&mut ledger, &mut cash, Side::wagon(route.seq, &mut wagon.purse),
                     Side::treasury(route.from_id, &mut money.0), takings, Reason::Takings, now, content.day_ticks);
+                // What its crops fetched at the far end counts as sold, for the Farmers' share (`farms.rs` `accrue`).
+                if let Ok(mut farm) = farms.get_mut(route.from) {
+                    let crops: Fixed = wagon.paid_here.iter().enumerate()
+                        .filter(|(g, _)| content.goods.get(*g).is_some_and(|g| g.crop)).map(|(_, v)| *v).sum();
+                    farm.sales_since += crops.to_f64();
+                }
                 for id in &wagon.drafts {
                     book.deliver_copy(*id, route.from_id);
                 }

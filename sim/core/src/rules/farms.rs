@@ -222,16 +222,24 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
         mut ledger: ResMut<Ledger>,
         mut book: ResMut<CashBook>,
         mut farms: Query<(&Town, &mut Farm, &mut Money, &mut People, &Stock, &Trades, &mut Budget, Option<&Roster>,
-            Option<&crate::lockers::Lockers>)>, routes: Query<&Route>,
+            Option<&crate::lockers::Lockers>)>, routes: Query<&Route>, roads: Query<(&Route, &crate::state::RouteState)>,
         far: Query<(&Roster, &crate::lockers::Lockers)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let today = now / day;
     // What the villagers at the managed lockers of each town's routes' far ends would buy a day (in the routes'
     // order: a sum's last bit mustn't hang on archetypes): a market its caravans reach, for its farm to grow for.
     let mut reached: BTreeMap<usize, BTreeMap<crate::GoodId, f64>> = BTreeMap::new();
-    let mut ordered: Vec<&Route> = routes.iter().collect();
-    ordered.sort_by_key(|r| r.seq);
-    for route in ordered {
+    let mut ordered: Vec<(&Route, &crate::state::RouteState)> = roads.iter().collect();
+    ordered.sort_by_key(|(r, _)| r.seq);
+    for (route, state) in ordered {
+        // Not a road its wagon can't take now, for want of money, a squad, a Merchant, llamas or range: what its
+        // far end buys would lie at home (John: "let the farmers be smarter about what to grow"; seed 8675309's
+        // Redfell grew melons for Dustfell down a road it couldn't fund, 524 of them by day 45).
+        use crate::road::Stay;
+        let stuck = state.stayed.is_some_and(|s| matches!(s, Stay::CantFund | Stay::NoSquad | Stay::NoMerchant | Stay::NoLlamas | Stay::OutOfRange));
+        if stuck {
+            continue;
+        }
         if let Ok((r, l)) = far.get(route.to) {
             let into = reached.entry(route.from_id).or_default();
             for (g, n) in crate::lockers::census_demand(r, l) {

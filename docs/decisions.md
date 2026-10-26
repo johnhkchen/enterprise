@@ -722,6 +722,17 @@ help breed more as needed."
   responses the game's): Redfell's first idle hand farmed; as its melons piled the lead's marbles grew (0.1 on day 5,
   22.6 by day 30) and on day 32 one was signed; its first wagon sold 178 at Dustfell and was on its way home at day
   45, Redfell on 0 till its takings come. Its Farmers' wages (52 in all) are paid on what they grow, eaten or sold.
+- **Where the network's money comes from, and Farmers paid on what sells** (John: "1, 2. Let the farmers be smarter
+  about what to grow"). Over 90 days of seed 8675309, nearly all new money came in at the towns' own lockers: Dustfell's
+  villagers bought its beetroot, melons and carrots (486), so it alone saved (94.6); the other four hovered near
+  nothing. Redfell's Farmers grew melons for Dustfell down a road it couldn't fund, and were paid a quarter of the
+  harvest's worth whether it sold or not (98). Now: the Farmers' share follows what sells all the way down
+  (`min_labor_share`, 0; the mod's quarter is the farm tests' own), crops sold off the town's own wagons count as sold
+  (`rules/arrive.rs` `turn`), a road its wagon can't take (no money, squad, Merchant, llamas or range) doesn't draw its
+  Farmers to the far end's crops (`rules/farms.rs` `review`), and a town still growing plants cane for its lockers'
+  paper once it's fed (`farms::allowed`, `choose`). The same seed's next 90 days: Wheatfell 113 (7.5 before), Redfell
+  17.3 (2.0), Dustfell 125.7 (94.6), Meadowfell 9.2 (4.0), Ryegate 25.0 (2.8); 35 trips and 3,172 sold (29 and
+  1,857); wages paid 743 (555), following the sales. One game run each: the game's villagers differ run to run.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 
