@@ -222,7 +222,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
         mut ledger: ResMut<Ledger>,
         mut book: ResMut<CashBook>,
         mut farms: Query<(&Town, &mut Farm, &mut Money, &mut People, &Stock, &Trades, &mut Budget, Option<&Roster>,
-            Option<&crate::lockers::Lockers>)>, routes: Query<&Route>, roads: Query<(&Route, &crate::state::RouteState)>,
+            Option<&crate::lockers::Lockers>, Option<&mut crate::herds::Herds>)>, routes: Query<&Route>, roads: Query<(&Route, &crate::state::RouteState)>,
         far: Query<(&Roster, &crate::lockers::Lockers)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let today = now / day;
@@ -247,7 +247,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
             }
         }
     }
-    for (town, mut farm, mut money, mut people, stock, trades, mut budget, roster, lockers) in &mut farms {
+    for (town, mut farm, mut money, mut people, stock, trades, mut budget, roster, lockers, mut herds) in &mut farms {
         if !farm.set_up || farm.reviewed == Some(today) {
             continue;
         }
@@ -301,6 +301,22 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
                 farm.fields_planted += 1;
                 post(&mut ledger, &mut book, Side::treasury(t, &mut money.0), Side::outside(), field,
                     Reason::Other("a field".into()), now, day);
+            }
+        }
+        // A pasture for a town with animals, and another when its herd fills the ones it has (`Territory.keepHerds`):
+        // the herds stopped at one pasture's sixteen, and the leather for clothing left none for books.
+        if let Some(herds) = herds.as_deref_mut() {
+            let animals: f64 = herds.count.iter().sum();
+            let full = herds.pastures > 0 && herds.pastures < content.dials.pastures_max
+                && animals >= 0.9 * herds.capacity(&content);
+            let fence = Fixed::ceil(FIELD_EMERALDS);
+            if animals > 0.0 && (herds.pastures == 0 || full)
+                && money.0 - reserve(&content, trades, Some(farm)) >= fence
+                && Accountant::approve(&content, &mut book, t, now, super::free(&content, trades, &money, &bills, t, now),
+                    &mut budget, Reason::Other("a pasture".into()), fence) {
+                herds.pastures += 1;
+                post(&mut ledger, &mut book, Side::treasury(t, &mut money.0), Side::outside(), fence,
+                    Reason::Other("a pasture".into()), now, day);
             }
         }
         // A household with the price of a field in purse and credit buys one of its own, where there are hands for it.

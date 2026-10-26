@@ -94,7 +94,7 @@ public final class ModPack {
      * refuse the pack, loudly, until it's added there or here.
      */
     public static final Set<String> JAVA_ONLY = Set.of("dealer_take_profit", "discount_days", "correspondent_floor", "wagon_pays",
-            "call_start", "pastures_max", "feed_days");
+            "call_start", "feed_days");
 
     /**
      * The kinds of packing a pallet's packages are shown in (docs/pallets.md section 4): loose stacks strapped together,

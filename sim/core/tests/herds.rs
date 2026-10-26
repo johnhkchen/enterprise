@@ -271,3 +271,28 @@ fn a_leatherworker_culls_cows_for_beef_where_the_host_has_no_leather() {
     tend(&c, &mut h, LEATHERWORKER, 2.0, &mut stock, &mut led);
     assert!(stock.0[1] > 4.0, "culled for beef, as the mod's `kind == cow`: {:?}", stock.0);
 }
+
+/// A town with a farm fences a pasture for its herd, and another as the herd fills those (`Territory.keepHerds`), to
+/// `pastures_max`, four emeralds each: a survival network's cows stopped at one pasture's sixteen in every town.
+#[test]
+fn a_town_fences_another_pasture_when_its_herd_fills_the_ones_it_has() {
+    let mut s = Society::new(content());
+    let t = s.add_town("Alder", 100.0);
+    s.set_people(t, 3.0, 3.0, 10.0);
+    s.set_roster(t, &[("shepherd", 1), ("farmer", 1)]);
+    s.set_plots(t, WHEAT, 0);
+    s.deliver(t, WHEAT, 640.0);
+    let before = s.totals();
+    s.advance(DAY + 1);
+    assert_eq!(s.herds(t).pastures, 1, "a pasture for the flock");
+    for day in 2..=40 {
+        s.deliver(t, WHEAT, 16.0);
+        s.advance(day * DAY + 1);
+    }
+    let h = s.herds(t);
+    assert_eq!(h.pastures, s.content().dials.pastures_max, "fenced to the most: {h:?}");
+    assert!(h.count_of(0) > 32.0, "a flock beyond two pastures' room: {h:?}");
+    let paid: f64 = s.cash_book(t, 400).iter().filter(|(_, w, _)| w == "a pasture").map(|(_, _, e)| e.to_f64()).sum();
+    assert_eq!(paid, -12.0, "four emeralds a pasture");
+    s.conserved(&before).unwrap();
+}

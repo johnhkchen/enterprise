@@ -214,6 +214,8 @@ dials! {
     // herds (`territory/Husbandry.java`)
     /// Animals a pasture holds.
     pasture_animals: u32 = 16,
+    /// Pastures a town fences at most, a new one once its herd fills those it has.
+    pastures_max: u32 = 3,
     /// The share a fed herd grows by a day, while there's room.
     breed_per_day: f64 = 0.15,
     /// The share a hungry herd dwindles by a day.
