@@ -26,6 +26,9 @@ pub fn register(schedule: &mut Schedule) {
 }
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
+/// The most hands a party of settlers takes (`rules/settlers.rs`: a Merchant, and a settler to found a town).
+const PARTY_MOST: usize = 2;
+
 pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signals: Res<Signals>, order: Res<Towns>,
         settlers: Res<Settlers>, hands: Res<crate::roster::Hands>, mut outbox: ResMut<Outbox>, mut hiring: ResMut<Hiring>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, seed: Res<Rng>,
         mut dice: ResMut<Dice>, mut recipes: Local<Option<Vec<crate::services::Recipe>>>,
@@ -62,7 +65,10 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
         }
         hiring.reviewed.insert(town.id, today);
         let sent_today = settlers.last_sent.get(&town.id).is_some_and(|&t| t / content.day_ticks.max(1) == today);
-        if sent_today || raising(&content, &settlers, town.id, &*people, stock, now) {
+        // A town raising settlers keeps the hands a party takes (a Merchant and a settler) and hires the rest: seed
+        // 8675309's Meadowfell, with no clear ground in reach, held eight idle from day 48 for a party that never went.
+        let waiting = roster.idle(&content).into_iter().filter(|&i| !content.trades[roster.hands[i].trade].nitwit).count();
+        if sent_today || waiting <= PARTY_MOST && raising(&content, &settlers, town.id, &*people, stock, now) {
             continue;
         }
         // A road counts while it carries: a wagon on it, or one gone down it within `slack_days`. Roads that have
