@@ -51,20 +51,31 @@ pub fn daily(s: &mut Society, r: &mut Rng, _day: u64) {
     s.want_trades(route, if r.below(2) == 0 { &wanted[..] } else { &[] });
 }
 
-/// A crew is never more than four, and a wagon's slots are its crew's; every hand away from a town is on one of its
-/// wagons or walking home from one.
+/// A crew is never more than four, and a wagon's slots are its crew's (a llama train's its llamas'); every hand away
+/// from a town is on one of its wagons or walking home from one, and every llama away on one of its trains.
 pub fn check(s: &Society, _day: u64) -> Result<(), String> {
     let d = &s.content().dials;
     let mut out = vec![0usize; s.town_count()];
+    let mut llamas_out = vec![0u32; s.town_count()];
     for route in 0..s.route_count() {
         let c = s.crew(route);
         if c.crew.len() > enterprise_core::squad::MAX {
             return Err(format!("route {route}'s crew is {}: {c:?}", c.crew.len()));
         }
-        if c.arrives.is_some() && !c.crew.is_empty() && c.slots < if c.porter { d.pack_stacks } else { d.wagon_slots } {
+        let team = if c.porter { d.pack_stacks } else if c.llamas > 0 { c.llamas * d.llama_slots } else { d.wagon_slots };
+        if c.arrives.is_some() && !c.crew.is_empty() && c.slots < team {
             return Err(format!("route {route} carries {} slots: {c:?}", c.slots));
         }
+        if c.llamas > 0 && s.route_carrier(route) != enterprise_core::map::Carrier::Llama {
+            return Err(format!("route {route} is a wagon's, with llamas: {c:?}"));
+        }
         out[c.home] += c.crew.len() + c.walkers;
+        llamas_out[c.home] += c.llamas;
+    }
+    for (town, &n) in llamas_out.iter().enumerate() {
+        if s.llamas(town).away != n {
+            return Err(format!("town {town}'s llamas away are {}, on its trains {n}", s.llamas(town).away));
+        }
     }
     // Or at the war (`army.rs`): its soldiers, its recruits waiting at the capital, and those walking home from either.
     let army = s.army();
