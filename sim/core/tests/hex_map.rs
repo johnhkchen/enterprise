@@ -160,8 +160,8 @@ fn steep_ground_is_hard_going_and_a_cliff_stops_a_caravan() {
     let hills = Hex::new(6000, 6000);
     m.set_ground(hills, 0.0, 0.0);
     assert_eq!(m.crossing_factor(hills), 1.0, "flat: open ground");
-    m.set_ground(hills, 0.0, 16.0); // a hill of 16
-    assert_eq!(m.crossing_factor(hills), 3.0, "a hill: hard going");
+    m.set_ground(hills, 0.0, 24.0); // a hill of 24 (the mod's 8: the climb between hexes counts here too)
+    assert_eq!(m.crossing_factor(hills), 2.0, "a hill: hard going");
     m.set_ground(hills, 0.0, 31.0);
     assert!(m.crossing_factor(hills).is_finite(), "31 is steep, not a cliff");
     m.set_ground(hills, 0.0, 40.0); // a mountain's flank, 40 up
@@ -169,7 +169,7 @@ fn steep_ground_is_hard_going_and_a_cliff_stops_a_caravan() {
     m.set_ground(hills, 0.0, 32.0);
     assert!(m.crossing_factor(hills).is_infinite(), "32 is a cliff");
     // Water and relief multiply.
-    m.set_ground(hills, 0.25, 8.0);
+    m.set_ground(hills, 0.25, 24.0);
     assert_eq!(m.crossing_factor(hills), 1.5 * 2.0);
 }
 
@@ -356,7 +356,7 @@ fn a_road_goes_around_and_costs_more_or_there_is_none() {
     s.place_town(a, 0.0, 0.0);
     s.place_town(b, GOAL.center_x(), 0.0);
     for q in 1..12 {
-        s.set_ground(Hex::new(q, 0), 0.0, 24.0); // four times as hard
+        s.set_ground(Hex::new(q, 0), 0.0, 31.0); // 2.3 times as hard
     }
     let road = s.add_road(a, b, 1.0).unwrap();
     let path = s.route_path(road).unwrap();
@@ -377,10 +377,10 @@ fn a_wagon_climbs_gently_from_hex_to_hex() {
     assert_eq!(m.climb_factor(a, b), 1.0, "heights unknown: no climb counted");
     m.set_height(a, Some(-60.0));
     m.set_height(b, Some(-52.0));
-    assert_eq!(m.climb_factor(a, b), 2.0, "8 blocks over a hex: as hard again");
-    assert_eq!(m.climb_factor(b, a), 2.0, "down as up: a wagon brakes");
+    assert_eq!(m.climb_factor(a, b), 1.5, "8 blocks over a hex: half as hard again");
+    assert_eq!(m.climb_factor(b, a), 1.5, "down as up: a wagon brakes");
     m.set_height(b, Some(-44.0));
-    assert_eq!(m.climb_factor(a, b), 3.0, "16 blocks: the steepest a wagon takes");
+    assert_eq!(m.climb_factor(a, b), 2.0, "16 blocks: the steepest a wagon takes, twice as hard");
     m.set_height(b, Some(-43.0));
     assert!(m.climb_factor(a, b).is_infinite(), "17: too steep");
 }
@@ -418,7 +418,7 @@ fn a_gentle_slope_is_climbed_and_costs_more_than_the_flat() {
     let flat = m.plan(start, goal, 1.0, 0.0, &Posts::new(), &nobody(), false, &none()).unwrap();
     for q in 0..=4 {
         for r in -6..=6 {
-            m.set_height(Hex::new(q, r), Some(-60.0 + 4.0 * q as f64)); // 4 blocks a hex, all the way up
+            m.set_height(Hex::new(q, r), Some(-60.0 + 8.0 * q as f64)); // 8 blocks a hex, all the way up
         }
     }
     let slope = m.plan(start, goal, 1.0, 0.0, &Posts::new(), &nobody(), false, &none()).unwrap();
@@ -430,7 +430,7 @@ fn a_gentle_slope_is_climbed_and_costs_more_than_the_flat() {
 fn wagons_wear_a_trail_that_fades_unless_used_and_eases_the_way() {
     let mut m = Map::default();
     let hill = Hex::new(3, 0);
-    m.set_ground(hill, 0.0, 8.0); // as hard again
+    m.set_ground(hill, 0.0, 24.0); // as hard again
     assert!(m.wear(&[hill], 2.0, 0, DAY).is_empty());
     assert!((m.wear[&hill].at(20 * DAY, DAY) - 1.0).abs() < 1e-12, "half gone in 20 days");
     // Four more round trips a day apart (the wear fading meanwhile): worn to a trail on the last.

@@ -589,6 +589,16 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   four at 32: a road two routes share, or a hub's), the host told again with its width and laying it again wider. As
   it's laid, a tree trunk standing on its line is felled (the leaves, with no trunk, fall on their own) and leaves
   within four blocks over the path cleared.
+- **Relief costs less, now that the climb counts (2026-10-26).** A hex is as hard again every 24 blocks of relief (the
+  mod's 8) and a step every 0.2 of grade (16 blocks: the steepest step twice as hard); cliffs (32) and the steepest
+  step (16) unchanged. At 8, the generator's relief made rolling country three times open ground and roads detoured
+  far round it: Redfell to Dustfell went 1,493 blocks, now 933. Settlers still shun relief of 8.
+- **A five-village network** (`survival_study.py --villages 5`, seed 8675309, 45 days): 25 villages found within
+  1,600 blocks, 5 at least 250 apart taken, 10 roads (each town's two nearest within 800), all with a way. No wagon
+  went: a road's trip costs 8 emeralds and up (road food, fodder, the crew) and the loads were worth 0-6 (11 at most).
+  The demand is there and nobody makes it: Meadowfell's Leatherworker wants 1,920 rabbit hide and 480 leather, and
+  Dustfell can send only cookies. Dustfell (+3.0, 11 people) and Wheatfell (+1.9) did well alone; the others stayed
+  below 0. What a network's towns can make for each other is the open question, not the roads.
 - **Land never loaded has its hills from the start.** A chunk never surveyed takes its height from the world's
   generator (its noise at the chunk's middle, the chunk not generated), for the hex's height and its relief; the
   survey replaces it once the chunk loads. Seed 8675309, the 298 hexes round two villages 496 apart: all with heights

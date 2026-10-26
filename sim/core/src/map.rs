@@ -35,16 +35,19 @@ use crate::messages::TownId;
 
 /// A hex more than this share under water can't be crossed by a caravan.
 pub const IMPASSABLE: f64 = 0.5;
-/// Every this many blocks of relief in a hex make it as hard again to cross as open ground.
-pub const RELIEF_PER_FACTOR: f64 = 8.0;
+/// Every this many blocks of relief in a hex make it as hard again to cross as open ground. The mod's is 8; here 24,
+/// since the climb between hexes is counted too ([`GRADE_PER_FACTOR`]): at 8, a hex of rolling country (17 blocks'
+/// relief, the median round seed 8675309's villages) cost three times open ground, and no load paid a road's food.
+pub const RELIEF_PER_FACTOR: f64 = 24.0;
 /// A hex with this much relief or more (a cliff, a mountain's flank) can't be crossed by a caravan.
 pub const CLIFF: f64 = 32.0;
 /// A wagon climbs from one hex to the next at most this steeply (the rise between their grounds over the hex's width,
 /// 80 blocks): 16 blocks. Steeper, there's no way from the one to the other for a wagon; a valley or a gentler flank
 /// may still lead round.
 pub const MAX_GRADE: f64 = 0.2;
-/// Every this much grade (8 blocks over a hex) makes the step as hard again as open ground.
-pub const GRADE_PER_FACTOR: f64 = 0.1;
+/// Every this much grade (16 blocks over a hex) makes the step as hard again as open ground: the steepest step is
+/// twice as hard.
+pub const GRADE_PER_FACTOR: f64 = 0.2;
 /// Wagons' wear on a hex fades by half in this many days.
 pub const WEAR_HALF_LIFE_DAYS: f64 = 20.0;
 /// A hex worn by this many crossings at once (a round trip crosses it twice) is a trail, for good: a desire path the
@@ -125,7 +128,7 @@ pub struct Ground {
 
 impl Ground {
     /// How much harder the hex is to cross than open ground on foot: 1 on dry, flat land, up to 2 with water to skirt,
-    /// as hard again every 8 blocks of relief, infinite when mostly water or a cliff; a bridged hex that's mostly
+    /// as hard again every [`RELIEF_PER_FACTOR`] blocks of relief, infinite when mostly water or a cliff; a bridged hex that's mostly
     /// water is open ground.
     pub fn crossing_factor(&self) -> f64 {
         if self.bridged && self.water_share > IMPASSABLE {

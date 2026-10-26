@@ -4,7 +4,7 @@
     just server-setup-survival 8675309   # a normal world of that seed, no testbench (its villages 496 blocks apart;
                                          # 12345's nearest pair are 1,488 apart, a road no load pays for)
     just server                          # in the background
-    python3 dev/experiments/survival_study.py DAYS OUT.log [--loaded] [--chests] [--starting N]
+    python3 dev/experiments/survival_study.py DAYS OUT.log [--loaded] [--chests] [--starting N] [--villages N]
 
 The nearest village to spawn and the nearest one to it beyond SPREAD blocks (looking round it 300 to 700 blocks out, twelve ways) are found (`locate structure`), each
 loaded a minute while its villagers settle, and given what a player gives a village to trade: a Merchant's Desk at
@@ -16,6 +16,10 @@ player finds it). Then the days run, the first village kept loaded as a player s
 both), the other left to the core. With --chests, the player reads each town's ledger and puts a chest by each
 workstation it names (one with no chest touching it), as the ledger asks, before the trades are switched on. Every five days each town's ledger is logged; at the end, where the core's journal
 is (`enterprise-sim --trace` it into SQLite).
+
+With --villages N (more than two), a network: the villages round spawn (looked for 1,600 blocks every way), N of them
+each at least NEIGHBOUR blocks from the others, the nearest to the first; each a town, with roads to its two nearest
+within REACH blocks. The first is kept loaded, the rest left to the core.
 """
 
 import math
@@ -29,6 +33,8 @@ sys.path.insert(0, str(REPO / "scripts"))
 import rcon as rcon_client  # noqa: E402
 
 SPREAD = 400  # the second village at least this far from the first
+NEIGHBOUR = 250  # a network's villages at least this far apart (--villages)
+REACH = 800  # a network's roads: to a town's two nearest within this
 STARTING = 0  # emeralds a player puts in each desk's chest, beyond the founding purse the core gives a town (64)
 _sock = None
 
@@ -111,6 +117,68 @@ def market(village):
     return f"{x} {y} {z}"
 
 
+def dist(a, b):
+    return math.hypot(a[0] - b[0], a[1] - b[1])
+
+
+def network(first, many, days, say):
+    """N villages, each a town, roads to each one's two nearest within REACH: the days run as main's."""
+    found = {first}
+    for gx in range(-1600, 1601, 400):
+        for gz in range(-1600, 1601, 400):
+            v = locate(first[0] + gx, first[1] + gz)
+            if v:
+                found.add(v)
+    chosen = [first]
+    for v in sorted(found, key=lambda v: dist(v, first)):
+        if len(chosen) < many and all(dist(v, c) >= NEIGHBOUR for c in chosen):
+            chosen.append(v)
+    say(f"{len(found)} villages found; the network's {len(chosen)}: " + ", ".join(f"{v}" for v in chosen))
+    desks = [market(v) for v in chosen]
+    for d in desks:
+        say(f"{d}: " + rcon(f"enterprise core stock {d}").strip().splitlines()[0])
+    roads = set()
+    for i, v in enumerate(chosen):
+        near = sorted((j for j in range(len(chosen)) if j != i and dist(v, chosen[j]) <= REACH),
+                      key=lambda j: dist(v, chosen[j]))[:2]
+        for j in near:
+            roads.add((i, j))
+    for i, j in sorted(roads):
+        said = rcon(f"enterprise route add {desks[i]} {desks[j]}").strip().splitlines()[-1]
+        say(f"road {i} -> {j} ({dist(chosen[i], chosen[j]):.0f} blocks): {said}")
+    sprint(1200)  # the villagers settle
+    if "--chests" in sys.argv:
+        for d in desks:
+            for x, y, z in re.findall(r"at (-?\d+) (-?\d+) (-?\d+): no chest touching it", rcon(f"enterprise ledger {d}")):
+                x, y, z = int(x), int(y), int(z)
+                for dx, dz in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+                    if "Changed the block" in rcon(f"setblock {x + dx} {y} {z + dz} minecraft:chest keep"):
+                        break
+        sprint(200)
+    for d in desks:
+        say(f"{d}: " + rcon(f"enterprise autoswitch {d} selling").strip().splitlines()[-1])
+    if "--loaded" not in sys.argv:
+        for v in chosen[1:]:
+            unload(*v)
+    for day in range(1, days + 1):
+        started = time.time()
+        if day % 4 == 1 and day > 1:
+            for v, d in zip(chosen, desks):
+                load(*v, r=8)
+                rcon(f"enterprise autoswitch {d} unlocked")
+                if v != first and "--loaded" not in sys.argv:
+                    unload(*v, r=8)
+        sprint(24000)
+        say(f"day {day} ({time.time() - started:.0f}s)")
+        if day % 5 == 0 or day == days:
+            for v, d in zip(chosen, desks):
+                load(*v, r=8)
+                say(f"-- day {day}, {d}\n" + rcon(f"enterprise ledger {d}").strip())
+                if v != first and "--loaded" not in sys.argv:
+                    unload(*v, r=8)
+    say(rcon("enterprise core journal").strip())
+
+
 def main():
     global STARTING
     if "--starting" in sys.argv:
@@ -130,6 +198,10 @@ def main():
     first = locate(0, 0)
     if first is None:
         sys.exit("no village near spawn: try another seed")
+    many = int(sys.argv[sys.argv.index("--villages") + 1]) if "--villages" in sys.argv else 2
+    if many > 2:
+        network(first, many, days, say)
+        return
     # The nearest village at least SPREAD out, looking each way (a player founds a town's neighbour near, not the first
     # one found: the first study's pair were 1,488 blocks apart, a road its wagon's goods never paid for).
     found = set()

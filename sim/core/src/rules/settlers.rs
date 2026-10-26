@@ -11,7 +11,10 @@ use crate::bills::Bills;
 use crate::cash_book::{post, Accountant, CashBook, Side};
 use crate::content::Content;
 use crate::hex::Hex;
-use crate::map::{Map, RELIEF_PER_FACTOR};
+use crate::map::Map;
+
+/// Settlers settle no hex with this much relief or more: rough ground (the mod's `RELIEF_PER_FACTOR`).
+const ROUGH: f64 = 8.0;
 use crate::roster::{Roster, MERCHANT};
 use crate::settlers::*;
 use crate::state::*;
@@ -63,7 +66,7 @@ fn open_ground(sites: &[Site], settlers: &Settlers, territory: &Territory, map: 
             }
             let ground = map.ground(hex);
             let (wet, relief) = (ground.water_share, ground.relief);
-            if wet > 0.3 || relief >= RELIEF_PER_FACTOR {
+            if wet > 0.3 || relief >= ROUGH {
                 continue;
             }
             let score = -relief - 20.0 * wet + if wet > 0.02 { 4.0 } else { 0.0 } - 0.5 * d as f64;

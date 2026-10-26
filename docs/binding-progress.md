@@ -5,6 +5,10 @@ The live to-do list for the Minecraft binding (the plan is `docs/binding-plan.md
 
 ## Now
 
+- **2026-10-26, a five-village network; relief retuned.** `survival_study.py --villages N` (roads to each town's two
+  nearest within 800). Seed 8675309, 5 towns, 10 roads, 45 days: no trips (loads 0-6 emeralds against 8+ a trip; the
+  far ends want hides and leather nobody makes). `map.rs` `RELIEF_PER_FACTOR` 24, `GRADE_PER_FACTOR` 0.2.
+
 - **2026-10-26, desire paths.** `map.rs` wear and trails, `Society::wear_roads` (wear at departures; roads planned
   again daily while their wagon's home), `Output::Trail` (schema `9eedaf36c1154304`), `territory/Trails.java` and
   `LandAdapter.layTrails` (two a look, held loaded). Tests `hex_map::wagons_wear_a_trail_that_fades_unless_used_and_eases_the_way`,
