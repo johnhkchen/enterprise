@@ -1,0 +1,57 @@
+{
+  "id": "enterprise:lordaeron/farmstead/farmstead_19x18_c",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "farmstead",
+  "slot": "farmstead",
+  "palette": "brick",
+  "footprint": [
+    19,
+    18
+  ],
+  "height": 24,
+  "ground": 2,
+  "front": "south (z 17) toward the track; rows z 16-17 kept clear but for the paths",
+  "entrances": [
+    {
+      "at": [
+        14,
+        3,
+        14
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        15,
+        3,
+        9
+      ],
+      "foot": [
+        15,
+        3,
+        10
+      ]
+    },
+    {
+      "head": [
+        11,
+        3,
+        9
+      ],
+      "foot": [
+        11,
+        3,
+        10
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": []
+}

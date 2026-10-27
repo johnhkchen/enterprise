@@ -93,7 +93,13 @@ export function check(nbtFile, meta, mass) {
   const name = (x, y, z) => at(x, y, z)?.name;
 
   if (s.dataVersion !== DATA_VERSION) errs.push(`DataVersion ${s.dataVersion}, not ${DATA_VERSION}`);
-  if (meta?.footprint && (meta.footprint[0] !== W || meta.footprint[1] !== D)) errs.push(`size ${W} x ${D}, the JSON's footprint is ${meta.footprint.join(" x ")}`);
+  // footprint: [W, D] (the whole structure stands on the ground), or { at, size } with an overhang (eaves past the ground
+  // footprint, thread 0010): the ground part must lie inside the structure, the overhang round it
+  if (Array.isArray(meta?.footprint) && (meta.footprint[0] !== W || meta.footprint[1] !== D)) errs.push(`size ${W} x ${D}, the JSON's footprint is ${meta.footprint.join(" x ")}`);
+  if (meta?.footprint && !Array.isArray(meta.footprint)) {
+    const { at = [0, 0], size = [] } = meta.footprint;
+    if (at[0] < 0 || at[1] < 0 || at[0] + size[0] > W || at[1] + size[1] > D) errs.push(`footprint ${size.join(" x ")} at ${at.join(", ")} doesn't lie inside the ${W} x ${D} structure`);
+  }
 
   // every block: forbidden, newer, points of interest
   const beds = [], jobs = [], bells = [], others = [], containers = [];
