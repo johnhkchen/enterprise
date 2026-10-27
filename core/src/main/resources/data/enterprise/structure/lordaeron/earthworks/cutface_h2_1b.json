@@ -1,0 +1,22 @@
+{
+  "id": "enterprise:lordaeron/earthworks/cutface_h2_1b",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "prop:earthworks",
+  "palette": "fixed",
+  "size": [
+    1,
+    5,
+    3
+  ],
+  "depth": 3,
+  "mirror": true,
+  "ground": 2,
+  "width": 1,
+  "rise": 2,
+  "kind_of": "cut_face",
+  "tags": [
+    "cut_face"
+  ]
+}
