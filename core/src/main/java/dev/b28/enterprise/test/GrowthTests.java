@@ -201,6 +201,48 @@ public final class GrowthTests {
         helper.succeed();
     }
 
+    /**
+     * Wave-function collapse (`Wfc`, the procedural assembler's solver): a house front of posts and bays, where a post
+     * meets only bays and the front ends in posts, comes out alternating, keeps a door pinned where it was put, is the
+     * same for a seed and differs between seeds; a front no arrangement can satisfy comes out empty.
+     */
+    @GameTest(template = "floor")
+    public static void wfcAssemblesAFrontThatKeepsItsRules(GameTestHelper helper) {
+        var W = dev.b28.enterprise.territory.Wfc.Side.WEST;
+        var E = dev.b28.enterprise.territory.Wfc.Side.EAST;
+        java.util.function.Function<String, java.util.Map<dev.b28.enterprise.territory.Wfc.Side, String>> bay =
+                s -> java.util.Map.of(W, "bay_w", E, "bay_e");
+        var modules = java.util.List.of(
+                new dev.b28.enterprise.territory.Wfc.Module("post", java.util.Map.of(W, "post_w", E, "post_e"), 1),
+                new dev.b28.enterprise.territory.Wfc.Module("plain", bay.apply("plain"), 4),
+                new dev.b28.enterprise.territory.Wfc.Module("window", bay.apply("window"), 4),
+                new dev.b28.enterprise.territory.Wfc.Module("door", bay.apply("door"), 1));
+        var rules = new dev.b28.enterprise.territory.Wfc.Rules(modules,
+                java.util.Set.of(java.util.List.of("post_e", "bay_w"), java.util.List.of("bay_e", "post_w"),
+                        java.util.List.of("post_w", "end"), java.util.List.of("post_e", "end")),
+                java.util.Map.of(W, "end", E, "end"));
+        java.util.Map<Integer, Integer> door = java.util.Map.of(3, 3); // the door module in the bay at cell 3
+        var a = dev.b28.enterprise.territory.Wfc.solve(rules, 9, 1, 1, (at, m) -> true, door, 42, 5);
+        helper.assertTrue(a.isPresent(), "a front of 9");
+        var ids = dev.b28.enterprise.territory.Wfc.ids(rules, a.get());
+        for (int i = 0; i < 9; i++) {
+            helper.assertTrue(ids.get(i).equals("post") == (i % 2 == 0), "posts and bays alternate: " + ids);
+        }
+        helper.assertTrue(ids.get(3).equals("door"), "the door where it was pinned: " + ids);
+        helper.assertTrue(dev.b28.enterprise.territory.Wfc.valid(rules, a.get(), 9, 1, 1), "every join by the rules");
+        var again = dev.b28.enterprise.territory.Wfc.solve(rules, 9, 1, 1, (at, m) -> true, door, 42, 5);
+        helper.assertTrue(java.util.Arrays.equals(a.get(), again.get()), "the same for a seed");
+        boolean differs = false;
+        for (long seed = 43; seed < 53 && !differs; seed++) {
+            var other = dev.b28.enterprise.territory.Wfc.solve(rules, 9, 1, 1, (at, m) -> true, door, seed, 5);
+            differs = !java.util.Arrays.equals(a.get(), other.get());
+        }
+        helper.assertTrue(differs, "other seeds, other fronts");
+        helper.assertTrue(dev.b28.enterprise.territory.Wfc.solve(rules, 8, 1, 1, (at, m) -> true, java.util.Map.of(), 42, 5)
+                .isEmpty(), "an even front can't end in posts both ends");
+        helper.succeed();
+    }
+
     @GameTest(template = "floor", skyAccess = true)
     public static void fieldsAndWaterAreNoPlaceForAHome(GameTestHelper helper) {
         BlockPos corner = helper.absolutePos(new BlockPos(1, 1, 1));
