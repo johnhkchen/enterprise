@@ -302,25 +302,6 @@ fn for_contracts(content: &Content, place: &Place) -> Option<TradeId> {
     place.lockers.needed.iter().copied().find(|&t| job_trade(content, t).is_some() && place.roster.count(t) == 0)
 }
 
-/// The trade that would make the comfort the town lacks most, where no hand of its can (John, Redfell: a poor town's
-/// comfort marbles, a share of savings it hadn't got, came to 0.6 against its Farmers' 70, and it drew three hands in
-/// 90 days, none of them a maker; not as the mod). Of a kind met under 1, the least met first: the first job trade of a
-/// conversion making it that can start now, a herd's keeper (it brings its animals) or one whose inputs the town
-/// holds a batch of. None before the town has a Farmer: it feeds itself first.
-pub fn for_comfort(content: &Content, stock: &Stock, roster: &Roster, met: &[f64]) -> Option<TradeId> {
-    if content.trade("farmer").is_none_or(|f| roster.count(f) == 0) {
-        return None;
-    }
-    let makes = |kind: usize| content.conversions.iter()
-        .filter(move |c| content.goods[c.output].comfort == Some(kind));
-    let mut kinds: Vec<usize> = (0..content.comforts.len()).filter(|&k| met.get(k).copied().unwrap_or(0.0) < 0.99)
-        .filter(|&k| !makes(k).any(|c| crate::workshop::can_do(c, roster))).collect();
-    kinds.sort_by(|&a, &b| met.get(a).copied().unwrap_or(0.0).total_cmp(&met.get(b).copied().unwrap_or(0.0)));
-    let keeper = |t: TradeId| content.animals.iter().any(|a| crate::herds::keeper_of(&a.name) == content.trades[t].name);
-    kinds.into_iter().find_map(|k| makes(k).find_map(|c| c.trades.iter().copied().find(|&t| job_trade(content, t).is_some()
-        && (keeper(t) || c.inputs.iter().all(|&(g, n)| stock.0.get(g).copied().unwrap_or(0.0) >= n)))))
-}
-
 /// The trade that takes what the town holds most of, worth `glut_emeralds` or more, where it has no hand of it: trained
 /// to it, not drawn (John: "train a villager who specifically takes an abundant resource"; not as the mod). In the
 /// trades' order where two hold as much.
@@ -388,8 +369,7 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
     if cash + on_call(content, *place.purse, place.deposits.owed) < stall {
         return None;
     }
-    let trade = for_contracts(content, place).or_else(|| for_glut(content, place.stock, place.roster, place.herd))
-        .or_else(|| for_comfort(content, place.stock, place.roster, place.met)).or_else(|| {
+    let trade = for_contracts(content, place).or_else(|| for_glut(content, place.stock, place.roster, place.herd)).or_else(|| {
         let mut marbles = town_bag(content, signals, place.town, place.stock, place.farm, place.met, place.purse.to_f64(),
             place.roster);
         for &(t, m) in &place.far {

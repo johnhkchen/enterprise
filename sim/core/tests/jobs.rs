@@ -559,17 +559,3 @@ fn a_herd_with_no_keeper_trains_one() {
     let (_, trade, _) = s.review_jobs(t).expect("a stall");
     assert_eq!(trade, "leatherworker");
 }
-
-/// A comfort the town lacks with no hand to make it trains one, the least met first, of the trades that can start now:
-/// reading's Librarian has paper but no leather; clothing's Leatherworker brings its cows. Not before a Farmer.
-#[test]
-fn a_comfort_with_no_maker_trains_one() {
-    let (mut s, t) = town(20.0, 72.0);
-    s.set_roster(t, &[("merchant", 1), ("none", 1), ("farmer", 1)]);
-    let (_, trade, _) = s.review_jobs(t).expect("a stall");
-    assert_eq!(trade, "leatherworker", "nothing met yet: treats has its Farmer, reading lacks leather");
-    let c = content();
-    let roster = roster_of(&c, &["none"]);
-    assert_eq!(enterprise_core::jobs::for_comfort(&c, &enterprise_core::state::Stock(vec![0.0; N]), &roster, &[0.0; 5]),
-        None, "no Farmer: it feeds itself first");
-}
