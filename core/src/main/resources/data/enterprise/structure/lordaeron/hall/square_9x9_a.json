@@ -1,0 +1,38 @@
+{
+  "id": "enterprise:lordaeron/hall/square_9x9_a",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "hall",
+  "slot": "hall:square",
+  "tiers": [
+    "hamlet",
+    "village",
+    "town"
+  ],
+  "style": "the Masons Square: patterned paving, a compass rose, corner flower beds, benches, lamps",
+  "palette": "fixed",
+  "footprint": [
+    9,
+    9
+  ],
+  "height": 4,
+  "ground": 0,
+  "mirror": true,
+  "entrances": [],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [
+    {
+      "at": [
+        1,
+        1,
+        1
+      ],
+      "what": "flower",
+      "note": "the four corner beds (1..2, 6..7) are where the master Farmer's flowers go"
+    }
+  ],
+  "pilings": [],
+  "entities": []
+}

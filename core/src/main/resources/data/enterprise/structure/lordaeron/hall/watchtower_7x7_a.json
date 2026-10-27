@@ -1,0 +1,38 @@
+{
+  "id": "enterprise:lordaeron/hall/watchtower_7x7_a",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "hall",
+  "slot": "hall:watchtower",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "style": "an arcaded stone shaft, a newel stair in two flights, a timber lookout gallery under a hipped tile roof",
+  "palette": "fixed",
+  "footprint": [
+    7,
+    7
+  ],
+  "height": 27,
+  "ground": 4,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        5,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "pilings": [],
+  "entities": [],
+  "notes": "today the sim prices a 3 x 3 x 7 watchtower; a stair to a lit top needs a 7 x 7 (C4)"
+}

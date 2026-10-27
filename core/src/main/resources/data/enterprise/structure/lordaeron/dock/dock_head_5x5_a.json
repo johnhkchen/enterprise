@@ -1,0 +1,63 @@
+{
+  "id": "enterprise:lordaeron/dock/dock_head_5x5_a",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "dock",
+  "slot": "dock:head",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "fixed",
+  "footprint": [
+    5,
+    5
+  ],
+  "height": 7,
+  "ground": 0,
+  "mirror": true,
+  "entrances": [],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "pilings": [
+    {
+      "at": [
+        0,
+        0
+      ],
+      "block": "minecraft:stone_bricks"
+    },
+    {
+      "at": [
+        4,
+        0
+      ],
+      "block": "minecraft:stone_bricks"
+    },
+    {
+      "at": [
+        0,
+        4
+      ],
+      "block": "minecraft:stone_bricks"
+    },
+    {
+      "at": [
+        4,
+        4
+      ],
+      "block": "minecraft:stone_bricks"
+    },
+    {
+      "at": [
+        2,
+        2
+      ],
+      "block": "minecraft:stone_bricks"
+    }
+  ],
+  "entities": [],
+  "notes": "the pier runs along z (out over the water to the south): repeat the segment, the head at the end; stone_docks = segments + head"
+}
