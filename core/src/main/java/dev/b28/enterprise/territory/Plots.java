@@ -101,11 +101,18 @@ public final class Plots {
             }
             return Optional.of(new Site(new BlockPos(f.x(), y, f.z()), f.door(), width, depth));
         }
-        dev.b28.enterprise.Enterprise.LOGGER.info("No plot {} wide by {}'s bell: {} frontages, {} on a wall or street, {} built "
-                + "on or a town's, {} too steep, {} too high or low", width, bell.toShortString(), frontages.size(), why[0],
-                why[1], why[2], why[3]);
+        // Said when the reasons change, not at every look the town asks again (r35: 445 lines of one full town).
+        String said = String.format("No plot %d wide by %s's bell: %d frontages, %d on a wall or street, %d built on or a "
+                + "town's, %d too steep, %d too high or low", width, bell.toShortString(), frontages.size(), why[0], why[1],
+                why[2], why[3]);
+        if (!said.equals(SAID.put(bell.asLong() * 31 + width, said))) {
+            dev.b28.enterprise.Enterprise.LOGGER.info(said);
+        }
         return Optional.empty();
     }
+
+    /** The last refusal said for each bell and width. */
+    private static final java.util.Map<Long, String> SAID = new java.util.concurrent.ConcurrentHashMap<>();
 
     /** How far above or below the bell a plot's house may stand: a suburb runs down the hill a little. */
     static final int RISE = 12;
