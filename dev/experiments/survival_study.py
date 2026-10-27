@@ -100,18 +100,26 @@ def surface(x, z, tries=10):
 # How far round each village the study keeps the ground loaded: `--reach N` (64 by default) to take in its farmland
 # and farmsteads, which lie past its outer wall.
 REACH = int(sys.argv[sys.argv.index("--reach") + 1]) if "--reach" in sys.argv else 64
-if REACH > 120:
-    sys.exit("--reach at most 120: one forceload takes 256 chunks at most, and the game refuses more without a word")
+
+
+def quarters(x, z, r):
+    """The square round (x, z) as boxes of 256 chunks at most: one forceload takes no more, and refuses more without a
+    word (a reach past 120 is split into quarters)."""
+    if r <= 120:
+        return [(x - r, z - r, x + r, z + r)]
+    return [(x - r, z - r, x - 1, z - 1), (x, z - r, x + r, z - 1), (x - r, z, x - 1, z + r), (x, z, x + r, z + r)]
 
 
 def load(x, z, r=None):
     r = REACH if r is None else r
-    rcon(f"forceload add {x - r} {z - r} {x + r} {z + r}")
+    for x0, z0, x1, z1 in quarters(x, z, r):
+        rcon(f"forceload add {x0} {z0} {x1} {z1}")
 
 
 def unload(x, z, r=None):
     r = REACH if r is None else r
-    rcon(f"forceload remove {x - r} {z - r} {x + r} {z + r}")
+    for x0, z0, x1, z1 in quarters(x, z, r):
+        rcon(f"forceload remove {x0} {z0} {x1} {z1}")
 
 
 def market(village):
