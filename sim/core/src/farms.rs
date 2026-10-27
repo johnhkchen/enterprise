@@ -413,6 +413,24 @@ pub fn plots(farm: &Farm) -> BTreeMap<GoodId, u32> {
     out.into_iter().map(|(g, n)| (g, n.max(0) as u32)).collect()
 }
 
+/// What a town's meals need grown a day, items by crop (`people::dine`: `meal_points` a villager): shared among the food
+/// crops it has plots of, by their plots; with none, nothing (a town short of food plants a field of one: `choose`).
+pub fn meal_needs(content: &Content, farm: &Farm, villagers: f64) -> BTreeMap<GoodId, f64> {
+    let points = villagers * content.dials.meal_points;
+    let mut out = BTreeMap::new();
+    if points <= 0.0 {
+        return out;
+    }
+    let plots = plots(farm);
+    let food: Vec<(GoodId, u32)> = plots.iter().filter(|(g, n)| **n > 0 && content.goods[**g].food > 0.0)
+        .map(|(g, n)| (*g, *n)).collect();
+    let total: u32 = food.iter().map(|(_, n)| n).sum();
+    for (g, n) in food {
+        out.insert(g, points * n as f64 / total.max(1) as f64 / content.goods[g].food);
+    }
+    out
+}
+
 /// Plots the Farmers can tend: [`PLOTS_PER_FARMER_LEVEL`] a level each (a Novice's at the least), by `hands` (tools).
 pub fn capacity(farmers: &[u8], hands: f64) -> f64 {
     (hands * farmers.iter().map(|l| PLOTS_PER_FARMER_LEVEL * (*l).max(1) as u32).sum::<u32>() as f64).round()

@@ -285,6 +285,14 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
         let farmers = farmers(&content, roster);
         let food = food_points(&content, stock);
         let fed = food >= 2.0 * FOOD_PAR_POINTS;
+        // Short of food, its people's meals come first, as the feed and what's sold forward do (not as the mod, whose
+        // villagers didn't eat): Ryegate's two Farmers tended cane for its cookies and paper while its 169 plots of
+        // carrots and potatoes lay untended and it ate its stock to nothing.
+        if !fed {
+            for (g, n) in crate::farms::meal_needs(&content, farm, people.villagers) {
+                *farm.needs.entry(g).or_insert(0.0) += n;
+            }
+        }
         let turned = farm.turned.clone();
         rotate(&content, farm, &Wants::of(farm, &trades.uses), fed);
         if fed && farm.turned == turned {

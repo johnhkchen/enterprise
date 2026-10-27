@@ -584,3 +584,27 @@ fn a_farm_grows_what_the_town_down_its_road_buys() {
     assert!(the_farm(&s).draws.get(&POTATO).is_none_or(|d| d.0 <= 0.0), "not for a road it can't take: {:?}",
         the_farm(&s).draws);
 }
+
+/// Short of food, a town's meals come first in its Farmers' plan, as the feed does: its carrots before the cane it
+/// sells. Fed, the cane takes them all.
+#[test]
+fn a_town_short_of_food_tends_its_food_crops_first() {
+    let plan = |bread: f64| {
+        let mut s = Society::new(content());
+        let t = s.add_town("Meadowworth", 0.0);
+        let mut hands = vec![("none", 1); 9];
+        hands.push(("farmer", 1));
+        s.set_roster(t, &hands);
+        s.set_people(t, 10.0, 10.0, 10.0);
+        s.set_plots(t, CANE, 80);
+        s.set_plots(t, CARROT, 40);
+        s.set_farm_demand(t, CANE, 50.0);
+        s.deliver(t, BREAD, bread);
+        s.advance(DAY + 1200);
+        let f = the_farm(&s);
+        (f.per_day.get(&CARROT).copied().unwrap_or(0.0), f.per_day.get(&CANE).copied().unwrap_or(0.0))
+    };
+    // Ten villagers eat 20 points a day: 6.7 carrots, 14 plots of the Farmer's 32.
+    assert_eq!(plan(0.0), (7.0, 9.0), "the meals' carrots first, the cane the rest");
+    assert_eq!(plan(200.0), (0.0, 16.0), "fed: all on the cane");
+}
