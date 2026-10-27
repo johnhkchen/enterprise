@@ -5,7 +5,7 @@
 //   node tools/check-asset.mjs <name>.nbt [--meta <name>.json] [--mass <mass>.json] [--json]
 //   node tools/check-asset.mjs <dir>                      every .nbt under it, each with the .json beside it
 //
-// Checks: DataVersion 3955; vanilla blocks or the mod's decorative twins (enterprise:cask, vat, bin, stand, anvil_prop); size = the JSON's footprint; no blocks from after 1.21.1 or forbidden ones; every bed,
+// Checks: DataVersion 3955; vanilla blocks or the mod's decorative twins (enterprise:decor_<vanilla id>); size = the JSON's footprint; no blocks from after 1.21.1 or forbidden ones; every bed,
 // bell, job site and other point of interest declared, and nothing declared that isn't there; beds whole; chests and
 // barrels touching a job site only as declared lockers; entities only frames, paintings and armour stands, listed;
 // block light 8+ on every walkable cell; a villager's walk from the door to every bed and workstation; from a mass,
@@ -45,7 +45,8 @@ function readNbt(buf) {
   return read(10);
 }
 // decorative twins in the mod: look like job sites, but no villager can claim them
-const TWINS = /^enterprise:(cask|vat|bin|stand|anvil_prop)$/;
+const TWINS = /^enterprise:decor_(barrel|cauldron|composter|brewing_stand|smithing_table|fletching_table|cartography_table|lectern|smoker|blast_furnace|loom|stonecutter|grindstone)$/;
+const shape = (n) => n && n.replace(/^enterprise:decor_/, "");          // a twin is shaped like its vanilla block
 
 const DATA_VERSION = 3955;
 const JOB = /^(barrel|blast_furnace|brewing_stand|cartography_table|(water_|lava_|powder_snow_)?cauldron|composter|fletching_table|grindstone|lectern|loom|smithing_table|smoker|stonecutter)$/;
@@ -137,7 +138,7 @@ export function check(nbtFile, meta, mass) {
   if (ents.length !== (meta?.entities || []).length) (ents.length ? errs : warns).push(`${ents.length} entities in the file, ${(meta?.entities || []).length} listed`);
 
   // light: block light flood fill from emitters through open and see-through cells (falls by 1 a step)
-  const passLight = (n) => n === undefined || OPEN.test(n) || SEE_THROUGH.test(n);
+  const passLight = (n) => n === undefined || OPEN.test(shape(n)) || SEE_THROUGH.test(shape(n));
   const light = new Map(), queue = [];
   for (const [k, b] of s.cells) {
     let lv = LIGHT[b.name] ?? (b.name.endsWith("candle") ? 3 * (+b.props.candles || 1) : 0);
@@ -158,12 +159,12 @@ export function check(nbtFile, meta, mass) {
   }
 
   // walkable: a cell a mob or villager can stand in: open itself and above, on something solid (stored, not open)
-  const open = (x, y, z) => { const n = name(x, y, z); return n !== undefined && (OPEN.test(n) || /_door$|_fence_gate$/.test(n) && at(x, y, z).props.open === "true" || /_door$/.test(n)); };
-  const standable = (x, y, z) => { const n = name(x, y - 1, z); return y > 0 && n !== undefined && !OPEN.test(n) && !/_fence$|_wall$|_fence_gate$|_door$/.test(n); };
+  const open = (x, y, z) => { const n = shape(name(x, y, z)); return n !== undefined && (OPEN.test(n) || /_door$|_fence_gate$/.test(n) && at(x, y, z).props.open === "true" || /_door$/.test(n)); };
+  const standable = (x, y, z) => { const n = shape(name(x, y - 1, z)); return y > 0 && n !== undefined && !OPEN.test(n) && !/_fence$|_wall$|_fence_gate$|_door$/.test(n); };
   const walk = (x, y, z) => open(x, y, z) && (y + 1 >= H || open(x, y + 1, z) || name(x, y + 1, z) === undefined) && standable(x, y, z);
   // the contract's rule: interior cells (something above them) and the outdoor ground (the layer over `ground`).
   // Open-sky cells higher up (roofs, wall-walks) can spawn mobs at night too: those are a warning.
-  const covered = (x, y, z) => { for (let yy = y + 2; yy < H; yy++) { const n = name(x, yy, z); if (n !== undefined && !OPEN.test(n)) return true; } return false; };
+  const covered = (x, y, z) => { for (let yy = y + 2; yy < H; yy++) { const n = shape(name(x, yy, z)); if (n !== undefined && !OPEN.test(n)) return true; } return false; };
   const groundY = (meta?.ground ?? 0) + 1;
   const dark = [], roofs = [];
   for (let x = 0; x < W; x++) for (let y = 1; y < H; y++) for (let z = 0; z < D; z++) {

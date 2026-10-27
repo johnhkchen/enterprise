@@ -5,8 +5,26 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { write, t } from "../../../../minecraft-design/tools/src/nbt.mjs";
+import { gzipSync } from "node:zlib";
 import { check } from "./check-asset.mjs";
+
+// a tiny NBT writer, enough for a structure file, so this test runs in either repo
+const t = { int: (v) => ({ id: 3, v }), string: (v) => ({ id: 8, v }), compound: (v) => ({ id: 10, v }), list: (et, v) => ({ id: 9, et, v }) };
+const ET = { int: 3, compound: 10 };
+function enc(tag) {
+  const b = [], u16 = (n) => { const x = Buffer.alloc(2); x.writeUInt16BE(n); b.push(x); }, i32 = (n) => { const x = Buffer.alloc(4); x.writeInt32BE(n); b.push(x); };
+  const str = (s) => { const x = Buffer.from(s, "utf8"); u16(x.length); b.push(x); };
+  const payload = (id, v) => {
+    if (id === 3) i32(v);
+    else if (id === 8) str(v);
+    else if (id === 10) { for (const [k, c] of Object.entries(v)) { b.push(Buffer.from([c.id])); str(k); payload(c.id, c.v ?? c); } b.push(Buffer.from([0])); }
+  };
+  const any = (c) => { if (c.id === 9) { b.push(Buffer.from([ET[c.et]])); i32(c.v.length); for (const e of c.v) ET[c.et] === 10 ? compound(e) : payload(ET[c.et], e.v ?? e); } else payload(c.id, c.v); };
+  const compound = (o) => { for (const [k, c] of Object.entries(o)) { b.push(Buffer.from([c.id])); str(k); any(c); } b.push(Buffer.from([0])); };
+  b.push(Buffer.from([10])); str(""); compound(tag.v);
+  return gzipSync(Buffer.concat(b));
+}
+const write = enc;
 
 const dir = mkdtempSync(join(tmpdir(), "check-asset-"));
 
@@ -23,14 +41,14 @@ function cottage(edit = () => {}) {
   put(2, 5, 2, "lantern[hanging=true]");
   edit(put, cells);
   const palette = [...new Set(cells.values())], blocks = [];
-  for (const [k, s] of cells) blocks.push({ pos: t.list("int", k.split(",").map(Number)), state: t.int(palette.indexOf(s)) });
+  for (const [k, s] of cells) blocks.push({ pos: t.list("int", k.split(",").map(Number).map(t.int)), state: t.int(palette.indexOf(s)) });
   const pal = palette.map((s) => {
     const [, n, p] = s.match(/^([^[]+)(?:\[(.*)\])?$/);
-    const o = { Name: t.string(`minecraft:${n}`) };
+    const o = { Name: t.string(n.includes(":") ? n : `minecraft:${n}`) };
     if (p) o.Properties = t.compound(Object.fromEntries(p.split(",").map((kv) => kv.split("=")).map(([k, v]) => [k, t.string(v)])));
     return o;
   });
-  const root = t.compound({ DataVersion: t.int(3955), size: t.list("int", [5, 7, 5]), palette: t.list("compound", pal),
+  const root = t.compound({ DataVersion: t.int(3955), size: t.list("int", [5, 7, 5].map(t.int)), palette: t.list("compound", pal),
     blocks: t.list("compound", blocks.map((b) => ({ pos: b.pos, state: b.state }))), entities: t.list("compound", []) });
   const f = join(dir, `c${Math.random().toString(36).slice(2)}.nbt`);
   writeFileSync(f, write(root));
@@ -79,4 +97,10 @@ test("a mass's fixed block out of place fails", () => {
   const r = check(cottage(), meta(), mass);
   assert.equal(r.errors.length, 1);
   assert.match(r.errors[0], /fixed bed .* at 1,3,1/);
+});
+
+test("a decorative twin is not a job site, and a chest against it is not a locker", () => {
+  const r = check(cottage((put) => { put(3, 3, 3, "enterprise:decor_barrel[facing=up]"); put(3, 4, 3, "chest[facing=south]"); }), meta());
+  assert.deepEqual(r.errors, []);
+  assert.equal(r.counts.jobSites, 0);
 });

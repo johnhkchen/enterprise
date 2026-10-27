@@ -10,6 +10,7 @@ What changed is everything since REF (default origin/main: what isn't pushed yet
 - the mod (core/, pack/, binding/: its JUnit tests first): untouched, no game tests. Changed: it compiles, then the game test classes whose files changed,
   and any named by `--only`, in Java mode; in core mode too when the binding or the Rust core changed. A change that
   touches no test class compiles only: name the classes it affects with `--only`.
+- the asset studio's validator (scripts/assets/): its tests, and every shipped structure, when either changed.
 - `--full`: everything, the whole Rust suite and both game test suites. Run it once, before a landing or a push, not
   while building.
 """
@@ -89,6 +90,15 @@ def main():
     print(f"since {a.base}: {len(paths)} files changed, {len(sim)} in sim/, {len(mod)} in the mod"
           + (" (--full: everything runs)" if a.full else ""), flush=True)
     ok = True
+    # The asset studio's validator and its tests (`scripts/assets`, docs/assets/README.md), and every shipped structure
+    # it judges, whenever either changed.
+    assets = {p for p in paths if p.startswith(("scripts/assets/", "core/src/main/resources/data/enterprise/structure/"))}
+    if assets or a.full:
+        ok &= run("asset validator tests", ["node", "--test", "scripts/assets/check-asset.test.mjs"])
+        shipped = [p for p in (ROOT / "core/src/main/resources/data/enterprise/structure").glob("*/*/**/*.nbt")]
+        if shipped:
+            ok &= run(f"asset validator: {len(shipped)} structures", ["node", "scripts/assets/check-asset.mjs",
+                                                                     "core/src/main/resources/data/enterprise/structure"])
     if sim or a.full:
         if a.full:
             os.environ["SWEEP"] = "full"
