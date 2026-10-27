@@ -46,7 +46,7 @@ function readNbt(buf) {
   return read(10);
 }
 // decorative twins in the mod: look like job sites, but no villager can claim them
-const TWINS = /^enterprise:decor_(barrel|cauldron|composter|brewing_stand|smithing_table|fletching_table|cartography_table|lectern|smoker|blast_furnace|loom|stonecutter|grindstone)$/;
+const TWINS = /^enterprise:decor_(barrel|beehive|cauldron|composter|brewing_stand|smithing_table|fletching_table|cartography_table|lectern|smoker|blast_furnace|loom|stonecutter|grindstone)$/;
 const shape = (n) => n && n.replace(/^enterprise:decor_/, "");          // a twin is shaped like its vanilla block
 
 const DATA_VERSION = 3955;

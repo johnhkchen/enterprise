@@ -137,6 +137,7 @@ const FITOUT = {
   goods_chain: () => one("chain[axis=y,waterlogged=false]"), goods_meat: () => one("red_terracotta"),
   goods_bread: () => one("hay_block[axis=x]"), goods_cake: () => one("cake[bites=0]"), goods_red: () => one("red_wool"), goods_honey: () => one("honeycomb_block"),
   oven: () => one("furnace[facing=south,lit=true]"), bar: () => one("stripped_spruce_log[axis=x]"),
+  door_inner_z: () => { const g = new Grid([1, H - 1, 1]); g.set(0, 0, 0, "spruce_door[facing=south,half=lower,hinge=left,open=false,powered=false]"); g.set(0, 1, 0, "spruce_door[facing=south,half=upper,hinge=left,open=false,powered=false]"); for (let y = 2; y < H - 1; y++) g.set(0, y, 0, y === H - 2 ? "stripped_spruce_log[axis=x]" : "spruce_planks"); return g; },
   chimney_stack: () => { const g = new Grid([1, 1, 2]); g.set(0, 0, 0, B.chimney); g.set(0, 0, 1, B.chimney); return g; },
   chimney_stack_party: () => one(B.chimney),
 };

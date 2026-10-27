@@ -9,6 +9,13 @@
 // the foundation, the floors, the room air, the roof slices (gable ends on the walls, verges past them) and the stack.
 import { Grid } from "./grid.mjs";
 import { allModules, H, roofLayers } from "./modules.mjs";
+import { readFileSync, existsSync } from "node:fs";
+
+// the plan layer as data (town_kits/lordaeron/plan.json): body classes -> core, partitions, furniture per storey
+const PLAN_FILE = new URL("../../bundle/core/src/main/resources/data/enterprise/town_kits/lordaeron/plan.json", import.meta.url);
+const PLAN = existsSync(PLAN_FILE) ? JSON.parse(readFileSync(PLAN_FILE, "utf8")) : null;
+export const planBody = (W, D) => PLAN && Object.entries(PLAN.bodies).find(([, b]) => b.when.W === W && b.when.D === D);
+const expr = (e, v) => (typeof e === "number" ? e : Function(...Object.keys(v), `"use strict"; return (${e});`)(...Object.values(v)));
 
 let LIB = null;
 const mod = (id) => { LIB ||= new Map(allModules().map((m) => [m.id, m])); const m = LIB.get(id); if (!m) throw new Error(`no module ${id}`); return m; };
@@ -69,15 +76,19 @@ export function compose(L) {
 
 /** The reference layout for a house: what the solver should be able to find. p as house3's params. */
 export function layoutOf(p) {
+  p = { ...p };
   const W = p.W, D = p.D, S = p.storeys, party = p.party || [false, false];
-  const core = p.core || (D >= 7 && W >= 13 ? "straight" : "turned"), nb = (W - 1) / 3;
+  const PB = !p.fitout && planBody(W, D);
+  if (PB && (S < PB[1].storeys[0] || S > PB[1].storeys[1])) throw new Error(`a ${W} x ${D} body (${PB[0]}) takes ${PB[1].storeys.join(" to ")} storeys, not ${S}`);
+  if (PB && !PB[1].core) p = { ...p, noCore: true };
+  const core = (PB && PB[1].core?.type) || p.core || (D >= 7 && W >= 13 ? "straight" : "turned"), nb = (W - 1) / 3;
   const doorBay = p.doorBay ?? Math.floor((nb - 1) / 2), mirrorDoor = p.door === "left";
   const shell = [], plan = [];
   const coreCells = new Set();
   if (p.noCore) {} else if (core === "straight") for (let z = 1; z <= 5; z++) { coreCells.add(`${W - 2},${z}`); coreCells.add(`${W - 3},${z}`); }
   else for (let x = W - 4; x <= W - 2; x++) for (let z = 1; z <= 3; z++) coreCells.add(`${x},${z}`);
   const behindStair = (xs, zs) => xs.some((x) => zs.some((z) => coreCells.has(`${x},${z}`)));
-  const chimneyZ = 3, westChimney = !party[0] && D >= 7;
+  const chimneyZ = D >= 10 ? 6 : 3, westChimney = !party[0] && D >= 7;
   for (let s = 0; s < S; s++) {
     const st = s === 0 ? "ground" : "upper";
     for (const face of ["front", "back", "west", "east"]) {
@@ -135,6 +146,19 @@ export function layoutOf(p) {
   // against a wall near it, so routes stay short; corners away from the spine take what nobody walks to (a table and
   // benches, plants), so no floor sits idle. Upper floors: made beds on the west wall with a chest between.
   if (p.fitout) p.fitout({ put, bed, W, D, S, top, work, doorX: doorBay * 3 + 1 + (p.door === "left" ? 0 : 1) });
+  else if (PB) {
+    for (let s2 = 0; s2 < S; s2++) {
+      const list = PB[1].storey[String(s2)] || (s2 > 0 ? PB[1].storey.upper : null) || [];
+      const v = { W, D, cx: W - 4, storeys: S, storey: s2, beds: p.beds || 2, trade: p.trade ? 1 : 0 };
+      for (const e of list) {
+        if (e.if != null && !expr(e.if, v)) continue;
+        const at = e.at.map((c) => expr(c, v)), dy = e.dy ?? 1;
+        if (e.role === "bed") bed(s2, at, e.q || 0);
+        else if (e.role === "work") { if (p.trade) work(at); else if (e.else) put(s2, e.else, at, dy); }
+        else put(s2, e.module, at, dy, e.q || 0);
+      }
+    }
+  }
   else if (W < 10) {
     // 7 wide: a one-room cottage (the plan-layer rule: multi-storey starts at 10 wide). A 5 x 5 interior can't hold two
     // rooms each 3 wide behind a partition, so hall and chamber share the room: the hearth on the west wall with a

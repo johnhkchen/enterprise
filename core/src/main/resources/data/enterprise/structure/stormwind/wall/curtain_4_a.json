@@ -1,0 +1,15 @@
+{
+  "relief_faces": [
+    "north",
+    "south"
+  ],
+  "id": "enterprise:stormwind/wall/curtain_4_a",
+  "rev": 6,
+  "kingdom": "stormwind",
+  "palette": "stone",
+  "footprint": [
+    4,
+    7
+  ],
+  "height": 15
+}

@@ -1,0 +1,30 @@
+{
+  "footprint": [
+    7,
+    7
+  ],
+  "height": 10,
+  "ground": 0,
+  "mirror": true,
+  "entrances": [],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [
+    {
+      "at": [
+        3,
+        1,
+        3
+      ],
+      "what": "bell",
+      "note": "the town's bell stands here already; the cell and the one under and over it are structure_void"
+    }
+  ],
+  "pilings": [],
+  "entities": [],
+  "id": "enterprise:stormwind/forum/market_cross_7x7_a",
+  "rev": 6,
+  "kingdom": "stormwind",
+  "palette": "stone"
+}

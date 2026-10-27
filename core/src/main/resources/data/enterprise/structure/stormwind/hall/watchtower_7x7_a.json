@@ -1,0 +1,11 @@
+{
+  "id": "enterprise:stormwind/hall/watchtower_7x7_a",
+  "rev": 6,
+  "kingdom": "stormwind",
+  "palette": "stone",
+  "footprint": [
+    7,
+    7
+  ],
+  "height": 27
+}
