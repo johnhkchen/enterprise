@@ -1,0 +1,23 @@
+{
+  "id": "enterprise:lordaeron/field/corner_hedgerow",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "field",
+  "palette": "fixed",
+  "size": [
+    1,
+    8,
+    1
+  ],
+  "mirror": true,
+  "ground": 2,
+  "width": 1,
+  "depth": 1,
+  "kind_of": "corner",
+  "socket": "hedge",
+  "runs": [
+    "east",
+    "south"
+  ]
+}

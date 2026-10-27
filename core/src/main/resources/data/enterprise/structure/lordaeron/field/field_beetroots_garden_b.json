@@ -1,0 +1,29 @@
+{
+  "id": "enterprise:lordaeron/field/field_beetroots_garden_b",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "field",
+  "palette": "fixed",
+  "size": [
+    9,
+    8,
+    9
+  ],
+  "mirror": true,
+  "ground": 2,
+  "width": 9,
+  "depth": 9,
+  "kind_of": "field",
+  "crop": "beetroot",
+  "plots": 53,
+  "tags": [
+    "crop",
+    "garden"
+  ],
+  "water": [
+    4,
+    2,
+    4
+  ]
+}
