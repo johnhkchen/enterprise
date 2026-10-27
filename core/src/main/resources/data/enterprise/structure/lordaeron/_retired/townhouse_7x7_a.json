@@ -1,0 +1,77 @@
+{
+  "id": "enterprise:lordaeron/home/townhouse_7x7_a",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "home",
+  "slot": "home",
+  "tiers": [
+    "town"
+  ],
+  "style": "jettied two-storey town house, stone ground storey",
+  "palette": "stone",
+  "variants": [
+    "daub",
+    "brick"
+  ],
+  "footprint": [
+    7,
+    7
+  ],
+  "height": 15,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        3,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        1,
+        3,
+        1
+      ],
+      "foot": [
+        1,
+        3,
+        2
+      ]
+    },
+    {
+      "head": [
+        5,
+        3,
+        1
+      ],
+      "foot": [
+        5,
+        3,
+        2
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "pilings": [],
+  "entities": [],
+  "assembly": {
+    "set": "lordaeron/timber",
+    "params": {
+      "width": 7,
+      "depth": 7,
+      "storeys": 2,
+      "roof": "gable_x",
+      "palette": "stone",
+      "front": "jettied"
+    }
+  },
+  "notes": "Needs C3 (7 x 7 slots). Upper storey jettied over a lit doorstep strip on brackets."
+}
