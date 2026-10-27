@@ -698,7 +698,8 @@ public final class LandAdapter {
                 var kit = dev.b28.enterprise.territory.Kits.choose(level.getServer().getResourceManager(),
                         dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town), "hall:" + h.kind(), 31, 13, town,
                         bell).flatMap(id -> dev.b28.enterprise.territory.Kits.meta(level.getServer().getResourceManager(), id));
-                var plot = kit.flatMap(m -> dev.b28.enterprise.territory.Plots.site(level, bell, m));
+                var plot = kit.flatMap(m -> dev.b28.enterprise.territory.Plots.site(level,
+                        Optional.ofNullable(dev.b28.enterprise.territory.TownPlans.get(level.getServer()).of(town)), bell, m));
                 if (plot.isPresent()) {
                     hallPlots.put(List.of(town, (long) h.kind().hashCode()), new HallPlot(kit.get(), plot.get()));
                     yield Optional.of(plot.get().corner());
@@ -724,7 +725,8 @@ public final class LandAdapter {
                 Optional<dev.b28.enterprise.territory.Kits.Meta> kit = nextHome(level, town);
                 // On a plan with yards, its plot: the house set back behind its front yard (`Plots`).
                 if (kit.isPresent()) {
-                    var plot = dev.b28.enterprise.territory.Plots.site(level, bell, kit.get());
+                    var plot = dev.b28.enterprise.territory.Plots.site(level,
+                            Optional.ofNullable(dev.b28.enterprise.territory.TownPlans.get(level.getServer()).of(town)), bell, kit.get());
                     if (plot.isPresent()) {
                         homePlots.put(town, plot.get());
                         yield Optional.of(plot.get().corner());

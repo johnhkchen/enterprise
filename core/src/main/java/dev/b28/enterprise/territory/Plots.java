@@ -62,7 +62,11 @@ public final class Plots {
      * plan has no yards or no plot fits.
      */
     public static Optional<Site> site(ServerLevel level, BlockPos bell, Kits.Meta house) {
-        Optional<TownPlans.Plan> plan = TownPlans.at(level, bell);
+        return site(level, TownPlans.at(level, bell), bell, house);
+    }
+
+    /** As {@link #site(ServerLevel, BlockPos, Kits.Meta)}, on the given plan (the town's own, found by its id). */
+    public static Optional<Site> site(ServerLevel level, Optional<TownPlans.Plan> plan, BlockPos bell, Kits.Meta house) {
         if (plan.isEmpty() || !plan.get().lanes() || !plan.get().yards()) {
             return Optional.empty();
         }
@@ -71,29 +75,49 @@ public final class Plots {
         if (h[1] < 0) {
             return Optional.empty(); // deeper than a plot
         }
-        for (TownPlans.Frontage f : TownPlans.plots(plan.get(), width)) {
+        // Why each frontage failed, for the log when none fits.
+        int[] why = new int[4];
+        var frontages = TownPlans.plots(plan.get(), width);
+        for (TownPlans.Frontage f : frontages) {
             if (!TownPlans.clear(level, f.x(), f.z(), f.sx(), f.sz(), false)) {
+                why[0]++;
                 continue;
             }
             int[] at = world(f.x(), f.z(), width, depth, f.door(), h[0], h[1], h[2], h[3]);
             int y = ground(level, at[0], at[1], at[2], at[3]);
-            if (y != Integer.MIN_VALUE && Math.abs(y - bell.getY()) <= Growth.RISE) {
-                return Optional.of(new Site(new BlockPos(f.x(), y, f.z()), f.door(), width, depth));
+            if (y == Integer.MIN_VALUE) {
+                why[1 + Math.max(0, LAST_WHY)]++;
+                continue;
             }
+            if (Math.abs(y - bell.getY()) > RISE) {
+                why[3]++;
+                continue;
+            }
+            return Optional.of(new Site(new BlockPos(f.x(), y, f.z()), f.door(), width, depth));
         }
+        dev.b28.enterprise.Enterprise.LOGGER.info("No plot {} wide by {}'s bell: {} frontages, {} on a wall or street, {} built "
+                + "on or a town's, {} too steep, {} too high or low", width, bell.toShortString(), frontages.size(), why[0],
+                why[1], why[2], why[3]);
         return Optional.empty();
     }
 
-    /** How far a house's ground may rise and fall across it, to be filled and cut level by its placing. */
-    static final int ROLL = 2;
+    /** How far above or below the bell a plot's house may stand: a suburb runs down the hill a little. */
+    static final int RISE = 12;
+
+    /** How far a house's ground may rise and fall across it, to be filled and cut level by its placing (its cuts retained: `Earthworks`). */
+    static final int ROLL = 4;
 
     /**
      * The ground a house of {@code sx} x {@code sz} with its corner here would stand on: the top of the land's own ground
      * under any trees (its placing fells them), within {@link #ROLL} of level, nothing built on it and nothing of a
      * town's (a block entity, a point of interest) within it; {@link Integer#MIN_VALUE} if not, or not loaded.
      */
+    /** Why the last {@link #ground} failed: 0 built on or a town's, 1 too steep. */
+    private static int LAST_WHY;
+
     static int ground(ServerLevel level, int x0, int z0, int sx, int sz) {
         int top = Integer.MIN_VALUE, bottom = Integer.MAX_VALUE;
+        LAST_WHY = 0;
         for (int dx = 0; dx < sx; dx++) {
             for (int dz = 0; dz < sz; dz++) {
                 int x = x0 + dx, z = z0 + dz;
@@ -117,6 +141,7 @@ public final class Plots {
                 bottom = Math.min(bottom, y);
             }
         }
+        LAST_WHY = 1;
         return top - bottom <= ROLL ? top : Integer.MIN_VALUE;
     }
 
@@ -191,6 +216,9 @@ public final class Plots {
                 path++;
             }
         }
+        // Its edges retained where levelling cut the slope or built up a fill (the kingdom's earthworks).
+        int[] plot = world(corner.getX(), corner.getZ(), width, depth, door, 0, 0, width, depth);
+        Earthworks.retain(level, kingdom, plot[0], plot[1], plot[0] + plot[2] - 1, plot[1] + plot[3] - 1, corner.getY());
         return Optional.of(new Laid(placed.get(), front, back, path));
     }
 

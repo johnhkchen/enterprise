@@ -914,6 +914,29 @@ help breed more as needed."
   relief each side). Each plan keeps its ward (older towns 20, wards of 14). A town builds its kingdom's home kits in
   turn, each at its own footprint fronting a street, every ward's stretch filled from its start. On the test street
   (flat world, a villager a bed, a night) the studio's 2- and 3-storey houses had every upstairs bed slept in.
+- **The asset studio, overnight (2026-10-27; John: "an overnight collaboration session with the design agent").**
+  The desk (Tailscale, thread per piece of work, protocol v0.2: a manifest a batch, one shared validator, results.json,
+  renders of the placed world) and its shared code tree (`shared/`: the validator, the composer, the floor-plan tool,
+  the solver, `quality.json`, one set of thresholds both sides read). What settled:
+  - **Who owns what:** we own what a building must do for villagers (beds, workstations, doors, walks, light, the
+    plan's slots, interiors' measures); the studio owns the look. Concept art first, approved by John on the desk.
+  - **Decorative twins** of the job-site blocks (`enterprise:decor_<vanilla>`): a street dressed with casks and dye
+    vats hires nobody and makes no shops.
+  - **The grid** fitted to the houses: lanes 4 wide every 39, wards of 33, plots 16 deep (a 3-deep front yard, the
+    house, a back yard) as wide as the house and a block of side yard each side; yards tiled from the kingdom's tiles.
+  - **Houses made, not picked:** the studio's module set (posts and bays on a 1 + 2 grid, a relief layer one block
+    proud, storeys of 5) and plan layer as data (`plan.json`: body classes, cores, partitions, furniture); our
+    `Compose` lays any layout (the golden houses block for block), `Houses` makes one for a body and a seed, each
+    face's bays by wave-function collapse; a town's `town_rules` say which bodies by tier. 7 wide is one storey;
+    stairs, never ladders; villagers slept in every upstairs bed on the test street.
+  - **Interiors measured** (`scripts/assets/floorplan.py`, `docs/assets/interiors.md`): rooms, routes, made beds, no
+    through rooms, circulation and idle floor in bands, floor a bed 4 to 8.5; plans with a legend and numbered notes,
+    the notes posted to the desk's searchable store.
+  - **Kits laid by kind:** stalls (facing the bell), halls and homes on plots, the forum's market cross round the bell,
+    the inner wall from the wall kit piece by piece, retaining walls where levelling cuts a slope.
+  - **The factory:** `docs/assets/catalogue.json` (81 slots, everything the economy needs), `scripts/assets/factory.py`
+    (a faction's coverage; a new faction scaffolded from a finished one), `scripts/assets/ingest.py` (a batch: its
+    manifest, the validator, the floor plans, a pull request). Stormwind and Dalaran's concept sets wait on John.
 - **The field map** (`territory/FieldMaps.java`; John: "plots of farmland surrounding the old town square, something
   like a voronoi", and chose strips in parcels, rings, and "planned in phases/rings: some at founding, more as town
   grows; farms form along branch paths that connect to trade paths"). Rings round the plan: gardens between the
