@@ -57,6 +57,11 @@ def main():
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(z.read(p))
     # The kind folders the batch touched, judged by the validator (parts in parts mode); its houses' floor plans.
+    # The shared validator as the studio has it now (a batch is made against the newest; ours may lag a revision).
+    r = subprocess.run(["curl", "-sfS", "-o", "scripts/assets/check-asset.mjs",
+                        "https://johns-mac-mini.emerald-wage.ts.net:8650/shared/js/check-asset.mjs"], cwd=ROOT)
+    if r.returncode != 0:
+        print("couldn't fetch the shared validator: using ours")
     kinds = sorted({str(Path(p).parent) for p in want if "/structure/" in p and p.endswith(".nbt")})
     for k in kinds:
         sh("node", "scripts/assets/check-asset.mjs", k)
