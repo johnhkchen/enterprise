@@ -1,0 +1,22 @@
+{
+  "id": "enterprise:lordaeron/earthworks/retain_h4_outer_3",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "prop:earthworks",
+  "palette": "fixed",
+  "size": [
+    3,
+    9,
+    3
+  ],
+  "depth": 3,
+  "mirror": true,
+  "ground": 2,
+  "width": 3,
+  "rise": 4,
+  "kind_of": "corner_outer",
+  "tags": [
+    "corner"
+  ]
+}

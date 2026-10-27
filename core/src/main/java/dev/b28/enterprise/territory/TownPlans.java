@@ -248,7 +248,38 @@ public final class TownPlans extends SavedData {
      * yards inside its width, its front and back yards inside its depth ({@link Plan#yards}).
      */
     public static List<Frontage> plots(Plan plan, int width) {
-        return frontages(plan, width, plan.deepest(), 0);
+        List<Frontage> out = new ArrayList<>(frontages(plan, width, plan.deepest(), 0));
+        out.addAll(suburbs(plan, width, plan.deepest()));
+        int bx = plan.bell().getX(), bz = plan.bell().getZ();
+        out.sort(Comparator.comparingDouble((Frontage f) -> Math.hypot(f.x() + f.sx() / 2.0 - bx, f.z() + f.sz() / 2.0 - bz))
+                .thenComparingInt(Frontage::x).thenComparingInt(Frontage::z));
+        return out;
+    }
+
+    /**
+     * Plots along the avenues between the inner wall and the outer (the plan's suburbs: a village fills its inner wall,
+     * which was drawn round it, and its new homes go out along the roads, the gardens giving way to them): a row each
+     * side of each avenue's stretch between the walls' strips, side by side, facing the avenue.
+     */
+    static List<Frontage> suburbs(Plan plan, int width, int depth) {
+        Rect in = plan.inner(), o = plan.outer();
+        int bx = plan.bell().getX(), bz = plan.bell().getZ(), m = STRIP + 1, a = GATE / 2;
+        List<Frontage> out = new ArrayList<>();
+        // North and south stretches of the north-south avenue: homes west (door east) and east (door west) of it.
+        for (int[] run : new int[][] {{o.z0() + m, in.z0() - m}, {in.z1() + m, o.z1() - m}}) {
+            for (int z = run[0]; z + width - 1 <= run[1]; z += width) {
+                out.add(new Frontage(bx - a - 2 - depth + 1, z, net.minecraft.core.Direction.EAST, depth, width));
+                out.add(new Frontage(bx + a + 2, z, net.minecraft.core.Direction.WEST, depth, width));
+            }
+        }
+        // West and east stretches of the east-west avenue: homes north (door south) and south (door north) of it.
+        for (int[] run : new int[][] {{o.x0() + m, in.x0() - m}, {in.x1() + m, o.x1() - m}}) {
+            for (int x = run[0]; x + width - 1 <= run[1]; x += width) {
+                out.add(new Frontage(x, bz - a - 2 - depth + 1, net.minecraft.core.Direction.SOUTH, width, depth));
+                out.add(new Frontage(x, bz + a + 2, net.minecraft.core.Direction.NORTH, width, depth));
+            }
+        }
+        return out;
     }
 
     /** As {@link #frontages(Plan, int, int)}, {@code gap} blocks between neighbours along the street. */

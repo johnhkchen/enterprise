@@ -62,7 +62,11 @@ public final class Plots {
      * plan has no yards or no plot fits.
      */
     public static Optional<Site> site(ServerLevel level, BlockPos bell, Kits.Meta house) {
-        Optional<TownPlans.Plan> plan = TownPlans.at(level, bell);
+        return site(level, TownPlans.at(level, bell), bell, house);
+    }
+
+    /** As {@link #site(ServerLevel, BlockPos, Kits.Meta)}, on the given plan (the town's own, found by its id). */
+    public static Optional<Site> site(ServerLevel level, Optional<TownPlans.Plan> plan, BlockPos bell, Kits.Meta house) {
         if (plan.isEmpty() || !plan.get().lanes() || !plan.get().yards()) {
             return Optional.empty();
         }
@@ -71,20 +75,74 @@ public final class Plots {
         if (h[1] < 0) {
             return Optional.empty(); // deeper than a plot
         }
-        for (TownPlans.Frontage f : TownPlans.plots(plan.get(), width)) {
+        // Why each frontage failed, for the log when none fits.
+        int[] why = new int[4];
+        var frontages = TownPlans.plots(plan.get(), width);
+        for (TownPlans.Frontage f : frontages) {
             if (!TownPlans.clear(level, f.x(), f.z(), f.sx(), f.sz(), false)) {
+                why[0]++;
                 continue;
             }
             int[] at = world(f.x(), f.z(), width, depth, f.door(), h[0], h[1], h[2], h[3]);
-            BlockPos corner = new BlockPos(at[0], bell.getY(), at[1]);
-            int ground = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, at[0], at[1]) - 1;
-            int y = Math.abs(ground - bell.getY()) <= Growth.RISE && Growth.fits(level, corner.atY(ground), at[2], at[3])
-                    ? ground : Growth.levelled(level, corner, at[2], at[3]);
-            if (y != Integer.MIN_VALUE && Math.abs(y - bell.getY()) <= Growth.RISE) {
-                return Optional.of(new Site(new BlockPos(f.x(), y, f.z()), f.door(), width, depth));
+            int y = ground(level, at[0], at[1], at[2], at[3]);
+            if (y == Integer.MIN_VALUE) {
+                why[1 + Math.max(0, LAST_WHY)]++;
+                continue;
+            }
+            if (Math.abs(y - bell.getY()) > RISE) {
+                why[3]++;
+                continue;
+            }
+            return Optional.of(new Site(new BlockPos(f.x(), y, f.z()), f.door(), width, depth));
+        }
+        dev.b28.enterprise.Enterprise.LOGGER.info("No plot {} wide by {}'s bell: {} frontages, {} on a wall or street, {} built "
+                + "on or a town's, {} too steep, {} too high or low", width, bell.toShortString(), frontages.size(), why[0],
+                why[1], why[2], why[3]);
+        return Optional.empty();
+    }
+
+    /** How far above or below the bell a plot's house may stand: a suburb runs down the hill a little. */
+    static final int RISE = 12;
+
+    /** How far a house's ground may rise and fall across it, to be filled and cut level by its placing (its cuts retained: `Earthworks`). */
+    static final int ROLL = 4;
+
+    /**
+     * The ground a house of {@code sx} x {@code sz} with its corner here would stand on: the top of the land's own ground
+     * under any trees (its placing fells them), within {@link #ROLL} of level, nothing built on it and nothing of a
+     * town's (a block entity, a point of interest) within it; {@link Integer#MIN_VALUE} if not, or not loaded.
+     */
+    /** Why the last {@link #ground} failed: 0 built on or a town's, 1 too steep. */
+    private static int LAST_WHY;
+
+    static int ground(ServerLevel level, int x0, int z0, int sx, int sz) {
+        int top = Integer.MIN_VALUE, bottom = Integer.MAX_VALUE;
+        LAST_WHY = 0;
+        for (int dx = 0; dx < sx; dx++) {
+            for (int dz = 0; dz < sz; dz++) {
+                int x = x0 + dx, z = z0 + dz;
+                int y = FieldMaps.under(level, x, z);
+                if (y == Integer.MIN_VALUE) {
+                    return Integer.MIN_VALUE;
+                }
+                BlockPos at = new BlockPos(x, y, z);
+                BlockState state = level.getBlockState(at);
+                if (!dev.b28.enterprise.settlement.Grounds.natural(state) || state.is(Blocks.FARMLAND)
+                        || !state.getFluidState().isEmpty()) {
+                    return Integer.MIN_VALUE; // something built, a field, or water
+                }
+                for (int up = 1; up <= 3; up++) {
+                    BlockPos over = at.above(up);
+                    if (level.getBlockEntity(over) != null || level.getPoiManager().getType(over).isPresent()) {
+                        return Integer.MIN_VALUE;
+                    }
+                }
+                top = Math.max(top, y);
+                bottom = Math.min(bottom, y);
             }
         }
-        return Optional.empty();
+        LAST_WHY = 1;
+        return top - bottom <= ROLL ? top : Integer.MIN_VALUE;
     }
 
     /** What was laid on a plot: the house, and the yards' kits (empty where the kingdom has none for it). */
@@ -97,10 +155,23 @@ public final class Plots {
      */
     public static Optional<Laid> lay(ServerLevel level, String kingdom, Kits.Meta house, BlockPos corner, int width,
             int depth, Direction door, long seed) {
+        return lay(level, kingdom, house, null, corner, width, depth, door, seed);
+    }
+
+    /**
+     * As {@link #lay(ServerLevel, String, Kits.Meta, BlockPos, int, int, Direction, long)}, the house given as composed
+     * blocks ({@code built}: a house the generator made, `Houses`) where it isn't a kit.
+     */
+    public static Optional<Laid> lay(ServerLevel level, String kingdom, Kits.Meta house, Houses.Built built, BlockPos corner,
+            int width, int depth, Direction door, long seed) {
         ResourceManager resources = level.getServer().getResourceManager();
         int[] h = house(depth, house.width(), house.depth());
         int[] at = world(corner.getX(), corner.getZ(), width, depth, door, h[0], h[1], h[2], h[3]);
-        Optional<Kits.Placed> placed = Kits.place(level, house.id(), new BlockPos(at[0], corner.getY(), at[1]), door);
+        BlockPos houseCorner = new BlockPos(at[0], corner.getY(), at[1]);
+        Optional<Kits.Placed> placed = built != null
+                ? Optional.of(new Kits.Placed(house.id(), Kits.placeCells(level, built.cells(), built.sx(), built.sy(), built.sz(),
+                        house.ground(), houseCorner, door), List.of(), List.of()))
+                : Kits.place(level, house.id(), houseCorner, door);
         if (placed.isEmpty()) {
             return Optional.empty();
         }
@@ -145,6 +216,9 @@ public final class Plots {
                 path++;
             }
         }
+        // Its edges retained where levelling cut the slope or built up a fill (the kingdom's earthworks).
+        int[] plot = world(corner.getX(), corner.getZ(), width, depth, door, 0, 0, width, depth);
+        Earthworks.retain(level, kingdom, plot[0], plot[1], plot[0] + plot[2] - 1, plot[1] + plot[3] - 1, corner.getY());
         return Optional.of(new Laid(placed.get(), front, back, path));
     }
 
