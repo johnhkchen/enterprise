@@ -51,6 +51,10 @@ def main():
             sys.exit("the working tree isn't clean: commit or set aside first")
         sh("git", "switch", "-q", "main")
         sh("git", "pull", "-q", "--rebase")
+        # A batch's branch carries only the batch: a commit of ours not yet pushed would ride its PR to main past the
+        # full gate (batch 019 carried one).
+        if sh("git", "rev-list", "--count", "origin/main..main", check=False).stdout.strip() != "0":
+            sys.exit("main has commits not pushed: run the full gate and push them first")
         sh("git", "switch", "-q", "-c", f"assets/{name}")
         for p in want:
             dest = ROOT / p
