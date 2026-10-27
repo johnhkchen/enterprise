@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntityType;
@@ -460,6 +461,43 @@ public final class CoreBindingTests {
             child.discard();
         }
         helper.succeed();
+    }
+
+    /**
+     * A hand takes a trade only by the core: an unemployed hand that has spotted a free cauldron lets it go (still free,
+     * its spotting forgotten), and stays unemployed; a villager of no town keeps the game's way.
+     */
+    @GameTest(template = "floor")
+    public static void aTownsIdleHandLetsGoOfAFreeWorkstation(GameTestHelper helper) {
+        var level = helper.getLevel();
+        BlockPos desk = settlement(helper, 2);
+        BlockPos bell = helper.absolutePos(BELL);
+        Villager idle = helper.spawn(EntityType.VILLAGER, new BlockPos(2, 2, 4));
+        BlockPos cauldron = helper.absolutePos(new BlockPos(6, 2, 6));
+        level.setBlock(cauldron, Blocks.CAULDRON.defaultBlockState(), 3);
+        // The game registers the cauldron's point of interest a task later.
+        helper.runAfterDelay(2, () -> {
+            Path dir = folder();
+            try (CoreHost host = CoreHost.open(dir, 7)) {
+                long town = host.stock().found(level, desk, "Testford");
+                host.people().countNow(level, town, bell, CENSUS_RADIUS);
+                helper.assertTrue(host.hands().of(idle.getUUID()) != null, "the idle villager isn't a hand");
+                Villager stranger = helper.spawn(EntityType.VILLAGER, new BlockPos(4, 2, 4));
+                var spot = GlobalPos.of(level.dimension(), cauldron);
+                level.getPoiManager().take(type -> true, (type, at) -> at.equals(cauldron), cauldron, 1);
+                idle.getBrain().setMemory(MemoryModuleType.POTENTIAL_JOB_SITE, spot);
+                helper.assertTrue(PeopleAdapter.keepToTheCore(level, idle, host.hands()), "the hand kept the cauldron");
+                helper.assertTrue(idle.getBrain().getMemory(MemoryModuleType.POTENTIAL_JOB_SITE).isEmpty()
+                        && level.getPoiManager().getFreeTickets(cauldron) == 1, "the cauldron isn't free again");
+                stranger.getBrain().setMemory(MemoryModuleType.POTENTIAL_JOB_SITE, spot);
+                helper.assertFalse(PeopleAdapter.keepToTheCore(level, stranger, host.hands()), "no town's hand: the game's way");
+                stranger.discard();
+            } finally {
+                delete(dir);
+                idle.discard();
+            }
+            helper.succeed();
+        });
     }
 
     /**

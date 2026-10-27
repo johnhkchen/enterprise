@@ -410,6 +410,28 @@ public final class PeopleAdapter {
         v.refreshBrain(level);
     }
 
+    /**
+     * A hand takes a trade only by the core (John: "core decides"): an unemployed villager that is a town's hand lets go
+     * of a free workstation it has spotted (the game's job-site claiming), so the census reports it unemployed, as the
+     * core has it, and the job draw, a glut or a contract gives it its trade, at its stall. Wheatfell's village cauldrons
+     * made Leatherworkers of its idle hands with no stall or draw. A villager of no town keeps the game's way.
+     * True if it let one go.
+     */
+    public static boolean keepToTheCore(ServerLevel level, Villager v, HandsAdapter hands) {
+        if (v.getVillagerData().getProfession() != VillagerProfession.NONE || v.isBaby()) {
+            return false;
+        }
+        var spotted = v.getBrain().getMemory(MemoryModuleType.POTENTIAL_JOB_SITE);
+        if (spotted.isEmpty() || hands == null || hands.of(v.getUUID()) == null) {
+            return false;
+        }
+        if (spotted.get().dimension().equals(level.dimension())) {
+            level.getPoiManager().release(spotted.get().pos());
+        }
+        v.getBrain().eraseMemory(MemoryModuleType.POTENTIAL_JOB_SITE);
+        return true;
+    }
+
     /** A hand came to the town: a villager for it (and any other with none) by its bell, if the town is loaded. */
     private void arrive(MinecraftServer server, long town) {
         host.hands().reload();

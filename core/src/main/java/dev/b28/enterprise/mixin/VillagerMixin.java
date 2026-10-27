@@ -42,6 +42,20 @@ abstract class VillagerMixin {
         LockerTrading.afterRestock(villager);
     }
 
+    /** In core mode a town's hand takes a trade only by the core ({@code PeopleAdapter.keepToTheCore}). */
+    @Inject(method = "customServerAiStep", at = @At("TAIL"))
+    private void enterprise$keepToTheCore(CallbackInfo ci) {
+        Villager villager = (Villager) (Object) this;
+        if (javaLockers() || !(villager.level() instanceof net.minecraft.server.level.ServerLevel level)
+                || villager.getBrain().getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.POTENTIAL_JOB_SITE).isEmpty()) {
+            return;
+        }
+        var host = dev.b28.enterprise.binding.CoreHost.of(level.getServer());
+        if (host != null) {
+            dev.b28.enterprise.binding.adapters.PeopleAdapter.keepToTheCore(level, villager, host.hands());
+        }
+    }
+
     /**
      * Vanilla restocks only after a player trade; a villager with a locker restocks on schedule anyway (the Java rules'
      * lockers: in core mode the core restocks a hand's locker by its own clock, and the villager's restocks are vanilla's).
