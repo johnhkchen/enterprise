@@ -790,6 +790,23 @@ help breed more as needed."
   2,082 the game's): every town with a Shepherd kept a flock (Redfell 22.5, Meadowfell 14, Ryegate 30.5); furnishings
   met in all five towns, reading in three, 17 comforts met in all (the most yet); moods +2.4, +2.6, +2.8, +2.4, +0.9;
   idle hands two or three a town.
+- **Rotation for the workshop turns only untended plots** (`farms::rotate_for_workshop`). It took plots from the
+  crop earning least, tended or not: Ryegate's carrots, potatoes and beetroot, the crops its people buy at its lockers
+  (where Dustfell's and Meadowfell's money came from: 193 emeralds each of beetroot), and a beetroot field the day it
+  was bought, all for wheat, while 152 cookies sat unused. Its wages, a share of what it makes, stayed small, its people
+  couldn't pay for comforts, and its money sat near 6. Now it turns only plots the last plan left untended; the plan
+  shares the Farmers by what each crop earns. Replayed on that run: Ryegate's mood +0.9 to +1.5, its money 22 to 41. A
+  live run (same seed, a worse world: 18 trips, 4 comforts met) came out even with the old rules on its own journal.
+  Still open: the herds' feed (the mod's owed rotation) still takes tended food crops when no plot lies idle.
+- **A glut trains its taker** (`jobs::for_glut`, the `glut_emeralds` dial, 16). Goods held worth 16 emeralds or more,
+  of a trade the town has no hand of, train its next idle hand to that trade (after a contract's, before the draw):
+  John, "train a villager who specifically takes an abundant resource". Beyond each trade's own goods, the Butcher takes
+  beef and mutton and the Armorer ore (`TAKES`), for the glut alone: in the draw's bag they drew four Butchers to
+  Wheatfell. A Butcher cooks beef and mutton over a campfire, no coal (the pack's `VillagerCrafts.EXTRAS`, as the
+  game's Butcher doesn't sell cooked beef), and smokes from level 1 (John's call; the mod's took level 5). Every town
+  held hundreds of beef, its cows' as their leather was taken. Live, 90 days: every town trained a Butcher (days 57 to
+  86); 16 comforts met, moods +2.0, +4.2, +2.7, +2.9, +0.9. But the beef stayed (Ryegate 569): a Butcher cooks only
+  while food is short, and towns with one were fed on 1,663 of 1,690 touches.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 
