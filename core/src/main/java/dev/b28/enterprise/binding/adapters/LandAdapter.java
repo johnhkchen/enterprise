@@ -729,6 +729,10 @@ public final class LandAdapter {
                         homePlots.put(town, plot.get());
                         yield Optional.of(plot.get().corner());
                     }
+                    if (homeBuilt.containsKey(town)) {
+                        Enterprise.LOGGER.info("Town {} has no plot for {} ({} x {}): a cottage instead", town, kit.get().id(),
+                                kit.get().width(), kit.get().depth());
+                    }
                 }
                 if (kit.isPresent()) {
                     Optional<BlockPos> at = Growth.homeSite(level, bell, kit.get().width(), kit.get().depth());
@@ -865,7 +869,12 @@ public final class LandAdapter {
                     }
                 } else {
                     var door = dev.b28.enterprise.territory.TownPlans.doorOf(level, corner, w, d);
-                    if (kit.flatMap(m -> dev.b28.enterprise.territory.Kits.place(level, m.id(), corner, door)).isEmpty()) {
+                    var built = homeBuilt.remove(town);
+                    if (built != null) {
+                        // A generated house with no plot of its own: fronting its street as a kit would.
+                        dev.b28.enterprise.territory.Kits.placeCells(level, built.cells(), built.sx(), built.sy(), built.sz(),
+                                built.meta().ground(), corner, door);
+                    } else if (kit.flatMap(m -> dev.b28.enterprise.territory.Kits.place(level, m.id(), corner, door)).isEmpty()) {
                         Growth.buildHome(level, corner, door);
                     }
                 }

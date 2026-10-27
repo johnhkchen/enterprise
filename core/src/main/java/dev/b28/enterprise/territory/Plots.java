@@ -76,15 +76,48 @@ public final class Plots {
                 continue;
             }
             int[] at = world(f.x(), f.z(), width, depth, f.door(), h[0], h[1], h[2], h[3]);
-            BlockPos corner = new BlockPos(at[0], bell.getY(), at[1]);
-            int ground = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, at[0], at[1]) - 1;
-            int y = Math.abs(ground - bell.getY()) <= Growth.RISE && Growth.fits(level, corner.atY(ground), at[2], at[3])
-                    ? ground : Growth.levelled(level, corner, at[2], at[3]);
+            int y = ground(level, at[0], at[1], at[2], at[3]);
             if (y != Integer.MIN_VALUE && Math.abs(y - bell.getY()) <= Growth.RISE) {
                 return Optional.of(new Site(new BlockPos(f.x(), y, f.z()), f.door(), width, depth));
             }
         }
         return Optional.empty();
+    }
+
+    /** How far a house's ground may rise and fall across it, to be filled and cut level by its placing. */
+    static final int ROLL = 2;
+
+    /**
+     * The ground a house of {@code sx} x {@code sz} with its corner here would stand on: the top of the land's own ground
+     * under any trees (its placing fells them), within {@link #ROLL} of level, nothing built on it and nothing of a
+     * town's (a block entity, a point of interest) within it; {@link Integer#MIN_VALUE} if not, or not loaded.
+     */
+    static int ground(ServerLevel level, int x0, int z0, int sx, int sz) {
+        int top = Integer.MIN_VALUE, bottom = Integer.MAX_VALUE;
+        for (int dx = 0; dx < sx; dx++) {
+            for (int dz = 0; dz < sz; dz++) {
+                int x = x0 + dx, z = z0 + dz;
+                int y = FieldMaps.under(level, x, z);
+                if (y == Integer.MIN_VALUE) {
+                    return Integer.MIN_VALUE;
+                }
+                BlockPos at = new BlockPos(x, y, z);
+                BlockState state = level.getBlockState(at);
+                if (!dev.b28.enterprise.settlement.Grounds.natural(state) || state.is(Blocks.FARMLAND)
+                        || !state.getFluidState().isEmpty()) {
+                    return Integer.MIN_VALUE; // something built, a field, or water
+                }
+                for (int up = 1; up <= 3; up++) {
+                    BlockPos over = at.above(up);
+                    if (level.getBlockEntity(over) != null || level.getPoiManager().getType(over).isPresent()) {
+                        return Integer.MIN_VALUE;
+                    }
+                }
+                top = Math.max(top, y);
+                bottom = Math.min(bottom, y);
+            }
+        }
+        return top - bottom <= ROLL ? top : Integer.MIN_VALUE;
     }
 
     /** What was laid on a plot: the house, and the yards' kits (empty where the kingdom has none for it). */
