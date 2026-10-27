@@ -183,6 +183,7 @@ fn the_cane_goes_to_the_biscuits_before_the_paper() {
 #[test]
 fn wheat_sold_forward_is_left_alone() {
     let mut s = town(&[("farmer", 1)], &[(WHEAT, 10.0)]);
+    s.content_mut().dials.meal_points = 0.0; // no meals: the stock as put
     s.set_aside(0, WHEAT, 6.0);
     s.advance(DAY);
     let st = s.town(0).stock;
@@ -330,6 +331,7 @@ fn a_butcher_cooks_the_towns_beef_while_its_food_is_short() {
     let c = Content::new(goods, DAY);
     let (beef, cooked) = (c.good("beef").unwrap(), c.good("cooked_beef").unwrap());
     let mut s = Society::new(c);
+    s.content_mut().dials.meal_points = 0.0; // no meals: the stock as put
     let t = s.add_town("Meadowworth", 50.0);
     s.set_people(t, 2.0, 2.0, 20.0);
     s.set_roster(t, &[("butcher", 1), ("merchant", 1)]);

@@ -174,6 +174,11 @@ dials! {
     birth_days: f64 = 4.0,
     birth_cost: f64 = 3.0,
     birth_food: f64 = 36.0,
+    /// Food points a villager eats a day, from the bag of what the town holds (no hunger short of it).
+    meal_points: f64 = 2.0,
+    /// Mood a kind of food beyond the first in the town's meals gives (`people::variety`), up to so many kinds.
+    variety_mood: f64 = 0.25,
+    variety_most: f64 = 4.0,
     /// Territory (`territory-growth`): culture a hex costs per hex already held, and how many rings out a town may grow;
     /// a guard's daily food (points) and pay, days of pay a guard on a tolling post waits for; the toll a town asks
     /// until it sets its own.

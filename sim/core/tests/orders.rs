@@ -298,6 +298,7 @@ fn it_buys_from_a_stall_only_beyond_the_towns_reserve_and_what_its_orders_want()
 #[test]
 fn the_own_shop_sells_the_biggest_surplus_but_no_food_and_nothing_ordered() {
     let mut s = desk(5, 0.0);
+    s.content_mut().dials.meal_points = 0.0; // no meals: the stock as put
     s.deliver(DESK, BREAD, 640.0); // food: never
     s.deliver(DESK, PAPER, 64.0); // ordered below, and more than it can fill: never
     s.deliver(DESK, IRON, 64.0); // 16 emeralds

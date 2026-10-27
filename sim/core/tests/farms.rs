@@ -147,6 +147,7 @@ fn paid_farmers_deliver_the_whole_harvest() {
 #[test]
 fn unpaid_farmers_work_on_credit_then_take_their_share() {
     let mut s = farm(0.0);
+    s.content_mut().dials.meal_points = 0.0; // no meals: the stock as put
     touch_every(&mut s, 10);
     let perday = per_day(&s, WHEAT);
     let cap = farms::CREDIT_DAYS * perday / 20.0 * farms::LABOR_SHARE;
@@ -384,6 +385,7 @@ fn farmers_with_hands_to_spare_get_a_field_of_what_sells() {
 #[test]
 fn a_fed_town_turns_over_what_no_one_wants_and_leaves_the_rest_fallow() {
     let mut s = Society::new(content());
+    s.content_mut().dials.meal_points = 0.0; // no meals: the stock as put
     let t = s.add_town("Meadowworth", 0.0);
     s.set_roster(t, &[("farmer", 5)]);
     s.set_people(t, 1.0, 1.0, 1.0);

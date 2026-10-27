@@ -97,6 +97,7 @@ fn a_merchant_settles_a_village_nobody_trades_with() {
     // 14 emeralds in all, the floor: 4 for the desk, 10 of capital. The Java test settles by hand (the bell and desk are
     // Minecraft's); here the capital lands in the new market's treasury and a route opens home.
     let (mut s, home) = world(14.0);
+    s.content_mut().dials.meal_points = 0.0; // no meals: the stock as put
     let v = village(&mut s, Hex::new(5, 0));
     let before = s.totals();
     assert!(s.raising(home), "grown past growing, nothing sent yet");
@@ -134,6 +135,7 @@ fn a_merchant_settles_a_village_nobody_trades_with() {
 #[test]
 fn a_party_goes_once_in_eight_days_at_most() {
     let (mut s, home) = world(200.0);
+    s.content_mut().dials.meal_points = 0.0; // no meals: the stock as put
     let v1 = village(&mut s, Hex::new(5, 0));
     let v2 = village(&mut s, Hex::new(-6, 0));
     s.deliver(home, BREAD, 150.0); // enough bread for two parties to take 64 each and still be fed
@@ -165,6 +167,7 @@ fn a_party_goes_once_in_eight_days_at_most() {
 fn a_town_not_grown_or_not_fed_or_without_hands_or_money_sends_nobody() {
     // Under 8 villagers.
     let (mut s, t) = world(100.0);
+    s.content_mut().dials.meal_points = 0.0; // no meals: the stock as put
     village(&mut s, Hex::new(5, 0));
     s.set_roster(t, &[("merchant", 1), ("none", 1), ("none", 1), ("none", 1), ("none", 1), ("none", 1), ("none", 1)]);
     s.advance(3 * DAY);

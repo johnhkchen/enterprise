@@ -194,6 +194,7 @@ fn guards_eat_a_full_meal_or_nothing() {
 #[test]
 fn hands_stand_watch_for_their_food() {
     let (mut s, t) = garrison(10.0, 10.0, 1);
+    s.content_mut().dials.meal_points = 0.0; // no meals: the stock as put
     s.set_roster(t, &[("nitwit", 1)]);
     s.advance(2 * DAY);
     assert_eq!(s.militia(t), 1, "the Nitwit stands watch");
@@ -202,6 +203,7 @@ fn hands_stand_watch_for_their_food() {
     assert_eq!(s.guards(t), 1, "and stays");
     // A hand with a trade doesn't.
     let (mut s, t) = garrison(10.0, 10.0, 1);
+    s.content_mut().dials.meal_points = 0.0;
     s.set_roster(t, &[("farmer", 1)]);
     s.advance(2 * DAY);
     assert_eq!(s.militia(t), 0);

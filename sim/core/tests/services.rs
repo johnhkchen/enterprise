@@ -311,6 +311,7 @@ fn network(bread: f64, emeralds: f64, dest_spurs: f64, squad: &[&str]) -> Societ
 #[test]
 fn a_visiting_cleric_blesses_a_town_without_one() {
     let mut s = network(70.0, 5.0, 192.0, &["librarian", "cleric"]);
+    s.content_mut().dials.meal_points = 0.0; // no meals: the stock as put
     s.pay(1, 10.0); // enough to pay for a blessing
     let trust = s.trust(0, 1);
     s.advance(LOOK);
@@ -368,6 +369,7 @@ fn a_shepherd_leaves_the_breeding_stock_home() {
 #[test]
 fn unsold_animals_come_home() {
     let mut s = network(2.0, 5.0, 192.0, &["shepherd"]);
+    s.content_mut().dials.meal_points = 0.0; // no meals: the stock as put
     s.deliver(0, WHEAT, 64.0);
     s.set_people(1, 1.0, 1.0, 1.0); // a town of one wants two
     assert!(s.set_herd(0, "sheep", 7.0));

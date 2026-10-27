@@ -240,6 +240,7 @@ fn a_child_born_in_the_core_comes_out_for_the_host_to_spawn_and_name() {
         Input::Deliver { town: 0, good: 0, count: 64.0 },
         Input::SetDial { name: "birth_mood".into(), value: Some(-100.0) },
         Input::SetDial { name: "birth_cost".into(), value: Some(0.0) },
+        Input::SetDial { name: "meal_points".into(), value: Some(0.0) }, // no meals: the bread for the child
         Input::Census { town: 0, beds: 4, residents: vec![seen("m", "enterprise:merchant", 1), seen("f", "farmer", 1)] },
     ]);
     assert!(out.is_empty());

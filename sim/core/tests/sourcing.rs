@@ -460,6 +460,7 @@ fn the_random_worlds_source_and_the_exchange_buys() {
     for n in common::each_seed(common::seeds(60), |seed| {
         let (mut sourced, mut in_force, mut trial, mut advances, mut exchange, mut signals) = (0, 0, 0, 0, 0, 0);
         let mut s = common::world(seed);
+        s.content_mut().dials.meal_points = 0.0; // no meals: the stock as put
         for day in 1..=45 {
             s.advance(day * DAY);
             common::slices::daily(&mut s, seed, day);

@@ -167,6 +167,7 @@ fn what_the_core_takes_from_the_towns_stock_comes_out_of_its_chests() {
         Input::AddTown { name: "Ashford".into(), desk: desk(0) },
         Input::AddHand { town: 0, trade: "merchant".into(), level: 5, tag: "m".into() },
         Input::OwnShop { town: 0 },
+        Input::SetDial { name: "meal_points".into(), value: Some(0.0) }, // no meals: the bread stays
     ]);
     let mut chests = vec![(desk(0), Chests::new(27, &[(WHEAT, 300), (BREAD, 10)]))];
     let mut unmoved = Vec::new();

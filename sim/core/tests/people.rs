@@ -142,3 +142,38 @@ fn an_unhappy_town_has_no_children() {
     s.advance(60 * DAY);
     assert_eq!(s.town(0).people.born, 0, "no children: mood {}", s.town(0).people.mood);
 }
+
+/// Villagers eat `meal_points` a day from a bag of what the town holds, each food's points times its taste (saturation
+/// a point): steak before bread, as the bag comes out. Two foods make a varied meal, which lifts the mood; a town with
+/// no food eats nothing and goes without the variety, nothing worse.
+#[test]
+fn villagers_eat_the_tastiest_most_and_a_varied_meal_lifts_the_mood() {
+    let mut goods = content().goods;
+    goods.push(Good::new("cooked_beef", 0.2, 64).food(8.0).saturation(12.8));
+    let c = Content::new(goods, DAY);
+    let steak = c.good("cooked_beef").unwrap();
+    let mut s = Society::new(c);
+    s.content_mut().dials.standing_orders = false;
+    let t = s.add_town("Meadowworth", 20.0);
+    s.set_people(t, 10.0, 10.0, 10.0);
+    s.deliver(t, BREAD, 100.0);
+    s.deliver(t, steak, 100.0);
+    s.advance(4 * DAY);
+    let st = s.town(t).stock;
+    let (bread, beef) = ((100.0 - st[BREAD]) * 5.0, (100.0 - st[steak]) * 8.0);
+    assert!((bread + beef - 80.0).abs() <= 13.0, "two points a villager a day: {bread} of bread, {beef} of steak");
+    assert!(beef > bread, "the steak tastes better (1.6 a point to bread's 1.2): {beef} to {bread}");
+    let p = s.town(t).people;
+    assert!(p.variety > 1.5 && p.variety < 2.0, "two foods, not half and half: {}", p.variety);
+    let d = &s.content().dials;
+    let mut plain = p.clone();
+    plain.variety = 1.0;
+    let lift = enterprise_core::people::mood_target(d, &p, None) - enterprise_core::people::mood_target(d, &plain, None);
+    assert!((lift - d.variety_mood * (p.variety - 1.0)).abs() < 1e-9, "a quarter a kind beyond the first: {lift}");
+    // No food: nothing eaten, no variety.
+    let mut s = Society::new(content());
+    let t = s.add_town("Bare", 20.0);
+    s.set_people(t, 10.0, 10.0, 10.0);
+    s.advance(DAY);
+    assert_eq!(s.town(t).people.variety, 0.0);
+}

@@ -181,6 +181,9 @@ public final class Dials extends SavedData {
             "emeralds a travelling Merchant carries to start a market in a village nobody trades with");
     // Herds (see territory.Husbandry).
     public static final Dial PASTURE_ANIMALS = dial("pasture_animals", 16, "animals a pasture holds");
+    public static final Dial MEAL_POINTS = dial("meal_points", 2, "food points a villager eats a day, from the bag of what the town holds");
+    public static final Dial VARIETY_MOOD = dial("variety_mood", 0.25, "mood a kind of food beyond the first in the town's meals gives");
+    public static final Dial VARIETY_MOST = dial("variety_most", 4, "kinds of food counted for variety, at most");
     public static final Dial GLUT_EMERALDS = dial("glut_emeralds", 16, "goods held worth this many emeralds train the next idle hand to the trade that takes them");
     public static final Dial PASTURES_MAX = dial("pastures_max", 3, "pastures a town fences at most, a new one once full");
     public static final Dial BREED_PER_DAY = dial("breed_per_day", 0.15, "share a fed herd grows by a day, while there's room");

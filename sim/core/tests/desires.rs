@@ -115,6 +115,7 @@ fn a_market_never_counted_is_read_as_it_stands_and_nothing_is_used() {
 #[test]
 fn a_town_short_of_clothes_buys_a_pair_of_boots() {
     let mut s = network(2.0, 5.0, 192.0);
+    s.content_mut().dials.meal_points = 0.0; // no meals: the stock as put
     town_of_five(&mut s, DEST);
     s.deliver(HUB, BOOTS, 3.0); // 4 emeralds each: more than the 3-emerald par
     s.advance(LOOK);
@@ -498,6 +499,7 @@ fn a_merchant_buys_a_comfort_a_town_on_its_routes_is_short_of_where_it_pays() {
     // Dest has a glut of cookies past its keep; another town on the hub's routes has none: the Merchant buys what the
     // other town is short of (its 54, less what the hub holds), at the resale ceiling's bargain.
     let mut s = network(2.0, 20.0, 192.0);
+    s.content_mut().dials.meal_points = 0.0; // no meals: the stock as put
     town_of_five(&mut s, DEST);
     s.deliver(DEST, COOKIE, 200.0);
     s.deliver(HUB, COOKIE, 30.0); // (its own par of treats, so it shops for none)

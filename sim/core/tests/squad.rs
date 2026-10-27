@@ -223,6 +223,7 @@ fn the_squad_leaves_home_and_comes_back() {
     // 70 bread (350 food points): food to spare past the caravans' 320-point par, for a second member. What the trip
     // wants of them (books, mapping: `Services.wantedAbroad`) is the host's to say here.
     let mut s = network(70.0, 5.0, 192.0, &["cartographer", "librarian"]);
+    s.content_mut().dials.meal_points = 0.0; // no meals: the stock as put
     s.want_trades(0, &["cartographer", "librarian"]);
     assert_eq!(s.food_points(HUB), 350.0);
     s.advance(LOOK);
@@ -466,6 +467,7 @@ fn a_saddle_wears_out_on_its_eleventh_trip() {
 /// contract and the tick its wagon went.
 fn owed_by_porter() -> (Society, usize, u64) {
     let mut s = network(8.0, 5.0, 192.0, &["librarian"]);
+    s.content_mut().dials.meal_points = 0.0; // no meals: the bread for the road
     s.advance(LOOK);
     s.advance(4 * LOOK);
     assert!(!s.route(0).on_the_road, "its first trip done");

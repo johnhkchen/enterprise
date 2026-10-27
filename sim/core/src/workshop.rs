@@ -159,6 +159,11 @@ pub fn wanted(content: &Content, output: GoodId, people: &People, stock: &Stock,
     (locker_par - stock.0[output]).max(0.0).ceil()
 }
 
+/// Is it food made of no crop: what a town's herds and nets leave (cooked beef, mutton, cod)?
+pub fn by_product_food(content: &Content, conversion: &Conversion) -> bool {
+    content.goods[conversion.output].food > 0.0 && conversion.inputs.iter().all(|&(g, _)| !content.goods[g].crop)
+}
+
 /// Converts as many whole batches as cover `wanted`, as far as the inputs go; returns the items made. Inputs are
 /// `used` and outputs `made` in the ledger (`Workshop.run`).
 pub fn run(conversion: &Conversion, wanted: f64, stock: &mut Stock, ledger: &mut Ledger) -> f64 {
@@ -196,7 +201,14 @@ pub fn convert(content: &Content, roster: &Roster, people: &People, stock: &mut 
             let par = hooks.map_or(0.0, |h| h.par_of(c.output));
             // What the far ends want and lack of it, on top of its own lockers' par (`rules/workshop.rs`).
             let far = far.and_then(|f| f.get(c.output)).copied().unwrap_or(0.0);
-            let w = wanted(content, c.output, people, stock, routes_out, par + far);
+            let w = if by_product_food(content, c) {
+                // Food of what the herds leave (beef, mutton, cod): kept at twice the food par in its own points,
+                // whatever else feeds the town, so it's in the bag its people eat from (`people.rs`); not as the mod.
+                let held = stock.0[c.output] * content.goods[c.output].food;
+                whole(((2.0 * FOOD_PAR_POINTS - held) / content.goods[c.output].food).max(0.0))
+            } else {
+                wanted(content, c.output, people, stock, routes_out, par + far)
+            };
             (Potential { conversion: i, wanted: w }, gain(content, c, content.goods[c.output].value))
         })
         .collect();

@@ -34,20 +34,86 @@ pub fn food_points(content: &Content, stock: &Stock) -> f64 {
     content.goods.iter().enumerate().map(|(i, g)| stock.0[i] * g.food).sum()
 }
 
-/// Eats `points` of food from the warehouse (any food, in the order of the goods); returns what was eaten.
+/// How tasty a food is, a point of it: the saturation it gives a point (the game's: steak 1.6, bread and carrots 1.2, a
+/// raw potato 0.6), 1 where the host gives none.
+pub fn taste(good: &crate::content::Good) -> f64 {
+    if good.saturation > 0.0 && good.food > 0.0 { good.saturation / good.food } else { 1.0 }
+}
+
+/// Eats `points` of food from the warehouse, whole items; returns what was eaten. A bag of marbles (John: "a bag of
+/// marbles eating approach with tastiness weight"): each food puts in its points held times its [`taste`], and each takes
+/// its share of the meal, as the draw would come out on the whole; one that runs out leaves the rest to the others. Not
+/// as the mod, which ate in the goods' order: its cows' beef, cooked, sat behind the town's bread. A comfort that is
+/// food (cookies) goes in only once nothing else is left.
 fn eat(content: &Content, ledger: &mut Ledger, stock: &mut Stock, mut points: f64) -> f64 {
     let mut eaten = 0.0;
-    for (i, g) in content.goods.iter().enumerate() {
-        if points <= 0.0 || g.food <= 0.0 {
-            continue;
+    for comforts in [false, true] {
+        loop {
+            let bag: Vec<(usize, f64)> = content.goods.iter().enumerate()
+                .filter(|(i, g)| g.food > 0.0 && g.comfort.is_some() == comforts && stock.0[*i] >= 1.0)
+                .map(|(i, g)| (i, stock.0[i].floor() * g.food * taste(g)))
+                .collect();
+            let total: f64 = bag.iter().map(|(_, m)| m).sum();
+            if points <= 0.0 || total <= 0.0 {
+                break;
+            }
+            let want = points;
+            for (i, m) in bag {
+                let g = &content.goods[i];
+                let n = stock.0[i].floor().min((want * m / total / g.food).ceil()).min((points / g.food).ceil());
+                if n <= 0.0 || points <= 0.0 {
+                    continue;
+                }
+                stock.0[i] -= n;
+                ledger.used[i] += n;
+                points -= n * g.food;
+                eaten += n * g.food;
+            }
         }
-        let n = stock.0[i].min((points / g.food).ceil());
-        stock.0[i] -= n;
-        ledger.used[i] += n;
-        points -= n * g.food;
-        eaten += n * g.food;
     }
     eaten
+}
+
+/// A town's meals since its last look (John: "a bag of marbles eating approach with tastiness weight"): `points` shared
+/// among the foods it holds as the bag's marbles come out on the whole, each food's points held times its [`taste`]; a
+/// comfort that is food (cookies) only once nothing else is left. Each food runs a tab (`owed`, points by good) and
+/// whole items come off it as it fills, so a town looked at often eats no more than one looked at once a day; a food
+/// that runs out drops its tab (no hunger). Returns how varied the meal was: the number of foods it was as good as made
+/// of, each an equal share (the inverse of the sum of the shares squared: two half and half, 2); 0 with none to eat.
+pub fn dine(content: &Content, ledger: &mut Ledger, stock: &mut Stock, owed: &mut Vec<f64>, points: f64) -> f64 {
+    owed.resize(content.goods.len(), 0.0);
+    let held = |comforts: bool, stock: &Stock| -> Vec<(usize, f64)> {
+        content.goods.iter().enumerate()
+            .filter(|(i, g)| g.food > 0.0 && g.comfort.is_some() == comforts && stock.0[*i] >= 1.0)
+            .map(|(i, g)| (i, stock.0[i].floor() * g.food * taste(g))).collect()
+    };
+    let mut bag = held(false, stock);
+    if bag.is_empty() {
+        bag = held(true, stock);
+    }
+    let total: f64 = bag.iter().map(|(_, m)| m).sum();
+    for (i, o) in owed.iter_mut().enumerate() {
+        if !bag.iter().any(|(b, _)| *b == i) {
+            *o = 0.0;
+        }
+    }
+    if total <= 0.0 || points <= 0.0 {
+        return 0.0;
+    }
+    let mut squares = 0.0;
+    for &(i, m) in &bag {
+        let share = m / total;
+        squares += share * share;
+        let g = &content.goods[i];
+        owed[i] += points * share;
+        let n = (owed[i] / g.food + 1e-9).floor().min(stock.0[i].floor());
+        if n > 0.0 {
+            stock.0[i] -= n;
+            ledger.used[i] += n;
+            owed[i] = (owed[i] - n * g.food).max(0.0);
+        }
+    }
+    1.0 / squares
 }
 
 /// Where a town's mood is heading (`Territory.moodTarget`): the comforts met and its works (a wall, a square, its flower
@@ -56,6 +122,7 @@ fn eat(content: &Content, ledger: &mut Ledger, stock: &mut Stock, mut points: f6
 pub fn mood_target(d: &crate::content::Dials, people: &People, works: Option<&crate::works::Works>) -> f64 {
     people.comfort_met.iter().sum::<f64>()
         + works.map_or(0.0, |w| w.mood())
+        + d.variety_mood * (people.variety.min(d.variety_most) - 1.0).max(0.0) // its meals' variety
         + crate::services::blessing_mood(d, people, works) // a Cleric's blessing (`services.rs`)
         - crate::army::grief(d, people) // its soldiers fallen (`army.rs`)
         - people.villagers / d.villagers_per_want
@@ -131,6 +198,11 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
             people.comfort_met[kind] = if due > 0.0 { (1.0 - owed.max(0.0) / due).clamp(0.0, 1.0) } else { 0.0 };
             people.comfort_owed[kind] = owed.min(0.0);
         }
+        // Meals: each villager `meal_points` a day from the bag of what the town holds, the tastiest likeliest (not as the
+        // mod, whose villagers ate only to be born). Short, it eats what there is: no hunger, but no variety either
+        // (John: "daily meals, no hunger"; "a variety of food happiness weight").
+        let meal = people.villagers * d.meal_points * days;
+        people.variety = dine(&content, &mut ledger, &mut stock, &mut people.meal_owed, meal);
         // Mood heads toward the comforts met, less its size, villagers without beds and unpaid wages.
         let target = mood_target(d, people, works);
         people.mood += (target - people.mood) * (1.0 - crate::fixed::halved(days, d.mood_half_life_days));

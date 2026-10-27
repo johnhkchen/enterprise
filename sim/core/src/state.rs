@@ -132,6 +132,12 @@ pub struct People {
     pub sales_day: u64,
     #[serde(default)]
     pub sales_seen: f64,
+    /// How varied its last meal was (`people::variety`): the foods it was as good as made of.
+    #[serde(default)]
+    pub variety: f64,
+    /// Each food's tab of its meals (`people::dine`), points by good.
+    #[serde(default)]
+    pub meal_owed: Vec<f64>,
 }
 
 /// What a town holds of each good.
