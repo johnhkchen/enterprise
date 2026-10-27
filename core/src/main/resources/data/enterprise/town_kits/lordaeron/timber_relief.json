@@ -1193,6 +1193,66 @@
       "layer": "fitout"
     },
     {
+      "id": "goods_bread",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_bread",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_cake",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_cake",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_red",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_red",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_honey",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_honey",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "oven",
+      "part": "enterprise:lordaeron/part/timber_relief/oven",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "bar",
+      "part": "enterprise:lordaeron/part/timber_relief/bar",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
       "id": "chimney_stack",
       "part": "enterprise:lordaeron/part/timber_relief/chimney_stack",
       "size": [
