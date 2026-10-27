@@ -1,0 +1,78 @@
+{
+  "id": "enterprise:lordaeron/home/cottage_7x7_a",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "home",
+  "slot": "home",
+  "tiers": [
+    "hamlet",
+    "village"
+  ],
+  "style": "single-storey cottage, 7 x 7, gable to the lane",
+  "palette": "daub",
+  "variants": [
+    "brick",
+    "stone"
+  ],
+  "footprint": [
+    7,
+    7
+  ],
+  "height": 11,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        3,
+        6
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        1,
+        3,
+        1
+      ],
+      "foot": [
+        1,
+        3,
+        2
+      ]
+    },
+    {
+      "head": [
+        5,
+        3,
+        1
+      ],
+      "foot": [
+        5,
+        3,
+        2
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "pilings": [],
+  "entities": [],
+  "assembly": {
+    "set": "lordaeron/timber",
+    "params": {
+      "width": 7,
+      "depth": 7,
+      "storeys": 1,
+      "roof": "gable_z",
+      "palette": "daub",
+      "front": "plain"
+    }
+  },
+  "notes": "Needs C3. Same parts as the 5 x 5 cottage, wider and deeper."
+}
