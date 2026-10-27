@@ -50,7 +50,7 @@ def main():
         if sh("git", "status", "--porcelain", check=False).stdout.strip():
             sys.exit("the working tree isn't clean: commit or set aside first")
         sh("git", "switch", "-q", "main")
-        sh("git", "pull", "-q")
+        sh("git", "pull", "-q", "--rebase")
         sh("git", "switch", "-q", "-c", f"assets/{name}")
         for p in want:
             dest = ROOT / p

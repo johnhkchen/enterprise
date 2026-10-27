@@ -41,7 +41,14 @@
     "destinations": "beds, workstations, hearth, chests; shelves, casks and decor are used floor without routes",
     "multi_storey_min_width": 10,
     "stair_foot_clear": 2,
-    "storeys": "a body under multi_storey_min_width wide is one storey (thread 0008); the template's width less its relief (2) is the body's"
+    "storeys": "a body under multi_storey_min_width wide is one storey (thread 0008); the template's width less its relief (2) is the body's",
+    "circulation_by_storeys": {
+      "3": [
+        0.15,
+        0.5
+      ]
+    },
+    "circulation_note": "3 storeys: the stair's run through the middle storey (thread 0004): cap 0.5"
   },
   "yards": {
     "lamp_spacing_max": 5,

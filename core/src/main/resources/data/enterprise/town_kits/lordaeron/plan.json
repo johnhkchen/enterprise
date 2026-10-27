@@ -761,7 +761,7 @@
           1
         ]
       },
-      "about": "the straight stair along the east wall with a 2-wide landing beside it, a partition with a door, the chamber west of it",
+      "about": "the straight stair along the east wall with a 2-wide landing beside it, a partition with a door, the chamber west of it; the ground floor is hall and store: the store along the north wall east of the hall, a counter facing it; four made beds in each chamber",
       "storey": {
         "0": [
           {
@@ -803,20 +803,6 @@
             "else": "shelf"
           },
           {
-            "module": "chest",
-            "at": [
-              6,
-              4
-            ]
-          },
-          {
-            "module": "cask",
-            "at": [
-              7,
-              4
-            ]
-          },
-          {
             "module": "shelf",
             "at": [
               1,
@@ -851,6 +837,55 @@
             "at": [
               1,
               "D-2"
+            ]
+          },
+          {
+            "module": "chest",
+            "at": [
+              6,
+              1
+            ]
+          },
+          {
+            "module": "cask",
+            "at": [
+              7,
+              1
+            ]
+          },
+          {
+            "module": "cask",
+            "at": [
+              8,
+              1
+            ]
+          },
+          {
+            "module": "cask",
+            "at": [
+              9,
+              1
+            ]
+          },
+          {
+            "module": "table",
+            "at": [
+              8,
+              3
+            ]
+          },
+          {
+            "module": "cask",
+            "at": [
+              9,
+              3
+            ]
+          },
+          {
+            "module": "cask",
+            "at": [
+              9,
+              4
             ]
           },
           {
@@ -944,8 +979,15 @@
               "W-6",
               1
             ],
-            "role": "bed",
-            "if": "beds >= 3"
+            "role": "bed"
+          },
+          {
+            "module": "bed",
+            "at": [
+              "W-6",
+              4
+            ],
+            "role": "bed"
           },
           {
             "module": "chest",
@@ -953,21 +995,6 @@
               1,
               3
             ]
-          },
-          {
-            "module": "table",
-            "at": [
-              "W-6",
-              "D-3"
-            ]
-          },
-          {
-            "module": "bench",
-            "at": [
-              "W-6",
-              "D-2"
-            ],
-            "q": 2
           },
           {
             "module": "lantern",

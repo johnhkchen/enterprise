@@ -235,11 +235,14 @@ def analyse(file):
                           "clear_height": sorted(heights)[len(heights) // 2] if heights else 0,
                           "low_cells": sum(1 for h in heights if h < 3),
                           "volume": sum(heights), "contents": sorted(contents), "cells": room})
-        # A landing is designed circulation, counted whole.
+        # A landing is designed circulation, counted whole, but not toward the share's cap (thread 0004): the share
+        # judges the routes left over, not the landing a stair needs.
+        landing = set()
         for r in rooms:
             if r["use"] == "landing":
                 circulation |= set(r["cells"])
-        circ = len(circulation & floor)
+                landing |= set(r["cells"])
+        circ = len((circulation & floor) - landing)
         idle = len([c for c in floor if c not in circulation and c not in near_used])
         storeys.append({"feet_y": y, "floor": len(floor), "rooms": rooms, "circulation": circ,
                         "circulation_share": round(circ / len(floor), 2), "idle_share": round(idle / len(floor), 2)})
@@ -535,7 +538,7 @@ def thresholds():
                 t["idle_share"] = [0, i["idle_max"]]
             if "walk_max" in i:
                 t["walk"] = [0, i["walk_max"]]
-            for k in ("floor_per_bed", "made_beds", "through_rooms", "multi_storey_min_width"):
+            for k in ("floor_per_bed", "made_beds", "through_rooms", "multi_storey_min_width", "circulation_by_storeys"):
                 if k in i:
                     t[k] = i[k]
             return t
@@ -555,7 +558,12 @@ def failures(r, t):
     if narrowest and r["storeys"] > 1 and r["size"][0] - 2 < narrowest:
         out.append(f"a {r['size'][0] - 2}-wide body of {r['storeys']} storeys: under {narrowest} wide is one storey")
     for k in ("circulation_share", "idle_share", "walk", "floor_per_bed"):
+        # A one-room house under 20 floor has no corridors to judge: its routes are the room (thread 0004).
+        if k == "circulation_share" and r["rooms"] == 1 and r["floor"] < 20:
+            continue
         lo, hi = t[k]
+        if k == "circulation_share" and str(r["storeys"]) in t.get("circulation_by_storeys", {}):
+            lo, hi = t["circulation_by_storeys"][str(r["storeys"])]
         if r[k] is not None and not lo <= r[k] <= hi:
             out.append(f"{k} {r[k]} outside {lo} to {hi}")
     return out

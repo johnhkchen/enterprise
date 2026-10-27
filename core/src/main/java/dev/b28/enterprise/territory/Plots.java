@@ -104,15 +104,32 @@ public final class Plots {
         if (placed.isEmpty()) {
             return Optional.empty();
         }
-        // The yards: the widest of the kingdom's that fits, the choice among those by the plot.
-        Optional<String> front = yard(level, resources, kingdom, "yard:front", width, TownPlans.FRONT_YARD, seed, corner,
-                width, depth, door, depth - TownPlans.FRONT_YARD);
-        Optional<String> back = h[1] <= 0 ? Optional.empty()
-                : yard(level, resources, kingdom, "yard:back", width, h[1], seed + 1, corner, width, depth, door, 0);
+        int doorX = h[0] + house.entrances().stream().findFirst().map(BlockPos::getX).orElse(house.width() / 2);
+        // The yards: tiled from the kingdom's yard tiles to the plot's width where it has them (`Yards`: the path tile
+        // at the door, lamps in reach, edges matching), else the widest whole yard of its that fits.
+        List<Yards.Tile> tiles = Yards.tiles(resources, kingdom);
+        Optional<String> front, back;
+        int pathFrom = h[1] + house.depth();
+        if (!tiles.isEmpty()) {
+            var likes = Yards.likes("village", null);
+            var f = Yards.fill(tiles, "yard:front", width, doorX, likes, seed);
+            f.ifPresent(strip -> Yards.lay(level, strip, corner, width, depth, door, depth - TownPlans.FRONT_YARD));
+            front = f.map(strip -> strip.stream().map(l -> l.tile().id()).toList().toString());
+            if (f.isPresent()) {
+                pathFrom = depth; // the path tile is the way to the door; only the doorstep beyond is cut
+            }
+            var b = h[1] >= 4 ? Yards.fill(tiles, "yard:back", width, -1, likes, seed + 1) : Optional.<List<Yards.Laid>>empty();
+            b.ifPresent(strip -> Yards.lay(level, strip, corner, width, depth, door, h[1] - 4));
+            back = b.map(strip -> strip.stream().map(l -> l.tile().id()).toList().toString());
+        } else {
+            front = yard(level, resources, kingdom, "yard:front", width, TownPlans.FRONT_YARD, seed, corner,
+                    width, depth, door, depth - TownPlans.FRONT_YARD);
+            back = h[1] <= 0 ? Optional.empty()
+                    : yard(level, resources, kingdom, "yard:back", width, h[1], seed + 1, corner, width, depth, door, 0);
+        }
         // The path to the door: from its doorstep across the front yard to the street.
         int path = 0;
-        int doorX = h[0] + house.entrances().stream().findFirst().map(BlockPos::getX).orElse(house.width() / 2);
-        for (int lz = h[1] + house.depth(); lz <= depth; lz++) {
+        for (int lz = pathFrom; lz <= depth; lz++) {
             BlockPos p = world(corner, width, depth, door, doorX, lz);
             int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, p.getX(), p.getZ()) - 1;
             BlockPos ground = p.atY(Math.min(y, corner.getY()));

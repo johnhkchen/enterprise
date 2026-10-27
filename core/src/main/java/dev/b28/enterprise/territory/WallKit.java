@@ -158,7 +158,7 @@ public final class WallKit {
     }
 
     /** Reads a JSON resource (for the kit's rules), if there. */
-    static Optional<JsonObject> json(ResourceManager resources, String path) {
+    public static Optional<JsonObject> json(ResourceManager resources, String path) {
         return resources.getResource(ResourceLocation.fromNamespaceAndPath("enterprise", path)).flatMap(r -> {
             try (Reader reader = r.openAsReader()) {
                 return Optional.of(JsonParser.parseReader(reader).getAsJsonObject());

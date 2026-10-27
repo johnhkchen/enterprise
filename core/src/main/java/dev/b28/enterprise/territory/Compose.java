@@ -92,6 +92,16 @@ public final class Compose {
         return part(resources, blocks, id).map(Part::cells).orElseThrow(() -> new IllegalStateException("no " + id));
     }
 
+    /** A block state written as the game writes one ({@code minecraft:lectern[facing=south]}). */
+    static BlockState parse(HolderGetter<Block> blocks, String state) {
+        try {
+            return net.minecraft.commands.arguments.blocks.BlockStateParser.parseForBlock(
+                    net.minecraft.core.registries.BuiltInRegistries.BLOCK.asLookup(), state, false).blockState();
+        } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+            throw new IllegalArgumentException("not a block state: " + state, e);
+        }
+    }
+
     /** Forgets the parts read, for the server's resources reloading. */
     public static void forget() {
         PARTS.clear();
@@ -228,19 +238,27 @@ public final class Compose {
             JsonObject p = e.getAsJsonObject();
             JsonArray at = p.getAsJsonArray("at");
             int dy = p.has("dy") ? p.get("dy").getAsInt() : 0, q = p.has("q") ? p.get("q").getAsInt() : 0;
-            paste.at(p.get("module").getAsString(), at.get(0).getAsInt(), 2 + H * p.get("storey").getAsInt() + dy,
-                    at.get(1).getAsInt(), q, false);
+            int y = 2 + H * p.get("storey").getAsInt() + dy;
+            // An exact block in place of a module (a declared vanilla workstation; "any" is an air marker).
+            if (p.has("block")) {
+                String state = p.get("block").getAsString();
+                BlockState block = state.equals("any") ? net.minecraft.world.level.block.Blocks.AIR.defaultBlockState()
+                        : parse(blocks, state);
+                g.cells.put(new BlockPos(at.get(0).getAsInt() + rw, y, at.get(1).getAsInt() + 1), block);
+                continue;
+            }
+            paste.at(p.get("module").getAsString(), at.get(0).getAsInt(), y, at.get(1).getAsInt(), q, false);
         }
         // The roof's slices over the relief.
         if (l.roof().equals("gable_x")) {
             for (int x = -rw; x < W + re; x++) {
                 String kind = x < 0 || x >= W ? "verge" : x == 0 && !l.partyWest() || x == W - 1 && !l.partyEast() ? "gable" : "bay";
-                paste.at("roof_" + kind + "_" + span, x, roofBase, -1, 0, false);
+                paste.at("roof_" + kind + "_" + span, x, roofBase, -1, 0, x >= W); // the far verge mirrored: its boards face the gable
             }
         } else {
             for (int z = -1; z <= D; z++) {
                 String kind = z < 0 || z >= D ? "verge" : z == 0 || z == D - 1 ? "gable" : "bay";
-                g.paste(mod.apply("roof_" + kind + "_" + span), 0, roofBase, z + 1, 1, false);
+                g.paste(mod.apply("roof_" + kind + "_" + span), 0, roofBase, z + 1, 1, z >= D);
             }
         }
         // The chimney's stack over its breast, one above the ridge.
