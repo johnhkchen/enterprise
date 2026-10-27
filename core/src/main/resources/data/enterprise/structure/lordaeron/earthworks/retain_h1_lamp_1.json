@@ -1,0 +1,23 @@
+{
+  "id": "enterprise:lordaeron/earthworks/retain_h1_lamp_1",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "prop:earthworks",
+  "palette": "fixed",
+  "size": [
+    1,
+    6,
+    3
+  ],
+  "depth": 3,
+  "mirror": true,
+  "ground": 2,
+  "width": 1,
+  "rise": 1,
+  "kind_of": "straight",
+  "tags": [
+    "straight",
+    "lamp"
+  ]
+}

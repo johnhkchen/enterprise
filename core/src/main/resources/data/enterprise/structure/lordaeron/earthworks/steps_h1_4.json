@@ -1,0 +1,23 @@
+{
+  "id": "enterprise:lordaeron/earthworks/steps_h1_4",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "prop:earthworks",
+  "palette": "fixed",
+  "size": [
+    4,
+    6,
+    3
+  ],
+  "depth": 3,
+  "mirror": true,
+  "ground": 2,
+  "width": 4,
+  "rise": 1,
+  "kind_of": "steps",
+  "tags": [
+    "steps",
+    "lamp"
+  ]
+}

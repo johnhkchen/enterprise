@@ -1,0 +1,22 @@
+{
+  "id": "enterprise:lordaeron/earthworks/retain_h3_1c",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "prop:earthworks",
+  "palette": "fixed",
+  "size": [
+    1,
+    8,
+    3
+  ],
+  "depth": 3,
+  "mirror": true,
+  "ground": 2,
+  "width": 1,
+  "rise": 3,
+  "kind_of": "straight",
+  "tags": [
+    "straight"
+  ]
+}
