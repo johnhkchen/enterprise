@@ -1,0 +1,25 @@
+{
+  "id": "chimney_party_upper",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "post",
+  "set": "lordaeron/timber_relief",
+  "palette": "stone",
+  "size": [
+    1,
+    5,
+    1
+  ],
+  "layer": "shell",
+  "where": {
+    "storey": "upper"
+  },
+  "mirror": true,
+  "relief": "party",
+  "behind": [
+    "hearth"
+  ],
+  "weight": 1,
+  "module": "chimney_party_upper"
+}

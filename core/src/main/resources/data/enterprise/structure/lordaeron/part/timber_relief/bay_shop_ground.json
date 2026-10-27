@@ -1,0 +1,29 @@
+{
+  "id": "bay_shop_ground",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "bay",
+  "set": "lordaeron/timber_relief",
+  "palette": "stone",
+  "size": [
+    2,
+    5,
+    2
+  ],
+  "layer": "shell",
+  "where": {
+    "storey": "ground",
+    "face": [
+      "front"
+    ]
+  },
+  "mirror": true,
+  "behind": [
+    "shop",
+    "work",
+    "hall"
+  ],
+  "weight": 2,
+  "module": "bay_shop_ground"
+}

@@ -1,0 +1,19 @@
+{
+  "id": "core_turned_top",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "part",
+  "set": "lordaeron/timber_relief",
+  "palette": "stone",
+  "size": [
+    3,
+    5,
+    3
+  ],
+  "layer": "plan",
+  "tile": "stair3x3",
+  "part": "top",
+  "stacks": true,
+  "module": "core_turned_top"
+}

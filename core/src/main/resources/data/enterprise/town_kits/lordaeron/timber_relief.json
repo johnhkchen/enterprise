@@ -1,0 +1,886 @@
+{
+  "set": "lordaeron/timber_relief",
+  "rev": 1,
+  "about": "The Lordaeron timber-frame module set with relief, for a WFC assembler. Two layers solved in order: the plan (rooms, cores, fit-out) then the shell (posts, bays, corners) chosen by the room behind; then the roof and the stack. The golden houses beside it are composed from exactly these modules by the layouts in their JSON (golden.layouts); scripts/assets/lordaeron-ref/compose.mjs is the reference composer.",
+  "grid": {
+    "post": 1,
+    "bay": 2,
+    "storey": 5,
+    "relief": 1,
+    "pitch": 2,
+    "body": "3n + 1 wide and deep (7, 10, 13); the template adds the relief: +2, or +1 per party wall"
+  },
+  "palettes": "assets-src/kingdoms/lordaeron/palettes.json (modules are in the base palette; apply a palette by role)",
+  "placement": {
+    "shell": "Modules are authored for the FRONT face: local x left to right as seen from outside, y 0 = the storey's sill/floor layer, z 0 = the wall on the body line, z 1 = the relief outside it. Positions i along a face count from its outside-left corner. Turns (quarter turns clockwise, seen from above) and the module's min corner, for a module w wide at position i, body W x D with its north-west corner at body (0, 0): front q0 at (i, D-1); back q2 at (W-i-w, -1); east q3 at (W-1, D-i-w); west q1 at (-1, i). One-layer party modules sit on the wall line (west at x 0). Corners (2 x 2) at front:0 q0 (-1, D-1), front:W-1 q3 (W-1, D-1), back:0 q2 (W-1, -1), back:W-1 q1 (-1, -1); corner_party (1 x 2) at front:i q0 (i, D-1), back:i q2 (W-1-i, -1). Corners belong to the front and back faces; sides run i = 1..D-2.",
+    "storeys": "storey s has its layer 0 at y = 2 + 5s (layers 0-1 are the foundation, every cell of body and relief); the roof starts at 2 + 5 * storeys",
+    "plan": "Cores and fit-outs at body (x, z) of their min corner, y = the storey's layer 0 + dy. Cores replace the floor and room air under them (their holes win).",
+    "roof": "gable_x: slices along x from -1 to W, span D+2, at body z -1: verge outside the body, gable on the end walls (bay on a party wall), bay between. gable_z: slices along z from -1 to D, span W+2 (W+1 with one party wall), turned q1, at template x 0.",
+    "stack": "chimney_stack (wall + relief) on the chimney post's line, from the roof base to one above the ridge; chimney_stack_party on a party wall."
+  },
+  "sockets": {
+    "note": "Faces meet when labels match or a pair allows it. Shell modules alternate post | bay along a face, corners at the ends.",
+    "post": {
+      "left": "bay",
+      "right": "bay",
+      "down": "floor_line|foundation",
+      "up": "floor_line|eave"
+    },
+    "bay": {
+      "left": "post|corner",
+      "right": "post|corner",
+      "down": "floor_line|foundation",
+      "up": "floor_line|eave"
+    },
+    "corner": {
+      "along_front": "bay",
+      "along_side": "bay",
+      "down": "floor_line|foundation",
+      "up": "floor_line|eave"
+    }
+  },
+  "pairs": [
+    [
+      "floor_line",
+      "floor_line"
+    ],
+    [
+      "eave",
+      "roof"
+    ]
+  ],
+  "limits": [
+    {
+      "module": "bay_door_ground",
+      "per": "front",
+      "exactly": 1
+    },
+    {
+      "module": "chimney_*",
+      "per": "house",
+      "at_most": 1,
+      "note": "on the west side's middle post (or the party wall); the hearth behind it"
+    }
+  ],
+  "stacks": [
+    [
+      "chimney_ground",
+      "chimney_upper",
+      "chimney_stack"
+    ],
+    [
+      "core_*_bottom",
+      "core_*_mid",
+      "core_*_top"
+    ]
+  ],
+  "rooms": {
+    "chamber": {
+      "beds": "1 to 3 a floor (bed fit-out, heads north)"
+    },
+    "hall": {
+      "hearth": 1
+    },
+    "work": {
+      "workstation": "by trade (a marker: block any)"
+    },
+    "stair": {
+      "core": "stair2x5 | stair3x3"
+    },
+    "store": {}
+  },
+  "behind": "bay_window(_box) over chamber or hall; bay_landing over the stair core and on ground-storey sides; bay_shop over shop/work/hall on the ground front; bay_plain over a store; chimney over the hearth",
+  "weights": "per module JSON; bay_window 4, bay_window_box 2 (street fronts, raise by tier), bay_landing 3, bay_plain 1",
+  "modules": [
+    {
+      "id": "post_ground",
+      "part": "enterprise:lordaeron/part/timber_relief/post_ground",
+      "size": [
+        1,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "ground"
+      },
+      "mirror": true,
+      "slot": "post",
+      "sockets": {
+        "left": "bay|corner",
+        "right": "bay|corner",
+        "down": "floor_line",
+        "up": "floor_line|eave"
+      },
+      "weight": 1
+    },
+    {
+      "id": "bay_plain_ground",
+      "part": "enterprise:lordaeron/part/timber_relief/bay_plain_ground",
+      "size": [
+        2,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "ground"
+      },
+      "mirror": true,
+      "slot": "bay",
+      "behind": [
+        "store",
+        "hall",
+        "chamber"
+      ],
+      "weight": 1
+    },
+    {
+      "id": "bay_window_ground",
+      "part": "enterprise:lordaeron/part/timber_relief/bay_window_ground",
+      "size": [
+        2,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "ground"
+      },
+      "mirror": true,
+      "slot": "bay",
+      "behind": [
+        "chamber",
+        "hall"
+      ],
+      "weight": 4
+    },
+    {
+      "id": "bay_window_box_ground",
+      "part": "enterprise:lordaeron/part/timber_relief/bay_window_box_ground",
+      "size": [
+        2,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "ground",
+        "face": [
+          "front"
+        ]
+      },
+      "mirror": true,
+      "slot": "bay",
+      "behind": [
+        "chamber",
+        "hall"
+      ],
+      "weight": 2
+    },
+    {
+      "id": "bay_landing_ground",
+      "part": "enterprise:lordaeron/part/timber_relief/bay_landing_ground",
+      "size": [
+        2,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "ground"
+      },
+      "mirror": true,
+      "slot": "bay",
+      "behind": [
+        "stair"
+      ],
+      "weight": 3
+    },
+    {
+      "id": "corner_ground",
+      "part": "enterprise:lordaeron/part/timber_relief/corner_ground",
+      "size": [
+        2,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "ground"
+      },
+      "mirror": true,
+      "slot": "corner",
+      "weight": 1
+    },
+    {
+      "id": "corner_party_ground",
+      "part": "enterprise:lordaeron/part/timber_relief/corner_party_ground",
+      "size": [
+        1,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "ground"
+      },
+      "mirror": true,
+      "slot": "corner",
+      "relief": "party",
+      "weight": 1
+    },
+    {
+      "id": "post_party_ground",
+      "part": "enterprise:lordaeron/part/timber_relief/post_party_ground",
+      "size": [
+        1,
+        5,
+        1
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "ground"
+      },
+      "mirror": true,
+      "slot": "post",
+      "relief": "party",
+      "weight": 1
+    },
+    {
+      "id": "bay_party_ground",
+      "part": "enterprise:lordaeron/part/timber_relief/bay_party_ground",
+      "size": [
+        2,
+        5,
+        1
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "ground"
+      },
+      "mirror": true,
+      "slot": "bay",
+      "relief": "party",
+      "weight": 1
+    },
+    {
+      "id": "chimney_ground",
+      "part": "enterprise:lordaeron/part/timber_relief/chimney_ground",
+      "size": [
+        1,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "ground",
+        "face": [
+          "side"
+        ]
+      },
+      "mirror": true,
+      "slot": "post",
+      "behind": [
+        "hearth"
+      ],
+      "weight": 1
+    },
+    {
+      "id": "chimney_party_ground",
+      "part": "enterprise:lordaeron/part/timber_relief/chimney_party_ground",
+      "size": [
+        1,
+        5,
+        1
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "ground"
+      },
+      "mirror": true,
+      "slot": "post",
+      "relief": "party",
+      "behind": [
+        "hearth"
+      ],
+      "weight": 1
+    },
+    {
+      "id": "post_upper",
+      "part": "enterprise:lordaeron/part/timber_relief/post_upper",
+      "size": [
+        1,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "upper"
+      },
+      "mirror": true,
+      "slot": "post",
+      "sockets": {
+        "left": "bay|corner",
+        "right": "bay|corner",
+        "down": "floor_line",
+        "up": "floor_line|eave"
+      },
+      "weight": 1
+    },
+    {
+      "id": "bay_plain_upper",
+      "part": "enterprise:lordaeron/part/timber_relief/bay_plain_upper",
+      "size": [
+        2,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "upper"
+      },
+      "mirror": true,
+      "slot": "bay",
+      "behind": [
+        "store",
+        "hall",
+        "chamber"
+      ],
+      "weight": 1
+    },
+    {
+      "id": "bay_window_upper",
+      "part": "enterprise:lordaeron/part/timber_relief/bay_window_upper",
+      "size": [
+        2,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "upper"
+      },
+      "mirror": true,
+      "slot": "bay",
+      "behind": [
+        "chamber",
+        "hall"
+      ],
+      "weight": 4
+    },
+    {
+      "id": "bay_window_box_upper",
+      "part": "enterprise:lordaeron/part/timber_relief/bay_window_box_upper",
+      "size": [
+        2,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "upper",
+        "face": [
+          "front"
+        ]
+      },
+      "mirror": true,
+      "slot": "bay",
+      "behind": [
+        "chamber",
+        "hall"
+      ],
+      "weight": 2
+    },
+    {
+      "id": "bay_landing_upper",
+      "part": "enterprise:lordaeron/part/timber_relief/bay_landing_upper",
+      "size": [
+        2,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "upper"
+      },
+      "mirror": true,
+      "slot": "bay",
+      "behind": [
+        "stair"
+      ],
+      "weight": 3
+    },
+    {
+      "id": "corner_upper",
+      "part": "enterprise:lordaeron/part/timber_relief/corner_upper",
+      "size": [
+        2,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "upper"
+      },
+      "mirror": true,
+      "slot": "corner",
+      "weight": 1
+    },
+    {
+      "id": "corner_party_upper",
+      "part": "enterprise:lordaeron/part/timber_relief/corner_party_upper",
+      "size": [
+        1,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "upper"
+      },
+      "mirror": true,
+      "slot": "corner",
+      "relief": "party",
+      "weight": 1
+    },
+    {
+      "id": "post_party_upper",
+      "part": "enterprise:lordaeron/part/timber_relief/post_party_upper",
+      "size": [
+        1,
+        5,
+        1
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "upper"
+      },
+      "mirror": true,
+      "slot": "post",
+      "relief": "party",
+      "weight": 1
+    },
+    {
+      "id": "bay_party_upper",
+      "part": "enterprise:lordaeron/part/timber_relief/bay_party_upper",
+      "size": [
+        2,
+        5,
+        1
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "upper"
+      },
+      "mirror": true,
+      "slot": "bay",
+      "relief": "party",
+      "weight": 1
+    },
+    {
+      "id": "chimney_upper",
+      "part": "enterprise:lordaeron/part/timber_relief/chimney_upper",
+      "size": [
+        1,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "upper",
+        "face": [
+          "side"
+        ]
+      },
+      "mirror": true,
+      "slot": "post",
+      "behind": [
+        "hearth"
+      ],
+      "weight": 1
+    },
+    {
+      "id": "chimney_party_upper",
+      "part": "enterprise:lordaeron/part/timber_relief/chimney_party_upper",
+      "size": [
+        1,
+        5,
+        1
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "upper"
+      },
+      "mirror": true,
+      "slot": "post",
+      "relief": "party",
+      "behind": [
+        "hearth"
+      ],
+      "weight": 1
+    },
+    {
+      "id": "bay_door_ground",
+      "part": "enterprise:lordaeron/part/timber_relief/bay_door_ground",
+      "size": [
+        2,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "ground",
+        "face": [
+          "front"
+        ]
+      },
+      "mirror": true,
+      "slot": "bay",
+      "limit": "exactly 1 per front",
+      "weight": 1
+    },
+    {
+      "id": "bay_shop_ground",
+      "part": "enterprise:lordaeron/part/timber_relief/bay_shop_ground",
+      "size": [
+        2,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "ground",
+        "face": [
+          "front"
+        ]
+      },
+      "mirror": true,
+      "slot": "bay",
+      "behind": [
+        "shop",
+        "work",
+        "hall"
+      ],
+      "weight": 2
+    },
+    {
+      "id": "roof_bay_9",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_bay_9",
+      "size": [
+        1,
+        9,
+        9
+      ],
+      "layer": "roof",
+      "span": 9,
+      "pitch": 2,
+      "kind": "bay",
+      "mirror": true
+    },
+    {
+      "id": "roof_gable_9",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_gable_9",
+      "size": [
+        1,
+        9,
+        9
+      ],
+      "layer": "roof",
+      "span": 9,
+      "pitch": 2,
+      "kind": "gable",
+      "mirror": true
+    },
+    {
+      "id": "roof_verge_9",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_verge_9",
+      "size": [
+        1,
+        9,
+        9
+      ],
+      "layer": "roof",
+      "span": 9,
+      "pitch": 2,
+      "kind": "verge",
+      "mirror": true
+    },
+    {
+      "id": "roof_bay_12",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_bay_12",
+      "size": [
+        1,
+        11,
+        12
+      ],
+      "layer": "roof",
+      "span": 12,
+      "pitch": 2,
+      "kind": "bay",
+      "mirror": true
+    },
+    {
+      "id": "roof_gable_12",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_gable_12",
+      "size": [
+        1,
+        11,
+        12
+      ],
+      "layer": "roof",
+      "span": 12,
+      "pitch": 2,
+      "kind": "gable",
+      "mirror": true
+    },
+    {
+      "id": "roof_verge_12",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_verge_12",
+      "size": [
+        1,
+        11,
+        12
+      ],
+      "layer": "roof",
+      "span": 12,
+      "pitch": 2,
+      "kind": "verge",
+      "mirror": true
+    },
+    {
+      "id": "roof_bay_15",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_bay_15",
+      "size": [
+        1,
+        15,
+        15
+      ],
+      "layer": "roof",
+      "span": 15,
+      "pitch": 2,
+      "kind": "bay",
+      "mirror": true
+    },
+    {
+      "id": "roof_gable_15",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_gable_15",
+      "size": [
+        1,
+        15,
+        15
+      ],
+      "layer": "roof",
+      "span": 15,
+      "pitch": 2,
+      "kind": "gable",
+      "mirror": true
+    },
+    {
+      "id": "roof_verge_15",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_verge_15",
+      "size": [
+        1,
+        15,
+        15
+      ],
+      "layer": "roof",
+      "span": 15,
+      "pitch": 2,
+      "kind": "verge",
+      "mirror": true
+    },
+    {
+      "id": "core_straight_bottom",
+      "part": "bottom",
+      "size": [
+        2,
+        5,
+        5
+      ],
+      "layer": "plan",
+      "tile": "stair2x5",
+      "stacks": true
+    },
+    {
+      "id": "core_straight_mid",
+      "part": "mid",
+      "size": [
+        2,
+        5,
+        5
+      ],
+      "layer": "plan",
+      "tile": "stair2x5",
+      "stacks": true
+    },
+    {
+      "id": "core_straight_top",
+      "part": "top",
+      "size": [
+        2,
+        5,
+        5
+      ],
+      "layer": "plan",
+      "tile": "stair2x5",
+      "stacks": true
+    },
+    {
+      "id": "core_turned_bottom",
+      "part": "bottom",
+      "size": [
+        3,
+        5,
+        3
+      ],
+      "layer": "plan",
+      "tile": "stair3x3",
+      "stacks": true
+    },
+    {
+      "id": "core_turned_mid",
+      "part": "mid",
+      "size": [
+        3,
+        5,
+        3
+      ],
+      "layer": "plan",
+      "tile": "stair3x3",
+      "stacks": true
+    },
+    {
+      "id": "core_turned_top",
+      "part": "top",
+      "size": [
+        3,
+        5,
+        3
+      ],
+      "layer": "plan",
+      "tile": "stair3x3",
+      "stacks": true
+    },
+    {
+      "id": "floor",
+      "part": "enterprise:lordaeron/part/timber_relief/floor",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "foundation",
+      "part": "enterprise:lordaeron/part/timber_relief/foundation",
+      "size": [
+        1,
+        2,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "room_air",
+      "part": "enterprise:lordaeron/part/timber_relief/room_air",
+      "size": [
+        1,
+        4,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "bed",
+      "part": "enterprise:lordaeron/part/timber_relief/bed",
+      "size": [
+        1,
+        1,
+        2
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "hearth",
+      "part": "enterprise:lordaeron/part/timber_relief/hearth",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "chest",
+      "part": "enterprise:lordaeron/part/timber_relief/chest",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "shelf",
+      "part": "enterprise:lordaeron/part/timber_relief/shelf",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "table",
+      "part": "enterprise:lordaeron/part/timber_relief/table",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "lantern",
+      "part": "enterprise:lordaeron/part/timber_relief/lantern",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "workstation",
+      "part": "enterprise:lordaeron/part/timber_relief/workstation",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "chimney_stack",
+      "part": "enterprise:lordaeron/part/timber_relief/chimney_stack",
+      "size": [
+        1,
+        1,
+        2
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "chimney_stack_party",
+      "part": "enterprise:lordaeron/part/timber_relief/chimney_stack_party",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    }
+  ]
+}
