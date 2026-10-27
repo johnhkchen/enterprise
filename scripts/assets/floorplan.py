@@ -211,11 +211,11 @@ def analyse(file):
             use = ("chamber" if any(n.endswith("_bed") for n in contents) else
                    "work" if any(job(n) for n in contents) else
                    "stair" if all(half(p) for p in room) else
-                   "landing" if not any(abs(e[0] - p[0]) + abs(e[2] - p[2]) == 1 for e in entrances
-                                                         for p in room) and any(
+                   "landing" if not any(abs(e[0] - p[0]) + abs(e[2] - p[2]) == 1 and e[1] == p[1] for e in entrances
+                                        for p in room) and any(
                        step((p[0] + dx, p[1] + dy, p[2] + dz)) or "stairs" in name(blocks, (p[0] + dx, p[1], p[2] + dz))
                        for p in room for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)) for dy in (0, 1, -1)) else
-                   "hall" if any(abs(e[0] - p[0]) + abs(e[2] - p[2]) == 1 for e in entrances for p in room) else
+                   "hall" if any(abs(e[0] - p[0]) + abs(e[2] - p[2]) == 1 and e[1] == p[1] for e in entrances for p in room) else
                    "store" if any("chest" in n or "barrel" in n for n in contents) else
                    "passage" if len(room) <= 4 or min(max(xs) - min(xs), max(zs) - min(zs)) == 0 else "room")
             windows = sum(1 for p in room for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1))
