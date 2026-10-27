@@ -835,6 +835,13 @@ help breed more as needed."
   villagers. Live, 90 days: Dustfell +2.4, 19 villagers; moods' sum +10.2 (+9.0), 12 comforts met (9.9). Redfell sank
   in this world (9 villagers, none met) as on the core before: it began with no keeper and drew only Farmers. Its
   leather, where it has some, goes to books before boots (the workshop's ranking).
+- **Tried and reverted: training a maker for a comfort with none** (9bd75b4). Redfell drew three hands in 90 days,
+  none a comfort's maker: its comfort marbles, a share of savings it hadn't got, came to 0.6 against its Farmers' 70.
+  The rule trained, after a Farmer, the trade that could start the least-met comfort at once (a herd's keeper, or one
+  whose inputs it held). On two runs' journals the five moods' sum rose +3.2 and +0.5 (Redfell -0.3 to +1.3); live, on
+  a third world, it fell to +1.4 against +4.7 for the core before on that journal, with 11 trips to 40: the makers
+  took the hands caravans and Farmers would have. Mixed, so not kept. Seen in both: Wheatfell held four
+  Leatherworkers among seven villagers.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 
