@@ -378,7 +378,8 @@ public final class PeopleAdapter {
                         level.getPoiManager().release(old.pos());
                         level.setBlock(old.pos(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
                     });
-            BlockPos workstation = Jobs.buildStall(level, site.get(), trade.get());
+            BlockPos workstation = Jobs.buildStall(level, site.get(), trade.get(),
+                    dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(o.town()), o.town(), bell);
             takeStall(level, v, workstation, profession);
             Enterprise.LOGGER.info("Town {} puts up a {} stall at {}", o.town(), o.trade(), workstation.toShortString());
             return true;

@@ -203,7 +203,11 @@ public final class JobsTests {
     public static void theCoresStallGivesItsVillagerTheTrade(GameTestHelper helper) {
         Villager idle = helper.spawn(EntityType.VILLAGER, new BlockPos(5, 2, 1));
         var trade = Jobs.TRADES.stream().filter(t -> t.profession() == VillagerProfession.MASON).findFirst().orElseThrow();
-        BlockPos workstation = Jobs.buildStall(helper.getLevel(), helper.absolutePos(new BlockPos(0, 1, 0)), trade);
+        // Lordaeron's Mason stall (the studio's kit: awning, dressed stone, the stonecutter and its locker declared).
+        BlockPos workstation = Jobs.buildStall(helper.getLevel(), helper.absolutePos(new BlockPos(0, 1, 0)), trade, "lordaeron",
+                7, helper.absolutePos(new BlockPos(5, 2, 5)));
+        helper.assertTrue(helper.getLevel().getBlockState(workstation).is(Blocks.STONECUTTER), "the kit's stonecutter");
+        helper.assertFalse(Lockers.touchingContainers(helper.getLevel(), workstation).isEmpty(), "its declared locker");
         dev.b28.enterprise.binding.adapters.PeopleAdapter.takeStall(helper.getLevel(), idle, workstation, VillagerProfession.MASON);
         helper.assertTrue(idle.getVillagerData().getProfession() == VillagerProfession.MASON
                 && idle.getVillagerData().getLevel() == 1, "the idle villager is a Mason");

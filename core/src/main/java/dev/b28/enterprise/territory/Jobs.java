@@ -325,6 +325,30 @@ public final class Jobs {
         return Optional.empty();
     }
 
+    /**
+     * A town's stall for a trade in a 3 x 3 plot: its kingdom's stall kit for the trade where it has one (`Kits`, the
+     * studio's: awning, goods, the workstation and its locker declared), its front to the bell; else the plain stall.
+     * Returns the workstation.
+     */
+    public static BlockPos buildStall(ServerLevel level, BlockPos corner, Trade trade, String kingdom, long town,
+            BlockPos bell) {
+        var resources = level.getServer().getResourceManager();
+        String slot = "stall:" + trade.profession().name();
+        var kit = Kits.choose(resources, kingdom, slot, STALL_SIZE, STALL_SIZE, town, corner);
+        if (kit.isPresent()) {
+            double dx = bell.getX() - (corner.getX() + 1.5), dz = bell.getZ() - (corner.getZ() + 1.5);
+            net.minecraft.core.Direction front = Math.abs(dx) > Math.abs(dz)
+                    ? (dx > 0 ? net.minecraft.core.Direction.EAST : net.minecraft.core.Direction.WEST)
+                    : (dz > 0 ? net.minecraft.core.Direction.SOUTH : net.minecraft.core.Direction.NORTH);
+            var placed = Kits.place(level, kit.get(), corner, front);
+            if (placed.isPresent() && !placed.get().workstations().isEmpty()
+                    && level.getBlockState(placed.get().workstations().get(0)).is(trade.workstation())) {
+                return placed.get().workstations().get(0);
+            }
+        }
+        return buildStall(level, corner, trade);
+    }
+
     /** A stall in a 3 x 3 plot: the workstation in the middle, a chest against its east side. Returns the workstation. */
     public static BlockPos buildStall(ServerLevel level, BlockPos corner, Trade trade) {
         BlockPos workstation = corner.offset(1, 1, 1);
