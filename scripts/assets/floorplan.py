@@ -345,7 +345,11 @@ def analyse(file):
         "file": Path(file).name, "size": [sx, sy, sz], "storeys": len(storeys), "floor": floor_total,
         "rooms": sum(len(s["rooms"]) for s in storeys), "beds": len(beds), "made_beds": made,
         "unreached": [f"{n} at {list(p)}" for n, p in unreached],
-        "circulation_share": round(sum(s["circulation"] for s in storeys) / floor_total, 2),
+        # Circulation over the storeys of two rooms or more: a one-room storey's routes are its use, not corridors
+        # (thread 0008); none such, no share to judge.
+        "circulation_share": (round(sum(s["circulation"] for s in storeys if len(s["rooms"]) > 1)
+                                    / sum(s["floor"] for s in storeys if len(s["rooms"]) > 1), 2)
+                              if any(len(s["rooms"]) > 1 for s in storeys) else None),
         "idle_share": round(sum(s["idle_share"] * s["floor"] for s in storeys) / floor_total, 2),
         # The walk to a bed for the size of a storey (thread 0008: over the whole floor, a small two-storey house paid
         # for its stair with too little floor to divide by).
@@ -558,9 +562,6 @@ def failures(r, t):
     if narrowest and r["storeys"] > 1 and r["size"][0] - 2 < narrowest:
         out.append(f"a {r['size'][0] - 2}-wide body of {r['storeys']} storeys: under {narrowest} wide is one storey")
     for k in ("circulation_share", "idle_share", "walk", "floor_per_bed"):
-        # A one-room house under 20 floor has no corridors to judge: its routes are the room (thread 0004).
-        if k == "circulation_share" and r["rooms"] == 1 and r["floor"] < 20:
-            continue
         lo, hi = t[k]
         if k == "circulation_share" and str(r["storeys"]) in t.get("circulation_by_storeys", {}):
             lo, hi = t["circulation_by_storeys"][str(r["storeys"])]

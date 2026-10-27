@@ -34,7 +34,8 @@ number. The studio and we both run it, and a disagreement about a house is a dis
 - **Route:** the shortest walk from the street door to where a villager goes: a bed (from beside its head or its foot),
   a workstation, a chest, the hearth. Shelves, casks and decor are used floor (not idle) but no destination. Routes go
   level, and up or down a block only onto or off a stair or slab.
-- **Circulation:** the floor on any route.
+- **Circulation:** the floor on any route, judged over the storeys of two rooms or more (a one-room storey's routes
+  are its use, not corridors).
 - **Idle floor:** floor neither on a route nor beside anything used. It's space that does nothing: no bed, chest,
   table or hearth beside it, and nobody walks over it.
 - **Made bed:** a bed with free floor along a long side, so it can be got into and made. Two beds pushed together
