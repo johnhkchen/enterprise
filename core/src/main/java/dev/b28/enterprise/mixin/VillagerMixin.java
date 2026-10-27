@@ -42,9 +42,19 @@ abstract class VillagerMixin {
         LockerTrading.afterRestock(villager);
     }
 
+    /** Set while a villager's own brain ticks: the game's hiring (`AssignProfessionFromJobSite`) runs only there. */
+    @Unique
+    private static final ThreadLocal<Boolean> enterprise$ownTick = ThreadLocal.withInitial(() -> false);
+
+    @Inject(method = "customServerAiStep", at = @At("HEAD"))
+    private void enterprise$ownTickStarts(CallbackInfo ci) {
+        enterprise$ownTick.set(true);
+    }
+
     /** In core mode a town's hand takes a trade only by the core ({@code PeopleAdapter.keepToTheCore}). */
     @Inject(method = "customServerAiStep", at = @At("TAIL"))
     private void enterprise$keepToTheCore(CallbackInfo ci) {
+        enterprise$ownTick.set(false);
         Villager villager = (Villager) (Object) this;
         if (javaLockers() || !(villager.level() instanceof net.minecraft.server.level.ServerLevel level)
                 || villager.getBrain().getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.POTENTIAL_JOB_SITE).isEmpty()) {
@@ -53,6 +63,27 @@ abstract class VillagerMixin {
         var host = dev.b28.enterprise.binding.CoreHost.of(level.getServer());
         if (host != null) {
             dev.b28.enterprise.binding.adapters.PeopleAdapter.keepToTheCore(level, villager, host.hands());
+        }
+    }
+
+    /**
+     * The game hiring a town's unemployed hand in its own brain tick (it spotted a free workstation and stood by it in
+     * one tick): refused in core mode, and the job site it took let go. The binding's hirings never run there.
+     */
+    @Inject(method = "setVillagerData", at = @At("HEAD"), cancellable = true)
+    private void enterprise$refuseTheGamesHiring(net.minecraft.world.entity.npc.VillagerData data, CallbackInfo ci) {
+        Villager villager = (Villager) (Object) this;
+        if (!enterprise$ownTick.get() || javaLockers()
+                || villager.getVillagerData().getProfession() != net.minecraft.world.entity.npc.VillagerProfession.NONE
+                || data.getProfession() == net.minecraft.world.entity.npc.VillagerProfession.NONE
+                || data.getProfession() == net.minecraft.world.entity.npc.VillagerProfession.NITWIT
+                || !dev.b28.enterprise.binding.adapters.PeopleAdapter.isHand(villager)) {
+            return;
+        }
+        ci.cancel();
+        if (villager.level() instanceof net.minecraft.server.level.ServerLevel level) {
+            dev.b28.enterprise.binding.adapters.PeopleAdapter.keepToTheCore(level, villager,
+                    dev.b28.enterprise.binding.CoreHost.of(level.getServer()).hands());
         }
     }
 

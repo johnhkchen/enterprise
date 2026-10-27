@@ -489,6 +489,12 @@ public final class CoreBindingTests {
                 helper.assertTrue(PeopleAdapter.keepToTheCore(level, idle, host.hands()), "the hand kept the cauldron");
                 helper.assertTrue(idle.getBrain().getMemory(MemoryModuleType.POTENTIAL_JOB_SITE).isEmpty()
                         && level.getPoiManager().getFreeTickets(cauldron) == 1, "the cauldron isn't free again");
+                // Hired by the game in the tick it spotted one: the job site it took is let go too.
+                level.getPoiManager().take(type -> true, (type, at) -> at.equals(cauldron), cauldron, 1);
+                idle.getBrain().setMemory(MemoryModuleType.JOB_SITE, spot);
+                helper.assertTrue(PeopleAdapter.keepToTheCore(level, idle, host.hands())
+                        && idle.getBrain().getMemory(MemoryModuleType.JOB_SITE).isEmpty()
+                        && level.getPoiManager().getFreeTickets(cauldron) == 1, "the job site the game gave it is kept");
                 stranger.getBrain().setMemory(MemoryModuleType.POTENTIAL_JOB_SITE, spot);
                 helper.assertFalse(PeopleAdapter.keepToTheCore(level, stranger, host.hands()), "no town's hand: the game's way");
                 stranger.discard();

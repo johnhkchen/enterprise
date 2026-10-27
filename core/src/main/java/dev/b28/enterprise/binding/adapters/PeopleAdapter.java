@@ -414,22 +414,32 @@ public final class PeopleAdapter {
      * A hand takes a trade only by the core (John: "core decides"): an unemployed villager that is a town's hand lets go
      * of a free workstation it has spotted (the game's job-site claiming), so the census reports it unemployed, as the
      * core has it, and the job draw, a glut or a contract gives it its trade, at its stall. Wheatfell's village cauldrons
-     * made Leatherworkers of its idle hands with no stall or draw. A villager of no town keeps the game's way.
-     * True if it let one go.
+     * made Leatherworkers of its idle hands with no stall or draw. A villager of no town keeps the game's way. Where
+     * the game hires it in the same brain tick it spots one (standing by it), {@code VillagerMixin} refuses the trade
+     * and this lets go of the job site it took too. True if it let one go.
      */
     public static boolean keepToTheCore(ServerLevel level, Villager v, HandsAdapter hands) {
-        if (v.getVillagerData().getProfession() != VillagerProfession.NONE || v.isBaby()) {
+        if (v.getVillagerData().getProfession() != VillagerProfession.NONE || hands == null || hands.of(v.getUUID()) == null) {
             return false;
         }
-        var spotted = v.getBrain().getMemory(MemoryModuleType.POTENTIAL_JOB_SITE);
-        if (spotted.isEmpty() || hands == null || hands.of(v.getUUID()) == null) {
-            return false;
+        boolean let = false;
+        for (var memory : List.of(MemoryModuleType.POTENTIAL_JOB_SITE, MemoryModuleType.JOB_SITE)) {
+            var site = v.getBrain().getMemory(memory);
+            if (site.isPresent()) {
+                if (site.get().dimension().equals(level.dimension())) {
+                    level.getPoiManager().release(site.get().pos());
+                }
+                v.getBrain().eraseMemory(memory);
+                let = true;
+            }
         }
-        if (spotted.get().dimension().equals(level.dimension())) {
-            level.getPoiManager().release(spotted.get().pos());
-        }
-        v.getBrain().eraseMemory(MemoryModuleType.POTENTIAL_JOB_SITE);
-        return true;
+        return let;
+    }
+
+    /** Is the villager a town's hand, for the game's own hiring to be refused it ({@code VillagerMixin}, core mode)? */
+    public static boolean isHand(Villager v) {
+        var host = v.level() instanceof ServerLevel level ? dev.b28.enterprise.binding.CoreHost.of(level.getServer()) : null;
+        return host != null && host.hands().of(v.getUUID()) != null;
     }
 
     /** A hand came to the town: a villager for it (and any other with none) by its bell, if the town is loaded. */
