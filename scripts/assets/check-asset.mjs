@@ -8,7 +8,8 @@
 // Checks: DataVersion 3955; vanilla blocks or the mod's decorative twins (enterprise:decor_<vanilla id>); size = the JSON's footprint; no blocks from after 1.21.1 or forbidden ones; every bed,
 // bell, job site and other point of interest declared, and nothing declared that isn't there; beds whole; chests and
 // barrels touching a job site only as declared lockers; entities only frames, paintings and armour stands, listed;
-// block light 8+ on every walkable cell; a villager's walk from the door to every bed and workstation; from a mass,
+// block light 8+ on every walkable cell; a villager's walk from the door to every bed and workstation, up stairs and slab steps
+// between floors (never ladders, trapdoors or full-block steps); from a mass,
 // every fixed block at its cell and state. Light and walking are close approximations of the game's rules, so a pass
 // here is a strong sign, and the game test on their side is the final word.
 //
@@ -176,7 +177,15 @@ export function check(nbtFile, meta, mass) {
   if (dark.length) errs.push(`${dark.length} walkable cell${dark.length > 1 ? "s" : ""} under light 8, e.g. ${dark.slice(0, 5).map((p) => `(${p})`).join(" ")}`);
   if (roofs.length) warns.push(`${roofs.length} open-sky cell${roofs.length > 1 ? "s" : ""} above the ground (roofs, ledges) a mob could spawn on at night, e.g. ${roofs.slice(0, 3).map((p) => `(${p})`).join(" ")}`);
 
-  // reach: from each entrance (or the south edge), a villager's walk (1-block steps up, any drop of 3 or less)
+  // reach: from each entrance, a villager's walk between floors: up only by half steps (onto a stair, or onto a bottom
+  // slab, or off a bottom slab), down any drop of 3 or less; ladders, trapdoors and full-block steps break the route
+  const halfStep = (x, y, z, p) => {
+    const to = at(p[0], p[1] - 1, p[2]), from = at(x, y - 1, z);
+    const tn = shape(to?.name) || "", fn = shape(from?.name) || "";
+    if (/_stairs$/.test(tn)) return true;
+    if (/_slab$/.test(tn) && to.props.type === "bottom") return true;
+    return /_slab$/.test(fn) && from.props.type === "bottom";
+  };
   if (meta) {
     const starts = (meta.entrances || []).map((e) => e.at);
     if (!starts.length) warns.push("no entrances declared");
@@ -187,7 +196,8 @@ export function check(nbtFile, meta, mass) {
       for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) for (const dy of [0, 1, -1, -2, -3]) {
         const p = [x + dx, y + dy, z + dz];
         if (p[0] < 0 || p[2] < 0 || p[0] >= W || p[2] >= D || p[1] < 0 || p[1] >= H) continue;
-        if (dy === 1 && !open(x, y + 2, z) && name(x, y + 2, z) !== undefined) continue;   // headroom to jump
+        if (dy === 1 && !open(x, y + 2, z) && name(x, y + 2, z) !== undefined) continue;   // headroom to step up
+        if (dy === 1 && !halfStep(x, y, z, p)) continue;                                    // a full block is a jump: no
         if (!walk(...p) && !/_door$/.test(name(...p) || "")) continue;
         const k = key(...p);
         if (!seen.has(k)) { seen.add(k); q.push(p); }
