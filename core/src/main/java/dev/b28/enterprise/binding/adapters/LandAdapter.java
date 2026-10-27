@@ -634,6 +634,9 @@ public final class LandAdapter {
     private final Map<Long, dev.b28.enterprise.territory.Kits.Meta> homeKits = new HashMap<>();
     private final Map<Long, Integer> homesLaid = new HashMap<>();
     private final Map<Long, dev.b28.enterprise.territory.Plots.Site> homePlots = new HashMap<>();
+    /** A hall's kit and plot, found with its site and laid with it. */
+    private record HallPlot(dev.b28.enterprise.territory.Kits.Meta kit, dev.b28.enterprise.territory.Plots.Site site) {}
+    private final Map<List<Long>, HallPlot> hallPlots = new HashMap<>();
 
     /**
      * The home kit a town builds next: one of its kingdom's that fronts a street within a ward's depth, the next of them
@@ -667,8 +670,19 @@ public final class LandAdapter {
     /** Where a hall or a field goes (empty for a bridge or the wall, which go where they must): the mod's sites. */
     private Optional<BlockPos> site(ServerLevel level, long town, BlockPos bell, Work work) {
         return switch (work) {
-            case Work.Hall h -> Buildings.kind(h.kind()).flatMap(kind -> kind == Buildings.STONE_DOCKS
-                    ? Docks.findShore(level, bell).map(Docks.Pier::start) : Buildings.site(level, bell, kind, Optional.empty()));
+            case Work.Hall h -> {
+                // The kingdom's kit for the hall on a plot fronting a street, as a home's (`Plots`); else today's.
+                var kit = dev.b28.enterprise.territory.Kits.choose(level.getServer().getResourceManager(),
+                        dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town), "hall:" + h.kind(), 31, 13, town,
+                        bell).flatMap(id -> dev.b28.enterprise.territory.Kits.meta(level.getServer().getResourceManager(), id));
+                var plot = kit.flatMap(m -> dev.b28.enterprise.territory.Plots.site(level, bell, m));
+                if (plot.isPresent()) {
+                    hallPlots.put(List.of(town, (long) h.kind().hashCode()), new HallPlot(kit.get(), plot.get()));
+                    yield Optional.of(plot.get().corner());
+                }
+                yield Buildings.kind(h.kind()).flatMap(kind -> kind == Buildings.STONE_DOCKS
+                        ? Docks.findShore(level, bell).map(Docks.Pier::start) : Buildings.site(level, bell, kind, Optional.empty()));
+            }
             case Work.Field f -> {
                 // On the town's field map where it has a plan (`FieldMaps`: a holding's strip along a farm track).
                 Set<Hex> held = new HashSet<>(land(town).hexes());
@@ -763,10 +777,21 @@ public final class LandAdapter {
                     yield false;
                 }
                 BlockPos corner = site.get();
-                int n = Math.max(kind.get().size(), Docks.PIER * 2 + 1);
+                var plot = Optional.ofNullable(hallPlots.remove(List.of(town, (long) h.kind().hashCode())))
+                        .filter(p -> p.site().corner().equals(corner));
+                int n = Math.max(kind.get().size(), Docks.PIER * 2 + 1)
+                        + plot.map(p -> Math.max(p.site().width(), p.site().depth())).orElse(0);
                 if (!loadedFor(level, List.of(new ChunkPos(corner.offset(-n, 0, -n)), new ChunkPos(corner),
                         new ChunkPos(corner.offset(n, 0, n))).stream().distinct().toList())) {
                     yield false;
+                }
+                if (plot.isPresent()) {
+                    var p = plot.get().site();
+                    if (dev.b28.enterprise.territory.Plots.lay(level, dev.b28.enterprise.territory.Kingdoms.get(level.getServer())
+                            .of(town), plot.get().kit(), p.corner(), p.width(), p.depth(), p.door(), town * 31 + corner.asLong())
+                            .isPresent()) {
+                        yield true;
+                    }
                 }
                 Buildings.build(level, kind.get(), corner);
                 yield true;
