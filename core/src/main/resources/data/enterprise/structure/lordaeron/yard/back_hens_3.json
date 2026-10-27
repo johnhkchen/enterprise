@@ -24,5 +24,6 @@
     "rear": "fence"
   },
   "path_ok": [],
-  "lamp": true
+  "lamp": true,
+  "max_run": 1
 }

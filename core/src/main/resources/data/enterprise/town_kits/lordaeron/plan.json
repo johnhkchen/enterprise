@@ -248,14 +248,14 @@
             ]
           },
           {
-            "module": "door_inner",
+            "module": "wall_inner",
             "at": [
               "cx-1",
               2
             ]
           },
           {
-            "module": "wall_inner",
+            "module": "door_inner",
             "at": [
               "cx-1",
               3

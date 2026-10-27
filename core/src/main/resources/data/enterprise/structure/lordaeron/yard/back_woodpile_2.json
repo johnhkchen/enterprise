@@ -23,5 +23,6 @@
     "rear": "hedge"
   },
   "path_ok": [],
-  "lamp": false
+  "lamp": false,
+  "max_run": 2
 }

@@ -41,5 +41,6 @@
       1
     ]
   ],
-  "lamp": true
+  "lamp": true,
+  "max_run": 1
 }
