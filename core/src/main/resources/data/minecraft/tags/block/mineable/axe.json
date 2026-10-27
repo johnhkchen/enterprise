@@ -1,6 +1,13 @@
 {
   "values": [
     "enterprise:merchants_desk",
-    "enterprise:crate"
+    "enterprise:crate",
+    "enterprise:decor_barrel",
+    "enterprise:decor_composter",
+    "enterprise:decor_smithing_table",
+    "enterprise:decor_fletching_table",
+    "enterprise:decor_cartography_table",
+    "enterprise:decor_lectern",
+    "enterprise:decor_loom"
   ]
 }

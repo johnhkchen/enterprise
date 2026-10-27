@@ -50,5 +50,18 @@
   "message.enterprise.charter.wanted": "This desk founds a town once you use a Town Charter on it. Any Merchant sells one for a block of diamond.",
   "message.enterprise.charter.already": "This desk is a town's already",
   "message.enterprise.charter.no_core": "No town can be founded now: the society isn't running",
-  "message.enterprise.charter.founded": "%s is founded"
+  "message.enterprise.charter.founded": "%s is founded",
+  "block.enterprise.decor_barrel": "Barrel (decoration)",
+  "block.enterprise.decor_cauldron": "Cauldron (decoration)",
+  "block.enterprise.decor_composter": "Composter (decoration)",
+  "block.enterprise.decor_brewing_stand": "Brewing Stand (decoration)",
+  "block.enterprise.decor_smithing_table": "Smithing Table (decoration)",
+  "block.enterprise.decor_fletching_table": "Fletching Table (decoration)",
+  "block.enterprise.decor_cartography_table": "Cartography Table (decoration)",
+  "block.enterprise.decor_lectern": "Lectern (decoration)",
+  "block.enterprise.decor_smoker": "Smoker (decoration)",
+  "block.enterprise.decor_blast_furnace": "Blast Furnace (decoration)",
+  "block.enterprise.decor_loom": "Loom (decoration)",
+  "block.enterprise.decor_stonecutter": "Stonecutter (decoration)",
+  "block.enterprise.decor_grindstone": "Grindstone (decoration)"
 }

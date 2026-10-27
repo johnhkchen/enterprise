@@ -18,6 +18,9 @@ public final class EnterpriseClient {
     @SubscribeEvent
     static void tintBlocks(RegisterColorHandlersEvent.Block event) {
         event.register((state, level, pos, tintIndex) -> DESK_TINT, Merchant.DESK.get());
+        // A dye vat's water, its colour (`Props.Vat`).
+        event.register((state, level, pos, tintIndex) -> state.getValue(dev.b28.enterprise.settlement.Props.Vat.CONTENTS).tint(),
+                dev.b28.enterprise.settlement.Props.CAULDRON.get());
     }
 
     @SubscribeEvent

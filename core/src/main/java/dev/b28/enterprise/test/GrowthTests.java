@@ -139,6 +139,32 @@ public final class GrowthTests {
         helper.succeed();
     }
 
+    /**
+     * The decorative twins (`Props`): a barrel, a cauldron and a lectern placed for real are job sites a villager can
+     * take; their twins stand the same and are none.
+     */
+    @GameTest(template = "floor")
+    public static void decorativeTwinsAreNoJobSites(GameTestHelper helper) {
+        var level = helper.getLevel();
+        helper.setBlock(new BlockPos(1, 2, 1), Blocks.BARREL);
+        helper.assertTrue(level.getPoiManager().getType(helper.absolutePos(new BlockPos(1, 2, 1))).isPresent(),
+                "a vanilla barrel is a job site");
+        int x = 0;
+        for (var twin : dev.b28.enterprise.settlement.Props.TWINS.entrySet()) {
+            BlockPos at = new BlockPos(x % 7, 2 + x / 7, 3 + x / 7 % 2);
+            helper.setBlock(at, twin.getValue().get());
+            helper.assertTrue(level.getPoiManager().getType(helper.absolutePos(at)).isEmpty(),
+                    "the twin of " + twin.getKey() + " is no job site");
+            x++;
+        }
+        helper.setBlock(new BlockPos(5, 2, 5), dev.b28.enterprise.settlement.Props.CAULDRON.get().defaultBlockState()
+                .setValue(dev.b28.enterprise.settlement.Props.Vat.CONTENTS, dev.b28.enterprise.settlement.Props.Contents.BLUE));
+        helper.assertTrue(helper.getBlockState(new BlockPos(5, 2, 5)).getShape(level, helper.absolutePos(new BlockPos(5, 2, 5)))
+                .equals(Blocks.CAULDRON.defaultBlockState().getShape(level, helper.absolutePos(new BlockPos(5, 2, 5)))),
+                "a dye vat stands as a cauldron");
+        helper.succeed();
+    }
+
     @GameTest(template = "floor", skyAccess = true)
     public static void fieldsAndWaterAreNoPlaceForAHome(GameTestHelper helper) {
         BlockPos corner = helper.absolutePos(new BlockPos(1, 1, 1));

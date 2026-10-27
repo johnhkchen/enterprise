@@ -1,0 +1,58 @@
+{
+  "variants": {
+    "contents=empty": {
+      "model": "minecraft:block/cauldron"
+    },
+    "contents=water": {
+      "model": "minecraft:block/water_cauldron_full"
+    },
+    "contents=white": {
+      "model": "minecraft:block/water_cauldron_full"
+    },
+    "contents=orange": {
+      "model": "minecraft:block/water_cauldron_full"
+    },
+    "contents=magenta": {
+      "model": "minecraft:block/water_cauldron_full"
+    },
+    "contents=light_blue": {
+      "model": "minecraft:block/water_cauldron_full"
+    },
+    "contents=yellow": {
+      "model": "minecraft:block/water_cauldron_full"
+    },
+    "contents=lime": {
+      "model": "minecraft:block/water_cauldron_full"
+    },
+    "contents=pink": {
+      "model": "minecraft:block/water_cauldron_full"
+    },
+    "contents=gray": {
+      "model": "minecraft:block/water_cauldron_full"
+    },
+    "contents=light_gray": {
+      "model": "minecraft:block/water_cauldron_full"
+    },
+    "contents=cyan": {
+      "model": "minecraft:block/water_cauldron_full"
+    },
+    "contents=purple": {
+      "model": "minecraft:block/water_cauldron_full"
+    },
+    "contents=blue": {
+      "model": "minecraft:block/water_cauldron_full"
+    },
+    "contents=brown": {
+      "model": "minecraft:block/water_cauldron_full"
+    },
+    "contents=green": {
+      "model": "minecraft:block/water_cauldron_full"
+    },
+    "contents=red": {
+      "model": "minecraft:block/water_cauldron_full"
+    },
+    "contents=black": {
+      "model": "minecraft:block/water_cauldron_full"
+    }
+  }
+}
