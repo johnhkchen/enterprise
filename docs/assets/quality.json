@@ -1,0 +1,50 @@
+{
+  "version": "0.2",
+  "about": "One set of thresholds both pipelines read: the studio's (check-asset, relief, interior) and the client's (floorplan --check, the solver's acceptance). Change by protocol thread; each section names the tool that reads it.",
+  "contract": {
+    "tool": "js/check-asset.mjs",
+    "data_version": 3955,
+    "light_min": 8,
+    "light_where": "every walkable cell on a full solid top (a mob could spawn): interior cells and the ground layer; open-sky roofs warn",
+    "walk": "half steps up only (stairs, bottom slabs), drops of 3 or less, 2 clear blocks over every cell"
+  },
+  "relief": {
+    "tool": "js/relief.mjs",
+    "faces": "south,north,east,west",
+    "min_relief": 0.3,
+    "min_detail": 0.2,
+    "calibration": "flat first-generation cottage: relief 0.00 on every face (fails); flat town house and terrace: fronts pass on jetty brackets and panes, sides 0.00-0.09 (fail); relief golden houses 0.42-0.89 relief, 0.32-0.82 detail on every face (pass); Notre-Dame kit 0.61-0.92 / 0.22-0.27 (pass)",
+    "party_faces": "skip faces that are party walls (pass --faces)"
+  },
+  "interior": {
+    "tool": "py/floorplan.py (the client's), js/interior.mjs",
+    "made_beds": "all",
+    "through_rooms": 0,
+    "circulation": [
+      0.15,
+      0.45
+    ],
+    "idle_max": 0.45,
+    "walk_max": 2.0,
+    "floor_per_bed": [
+      4,
+      8.5
+    ],
+    "least_width": {
+      "room": 3,
+      "passage": 2,
+      "landing": 2
+    },
+    "clear_height_min": 3,
+    "status": "v0.2 (thread 0008)",
+    "walk": "each bed's route over the storeys it crosses (a storey = sqrt of a storey's floor); max 2.0",
+    "destinations": "beds, workstations, hearth, chests; shelves, casks and decor are used floor without routes",
+    "multi_storey_min_width": 10,
+    "stair_foot_clear": 2,
+    "storeys": "a body under multi_storey_min_width wide is one storey (thread 0008); the template's width less its relief (2) is the body's"
+  },
+  "yards": {
+    "lamp_spacing_max": 5,
+    "front_height_max": 3
+  }
+}

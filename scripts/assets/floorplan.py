@@ -519,9 +519,22 @@ THRESHOLDS = {"made_beds": "all", "unreached": 0, "through_rooms": 0, "circulati
 
 
 def thresholds():
+    """The bands from the shared quality.json's "interior" section (beside this file in the shared tree, or our
+    docs/assets/quality.json), in its own words; the built-in ones where it has none."""
     for q in (Path(__file__).with_name("quality.json"), Path(__file__).resolve().parents[2] / "docs/assets/quality.json"):
         if q.exists():
-            return {**THRESHOLDS, **json.loads(q.read_text()).get("interior", {})}
+            i = json.loads(q.read_text()).get("interior", {})
+            t = dict(THRESHOLDS)
+            if "circulation" in i:
+                t["circulation_share"] = i["circulation"]
+            if "idle_max" in i:
+                t["idle_share"] = [0, i["idle_max"]]
+            if "walk_max" in i:
+                t["walk"] = [0, i["walk_max"]]
+            for k in ("floor_per_bed", "made_beds", "through_rooms", "multi_storey_min_width"):
+                if k in i:
+                    t[k] = i[k]
+            return t
     return THRESHOLDS
 
 
@@ -534,6 +547,9 @@ def failures(r, t):
         out.append(f"unreached: {r['unreached']}")
     if r["through_rooms"] > t.get("through_rooms", 0):
         out.append(f"{r['through_rooms']} routes through chambers")
+    narrowest = t.get("multi_storey_min_width")
+    if narrowest and r["storeys"] > 1 and r["size"][0] - 2 < narrowest:
+        out.append(f"a {r['size'][0] - 2}-wide body of {r['storeys']} storeys: under {narrowest} wide is one storey")
     for k in ("circulation_share", "idle_share", "walk", "floor_per_bed"):
         lo, hi = t[k]
         if r[k] is not None and not lo <= r[k] <= hi:
