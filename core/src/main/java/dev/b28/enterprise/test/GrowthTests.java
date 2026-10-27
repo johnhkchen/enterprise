@@ -165,6 +165,37 @@ public final class GrowthTests {
         helper.succeed();
     }
 
+    /**
+     * The placer (`Kits`, the asset studio's structures): a kingdom's home kit found for its slot, laid turned to face
+     * its street (east here), its two beds where its metadata says, claimable, and its door in the east wall.
+     */
+    @GameTest(template = "floor", skyAccess = true)
+    public static void aKitIsLaidTurnedToItsStreetWithItsBeds(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var resources = level.getServer().getResourceManager();
+        var kits = dev.b28.enterprise.territory.Kits.kits(resources, "test", "home", 5, 5);
+        helper.assertTrue(kits.equals(java.util.List.of("enterprise:test/home/cottage_5x5")), "the test kingdom's home: " + kits);
+        helper.assertTrue(dev.b28.enterprise.territory.Kits.kits(resources, "test", "home", 4, 5).isEmpty(),
+                "none fits a slot too small");
+        BlockPos corner = helper.absolutePos(new BlockPos(1, 3, 1));
+        var placed = dev.b28.enterprise.territory.Kits.place(level, kits.get(0), corner, net.minecraft.core.Direction.EAST);
+        helper.assertTrue(placed.isPresent(), "laid");
+        var box = placed.get().box();
+        helper.assertTrue(box.minX() == corner.getX() && box.minZ() == corner.getZ() && box.minY() == corner.getY() - 2,
+                "its corner where asked, its foundation two below the ground: " + box);
+        helper.assertTrue(placed.get().bedHeads().size() == 2, "two beds declared");
+        for (BlockPos head : placed.get().bedHeads()) {
+            helper.assertTrue(level.getBlockState(head).getBlock() instanceof BedBlock, "a bed's head at " + head);
+            helper.assertTrue(level.getPoiManager().getType(head).filter(type -> type.is(PoiTypes.HOME)).isPresent(),
+                    "villagers can claim it");
+        }
+        var door = level.getBlockState(corner.offset(4, 1, 2));
+        helper.assertTrue(door.getBlock() instanceof net.minecraft.world.level.block.DoorBlock
+                && door.getValue(net.minecraft.world.level.block.DoorBlock.FACING) == net.minecraft.core.Direction.EAST,
+                "the door in the east wall, facing east: " + door);
+        helper.succeed();
+    }
+
     @GameTest(template = "floor", skyAccess = true)
     public static void fieldsAndWaterAreNoPlaceForAHome(GameTestHelper helper) {
         BlockPos corner = helper.absolutePos(new BlockPos(1, 1, 1));

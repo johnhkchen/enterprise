@@ -24,6 +24,8 @@ public final class Enterprise {
         dev.b28.enterprise.settlement.Props.register(modBus);
         dev.b28.enterprise.trade.Wares.register(modBus);
         NeoForge.EVENT_BUS.addListener(EnterpriseCommands::register);
+        // The studio's kits' metadata read again when the data packs reload (`/reload`).
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.AddReloadListenerEvent e) -> dev.b28.enterprise.territory.Kits.forget());
         NeoForge.EVENT_BUS.addListener(LedgerCommand::register);
         NeoForge.EVENT_BUS.addListener(Dials::onServerStarted);
         NeoForge.EVENT_BUS.addListener(dev.b28.enterprise.market.RentDeeds::onRightClick);

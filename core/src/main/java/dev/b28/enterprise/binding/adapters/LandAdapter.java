@@ -726,7 +726,15 @@ public final class LandAdapter {
                         .stream().distinct().toList())) {
                     yield false;
                 }
-                Growth.buildHome(level, corner, dev.b28.enterprise.territory.TownPlans.doorOf(level, corner, Growth.HOME_SIZE));
+                // The town's kingdom's home kit for the slot where it has one (`Kits`, the asset studio's), else the
+                // cottage.
+                var door = dev.b28.enterprise.territory.TownPlans.doorOf(level, corner, Growth.HOME_SIZE);
+                var kit = dev.b28.enterprise.territory.Kits.choose(level.getServer().getResourceManager(),
+                        dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town), "home", Growth.HOME_SIZE,
+                        Growth.HOME_SIZE, town, corner);
+                if (kit.flatMap(id -> dev.b28.enterprise.territory.Kits.place(level, id, corner, door)).isEmpty()) {
+                    Growth.buildHome(level, corner, door);
+                }
                 yield true;
             }
             case Work.Field f -> {

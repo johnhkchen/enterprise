@@ -95,10 +95,10 @@ def main():
     assets = {p for p in paths if p.startswith(("scripts/assets/", "core/src/main/resources/data/enterprise/structure/"))}
     if assets or a.full:
         ok &= run("asset validator tests", ["node", "--test", "scripts/assets/check-asset.test.mjs"])
-        shipped = [p for p in (ROOT / "core/src/main/resources/data/enterprise/structure").glob("*/*/**/*.nbt")]
-        if shipped:
-            ok &= run(f"asset validator: {len(shipped)} structures", ["node", "scripts/assets/check-asset.mjs",
-                                                                     "core/src/main/resources/data/enterprise/structure"])
+        # Each kingdom's folder (`floor.nbt` beside them is the game tests' arena, not an asset).
+        for kingdom in sorted(p for p in (ROOT / "core/src/main/resources/data/enterprise/structure").iterdir() if p.is_dir()):
+            ok &= run(f"asset validator: {kingdom.name}", ["node", "scripts/assets/check-asset.mjs",
+                                                          str(kingdom.relative_to(ROOT))])
     if sim or a.full:
         if a.full:
             os.environ["SWEEP"] = "full"

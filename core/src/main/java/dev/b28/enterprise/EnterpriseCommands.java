@@ -297,6 +297,46 @@ final class EnterpriseCommands {
                                     "A cottage at " + corner.toShortString() + ", beds from " + head.toShortString()), false);
                             return 1;
                         })))
+                .then(Commands.literal("kit")
+                        // A kit of the asset studio's laid at {corner} (its footprint's north-west corner, its ground layer
+                        // at that y), its front to {facing}: for test streets (`docs/assets/README.md`). Its beds count at
+                        // the next census, as anything built by hand does.
+                        .then(Commands.argument("id", net.minecraft.commands.arguments.ResourceLocationArgument.id())
+                                .then(Commands.argument("corner", BlockPosArgument.blockPos())
+                                        .then(Commands.argument("facing", StringArgumentType.word()).executes(context -> {
+                                            var level = context.getSource().getLevel();
+                                            String id = net.minecraft.commands.arguments.ResourceLocationArgument
+                                                    .getId(context, "id").toString();
+                                            var corner = BlockPosArgument.getBlockPos(context, "corner");
+                                            var facing = net.minecraft.core.Direction.byName(
+                                                    StringArgumentType.getString(context, "facing"));
+                                            if (facing == null || facing.getAxis().isVertical()) {
+                                                return refuse(context, "facing: north, south, east or west");
+                                            }
+                                            long start = System.nanoTime();
+                                            var placed = dev.b28.enterprise.territory.Kits.place(level, id, corner, facing);
+                                            if (placed.isEmpty()) {
+                                                return refuse(context, "No kit " + id + " (or its ground isn't loaded)");
+                                            }
+                                            var box = placed.get().box();
+                                            long micros = (System.nanoTime() - start) / 1000;
+                                            context.getSource().sendSuccess(() -> Component.literal(
+                                                    "%s laid at %d %d %d to %d %d %d facing %s in %d us; beds %s".formatted(id,
+                                                            box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ(),
+                                                            facing.getName(), micros, placed.get().bedHeads().stream()
+                                                                    .map(net.minecraft.core.BlockPos::toShortString).toList())), false);
+                                            return 1;
+                                        })))))
+                .then(Commands.literal("kingdom")
+                        // A town's kingdom: the language its buildings are chosen in (`Kingdoms`).
+                        .then(Commands.argument("town", com.mojang.brigadier.arguments.LongArgumentType.longArg(0))
+                                .then(Commands.argument("kingdom", StringArgumentType.word()).executes(context -> {
+                                    long town = com.mojang.brigadier.arguments.LongArgumentType.getLong(context, "town");
+                                    String k = StringArgumentType.getString(context, "kingdom");
+                                    dev.b28.enterprise.territory.Kingdoms.get(context.getSource().getServer()).set(town, k);
+                                    context.getSource().sendSuccess(() -> Component.literal("Town " + town + " builds as " + k), false);
+                                    return 1;
+                                }))))
                 .then(Commands.literal("bridge")
                         .then(Commands.argument("at", BlockPosArgument.blockPos())
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos()).executes(context -> {

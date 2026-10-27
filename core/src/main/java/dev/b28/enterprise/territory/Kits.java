@@ -1,0 +1,213 @@
+package dev.b28.enterprise.territory;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import java.io.Reader;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.Mirror;
+import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
+
+/**
+ * The placer for the asset studio's structures (`docs/assets/README.md`, C1): a template from
+ * {@code data/<ns>/structure/<path>.nbt} and its metadata beside it ({@code <path>.json}), authored facing south with its
+ * origin at the north-west corner of its lowest layer and its {@code ground} layer at the ground's top, laid in the
+ * world turned to face its street: the ground under it filled up to its foundation, the trees over it cleared, and the
+ * beds and workstations its metadata declares found where it said (so the census counts what the sim paid for).
+ *
+ * <p>A kit is chosen for a town's kingdom and a slot ({@link #choose}): the same town and slot always take the same one.
+ * Where none fits, the callers lay what they always have ({@link Growth#buildHome}).
+ */
+public final class Kits {
+    private Kits() {}
+
+    /** A structure's metadata: what the placer needs of it (positions in its own frame, facing south). */
+    public record Meta(String id, String kingdom, String kind, String slot, int width, int depth, int height, int ground,
+            List<BlockPos> bedHeads, List<BlockPos> workstations, List<String> tiers) {}
+
+    /** What was laid: its world box, and its beds' heads and workstations where they stand now. */
+    public record Placed(String id, BoundingBox box, List<BlockPos> bedHeads, List<BlockPos> workstations) {}
+
+    private static final Map<String, Optional<Meta>> METAS = new ConcurrentHashMap<>();
+
+    /** The structure's id as a template's resource location: {@code enterprise:lordaeron/home/cottage_5x5_a}. */
+    static ResourceLocation template(String id) {
+        return ResourceLocation.parse(id);
+    }
+
+    /** Its metadata, read from the data packs (kept until the server's resources reload). */
+    public static Optional<Meta> meta(ResourceManager resources, String id) {
+        return METAS.computeIfAbsent(id, k -> {
+            ResourceLocation t = template(k);
+            ResourceLocation json = ResourceLocation.fromNamespaceAndPath(t.getNamespace(), "structure/" + t.getPath() + ".json");
+            return resources.getResource(json).flatMap(r -> {
+                try (Reader reader = r.openAsReader()) {
+                    return Optional.of(parse(k, JsonParser.parseReader(reader).getAsJsonObject()));
+                } catch (Exception e) {
+                    dev.b28.enterprise.Enterprise.LOGGER.warn("Kit {}: its metadata can't be read: {}", k, e.toString());
+                    return Optional.empty();
+                }
+            });
+        });
+    }
+
+    /** Forgets the metadata read, for the server's resources reloading. */
+    public static void forget() {
+        METAS.clear();
+    }
+
+    static Meta parse(String id, JsonObject o) {
+        JsonArray fp = o.getAsJsonArray("footprint");
+        List<BlockPos> beds = new ArrayList<>();
+        for (JsonElement b : array(o, "beds")) {
+            beds.add(pos(b.getAsJsonObject().getAsJsonArray("head")));
+        }
+        List<BlockPos> work = new ArrayList<>();
+        for (JsonElement w : array(o, "workstations")) {
+            work.add(pos(w.getAsJsonObject().getAsJsonArray("at")));
+        }
+        List<String> tiers = new ArrayList<>();
+        for (JsonElement t : array(o, "tiers")) {
+            tiers.add(t.getAsString());
+        }
+        return new Meta(id, string(o, "kingdom"), string(o, "kind"), string(o, "slot"), fp.get(0).getAsInt(),
+                fp.get(1).getAsInt(), o.has("height") ? o.get("height").getAsInt() : 8,
+                o.has("ground") ? o.get("ground").getAsInt() : 0, beds, work, tiers);
+    }
+
+    private static JsonArray array(JsonObject o, String key) {
+        return o.has(key) && o.get(key).isJsonArray() ? o.getAsJsonArray(key) : new JsonArray();
+    }
+
+    private static String string(JsonObject o, String key) {
+        return o.has(key) ? o.get(key).getAsString() : "";
+    }
+
+    private static BlockPos pos(JsonArray a) {
+        return new BlockPos(a.get(0).getAsInt(), a.get(1).getAsInt(), a.get(2).getAsInt());
+    }
+
+    /** The turn that brings a south-facing structure to face {@code front} (as {@link Growth#buildHome} turns a cottage). */
+    static Rotation turn(Direction front) {
+        return switch (front) {
+            case WEST -> Rotation.CLOCKWISE_90;
+            case NORTH -> Rotation.CLOCKWISE_180;
+            case EAST -> Rotation.COUNTERCLOCKWISE_90;
+            default -> Rotation.NONE;
+        };
+    }
+
+    /**
+     * The kits of a kingdom for a slot whose footprint fits {@code width} x {@code depth} (as authored, facing south),
+     * by id; empty if the kingdom has none.
+     */
+    public static List<String> kits(ResourceManager resources, String kingdom, String slot, int width, int depth) {
+        List<String> out = new ArrayList<>();
+        resources.listResources("structure/" + kingdom, rl -> rl.getPath().endsWith(".json")).keySet().stream()
+                .sorted(Comparator.comparing(ResourceLocation::toString))
+                .forEach(rl -> {
+                    String path = rl.getPath().substring("structure/".length(), rl.getPath().length() - ".json".length());
+                    String id = rl.getNamespace() + ":" + path;
+                    meta(resources, id).filter(m -> m.slot().equals(slot) && m.width() <= width && m.depth() <= depth)
+                            .ifPresent(m -> out.add(id));
+                });
+        return out;
+    }
+
+    /** The kit a town's slot takes, fixed by the town and the slot's place: the same one every time. */
+    public static Optional<String> choose(ResourceManager resources, String kingdom, String slot, int width, int depth,
+            long town, BlockPos at) {
+        List<String> fit = kits(resources, kingdom, slot, width, depth);
+        if (fit.isEmpty()) {
+            return Optional.empty();
+        }
+        long h = town * 0x9E3779B97F4A7C15L ^ at.asLong() * 0xC2B2AE3D27D4EB4FL;
+        h ^= h >>> 29;
+        return Optional.of(fit.get((int) Math.floorMod(h, (long) fit.size())));
+    }
+
+    /**
+     * Lays the structure {@code id} with its footprint's north-west corner (in the world, after turning) at
+     * {@code corner}, whose y is the ground's top where its {@code ground} layer goes, its front to {@code front}.
+     * Empty if its template or metadata can't be found, or its ground isn't loaded.
+     */
+    public static Optional<Placed> place(ServerLevel level, String id, BlockPos corner, Direction front) {
+        Optional<StructureTemplate> template = level.getStructureManager().get(template(id));
+        Optional<Meta> meta = meta(level.getServer().getResourceManager(), id);
+        if (template.isEmpty() || meta.isEmpty()) {
+            dev.b28.enterprise.Enterprise.LOGGER.warn("Kit {} not found ({} template, {} metadata)", id,
+                    template.isPresent() ? "a" : "no", meta.isPresent() ? "its" : "no");
+            return Optional.empty();
+        }
+        Meta m = meta.get();
+        StructurePlaceSettings settings = new StructurePlaceSettings().setRotation(turn(front)).setMirror(Mirror.NONE)
+                .setIgnoreEntities(true);
+        // Where its origin goes so its turned footprint's north-west corner is the corner, its ground layer at its y.
+        BoundingBox turned = template.get().getBoundingBox(settings, BlockPos.ZERO);
+        BlockPos origin = new BlockPos(corner.getX() - turned.minX(), corner.getY() - m.ground(), corner.getZ() - turned.minZ());
+        BoundingBox box = template.get().getBoundingBox(settings, origin);
+        for (int x = box.minX(); x <= box.maxX(); x++) {
+            for (int z = box.minZ(); z <= box.maxZ(); z++) {
+                if (!level.isLoaded(new BlockPos(x, 0, z))) {
+                    return Optional.empty();
+                }
+            }
+        }
+        prepare(level, box);
+        template.get().placeInWorld(level, origin, origin, settings, RandomSource.create(origin.asLong()), 2 | 16);
+        List<BlockPos> beds = m.bedHeads().stream()
+                .map(p -> StructureTemplate.calculateRelativePosition(settings, p).offset(origin)).toList();
+        List<BlockPos> work = m.workstations().stream()
+                .map(p -> StructureTemplate.calculateRelativePosition(settings, p).offset(origin)).toList();
+        return Optional.of(new Placed(id, box, beds, work));
+    }
+
+    /**
+     * Its ground made ready: under its footprint, natural ground filled up to its lowest layer (the ground's own block,
+     * dirt under grass), and over it, to its top and a few blocks more, the trees and plants cleared.
+     */
+    static void prepare(ServerLevel level, BoundingBox box) {
+        for (int x = box.minX(); x <= box.maxX(); x++) {
+            for (int z = box.minZ(); z <= box.maxZ(); z++) {
+                int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) - 1;
+                BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos(x, top, z);
+                BlockState ground = level.getBlockState(at);
+                while (ground.is(BlockTags.LOGS) && at.getY() > level.getMinBuildHeight()) {
+                    at.move(Direction.DOWN);
+                    ground = level.getBlockState(at);
+                }
+                BlockState fill = ground.is(Blocks.GRASS_BLOCK) || ground.is(Blocks.DIRT_PATH) || ground.isAir()
+                        || !ground.getFluidState().isEmpty() ? Blocks.DIRT.defaultBlockState() : ground;
+                for (int y = at.getY() + 1; y < box.minY(); y++) {
+                    level.setBlock(new BlockPos(x, y, z), fill, 2);
+                }
+                for (int y = Math.max(box.minY(), at.getY() + 1); y <= box.maxY() + 6; y++) {
+                    BlockPos p = new BlockPos(x, y, z);
+                    BlockState s = level.getBlockState(p);
+                    if (s.is(BlockTags.LOGS) || s.is(BlockTags.LEAVES) || !s.isAir() && s.canBeReplaced()) {
+                        level.setBlock(p, Blocks.AIR.defaultBlockState(), 2);
+                    }
+                }
+            }
+        }
+    }
+}

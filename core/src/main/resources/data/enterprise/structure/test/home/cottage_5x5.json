@@ -1,0 +1,64 @@
+{
+  "id": "enterprise:test/home/cottage_5x5",
+  "rev": 1,
+  "kingdom": "test",
+  "kind": "home",
+  "slot": "home",
+  "tiers": [
+    "hamlet",
+    "village"
+  ],
+  "style": "the placer's test cottage",
+  "palette": "base",
+  "variants": [],
+  "footprint": [
+    5,
+    5
+  ],
+  "height": 6,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        2,
+        3,
+        4
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        1,
+        3,
+        2
+      ],
+      "foot": [
+        1,
+        3,
+        3
+      ]
+    },
+    {
+      "head": [
+        3,
+        3,
+        2
+      ],
+      "foot": [
+        3,
+        3,
+        3
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "pilings": [],
+  "entities": [],
+  "notes": "Not an asset: the placer's game test places it (scripts/assets/make_fixture.py)."
+}
