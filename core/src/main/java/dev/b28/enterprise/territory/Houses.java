@@ -36,28 +36,56 @@ public final class Houses {
      * workstations, doorBay, door), or empty for a body the plan layer has no rules for: widths and depths of 3n + 1
      * from 7, a 7-wide body of one storey (thread 0008), a 10-wide one up to three.
      */
-    public static Optional<JsonObject> layout(Params p) {
+    public static Optional<JsonObject> layout(Params p, JsonObject planData) {
         int W = p.w(), D = p.d(), S = p.storeys();
         if (W < 7 || D < 7 || (W - 1) % 3 != 0 || (D - 1) % 3 != 0 || S < 1 || W < 10 && S > 1 || S > 3) {
             return Optional.empty();
         }
+        // The plan layer's body class for this body (the studio's plan.json: its core, partitions and furniture).
+        JsonObject bodyClass = null;
+        for (var e : planData.getAsJsonObject("bodies").entrySet()) {
+            JsonObject b = e.getValue().getAsJsonObject(), when = b.getAsJsonObject("when");
+            JsonArray range = b.getAsJsonArray("storeys");
+            if (when.get("W").getAsInt() == W && when.get("D").getAsInt() == D && range.get(0).getAsInt() <= S
+                    && S <= range.get(1).getAsInt()) {
+                bodyClass = b;
+            }
+        }
+        if (bodyClass == null) {
+            return Optional.empty();
+        }
+        // Beds a chamber: three where it's wide enough (13), else two (floor a bed 4 to 8.5).
+        Map<String, Integer> vars = new HashMap<>(Map.of("W", W, "D", D, "cx", W - 4, "storeys", S, "beds", W >= 13 ? 3 : 2));
         boolean[] party = {p.partyWest(), p.partyEast()};
-        String core = S == 1 ? "none" : W >= 13 && D >= 7 ? "straight" : "turned";
+        JsonObject coreSpec = bodyClass.has("core") && bodyClass.get("core").isJsonObject() ? bodyClass.getAsJsonObject("core") : null;
+        String core = coreSpec == null ? "none" : coreSpec.get("type").getAsString();
+        int[] coreAt = coreSpec == null ? null : new int[] {eval(coreSpec.getAsJsonArray("at").get(0), vars),
+                eval(coreSpec.getAsJsonArray("at").get(1), vars)};
         int nb = (W - 1) / 3, doorBay = (nb - 1) / 2;
         Set<String> coreCells = new HashSet<>();
         if (core.equals("straight")) {
-            for (int z = 1; z <= 5; z++) {
-                coreCells.add((W - 2) + "," + z);
-                coreCells.add((W - 3) + "," + z);
+            for (int z = coreAt[1]; z <= coreAt[1] + 4; z++) {
+                coreCells.add(coreAt[0] + "," + z);
+                coreCells.add((coreAt[0] + 1) + "," + z);
             }
         } else if (core.equals("turned")) {
-            for (int x = W - 4; x <= W - 2; x++) {
-                for (int z = 1; z <= 3; z++) {
+            for (int x = coreAt[0]; x <= coreAt[0] + 2; x++) {
+                for (int z = coreAt[1]; z <= coreAt[1] + 2; z++) {
                     coreCells.add(x + "," + z);
                 }
             }
         }
+        // The chimney on the west wall's post beside the hearth (the ground storey's hearth, if it stands at the wall).
         int chimneyZ = 3;
+        for (var e : bodyClass.getAsJsonObject("storey").getAsJsonArray("0")) {
+            JsonObject o = e.getAsJsonObject();
+            if (o.get("module").getAsString().equals("hearth")) {
+                int hx = eval(o.getAsJsonArray("at").get(0), vars), hz = eval(o.getAsJsonArray("at").get(1), vars);
+                if (hx == 1 && hz % 3 == 0) {
+                    chimneyZ = hz;
+                }
+            }
+        }
         boolean westChimney = !party[0] && D >= 7;
         // The free bays' kinds, face by face, by wave-function collapse.
         Map<String, String> chosen = new HashMap<>();
@@ -157,107 +185,38 @@ public final class Houses {
         // The stair core, storey by storey.
         for (int s = 0; s < S && !core.equals("none"); s++) {
             String part = s == 0 ? "bottom" : s == S - 1 ? "top" : "mid";
-            put(plan, s, "core_" + core + "_" + part, core.equals("straight") ? new int[] {W - 3, 1} : new int[] {W - 4, 1}, 0, 0);
+            put(plan, s, "core_" + core + "_" + part, coreAt, 0, 0);
         }
-        // The plan layer's rooms and furniture, by body width (compose.mjs's fit-out, tuned with the floor-plan tool).
+        // The plan layer's rooms and furniture, from the data (plan.json): the storey's own list, or "upper" above the
+        // ground; a placement's `if` decides it, `role` records a bed or the workstation.
         List<int[]> beds = new ArrayList<>(), work = new ArrayList<>();
-        int top = H - 1;
         int doorX = doorBay * 3 + 2;
-        java.util.function.BiConsumer<Integer, int[]> bed = (s, head) -> {
-            put(plan, s, "bed", head, 1, 0);
-            beds.add(new int[] {s, head[0], head[1]});
-        };
-        java.util.function.Consumer<int[]> workAt = at -> {
-            if (p.trade()) {
-                put(plan, 0, "workstation", at, 1, 0);
-                work.add(new int[] {0, at[0], at[1]});
-            } else {
-                put(plan, 0, "shelf", at, 1, 0);
-            }
-        };
-        if (core.equals("none")) {
-            // A cottage: one room (a 5-wide interior can't take a partition and keep its rooms 3 wide, thread 0008),
-            // the hearth on the west wall, made beds at the back either side, the door's spine clear to them.
-            put(plan, 0, "hearth", new int[] {1, chimneyZ}, 1, 0);
-            bed.accept(0, new int[] {1, 1});
-            bed.accept(0, new int[] {W - 2, 1});
-            put(plan, 0, "chest", new int[] {3, 1}, 1, 0);
-            workAt.accept(new int[] {W - 2, D - 3});
-            put(plan, 0, "table", new int[] {3, 3}, 1, 0);
-            put(plan, 0, "bench", new int[] {3, 4}, 1, 2);
-            put(plan, 0, "cask", new int[] {W - 2, D - 2}, 1, 0);
-            put(plan, 0, "lantern", new int[] {2, 2}, top, 0);
-            put(plan, 0, "lantern", new int[] {W - 3, 3}, top, 0);
-        } else if (core.equals("turned")) {
-            int cx = W - 4;
-            put(plan, 0, "hearth", new int[] {1, chimneyZ}, 1, 0);
-            put(plan, 0, "table", new int[] {2, 3}, 1, 0);
-            put(plan, 0, "bench", new int[] {2, 2}, 1, 0);
-            put(plan, 0, "bench", new int[] {2, 4}, 1, 2);
-            workAt.accept(new int[] {4, D - 2});
-            put(plan, 0, "cask", new int[] {cx, 4}, 1, 0);
-            put(plan, 0, "chest", new int[] {cx + 1, 4}, 1, 0);
-            put(plan, 0, "shelf", new int[] {1, 1}, 1, 0);
-            put(plan, 0, "shelf", new int[] {3, 1}, 1, 0);
-            put(plan, 0, "table", new int[] {4, 2}, 1, 0);
-            put(plan, 0, "bench", new int[] {4, 1}, 1, 2);
-            put(plan, 0, "pot", new int[] {1, D - 2}, 1, 0);
-            put(plan, 0, "lantern", new int[] {2, 3}, top, 0);
-            put(plan, 0, "lantern", new int[] {5, 3}, top, 0);
-            put(plan, 0, "lantern", new int[] {cx + 1, 3}, top, 0);
-            for (int s = 1; s < S; s++) {
-                for (int z = 1; z <= 3; z++) {
-                    put(plan, s, z == 2 ? "door_inner" : "wall_inner", new int[] {cx - 1, z}, 1, 0);
+        JsonObject storeys = bodyClass.getAsJsonObject("storey");
+        for (int s = 0; s < S; s++) {
+            JsonArray list = storeys.has(String.valueOf(s)) ? storeys.getAsJsonArray(String.valueOf(s))
+                    : s > 0 && storeys.has("upper") ? storeys.getAsJsonArray("upper") : new JsonArray();
+            for (var e : list) {
+                JsonObject o = e.getAsJsonObject();
+                if (o.has("if") && eval(o.get("if"), vars) == 0) {
+                    continue;
                 }
-                for (int x = cx - 1; x <= W - 2; x++) {
-                    put(plan, s, "wall_inner", new int[] {x, 4}, 1, 0);
+                int[] at = {eval(o.getAsJsonArray("at").get(0), vars), eval(o.getAsJsonArray("at").get(1), vars)};
+                int dy = o.has("dy") ? o.get("dy").getAsInt() : 1, q = o.has("q") ? o.get("q").getAsInt() : 0;
+                String role = o.has("role") ? o.get("role").getAsString() : "";
+                String module = o.get("module").getAsString();
+                if (role.equals("work")) {
+                    if (!p.trade()) {
+                        if (o.has("else")) {
+                            put(plan, s, o.get("else").getAsString(), at, dy, q);
+                        }
+                        continue;
+                    }
+                    work.add(new int[] {s, at[0], at[1]});
                 }
-                bed.accept(s, new int[] {1, 1});
-                bed.accept(s, new int[] {1, 4});
-                put(plan, s, "chest", new int[] {1, 3}, 1, 0);
-                put(plan, s, "table", new int[] {cx - 2, D - 3}, 1, 0);
-                put(plan, s, "bench", new int[] {cx - 2, D - 2}, 1, 2);
-                put(plan, s, "shelf", new int[] {W - 2, D - 2}, 1, 0);
-                put(plan, s, "lantern", new int[] {2, 3}, top, 0);
-                put(plan, s, "lantern", new int[] {cx, 2}, top, 0);
-                put(plan, s, "lantern", new int[] {W - 3, D - 2}, top, 0);
-            }
-        } else {
-            put(plan, 0, "hearth", new int[] {1, chimneyZ}, 1, 0);
-            put(plan, 0, "bench", new int[] {2, 2}, 1, 0);
-            put(plan, 0, "table", new int[] {2, 3}, 1, 0);
-            put(plan, 0, "bench", new int[] {2, 4}, 1, 2);
-            workAt.accept(new int[] {4, D - 2});
-            put(plan, 0, "chest", new int[] {6, 4}, 1, 0);
-            put(plan, 0, "cask", new int[] {7, 4}, 1, 0);
-            put(plan, 0, "shelf", new int[] {1, 1}, 1, 0);
-            put(plan, 0, "table", new int[] {4, 2}, 1, 0);
-            put(plan, 0, "bench", new int[] {4, 1}, 1, 2);
-            put(plan, 0, "bench", new int[] {5, 2}, 1, 1);
-            put(plan, 0, "pot", new int[] {1, D - 2}, 1, 0);
-            put(plan, 0, "lantern", new int[] {2, 3}, top, 0);
-            put(plan, 0, "lantern", new int[] {5, 3}, top, 0);
-            put(plan, 0, "lantern", new int[] {W - 3, 2}, top, 0);
-            int wx = W - 5;
-            for (int s = 1; s < S; s++) {
-                for (int z = 1; z < D - 1; z++) {
-                    put(plan, s, z == 3 ? "door_inner" : "wall_inner", new int[] {wx, z}, 1, 0);
+                if (role.equals("bed")) {
+                    beds.add(new int[] {s, at[0], at[1]});
                 }
-                bed.accept(s, new int[] {1, 1});
-                bed.accept(s, new int[] {1, 4});
-                put(plan, s, "chest", new int[] {1, 3}, 1, 0);
-                put(plan, s, "table", new int[] {wx - 1, D - 3}, 1, 0);
-                put(plan, s, "bench", new int[] {wx - 1, D - 2}, 1, 2);
-                put(plan, s, "lantern", new int[] {2, 3}, top, 0);
-                put(plan, s, "lantern", new int[] {W - 3, 3}, top, 0);
-                put(plan, s, "lantern", new int[] {wx - 2, 2}, top, 0); // the chamber's east end
-            }
-        }
-        // A body deeper than 7: its back half lit on every storey (the fit-outs light a 7-deep one).
-        if (D > 7) {
-            for (int s = 0; s < S; s++) {
-                put(plan, s, "lantern", new int[] {2, D - 3}, top, 0);
-                put(plan, s, "lantern", new int[] {W - 3, D - 3}, top, 0);
+                put(plan, s, module, at, dy, q);
             }
         }
         JsonObject out = new JsonObject();
@@ -303,6 +262,57 @@ public final class Houses {
     }
 
     static final int H = Compose.H;
+
+    /**
+     * A position or a condition of the plan data: an integer, or an expression over its variables (W, D, cx, storeys,
+     * beds) of + and -, and one comparison (>=, <=, ==, >, <) giving 1 or 0.
+     */
+    static int eval(com.google.gson.JsonElement e, Map<String, Integer> vars) {
+        if (e.isJsonPrimitive() && e.getAsJsonPrimitive().isNumber()) {
+            return e.getAsInt();
+        }
+        String x = e.getAsString().replace(" ", "");
+        for (String op : new String[] {">=", "<=", "==", ">", "<"}) {
+            int k = x.indexOf(op);
+            if (k > 0) {
+                int a = sum(x.substring(0, k), vars), b = sum(x.substring(k + op.length()), vars);
+                boolean t = switch (op) {
+                    case ">=" -> a >= b;
+                    case "<=" -> a <= b;
+                    case "==" -> a == b;
+                    case ">" -> a > b;
+                    default -> a < b;
+                };
+                return t ? 1 : 0;
+            }
+        }
+        return sum(x, vars);
+    }
+
+    private static int sum(String x, Map<String, Integer> vars) {
+        int total = 0, sign = 1, i = 0;
+        while (i < x.length()) {
+            char c = x.charAt(i);
+            if (c == '+' || c == '-') {
+                sign = c == '-' ? -1 : 1;
+                i++;
+                continue;
+            }
+            int j = i;
+            while (j < x.length() && x.charAt(j) != '+' && x.charAt(j) != '-') {
+                j++;
+            }
+            String term = x.substring(i, j);
+            Integer v = term.chars().allMatch(Character::isDigit) ? Integer.valueOf(term) : vars.get(term);
+            if (v == null) {
+                throw new IllegalArgumentException("plan data: no variable " + term + " in " + x);
+            }
+            total += sign * v;
+            sign = 1;
+            i = j;
+        }
+        return total;
+    }
 
     /**
      * A generated house's metadata as the contract has it (`docs/assets/README.md`: entrances, beds, workstations, in the

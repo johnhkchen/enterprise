@@ -373,6 +373,8 @@ final class EnterpriseCommands {
                                     var level = context.getSource().getLevel();
                                     int count = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "count");
                                     var dir = level.getServer().getServerDirectory().resolve("houses");
+                                    var planData = dev.b28.enterprise.territory.WallKit.json(level.getServer().getResourceManager(),
+                                            "town_kits/lordaeron/plan.json");
                                     int made = 0, failed = 0;
                                     try {
                                         java.nio.file.Files.createDirectories(dir);
@@ -381,7 +383,7 @@ final class EnterpriseCommands {
                                             for (int seed = 1; seed <= count; seed++) {
                                                 var params = new dev.b28.enterprise.territory.Houses.Params(b[0], b[1], b[2], false,
                                                         false, b[0] >= 10 && seed % 3 == 0, seed % 2 == 0, seed % 4 == 1, seed);
-                                                var layout = dev.b28.enterprise.territory.Houses.layout(params);
+                                                var layout = planData.flatMap(pd -> dev.b28.enterprise.territory.Houses.layout(params, pd));
                                                 if (layout.isEmpty()) {
                                                     failed++;
                                                     continue;

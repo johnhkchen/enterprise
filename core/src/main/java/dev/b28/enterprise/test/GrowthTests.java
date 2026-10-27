@@ -310,7 +310,7 @@ public final class GrowthTests {
         var level = helper.getLevel();
         var resources = level.getServer().getResourceManager();
         var blocks = dev.b28.enterprise.territory.Compose.blocks(level);
-        for (String house : new String[] {"burgage_9x9_a", "townhouse_12x9_a", "terrace_21x9_a"}) {
+        for (String house : new String[] {"cottage_9x9_b", "townhouse_12x9_b", "terrace_21x9_b"}) {
             var json = resources.getResource(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("enterprise",
                     "structure/lordaeron/home/" + house + ".json")).orElseThrow();
             com.google.gson.JsonObject meta;
@@ -355,6 +355,76 @@ public final class GrowthTests {
                     + (side[0] - 4) + ")");
             var gate = pieces.stream().filter(p -> p.piece().startsWith("gatehouse")).findFirst().orElseThrow();
             helper.assertTrue(gate.at() + 5 == side[1], side[0] + ": the gate's passage on the avenue");
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The house generator (`Houses`, the studio's plan data): every body class of plan.json at every storey count it
+     * allows makes a layout that composes, with the beds its rooms record, and two seeds give two faces.
+     */
+    @GameTest(template = "floor")
+    public static void theGeneratorMakesEveryBodyOfThePlanData(GameTestHelper helper) {
+        var resources = helper.getLevel().getServer().getResourceManager();
+        var blocks = dev.b28.enterprise.territory.Compose.blocks(helper.getLevel());
+        var plan = dev.b28.enterprise.territory.WallKit.json(resources, "town_kits/lordaeron/plan.json").orElseThrow();
+        for (var e : plan.getAsJsonObject("bodies").entrySet()) {
+            var body = e.getValue().getAsJsonObject();
+            int w = body.getAsJsonObject("when").get("W").getAsInt(), d = body.getAsJsonObject("when").get("D").getAsInt();
+            var range = body.getAsJsonArray("storeys");
+            for (int st = range.get(0).getAsInt(); st <= range.get(1).getAsInt(); st++) {
+                String what = e.getKey() + " of " + st;
+                java.util.List<String> faces = new java.util.ArrayList<>();
+                for (long seed : new long[] {1, 2}) {
+                    var layout = dev.b28.enterprise.territory.Houses.layout(
+                            new dev.b28.enterprise.territory.Houses.Params(w, d, st, false, false, false, true, false, seed), plan);
+                    helper.assertTrue(layout.isPresent(), what + ": no layout");
+                    helper.assertTrue(layout.get().getAsJsonArray("beds").size() >= 2, what + ": its beds");
+                    var grid = dev.b28.enterprise.territory.Compose.compose(resources, blocks, "enterprise:lordaeron/part/timber_relief",
+                            dev.b28.enterprise.territory.Compose.Layout.of(layout.get()));
+                    helper.assertTrue(grid.cells.size() > 100, what + ": composed");
+                    faces.add(layout.get().getAsJsonArray("shell").toString());
+                }
+                if (w >= 10) {
+                    helper.assertFalse(faces.get(0).equals(faces.get(1)), what + ": two seeds, two faces");
+                }
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Yards from tiles (`Yards`, the studio's batch 003): a front yard of every plot width a ward gives is filled exactly,
+     * its path tile at the door's column and nowhere else, neighbours' edges meeting, a lamp at most every 5 columns.
+     */
+    @GameTest(template = "floor")
+    public static void yardTilesFillAPlotsWidth(GameTestHelper helper) {
+        var tiles = dev.b28.enterprise.territory.Yards.tiles(helper.getLevel().getServer().getResourceManager(), "lordaeron");
+        helper.assertFalse(tiles.isEmpty(), "Lordaeron's yard tiles");
+        for (int width : new int[] {9, 11, 12, 14, 17, 23}) {
+            for (int door = 2; door < width - 2; door += 3) {
+                for (long seed = 1; seed <= 3; seed++) {
+                    var strip = dev.b28.enterprise.territory.Yards.fill(tiles, "yard:front", width, door,
+                            dev.b28.enterprise.territory.Yards.likes("village", "smith"), seed);
+                    helper.assertTrue(strip.isPresent(), width + " wide, door at " + door + ": no strip");
+                    int x = 0, lamp = -3;
+                    dev.b28.enterprise.territory.Yards.Tile last = null;
+                    for (var l : strip.get()) {
+                        helper.assertTrue(l.at() == x, width + ": a gap at " + x);
+                        helper.assertTrue(l.tile().tags().contains("path") == (l.at() == door), width + ": the path at the door");
+                        if (last != null) {
+                            helper.assertTrue(last.right().equals("*") || l.tile().left().equals("*")
+                                    || last.right().equals(l.tile().left()), width + ": edges meet");
+                        }
+                        int here = l.tile().lamp() ? l.at() + l.tile().width() / 2 : l.at() == door ? door : lamp;
+                        helper.assertTrue(here - lamp <= 5, width + ": a lamp in reach");
+                        lamp = here;
+                        x += l.tile().width();
+                        last = l.tile();
+                    }
+                    helper.assertTrue(x == width, width + ": fills it");
+                }
+            }
         }
         helper.succeed();
     }
