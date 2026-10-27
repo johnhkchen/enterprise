@@ -41,6 +41,9 @@ def option(name, default):
 
 def main():
     flags = {"--x", "--z", "--gap", "--depth", "--save"}
+    # --plots: each house on its plot with the kingdom's yards and a path to its door (`/enterprise plot`), plots side
+    # by side (their side yards between houses), 16 deep.
+    plots = "--plots" in sys.argv
     args = [a for i, a in enumerate(sys.argv[1:], 1) if not a.startswith("--") and sys.argv[i - 1] not in flags]
     out, kits = Path(args[0]), args[1:]
     x0, z0, gap, depth = option("--x", 600), option("--z", 600), option("--gap", 1), option("--depth", 7)
@@ -52,8 +55,10 @@ def main():
         meta = next((p / rel for p in [Path("core/src/main/resources/data"), *Path("core/run/world/datapacks").glob("*/data")]
                      if (p / rel).exists()), Path("core/src/main/resources/data") / rel)
         m = json.loads(meta.read_text())
+        if plots:
+            m = {**m, "footprint": [m["footprint"][0] + 2, 3 + max(9, m["footprint"][1]) + 4]}
         widths.append((kit, m["footprint"][0], m["footprint"][1], m))
-        length += m["footprint"][0] + gap
+        length += m["footprint"][0] + (0 if plots else gap)
     span = (length // 2 + 16)
     rcon(f"forceload add {x0 - 16} {z0 - depth - 16} {x0 + span} {z0 + depth + 20}")
     time.sleep(6)
@@ -70,12 +75,12 @@ def main():
     for i, (kit, w, d, m) in enumerate(widths):
         side = "north" if i % 2 == 0 else "south"
         x = at[side]
-        at[side] += w + gap
+        at[side] += w + (0 if plots else gap)
         # North side: the plot's south edge a doorstep from the lane, facing south; south side facing north.
         corner_z = z0 - 2 - d + 1 if side == "north" else z0 + 3 + 2
         facing = "south" if side == "north" else "north"
-        said = rcon(f"enterprise kit {kit} {x} {ground} {corner_z} {facing}")
-        found = re.search(r"in (\d+) us; beds \[(.*)\]", said)
+        said = rcon(f"enterprise {'plot' if plots else 'kit'} {kit} {x} {ground} {corner_z} {facing}")
+        found = re.search(r"in (\d+) us; beds \[(.*?)\]", said)
         beds = [tuple(int(v) for v in b.split(", ")) for b in re.findall(r"(-?\d+, -?\d+, -?\d+)", found.group(2))] \
             if found else []
         results.append({"kit": kit, "corner": [x, ground, corner_z], "facing": facing, "micros": int(found.group(1))

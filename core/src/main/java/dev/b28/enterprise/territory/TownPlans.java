@@ -47,7 +47,11 @@ public final class TownPlans extends SavedData {
      * four, a street a cart and its neighbours' doorsteps share. Each plan keeps its own ({@link Plan#ward}): a town
      * planned with 14-block wards keeps them.
      */
-    static final int WARD = 33;
+    static final int WARD = 39;
+    /** A plot's yards on a ward with room for them (John: "front yard, back yard leeway ... interchangeable doodad
+     * regions"): its front yard's depth between the street and the house, its back yard's behind. */
+    public static final int FRONT_YARD = 3;
+    public static final int BACK_YARD = 4;
     /** The ward of a plan saved before plans kept their own: lanes every 20, wards of 14 x 14. */
     static final int FIRST_WARD = 20;
     public static final int LANE = 4;
@@ -81,6 +85,11 @@ public final class TownPlans extends SavedData {
         /** The deepest house a ward holds, two back to back (with a block between where the cell is odd). */
         public int deepest() {
             return cell() / 2;
+        }
+
+        /** Does the ward have room for plots with yards (a front yard, the house, a back yard: 16 deep)? */
+        public boolean yards() {
+            return deepest() >= FRONT_YARD + 9 + BACK_YARD;
         }
     }
 
@@ -231,6 +240,19 @@ public final class TownPlans extends SavedData {
      * frontage's corner and its footprint in the world ({@code sx} x {@code sz}, turned to its street).
      */
     public static List<Frontage> frontages(Plan plan, int width, int depth) {
+        return frontages(plan, width, depth, 1);
+    }
+
+    /**
+     * A town's plots {@code width} along the street, a ward's half deep, side by side: the house on each with its side
+     * yards inside its width, its front and back yards inside its depth ({@link Plan#yards}).
+     */
+    public static List<Frontage> plots(Plan plan, int width) {
+        return frontages(plan, width, plan.deepest(), 0);
+    }
+
+    /** As {@link #frontages(Plan, int, int)}, {@code gap} blocks between neighbours along the street. */
+    public static List<Frontage> frontages(Plan plan, int width, int depth, int gap) {
         Rect w = within(plan);
         int bx = plan.bell().getX(), bz = plan.bell().getZ();
         List<Frontage> out = new ArrayList<>();
@@ -244,7 +266,7 @@ public final class TownPlans extends SavedData {
         // straddles a cross street.
         for (int[] s : ns) {
             for (int[] run : runs(w.z0(), w.z1(), ew)) {
-                for (int z = run[0]; z + width - 1 <= run[1]; z += width + 1) {
+                for (int z = run[0]; z + width - 1 <= run[1]; z += width + gap) {
                     out.add(new Frontage(s[0] - s[1] - 2 - depth + 1, z, net.minecraft.core.Direction.EAST, depth, width));
                     out.add(new Frontage(s[0] + s[2] + 2, z, net.minecraft.core.Direction.WEST, depth, width));
                 }
@@ -252,7 +274,7 @@ public final class TownPlans extends SavedData {
         }
         for (int[] s : ew) {
             for (int[] run : runs(w.x0(), w.x1(), ns)) {
-                for (int x = run[0]; x + width - 1 <= run[1]; x += width + 1) {
+                for (int x = run[0]; x + width - 1 <= run[1]; x += width + gap) {
                     out.add(new Frontage(x, s[0] - s[1] - 2 - depth + 1, net.minecraft.core.Direction.SOUTH, width, depth));
                     out.add(new Frontage(x, s[0] + s[2] + 2, net.minecraft.core.Direction.NORTH, width, depth));
                 }

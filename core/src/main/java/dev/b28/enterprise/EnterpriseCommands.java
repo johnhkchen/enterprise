@@ -327,6 +327,43 @@ final class EnterpriseCommands {
                                                                     .map(net.minecraft.core.BlockPos::toShortString).toList())), false);
                                             return 1;
                                         })))))
+                .then(Commands.literal("plot")
+                        // A house kit on its plot at {corner} (the plot's north-west corner, at the house's ground) with
+                        // the kingdom's yards and a path to its door (`Plots`): for test streets.
+                        .then(Commands.argument("id", net.minecraft.commands.arguments.ResourceLocationArgument.id())
+                                .then(Commands.argument("corner", BlockPosArgument.blockPos())
+                                        .then(Commands.argument("facing", StringArgumentType.word()).executes(context -> {
+                                            var level = context.getSource().getLevel();
+                                            String id = net.minecraft.commands.arguments.ResourceLocationArgument
+                                                    .getId(context, "id").toString();
+                                            var corner = BlockPosArgument.getBlockPos(context, "corner");
+                                            var facing = net.minecraft.core.Direction.byName(
+                                                    StringArgumentType.getString(context, "facing"));
+                                            var meta = dev.b28.enterprise.territory.Kits.meta(level.getServer().getResourceManager(), id);
+                                            if (facing == null || facing.getAxis().isVertical() || meta.isEmpty()) {
+                                                return refuse(context, "No kit " + id + ", or facing isn't north, south, east or west");
+                                            }
+                                            int width = dev.b28.enterprise.territory.Plots.width(meta.get().width());
+                                            int depth = dev.b28.enterprise.territory.TownPlans.FRONT_YARD + Math.max(9, meta.get().depth())
+                                                    + dev.b28.enterprise.territory.TownPlans.BACK_YARD;
+                                            String kingdom = meta.get().kingdom().isEmpty() ? "lordaeron" : meta.get().kingdom();
+                                            long start = System.nanoTime();
+                                            var laid = dev.b28.enterprise.territory.Plots.lay(level, kingdom, meta.get(), corner, width,
+                                                    depth, facing, corner.asLong());
+                                            if (laid.isEmpty()) {
+                                                return refuse(context, "Couldn't lay " + id + " (its ground isn't loaded?)");
+                                            }
+                                            var box = laid.get().house().box();
+                                            long micros = (System.nanoTime() - start) / 1000;
+                                            context.getSource().sendSuccess(() -> Component.literal(
+                                                    "%s laid at %d %d %d to %d %d %d facing %s in %d us; beds %s; plot %d x %d, front %s, back %s, path %d".formatted(id,
+                                                            box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ(),
+                                                            facing.getName(), micros, laid.get().house().bedHeads().stream()
+                                                                    .map(net.minecraft.core.BlockPos::toShortString).toList(),
+                                                            width, depth, laid.get().front().orElse("none"),
+                                                            laid.get().back().orElse("none"), laid.get().path())), false);
+                                            return 1;
+                                        })))))
                 .then(Commands.literal("kingdom")
                         // A town's kingdom: the language its buildings are chosen in (`Kingdoms`).
                         .then(Commands.argument("town", com.mojang.brigadier.arguments.LongArgumentType.longArg(0))

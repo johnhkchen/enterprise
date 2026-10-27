@@ -42,7 +42,7 @@ public final class Kits {
 
     /** A structure's metadata: what the placer needs of it (positions in its own frame, facing south). */
     public record Meta(String id, String kingdom, String kind, String slot, int width, int depth, int height, int ground,
-            List<BlockPos> bedHeads, List<BlockPos> workstations, List<String> tiers) {}
+            List<BlockPos> bedHeads, List<BlockPos> workstations, List<String> tiers, List<BlockPos> entrances) {}
 
     /** What was laid: its world box, and its beds' heads and workstations where they stand now. */
     public record Placed(String id, BoundingBox box, List<BlockPos> bedHeads, List<BlockPos> workstations) {}
@@ -76,7 +76,7 @@ public final class Kits {
                 if (o.has("base") && !o.has("footprint")) {
                     return meta(resources, o.get("base").getAsString()).map(b -> new Meta(id, b.kingdom(), b.kind(),
                             b.slot(), b.width(), b.depth(), b.height(), b.ground(), b.bedHeads(), b.workstations(),
-                            b.tiers()));
+                            b.tiers(), b.entrances()));
                 }
                 return Optional.of(parse(id, o));
             } catch (Exception e) {
@@ -101,13 +101,17 @@ public final class Kits {
         for (JsonElement w : array(o, "workstations")) {
             work.add(pos(w.getAsJsonObject().getAsJsonArray("at")));
         }
+        List<BlockPos> doors = new ArrayList<>();
+        for (JsonElement e : array(o, "entrances")) {
+            doors.add(pos(e.getAsJsonObject().getAsJsonArray("at")));
+        }
         List<String> tiers = new ArrayList<>();
         for (JsonElement t : array(o, "tiers")) {
             tiers.add(t.getAsString());
         }
         return new Meta(id, string(o, "kingdom"), string(o, "kind"), string(o, "slot"), fp.get(0).getAsInt(),
                 fp.get(1).getAsInt(), o.has("height") ? o.get("height").getAsInt() : 8,
-                o.has("ground") ? o.get("ground").getAsInt() : 0, beds, work, tiers);
+                o.has("ground") ? o.get("ground").getAsInt() : 0, beds, work, tiers, doors);
     }
 
     private static JsonArray array(JsonObject o, String key) {

@@ -110,27 +110,58 @@ public final class GrowthTests {
     }
 
     /**
-     * A new town's grid (John: "mid density ... multiple floors"; the studio's houses, thread 0004): lanes every 33,
-     * wards of 27 x 27, plots up to 13 deep back to back; it fronts the studio's burgage houses (9 x 9 with their
-     * relief), town houses (12 x 9), wide houses (15 x 9) and a terrace of three (21 x 9), none on a street.
+     * A new town's grid (John: "mid density ... multiple floors", "front yard, back yard leeway"): lanes every 39,
+     * wards of 33 x 33, plots 16 deep back to back with their yards, as wide as the studio's houses and a side yard
+     * each side (11, 14, 17; a terrace of three 23; a whole ward's 33), none on a street.
      */
     @GameTest(template = "floor")
     public static void aNewTownsWardsFrontTheStudiosHouses(GameTestHelper helper) {
-        var plan = new TownPlans.Plan(new BlockPos(0, 64, 0), new TownPlans.Rect(-50, -50, 50, 50),
-                new TownPlans.Rect(-100, -100, 100, 100), true, true);
-        helper.assertTrue(plan.ward() == 33 && plan.cell() == 27 && plan.deepest() == 13, "wards of 27, plots 13 deep");
+        var plan = new TownPlans.Plan(new BlockPos(0, 64, 0), new TownPlans.Rect(-60, -60, 60, 60),
+                new TownPlans.Rect(-120, -120, 120, 120), true, true);
+        helper.assertTrue(plan.ward() == 39 && plan.cell() == 33 && plan.deepest() == 16 && plan.yards(),
+                "wards of 33, plots 16 deep with yards");
         java.util.function.BiPredicate<Integer, Integer> street = (x, z) -> Math.abs(x) <= 2 || Math.abs(z) <= 2
-                || x >= 30 && x <= 35 || x >= -36 && x <= -31 || z >= 30 && z <= 35 || z >= -36 && z <= -31;
-        for (int[] size : new int[][] {{9, 9}, {12, 9}, {15, 9}, {21, 9}, {27, 13}}) {
-            var homes = TownPlans.frontages(plan, size[0], size[1]);
-            helper.assertTrue(homes.size() >= 4, size[0] + " x " + size[1] + ": " + homes.size());
-            for (var f : homes) {
+                || x >= 36 && x <= 41 || x >= -42 && x <= -37 || z >= 36 && z <= 41 || z >= -42 && z <= -37;
+        for (int width : new int[] {11, 14, 17, 23, 33}) {
+            var plots = TownPlans.plots(plan, width);
+            helper.assertTrue(plots.size() >= 4, width + " wide: " + plots.size());
+            for (var f : plots) {
+                helper.assertTrue(Math.max(f.sx(), f.sz()) >= 16 || width >= 16, "16 deep: " + f);
                 for (int dx = 0; dx < f.sx(); dx++) {
                     for (int dz = 0; dz < f.sz(); dz++) {
-                        helper.assertFalse(street.test(f.x() + dx, f.z() + dz), "a house on a street: " + f);
+                        helper.assertFalse(street.test(f.x() + dx, f.z() + dz), "a plot on a street: " + f);
                     }
                 }
             }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A plot (John: "front yard, back yard leeway"): turned to any street, its house inside it a block in from each side,
+     * its front yard between the house and the street, its back yard behind.
+     */
+    @GameTest(template = "floor")
+    public static void aPlotsFrontYardFacesItsStreet(GameTestHelper helper) {
+        int w = 11, d = 16;
+        for (var door : new net.minecraft.core.Direction[] {net.minecraft.core.Direction.SOUTH, net.minecraft.core.Direction.NORTH,
+                net.minecraft.core.Direction.EAST, net.minecraft.core.Direction.WEST}) {
+            int[] house = dev.b28.enterprise.territory.Plots.world(0, 0, w, d, door, 1, d - 3 - 9, 9, 9);
+            int[] front = dev.b28.enterprise.territory.Plots.world(0, 0, w, d, door, 0, d - 3, w, 3);
+            int[] plot = dev.b28.enterprise.territory.Plots.world(0, 0, w, d, door, 0, 0, w, d);
+            helper.assertTrue(plot[0] == 0 && plot[1] == 0, "the plot's corner stays put: " + door);
+            helper.assertTrue(house[0] >= 0 && house[1] >= 0 && house[0] + house[2] <= plot[2] && house[1] + house[3] <= plot[3],
+                    "the house inside its plot: " + door + " " + java.util.Arrays.toString(house));
+            int[] street = switch (door) {
+                case SOUTH -> new int[] {w / 2, d};
+                case NORTH -> new int[] {w / 2, -1};
+                case EAST -> new int[] {d, w / 2};
+                default -> new int[] {-1, w / 2};
+            };
+            double fx = front[0] + front[2] / 2.0, fz = front[1] + front[3] / 2.0;
+            double hx = house[0] + house[2] / 2.0, hz = house[1] + house[3] / 2.0;
+            helper.assertTrue(Math.hypot(fx - street[0], fz - street[1]) < Math.hypot(hx - street[0], hz - street[1]),
+                    "the front yard between the house and its street: " + door);
         }
         helper.succeed();
     }

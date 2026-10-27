@@ -633,6 +633,7 @@ public final class LandAdapter {
     /** The home kit each town builds next, chosen when its site is found and laid with it; how many each has laid. */
     private final Map<Long, dev.b28.enterprise.territory.Kits.Meta> homeKits = new HashMap<>();
     private final Map<Long, Integer> homesLaid = new HashMap<>();
+    private final Map<Long, dev.b28.enterprise.territory.Plots.Site> homePlots = new HashMap<>();
 
     /**
      * The home kit a town builds next: one of its kingdom's that fronts a street within a ward's depth, the next of them
@@ -647,6 +648,11 @@ public final class LandAdapter {
         // As wide as a ward's stretch of street, as deep as half a ward (its plan's; today's first wards if none).
         var plan = dev.b28.enterprise.territory.TownPlans.get(level.getServer()).of(town);
         int widest = plan != null ? plan.cell() : HOME_WIDEST, deepest = plan != null ? plan.deepest() : HOME_DEEPEST;
+        if (plan != null && plan.yards()) {
+            // A house on a plot: its side yards in the plot's width, its front yard in its depth.
+            widest -= 2;
+            deepest -= dev.b28.enterprise.territory.TownPlans.FRONT_YARD;
+        }
         Optional<dev.b28.enterprise.territory.Kits.Meta> kit = dev.b28.enterprise.territory.Kits.choose(resources,
                 dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town), "home", widest, deepest, town,
                 new BlockPos(homesLaid.getOrDefault(town, 0), 0, 0)).flatMap(id -> dev.b28.enterprise.territory.Kits.meta(resources, id));
@@ -679,6 +685,14 @@ public final class LandAdapter {
                 // The kingdom's home kit the town builds next (`Kits`, the asset studio's), its footprint fronting a
                 // street; the cottage where the kingdom has none.
                 Optional<dev.b28.enterprise.territory.Kits.Meta> kit = nextHome(level, town);
+                // On a plan with yards, its plot: the house set back behind its front yard (`Plots`).
+                if (kit.isPresent()) {
+                    var plot = dev.b28.enterprise.territory.Plots.site(level, bell, kit.get());
+                    if (plot.isPresent()) {
+                        homePlots.put(town, plot.get());
+                        yield Optional.of(plot.get().corner());
+                    }
+                }
                 if (kit.isPresent()) {
                     Optional<BlockPos> at = Growth.homeSite(level, bell, kit.get().width(), kit.get().depth());
                     if (at.isPresent()) {
@@ -769,10 +783,20 @@ public final class LandAdapter {
                         .stream().distinct().toList())) {
                     yield false;
                 }
-                // The kit chosen for it, turned to its street (`Kits`); the cottage if there's none or it can't be laid.
-                var door = dev.b28.enterprise.territory.TownPlans.doorOf(level, corner, w, d);
-                if (kit.flatMap(m -> dev.b28.enterprise.territory.Kits.place(level, m.id(), corner, door)).isEmpty()) {
-                    Growth.buildHome(level, corner, door);
+                // On its plot with its yards and its path (`Plots`), or the kit alone fronting its street (`Kits`); the
+                // cottage if there's none or it can't be laid.
+                var plot = Optional.ofNullable(homePlots.remove(town)).filter(p -> p.corner().equals(corner));
+                if (plot.isPresent() && kit.isPresent()) {
+                    var p = plot.get();
+                    if (dev.b28.enterprise.territory.Plots.lay(level, dev.b28.enterprise.territory.Kingdoms.get(level.getServer())
+                            .of(town), kit.get(), p.corner(), p.width(), p.depth(), p.door(), town * 31 + corner.asLong()).isEmpty()) {
+                        Growth.buildHome(level, corner, p.door());
+                    }
+                } else {
+                    var door = dev.b28.enterprise.territory.TownPlans.doorOf(level, corner, w, d);
+                    if (kit.flatMap(m -> dev.b28.enterprise.territory.Kits.place(level, m.id(), corner, door)).isEmpty()) {
+                        Growth.buildHome(level, corner, door);
+                    }
                 }
                 homeKits.remove(town);
                 homesLaid.merge(town, 1, Integer::sum);

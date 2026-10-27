@@ -1,0 +1,84 @@
+# Interiors: a common language
+
+John: "each house built should have a sane interior design, both in terms of room layout, walkway length to room
+volume ratios, and so on. Past designs often neglected the usability of rooms to squeeze in an interior." These are
+the words we use for interior space, how each is measured, and the thresholds a house is held to.
+
+The tool that measures them is `scripts/assets/floorplan.py`. It's pure Python, run on any structure:
+
+```
+python3 scripts/assets/floorplan.py house.nbt --out plans/
+```
+
+It writes `plans/<name>/plan.png`: the storeys side by side from above, ground floor first. Use `--json` for every
+number. The studio and we both run it, and a disagreement about a house is a disagreement about a number on it.
+
+## The words
+
+- **Floor:** a cell inside the house where a villager can stand. It has something solid to stand on (not a bed, a
+  chest or other furniture) and two clear blocks over it. "Inside" means the house's air that outside air can't reach
+  without passing a door, a window or a wall.
+- **Storey:** the floor at one height, counted from the feet. A stair's steps belong to no storey.
+- **Room:** floor joined on one storey, bounded by walls and split at doors. An open arch joins two spaces into one
+  room.
+- **Use:** what a room is for, judged by what's in it and beside it:
+  - `chamber`: beds;
+  - `work`: a workstation;
+  - `hall`: the street door opens into it;
+  - `store`: chests or casks;
+  - `stair`: all half steps;
+  - `passage`: 4 cells or fewer, or one wide;
+  - `room`: none of these.
+- **Route:** the shortest walk from the street door to a destination: a bed (from beside its head or its foot), a
+  workstation, a chest, a hearth or a table. Routes go level, and up or down a block only onto or off a stair or slab.
+- **Circulation:** the floor on any route.
+- **Idle floor:** floor neither on a route nor beside anything used. It's space that does nothing: no bed, chest,
+  table or hearth beside it, and nobody walks over it.
+- **Made bed:** a bed with free floor along a long side, so it can be got into and made. Two beds pushed together
+  against a wall aren't made beds.
+- **Through room:** a chamber that a route to someone else's bed passes through. A stair that opens into a bedroom
+  makes every bed above it a route through that bedroom.
+- **Walk:** the mean route length to the beds, divided by the square root of the house's floor. It measures how far
+  you walk for the size of the house: 1 is a direct house, and over 2 is a maze.
+- **Least width:** how narrow a room gets, measured as each cell's shorter run of floor across the room, at the
+  tenth percentile of its cells.
+- **Clear height:** air over the floor, the room's median.
+- **Low cells:** floor with under 3 of clear height.
+- **Floor a bed:** chamber floor divided by beds.
+
+## The thresholds (v0.1, to tune together)
+
+| Measure | Target | Why |
+|---|---|---|
+| Every bed and workstation reached | all | the census counts only what a villager can walk to |
+| Made beds | all | a bed in a corner behind another is a bed nobody can use |
+| Through rooms | 0 | a stair opens onto a landing or the hall, never a bedroom |
+| Circulation | 15% to 35% of floor | below that the plan is cramped; above it, a corridor house |
+| Idle floor | under 40% | an empty box isn't a room: furnish it, shrink it, or give it a use |
+| Walk | under 2.0 | routes direct for the house's size |
+| Floor a bed | 4 to 8 | under 4 is a dormitory; over 8 is two beds in a barn |
+| Least width, rooms | 3 or more (passages 2) | a 1-wide room is a corridor |
+| Clear height | 3 or more (median) | a storey of 5 gives 4; under 3 reads as a crawlspace |
+| Windows | 1 or more a chamber, about 1 per 8 floor | light, and a reason a room is on the outside wall |
+| Hearth | in the hall, with its chimney | where a house lives |
+
+## How to build to them (systems, not single houses)
+
+The thresholds should be properties of the systems that make houses, so every house they make passes. They shouldn't
+be checks we run once on a hand-built one. Concretely, for the plan layer of the module set:
+
+- **Landing tiles.** A stair core's top opens onto a `landing` tile, and chambers open off the landing through a
+  door. That fixes through rooms by construction.
+- **Chamber tiles sized by beds.** A chamber tile is 2 beds, each with a free long side, plus a chest and a window,
+  about 10 to 12 floor. Bigger floors split into more chambers, not bigger empty ones.
+- **Furnishing by use.** Each room tile carries its furniture set:
+  - hall: hearth, table, benches;
+  - chamber: beds, a chest, a lantern;
+  - work: the workstation and its stock.
+
+  The furniture is placed by the tile, so idle floor stays low whatever the house size.
+- **Circulation as its own tile.** `passage` and `landing` are tiles with a width of at least 2, so routes are
+  designed, not left over.
+
+floorplan.py runs on every house the solver makes. The studio's validator can gain an `--interior` mode with these as
+warnings first, errors once we've agreed the numbers.
