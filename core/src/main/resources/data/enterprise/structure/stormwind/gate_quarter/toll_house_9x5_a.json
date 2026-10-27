@@ -1,0 +1,21 @@
+{
+  "id": "enterprise:stormwind/gate_quarter/toll_house_9x5_a",
+  "rev": 1,
+  "kingdom": "stormwind",
+  "kind": "hall",
+  "palette": "stone",
+  "footprint": [
+    9,
+    5
+  ],
+  "height": 10,
+  "ground": 2,
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "slot": "toll_house",
+  "note": "astride a 3-wide road running north-south through x 3-5: two booths, a roofed arch, gates across the road (open)",
+  "relief_faces": []
+}
