@@ -1,0 +1,24 @@
+{
+  "id": "enterprise:lordaeron/part/timber/post_corner_upper",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "column",
+  "set": "lordaeron/timber",
+  "palette": "stone",
+  "size": [
+    1,
+    4,
+    1
+  ],
+  "mirror": true,
+  "column": "post_corner",
+  "storey": "upper",
+  "storey_height": 4,
+  "sockets": {
+    "left": "column",
+    "right": "column",
+    "top": "column|roof",
+    "bottom": "column|foundation",
+    "face": "south (the street, after turning)"
+  }
+}

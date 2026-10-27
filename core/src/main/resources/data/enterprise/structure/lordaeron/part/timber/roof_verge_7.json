@@ -1,0 +1,24 @@
+{
+  "id": "enterprise:lordaeron/part/timber/roof_verge_7",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "roof",
+  "set": "lordaeron/timber",
+  "palette": "stone",
+  "size": [
+    1,
+    4,
+    7
+  ],
+  "mirror": true,
+  "roof": "verge",
+  "span": 7,
+  "pitch": 1,
+  "layers": 4,
+  "sockets": {
+    "along": "roof_bay|gable_end (x)",
+    "bottom": "the top storey's columns",
+    "span": "z"
+  },
+  "note": "the roof's edge carried past a gable: covering only"
+}

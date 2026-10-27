@@ -1,0 +1,24 @@
+{
+  "id": "enterprise:lordaeron/part/timber/stud_ground",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "column",
+  "set": "lordaeron/timber",
+  "palette": "stone",
+  "size": [
+    1,
+    4,
+    1
+  ],
+  "mirror": true,
+  "column": "stud",
+  "storey": "ground",
+  "storey_height": 4,
+  "sockets": {
+    "left": "column",
+    "right": "column",
+    "top": "column|roof",
+    "bottom": "column|foundation",
+    "face": "south (the street, after turning)"
+  }
+}

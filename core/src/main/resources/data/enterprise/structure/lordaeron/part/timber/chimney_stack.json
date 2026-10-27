@@ -1,0 +1,17 @@
+{
+  "id": "enterprise:lordaeron/part/timber/chimney_stack",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "fitout",
+  "set": "lordaeron/timber",
+  "palette": "stone",
+  "size": [
+    1,
+    1,
+    1
+  ],
+  "mirror": true,
+  "sockets": {
+    "placed": "by rule (timber.json fitout)"
+  }
+}
