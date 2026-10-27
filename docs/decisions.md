@@ -819,6 +819,13 @@ help breed more as needed."
   `variety_most` (4). And a Butcher keeps cooked meat at twice the food par in its own points, whatever else feeds the
   town, so the beef goes in the bag. Live, 90 days: the towns' beef 1,296 to 156 (120 cooked in stock), 79 trips (56),
   15.6 comforts met (16), moods +1.8, +2.0, +2.5, +2.5, +1.2 (a different world of the same seed).
+- **Short of food, the meals come first in the Farmers' plan** (`farms::meal_needs`), as the feed and what's sold
+  forward do: a day's meals in the food crops the town has plots of, shared by their plots (a town with none plants a
+  field of one, as before). With daily meals, Ryegate's two Farmers tended cane for cookies and paper while its 169
+  plots of carrots and potatoes lay untended, and it ate its stock to nothing (money 8.6). Live, 90 days: Ryegate
+  +3.1, money 81, tending 61 plots of carrots and 40 of potatoes. On that run's journal, the core before: Ryegate +1.0;
+  Meadowfell +2.4 there against +1.2 here; the five moods' sum +7.6 to +9.0. Dustfell sank in both (9 villagers, no
+  comfort met): the world, not the rule.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 
