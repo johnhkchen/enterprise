@@ -1,0 +1,56 @@
+{
+  "id": "enterprise:lordaeron/dock/dock_pier_3x4_a",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "dock",
+  "slot": "dock:pier",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "fixed",
+  "footprint": [
+    3,
+    4
+  ],
+  "height": 4,
+  "ground": 0,
+  "mirror": true,
+  "entrances": [],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "pilings": [
+    {
+      "at": [
+        0,
+        0
+      ],
+      "block": "minecraft:stone_bricks"
+    },
+    {
+      "at": [
+        2,
+        0
+      ],
+      "block": "minecraft:stone_bricks"
+    },
+    {
+      "at": [
+        0,
+        3
+      ],
+      "block": "minecraft:stone_bricks"
+    },
+    {
+      "at": [
+        2,
+        3
+      ],
+      "block": "minecraft:stone_bricks"
+    }
+  ],
+  "entities": [],
+  "notes": "the pier runs along z (out over the water to the south): repeat the segment, the head at the end; stone_docks = segments + head"
+}
