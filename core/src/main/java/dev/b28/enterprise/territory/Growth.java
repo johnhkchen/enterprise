@@ -55,19 +55,35 @@ public final class Growth {
 
     /** The nearest corner (ground level, lowest x and z) where a cottage fits, if any within reach of the bell. */
     public static Optional<BlockPos> homeSite(ServerLevel level, BlockPos bell) {
-        // Fronting a lane or an avenue inside the town's inner wall, where it has a plan (John: "lanes").
+        return homeSite(level, bell, HOME_SIZE, HOME_SIZE);
+    }
+
+    /**
+     * Where a home {@code width} along its street and {@code depth} back from it goes: fronting a lane or an avenue inside
+     * the town's inner wall, where it has a plan (John: "lanes"), nearest the bell first, on level ground or ground that
+     * can be filled level; a cottage anywhere near the bell where it has none. Its corner is its footprint's in the world
+     * (turned to its street: {@link TownPlans#frontages}).
+     */
+    public static Optional<BlockPos> homeSite(ServerLevel level, BlockPos bell, int width, int depth) {
         Optional<TownPlans.Plan> plan = TownPlans.at(level, bell);
         if (plan.isPresent() && plan.get().lanes()) {
-            List<BlockPos> corners = new ArrayList<>();
-            for (TownPlans.Frontage f : TownPlans.frontages(plan.get(), HOME_SIZE)) {
-                corners.add(new BlockPos(f.x(), bell.getY(), f.z()));
-            }
-            Optional<BlockPos> fronting = firstFit(level, bell, HOME_SIZE, RISE, corners);
-            if (fronting.isPresent()) {
-                return fronting;
+            for (TownPlans.Frontage f : TownPlans.frontages(plan.get(), width, depth)) {
+                if (!TownPlans.clear(level, f.x(), f.z(), f.sx(), f.sz(), false)) {
+                    continue;
+                }
+                BlockPos corner = new BlockPos(f.x(), bell.getY(), f.z());
+                int ground = surface(level, f.x(), f.z());
+                if (ground != Integer.MIN_VALUE && Math.abs(ground - bell.getY()) <= RISE
+                        && fits(level, corner.atY(ground), f.sx(), f.sz())) {
+                    return Optional.of(corner.atY(ground));
+                }
+                int top = levelled(level, corner, f.sx(), f.sz());
+                if (top != Integer.MIN_VALUE && Math.abs(top - bell.getY()) <= RISE) {
+                    return Optional.of(corner.atY(top));
+                }
             }
         }
-        return site(level, bell, HOME_SIZE, NEAREST);
+        return width == HOME_SIZE && depth == HOME_SIZE ? site(level, bell, HOME_SIZE, NEAREST) : Optional.empty();
     }
 
     /** The nearest corner where a {@code size} x {@code size} building fits, at least {@code nearest} from the bell. */
@@ -190,10 +206,15 @@ public final class Growth {
      * else {@link Integer#MIN_VALUE}. Changes nothing.
      */
     public static int levelled(ServerLevel level, BlockPos corner, int size) {
+        return levelled(level, corner, size, size);
+    }
+
+    /** As {@link #levelled(ServerLevel, BlockPos, int)}, for an {@code sx} x {@code sz} footprint. */
+    public static int levelled(ServerLevel level, BlockPos corner, int sx, int sz) {
         int top = Integer.MIN_VALUE;
         int bottom = Integer.MAX_VALUE;
-        for (int dx = -1; dx <= size; dx++) {
-            for (int dz = -1; dz <= size; dz++) {
+        for (int dx = -1; dx <= sx; dx++) {
+            for (int dz = -1; dz <= sz; dz++) {
                 int ground = surface(level, corner.getX() + dx, corner.getZ() + dz);
                 if (ground == Integer.MIN_VALUE) {
                     return Integer.MIN_VALUE;
@@ -211,8 +232,8 @@ public final class Growth {
         if (top - bottom > LEVELLED) {
             return Integer.MIN_VALUE;
         }
-        for (int dx = -1; dx <= size; dx++) {
-            for (int dz = -1; dz <= size; dz++) {
+        for (int dx = -1; dx <= sx; dx++) {
+            for (int dz = -1; dz <= sz; dz++) {
                 for (int up = 1; up <= 4; up++) {
                     BlockState above = level.getBlockState(new BlockPos(corner.getX() + dx, top + up, corner.getZ() + dz));
                     if (!above.canBeReplaced() || !above.getFluidState().isEmpty()) {
@@ -261,9 +282,14 @@ public final class Growth {
 
     /** As {@link #fits(ServerLevel, BlockPos)}, for a {@code size} x {@code size} footprint. */
     public static boolean fits(ServerLevel level, BlockPos corner, int size) {
+        return fits(level, corner, size, size);
+    }
+
+    /** As {@link #fits(ServerLevel, BlockPos)}, for an {@code sx} x {@code sz} footprint. */
+    public static boolean fits(ServerLevel level, BlockPos corner, int sx, int sz) {
         int ground = corner.getY();
-        for (int dx = -1; dx <= size; dx++) {
-            for (int dz = -1; dz <= size; dz++) {
+        for (int dx = -1; dx <= sx; dx++) {
+            for (int dz = -1; dz <= sz; dz++) {
                 int x = corner.getX() + dx;
                 int z = corner.getZ() + dz;
                 if (surface(level, x, z) != ground) {

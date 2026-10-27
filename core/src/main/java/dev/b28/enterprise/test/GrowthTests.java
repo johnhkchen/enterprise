@@ -81,25 +81,30 @@ public final class GrowthTests {
         var plan = new TownPlans.Plan(new BlockPos(0, 64, 0), new TownPlans.Rect(-30, -30, 30, 30),
                 new TownPlans.Rect(-80, -80, 80, 80), true, true);
         helper.assertTrue(TownPlans.lanes(plan).size() == 4, "a lane each side of each avenue: " + TownPlans.lanes(plan).size());
-        var homes = TownPlans.frontages(plan, Growth.HOME_SIZE);
-        helper.assertTrue(homes.size() > 20, "rows of homes: " + homes.size());
         java.util.function.BiPredicate<Integer, Integer> street = (x, z) -> Math.abs(x) <= 1 || Math.abs(z) <= 1
                 || x >= 18 && x <= 21 || x >= -22 && x <= -19 || z >= 18 && z <= 21 || z >= -22 && z <= -19;
-        for (var f : homes) {
-            for (int dx = 0; dx < Growth.HOME_SIZE; dx++) {
-                for (int dz = 0; dz < Growth.HOME_SIZE; dz++) {
-                    int x = f.x() + dx, z = f.z() + dz;
-                    helper.assertFalse(street.test(x, z) || TownPlans.onLane(plan, x, z), "a home on a street at " + f);
+        // Today's cottage, and the studio's bigger homes (C3: width along the street, depth back from it).
+        for (int[] size : new int[][] {{5, 5}, {7, 7}, {9, 6}, {14, 7}}) {
+            var homes = TownPlans.frontages(plan, size[0], size[1]);
+            helper.assertTrue(homes.size() >= 4, size[0] + " x " + size[1] + ": rows of homes: " + homes.size());
+            for (var f : homes) {
+                boolean alongZ = f.door().getAxis() == net.minecraft.core.Direction.Axis.X;
+                helper.assertTrue(f.sx() == (alongZ ? size[1] : size[0]) && f.sz() == (alongZ ? size[0] : size[1]),
+                        "turned to its street: " + f);
+                for (int dx = 0; dx < f.sx(); dx++) {
+                    for (int dz = 0; dz < f.sz(); dz++) {
+                        int x = f.x() + dx, z = f.z() + dz;
+                        helper.assertFalse(street.test(x, z) || TownPlans.onLane(plan, x, z), "a home on a street at " + f);
+                    }
                 }
+                int[] out = switch (f.door()) {
+                    case EAST -> new int[] {f.x() + f.sx() + 1, f.z() + f.sz() / 2};
+                    case WEST -> new int[] {f.x() - 2, f.z() + f.sz() / 2};
+                    case SOUTH -> new int[] {f.x() + f.sx() / 2, f.z() + f.sz() + 1};
+                    default -> new int[] {f.x() + f.sx() / 2, f.z() - 2};
+                };
+                helper.assertTrue(street.test(out[0], out[1]), "a doorstep, then the street, from " + f);
             }
-            int n = Growth.HOME_SIZE;
-            int[] out = switch (f.door()) {
-                case EAST -> new int[] {f.x() + n + 1, f.z() + 2};
-                case WEST -> new int[] {f.x() - 2, f.z() + 2};
-                case SOUTH -> new int[] {f.x() + 2, f.z() + n + 1};
-                default -> new int[] {f.x() + 2, f.z() - 2};
-            };
-            helper.assertTrue(street.test(out[0], out[1]), "a doorstep, then the street, from " + f);
         }
         helper.succeed();
     }

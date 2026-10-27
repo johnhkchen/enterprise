@@ -194,13 +194,25 @@ public final class TownPlans extends SavedData {
     }
 
     /** A home's place fronting a lane or an avenue: its corner (x, z) and the way its door faces, onto the street. */
-    public record Frontage(int x, int z, net.minecraft.core.Direction door) {}
+    public record Frontage(int x, int z, net.minecraft.core.Direction door, int sx, int sz) {
+        Frontage(int x, int z, net.minecraft.core.Direction door) {
+            this(x, z, door, 0, 0);
+        }
+    }
 
     /**
      * Where new homes go inside the inner wall: a row each side of every lane and avenue, a home every
      * {@code HOME_SIZE + 1} blocks along it, a doorstep between its door and the street; nearest the bell first.
      */
     public static List<Frontage> frontages(Plan plan, int size) {
+        return frontages(plan, size, size);
+    }
+
+    /**
+     * As {@link #frontages(Plan, int)}, for homes {@code width} along their street and {@code depth} back from it: each
+     * frontage's corner and its footprint in the world ({@code sx} x {@code sz}, turned to its street).
+     */
+    public static List<Frontage> frontages(Plan plan, int width, int depth) {
         Rect w = within(plan);
         int bx = plan.bell().getX(), bz = plan.bell().getZ();
         List<Frontage> out = new ArrayList<>();
@@ -210,23 +222,29 @@ public final class TownPlans extends SavedData {
         ew.add(new int[] {bz, GATE / 2, GATE / 2});
         laneLines(plan, true).forEach(x -> ns.add(new int[] {x, LANE / 2, LANE - LANE / 2 - 1}));
         laneLines(plan, false).forEach(z -> ew.add(new int[] {z, LANE / 2, LANE - LANE / 2 - 1}));
+        // Along each street, each ward's stretch of it (between the cross streets) filled from its start: a home never
+        // straddles a cross street.
         for (int[] s : ns) {
-            for (int z = w.z0(); z + size - 1 <= w.z1(); z += size + 1) {
-                out.add(new Frontage(s[0] - s[1] - 2 - size + 1, z, net.minecraft.core.Direction.EAST));
-                out.add(new Frontage(s[0] + s[2] + 2, z, net.minecraft.core.Direction.WEST));
+            for (int[] run : runs(w.z0(), w.z1(), ew)) {
+                for (int z = run[0]; z + width - 1 <= run[1]; z += width + 1) {
+                    out.add(new Frontage(s[0] - s[1] - 2 - depth + 1, z, net.minecraft.core.Direction.EAST, depth, width));
+                    out.add(new Frontage(s[0] + s[2] + 2, z, net.minecraft.core.Direction.WEST, depth, width));
+                }
             }
         }
         for (int[] s : ew) {
-            for (int x = w.x0(); x + size - 1 <= w.x1(); x += size + 1) {
-                out.add(new Frontage(x, s[0] - s[1] - 2 - size + 1, net.minecraft.core.Direction.SOUTH));
-                out.add(new Frontage(x, s[0] + s[2] + 2, net.minecraft.core.Direction.NORTH));
+            for (int[] run : runs(w.x0(), w.x1(), ns)) {
+                for (int x = run[0]; x + width - 1 <= run[1]; x += width + 1) {
+                    out.add(new Frontage(x, s[0] - s[1] - 2 - depth + 1, net.minecraft.core.Direction.SOUTH, width, depth));
+                    out.add(new Frontage(x, s[0] + s[2] + 2, net.minecraft.core.Direction.NORTH, width, depth));
+                }
             }
         }
-        out.removeIf(f -> f.x() < w.x0() || f.z() < w.z0() || f.x() + size - 1 > w.x1() || f.z() + size - 1 > w.z1());
+        out.removeIf(f -> f.x() < w.x0() || f.z() < w.z0() || f.x() + f.sx() - 1 > w.x1() || f.z() + f.sz() - 1 > w.z1());
         // Off every street (a row along a lane crosses the avenues and the other lanes), and off the forum.
         out.removeIf(f -> {
-            for (int dx = 0; dx < size; dx++) {
-                for (int dz = 0; dz < size; dz++) {
+            for (int dx = 0; dx < f.sx(); dx++) {
+                for (int dz = 0; dz < f.sz(); dz++) {
                     int x = f.x() + dx, z = f.z() + dz;
                     if (Math.abs(x - bx) <= GATE / 2 + 1 || Math.abs(z - bz) <= GATE / 2 + 1 || onLane(plan, x, z)) {
                         return true;
@@ -236,9 +254,31 @@ public final class TownPlans extends SavedData {
             return false;
         });
         int f0 = Forums.REACH + 1;
-        out.removeIf(f -> f.x() <= bx + f0 && f.x() + size - 1 >= bx - f0 && f.z() <= bz + f0 && f.z() + size - 1 >= bz - f0);
-        out.sort(Comparator.comparingDouble((Frontage f) -> Math.hypot(f.x() + size / 2.0 - bx, f.z() + size / 2.0 - bz))
+        out.removeIf(f -> f.x() <= bx + f0 && f.x() + f.sx() - 1 >= bx - f0 && f.z() <= bz + f0 && f.z() + f.sz() - 1 >= bz - f0);
+        out.sort(Comparator.comparingDouble((Frontage f) -> Math.hypot(f.x() + f.sx() / 2.0 - bx, f.z() + f.sz() / 2.0 - bz))
                 .thenComparingInt(Frontage::x).thenComparingInt(Frontage::z));
+        return out;
+    }
+
+    /**
+     * The stretches from {@code lo} to {@code hi} between the streets across them (each {line, blocks before, blocks
+     * after}), off each street and the block kept either side of it.
+     */
+    static List<int[]> runs(int lo, int hi, List<int[]> streets) {
+        List<int[]> out = new ArrayList<>();
+        Integer start = null;
+        for (int v = lo; v <= hi + 1; v++) {
+            boolean kept = v > hi;
+            for (int[] st : streets) {
+                kept |= v >= st[0] - st[1] - 1 && v <= st[0] + st[2] + 1;
+            }
+            if (!kept && start == null) {
+                start = v;
+            } else if (kept && start != null) {
+                out.add(new int[] {start, v - 1});
+                start = null;
+            }
+        }
         return out;
     }
 
@@ -252,10 +292,15 @@ public final class TownPlans extends SavedData {
 
     /** The way a home with its corner here faces: onto its street if it fronts one in any town's plan, else south. */
     public static net.minecraft.core.Direction doorOf(ServerLevel level, BlockPos corner, int size) {
+        return doorOf(level, corner, size, size);
+    }
+
+    /** As {@link #doorOf(ServerLevel, BlockPos, int)}, for a home {@code width} along its street, {@code depth} back. */
+    public static net.minecraft.core.Direction doorOf(ServerLevel level, BlockPos corner, int width, int depth) {
         if (level.getServer() != null) {
             for (Plan p : get(level.getServer()).plans.values()) {
                 if (p.inner().contains(corner.getX(), corner.getZ())) {
-                    for (Frontage f : frontages(p, size)) {
+                    for (Frontage f : frontages(p, width, depth)) {
                         if (f.x() == corner.getX() && f.z() == corner.getZ()) {
                             return f.door();
                         }

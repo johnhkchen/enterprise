@@ -630,6 +630,31 @@ public final class LandAdapter {
         }
     }
 
+    /** The home kit each town builds next, chosen when its site is found and laid with it; how many each has laid. */
+    private final Map<Long, dev.b28.enterprise.territory.Kits.Meta> homeKits = new HashMap<>();
+    private final Map<Long, Integer> homesLaid = new HashMap<>();
+
+    /**
+     * The home kit a town builds next: one of its kingdom's that fronts a street within a ward's depth, the next of them
+     * in a fixed order by the town and how many homes it has laid (a street of different houses); empty if it has none.
+     */
+    private Optional<dev.b28.enterprise.territory.Kits.Meta> nextHome(ServerLevel level, long town) {
+        var held = homeKits.get(town);
+        if (held != null) {
+            return Optional.of(held);
+        }
+        var resources = level.getServer().getResourceManager();
+        Optional<dev.b28.enterprise.territory.Kits.Meta> kit = dev.b28.enterprise.territory.Kits.choose(resources,
+                dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town), "home", HOME_WIDEST, HOME_DEEPEST, town,
+                new BlockPos(homesLaid.getOrDefault(town, 0), 0, 0)).flatMap(id -> dev.b28.enterprise.territory.Kits.meta(resources, id));
+        kit.ifPresent(m -> homeKits.put(town, m));
+        return kit;
+    }
+
+    /** The widest home along its street, and the deepest back from it, a 14 x 14 ward holds (two rows back to back). */
+    static final int HOME_WIDEST = 14;
+    static final int HOME_DEEPEST = 7;
+
     /** Where a hall or a field goes (empty for a bridge or the wall, which go where they must): the mod's sites. */
     private Optional<BlockPos> site(ServerLevel level, long town, BlockPos bell, Work work) {
         return switch (work) {
@@ -647,7 +672,19 @@ public final class LandAdapter {
                 Optional<BlockPos> site = Growth.farmSite(level, bell, Fields.SIZE, 8);
                 yield site.filter(c -> held.isEmpty() || held.contains(Hex.at(c.offset(Fields.SIZE / 2, 0, Fields.SIZE / 2))));
             }
-            case Work.Home h -> Growth.homeSite(level, bell);
+            case Work.Home h -> {
+                // The kingdom's home kit the town builds next (`Kits`, the asset studio's), its footprint fronting a
+                // street; the cottage where the kingdom has none.
+                Optional<dev.b28.enterprise.territory.Kits.Meta> kit = nextHome(level, town);
+                if (kit.isPresent()) {
+                    Optional<BlockPos> at = Growth.homeSite(level, bell, kit.get().width(), kit.get().depth());
+                    if (at.isPresent()) {
+                        yield at;
+                    }
+                    homeKits.remove(town); // no room for it: the cottage this time
+                }
+                yield Growth.homeSite(level, bell);
+            }
             default -> Optional.empty();
         };
     }
@@ -722,19 +759,20 @@ public final class LandAdapter {
                     yield false;
                 }
                 BlockPos corner = site.get();
-                if (!loadedFor(level, List.of(new ChunkPos(corner), new ChunkPos(corner.offset(Growth.HOME_SIZE, 0, Growth.HOME_SIZE)))
+                var kit = Optional.ofNullable(homeKits.get(town));
+                int w = kit.map(dev.b28.enterprise.territory.Kits.Meta::width).orElse(Growth.HOME_SIZE);
+                int d = kit.map(dev.b28.enterprise.territory.Kits.Meta::depth).orElse(Growth.HOME_SIZE);
+                if (!loadedFor(level, List.of(new ChunkPos(corner), new ChunkPos(corner.offset(Math.max(w, d), 0, Math.max(w, d))))
                         .stream().distinct().toList())) {
                     yield false;
                 }
-                // The town's kingdom's home kit for the slot where it has one (`Kits`, the asset studio's), else the
-                // cottage.
-                var door = dev.b28.enterprise.territory.TownPlans.doorOf(level, corner, Growth.HOME_SIZE);
-                var kit = dev.b28.enterprise.territory.Kits.choose(level.getServer().getResourceManager(),
-                        dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town), "home", Growth.HOME_SIZE,
-                        Growth.HOME_SIZE, town, corner);
-                if (kit.flatMap(id -> dev.b28.enterprise.territory.Kits.place(level, id, corner, door)).isEmpty()) {
+                // The kit chosen for it, turned to its street (`Kits`); the cottage if there's none or it can't be laid.
+                var door = dev.b28.enterprise.territory.TownPlans.doorOf(level, corner, w, d);
+                if (kit.flatMap(m -> dev.b28.enterprise.territory.Kits.place(level, m.id(), corner, door)).isEmpty()) {
                     Growth.buildHome(level, corner, door);
                 }
+                homeKits.remove(town);
+                homesLaid.merge(town, 1, Integer::sum);
                 yield true;
             }
             case Work.Field f -> {
