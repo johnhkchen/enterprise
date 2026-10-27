@@ -218,6 +218,11 @@ public final class LandAdapter {
                     dev.b28.enterprise.Enterprise.LOGGER.info("Town {} lays its forum round its bell at {} ({} paved)", town,
                             bell.toShortString(), paved);
                 }
+                // Its centrepiece round the bell (the kingdom's market cross), once its forum is paved.
+                if (dev.b28.enterprise.territory.Forums.get(server).dress(level, town, bell,
+                        dev.b28.enterprise.territory.Kingdoms.get(server).of(town))) {
+                    dev.b28.enterprise.Enterprise.LOGGER.info("Town {} raises its forum's centrepiece round its bell", town);
+                }
                 // Its plan: its walls' rectangles and its avenues to their gates (John: "town plan").
                 var plan = dev.b28.enterprise.territory.TownPlans.get(server).ensure(level, town, bell);
                 // Its first farm tracks, with its avenues (John: "some at founding").
@@ -760,6 +765,23 @@ public final class LandAdapter {
             case Work.Wall w -> {
                 // The inner wall of the town's plan, square to the compass; a ring round the bell for a town with none.
                 var plan = dev.b28.enterprise.territory.TownPlans.get(level.getServer()).of(town);
+                // The kingdom's wall kit, piece by piece round the plan's inner wall (`WallKit`, the studio's).
+                String kingdom = dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town);
+                if (plan != null && dev.b28.enterprise.territory.WallKit.has(level.getServer().getResourceManager(), kingdom)) {
+                    var pieces = dev.b28.enterprise.territory.WallKit.wall(plan, "enterprise:" + kingdom + "/wall/");
+                    int from = (int) Math.floor(land(town).shown(work) * pieces.size());
+                    int to = (int) Math.floor(Math.min(1, share) * pieces.size());
+                    Set<ChunkPos> chunks = new LinkedHashSet<>();
+                    for (var piece : pieces.subList(Math.min(from, to), to)) {
+                        chunks.add(new ChunkPos(new BlockPos(piece.x(), 0, piece.z())));
+                        chunks.add(new ChunkPos(new BlockPos(piece.x() + 11, 0, piece.z() + 11)));
+                    }
+                    if (!loadedFor(level, chunks)) {
+                        yield false;
+                    }
+                    dev.b28.enterprise.territory.WallKit.lay(level, kingdom, plan, from, to);
+                    yield true;
+                }
                 List<BlockPos> ring = plan != null ? dev.b28.enterprise.territory.TownPlans.wall(plan)
                         : Works.ring(bell, Works.WALL_RADIUS);
                 int from = (int) Math.floor(land(town).shown(work) * ring.size());

@@ -33,6 +33,8 @@ public final class Forums extends SavedData {
     public static final int ROAD_WIDTH = 3;
 
     private final Map<Long, BlockPos> bells = new LinkedHashMap<>();
+    /** The towns whose forum has its centrepiece. */
+    private final java.util.Set<Long> dressed = new java.util.TreeSet<>();
 
     public static Forums get(MinecraftServer server) {
         return server.overworld().getDataStorage()
@@ -63,6 +65,32 @@ public final class Forums extends SavedData {
         bells.put(town, bell);
         setDirty();
         return paved;
+    }
+
+    /**
+     * The forum's centrepiece round its bell, once (`docs/assets/README.md` C6): the kingdom's `forum:centre` kit (the
+     * studio's market cross), its bell marker on the town's bell, which stands as it is. False if the kingdom has none
+     * or its ground isn't loaded (tried again at the next survey).
+     */
+    public boolean dress(ServerLevel level, long town, BlockPos bell, String kingdom) {
+        if (!bells.containsKey(town) || dressed.contains(town)) {
+            return false;
+        }
+        var resources = level.getServer().getResourceManager();
+        var kit = Kits.choose(resources, kingdom, "forum:centre", 2 * REACH + 1, 2 * REACH + 1, town, bell);
+        var meta = kit.flatMap(id -> Kits.meta(resources, id));
+        if (meta.isEmpty()) {
+            return false;
+        }
+        // Its corner so that its bell marker (at the middle, a layer over its floor) is the bell.
+        int half = meta.get().width() / 2;
+        BlockPos corner = bell.offset(-half, -1, -meta.get().depth() / 2);
+        if (Kits.place(level, kit.get(), corner, net.minecraft.core.Direction.SOUTH).isEmpty()) {
+            return false;
+        }
+        dressed.add(town);
+        setDirty();
+        return true;
     }
 
     /** The forum's paving, {@code reach} each way: each column round the bell whose top is the land's own ground, near its height, paved. */
@@ -110,6 +138,7 @@ public final class Forums extends SavedData {
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         CompoundTag towns = new CompoundTag();
         bells.forEach((town, bell) -> towns.putLong(Long.toString(town), bell.asLong()));
+        tag.putLongArray("dressed", dressed.stream().mapToLong(Long::longValue).toArray());
         tag.put("bells", towns);
         return tag;
     }
@@ -119,6 +148,9 @@ public final class Forums extends SavedData {
         CompoundTag towns = tag.getCompound("bells");
         for (String key : towns.getAllKeys()) {
             forums.bells.put(Long.parseLong(key), BlockPos.of(towns.getLong(key)));
+        }
+        for (long t : tag.getLongArray("dressed")) {
+            forums.dressed.add(t);
         }
         return forums;
     }

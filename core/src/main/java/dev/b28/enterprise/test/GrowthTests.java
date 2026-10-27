@@ -338,6 +338,27 @@ public final class GrowthTests {
         helper.succeed();
     }
 
+    /**
+     * The wall kit's tiling (`WallKit`, the studio's stone kit): every side closes exactly, corner to corner, a gatehouse
+     * centred on each avenue, nothing overlapping (Hearthglen's inner wall: 95 by 59, its gates off-centre).
+     */
+    @GameTest(template = "floor")
+    public static void aWallKitTilesEverySideExactly(GameTestHelper helper) {
+        for (int[] side : new int[][] {{95, 55}, {59, 38}, {40, 20}, {130, 61}, {33, 16}}) {
+            var pieces = dev.b28.enterprise.territory.WallKit.tileSide(side[0], java.util.List.of(side[1]), 24);
+            int x = -3;
+            for (var p : pieces) {
+                helper.assertTrue(p.at() == x, side[0] + ": a gap or an overlap at " + x + " (" + p + ")");
+                x += p.length();
+            }
+            helper.assertTrue(x == side[0] - 4, side[0] + ": ends at " + x + ", not where the next side's corner begins ("
+                    + (side[0] - 4) + ")");
+            var gate = pieces.stream().filter(p -> p.piece().startsWith("gatehouse")).findFirst().orElseThrow();
+            helper.assertTrue(gate.at() + 5 == side[1], side[0] + ": the gate's passage on the avenue");
+        }
+        helper.succeed();
+    }
+
     @GameTest(template = "floor", skyAccess = true)
     public static void fieldsAndWaterAreNoPlaceForAHome(GameTestHelper helper) {
         BlockPos corner = helper.absolutePos(new BlockPos(1, 1, 1));
