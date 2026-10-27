@@ -85,6 +85,18 @@ public final class Forums extends SavedData {
         // Its corner so that its bell marker (at the middle, a layer over its floor) is the bell.
         int half = meta.get().width() / 2;
         BlockPos corner = bell.offset(-half, -1, -meta.get().depth() / 2);
+        // Only on open ground: nothing of the town's under it (a desk, a chest, a bed, a job site) but the bell.
+        for (BlockPos at : BlockPos.betweenClosed(corner, corner.offset(meta.get().width() - 1, meta.get().height(),
+                meta.get().depth() - 1))) {
+            if (at.equals(bell)) {
+                continue;
+            }
+            BlockState state = level.getBlockState(at);
+            if (level.getBlockEntity(at) != null || level.getPoiManager().getType(at).isPresent()
+                    || state.is(dev.b28.enterprise.merchant.Merchant.DESK.get())) {
+                return false;
+            }
+        }
         if (Kits.place(level, kit.get(), corner, net.minecraft.core.Direction.SOUTH).isEmpty()) {
             return false;
         }

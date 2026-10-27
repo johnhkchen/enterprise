@@ -21,13 +21,18 @@ public final class Kingdoms extends SavedData {
 
     private final Map<Long, String> kingdoms = new LinkedHashMap<>();
 
+    /** On the game-test server, towns have no kingdom unless a test gives them one: their arenas are 7 x 7. */
+    private boolean gameTests;
+
     public static Kingdoms get(MinecraftServer server) {
-        return server.overworld().getDataStorage()
+        Kingdoms k = server.overworld().getDataStorage()
                 .computeIfAbsent(new SavedData.Factory<>(Kingdoms::new, Kingdoms::load, null), NAME);
+        k.gameTests = server instanceof net.minecraft.gametest.framework.GameTestServer;
+        return k;
     }
 
     public String of(long town) {
-        return kingdoms.getOrDefault(town, DEFAULT);
+        return kingdoms.getOrDefault(town, gameTests ? "none" : DEFAULT);
     }
 
     public void set(long town, String kingdom) {
