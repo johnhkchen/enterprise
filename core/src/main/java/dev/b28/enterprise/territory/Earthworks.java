@@ -52,6 +52,16 @@ public final class Earthworks {
      * the tiles laid.
      */
     public static int retain(ServerLevel level, String kingdom, int x0, int z0, int x1, int z1, int ground) {
+        return retain(level, kingdom, x0, z0, x1, z1, ground, null);
+    }
+
+    /**
+     * As {@link #retain(ServerLevel, String, int, int, int, int, int)}, the plot's street to {@code street}: a built wall
+     * where a cut or fill faces the street, the land's own cut face (stone, moss, roots) on the plot's other sides (the
+     * studio's rule, batch 014).
+     */
+    public static int retain(ServerLevel level, String kingdom, int x0, int z0, int x1, int z1, int ground,
+            net.minecraft.core.Direction street) {
         List<Tile> tiles = tiles(level, kingdom);
         if (tiles.isEmpty()) {
             return 0;
@@ -82,7 +92,8 @@ public final class Earthworks {
                 // Which way the high ground lies: outward for a cut, inward (the plot) for a fill.
                 int hx = cut ? e[4] : -e[4], hz = cut ? e[5] : -e[5];
                 int q = hz < 0 ? 0 : hx > 0 ? 1 : hz > 0 ? 2 : 3;
-                String kind = i % 5 == 2 ? "lamp" : rise >= 3 && i % 4 == 0 ? "buttress" : "straight";
+                boolean onStreet = street != null && e[4] == street.getStepX() && e[5] == street.getStepZ();
+                String kind = !onStreet ? "cut_face" : i % 5 == 2 ? "lamp" : rise >= 3 && i % 4 == 0 ? "buttress" : "straight";
                 Optional<Tile> tile = pick(tiles, rise, kind, ox * 31 + oz);
                 if (tile.isEmpty()) {
                     continue;
@@ -95,7 +106,7 @@ public final class Earthworks {
 
     private static Optional<Tile> pick(List<Tile> tiles, int rise, String kind, long seed) {
         List<Tile> fit = tiles.stream().filter(t -> t.rise() == rise && t.width() == 1 && t.tags().contains(kind)
-                && (kind.equals("straight") ? t.tags().size() <= 2 && !t.tags().contains("lamp") : true)).toList();
+                && (kind.equals("straight") ? !t.tags().contains("lamp") && !t.tags().contains("buttress") : true)).toList();
         if (fit.isEmpty() && !kind.equals("straight")) {
             return pick(tiles, rise, "straight", seed);
         }

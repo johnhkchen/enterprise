@@ -218,7 +218,7 @@ public final class Plots {
         }
         // Its edges retained where levelling cut the slope or built up a fill (the kingdom's earthworks).
         int[] plot = world(corner.getX(), corner.getZ(), width, depth, door, 0, 0, width, depth);
-        Earthworks.retain(level, kingdom, plot[0], plot[1], plot[0] + plot[2] - 1, plot[1] + plot[3] - 1, corner.getY());
+        Earthworks.retain(level, kingdom, plot[0], plot[1], plot[0] + plot[2] - 1, plot[1] + plot[3] - 1, corner.getY(), door);
         return Optional.of(new Laid(placed.get(), front, back, path));
     }
 

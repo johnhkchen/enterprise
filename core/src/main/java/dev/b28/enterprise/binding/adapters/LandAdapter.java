@@ -662,7 +662,7 @@ public final class LandAdapter {
                     townPlan.bell(), 64, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY).count();
             var built = dev.b28.enterprise.territory.Houses.next(level,
                     dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town),
-                    dev.b28.enterprise.territory.Kingdoms.tier(beds), townPlan.cell() - 2,
+                    dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).tierOf(town, beds), townPlan.cell() - 2,
                     townPlan.deepest() - dev.b28.enterprise.territory.TownPlans.FRONT_YARD, town * 7919 + homesLaid.getOrDefault(town, 0));
             if (built.isPresent()) {
                 homeKits.put(town, built.get().meta());

@@ -408,6 +408,16 @@ final class EnterpriseCommands {
                                             + (f > 0 ? " (" + f + " bodies without rules)" : "")), false);
                                     return made;
                                 })))
+                .then(Commands.literal("tier")
+                        // A town's tier set by hand ("auto" to let its villagers decide): what its houses are asked for.
+                        .then(Commands.argument("town", com.mojang.brigadier.arguments.LongArgumentType.longArg(0))
+                                .then(Commands.argument("tier", StringArgumentType.word()).executes(context -> {
+                                    long town = com.mojang.brigadier.arguments.LongArgumentType.getLong(context, "town");
+                                    String t = StringArgumentType.getString(context, "tier");
+                                    dev.b28.enterprise.territory.Kingdoms.get(context.getSource().getServer()).setTier(town, t);
+                                    context.getSource().sendSuccess(() -> Component.literal("Town " + town + " builds at tier " + t), false);
+                                    return 1;
+                                }))))
                 .then(Commands.literal("kingdom")
                         // A town's kingdom: the language its buildings are chosen in (`Kingdoms`).
                         .then(Commands.argument("town", com.mojang.brigadier.arguments.LongArgumentType.longArg(0))

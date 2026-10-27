@@ -89,7 +89,8 @@ public final class Yards {
             }
             order.add(t);
         }
-        order.sort(java.util.Comparator.comparingDouble(t -> -score(t, like) * (0.5 + random.nextDouble())));
+        // A tile beside itself is a repeat the eye catches (three wash lines in a row): a third of the weight.
+        order.sort(java.util.Comparator.comparingDouble(t -> -score(t, like) * (t == last ? 0.33 : 1) * (0.5 + random.nextDouble())));
         for (Tile t : order) {
             out.add(new Laid(t, x));
             if (search(tiles, width, door, like, random, x + t.width(), t, lampOf(t, x, door, lastLamp), out)) {
