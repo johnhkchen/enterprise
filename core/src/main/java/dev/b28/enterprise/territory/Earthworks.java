@@ -154,14 +154,29 @@ public final class Earthworks {
                             cut ? ground + done : ground - done - rise, q, e[4], e[5], cut);
                     done += rise;
                     offset += tile.get().depth();
-                    // The terrace before the next course lit every 5th column (the studio, r35: walkable, and dark).
-                    if (diff - done >= LEAST && i % 5 == 2) {
-                        light(level, ox + e[4] * (offset - 1), oz + e[5] * (offset - 1));
+                    // The terrace before the next course, dressed with the kingdom's terrace tiles (batch 020: planted at
+                    // the upper course's foot, walkable along the lower's edge, a lamp every 5th column), on the lower
+                    // course's top: for a cut the two columns before the next course, for a fill its first two.
+                    if (diff - done >= LEAST) {
+                        Optional<Tile> terrace = terrace(tiles, i % 5 == 2, ox * 31 + oz);
+                        int near = cut ? offset - 2 : offset;
+                        if (terrace.isPresent()) {
+                            laid += lay(level, terrace.get(), ox + e[4] * near, oz + e[5] * near,
+                                    cut ? ground + done : ground - done, q, e[4], e[5], cut);
+                        } else if (i % 5 == 2) {
+                            light(level, ox + e[4] * (near + 1), oz + e[5] * (near + 1));
+                        }
                     }
                 }
             }
         }
         return new Banked(laid, deepest);
+    }
+
+    /** A terrace tile of the set: its lamp, or a planted one by the seed; empty if the set has none. */
+    private static Optional<Tile> terrace(List<Tile> tiles, boolean lamp, long seed) {
+        List<Tile> fit = tiles.stream().filter(t -> t.tags().contains("terrace") && t.tags().contains("lamp") == lamp).toList();
+        return fit.isEmpty() ? Optional.empty() : Optional.of(fit.get((int) Math.floorMod(seed, (long) fit.size())));
     }
 
     /** A lantern on a post of mossy cobble on the ground at a column. */
