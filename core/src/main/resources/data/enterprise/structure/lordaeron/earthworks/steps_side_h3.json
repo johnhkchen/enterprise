@@ -1,0 +1,29 @@
+{
+  "id": "enterprise:lordaeron/earthworks/steps_side_h3",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "prop:earthworks",
+  "palette": "fixed",
+  "size": [
+    7,
+    8,
+    3
+  ],
+  "depth": 3,
+  "mirror": true,
+  "ground": 2,
+  "width": 7,
+  "rise": 3,
+  "kind_of": "steps_side",
+  "tags": [
+    "steps",
+    "path",
+    "lamp"
+  ],
+  "landing": [
+    0,
+    1
+  ],
+  "door_column": 0
+}
