@@ -842,6 +842,13 @@ help breed more as needed."
   a third world, it fell to +1.4 against +4.7 for the core before on that journal, with 11 trips to 40: the makers
   took the hands caravans and Farmers would have. Mixed, so not kept. Seen in both: Wheatfell held four
   Leatherworkers among seven villagers.
+- **A hired villager keeps its trade** (`PeopleAdapter.takeStall`, `Jobs.hire`). Wheatfell's four Leatherworkers
+  weren't the core's: its stalls set only the villager's job site; the game wiped it within ticks (a villager's brain
+  checks its job site against the trade it was built for, and a level-1 villager with none and no XP has no trade),
+  and the villager took the nearest free workstation, a village cauldron. Now the stall gives it the trade, claims the
+  workstation once the game has registered it, and rebuilds its brain, as the game's own hiring does (Java mode's
+  `hire` lacked the rebuild too). Live, 90 days: moods' sum +10.9, 16 comforts met (the most of these runs), Redfell
+  +1.1, six Leatherworkers in all (eleven the run before).
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 
