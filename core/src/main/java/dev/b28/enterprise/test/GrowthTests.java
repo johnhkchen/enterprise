@@ -425,6 +425,12 @@ public final class GrowthTests {
                     helper.assertTrue(x == width, width + ": fills it");
                     helper.assertTrue(strip.get().stream().filter(l -> l.tile().tags().stream()
                             .anyMatch(g -> g.startsWith("trade:"))).count() <= 1, width + ": a trade's tile once");
+                    var laid = strip.get();
+                    for (int i = 0, run = 0; i < laid.size(); i++) {
+                        run = i > 0 && laid.get(i - 1).tile() == laid.get(i).tile() ? run + 1 : 1;
+                        int most = laid.get(i).tile().maxRun();
+                        helper.assertTrue(most == 0 || run <= most, width + ": " + laid.get(i).tile().id() + " within its run");
+                    }
                 }
             }
         }

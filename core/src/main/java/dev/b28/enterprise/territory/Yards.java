@@ -24,7 +24,7 @@ public final class Yards {
 
     /** A tile of the set. */
     public record Tile(String id, String part, String slot, int width, int depth, Set<String> tags, String left,
-            String right, boolean lamp) {}
+            String right, boolean lamp, int maxRun, boolean once) {}
 
     /** A tile laid: which, and its first column. */
     public record Laid(Tile tile, int at) {}
@@ -40,7 +40,9 @@ public final class Yards {
                 t.getAsJsonArray("tags").forEach(x -> tags.add(x.getAsString()));
                 out.add(new Tile(t.get("id").getAsString(), t.get("part").getAsString(), t.get("slot").getAsString(),
                         t.get("width").getAsInt(), t.get("depth").getAsInt(), tags, sockets.get("left").getAsString(),
-                        sockets.get("right").getAsString(), t.has("lamp") && t.get("lamp").getAsBoolean()));
+                        sockets.get("right").getAsString(), t.has("lamp") && t.get("lamp").getAsBoolean(),
+                        t.has("max_run") && !t.get("max_run").isJsonNull() ? t.get("max_run").getAsInt() : 0,
+                        t.has("once") && t.get("once").getAsBoolean()));
             }
         });
         return out;
@@ -82,9 +84,14 @@ public final class Yards {
             if (overDoor != path || path && door != x) {
                 continue; // the path tile exactly at the door's column, and nowhere else
             }
-            // A trade's tile once a strip: one smith's yard reads as a smithy, three as a row of them.
-            if (t.tags().stream().anyMatch(g -> g.startsWith("trade:"))
-                    && out.stream().anyMatch(l -> l.tile().tags().stream().anyMatch(g -> g.startsWith("trade:")))) {
+            // A trade's tile once a strip (the set's `once`, and any trade's tile besides): one smith's yard reads as a
+            // smithy, three as a row of them.
+            boolean trade = t.once() || t.tags().stream().anyMatch(g -> g.startsWith("trade:"));
+            if (trade && out.stream().anyMatch(l -> l.tile().once() || l.tile().tags().stream().anyMatch(g -> g.startsWith("trade:")))) {
+                continue;
+            }
+            // No more of it side by side than the set's `max_run`.
+            if (t.maxRun() > 0 && run(out, t) >= t.maxRun()) {
                 continue;
             }
             int lamp = lampOf(t, x, door, lastLamp);
@@ -104,6 +111,15 @@ public final class Yards {
             out.remove(out.size() - 1);
         }
         return false;
+    }
+
+    /** How many of {@code t} stand side by side at the strip's end. */
+    private static int run(List<Laid> out, Tile t) {
+        int n = 0;
+        for (int i = out.size() - 1; i >= 0 && out.get(i).tile() == t; i--) {
+            n++;
+        }
+        return n;
     }
 
     /** The last lamp once a tile is laid at {@code x}: its own, the door's lantern over it, or the one before. */

@@ -47,6 +47,46 @@ public final class Earthworks {
     /** The least difference worth a wall: a 1-block step is a bank villagers and the eye take in their stride. */
     static final int LEAST = 2;
 
+    /** The most a plot's edge may stand above or below the land round it: two courses of the highest wall. */
+    static final int MOST = 8;
+
+    /**
+     * A flight of steps (the kingdom's 3-wide steps tile of the rise, its `path` one) over {@code rect} ({x, z, sx, sz}
+     * in the world), its high ground toward {@code high}, its low surface at {@code low}; the rect cleared over it first.
+     */
+    public static boolean steps(ServerLevel level, String kingdom, int[] rect, net.minecraft.core.Direction high, int low) {
+        Optional<Tile> tile = tiles(level, kingdom).stream().filter(t -> t.tags().contains("steps") && t.tags().contains("path")
+                && t.rise() == 1 && t.width() == 3).findFirst();
+        if (tile.isEmpty()) {
+            return false;
+        }
+        Optional<Compose.Part> part = Compose.part(level.getServer().getResourceManager(), Compose.blocks(level), tile.get().part());
+        if (part.isEmpty()) {
+            return false;
+        }
+        int q = switch (high) {
+            case EAST -> 1;
+            case SOUTH -> 2;
+            case WEST -> 3;
+            default -> 0;
+        };
+        Compose.Grid g = new Compose.Grid(0, 0, 0);
+        g.paste(part.get(), 0, 0, 0, q, false);
+        int oy = low - 2;
+        for (int x = rect[0]; x < rect[0] + rect[2]; x++) {
+            for (int z = rect[1]; z < rect[1] + rect[3]; z++) {
+                for (int y = oy + 3; y <= oy + part.get().h() + 3; y++) {
+                    level.setBlock(new BlockPos(x, y, z), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2);
+                }
+            }
+        }
+        for (var e : g.cells.entrySet()) {
+            level.setBlock(new BlockPos(rect[0] + e.getKey().getX(), oy + e.getKey().getY(), rect[1] + e.getKey().getZ()),
+                    e.getValue(), 2 | 16);
+        }
+        return true;
+    }
+
     /**
      * Retains a plot's edges: the plot {@code x0, z0} to {@code x1, z1} (inclusive) levelled at {@code ground}. Returns
      * the tiles laid.
@@ -84,21 +124,26 @@ public final class Earthworks {
                 if (outside == Integer.MIN_VALUE) {
                     continue;
                 }
-                int rise = Math.min(4, Math.abs(outside - ground));
-                if (rise < LEAST) {
-                    continue;
-                }
+                int diff = Math.abs(outside - ground);
                 boolean cut = outside > ground;
                 // Which way the high ground lies: outward for a cut, inward (the plot) for a fill.
                 int hx = cut ? e[4] : -e[4], hz = cut ? e[5] : -e[5];
                 int q = hz < 0 ? 0 : hx > 0 ? 1 : hz > 0 ? 2 : 3;
                 boolean onStreet = street != null && e[4] == street.getStepX() && e[5] == street.getStepZ();
-                String kind = !onStreet ? "cut_face" : i % 5 == 2 ? "lamp" : rise >= 3 && i % 4 == 0 ? "buttress" : "straight";
-                Optional<Tile> tile = pick(tiles, rise, kind, ox * 31 + oz);
-                if (tile.isEmpty()) {
-                    continue;
+                // Courses outward from the plot, each up to 4 high, the next standing a tile's depth beyond the last
+                // (a terrace between): a drop of 6 is a wall of 4 and one of 2, not a dirt cliff.
+                for (int done = 0, offset = 0; diff - done >= LEAST; ) {
+                    int rise = Math.min(4, diff - done);
+                    String kind = !onStreet ? "cut_face" : i % 5 == 2 ? "lamp" : rise >= 3 && i % 4 == 0 ? "buttress" : "straight";
+                    Optional<Tile> tile = pick(tiles, rise, kind, ox * 31 + oz + offset);
+                    if (tile.isEmpty()) {
+                        break;
+                    }
+                    laid += lay(level, tile.get(), ox + e[4] * offset, oz + e[5] * offset,
+                            cut ? ground + done : ground - done - rise, q, e[4], e[5], cut);
+                    done += rise;
+                    offset += tile.get().depth();
                 }
-                laid += lay(level, tile.get(), ox, oz, cut ? ground : outside, q, e[4], e[5], cut);
             }
         }
         return laid;

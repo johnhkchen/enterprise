@@ -897,9 +897,10 @@ public final class LandAdapter {
                                 dev.b28.enterprise.settlement.Props.twinOf(level, station);
                             }
                         }
-                        Enterprise.LOGGER.info("Town {} builds {} facing {} at {} (front yard {}, back yard {})", town,
-                                kit.get().id(), p.door().getName(), corner.toShortString(), onPlot.get().front().orElse("none"),
-                                onPlot.get().back().orElse("none"));
+                        Enterprise.LOGGER.info("Town {} builds {} facing {} at {} (front yard {}, back yard {}, {} retaining "
+                                + "tiles{})", town, kit.get().id(), p.door().getName(), corner.toShortString(),
+                                onPlot.get().front().orElse("none"), onPlot.get().back().orElse("none"), onPlot.get().banked(),
+                                onPlot.get().steps() ? ", steps to the door" : "");
                     }
                 } else {
                     var door = dev.b28.enterprise.territory.TownPlans.doorOf(level, corner, w, d);

@@ -89,6 +89,12 @@ public final class Plots {
                 why[1 + Math.max(0, LAST_WHY)]++;
                 continue;
             }
+            int doorX = h[0] + house.entrances().stream().findFirst().map(BlockPos::getX).orElse(house.width() / 2);
+            if (!bankable(level, world(f.x(), f.z(), width, depth, f.door(), 0, 0, width, depth), y,
+                    world(new BlockPos(f.x(), y, f.z()), width, depth, f.door(), doorX, depth))) {
+                why[2]++;
+                continue;
+            }
             if (Math.abs(y - bell.getY()) > RISE) {
                 why[3]++;
                 continue;
@@ -145,8 +151,67 @@ public final class Plots {
         return top - bottom <= ROLL ? top : Integer.MIN_VALUE;
     }
 
+    /**
+     * Levels a plot ({@code x0, z0} to {@code x1, z1}, inclusive) at {@code ground}, its walking surface: the land's own
+     * ground cut down to it and filled up to it, grass on top, and its trees felled (the studio's renders: houses in
+     * stepped dirt between their yards, acacias against their walls). Anything built is left alone.
+     */
+    static void level(ServerLevel level, int x0, int z0, int x1, int z1, int ground) {
+        BlockState dirt = Blocks.DIRT.defaultBlockState();
+        for (int x = x0; x <= x1; x++) {
+            for (int z = z0; z <= z1; z++) {
+                int top = Earthworks.height(level, x, z);
+                if (top == Integer.MIN_VALUE) {
+                    continue;
+                }
+                for (int y = ground + 1; y <= Math.max(top, ground) + 16; y++) {
+                    BlockPos p = new BlockPos(x, y, z);
+                    BlockState s = level.getBlockState(p);
+                    if (s.is(net.minecraft.tags.BlockTags.LOGS) || s.is(net.minecraft.tags.BlockTags.LEAVES)
+                            || dev.b28.enterprise.settlement.Grounds.natural(s) || !s.isAir() && s.canBeReplaced()) {
+                        level.setBlock(p, Blocks.AIR.defaultBlockState(), 2);
+                    }
+                }
+                for (int y = top + 1; y < ground; y++) {
+                    BlockPos p = new BlockPos(x, y, z);
+                    BlockState s = level.getBlockState(p);
+                    if (s.isAir() || s.canBeReplaced() || s.is(net.minecraft.tags.BlockTags.LOGS)) {
+                        level.setBlock(p, dirt, 2);
+                    }
+                }
+                BlockPos surface = new BlockPos(x, ground, z);
+                BlockState s = level.getBlockState(surface);
+                if (s.isAir() || s.canBeReplaced() || s.is(net.minecraft.tags.BlockTags.LOGS)
+                        || dev.b28.enterprise.settlement.Grounds.natural(s) && !s.is(Blocks.DIRT_PATH)) {
+                    level.setBlock(surface, Blocks.GRASS_BLOCK.defaultBlockState(), 2);
+                }
+            }
+        }
+    }
+
+    /**
+     * Can a plot ({x, z, sx, sz} in the world) levelled at {@code ground} be banked: the land just round it within
+     * {@link Earthworks#MOST} of the ground (two courses of retaining wall at most), and the street at its door within
+     * a step of it (a flight of one fits the front yard).
+     */
+    static boolean bankable(ServerLevel level, int[] plot, int ground, BlockPos doorOut) {
+        for (int x = plot[0] - 1; x <= plot[0] + plot[2]; x++) {
+            for (int z = plot[1] - 1; z <= plot[1] + plot[3]; z++) {
+                if (x >= plot[0] && x < plot[0] + plot[2] && z >= plot[1] && z < plot[1] + plot[3]) {
+                    continue;
+                }
+                int y = Earthworks.height(level, x, z);
+                if (y != Integer.MIN_VALUE && Math.abs(y - ground) > Earthworks.MOST) {
+                    return false;
+                }
+            }
+        }
+        int street = Earthworks.height(level, doorOut.getX(), doorOut.getZ());
+        return street == Integer.MIN_VALUE || Math.abs(street - ground) <= 1;
+    }
+
     /** What was laid on a plot: the house, and the yards' kits (empty where the kingdom has none for it). */
-    public record Laid(Kits.Placed house, Optional<String> front, Optional<String> back, int path) {}
+    public record Laid(Kits.Placed house, Optional<String> front, Optional<String> back, int path, int banked, boolean steps) {}
 
     /**
      * Lays a plot: {@code house} (a home kit) in it, a front and a back yard of the kingdom's for its width, and the
@@ -175,6 +240,8 @@ public final class Plots {
             int width, int depth, Direction door, long seed, String tier, String trade) {
         ResourceManager resources = level.getServer().getResourceManager();
         int[] h = house(depth, house.width(), house.depth());
+        int[] plot = world(corner.getX(), corner.getZ(), width, depth, door, 0, 0, width, depth);
+        level(level, plot[0], plot[1], plot[0] + plot[2] - 1, plot[1] + plot[3] - 1, corner.getY());
         int[] at = world(corner.getX(), corner.getZ(), width, depth, door, h[0], h[1], h[2], h[3]);
         BlockPos houseCorner = new BlockPos(at[0], corner.getY(), at[1]);
         Optional<Kits.Placed> placed = built != null
@@ -233,10 +300,21 @@ public final class Plots {
                 path++;
             }
         }
+        // A step of one between the street and the plot at the door: the kingdom's 1-wide flight in the front yard, by
+        // half steps (the studio's renders: doorsteps reached up full blocks).
+        BlockPos out = world(corner, width, depth, door, doorX, depth);
+        int street = Earthworks.height(level, out.getX(), out.getZ());
+        boolean steps = false;
+        if (street != Integer.MIN_VALUE && Math.abs(street - corner.getY()) == 1 && doorX >= 1 && doorX + 1 < width) {
+            boolean plotHigh = street < corner.getY();
+            steps = Earthworks.steps(level, kingdom, world(corner.getX(), corner.getZ(), width, depth, door, doorX - 1,
+                    depth - TownPlans.FRONT_YARD, 3, TownPlans.FRONT_YARD), plotHigh ? door.getOpposite() : door,
+                    Math.min(street, corner.getY()));
+        }
         // Its edges retained where levelling cut the slope or built up a fill (the kingdom's earthworks).
-        int[] plot = world(corner.getX(), corner.getZ(), width, depth, door, 0, 0, width, depth);
-        Earthworks.retain(level, kingdom, plot[0], plot[1], plot[0] + plot[2] - 1, plot[1] + plot[3] - 1, corner.getY(), door);
-        return Optional.of(new Laid(placed.get(), front, back, path));
+        int banked = Earthworks.retain(level, kingdom, plot[0], plot[1], plot[0] + plot[2] - 1, plot[1] + plot[3] - 1,
+                corner.getY(), door);
+        return Optional.of(new Laid(placed.get(), front, back, path, banked, steps));
     }
 
     private static Optional<String> yard(ServerLevel level, ResourceManager resources, String kingdom, String slot,
