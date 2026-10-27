@@ -211,10 +211,6 @@ pub fn tend_for(content: &Content, herds: &mut Herds, keepers: Keepers, days: f6
     let kept = herds.count.iter().filter(|&&c| c >= 1.0).count();
     // Each kind's share of the room the cull leaves: the herd fills that much before it's culled.
     let keep = d.breeding_stock.max(d.cull_share * capacity / kept.max(1) as f64);
-    // Each kind's share of the room, and whether one is held under it with none free: then a kind over its share is
-    // culled back to it by its keeper, to make room.
-    let share = capacity / kept.max(1) as f64;
-    let crowded = total >= capacity - 1.0 && herds.count.iter().any(|&c| c >= 1.0 && c < share);
     for (k, a) in content.animals.iter().enumerate() {
         let mut count = herds.count[k];
         if count <= 0.0 {
@@ -236,10 +232,7 @@ pub fn tend_for(content: &Content, herds: &mut Herds, keepers: Keepers, days: f6
         }
         due -= eaten;
         if due < 1.0 {
-            // Free room, up to its share of it, the kinds kept sharing it alike (not as the mod): Meadowfell's 32 sheep, which
-            // no one culls without a Butcher, filled its three pastures, and its cows, under their cull, bred no more
-            // from day 20: no hides, no boots, and four Librarians with paper and no leather for books.
-            let room = (capacity - total).max(0.0).min((share - count).max(0.0));
+            let room = (capacity - total).max(0.0);
             let born = room.min(count * d.breed_per_day * days);
             count += born;
             total += born;
@@ -256,17 +249,10 @@ pub fn tend_for(content: &Content, herds: &mut Herds, keepers: Keepers, days: f6
         if let (Some(wool), true) = (a.wool, keepers.shepherd) {
             produce.push((wool, count * d.wool_per_sheep_day * days));
         }
-        // A Butcher culls any herd for meat; a Leatherworker culls cows for their hides (and beef); and a kind crowding
-        // another out of its share is culled to its own by its keeper (a Shepherd its sheep, for their mutton).
+        // A Butcher culls any herd for meat; a Leatherworker culls cows for their hides (and beef).
         let culls = keepers.butcher || a.name == "cow" && keepers.leatherworker;
-        let keeper = match keeper_of(&a.name) {
-            "shepherd" => keepers.shepherd,
-            "leatherworker" => keepers.leatherworker,
-            _ => keepers.butcher,
-        };
-        let floor = if culls { keep } else if keeper && crowded && count > share { share } else { f64::INFINITY };
-        if count > floor {
-            let surplus = count - floor;
+        if culls && count > keep {
+            let surplus = count - keep;
             let slaughtered = surplus.min(surplus * d.slaughter_per_day * days);
             count -= slaughtered;
             total -= slaughtered;

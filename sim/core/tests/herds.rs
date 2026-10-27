@@ -296,26 +296,3 @@ fn a_town_fences_another_pasture_when_its_herd_fills_the_ones_it_has() {
     assert_eq!(paid, -12.0, "four emeralds a pasture");
     s.conserved(&before).unwrap();
 }
-
-/// Kinds kept together share their pastures' room alike: Meadowfell's 32 sheep filled its three pastures (48) and its
-/// cows, under their cull, bred no more. Its Shepherd culls the sheep toward their half; the cows breed into it and
-/// its Leatherworker takes their hides.
-#[test]
-fn kinds_kept_together_share_the_pastures_room() {
-    let c = content();
-    let mut h = herd_of(&c, "sheep", 32.0);
-    let cow = c.animals.iter().position(|a| a.name == "cow").unwrap();
-    h.count[cow] = 16.0;
-    h.pastures = 3;
-    let both = Keepers { shepherd: true, butcher: false, leatherworker: true };
-    let mut stock = stocked(&c, WHEAT, 10_000.0);
-    let mut l = ledger(&c);
-    for _ in 0..60 {
-        tend(&c, &mut h, both, 1.0, &mut stock, &mut l);
-        assert!(h.count.iter().sum::<f64>() <= 48.0 + 1e-6, "past the pastures: {:?}", h.count);
-    }
-    // Culled while the cows lack their half and no room is free; once the Leatherworker's culls leave room, no more.
-    assert!(count(&c, &h, "sheep") < 28.0, "the sheep culled toward their half: {}", count(&c, &h, "sheep"));
-    assert!(count(&c, &h, "cow") > 18.0, "the cows bred into it: {}", count(&c, &h, "cow"));
-    assert!(l.made[LEATHER] > 0.0, "and their hides taken");
-}
