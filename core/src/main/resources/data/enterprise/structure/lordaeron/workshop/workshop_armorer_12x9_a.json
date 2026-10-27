@@ -1,6 +1,6 @@
 {
   "id": "enterprise:lordaeron/workshop/workshop_armorer_12x9_a",
-  "rev": 3,
+  "rev": 6,
   "kingdom": "lordaeron",
   "kind": "workshop",
   "slot": "workshop:armorer",
@@ -503,7 +503,7 @@
         },
         {
           "storey": 1,
-          "module": "door_inner",
+          "module": "wall_inner",
           "at": [
             5,
             2
@@ -513,7 +513,7 @@
         },
         {
           "storey": 1,
-          "module": "wall_inner",
+          "module": "door_inner",
           "at": [
             5,
             3

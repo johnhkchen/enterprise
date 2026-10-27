@@ -32,5 +32,6 @@
       1
     ]
   ],
-  "lamp": false
+  "lamp": false,
+  "max_run": null
 }
