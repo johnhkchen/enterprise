@@ -1,0 +1,19 @@
+{
+  "id": "enterprise:lordaeron/field/edge_rail_1b",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "field:edge",
+  "palette": "fixed",
+  "size": [
+    1,
+    8,
+    1
+  ],
+  "mirror": true,
+  "ground": 2,
+  "width": 1,
+  "depth": 1,
+  "kind_of": "edge",
+  "socket": "fence"
+}

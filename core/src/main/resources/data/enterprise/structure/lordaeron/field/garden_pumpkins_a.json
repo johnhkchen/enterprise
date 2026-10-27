@@ -1,0 +1,31 @@
+{
+  "id": "enterprise:lordaeron/field/garden_pumpkins_a",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "field",
+  "palette": "fixed",
+  "size": [
+    9,
+    8,
+    9
+  ],
+  "mirror": true,
+  "ground": 2,
+  "width": 9,
+  "depth": 9,
+  "kind_of": "field",
+  "crop": null,
+  "plots": 0,
+  "tags": [
+    "garden",
+    "decor",
+    "pumpkin",
+    "melon"
+  ],
+  "water": [
+    4,
+    2,
+    4
+  ]
+}
