@@ -212,6 +212,12 @@ public final class LandAdapter {
                 }
                 long town = desk.getValue();
                 BlockPos bell = PeopleAdapter.centre(level, desk.getKey().pos());
+                // Its forum, laid free at its first survey: the heart its main roads leave from.
+                int paved = dev.b28.enterprise.territory.Forums.get(server).ensure(level, town, bell);
+                if (paved > 0) {
+                    dev.b28.enterprise.Enterprise.LOGGER.info("Town {} lays its forum round its bell at {} ({} paved)", town,
+                            bell.toShortString(), paved);
+                }
                 int since = sinceCounted.getOrDefault(town, CROPS_EVERY);
                 if (since >= CROPS_EVERY) {
                     inputs.addAll(crops(level, town, desk.getKey().pos(), bell));
@@ -499,6 +505,12 @@ public final class LandAdapter {
             }
             if (loadedFor(level, Trails.chunks(t))) {
                 int blocks = Trails.lay(level, t);
+                // Through a town's forum hex, its main roads from the forum to where the route comes and goes.
+                int streets = dev.b28.enterprise.territory.Forums.get(server).roads(level, t);
+                if (streets > 0) {
+                    dev.b28.enterprise.Enterprise.LOGGER.info("Main roads laid from a forum across hex {} ({} blocks)", t.hex(),
+                            streets);
+                }
                 trails.laid(t);
                 dev.b28.enterprise.Enterprise.LOGGER.info("A trail laid across hex {}, {} wide ({} blocks of path)", t.hex(),
                         t.width(), blocks);

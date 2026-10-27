@@ -250,4 +250,22 @@ public final class JobsTests {
         helper.assertFalse(dev.b28.enterprise.territory.Pastures.enclosed(fenced, 9, 0, 4), "the outside is fenced in");
         helper.succeed();
     }
+
+    /** A town's forum: the land's own ground round its bell paved, the bell and anything built left as they stand. */
+    @GameTest(template = "floor", skyAccess = true)
+    public static void aForumIsPavedRoundItsBellOnTheLandsOwnGround(GameTestHelper helper) {
+        for (int x = 0; x < 7; x++) {
+            for (int z = 0; z < 7; z++) {
+                helper.setBlock(new BlockPos(x, 1, z), Blocks.GRASS_BLOCK);
+            }
+        }
+        helper.setBlock(new BlockPos(1, 1, 1), Blocks.OAK_PLANKS); // a house's floor
+        helper.setBlock(new BlockPos(3, 2, 3), Blocks.BELL);
+        int paved = dev.b28.enterprise.territory.Forums.pave(helper.getLevel(), helper.absolutePos(new BlockPos(3, 2, 3)));
+        helper.assertTrue(paved == 47, "49 round the bell less the bell's and the house's: " + paved);
+        helper.assertBlockPresent(Blocks.STONE_BRICKS, new BlockPos(0, 1, 0));
+        helper.assertBlockPresent(Blocks.OAK_PLANKS, new BlockPos(1, 1, 1));
+        helper.assertBlockPresent(Blocks.BELL, new BlockPos(3, 2, 3));
+        helper.succeed();
+    }
 }

@@ -77,7 +77,7 @@ public final class Trails extends SavedData {
     }
 
     /** The columns along a polyline, in order, each once: a block's step at a time, {@code width} wide about it. */
-    static List<BlockPos> columns(double[][] points, int width) {
+    public static List<BlockPos> columns(double[][] points, int width) {
         List<BlockPos> out = new ArrayList<>();
         java.util.Set<Long> seen = new java.util.HashSet<>();
         for (int i = 0; i + 1 < points.length; i++) {
