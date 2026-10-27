@@ -1,0 +1,29 @@
+{
+  "id": "enterprise:lordaeron/wall/curtain_8_a",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "wall",
+  "slot": "wall:curtain",
+  "tiers": [
+    "town"
+  ],
+  "palette": "fixed",
+  "tier_kit": "stone",
+  "footprint": [
+    8,
+    7
+  ],
+  "ground": 4,
+  "mirror": true,
+  "wall_line_z": 3,
+  "run": "x",
+  "outside": "north (z 0)",
+  "entrances": [],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "pilings": [],
+  "entities": [],
+  "notes": ""
+}

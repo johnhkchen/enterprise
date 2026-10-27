@@ -1,0 +1,39 @@
+{
+  "id": "enterprise:lordaeron/wall/corner_7x7_a",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "wall",
+  "slot": "wall:corner",
+  "tiers": [
+    "town"
+  ],
+  "palette": "fixed",
+  "tier_kit": "stone",
+  "footprint": [
+    7,
+    7
+  ],
+  "ground": 4,
+  "mirror": false,
+  "wall_line_z": 3,
+  "run": "x",
+  "outside": "north (z 0)",
+  "entrances": [
+    {
+      "at": [
+        3,
+        5,
+        6
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "pilings": [],
+  "entities": [],
+  "notes": "authored as the town's north-west corner: walls leave it east and south; the walk opens east and south"
+}
