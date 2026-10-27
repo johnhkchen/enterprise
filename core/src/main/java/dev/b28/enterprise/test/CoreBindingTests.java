@@ -486,6 +486,8 @@ public final class CoreBindingTests {
                 var spot = GlobalPos.of(level.dimension(), cauldron);
                 level.getPoiManager().take(type -> true, (type, at) -> at.equals(cauldron), cauldron, 1);
                 idle.getBrain().setMemory(MemoryModuleType.POTENTIAL_JOB_SITE, spot);
+                // (The server's own core doesn't know this test's town: the game may have hired the villager meanwhile.)
+                idle.setVillagerData(idle.getVillagerData().setProfession(net.minecraft.world.entity.npc.VillagerProfession.NONE));
                 helper.assertTrue(PeopleAdapter.keepToTheCore(level, idle, host.hands()), "the hand kept the cauldron");
                 helper.assertTrue(idle.getBrain().getMemory(MemoryModuleType.POTENTIAL_JOB_SITE).isEmpty()
                         && level.getPoiManager().getFreeTickets(cauldron) == 1, "the cauldron isn't free again");

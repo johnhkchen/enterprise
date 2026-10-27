@@ -312,7 +312,8 @@ impl Society {
                 let from = path[at.saturating_sub(1)];
                 let to = path[(at + 1).min(path.len() - 1)];
                 self.world.resource_mut::<Outbox>().0.push(Output::Trail { hex: crate::wire::HexAt::of(hex),
-                    from: crate::wire::HexAt::of(from), to: crate::wire::HexAt::of(to), width });
+                    from: crate::wire::HexAt::of(from), to: crate::wire::HexAt::of(to), width,
+                    path: path.iter().map(|&h| crate::wire::HexAt::of(h)).collect() });
             }
         }
         let today = now / day_ticks.max(1);

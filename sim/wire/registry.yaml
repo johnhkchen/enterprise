@@ -1049,6 +1049,9 @@ Output:
           - to:
               TYPENAME: HexAt
           - width: U32
+          - path:
+              SEQ:
+                TYPENAME: HexAt
     30:
       Stall:
         STRUCT:

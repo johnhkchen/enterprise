@@ -479,7 +479,7 @@ public final class LandAdapter {
         if (ownsLand) {
             trailsShown.add(new Trails.Trail(new Hex(trail.hex().q(), trail.hex().r()),
                     new Hex(trail.from().q(), trail.from().r()), new Hex(trail.to().q(), trail.to().r()),
-                    (int) Math.min(trail.width(), 8)));
+                    (int) Math.min(trail.width(), 8), trail.path().stream().map(h -> new Hex(h.q(), h.r())).toList()));
         }
     }
 
@@ -499,18 +499,13 @@ public final class LandAdapter {
         trailsShown.clear();
         ServerLevel level = server.overworld();
         int laid = 0;
+        var bells = dev.b28.enterprise.territory.Forums.get(server).bells();
         for (Trails.Trail t : trails.waiting()) {
             if (laid >= TRAILS_PER_LOOK) {
                 break;
             }
-            if (loadedFor(level, Trails.chunks(t))) {
-                int blocks = Trails.lay(level, t);
-                // Through a town's forum hex, its main roads from the forum to where the route comes and goes.
-                int streets = dev.b28.enterprise.territory.Forums.get(server).roads(level, t);
-                if (streets > 0) {
-                    dev.b28.enterprise.Enterprise.LOGGER.info("Main roads laid from a forum across hex {} ({} blocks)", t.hex(),
-                            streets);
-                }
+            if (loadedFor(level, Trails.chunks(t, bells))) {
+                int blocks = Trails.lay(level, t, bells);
                 trails.laid(t);
                 dev.b28.enterprise.Enterprise.LOGGER.info("A trail laid across hex {}, {} wide ({} blocks of path)", t.hex(),
                         t.width(), blocks);

@@ -469,8 +469,8 @@ fn outputs() -> Vec<Output> {
         Output::CrownShopDown { point: point(PointKind::Shop, i32::MIN, i32::MAX, i32::MIN) },
         Output::Found { town: 7, name: "Newfound 3".into(), x: 1640, z: -360 },
         Output::Found { town: u32::MAX, name: String::new(), x: i32::MIN, z: i32::MAX },
-        Output::Trail { hex: hex(3, -2), from: hex(2, -2), to: hex(4, -2), width: 2 },
-        Output::Trail { hex: hex(i32::MIN, i32::MAX), from: hex(i32::MIN, i32::MAX), to: hex(i32::MAX, i32::MIN), width: u32::MAX },
+        Output::Trail { hex: hex(3, -2), from: hex(2, -2), to: hex(4, -2), width: 2, path: vec![hex(2, -2), hex(3, -2), hex(4, -2)] },
+        Output::Trail { hex: hex(i32::MIN, i32::MAX), from: hex(i32::MIN, i32::MAX), to: hex(i32::MAX, i32::MIN), width: u32::MAX, path: vec![] },
         Output::Stall { town: 1, hand: 7, tag: "1d0c5a3e-0000-4000-8000-000000000007".into(), trade: "farmer".into() },
         Output::Stall { town: u32::MAX, hand: u32::MAX, tag: String::new(), trade: "é".into() },
     ]

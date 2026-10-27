@@ -17,7 +17,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 /**
  * Each town's forum (John: "a forum/agora per town ... with major paths for trade routes"): a paved square round its
  * bell, laid free the first time the town is surveyed (core mode), its heart that the main roads leave from along the
- * trade routes ({@link #roads}). Paved only where the ground is the land's own and near the bell's height: a village's
+ * trade routes (each road laid taut from bell to bell, {@link Trails#taut}, three wide through the forum's hex). Paved only where the ground is the land's own and near the bell's height: a village's
  * well, houses and paths are left as they stand. The Masons' Square (a work the town pays for, for its mood) is built
  * apart from it.
  *
@@ -104,32 +104,6 @@ public final class Forums extends SavedData {
     static boolean own(BlockState state) {
         return dev.b28.enterprise.settlement.Grounds.natural(state) && !state.is(Blocks.FARMLAND)
                 && state.getFluidState().isEmpty() && !state.is(BlockTags.BASE_STONE_OVERWORLD);
-    }
-
-    /**
-     * A town's main roads where a trade route's trail crosses its forum's hex: a street from the forum's edge to each
-     * edge of the hex the trail leaves by (its way in, its way on), {@link #ROAD_WIDTH} wide. Returns the columns laid.
-     */
-    public int roads(ServerLevel level, Trails.Trail trail) {
-        int laid = 0;
-        for (BlockPos bell : bells.values()) {
-            if (!Hex.at(bell).equals(trail.hex())) {
-                continue;
-            }
-            double[][] line = Trails.line(trail);
-            for (double[] edge : new double[][] {line[0], line[2]}) {
-                double dx = edge[0] - bell.getX();
-                double dz = edge[1] - bell.getZ();
-                double length = Math.hypot(dx, dz);
-                if (length <= REACH + 1) {
-                    continue;
-                }
-                double sx = bell.getX() + 0.5 + dx / length * (REACH + 1);
-                double sz = bell.getZ() + 0.5 + dz / length * (REACH + 1);
-                laid += Trails.layLine(level, new double[][] {{sx, sz}, edge}, ROAD_WIDTH);
-            }
-        }
-        return laid;
     }
 
     @Override

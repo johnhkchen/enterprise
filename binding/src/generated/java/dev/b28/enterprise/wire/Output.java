@@ -74,7 +74,7 @@ public sealed interface Output
             case 26 -> new CrownShop(Point.decode(in), in.u32(), in.u32(), in.u32(), in.u64(), in.u32());
             case 27 -> new CrownShopDown(Point.decode(in));
             case 28 -> new Found(in.u32(), in.string(), in.i32(), in.i32());
-            case 29 -> new Trail(HexAt.decode(in), HexAt.decode(in), HexAt.decode(in), in.u32());
+            case 29 -> new Trail(HexAt.decode(in), HexAt.decode(in), HexAt.decode(in), in.u32(), in.list(2, HexAt::decode));
             case 30 -> new Stall(in.u32(), in.u32(), in.string(), in.string());
             default -> throw in.unknownVariant("Output", at);
         };
@@ -575,13 +575,16 @@ public sealed interface Output
      * Wagons have worn a trail across {@code hex} ({@code map.rs}: crossings enough that its way is trodden level), or worn it
      * wider: for the host to lay a desire path {@code width} blocks wide through it, from its edge with {@code from} to its edge
      * with {@code to} (the hexes before and after it on the road that wore it), across its ground where it's soil, felling
-     * what grows in its way. Said once a width.
+     * what grows in its way. Said once a width. {@code path}: the whole road's hexes, end to end, for the host to lay it as
+     * the road it is rather than hex by hex (John: "roads should follow actual optimal paths not hex-optimized paths").
      */
-    record Trail(HexAt hex, HexAt from, HexAt to, long width) implements Output {
+    record Trail(HexAt hex, HexAt from, HexAt to, long width, List<HexAt> path) implements Output {
         public Trail {
             Objects.requireNonNull(hex, "hex");
             Objects.requireNonNull(from, "from");
             Objects.requireNonNull(to, "to");
+            Objects.requireNonNull(path, "path");
+            path = List.copyOf(path);
         }
 
         @Override
@@ -591,6 +594,7 @@ public sealed interface Output
             this.from.encode(out);
             this.to.encode(out);
             out.u32(this.width);
+            out.list(this.path, (o1, e1) -> e1.encode(o1));
         }
     }
 

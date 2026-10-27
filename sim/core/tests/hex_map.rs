@@ -557,7 +557,7 @@ fn a_busy_road_wears_trails_that_the_host_is_told_of_once_a_width() {
     let mut widths = BTreeMap::new();
     for day in 1..=60 {
         for o in s.advance(day * DAY) {
-            if let enterprise_core::Output::Trail { hex, from, to, width } = o {
+            if let enterprise_core::Output::Trail { hex, from, to, width, .. } = o {
                 let hex = Hex::new(hex.q, hex.r);
                 if let Some(had) = widths.insert(hex, width) {
                     assert!(width > had, "said again only wider: {hex:?} {had} then {width}");
