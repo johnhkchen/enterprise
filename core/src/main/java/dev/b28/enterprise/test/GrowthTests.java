@@ -4,8 +4,10 @@ import dev.b28.enterprise.Enterprise;
 import dev.b28.enterprise.merchant.Merchant;
 import dev.b28.enterprise.merchant.MerchantStock;
 import dev.b28.enterprise.settlement.Census;
+import dev.b28.enterprise.territory.Fields;
 import dev.b28.enterprise.territory.Growth;
 import dev.b28.enterprise.territory.Territory;
+import dev.b28.enterprise.territory.TownPlans;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
@@ -52,6 +54,88 @@ public final class GrowthTests {
         helper.assertTrue(helper.getLevel().getPoiManager().getType(head).filter(type -> type.is(PoiTypes.HOME)).isPresent(),
                 "villagers can claim it");
         helper.assertFalse(Growth.fits(helper.getLevel(), corner), "and nothing else fits on top of it");
+        helper.succeed();
+    }
+
+    /** A cottage built to front a lane to its east: its door in its east wall, facing out, its beds still claimable. */
+    @GameTest(template = "floor", skyAccess = true)
+    public static void aCottageFacesTheLaneItFronts(GameTestHelper helper) {
+        BlockPos corner = helper.absolutePos(new BlockPos(1, 1, 1));
+        BlockPos head = Growth.buildHome(helper.getLevel(), corner, net.minecraft.core.Direction.EAST);
+        helper.assertTrue(helper.getLevel().getBlockState(head).getBlock() instanceof BedBlock, "a bed inside");
+        var door = helper.getLevel().getBlockState(corner.offset(Growth.HOME_SIZE - 1, 1, 2));
+        helper.assertTrue(door.getBlock() instanceof net.minecraft.world.level.block.DoorBlock
+                && door.getValue(net.minecraft.world.level.block.DoorBlock.FACING) == net.minecraft.core.Direction.EAST,
+                "the door in the east wall, facing east: " + door);
+        helper.assertTrue(helper.getLevel().getPoiManager().getType(head).filter(type -> type.is(PoiTypes.HOME)).isPresent(),
+                "villagers can claim it");
+        helper.succeed();
+    }
+
+    /**
+     * Inside a town's inner wall (John: "lanes"): lanes every ward across, and new homes fronting them and the avenues,
+     * none on a street, each door a step from one.
+     */
+    @GameTest(template = "floor")
+    public static void homesFrontTheLanesAndAvenues(GameTestHelper helper) {
+        var plan = new TownPlans.Plan(new BlockPos(0, 64, 0), new TownPlans.Rect(-30, -30, 30, 30),
+                new TownPlans.Rect(-80, -80, 80, 80), true, true);
+        helper.assertTrue(TownPlans.lanes(plan).size() == 4, "a lane each side of each avenue: " + TownPlans.lanes(plan).size());
+        var homes = TownPlans.frontages(plan, Growth.HOME_SIZE);
+        helper.assertTrue(homes.size() > 20, "rows of homes: " + homes.size());
+        java.util.function.BiPredicate<Integer, Integer> street = (x, z) -> Math.abs(x) <= 1 || Math.abs(z) <= 1
+                || x == 17 || x == 18 || x == -19 || x == -18 || z == 17 || z == 18 || z == -19 || z == -18;
+        for (var f : homes) {
+            for (int dx = 0; dx < Growth.HOME_SIZE; dx++) {
+                for (int dz = 0; dz < Growth.HOME_SIZE; dz++) {
+                    int x = f.x() + dx, z = f.z() + dz;
+                    helper.assertFalse(street.test(x, z) || TownPlans.onLane(plan, x, z), "a home on a street at " + f);
+                }
+            }
+            int n = Growth.HOME_SIZE;
+            int[] out = switch (f.door()) {
+                case EAST -> new int[] {f.x() + n + 1, f.z() + 2};
+                case WEST -> new int[] {f.x() - 2, f.z() + 2};
+                case SOUTH -> new int[] {f.x() + 2, f.z() + n + 1};
+                default -> new int[] {f.x() + 2, f.z() - 2};
+            };
+            helper.assertTrue(street.test(out[0], out[1]), "a doorstep, then the street, from " + f);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A farm track's holdings in a town's gardens (John: "something like a voronoi", "strips in parcels"): fields along
+     * it either side in strips running away from it, north-south off a track running east-west, none overlapping, none
+     * on the track or the avenue, all between the walls.
+     */
+    @GameTest(template = "floor")
+    public static void aFarmTrackHasStripFieldsEitherSide(GameTestHelper helper) {
+        var plan = new TownPlans.Plan(new BlockPos(0, 64, 0), new TownPlans.Rect(-30, -30, 30, 30),
+                new TownPlans.Rect(-80, -80, 80, 80), true, true);
+        double[][] track = {{2.5, -55.5}, {60.5, -55.5}};
+        var fields = dev.b28.enterprise.territory.FieldMaps.fieldsAlong(helper.getLevel(), plan,
+                dev.b28.enterprise.territory.FieldMaps.Ring.GARDEN, track, 7);
+        helper.assertTrue(fields.size() >= 12, "fields both sides: " + fields.size());
+        int s = Fields.SIZE;
+        boolean north = false, south = false;
+        for (int i = 0; i < fields.size(); i++) {
+            int[] a = fields.get(i);
+            helper.assertTrue(a[2] == 1, "strips run north-south off an east-west track");
+            helper.assertTrue(a[1] + s - 1 < -57 || a[1] > -54, "off the track: " + a[0] + "," + a[1]);
+            helper.assertTrue(a[0] > 3, "off the avenue: " + a[0] + "," + a[1]);
+            boolean inInner = a[0] <= 34 && a[0] + s - 1 >= -34 && a[1] <= 34 && a[1] + s - 1 >= -34;
+            boolean inOuter = a[0] >= -76 && a[0] + s - 1 <= 76 && a[1] >= -76 && a[1] + s - 1 <= 76;
+            helper.assertTrue(!inInner && inOuter, "between the walls: " + a[0] + "," + a[1]);
+            north |= a[1] < -55;
+            south |= a[1] > -55;
+            for (int j = 0; j < i; j++) {
+                int[] b = fields.get(j);
+                helper.assertFalse(a[0] < b[0] + s && b[0] < a[0] + s && a[1] < b[1] + s && b[1] < a[1] + s,
+                        "two fields overlap: " + a[0] + "," + a[1] + " and " + b[0] + "," + b[1]);
+            }
+        }
+        helper.assertTrue(north && south, "holdings either side");
         helper.succeed();
     }
 

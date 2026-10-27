@@ -902,6 +902,36 @@ help breed more as needed."
   splits it into words) leaves no gaps.
 - **Names, for now** (John: "let's use WoW human settlement names"): markets and settlers' towns take the human
   settlements of the Eastern Kingdoms (Goldshire, Lakeshire, Darkshire...), each once.
+- **Lanes and wards** (`TownPlans.lanes`, `frontages`; John: "lanes"). Inside the inner wall, off its strip: lanes two
+  wide every 18 blocks parallel to the avenues, laid with the plan; the ground between is a ward. New homes front a
+  lane or an avenue, a row each side, a doorstep between the door and the street, the cottage turned to face it
+  (`Growth.buildHome(..., door)`); none on a street or the forum, nearest the bell first. Homes keep off the lanes as
+  they do the avenues.
+- **The field map** (`territory/FieldMaps.java`; John: "plots of farmland surrounding the old town square, something
+  like a voronoi", and chose strips in parcels, rings, and "planned in phases/rings: some at founding, more as town
+  grows; farms form along branch paths that connect to trade paths"). Rings round the plan: gardens between the
+  walls (roots, greens, berries), grain and cane in a band 40 deep past the outer wall, pastures beyond (24 to 80
+  past it, `TownPlans.pastureRing`). A ring's farm track leaves one of its trade paths (an avenue between the walls;
+  past the outer gate the avenue's road on, laid with the ring's first track off it; caravan roads through the band)
+  across it every 40 blocks, routed over the land as roads are (`Trails.between`), up to 44 long. Holdings lie along
+  it either side, a seed every 24 a little off true; each holding is the ground nearer its seed than any other's,
+  within 40 of it and on its side of every road and track (straight edges at odd angles where they meet). A holding
+  is farmed in strips running away from its track, square to the compass, a field (9) wide with a balk between and a
+  ditch down the middle that stops a block short of each end (so stretches at different heights don't spill into each
+  other); a field is a strip's 9-block stretch, those by the track first, its trees felled and the ground filled
+  level. Two tracks a ring open with the plan; when a ring's holdings are full the next opens, nearest the bell first.
+  The core's fields and their plots are unchanged: only where the binding lays them. Live (seed 8675309, 90 days):
+  the five towns laid 4 to 8 lanes each (440 to 860 blocks), opened 2 to 6 farm tracks each, and planted 1 to 6
+  fields on their maps as strips side by side (Darkshire's gardens between its walls); pastures 24 to 80 past the
+  outer wall; the replay matched all 2391 responses.
+- **Assets from a design studio** (`docs/assets/`; John: "use it as leverage to make our town gen extremely rich and
+  compelling", "we'll have the expertise on what villager living requires, it can handle aesthetics"). An outside
+  pipeline that turns GIS and simple masses into detailed builds (`pipeline-brief.md`, its samples). Our contract
+  with it (`README.md`): we own what villagers need (beds, workstations, doors, paths, light, the plan's slots), it
+  owns the look; concept art first, then modular part sets with assembly rules, masses detailed to fixed blocks, and
+  layouts designed on our exported plans. The first request (`request-001-first-kingdoms.md`): WoW human kingdoms
+  paired with real cultures, a Lordaeron pilot on Hearthglen. The code it needs (a structure placer first) is listed
+  there as C1 to C16; none is written yet.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 

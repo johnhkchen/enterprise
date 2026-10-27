@@ -20,9 +20,11 @@ import net.minecraft.world.level.saveddata.SavedData;
  * one round the city it may grow into, both rectangles square to the compass (John: "town walls shouldn't be perfect
  * circles"), gates where the four avenues from its forum pass through them. The inner wall is the town's wall work;
  * the outer is kept clear for later. Homes, fields and pastures are sited off the walls' strips and the avenues, and
- * fields and pastures outside the inner wall ({@link #clear}).
+ * fields and pastures outside the inner wall ({@link #clear}). Inside the inner wall, lanes every {@link #WARD} blocks
+ * parallel to the avenues (John: "lanes"), wards between them, and new homes fronting a lane or an avenue
+ * ({@link #frontages}).
  *
- * <p>Saved with the world: each town's plan, and whether its avenues are laid.
+ * <p>Saved with the world: each town's plan, and whether its avenues and lanes are laid.
  */
 public final class TownPlans extends SavedData {
     private static final String NAME = "enterprise_town_plans";
@@ -38,6 +40,12 @@ public final class TownPlans extends SavedData {
     public static final int STRIP = 3;
     /** A gate's width, and an avenue's. */
     public static final int GATE = 3;
+    /**
+     * How far apart the lanes are inside the inner wall, a ward between each two (a row of homes fronting each lane,
+     * their back yards between), and a lane's width.
+     */
+    static final int WARD = 18;
+    public static final int LANE = 2;
 
     /** A rectangle, its corners inclusive. */
     public record Rect(int x0, int z0, int x1, int z1) {
@@ -54,8 +62,8 @@ public final class TownPlans extends SavedData {
         }
     }
 
-    /** A town's plan: its bell, its walls, and whether its avenues are laid. */
-    public record Plan(BlockPos bell, Rect inner, Rect outer, boolean avenues) {}
+    /** A town's plan: its bell, its walls, and whether its avenues and its lanes are laid. */
+    public record Plan(BlockPos bell, Rect inner, Rect outer, boolean avenues, boolean lanes) {}
 
     private final Map<Long, Plan> plans = new LinkedHashMap<>();
 
@@ -88,10 +96,21 @@ public final class TownPlans extends SavedData {
         }
         if (!plan.avenues() && loaded(level, plan.outer())) {
             int laid = avenues(level, plan);
-            plan = new Plan(plan.bell(), plan.inner(), plan.outer(), true);
+            plan = new Plan(plan.bell(), plan.inner(), plan.outer(), true, plan.lanes());
             plans.put(town, plan);
             setDirty();
             dev.b28.enterprise.Enterprise.LOGGER.info("Town {} lays its avenues to its gates ({} blocks)", town, laid);
+        }
+        if (!plan.lanes() && loaded(level, plan.inner())) {
+            int laid = 0;
+            for (double[][] lane : lanes(plan)) {
+                laid += Trails.layLine(level, lane, LANE);
+            }
+            plan = new Plan(plan.bell(), plan.inner(), plan.outer(), plan.avenues(), true);
+            plans.put(town, plan);
+            setDirty();
+            dev.b28.enterprise.Enterprise.LOGGER.info("Town {} lays {} lanes inside its wall ({} blocks)", town,
+                    lanes(plan).size(), laid);
         }
         return plan;
     }
@@ -110,7 +129,7 @@ public final class TownPlans extends SavedData {
         int cx = bell.getX(), cz = bell.getZ();
         Rect outer = new Rect(cx - Math.min(MOST, OUTER * (cx - x0)), cz - Math.min(MOST, OUTER * (cz - z0)),
                 cx + Math.min(MOST, OUTER * (x1 - cx)), cz + Math.min(MOST, OUTER * (z1 - cz)));
-        return new Plan(bell, inner, outer, false);
+        return new Plan(bell, inner, outer, false, false);
     }
 
     private static boolean loaded(ServerLevel level, Rect r) {
@@ -136,6 +155,114 @@ public final class TownPlans extends SavedData {
         laid += Trails.layLine(level, new double[][] {{x - from, z}, {o.x0() + 0.5, z}}, GATE);
         laid += Trails.layLine(level, new double[][] {{x + from, z}, {o.x1() + 0.5, z}}, GATE);
         return laid;
+    }
+
+    /** The ground inside the inner wall the town's lanes and homes may take: off the wall's strip. */
+    static Rect within(Plan plan) {
+        Rect r = plan.inner();
+        int in = STRIP + 1;
+        return new Rect(r.x0() + in, r.z0() + in, r.x1() - in, r.z1() - in);
+    }
+
+    /** The lanes' lines (block x, z) north-south ({@code true}) or east-west, every {@link #WARD} blocks from the bell's. */
+    static List<Integer> laneLines(Plan plan, boolean northSouth) {
+        Rect w = within(plan);
+        int from = northSouth ? plan.bell().getX() : plan.bell().getZ();
+        int lo = northSouth ? w.x0() : w.z0(), hi = northSouth ? w.x1() : w.z1();
+        List<Integer> out = new ArrayList<>();
+        for (int at = from - WARD; at - LANE >= lo; at -= WARD) {
+            out.add(at);
+        }
+        for (int at = from + WARD; at + LANE <= hi; at += WARD) {
+            out.add(at);
+        }
+        return out;
+    }
+
+    /** The lanes inside the inner wall, wall strip to wall strip, parallel to the avenues. */
+    public static List<double[][]> lanes(Plan plan) {
+        Rect w = within(plan);
+        List<double[][]> out = new ArrayList<>();
+        for (int x : laneLines(plan, true)) {
+            out.add(new double[][] {{x + 0.5, w.z0() + 0.5}, {x + 0.5, w.z1() + 0.5}});
+        }
+        for (int z : laneLines(plan, false)) {
+            out.add(new double[][] {{w.x0() + 0.5, z + 0.5}, {w.x1() + 0.5, z + 0.5}});
+        }
+        return out;
+    }
+
+    /** A home's place fronting a lane or an avenue: its corner (x, z) and the way its door faces, onto the street. */
+    public record Frontage(int x, int z, net.minecraft.core.Direction door) {}
+
+    /**
+     * Where new homes go inside the inner wall: a row each side of every lane and avenue, a home every
+     * {@code HOME_SIZE + 1} blocks along it, a doorstep between its door and the street; nearest the bell first.
+     */
+    public static List<Frontage> frontages(Plan plan, int size) {
+        Rect w = within(plan);
+        int bx = plan.bell().getX(), bz = plan.bell().getZ();
+        List<Frontage> out = new ArrayList<>();
+        // Each street: its line, the blocks it takes either side of it (to the west or north, and to the east or south).
+        List<int[]> ns = new ArrayList<>(), ew = new ArrayList<>();
+        ns.add(new int[] {bx, GATE / 2, GATE / 2});
+        ew.add(new int[] {bz, GATE / 2, GATE / 2});
+        laneLines(plan, true).forEach(x -> ns.add(new int[] {x, LANE / 2, LANE - LANE / 2 - 1}));
+        laneLines(plan, false).forEach(z -> ew.add(new int[] {z, LANE / 2, LANE - LANE / 2 - 1}));
+        for (int[] s : ns) {
+            for (int z = w.z0(); z + size - 1 <= w.z1(); z += size + 1) {
+                out.add(new Frontage(s[0] - s[1] - 2 - size + 1, z, net.minecraft.core.Direction.EAST));
+                out.add(new Frontage(s[0] + s[2] + 2, z, net.minecraft.core.Direction.WEST));
+            }
+        }
+        for (int[] s : ew) {
+            for (int x = w.x0(); x + size - 1 <= w.x1(); x += size + 1) {
+                out.add(new Frontage(x, s[0] - s[1] - 2 - size + 1, net.minecraft.core.Direction.SOUTH));
+                out.add(new Frontage(x, s[0] + s[2] + 2, net.minecraft.core.Direction.NORTH));
+            }
+        }
+        out.removeIf(f -> f.x() < w.x0() || f.z() < w.z0() || f.x() + size - 1 > w.x1() || f.z() + size - 1 > w.z1());
+        // Off every street (a row along a lane crosses the avenues and the other lanes), and off the forum.
+        out.removeIf(f -> {
+            for (int dx = 0; dx < size; dx++) {
+                for (int dz = 0; dz < size; dz++) {
+                    int x = f.x() + dx, z = f.z() + dz;
+                    if (Math.abs(x - bx) <= GATE / 2 + 1 || Math.abs(z - bz) <= GATE / 2 + 1 || onLane(plan, x, z)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        });
+        int f0 = Forums.REACH + 1;
+        out.removeIf(f -> f.x() <= bx + f0 && f.x() + size - 1 >= bx - f0 && f.z() <= bz + f0 && f.z() + size - 1 >= bz - f0);
+        out.sort(Comparator.comparingDouble((Frontage f) -> Math.hypot(f.x() + size / 2.0 - bx, f.z() + size / 2.0 - bz))
+                .thenComparingInt(Frontage::x).thenComparingInt(Frontage::z));
+        return out;
+    }
+
+    /** The plan whose bell this is, if any. */
+    public static java.util.Optional<Plan> at(ServerLevel level, BlockPos bell) {
+        if (level.getServer() == null) {
+            return java.util.Optional.empty();
+        }
+        return get(level.getServer()).plans.values().stream().filter(p -> p.bell().equals(bell)).findFirst();
+    }
+
+    /** The way a home with its corner here faces: onto its street if it fronts one in any town's plan, else south. */
+    public static net.minecraft.core.Direction doorOf(ServerLevel level, BlockPos corner, int size) {
+        if (level.getServer() != null) {
+            for (Plan p : get(level.getServer()).plans.values()) {
+                if (p.inner().contains(corner.getX(), corner.getZ())) {
+                    for (Frontage f : frontages(p, size)) {
+                        if (f.x() == corner.getX() && f.z() == corner.getZ()) {
+                            return f.door();
+                        }
+                    }
+                }
+            }
+        }
+        return net.minecraft.core.Direction.SOUTH;
     }
 
     /**
@@ -187,13 +314,31 @@ public final class TownPlans extends SavedData {
                             && p.outer().contains(x, z);
                     boolean avenueEW = Math.abs(z - p.bell().getZ()) <= GATE / 2 + STRIP - 2
                             && p.outer().contains(x, z);
-                    if (avenueNS || avenueEW) {
+                    if (avenueNS || avenueEW || onLane(p, x, z)) {
                         return false;
                     }
                 }
             }
         }
         return true;
+    }
+
+    /** Is the column on one of the plan's lanes, or the block either side of it? */
+    public static boolean onLane(Plan p, int x, int z) {
+        if (!p.lanes() || !within(p).contains(x, z)) {
+            return false;
+        }
+        for (int lx : laneLines(p, true)) {
+            if (x >= lx - LANE / 2 - 1 && x <= lx + LANE - LANE / 2) {
+                return true;
+            }
+        }
+        for (int lz : laneLines(p, false)) {
+            if (z >= lz - LANE / 2 - 1 && z <= lz + LANE - LANE / 2) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** How far beyond its inner wall a town's fields and pastures may go. */
@@ -218,6 +363,38 @@ public final class TownPlans extends SavedData {
         return least;
     }
 
+    /** How far beyond the outer wall's line a town's pastures begin: past its grain's nearer half (John: "pastures beyond"). */
+    static final int PASTURES_BEYOND = STRIP + 1 + FieldMaps.GRAIN_DEPTH / 2;
+    /** How deep the pastures' ring runs past where it begins. */
+    static final int PASTURE_DEPTH = 56;
+
+    /**
+     * How far from {@code bell} a pasture may go: {@code least}, or for a town planned round that bell, out past its
+     * outer wall through its pastures' ring.
+     */
+    public static int pastureReach(ServerLevel level, BlockPos bell, int least) {
+        return at(level, bell).map(p -> {
+            Rect r = p.outer();
+            int far = Math.max(Math.max(bell.getX() - r.x0(), r.x1() - bell.getX()),
+                    Math.max(bell.getZ() - r.z0(), r.z1() - bell.getZ()));
+            return Math.max(least, far + PASTURES_BEYOND + PASTURE_DEPTH);
+        }).orElse(least);
+    }
+
+    /**
+     * May a pasture of {@code sx} x {@code sz} with its corner here go on the ground of the town planned round
+     * {@code bell}: in its pastures' ring, beyond its grain? (Any ground, for a town with no plan.)
+     */
+    public static boolean pastureRing(ServerLevel level, BlockPos bell, int x0, int z0, int sx, int sz) {
+        return at(level, bell).map(p -> {
+            Rect o = p.outer();
+            int gapX = Math.max(0, Math.max(o.x0() - (x0 + sx - 1), x0 - o.x1()));
+            int gapZ = Math.max(0, Math.max(o.z0() - (z0 + sz - 1), z0 - o.z1()));
+            int gap = Math.max(gapX, gapZ);
+            return gap > PASTURES_BEYOND && gap <= PASTURES_BEYOND + PASTURE_DEPTH;
+        }).orElse(true);
+    }
+
     private static boolean near(Rect a, Rect b, int by) {
         return a.x1() >= b.x0() - by && a.x0() <= b.x1() + by && a.z1() >= b.z0() - by && a.z0() <= b.z1() + by;
     }
@@ -231,6 +408,7 @@ public final class TownPlans extends SavedData {
             e.putIntArray("inner", new int[] {p.inner().x0(), p.inner().z0(), p.inner().x1(), p.inner().z1()});
             e.putIntArray("outer", new int[] {p.outer().x0(), p.outer().z0(), p.outer().x1(), p.outer().z1()});
             e.putBoolean("avenues", p.avenues());
+            e.putBoolean("lanes", p.lanes());
             towns.put(Long.toString(town), e);
         });
         tag.put("towns", towns);
@@ -245,7 +423,7 @@ public final class TownPlans extends SavedData {
             int[] i = e.getIntArray("inner"), o = e.getIntArray("outer");
             if (i.length == 4 && o.length == 4) {
                 out.plans.put(Long.parseLong(key), new Plan(BlockPos.of(e.getLong("bell")), new Rect(i[0], i[1], i[2], i[3]),
-                        new Rect(o[0], o[1], o[2], o[3]), e.getBoolean("avenues")));
+                        new Rect(o[0], o[1], o[2], o[3]), e.getBoolean("avenues"), e.getBoolean("lanes")));
             }
         }
         return out;

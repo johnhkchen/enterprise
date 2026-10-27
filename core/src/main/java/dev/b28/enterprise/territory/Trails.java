@@ -263,8 +263,17 @@ public final class Trails extends SavedData {
      */
     public static double[][] road(ServerLevel level, List<Hex> path, java.util.Map<Long, BlockPos> bells, boolean llama) {
         double[][] ends = ends(path, bells);
-        double[] a = ends[0], b = ends[1];
-        double r = (STRAY * Math.hypot(b[0] - a[0], b[1] - a[1]) + STRAY_BLOCKS) / 2;
+        return between(level, ends[0], ends[1], llama, STRAY, STRAY_BLOCKS);
+    }
+
+    /**
+     * As {@link #road}, from {@code a} to {@code b} (block x, z) within the ellipse round them {@code stray} times their
+     * distance plus {@code strayBlocks} across: a farm track off a trade road as much as a road between towns.
+     */
+    public static double[][] between(ServerLevel level, double[] a, double[] b, boolean llama, double stray,
+            double strayBlocks) {
+        double[][] ends = {a, b};
+        double r = (stray * Math.hypot(b[0] - a[0], b[1] - a[1]) + strayBlocks) / 2;
         double minX = (a[0] + b[0]) / 2 - r, maxX = (a[0] + b[0]) / 2 + r;
         double minZ = (a[1] + b[1]) / 2 - r, maxZ = (a[1] + b[1]) / 2 + r;
         int x0 = (int) Math.floor(minX), z0 = (int) Math.floor(minZ);
@@ -275,7 +284,8 @@ public final class Trails extends SavedData {
         for (int i = 0; i < nx; i++) {
             for (int j = 0; j < nz; j++) {
                 int x = x0 + i * GRID, z = z0 + j * GRID;
-                ok[i * nz + j] = reach(a, b, x + 0.5, z + 0.5);
+                ok[i * nz + j] = Math.hypot(x + 0.5 - a[0], z + 0.5 - a[1]) + Math.hypot(x + 0.5 - b[0], z + 0.5 - b[1])
+                        <= stray * Math.hypot(b[0] - a[0], b[1] - a[1]) + strayBlocks;
                 if (ok[i * nz + j]) {
                     h[i * nz + j] = land.height(x, z);
                 }

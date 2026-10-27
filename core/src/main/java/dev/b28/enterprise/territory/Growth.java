@@ -17,6 +17,7 @@ import net.minecraft.world.entity.npc.VillagerType;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
@@ -54,6 +55,18 @@ public final class Growth {
 
     /** The nearest corner (ground level, lowest x and z) where a cottage fits, if any within reach of the bell. */
     public static Optional<BlockPos> homeSite(ServerLevel level, BlockPos bell) {
+        // Fronting a lane or an avenue inside the town's inner wall, where it has a plan (John: "lanes").
+        Optional<TownPlans.Plan> plan = TownPlans.at(level, bell);
+        if (plan.isPresent() && plan.get().lanes()) {
+            List<BlockPos> corners = new ArrayList<>();
+            for (TownPlans.Frontage f : TownPlans.frontages(plan.get(), HOME_SIZE)) {
+                corners.add(new BlockPos(f.x(), bell.getY(), f.z()));
+            }
+            Optional<BlockPos> fronting = firstFit(level, bell, HOME_SIZE, RISE, corners);
+            if (fronting.isPresent()) {
+                return fronting;
+            }
+        }
         return site(level, bell, HOME_SIZE, NEAREST);
     }
 
@@ -135,6 +148,15 @@ public final class Growth {
         corners.sort(Comparator.comparingDouble((BlockPos c) -> c.distSqr(bell)).thenComparing(c -> c));
         // (Where it's allowed first: a footprint's place among the town's is cheaper to ask than its ground.)
         corners.removeIf(c -> !allowed.test(c));
+        return firstFit(level, bell, size, rise, corners);
+    }
+
+    /**
+     * The first of {@code corners} (in order) where a {@code size} x {@code size} footprint fits, off the town plans'
+     * walls, avenues and lanes: on level ground within {@code rise} of the bell, else on ground that can be filled level.
+     */
+    static Optional<BlockPos> firstFit(ServerLevel level, BlockPos bell, int size, int rise, List<BlockPos> candidates) {
+        List<BlockPos> corners = new ArrayList<>(candidates);
         // Off the town plans' walls and avenues (core mode's `TownPlans`; none in Java mode).
         corners.removeIf(c -> !TownPlans.clear(level, c.getX(), c.getZ(), size, size, false));
         for (BlockPos corner : corners) {
@@ -278,41 +300,64 @@ public final class Growth {
      * claim it.
      */
     public static BlockPos buildHome(ServerLevel level, BlockPos corner) {
+        return buildHome(level, corner, Direction.SOUTH);
+    }
+
+    /** As {@link #buildHome(ServerLevel, BlockPos)}, its door facing {@code door} (a lane it fronts). */
+    public static BlockPos buildHome(ServerLevel level, BlockPos corner, Direction door) {
         level(level, corner, HOME_SIZE);
-        int g = corner.getY();
+        Rotation turn = switch (door) {
+            case WEST -> Rotation.CLOCKWISE_90;
+            case NORTH -> Rotation.CLOCKWISE_180;
+            case EAST -> Rotation.COUNTERCLOCKWISE_90;
+            default -> Rotation.NONE;
+        };
+        // A block of the south-facing cottage (its corner's x and z, up from its floor) where it stands turned.
+        java.util.function.BiConsumer<int[], BlockState> put = (at, state) -> {
+            int n = HOME_SIZE - 1, dx = at[0], dz = at[2];
+            int[] turned = switch (turn) {
+                case CLOCKWISE_90 -> new int[] {n - dz, dx};
+                case CLOCKWISE_180 -> new int[] {n - dx, n - dz};
+                case COUNTERCLOCKWISE_90 -> new int[] {dz, n - dx};
+                default -> new int[] {dx, dz};
+            };
+            level.setBlock(corner.offset(turned[0], at[1], turned[1]), state.rotate(turn), 3);
+        };
         for (int dx = 0; dx < HOME_SIZE; dx++) {
             for (int dz = 0; dz < HOME_SIZE; dz++) {
-                BlockPos column = new BlockPos(corner.getX() + dx, g, corner.getZ() + dz);
-                level.setBlock(column, Blocks.COBBLESTONE.defaultBlockState(), 3);
+                put.accept(new int[] {dx, 0, dz}, Blocks.COBBLESTONE.defaultBlockState());
                 boolean edgeX = dx == 0 || dx == HOME_SIZE - 1;
                 boolean edgeZ = dz == 0 || dz == HOME_SIZE - 1;
                 for (int up = 1; up <= 2; up++) {
                     BlockState wall = edgeX && edgeZ ? Blocks.OAK_LOG.defaultBlockState()
                             : edgeX || edgeZ ? Blocks.OAK_PLANKS.defaultBlockState()
                             : Blocks.AIR.defaultBlockState();
-                    level.setBlock(column.above(up), wall, 3);
+                    put.accept(new int[] {dx, up, dz}, wall);
                 }
-                level.setBlock(column.above(3),
-                        Blocks.OAK_SLAB.defaultBlockState().setValue(SlabBlock.TYPE, SlabType.BOTTOM), 3);
+                put.accept(new int[] {dx, 3, dz}, Blocks.OAK_SLAB.defaultBlockState().setValue(SlabBlock.TYPE, SlabType.BOTTOM));
             }
         }
-        BlockPos door = corner.offset(2, 1, HOME_SIZE - 1);
         BlockState doorState = Blocks.OAK_DOOR.defaultBlockState().setValue(DoorBlock.FACING, Direction.SOUTH);
-        level.setBlock(door, doorState.setValue(DoorBlock.HALF, DoubleBlockHalf.LOWER), 3);
-        level.setBlock(door.above(), doorState.setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER), 3);
-        level.setBlock(corner.offset(0, 2, 2), Blocks.GLASS_PANE.defaultBlockState(), 3);
-        level.setBlock(corner.offset(HOME_SIZE - 1, 2, 2), Blocks.GLASS_PANE.defaultBlockState(), 3);
+        put.accept(new int[] {2, 1, HOME_SIZE - 1}, doorState.setValue(DoorBlock.HALF, DoubleBlockHalf.LOWER));
+        put.accept(new int[] {2, 2, HOME_SIZE - 1}, doorState.setValue(DoorBlock.HALF, DoubleBlockHalf.UPPER));
+        put.accept(new int[] {0, 2, 2}, Blocks.GLASS_PANE.defaultBlockState());
+        put.accept(new int[] {HOME_SIZE - 1, 2, 2}, Blocks.GLASS_PANE.defaultBlockState());
         BlockState bed = Blocks.WHITE_BED.defaultBlockState().setValue(BedBlock.FACING, Direction.NORTH);
-        BlockPos head = null;
         for (int side : new int[] {1, 3}) {
-            BlockPos foot = corner.offset(side, 1, 3);
-            level.setBlock(foot, bed.setValue(BedBlock.PART, BedPart.FOOT), 3);
-            level.setBlock(foot.north(), bed.setValue(BedBlock.PART, BedPart.HEAD), 3);
-            head = head == null ? foot.north() : head;
+            put.accept(new int[] {side, 1, 3}, bed.setValue(BedBlock.PART, BedPart.FOOT));
+            put.accept(new int[] {side, 1, 2}, bed.setValue(BedBlock.PART, BedPart.HEAD));
         }
-        level.setBlock(corner.offset(1, 1, 1), Blocks.CHEST.defaultBlockState(), 3);
-        level.setBlock(corner.offset(3, 1, 1), Blocks.LANTERN.defaultBlockState(), 3);
-        return head;
+        put.accept(new int[] {1, 1, 1}, Blocks.CHEST.defaultBlockState());
+        put.accept(new int[] {3, 1, 1}, Blocks.LANTERN.defaultBlockState());
+        // The first bed's head, where it stands turned.
+        int n = HOME_SIZE - 1;
+        int[] head = switch (turn) {
+            case CLOCKWISE_90 -> new int[] {n - 2, 1};
+            case CLOCKWISE_180 -> new int[] {n - 1, n - 2};
+            case COUNTERCLOCKWISE_90 -> new int[] {2, n - 1};
+            default -> new int[] {1, 2};
+        };
+        return corner.offset(head[0], 1, head[1]);
     }
 
     /** A baby villager by the bell, of the local kind, marked with its birth time so it can grow up while away. */

@@ -44,7 +44,8 @@ public final class Pastures {
      * {@link Growth#FIELD_RISE}. Empty if nothing fits or the ground isn't loaded.
      */
     public static Optional<Site> site(ServerLevel level, BlockPos bell) {
-        int reach = TownPlans.farmReach(level, bell, Growth.FIELD_FARTHEST);
+        int reach = TownPlans.pastureReach(level, bell, TownPlans.farmReach(level, bell, Growth.FIELD_FARTHEST));
+        java.util.Set<net.minecraft.world.level.ChunkPos> unloaded = new java.util.LinkedHashSet<>();
         int span = 2 * reach + 1;
         int[] height = new int[span * span];
         boolean[] open = new boolean[span * span];
@@ -57,6 +58,9 @@ public final class Pastures {
                 int k = i * span + j;
                 if (!level.isLoaded(new BlockPos(x, 0, z))) {
                     height[k] = Integer.MIN_VALUE;
+                    if (TownPlans.pastureRing(level, bell, x, z, 1, 1)) {
+                        unloaded.add(new net.minecraft.world.level.ChunkPos(new BlockPos(x, 0, z)));
+                    }
                     continue;
                 }
                 int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) - 1;
@@ -94,6 +98,8 @@ public final class Pastures {
                 return found;
             }
         }
+        // Its ring's ground loaded a while, to be looked over again.
+        FieldMaps.hold(level, unloaded);
         return Optional.empty();
     }
 
@@ -156,7 +162,8 @@ public final class Pastures {
             int cx = x0 + c[0];
             int cz = z0 + c[1];
             BlockPos corner = new BlockPos(cx, height[c[0] * span + c[1]], cz);
-            if (zoned(bell, cx, cz, sx, sz, town) && TownPlans.clear(level, cx, cz, sx, sz, true)) {
+            if (zoned(bell, cx, cz, sx, sz, town) && TownPlans.clear(level, cx, cz, sx, sz, true)
+                    && TownPlans.pastureRing(level, bell, cx, cz, sx, sz)) {
                 return Optional.of(new Site(corner, sx, sz));
             }
         }

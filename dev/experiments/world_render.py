@@ -394,7 +394,55 @@ def main():
         if i and o:
             plans.append({"inner": [i[0] - x0, i[1] - z0, i[2] - x0, i[3] - z0],
                           "outer": [o[0] - x0, o[1] - z0, o[2] - x0, o[3] - z0]})
-    data = {"plans": plans, "w": w, "h": h, "x0": x0, "z0": z0, "lo": lo, "hi": hi, "day": last, "towns": towns, "routes": routes,
+    # The towns' field maps (`FieldMaps`): each holding's edge, where the ground nearer one seed meets another's (or
+    # the holding's reach), on a 2-block grid.
+    holdings = []
+    plan_of = {int(k): v for k, v in saved(world / "data" / "enterprise_town_plans.dat").get("towns", {}).items()}
+
+    def in_ring(plan, ring, x, z):
+        """As `FieldMaps.in`: off both walls' strips, between them (gardens) or up to 40 past the outer (grain)."""
+        def edge(r):
+            inside = r[0] <= x <= r[2] and r[1] <= z <= r[3]
+            dx = r[0] - x if x < r[0] else x - r[2] if x > r[2] else min(x - r[0], r[2] - x)
+            dz = r[1] - z if z < r[1] else z - r[3] if z > r[3] else min(z - r[1], r[3] - z)
+            return inside, (min(dx, dz) if inside else max(dx if x < r[0] or x > r[2] else 0,
+                                                           dz if z < r[1] or z > r[3] else 0))
+        (ii, ie), (oi, oe) = edge(plan["inner"]), edge(plan["outer"])
+        return (not ii and ie > 4 and oi and oe > 4) if ring == "GARDEN" else (not oi and 4 < oe <= 44)
+
+    for key, m in saved(world / "data" / "enterprise_field_maps.dat").get("towns", {}).items():
+        plan = plan_of.get(int(key))
+        ps = list(m.get("parcels", []))
+        rings = [t.get("ring") for t in m.get("tracks", [])]
+        seeds = [(ps[i], ps[i + 1], rings[ps[i + 2]]) for i in range(0, len(ps) - 4, 5) if ps[i + 2] < len(rings)]
+        if not seeds or not plan:
+            continue
+        g = 2
+        xs, zs = [x for x, _, _ in seeds], [z for _, z, _ in seeds]
+        gx0, gz0 = (min(xs) - 42) // g * g, (min(zs) - 42) // g * g
+        nx, nz = (max(xs) + 42 - gx0) // g + 1, (max(zs) + 42 - gz0) // g + 1
+        owner = {}
+        for i in range(nx):
+            for j in range(nz):
+                x, z = gx0 + i * g, gz0 + j * g
+                best, d = -1, 40 ** 2
+                for k, (sx, sz, _) in enumerate(seeds):
+                    dd = (x - sx) ** 2 + (z - sz) ** 2
+                    if dd < d:
+                        best, d = k, dd
+                owner[i, j] = best if best >= 0 and in_ring(plan, seeds[best][2], x, z) else -1
+        # Only where two holdings meet: their edges, not the ring's.
+        for i in range(nx):
+            for j in range(nz):
+                o = owner[i, j]
+                if o < 0:
+                    continue
+                x, z = gx0 + i * g - x0, gz0 + j * g - z0
+                if i + 1 < nx and owner[i + 1, j] not in (o, -1):
+                    holdings.append([x + g, z, x + g, z + g])
+                if j + 1 < nz and owner[i, j + 1] not in (o, -1):
+                    holdings.append([x, z + g, x + g, z + g])
+    data = {"plans": plans, "holdings": holdings, "w": w, "h": h, "x0": x0, "z0": z0, "lo": lo, "hi": hi, "day": last, "towns": towns, "routes": routes,
             "counts": counts}
     film = ""
     if "--video" in sys.argv:

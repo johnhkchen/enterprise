@@ -160,7 +160,7 @@ KEY.forEach(([t, c]) => {
   b.lastChild.textContent = t; b.tabIndex = -1; b.style.cursor = "default";
   key.append(b);
 });
-[["plans", "Town plans (inner wall, outer kept clear)"], ["wagons", "Caravans on the road"], ["labels", "Town names"]].forEach(([k, t]) => {
+[["plans", "Town plans (walls, holdings)"], ["wagons", "Caravans on the road"], ["labels", "Town names"]].forEach(([k, t]) => {
   const b = document.createElement("button");
   b.id = "layer-" + k; b.setAttribute("aria-pressed", "true");
   b.innerHTML = `<span class="sw" style="background:var(--accent)"></span><span></span>`;
@@ -244,6 +244,12 @@ function draw(now) {
       });
     });
     cx.setLineDash([]);
+    // The holdings' edges (the field maps' Voronoi parcels).
+    if (D.holdings && D.holdings.length) {
+      cx.strokeStyle = css("--ink"); cx.globalAlpha = 0.45; cx.lineWidth = 1; cx.beginPath();
+      D.holdings.forEach(([a, b, c, d]) => { const [p, q] = P(a, b), [r, s] = P(c, d); cx.moveTo(p, q); cx.lineTo(r, s); });
+      cx.stroke(); cx.globalAlpha = 1;
+    }
   }
   if (layers.wagons) {
     const accent = css("--accent"), sheet = css("--sheet");

@@ -184,6 +184,15 @@ public final class Fields {
      * waters 4 blocks out), seedlings on it. Sugar cane: three water channels with cane along both banks.
      */
     public static void plant(ServerLevel level, BlockPos corner, Item crop) {
+        plant(level, corner, crop, null);
+    }
+
+    /**
+     * As {@link #plant(ServerLevel, BlockPos, Item)}, a strip's stretch of an open field ({@link FieldMaps}): its water a
+     * ditch down the middle of the strip, north-south if {@code northSouth} (east-west if not), stopping a block short
+     * of either end so it never runs into the next stretch's; cane's channels along the strip. Null: the field as ever.
+     */
+    public static void plant(ServerLevel level, BlockPos corner, Item crop, Boolean northSouth) {
         Growth.level(level, corner, SIZE);
         for (int dx = 0; dx < SIZE; dx++) {
             for (int dz = 0; dz < SIZE; dz++) {
@@ -192,13 +201,14 @@ public final class Fields {
                     level.setBlock(ground, Blocks.GRASS_BLOCK.defaultBlockState(), 3);
                     level.setBlock(ground.above(), Blocks.SWEET_BERRY_BUSH.defaultBlockState(), 3);
                 } else if (crop == Items.SUGAR_CANE) {
-                    if (dz % 3 == 1) {
+                    if ((Boolean.TRUE.equals(northSouth) ? dx : dz) % 3 == 1) {
                         level.setBlock(ground, Blocks.WATER.defaultBlockState(), 3);
                     } else {
                         level.setBlock(ground, Blocks.GRASS_BLOCK.defaultBlockState(), 3);
                         level.setBlock(ground.above(), Blocks.SUGAR_CANE.defaultBlockState(), 3);
                     }
-                } else if (dx == SIZE / 2 && dz == SIZE / 2) {
+                } else if (northSouth == null ? dx == SIZE / 2 && dz == SIZE / 2
+                        : northSouth ? dx == SIZE / 2 && dz > 0 && dz < SIZE - 1 : dz == SIZE / 2 && dx > 0 && dx < SIZE - 1) {
                     level.setBlock(ground, Blocks.WATER.defaultBlockState(), 3);
                 } else {
                     level.setBlock(ground, Blocks.FARMLAND.defaultBlockState(), 3);

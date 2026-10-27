@@ -346,7 +346,7 @@ public final class Expeditions extends SavedData {
             Growth.site(level, bell, 1, 4).ifPresent(at -> level.setBlock(at.above(), workstation.defaultBlockState(), 3));
         }
         for (int i = 0; i < 2; i++) {
-            Growth.homeSite(level, bell).ifPresent(at -> Growth.buildHome(level, at));
+            Growth.homeSite(level, bell).ifPresent(at -> Growth.buildHome(level, at, dev.b28.enterprise.territory.TownPlans.doorOf(level, at, Growth.HOME_SIZE)));
         }
         return Optional.of(new Founding(bell, desk, farm));
     }

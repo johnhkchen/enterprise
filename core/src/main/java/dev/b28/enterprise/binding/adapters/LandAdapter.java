@@ -219,7 +219,11 @@ public final class LandAdapter {
                             bell.toShortString(), paved);
                 }
                 // Its plan: its walls' rectangles and its avenues to their gates (John: "town plan").
-                dev.b28.enterprise.territory.TownPlans.get(server).ensure(level, town, bell);
+                var plan = dev.b28.enterprise.territory.TownPlans.get(server).ensure(level, town, bell);
+                // Its first farm tracks, with its avenues (John: "some at founding").
+                if (plan.avenues()) {
+                    dev.b28.enterprise.territory.FieldMaps.get(server).found(level, town);
+                }
                 int since = sinceCounted.getOrDefault(town, CROPS_EVERY);
                 if (since >= CROPS_EVERY) {
                     inputs.addAll(crops(level, town, desk.getKey().pos(), bell));
@@ -632,8 +636,14 @@ public final class LandAdapter {
             case Work.Hall h -> Buildings.kind(h.kind()).flatMap(kind -> kind == Buildings.STONE_DOCKS
                     ? Docks.findShore(level, bell).map(Docks.Pier::start) : Buildings.site(level, bell, kind, Optional.empty()));
             case Work.Field f -> {
-                // On zoned ground near the bell, in the town's land (as `Fields.consider` plants).
+                // On the town's field map where it has a plan (`FieldMaps`: a holding's strip along a farm track).
                 Set<Hex> held = new HashSet<>(land(town).hexes());
+                if (dev.b28.enterprise.territory.TownPlans.get(level.getServer()).of(town) != null) {
+                    Item crop = f.crop() >= 0 && f.crop() < items.size() ? items.get((int) f.crop()) : Items.AIR;
+                    yield crop == Items.AIR ? Optional.empty()
+                            : dev.b28.enterprise.territory.FieldMaps.get(level.getServer()).site(level, town, bell, crop, held);
+                }
+                // On zoned ground near the bell, in the town's land (as `Fields.consider` plants).
                 Optional<BlockPos> site = Growth.farmSite(level, bell, Fields.SIZE, 8);
                 yield site.filter(c -> held.isEmpty() || held.contains(Hex.at(c.offset(Fields.SIZE / 2, 0, Fields.SIZE / 2))));
             }
@@ -716,7 +726,7 @@ public final class LandAdapter {
                         .stream().distinct().toList())) {
                     yield false;
                 }
-                Growth.buildHome(level, corner);
+                Growth.buildHome(level, corner, dev.b28.enterprise.territory.TownPlans.doorOf(level, corner, Growth.HOME_SIZE));
                 yield true;
             }
             case Work.Field f -> {
@@ -725,7 +735,7 @@ public final class LandAdapter {
                     yield false;
                 }
                 BlockPos corner = site.get();
-                Fields.plant(level, corner, crop);
+                dev.b28.enterprise.territory.FieldMaps.get(level.getServer()).till(level, town, corner, crop);
                 Set<Hex> hexes = new TreeSet<>(java.util.Comparator.comparingInt(Hex::q).thenComparingInt(Hex::r));
                 for (BlockPos c : List.of(corner, corner.offset(Fields.SIZE - 1, 0, 0), corner.offset(0, 0, Fields.SIZE - 1),
                         corner.offset(Fields.SIZE - 1, 0, Fields.SIZE - 1))) {
