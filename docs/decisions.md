@@ -807,6 +807,18 @@ help breed more as needed."
   held hundreds of beef, its cows' as their leather was taken. Live, 90 days: every town trained a Butcher (days 57 to
   86); 16 comforts met, moods +2.0, +4.2, +2.7, +2.9, +0.9. But the beef stayed (Ryegate 569): a Butcher cooks only
   while food is short, and towns with one were fed on 1,663 of 1,690 touches.
+- **Villagers eat daily, from a bag of marbles by taste** (`people::dine`; John: "a bag of marbles eating approach
+  with tastiness weight", "daily meals, no hunger"). Each villager eats `meal_points` (2) a day; each food held puts
+  in its points times its taste, the saturation it gives a point (steak 1.6, bread and carrots 1.2, a raw potato 0.6),
+  and takes its share of the meal as the draw comes out on the whole (no dice: the replay stays exact). Each food runs
+  a tab and whole items come off it, so a town looked at often eats no more (the first cut rounded each look up to a
+  whole bread: five times the meal). Comforts that are food (cookies) only when nothing else is left. Short of food,
+  it eats what there is: no hunger. The mod's villagers ate only to be born.
+- **A varied meal lifts the mood** (John: "a variety of food happiness weight"): `variety_mood` (0.25) for each food
+  beyond the first, counted as the inverse of the sum of the meal's shares squared (two half and half, 2), up to
+  `variety_most` (4). And a Butcher keeps cooked meat at twice the food par in its own points, whatever else feeds the
+  town, so the beef goes in the bag. Live, 90 days: the towns' beef 1,296 to 156 (120 cooked in stock), 79 trips (56),
+  15.6 comforts met (16), moods +1.8, +2.0, +2.5, +2.5, +1.2 (a different world of the same seed).
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 
