@@ -52,6 +52,11 @@ pub const TRADES: [(&str, &[&str]); 13] = [
     ("weaponsmith", &["coal", "iron_ingot", "flint"]),
 ];
 
+/// What else a trade takes, a glut of which trains a hand to it ([`for_glut`]; not as the mod): the Butcher cooks beef and
+/// mutton, the Armorer smelts ore. Every town held hundreds of beef, its cows' as their leather was taken, with no
+/// Butcher drawn for it. Not in the job draw's bag: a glut the trade can't use up would draw hand after hand to it.
+pub const TAKES: [(&str, &[&str]); 2] = [("butcher", &["beef", "mutton"]), ("armorer", &["raw_iron", "raw_gold"])];
+
 /// Trades whose work isn't in their locker's trades (fields, the desk, halls, blessings): never slack by them
 /// (`Jobs.KEPT`).
 pub const KEPT: [&str; 3] = ["farmer", "mason", "cleric"];
@@ -295,6 +300,23 @@ fn for_contracts(content: &Content, place: &Place) -> Option<TradeId> {
     place.lockers.needed.iter().copied().find(|&t| job_trade(content, t).is_some() && place.roster.count(t) == 0)
 }
 
+/// The trade that takes what the town holds most of, worth `glut_emeralds` or more, where it has no hand of it: trained
+/// to it, not drawn (John: "train a villager who specifically takes an abundant resource"; not as the mod). In the
+/// trades' order where two hold as much.
+pub fn for_glut(content: &Content, stock: &Stock, roster: &Roster) -> Option<TradeId> {
+    let held: Vec<f64> = stock.0.iter().zip(&content.goods).map(|(n, g)| n.max(0.0) * g.value).collect();
+    let of = |goods: &[&str]| -> f64 { goods.iter().filter_map(|n| good_named(content, n)).map(|g| held[g]).sum() };
+    let mut best: Option<(TradeId, f64)> = None;
+    for (name, goods) in TRADES {
+        let Some(trade) = content.trade(name).filter(|&t| roster.count(t) == 0) else { continue };
+        let worth = of(goods) + TAKES.iter().filter(|(t, _)| *t == name).map(|(_, g)| of(g)).sum::<f64>();
+        if worth >= content.dials.glut_emeralds && best.is_none_or(|(_, w)| worth > w) {
+            best = Some((trade, worth));
+        }
+    }
+    best.map(|(t, _)| t)
+}
+
 /// Does a road carry, for its towns' job draws ([`slack`]): a wagon on it, or one gone down it within `slack_days`?
 /// One that has carried nothing that long is no reason to keep a trade that does nothing.
 pub fn carries(content: &Content, state: &RouteState, now: u64) -> bool {
@@ -335,7 +357,7 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
     if cash + on_call(content, *place.purse, place.deposits.owed) < stall {
         return None;
     }
-    let trade = for_contracts(content, place).or_else(|| {
+    let trade = for_contracts(content, place).or_else(|| for_glut(content, place.stock, place.roster)).or_else(|| {
         let mut marbles = town_bag(content, signals, place.town, place.stock, place.farm, place.met, place.purse.to_f64(),
             place.roster);
         for &(t, m) in &place.far {

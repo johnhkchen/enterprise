@@ -44,9 +44,15 @@ import net.minecraft.world.item.trading.MerchantOffer;
  * first. A furnace burns an eighth of a coal an item.
  */
 public final class VillagerCrafts {
-    /** What the game has no recipe for: a Librarian breaks a bookshelf into its three books. */
+    /**
+     * What the game has no recipe for: a Librarian breaks a bookshelf into its three books; a Butcher cooks beef and
+     * mutton over a campfire (no coal, as the game's campfire), which the game's Butcher doesn't sell, so every town's
+     * cows left it hundreds of raw beef.
+     */
     public static final List<PackRecipe> EXTRAS = List.of(
-            new PackRecipe(List.of("librarian"), List.of(new PackAmount("minecraft:bookshelf", 1)), "minecraft:book", 3));
+            new PackRecipe(List.of("librarian"), List.of(new PackAmount("minecraft:bookshelf", 1)), "minecraft:book", 3),
+            new PackRecipe(List.of("butcher"), List.of(new PackAmount("minecraft:beef", 1)), "minecraft:cooked_beef", 1),
+            new PackRecipe(List.of("butcher"), List.of(new PackAmount("minecraft:mutton", 1)), "minecraft:cooked_mutton", 1));
 
     /** Recipes by output that no villager works, though its trade deals in it. */
     public static final Set<String> DENIED = Set.of();

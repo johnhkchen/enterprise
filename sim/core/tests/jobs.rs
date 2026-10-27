@@ -252,6 +252,26 @@ fn a_trade_a_contract_needs_comes_first() {
     assert_ne!(trade, "fletcher");
 }
 
+/// What the town holds most of, worth 16 emeralds or more, trains its next idle hand to the trade that takes it, where it
+/// has none: Ryegate's 322 beef had no Butcher.
+#[test]
+fn a_glut_trains_the_trade_that_takes_it() {
+    let (mut s, t) = town(20.0, 72.0);
+    s.deliver(t, LEATHER, 120.0);
+    let (_, trade, _) = s.review_jobs(t).expect("a stall");
+    assert_eq!(trade, "leatherworker", "20 emeralds of leather, not drawn");
+    let c = content();
+    let stock = |leather: f64| {
+        let mut v = vec![0.0; N];
+        v[LEATHER] = leather;
+        enterprise_core::state::Stock(v)
+    };
+    let jobs = |hands: &[&str], leather: f64| enterprise_core::jobs::for_glut(&c, &stock(leather), &roster_of(&c, hands));
+    assert_eq!(jobs(&["none"], 90.0), None, "15 emeralds is no glut");
+    assert_eq!(jobs(&["none", "leatherworker"], 600.0), None, "one Leatherworker already");
+    assert_eq!(jobs(&["none"], 96.0), c.trade("leatherworker"));
+}
+
 #[test]
 fn a_comfort_the_town_lacks_is_in_the_bag_of_a_town_with_savings() {
     let (mut s, t) = town(20.0, 0.0);

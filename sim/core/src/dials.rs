@@ -272,6 +272,8 @@ dials! {
     stall_emeralds: f64 = 6.0,
     /// The share of its households' savings a comfort the town lacks puts in the job draw, for the trade that makes it.
     comfort_marbles: f64 = 0.2,
+    /// Goods held worth this many emeralds, that a trade the town has no hand of takes, train its next idle hand to it.
+    glut_emeralds: f64 = 16.0,
     /// Days a villager's trades do nothing for the town before it takes up a trade the town needs.
     slack_days: u32 = 5,
     /// Idle plots must yield at least this much a day, in emeralds, to put Farmers' marbles in the bag.

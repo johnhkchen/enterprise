@@ -320,3 +320,21 @@ fn a_wagon_takes_cane_to_the_cartographer_down_the_road() {
     let s = road(false);
     assert_eq!(s.town(0).stock[CANE], 640.0, "nobody there to press it: the cane stays");
 }
+
+/// A Butcher cooks the town's beef over a campfire while its food is short (no coal), as far as twice the food par.
+#[test]
+fn a_butcher_cooks_the_towns_beef_while_its_food_is_short() {
+    let mut goods = content().goods;
+    goods.push(Good::new("beef", 0.125, 64));
+    goods.push(Good::new("cooked_beef", 0.2, 64).food(8.0));
+    let c = Content::new(goods, DAY);
+    let (beef, cooked) = (c.good("beef").unwrap(), c.good("cooked_beef").unwrap());
+    let mut s = Society::new(c);
+    let t = s.add_town("Meadowworth", 50.0);
+    s.set_people(t, 2.0, 2.0, 20.0);
+    s.set_roster(t, &[("butcher", 1), ("merchant", 1)]);
+    s.deliver(t, beef, 300.0);
+    s.advance(DAY);
+    assert_eq!(made(&s, cooked), (2.0 * FOOD_PAR_POINTS / 8.0).floor(), "up to twice the food par, in 8-point steaks");
+    assert_eq!(s.town(t).stock[beef], 300.0 - made(&s, cooked), "a beef a steak");
+}

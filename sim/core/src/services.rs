@@ -173,7 +173,8 @@ pub type RecipeRow = (&'static str, &'static str, &'static str, &'static str, &'
     &'static str, u32, u32, f64, Want, u8);
 
 /// The mod's recipes in its order (`Crafts.register`), less the master Armorer's blast smelting (no blast furnace
-/// yet). Smoking: five meats, each from the Butcher at level 5.
+/// yet). Smoking: five meats, each from the Butcher at any level (the mod's took level 5: a Butcher trained for its
+/// town's beef smoked none of it for weeks).
 pub const MOD_RECIPES: [RecipeRow; 19] = [
     ("bookbinding", "librarian", "binds books from paper and leather while its town is short of reading",
         "binds books for a town short of reading, from its paper and leather", &[("paper", 3), ("leather", 1)], "book",
@@ -212,21 +213,21 @@ pub const MOD_RECIPES: [RecipeRow; 19] = [
         "white_banner", 1, 2, 0.1, Want::Comfort("furnishings"), 5),
     ("smoking_beef", "butcher", "smokes beef in its town's smokehouse while food is short, or to sell: coal for fuel",
         "smokes a town's beef while its food is short", &[("beef", 8), ("coal", 1)], "cooked_beef", 8, 2, 0.01,
-        Want::Food, 5),
+        Want::Food, 1),
     ("smoking_porkchop", "butcher",
         "smokes porkchop in its town's smokehouse while food is short, or to sell: coal for fuel",
         "smokes a town's porkchop while its food is short", &[("porkchop", 8), ("coal", 1)], "cooked_porkchop", 8, 2,
-        0.01, Want::Food, 5),
+        0.01, Want::Food, 1),
     ("smoking_chicken", "butcher",
         "smokes chicken in its town's smokehouse while food is short, or to sell: coal for fuel",
         "smokes a town's chicken while its food is short", &[("chicken", 8), ("coal", 1)], "cooked_chicken", 8, 2,
-        0.01, Want::Food, 5),
+        0.01, Want::Food, 1),
     ("smoking_mutton", "butcher", "smokes mutton in its town's smokehouse while food is short, or to sell: coal for fuel",
         "smokes a town's mutton while its food is short", &[("mutton", 8), ("coal", 1)], "cooked_mutton", 8, 2, 0.01,
-        Want::Food, 5),
+        Want::Food, 1),
     ("smoking_rabbit", "butcher", "smokes rabbit in its town's smokehouse while food is short, or to sell: coal for fuel",
         "smokes a town's rabbit while its food is short", &[("rabbit", 8), ("coal", 1)], "cooked_rabbit", 8, 2, 0.01,
-        Want::Food, 5),
+        Want::Food, 1),
     ("saddles", "leatherworker", "makes saddles of leather and iron: its caravans ride, a third faster",
         "makes saddles for a town's caravans from its leather and iron", &[("leather", 5), ("iron_ingot", 1)],
         "saddle", 1, 1, 0.25, Want::Saddles, 5),

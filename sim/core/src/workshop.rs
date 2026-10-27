@@ -41,11 +41,12 @@ pub struct Conversion {
     pub out: f64,
 }
 
-/// The mod's seven conversions (`Workshop.CONVERSIONS`, in its order), then the one the game has no recipe for that its
-/// pack adds (`VillagerCrafts.EXTRAS`: a Librarian breaks a bookshelf into its three books): trade names, inputs,
-/// output, how many it makes. The game's own recipes come with the mod's pack (`VillagerCrafts`), not here.
+/// The mod's seven conversions (`Workshop.CONVERSIONS`, in its order), then those the game has no recipe for that its
+/// pack adds (`VillagerCrafts.EXTRAS`: a Librarian breaks a bookshelf into its three books; a Butcher cooks beef and
+/// mutton over a campfire, no coal, as the game's campfire does): trade names, inputs, output, how many it makes. The
+/// game's own recipes come with the mod's pack (`VillagerCrafts`), not here.
 #[allow(clippy::type_complexity)]
-pub const MOD_CONVERSIONS: [(&[&str], &[(&str, f64)], &str, f64); 8] = [
+pub const MOD_CONVERSIONS: [(&[&str], &[(&str, f64)], &str, f64); 10] = [
     (&["librarian", "cartographer"], &[("sugar_cane", 1.0)], "paper", 1.0),
     (&["farmer"], &[("wheat", 3.0)], "bread", 1.0),
     (&["shepherd"], &[("white_wool", 2.0)], "white_carpet", 3.0),
@@ -54,6 +55,8 @@ pub const MOD_CONVERSIONS: [(&[&str], &[(&str, f64)], &str, f64); 8] = [
     (&["farmer"], &[("wheat", 2.0), ("sugar_cane", 1.0)], "cookie", 4.0),
     (&["librarian"], &[("paper", 3.0), ("leather", 1.0)], "book", 1.0),
     (&["librarian"], &[("bookshelf", 1.0)], "book", 3.0),
+    (&["butcher"], &[("beef", 1.0)], "cooked_beef", 1.0),
+    (&["butcher"], &[("mutton", 1.0)], "cooked_mutton", 1.0),
 ];
 
 /// The mod's conversions, matched by name to the host's goods and trades; one the host lacks a good or trade for is
