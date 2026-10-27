@@ -1,0 +1,60 @@
+{
+  "kingdom": "lordaeron",
+  "rev": 1,
+  "base": "stone",
+  "note": "Parts are authored in the base palette, where every role is a different block. A palette is a map from role to block: to recolour a part, replace each base block with the palette's block for the same role (stairs and slabs keep their states when the target is a stair or slab; a full block drops them).",
+  "roles": {
+    "post": "vertical frame: corner posts, studs",
+    "beam": "horizontal frame: sills, girts, lintels, the gable's tie beam",
+    "brace": "brackets under jetties and decorative braces",
+    "infill": "panels between the frame (upper storeys)",
+    "infill_ground": "panels between the frame (ground storey)",
+    "plinth": "foundation layers",
+    "floor": "floors and the ceiling under the roof",
+    "roof": "roof covering, full block",
+    "roof_stair": "roof covering, slope",
+    "roof_slab": "roof ridge",
+    "chimney": "chimney stack, from the hearth through the roof",
+    "window": "glazing",
+    "door": "doors (wooden: villagers open them)",
+    "step": "door steps (slabs only)"
+  },
+  "palettes": {
+    "stone": {
+      "note": "the base: stone ground storey, white daub above, red-brown tile; corner houses and the forum",
+      "post": "minecraft:dark_oak_log",
+      "beam": "minecraft:stripped_dark_oak_log",
+      "brace": "minecraft:dark_oak_stairs",
+      "infill": "minecraft:calcite",
+      "infill_ground": "minecraft:stone_bricks",
+      "plinth": "minecraft:cobblestone",
+      "floor": "minecraft:spruce_planks",
+      "roof": "minecraft:granite",
+      "roof_stair": "minecraft:granite_stairs",
+      "roof_slab": "minecraft:granite_slab",
+      "chimney": "minecraft:bricks",
+      "window": "minecraft:glass_pane",
+      "door": "minecraft:spruce_door",
+      "step": "minecraft:cobblestone_slab"
+    },
+    "daub": {
+      "note": "the village default: dark oak frame, white daub on both storeys, thatch",
+      "infill_ground": "minecraft:calcite",
+      "roof": "minecraft:hay_block",
+      "roof_stair": "minecraft:hay_block",
+      "roof_slab": "minecraft:hay_block"
+    },
+    "brick": {
+      "note": "the town's better houses and halls: brick nogging, slate roof",
+      "infill": "minecraft:bricks",
+      "infill_ground": "minecraft:bricks",
+      "roof": "minecraft:deepslate_tiles",
+      "roof_stair": "minecraft:deepslate_tile_stairs",
+      "roof_slab": "minecraft:deepslate_tile_slab",
+      "chimney": "minecraft:stone_bricks",
+      "door": "minecraft:dark_oak_door",
+      "step": "minecraft:brick_slab"
+    }
+  },
+  "inherit": "A palette lists only the roles it changes; the rest come from the base."
+}

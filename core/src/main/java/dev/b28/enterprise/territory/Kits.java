@@ -56,17 +56,33 @@ public final class Kits {
 
     /** Its metadata, read from the data packs (kept until the server's resources reload). */
     public static Optional<Meta> meta(ResourceManager resources, String id) {
-        return METAS.computeIfAbsent(id, k -> {
-            ResourceLocation t = template(k);
-            ResourceLocation json = ResourceLocation.fromNamespaceAndPath(t.getNamespace(), "structure/" + t.getPath() + ".json");
-            return resources.getResource(json).flatMap(r -> {
-                try (Reader reader = r.openAsReader()) {
-                    return Optional.of(parse(k, JsonParser.parseReader(reader).getAsJsonObject()));
-                } catch (Exception e) {
-                    dev.b28.enterprise.Enterprise.LOGGER.warn("Kit {}: its metadata can't be read: {}", k, e.toString());
-                    return Optional.empty();
+        // (Not computeIfAbsent: a variant reads its base's on the way, and the map can't be updated inside its own update.)
+        Optional<Meta> known = METAS.get(id);
+        if (known != null) {
+            return known;
+        }
+        Optional<Meta> read = read(resources, id);
+        METAS.put(id, read);
+        return read;
+    }
+
+    private static Optional<Meta> read(ResourceManager resources, String id) {
+        ResourceLocation t = template(id);
+        ResourceLocation json = ResourceLocation.fromNamespaceAndPath(t.getNamespace(), "structure/" + t.getPath() + ".json");
+        return resources.getResource(json).flatMap(r -> {
+            try (Reader reader = r.openAsReader()) {
+                JsonObject o = JsonParser.parseReader(reader).getAsJsonObject();
+                // A palette variant ({"id", "base", "palette"}): everything but its blocks is its base's.
+                if (o.has("base") && !o.has("footprint")) {
+                    return meta(resources, o.get("base").getAsString()).map(b -> new Meta(id, b.kingdom(), b.kind(),
+                            b.slot(), b.width(), b.depth(), b.height(), b.ground(), b.bedHeads(), b.workstations(),
+                            b.tiers()));
                 }
-            });
+                return Optional.of(parse(id, o));
+            } catch (Exception e) {
+                dev.b28.enterprise.Enterprise.LOGGER.warn("Kit {}: its metadata can't be read: {}", id, e.toString());
+                return Optional.empty();
+            }
         });
     }
 

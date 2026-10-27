@@ -96,9 +96,12 @@ def main():
     if assets or a.full:
         ok &= run("asset validator tests", ["node", "--test", "scripts/assets/check-asset.test.mjs"])
         # Each kingdom's folder (`floor.nbt` beside them is the game tests' arena, not an asset).
-        for kingdom in sorted(p for p in (ROOT / "core/src/main/resources/data/enterprise/structure").iterdir() if p.is_dir()):
-            ok &= run(f"asset validator: {kingdom.name}", ["node", "scripts/assets/check-asset.mjs",
-                                                          str(kingdom.relative_to(ROOT))])
+        # Each kingdom's buildings by kind (not its `part/` sets: a part is a piece of a building, judged in the
+        # buildings assembled from it).
+        for kind in sorted(p for p in (ROOT / "core/src/main/resources/data/enterprise/structure").glob("*/*")
+                           if p.is_dir() and p.name != "part"):
+            ok &= run(f"asset validator: {kind.parent.name}/{kind.name}", ["node", "scripts/assets/check-asset.mjs",
+                                                                          str(kind.relative_to(ROOT))])
     if sim or a.full:
         if a.full:
             os.environ["SWEEP"] = "full"

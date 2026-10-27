@@ -179,7 +179,8 @@ public final class GrowthTests {
         var level = helper.getLevel();
         var resources = level.getServer().getResourceManager();
         var kits = dev.b28.enterprise.territory.Kits.kits(resources, "test", "home", 5, 5);
-        helper.assertTrue(kits.equals(java.util.List.of("enterprise:test/home/cottage_5x5")), "the test kingdom's home: " + kits);
+        helper.assertTrue(kits.equals(java.util.List.of("enterprise:test/home/cottage_5x5",
+                "enterprise:test/home/cottage_5x5__plain")), "the test kingdom's home and its palette variant: " + kits);
         helper.assertTrue(dev.b28.enterprise.territory.Kits.kits(resources, "test", "home", 4, 5).isEmpty(),
                 "none fits a slot too small");
         BlockPos corner = helper.absolutePos(new BlockPos(1, 3, 1));

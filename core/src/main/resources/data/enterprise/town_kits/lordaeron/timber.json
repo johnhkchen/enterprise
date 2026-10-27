@@ -1,0 +1,276 @@
+{
+  "set": "lordaeron/timber",
+  "rev": 1,
+  "parts": "enterprise:lordaeron/part/timber/<part>",
+  "palettes": "assets-src/kingdoms/lordaeron/palettes.json",
+  "about": "Assembly rules for Lordaeron timber-frame homes, shops and terraces. Pure data: a deterministic function of the params below. The reference assembler (assemble.mjs, delivered beside this file) implements exactly these rules; diff your C16's output against it block for block.",
+  "params": {
+    "width": [
+      5,
+      7,
+      9,
+      11,
+      13
+    ],
+    "depth": [
+      5,
+      7
+    ],
+    "storeys": [
+      1,
+      2
+    ],
+    "roof": [
+      "gable_x",
+      "gable_z"
+    ],
+    "palette": [
+      "stone",
+      "daub",
+      "brick"
+    ],
+    "front": [
+      "plain",
+      "shop",
+      "jettied"
+    ],
+    "trade": "null, or a workstation block id placed for the occupant (\"any\" leaves a marker for the placer)",
+    "units": "terraces only: a list of widths, built side by side sharing party walls"
+  },
+  "constraints": [
+    "width odd, 5 to 13; depth 5 or 7",
+    "roof gable_z (gable to the street) needs width 5 or 7: its roof slices span the width",
+    "front jettied needs depth 7 and storeys 2",
+    "terraces use roof gable_x"
+  ],
+  "expressions": "Positions are [x, y, z] in the template, origin at its north-west corner on the lowest layer, front to the south. Each coordinate is an integer or an expression over: W (width), D (depth), c = (W-1)/2 (the door's x), g (the storey's floor layer), zw (the front wall's z: D-1, or D-2 on a jettied ground storey), zf = zw-1 (the front room's row), storeys. Operators + - * /, comparisons, && ||; integer arithmetic.",
+  "grid": {
+    "foundation": 2,
+    "ground": 2,
+    "storey": 4,
+    "storey_base": "g = 2 + 4 * s for storey s = 0, 1; layer g is the sill and floor, g+1..g+3 the room",
+    "roof_base": "2 + 4 * storeys"
+  },
+  "foundation": {
+    "part": "foundation",
+    "at": "every cell of the footprint, layers 0-1"
+  },
+  "floor": {
+    "part": "floor",
+    "at": "every cell inside the walls at layer g, each storey; under a jetty, the street strip at layer 2 is foundation-topped paving (plinth)"
+  },
+  "walls": {
+    "corner": "post_corner_{storey}",
+    "faces": {
+      "front": {
+        "line": "z = zw",
+        "along": "x",
+        "turn": 0
+      },
+      "back": {
+        "line": "z = 0",
+        "along": "x",
+        "turn": 2
+      },
+      "east": {
+        "line": "x = W-1",
+        "along": "z",
+        "turn": 3
+      },
+      "west": {
+        "line": "x = 0",
+        "along": "z",
+        "turn": 1
+      }
+    },
+    "front_back": {
+      "rule": "the centre column is the feature; outward from it, columns repeat panel, panel, stud; the ends are corners. On a ground-storey front 7 or wider, the columns either side of the door are studs (jambs) and the repeat starts after them.",
+      "repeat": [
+        "panel",
+        "panel",
+        "stud"
+      ],
+      "centre": {
+        "front": {
+          "ground": "door",
+          "upper": "stud"
+        },
+        "back": {
+          "ground": "window",
+          "upper": "stud"
+        }
+      },
+      "windows": "the panels of pair j are windows when j is even (j = floor((k'-1)/3), k' = distance from the centre, less one after door jambs); on the back, ground-storey pairs stay plain",
+      "shop": "front shop: the ground storey's pair j = 0 is shop (wide glazing) instead of window"
+    },
+    "sides": {
+      "rule": "outward from each corner, columns repeat panel, panel, stud; a side of odd length has a window at its centre",
+      "repeat": [
+        "panel",
+        "panel",
+        "stud"
+      ]
+    },
+    "chimney": {
+      "face": "west",
+      "z": "zf",
+      "part": "chimney_{storey}",
+      "stack": "chimney_stack from roof_base to roof_base + layers (one above the ridge)"
+    }
+  },
+  "jetty": {
+    "when": "front == jettied",
+    "ground_front_wall": "z = D-2",
+    "street_strip": "z = D-1 at the ground storey: open, paved, under the upper storey",
+    "brackets": "jetty_bracket at [x, g+3, D-1] of the ground storey under every post_corner and stud of the upper front wall",
+    "lantern": "lantern at [c, g+3, D-1] of the ground storey, hanging from the upper sill"
+  },
+  "roof": {
+    "gable_x": {
+      "ridge": "x",
+      "span": "D",
+      "bay": "roof_bay_{D}",
+      "end": "gable_end_{D}",
+      "ends_at": "x = 0 and x = W-1",
+      "turn": 0
+    },
+    "gable_z": {
+      "ridge": "z",
+      "span": "W",
+      "bay": "roof_bay_{W}",
+      "end": "gable_end_{W}",
+      "ends_at": "z = 0 and z = D-1",
+      "turn": 1
+    },
+    "layers": "(span-1)/2 + 1, the first on the walls' top"
+  },
+  "fitout": {
+    "ground": [
+      {
+        "part": "bed",
+        "at": [
+          "1",
+          "g+1",
+          "1"
+        ],
+        "role": "bed"
+      },
+      {
+        "part": "bed",
+        "at": [
+          "W-2",
+          "g+1",
+          "1"
+        ],
+        "role": "bed"
+      },
+      {
+        "part": "hearth",
+        "at": [
+          "1",
+          "g+1",
+          "zf"
+        ],
+        "if": "!(trade && storeys == 2)"
+      },
+      {
+        "part": "workstation",
+        "at": [
+          "1",
+          "g+1",
+          "zf"
+        ],
+        "if": "trade && storeys == 2",
+        "role": "workstation"
+      },
+      {
+        "part": "workstation",
+        "at": [
+          "W-2",
+          "g+1",
+          "zf"
+        ],
+        "if": "trade && storeys == 1",
+        "role": "workstation"
+      },
+      {
+        "part": "chest",
+        "at": [
+          "W-2",
+          "g+1",
+          "zf"
+        ],
+        "if": "!trade && storeys == 1"
+      },
+      {
+        "part": "ladder",
+        "at": [
+          "W-2",
+          "g+1",
+          "zf"
+        ],
+        "if": "storeys == 2",
+        "note": "rises through a hole in the upper floor"
+      },
+      {
+        "part": "table",
+        "at": [
+          "c-1",
+          "g+1",
+          "1"
+        ],
+        "if": "W >= 7",
+        "note": "beside a bed's head, clear of every way in"
+      },
+      {
+        "part": "lantern",
+        "at": [
+          "c",
+          "g+3",
+          "(zf+1)/2"
+        ],
+        "note": "hanging; one more at c-4 and c+4 when W >= 9"
+      }
+    ],
+    "upper": [
+      {
+        "part": "chest",
+        "at": [
+          "1",
+          "g+1",
+          "zf"
+        ]
+      },
+      {
+        "part": "shelf",
+        "at": [
+          "1",
+          "g+1",
+          "1"
+        ]
+      },
+      {
+        "part": "shelf",
+        "at": [
+          "W-2",
+          "g+1",
+          "1"
+        ]
+      },
+      {
+        "part": "lantern",
+        "at": [
+          "c",
+          "g+3",
+          "(zf+1)/2"
+        ]
+      }
+    ],
+    "rules": "Beds and workstations only on the ground storey, so a villager walks to them from the door with no stairs. Nothing that is a point of interest except declared beds and workstations. No chest touches a workstation."
+  },
+  "terrace": {
+    "rule": "units side by side from the west, each sharing its west wall with the previous unit's east wall (a unit of width w adds w-1); each unit is a home with its own door, beds, hearth and chimney; one continuous gable_x roof with gable ends at both ends of the row and gable_end slices on every party wall"
+  },
+  "palette": "Parts are authored in the base palette (stone). To apply another, replace each block by the palette's block for the same role (palettes.json); stairs, slabs and doors keep their states, full blocks drop them.",
+  "pick": "Deterministic: the placer chooses params from the town and the slot (e.g. palette from the slot's position, a seeded hash of town id and slot). These rules never choose at random."
+}

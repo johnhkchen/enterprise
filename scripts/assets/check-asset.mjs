@@ -232,7 +232,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     ? (function walk(d) { return readdirSync(d).flatMap((f) => { const p = join(d, f); return statSync(p).isDirectory() ? walk(p) : p.endsWith(".nbt") ? [p] : []; }); })(target)
     : [target];
   const readJson = (p) => (p && existsSync(p) ? JSON.parse(readFileSync(p, "utf8")) : null);
-  const results = files.map((f) => check(f, readJson(opt("--meta") || f.replace(/\.nbt$/, ".json")), readJson(opt("--mass"))));
+  // A palette variant's metadata ({id, base, palette}) is its base's (the base beside it), with its own id and palette.
+  const metaOf = (p) => {
+    const m = readJson(p);
+    if (!m || !m.base || m.footprint) return m;
+    const base = readJson(p.replace(/[^/]*$/, m.base.split("/").pop() + ".json"));
+    return base ? { ...base, id: m.id, palette: m.palette } : m;
+  };
+  const results = files.map((f) => check(f, metaOf(opt("--meta") || f.replace(/\.nbt$/, ".json")), readJson(opt("--mass"))));
   if (argv.includes("--json")) console.log(JSON.stringify(results, null, 2));
   else for (const r of results) {
     console.log(`${r.ok ? "PASS" : "FAIL"}  ${basename(r.file)}  ${r.size.join("x")}, ${r.blocks} blocks, ${r.counts.beds} beds, ${r.counts.jobSites} job sites`);

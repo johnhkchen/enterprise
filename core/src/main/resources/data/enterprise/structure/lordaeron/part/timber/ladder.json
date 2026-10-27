@@ -1,0 +1,17 @@
+{
+  "id": "enterprise:lordaeron/part/timber/ladder",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "fitout",
+  "set": "lordaeron/timber",
+  "palette": "stone",
+  "size": [
+    1,
+    4,
+    1
+  ],
+  "mirror": true,
+  "sockets": {
+    "placed": "by rule (timber.json fitout)"
+  }
+}

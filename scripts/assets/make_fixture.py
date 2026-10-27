@@ -102,6 +102,11 @@ def main():
         "workstations": [], "lockers": [], "markers": [], "pilings": [], "entities": [],
         "notes": "Not an asset: the placer's game test places it (scripts/assets/make_fixture.py)."}
     (OUT / "cottage_5x5.json").write_text(json.dumps(meta, indent=2) + "\n")
+    # A palette variant: its own blocks (the same here), its metadata its base's.
+    (OUT / "cottage_5x5__plain.nbt").write_bytes((OUT / "cottage_5x5.nbt").read_bytes())
+    (OUT / "cottage_5x5__plain.json").write_text(json.dumps({"id": "enterprise:test/home/cottage_5x5__plain",
+                                                            "base": "enterprise:test/home/cottage_5x5",
+                                                            "palette": "plain", "rev": 1}, indent=2) + "\n")
     print(f"wrote {OUT}")
 
 
