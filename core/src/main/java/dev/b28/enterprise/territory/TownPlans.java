@@ -257,6 +257,36 @@ public final class TownPlans extends SavedData {
     }
 
     /**
+     * A town's plots in the order they're filled (the studio's planned towns, thread 0012: "even a half-built town shows
+     * complete street fronts"): the avenues inside the inner wall first, nearest the forum first, as a terrace (plots
+     * {@code terrace} wide, houses side by side: a continuous front); then the lanes, then the suburbs, detached (plots
+     * {@code detached} wide, side yards between).
+     */
+    public static List<Frontage> plots(Plan plan, int terrace, int detached) {
+        int bx = plan.bell().getX(), bz = plan.bell().getZ();
+        List<Frontage> avenue = frontages(plan, terrace, plan.deepest(), 0).stream().filter(f -> onAvenue(plan, f)).toList();
+        List<Frontage> lane = frontages(plan, detached, plan.deepest(), 0).stream().filter(f -> !onAvenue(plan, f)).toList();
+        Comparator<Frontage> near = Comparator.comparingDouble((Frontage f) -> Math.hypot(f.x() + f.sx() / 2.0 - bx,
+                f.z() + f.sz() / 2.0 - bz)).thenComparingInt(Frontage::x).thenComparingInt(Frontage::z);
+        List<Frontage> out = new ArrayList<>();
+        out.addAll(avenue.stream().sorted(near).toList());
+        out.addAll(lane.stream().sorted(near).toList());
+        out.addAll(suburbs(plan, detached, plan.deepest()).stream().sorted(near).toList());
+        return out;
+    }
+
+    /** Does the frontage front an avenue (its street edge on the avenue running from the forum to a gate)? */
+    public static boolean onAvenue(Plan plan, Frontage f) {
+        int bx = plan.bell().getX(), bz = plan.bell().getZ(), reach = GATE / 2 + 3;
+        return switch (f.door()) {
+            case EAST -> Math.abs(f.x() + f.sx() - bx) <= reach;
+            case WEST -> Math.abs(f.x() - 1 - bx) <= reach;
+            case SOUTH -> Math.abs(f.z() + f.sz() - bz) <= reach;
+            default -> Math.abs(f.z() - 1 - bz) <= reach;
+        };
+    }
+
+    /**
      * Plots along the avenues between the inner wall and the outer (the plan's suburbs: a village fills its inner wall,
      * which was drawn round it, and its new homes go out along the roads, the gardens giving way to them): a row each
      * side of each avenue's stretch between the walls' strips, side by side, facing the avenue.

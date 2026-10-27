@@ -678,6 +678,16 @@ public final class LandAdapter {
                     townPlan.bell(), 48, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY).count();
             if (farmers > dev.b28.enterprise.territory.FieldMaps.get(level.getServer()).farmsteads(town)) {
                 int lot = 2 * Fields.SIZE + 1;
+                // The kingdom's farmstead for the lot whole if it has one (house, barn, yard, garden); else a farmhouse.
+                var farmsteadKit = dev.b28.enterprise.territory.Kits.choose(level.getServer().getResourceManager(), kingdom,
+                        "farmstead", lot, 2 * Fields.SIZE, town, new BlockPos(laidSoFar, 0, 0))
+                        .flatMap(id -> dev.b28.enterprise.territory.Kits.meta(level.getServer().getResourceManager(), id))
+                        .filter(m -> m.width() == lot && m.depth() == 2 * Fields.SIZE);
+                if (farmsteadKit.isPresent()) {
+                    homeKits.put(town, farmsteadKit.get());
+                    farmsteadNext.add(town);
+                    return farmsteadKit;
+                }
                 var farmhouse = dev.b28.enterprise.territory.Houses.next(level, kingdom, "hamlet",
                         lot - 2 * dev.b28.enterprise.territory.Plots.SIDE, 2 * Fields.SIZE - dev.b28.enterprise.territory.TownPlans.FRONT_YARD - 4,
                         town * 7919 + laidSoFar);
@@ -916,9 +926,12 @@ public final class LandAdapter {
                     var built = homeBuilt.remove(town);
                     boolean farmstead = farmsteadNext.remove(town);
                     String trade = farmstead ? "farmer" : workshops.get(town);
-                    var onPlot = dev.b28.enterprise.territory.Plots.lay(level, dev.b28.enterprise.territory.Kingdoms.get(level.getServer())
-                            .of(town), kit.get(), built, p.corner(), p.width(), p.depth(), p.door(), town * 31 + corner.asLong(),
-                            "village", trade);
+                    String kingdomOf = dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town);
+                    var onPlot = farmstead && built == null && kit.get().width() == p.width()
+                            ? dev.b28.enterprise.territory.Plots.layWhole(level, kingdomOf, kit.get(), p.corner(), p.width(), p.depth(),
+                                    p.door())
+                            : dev.b28.enterprise.territory.Plots.lay(level, kingdomOf, kit.get(), built, p.corner(), p.width(),
+                                    p.depth(), p.door(), town * 31 + corner.asLong(), "village", trade);
                     if (onPlot.isEmpty()) {
                         Growth.buildHome(level, corner, p.door());
                     } else {
@@ -926,6 +939,17 @@ public final class LandAdapter {
                             dev.b28.enterprise.territory.FieldMaps.get(level.getServer()).settle(town);
                             Enterprise.LOGGER.info("Town {}'s farmstead: its farmhouse on its holding at {}", town,
                                     corner.toShortString());
+                        } else {
+                            // A vanilla house its people can move from cleared, nearest the bell first (John: "replace
+                            // one by one"): the new house's beds take them.
+                            int[] r = dev.b28.enterprise.territory.Plots.world(p.corner().getX(), p.corner().getZ(), p.width(),
+                                    p.depth(), p.door(), 0, 0, p.width(), p.depth());
+                            long beds = level.getPoiManager().getInSquare(t -> t.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.HOME),
+                                    new BlockPos(r[0] + r[2] / 2, p.corner().getY(), r[1] + r[3] / 2), Math.max(r[2], r[3]) / 2 + 1,
+                                    net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY)
+                                    .filter(q -> q.getPos().getX() >= r[0] && q.getPos().getX() < r[0] + r[2]
+                                            && q.getPos().getZ() >= r[1] && q.getPos().getZ() < r[1] + r[3]).count();
+                            dev.b28.enterprise.territory.Vanilla.replace(level, bell, (int) beds);
                         }
                         // A workshop's workstation made its decorative twin: the trade shows, nobody is hired by it.
                         if (workshops.remove(town) != null) {

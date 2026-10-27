@@ -36,7 +36,12 @@ public final class Plots {
 
     /** Where the house stands in its plot: its corner (x, z) as authored, its width and depth. */
     static int[] house(int plotDepth, int width, int depth) {
-        return new int[] {SIDE, plotDepth - TownPlans.FRONT_YARD - depth, width, depth};
+        return house(plotDepth, width, depth, width(width));
+    }
+
+    /** As {@link #house(int, int, int)}, in a plot {@code plotWidth} wide: the house in its middle (none either side on a terrace). */
+    static int[] house(int plotDepth, int width, int depth, int plotWidth) {
+        return new int[] {Math.max(0, (plotWidth - width) / 2), plotDepth - TownPlans.FRONT_YARD - depth, width, depth};
     }
 
     /**
@@ -76,15 +81,17 @@ public final class Plots {
         if (plan.isEmpty() || !plan.get().lanes() || !plan.get().yards()) {
             return Optional.empty();
         }
-        int width = width(house.width()), depth = plan.get().deepest();
-        int[] h = house(depth, house.width(), house.depth());
-        if (h[1] < 0) {
+        int depth = plan.get().deepest();
+        if (house(depth, house.width(), house.depth())[1] < 0) {
             return Optional.empty(); // deeper than a plot
         }
         // Why each frontage failed, for the log when none fits.
         int[] why = new int[4];
-        var frontages = TownPlans.plots(plan.get(), width);
+        var frontages = TownPlans.plots(plan.get(), house.width(), width(house.width()));
         for (TownPlans.Frontage f : frontages) {
+            // Its width along its street: the house's alone on an avenue's terrace, with side yards elsewhere.
+            int width = f.door().getAxis() == Direction.Axis.Z ? f.sx() : f.sz();
+            int[] h = house(depth, house.width(), house.depth(), width);
             if (!TownPlans.clear(level, f.x(), f.z(), f.sx(), f.sz(), false)) {
                 why[0]++;
                 continue;
@@ -108,10 +115,10 @@ public final class Plots {
             return Optional.of(new Site(new BlockPos(f.x(), y, f.z()), f.door(), width, depth));
         }
         // Said when the reasons change, not at every look the town asks again (r35: 445 lines of one full town).
-        String said = String.format("No plot %d wide by %s's bell: %d frontages, %d on a wall or street, %d built on or a "
-                + "town's, %d too steep, %d too high or low", width, bell.toShortString(), frontages.size(), why[0], why[1],
-                why[2], why[3]);
-        if (!said.equals(SAID.put(bell.asLong() * 31 + width, said))) {
+        String said = String.format("No plot for a house %d wide by %s's bell: %d frontages, %d on a wall or street, %d "
+                + "built on or a town's, %d too steep, %d too high or low", house.width(), bell.toShortString(), frontages.size(),
+                why[0], why[1], why[2], why[3]);
+        if (!said.equals(SAID.put(bell.asLong() * 31 + house.width(), said))) {
             dev.b28.enterprise.Enterprise.LOGGER.info(said);
         }
         return Optional.empty();
@@ -169,7 +176,7 @@ public final class Plots {
      * ground cut down to it and filled up to it, grass on top, and its trees felled (the studio's renders: houses in
      * stepped dirt between their yards, acacias against their walls). Anything built is left alone.
      */
-    static void level(ServerLevel level, int x0, int z0, int x1, int z1, int ground) {
+    public static void level(ServerLevel level, int x0, int z0, int x1, int z1, int ground) {
         BlockState dirt = Blocks.DIRT.defaultBlockState();
         for (int x = x0; x <= x1; x++) {
             for (int z = z0; z <= z1; z++) {
@@ -200,6 +207,24 @@ public final class Plots {
                 }
             }
         }
+    }
+
+    /**
+     * Lays a kit that fills its plot whole (a farmstead: house, barn, yard and garden in one, the studio's batch 025): the
+     * plot levelled at {@code corner}'s height, the kit turned to {@code door}, its edges retained. Empty if the kit can't
+     * be placed.
+     */
+    public static Optional<Laid> layWhole(ServerLevel level, String kingdom, Kits.Meta kit, BlockPos corner, int width,
+            int depth, Direction door) {
+        int[] plot = world(corner.getX(), corner.getZ(), width, depth, door, 0, 0, width, depth);
+        level(level, plot[0], plot[1], plot[0] + plot[2] - 1, plot[1] + plot[3] - 1, corner.getY());
+        Optional<Kits.Placed> placed = Kits.place(level, kit.id(), corner, door);
+        if (placed.isEmpty()) {
+            return Optional.empty();
+        }
+        var banked = Earthworks.retain(level, kingdom, plot[0], plot[1], plot[0] + plot[2] - 1, plot[1] + plot[3] - 1,
+                corner.getY(), door, null);
+        return Optional.of(new Laid(placed.get(), Optional.empty(), Optional.empty(), 0, banked, false));
     }
 
     /**
@@ -253,7 +278,7 @@ public final class Plots {
     public static Optional<Laid> lay(ServerLevel level, String kingdom, Kits.Meta house, Houses.Built built, BlockPos corner,
             int width, int depth, Direction door, long seed, String tier, String trade) {
         ResourceManager resources = level.getServer().getResourceManager();
-        int[] h = house(depth, house.width(), house.depth());
+        int[] h = house(depth, house.width(), house.depth(), width);
         int[] plot = world(corner.getX(), corner.getZ(), width, depth, door, 0, 0, width, depth);
         level(level, plot[0], plot[1], plot[0] + plot[2] - 1, plot[1] + plot[3] - 1, corner.getY());
         int[] at = world(corner.getX(), corner.getZ(), width, depth, door, h[0], h[1], h[2], h[3]);

@@ -663,7 +663,7 @@ public final class FieldMaps extends SavedData {
     /**
      * Where the town's next farmhouse ({@code width} x {@code depth} as authored) goes: the first grain holding without a
      * farmstead whose lot is on the map, loaded and level enough, its plot (the house's side yards, its front yard toward
-     * the track) in the lot's middle. Empty if none.
+     * the track) in the lot's middle, or the lot itself for a farmstead kit its size (19 x 18). Empty if none.
      */
     public Optional<Plots.Site> farmstead(ServerLevel level, long town, int width, int depth) {
         TownPlans.Plan plan = TownPlans.get(level.getServer()).of(town);
@@ -671,7 +671,9 @@ public final class FieldMaps extends SavedData {
         if (plan == null || m == null) {
             return Optional.empty();
         }
-        int w = Plots.width(width), d = Math.min(2 * WIDE, depth + TownPlans.FRONT_YARD + 4);
+        // A farmstead kit takes the lot whole (the studio's: house, barn, yard, garden); a house alone, a plot in it.
+        boolean whole = width == 2 * WIDE + BALK && depth == 2 * WIDE;
+        int w = whole ? width : Plots.width(width), d = whole ? depth : Math.min(2 * WIDE, depth + TownPlans.FRONT_YARD + 4);
         if (w > 2 * WIDE + BALK) {
             return Optional.empty();
         }
