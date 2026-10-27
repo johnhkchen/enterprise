@@ -39,6 +39,12 @@ body {
   min-width: 0; touch-action: none; cursor: grab; }
 .map:active { cursor: grabbing; }
 canvas { display: block; width: 100%; height: 100%; }
+.clock { position: absolute; left: 10px; bottom: 10px; right: 56px; display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 4px; border: 1px solid var(--rule); background: var(--sheet); font: .85rem var(--mono); }
+.clock input { flex: 1; min-width: 0; accent-color: var(--accent); }
+.clock button { padding: 3px 10px; border-radius: 4px; border: 1px solid var(--rule); background: var(--ground); color: var(--ink);
+  font: 600 .85rem var(--body); cursor: pointer; }
+.clock span { font-variant-numeric: tabular-nums; min-width: 4.5em; }
 .zoom { position: absolute; right: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 4px; }
 .zoom button { width: 34px; height: 34px; border-radius: 4px; border: 1px solid var(--rule); background: var(--sheet);
   color: var(--ink); font: 600 18px var(--body); cursor: pointer; }
@@ -70,6 +76,11 @@ h2 { font: 500 .78rem var(--body); text-transform: uppercase; letter-spacing: .0
 <div class="frame">
   <div class="map" id="map">
     <canvas id="c" aria-label="Map of the five towns and the land between them, from above"></canvas>
+    <div class="clock">
+      <button id="play" aria-pressed="true">Pause</button>
+      <input type="range" id="day" min="0" max="90" step="0.01" value="0" aria-label="Day of the study">
+      <span id="dayText">Day 0</span>
+    </div>
     <div class="zoom">
       <button id="zin" aria-label="Zoom in">+</button>
       <button id="zout" aria-label="Zoom out">−</button>
@@ -95,9 +106,9 @@ h2 { font: 500 .78rem var(--body); text-transform: uppercase; letter-spacing: .0
       <button id="save" hidden>Save the MP4</button>
       <p class="note" id="saved">An MP4 for posting: Discord plays it inline.</p>
     </div>
-    <p class="note">A pixel is a block. Drag to pan, scroll or pinch to zoom. Wagons run each route as often as it was
-      travelled: a wider line and more wagons where more trips were made. Only ground a player or the study loaded
-      was ever generated; the rest is blank.</p>
+    <p class="note">A pixel is a block. Drag to pan, scroll or pinch to zoom. The roads are the paths the caravans wore
+      into the land. Each caravan is on the map from the day it left to the day it was home, out to the far town and
+      back (squares are wagons, rounds are llama trains); the clock runs half a second a day.</p>
     <p class="scale" id="scale"></p>
   </aside>
 </div>
@@ -132,7 +143,7 @@ const img = new Image();
 img.src = "data:image/png;base64,__IMAGE__";
 const cv = document.getElementById("c"), cx = cv.getContext("2d"), map = document.getElementById("map");
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const layers = { plans: true, routes: true, wagons: true, labels: true };
+const layers = { plans: true, wagons: true, labels: true };
 const KEY = [
   ["Trees", "#28582a"], ["Roads and wagon trails", "#c4a870"], ["Forum", "#9ea0a6"], ["Homes and buildings", "#ac6a42"],
   ["Fields (wheat, carrots, potatoes, beetroot)", "#d6be56"], ["Pastures (birch fence)", "#96c062"], ["Water", "#3664aa"],
@@ -148,7 +159,7 @@ KEY.forEach(([t, c]) => {
   b.lastChild.textContent = t; b.tabIndex = -1; b.style.cursor = "default";
   key.append(b);
 });
-[["plans", "Town plans (inner wall, outer kept clear)"], ["routes", "Caravan routes"], ["wagons", "Wagons on the road"], ["labels", "Town names"]].forEach(([k, t]) => {
+[["plans", "Town plans (inner wall, outer kept clear)"], ["wagons", "Caravans on the road"], ["labels", "Town names"]].forEach(([k, t]) => {
   const b = document.createElement("button");
   b.id = "layer-" + k; b.setAttribute("aria-pressed", "true");
   b.innerHTML = `<span class="sw" style="background:var(--accent)"></span><span></span>`;
@@ -164,8 +175,8 @@ D.towns.forEach(t => {
   d.lastChild.textContent = `${t.villagers} folk · mood ${t.mood >= 0 ? "+" : ""}${t.mood.toFixed(1)} · ${t.comforts} met`;
   tl.append(d);
 });
-const trips = D.routes.reduce((s, r) => s + r.trips, 0);
-document.getElementById("scale").textContent = `${D.routes.length} routes, ${trips} trips · hexes 80 blocks across`;
+const trips = D.routes.reduce((s, r) => s + (r.runs || []).length, 0);
+document.getElementById("scale").textContent = `${D.routes.length} routes, ${trips} trips made`;
 
 // The view: block (x, z) on the sheet → canvas pixels.
 let scale = 1, ox = 0, oz = 0;
@@ -190,7 +201,6 @@ D.routes.forEach(r => {
     r.len.push(r.len[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1]));
   }
   r.total = r.len[r.len.length - 1];
-  r.wagons = Math.max(r.trips > 0 ? 1 : 0, Math.round(Math.sqrt(r.trips) * 1.4));
 });
 function along(r, d) {
   let i = 1; while (i < r.len.length - 1 && r.len[i] < d) i++;
@@ -198,7 +208,19 @@ function along(r, d) {
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 }
 const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+// The clock: day 0 to the last, half a second a day, round again.
+const last = D.day || 90;
+let day = 0, playing = !still, before = null;
+const slider = document.getElementById("day"), dayText = document.getElementById("dayText"), play = document.getElementById("play");
+slider.max = last;
+function setDay(d) { day = d; slider.value = d.toFixed(2); dayText.textContent = "Day " + Math.floor(d); }
+slider.oninput = () => { setDay(+slider.value); };
+play.onclick = () => { playing = !playing; play.textContent = playing ? "Pause" : "Play"; play.setAttribute("aria-pressed", String(playing)); };
+play.textContent = playing ? "Pause" : "Play";
+setDay(0);
 function draw(now) {
+  if (playing && before !== null) setDay((day + (now - before) / 500) % (last + 1));
+  before = now;
   const r = map.getBoundingClientRect();
   cx.clearRect(0, 0, r.width, r.height);
   cx.imageSmoothingEnabled = scale < 1;
@@ -214,28 +236,18 @@ function draw(now) {
     });
     cx.setLineDash([]);
   }
-  if (layers.routes) {
-    cx.strokeStyle = css("--route"); cx.lineCap = "round"; cx.lineJoin = "round";
-    D.routes.forEach(rt => {
-      if (!rt.trips) return;
-      cx.lineWidth = Math.max(1.5, Math.sqrt(rt.trips) * 1.1);
-      cx.setLineDash(rt.carrier === "llama" ? [6, 5] : []);
-      cx.beginPath(); rt.path.forEach((p, i) => { const [x, y] = P(p[0], p[1]); i ? cx.lineTo(x, y) : cx.moveTo(x, y); });
-      cx.stroke();
-    });
-    cx.setLineDash([]);
-  }
   if (layers.wagons) {
-    const accent = css("--accent"), t = still ? 0 : now / 1000;
-    D.routes.forEach((rt, ri) => {
-      for (let k = 0; k < rt.wagons; k++) {
-        // Out and home again, 28 blocks a second on the map, each wagon its own share of the round.
-        const round = 2 * rt.total, d = ((t * 28 + (k / rt.wagons) * round + ri * 37) % round);
-        const [x, z] = along(rt, d <= rt.total ? d : round - d);
-        const [px, py] = P(x, z), s = Math.max(3, Math.min(7, scale * 3));
-        cx.fillStyle = accent; cx.strokeStyle = css("--sheet"); cx.lineWidth = 1.5;
-        cx.beginPath(); cx.rect(px - s, py - s * .7, s * 2, s * 1.4); cx.fill(); cx.stroke();
-      }
+    const accent = css("--accent"), sheet = css("--sheet");
+    D.routes.forEach(rt => {
+      (rt.runs || []).forEach(([a, b]) => {
+        if (day < a || day > b) return;
+        // Out to the far town and home again, the trip's time halved.
+        const f = (day - a) / Math.max(1e-6, b - a), d = (f <= 0.5 ? f * 2 : (1 - f) * 2) * rt.total;
+        const [x, z] = along(rt, d), [px, py] = P(x, z), s = Math.max(4, Math.min(8, scale * 3));
+        cx.fillStyle = accent; cx.strokeStyle = sheet; cx.lineWidth = 1.5; cx.beginPath();
+        if (rt.carrier === "llama") { cx.arc(px, py, s * 0.8, 0, 7); } else { cx.rect(px - s, py - s * .7, s * 2, s * 1.4); }
+        cx.fill(); cx.stroke();
+      });
     });
   }
   if (layers.labels) {

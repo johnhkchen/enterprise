@@ -273,7 +273,11 @@ def main():
             "select route, from_town, to_town, trips, carrier from routes where day=?", (last,)):
         hexes = [(q, r) for q, r in db.execute("select q, r from paths where route=? order by step", (route,))]
         if len(hexes) >= 2:
-            routes.append({"from": frm, "to": to, "trips": trips, "carrier": carrier, "hexes": hexes})
+            # Each trip it made: when it left and when it was home again, in days.
+            runs = [[round(a / 24000, 3), round(b / 24000, 3)] for a, b in db.execute(
+                "select left_tick, home_tick from trips where route=? and home_tick is not null order by left_tick",
+                (route,))]
+            routes.append({"from": frm, "to": to, "trips": trips, "carrier": carrier, "hexes": hexes, "runs": runs})
 
     # Each route along its road as the game planned it over the land (the world's enterprise-roads.json), else taut.
     planned = {}
