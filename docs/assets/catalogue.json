@@ -1,0 +1,822 @@
+{
+ "note": "Everything a fully built town needs, by slot (scripts/assets/factory.py reads this). `from`: the least tier that needs it. `code`: what our side needs before it's placed ('today' = placeable now). `holds`: the functional rules (ours); the look is the studio's.",
+ "tiers": [
+  "hamlet",
+  "village",
+  "town",
+  "city",
+  "capital"
+ ],
+ "slots": [
+  {
+   "slot": "home",
+   "group": "homes",
+   "for": "a household: the census counts its beds; built when every bed is taken and mood holds",
+   "holds": "2 beds today (more once C3 reads `beds`); a door to the street; stairs, never ladders, to upper beds; no job site",
+   "footprints": "5x5 today; 7x7, 9x7, 11x9 bodies with relief (+2) under test (thread 0003)",
+   "from": "hamlet",
+   "code": "today/C3",
+   "priority": 1
+  },
+  {
+   "slot": "home:terrace",
+   "group": "homes",
+   "for": "a row of households sharing walls, the town's density",
+   "holds": "2-3 beds a unit; one door a unit; no job site",
+   "footprints": "units 7 wide x 7 deep, rows filling a ward's 14",
+   "from": "village",
+   "code": "C3",
+   "priority": 1
+  },
+  {
+   "slot": "home:burgage",
+   "group": "homes",
+   "for": "a narrow deep plot: house on the street, kitchen garden behind (G2 grid)",
+   "holds": "3-8 beds over 2-3 storeys; a ground-floor hall and hearth; may hold its trade's workstation",
+   "footprints": "9x13, 11x13 plots",
+   "from": "village",
+   "code": "C3, G2 grid",
+   "priority": 1
+  },
+  {
+   "slot": "stall:farmer",
+   "group": "trades",
+   "for": "the farmer's market stall: hired at once, trades from its locker",
+   "holds": "exactly one composter (declared workstation); a chest touching it (declared locker); everything else decor twins",
+   "footprints": "3x3 today; 5x3 market bays",
+   "from": "hamlet",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "workshop:farmer",
+   "group": "trades",
+   "for": "the farmer's house-and-workshop: home above, trade below, its yard on the street (signs of trade)",
+   "holds": "one composter declared; optional declared locker; 2-4 beds above; yard dressing from decor twins",
+   "footprints": "7x7 to 11x9 bodies",
+   "from": "village",
+   "code": "C3, workstation from metadata",
+   "priority": 2
+  },
+  {
+   "slot": "stall:librarian",
+   "group": "trades",
+   "for": "the librarian's market stall: hired at once, trades from its locker",
+   "holds": "exactly one lectern (declared workstation); a chest touching it (declared locker); everything else decor twins",
+   "footprints": "3x3 today; 5x3 market bays",
+   "from": "hamlet",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "workshop:librarian",
+   "group": "trades",
+   "for": "the librarian's house-and-workshop: home above, trade below, its yard on the street (signs of trade)",
+   "holds": "one lectern declared; optional declared locker; 2-4 beds above; yard dressing from decor twins",
+   "footprints": "7x7 to 11x9 bodies",
+   "from": "village",
+   "code": "C3, workstation from metadata",
+   "priority": 2
+  },
+  {
+   "slot": "stall:cartographer",
+   "group": "trades",
+   "for": "the cartographer's market stall: hired at once, trades from its locker",
+   "holds": "exactly one cartography_table (declared workstation); a chest touching it (declared locker); everything else decor twins",
+   "footprints": "3x3 today; 5x3 market bays",
+   "from": "hamlet",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "workshop:cartographer",
+   "group": "trades",
+   "for": "the cartographer's house-and-workshop: home above, trade below, its yard on the street (signs of trade)",
+   "holds": "one cartography_table declared; optional declared locker; 2-4 beds above; yard dressing from decor twins",
+   "footprints": "7x7 to 11x9 bodies",
+   "from": "village",
+   "code": "C3, workstation from metadata",
+   "priority": 2
+  },
+  {
+   "slot": "stall:fletcher",
+   "group": "trades",
+   "for": "the fletcher's market stall: hired at once, trades from its locker",
+   "holds": "exactly one fletching_table (declared workstation); a chest touching it (declared locker); everything else decor twins",
+   "footprints": "3x3 today; 5x3 market bays",
+   "from": "hamlet",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "workshop:fletcher",
+   "group": "trades",
+   "for": "the fletcher's house-and-workshop: home above, trade below, its yard on the street (signs of trade)",
+   "holds": "one fletching_table declared; optional declared locker; 2-4 beds above; yard dressing from decor twins",
+   "footprints": "7x7 to 11x9 bodies",
+   "from": "village",
+   "code": "C3, workstation from metadata",
+   "priority": 2
+  },
+  {
+   "slot": "stall:fisherman",
+   "group": "trades",
+   "for": "the fisherman's market stall: hired at once, trades from its locker",
+   "holds": "exactly one barrel (declared workstation); a chest touching it (declared locker); everything else decor twins",
+   "footprints": "3x3 today; 5x3 market bays",
+   "from": "hamlet",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "workshop:fisherman",
+   "group": "trades",
+   "for": "the fisherman's house-and-workshop: home above, trade below, its yard on the street (signs of trade)",
+   "holds": "one barrel declared; optional declared locker; 2-4 beds above; yard dressing from decor twins",
+   "footprints": "7x7 to 11x9 bodies",
+   "from": "village",
+   "code": "C3, workstation from metadata",
+   "priority": 2
+  },
+  {
+   "slot": "stall:shepherd",
+   "group": "trades",
+   "for": "the shepherd's market stall: hired at once, trades from its locker",
+   "holds": "exactly one loom (declared workstation); a chest touching it (declared locker); everything else decor twins",
+   "footprints": "3x3 today; 5x3 market bays",
+   "from": "hamlet",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "workshop:shepherd",
+   "group": "trades",
+   "for": "the shepherd's house-and-workshop: home above, trade below, its yard on the street (signs of trade)",
+   "holds": "one loom declared; optional declared locker; 2-4 beds above; yard dressing from decor twins",
+   "footprints": "7x7 to 11x9 bodies",
+   "from": "village",
+   "code": "C3, workstation from metadata",
+   "priority": 2
+  },
+  {
+   "slot": "stall:cleric",
+   "group": "trades",
+   "for": "the cleric's market stall: hired at once, trades from its locker",
+   "holds": "exactly one brewing_stand (declared workstation); a chest touching it (declared locker); everything else decor twins",
+   "footprints": "3x3 today; 5x3 market bays",
+   "from": "hamlet",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "workshop:cleric",
+   "group": "trades",
+   "for": "the cleric's house-and-workshop: home above, trade below, its yard on the street (signs of trade)",
+   "holds": "one brewing_stand declared; optional declared locker; 2-4 beds above; yard dressing from decor twins",
+   "footprints": "7x7 to 11x9 bodies",
+   "from": "village",
+   "code": "C3, workstation from metadata",
+   "priority": 2
+  },
+  {
+   "slot": "stall:butcher",
+   "group": "trades",
+   "for": "the butcher's market stall: hired at once, trades from its locker",
+   "holds": "exactly one smoker (declared workstation); a chest touching it (declared locker); everything else decor twins",
+   "footprints": "3x3 today; 5x3 market bays",
+   "from": "hamlet",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "workshop:butcher",
+   "group": "trades",
+   "for": "the butcher's house-and-workshop: home above, trade below, its yard on the street (signs of trade)",
+   "holds": "one smoker declared; optional declared locker; 2-4 beds above; yard dressing from decor twins",
+   "footprints": "7x7 to 11x9 bodies",
+   "from": "village",
+   "code": "C3, workstation from metadata",
+   "priority": 2
+  },
+  {
+   "slot": "stall:leatherworker",
+   "group": "trades",
+   "for": "the leatherworker's market stall: hired at once, trades from its locker",
+   "holds": "exactly one cauldron (declared workstation); a chest touching it (declared locker); everything else decor twins",
+   "footprints": "3x3 today; 5x3 market bays",
+   "from": "hamlet",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "workshop:leatherworker",
+   "group": "trades",
+   "for": "the leatherworker's house-and-workshop: home above, trade below, its yard on the street (signs of trade)",
+   "holds": "one cauldron declared; optional declared locker; 2-4 beds above; yard dressing from decor twins",
+   "footprints": "7x7 to 11x9 bodies",
+   "from": "village",
+   "code": "C3, workstation from metadata",
+   "priority": 2
+  },
+  {
+   "slot": "stall:mason",
+   "group": "trades",
+   "for": "the mason's market stall: hired at once, trades from its locker",
+   "holds": "exactly one stonecutter (declared workstation); a chest touching it (declared locker); everything else decor twins",
+   "footprints": "3x3 today; 5x3 market bays",
+   "from": "hamlet",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "workshop:mason",
+   "group": "trades",
+   "for": "the mason's house-and-workshop: home above, trade below, its yard on the street (signs of trade)",
+   "holds": "one stonecutter declared; optional declared locker; 2-4 beds above; yard dressing from decor twins",
+   "footprints": "7x7 to 11x9 bodies",
+   "from": "village",
+   "code": "C3, workstation from metadata",
+   "priority": 2
+  },
+  {
+   "slot": "stall:armorer",
+   "group": "trades",
+   "for": "the armorer's market stall: hired at once, trades from its locker",
+   "holds": "exactly one blast_furnace (declared workstation); a chest touching it (declared locker); everything else decor twins",
+   "footprints": "3x3 today; 5x3 market bays",
+   "from": "hamlet",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "workshop:armorer",
+   "group": "trades",
+   "for": "the armorer's house-and-workshop: home above, trade below, its yard on the street (signs of trade)",
+   "holds": "one blast_furnace declared; optional declared locker; 2-4 beds above; yard dressing from decor twins",
+   "footprints": "7x7 to 11x9 bodies",
+   "from": "village",
+   "code": "C3, workstation from metadata",
+   "priority": 2
+  },
+  {
+   "slot": "stall:toolsmith",
+   "group": "trades",
+   "for": "the toolsmith's market stall: hired at once, trades from its locker",
+   "holds": "exactly one smithing_table (declared workstation); a chest touching it (declared locker); everything else decor twins",
+   "footprints": "3x3 today; 5x3 market bays",
+   "from": "hamlet",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "workshop:toolsmith",
+   "group": "trades",
+   "for": "the toolsmith's house-and-workshop: home above, trade below, its yard on the street (signs of trade)",
+   "holds": "one smithing_table declared; optional declared locker; 2-4 beds above; yard dressing from decor twins",
+   "footprints": "7x7 to 11x9 bodies",
+   "from": "village",
+   "code": "C3, workstation from metadata",
+   "priority": 2
+  },
+  {
+   "slot": "stall:weaponsmith",
+   "group": "trades",
+   "for": "the weaponsmith's market stall: hired at once, trades from its locker",
+   "holds": "exactly one grindstone (declared workstation); a chest touching it (declared locker); everything else decor twins",
+   "footprints": "3x3 today; 5x3 market bays",
+   "from": "hamlet",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "workshop:weaponsmith",
+   "group": "trades",
+   "for": "the weaponsmith's house-and-workshop: home above, trade below, its yard on the street (signs of trade)",
+   "holds": "one grindstone declared; optional declared locker; 2-4 beds above; yard dressing from decor twins",
+   "footprints": "7x7 to 11x9 bodies",
+   "from": "village",
+   "code": "C3, workstation from metadata",
+   "priority": 2
+  },
+  {
+   "slot": "desk",
+   "group": "markets",
+   "for": "the Merchant's Desk and its warehouse: the town's stock is the chests touching the desk",
+   "holds": "a marker for the desk (mod block); many chests touching it (warehouses jammed with one); room for a Blaze Banker and up to 3 vendors touching it; no job site",
+   "footprints": "9x9 to 13x13 market hall at the forum",
+   "from": "hamlet",
+   "code": "C1 markers",
+   "priority": 1
+  },
+  {
+   "slot": "hall:square",
+   "group": "halls",
+   "for": "Masons' Square: +0.5 mood, flower beds with a master Farmer",
+   "holds": "open paving, lamps at the corners; must stay open ground",
+   "footprints": "9x9x1 today (taller is free; wider needs C4)",
+   "from": "hamlet",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "hall:granary",
+   "group": "halls",
+   "for": "bulk wheat as hay, up to 36,864",
+   "holds": "hay inside; no chest touching a job site",
+   "footprints": "7x7x4 today (taller is free; wider needs C4)",
+   "from": "village",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "hall:root_cellar",
+   "group": "halls",
+   "for": "roots in store, up to 27,648",
+   "holds": "decor barrels (never vanilla barrels)",
+   "footprints": "5x5x3 today (taller is free; wider needs C4)",
+   "from": "village",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "hall:counting_house",
+   "group": "halls",
+   "for": "the market's paperwork: halves stationery, doubles discounting",
+   "holds": "decor lectern and casks unless declared; desks, shelves",
+   "footprints": "7x7x4 today (taller is free; wider needs C4)",
+   "from": "village",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "hall:temple",
+   "group": "halls",
+   "for": "blessings count double, children twice as often",
+   "holds": "decor brewing stand unless declared; candles, an altar",
+   "footprints": "7x7x4 today (taller is free; wider needs C4)",
+   "from": "village",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "hall:library",
+   "group": "halls",
+   "for": "+3 culture a day",
+   "holds": "bookshelves; decor lectern unless declared",
+   "footprints": "7x7x4 today (taller is free; wider needs C4)",
+   "from": "village",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "hall:smithy",
+   "group": "halls",
+   "for": "mine yields half again; kit lasts longer",
+   "holds": "decor smithing table and blast furnace unless declared; anvil, quench",
+   "footprints": "7x7x4 today (taller is free; wider needs C4)",
+   "from": "village",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "hall:watchtower",
+   "group": "halls",
+   "for": "half the guards count as armed",
+   "holds": "stairs to a lit top; no ladders on a villager's way",
+   "footprints": "3x3x7 today (taller is free; wider needs C4)",
+   "from": "village",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "hall:stone_docks",
+   "group": "halls",
+   "for": "doubles the catch",
+   "holds": "on the shore within 32 of the bell; a quay to the water",
+   "footprints": "3 wide, out over water today (taller is free; wider needs C4)",
+   "from": "village",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "hall:caravanserai",
+   "group": "halls",
+   "for": "+1 culture a day; the town is known 800 blocks round",
+   "holds": "animal stalls, stores, a court; beds only if we agree (they count as homes)",
+   "footprints": "9x9x4 today (taller is free; wider needs C4)",
+   "from": "village",
+   "code": "today",
+   "priority": 1
+  },
+  {
+   "slot": "forum:centre",
+   "group": "civic",
+   "for": "the bell's setting: the town's meeting place",
+   "holds": "the bell as a marker (it exists already); lamps; never a bed or job site",
+   "footprints": "fits the 13x13 forum round the bell",
+   "from": "hamlet",
+   "code": "C6",
+   "priority": 1
+  },
+  {
+   "slot": "forum:dressing",
+   "group": "civic",
+   "for": "the square dressed: stalls round it, trees, benches, a well",
+   "holds": "stall slots left as markers; decor twins",
+   "footprints": "the forum ring",
+   "from": "hamlet",
+   "code": "C6",
+   "priority": 2
+  },
+  {
+   "slot": "prop",
+   "group": "civic",
+   "for": "street furniture and planting: lamps, benches, wells, troughs, signs, trees, hedges",
+   "holds": "no POI blocks",
+   "footprints": "1x1 to 3x3",
+   "from": "hamlet",
+   "code": "C1",
+   "priority": 2
+  },
+  {
+   "slot": "wall:curtain",
+   "group": "walls",
+   "for": "the town wall's curtain: raised a quarter at a time, mood and culture",
+   "holds": "walkable gate passages 3 wide on the avenues; stairs to wall walks",
+   "footprints": "as the wall kit (README: corner 7x7, gatehouse 11x7, curtains on the grid)",
+   "from": "hamlet",
+   "code": "C5",
+   "priority": 1
+  },
+  {
+   "slot": "wall:tower",
+   "group": "walls",
+   "for": "the town wall's tower: raised a quarter at a time, mood and culture",
+   "holds": "walkable gate passages 3 wide on the avenues; stairs to wall walks",
+   "footprints": "as the wall kit (README: corner 7x7, gatehouse 11x7, curtains on the grid)",
+   "from": "hamlet",
+   "code": "C5",
+   "priority": 1
+  },
+  {
+   "slot": "wall:corner",
+   "group": "walls",
+   "for": "the town wall's corner: raised a quarter at a time, mood and culture",
+   "holds": "walkable gate passages 3 wide on the avenues; stairs to wall walks",
+   "footprints": "as the wall kit (README: corner 7x7, gatehouse 11x7, curtains on the grid)",
+   "from": "hamlet",
+   "code": "C5",
+   "priority": 1
+  },
+  {
+   "slot": "wall:gatehouse",
+   "group": "walls",
+   "for": "the town wall's gatehouse: raised a quarter at a time, mood and culture",
+   "holds": "walkable gate passages 3 wide on the avenues; stairs to wall walks",
+   "footprints": "as the wall kit (README: corner 7x7, gatehouse 11x7, curtains on the grid)",
+   "from": "hamlet",
+   "code": "C5",
+   "priority": 1
+  },
+  {
+   "slot": "wall:filler",
+   "group": "walls",
+   "for": "the town wall's filler: raised a quarter at a time, mood and culture",
+   "holds": "walkable gate passages 3 wide on the avenues; stairs to wall walks",
+   "footprints": "as the wall kit (README: corner 7x7, gatehouse 11x7, curtains on the grid)",
+   "from": "hamlet",
+   "code": "C5",
+   "priority": 1
+  },
+  {
+   "slot": "wall:step",
+   "group": "walls",
+   "for": "the town wall's step: raised a quarter at a time, mood and culture",
+   "holds": "walkable gate passages 3 wide on the avenues; stairs to wall walks",
+   "footprints": "as the wall kit (README: corner 7x7, gatehouse 11x7, curtains on the grid)",
+   "from": "hamlet",
+   "code": "C5",
+   "priority": 1
+  },
+  {
+   "slot": "wall:palisade",
+   "group": "walls",
+   "for": "a hamlet's or village's wall",
+   "holds": "log palisade; timber gate",
+   "footprints": "as the stone kit",
+   "from": "hamlet",
+   "code": "C5",
+   "priority": 2
+  },
+  {
+   "slot": "farmstead",
+   "group": "farming",
+   "for": "a holding's farm buildings at the head of its first field: barn, yard",
+   "holds": "no bed unless declared; a composter only if declared for a Farmer",
+   "footprints": "9x9, 9x13",
+   "from": "village",
+   "code": "C10",
+   "priority": 2
+  },
+  {
+   "slot": "barn",
+   "group": "farming",
+   "for": "a field barn among the strips",
+   "holds": "hay; no POI",
+   "footprints": "5x7 to 7x9",
+   "from": "village",
+   "code": "C10",
+   "priority": 3
+  },
+  {
+   "slot": "mill",
+   "group": "farming",
+   "for": "a windmill or watermill: grain to flour (bread)",
+   "holds": "no POI; a watermill on a stream",
+   "footprints": "7x7 to 9x9",
+   "from": "town",
+   "code": "C10",
+   "priority": 3
+  },
+  {
+   "slot": "pasture:shelter",
+   "group": "animals",
+   "for": "a pasture's shelter and trough",
+   "holds": "inside a birch-fenced pasture; open to the animals",
+   "footprints": "5x3, 5x5",
+   "from": "hamlet",
+   "code": "C10",
+   "priority": 2
+  },
+  {
+   "slot": "stable",
+   "group": "animals",
+   "for": "the Merchant's llama train and wagons' teams",
+   "holds": "stalls for 2-6 llamas; hay; a hitching rail; no bed",
+   "footprints": "9x7, 11x9",
+   "from": "village",
+   "code": "C10, llama entities",
+   "priority": 2
+  },
+  {
+   "slot": "wagon_yard",
+   "group": "caravans",
+   "for": "where wagons load and leave: by the desk",
+   "holds": "a loading dock against the warehouse; open ground for a wagon",
+   "footprints": "9x9 to 13x9",
+   "from": "village",
+   "code": "planned",
+   "priority": 2
+  },
+  {
+   "slot": "waystation",
+   "group": "caravans",
+   "for": "a roadside stop on a caravan road between towns",
+   "holds": "a trough, a shelter; no bed unless agreed",
+   "footprints": "7x7",
+   "from": "village",
+   "code": "planned",
+   "priority": 3
+  },
+  {
+   "slot": "toll_house",
+   "group": "caravans",
+   "for": "the guard's post where a road is tolled (the core picks the hexes)",
+   "holds": "a gate across the road 3 wide; a guard's room",
+   "footprints": "7x5 astride a 3-wide road",
+   "from": "village",
+   "code": "planned",
+   "priority": 2
+  },
+  {
+   "slot": "post_office",
+   "group": "caravans",
+   "for": "riders carry contracts, bills and letters",
+   "holds": "a counter; pigeonholes; a stable stall",
+   "footprints": "7x7",
+   "from": "town",
+   "code": "planned",
+   "priority": 3
+  },
+  {
+   "slot": "bridge:span",
+   "group": "caravans",
+   "for": "a river bridge for wagons (and toll bridges)",
+   "holds": "a 3-wide deck with rails; spans of 4 to 16",
+   "footprints": "straight runs (C12)",
+   "from": "hamlet",
+   "code": "C12",
+   "priority": 2
+  },
+  {
+   "slot": "bridge:head",
+   "group": "caravans",
+   "for": "a bridge's ends: a gate or toll",
+   "holds": "the deck's 3 wide passes through",
+   "footprints": "7x7",
+   "from": "village",
+   "code": "C12",
+   "priority": 3
+  },
+  {
+   "slot": "dock:pier",
+   "group": "sea",
+   "for": "a fisherman's pier: cod landed daily",
+   "holds": "out over water from the shore",
+   "footprints": "3 wide, 4-12 long",
+   "from": "hamlet",
+   "code": "C11",
+   "priority": 2
+  },
+  {
+   "slot": "dock:quay",
+   "group": "sea",
+   "for": "a stone quay along a shore: stone docks, the capital's port",
+   "holds": "follows the shoreline; bollards, cranes as decor",
+   "footprints": "runs along a shore",
+   "from": "town",
+   "code": "C11",
+   "priority": 2
+  },
+  {
+   "slot": "customs_house",
+   "group": "sea",
+   "for": "realm trade over the sea: the crown's customs",
+   "holds": "a counter; stores; by the quay",
+   "footprints": "9x9",
+   "from": "city",
+   "code": "planned",
+   "priority": 3
+  },
+  {
+   "slot": "mint",
+   "group": "money",
+   "for": "the capital's mint: the spur's rate",
+   "holds": "strongroom; decor; no POI",
+   "footprints": "11x11",
+   "from": "capital",
+   "code": "planned",
+   "priority": 3
+  },
+  {
+   "slot": "bank",
+   "group": "money",
+   "for": "discounting and lending against contracts",
+   "holds": "counters; a vault",
+   "footprints": "9x9 to 11x11",
+   "from": "city",
+   "code": "planned",
+   "priority": 3
+  },
+  {
+   "slot": "exchange",
+   "group": "money",
+   "for": "rent and forward crop deeds traded at hubs",
+   "holds": "a hall with counters",
+   "footprints": "11x9",
+   "from": "city",
+   "code": "planned",
+   "priority": 3
+  },
+  {
+   "slot": "mine:head",
+   "group": "mining",
+   "for": "a mine shaft's head: the Toolsmith's iron and coal",
+   "holds": "the shaft's 1x1 or 2x2 opening with stairs or a winch (no ladders on a villager's way)",
+   "footprints": "5x5 headframe",
+   "from": "village",
+   "code": "C10",
+   "priority": 2
+  },
+  {
+   "slot": "quarry",
+   "group": "mining",
+   "for": "the masons' stone, 16 blocks a day per hex",
+   "holds": "an open cut with ramps",
+   "footprints": "free",
+   "from": "village",
+   "code": "planned",
+   "priority": 3
+  },
+  {
+   "slot": "woodyard",
+   "group": "mining",
+   "for": "hands' gathering: logs",
+   "holds": "a saw pit, log stacks",
+   "footprints": "7x7",
+   "from": "village",
+   "code": "planned",
+   "priority": 3
+  },
+  {
+   "slot": "comfort:treats",
+   "group": "comforts",
+   "for": "where the town's treats come from: the bakery or confectioner",
+   "holds": "a shop front; decor twins; beds above only if agreed",
+   "footprints": "7x7",
+   "from": "village",
+   "code": "planned (comforts come straight from the warehouse today)",
+   "priority": 2
+  },
+  {
+   "slot": "comfort:reading",
+   "group": "comforts",
+   "for": "where the town's reading come from: the reading room or bookseller",
+   "holds": "a shop front; decor twins; beds above only if agreed",
+   "footprints": "7x7",
+   "from": "village",
+   "code": "planned (comforts come straight from the warehouse today)",
+   "priority": 2
+  },
+  {
+   "slot": "comfort:clothing",
+   "group": "comforts",
+   "for": "where the town's clothing come from: the tailor",
+   "holds": "a shop front; decor twins; beds above only if agreed",
+   "footprints": "7x7",
+   "from": "village",
+   "code": "planned (comforts come straight from the warehouse today)",
+   "priority": 2
+  },
+  {
+   "slot": "comfort:furnishings",
+   "group": "comforts",
+   "for": "where the town's furnishings come from: the chandler and upholsterer",
+   "holds": "a shop front; decor twins; beds above only if agreed",
+   "footprints": "7x7",
+   "from": "village",
+   "code": "planned (comforts come straight from the warehouse today)",
+   "priority": 2
+  },
+  {
+   "slot": "comfort:leisure",
+   "group": "comforts",
+   "for": "where the town's leisure come from: the tavern and tobacconist",
+   "holds": "a shop front; decor twins; beds above only if agreed",
+   "footprints": "9x9 to 11x9",
+   "from": "village",
+   "code": "planned (comforts come straight from the warehouse today)",
+   "priority": 2
+  },
+  {
+   "slot": "barracks",
+   "group": "war",
+   "for": "recruits wait for a caravan to the front; a depot today",
+   "holds": "beds (they count: agree a number); chests inside",
+   "footprints": "11x9 to 13x11",
+   "from": "town",
+   "code": "planned",
+   "priority": 3
+  },
+  {
+   "slot": "armoury",
+   "group": "war",
+   "for": "war goods held: swords, chestplates, bows",
+   "holds": "chests inside (a depot); no POI",
+   "footprints": "9x7",
+   "from": "town",
+   "code": "planned",
+   "priority": 3
+  },
+  {
+   "slot": "founding_kit",
+   "group": "settlers",
+   "for": "a new town's first buildings, as settlers lay them: bell, desk and chest, a Farmer's stall, two cottages",
+   "holds": "passes the census: a bell, 3+ beds, 3+ workstations within 48",
+   "footprints": "composed round a 13x13 forum",
+   "from": "hamlet",
+   "code": "planned",
+   "priority": 2
+  },
+  {
+   "slot": "landmark:abbey",
+   "group": "landmarks",
+   "for": "a town's or city's great church",
+   "holds": "parts within lots of merged wards",
+   "footprints": "32x32, 32x50 lots",
+   "from": "town",
+   "code": "C8, C9",
+   "priority": 2
+  },
+  {
+   "slot": "landmark:keep",
+   "group": "landmarks",
+   "for": "a lord's keep or castle",
+   "holds": "parts",
+   "footprints": "32x32",
+   "from": "city",
+   "code": "C8, C9",
+   "priority": 3
+  },
+  {
+   "slot": "landmark:palace",
+   "group": "landmarks",
+   "for": "a capital's palace or yamen",
+   "holds": "parts",
+   "footprints": "32x50",
+   "from": "capital",
+   "code": "C8, C9",
+   "priority": 3
+  }
+ ]
+}
