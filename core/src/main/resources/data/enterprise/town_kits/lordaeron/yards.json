@@ -1,0 +1,499 @@
+{
+  "set": "lordaeron/yards",
+  "rev": 1,
+  "about": "Tileable yard strips: front yards 3 deep (z 0 against the house, z 2 the street edge), back yards 4 deep (z 0 the rear boundary, z 3 against the house), tiles 1, 2 or 3 wide laid left to right (as seen from the street) to fill the plot's width. Layers 0-1 ground, 2 the surface (the plot's ground row), 3+ features.",
+  "sockets": "left/right name the edge treatment along the street edge (front) or rear boundary (back): hedge, picket, wall, fence; '*' fits any. Neighbours should match so the boundary runs on.",
+  "path": "The client cuts the door path: lay front_path_1 at the door's column, or cut through any cell listed in a tile's path_ok.",
+  "light": "Every walkable full-block cell must be lit 8+. Tiles tagged lamp carry a light; keep lamp tiles at most 5 columns apart in a strip (front and back), counting the house's own door lantern for the front.",
+  "rules": [
+    "no point-of-interest blocks (decorative twins only)",
+    "no beds",
+    "front yards: nothing over 3 high",
+    "back yards: trees allowed"
+  ],
+  "choice": "Pick by tags (plain, cottage, town, hens, kitchen, wash, woodpile, well, tree, trade:<trade>) for the plot's tier and occupant's trade, by the seed.",
+  "tiles": [
+    {
+      "id": "front_path_1",
+      "part": "enterprise:lordaeron/yard/front_path_1",
+      "slot": "yard:front",
+      "width": 1,
+      "depth": 3,
+      "tags": [
+        "path",
+        "gate"
+      ],
+      "sockets": {
+        "left": "*",
+        "right": "*",
+        "street": "gate"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ]
+      ],
+      "lamp": false
+    },
+    {
+      "id": "front_hedge_1",
+      "part": "enterprise:lordaeron/yard/front_hedge_1",
+      "slot": "yard:front",
+      "width": 1,
+      "depth": 3,
+      "tags": [
+        "plain"
+      ],
+      "sockets": {
+        "left": "hedge",
+        "right": "hedge",
+        "street": "hedge"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "lamp": false
+    },
+    {
+      "id": "front_lamp_1",
+      "part": "enterprise:lordaeron/yard/front_lamp_1",
+      "slot": "yard:front",
+      "width": 1,
+      "depth": 3,
+      "tags": [
+        "plain",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "*",
+        "right": "*",
+        "street": "*"
+      },
+      "path_ok": [],
+      "lamp": true
+    },
+    {
+      "id": "front_picket_1",
+      "part": "enterprise:lordaeron/yard/front_picket_1",
+      "slot": "yard:front",
+      "width": 1,
+      "depth": 3,
+      "tags": [
+        "cottage"
+      ],
+      "sockets": {
+        "left": "picket",
+        "right": "picket",
+        "street": "picket"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "lamp": false
+    },
+    {
+      "id": "front_cottage_2",
+      "part": "enterprise:lordaeron/yard/front_cottage_2",
+      "slot": "yard:front",
+      "width": 2,
+      "depth": 3,
+      "tags": [
+        "cottage"
+      ],
+      "sockets": {
+        "left": "picket",
+        "right": "picket",
+        "street": "picket"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "lamp": false
+    },
+    {
+      "id": "front_bench_2",
+      "part": "enterprise:lordaeron/yard/front_bench_2",
+      "slot": "yard:front",
+      "width": 2,
+      "depth": 3,
+      "tags": [
+        "plain",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "hedge",
+        "right": "hedge",
+        "street": "hedge"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ]
+      ],
+      "lamp": true
+    },
+    {
+      "id": "front_forecourt_3",
+      "part": "enterprise:lordaeron/yard/front_forecourt_3",
+      "slot": "yard:front",
+      "width": 3,
+      "depth": 3,
+      "tags": [
+        "plain",
+        "town",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "wall",
+        "right": "wall",
+        "street": "wall"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          1
+        ]
+      ],
+      "lamp": true
+    },
+    {
+      "id": "front_garden_3",
+      "part": "enterprise:lordaeron/yard/front_garden_3",
+      "slot": "yard:front",
+      "width": 3,
+      "depth": 3,
+      "tags": [
+        "cottage",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "picket",
+        "right": "picket",
+        "street": "picket"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "lamp": true
+    },
+    {
+      "id": "front_smith_3",
+      "part": "enterprise:lordaeron/yard/front_smith_3",
+      "slot": "yard:front",
+      "width": 3,
+      "depth": 3,
+      "tags": [
+        "trade:smith",
+        "trade:armorer",
+        "trade:toolsmith",
+        "trade:weaponsmith",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "wall",
+        "right": "wall",
+        "street": "wall"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "lamp": true
+    },
+    {
+      "id": "front_baker_3",
+      "part": "enterprise:lordaeron/yard/front_baker_3",
+      "slot": "yard:front",
+      "width": 3,
+      "depth": 3,
+      "tags": [
+        "trade:baker",
+        "trade:farmer",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "wall",
+        "right": "wall",
+        "street": "wall"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "lamp": true
+    },
+    {
+      "id": "front_dyer_3",
+      "part": "enterprise:lordaeron/yard/front_dyer_3",
+      "slot": "yard:front",
+      "width": 3,
+      "depth": 3,
+      "tags": [
+        "trade:dyer",
+        "trade:shepherd",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "picket",
+        "right": "picket",
+        "street": "picket"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "lamp": true
+    },
+    {
+      "id": "back_hedge_1",
+      "part": "enterprise:lordaeron/yard/back_hedge_1",
+      "slot": "yard:back",
+      "width": 1,
+      "depth": 4,
+      "tags": [
+        "plain"
+      ],
+      "sockets": {
+        "left": "hedge",
+        "right": "hedge",
+        "rear": "hedge"
+      },
+      "path_ok": [],
+      "lamp": false
+    },
+    {
+      "id": "back_lamp_1",
+      "part": "enterprise:lordaeron/yard/back_lamp_1",
+      "slot": "yard:back",
+      "width": 1,
+      "depth": 4,
+      "tags": [
+        "plain",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "*",
+        "right": "*",
+        "rear": "*"
+      },
+      "path_ok": [],
+      "lamp": true
+    },
+    {
+      "id": "back_woodpile_2",
+      "part": "enterprise:lordaeron/yard/back_woodpile_2",
+      "slot": "yard:back",
+      "width": 2,
+      "depth": 4,
+      "tags": [
+        "woodpile"
+      ],
+      "sockets": {
+        "left": "hedge",
+        "right": "hedge",
+        "rear": "hedge"
+      },
+      "path_ok": [],
+      "lamp": false
+    },
+    {
+      "id": "back_well_2",
+      "part": "enterprise:lordaeron/yard/back_well_2",
+      "slot": "yard:back",
+      "width": 2,
+      "depth": 4,
+      "tags": [
+        "well",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "hedge",
+        "right": "hedge",
+        "rear": "hedge"
+      },
+      "path_ok": [],
+      "lamp": true
+    },
+    {
+      "id": "back_wash_3",
+      "part": "enterprise:lordaeron/yard/back_wash_3",
+      "slot": "yard:back",
+      "width": 3,
+      "depth": 4,
+      "tags": [
+        "wash",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "hedge",
+        "right": "hedge",
+        "rear": "hedge"
+      },
+      "path_ok": [],
+      "lamp": true
+    },
+    {
+      "id": "back_kitchen_3",
+      "part": "enterprise:lordaeron/yard/back_kitchen_3",
+      "slot": "yard:back",
+      "width": 3,
+      "depth": 4,
+      "tags": [
+        "kitchen"
+      ],
+      "sockets": {
+        "left": "hedge",
+        "right": "hedge",
+        "rear": "hedge"
+      },
+      "path_ok": [],
+      "lamp": false
+    },
+    {
+      "id": "back_hens_3",
+      "part": "enterprise:lordaeron/yard/back_hens_3",
+      "slot": "yard:back",
+      "width": 3,
+      "depth": 4,
+      "tags": [
+        "hens",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "fence",
+        "right": "fence",
+        "rear": "fence"
+      },
+      "path_ok": [],
+      "lamp": true
+    },
+    {
+      "id": "back_tree_3",
+      "part": "enterprise:lordaeron/yard/back_tree_3",
+      "slot": "yard:back",
+      "width": 3,
+      "depth": 4,
+      "tags": [
+        "tree"
+      ],
+      "sockets": {
+        "left": "hedge",
+        "right": "hedge",
+        "rear": "hedge"
+      },
+      "path_ok": [],
+      "lamp": false
+    },
+    {
+      "id": "back_dyer_2",
+      "part": "enterprise:lordaeron/yard/back_dyer_2",
+      "slot": "yard:back",
+      "width": 2,
+      "depth": 4,
+      "tags": [
+        "trade:dyer",
+        "trade:shepherd",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "hedge",
+        "right": "hedge",
+        "rear": "hedge"
+      },
+      "path_ok": [],
+      "lamp": true
+    }
+  ]
+}

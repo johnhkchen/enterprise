@@ -1,0 +1,85 @@
+{
+  "id": "enterprise:lordaeron/plot/plot_burgage_11x16_a",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "plot",
+  "slot": "home:burgage",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "footprint": [
+    11,
+    16
+  ],
+  "ground": 2,
+  "entrances": [
+    {
+      "at": [
+        4,
+        3,
+        11
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        3,
+        8,
+        6
+      ],
+      "foot": [
+        3,
+        8,
+        7
+      ]
+    },
+    {
+      "head": [
+        4,
+        8,
+        6
+      ],
+      "foot": [
+        4,
+        8,
+        7
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "golden": {
+    "house": {
+      "W": 7,
+      "D": 7,
+      "storeys": 2,
+      "roof": "gable_z",
+      "palette": "daub",
+      "core": "turned",
+      "beds": 2
+    },
+    "front": [
+      "front_cottage_2",
+      "front_lamp_1",
+      "front_picket_1",
+      "front_path_1",
+      "front_garden_3",
+      "front_cottage_2",
+      "front_picket_1"
+    ],
+    "back": [
+      "back_wash_3",
+      "back_lamp_1",
+      "back_kitchen_3",
+      "back_woodpile_2",
+      "back_well_2"
+    ]
+  },
+  "notes": "Golden plot: a house from timber_relief with yards from lordaeron/yards: front 3, house 9, back 4, side strips 1."
+}

@@ -1,0 +1,29 @@
+{
+  "id": "enterprise:lordaeron/yard/back_dyer_2",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "palette": "fixed",
+  "size": [
+    2,
+    8,
+    4
+  ],
+  "mirror": true,
+  "ground": 2,
+  "slot": "yard:back",
+  "width": 2,
+  "depth": 4,
+  "tags": [
+    "trade:dyer",
+    "trade:shepherd",
+    "lamp"
+  ],
+  "sockets": {
+    "left": "hedge",
+    "right": "hedge",
+    "rear": "hedge"
+  },
+  "path_ok": [],
+  "lamp": true
+}

@@ -1,0 +1,95 @@
+{
+  "id": "enterprise:lordaeron/plot/plot_smith_11x16_a",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "plot",
+  "slot": "home:burgage",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "footprint": [
+    11,
+    16
+  ],
+  "ground": 2,
+  "entrances": [
+    {
+      "at": [
+        4,
+        3,
+        11
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        3,
+        8,
+        6
+      ],
+      "foot": [
+        3,
+        8,
+        7
+      ]
+    },
+    {
+      "head": [
+        4,
+        8,
+        6
+      ],
+      "foot": [
+        4,
+        8,
+        7
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        3,
+        3,
+        6
+      ],
+      "block": "any"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "golden": {
+    "house": {
+      "W": 7,
+      "D": 7,
+      "storeys": 2,
+      "roof": "gable_z",
+      "palette": "stone",
+      "core": "turned",
+      "beds": 2,
+      "trade": "minecraft:smithing_table"
+    },
+    "front": [
+      "front_smith_3",
+      "front_path_1",
+      "front_forecourt_3",
+      "front_bench_2",
+      "front_lamp_1",
+      "front_hedge_1"
+    ],
+    "back": [
+      "back_hens_3",
+      "back_tree_3",
+      "back_dyer_2",
+      "back_hedge_1",
+      "back_lamp_1",
+      "back_hedge_1"
+    ]
+  },
+  "notes": "Golden plot: a house from timber_relief with yards from lordaeron/yards: front 3, house 9, back 4, side strips 1."
+}

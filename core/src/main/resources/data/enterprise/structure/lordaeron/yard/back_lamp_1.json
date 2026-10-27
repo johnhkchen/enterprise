@@ -1,0 +1,28 @@
+{
+  "id": "enterprise:lordaeron/yard/back_lamp_1",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "palette": "fixed",
+  "size": [
+    1,
+    8,
+    4
+  ],
+  "mirror": true,
+  "ground": 2,
+  "slot": "yard:back",
+  "width": 1,
+  "depth": 4,
+  "tags": [
+    "plain",
+    "lamp"
+  ],
+  "sockets": {
+    "left": "*",
+    "right": "*",
+    "rear": "*"
+  },
+  "path_ok": [],
+  "lamp": true
+}
