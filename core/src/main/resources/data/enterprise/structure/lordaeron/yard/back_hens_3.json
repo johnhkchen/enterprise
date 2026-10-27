@@ -1,0 +1,28 @@
+{
+  "id": "enterprise:lordaeron/yard/back_hens_3",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "palette": "fixed",
+  "size": [
+    3,
+    8,
+    4
+  ],
+  "mirror": true,
+  "ground": 2,
+  "slot": "yard:back",
+  "width": 3,
+  "depth": 4,
+  "tags": [
+    "hens",
+    "lamp"
+  ],
+  "sockets": {
+    "left": "fence",
+    "right": "fence",
+    "rear": "fence"
+  },
+  "path_ok": [],
+  "lamp": true
+}

@@ -1,0 +1,27 @@
+{
+  "id": "enterprise:lordaeron/yard/back_kitchen_3",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "palette": "fixed",
+  "size": [
+    3,
+    8,
+    4
+  ],
+  "mirror": true,
+  "ground": 2,
+  "slot": "yard:back",
+  "width": 3,
+  "depth": 4,
+  "tags": [
+    "kitchen"
+  ],
+  "sockets": {
+    "left": "hedge",
+    "right": "hedge",
+    "rear": "hedge"
+  },
+  "path_ok": [],
+  "lamp": false
+}

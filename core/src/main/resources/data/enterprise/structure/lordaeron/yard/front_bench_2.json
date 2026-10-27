@@ -1,0 +1,33 @@
+{
+  "id": "enterprise:lordaeron/yard/front_bench_2",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "palette": "fixed",
+  "size": [
+    2,
+    7,
+    3
+  ],
+  "mirror": true,
+  "ground": 2,
+  "slot": "yard:front",
+  "width": 2,
+  "depth": 3,
+  "tags": [
+    "plain",
+    "lamp"
+  ],
+  "sockets": {
+    "left": "hedge",
+    "right": "hedge",
+    "street": "hedge"
+  },
+  "path_ok": [
+    [
+      0,
+      0
+    ]
+  ],
+  "lamp": true
+}
