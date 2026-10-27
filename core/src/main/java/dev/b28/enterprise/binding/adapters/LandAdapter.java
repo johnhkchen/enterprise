@@ -479,7 +479,8 @@ public final class LandAdapter {
         if (ownsLand) {
             trailsShown.add(new Trails.Trail(new Hex(trail.hex().q(), trail.hex().r()),
                     new Hex(trail.from().q(), trail.from().r()), new Hex(trail.to().q(), trail.to().r()),
-                    (int) Math.min(trail.width(), 8), trail.path().stream().map(h -> new Hex(h.q(), h.r())).toList()));
+                    (int) Math.min(trail.width(), 8), trail.path().stream().map(h -> new Hex(h.q(), h.r())).toList(),
+                    trail.llama()));
         }
     }
 
@@ -503,6 +504,13 @@ public final class LandAdapter {
         for (Trails.Trail t : trails.waiting()) {
             if (laid >= TRAILS_PER_LOOK) {
                 break;
+            }
+            // Its road planned once its land is made and loaded (held loaded until then).
+            if (!Trails.planned(t)) {
+                if (!loadedFor(level, Trails.landOf(t, bells))) {
+                    continue;
+                }
+                Trails.plan(level, t, bells);
             }
             if (loadedFor(level, Trails.chunks(t, bells))) {
                 int blocks = Trails.lay(level, t, bells);

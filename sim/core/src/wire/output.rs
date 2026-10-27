@@ -97,7 +97,8 @@ pub enum Output {
     /// with `to` (the hexes before and after it on the road that wore it), across its ground where it's soil, felling
     /// what grows in its way. Said once a width. `path`: the whole road's hexes, end to end, for the host to lay it as
     /// the road it is rather than hex by hex (John: "roads should follow actual optimal paths not hex-optimized paths").
-    Trail { hex: HexAt, from: HexAt, to: HexAt, width: u32, path: Vec<HexAt> },
+    /// `llama`: the road's carrier is a llama train (steeper ground it can take), else a wagon.
+    Trail { hex: HexAt, from: HexAt, to: HexAt, width: u32, path: Vec<HexAt>, llama: bool },
     /// The job draw put `town`'s idle `hand` (its villager `tag`) to `trade`, and the town paid for its stall
     /// (`jobs.rs` `employ`): for the host to put one up by its bell, the trade's workstation with a chest against it,
     /// and give the villager the job there, as the mod's `Jobs.buildStall` and `hire` do. The chest makes it a locker

@@ -1052,6 +1052,7 @@ Output:
           - path:
               SEQ:
                 TYPENAME: HexAt
+          - llama: BOOL
     30:
       Stall:
         STRUCT:

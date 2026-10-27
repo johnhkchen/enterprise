@@ -35,9 +35,9 @@ public final class Trails extends SavedData {
      * A trail to lay: its hex, the hexes before and after it on the road (the same hex at a road's end), its width, and
      * the whole road's hexes end to end (empty: a trail saved before roads were laid whole, laid hex by hex).
      */
-    public record Trail(Hex hex, Hex from, Hex to, int width, List<Hex> path) {
+    public record Trail(Hex hex, Hex from, Hex to, int width, List<Hex> path, boolean llama) {
         public Trail(Hex hex, Hex from, Hex to, int width) {
-            this(hex, from, to, width, List.of());
+            this(hex, from, to, width, List.of(), false);
         }
     }
 
@@ -74,7 +74,7 @@ public final class Trails extends SavedData {
      */
     public static double[][] line(Trail t, java.util.Map<Long, BlockPos> bells) {
         if (t.path().size() >= 2) {
-            double[][] stretch = within(taut(t.path(), bells), t.hex());
+            double[][] stretch = within(PLANNED.getOrDefault(t.path(), taut(t.path(), bells)), t.hex(), t.path());
             if (stretch.length >= 2) {
                 return stretch;
             }
@@ -88,11 +88,11 @@ public final class Trails extends SavedData {
     /**
      * A road's line pulled taut through its hexes (John: "roads should follow actual optimal paths not hex-optimized
      * paths"): from its first hex's town bell (or centre) to its last's, each stretch as straight as it can go while it
-     * stays within the road's own hexes (the ground the core planned it over), turning only where they turn. Greedy
-     * string pulling over the hexes' centres, the line checked every two blocks.
+     * stays within the road's hexes and those beside them ({@link #band}: held to its own, it kept their zigzag),
+     * turning only where they turn. Greedy string pulling over the hexes' centres, the line checked every two blocks.
      */
     public static double[][] taut(List<Hex> path, java.util.Map<Long, BlockPos> bells) {
-        java.util.Set<Hex> corridor = new java.util.HashSet<>(path);
+        java.util.Set<Hex> corridor = band(path);
         List<double[]> points = new ArrayList<>();
         for (int i = 0; i < path.size(); i++) {
             Hex h = path.get(i);
@@ -123,6 +123,284 @@ public final class Trails extends SavedData {
         return out.toArray(new double[0][]);
     }
 
+    /**
+     * Is the trail's road planned ({@link #road}), or one laid hex by hex (none to plan)? A road is planned once the land
+     * of its band is generated and loaded ({@link #landOf}; John: "the plan can't really take place until the terrain is
+     * generated"), at the look that finds it so.
+     */
+    public static boolean planned(Trail t) {
+        return t.path().size() < 2 || PLANNED.containsKey(t.path());
+    }
+
+    /**
+     * The trail's road planned over its land, which must be loaded ({@link #landOf}); the roads planned written to the
+     * world's {@code enterprise-roads.json} for the surveyor's map (`dev/experiments/world_render.py`).
+     */
+    public static void plan(ServerLevel level, Trail t, java.util.Map<Long, BlockPos> bells) {
+        if (t.path().size() >= 2 && !PLANNED.containsKey(t.path())) {
+            PLANNED.put(t.path(), road(level, t.path(), bells, t.llama()));
+            StringBuilder json = new StringBuilder("[");
+            for (var e : PLANNED.entrySet()) {
+                json.append(json.length() > 1 ? "," : "").append("{\"path\":[");
+                json.append(String.join(",", e.getKey().stream().map(h -> "[" + h.q() + "," + h.r() + "]").toList()));
+                json.append("],\"line\":[");
+                json.append(String.join(",", java.util.Arrays.stream(e.getValue())
+                        .map(p -> "[" + Math.round(p[0] * 10) / 10.0 + "," + Math.round(p[1] * 10) / 10.0 + "]").toList()));
+                json.append("]}");
+            }
+            json.append("]");
+            try {
+                java.nio.file.Files.writeString(level.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                        .resolve("enterprise-roads.json"), json);
+            } catch (java.io.IOException e) {
+                dev.b28.enterprise.Enterprise.LOGGER.warn("The roads weren't written for the map: {}", e.getMessage());
+            }
+            dev.b28.enterprise.Enterprise.LOGGER.info("A road planned over its land from hex {} to {} ({} points, {})",
+                    t.path().get(0), t.path().get(t.path().size() - 1), PLANNED.get(t.path()).length, t.llama() ? "llamas" : "wagons");
+        }
+    }
+
+    /** How far a road may stray from the straight way: its ground's sum of distances to the ends, as a share of theirs. */
+    static final double STRAY = 1.35;
+    static final double STRAY_BLOCKS = 64;
+
+    /** Its ends: the bells of the towns at the road's ends, or their hexes' centres. */
+    static double[][] ends(List<Hex> path, java.util.Map<Long, BlockPos> bells) {
+        double[][] taut = taut(path, bells);
+        return new double[][] {taut[0], taut[taut.length - 1]};
+    }
+
+    /**
+     * Is the place within a road's reach: the ellipse round its ends ({@link #STRAY}), whatever hexes the core routed it
+     * over (John: "planning shouldn't assume the band is the most optimal")?
+     */
+    static boolean reach(double[] a, double[] b, double x, double z) {
+        return Math.hypot(x - a[0], z - a[1]) + Math.hypot(x - b[0], z - b[1])
+                <= STRAY * Math.hypot(b[0] - a[0], b[1] - a[1]) + STRAY_BLOCKS;
+    }
+
+    /** The chunks of a road's reach, to be loaded (made, where never yet) before it's planned. */
+    public static List<ChunkPos> landOf(Trail t, java.util.Map<Long, BlockPos> bells) {
+        double[][] e = ends(t.path(), bells);
+        double[] a = e[0], b = e[1];
+        double r = (STRAY * Math.hypot(b[0] - a[0], b[1] - a[1]) + STRAY_BLOCKS) / 2;
+        java.util.Set<ChunkPos> out = new java.util.LinkedHashSet<>();
+        double mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
+        for (double x = mx - r; x <= mx + r + 16; x += 16) {
+            for (double z = mz - r; z <= mz + r + 16; z += 16) {
+                if (reach(a, b, x, z)) {
+                    out.add(new ChunkPos(BlockPos.containing(x, 0, z)));
+                }
+            }
+        }
+        return List.copyOf(out);
+    }
+
+    /** Roads planned over the land, by their hexes: the same plan every time, so planned again after a restart. */
+    static final java.util.Map<List<Hex>, double[][]> PLANNED = new java.util.concurrent.ConcurrentHashMap<>();
+    /** The road planner's grid, in blocks. */
+    static final int GRID = 4;
+    /**
+     * How dear a grade is to a wagon (squared), the grade past which it's a cliff to go round and the cliff's toll, and
+     * a ford's share of a step (a step costs 1 + this): a wagon wants a gentle road, 1 in 3 its steepest.
+     */
+    static final double GRADE = 25;
+    static final double SHEER = 0.35;
+    static final double SHEER_TOLL = 60;
+    static final double WET = 7;
+    /** A llama train's: steep ground it takes (1 in 1 its steepest), water as a wagon does. */
+    static final double LLAMA_GRADE = 5;
+    static final double LLAMA_SHEER = 1.0;
+
+    /**
+     * A road planned over the land itself (John: "paths follow terrain, based on what makes wagon or llama travel
+     * feasible"), from bell to bell anywhere within its reach ({@link #reach}: not held to the hexes the core routed it
+     * over), its land generated and loaded: the cheapest way for its
+     * carrier on a {@link #GRID}-block grid of the ground's heights (under its trees), a step costing its length, more as
+     * it climbs (the grade squared: gentle slopes cheap, steep ones dear, past the carrier's steepest a cliff to go
+     * round), several times more through water, and a little meander on the flat. Then pulled straight wherever that
+     * costs no more, and its corners rounded, so it runs as a road does: along a valley, round a hill, over the saddle.
+     * The taut line if there's no way.
+     */
+    public static double[][] road(ServerLevel level, List<Hex> path, java.util.Map<Long, BlockPos> bells, boolean llama) {
+        double[][] ends = ends(path, bells);
+        double[] a = ends[0], b = ends[1];
+        double r = (STRAY * Math.hypot(b[0] - a[0], b[1] - a[1]) + STRAY_BLOCKS) / 2;
+        double minX = (a[0] + b[0]) / 2 - r, maxX = (a[0] + b[0]) / 2 + r;
+        double minZ = (a[1] + b[1]) / 2 - r, maxZ = (a[1] + b[1]) / 2 + r;
+        int x0 = (int) Math.floor(minX), z0 = (int) Math.floor(minZ);
+        int nx = (int) Math.ceil((maxX - minX) / GRID) + 1, nz = (int) Math.ceil((maxZ - minZ) / GRID) + 1;
+        Land land = new Land(level, llama);
+        double[] h = new double[nx * nz];
+        boolean[] ok = new boolean[nx * nz];
+        for (int i = 0; i < nx; i++) {
+            for (int j = 0; j < nz; j++) {
+                int x = x0 + i * GRID, z = z0 + j * GRID;
+                ok[i * nz + j] = reach(a, b, x + 0.5, z + 0.5);
+                if (ok[i * nz + j]) {
+                    h[i * nz + j] = land.height(x, z);
+                }
+            }
+        }
+        int sa = Math.clamp(Math.round((float) ((a[0] - x0) / GRID)), 0, nx - 1) * nz
+                + Math.clamp(Math.round((float) ((a[1] - z0) / GRID)), 0, nz - 1);
+        int sb = Math.clamp(Math.round((float) ((b[0] - x0) / GRID)), 0, nx - 1) * nz
+                + Math.clamp(Math.round((float) ((b[1] - z0) / GRID)), 0, nz - 1);
+        ok[sa] = ok[sb] = true;
+        h[sa] = land.height(x0 + sa / nz * GRID, z0 + sa % nz * GRID);
+        h[sb] = land.height(x0 + sb / nz * GRID, z0 + sb % nz * GRID);
+        double[] cost = new double[nx * nz];
+        java.util.Arrays.fill(cost, Double.MAX_VALUE);
+        int[] came = new int[nx * nz];
+        java.util.PriorityQueue<double[]> open = new java.util.PriorityQueue<>(java.util.Comparator.comparingDouble(o -> o[0]));
+        cost[sa] = 0;
+        open.add(new double[] {0, sa});
+        int[][] steps = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+        while (!open.isEmpty()) {
+            double[] o = open.poll();
+            int k = (int) o[1];
+            if (k == sb) {
+                break;
+            }
+            if (o[0] - GRID * Math.hypot(k / nz - sb / nz, k % nz - sb % nz) > cost[k] + 1e-9) {
+                continue;
+            }
+            int i = k / nz, j = k % nz;
+            for (int[] s : steps) {
+                int ni = i + s[0], nj = j + s[1];
+                if (ni < 0 || nj < 0 || ni >= nx || nj >= nz || !ok[ni * nz + nj]) {
+                    continue;
+                }
+                int n = ni * nz + nj;
+                double c = land.step(x0 + i * GRID, z0 + j * GRID, h[k], x0 + ni * GRID, z0 + nj * GRID, h[n]);
+                if (cost[k] + c < cost[n]) {
+                    cost[n] = cost[k] + c;
+                    came[n] = k;
+                    open.add(new double[] {cost[n] + GRID * Math.hypot(ni - sb / nz, nj - sb % nz), n});
+                }
+            }
+        }
+        if (cost[sb] == Double.MAX_VALUE) {
+            return ends;
+        }
+        List<double[]> way = new ArrayList<>();
+        List<Double> spent = new ArrayList<>();
+        for (int k = sb; ; k = came[k]) {
+            way.add(new double[] {x0 + k / nz * GRID + 0.5, z0 + k % nz * GRID + 0.5});
+            spent.add(cost[k]);
+            if (k == sa) {
+                break;
+            }
+        }
+        java.util.Collections.reverse(way);
+        java.util.Collections.reverse(spent);
+        way.set(0, a);
+        way.set(way.size() - 1, b);
+        // Pulled straight wherever the straight way costs no more (a twentieth's grace) than the planned one.
+        List<double[]> straight = new ArrayList<>();
+        straight.add(way.get(0));
+        int at = 0;
+        while (at < way.size() - 1) {
+            int next = at + 1;
+            for (int j = Math.min(way.size() - 1, at + 64); j > at + 1; j--) {
+                double planned = spent.get(j) - spent.get(at);
+                if (land.line(way.get(at), way.get(j)) <= planned * 1.05) {
+                    next = j;
+                    break;
+                }
+            }
+            straight.add(way.get(next));
+            at = next;
+        }
+        // Its corners rounded (Chaikin's cutting, twice).
+        List<double[]> round = straight;
+        for (int pass = 0; pass < 2; pass++) {
+            List<double[]> cut = new ArrayList<>();
+            cut.add(round.get(0));
+            for (int i = 0; i + 1 < round.size(); i++) {
+                double[] p = round.get(i), q = round.get(i + 1);
+                cut.add(new double[] {0.75 * p[0] + 0.25 * q[0], 0.75 * p[1] + 0.25 * q[1]});
+                cut.add(new double[] {0.25 * p[0] + 0.75 * q[0], 0.25 * p[1] + 0.75 * q[1]});
+            }
+            cut.add(round.get(round.size() - 1));
+            round = cut;
+        }
+        return round.toArray(new double[0][]);
+    }
+
+    /**
+     * The land as it was generated, a column at a time (kept): its ground's height under any tree, and whether water
+     * lies over it. Its chunks must be loaded; one that isn't reads as water (a road keeps off ground it can't see).
+     */
+    static final class Land {
+        private final ServerLevel level;
+        private final double grade, sheer;
+        private final java.util.Map<Long, int[]> columns = new java.util.HashMap<>();
+
+        Land(ServerLevel level, boolean llama) {
+            this.level = level;
+            this.grade = llama ? LLAMA_GRADE : GRADE;
+            this.sheer = llama ? LLAMA_SHEER : SHEER;
+        }
+
+        private int[] column(int x, int z) {
+            return columns.computeIfAbsent(BlockPos.asLong(x, 0, z), k -> {
+                if (!level.isLoaded(new BlockPos(x, 0, z))) {
+                    return new int[] {level.getSeaLevel(), 1};
+                }
+                int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) - 1;
+                BlockState top = level.getBlockState(new BlockPos(x, y, z));
+                while (top.is(net.minecraft.tags.BlockTags.LOGS) && y > level.getMinBuildHeight()) {
+                    top = level.getBlockState(new BlockPos(x, --y, z));
+                }
+                return new int[] {y, top.getFluidState().isEmpty() ? 0 : 1};
+            });
+        }
+
+        double height(int x, int z) {
+            return column(x, z)[0];
+        }
+
+        boolean wet(int x, int z) {
+            return column(x, z)[1] == 1;
+        }
+
+        /** What a wagon's step from one column to the next costs. */
+        double step(int x1, int z1, double h1, int x2, int z2, double h2) {
+            double d = Math.hypot(x2 - x1, z2 - z1);
+            double slope = Math.abs(h2 - h1) / d;
+            return d * (1 + this.grade * slope * slope + 0.15 * noise(x2, z2)) + (slope > sheer ? SHEER_TOLL : 0)
+                    + (wet(x2, z2) ? WET * d : 0);
+        }
+
+        /** What a straight way from {@code a} to {@code b} costs, a {@link #GRID}'s step at a time. */
+        double line(double[] a, double[] b) {
+            double length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+            int n = Math.max(1, (int) Math.ceil(length / GRID));
+            double total = 0;
+            int px = (int) Math.floor(a[0]), pz = (int) Math.floor(a[1]);
+            double ph = height(px, pz);
+            for (int k = 1; k <= n; k++) {
+                int x = (int) Math.floor(a[0] + (b[0] - a[0]) * k / n), z = (int) Math.floor(a[1] + (b[1] - a[1]) * k / n);
+                double hh = height(x, z);
+                total += step(px, pz, ph, x, z, hh);
+                px = x;
+                pz = z;
+                ph = hh;
+            }
+            return total;
+        }
+    }
+
+    /** A road's hexes and those beside them: the ground its line may take. */
+    public static java.util.Set<Hex> band(List<Hex> path) {
+        java.util.Set<Hex> band = new java.util.HashSet<>(path);
+        for (Hex h : path) {
+            band.addAll(h.neighbors());
+        }
+        return band;
+    }
+
     /** Does the straight line from {@code a} to {@code b} stay within {@code corridor}'s hexes (checked every 2 blocks)? */
     static boolean inside(double[] a, double[] b, java.util.Set<Hex> corridor) {
         double length = Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -136,16 +414,31 @@ public final class Trails extends SavedData {
         return true;
     }
 
-    /** The stretch of a polyline within {@code hex}: its points a block apart there, from where it enters to where it leaves. */
-    static double[][] within(double[][] line, Hex hex) {
+    /**
+     * The stretch of a road's line that {@code hex} lays: its points a block apart whose nearest of the road's hexes it
+     * is, taken in order (a road planned over its land runs where it will, not through the core's hexes alone).
+     */
+    static double[][] within(double[][] line, Hex hex, List<Hex> path) {
         List<double[]> out = new ArrayList<>();
+        int owner = 0;
         for (int i = 0; i + 1 < line.length; i++) {
             double[] a = line[i], b = line[i + 1];
             double length = Math.hypot(b[0] - a[0], b[1] - a[1]);
             int steps = Math.max(1, (int) Math.ceil(length));
             for (int k = 0; k <= steps; k++) {
                 double x = a[0] + (b[0] - a[0]) * k / steps, z = a[1] + (b[1] - a[1]) * k / steps;
-                if (Hex.at(x, z).equals(hex)) {
+                // The road's hex nearest the place, never one it has passed.
+                int best = owner;
+                double near = Double.MAX_VALUE;
+                for (int n = owner; n < path.size(); n++) {
+                    double d = Math.hypot(x - path.get(n).centerX(), z - path.get(n).centerZ());
+                    if (d < near) {
+                        near = d;
+                        best = n;
+                    }
+                }
+                owner = best;
+                if (path.get(owner).equals(hex)) {
                     out.add(new double[] {x, z});
                 }
             }
@@ -194,7 +487,7 @@ public final class Trails extends SavedData {
         boolean forum = bells.values().stream().anyMatch(b -> Hex.at(b).equals(t.hex()));
         double[][] line = line(t, bells);
         if (t.path().size() >= 2 && line.length >= 2) {
-            double[][] way = wind(level, line[0], line[line.length - 1], new java.util.HashSet<>(t.path()), t.hex());
+            double[][] way = wind(level, line[0], line[line.length - 1]);
             if (way != null) {
                 line = way;
             }
@@ -215,22 +508,23 @@ public final class Trails extends SavedData {
     static final double MEANDER = 0.35;
 
     /**
-     * A wagon's way across {@code hex} from {@code a} to {@code b} (where the road's taut line enters and leaves it):
+     * A wagon's way from {@code a} to {@code b} (where the stretch of the road's taut line a hex lays begins and ends):
      * the cheapest over its ground's columns, a step costing its length, more as it climbs (gentle grades cheap, a
      * cliff dear, so it goes round a hill), a ford, a tree to fell; less on a path already worn; and a gentle meander
      * on the flat (John: "a little more wagon-optimized ... low elevation change, gentle slopes. A bit of winding").
-     * Over the road's own hexes near {@code hex}, its ground loaded. Null if there's no way (the caller lays it taut).
+     * Over the ground round the stretch, loaded. Null if there's no way (the caller lays it as planned).
      */
-    static double[][] wind(ServerLevel level, double[] a, double[] b, java.util.Set<Hex> corridor, Hex hex) {
-        int reach = (int) Math.ceil(Hex.SIZE) + 6;
-        int x0 = (int) Math.floor(hex.centerX()) - reach, z0 = (int) Math.floor(hex.centerZ()) - reach;
+    static double[][] wind(ServerLevel level, double[] a, double[] b) {
+        // A square round the stretch, room to go round a hill either side.
+        int reach = (int) Math.ceil(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) / 2) + 32;
+        int x0 = (int) Math.floor((a[0] + b[0]) / 2) - reach, z0 = (int) Math.floor((a[1] + b[1]) / 2) - reach;
         int span = 2 * reach + 1;
         int[] height = new int[span * span];
         double[] extra = new double[span * span];
         for (int i = 0; i < span; i++) {
             for (int j = 0; j < span; j++) {
                 int x = x0 + i, z = z0 + j, k = i * span + j;
-                if (!corridor.contains(Hex.at(x + 0.5, z + 0.5)) || !level.isLoaded(new BlockPos(x, 0, z))) {
+                if (!level.isLoaded(new BlockPos(x, 0, z))) {
                     height[k] = Integer.MIN_VALUE;
                     continue;
                 }
@@ -395,6 +689,7 @@ public final class Trails extends SavedData {
                 road[2 * i + 1] = t.path().get(i).r();
             }
             e.putIntArray("path", road);
+            e.putBoolean("llama", t.llama());
             list.add(e);
         }
         tag.put("waiting", list);
@@ -413,7 +708,7 @@ public final class Trails extends SavedData {
             }
             if (h.length == 6) {
                 trails.waiting.add(new Trail(new Hex(h[0], h[1]), new Hex(h[2], h[3]), new Hex(h[4], h[5]), width,
-                        List.copyOf(path)));
+                        List.copyOf(path), ((CompoundTag) t).getBoolean("llama")));
             }
         }
         return trails;

@@ -271,7 +271,8 @@ public final class JobsTests {
 
     /**
      * A road laid taut over its hexes (John: "roads should follow actual optimal paths"): a straight run of hexes is
-     * one straight road, bell to bell; a winding one turns fewer times than it has hexes, every stretch within them.
+     * one straight road, bell to bell; a winding one turns fewer times than it has hexes, every stretch within them and
+     * those beside them.
      */
     @GameTest(template = "floor")
     public static void aRoadIsLaidTautOverItsHexes(GameTestHelper helper) {
@@ -284,11 +285,11 @@ public final class JobsTests {
                 new dev.b28.enterprise.hex.Hex(2, 2), new dev.b28.enterprise.hex.Hex(3, 2), new dev.b28.enterprise.hex.Hex(3, 3));
         double[][] taut = dev.b28.enterprise.territory.Trails.taut(winding, java.util.Map.of());
         helper.assertTrue(taut.length < winding.size(), "a winding run, " + taut.length + " points for 7 hexes");
-        var corridor = new java.util.HashSet<>(winding);
+        var corridor = dev.b28.enterprise.territory.Trails.band(winding);
         for (int i = 0; i + 1 < taut.length; i++) {
             for (int k = 0; k <= 20; k++) {
                 double x = taut[i][0] + (taut[i + 1][0] - taut[i][0]) * k / 20, z = taut[i][1] + (taut[i + 1][1] - taut[i][1]) * k / 20;
-                helper.assertTrue(corridor.contains(dev.b28.enterprise.hex.Hex.at(x, z)), "the road leaves its hexes");
+                helper.assertTrue(corridor.contains(dev.b28.enterprise.hex.Hex.at(x, z)), "the road leaves its band of hexes");
             }
         }
         helper.succeed();

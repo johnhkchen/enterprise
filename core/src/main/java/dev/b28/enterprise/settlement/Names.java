@@ -23,23 +23,13 @@ import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.saveddata.SavedData;
 
 /**
- * Names for markets, so people (and the records) can tell them apart: given once, from the lie of the land and a word
- * of its country, and kept. A town by a pass in the mountains ends in -gate, one in the hills in -fell, one by water in
- * -ford or -mere, one on the coast in -haven, and the rest in a farming word; its first part comes from what grows
- * there (Barley, Oak, Pine, Sand...). Markets off the map keep their own names (the front, the market across the sea).
- * A player may rename one.
+ * Names for markets, so people (and the records) can tell them apart: given once, from a list of settlements'
+ * names ({@link #SETTLEMENTS}), and kept. Markets off the map keep their own names (the front, the market across the
+ * sea). A player may rename one.
  */
 public final class Names extends SavedData {
     private static final String NAME = "enterprise_names";
 
-    private static final List<String> FARMLAND = List.of("Barley", "Wheat", "Meadow", "Long", "Green", "Broad", "Ash",
-            "Elm", "Thorn", "Mill", "Bramble", "Clover", "Hay", "Linden", "Rye", "Hollow");
-    private static final List<String> WOODLAND = List.of("Oak", "Birch", "Holly", "Alder", "Hazel", "Rowan");
-    private static final List<String> PINELAND = List.of("Pine", "Fir", "Spruce", "Larch");
-    private static final List<String> DRYLAND = List.of("Sand", "Dust", "Amber", "Red");
-    private static final List<String> SNOWLAND = List.of("Frost", "White", "Rime", "Winter");
-    private static final List<String> FENLAND = List.of("Fen", "Reed", "Sedge", "Moss");
-    private static final List<String> FARM_ENDS = List.of("field", "ton", "stead", "ley", "wick", "by", "worth", "ham");
 
     private final Map<GlobalPos, String> names = new HashMap<>();
     private final Set<GlobalPos> settled = new HashSet<>(); // names given once the land round them was known
@@ -108,72 +98,27 @@ public final class Names extends SavedData {
         return name;
     }
 
-    /** A name from the land: its country's word, and an ending for what lies about it. */
+    /**
+     * The settlements' names, for now (John: "let's use WoW human settlement names"): the human towns and villages of
+     * the Eastern Kingdoms, each given once.
+     */
+    static final List<String> SETTLEMENTS = List.of("Goldshire", "Lakeshire", "Darkshire", "Moonbrook", "Sentinel Hill",
+            "Southshore", "Tarren Mill", "Ambermill", "Hillsbrad", "Stromgarde", "Refuge Pointe", "Thelsamar",
+            "Menethil Harbor", "Northshire", "Raven Hill", "Andorhal", "Darrowshire", "Hearthglen", "Pyrewood",
+            "Corin's Crossing", "Brill", "Durnholde", "Nethergarde", "Theramore", "Eastvale", "Brightwood",
+            "Westbrook", "Jerod's Landing", "Morgan's Vigil", "Sorrow Hill", "Felstone", "Dalson's Tears");
+
+    /** A name of {@link #SETTLEMENTS}, by its place, one no market has; numbered once they're all taken. */
     String invent(MinecraftServer server, GlobalPos desk) {
-        ServerLevel level = server.getLevel(desk.dimension());
-        List<String> firsts = FARMLAND;
-        String end = null;
-        if (level != null) {
-            var source = level.getChunkSource();
-            var biome = source.getGenerator().getBiomeSource().getNoiseBiome(QuartPos.fromBlock(desk.pos().getX()),
-                    QuartPos.fromBlock(level.getSeaLevel()), QuartPos.fromBlock(desk.pos().getZ()),
-                    source.randomState().sampler());
-            if (biome.is(BiomeTags.IS_TAIGA)) {
-                firsts = PINELAND;
-            } else if (biome.is(BiomeTags.IS_FOREST)) {
-                firsts = WOODLAND;
-            } else if (biome.is(Biomes.DESERT) || biome.is(BiomeTags.IS_BADLANDS) || biome.is(BiomeTags.IS_SAVANNA)) {
-                firsts = DRYLAND;
-            } else if (biome.is(Biomes.SNOWY_PLAINS) || biome.is(Biomes.ICE_SPIKES) || biome.is(Biomes.SNOWY_TAIGA)) {
-                firsts = SNOWLAND;
-            } else if (biome.is(Biomes.SWAMP) || biome.is(Biomes.MANGROVE_SWAMP)) {
-                firsts = FENLAND;
-            }
-            // The lie of the land: the hexes round it.
-            Terrain terrain = Terrain.get(server);
-            Hex home = Hex.at(desk.pos());
-            int steep = 0;
-            int cliffs = 0;
-            double wet = 0;
-            List<Hex> around = new java.util.ArrayList<>();
-            for (int dq = -2; dq <= 2; dq++) {
-                for (int dr = -2; dr <= 2; dr++) {
-                    Hex hex = new Hex(home.q() + dq, home.r() + dr);
-                    if (hex.distance(home) <= 2) {
-                        around.add(hex);
-                    }
-                }
-            }
-            for (Hex hex : around) {
-                int relief = terrain.relief(level, hex);
-                steep += relief >= Terrain.RELIEF_PER_FACTOR ? 1 : 0;
-                cliffs += relief >= Terrain.CLIFF ? 1 : 0;
-                wet = Math.max(wet, terrain.waterShare(level, hex));
-            }
-            long besideCliffs = home.neighbors().stream().filter(h -> terrain.relief(level, h) >= Terrain.CLIFF).count();
-            if (besideCliffs >= 2 && terrain.relief(level, home) < Terrain.CLIFF) {
-                end = "gate"; // a way through the mountains: cliffs on either hand
-            } else if (steep >= 3 || cliffs >= 2) {
-                end = "fell";
-            } else if (biome.is(BiomeTags.IS_OCEAN) || biome.is(BiomeTags.IS_BEACH)) {
-                end = "haven";
-            } else if (biome.is(BiomeTags.IS_RIVER) || wet > 0.5) {
-                end = "ford";
-            } else if (wet > 0.2) {
-                end = "mere";
-            }
-        }
         Set<String> taken = new HashSet<>(names.values());
-        for (int i = 0; i < 64; i++) {
-            long h = mix(desk.pos().getX() * 31L + desk.pos().getZ() * 1_000_003L + i);
-            String first = firsts.get((int) Math.floorMod(h, (long) firsts.size()));
-            String last = end != null ? end : FARM_ENDS.get((int) Math.floorMod(h >>> 17, (long) FARM_ENDS.size()));
-            String name = first + last;
+        long h = mix(desk.pos().getX() * 31L + desk.pos().getZ() * 1_000_003L);
+        for (int i = 0; i < SETTLEMENTS.size(); i++) {
+            String name = SETTLEMENTS.get((int) Math.floorMod(h + i, (long) SETTLEMENTS.size()));
             if (!taken.contains(name)) {
                 return name;
             }
         }
-        return firsts.get(0) + (end != null ? end : "ton") + " " + (names.size() + 1);
+        return SETTLEMENTS.get((int) Math.floorMod(h, (long) SETTLEMENTS.size())) + " " + (names.size() + 1);
     }
 
     /** SplitMix64: neighbouring positions get unrelated words. */

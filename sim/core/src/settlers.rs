@@ -267,7 +267,7 @@ impl Society {
         let town = match party.village {
             Some(v) if party.kind == Kind::Village => v,
             _ => {
-                let t = self.add_town(&format!("Newfound {}", party.id), 0.0);
+                let t = self.add_town(&self.settlement_name(party.id), 0.0);
                 self.place_town(t, party.target.center_x(), party.target.center_z());
                 // A host's settlers' town is the host's too: its lockers where the host places them, and built in its
                 // world where they settled (`Output::Found`, until a desk of the town's stands).
@@ -328,6 +328,22 @@ impl Society {
         }
         self.post(Account::Outside, Account::Treasury(party.from), party.capital, reason());
         self.world.resource_mut::<Settlers>().came_home += 1;
+    }
+}
+
+/// Names for the towns settlers found, for now (John: "let's use WoW human settlement names"): as the host's
+/// (`settlement/Names.java` `SETTLEMENTS`), the first no town has.
+pub const SETTLEMENTS: [&str; 32] = ["Goldshire", "Lakeshire", "Darkshire", "Moonbrook", "Sentinel Hill", "Southshore",
+    "Tarren Mill", "Ambermill", "Hillsbrad", "Stromgarde", "Refuge Pointe", "Thelsamar", "Menethil Harbor", "Northshire",
+    "Raven Hill", "Andorhal", "Darrowshire", "Hearthglen", "Pyrewood", "Corin's Crossing", "Brill", "Durnholde",
+    "Nethergarde", "Theramore", "Eastvale", "Brightwood", "Westbrook", "Jerod's Landing", "Morgan's Vigil", "Sorrow Hill",
+    "Felstone", "Dalson's Tears"];
+
+impl Society {
+    /// A name for a town settlers found: the first of [`SETTLEMENTS`] no town has, else "Newfound" and the party's.
+    pub fn settlement_name(&self, party: u32) -> String {
+        let taken: std::collections::BTreeSet<String> = (0..self.town_count()).map(|t| self.town(t).name).collect();
+        SETTLEMENTS.iter().find(|n| !taken.contains(**n)).map_or_else(|| format!("Newfound {party}"), |n| n.to_string())
     }
 }
 

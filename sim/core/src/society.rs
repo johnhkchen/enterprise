@@ -301,6 +301,7 @@ impl Society {
             let e = self.routes[id];
             let (Some(path), Some(left)) = (self.world.get::<RoutePath>(e).map(|p| p.0.clone()),
                 self.world.get::<RouteState>(e).and_then(|s| s.last_departure)) else { continue };
+            let llama_road = self.world.get::<Route>(e).is_some_and(|r| r.carrier == crate::map::Carrier::Llama);
             let mut map = self.world.resource_mut::<crate::map::Map>();
             if map.worn.get(&id).is_some_and(|&t| t >= left) {
                 continue;
@@ -313,7 +314,8 @@ impl Society {
                 let to = path[(at + 1).min(path.len() - 1)];
                 self.world.resource_mut::<Outbox>().0.push(Output::Trail { hex: crate::wire::HexAt::of(hex),
                     from: crate::wire::HexAt::of(from), to: crate::wire::HexAt::of(to), width,
-                    path: path.iter().map(|&h| crate::wire::HexAt::of(h)).collect() });
+                    path: path.iter().map(|&h| crate::wire::HexAt::of(h)).collect(),
+                    llama: llama_road });
             }
         }
         let today = now / day_ticks.max(1);

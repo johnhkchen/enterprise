@@ -189,6 +189,45 @@ def centre(q, r):
     return SIZE * math.sqrt(3) * (q + r / 2.0), SIZE * 1.5 * r
 
 
+def hex_at(x, z):
+    """The hex a block's place lies in (`Hex.at`: axial, cube-rounded)."""
+    q = (math.sqrt(3) / 3 * x - z / 3) / SIZE
+    r = (2.0 / 3 * z) / SIZE
+    s = -q - r
+    rq, rr, rs = round(q), round(r), round(s)
+    dq, dr, ds = abs(rq - q), abs(rr - r), abs(rs - s)
+    if dq > dr and dq > ds:
+        rq = -rr - rs
+    elif dr > ds:
+        rr = -rq - rs
+    return rq, rr
+
+
+NEIGHBOURS = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, -1), (-1, 1))
+
+
+def taut(path, bells):
+    """A route pulled taut as the game lays its road (`Trails.taut`): from bell to bell, each stretch as straight as it
+    goes within the route's hexes and those beside them."""
+    band = set(path) | {(q + a, r + b) for q, r in path for a, b in NEIGHBOURS}
+    points = [list(centre(q, r)) for q, r in path]
+    for end in (0, len(path) - 1):
+        for bx, _, bz in bells.values():
+            if hex_at(bx + 0.5, bz + 0.5) == path[end]:
+                points[end] = [bx + 0.5, bz + 0.5]
+
+    def inside(a, b):
+        steps = max(1, math.ceil(math.hypot(b[0] - a[0], b[1] - a[1]) / 2))
+        return all(hex_at(a[0] + (b[0] - a[0]) * k / steps, a[1] + (b[1] - a[1]) * k / steps) in band
+                   for k in range(steps + 1))
+    out, at = [points[0]], 0
+    while at < len(points) - 1:
+        nxt = next((j for j in range(len(points) - 1, at + 1, -1) if inside(points[at], points[j])), at + 1)
+        out.append(points[nxt])
+        at = nxt
+    return out
+
+
 def png(width, height, rows):
     """A PNG of RGB rows (bytes each)."""
     raw = b"".join(b"\x00" + bytes(r) for r in rows)
@@ -221,11 +260,22 @@ def main():
     routes = []
     for route, frm, to, trips, carrier in db.execute(
             "select route, from_town, to_town, trips, carrier from routes where day=?", (last,)):
-        hexes = [centre(q, r) for q, r in db.execute("select q, r from paths where route=? order by step", (route,))]
+        hexes = [(q, r) for q, r in db.execute("select q, r from paths where route=? order by step", (route,))]
         if len(hexes) >= 2:
-            routes.append({"from": frm, "to": to, "trips": trips, "carrier": carrier,
-                           "path": [[round(x, 1), round(z, 1)] for x, z in hexes]})
+            routes.append({"from": frm, "to": to, "trips": trips, "carrier": carrier, "hexes": hexes})
 
+    # Each route along its road as the game planned it over the land (the world's enterprise-roads.json), else taut.
+    planned = {}
+    roads = world / "enterprise-roads.json"
+    if roads.exists():
+        for road in json.loads(roads.read_text()):
+            hexes = [tuple(h) for h in road["path"]]
+            planned[(hexes[0], hexes[-1])] = road["line"]
+            planned[(hexes[-1], hexes[0])] = list(reversed(road["line"]))
+    for r in routes:
+        hexes = r.pop("hexes")
+        line = planned.get((hexes[0], hexes[-1])) or taut(hexes, bells)
+        r["path"] = [[round(x, 1), round(z, 1)] for x, z in line]
     xs = [b[0] for b in bells.values()] + [p[0] for r in routes for p in r["path"]]
     zs = [b[2] for b in bells.values()] + [p[1] for r in routes for p in r["path"]]
     x0, x1 = int(min(xs)) - margin, int(max(xs)) + margin
