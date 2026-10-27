@@ -47,14 +47,14 @@
     },
     {
       "head": [
-        3,
+        2,
         8,
-        2
+        5
       ],
       "foot": [
-        3,
+        2,
         8,
-        3
+        6
       ]
     }
   ],
@@ -330,16 +330,108 @@
                 1,
                 3
               ],
-              "dy": 1
+              "dy": 1,
+              "q": 0
             },
             {
               "storey": 0,
               "module": "shelf",
               "at": [
                 1,
+                5
+              ],
+              "dy": 1,
+              "q": 0
+            },
+            {
+              "storey": 0,
+              "module": "cask",
+              "at": [
+                3,
+                4
+              ],
+              "dy": 1,
+              "q": 0
+            },
+            {
+              "storey": 0,
+              "module": "chest",
+              "at": [
+                4,
+                4
+              ],
+              "dy": 1,
+              "q": 0
+            },
+            {
+              "storey": 0,
+              "module": "table",
+              "at": [
+                2,
+                2
+              ],
+              "dy": 1,
+              "q": 0
+            },
+            {
+              "storey": 0,
+              "module": "bench",
+              "at": [
+                2,
                 1
               ],
-              "dy": 1
+              "dy": 1,
+              "q": 2
+            },
+            {
+              "storey": 0,
+              "module": "bench",
+              "at": [
+                2,
+                3
+              ],
+              "dy": 1,
+              "q": 0
+            },
+            {
+              "storey": 0,
+              "module": "shelf",
+              "at": [
+                4,
+                2
+              ],
+              "dy": 1,
+              "q": 0
+            },
+            {
+              "storey": 0,
+              "module": "pot",
+              "at": [
+                3,
+                1
+              ],
+              "dy": 1,
+              "q": 0
+            },
+            {
+              "storey": 0,
+              "module": "lantern",
+              "at": [
+                2,
+                3
+              ],
+              "dy": 4,
+              "q": 0
+            },
+            {
+              "storey": 0,
+              "module": "lantern",
+              "at": [
+                4,
+                3
+              ],
+              "dy": 4,
+              "q": 0
             },
             {
               "storey": 1,
@@ -348,52 +440,78 @@
                 1,
                 1
               ],
-              "dy": 1
+              "dy": 1,
+              "q": 0
             },
             {
               "storey": 1,
               "module": "bed",
               "at": [
-                2,
-                1
+                1,
+                4
               ],
-              "dy": 1
+              "dy": 1,
+              "q": 0
             },
             {
-              "storey": 0,
-              "module": "lantern",
+              "storey": 1,
+              "module": "chest",
               "at": [
-                2,
-                5
+                1,
+                3
               ],
-              "dy": 4
+              "dy": 1,
+              "q": 0
             },
             {
-              "storey": 0,
-              "module": "lantern",
+              "storey": 1,
+              "module": "table",
               "at": [
                 4,
-                2
+                5
               ],
-              "dy": 4
+              "dy": 1,
+              "q": 0
+            },
+            {
+              "storey": 1,
+              "module": "bench",
+              "at": [
+                3,
+                5
+              ],
+              "dy": 1,
+              "q": 1
+            },
+            {
+              "storey": 1,
+              "module": "shelf",
+              "at": [
+                5,
+                5
+              ],
+              "dy": 1,
+              "q": 0
             },
             {
               "storey": 1,
               "module": "lantern",
               "at": [
                 2,
-                5
+                3
               ],
-              "dy": 4
+              "dy": 4,
+              "q": 0
             },
             {
               "storey": 1,
               "module": "lantern",
               "at": [
                 4,
-                2
+                3
               ],
-              "dy": 4
+              "dy": 4,
+              "q": 0
             }
           ],
           "chimney": [
@@ -406,13 +524,21 @@
               "head": [
                 1,
                 1
+              ],
+              "foot": [
+                1,
+                2
               ]
             },
             {
               "storey": 1,
               "head": [
-                2,
-                1
+                1,
+                4
+              ],
+              "foot": [
+                1,
+                5
               ]
             }
           ],
