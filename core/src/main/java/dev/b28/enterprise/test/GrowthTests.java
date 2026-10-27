@@ -423,6 +423,8 @@ public final class GrowthTests {
                         last = l.tile();
                     }
                     helper.assertTrue(x == width, width + ": fills it");
+                    helper.assertTrue(strip.get().stream().filter(l -> l.tile().tags().stream()
+                            .anyMatch(g -> g.startsWith("trade:"))).count() <= 1, width + ": a trade's tile once");
                 }
             }
         }

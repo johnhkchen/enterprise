@@ -82,6 +82,11 @@ public final class Yards {
             if (overDoor != path || path && door != x) {
                 continue; // the path tile exactly at the door's column, and nowhere else
             }
+            // A trade's tile once a strip: one smith's yard reads as a smithy, three as a row of them.
+            if (t.tags().stream().anyMatch(g -> g.startsWith("trade:"))
+                    && out.stream().anyMatch(l -> l.tile().tags().stream().anyMatch(g -> g.startsWith("trade:")))) {
+                continue;
+            }
             int lamp = lampOf(t, x, door, lastLamp);
             // A lamp no more than LAMPS after the last; a tile with none must leave room for the next in time.
             if (lamp != lastLamp ? lamp - lastLamp > LAMPS : x + t.width() - 1 - lastLamp >= LAMPS) {
