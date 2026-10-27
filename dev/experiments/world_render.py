@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The surveyor's map of a study's world: its blocks from above, after a run (core mode).
 
-    python3 dev/experiments/world_render.py WORLD TRACE.db SERVER.log OUT.html [--margin 96]
+    python3 dev/experiments/world_render.py WORLD TRACE.db SERVER.log OUT.html [--margin 96] [--video FILM.mp4]
 
 Reads the world's own region files (stop the server first, so they're saved) and draws each column's top: trees,
 roads and the towns' forums, homes and other buildings, fields by crop, pastures (birch-fenced, their grass tinted),
@@ -238,7 +238,8 @@ def png(width, height, rows):
 
 
 def main():
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    args = [a for i, a in enumerate(sys.argv[1:], 1)
+            if not a.startswith("--") and sys.argv[i - 1] not in ("--margin", "--video")]
     margin = 96
     if "--margin" in sys.argv:
         margin = int(sys.argv[sys.argv.index("--margin") + 1])
@@ -372,7 +373,10 @@ def main():
         r["path"] = [[p[0] - x0, p[1] - z0] for p in r["path"]]
     data = {"w": w, "h": h, "x0": x0, "z0": z0, "lo": lo, "hi": hi, "day": last, "towns": towns, "routes": routes,
             "counts": counts}
-    page = TEMPLATE.replace("__IMAGE__", image).replace("__DATA__", json.dumps(data))
+    film = ""
+    if "--video" in sys.argv:
+        film = base64.b64encode(Path(sys.argv[sys.argv.index("--video") + 1]).read_bytes()).decode()
+    page = TEMPLATE.replace("__IMAGE__", image).replace("__DATA__", json.dumps(data)).replace("__VIDEO__", film)
     out.write_text(page)
     print(f"wrote {out} ({len(page) // 1024} KB)", file=sys.stderr)
 

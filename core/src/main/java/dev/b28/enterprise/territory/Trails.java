@@ -74,7 +74,8 @@ public final class Trails extends SavedData {
      */
     public static double[][] line(Trail t, java.util.Map<Long, BlockPos> bells) {
         if (t.path().size() >= 2) {
-            double[][] stretch = within(PLANNED.getOrDefault(t.path(), taut(t.path(), bells)), t.hex(), t.path());
+            double[][] road = roadOf(t);
+            double[][] stretch = within(road != null ? road : taut(t.path(), bells), t.hex(), t.path());
             if (stretch.length >= 2) {
                 return stretch;
             }
@@ -129,7 +130,7 @@ public final class Trails extends SavedData {
      * generated"), at the look that finds it so.
      */
     public static boolean planned(Trail t) {
-        return t.path().size() < 2 || PLANNED.containsKey(t.path());
+        return t.path().size() < 2 || PLANNED.containsKey(Ends.of(t));
     }
 
     /**
@@ -137,12 +138,18 @@ public final class Trails extends SavedData {
      * world's {@code enterprise-roads.json} for the surveyor's map (`dev/experiments/world_render.py`).
      */
     public static void plan(ServerLevel level, Trail t, java.util.Map<Long, BlockPos> bells) {
-        if (t.path().size() >= 2 && !PLANNED.containsKey(t.path())) {
-            PLANNED.put(t.path(), road(level, t.path(), bells, t.llama()));
+        if (t.path().size() >= 2 && !PLANNED.containsKey(Ends.of(t))) {
+            Ends ends = Ends.of(t);
+            double[][] road = road(level, t.path(), bells, t.llama());
+            if (!t.path().get(0).equals(ends.a())) {
+                road = reversed(road);
+            }
+            PLANNED.put(ends, road);
             StringBuilder json = new StringBuilder("[");
             for (var e : PLANNED.entrySet()) {
                 json.append(json.length() > 1 ? "," : "").append("{\"path\":[");
-                json.append(String.join(",", e.getKey().stream().map(h -> "[" + h.q() + "," + h.r() + "]").toList()));
+                json.append("[" + e.getKey().a().q() + "," + e.getKey().a().r() + "],[" + e.getKey().b().q() + ","
+                        + e.getKey().b().r() + "]");
                 json.append("],\"line\":[");
                 json.append(String.join(",", java.util.Arrays.stream(e.getValue())
                         .map(p -> "[" + Math.round(p[0] * 10) / 10.0 + "," + Math.round(p[1] * 10) / 10.0 + "]").toList()));
@@ -156,7 +163,7 @@ public final class Trails extends SavedData {
                 dev.b28.enterprise.Enterprise.LOGGER.warn("The roads weren't written for the map: {}", e.getMessage());
             }
             dev.b28.enterprise.Enterprise.LOGGER.info("A road planned over its land from hex {} to {} ({} points, {})",
-                    t.path().get(0), t.path().get(t.path().size() - 1), PLANNED.get(t.path()).length, t.llama() ? "llamas" : "wagons");
+                    t.path().get(0), t.path().get(t.path().size() - 1), road.length, t.llama() ? "llamas" : "wagons");
         }
     }
 
@@ -197,7 +204,38 @@ public final class Trails extends SavedData {
     }
 
     /** Roads planned over the land, by their hexes: the same plan every time, so planned again after a restart. */
-    static final java.util.Map<List<Hex>, double[][]> PLANNED = new java.util.concurrent.ConcurrentHashMap<>();
+    static final java.util.Map<Ends, double[][]> PLANNED = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * A road's key: its two end hexes in a fixed order and its carrier. One road serves both ways between two towns,
+     * and the same road stays when the core routes them over other hexes (it planned each direction, and each new
+     * routing, anew).
+     */
+    record Ends(Hex a, Hex b, boolean llama) {
+        static Ends of(Trail t) {
+            Hex first = t.path().get(0), last = t.path().get(t.path().size() - 1);
+            boolean flip = first.q() > last.q() || first.q() == last.q() && first.r() > last.r();
+            return flip ? new Ends(last, first, t.llama()) : new Ends(first, last, t.llama());
+        }
+    }
+
+    /** The trail's road as planned, from its path's first hex to its last; null if not planned yet. */
+    static double[][] roadOf(Trail t) {
+        if (t.path().size() < 2) {
+            return null;
+        }
+        Ends ends = Ends.of(t);
+        double[][] road = PLANNED.get(ends);
+        return road == null || t.path().get(0).equals(ends.a()) ? road : reversed(road);
+    }
+
+    static double[][] reversed(double[][] line) {
+        double[][] out = new double[line.length][];
+        for (int i = 0; i < line.length; i++) {
+            out[i] = line[line.length - 1 - i];
+        }
+        return out;
+    }
     /** The road planner's grid, in blocks. */
     static final int GRID = 4;
     /**

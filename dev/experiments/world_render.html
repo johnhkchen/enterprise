@@ -59,6 +59,11 @@ h2 { font: 500 .78rem var(--body); text-transform: uppercase; letter-spacing: .0
 .town span { color: var(--muted); font: .78rem var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
 .note { color: var(--muted); font-size: .82rem; margin: 0; }
 .scale { font: .78rem var(--mono); color: var(--muted); }
+.film video { display: block; width: 100%; max-width: 100%; border-radius: 4px; border: 1px solid var(--rule); background: var(--sheet); }
+.film button { margin-top: 8px; padding: 7px 12px; border-radius: 4px; border: 1px solid var(--accent); background: var(--accent);
+  color: var(--sheet); font: 600 .9rem var(--body); cursor: pointer; }
+.film button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.film .note { margin-top: 6px; }
 @media (prefers-reduced-motion: reduce) { .moving { display: none; } }
 </style>
 
@@ -84,6 +89,12 @@ h2 { font: 500 .78rem var(--body); text-transform: uppercase; letter-spacing: .0
       <h2>Towns at the last day</h2>
       <div class="towns" id="towns"></div>
     </div>
+    <div class="film" id="film" hidden>
+      <h2>The film</h2>
+      <video id="video" muted loop playsinline autoplay aria-label="The map with its wagons moving, 12 seconds"></video>
+      <button id="save" hidden>Save the MP4</button>
+      <p class="note" id="saved">An MP4 for posting: Discord plays it inline.</p>
+    </div>
     <p class="note">A pixel is a block. Drag to pan, scroll or pinch to zoom. Wagons run each route as often as it was
       travelled: a wider line and more wagons where more trips were made. Only ground a player or the study loaded
       was ever generated; the rest is blank.</p>
@@ -93,6 +104,30 @@ h2 { font: 500 .78rem var(--body); text-transform: uppercase; letter-spacing: .0
 
 <script>
 const D = __DATA__;
+const FILM = "__VIDEO__";
+if (FILM) {
+  const bytes = Uint8Array.from(atob(FILM), c => c.charCodeAt(0));
+  const blob = new Blob([bytes], { type: "video/mp4" });
+  const video = document.getElementById("video");
+  video.src = URL.createObjectURL(blob);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { video.removeAttribute("autoplay"); video.controls = true; }
+  document.getElementById("film").hidden = false;
+  (async () => {
+    const downloads = window.claude?.use ? await window.claude.use("downloads") : null;
+    if (!downloads) return;
+    const button = document.getElementById("save"), note = document.getElementById("saved");
+    button.hidden = false;
+    button.onclick = async () => {
+      try {
+        await downloads.save({ filename: "enterprise-survey.mp4", data: blob });
+        note.textContent = "Saved. Drop it into a Discord message to post it.";
+      } catch (e) {
+        if (e && (e.code === "unavailable" || e.code === "not_granted")) button.hidden = true;
+        else if (e && e.code !== "declined") note.textContent = "The save didn't go through: " + (e.message || e.code);
+      }
+    };
+  })();
+}
 const img = new Image();
 img.src = "data:image/png;base64,__IMAGE__";
 const cv = document.getElementById("c"), cx = cv.getContext("2d"), map = document.getElementById("map");

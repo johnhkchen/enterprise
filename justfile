@@ -110,6 +110,10 @@ rcon +commands:
 render trace log out="world_survey.html":
     python3 dev/experiments/world_render.py core/run/world {{trace}} {{log}} {{out}}
 
+# A 12-second film of a survey page's wagons (an MP4 Discord plays inline); needs Pillow (run with a venv's python)
+film survey out="world_survey.mp4" python="python3":
+    {{python}} dev/experiments/world_video.py {{survey}} {{out}}
+
 # The cartographer's map of the dev server's world: towns, hubs, and routes by trips (after the server stops).
 map out="world_map.html" title="The realm, by its cartographer":
     python3 dev/experiments/world_map.py core/run/world/data {{out}} "{{title}}"
