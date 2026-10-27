@@ -47,7 +47,10 @@ def main():
     length = 0
     widths = []
     for kit in kits:
-        meta = Path("core/src/main/resources/data") / kit.split(":")[0] / "structure" / (kit.split(":")[1] + ".json")
+        rel = Path(kit.split(":")[0]) / "structure" / (kit.split(":")[1] + ".json")
+        # The mod's own, or a delivery being tried as a world data pack (`core/run/world/datapacks/*/data`).
+        meta = next((p / rel for p in [Path("core/src/main/resources/data"), *Path("core/run/world/datapacks").glob("*/data")]
+                     if (p / rel).exists()), Path("core/src/main/resources/data") / rel)
         m = json.loads(meta.read_text())
         widths.append((kit, m["footprint"][0], m["footprint"][1], m))
         length += m["footprint"][0] + gap
@@ -83,12 +86,16 @@ def main():
     rcon("time set 6000")
     time.sleep(20)
     rcon("time set 18000")
-    time.sleep(25)
+    # Looked at twice through the night: a bed slept in at either look counts (villagers find their beds in their own
+    # time; the first look alone missed a third of the beds a minute later full).
     for r in results:
-        r["slept"] = []
-        for bx, by, bz in r["beds"]:
-            hit = rcon(f"execute if block {bx} {by} {bz} #minecraft:beds[occupied=true]")
-            r["slept"].append("passed" in hit.lower())
+        r["slept"] = [False] * len(r["beds"])
+    for look in (25, 35):
+        time.sleep(look)
+        for r in results:
+            for i, (bx, by, bz) in enumerate(r["beds"]):
+                hit = rcon(f"execute if block {bx} {by} {bz} #minecraft:beds[occupied=true]")
+                r["slept"][i] |= "passed" in hit.lower()
         print(f"{r['kit']}: {'laid' if r['laid'] else 'NOT laid'} facing {r['facing']} in {r['micros']} us, "
               f"{sum(r['slept'])} of {len(r['beds'])} beds slept in")
     out.write_text(json.dumps({"street": {"x": x0, "z": z0, "ground": ground, "gap": gap}, "kits": results}, indent=1))
