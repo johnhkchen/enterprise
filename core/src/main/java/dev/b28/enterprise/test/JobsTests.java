@@ -218,4 +218,27 @@ public final class JobsTests {
             helper.succeed();
         });
     }
+
+    /**
+     * A pasture laid to the land (core mode's `Work::Pasture`): fenced where its ground lies, the gate on the side facing
+     * the bell, the earth inside grassed, and the grass inside counted for the core.
+     */
+    @GameTest(template = "floor", skyAccess = true)
+    public static void aPastureIsFencedWhereItsGroundLiesWithItsGateTowardTheBell(GameTestHelper helper) {
+        var level = helper.getLevel();
+        for (int x = 0; x < 7; x++) {
+            for (int z = 0; z < 7; z++) {
+                helper.setBlock(new BlockPos(x, 1, z), x == 3 && z == 3 ? Blocks.DIRT : Blocks.GRASS_BLOCK);
+            }
+        }
+        BlockPos corner = helper.absolutePos(new BlockPos(0, 1, 0));
+        BlockPos bell = helper.absolutePos(new BlockPos(3, 1, 30)); // to the south
+        int grass = dev.b28.enterprise.territory.Pastures.fence(level,
+                new dev.b28.enterprise.territory.Pastures.Site(corner, 7, 7), bell);
+        helper.assertTrue(grass == 25, "five by five inside: " + grass);
+        helper.assertBlockPresent(Blocks.GRASS_BLOCK, new BlockPos(3, 1, 3));
+        helper.assertBlockPresent(Blocks.OAK_FENCE, new BlockPos(0, 2, 0));
+        helper.assertBlockPresent(Blocks.OAK_FENCE_GATE, new BlockPos(3, 2, 6));
+        helper.succeed();
+    }
 }

@@ -1573,6 +1573,10 @@ Work:
           - crop: U32
     4:
       Home: UNIT
+    5:
+      Pasture:
+        STRUCT:
+          - grass: U32
 WorkView:
   STRUCT:
     - work:

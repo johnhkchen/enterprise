@@ -632,7 +632,25 @@ public final class LandAdapter {
      * laid now (its chunks loading, no site, a hall or a crop the mod hasn't): the core asks again.
      */
     public boolean lay(ServerLevel level, long town, BlockPos bell, Work work, double share, Optional<BlockPos> site) {
+        // What the host says it laid: the work, or a pasture with the grass inside its fence.
+        Work[] reported = {work};
         boolean laid = switch (work) {
+            case Work.Pasture p -> {
+                // The largest rectangle of open grassland on the town's zoned ground (`Pastures.site`), fenced.
+                var found = dev.b28.enterprise.territory.Pastures.site(level, bell);
+                if (found.isEmpty()) {
+                    yield false;
+                }
+                BlockPos corner = found.get().corner();
+                if (!loadedFor(level, List.of(new ChunkPos(corner),
+                        new ChunkPos(corner.offset(found.get().sizeX(), 0, found.get().sizeZ()))).stream().distinct().toList())) {
+                    yield false;
+                }
+                reported[0] = new Work.Pasture(dev.b28.enterprise.territory.Pastures.fence(level, found.get(), bell));
+                Enterprise.LOGGER.info("Town {} fences a {} x {} pasture at {}", town, found.get().sizeX(),
+                        found.get().sizeZ(), corner.toShortString());
+                yield true;
+            }
             case Work.Bridge b -> {
                 Hex hex = new Hex(b.hex().q(), b.hex().r());
                 List<long[]> deck = Works.deck(hex, new Hex(b.from().q(), b.from().r()), new Hex(b.to().q(), b.to().r()));
@@ -700,7 +718,7 @@ public final class LandAdapter {
             }
         };
         if (laid) {
-            pending.add(new Input.Built(town, work, Math.min(1, share)));
+            pending.add(new Input.Built(town, reported[0], Math.min(1, share)));
         } else {
             Enterprise.LOGGER.debug("Town {}'s {} can't be laid yet", town, work);
         }

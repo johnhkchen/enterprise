@@ -9,7 +9,7 @@ import java.util.Objects;
  * {@code library}, {@code smithy}, {@code watchtower}, {@code stone_docks}, {@code caravanserai}); a field of a crop; a family's home (two beds,
  * {@code people.rs}), where the host finds room by the bell.
  */
-public sealed interface Work permits Work.Bridge, Work.Wall, Work.Hall, Work.Field, Work.Home {
+public sealed interface Work permits Work.Bridge, Work.Wall, Work.Hall, Work.Field, Work.Home, Work.Pasture {
     void encode(PostcardOut out);
 
     static Work decode(PostcardIn in) {
@@ -20,6 +20,7 @@ public sealed interface Work permits Work.Bridge, Work.Wall, Work.Hall, Work.Fie
             case 2 -> new Hall(in.string());
             case 3 -> new Field(in.u32());
             case 4 -> new Home();
+            case 5 -> new Pasture(in.u32());
             default -> throw in.unknownVariant("Work", at);
         };
     }
@@ -80,6 +81,18 @@ public sealed interface Work permits Work.Bridge, Work.Wall, Work.Hall, Work.Fie
         @Override
         public void encode(PostcardOut out) {
             out.variant(4);
+        }
+    }
+
+    /**
+     * A pasture the town fenced: the host lays it where the land allows and says how much grass is inside its fence
+     * ({@code Built}'s {@code grass}; asked for with none).
+     */
+    record Pasture(long grass) implements Work {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(5);
+            out.u32(this.grass);
         }
     }
 }

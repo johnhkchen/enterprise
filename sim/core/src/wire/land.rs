@@ -80,6 +80,9 @@ pub enum Work {
     Hall { kind: String },
     Field { crop: GoodNo },
     Home,
+    /// A pasture the town fenced: the host lays it where the land allows and says how much grass is inside its fence
+    /// (`Built`'s `grass`; asked for with none).
+    Pasture { grass: u32 },
 }
 
 /// One of a town's works as the core has it: how much of it is laid by its masons (0 to 1), whether it's finished, and

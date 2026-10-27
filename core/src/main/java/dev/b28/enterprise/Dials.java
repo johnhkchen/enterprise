@@ -185,6 +185,7 @@ public final class Dials extends SavedData {
     public static final Dial VARIETY_MOOD = dial("variety_mood", 0.25, "mood a kind of food beyond the first in the town's meals gives");
     public static final Dial VARIETY_MOST = dial("variety_most", 4, "kinds of food counted for variety, at most");
     public static final Dial GLUT_EMERALDS = dial("glut_emeralds", 16, "goods held worth this many emeralds train the next idle hand to the trade that takes them");
+    public static final Dial GRASS_PER_ANIMAL = dial("grass_per_animal", 4, "blocks of grass inside a laid pasture's fence an animal needs (core mode)");
     public static final Dial PASTURES_MAX = dial("pastures_max", 3, "pastures a town fences at most, a new one once full");
     public static final Dial BREED_PER_DAY = dial("breed_per_day", 0.15, "share a fed herd grows by a day, while there's room");
     public static final Dial CULL_SHARE = dial("cull_share", 0.75,

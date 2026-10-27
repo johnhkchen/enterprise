@@ -247,3 +247,25 @@ fn the_land_book_is_saved() {
     assert!(loaded.as_ref().unwrap().unsaved().is_empty());
     let _ = BREAD;
 }
+
+/// A pasture the town fenced is asked of the host at every survey until laid; laid, it holds an animal a
+/// `grass_per_animal` (4) of the grass inside its fence, where one not laid holds `pasture_animals` (16).
+#[test]
+fn a_pasture_is_laid_by_the_host_and_holds_by_its_grass() {
+    let mut host = town(0.0);
+    host.as_mut().unwrap().set_pastures(0, 2);
+    let asked = Work::Pasture { grass: 0 };
+    assert_eq!(builds(&apply(&mut host, vec![survey()])), vec![(asked.clone(), 1.0), (asked.clone(), 1.0)]);
+    let s = host.as_ref().unwrap();
+    assert_eq!(s.herds(0).capacity(s.content()), 32.0, "two not laid: sixteen each");
+    let out = apply(&mut host, vec![Input::Built { town: 0, work: Work::Pasture { grass: 140 }, share: 1.0 }, survey()]);
+    assert_eq!(builds(&out), vec![(asked, 1.0)], "one laid: the other asked for");
+    let s = host.as_ref().unwrap();
+    assert_eq!(s.herds(0).capacity(s.content()), 140.0 / 4.0 + 16.0, "a 12 x 14 of grass holds 35");
+    apply(&mut host, vec![Input::Built { town: 0, work: Work::Pasture { grass: 40 }, share: 1.0 }]);
+    apply(&mut host, vec![Input::Built { town: 0, work: Work::Pasture { grass: 99 }, share: 1.0 }]);
+    let s = host.as_ref().unwrap();
+    assert_eq!(s.herds(0).grass, vec![140, 40], "a third with two fenced is a stale view");
+    let saved = Society::load(&host.as_mut().unwrap().save()).unwrap();
+    assert_eq!(saved.herds(0).grass, vec![140, 40], "and saved");
+}

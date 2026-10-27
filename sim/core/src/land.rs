@@ -191,6 +191,9 @@ impl Society {
             for _ in 0..book.homes.get(&t).copied().unwrap_or(0) {
                 out.push(Output::Build { town: crate::wire::no(t), work: Work::Home, share: 1.0 });
             }
+            for _ in 0..self.unlaid_pastures(t) {
+                out.push(Output::Build { town: crate::wire::no(t), work: Work::Pasture { grass: 0 }, share: 1.0 });
+            }
         }
         out
     }
@@ -205,6 +208,16 @@ impl Society {
                 *n = n.saturating_sub(1);
                 if *n == 0 {
                     book.homes.remove(&town);
+                }
+            }
+            return;
+        }
+        if let Work::Pasture { grass } = *work {
+            if let Some(mut herds) = self.towns.get(town).and_then(|&e| self.world.get_mut::<crate::herds::Herds>(e)) {
+                if herds.unlaid() > 0 {
+                    let laid = herds.laid() as usize;
+                    herds.grass.truncate(laid);
+                    herds.grass.push(grass);
                 }
             }
             return;
@@ -230,6 +243,11 @@ impl Society {
         }
     }
 
+    /// The pastures a town fenced that the host hasn't laid yet.
+    pub fn unlaid_pastures(&self, town: TownId) -> u32 {
+        self.towns.get(town).and_then(|&e| self.world.get::<crate::herds::Herds>(e)).map_or(0, |h| h.unlaid())
+    }
+
     /// A town's land, as `Query::Land` answers it.
     pub fn land_view(&self, town: TownId) -> crate::wire::Answer {
         let holding = self.holding(town);
@@ -245,6 +263,9 @@ impl Society {
         }
         for _ in 0..book.homes.get(&town).copied().unwrap_or(0) {
             works.push(WorkView { work: Work::Home, laid: 1.0, done: true, shown: 0.0 });
+        }
+        for _ in 0..self.unlaid_pastures(town) {
+            works.push(WorkView { work: Work::Pasture { grass: 0 }, laid: 1.0, done: true, shown: 0.0 });
         }
         let plots = self.farm(town).map(|f| f.farm.plots).unwrap_or_default().into_iter()
             .filter(|&(_, n)| n > 0)

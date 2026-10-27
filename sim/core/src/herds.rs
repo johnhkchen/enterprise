@@ -121,6 +121,10 @@ pub struct Herds {
     /// Its llamas (`llamas.rs`): the trains its roads use where a wagon can't go.
     #[serde(default)]
     pub llamas: crate::llamas::Llamas,
+    /// The grass inside each pasture the host has laid (`Work::Pasture`), in blocks, in the order laid; those fenced
+    /// beyond them aren't laid yet.
+    #[serde(default)]
+    pub grass: Vec<u32>,
 }
 
 impl Herds {
@@ -134,9 +138,25 @@ impl Herds {
         self.seeded.resize(kinds, false);
     }
 
-    /// What `pastures` hold, at least one's room (`Husbandry.capacity`).
+    /// What its pastures hold, at least one's room (`Husbandry.capacity`): a pasture the host laid, an animal a
+    /// `grass_per_animal` of the grass inside its fence (John: "by grass area"; not as the mod, whose were 9 x 9); one
+    /// not laid yet, or with no host to lay it, `pasture_animals`.
     pub fn capacity(&self, content: &Content) -> f64 {
-        content.dials.pasture_animals as f64 * self.pastures.max(1) as f64
+        let d = &content.dials;
+        let laid = self.laid();
+        let grass: f64 = self.grass.iter().take(laid as usize).map(|&g| g as f64).sum();
+        let unlaid = self.pastures.max(1) - laid.min(self.pastures.max(1));
+        grass / d.grass_per_animal.max(1.0) + d.pasture_animals as f64 * unlaid as f64
+    }
+
+    /// The pastures the host has laid, of those fenced.
+    pub fn laid(&self) -> u32 {
+        (self.grass.len() as u32).min(self.pastures)
+    }
+
+    /// The pastures fenced that the host hasn't laid yet.
+    pub fn unlaid(&self) -> u32 {
+        self.pastures - self.laid()
     }
 }
 
