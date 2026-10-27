@@ -1,0 +1,317 @@
+{
+  "set": "lordaeron/fields",
+  "rev": 1,
+  "about": "Field plots: 9 x 9 tiles with one water source at (4, 2, 4), which hydrates every cell (the game's reach is 4), and 9 x 1 edges laid between fields or along a headland. Layers 0-1 ground, 2 the surface, 3+ crops and features. Crops are mixed in growth stage so a field never reads as one flat colour.",
+  "tiling": "Lay fields on a 10-pitch grid (9 + an edge). Edges between fields: hedgerow, drystone or rail, one kind per holding so a farm reads as one; edge_gate where a headland path enters. Mix tile kinds by hash: crop fields mostly, a fallow or meadow every few, an orchard by the farmstead.",
+  "rules": [
+    "no point-of-interest blocks (decorative twins only)",
+    "no beds",
+    "the water source stays where it is: every farmland cell is within 4 of it"
+  ],
+  "tiles": [
+    {
+      "id": "field_strips_3_a",
+      "part": "enterprise:lordaeron/field/field_strips_3_a",
+      "width": 9,
+      "depth": 9,
+      "kind_of": "field",
+      "tags": [
+        "crop",
+        "wheat",
+        "carrots",
+        "potatoes"
+      ],
+      "water": [
+        4,
+        2,
+        4
+      ]
+    },
+    {
+      "id": "field_strips_3_b",
+      "part": "enterprise:lordaeron/field/field_strips_3_b",
+      "width": 9,
+      "depth": 9,
+      "kind_of": "field",
+      "tags": [
+        "crop",
+        "wheat",
+        "carrots",
+        "potatoes"
+      ],
+      "water": [
+        4,
+        2,
+        4
+      ]
+    },
+    {
+      "id": "field_strips_2_a",
+      "part": "enterprise:lordaeron/field/field_strips_2_a",
+      "width": 9,
+      "depth": 9,
+      "kind_of": "field",
+      "tags": [
+        "crop",
+        "wheat",
+        "beetroots"
+      ],
+      "water": [
+        4,
+        2,
+        4
+      ]
+    },
+    {
+      "id": "field_strips_2_b",
+      "part": "enterprise:lordaeron/field/field_strips_2_b",
+      "width": 9,
+      "depth": 9,
+      "kind_of": "field",
+      "tags": [
+        "crop",
+        "wheat",
+        "beetroots"
+      ],
+      "water": [
+        4,
+        2,
+        4
+      ]
+    },
+    {
+      "id": "field_pumpkins_a",
+      "part": "enterprise:lordaeron/field/field_pumpkins_a",
+      "width": 9,
+      "depth": 9,
+      "kind_of": "field",
+      "tags": [
+        "crop",
+        "pumpkin",
+        "melon"
+      ],
+      "water": [
+        4,
+        2,
+        4
+      ]
+    },
+    {
+      "id": "field_pumpkins_b",
+      "part": "enterprise:lordaeron/field/field_pumpkins_b",
+      "width": 9,
+      "depth": 9,
+      "kind_of": "field",
+      "tags": [
+        "crop",
+        "pumpkin",
+        "melon"
+      ],
+      "water": [
+        4,
+        2,
+        4
+      ]
+    },
+    {
+      "id": "field_garden_a",
+      "part": "enterprise:lordaeron/field/field_garden_a",
+      "width": 9,
+      "depth": 9,
+      "kind_of": "field",
+      "tags": [
+        "crop",
+        "garden",
+        "carrots",
+        "potatoes",
+        "beetroots"
+      ],
+      "water": [
+        4,
+        2,
+        4
+      ]
+    },
+    {
+      "id": "field_garden_b",
+      "part": "enterprise:lordaeron/field/field_garden_b",
+      "width": 9,
+      "depth": 9,
+      "kind_of": "field",
+      "tags": [
+        "crop",
+        "garden",
+        "carrots",
+        "potatoes",
+        "beetroots"
+      ],
+      "water": [
+        4,
+        2,
+        4
+      ]
+    },
+    {
+      "id": "field_sunflowers_a",
+      "part": "enterprise:lordaeron/field/field_sunflowers_a",
+      "width": 9,
+      "depth": 9,
+      "kind_of": "field",
+      "tags": [
+        "crop",
+        "wheat",
+        "flowers"
+      ],
+      "water": [
+        4,
+        2,
+        4
+      ]
+    },
+    {
+      "id": "field_sunflowers_b",
+      "part": "enterprise:lordaeron/field/field_sunflowers_b",
+      "width": 9,
+      "depth": 9,
+      "kind_of": "field",
+      "tags": [
+        "crop",
+        "wheat",
+        "flowers"
+      ],
+      "water": [
+        4,
+        2,
+        4
+      ]
+    },
+    {
+      "id": "field_fallow_a",
+      "part": "enterprise:lordaeron/field/field_fallow_a",
+      "width": 9,
+      "depth": 9,
+      "kind_of": "field",
+      "tags": [
+        "fallow",
+        "hay"
+      ],
+      "water": [
+        4,
+        2,
+        4
+      ]
+    },
+    {
+      "id": "field_fallow_b",
+      "part": "enterprise:lordaeron/field/field_fallow_b",
+      "width": 9,
+      "depth": 9,
+      "kind_of": "field",
+      "tags": [
+        "fallow",
+        "hay"
+      ],
+      "water": [
+        4,
+        2,
+        4
+      ]
+    },
+    {
+      "id": "field_orchard_a",
+      "part": "enterprise:lordaeron/field/field_orchard_a",
+      "width": 9,
+      "depth": 9,
+      "kind_of": "field",
+      "tags": [
+        "orchard",
+        "bees"
+      ],
+      "water": [
+        4,
+        2,
+        4
+      ]
+    },
+    {
+      "id": "field_orchard_b",
+      "part": "enterprise:lordaeron/field/field_orchard_b",
+      "width": 9,
+      "depth": 9,
+      "kind_of": "field",
+      "tags": [
+        "orchard",
+        "bees"
+      ],
+      "water": [
+        4,
+        2,
+        4
+      ]
+    },
+    {
+      "id": "field_meadow_a",
+      "part": "enterprise:lordaeron/field/field_meadow_a",
+      "width": 9,
+      "depth": 9,
+      "kind_of": "field",
+      "tags": [
+        "meadow",
+        "pond"
+      ],
+      "water": [
+        4,
+        2,
+        4
+      ]
+    },
+    {
+      "id": "field_meadow_b",
+      "part": "enterprise:lordaeron/field/field_meadow_b",
+      "width": 9,
+      "depth": 9,
+      "kind_of": "field",
+      "tags": [
+        "meadow",
+        "pond"
+      ],
+      "water": [
+        4,
+        2,
+        4
+      ]
+    },
+    {
+      "id": "edge_hedgerow",
+      "part": "enterprise:lordaeron/field/edge_hedgerow",
+      "width": 9,
+      "depth": 1,
+      "kind_of": "edge",
+      "socket": "hedge"
+    },
+    {
+      "id": "edge_drystone",
+      "part": "enterprise:lordaeron/field/edge_drystone",
+      "width": 9,
+      "depth": 1,
+      "kind_of": "edge",
+      "socket": "wall"
+    },
+    {
+      "id": "edge_rail",
+      "part": "enterprise:lordaeron/field/edge_rail",
+      "width": 9,
+      "depth": 1,
+      "kind_of": "edge",
+      "socket": "fence"
+    },
+    {
+      "id": "edge_gate",
+      "part": "enterprise:lordaeron/field/edge_gate",
+      "width": 9,
+      "depth": 1,
+      "kind_of": "edge",
+      "socket": "*"
+    }
+  ]
+}
