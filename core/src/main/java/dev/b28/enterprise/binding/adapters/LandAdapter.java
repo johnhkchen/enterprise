@@ -218,6 +218,8 @@ public final class LandAdapter {
                     dev.b28.enterprise.Enterprise.LOGGER.info("Town {} lays its forum round its bell at {} ({} paved)", town,
                             bell.toShortString(), paved);
                 }
+                // Its plan: its walls' rectangles and its avenues to their gates (John: "town plan").
+                dev.b28.enterprise.territory.TownPlans.get(server).ensure(level, town, bell);
                 int since = sinceCounted.getOrDefault(town, CROPS_EVERY);
                 if (since >= CROPS_EVERY) {
                     inputs.addAll(crops(level, town, desk.getKey().pos(), bell));
@@ -678,7 +680,10 @@ public final class LandAdapter {
                 yield true;
             }
             case Work.Wall w -> {
-                List<BlockPos> ring = Works.ring(bell, Works.WALL_RADIUS);
+                // The inner wall of the town's plan, square to the compass; a ring round the bell for a town with none.
+                var plan = dev.b28.enterprise.territory.TownPlans.get(level.getServer()).of(town);
+                List<BlockPos> ring = plan != null ? dev.b28.enterprise.territory.TownPlans.wall(plan)
+                        : Works.ring(bell, Works.WALL_RADIUS);
                 int from = (int) Math.floor(land(town).shown(work) * ring.size());
                 int to = (int) Math.floor(Math.min(1, share) * ring.size());
                 List<BlockPos> stretch = ring.subList(Math.min(from, to), to);

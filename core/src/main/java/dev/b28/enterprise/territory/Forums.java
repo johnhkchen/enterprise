@@ -25,8 +25,8 @@ import net.minecraft.world.level.saveddata.SavedData;
  */
 public final class Forums extends SavedData {
     private static final String NAME = "enterprise_forums";
-    /** A forum reaches this far each way from its bell: 7 x 7. */
-    public static final int REACH = 3;
+    /** A forum reaches this far each way from its bell: 13 x 13 (John: "town squares can be a bit bigger"). */
+    public static final int REACH = 6;
     /** How far above or below the bell's ground the forum's paving may be. */
     static final int RISE = 1;
     /** A main road's width: a village street. */
@@ -59,18 +59,18 @@ public final class Forums extends SavedData {
                 }
             }
         }
-        int paved = pave(level, bell);
+        int paved = pave(level, bell, REACH);
         bells.put(town, bell);
         setDirty();
         return paved;
     }
 
-    /** The forum's paving: each column round the bell whose top is the land's own ground, near its height, paved. */
-    public static int pave(ServerLevel level, BlockPos bell) {
+    /** The forum's paving, {@code reach} each way: each column round the bell whose top is the land's own ground, near its height, paved. */
+    public static int pave(ServerLevel level, BlockPos bell, int reach) {
         // The forum's ground: the height most of its columns stand at.
         Map<Integer, Integer> heights = new java.util.HashMap<>();
-        for (int dx = -REACH; dx <= REACH; dx++) {
-            for (int dz = -REACH; dz <= REACH; dz++) {
+        for (int dx = -reach; dx <= reach; dx++) {
+            for (int dz = -reach; dz <= reach; dz++) {
                 heights.merge(level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, bell.getX() + dx, bell.getZ() + dz) - 1,
                         1, Integer::sum);
             }
@@ -78,8 +78,8 @@ public final class Forums extends SavedData {
         int ground = heights.entrySet().stream().max(Map.Entry.<Integer, Integer>comparingByValue()
                 .thenComparing(Map.Entry.comparingByKey())).orElseThrow().getKey();
         int paved = 0;
-        for (int dx = -REACH; dx <= REACH; dx++) {
-            for (int dz = -REACH; dz <= REACH; dz++) {
+        for (int dx = -reach; dx <= reach; dx++) {
+            for (int dz = -reach; dz <= reach; dz++) {
                 int x = bell.getX() + dx;
                 int z = bell.getZ() + dz;
                 int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) - 1;

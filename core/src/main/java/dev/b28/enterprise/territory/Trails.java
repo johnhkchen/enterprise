@@ -207,15 +207,15 @@ public final class Trails extends SavedData {
     static final java.util.Map<Ends, double[][]> PLANNED = new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
-     * A road's key: its two end hexes in a fixed order and its carrier. One road serves both ways between two towns,
-     * and the same road stays when the core routes them over other hexes (it planned each direction, and each new
-     * routing, anew).
+     * A road's key: its two end hexes in a fixed order. One road serves both ways between two towns, whatever carries
+     * on it, and the same road stays when the core routes them over other hexes (seed 8675309's first run of planned
+     * roads laid fifteen for five pairs of towns, each direction and each new routing its own: the stray paths).
      */
-    record Ends(Hex a, Hex b, boolean llama) {
+    record Ends(Hex a, Hex b) {
         static Ends of(Trail t) {
             Hex first = t.path().get(0), last = t.path().get(t.path().size() - 1);
             boolean flip = first.q() > last.q() || first.q() == last.q() && first.r() > last.r();
-            return flip ? new Ends(last, first, t.llama()) : new Ends(first, last, t.llama());
+            return flip ? new Ends(last, first) : new Ends(first, last);
         }
     }
 
@@ -240,12 +240,13 @@ public final class Trails extends SavedData {
     static final int GRID = 4;
     /**
      * How dear a grade is to a wagon (squared), the grade past which it's a cliff to go round and the cliff's toll, and
-     * a ford's share of a step (a step costs 1 + this): a wagon wants a gentle road, 1 in 3 its steepest.
+     * a ford's share of a step (a step costs 1 + this): a wagon wants a gentle road, 1 rise in 12 run its steepest
+     * (John: "even flatter. Maybe 1 rise per 12 run").
      */
-    static final double GRADE = 25;
-    static final double SHEER = 0.35;
+    static final double GRADE = 100;
+    static final double SHEER = 1.0 / 12;
     static final double SHEER_TOLL = 60;
-    static final double WET = 7;
+    static final double WET = 25;
     /** A llama train's: steep ground it takes (1 in 1 its steepest), water as a wagon does. */
     static final double LLAMA_GRADE = 5;
     static final double LLAMA_SHEER = 1.0;
@@ -280,6 +281,29 @@ public final class Trails extends SavedData {
                 }
             }
         }
+        // Smoothed over the twelve blocks round each point: whole blocks on a four-block grid make every climb at least
+        // 1 in 4, and a gentle slope reads as steps.
+        double[] even = h.clone();
+        for (int i = 0; i < nx; i++) {
+            for (int j = 0; j < nz; j++) {
+                if (!ok[i * nz + j]) {
+                    continue;
+                }
+                double sum = 0;
+                int n = 0;
+                for (int di = -1; di <= 1; di++) {
+                    for (int dj = -1; dj <= 1; dj++) {
+                        int a2 = i + di, b2 = j + dj;
+                        if (a2 >= 0 && b2 >= 0 && a2 < nx && b2 < nz && ok[a2 * nz + b2]) {
+                            sum += h[a2 * nz + b2];
+                            n++;
+                        }
+                    }
+                }
+                even[i * nz + j] = sum / n;
+            }
+        }
+        h = even;
         int sa = Math.clamp(Math.round((float) ((a[0] - x0) / GRID)), 0, nx - 1) * nz
                 + Math.clamp(Math.round((float) ((a[1] - z0) / GRID)), 0, nz - 1);
         int sb = Math.clamp(Math.round((float) ((b[0] - x0) / GRID)), 0, nx - 1) * nz
@@ -399,6 +423,17 @@ public final class Trails extends SavedData {
             return column(x, z)[0];
         }
 
+        /** The ground's height averaged over the twelve blocks round the place (see {@link #road}'s grid). */
+        double even(int x, int z) {
+            double sum = 0;
+            for (int dx = -GRID; dx <= GRID; dx += GRID) {
+                for (int dz = -GRID; dz <= GRID; dz += GRID) {
+                    sum += height(x + dx, z + dz);
+                }
+            }
+            return sum / 9;
+        }
+
         boolean wet(int x, int z) {
             return column(x, z)[1] == 1;
         }
@@ -417,10 +452,10 @@ public final class Trails extends SavedData {
             int n = Math.max(1, (int) Math.ceil(length / GRID));
             double total = 0;
             int px = (int) Math.floor(a[0]), pz = (int) Math.floor(a[1]);
-            double ph = height(px, pz);
+            double ph = even(px, pz);
             for (int k = 1; k <= n; k++) {
                 int x = (int) Math.floor(a[0] + (b[0] - a[0]) * k / n), z = (int) Math.floor(a[1] + (b[1] - a[1]) * k / n);
-                double hh = height(x, z);
+                double hh = even(x, z);
                 total += step(px, pz, ph, x, z, hh);
                 px = x;
                 pz = z;
@@ -524,127 +559,7 @@ public final class Trails extends SavedData {
         // Through a town's forum hex, its main street: three wide at the least.
         boolean forum = bells.values().stream().anyMatch(b -> Hex.at(b).equals(t.hex()));
         double[][] line = line(t, bells);
-        if (t.path().size() >= 2 && line.length >= 2) {
-            double[][] way = wind(level, line[0], line[line.length - 1]);
-            if (way != null) {
-                line = way;
-            }
-        }
-        return layLine(level, line, forum ? Math.max(t.width(), Forums.ROAD_WIDTH) : t.width());
-    }
-
-    /** What a climb of a block costs a wagon, a block's step (squared in the climb: a gentle grade is cheap, a steep dear). */
-    static final double CLIMB = 3;
-    /** A climb of more than this in a step is a cliff to go round, at {@link #CLIFF}. */
-    static final int STEEP = 1;
-    static final double CLIFF = 40;
-    /** A ford's cost a block, a felled tree's, and an old path's share of a step's (a road keeps to the way worn). */
-    static final double FORD = 30;
-    static final double FELL = 1.5;
-    static final double WORN = 0.7;
-    /** The meander on the flat: a gentle cost, fixed by the ground's place, that bends a road a little. */
-    static final double MEANDER = 0.35;
-
-    /**
-     * A wagon's way from {@code a} to {@code b} (where the stretch of the road's taut line a hex lays begins and ends):
-     * the cheapest over its ground's columns, a step costing its length, more as it climbs (gentle grades cheap, a
-     * cliff dear, so it goes round a hill), a ford, a tree to fell; less on a path already worn; and a gentle meander
-     * on the flat (John: "a little more wagon-optimized ... low elevation change, gentle slopes. A bit of winding").
-     * Over the ground round the stretch, loaded. Null if there's no way (the caller lays it as planned).
-     */
-    static double[][] wind(ServerLevel level, double[] a, double[] b) {
-        // A square round the stretch, room to go round a hill either side.
-        int reach = (int) Math.ceil(Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) / 2) + 32;
-        int x0 = (int) Math.floor((a[0] + b[0]) / 2) - reach, z0 = (int) Math.floor((a[1] + b[1]) / 2) - reach;
-        int span = 2 * reach + 1;
-        int[] height = new int[span * span];
-        double[] extra = new double[span * span];
-        for (int i = 0; i < span; i++) {
-            for (int j = 0; j < span; j++) {
-                int x = x0 + i, z = z0 + j, k = i * span + j;
-                if (!level.isLoaded(new BlockPos(x, 0, z))) {
-                    height[k] = Integer.MIN_VALUE;
-                    continue;
-                }
-                int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) - 1;
-                height[k] = y;
-                BlockState top = level.getBlockState(new BlockPos(x, y, z));
-                double e = 0;
-                if (!top.getFluidState().isEmpty()) {
-                    e += FORD;
-                } else if (top.is(net.minecraft.tags.BlockTags.LOGS)) {
-                    e += FELL;
-                } else if (!soil(top) && !dev.b28.enterprise.settlement.Grounds.natural(top)) {
-                    e += CLIFF; // something built: around it
-                }
-                if (level.getBlockState(new BlockPos(x, y, z)).is(Blocks.DIRT_PATH)) {
-                    e -= 1 - WORN;
-                }
-                e += MEANDER * noise(x, z);
-                extra[k] = e;
-            }
-        }
-        int sa = cell(a, x0, z0, span), sb = cell(b, x0, z0, span);
-        if (sa < 0 || sb < 0 || height[sa] == Integer.MIN_VALUE || height[sb] == Integer.MIN_VALUE) {
-            return null;
-        }
-        double[] cost = new double[span * span];
-        java.util.Arrays.fill(cost, Double.MAX_VALUE);
-        int[] came = new int[span * span];
-        java.util.PriorityQueue<double[]> open = new java.util.PriorityQueue<>(java.util.Comparator.comparingDouble(o -> o[0]));
-        cost[sa] = 0;
-        open.add(new double[] {dist(sa, sb, span), sa});
-        int[][] steps = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
-        while (!open.isEmpty()) {
-            double[] o = open.poll();
-            int k = (int) o[1];
-            if (k == sb) {
-                break;
-            }
-            if (o[0] - dist(k, sb, span) > cost[k] + 1e-9) {
-                continue;
-            }
-            int i = k / span, j = k % span;
-            for (int[] s : steps) {
-                int ni = i + s[0], nj = j + s[1];
-                if (ni < 0 || nj < 0 || ni >= span || nj >= span) {
-                    continue;
-                }
-                int n = ni * span + nj;
-                if (height[n] == Integer.MIN_VALUE) {
-                    continue;
-                }
-                double step = s[0] != 0 && s[1] != 0 ? Math.sqrt(2) : 1;
-                int climb = Math.abs(height[n] - height[k]);
-                double c = step * (1 + Math.max(-0.6, extra[n])) + CLIMB * climb * climb + (climb > STEEP ? CLIFF : 0);
-                if (cost[k] + c < cost[n]) {
-                    cost[n] = cost[k] + c;
-                    came[n] = k;
-                    open.add(new double[] {cost[n] + dist(n, sb, span), n});
-                }
-            }
-        }
-        if (cost[sb] == Double.MAX_VALUE) {
-            return null;
-        }
-        List<double[]> way = new ArrayList<>();
-        for (int k = sb; ; k = came[k]) {
-            way.add(new double[] {x0 + k / span + 0.5, z0 + k % span + 0.5});
-            if (k == sa) {
-                break;
-            }
-        }
-        java.util.Collections.reverse(way);
-        return way.toArray(new double[0][]);
-    }
-
-    private static int cell(double[] p, int x0, int z0, int span) {
-        int i = (int) Math.floor(p[0]) - x0, j = (int) Math.floor(p[1]) - z0;
-        return i < 0 || j < 0 || i >= span || j >= span ? -1 : i * span + j;
-    }
-
-    private static double dist(int a, int b, int span) {
-        return Math.hypot(a / span - b / span, a % span - b % span);
+        return layLine(level, line, forum ? Math.max(t.width(), Forums.ROAD_WIDTH) : t.width(), t.path().size() >= 2);
     }
 
     /** A gentle, smooth value in [0, 1) fixed by the place (a few blocks' worth of wavelength). */
@@ -659,6 +574,14 @@ public final class Trails extends SavedData {
      * filled to the ground either side. Returns the columns laid.
      */
     public static int layLine(ServerLevel level, double[][] points, int width) {
+        return layLine(level, points, width, false);
+    }
+
+    /**
+     * As {@link #layLine(ServerLevel, double[][], int)}; with {@code bridges}, a road planned across water is decked over
+     * it in planks at the surface, so it goes on to the far bank rather than ending at the water's edge.
+     */
+    public static int layLine(ServerLevel level, double[][] points, int width, boolean bridges) {
         List<BlockPos> cols = columns(points, width);
         int[] top = new int[cols.size()];
         for (int i = 0; i < cols.size(); i++) {
@@ -675,6 +598,11 @@ public final class Trails extends SavedData {
             int y = top[i];
             BlockPos c = cols.get(i);
             BlockState ground = level.getBlockState(c.atY(y));
+            if (bridges && !ground.getFluidState().isEmpty() && level.getBlockState(c.atY(y + 1)).isAir()) {
+                level.setBlock(c.atY(y), Blocks.SPRUCE_PLANKS.defaultBlockState(), 3); // a deck at the water's surface
+                laid++;
+                continue;
+            }
             if (!soil(ground)) {
                 continue;
             }

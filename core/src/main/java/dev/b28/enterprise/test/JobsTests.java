@@ -261,7 +261,7 @@ public final class JobsTests {
         }
         helper.setBlock(new BlockPos(1, 1, 1), Blocks.OAK_PLANKS); // a house's floor
         helper.setBlock(new BlockPos(3, 2, 3), Blocks.BELL);
-        int paved = dev.b28.enterprise.territory.Forums.pave(helper.getLevel(), helper.absolutePos(new BlockPos(3, 2, 3)));
+        int paved = dev.b28.enterprise.territory.Forums.pave(helper.getLevel(), helper.absolutePos(new BlockPos(3, 2, 3)), 3);
         helper.assertTrue(paved == 47, "49 round the bell less the bell's and the house's: " + paved);
         helper.assertBlockPresent(Blocks.STONE_BRICKS, new BlockPos(0, 1, 0));
         helper.assertBlockPresent(Blocks.OAK_PLANKS, new BlockPos(1, 1, 1));

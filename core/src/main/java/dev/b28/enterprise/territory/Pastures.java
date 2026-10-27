@@ -44,7 +44,7 @@ public final class Pastures {
      * {@link Growth#FIELD_RISE}. Empty if nothing fits or the ground isn't loaded.
      */
     public static Optional<Site> site(ServerLevel level, BlockPos bell) {
-        int reach = Growth.FIELD_FARTHEST;
+        int reach = TownPlans.farmReach(level, bell, Growth.FIELD_FARTHEST);
         int span = 2 * reach + 1;
         int[] height = new int[span * span];
         boolean[] open = new boolean[span * span];
@@ -86,9 +86,9 @@ public final class Pastures {
         List<BlockPos> town = level.getPoiManager()
                 .getInRange(type -> true, bell, reach + 24, PoiManager.Occupancy.ANY).map(PoiRecord::getPos).toList();
         for (int[] size : SIZES) {
-            Optional<Site> found = place(bell, size[0], size[1], span, x0, z0, height, open, town);
+            Optional<Site> found = place(level, bell, size[0], size[1], span, x0, z0, height, open, town);
             if (found.isEmpty() && size[0] != size[1]) {
-                found = place(bell, size[1], size[0], span, x0, z0, height, open, town);
+                found = place(level, bell, size[1], size[0], span, x0, z0, height, open, town);
             }
             if (found.isPresent()) {
                 return found;
@@ -121,15 +121,15 @@ public final class Pastures {
     }
 
     /** The nearest corner for a {@code sx} x {@code sz} pasture on the surveyed ground, if any. */
-    private static Optional<Site> place(BlockPos bell, int sx, int sz, int span, int x0, int z0, int[] height,
-            boolean[] open, List<BlockPos> town) {
+    private static Optional<Site> place(ServerLevel level, BlockPos bell, int sx, int sz, int span, int x0, int z0,
+            int[] height, boolean[] open, List<BlockPos> town) {
         List<int[]> corners = new ArrayList<>();
         for (int i = 0; i + sx <= span; i++) {
             for (int j = 0; j + sz <= span; j++) {
                 double mx = x0 + i + sx / 2.0 - bell.getX();
                 double mz = z0 + j + sz / 2.0 - bell.getZ();
                 double d = Math.hypot(mx, mz);
-                if (d >= NEAREST && d <= Growth.FIELD_FARTHEST) {
+                if (d >= NEAREST && d <= span / 2.0) {
                     corners.add(new int[] {i, j, (int) (d * 16)});
                 }
             }
@@ -156,7 +156,7 @@ public final class Pastures {
             int cx = x0 + c[0];
             int cz = z0 + c[1];
             BlockPos corner = new BlockPos(cx, height[c[0] * span + c[1]], cz);
-            if (zoned(bell, cx, cz, sx, sz, town)) {
+            if (zoned(bell, cx, cz, sx, sz, town) && TownPlans.clear(level, cx, cz, sx, sz, true)) {
                 return Optional.of(new Site(corner, sx, sz));
             }
         }

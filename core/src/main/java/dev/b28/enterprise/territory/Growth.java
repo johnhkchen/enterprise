@@ -75,10 +75,11 @@ public final class Growth {
      */
     public static Optional<BlockPos> farmSite(ServerLevel level, BlockPos bell, int size, int nearest) {
         List<BlockPos> town = level.getPoiManager()
-                .getInRange(type -> true, bell, FIELD_FARTHEST + NEIGHBOURHOOD + size, PoiManager.Occupancy.ANY)
+                .getInRange(type -> true, bell, TownPlans.farmReach(level, bell, FIELD_FARTHEST) + NEIGHBOURHOOD + size, PoiManager.Occupancy.ANY)
                 .map(PoiRecord::getPos)
                 .toList();
-        return site(level, bell, size, nearest, FIELD_FARTHEST, FIELD_RISE, corner -> zoned(bell, corner, size, town));
+        return site(level, bell, size, nearest, TownPlans.farmReach(level, bell, FIELD_FARTHEST), FIELD_RISE,
+                corner -> zoned(bell, corner, size, town) && TownPlans.clear(level, corner.getX(), corner.getZ(), size, size, true));
     }
 
     /**
@@ -134,6 +135,8 @@ public final class Growth {
         corners.sort(Comparator.comparingDouble((BlockPos c) -> c.distSqr(bell)).thenComparing(c -> c));
         // (Where it's allowed first: a footprint's place among the town's is cheaper to ask than its ground.)
         corners.removeIf(c -> !allowed.test(c));
+        // Off the town plans' walls and avenues (core mode's `TownPlans`; none in Java mode).
+        corners.removeIf(c -> !TownPlans.clear(level, c.getX(), c.getZ(), size, size, false));
         for (BlockPos corner : corners) {
             int ground = surface(level, corner.getX(), corner.getZ());
             if (ground != Integer.MIN_VALUE && Math.abs(ground - bell.getY()) <= rise) {
