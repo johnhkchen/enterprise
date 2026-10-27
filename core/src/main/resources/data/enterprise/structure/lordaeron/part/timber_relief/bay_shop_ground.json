@@ -15,7 +15,8 @@
   "where": {
     "storey": "ground",
     "face": [
-      "front"
+      "front",
+      "corner_side"
     ]
   },
   "mirror": true,

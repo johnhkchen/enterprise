@@ -143,14 +143,14 @@ const FITOUT = {
 };
 
 /** Every module: { id, grid, meta } (meta: the WFC fields: layer, where, sockets, behind, weight, mirror, size) */
-export function allModules({ spans = [9, 12, 15] } = {}) {
+export function allModules({ spans = [9, 10, 11, 12, 13, 14, 15] } = {}) {   // 10, 11, 13, 14: gable_z over party walls (terraces turning a gable to the street)
   const out = [], add = (id, grid, meta) => out.push({ id, grid, meta: { id, size: grid.size, ...meta } });
   const shellMeta = (st, extra) => ({ layer: "shell", where: { storey: st }, mirror: true, ...extra });
   for (const st of ["ground", "upper"]) {
     add(`post_${st}`, SHELL.post(st), shellMeta(st, { slot: "post", sockets: { left: "bay|corner", right: "bay|corner", down: "floor_line", up: "floor_line|eave" }, weight: 1 }));
     add(`bay_plain_${st}`, SHELL.bay_plain(st), shellMeta(st, { slot: "bay", behind: ["store", "hall", "chamber"], weight: 1 }));
     add(`bay_window_${st}`, SHELL.bay_window(st), shellMeta(st, { slot: "bay", behind: ["chamber", "hall"], weight: 4 }));
-    add(`bay_window_box_${st}`, SHELL.bay_window_box(st), shellMeta(st, { slot: "bay", behind: ["chamber", "hall"], where: { storey: st, face: ["front"] }, weight: 2 }));
+    add(`bay_window_box_${st}`, SHELL.bay_window_box(st), shellMeta(st, { slot: "bay", behind: ["chamber", "hall"], where: { storey: st, face: ["front", "corner_side"] }, weight: 2 }));
     add(`bay_landing_${st}`, SHELL.bay_landing(st), shellMeta(st, { slot: "bay", behind: ["stair"], weight: 3 }));
     add(`corner_${st}`, SHELL.corner(), shellMeta(st, { slot: "corner", weight: 1 }));
     add(`corner_party_${st}`, SHELL.corner_party(), shellMeta(st, { slot: "corner", relief: "party", weight: 1 }));
@@ -161,7 +161,7 @@ export function allModules({ spans = [9, 12, 15] } = {}) {
   }
   add("bay_door_ground", SHELL.bay_door(), shellMeta("ground", { slot: "bay", where: { storey: "ground", face: ["front"] }, limit: "exactly 1 per front", weight: 1 }));
   add("bay_arcade_ground", SHELL.bay_arcade(), shellMeta("ground", { slot: "bay", behind: ["market"], weight: 1, note: "open arcade: market halls" }));
-  add("bay_shop_ground", SHELL.bay_shop(), shellMeta("ground", { slot: "bay", behind: ["shop", "work", "hall"], where: { storey: "ground", face: ["front"] }, weight: 2 }));
+  add("bay_shop_ground", SHELL.bay_shop(), shellMeta("ground", { slot: "bay", behind: ["shop", "work", "hall"], where: { storey: "ground", face: ["front", "corner_side"] }, weight: 2 }));
   for (const span of spans) for (const kind of ["bay", "gable", "verge"]) add(`roof_${kind}_${span}`, roofSlice(span, kind), { layer: "roof", span, pitch: PITCH, kind, mirror: true });
   for (const type of ["straight", "turned"]) for (const part of ["bottom", "mid", "top"]) add(`core_${type}_${part}`, core(type, part), { layer: "plan", tile: type === "straight" ? "stair2x5" : "stair3x3", part, stacks: true });
   for (const [id, f] of Object.entries(FITOUT)) add(id, f(), { layer: "fitout" });

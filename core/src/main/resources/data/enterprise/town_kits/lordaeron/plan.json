@@ -1,6 +1,6 @@
 {
   "set": "lordaeron/timber_relief",
-  "rev": 1,
+  "rev": 2,
   "about": "The plan layer as data: for each body class, the stair core, the partitions and the furniture of every storey. Both composers (the studio's compose.mjs and the client's Compose.java) read this file; a new body size or a new room rule is a data change here. Positions are [x, z] in body coordinates (the interior is x 1..W-2, z 1..D-2, north is z 1) as integers or expressions over W, D, cx (the turned core's west column, W-4), and storeys. Each placement: { module, at, dy (layers above the storey's floor, default 1), q (quarter turns), if (an expression) }. A placement with role bed records a bed (head at `at`, foot one south); role work records the workstation (air marker for 'any', else the exact block).",
   "rules": [
     "multi-storey from 10 wide; a 7-wide body is one storey",
@@ -1022,6 +1022,38 @@
           }
         ]
       }
+    }
+  },
+  "kinds": {
+    "about": "Any body can be built as one of these kinds; the plan (core, partitions, furniture) is the body's own. The kind changes the shell only.",
+    "detached": {
+      "party": [
+        false,
+        false
+      ],
+      "use": "lanes and ward backs: 2 of side yard each side"
+    },
+    "terrace": {
+      "party": [
+        true,
+        true
+      ],
+      "use": "avenue fronts between neighbours: party walls both sides (no windows, the hearth's chimney in the west party wall), no side yards"
+    },
+    "terrace_end": {
+      "party": [
+        true,
+        false
+      ],
+      "use": "the last house of an avenue terrace where a lane or open ground follows: party wall west, the east side a plain side with windows"
+    },
+    "corner": {
+      "party": [
+        true,
+        false
+      ],
+      "corner": "east",
+      "use": "where an avenue meets a lane: party wall west, the east side a second street front (window boxes, the shop bay if the house keeps a shop); mirror for a corner on the west"
     }
   }
 }

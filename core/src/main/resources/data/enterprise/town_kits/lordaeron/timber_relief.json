@@ -167,7 +167,8 @@
       "where": {
         "storey": "ground",
         "face": [
-          "front"
+          "front",
+          "corner_side"
         ]
       },
       "mirror": true,
@@ -381,7 +382,8 @@
       "where": {
         "storey": "upper",
         "face": [
-          "front"
+          "front",
+          "corner_side"
         ]
       },
       "mirror": true,
@@ -572,7 +574,8 @@
       "where": {
         "storey": "ground",
         "face": [
-          "front"
+          "front",
+          "corner_side"
         ]
       },
       "mirror": true,
@@ -627,6 +630,90 @@
       "mirror": true
     },
     {
+      "id": "roof_bay_10",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_bay_10",
+      "size": [
+        1,
+        9,
+        10
+      ],
+      "layer": "roof",
+      "span": 10,
+      "pitch": 2,
+      "kind": "bay",
+      "mirror": true
+    },
+    {
+      "id": "roof_gable_10",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_gable_10",
+      "size": [
+        1,
+        9,
+        10
+      ],
+      "layer": "roof",
+      "span": 10,
+      "pitch": 2,
+      "kind": "gable",
+      "mirror": true
+    },
+    {
+      "id": "roof_verge_10",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_verge_10",
+      "size": [
+        1,
+        9,
+        10
+      ],
+      "layer": "roof",
+      "span": 10,
+      "pitch": 2,
+      "kind": "verge",
+      "mirror": true
+    },
+    {
+      "id": "roof_bay_11",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_bay_11",
+      "size": [
+        1,
+        11,
+        11
+      ],
+      "layer": "roof",
+      "span": 11,
+      "pitch": 2,
+      "kind": "bay",
+      "mirror": true
+    },
+    {
+      "id": "roof_gable_11",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_gable_11",
+      "size": [
+        1,
+        11,
+        11
+      ],
+      "layer": "roof",
+      "span": 11,
+      "pitch": 2,
+      "kind": "gable",
+      "mirror": true
+    },
+    {
+      "id": "roof_verge_11",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_verge_11",
+      "size": [
+        1,
+        11,
+        11
+      ],
+      "layer": "roof",
+      "span": 11,
+      "pitch": 2,
+      "kind": "verge",
+      "mirror": true
+    },
+    {
       "id": "roof_bay_12",
       "part": "enterprise:lordaeron/part/timber_relief/roof_bay_12",
       "size": [
@@ -664,6 +751,90 @@
       ],
       "layer": "roof",
       "span": 12,
+      "pitch": 2,
+      "kind": "verge",
+      "mirror": true
+    },
+    {
+      "id": "roof_bay_13",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_bay_13",
+      "size": [
+        1,
+        13,
+        13
+      ],
+      "layer": "roof",
+      "span": 13,
+      "pitch": 2,
+      "kind": "bay",
+      "mirror": true
+    },
+    {
+      "id": "roof_gable_13",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_gable_13",
+      "size": [
+        1,
+        13,
+        13
+      ],
+      "layer": "roof",
+      "span": 13,
+      "pitch": 2,
+      "kind": "gable",
+      "mirror": true
+    },
+    {
+      "id": "roof_verge_13",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_verge_13",
+      "size": [
+        1,
+        13,
+        13
+      ],
+      "layer": "roof",
+      "span": 13,
+      "pitch": 2,
+      "kind": "verge",
+      "mirror": true
+    },
+    {
+      "id": "roof_bay_14",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_bay_14",
+      "size": [
+        1,
+        13,
+        14
+      ],
+      "layer": "roof",
+      "span": 14,
+      "pitch": 2,
+      "kind": "bay",
+      "mirror": true
+    },
+    {
+      "id": "roof_gable_14",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_gable_14",
+      "size": [
+        1,
+        13,
+        14
+      ],
+      "layer": "roof",
+      "span": 14,
+      "pitch": 2,
+      "kind": "gable",
+      "mirror": true
+    },
+    {
+      "id": "roof_verge_14",
+      "part": "enterprise:lordaeron/part/timber_relief/roof_verge_14",
+      "size": [
+        1,
+        13,
+        14
+      ],
+      "layer": "roof",
+      "span": 14,
       "pitch": 2,
       "kind": "verge",
       "mirror": true

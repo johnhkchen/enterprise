@@ -1,0 +1,19 @@
+{
+  "id": "roof_verge_10",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "verge",
+  "slot": "part",
+  "set": "lordaeron/timber_relief",
+  "palette": "stone",
+  "size": [
+    1,
+    9,
+    10
+  ],
+  "layer": "roof",
+  "span": 10,
+  "pitch": 2,
+  "mirror": true,
+  "module": "roof_verge_10"
+}

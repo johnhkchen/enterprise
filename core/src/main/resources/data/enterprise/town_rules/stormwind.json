@@ -1,0 +1,151 @@
+{
+  "kingdom": "stormwind",
+  "rev": 1,
+  "about": "Stormwind's town rules: Lordaeron's zoning and fill order (the grid and the planned-town rules are shared), with Stormwind's sets and palettes.",
+  "zoning": {
+    "about": "The planned town (thread 0012): the plan is laid at founding for the town's eventual tier; plots fill in `fill_order`; each plot takes its body, kind, storeys, palette and roof from its street class and its band (distance from the bell along the streets, in blocks). Bands and streets are read in this order: the first rule that matches wins. Unbuilt plots carry yard or field tiles (`placeholder`) until their house comes.",
+    "streets": {
+      "avenue": "a street from a gate to the forum",
+      "forum_front": "a plot whose front faces the forum",
+      "lane": "a street between wards",
+      "ward_back": "a plot reached only from inside a ward"
+    },
+    "bands": [
+      {
+        "name": "core",
+        "to": 40
+      },
+      {
+        "name": "inner",
+        "from": 40,
+        "to": 90
+      },
+      {
+        "name": "outer",
+        "from": 90,
+        "to": 160
+      },
+      {
+        "name": "fringe",
+        "from": 160
+      }
+    ],
+    "fill_order": [
+      "forum_front",
+      "avenue:core",
+      "avenue:inner",
+      "lane:core",
+      "avenue:outer",
+      "lane:inner",
+      "lane:outer",
+      "ward_back",
+      "fringe"
+    ],
+    "rules": [
+      {
+        "street": "forum_front",
+        "use": "the forum frontage set first (hall, inn, guildhall); then houses",
+        "body": "13x7",
+        "kind": "terrace",
+        "storeys": 3,
+        "palette": "stone",
+        "shop": true
+      },
+      {
+        "street": "avenue",
+        "band": "core",
+        "body": "10x7",
+        "kind": "terrace",
+        "storeys": 3,
+        "palette": {
+          "stone": 2,
+          "brick": 1
+        },
+        "shop": true,
+        "corner_at_lanes": true
+      },
+      {
+        "street": "avenue",
+        "band": "inner",
+        "body": "10x7",
+        "kind": "terrace",
+        "storeys": [
+          2,
+          3
+        ],
+        "palette": {
+          "brick": 2,
+          "daub": 1,
+          "stone": 1
+        },
+        "shop": "every other",
+        "corner_at_lanes": true
+      },
+      {
+        "street": "avenue",
+        "band": "outer",
+        "body": "10x7",
+        "kind": "terrace",
+        "storeys": 2,
+        "palette": {
+          "daub": 2,
+          "brick": 1
+        },
+        "workshop": "every third, a trade the town has"
+      },
+      {
+        "street": "lane",
+        "band": [
+          "core",
+          "inner"
+        ],
+        "body": {
+          "10x7": 2,
+          "7x7": 1
+        },
+        "kind": "detached",
+        "storeys": [
+          1,
+          2
+        ],
+        "palette": {
+          "brick": 1,
+          "daub": 2
+        }
+      },
+      {
+        "street": "lane",
+        "band": "outer",
+        "body": "7x7",
+        "kind": "detached",
+        "storeys": 1,
+        "palette": "daub"
+      },
+      {
+        "street": "ward_back",
+        "body": "7x7",
+        "kind": "detached",
+        "storeys": 1,
+        "palette": "daub",
+        "yards": "big gardens: back yard tiles both sides"
+      },
+      {
+        "band": "fringe",
+        "use": "farmsteads on holdings (farmstead_19x18_*), fields, pastures; no town houses"
+      }
+    ],
+    "rhythm": {
+      "roof": "along a terrace, alternate gable_x and gable_z (a gable turned to the street) house by house, never two gable_z side by side; corner houses gable_x",
+      "palette": "never the same palette three houses running; corner houses stone in the core and inner bands",
+      "door": "vary the door bay (doorBay 0, 1, 2) along a terrace by the plot's hash"
+    },
+    "placeholder": {
+      "front": "front_garden_3 and front_cottage_2 tiles",
+      "plot": "field_fallow or garden_pumpkins (town_kits/lordaeron/fields.json) on the house's 9 rows",
+      "back": "back yard tiles as usual"
+    },
+    "replacement": "a vanilla house inside the plan stays until the kingdom house on its plot is built; then it's cleared and its villagers move to the new beds (John's decision, thread 0012)",
+    "kinds": "plan.json `kinds`: detached, terrace, terrace_end, corner"
+  },
+  "palettes": "assets-src/kingdoms/stormwind/palettes.json (aliases: daub -> goldshire, brick -> stone); houses compose from lordaeron/timber_relief"
+}

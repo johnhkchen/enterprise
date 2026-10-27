@@ -1,51 +1,220 @@
 {
   "kingdom": "lordaeron",
-  "rev": 1,
+  "rev": 2,
   "about": "Composition rules for Lordaeron towns: which kits fill which slots at each tier, how a plot's yards are chosen, how the forum, avenues and wall dress up as the town grows. Every asset id is one we have delivered (batches 002-009). Choice is deterministic: hash(town id, slot) picks among weighted options. The client's solver composes houses from lordaeron/timber_relief; these rules say which house to ask it for.",
   "palettes_by_tier": {
-    "hamlet": { "daub": 1 },
-    "village": { "daub": 3, "stone": 1 },
-    "town": { "daub": 2, "brick": 2, "stone": 1 },
-    "city": { "brick": 3, "stone": 2, "daub": 1 },
+    "hamlet": {
+      "daub": 1
+    },
+    "village": {
+      "daub": 3,
+      "stone": 1
+    },
+    "town": {
+      "daub": 2,
+      "brick": 2,
+      "stone": 1
+    },
+    "city": {
+      "brick": 3,
+      "stone": 2,
+      "daub": 1
+    },
     "corner_plots": "stone",
     "facing_the_forum": "stone"
   },
   "tiers": {
-    "hamlet": { "villagers": [0, 7] },
-    "village": { "villagers": [8, 23] },
-    "town": { "villagers": [24, 47] },
-    "city": { "villagers": [48, 95] },
-    "capital": { "villagers": [96, null], "or": "the kingdom's seat" }
+    "hamlet": {
+      "villagers": [
+        0,
+        7
+      ]
+    },
+    "village": {
+      "villagers": [
+        8,
+        23
+      ]
+    },
+    "town": {
+      "villagers": [
+        24,
+        47
+      ]
+    },
+    "city": {
+      "villagers": [
+        48,
+        95
+      ]
+    },
+    "capital": {
+      "villagers": [
+        96,
+        null
+      ],
+      "or": "the kingdom's seat"
+    }
   },
   "homes": {
-    "hamlet": [{ "solve": { "set": "lordaeron/timber_relief", "W": 7, "D": 7, "storeys": 1 }, "like": "enterprise:lordaeron/home/cottage_9x9_b", "weight": 1 }],
+    "hamlet": [
+      {
+        "solve": {
+          "set": "lordaeron/timber_relief",
+          "W": 7,
+          "D": 7,
+          "storeys": 1
+        },
+        "like": "enterprise:lordaeron/home/cottage_9x9_b",
+        "weight": 1
+      }
+    ],
     "village": [
-      { "solve": { "W": 7, "D": 7, "storeys": 1 }, "like": "enterprise:lordaeron/home/cottage_9x9_b", "weight": 3 },
-      { "solve": { "W": 10, "D": 7, "storeys": 2 }, "like": "enterprise:lordaeron/home/townhouse_12x9_b", "weight": 1 }
+      {
+        "solve": {
+          "W": 7,
+          "D": 7,
+          "storeys": 1
+        },
+        "like": "enterprise:lordaeron/home/cottage_9x9_b",
+        "weight": 3
+      },
+      {
+        "solve": {
+          "W": 10,
+          "D": 7,
+          "storeys": 2
+        },
+        "like": "enterprise:lordaeron/home/townhouse_12x9_b",
+        "weight": 1
+      }
     ],
     "town": [
-      { "solve": { "W": 10, "D": 7, "storeys": 2 }, "weight": 3 },
-      { "solve": { "W": 10, "D": 7, "storeys": 3 }, "like": "enterprise:lordaeron/home/townhouse_12x9_b", "weight": 2 },
-      { "solve": { "W": 7, "D": 7, "storeys": 1, "terrace": 3 }, "like": "enterprise:lordaeron/home/terrace_21x9_b", "weight": 1 }
+      {
+        "solve": {
+          "W": 10,
+          "D": 7,
+          "storeys": 2
+        },
+        "weight": 3
+      },
+      {
+        "solve": {
+          "W": 10,
+          "D": 7,
+          "storeys": 3
+        },
+        "like": "enterprise:lordaeron/home/townhouse_12x9_b",
+        "weight": 2
+      },
+      {
+        "solve": {
+          "W": 7,
+          "D": 7,
+          "storeys": 1,
+          "terrace": 3
+        },
+        "like": "enterprise:lordaeron/home/terrace_21x9_b",
+        "weight": 1
+      }
     ],
     "city": [
-      { "solve": { "W": 13, "D": 7, "storeys": 3 }, "weight": 2 },
-      { "solve": { "W": 10, "D": 7, "storeys": 3 }, "weight": 2 },
-      { "solve": { "W": 10, "D": 7, "storeys": 2, "terrace": 3 }, "weight": 1 }
+      {
+        "solve": {
+          "W": 13,
+          "D": 7,
+          "storeys": 3
+        },
+        "weight": 2
+      },
+      {
+        "solve": {
+          "W": 10,
+          "D": 7,
+          "storeys": 3
+        },
+        "weight": 2
+      },
+      {
+        "solve": {
+          "W": 10,
+          "D": 7,
+          "storeys": 2,
+          "terrace": 3
+        },
+        "weight": 1
+      }
     ],
-    "rules": ["multi-storey from 10 wide (quality.json interior.multi_storey_min_width)", "a home's occupant with a trade gets the trade's workshop instead, from village tier"]
+    "rules": [
+      "multi-storey from 10 wide (quality.json interior.multi_storey_min_width)",
+      "a home's occupant with a trade gets the trade's workshop instead, from village tier"
+    ]
   },
-  "workshops": { "from": "village", "slot": "workshop:<trade>", "asset": "enterprise:lordaeron/workshop/workshop_<trade>_12x9_a", "on": "plots fronting an avenue or the forum, nearest the forum first" },
+  "workshops": {
+    "from": "village",
+    "slot": "workshop:<trade>",
+    "asset": "enterprise:lordaeron/workshop/workshop_<trade>_12x9_a",
+    "on": "plots fronting an avenue or the forum, nearest the forum first"
+  },
   "yards": {
     "front": {
-      "default": { "hamlet": ["cottage", "plain"], "village": ["cottage", "plain"], "town": ["plain", "town", "cottage"], "city": ["town", "plain"] },
-      "by_trade": { "armorer": "trade:smith", "toolsmith": "trade:smith", "weaponsmith": "trade:smith", "farmer": "trade:baker", "shepherd": "trade:dyer" },
+      "default": {
+        "hamlet": [
+          "cottage",
+          "plain"
+        ],
+        "village": [
+          "cottage",
+          "plain"
+        ],
+        "town": [
+          "plain",
+          "town",
+          "cottage"
+        ],
+        "city": [
+          "town",
+          "plain"
+        ]
+      },
+      "by_trade": {
+        "armorer": "trade:smith",
+        "toolsmith": "trade:smith",
+        "weaponsmith": "trade:smith",
+        "farmer": "trade:baker",
+        "shepherd": "trade:dyer"
+      },
       "door": "front_path_1 at the door's column",
       "light": "lamp tiles at most 5 columns apart"
     },
     "back": {
-      "default": { "hamlet": ["kitchen", "woodpile", "hens"], "village": ["kitchen", "wash", "woodpile", "well", "hens"], "town": ["wash", "tree", "kitchen", "well"], "city": ["tree", "wash"] },
-      "by_trade": { "shepherd": "trade:dyer" }
+      "default": {
+        "hamlet": [
+          "kitchen",
+          "woodpile",
+          "hens"
+        ],
+        "village": [
+          "kitchen",
+          "wash",
+          "woodpile",
+          "well",
+          "hens"
+        ],
+        "town": [
+          "wash",
+          "tree",
+          "kitchen",
+          "well"
+        ],
+        "city": [
+          "tree",
+          "wash"
+        ]
+      },
+      "by_trade": {
+        "shepherd": "trade:dyer"
+      }
     },
     "set": "town_kits/lordaeron/yards.json"
   },
@@ -58,28 +227,228 @@
     "library": "enterprise:lordaeron/hall/library_9x9_a",
     "smithy": "enterprise:lordaeron/hall/smithy_9x9_a",
     "watchtower": "enterprise:lordaeron/hall/watchtower_7x7_a",
-    "stone_docks": { "segment": "enterprise:lordaeron/dock/dock_pier_3x4_a", "head": "enterprise:lordaeron/dock/dock_head_5x5_a", "run": "segments out over the water, the head at the end" },
+    "stone_docks": {
+      "segment": "enterprise:lordaeron/dock/dock_pier_3x4_a",
+      "head": "enterprise:lordaeron/dock/dock_head_5x5_a",
+      "run": "segments out over the water, the head at the end"
+    },
     "caravanserai": "enterprise:lordaeron/hall/caravanserai_12x9_a",
     "desk": "enterprise:lordaeron/hall/market_hall_12x12_a"
   },
   "forum": {
-    "hamlet": { "centre": null, "ring": [{ "asset": "enterprise:lordaeron/stall/stall_<trade>_3x3_a", "for": "each trade's stall" }] },
-    "village": { "centre": "enterprise:lordaeron/forum/market_cross_7x7_a", "ring": [{ "stalls": "the trades' stalls, facing the bell" }, { "lamp": "a lamp post every 4 on the forum's edge" }] },
-    "town": { "centre": "enterprise:lordaeron/forum/market_cross_7x7_a", "facing": "the market hall on the forum's north side", "ring": [{ "stalls": "facing the bell" }, { "trees": "oak in the four corners" }] }
+    "hamlet": {
+      "centre": null,
+      "ring": [
+        {
+          "asset": "enterprise:lordaeron/stall/stall_<trade>_3x3_a",
+          "for": "each trade's stall"
+        }
+      ]
+    },
+    "village": {
+      "centre": "enterprise:lordaeron/forum/market_cross_7x7_a",
+      "ring": [
+        {
+          "stalls": "the trades' stalls, facing the bell"
+        },
+        {
+          "lamp": "a lamp post every 4 on the forum's edge"
+        }
+      ]
+    },
+    "town": {
+      "centre": "enterprise:lordaeron/forum/market_cross_7x7_a",
+      "facing": "the market hall on the forum's north side",
+      "ring": [
+        {
+          "stalls": "facing the bell"
+        },
+        {
+          "trees": "oak in the four corners"
+        }
+      ]
+    }
   },
   "avenues": {
-    "village": { "edge": "hedge both sides where no plot fronts", "lamp": { "post": "spruce fence, lantern", "every": 8 } },
-    "town": { "tree": "minecraft:oak", "every": 6, "offset": 3, "lamp": { "every": 6, "between_trees": true }, "paving": "the avenue's 3 wide in packed mud and gravel" },
-    "city": { "tree": "lime (birch) and oak alternating", "every": 5, "paving": "stone bricks" }
+    "village": {
+      "edge": "hedge both sides where no plot fronts",
+      "lamp": {
+        "post": "spruce fence, lantern",
+        "every": 8
+      }
+    },
+    "town": {
+      "tree": "minecraft:oak",
+      "every": 6,
+      "offset": 3,
+      "lamp": {
+        "every": 6,
+        "between_trees": true
+      },
+      "paving": "the avenue's 3 wide in packed mud and gravel"
+    },
+    "city": {
+      "tree": "lime (birch) and oak alternating",
+      "every": 5,
+      "paving": "stone bricks"
+    }
   },
   "walls": {
     "hamlet": "marked out only",
     "village": "palisade (to come)",
-    "town": { "kit": "town_kits/lordaeron/wall_stone.json", "tiling": "tileSide(L, gates)" },
+    "town": {
+      "kit": "town_kits/lordaeron/wall_stone.json",
+      "tiling": "tileSide(L, gates)"
+    },
     "city": "the stone kit on the inner wall; the outer wall's kit to come"
   },
   "growth": {
     "rule": "a plot keeps its slot as the town grows: a hamlet's 7-wide cottage gives way to a 10-wide house on the merged plot when the ward fills; a home's palette steps up (daub to brick) at town tier on the seed's hash; yards follow the house's tier",
     "never": "lose a bed or a workstation the census counted"
+  },
+  "zoning": {
+    "about": "The planned town (thread 0012): the plan is laid at founding for the town's eventual tier; plots fill in `fill_order`; each plot takes its body, kind, storeys, palette and roof from its street class and its band (distance from the bell along the streets, in blocks). Bands and streets are read in this order: the first rule that matches wins. Unbuilt plots carry yard or field tiles (`placeholder`) until their house comes.",
+    "streets": {
+      "avenue": "a street from a gate to the forum",
+      "forum_front": "a plot whose front faces the forum",
+      "lane": "a street between wards",
+      "ward_back": "a plot reached only from inside a ward"
+    },
+    "bands": [
+      {
+        "name": "core",
+        "to": 40
+      },
+      {
+        "name": "inner",
+        "from": 40,
+        "to": 90
+      },
+      {
+        "name": "outer",
+        "from": 90,
+        "to": 160
+      },
+      {
+        "name": "fringe",
+        "from": 160
+      }
+    ],
+    "fill_order": [
+      "forum_front",
+      "avenue:core",
+      "avenue:inner",
+      "lane:core",
+      "avenue:outer",
+      "lane:inner",
+      "lane:outer",
+      "ward_back",
+      "fringe"
+    ],
+    "rules": [
+      {
+        "street": "forum_front",
+        "use": "the forum frontage set first (hall, inn, guildhall); then houses",
+        "body": "13x7",
+        "kind": "terrace",
+        "storeys": 3,
+        "palette": "stone",
+        "shop": true
+      },
+      {
+        "street": "avenue",
+        "band": "core",
+        "body": "10x7",
+        "kind": "terrace",
+        "storeys": 3,
+        "palette": {
+          "stone": 2,
+          "brick": 1
+        },
+        "shop": true,
+        "corner_at_lanes": true
+      },
+      {
+        "street": "avenue",
+        "band": "inner",
+        "body": "10x7",
+        "kind": "terrace",
+        "storeys": [
+          2,
+          3
+        ],
+        "palette": {
+          "brick": 2,
+          "daub": 1,
+          "stone": 1
+        },
+        "shop": "every other",
+        "corner_at_lanes": true
+      },
+      {
+        "street": "avenue",
+        "band": "outer",
+        "body": "10x7",
+        "kind": "terrace",
+        "storeys": 2,
+        "palette": {
+          "daub": 2,
+          "brick": 1
+        },
+        "workshop": "every third, a trade the town has"
+      },
+      {
+        "street": "lane",
+        "band": [
+          "core",
+          "inner"
+        ],
+        "body": {
+          "10x7": 2,
+          "7x7": 1
+        },
+        "kind": "detached",
+        "storeys": [
+          1,
+          2
+        ],
+        "palette": {
+          "brick": 1,
+          "daub": 2
+        }
+      },
+      {
+        "street": "lane",
+        "band": "outer",
+        "body": "7x7",
+        "kind": "detached",
+        "storeys": 1,
+        "palette": "daub"
+      },
+      {
+        "street": "ward_back",
+        "body": "7x7",
+        "kind": "detached",
+        "storeys": 1,
+        "palette": "daub",
+        "yards": "big gardens: back yard tiles both sides"
+      },
+      {
+        "band": "fringe",
+        "use": "farmsteads on holdings (farmstead_19x18_*), fields, pastures; no town houses"
+      }
+    ],
+    "rhythm": {
+      "roof": "along a terrace, alternate gable_x and gable_z (a gable turned to the street) house by house, never two gable_z side by side; corner houses gable_x",
+      "palette": "never the same palette three houses running; corner houses stone in the core and inner bands",
+      "door": "vary the door bay (doorBay 0, 1, 2) along a terrace by the plot's hash"
+    },
+    "placeholder": {
+      "front": "front_garden_3 and front_cottage_2 tiles",
+      "plot": "field_fallow or garden_pumpkins (town_kits/lordaeron/fields.json) on the house's 9 rows",
+      "back": "back yard tiles as usual"
+    },
+    "replacement": "a vanilla house inside the plan stays until the kingdom house on its plot is built; then it's cleared and its villagers move to the new beds (John's decision, thread 0012)",
+    "kinds": "plan.json `kinds`: detached, terrace, terrace_end, corner"
   }
 }
