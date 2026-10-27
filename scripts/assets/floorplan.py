@@ -45,6 +45,11 @@ WINDOW = ("glass",)
 HEARTH = ("furnace", "campfire", "fireplace")
 
 
+def job(n):
+    """A villager's job site (the decorative twins, `decor_*`, are none)."""
+    return not n.startswith("decor_") and any(j in n for j in JOB_SITES)
+
+
 def load(path):
     root = Reader(gzip.decompress(Path(path).read_bytes())).root()
     size = root["size"]
@@ -150,7 +155,7 @@ def analyse(file):
     # Where villagers go (the studio, thread 0008): beds, workstations, the hearth, chests. Shelves, casks and decor are
     # used floor for idle but no destination: a route to each of them would make the whole room circulation.
     def goes_to(n):
-        return n.endswith("_bed") or any(j in n for j in JOB_SITES if j != "barrel") or "chest" in n or any(
+        return n.endswith("_bed") or job(n) and "barrel" not in n or "chest" in n or any(
             h in n for h in HEARTH)
     routes, unreached = [], []
     for p, n in sorted(used.items()):
@@ -159,7 +164,7 @@ def analyse(file):
         # A bed is got into from beside its head or its foot.
         reach = [c for c in beside(p) + (beside(foot(p)) if p in beds else []) if c in dist]
         if not reach:
-            if n.endswith("_bed") or any(j in n for j in JOB_SITES):
+            if n.endswith("_bed") or job(n):
                 unreached.append((n, p))
             continue
         end = min(reach, key=lambda c: dist[c])
@@ -179,7 +184,11 @@ def analyse(file):
         floor = {p for p in interior if p[1] == y and not step(p)}
         if len(floor) < 4:
             continue
-        # Rooms: floor cells joined level, split at doors (a door is its own cell between rooms).
+        # Rooms: the floor and what stands on it (furniture doesn't divide a room or narrow it: thread 0008), joined
+        # level, split only at walls and doors.
+        furnished = {(u[0], y, u[2]) for u in used if u[1] == y and support(name(blocks, (u[0], y - 1, u[2])))
+                     and (u[0], y, u[2]) not in outside}
+        space = floor | furnished
         seen, rooms = set(), []
         for c in sorted(floor):
             if c in seen or door(name(blocks, c)):
@@ -191,14 +200,16 @@ def analyse(file):
                 room.append(p)
                 for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                     n = (p[0] + dx, y, p[2] + dz)
-                    if n in floor and n not in seen and not door(name(blocks, n)):
+                    if n in space and n not in seen and not door(name(blocks, n)):
                         seen.add(n)
                         q.append(n)
+            room_space = room
+            room = [p for p in room_space if p in floor]
             xs, zs = [p[0] for p in room], [p[2] for p in room]
             contents = {used[u] for u in used if any(abs(u[0] - p[0]) + abs(u[2] - p[2]) <= 1 and u[1] in (y, y - 1, y + 1)
                                                      for p in room)}
             use = ("chamber" if any(n.endswith("_bed") for n in contents) else
-                   "work" if any(j in n for n in contents for j in JOB_SITES) else
+                   "work" if any(job(n) for n in contents) else
                    "stair" if all(half(p) for p in room) else
                    "landing" if not any(abs(e[0] - p[0]) + abs(e[2] - p[2]) == 1 for e in entrances
                                                          for p in room) and any(
@@ -216,7 +227,7 @@ def analyse(file):
                     h += 1
                 heights.append(h)
             rooms.append({"use": use, "floor": len(room), "bbox": [max(xs) - min(xs) + 1, max(zs) - min(zs) + 1],
-                          "least_width": least_width(room), "windows": windows,
+                          "least_width": least_width(room_space), "windows": windows,
                           "clear_height": sorted(heights)[len(heights) // 2] if heights else 0,
                           "low_cells": sum(1 for h in heights if h < 3),
                           "volume": sum(heights), "contents": sorted(contents), "cells": room})
@@ -308,7 +319,9 @@ def analyse(file):
             mx = sum(c[0] for c in r["cells"]) / len(r["cells"])
             mz = sum(c[2] for c in r["cells"]) / len(r["cells"])
             mid = min(r["cells"], key=lambda c: (c[0] - mx) ** 2 + (c[2] - mz) ** 2)
-            if r["least_width"] < 3 and r["use"] not in ("passage", "stair") and r["floor"] > 4:
+            # Rooms 3 wide or more; a landing or a passage 2 (interiors.md).
+            if r["least_width"] < (2 if r["use"] in ("passage", "landing") else 3) and r["use"] != "stair" \
+                    and r["floor"] > 4:
                 note("narrow", mid, f"{r['use']} only {r['least_width']} wide across most of it")
             if r["use"] == "chamber" and r["windows"] == 0:
                 note("dark", mid, "chamber with no window")
@@ -435,7 +448,7 @@ def draw(out, sizes, blocks, storeys, circulation, entrances, interior=frozenset
                     n = n1 if not passable(n1) else n0
                     col = ((120, 200, 230) if any(g in n for g in WINDOW) else
                            (70, 110, 200) if n.endswith("_bed") else
-                           (230, 140, 50) if any(j in n for j in JOB_SITES) or "decor_" in n else
+                           (230, 140, 50) if job(n) else
                            (150, 110, 70) if any(f in n for f in USED) else
                            (60, 56, 52))
                     fill(x, z, col)
