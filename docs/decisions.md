@@ -849,6 +849,14 @@ help breed more as needed."
   workstation once the game has registered it, and rebuilds its brain, as the game's own hiring does (Java mode's
   `hire` lacked the rebuild too). Live, 90 days: moods' sum +10.9, 16 comforts met (the most of these runs), Redfell
   +1.1, six Leatherworkers in all (eleven the run before).
+- **In core mode a town's hand takes a trade only by the core** (John: "core decides"; `PeopleAdapter.keepToTheCore`,
+  `VillagerMixin`). The game lets an unemployed villager claim any free workstation; Wheatfell's village cauldrons made
+  Leatherworkers of its idle hands with no stall, draw or glut. A hand that spots one lets it go (its brain tick's
+  end), and the game's hiring in a hand's own brain tick, where it spots and takes one at once (a grown child, a hand
+  that lost its trade), is refused and the job site let go; the binding's hirings never run there. A villager of no
+  town keeps the game's way. Live, 90 days: the first cut left eight trades taken with no stall (three grown
+  children, three hands that had lost one); with the refusal, none of eleven. Moods' sum +14.0 and +10.2 on the two
+  runs (each its own world), 87 trips (78).
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 
