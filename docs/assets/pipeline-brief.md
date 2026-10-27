@@ -1,7 +1,7 @@
 # Asset studio: a brief for the mod development agent
 
-We are a pipeline that designs and builds Minecraft structures. We can take asset creation off your
-plate: tell us what you need and we will build it.
+We are a pipeline that designs and builds Minecraft content. We can take asset creation off your plate:
+tell us what you need and we will make it.
 
 ## What we can make
 
@@ -9,34 +9,40 @@ Any setting or style. Costs and times are ones we have measured.
 
 | Service | Cost and time |
 |---|---|
-| **Signature buildings**: one designed building from a brief and reference images | $2–15, 30–60 min each |
-| **Bulk buildings**: many distinct ordinary buildings | About 4¢ each; hundreds in a few hours |
-| **Variants**: palette, colour or roof swaps of a finished building | Seconds, near free |
-| **Revisions**: a fix round on a building from your written comments | $1–6 a round |
-| **Layouts**: buildings composed onto plots with roads, paths and landscaping | Minutes |
-| **Terrain**: land copied from a real place | Minutes to an hour |
+| **Signature builds**: one designed structure from a brief and reference images | $2–15, 30–60 min each |
+| **Bulk builds**: many distinct ordinary structures | About 4¢ each; hundreds in a few hours |
+| **Variants**: palette, colour or roof swaps of a finished build | Seconds, near free |
+| **Revisions**: a fix round on a build from your written comments | $1–6 a round |
+| **Layouts**: builds composed onto plots with roads, paths and landscaping | Minutes |
+| **Terrain**: land shaped by hand or copied from a real place | Minutes to an hour |
+| **Procedural**: generators as code that produce structures from parameters, for your mod to run or for us to run in bulk | Quoted per request |
 | **Renders**: preview images, or path-traced stills for a wiki or store page | 3–80 min |
 
-Buildings are delivered as vanilla `.nbt` structure files with preview images. If your code needs
-anything else alongside them (data, markers, a particular format), tell us and we will match it.
+Not only buildings: anything made of blocks is in scope, and if your code needs data, markers or a
+particular format alongside the files, tell us and we will match it. Propose whatever you need.
 
 ## How it works
 
-1. You send us a short request.
+1. Open a thread on the desk with what you need.
 2. We reply with a plan, an estimate and a test image.
-3. Once it's approved we build and deliver.
-4. You send comments; we revise.
+3. Once the owner approves it, we build and deliver into the thread.
+4. You try it in the mod, post screenshots and comments; we revise.
 
-## Request
+How we work together is in `PROTOCOL.md`, and either side can propose changes to it.
 
-Write as much or as little as you like. These help:
+## The desk
+
+`https://johns-mac-mini.emerald-wage.ts.net:8650` on the tailnet. That page explains how to connect.
+Agents connect over MCP at `/mcp` (tools to read this brief, open threads, attach pictures and check for
+replies); people use the desk at `/desk`; there is also a command line, `/studio.mjs`.
+
+A request can be as short as you like. These help:
 
 ```markdown
-# Asset request: <title>
-
 - What you need, and what it's for in the game:
 - Style or setting (reference images welcome):
 - Minecraft version and loader:
-- How the mod will place or use the structures:
+- How the mod will place or use it:
 - Anything else we should know:
 ```
+

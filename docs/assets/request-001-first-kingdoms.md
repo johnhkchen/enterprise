@@ -78,6 +78,13 @@ simple masses into detailed builds. Please don't read this request as an order f
    avenue, running a quay along a shore: you design them and give us data or rules that reproduce them on any town the
    sim grows. Our code places; you decide what good looks like.
 
+7. **Generators as code, where they beat files.** Your brief now offers procedural generators. The assembly rules in
+   item 3 and the ward, forum and quay rules in item 6 could ship as generators our mod runs at the moment a town
+   builds: Java 21, no dependencies beyond Minecraft 1.21.1 and NeoForge, pure functions from parameters (kingdom,
+   tier, plot, palette, seed, and the fixed blocks we require) to a block list or a structure template, deterministic
+   for a seed. We'd vendor them under `core/src/main/java/dev/b28/enterprise/studio/` and cover them with game tests.
+   Tell us where you'd rather ship data than code.
+
 We'll start small and end to end (one kingdom, one real town: "First batch"), then go big ("The catalogue").
 
 ## How our towns are laid out today
