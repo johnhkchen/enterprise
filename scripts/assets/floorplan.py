@@ -538,7 +538,7 @@ def thresholds():
                 t["idle_share"] = [0, i["idle_max"]]
             if "walk_max" in i:
                 t["walk"] = [0, i["walk_max"]]
-            for k in ("floor_per_bed", "made_beds", "through_rooms", "multi_storey_min_width"):
+            for k in ("floor_per_bed", "made_beds", "through_rooms", "multi_storey_min_width", "circulation_by_storeys"):
                 if k in i:
                     t[k] = i[k]
             return t
@@ -562,6 +562,8 @@ def failures(r, t):
         if k == "circulation_share" and r["rooms"] == 1 and r["floor"] < 20:
             continue
         lo, hi = t[k]
+        if k == "circulation_share" and str(r["storeys"]) in t.get("circulation_by_storeys", {}):
+            lo, hi = t["circulation_by_storeys"][str(r["storeys"])]
         if r[k] is not None and not lo <= r[k] <= hi:
             out.append(f"{k} {r[k]} outside {lo} to {hi}")
     return out

@@ -1253,6 +1253,16 @@
       "layer": "fitout"
     },
     {
+      "id": "door_inner_z",
+      "part": "enterprise:lordaeron/part/timber_relief/door_inner_z",
+      "size": [
+        1,
+        4,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
       "id": "chimney_stack",
       "part": "enterprise:lordaeron/part/timber_relief/chimney_stack",
       "size": [
