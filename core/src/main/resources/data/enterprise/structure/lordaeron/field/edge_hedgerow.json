@@ -1,0 +1,19 @@
+{
+  "id": "enterprise:lordaeron/field/edge_hedgerow",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "field:edge",
+  "palette": "fixed",
+  "size": [
+    9,
+    8,
+    1
+  ],
+  "mirror": true,
+  "ground": 2,
+  "width": 9,
+  "depth": 1,
+  "kind_of": "edge",
+  "socket": "hedge"
+}

@@ -1,0 +1,28 @@
+{
+  "id": "enterprise:lordaeron/field/field_strips_2_b",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "field",
+  "palette": "fixed",
+  "size": [
+    9,
+    8,
+    9
+  ],
+  "mirror": true,
+  "ground": 2,
+  "width": 9,
+  "depth": 9,
+  "kind_of": "field",
+  "tags": [
+    "crop",
+    "wheat",
+    "beetroots"
+  ],
+  "water": [
+    4,
+    2,
+    4
+  ]
+}
