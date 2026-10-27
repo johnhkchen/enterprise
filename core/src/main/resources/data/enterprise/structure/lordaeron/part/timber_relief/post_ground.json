@@ -1,0 +1,27 @@
+{
+  "id": "post_ground",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "post",
+  "set": "lordaeron/timber_relief",
+  "palette": "stone",
+  "size": [
+    1,
+    5,
+    2
+  ],
+  "layer": "shell",
+  "where": {
+    "storey": "ground"
+  },
+  "mirror": true,
+  "sockets": {
+    "left": "bay|corner",
+    "right": "bay|corner",
+    "down": "floor_line",
+    "up": "floor_line|eave"
+  },
+  "weight": 1,
+  "module": "post_ground"
+}

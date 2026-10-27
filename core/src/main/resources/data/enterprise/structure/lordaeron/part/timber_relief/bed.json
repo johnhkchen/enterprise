@@ -1,0 +1,16 @@
+{
+  "id": "bed",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "part",
+  "set": "lordaeron/timber_relief",
+  "palette": "stone",
+  "size": [
+    1,
+    1,
+    2
+  ],
+  "layer": "fitout",
+  "module": "bed"
+}

@@ -1,0 +1,27 @@
+{
+  "id": "chimney_ground",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "post",
+  "set": "lordaeron/timber_relief",
+  "palette": "stone",
+  "size": [
+    1,
+    5,
+    2
+  ],
+  "layer": "shell",
+  "where": {
+    "storey": "ground",
+    "face": [
+      "side"
+    ]
+  },
+  "mirror": true,
+  "behind": [
+    "hearth"
+  ],
+  "weight": 1,
+  "module": "chimney_ground"
+}

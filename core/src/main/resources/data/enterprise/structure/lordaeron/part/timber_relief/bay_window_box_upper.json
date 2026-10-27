@@ -1,0 +1,28 @@
+{
+  "id": "bay_window_box_upper",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "bay",
+  "set": "lordaeron/timber_relief",
+  "palette": "stone",
+  "size": [
+    2,
+    5,
+    2
+  ],
+  "layer": "shell",
+  "where": {
+    "storey": "upper",
+    "face": [
+      "front"
+    ]
+  },
+  "mirror": true,
+  "behind": [
+    "chamber",
+    "hall"
+  ],
+  "weight": 2,
+  "module": "bay_window_box_upper"
+}

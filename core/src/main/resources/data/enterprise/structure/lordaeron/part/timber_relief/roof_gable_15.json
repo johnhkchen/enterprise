@@ -1,0 +1,19 @@
+{
+  "id": "roof_gable_15",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "gable",
+  "slot": "part",
+  "set": "lordaeron/timber_relief",
+  "palette": "stone",
+  "size": [
+    1,
+    15,
+    15
+  ],
+  "layer": "roof",
+  "span": 15,
+  "pitch": 2,
+  "mirror": true,
+  "module": "roof_gable_15"
+}

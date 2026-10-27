@@ -1,0 +1,19 @@
+{
+  "id": "roof_bay_12",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "bay",
+  "slot": "part",
+  "set": "lordaeron/timber_relief",
+  "palette": "stone",
+  "size": [
+    1,
+    11,
+    12
+  ],
+  "layer": "roof",
+  "span": 12,
+  "pitch": 2,
+  "mirror": true,
+  "module": "roof_bay_12"
+}

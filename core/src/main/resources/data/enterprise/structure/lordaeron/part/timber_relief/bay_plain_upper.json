@@ -1,0 +1,26 @@
+{
+  "id": "bay_plain_upper",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "bay",
+  "set": "lordaeron/timber_relief",
+  "palette": "stone",
+  "size": [
+    2,
+    5,
+    2
+  ],
+  "layer": "shell",
+  "where": {
+    "storey": "upper"
+  },
+  "mirror": true,
+  "behind": [
+    "store",
+    "hall",
+    "chamber"
+  ],
+  "weight": 1,
+  "module": "bay_plain_upper"
+}
