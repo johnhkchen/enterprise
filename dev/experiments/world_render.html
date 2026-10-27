@@ -132,11 +132,11 @@ const img = new Image();
 img.src = "data:image/png;base64,__IMAGE__";
 const cv = document.getElementById("c"), cx = cv.getContext("2d"), map = document.getElementById("map");
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const layers = { routes: true, wagons: true, labels: true };
+const layers = { plans: true, routes: true, wagons: true, labels: true };
 const KEY = [
   ["Trees", "#28582a"], ["Roads and wagon trails", "#c4a870"], ["Forum", "#9ea0a6"], ["Homes and buildings", "#ac6a42"],
   ["Fields (wheat, carrots, potatoes, beetroot)", "#d6be56"], ["Pastures (birch fence)", "#96c062"], ["Water", "#3664aa"],
-  ["Safety rails at drops (oak fence)", "#c4363c"], ["Town wall", "#463e54"],
+  ["Safety rails at drops (oak fence)", "#c4363c"], ["Town wall", "#463e54"], ["Bridges (planks over water)", "#785432"],
   ["Hills (lit from the north-west)", "#68944a"],
 ];
 document.getElementById("sub").textContent =
@@ -148,7 +148,7 @@ KEY.forEach(([t, c]) => {
   b.lastChild.textContent = t; b.tabIndex = -1; b.style.cursor = "default";
   key.append(b);
 });
-[["routes", "Caravan routes"], ["wagons", "Wagons on the road"], ["labels", "Town names"]].forEach(([k, t]) => {
+[["plans", "Town plans (inner wall, outer kept clear)"], ["routes", "Caravan routes"], ["wagons", "Wagons on the road"], ["labels", "Town names"]].forEach(([k, t]) => {
   const b = document.createElement("button");
   b.id = "layer-" + k; b.setAttribute("aria-pressed", "true");
   b.innerHTML = `<span class="sw" style="background:var(--accent)"></span><span></span>`;
@@ -204,6 +204,16 @@ function draw(now) {
   cx.imageSmoothingEnabled = scale < 1;
   cx.drawImage(img, ox, oz, D.w * scale, D.h * scale);
   const P = (x, z) => [ox + x * scale, oz + z * scale];
+  if (layers.plans && D.plans) {
+    cx.strokeStyle = css("--ink"); cx.lineWidth = 1.5;
+    D.plans.forEach(p => {
+      [[p.inner, []], [p.outer, [5, 4]]].forEach(([r, dash]) => {
+        const [a, b] = P(r[0], r[1]), [c, d] = P(r[2] + 1, r[3] + 1);
+        cx.setLineDash(dash); cx.strokeRect(a, b, c - a, d - b);
+      });
+    });
+    cx.setLineDash([]);
+  }
   if (layers.routes) {
     cx.strokeStyle = css("--route"); cx.lineCap = "round"; cx.lineJoin = "round";
     D.routes.forEach(rt => {

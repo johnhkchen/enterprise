@@ -10,6 +10,7 @@ caravan route along its hex path, as wide as the trips it made, with wagons movi
 more; and each town by name at its bell (the forum lines of SERVER.log). Pure Python (no numpy): a minute or two.
 """
 import base64
+import gzip
 import json
 import math
 import sqlite3
@@ -62,6 +63,14 @@ class Reader:
         t = self.take(1)[0]
         self.value(8)
         return self.value(t)
+
+
+def saved(path):
+    """A world's saved data file (gzipped NBT) as its `data` compound, or {}."""
+    if not path.exists():
+        return {}
+    with gzip.open(path, "rb") as f:
+        return Reader(f.read()).root().get("data", {})
 
 
 def chunks_in(region_file):
@@ -149,6 +158,7 @@ LEAVES = (40, 88, 42)
 LOG = (92, 70, 44)
 FENCE = (236, 232, 216)
 RAIL = (196, 54, 60)
+BRIDGE = (120, 84, 50)
 WALL = (70, 62, 84)
 PASTURE = (150, 192, 98)
 OTHER = (146, 140, 136)
@@ -308,6 +318,8 @@ def main():
                     y = c.top[i] - 1 + MIN_Y
                     name = c.block(lx, y, lz)
                     col, k = colour(name, c.block(lx, y + 1, lz))
+                    if name.endswith("spruce_planks") and "water" in c.block(lx, y - 1, lz):
+                        col, k = BRIDGE, "bridge"
                     if k == "land" and name.endswith("_log"):
                         col, k = LOG, "tree"
                     # The town wall: its ring of columns round a bell (`Works.WALL_RADIUS`).
@@ -371,7 +383,14 @@ def main():
                       "villagers": v, "mood": m, "comforts": c})
     for r in routes:
         r["path"] = [[p[0] - x0, p[1] - z0] for p in r["path"]]
-    data = {"w": w, "h": h, "x0": x0, "z0": z0, "lo": lo, "hi": hi, "day": last, "towns": towns, "routes": routes,
+    # The towns' plans (`TownPlans`): their walls' rectangles, the inner to build, the outer kept clear.
+    plans = []
+    for key, p in saved(world / "data" / "enterprise_town_plans.dat").get("towns", {}).items():
+        i, o = p.get("inner"), p.get("outer")
+        if i and o:
+            plans.append({"inner": [i[0] - x0, i[1] - z0, i[2] - x0, i[3] - z0],
+                          "outer": [o[0] - x0, o[1] - z0, o[2] - x0, o[3] - z0]})
+    data = {"plans": plans, "w": w, "h": h, "x0": x0, "z0": z0, "lo": lo, "hi": hi, "day": last, "towns": towns, "routes": routes,
             "counts": counts}
     film = ""
     if "--video" in sys.argv:

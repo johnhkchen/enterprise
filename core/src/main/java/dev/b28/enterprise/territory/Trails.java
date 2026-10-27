@@ -247,9 +247,9 @@ public final class Trails extends SavedData {
     static final double SHEER = 1.0 / 12;
     static final double SHEER_TOLL = 60;
     static final double WET = 25;
-    /** A llama train's: steep ground it takes (1 in 1 its steepest), water as a wagon does. */
-    static final double LLAMA_GRADE = 5;
-    static final double LLAMA_SHEER = 1.0;
+    /** A llama train's: steeper ground it takes, 1 rise in 3 run its steepest (John), water as a wagon does. */
+    static final double LLAMA_GRADE = 12;
+    static final double LLAMA_SHEER = 1.0 / 3;
 
     /**
      * A road planned over the land itself (John: "paths follow terrain, based on what makes wagon or llama travel
