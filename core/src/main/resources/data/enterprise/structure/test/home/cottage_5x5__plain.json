@@ -1,0 +1,6 @@
+{
+  "id": "enterprise:test/home/cottage_5x5__plain",
+  "base": "enterprise:test/home/cottage_5x5",
+  "palette": "plain",
+  "rev": 1
+}
