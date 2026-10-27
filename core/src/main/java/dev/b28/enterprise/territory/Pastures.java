@@ -17,7 +17,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 
 /**
  * Pastures laid to the land (core mode's `Work::Pasture`; John: "use the terrain generated to build efficient
- * rectangular pastures"): the largest rectangle of open grassland the town's zoned ground has near its bell, fenced
+ * rectangular pastures"): the largest rectangle of the land's own open ground the town's zoned ground has near its bell, fenced
  * where the ground lies (it may roll a little, as a field may not), a gate on the side facing the bell. The core holds
  * an animal a `grass_per_animal` of the grass inside, so a town on broad meadows keeps bigger herds than one on a
  * hillside. Not the Java rules' 9 x 9 ({@link Husbandry#fence}).
@@ -67,12 +67,13 @@ public final class Pastures {
                         && Math.abs(y - bell.getY()) <= Growth.FIELD_RISE;
             }
         }
-        // Ground already fenced in (a pasture's, a field's, a garden's): a fence within reach every way round it.
+        // Ground already a pasture's: its birch fence within reach every way round it (not the oak the ground's safety
+        // rails its drops with, which ringed Meadowfell's hills).
         boolean[] fenced = new boolean[span * span];
         for (int k = 0; k < span * span; k++) {
             if (height[k] != Integer.MIN_VALUE) {
                 BlockState top = level.getBlockState(new BlockPos(x0 + k / span, height[k], z0 + k % span));
-                fenced[k] = top.is(BlockTags.FENCES) || top.is(BlockTags.FENCE_GATES);
+                fenced[k] = top.is(FENCE) || top.is(GATE);
             }
         }
         for (int i = 0; i < span; i++) {
@@ -185,9 +186,17 @@ public final class Pastures {
         return (double) dx * dx + (double) dz * dz;
     }
 
-    /** Ground a pasture grazes: grass or the earth it grows on, not a path or a field. */
+    /** A pasture's fence and gate: birch, its own, so its ground is known for a pasture's. */
+    static final net.minecraft.world.level.block.Block FENCE = Blocks.BIRCH_FENCE;
+    static final net.minecraft.world.level.block.Block GATE = Blocks.BIRCH_FENCE_GATE;
+
+    /**
+     * Ground a pasture grazes: the land's own (grass and earth, sand, a desert's or a badland's), not a path, a field or
+     * bare rock. Dustfell's desert, held to grass, laid none.
+     */
     static boolean grassland(BlockState state) {
-        return state.is(BlockTags.DIRT) && !state.is(Blocks.DIRT_PATH) && !state.is(Blocks.FARMLAND);
+        return dev.b28.enterprise.settlement.Grounds.natural(state) && !state.is(Blocks.DIRT_PATH)
+                && !state.is(Blocks.FARMLAND) && !state.is(BlockTags.BASE_STONE_OVERWORLD);
     }
 
     /**
@@ -227,8 +236,8 @@ public final class Pastures {
                 };
                 Direction facing = toward.getAxis() == Direction.Axis.X ? Direction.EAST : Direction.SOUTH;
                 level.setBlock(top.above(), gate
-                        ? Blocks.OAK_FENCE_GATE.defaultBlockState().setValue(FenceGateBlock.FACING, facing)
-                        : Blocks.OAK_FENCE.defaultBlockState(), 3);
+                        ? GATE.defaultBlockState().setValue(FenceGateBlock.FACING, facing)
+                        : FENCE.defaultBlockState(), 3);
             }
         }
         return grass;

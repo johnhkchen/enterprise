@@ -237,8 +237,8 @@ public final class JobsTests {
                 new dev.b28.enterprise.territory.Pastures.Site(corner, 7, 7), bell);
         helper.assertTrue(grass == 25, "five by five inside: " + grass);
         helper.assertBlockPresent(Blocks.GRASS_BLOCK, new BlockPos(3, 1, 3));
-        helper.assertBlockPresent(Blocks.OAK_FENCE, new BlockPos(0, 2, 0));
-        helper.assertBlockPresent(Blocks.OAK_FENCE_GATE, new BlockPos(3, 2, 6));
+        helper.assertBlockPresent(Blocks.BIRCH_FENCE, new BlockPos(0, 2, 0));
+        helper.assertBlockPresent(Blocks.BIRCH_FENCE_GATE, new BlockPos(3, 2, 6));
         // Its inside is fenced in: no second pasture there.
         boolean[] fenced = new boolean[9 * 9];
         for (int a = 0; a < 9; a++) {
