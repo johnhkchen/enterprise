@@ -13,7 +13,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 /**
  * A house's plot on a ward with room for yards (John: "give it some front yard, back yard leeway. These act as
  * interchangeable doodad regions"): from the street inward its front yard ({@link TownPlans#FRONT_YARD} deep), the house
- * (a block of side yard either side), and its back yard (what's left of the plot's depth). The house is the town's
+ * (its side yard either side), and its back yard (what's left of the plot's depth). The house is the town's
  * kingdom's home kit; each yard is a kit of its own ({@code yard:front}, {@code yard:back}, the studio's), chosen per
  * plot; and a path is cut from the street to the house's door wherever its door fell.
  *
@@ -23,14 +23,20 @@ import net.minecraft.world.level.levelgen.Heightmap;
 public final class Plots {
     private Plots() {}
 
-    /** A plot's width for a house {@code width} wide: a block of side yard either side. */
+    /**
+     * A house's side yard either side: two blocks, so neighbours stand four apart (John: "poor design in how crowded the
+     * homes are"; one block each side read as a terrace of separate houses).
+     */
+    public static final int SIDE = 2;
+
+    /** A plot's width for a house {@code width} wide: its side yard either side. */
     public static int width(int house) {
-        return house + 2;
+        return house + 2 * SIDE;
     }
 
     /** Where the house stands in its plot: its corner (x, z) as authored, its width and depth. */
     static int[] house(int plotDepth, int width, int depth) {
-        return new int[] {1, plotDepth - TownPlans.FRONT_YARD - depth, width, depth};
+        return new int[] {SIDE, plotDepth - TownPlans.FRONT_YARD - depth, width, depth};
     }
 
     /**
@@ -307,6 +313,23 @@ public final class Plots {
                 }
                 path++;
             }
+        }
+        // On beyond the plot to the way it fronts, where that's a few blocks off over grass (a farmhouse's lot stands back
+        // from its track): the path on till it meets a path.
+        for (int lz = depth + 1; lz <= depth + 6; lz++) {
+            BlockPos p = world(corner, width, depth, door, doorX, lz);
+            BlockPos ground = p.atY(level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, p.getX(), p.getZ()) - 1);
+            BlockState top = level.getBlockState(ground);
+            if (!top.is(Blocks.GRASS_BLOCK) && !top.is(Blocks.DIRT) && !top.is(Blocks.COARSE_DIRT)
+                    || Math.abs(ground.getY() - corner.getY()) > 2) {
+                break;
+            }
+            level.setBlock(ground, Blocks.DIRT_PATH.defaultBlockState(), 3);
+            BlockState over = level.getBlockState(ground.above());
+            if (!over.isAir() && over.canBeReplaced()) {
+                level.setBlock(ground.above(), Blocks.AIR.defaultBlockState(), 3);
+            }
+            path++;
         }
         // A step of one between the street and the plot at the door: the kingdom's 1-wide flight in the front yard, by
         // half steps (the studio's renders: doorsteps reached up full blocks).

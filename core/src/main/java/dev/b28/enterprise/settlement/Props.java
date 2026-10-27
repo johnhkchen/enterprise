@@ -51,7 +51,7 @@ public final class Props {
                     .get(net.minecraft.resources.ResourceLocation.withDefaultNamespace(id));
             twin(id, vanilla, p -> new Prop(p, vanilla));
         }
-        for (String id : new String[] {"lectern", "smoker", "blast_furnace", "loom", "stonecutter", "grindstone"}) {
+        for (String id : new String[] {"lectern", "smoker", "blast_furnace", "loom", "stonecutter", "grindstone", "beehive"}) {
             Supplier<Block> vanilla = () -> net.minecraft.core.registries.BuiltInRegistries.BLOCK
                     .get(net.minecraft.resources.ResourceLocation.withDefaultNamespace(id));
             twin(id, vanilla, p -> new Facing(p, vanilla));

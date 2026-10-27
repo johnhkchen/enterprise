@@ -144,7 +144,8 @@ public final class Kits {
         List<String> out = new ArrayList<>();
         // (Not its parts: pieces of buildings, chosen by the assembler, not by slot.)
         resources.listResources("structure/" + kingdom, rl -> rl.getPath().endsWith(".json") && !rl.getPath().contains("/part/")
-                        && !rl.getPath().contains("/yard/") && !rl.getPath().contains("/earthworks/"))
+                        && !rl.getPath().contains("/yard/") && !rl.getPath().contains("/earthworks/")
+                        && !rl.getPath().contains("/field/"))
                 .keySet().stream()
                 .sorted(Comparator.comparing(ResourceLocation::toString))
                 .forEach(rl -> {

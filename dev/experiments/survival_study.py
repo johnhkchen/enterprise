@@ -94,11 +94,18 @@ def surface(x, z):
     return int(float(found.group(1)))
 
 
-def load(x, z, r=64):
+# How far round each village the study keeps the ground loaded: `--reach N` (64 by default) to take in its farmland
+# and farmsteads, which lie past its outer wall.
+REACH = int(sys.argv[sys.argv.index("--reach") + 1]) if "--reach" in sys.argv else 64
+
+
+def load(x, z, r=None):
+    r = REACH if r is None else r
     rcon(f"forceload add {x - r} {z - r} {x + r} {z + r}")
 
 
-def unload(x, z, r=64):
+def unload(x, z, r=None):
+    r = REACH if r is None else r
     rcon(f"forceload remove {x - r} {z - r} {x + r} {z + r}")
 
 

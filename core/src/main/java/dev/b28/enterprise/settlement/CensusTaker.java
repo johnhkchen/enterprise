@@ -214,13 +214,38 @@ public final class CensusTaker {
     public static int beds(ServerLevel level, BlockPos centre, int radius) {
         PoiManager pois = level.getPoiManager();
         pois.ensureLoadedAndValid(level, centre, radius);
-        return (int) pois.getInRange(type -> type.is(PoiTypes.HOME), centre, radius, PoiManager.Occupancy.ANY).count();
+        int beds = (int) pois.getInRange(type -> type.is(PoiTypes.HOME), centre, radius, PoiManager.Occupancy.ANY).count();
+        // And its farmsteads' beyond its reach (John: farmers live on their land, and count as the town's).
+        for (int[] lot : farmsteads(level, centre)) {
+            BlockPos mid = new BlockPos((lot[0] + lot[2]) / 2, centre.getY(), (lot[1] + lot[3]) / 2);
+            int reach = Math.max(lot[2] - lot[0], lot[3] - lot[1]) / 2 + 2;
+            pois.ensureLoadedAndValid(level, mid, reach);
+            beds += (int) pois.getInSquare(type -> type.is(PoiTypes.HOME), mid, reach, PoiManager.Occupancy.ANY)
+                    .filter(r -> inLot(r.getPos(), lot) && !r.getPos().closerThan(centre, radius)).count();
+        }
+        return beds;
+    }
+
+    /** The town's farmstead lots, if {@code centre} is a town's bell. */
+    private static List<int[]> farmsteads(ServerLevel level, BlockPos centre) {
+        return level.getServer() == null ? List.of()
+                : dev.b28.enterprise.territory.FieldMaps.get(level.getServer()).farmsteadsOf(level.getServer(), centre);
+    }
+
+    private static boolean inLot(BlockPos p, int[] lot) {
+        return p.getX() >= lot[0] && p.getX() <= lot[2] && p.getZ() >= lot[1] && p.getZ() <= lot[3];
     }
 
     /** The villagers loaded within {@code radius} of {@code centre}: who a census looks at. */
     public static List<Villager> villagersAround(ServerLevel level, BlockPos centre, int radius) {
-        return level.getEntitiesOfClass(Villager.class, new AABB(centre).inflate(radius),
-                villager -> villager.blockPosition().closerThan(centre, radius));
+        List<Villager> out = new ArrayList<>(level.getEntitiesOfClass(Villager.class, new AABB(centre).inflate(radius),
+                villager -> villager.blockPosition().closerThan(centre, radius)));
+        // And those on its farmsteads beyond its reach.
+        for (int[] lot : farmsteads(level, centre)) {
+            out.addAll(level.getEntitiesOfClass(Villager.class, new AABB(lot[0], level.getMinBuildHeight(), lot[1], lot[2] + 1,
+                    level.getMaxBuildHeight(), lot[3] + 1), v -> !v.blockPosition().closerThan(centre, radius)));
+        }
+        return out;
     }
 
     /** The bell nearest {@code at} within a settlement's reach ({@link #RADIUS}), if any: the settlement it's in. */

@@ -228,6 +228,8 @@ public final class LandAdapter {
                 // Its first farm tracks, with its avenues (John: "some at founding").
                 if (plan.avenues()) {
                     dev.b28.enterprise.territory.FieldMaps.get(server).found(level, town);
+                    // Its holdings' unsown land dressed a little each look (fallow, meadow, orchard).
+                    dev.b28.enterprise.territory.FieldMaps.get(server).dress(level, town);
                 }
                 int since = sinceCounted.getOrDefault(town, CROPS_EVERY);
                 if (since >= CROPS_EVERY) {
@@ -643,6 +645,8 @@ public final class LandAdapter {
     private final Map<Long, dev.b28.enterprise.territory.Houses.Built> homeBuilt = new HashMap<>();
     /** The trade a town's next home is the workshop of, if it's one. */
     private final Map<Long, String> workshops = new HashMap<>();
+    /** Towns whose next home is a farmhouse on a holding's lot (`FieldMaps.farmstead`). */
+    private final Set<Long> farmsteadNext = new HashSet<>();
     /** A hall's kit and plot, found with its site and laid with it. */
     private record HallPlot(dev.b28.enterprise.territory.Kits.Meta kit, dev.b28.enterprise.territory.Plots.Site site) {}
     private final Map<List<Long>, HallPlot> hallPlots = new HashMap<>();
@@ -668,6 +672,22 @@ public final class LandAdapter {
             // trade's workshop"), the trade one the town has a job site for; its workstation a decorative twin, so the
             // house hires nobody the sim didn't (its look is the trade's: the smith's yard, the baker's oven).
             int laidSoFar = homesLaid.getOrDefault(town, 0);
+            // A farmer's home on its holding (John: "no sensible farmhouses"): while the town has fewer farmsteads than
+            // farmers' job sites, its next home a farmhouse on its next grain holding's lot, facing the track.
+            long farmers = level.getPoiManager().getInRange(t -> t.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.FARMER),
+                    townPlan.bell(), 48, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY).count();
+            if (farmers > dev.b28.enterprise.territory.FieldMaps.get(level.getServer()).farmsteads(town)) {
+                int lot = 2 * Fields.SIZE + 1;
+                var farmhouse = dev.b28.enterprise.territory.Houses.next(level, kingdom, "hamlet",
+                        lot - 2 * dev.b28.enterprise.territory.Plots.SIDE, 2 * Fields.SIZE - dev.b28.enterprise.territory.TownPlans.FRONT_YARD - 4,
+                        town * 7919 + laidSoFar);
+                if (farmhouse.isPresent()) {
+                    homeKits.put(town, farmhouse.get().meta());
+                    homeBuilt.put(town, farmhouse.get());
+                    farmsteadNext.add(town);
+                    return Optional.of(farmhouse.get().meta());
+                }
+            }
             if (!tier.equals("hamlet") && laidSoFar % 3 == 2) {
                 var trades = level.getPoiManager().getInRange(t -> true, townPlan.bell(), 48,
                         net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY)
@@ -677,7 +697,7 @@ public final class LandAdapter {
                 for (int k = 0; k < trades.size(); k++) {
                     String trade = trades.get((laidSoFar / 3 + k) % trades.size());
                     var shop = dev.b28.enterprise.territory.Kits.choose(level.getServer().getResourceManager(), kingdom,
-                            "workshop:" + trade, townPlan.cell() - 2, townPlan.deepest() - dev.b28.enterprise.territory.TownPlans.FRONT_YARD,
+                            "workshop:" + trade, townPlan.cell() - 2 * dev.b28.enterprise.territory.Plots.SIDE, townPlan.deepest() - dev.b28.enterprise.territory.TownPlans.FRONT_YARD,
                             town, townPlan.bell()).flatMap(id -> dev.b28.enterprise.territory.Kits.meta(level.getServer().getResourceManager(), id));
                     if (shop.isPresent()) {
                         homeKits.put(town, shop.get());
@@ -686,7 +706,7 @@ public final class LandAdapter {
                     }
                 }
             }
-            var built = dev.b28.enterprise.territory.Houses.next(level, kingdom, tier, townPlan.cell() - 2,
+            var built = dev.b28.enterprise.territory.Houses.next(level, kingdom, tier, townPlan.cell() - 2 * dev.b28.enterprise.territory.Plots.SIDE,
                     townPlan.deepest() - dev.b28.enterprise.territory.TownPlans.FRONT_YARD, town * 7919 + homesLaid.getOrDefault(town, 0));
             if (built.isPresent()) {
                 homeKits.put(town, built.get().meta());
@@ -700,7 +720,7 @@ public final class LandAdapter {
         int widest = plan != null ? plan.cell() : HOME_WIDEST, deepest = plan != null ? plan.deepest() : HOME_DEEPEST;
         if (plan != null && plan.yards()) {
             // A house on a plot: its side yards in the plot's width, its front yard in its depth.
-            widest -= 2;
+            widest -= 2 * dev.b28.enterprise.territory.Plots.SIDE;
             deepest -= dev.b28.enterprise.territory.TownPlans.FRONT_YARD;
         }
         Optional<dev.b28.enterprise.territory.Kits.Meta> kit = dev.b28.enterprise.territory.Kits.choose(resources,
@@ -747,6 +767,16 @@ public final class LandAdapter {
                 // The kingdom's home kit the town builds next (`Kits`, the asset studio's), its footprint fronting a
                 // street; the cottage where the kingdom has none.
                 Optional<dev.b28.enterprise.territory.Kits.Meta> kit = nextHome(level, town);
+                // A farmhouse on its holding's lot, if one's free; else on a ward's plot as any home.
+                if (kit.isPresent() && farmsteadNext.contains(town)) {
+                    var lot = dev.b28.enterprise.territory.FieldMaps.get(level.getServer()).farmstead(level, town,
+                            kit.get().width(), kit.get().depth());
+                    if (lot.isPresent()) {
+                        homePlots.put(town, lot.get());
+                        yield Optional.of(lot.get().corner());
+                    }
+                    farmsteadNext.remove(town);
+                }
                 // On a plan with yards, its plot: the house set back behind its front yard (`Plots`).
                 if (kit.isPresent()) {
                     var plot = dev.b28.enterprise.territory.Plots.site(level,
@@ -884,13 +914,19 @@ public final class LandAdapter {
                 if (plot.isPresent() && kit.isPresent()) {
                     var p = plot.get();
                     var built = homeBuilt.remove(town);
-                    String trade = workshops.get(town);
+                    boolean farmstead = farmsteadNext.remove(town);
+                    String trade = farmstead ? "farmer" : workshops.get(town);
                     var onPlot = dev.b28.enterprise.territory.Plots.lay(level, dev.b28.enterprise.territory.Kingdoms.get(level.getServer())
                             .of(town), kit.get(), built, p.corner(), p.width(), p.depth(), p.door(), town * 31 + corner.asLong(),
                             "village", trade);
                     if (onPlot.isEmpty()) {
                         Growth.buildHome(level, corner, p.door());
                     } else {
+                        if (farmstead) {
+                            dev.b28.enterprise.territory.FieldMaps.get(level.getServer()).settle(town);
+                            Enterprise.LOGGER.info("Town {}'s farmstead: its farmhouse on its holding at {}", town,
+                                    corner.toShortString());
+                        }
                         // A workshop's workstation made its decorative twin: the trade shows, nobody is hired by it.
                         if (workshops.remove(town) != null) {
                             for (BlockPos station : onPlot.get().house().workstations()) {

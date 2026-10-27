@@ -68,7 +68,7 @@ public final class FieldMaps extends SavedData {
     /** Strips each way from a holding's middle one. */
     static final int STRIPS = 3;
     /** Tracks opened in each ring when the town's plan is made. */
-    static final int FOUNDING = 2;
+    static final int FOUNDING = 3;
     /** How far a holding reaches from its seed at most. */
     static final int HOLDING = 40;
     /** How far a field's ground may rise and fall, to be filled level. */
@@ -88,6 +88,12 @@ public final class FieldMaps extends SavedData {
         final List<Track> tracks = new ArrayList<>();
         final List<Parcel> parcels = new ArrayList<>();
         final Set<Long> taken = new HashSet<>();
+        /** Slots dressed with the kingdom's crop-free field tiles, till a field is planted there. */
+        final Map<Long, Integer> dressed = new HashMap<>();
+        /** Slots judged for dressing and found unfit (off the map, or ground too rough): not looked at again. */
+        final Set<Long> undressable = new HashSet<>();
+        /** Its farmsteads' lots ({x0, z0, x1, z1}), by holding. */
+        final Map<Integer, int[]> farmsteads = new java.util.TreeMap<>();
         /** The grain ring's roads on out through the outer gates laid (avenue indices). */
         final Set<Integer> roads = new HashSet<>();
         boolean founded;
@@ -502,7 +508,12 @@ public final class FieldMaps extends SavedData {
             if (track.ring() != ring) {
                 continue;
             }
-            for (Slot s : slots(parcel, track.line())) {
+            List<Slot> all = slots(parcel, track.line());
+            for (int j = 0; j < all.size(); j++) {
+                Slot s = all.get(j);
+                if (ring == Ring.GRAIN && LOT.contains(j)) {
+                    continue; // the holding's farmstead's
+                }
                 if (!open(level, plan, ring, m, i, s, paths)) {
                     continue;
                 }
@@ -513,7 +524,9 @@ public final class FieldMaps extends SavedData {
                 if (!Growth.zoned(bell, corner, WIDE, people)) {
                     continue;
                 }
-                int y = ground(level, s.x(), s.z(), bell.getY());
+                // A dressed slot's ground is its dressing's (a pond, hay on it): the height it was laid at.
+                Integer dressedY = m.dressed.get(BlockPos.asLong(s.x(), 0, s.z()));
+                int y = dressedY != null ? dressedY : ground(level, s.x(), s.z(), bell.getY());
                 if (y != Integer.MIN_VALUE) {
                     sited.put(BlockPos.asLong(s.x(), 0, s.z()), s.northSouth());
                     return Optional.of(new BlockPos(s.x(), y, s.z()));
@@ -609,6 +622,8 @@ public final class FieldMaps extends SavedData {
             Fields.plant(level, corner, crop);
             return;
         }
+        TownMap map = maps.computeIfAbsent(town, k -> new TownMap());
+        boolean wasDressed = map.dressed.remove(BlockPos.asLong(corner.getX(), 0, corner.getZ())) != null;
         for (int dx = -1; dx <= WIDE; dx++) {
             for (int dz = -1; dz <= WIDE; dz++) {
                 for (int up = 1; up <= 12; up++) {
@@ -616,15 +631,236 @@ public final class FieldMaps extends SavedData {
                     BlockState state = level.getBlockState(at);
                     boolean inside = dx >= 0 && dz >= 0 && dx < WIDE && dz < WIDE;
                     if (state.is(BlockTags.LOGS) && inside || state.is(BlockTags.LEAVES)
-                            || !state.isAir() && state.canBeReplaced() && state.getFluidState().isEmpty()) {
+                            || !state.isAir() && state.canBeReplaced() && state.getFluidState().isEmpty()
+                            || wasDressed && inside && !state.isAir()) {
                         level.setBlock(at, Blocks.AIR.defaultBlockState(), 3);
                     }
                 }
             }
         }
-        Fields.plant(level, corner, crop, northSouth);
-        maps.computeIfAbsent(town, k -> new TownMap()).taken.add(BlockPos.asLong(corner.getX(), 0, corner.getZ()));
+        // The kingdom's field for the crop where it has one (the studio's: a border, a scarecrow, mixed growth), its own
+        // water; the open field's ditch where it hasn't.
+        String kingdom = Kingdoms.get(level.getServer()).of(town);
+        List<FieldTiles.Tile> tiles = FieldTiles.tiles(level, kingdom);
+        Optional<FieldTiles.Tile> tile = FieldTiles.field(tiles, crop, corner.asLong());
+        if (tile.isPresent()) {
+            Growth.level(level, corner, WIDE);
+            FieldTiles.lay(level, tile.get(), corner.getX(), corner.getY(), corner.getZ(), northSouth ? 0 : 1);
+        } else {
+            Fields.plant(level, corner, crop, northSouth);
+        }
+        balk(level, tiles, corner.getX(), corner.getY(), corner.getZ(), northSouth, town, map);
+        map.taken.add(BlockPos.asLong(corner.getX(), 0, corner.getZ()));
         setDirty();
+    }
+
+    /**
+     * A grain holding's farmstead lot (John: "no sensible farmhouses"): its first two strips' first two fields, by its
+     * track (indices into {@link #slots}' order): 19 x 18, the farmhouse facing the track, its fields round it.
+     */
+    static final Set<Integer> LOT = Set.of(0, 1, 2 * STRIPS + 1, 2 * STRIPS + 2);
+
+    /**
+     * Where the town's next farmhouse ({@code width} x {@code depth} as authored) goes: the first grain holding without a
+     * farmstead whose lot is on the map, loaded and level enough, its plot (the house's side yards, its front yard toward
+     * the track) in the lot's middle. Empty if none.
+     */
+    public Optional<Plots.Site> farmstead(ServerLevel level, long town, int width, int depth) {
+        TownPlans.Plan plan = TownPlans.get(level.getServer()).of(town);
+        TownMap m = maps.get(town);
+        if (plan == null || m == null) {
+            return Optional.empty();
+        }
+        int w = Plots.width(width), d = Math.min(2 * WIDE, depth + TownPlans.FRONT_YARD + 4);
+        if (w > 2 * WIDE + BALK) {
+            return Optional.empty();
+        }
+        List<double[][]> paths = tradePaths(plan, Ring.GRAIN);
+        for (int i = 0; i < m.parcels.size(); i++) {
+            Parcel parcel = m.parcels.get(i);
+            Track track = m.tracks.get(parcel.track());
+            if (track.ring() != Ring.GRAIN || m.farmsteads.containsKey(i)) {
+                continue;
+            }
+            List<Slot> all = slots(parcel, track.line());
+            int x0 = Integer.MAX_VALUE, z0 = Integer.MAX_VALUE, x1 = Integer.MIN_VALUE, z1 = Integer.MIN_VALUE;
+            boolean fits = true;
+            for (int j : LOT) {
+                Slot s = all.get(j);
+                if (!level.isLoaded(new BlockPos(s.x(), 0, s.z())) || !level.isLoaded(new BlockPos(s.x() + WIDE, 0, s.z() + WIDE))
+                        || !open(level, plan, Ring.GRAIN, m, i, s, paths)) {
+                    fits = false;
+                    break;
+                }
+                x0 = Math.min(x0, s.x());
+                z0 = Math.min(z0, s.z());
+                x1 = Math.max(x1, s.x() + WIDE - 1);
+                z1 = Math.max(z1, s.z() + WIDE - 1);
+            }
+            if (!fits) {
+                continue;
+            }
+            // Its street the track's side: north of fields running south from it, and so on.
+            net.minecraft.core.Direction door = parcel.northSouth()
+                    ? (parcel.away() > 0 ? net.minecraft.core.Direction.NORTH : net.minecraft.core.Direction.SOUTH)
+                    : (parcel.away() > 0 ? net.minecraft.core.Direction.WEST : net.minecraft.core.Direction.EAST);
+            int lotX = x1 - x0 + 1, lotZ = z1 - z0 + 1;
+            int px, pz;
+            switch (door) {
+                case NORTH -> { px = x0 + (lotX - w) / 2; pz = z0; }
+                case SOUTH -> { px = x0 + (lotX - w) / 2; pz = z1 - d + 1; }
+                case WEST -> { px = x0; pz = z0 + (lotZ - w) / 2; }
+                default -> { px = x1 - d + 1; pz = z0 + (lotZ - w) / 2; }
+            }
+            int[] rect = Plots.world(px, pz, w, d, door, 0, 0, w, d);
+            int y = Plots.ground(level, rect[0], rect[1], rect[2], rect[3]);
+            if (y == Integer.MIN_VALUE || Math.abs(y - plan.bell().getY()) > Plots.RISE) {
+                continue;
+            }
+            pending.put(town, new int[] {i, x0, z0, x1, z1});
+            return Optional.of(new Plots.Site(new BlockPos(px, y, pz), door, w, d));
+        }
+        return Optional.empty();
+    }
+
+    /** The lot last offered each town, till its farmhouse is laid: {holding, x0, z0, x1, z1}. */
+    private final Map<Long, int[]> pending = new HashMap<>();
+
+    /** The town's farmhouse laid on the lot it was offered: the lot its farmstead's, from now on counted with the town. */
+    public void settle(long town) {
+        int[] p = pending.remove(town);
+        TownMap m = maps.get(town);
+        if (p != null && m != null) {
+            m.farmsteads.put(p[0], new int[] {p[1], p[2], p[3], p[4]});
+            setDirty();
+        }
+    }
+
+    /** How many farmsteads the town has. */
+    public int farmsteads(long town) {
+        TownMap m = maps.get(town);
+        return m == null ? 0 : m.farmsteads.size();
+    }
+
+    /**
+     * The farmstead lots ({x0, z0, x1, z1}) of the town whose bell is at {@code bell}: where its census counts beds and
+     * people beyond its reach (John: farmers live on their land, and count as the town's).
+     */
+    public List<int[]> farmsteadsOf(MinecraftServer server, BlockPos bell) {
+        List<int[]> out = new ArrayList<>();
+        TownPlans.get(server).plans().forEach((town, p) -> {
+            TownMap m = maps.get(town);
+            if (m != null && p.bell().getX() == bell.getX() && p.bell().getZ() == bell.getZ()) {
+                out.addAll(m.farmsteads.values());
+            }
+        });
+        return out;
+    }
+
+    /** Slots a town dresses a look at most: the land's dress laid a little at a time. */
+    static final int DRESS_EACH = 6;
+
+    /**
+     * Dresses some of the town's unsown slots (John: "farmland that can cover more area and look more irregular"): each
+     * open slot of its holdings that the land allows laid with one of its kingdom's crop-free field tiles (fallow, a
+     * meadow, an orchard; nothing a census counts), its balk edged with its holding's edge, till a field is planted there.
+     * Up to {@link #DRESS_EACH} a call; how many were dressed.
+     */
+    public int dress(ServerLevel level, long town) {
+        TownPlans.Plan plan = TownPlans.get(level.getServer()).of(town);
+        TownMap m = maps.get(town);
+        if (plan == null || m == null || !m.founded) {
+            return 0;
+        }
+        List<FieldTiles.Tile> tiles = FieldTiles.tiles(level, Kingdoms.get(level.getServer()).of(town));
+        if (tiles.isEmpty()) {
+            return 0;
+        }
+        int done = 0;
+        for (Ring ring : Ring.values()) {
+            List<double[][]> paths = tradePaths(plan, ring);
+            for (int i = 0; i < m.parcels.size() && done < DRESS_EACH; i++) {
+                Parcel parcel = m.parcels.get(i);
+                Track track = m.tracks.get(parcel.track());
+                if (track.ring() != ring) {
+                    continue;
+                }
+                List<Slot> all = slots(parcel, track.line());
+                for (int j = 0; j < all.size(); j++) {
+                    Slot s = all.get(j);
+                    if (done >= DRESS_EACH) {
+                        break;
+                    }
+                    if (ring == Ring.GRAIN && LOT.contains(j)) {
+                        continue; // the holding's farmstead's
+                    }
+                    long key = BlockPos.asLong(s.x(), 0, s.z());
+                    if (m.dressed.containsKey(key) || m.undressable.contains(key) || m.taken.contains(key)
+                            || sited.containsKey(key)) {
+                        continue;
+                    }
+                    if (!level.isLoaded(new BlockPos(s.x(), 0, s.z())) || !level.isLoaded(new BlockPos(s.x() + WIDE, 0, s.z() + WIDE))) {
+                        continue; // looked at when it's loaded
+                    }
+                    int y = open(level, plan, ring, m, i, s, paths) ? ground(level, s.x(), s.z(), plan.bell().getY())
+                            : Integer.MIN_VALUE;
+                    Optional<FieldTiles.Tile> tile = FieldTiles.dressing(tiles, key ^ town);
+                    if (y == Integer.MIN_VALUE || tile.isEmpty()) {
+                        m.undressable.add(key);
+                        setDirty();
+                        continue;
+                    }
+                    BlockPos corner = new BlockPos(s.x(), y, s.z());
+                    for (int dx = 0; dx < WIDE; dx++) {
+                        for (int dz = 0; dz < WIDE; dz++) {
+                            for (int up = 1; up <= 12; up++) {
+                                BlockPos at = corner.offset(dx, up, dz);
+                                BlockState state = level.getBlockState(at);
+                                if (state.is(BlockTags.LOGS) || state.is(BlockTags.LEAVES)
+                                        || !state.isAir() && state.canBeReplaced() && state.getFluidState().isEmpty()) {
+                                    level.setBlock(at, Blocks.AIR.defaultBlockState(), 2);
+                                }
+                            }
+                        }
+                    }
+                    Growth.level(level, corner, WIDE);
+                    FieldTiles.lay(level, tile.get(), s.x(), y, s.z(), s.northSouth() ? 0 : 1);
+                    balk(level, tiles, s.x(), y, s.z(), s.northSouth(), town, m);
+                    m.dressed.put(key, y);
+                    setDirty();
+                    done++;
+                }
+            }
+        }
+        return done;
+    }
+
+    /**
+     * The balk on a slot's far side across its strip edged with its holding's edge (one kind a holding, so a farm reads
+     * as one): north-south strips' balk east of the slot, east-west strips' south of it.
+     */
+    private void balk(ServerLevel level, List<FieldTiles.Tile> tiles, int x, int y, int z, boolean northSouth, long town,
+            TownMap m) {
+        int parcel = -1;
+        for (int i = 0; i < m.parcels.size(); i++) {
+            Parcel p = m.parcels.get(i);
+            if (parcel < 0 || Math.hypot(p.x() - x, p.z() - z) < Math.hypot(m.parcels.get(parcel).x() - x,
+                    m.parcels.get(parcel).z() - z)) {
+                parcel = i;
+            }
+        }
+        Optional<FieldTiles.Tile> edge = FieldTiles.edge(tiles, town * 131 + parcel);
+        if (edge.isEmpty()) {
+            return;
+        }
+        int ex = northSouth ? x + WIDE : x, ez = northSouth ? z : z + WIDE;
+        for (Track t : m.tracks) {
+            if (from(t.line(), ex + 0.5, ez + 0.5) < TRACK_WIDTH / 2.0 + 1
+                    || from(t.line(), ex + (northSouth ? 0.5 : WIDE - 0.5), ez + (northSouth ? WIDE - 0.5 : 0.5)) < TRACK_WIDTH / 2.0 + 1) {
+                return; // a track runs there
+            }
+        }
+        FieldTiles.lay(level, edge.get(), ex, y, ez, northSouth ? 1 : 0);
     }
 
     @Override
@@ -653,8 +889,20 @@ public final class FieldMaps extends SavedData {
             }
             e.putIntArray("parcels", parcels);
             e.putLongArray("taken", m.taken.stream().mapToLong(Long::longValue).sorted().toArray());
+            long[] dressedAt = m.dressed.keySet().stream().mapToLong(Long::longValue).sorted().toArray();
+            e.putLongArray("dressed", dressedAt);
+            e.putIntArray("dressedY", java.util.Arrays.stream(dressedAt).mapToInt(k -> m.dressed.get(k)).toArray());
+            e.putLongArray("undressable", m.undressable.stream().mapToLong(Long::longValue).sorted().toArray());
             e.putIntArray("roads", m.roads.stream().mapToInt(Integer::intValue).sorted().toArray());
             e.putBoolean("founded", m.founded);
+            int[] lots = new int[5 * m.farmsteads.size()];
+            int at = 0;
+            for (var f : m.farmsteads.entrySet()) {
+                System.arraycopy(new int[] {f.getKey(), f.getValue()[0], f.getValue()[1], f.getValue()[2], f.getValue()[3]}, 0,
+                        lots, at, 5);
+                at += 5;
+            }
+            e.putIntArray("farmsteads", lots);
             towns.put(Long.toString(town), e);
         });
         tag.put("towns", towns);
@@ -683,10 +931,22 @@ public final class FieldMaps extends SavedData {
             for (long t : e.getLongArray("taken")) {
                 m.taken.add(t);
             }
+            long[] dressedAt = e.getLongArray("dressed");
+            int[] dressedY = e.getIntArray("dressedY");
+            for (int i = 0; i < dressedAt.length && i < dressedY.length; i++) {
+                m.dressed.put(dressedAt[i], dressedY[i]);
+            }
+            for (long t : e.getLongArray("undressable")) {
+                m.undressable.add(t);
+            }
             for (int r : e.getIntArray("roads")) {
                 m.roads.add(r);
             }
             m.founded = e.getBoolean("founded");
+            int[] lots = e.getIntArray("farmsteads");
+            for (int i = 0; i + 4 < lots.length; i += 5) {
+                m.farmsteads.put(lots[i], new int[] {lots[i + 1], lots[i + 2], lots[i + 3], lots[i + 4]});
+            }
             out.maps.put(Long.parseLong(key), m);
         }
         return out;
