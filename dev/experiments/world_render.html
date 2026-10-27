@@ -108,7 +108,8 @@ h2 { font: 500 .78rem var(--body); text-transform: uppercase; letter-spacing: .0
     </div>
     <p class="note">A pixel is a block. Drag to pan, scroll or pinch to zoom. The roads are the paths the caravans wore
       into the land. Each caravan is on the map from the day it left to the day it was home, out to the far town and
-      back (squares are wagons, rounds are llama trains); the clock runs half a second a day.</p>
+      back (squares are wagons, rounds are llama trains). The clock starts the day before the first caravan left and runs
+      1.5 seconds a day while any is on the road, faster through quiet days.</p>
     <p class="scale" id="scale"></p>
   </aside>
 </div>
@@ -208,18 +209,26 @@ function along(r, d) {
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 }
 const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-// The clock: day 0 to the last, half a second a day, round again.
+// The clock: from the day before the first caravan left to the last, 1.5 seconds a day while any is on the road and
+// 0.3 while none is, round again.
 const last = D.day || 90;
-let day = 0, playing = !still, before = null;
+const runs = D.routes.flatMap(r => r.runs || []);
+const first = Math.max(0, Math.min(...runs.map(r => r[0]), last) - 1);
+const onRoad = d => runs.some(([a, b]) => a <= d && d <= b);
+let day = first, playing = !still, before = null;
 const slider = document.getElementById("day"), dayText = document.getElementById("dayText"), play = document.getElementById("play");
 slider.max = last;
 function setDay(d) { day = d; slider.value = d.toFixed(2); dayText.textContent = "Day " + Math.floor(d); }
 slider.oninput = () => { setDay(+slider.value); };
 play.onclick = () => { playing = !playing; play.textContent = playing ? "Pause" : "Play"; play.setAttribute("aria-pressed", String(playing)); };
 play.textContent = playing ? "Pause" : "Play";
-setDay(0);
+slider.min = first;
+setDay(first);
 function draw(now) {
-  if (playing && before !== null) setDay((day + (now - before) / 500) % (last + 1));
+  if (playing && before !== null) {
+    const next = day + (now - before) / (onRoad(day) ? 1500 : 300);
+    setDay(next > last ? first : next);
+  }
   before = now;
   const r = map.getBoundingClientRect();
   cx.clearRect(0, 0, r.width, r.height);

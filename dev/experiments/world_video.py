@@ -2,11 +2,12 @@
 """A film of a survey map (world_render.py's page): its caravans on the road day by day, for sharing (an MP4 that
 Discord plays inline: H.264, yuv420p, under its 10 MB).
 
-    python3 dev/experiments/world_video.py SURVEY.html OUT.mp4 [--width 720] [--seconds-per-day 0.5]
+    python3 dev/experiments/world_video.py SURVEY.html OUT.mp4 [--width 720] [--busy 1.5] [--idle 0.3]
 
 Reads the page's map and data, draws the towns' names onto the map once, and on each frame the day and the caravans
 on the road that day, each from when it left to when it was home (out to the far town, then back: squares wagons,
-rounds llama trains), over the roads they wore into the land; pipes the frames to ffmpeg. Needs Pillow
+rounds llama trains), over the roads they wore into the land, from the day before the first caravan left: `--busy`
+seconds a day while any is on the road, `--idle` while none is. Pipes the frames to ffmpeg. Needs Pillow
 (`python3 -m venv v && v/bin/pip install pillow`, run it with v/bin/python) and ffmpeg with libx264.
 """
 import base64
@@ -48,9 +49,9 @@ def option(name, default):
 
 def main():
     args = [a for i, a in enumerate(sys.argv[1:], 1)
-            if not a.startswith("--") and sys.argv[i - 1] not in ("--width", "--seconds-per-day")]
+            if not a.startswith("--") and sys.argv[i - 1] not in ("--width", "--busy", "--idle")]
     width = int(option("--width", 720))
-    per_day = option("--seconds-per-day", 0.5)
+    busy, idle = option("--busy", 1.5), option("--idle", 0.3)
     page = open(args[0]).read()
     image = base64.b64decode(re.search(r"data:image/png;base64,([A-Za-z0-9+/=]+)", page).group(1))
     data = json.loads(re.search(r"const D = (\{.*?\});\n", page, re.S).group(1))
@@ -90,8 +91,10 @@ def main():
                            "-crf", "24", "-pix_fmt", "yuv420p", "-movflags", "+faststart", args[1]],
                           stdin=subprocess.PIPE)
     last = data["day"]
-    for k in range(int((last + 1) * per_day * fps)):
-        day = k / fps / per_day
+    runs = [r for rt in data["routes"] for r in rt.get("runs", [])]
+    day = max(0, min((a for a, _ in runs), default=0) - 1)
+    while day <= last:
+        on_road = any(a <= day <= b for a, b in runs)
         frame = base.copy()
         pen = ImageDraw.Draw(frame)
         pen.text((16, height - 16), f"Seed 8675309 · day {int(day)} of {last} · {trips} caravan trips",
@@ -109,6 +112,7 @@ def main():
                 else:
                     pen.rectangle((x - 6, z - 4, x + 6, z + 4), fill=WAGON, outline=EDGE, width=2)
         ff.stdin.write(frame.tobytes())
+        day += 1 / fps / (busy if on_road else idle)
     ff.stdin.close()
     ff.wait()
     print(f"wrote {args[1]}", file=sys.stderr)

@@ -110,7 +110,7 @@ rcon +commands:
 render trace log out="world_survey.html":
     python3 dev/experiments/world_render.py core/run/world {{trace}} {{log}} {{out}}
 
-# A film of a survey page's caravans, each trip on its own days, half a second a day (an MP4 Discord plays inline);
+# A film of a survey page's caravans, each trip on its own days, from the first (an MP4 Discord plays inline);
 # needs Pillow (run with a venv's python)
 film survey out="world_survey.mp4" python="python3":
     {{python}} dev/experiments/world_video.py {{survey}} {{out}}
