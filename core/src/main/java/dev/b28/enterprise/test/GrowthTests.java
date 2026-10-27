@@ -84,7 +84,7 @@ public final class GrowthTests {
         var homes = TownPlans.frontages(plan, Growth.HOME_SIZE);
         helper.assertTrue(homes.size() > 20, "rows of homes: " + homes.size());
         java.util.function.BiPredicate<Integer, Integer> street = (x, z) -> Math.abs(x) <= 1 || Math.abs(z) <= 1
-                || x == 17 || x == 18 || x == -19 || x == -18 || z == 17 || z == 18 || z == -19 || z == -18;
+                || x >= 18 && x <= 21 || x >= -22 && x <= -19 || z >= 18 && z <= 21 || z >= -22 && z <= -19;
         for (var f : homes) {
             for (int dx = 0; dx < Growth.HOME_SIZE; dx++) {
                 for (int dz = 0; dz < Growth.HOME_SIZE; dz++) {

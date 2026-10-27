@@ -15,7 +15,7 @@ change as we learn what works. Change it by PR like anything else.
 
 The sim grows towns (`sim/`, the core) and the mod draws them in the world (`core/`, the binding). The town's shape is
 already planned procedurally: a 13 x 13 forum round the bell, an inner and an outer wall (rectangles, square to the
-compass, gates where four avenues cross them), lanes every 18 blocks inside the inner wall, wards between the lanes,
+compass, gates where four avenues cross them), lanes 4 wide every 20 blocks inside the inner wall, wards between the lanes,
 homes fronting the lanes, a ring of gardens between the walls, open fields along farm tracks outside, pastures beyond,
 and caravan roads planned over the real ground between towns. Today every building is a few hard-coded blocks. The
 studio is good at exactly the part we're weakest at: making a place look like a real place. So we send them our plans
@@ -168,11 +168,12 @@ placer exists; "needs code" is flagged with the change. The plan's numbers come 
 `Forums.java`, `Growth.java`, `Buildings.java`, `Jobs.java`, `Pastures.java`, `FieldMaps.java`, `Fields.java`,
 `Docks.java`, `Works.java`.
 
-**The plan's grid.** Inside the inner wall, lanes run every 18 blocks north-south and east-west from the bell's lines.
-Each lane takes 4 blocks (2 of lane and a doorstep each side), so the ground between two lanes is **14 blocks**; next
-to an avenue (3 wide, 5 kept with its edges) it's **13**. The wards are therefore cells of 14 x 14 (13 x 14 beside an
-avenue, 13 x 13 at the cross), with part-cells against the wall. Homes front the lane on each side of a cell, back to
-back, so a home can be at most **7 deep** (6 where it fronts an avenue). Along the street, homes stand one block apart.
+**The plan's grid.** Inside the inner wall, lanes run every 20 blocks north-south and east-west from the bell's lines.
+Each lane is 4 wide (widened from 2 after your Lordaeron street sketch: a cart's width and the doorsteps), and it keeps
+a doorstep's block clear each side, 6 in all; an avenue (3 wide) keeps 5. So the ground between two streets is **14
+blocks** either way, and the wards are cells of **14 x 14**, with part-cells against the wall. Homes front the street
+on each side of a cell, back to back, so a home can be at most **7 deep**. Along the street, homes stand one block apart
+today (terraces need code, C3).
 The forum's 13 x 13 and a block round it are kept clear.
 
 | Slot | Footprint | Today | Notes |
@@ -180,7 +181,7 @@ The forum's 13 x 13 and a block round it are kept clear.
 | Home on a lane | **5 x 5**, 2 beds | yes (`Growth.HOME_SIZE`) | door on the south face; a 1-block gap each side; up to 4 above ground checked clear (taller is fine, the placer clears headroom) |
 | Home, other sizes | 7 x 5, 7 x 7, 9 x 6, 9 x 7, 11 x 7 | needs code | `TownPlans.frontages` takes one square size; make it width x depth (C3) |
 | Row of attached homes (terrace) | widths 4 to 7, depth up to 7, no gap | needs code | a ward side filled end to end (C3) |
-| Ward block | 14 x 14, 13 x 14, 13 x 13, part-cells | needs code | a whole cell composed at once (C8) |
+| Ward block | 14 x 14, part-cells | needs code | a whole cell composed at once (C8) |
 | Landmark lot | merged cells: 14 x 32, 32 x 32, 32 x 50 | needs code | lanes between merged cells are given up (C8, C9) |
 | Market stall | **3 x 3** | yes (`Jobs.STALL_SIZE`) | a workstation marker at the centre (1, 1, 1), a locker chest touching it; at least 6 from the bell |
 | Hall | as its kind below | yes (`Buildings.java`, `sim/core/src/works.rs`) | square; door at the south face's middle; sited on the nearest open ground 8 to 32 from the bell |
@@ -424,7 +425,7 @@ they matter. The raster world files (`.pgw`) use the same convention.
   - `forum` (polygon, 13 x 13), `bell` (point)
   - `wall_inner`, `wall_outer` (polygon), `wall_strip` (the 7-wide band each keeps clear), `gate` (point: width,
     facing, which wall)
-  - `avenue` (line, width 3), `lane` (line, width 2), `ward_cell` (polygon: the ground between lanes; its size and the
+  - `avenue` (line, width 3), `lane` (line, width 4), `ward_cell` (polygon: the ground between lanes; its size and the
     streets on each side)
   - `frontage` (polygon: a home slot the code would use, door facing), `building` (what stands now: homes, halls by
     kind, stalls by trade, the desk; with beds and workstations as points)

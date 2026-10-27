@@ -902,8 +902,9 @@ help breed more as needed."
   splits it into words) leaves no gaps.
 - **Names, for now** (John: "let's use WoW human settlement names"): markets and settlers' towns take the human
   settlements of the Eastern Kingdoms (Goldshire, Lakeshire, Darkshire...), each once.
-- **Lanes and wards** (`TownPlans.lanes`, `frontages`; John: "lanes"). Inside the inner wall, off its strip: lanes two
-  wide every 18 blocks parallel to the avenues, laid with the plan; the ground between is a ward. New homes front a
+- **Lanes and wards** (`TownPlans.lanes`, `frontages`; John: "lanes"). Inside the inner wall, off its strip: lanes four
+  wide every 20 blocks parallel to the avenues, laid with the plan; the ground between is a ward of 14 x 14 (first
+  two wide every 18; widened after the studio's Lordaeron street sketch read five, John: "widen lanes"). New homes front a
   lane or an avenue, a row each side, a doorstep between the door and the street, the cottage turned to face it
   (`Growth.buildHome(..., door)`); none on a street or the forum, nearest the bell first. Homes keep off the lanes as
   they do the avenues.

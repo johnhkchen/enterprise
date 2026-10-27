@@ -33,7 +33,7 @@ from world_render import (MIN_Y, SIZE, Chunk, centre, chunks_in, colour, hex_at,
                           unpacked)
 
 # The plan's numbers, as the mod has them (`TownPlans`, `Forums`, `FieldMaps`, `Growth`).
-STRIP, GATE, WARD, LANE, FORUM_REACH, HOME = 3, 3, 18, 2, 6, 5
+STRIP, GATE, WARD, LANE, FORUM_REACH, HOME = 3, 3, 20, 4, 6, 5
 GRAIN_DEPTH, PASTURES_BEYOND, PASTURE_DEPTH, FIELD = 40, 3 + 1 + 20, 56, 9
 AROUND = 64
 JOB_SITES = {"blast_furnace": "armorer", "smoker": "butcher", "cartography_table": "cartographer",
@@ -92,7 +92,8 @@ def lane_lines(bell, inner, north_south):
 def on_street(bell, inner, x, z, lanes_ns, lanes_ew):
     if abs(x - bell[0]) <= GATE // 2 + 1 or abs(z - bell[2]) <= GATE // 2 + 1:
         return True
-    return any(lx - 2 <= x <= lx + 1 for lx in lanes_ns) or any(lz - 2 <= z <= lz + 1 for lz in lanes_ew)
+    lo, hi = LANE // 2 + 1, LANE - LANE // 2
+    return any(lx - lo <= x <= lx + hi for lx in lanes_ns) or any(lz - lo <= z <= lz + hi for lz in lanes_ew)
 
 
 def frontages(bell, inner, lanes_ns, lanes_ew):
@@ -100,8 +101,8 @@ def frontages(bell, inner, lanes_ns, lanes_ew):
     w = grow(inner, -(STRIP + 1))
     bx, bz = bell[0], bell[2]
     out = []
-    ns = [(bx, 1, 1)] + [(x, 1, 0) for x in lanes_ns]
-    ew = [(bz, 1, 1)] + [(z, 1, 0) for z in lanes_ew]
+    ns = [(bx, 1, 1)] + [(x, LANE // 2, LANE - LANE // 2 - 1) for x in lanes_ns]
+    ew = [(bz, 1, 1)] + [(z, LANE // 2, LANE - LANE // 2 - 1) for z in lanes_ew]
     for s, left, right in ns:
         for z in range(w[1], w[3] - HOME + 2, HOME + 1):
             out.append((s - left - 2 - HOME + 1, z, "east"))
@@ -333,16 +334,23 @@ def main():
     lanes_ns, lanes_ew = (lane_lines(bell, inner, True), lane_lines(bell, inner, False)) if plan.get("lanes") else ([], [])
     wi = grow(inner, -(STRIP + 1))
     for x in lanes_ns:
-        feats.append(feature("lane", line([(x + 0.5, wi[1] + 0.5), (x + 0.5, wi[3] + 0.5)]), width=LANE))
+        feats.append(feature("lane", line([(x + 0.5, wi[1] + 0.5), (x + 0.5, wi[3] + 0.5)]), width=LANE, mc_columns=[x - LANE // 2, x + LANE - LANE // 2 - 1]))
     for z in lanes_ew:
-        feats.append(feature("lane", line([(wi[0] + 0.5, z + 0.5), (wi[2] + 0.5, z + 0.5)]), width=LANE))
-    # Ward cells: the ground between the streets (avenues and lanes), off them.
-    xs = sorted([wi[0] - 2] + [x for x in lanes_ns] + [bx] + [wi[2] + 3])
-    zs = sorted([wi[1] - 2] + [z for z in lanes_ew] + [bz] + [wi[3] + 3])
-    for a, b in zip(xs, xs[1:]):
-        for c_, d in zip(zs, zs[1:]):
-            cx0, cx1 = a + 2, b - 2
-            cz0, cz1 = c_ + 2, d - 2
+        feats.append(feature("lane", line([(wi[0] + 0.5, z + 0.5), (wi[2] + 0.5, z + 0.5)]), width=LANE, mc_rows=[z - LANE // 2, z + LANE - LANE // 2 - 1]))
+    # Ward cells: the ground between the streets (avenues and lanes, and the block kept either side), off the wall.
+    def free_runs(lo, hi, kept):
+        runs, start = [], None
+        for v in range(lo, hi + 2):
+            if v <= hi and not kept(v):
+                start = v if start is None else start
+            elif start is not None:
+                runs.append((start, v - 1))
+                start = None
+        return runs
+    kx = free_runs(wi[0], wi[2], lambda x: on_street(bell, inner, x, bz + 10 ** 6, lanes_ns, []))
+    kz = free_runs(wi[1], wi[3], lambda z: on_street(bell, inner, bx + 10 ** 6, z, [], lanes_ew))
+    for cx0, cx1 in kx:
+        for cz0, cz1 in kz:
             if cx1 - cx0 >= 4 and cz1 - cz0 >= 4:
                 feats.append(feature("ward_cell", polygon(rect(cx0, cz0, cx1, cz1)), size=[cx1 - cx0 + 1, cz1 - cz0 + 1],
                                      mc=[cx0, cz0, cx1, cz1]))

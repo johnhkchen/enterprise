@@ -106,8 +106,8 @@ All of this is live code (`core/src/main/java/dev/b28/enterprise/territory/`); s
   - **Avenues:** four, 3 wide, running from the forum north, south, east and west to the outer wall, through 3-wide
     gates in both walls. They follow the bell's lines, so a gate is rarely in the middle of its side.
   - **Kept clear:** 3 blocks either side of each wall's line, and along each avenue.
-- **Lanes and wards:** inside the inner wall, lanes 2 wide every 18 blocks, parallel to the avenues. The ground
-  between them makes 14 x 14 cells (13 beside an avenue), with part-cells against the wall.
+- **Lanes and wards:** inside the inner wall, lanes 4 wide every 20 blocks, parallel to the avenues. The ground
+  between them makes 14 x 14 cells, with part-cells against the wall.
 - **Homes** (`Growth.java`): 5 x 5 cottages with 2 beds, fronting a lane or avenue, door turned to the street, one
   block apart, nearest the bell first. A town without a plan puts them on the nearest flat open ground 8 to 32 from the
   bell.
@@ -297,7 +297,7 @@ That lets us see three languages on one map before committing to seven. **About 
 | Part sets | 2 to 4 sets a kingdom: vernacular homes (hamlet, village), town houses and shops, city terraces and tenements, halls (stone, brick or timber as fits) | the README grid | about 25–40 parts a set | C16 | $15–40 a set |
 | Trade yards | one per vanilla trade: armorer, butcher, cartographer, cleric, farmer, fisherman, fletcher, leatherworker, librarian, mason, shepherd, toolsmith, weaponsmith; plus the Merchant's counting stall | 3 x 3 to 7 x 7 | 14 | today | $15–40 |
 | Masses detailed | whatever our plans throw up that the sets can't: part-cells, odd halls, corner plots | any | per town, on demand | C15 | $2–8 each |
-| Ward blocks | composition rules and a few example layouts: a close, a courtyard block (siheyuan for Dalaran), a market block, a garden block; how part-cells fill | 14 x 14, 13 x 14, 13 x 13 | 4–6 layouts + rules | C8 | layouts |
+| Ward blocks | composition rules and a few example layouts: a close, a courtyard block (siheyuan for Dalaran), a market block, a garden block; how part-cells fill | 14 x 14 | 4–6 layouts + rules | C8 | layouts |
 | Stalls | stalls, market hall bays, a covered market (city) | 3 x 3, 5 x 3; a 14 x 14 cell | 8 + 1 | today / C6, C8 | $5–20 |
 | Halls | the 10 kinds, from the hall set at today's size and a city size | today's; a 14 x 14 cell | rules + masses | C4, C16 | $20–80 |
 | Forum | a centrepiece a tier (well, market cross, fountain, statue, bell or drum tower), and a street-furniture set: lamps, benches, trees in planters, notice board, stocks, horse trough, market awnings | 5 x 5 to 9 x 9; props 1 x 1 to 3 x 3 | 4 + about 15 | C6 | $20–60 |

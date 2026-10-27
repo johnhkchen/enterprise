@@ -42,10 +42,11 @@ public final class TownPlans extends SavedData {
     public static final int GATE = 3;
     /**
      * How far apart the lanes are inside the inner wall, a ward between each two (a row of homes fronting each lane,
-     * their back yards between), and a lane's width.
+     * their back yards between), and a lane's width: four, a street a cart and its neighbours' doorsteps share (the
+     * studio's Lordaeron sketch read five; two read as a footpath).
      */
-    static final int WARD = 18;
-    public static final int LANE = 2;
+    static final int WARD = 20;
+    public static final int LANE = 4;
 
     /** A rectangle, its corners inclusive. */
     public record Rect(int x0, int z0, int x1, int z1) {
