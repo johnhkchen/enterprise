@@ -639,6 +639,8 @@ public final class LandAdapter {
     private final Map<Long, dev.b28.enterprise.territory.Kits.Meta> homeKits = new HashMap<>();
     private final Map<Long, Integer> homesLaid = new HashMap<>();
     private final Map<Long, dev.b28.enterprise.territory.Plots.Site> homePlots = new HashMap<>();
+    /** The house the generator made for a town's next home, laid with it. */
+    private final Map<Long, dev.b28.enterprise.territory.Houses.Built> homeBuilt = new HashMap<>();
     /** A hall's kit and plot, found with its site and laid with it. */
     private record HallPlot(dev.b28.enterprise.territory.Kits.Meta kit, dev.b28.enterprise.territory.Plots.Site site) {}
     private final Map<List<Long>, HallPlot> hallPlots = new HashMap<>();
@@ -651,6 +653,22 @@ public final class LandAdapter {
         var held = homeKits.get(town);
         if (held != null) {
             return Optional.of(held);
+        }
+        // A town on a grid with yards: the house its kingdom's town rules ask the generator for at its tier (`Houses`:
+        // the module set and the plan data, the face by wave-function collapse), its tier by its beds.
+        var townPlan = dev.b28.enterprise.territory.TownPlans.get(level.getServer()).of(town);
+        if (townPlan != null && townPlan.yards()) {
+            long beds = level.getPoiManager().getInRange(t -> t.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.HOME),
+                    townPlan.bell(), 64, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY).count();
+            var built = dev.b28.enterprise.territory.Houses.next(level,
+                    dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town),
+                    dev.b28.enterprise.territory.Kingdoms.tier(beds), townPlan.cell() - 2,
+                    townPlan.deepest() - dev.b28.enterprise.territory.TownPlans.FRONT_YARD, town * 7919 + homesLaid.getOrDefault(town, 0));
+            if (built.isPresent()) {
+                homeKits.put(town, built.get().meta());
+                homeBuilt.put(town, built.get());
+                return Optional.of(built.get().meta());
+            }
         }
         var resources = level.getServer().getResourceManager();
         // As wide as a ward's stretch of street, as deep as half a ward (its plan's; today's first wards if none).
@@ -835,9 +853,15 @@ public final class LandAdapter {
                 var plot = Optional.ofNullable(homePlots.remove(town)).filter(p -> p.corner().equals(corner));
                 if (plot.isPresent() && kit.isPresent()) {
                     var p = plot.get();
-                    if (dev.b28.enterprise.territory.Plots.lay(level, dev.b28.enterprise.territory.Kingdoms.get(level.getServer())
-                            .of(town), kit.get(), p.corner(), p.width(), p.depth(), p.door(), town * 31 + corner.asLong()).isEmpty()) {
+                    var built = homeBuilt.remove(town);
+                    var onPlot = dev.b28.enterprise.territory.Plots.lay(level, dev.b28.enterprise.territory.Kingdoms.get(level.getServer())
+                            .of(town), kit.get(), built, p.corner(), p.width(), p.depth(), p.door(), town * 31 + corner.asLong());
+                    if (onPlot.isEmpty()) {
                         Growth.buildHome(level, corner, p.door());
+                    } else {
+                        Enterprise.LOGGER.info("Town {} builds {} facing {} at {} (front yard {}, back yard {})", town,
+                                kit.get().id(), p.door().getName(), corner.toShortString(), onPlot.get().front().orElse("none"),
+                                onPlot.get().back().orElse("none"));
                     }
                 } else {
                     var door = dev.b28.enterprise.territory.TownPlans.doorOf(level, corner, w, d);
@@ -846,6 +870,7 @@ public final class LandAdapter {
                     }
                 }
                 homeKits.remove(town);
+                homeBuilt.remove(town);
                 homesLaid.merge(town, 1, Integer::sum);
                 yield true;
             }

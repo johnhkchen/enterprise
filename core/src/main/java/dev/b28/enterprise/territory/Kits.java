@@ -204,6 +204,26 @@ public final class Kits {
     }
 
     /**
+     * Lays composed blocks (a house the generator made: `Houses`, `Compose`) as {@link #place} lays a kit: authored
+     * facing south, {@code sx} x {@code sz} with its {@code ground} layer at {@code corner}'s y, turned to face
+     * {@code front} with its footprint's north-west corner at {@code corner}. Returns its box in the world.
+     */
+    public static BoundingBox placeCells(ServerLevel level, java.util.Map<BlockPos, BlockState> cells, int sx, int sy, int sz,
+            int ground, BlockPos corner, Direction front) {
+        Compose.Grid g = new Compose.Grid(sx, sy, sz);
+        g.paste(new Compose.Part(sx, sy, sz, cells), 0, 0, 0, Yards.quarter(front), false);
+        boolean turned = front.getAxis() == Direction.Axis.X;
+        int wx = turned ? sz : sx, wz = turned ? sx : sz;
+        int oy = corner.getY() - ground;
+        BoundingBox box = BoundingBox.fromCorners(new BlockPos(corner.getX(), oy, corner.getZ()),
+                new BlockPos(corner.getX() + wx - 1, oy + sy - 1, corner.getZ() + wz - 1));
+        prepare(level, box);
+        g.cells.forEach((p, state) -> level.setBlock(new BlockPos(corner.getX() + p.getX(), oy + p.getY(), corner.getZ() + p.getZ()),
+                state, 2 | 16));
+        return box;
+    }
+
+    /**
      * Its ground made ready: under its footprint, natural ground filled up to its lowest layer (the ground's own block,
      * dirt under grass), and over it, to its top and a few blocks more, the trees and plants cleared.
      */

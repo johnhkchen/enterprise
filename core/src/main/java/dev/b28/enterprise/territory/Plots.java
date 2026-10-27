@@ -97,10 +97,23 @@ public final class Plots {
      */
     public static Optional<Laid> lay(ServerLevel level, String kingdom, Kits.Meta house, BlockPos corner, int width,
             int depth, Direction door, long seed) {
+        return lay(level, kingdom, house, null, corner, width, depth, door, seed);
+    }
+
+    /**
+     * As {@link #lay(ServerLevel, String, Kits.Meta, BlockPos, int, int, Direction, long)}, the house given as composed
+     * blocks ({@code built}: a house the generator made, `Houses`) where it isn't a kit.
+     */
+    public static Optional<Laid> lay(ServerLevel level, String kingdom, Kits.Meta house, Houses.Built built, BlockPos corner,
+            int width, int depth, Direction door, long seed) {
         ResourceManager resources = level.getServer().getResourceManager();
         int[] h = house(depth, house.width(), house.depth());
         int[] at = world(corner.getX(), corner.getZ(), width, depth, door, h[0], h[1], h[2], h[3]);
-        Optional<Kits.Placed> placed = Kits.place(level, house.id(), new BlockPos(at[0], corner.getY(), at[1]), door);
+        BlockPos houseCorner = new BlockPos(at[0], corner.getY(), at[1]);
+        Optional<Kits.Placed> placed = built != null
+                ? Optional.of(new Kits.Placed(house.id(), Kits.placeCells(level, built.cells(), built.sx(), built.sy(), built.sz(),
+                        house.ground(), houseCorner, door), List.of(), List.of()))
+                : Kits.place(level, house.id(), houseCorner, door);
         if (placed.isEmpty()) {
             return Optional.empty();
         }

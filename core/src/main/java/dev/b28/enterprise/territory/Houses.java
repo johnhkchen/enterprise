@@ -263,6 +263,65 @@ public final class Houses {
 
     static final int H = Compose.H;
 
+    /** A house the generator made: its metadata as a kit's, and its blocks (authored facing south) and size. */
+    public record Built(Kits.Meta meta, java.util.Map<net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState> cells,
+            int sx, int sy, int sz) {}
+
+    /**
+     * The house a town of {@code kingdom} builds next at its tier (`town_rules/<kingdom>.json`'s homes: requests to the
+     * generator by tier, weighted), made from its module set and plan data, the request and face fixed by the seed;
+     * empty if the kingdom has no rules, set or plan, or no request fits under {@code widest} x {@code deepest} (with
+     * its relief).
+     */
+    public static Optional<Built> next(net.minecraft.server.level.ServerLevel level, String kingdom, String tier,
+            int widest, int deepest, long seed) {
+        var resources = level.getServer().getResourceManager();
+        var rules = WallKit.json(resources, "town_rules/" + kingdom + ".json");
+        var plan = WallKit.json(resources, "town_kits/" + kingdom + "/plan.json");
+        if (rules.isEmpty() || plan.isEmpty() || !rules.get().has("homes")) {
+            return Optional.empty();
+        }
+        JsonObject homes = rules.get().getAsJsonObject("homes");
+        JsonArray byTier = homes.has(tier) ? homes.getAsJsonArray(tier) : homes.has("village") ? homes.getAsJsonArray("village")
+                : new JsonArray();
+        List<JsonObject> fit = new ArrayList<>();
+        double total = 0;
+        for (var e : byTier) {
+            JsonObject r = e.getAsJsonObject(), solve = r.getAsJsonObject("solve");
+            if (solve.has("terrace")) {
+                continue; // terraces need a run of plots: not yet
+            }
+            if (solve.get("W").getAsInt() + 2 <= widest && solve.get("D").getAsInt() + 2 <= deepest) {
+                fit.add(r);
+                total += r.has("weight") ? r.get("weight").getAsDouble() : 1;
+            }
+        }
+        if (fit.isEmpty()) {
+            return Optional.empty();
+        }
+        double pick = new java.util.Random(seed).nextDouble() * total;
+        JsonObject chosen = fit.get(0);
+        for (JsonObject r : fit) {
+            pick -= r.has("weight") ? r.get("weight").getAsDouble() : 1;
+            if (pick <= 0) {
+                chosen = r;
+                break;
+            }
+        }
+        JsonObject solve = chosen.getAsJsonObject("solve");
+        var layout = layout(new Params(solve.get("W").getAsInt(), solve.get("D").getAsInt(), solve.get("storeys").getAsInt(),
+                false, false, false, false, false, seed), plan.get());
+        if (layout.isEmpty()) {
+            return Optional.empty();
+        }
+        var grid = Compose.compose(resources, Compose.blocks(level), "enterprise:" + kingdom + "/part/timber_relief",
+                Compose.Layout.of(layout.get()));
+        String id = "enterprise:generated/" + kingdom + "_" + solve.get("W") + "x" + solve.get("D") + "_s"
+                + solve.get("storeys") + "_" + Long.toHexString(seed);
+        var meta = Kits.parse(id, meta(id, layout.get(), grid.sx, grid.sy, grid.sz));
+        return Optional.of(new Built(meta, grid.cells, grid.sx, grid.sy, grid.sz));
+    }
+
     /**
      * A position or a condition of the plan data: an integer, or an expression over its variables (W, D, cx, storeys,
      * beds) of + and -, and one comparison (>=, <=, ==, >, <) giving 1 or 0.
