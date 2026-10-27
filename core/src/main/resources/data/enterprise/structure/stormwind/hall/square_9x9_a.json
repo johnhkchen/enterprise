@@ -1,0 +1,31 @@
+{
+  "footprint": [
+    9,
+    9
+  ],
+  "height": 4,
+  "ground": 0,
+  "mirror": true,
+  "entrances": [],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [
+    {
+      "at": [
+        1,
+        1,
+        1
+      ],
+      "what": "flower",
+      "note": "the four corner beds (1..2, 6..7) are where the master Farmer's flowers go"
+    }
+  ],
+  "pilings": [],
+  "entities": [],
+  "relief_faces": [],
+  "id": "enterprise:stormwind/hall/square_9x9_a",
+  "rev": 6,
+  "kingdom": "stormwind",
+  "palette": "stone"
+}

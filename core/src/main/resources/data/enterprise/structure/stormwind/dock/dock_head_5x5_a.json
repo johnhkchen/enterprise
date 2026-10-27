@@ -1,0 +1,49 @@
+{
+  "pilings": [
+    {
+      "at": [
+        0,
+        0
+      ],
+      "block": "minecraft:stone_bricks"
+    },
+    {
+      "at": [
+        4,
+        0
+      ],
+      "block": "minecraft:stone_bricks"
+    },
+    {
+      "at": [
+        0,
+        4
+      ],
+      "block": "minecraft:stone_bricks"
+    },
+    {
+      "at": [
+        4,
+        4
+      ],
+      "block": "minecraft:stone_bricks"
+    },
+    {
+      "at": [
+        2,
+        2
+      ],
+      "block": "minecraft:stone_bricks"
+    }
+  ],
+  "relief_faces": [],
+  "id": "enterprise:stormwind/dock/dock_head_5x5_a",
+  "rev": 6,
+  "kingdom": "stormwind",
+  "palette": "stone",
+  "footprint": [
+    5,
+    5
+  ],
+  "height": 7
+}

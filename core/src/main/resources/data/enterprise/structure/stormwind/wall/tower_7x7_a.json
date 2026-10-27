@@ -1,0 +1,17 @@
+{
+  "relief_faces": [
+    "north",
+    "south",
+    "east",
+    "west"
+  ],
+  "id": "enterprise:stormwind/wall/tower_7x7_a",
+  "rev": 6,
+  "kingdom": "stormwind",
+  "palette": "stone",
+  "footprint": [
+    7,
+    7
+  ],
+  "height": 19
+}

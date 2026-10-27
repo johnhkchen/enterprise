@@ -17,7 +17,9 @@
     "chimney": "chimney stack, from the hearth through the roof",
     "window": "glazing",
     "door": "doors (wooden: villagers open them)",
-    "step": "door steps (slabs only)"
+    "step": "door steps (slabs only)",
+    "band": "the girt band at each floor and its corner returns (a half slab)",
+    "board": "studs as boards on the daub (an open trapdoor)"
   },
   "palettes": {
     "stone": {
@@ -35,7 +37,9 @@
       "chimney": "minecraft:bricks",
       "window": "minecraft:glass_pane",
       "door": "minecraft:spruce_door",
-      "step": "minecraft:cobblestone_slab"
+      "step": "minecraft:cobblestone_slab",
+      "band": "minecraft:dark_oak_slab",
+      "board": "minecraft:dark_oak_trapdoor"
     },
     "daub": {
       "note": "the village default: dark oak frame, white daub on both storeys, thatch",

@@ -1,0 +1,42 @@
+{
+  "pilings": [
+    {
+      "at": [
+        0,
+        0
+      ],
+      "block": "minecraft:stone_bricks"
+    },
+    {
+      "at": [
+        2,
+        0
+      ],
+      "block": "minecraft:stone_bricks"
+    },
+    {
+      "at": [
+        0,
+        3
+      ],
+      "block": "minecraft:stone_bricks"
+    },
+    {
+      "at": [
+        2,
+        3
+      ],
+      "block": "minecraft:stone_bricks"
+    }
+  ],
+  "relief_faces": [],
+  "id": "enterprise:stormwind/dock/dock_pier_3x4_a",
+  "rev": 6,
+  "kingdom": "stormwind",
+  "palette": "stone",
+  "footprint": [
+    3,
+    4
+  ],
+  "height": 4
+}
