@@ -875,6 +875,33 @@ help breed more as needed."
   the first cut laid its second inside its first. Moods' sum +11.5 and +12.4 on two runs, 14 and 16 comforts met.
   Stage 2 (John): a forum at each town's heart, the square, with the main roads leaving it along the trade routes;
   stage 3, homes and pastures zoned along them.
+- **Roads are planned over the land as it was generated** (`territory/Trails.java` `road`; John: "roads should follow
+  actual optimal paths not hex-optimized paths", "paths follow terrain, based on what makes wagon or llama travel
+  feasible", "planning shouldn't assume the band is the most optimal"). The core keeps its hex routes (they price a
+  trip); a trail now carries its road's whole path and its carrier. Once the ground in an ellipse round the road's
+  two bells is made and loaded, the binding plans the road's cheapest way across it on a 4-block grid of the real
+  ground (under its trees, heights smoothed over twelve blocks): a step costs its length, the grade squared, past the
+  carrier's steepest a cliff's toll (a wagon's 1 rise in 12 run, a llama train's 1 in 3: John), water 25 times a
+  step; then straightened where that costs no more and its corners rounded. One road per pair of towns, both ways
+  (the first cut laid fifteen for five pairs: the stray paths); each worn hex lays its nearest stretch, three wide
+  through a forum's hex, decked in planks over water. The plans are written to the world's `enterprise-roads.json`.
+- **The town plan** (`territory/TownPlans.java`, `Forums.java`; John: "town squares can be a bit bigger", "town walls
+  shouldn't be perfect circles", "a reserved area for walls ... and also a second ring wall, taking inspiration from
+  ancient Chinese cities"). At a town's first survey: a 13 x 13 forum round its bell, paved on the land's own ground;
+  an inner wall's rectangle round the village (its beds, workstations and bell, 5 more, 16 the least), and an outer
+  one twice its reach from the bell (120 the most), both square to the compass (John chose "fit to the village" and
+  "reserved now, built later"); four avenues from the forum to the outer line through gates in both. The town's wall
+  work is raised on the inner; the outer is kept clear. Homes, fields and pastures stay off both walls' strips and
+  the avenues; fields and pastures go outside the inner wall (their reach 40 past it). Live: inner walls 65 to 95
+  blocks a side; avenues of 600 to 900 blocks.
+- **The surveyor's map and its film** (`dev/experiments/world_render.py`, `world_video.py`; `just render`, `just film`):
+  the world from its region files a block a pixel (trees, roads, bridges, forums, homes, fields by crop, pastures,
+  rails, walls, water, hill-shading), the town plans and the routes along their planned roads with wagons moving, and
+  a 12-second MP4 for sharing. A study's ground is made only where it loads; generating the map's area first
+  (`forceload` a 16 x 16 block of chunks at a time, through `scripts/rcon.py` with the command whole: `just rcon`
+  splits it into words) leaves no gaps.
+- **Names, for now** (John: "let's use WoW human settlement names"): markets and settlers' towns take the human
+  settlements of the Eastern Kingdoms (Goldshire, Lakeshire, Darkshire...), each once.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 
