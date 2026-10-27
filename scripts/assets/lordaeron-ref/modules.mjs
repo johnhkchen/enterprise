@@ -50,6 +50,9 @@ const SHELL = {
     return [y === 1 ? B.door("lower", "left") : y === 2 ? B.door("upper", "left") : y === 3 ? B.beamX : B.infill_ground,
       y === 3 ? B.sill : y === 4 ? "lantern[hanging=false,waterlogged=false]" : "air"];                    // the hood, a lamp on it
   }),
+  // an open arcade bay (market halls): paving through, 3 clear under curved braces from the posts, the girt above
+  bay_arcade: () => columns(2, (x, y) => [y === 0 ? "stone_bricks" : y === 3 ? (x === 0 ? "dark_oak_stairs[facing=west,half=top,shape=straight,waterlogged=false]" : B.lantern) : y === 4 ? B.beamX : "air",   // a brace from the post, a lantern hung from the girt
+    y === 0 ? B.band : "air"]),
   bay_shop: () => columns(2, (x, y) => [y === 0 ? B.beamX : y >= 2 && y <= H - 2 ? B.pane : B.infill_ground, y === 0 ? B.band : y === 1 ? B.counter : "air"]),
   // a corner, 2 x 2 in plan: local x 0 = the side's relief, 1 = the wall corner; z 0 = wall row, 1 = front relief.
   // Posts stand proud on both faces; the girt band turns the outside corner.
@@ -142,6 +145,7 @@ export function allModules({ spans = [9, 12, 15] } = {}) {
     add(`chimney_party_${st}`, SHELL.chimney_party(), shellMeta(st, { slot: "post", relief: "party", behind: ["hearth"], weight: 1 }));
   }
   add("bay_door_ground", SHELL.bay_door(), shellMeta("ground", { slot: "bay", where: { storey: "ground", face: ["front"] }, limit: "exactly 1 per front", weight: 1 }));
+  add("bay_arcade_ground", SHELL.bay_arcade(), shellMeta("ground", { slot: "bay", behind: ["market"], weight: 1, note: "open arcade: market halls" }));
   add("bay_shop_ground", SHELL.bay_shop(), shellMeta("ground", { slot: "bay", behind: ["shop", "work", "hall"], where: { storey: "ground", face: ["front"] }, weight: 2 }));
   for (const span of spans) for (const kind of ["bay", "gable", "verge"]) add(`roof_${kind}_${span}`, roofSlice(span, kind), { layer: "roof", span, pitch: PITCH, kind, mirror: true });
   for (const type of ["straight", "turned"]) for (const part of ["bottom", "mid", "top"]) add(`core_${type}_${part}`, core(type, part), { layer: "plan", tile: type === "straight" ? "stair2x5" : "stair3x3", part, stacks: true });

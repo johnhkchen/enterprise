@@ -87,18 +87,19 @@ export function layoutOf(p) {
           const partySide = (face === "front" && ((i === 0 && party[0]) || (i === Lf - 1 && party[1]))) || (face === "back" && ((i === 0 && party[1]) || (i === Lf - 1 && party[0])));
           module = partySide ? `corner_party_${st}` : `corner_${st}`;
         } else if (i % 3 === 0) {
-          module = face === "west" && westChimney && i === chimneyZ ? `chimney_${st}` : isParty ? `post_party_${st}` : `post_${st}`;
+          module = face === "west" && i === chimneyZ && D >= 7 ? (isParty ? `chimney_party_${st}` : `chimney_${st}`) : isParty ? `post_party_${st}` : `post_${st}`;
         } else if ((i % 3) === 1) {
           const bay = Math.floor(i / 3);
           // the room behind this bay: two interior cells along the face
           const cells = { front: [[i, D - 2], [i + 1, D - 2]], back: [[W - 1 - i, 1], [W - 2 - i, 1]], west: [[1, i], [1, i + 1]], east: [[W - 2, D - 1 - i], [W - 2, D - 2 - i]] }[face];
           const stair = cells.some(([x, z]) => coreCells.has(`${x},${z}`));
           if (isParty) module = `bay_party_${st}`;
+          else if (p.arcade && s === 0) module = "bay_arcade_ground";
           else if (face === "front" && s === 0 && bay === doorBay) module = "bay_door_ground";
           else if (stair) module = `bay_landing_${st}`;
           else if (face === "front" && s === 0 && p.shop) module = "bay_shop_ground";
           else if (s === 0 && (face === "west" || face === "east") && !p.noCore) module = `bay_landing_${st}`;   // a single window on a ground side (a hall's sides get pairs)
-          else if (face === "front" && (bay + s) % 2 === 0) module = `bay_window_box_${st}`;
+          else if ((face === "front" || (face === "back" && S === 1)) && (bay + s) % 2 === 0) module = `bay_window_box_${st}`;
           else module = `bay_window_${st}`;
           shell.push({ face, i, module, storey: s, mirror: module === "bay_door_ground" && mirrorDoor });
           continue;
@@ -117,7 +118,7 @@ export function layoutOf(p) {
   //   every bed a made bed (a free long side), chambers off a landing (never through a bedroom), furniture by use,
   //   circulation kept clear from the street door to the stair. A 7-wide body holds one chamber floor (2 storeys at
   //   most); a 10-wide body splits each upper floor into a chamber and a 2-wide landing by the stair.
-  const beds = [], workstations = [], backHearth = party[0] || D < 7;
+  const beds = [], workstations = [], backHearth = D < 7;
   const put = (storey, module, at, dy = 1, q = 0) => plan.push({ storey, module, at, dy, q });
   const bed = (storey, head, q = 0) => { put(storey, "bed", head, 1, q); beds.push({ storey, head, foot: q === 0 ? [head[0], head[1] + 1] : [head[0] - 1, head[1]] }); };
   const top = H - 1;
@@ -127,33 +128,30 @@ export function layoutOf(p) {
   // against a wall near it, so routes stay short; corners away from the spine take what nobody walks to (a table and
   // benches, plants), so no floor sits idle. Upper floors: made beds on the west wall with a chest between.
   if (p.fitout) p.fitout({ put, bed, W, D, S, top, work, doorX: doorBay * 3 + 1 + (p.door === "left" ? 0 : 1) });
-  else if (core === "turned" && W < 10) {
-    if (S > 2) throw new Error("a 7-wide body holds one chamber floor: 2 storeys at most (no through rooms)");
-    // hall: the stair climbs the east wall and the back wall (core x W-4..W-2, z 1..3), so the hall keeps its width;
-    // spine: door (2,5) along the front row to (W-2,4), the stair's foot
-    put(0, "hearth", [1, backHearth ? 1 : chimneyZ]);
-    work([1, D - 2]); put(0, "cask", [3, 4]); put(0, "chest", [4, 4]);
-    put(0, "table", [2, 2]); put(0, "bench", [2, 1], 1, 2); put(0, "bench", [2, 3]);
-    put(0, "shelf", [4, 2]); put(0, "pot", [3, 1]);
-    put(0, "lantern", [2, 3], top); put(0, "lantern", [4, 3], top);
-    for (let s = 1; s < S; s++) {                                       // the stair arrives at (W-4,1); a landing round it
-      bed(s, [1, 1]); bed(s, [1, 4]); put(s, "chest", [1, 3]);
-      put(s, "table", [W - 3, D - 2]); put(s, "bench", [W - 4, D - 2], 1, 1); put(s, "shelf", [W - 2, D - 2]);
-      put(s, "lantern", [2, 3], top); put(s, "lantern", [W - 3, 3], top);
-    }
+  else if (W < 10) {
+    // 7 wide: a one-room cottage (the plan-layer rule: multi-storey starts at 10 wide). A 5 x 5 interior can't hold two
+    // rooms each 3 wide behind a partition, so hall and chamber share the room: the hearth on the west wall with a
+    // table and benches, two made beds against the back wall, a chest between them, the door's way kept clear.
+    if (S > 1) throw new Error("a 7-wide body is single-storey (multi-storey starts at 10 wide)");
+    bed(0, [1, 1]); bed(0, [W - 2, 1]); put(0, "chest", [3, 1]);
+    put(0, "hearth", [1, chimneyZ]); put(0, "table", [3, 3]); put(0, "bench", [3, 2]); put(0, "bench", [4, 3], 1, 1);
+    work([W - 2, 4]); put(0, "cask", [W - 2, 3]); put(0, "pot", [1, D - 2]);
+    put(0, "lantern", [2, 3], top); put(0, "lantern", [4, 2], top);
   } else if (core === "turned") {
     // 10 wide: the hall below; above, a chamber to the west and a 2 x 2 landing at the stair's top behind an L partition
     const cx = W - 4;                                                    // the core's west column (its top step)
+    // the hall; a clear 2-wide approach from the door along the front to the stair's foot (W-3..W-2, z 4..5)
     put(0, "hearth", [1, chimneyZ]); put(0, "table", [2, 3]); put(0, "bench", [2, 2]); put(0, "bench", [2, 4], 1, 2);
-    work([4, D - 2]); put(0, "cask", [cx, 4]); put(0, "chest", [cx + 1, 4]); put(0, "shelf", [1, 1]); put(0, "shelf", [3, 1]);
-    put(0, "table", [4, 2]); put(0, "bench", [4, 1], 1, 2); put(0, "pot", [1, D - 2]);
+    work([4, D - 2]); put(0, "chest", [3, 4]); put(0, "cask", [cx, 4]); put(0, "shelf", [1, 1]); put(0, "shelf", [3, 1]); put(0, "pot", [1, D - 2]);
     put(0, "lantern", [2, 3], top); put(0, "lantern", [5, 3], top); put(0, "lantern", [cx + 1, 3], top);
     for (let s = 1; s < S; s++) {
-      for (let z = 1; z <= 3; z++) put(s, z === 2 ? "door_inner" : "wall_inner", [cx - 1, z]);   // the partition: x = cx-1 ...
-      for (let x = cx - 1; x <= W - 2; x++) put(s, "wall_inner", [x, 4]);                          // ... and along z = 4
+      // the landing is the 2 x 2 inside the stair's corner (cx..cx+1, z 2..3): a partition west of it (door at z 2) and
+      // south of it (z 4, from cx east); the next flight is entered from its side, so the front strip is the chamber's
+      for (let z = 1; z <= 3; z++) put(s, z === 2 ? "door_inner" : "wall_inner", [cx - 1, z]);
+      for (let x = cx; x <= W - 2; x++) put(s, "wall_inner", [x, 4]);
       if ((p.beds || 2) > 2) throw new Error("a 10-wide chamber floor holds 2 made beds (floor a bed 4 to 8.5; the partition door must stay clear)");
       bed(s, [1, 1]); bed(s, [1, 4]);
-      put(s, "chest", [1, 3]); put(s, "table", [cx - 2, D - 3]); put(s, "bench", [cx - 2, D - 2], 1, 2); put(s, "shelf", [W - 2, D - 2]);
+      put(s, "chest", [1, 3]); put(s, "table", [cx - 2, 1]); put(s, "bench", [cx - 3, 1], 1, 1); put(s, "chest", [W - 2, D - 2]);   // the table against the partition, so the front strip joins the chamber
       put(s, "lantern", [2, 3], top); put(s, "lantern", [cx, 2], top); put(s, "lantern", [W - 3, D - 2], top);
     }
   } else {
@@ -171,7 +169,7 @@ export function layoutOf(p) {
       put(s, "lantern", [2, 3], top); put(s, "lantern", [W - 3, 3], top);
     }
   }
-  const chimney = westChimney ? [0, chimneyZ] : [0, 1];
+  const chimney = D >= 7 ? [0, chimneyZ] : [0, 1];
   return { body: [W, D], storeys: S, party, roof: p.roof, core, shell, plan, chimney, beds, workstations, doorBay, door: p.door || "right" };
 }
 
