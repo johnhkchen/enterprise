@@ -864,6 +864,17 @@ help breed more as needed."
   Live on another world: +6.9 against +7.8 for the rule before on its journal, 9 comforts met to 12 (Meadowfell +1.1
   to +2.1): where a Butcher keeps pigs and chickens, four equal shares left sheep and cows twelve a town. Shares
   should follow what each kind is for (hides, wool, meat wanted), not be equal. Not kept.
+- **Pastures are laid to the land** (John: "use the terrain generated to build efficient rectangular pastures";
+  `Work::Pasture`, `territory/Pastures.java`). A pasture the town fences is asked of the host like a field: it lays
+  the largest rectangle (18 x 14 down to 7 x 7) of the land's own open ground (grass and earth, sand; not rock, a
+  field or a path) on the town's zoned ground within 56 blocks of the bell, the ground rolling 3 at most, fenced in
+  birch where it lies with the gate toward the bell, and says the grass inside. Laid, it holds an animal a
+  `grass_per_animal` (4) of it (John: "by grass area"); not laid (a town unloaded, a host with no world), 16 as
+  before. Only birch reads as a pasture's: the oak rails at the drops ringed Meadowfell's hills and read as fenced-in
+  ground. Live: Wheatfell, the one town the study keeps loaded, laid three (192, 120, 96 of grass: 102 animals);
+  the first cut laid its second inside its first. Moods' sum +11.5 and +12.4 on two runs, 14 and 16 comforts met.
+  Stage 2 (John): a forum at each town's heart, the square, with the main roads leaving it along the trade routes;
+  stage 3, homes and pastures zoned along them.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 
