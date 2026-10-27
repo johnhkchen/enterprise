@@ -1,6 +1,6 @@
 {
   "set": "lordaeron/timber_relief",
-  "rev": 2,
+  "rev": 3,
   "about": "The Lordaeron timber-frame module set with relief, for a WFC assembler. Two layers solved in order: the plan (rooms, cores, fit-out) then the shell (posts, bays, corners) chosen by the room behind; then the roof and the stack. The golden houses beside it are composed from exactly these modules by the layouts in their JSON (golden.layouts); scripts/assets/lordaeron-ref/compose.mjs is the reference composer.",
   "grid": {
     "post": 1,
@@ -539,6 +539,26 @@
       "slot": "bay",
       "limit": "exactly 1 per front",
       "weight": 1
+    },
+    {
+      "id": "bay_arcade_ground",
+      "part": "enterprise:lordaeron/part/timber_relief/bay_arcade_ground",
+      "size": [
+        2,
+        5,
+        2
+      ],
+      "layer": "shell",
+      "where": {
+        "storey": "ground"
+      },
+      "mirror": true,
+      "slot": "bay",
+      "behind": [
+        "market"
+      ],
+      "weight": 1,
+      "note": "open arcade: market halls"
     },
     {
       "id": "bay_shop_ground",
