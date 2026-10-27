@@ -105,6 +105,11 @@ lane lane:
 rcon +commands:
     python3 scripts/rcon.py {{commands}}
 
+# The surveyor's map of the dev server's world, block by block, with the run's wagons (core mode; after the server stops):
+# TRACE is the run's `enterprise-sim --trace` database, LOG the server's log (its forums' bells)
+render trace log out="world_survey.html":
+    python3 dev/experiments/world_render.py core/run/world {{trace}} {{log}} {{out}}
+
 # The cartographer's map of the dev server's world: towns, hubs, and routes by trips (after the server stops).
 map out="world_map.html" title="The realm, by its cartographer":
     python3 dev/experiments/world_map.py core/run/world/data {{out}} "{{title}}"

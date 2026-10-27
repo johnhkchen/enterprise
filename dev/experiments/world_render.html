@@ -1,0 +1,231 @@
+<title>Seed 8675309 Survey</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* Layout: the survey sheet fills the page; a slim strip of key and figures runs beside it (under it on a phone). */
+:root {
+  --ground: #e9ecef;      /* the drafting table round the sheet */
+  --sheet: #f7f8f9;
+  --ink: #1d232b;
+  --muted: #5d6773;
+  --rule: #c9cfd6;
+  --accent: #b5562b;      /* wagons and routes: the caravans' red ochre */
+  --route: rgba(181, 86, 43, .55);
+  --label-halo: rgba(247, 248, 249, .9);
+  --display: "Alegreya SC", "Iowan Old Style", Georgia, serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #12161b; --sheet: #1a2027; --ink: #e6eaee; --muted: #9aa5b1; --rule: #2e3742;
+    --accent: #e08a5c; --route: rgba(224, 138, 92, .6); --label-halo: rgba(18, 22, 27, .85); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #12161b; --sheet: #1a2027; --ink: #e6eaee; --muted: #9aa5b1; --rule: #2e3742;
+  --accent: #e08a5c; --route: rgba(224, 138, 92, .6); --label-halo: rgba(18, 22, 27, .85); color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--ground); color: var(--ink); font: 15px/1.45 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px; box-sizing: border-box;
+}
+.frame { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; gap: 16px; height: 100%; min-height: 32rem; }
+@media (max-width: 760px) { .frame { grid-template-columns: minmax(0, 1fr); height: auto; } .map { height: 70vh; } }
+.map { position: relative; background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden;
+  min-width: 0; touch-action: none; cursor: grab; }
+.map:active { cursor: grabbing; }
+canvas { display: block; width: 100%; height: 100%; }
+.zoom { position: absolute; right: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 4px; }
+.zoom button { width: 34px; height: 34px; border-radius: 4px; border: 1px solid var(--rule); background: var(--sheet);
+  color: var(--ink); font: 600 18px var(--body); cursor: pointer; }
+.zoom button:focus-visible, .key button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+aside { display: flex; flex-direction: column; gap: 18px; min-width: 0; overflow-y: auto; }
+h1 { font: 700 1.6rem/1.1 var(--display); margin: 0; letter-spacing: .02em; text-wrap: balance; }
+.sub { color: var(--muted); font-size: .9rem; margin: 4px 0 0; }
+h2 { font: 500 .78rem var(--body); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); margin: 0 0 6px; }
+.key { display: grid; gap: 3px; }
+.key button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 4px 6px; border: 0; border-radius: 4px;
+  background: transparent; color: var(--ink); font: 400 .92rem var(--body); text-align: left; cursor: pointer; }
+.key button[aria-pressed="false"] { color: var(--muted); text-decoration: line-through; }
+.key button:hover { background: var(--rule); }
+.sw { width: 14px; height: 14px; border-radius: 2px; flex: none; border: 1px solid rgba(0,0,0,.18); }
+.towns { display: grid; gap: 8px; }
+.town { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; font-size: .9rem; }
+.town b { font: 700 1rem var(--display); letter-spacing: .02em; }
+.town span { color: var(--muted); font: .78rem var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+.note { color: var(--muted); font-size: .82rem; margin: 0; }
+.scale { font: .78rem var(--mono); color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .moving { display: none; } }
+</style>
+
+<div class="frame">
+  <div class="map" id="map">
+    <canvas id="c" aria-label="Map of the five towns and the land between them, from above"></canvas>
+    <div class="zoom">
+      <button id="zin" aria-label="Zoom in">+</button>
+      <button id="zout" aria-label="Zoom out">−</button>
+      <button id="zfit" aria-label="Fit the map">⤢</button>
+    </div>
+  </div>
+  <aside>
+    <div>
+      <h1>Seed 8675309</h1>
+      <p class="sub" id="sub"></p>
+    </div>
+    <div>
+      <h2>On the map</h2>
+      <div class="key" id="key"></div>
+    </div>
+    <div>
+      <h2>Towns at the last day</h2>
+      <div class="towns" id="towns"></div>
+    </div>
+    <p class="note">A pixel is a block. Drag to pan, scroll or pinch to zoom. Wagons run each route as often as it was
+      travelled: a wider line and more wagons where more trips were made. Only ground a player or the study loaded
+      was ever generated; the rest is blank.</p>
+    <p class="scale" id="scale"></p>
+  </aside>
+</div>
+
+<script>
+const D = __DATA__;
+const img = new Image();
+img.src = "data:image/png;base64,__IMAGE__";
+const cv = document.getElementById("c"), cx = cv.getContext("2d"), map = document.getElementById("map");
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const layers = { routes: true, wagons: true, labels: true };
+const KEY = [
+  ["Trees", "#28582a"], ["Roads and wagon trails", "#c4a870"], ["Forum", "#9ea0a6"], ["Homes and buildings", "#ac6a42"],
+  ["Fields (wheat, carrots, potatoes, beetroot)", "#d6be56"], ["Pastures (birch fence)", "#96c062"], ["Water", "#3664aa"],
+  ["Hills (lit from the north-west)", "#68944a"],
+];
+document.getElementById("sub").textContent =
+  `Day ${D.day} of a 90-day study. ${D.w.toLocaleString()} × ${D.h.toLocaleString()} blocks, heights ${D.lo} to ${D.hi}.`;
+const key = document.getElementById("key");
+KEY.forEach(([t, c]) => {
+  const b = document.createElement("button");
+  b.innerHTML = `<span class="sw" style="background:${c}"></span><span></span>`;
+  b.lastChild.textContent = t; b.tabIndex = -1; b.style.cursor = "default";
+  key.append(b);
+});
+[["routes", "Caravan routes"], ["wagons", "Wagons on the road"], ["labels", "Town names"]].forEach(([k, t]) => {
+  const b = document.createElement("button");
+  b.id = "layer-" + k; b.setAttribute("aria-pressed", "true");
+  b.innerHTML = `<span class="sw" style="background:var(--accent)"></span><span></span>`;
+  b.lastChild.textContent = t;
+  b.onclick = () => { layers[k] = !layers[k]; b.setAttribute("aria-pressed", String(layers[k])); };
+  key.append(b);
+});
+const tl = document.getElementById("towns");
+D.towns.forEach(t => {
+  const d = document.createElement("div"); d.className = "town";
+  d.innerHTML = `<b></b><span></span>`;
+  d.firstChild.textContent = t.name;
+  d.lastChild.textContent = `${t.villagers} folk · mood ${t.mood >= 0 ? "+" : ""}${t.mood.toFixed(1)} · ${t.comforts} met`;
+  tl.append(d);
+});
+const trips = D.routes.reduce((s, r) => s + r.trips, 0);
+document.getElementById("scale").textContent = `${D.routes.length} routes, ${trips} trips · hexes 80 blocks across`;
+
+// The view: block (x, z) on the sheet → canvas pixels.
+let scale = 1, ox = 0, oz = 0;
+function size() {
+  const r = map.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = r.width * dpr; cv.height = r.height * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function fit() {
+  const r = map.getBoundingClientRect();
+  scale = Math.min(r.width / D.w, r.height / D.h) * 0.96;
+  ox = (r.width - D.w * scale) / 2; oz = (r.height - D.h * scale) / 2;
+}
+function zoomAt(f, px, py) {
+  const s = Math.min(16, Math.max(0.2, scale * f)); f = s / scale;
+  ox = px - (px - ox) * f; oz = py - (py - oz) * f; scale = s;
+}
+// Each route's length and the points along it, for the wagons.
+D.routes.forEach(r => {
+  r.len = [0];
+  for (let i = 1; i < r.path.length; i++) {
+    const [a, b] = [r.path[i - 1], r.path[i]];
+    r.len.push(r.len[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1]));
+  }
+  r.total = r.len[r.len.length - 1];
+  r.wagons = Math.max(r.trips > 0 ? 1 : 0, Math.round(Math.sqrt(r.trips) * 1.4));
+});
+function along(r, d) {
+  let i = 1; while (i < r.len.length - 1 && r.len[i] < d) i++;
+  const [a, b] = [r.path[i - 1], r.path[i]], seg = r.len[i] - r.len[i - 1] || 1, t = (d - r.len[i - 1]) / seg;
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+}
+const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function draw(now) {
+  const r = map.getBoundingClientRect();
+  cx.clearRect(0, 0, r.width, r.height);
+  cx.imageSmoothingEnabled = scale < 1;
+  cx.drawImage(img, ox, oz, D.w * scale, D.h * scale);
+  const P = (x, z) => [ox + x * scale, oz + z * scale];
+  if (layers.routes) {
+    cx.strokeStyle = css("--route"); cx.lineCap = "round"; cx.lineJoin = "round";
+    D.routes.forEach(rt => {
+      if (!rt.trips) return;
+      cx.lineWidth = Math.max(1.5, Math.sqrt(rt.trips) * 1.1);
+      cx.setLineDash(rt.carrier === "llama" ? [6, 5] : []);
+      cx.beginPath(); rt.path.forEach((p, i) => { const [x, y] = P(p[0], p[1]); i ? cx.lineTo(x, y) : cx.moveTo(x, y); });
+      cx.stroke();
+    });
+    cx.setLineDash([]);
+  }
+  if (layers.wagons) {
+    const accent = css("--accent"), t = still ? 0 : now / 1000;
+    D.routes.forEach((rt, ri) => {
+      for (let k = 0; k < rt.wagons; k++) {
+        // Out and home again, 28 blocks a second on the map, each wagon its own share of the round.
+        const round = 2 * rt.total, d = ((t * 28 + (k / rt.wagons) * round + ri * 37) % round);
+        const [x, z] = along(rt, d <= rt.total ? d : round - d);
+        const [px, py] = P(x, z), s = Math.max(3, Math.min(7, scale * 3));
+        cx.fillStyle = accent; cx.strokeStyle = css("--sheet"); cx.lineWidth = 1.5;
+        cx.beginPath(); cx.rect(px - s, py - s * .7, s * 2, s * 1.4); cx.fill(); cx.stroke();
+      }
+    });
+  }
+  if (layers.labels) {
+    cx.font = `700 ${Math.max(13, Math.min(22, 11 + scale * 3))}px "Alegreya SC", Georgia, serif`;
+    cx.textAlign = "center"; cx.lineJoin = "round";
+    D.towns.forEach(tw => {
+      const [x, y] = P(tw.x, tw.z);
+      cx.fillStyle = css("--ink"); cx.beginPath(); cx.arc(x, y, 4, 0, 7); cx.fill();
+      cx.strokeStyle = css("--label-halo"); cx.lineWidth = 4; cx.strokeText(tw.name, x, y - 10);
+      cx.fillStyle = css("--ink"); cx.fillText(tw.name, x, y - 10);
+    });
+  }
+  requestAnimationFrame(draw);
+}
+// Pan and zoom.
+let drag = null; const pts = new Map();
+map.addEventListener("pointerdown", e => { map.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); drag = [e.clientX, e.clientY]; });
+map.addEventListener("pointermove", e => {
+  if (!pts.has(e.pointerId)) return;
+  const prev = pts.get(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pts.size === 2) {
+    const [a, b] = [...pts.values()], r = map.getBoundingClientRect();
+    const other = [...pts.entries()].find(([id]) => id !== e.pointerId)[1];
+    const before = Math.hypot(prev[0] - other[0], prev[1] - other[1]), after = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    if (before > 0) zoomAt(after / before, (a[0] + b[0]) / 2 - r.left, (a[1] + b[1]) / 2 - r.top);
+  } else { ox += e.clientX - prev[0]; oz += e.clientY - prev[1]; }
+});
+["pointerup", "pointercancel"].forEach(n => map.addEventListener(n, e => pts.delete(e.pointerId)));
+map.addEventListener("wheel", e => {
+  e.preventDefault(); const r = map.getBoundingClientRect();
+  zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top);
+}, { passive: false });
+const mid = f => { const r = map.getBoundingClientRect(); zoomAt(f, r.width / 2, r.height / 2); };
+document.getElementById("zin").onclick = () => mid(1.5);
+document.getElementById("zout").onclick = () => mid(1 / 1.5);
+document.getElementById("zfit").onclick = () => fit();
+addEventListener("resize", () => { size(); });
+img.onload = () => { size(); fit(); requestAnimationFrame(draw); };
+</script>
