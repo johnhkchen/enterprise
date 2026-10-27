@@ -247,6 +247,36 @@ def analyse(file):
         storeys.append({"feet_y": y, "floor": len(floor), "rooms": rooms, "circulation": circ,
                         "circulation_share": round(circ / len(floor), 2), "idle_share": round(idle / len(floor), 2)})
     floor_total = sum(s["floor"] for s in storeys) or 1
+    # Dwellings (thread 0008: terraces, rows, tenements): the interior's parts no inside route joins, each its own home
+    # with its own street door. Circulation is judged per dwelling's storey of two rooms or more.
+    dwelling, n_dw = {}, 0
+    for c in sorted(interior):
+        if c in dwelling:
+            continue
+        n_dw += 1
+        dwelling[c] = n_dw
+        q = deque([c])
+        while q:
+            p = q.popleft()
+            for n in moves(p):
+                if n not in dwelling:
+                    dwelling[n] = n_dw
+                    q.append(n)
+    homes = {dwelling[s_] for s_ in starts if s_ in dwelling}
+    judged_circ = judged_floor = 0
+    for st in storeys:
+        by = {}
+        for r in st["rooms"]:
+            by.setdefault(dwelling.get(r["cells"][0]), []).append(r)
+        if len(homes) <= 1:
+            if len(st["rooms"]) > 1:
+                judged_circ += st["circulation"]
+                judged_floor += st["floor"]
+            continue
+        for rs in by.values():
+            if len(rs) > 1:
+                judged_circ += sum(len(set(r["cells"]) & circulation) for r in rs if r["use"] != "landing")
+                judged_floor += sum(r["floor"] for r in rs)
     bed_routes = [len(path) for n, p, path in routes if n.endswith("_bed")]
     made = 0
     for b in beds:
@@ -346,10 +376,9 @@ def analyse(file):
         "rooms": sum(len(s["rooms"]) for s in storeys), "beds": len(beds), "made_beds": made,
         "unreached": [f"{n} at {list(p)}" for n, p in unreached],
         # Circulation over the storeys of two rooms or more: a one-room storey's routes are its use, not corridors
-        # (thread 0008); none such, no share to judge.
-        "circulation_share": (round(sum(s["circulation"] for s in storeys if len(s["rooms"]) > 1)
-                                    / sum(s["floor"] for s in storeys if len(s["rooms"]) > 1), 2)
-                              if any(len(s["rooms"]) > 1 for s in storeys) else None),
+        # (thread 0008); none such, no share to judge. A structure of several dwellings is judged dwelling by dwelling.
+        "dwellings": max(1, len(homes)),
+        "circulation_share": round(judged_circ / judged_floor, 2) if judged_floor else None,
         "idle_share": round(sum(s["idle_share"] * s["floor"] for s in storeys) / floor_total, 2),
         # The walk to a bed for the size of a storey (thread 0008: over the whole floor, a small two-storey house paid
         # for its stair with too little floor to divide by).
