@@ -49,7 +49,7 @@ public final class Kits {
 
     private static final Map<String, Optional<Meta>> METAS = new ConcurrentHashMap<>();
 
-    /** The structure's id as a template's resource location: {@code enterprise:lordaeron/home/cottage_5x5_a}. */
+    /** The structure's id as a template's resource location: {@code enterprise:lordaeron/home/cottage_9x9_b}. */
     static ResourceLocation template(String id) {
         return ResourceLocation.parse(id);
     }
