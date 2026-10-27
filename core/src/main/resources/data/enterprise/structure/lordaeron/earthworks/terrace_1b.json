@@ -1,0 +1,22 @@
+{
+  "id": "enterprise:lordaeron/earthworks/terrace_1b",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "prop:earthworks",
+  "palette": "fixed",
+  "size": [
+    1,
+    6,
+    2
+  ],
+  "depth": 2,
+  "mirror": true,
+  "ground": 2,
+  "width": 1,
+  "rise": 0,
+  "kind_of": "terrace",
+  "tags": [
+    "terrace"
+  ]
+}
