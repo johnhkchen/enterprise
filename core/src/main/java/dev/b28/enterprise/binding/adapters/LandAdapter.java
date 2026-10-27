@@ -644,14 +644,17 @@ public final class LandAdapter {
             return Optional.of(held);
         }
         var resources = level.getServer().getResourceManager();
+        // As wide as a ward's stretch of street, as deep as half a ward (its plan's; today's first wards if none).
+        var plan = dev.b28.enterprise.territory.TownPlans.get(level.getServer()).of(town);
+        int widest = plan != null ? plan.cell() : HOME_WIDEST, deepest = plan != null ? plan.deepest() : HOME_DEEPEST;
         Optional<dev.b28.enterprise.territory.Kits.Meta> kit = dev.b28.enterprise.territory.Kits.choose(resources,
-                dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town), "home", HOME_WIDEST, HOME_DEEPEST, town,
+                dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town), "home", widest, deepest, town,
                 new BlockPos(homesLaid.getOrDefault(town, 0), 0, 0)).flatMap(id -> dev.b28.enterprise.territory.Kits.meta(resources, id));
         kit.ifPresent(m -> homeKits.put(town, m));
         return kit;
     }
 
-    /** The widest home along its street, and the deepest back from it, a 14 x 14 ward holds (two rows back to back). */
+    /** The widest home along its street, and the deepest back from it, of a town with no plan: a 14 x 14 ward's. */
     static final int HOME_WIDEST = 14;
     static final int HOME_DEEPEST = 7;
 

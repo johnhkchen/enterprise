@@ -209,6 +209,8 @@ def main():
         sys.exit(f"town {town} has no plan in {world}")
     plan = plans[town]
     inner, outer = list(plan["inner"]), list(plan["outer"])
+    global WARD
+    WARD = plan.get("ward", 20)  # the plan's own (`TownPlans.Plan.ward`); 20 before plans kept one
     fmap = saved(world / "data" / "enterprise_field_maps.dat").get("towns", {}).get(str(town), {})
 
     # --- the town in the sim -----------------------------------------------------------------------------------------

@@ -20,7 +20,7 @@ import net.minecraft.world.level.saveddata.SavedData;
  * one round the city it may grow into, both rectangles square to the compass (John: "town walls shouldn't be perfect
  * circles"), gates where the four avenues from its forum pass through them. The inner wall is the town's wall work;
  * the outer is kept clear for later. Homes, fields and pastures are sited off the walls' strips and the avenues, and
- * fields and pastures outside the inner wall ({@link #clear}). Inside the inner wall, lanes every {@link #WARD} blocks
+ * fields and pastures outside the inner wall ({@link #clear}). Inside the inner wall, lanes every {@link Plan#ward} blocks
  * parallel to the avenues (John: "lanes"), wards between them, and new homes fronting a lane or an avenue
  * ({@link #frontages}).
  *
@@ -41,11 +41,15 @@ public final class TownPlans extends SavedData {
     /** A gate's width, and an avenue's. */
     public static final int GATE = 3;
     /**
-     * How far apart the lanes are inside the inner wall, a ward between each two (a row of homes fronting each lane,
-     * their back yards between), and a lane's width: four, a street a cart and its neighbours' doorsteps share (the
-     * studio's Lordaeron sketch read five; two read as a footpath).
+     * How far apart a new town's lanes are inside its inner wall (John: "mid density ... villagers live in multiple
+     * floors"; the studio's houses, thread 0004): wards of 27 x 27 between streets, plots 13 deep back to back (a house
+     * 9 deep with its relief and a garden behind, or 13 deep), plots 9, 12 or 15 wide along the street. A lane's width:
+     * four, a street a cart and its neighbours' doorsteps share. Each plan keeps its own ({@link Plan#ward}): a town
+     * planned with 14-block wards keeps them.
      */
-    static final int WARD = 20;
+    static final int WARD = 33;
+    /** The ward of a plan saved before plans kept their own: lanes every 20, wards of 14 x 14. */
+    static final int FIRST_WARD = 20;
     public static final int LANE = 4;
 
     /** A rectangle, its corners inclusive. */
@@ -64,7 +68,21 @@ public final class TownPlans extends SavedData {
     }
 
     /** A town's plan: its bell, its walls, and whether its avenues and its lanes are laid. */
-    public record Plan(BlockPos bell, Rect inner, Rect outer, boolean avenues, boolean lanes) {}
+    public record Plan(BlockPos bell, Rect inner, Rect outer, boolean avenues, boolean lanes, int ward) {
+        public Plan(BlockPos bell, Rect inner, Rect outer, boolean avenues, boolean lanes) {
+            this(bell, inner, outer, avenues, lanes, WARD);
+        }
+
+        /** The ground between two streets, along and across: the widest house it fronts and twice the deepest (back to back). */
+        public int cell() {
+            return ward - LANE - 2;
+        }
+
+        /** The deepest house a ward holds, two back to back (with a block between where the cell is odd). */
+        public int deepest() {
+            return cell() / 2;
+        }
+    }
 
     private final Map<Long, Plan> plans = new LinkedHashMap<>();
 
@@ -97,7 +115,7 @@ public final class TownPlans extends SavedData {
         }
         if (!plan.avenues() && loaded(level, plan.outer())) {
             int laid = avenues(level, plan);
-            plan = new Plan(plan.bell(), plan.inner(), plan.outer(), true, plan.lanes());
+            plan = new Plan(plan.bell(), plan.inner(), plan.outer(), true, plan.lanes(), plan.ward());
             plans.put(town, plan);
             setDirty();
             dev.b28.enterprise.Enterprise.LOGGER.info("Town {} lays its avenues to its gates ({} blocks)", town, laid);
@@ -107,7 +125,7 @@ public final class TownPlans extends SavedData {
             for (double[][] lane : lanes(plan)) {
                 laid += Trails.layLine(level, lane, LANE);
             }
-            plan = new Plan(plan.bell(), plan.inner(), plan.outer(), plan.avenues(), true);
+            plan = new Plan(plan.bell(), plan.inner(), plan.outer(), plan.avenues(), true, plan.ward());
             plans.put(town, plan);
             setDirty();
             dev.b28.enterprise.Enterprise.LOGGER.info("Town {} lays {} lanes inside its wall ({} blocks)", town,
@@ -165,16 +183,16 @@ public final class TownPlans extends SavedData {
         return new Rect(r.x0() + in, r.z0() + in, r.x1() - in, r.z1() - in);
     }
 
-    /** The lanes' lines (block x, z) north-south ({@code true}) or east-west, every {@link #WARD} blocks from the bell's. */
+    /** The lanes' lines (block x, z) north-south ({@code true}) or east-west, every {@link Plan#ward} blocks from the bell's. */
     static List<Integer> laneLines(Plan plan, boolean northSouth) {
         Rect w = within(plan);
         int from = northSouth ? plan.bell().getX() : plan.bell().getZ();
         int lo = northSouth ? w.x0() : w.z0(), hi = northSouth ? w.x1() : w.z1();
         List<Integer> out = new ArrayList<>();
-        for (int at = from - WARD; at - LANE >= lo; at -= WARD) {
+        for (int at = from - plan.ward(); at - LANE >= lo; at -= plan.ward()) {
             out.add(at);
         }
-        for (int at = from + WARD; at + LANE <= hi; at += WARD) {
+        for (int at = from + plan.ward(); at + LANE <= hi; at += plan.ward()) {
             out.add(at);
         }
         return out;
@@ -455,6 +473,7 @@ public final class TownPlans extends SavedData {
             e.putIntArray("outer", new int[] {p.outer().x0(), p.outer().z0(), p.outer().x1(), p.outer().z1()});
             e.putBoolean("avenues", p.avenues());
             e.putBoolean("lanes", p.lanes());
+            e.putInt("ward", p.ward());
             towns.put(Long.toString(town), e);
         });
         tag.put("towns", towns);
@@ -469,7 +488,8 @@ public final class TownPlans extends SavedData {
             int[] i = e.getIntArray("inner"), o = e.getIntArray("outer");
             if (i.length == 4 && o.length == 4) {
                 out.plans.put(Long.parseLong(key), new Plan(BlockPos.of(e.getLong("bell")), new Rect(i[0], i[1], i[2], i[3]),
-                        new Rect(o[0], o[1], o[2], o[3]), e.getBoolean("avenues"), e.getBoolean("lanes")));
+                        new Rect(o[0], o[1], o[2], o[3]), e.getBoolean("avenues"), e.getBoolean("lanes"),
+                        e.contains("ward") ? e.getInt("ward") : FIRST_WARD));
             }
         }
         return out;

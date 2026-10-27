@@ -79,7 +79,7 @@ public final class GrowthTests {
     @GameTest(template = "floor")
     public static void homesFrontTheLanesAndAvenues(GameTestHelper helper) {
         var plan = new TownPlans.Plan(new BlockPos(0, 64, 0), new TownPlans.Rect(-30, -30, 30, 30),
-                new TownPlans.Rect(-80, -80, 80, 80), true, true);
+                new TownPlans.Rect(-80, -80, 80, 80), true, true, 20);
         helper.assertTrue(TownPlans.lanes(plan).size() == 4, "a lane each side of each avenue: " + TownPlans.lanes(plan).size());
         java.util.function.BiPredicate<Integer, Integer> street = (x, z) -> Math.abs(x) <= 1 || Math.abs(z) <= 1
                 || x >= 18 && x <= 21 || x >= -22 && x <= -19 || z >= 18 && z <= 21 || z >= -22 && z <= -19;
@@ -110,6 +110,32 @@ public final class GrowthTests {
     }
 
     /**
+     * A new town's grid (John: "mid density ... multiple floors"; the studio's houses, thread 0004): lanes every 33,
+     * wards of 27 x 27, plots up to 13 deep back to back; it fronts the studio's burgage houses (9 x 9 with their
+     * relief), town houses (12 x 9), wide houses (15 x 9) and a terrace of three (21 x 9), none on a street.
+     */
+    @GameTest(template = "floor")
+    public static void aNewTownsWardsFrontTheStudiosHouses(GameTestHelper helper) {
+        var plan = new TownPlans.Plan(new BlockPos(0, 64, 0), new TownPlans.Rect(-50, -50, 50, 50),
+                new TownPlans.Rect(-100, -100, 100, 100), true, true);
+        helper.assertTrue(plan.ward() == 33 && plan.cell() == 27 && plan.deepest() == 13, "wards of 27, plots 13 deep");
+        java.util.function.BiPredicate<Integer, Integer> street = (x, z) -> Math.abs(x) <= 2 || Math.abs(z) <= 2
+                || x >= 30 && x <= 35 || x >= -36 && x <= -31 || z >= 30 && z <= 35 || z >= -36 && z <= -31;
+        for (int[] size : new int[][] {{9, 9}, {12, 9}, {15, 9}, {21, 9}, {27, 13}}) {
+            var homes = TownPlans.frontages(plan, size[0], size[1]);
+            helper.assertTrue(homes.size() >= 4, size[0] + " x " + size[1] + ": " + homes.size());
+            for (var f : homes) {
+                for (int dx = 0; dx < f.sx(); dx++) {
+                    for (int dz = 0; dz < f.sz(); dz++) {
+                        helper.assertFalse(street.test(f.x() + dx, f.z() + dz), "a house on a street: " + f);
+                    }
+                }
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
      * A farm track's holdings in a town's gardens (John: "something like a voronoi", "strips in parcels"): fields along
      * it either side in strips running away from it, north-south off a track running east-west, none overlapping, none
      * on the track or the avenue, all between the walls.
@@ -117,7 +143,7 @@ public final class GrowthTests {
     @GameTest(template = "floor")
     public static void aFarmTrackHasStripFieldsEitherSide(GameTestHelper helper) {
         var plan = new TownPlans.Plan(new BlockPos(0, 64, 0), new TownPlans.Rect(-30, -30, 30, 30),
-                new TownPlans.Rect(-80, -80, 80, 80), true, true);
+                new TownPlans.Rect(-80, -80, 80, 80), true, true, 20);
         double[][] track = {{2.5, -55.5}, {60.5, -55.5}};
         var fields = dev.b28.enterprise.territory.FieldMaps.fieldsAlong(helper.getLevel(), plan,
                 dev.b28.enterprise.territory.FieldMaps.Ring.GARDEN, track, 7);

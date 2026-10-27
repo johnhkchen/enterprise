@@ -908,6 +908,12 @@ help breed more as needed."
   lane or an avenue, a row each side, a doorstep between the door and the street, the cottage turned to face it
   (`Growth.buildHome(..., door)`); none on a street or the forum, nearest the bell first. Homes keep off the lanes as
   they do the avenues.
+- **The studio's houses set the grid** (thread 0004; John: "a mid density village with working stairs and proper
+  layouts that allow villagers to live in multiple floors"). A new town's lanes are 33 apart: wards of 27 x 27, plots
+  13 deep back to back, 9, 12 or 15 wide (house bodies of 7, 10, 13 on the studio's post-and-bay grid, plus a block of
+  relief each side). Each plan keeps its ward (older towns 20, wards of 14). A town builds its kingdom's home kits in
+  turn, each at its own footprint fronting a street, every ward's stretch filled from its start. On the test street
+  (flat world, a villager a bed, a night) the studio's 2- and 3-storey houses had every upstairs bed slept in.
 - **The field map** (`territory/FieldMaps.java`; John: "plots of farmland surrounding the old town square, something
   like a voronoi", and chose strips in parcels, rings, and "planned in phases/rings: some at founding, more as town
   grows; farms form along branch paths that connect to trade paths"). Rings round the plan: gardens between the
