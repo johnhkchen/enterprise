@@ -1,0 +1,39 @@
+{
+  "id": "enterprise:lordaeron/wall/tower_7x7_a",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "wall",
+  "slot": "wall:tower",
+  "tiers": [
+    "town"
+  ],
+  "palette": "fixed",
+  "tier_kit": "stone",
+  "footprint": [
+    7,
+    7
+  ],
+  "ground": 4,
+  "mirror": true,
+  "wall_line_z": 3,
+  "run": "x",
+  "outside": "north (z 0)",
+  "entrances": [
+    {
+      "at": [
+        3,
+        5,
+        6
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "pilings": [],
+  "entities": [],
+  "notes": ""
+}

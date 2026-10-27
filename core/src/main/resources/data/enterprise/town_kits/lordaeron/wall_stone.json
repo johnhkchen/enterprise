@@ -1,0 +1,43 @@
+{
+  "set": "lordaeron/wall_stone",
+  "rev": 1,
+  "tier": "town",
+  "about": "The stone wall kit for the inner wall (town tier). Pieces 7 thick, centred on the wall line (z 3), run along x, outside to the north; 4 foundation layers (ground 4). Battered plinth, buttresses and loops on the town side, a machicolated parapet with merlons, a wall-walk lit every 4. Towers (blind arcades, a newel stair) and the gatehouse carry stairs from a town-side door to the walk.",
+  "pieces": {
+    "corner_7x7": {
+      "length": 7,
+      "part": "enterprise:lordaeron/wall/corner_7x7_a"
+    },
+    "gatehouse_11x7": {
+      "length": 11,
+      "part": "enterprise:lordaeron/wall/gatehouse_11x7_a"
+    },
+    "tower_7x7": {
+      "length": 7,
+      "part": "enterprise:lordaeron/wall/tower_7x7_a"
+    },
+    "curtain_8": {
+      "length": 8,
+      "part": "enterprise:lordaeron/wall/curtain_8_a"
+    },
+    "curtain_4": {
+      "length": 4,
+      "part": "enterprise:lordaeron/wall/curtain_4_a"
+    },
+    "filler_1": {
+      "length": 1,
+      "part": "enterprise:lordaeron/wall/filler_1_a"
+    },
+    "filler_2": {
+      "length": 2,
+      "part": "enterprise:lordaeron/wall/filler_2_a"
+    },
+    "filler_3": {
+      "length": 3,
+      "part": "enterprise:lordaeron/wall/filler_3_a"
+    }
+  },
+  "tiling": "scripts/assets/lordaeron-ref/wall-tiling.mjs tileSide(L, gates): corners at both ends (at -3 and L-4, centred on the corner columns), a gatehouse centred on each avenue, towers about every 24 in equal stretches, curtains of 8 and 4, fillers 1-3 to close exactly. Proven on Hearthglen: north and south 95 (15 pieces), west and east 59 (10 pieces), no gaps or overlaps, every passage centred on its avenue.",
+  "turning": "Turn each side's pieces to face out: the north side as authored; east q1, south q2, west q3 (quarter turns clockwise). Corners turn so their open sides follow the run.",
+  "slopes": "Each piece stands at its own ground height on its 4-layer foundation; steps of up to 3 between neighbours are hidden by the battered plinth (step pieces to follow if the terrain needs more)."
+}
