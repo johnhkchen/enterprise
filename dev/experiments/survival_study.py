@@ -83,13 +83,16 @@ def locate(x, z):
     return (int(found.group(1)), int(found.group(2))) if found else None
 
 
-def surface(x, z):
+def surface(x, z, tries=10):
     """The ground's height at (x, z) (a marker summoned over the surface, read and gone)."""
     rcon(f"execute positioned {x} 0 {z} positioned over world_surface run summon minecraft:marker ~ ~ ~ {{Tags:[\"survey\"]}}")
     said = rcon("data get entity @e[type=minecraft:marker,tag=survey,limit=1] Pos[1]")
     rcon("kill @e[type=minecraft:marker,tag=survey]")
     found = re.search(r"(-?\d+(?:\.\d+)?)d", said)
     if not found:
+        if tries > 0:  # its chunks still generating (a wide --reach takes a while)
+            sprint(100)
+            return surface(x, z, tries - 1)
         raise RuntimeError(f"no surface at {x} {z}: {said}")
     return int(float(found.group(1)))
 
@@ -97,6 +100,8 @@ def surface(x, z):
 # How far round each village the study keeps the ground loaded: `--reach N` (64 by default) to take in its farmland
 # and farmsteads, which lie past its outer wall.
 REACH = int(sys.argv[sys.argv.index("--reach") + 1]) if "--reach" in sys.argv else 64
+if REACH > 120:
+    sys.exit("--reach at most 120: one forceload takes 256 chunks at most, and the game refuses more without a word")
 
 
 def load(x, z, r=None):
