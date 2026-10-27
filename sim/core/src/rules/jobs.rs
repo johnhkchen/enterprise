@@ -34,11 +34,11 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
         mut dice: ResMut<Dice>, mut recipes: Local<Option<Vec<crate::services::Recipe>>>,
         routes: Query<(&Route, &RouteState)>,
         mut towns: Query<(&Town, &mut Money, &mut People, &Stock, &Trades, &Farm, &mut Deposits, &mut Budget,
-            Option<&mut Roster>, &mut Lockers)>) {
+            Option<&mut Roster>, &mut Lockers, Option<&crate::herds::Herds>)>) {
     let (now, today) = (clock.now, clock.now / content.day_ticks.max(1));
     // What each town's villagers buy a day at its managed lockers: its neighbours make it for them.
     let demand: std::collections::BTreeMap<usize, std::collections::BTreeMap<crate::content::GoodId, f64>> = towns.iter()
-        .filter_map(|(town, .., roster, lockers)| Some((town.id, crate::lockers::census_demand(roster?, lockers))))
+        .filter_map(|(town, .., roster, lockers, _)| Some((town.id, crate::lockers::census_demand(roster?, lockers))))
         .collect();
     if content.is_changed() {
         *recipes = None;
@@ -57,7 +57,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
             far.8.map(|r| (&*far.9, &*r)));
     }
     for &e in order.0.iter() {
-        let Ok((town, mut money, mut people, stock, trades, farm, mut deposits, mut budget, roster, mut lockers)) =
+        let Ok((town, mut money, mut people, stock, trades, farm, mut deposits, mut budget, roster, mut lockers, herds)) =
             towns.get_mut(e) else { continue };
         let Some(mut roster) = roster else { continue };
         if hiring.reviewed.get(&town.id) == Some(&today) {
@@ -89,7 +89,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
         let people = &mut *people;
         let mut place = Place { town: town.id, money: &mut money.0, purse: &mut people.purse,
             deposits: &mut deposits, budget: &mut budget, stock, trades, farm, met: &people.comfort_met,
-            roster: &mut roster, lockers: &mut lockers, roads, far };
+            roster: &mut roster, lockers: &mut lockers, roads, far, herd: herds.map_or(&[][..], |h| &h.count[..]) };
         let mut books = Books { ledger: &mut ledger, book: &mut book, rng: dice.of(town.id, &seed) };
         let idle = place.roster.hands.iter().any(|h| !h.is_baby() && !h.away && content.trades.get(h.trade).is_some_and(|t| t.none));
         match employ(&content, &mut books, &bills, &signals, now, &mut place) {

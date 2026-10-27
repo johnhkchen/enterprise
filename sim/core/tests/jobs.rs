@@ -266,7 +266,7 @@ fn a_glut_trains_the_trade_that_takes_it() {
         v[LEATHER] = leather;
         enterprise_core::state::Stock(v)
     };
-    let jobs = |hands: &[&str], leather: f64| enterprise_core::jobs::for_glut(&c, &stock(leather), &roster_of(&c, hands));
+    let jobs = |hands: &[&str], leather: f64| enterprise_core::jobs::for_glut(&c, &stock(leather), &roster_of(&c, hands), &[]);
     assert_eq!(jobs(&["none"], 90.0), None, "15 emeralds is no glut");
     assert_eq!(jobs(&["none", "leatherworker"], 600.0), None, "one Leatherworker already");
     assert_eq!(jobs(&["none"], 96.0), c.trade("leatherworker"));
@@ -538,4 +538,24 @@ fn a_stall_paid_for_is_a_locker_until_the_host_places_it() {
     assert!(s.tie_locker(id, Some(spot)));
     assert!(s.lockers(t).unwrap().stalls.is_empty());
     assert!(s.lockers(t).unwrap().has(s.content(), &s.roster(t), hand));
+}
+
+/// A herd's keeper isn't slack while the town keeps its herd: Dustfell's Leatherworker, its two cows breeding, turned
+/// Mason on day 7, and the cows bred to 48 with no one to take their hides. With no herd, it gives way.
+#[test]
+fn a_keeper_with_a_herd_is_never_slack() {
+    let (mut s, t) = slack_town("leatherworker", 8);
+    assert!(s.set_herd(t, "cow", 2.0));
+    assert!(s.review_jobs(t).is_none(), "breeding its cows is its work");
+    let (mut s, t) = slack_town("leatherworker", 8);
+    assert!(s.review_jobs(t).expect("no herd: it retrains").2);
+}
+
+/// A herd with no keeper is a glut too, at its animals' meat and hides beyond the breeding stock.
+#[test]
+fn a_herd_with_no_keeper_trains_one() {
+    let (mut s, t) = town(20.0, 72.0);
+    assert!(s.set_herd(t, "cow", 120.0)); // 118 hides beyond the breeding stock, a sixth each: 19.7 emeralds
+    let (_, trade, _) = s.review_jobs(t).expect("a stall");
+    assert_eq!(trade, "leatherworker");
 }

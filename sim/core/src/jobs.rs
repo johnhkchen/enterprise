@@ -284,6 +284,8 @@ pub struct Place<'a> {
     pub roads: bool,
     /// What the towns down its roads want, as marbles ([`far_marbles`]).
     pub far: Marbles,
+    /// Its herds, how many of each kind (by place in [`Content::animals`]).
+    pub herd: &'a [f64],
 }
 
 /// A hand that took up a trade.
@@ -303,13 +305,16 @@ fn for_contracts(content: &Content, place: &Place) -> Option<TradeId> {
 /// The trade that takes what the town holds most of, worth `glut_emeralds` or more, where it has no hand of it: trained
 /// to it, not drawn (John: "train a villager who specifically takes an abundant resource"; not as the mod). In the
 /// trades' order where two hold as much.
-pub fn for_glut(content: &Content, stock: &Stock, roster: &Roster) -> Option<TradeId> {
+pub fn for_glut(content: &Content, stock: &Stock, roster: &Roster, herd: &[f64]) -> Option<TradeId> {
     let held: Vec<f64> = stock.0.iter().zip(&content.goods).map(|(n, g)| n.max(0.0) * g.value).collect();
     let of = |goods: &[&str]| -> f64 { goods.iter().filter_map(|n| good_named(content, n)).map(|g| held[g]).sum() };
     let mut best: Option<(TradeId, f64)> = None;
     for (name, goods) in TRADES {
         let Some(trade) = content.trade(name).filter(|&t| roster.count(t) == 0) else { continue };
-        let worth = of(goods) + TAKES.iter().filter(|(t, _)| *t == name).map(|(_, g)| of(g)).sum::<f64>();
+        // And the animals of its herds beyond the breeding stock, at their meat and hide: a herd with no keeper.
+        let animals: f64 = content.animals.iter().zip(herd).filter(|(a, _)| crate::herds::keeper_of(&a.name) == name)
+            .map(|(a, &n)| (n - content.dials.breeding_stock).max(0.0) * crate::herds::worth_each(content, a)).sum();
+        let worth = of(goods) + TAKES.iter().filter(|(t, _)| *t == name).map(|(_, g)| of(g)).sum::<f64>() + animals;
         if worth >= content.dials.glut_emeralds && best.is_none_or(|(_, w)| worth > w) {
             best = Some((trade, worth));
         }
@@ -324,6 +329,13 @@ pub fn carries(content: &Content, state: &RouteState, now: u64) -> bool {
     state.wagon.is_some() || state.last_departure.is_some_and(|t| now.saturating_sub(t) < lately)
 }
 
+/// Does a trade keep a herd the town has: breeding it up is its work, though its locker does nothing (Dustfell's
+/// Leatherworker, its two cows breeding, was slack by day 7 and turned Mason; its cows bred to 48 with no one to take
+/// their hides, and the town went unclothed for 90 days).
+fn keeps_a_herd(content: &Content, herd: &[f64], trade: &str) -> bool {
+    content.animals.iter().zip(herd).any(|(a, &n)| n >= 1.0 && crate::herds::keeper_of(&a.name) == trade)
+}
+
 /// A hand whose trade has done nothing for the town for `slack_days` reviews, in a town with no roads (`Jobs.slack`),
 /// or none that have carried anything lately (`rules/jobs.rs`).
 fn slack(content: &Content, place: &Place) -> Option<usize> {
@@ -335,7 +347,7 @@ fn slack(content: &Content, place: &Place) -> Option<usize> {
         let h = place.roster.hands.get(i)?;
         let t = content.trades.get(h.trade)?;
         (l.slack >= days && !h.is_baby() && !h.away && place.roster.merchant != Some(i) && !t.merchant && !t.idle()
-            && !KEPT.contains(&t.name.as_str())).then_some(i)
+            && !KEPT.contains(&t.name.as_str()) && !keeps_a_herd(content, place.herd, &t.name)).then_some(i)
     })
 }
 
@@ -357,7 +369,7 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
     if cash + on_call(content, *place.purse, place.deposits.owed) < stall {
         return None;
     }
-    let trade = for_contracts(content, place).or_else(|| for_glut(content, place.stock, place.roster)).or_else(|| {
+    let trade = for_contracts(content, place).or_else(|| for_glut(content, place.stock, place.roster, place.herd)).or_else(|| {
         let mut marbles = town_bag(content, signals, place.town, place.stock, place.farm, place.met, place.purse.to_f64(),
             place.roster);
         for &(t, m) in &place.far {
@@ -490,6 +502,7 @@ impl crate::society::Society {
         let (stock, trades, farm) = (self.world.get::<Stock>(e)?.clone(), self.world.get::<Trades>(e)?.clone(),
             self.world.get::<Farm>(e)?.clone());
         let mut deposits = self.world.get::<Deposits>(e).copied().unwrap_or_default();
+        let herd = self.world.get::<crate::herds::Herds>(e).map(|h| h.count.clone()).unwrap_or_default();
         let signals = self.world.resource::<Signals>().clone();
         let bills = self.world.resource::<Bills>().clone();
         let mut ledger = std::mem::take(&mut *self.world.resource_mut::<Ledger>());
@@ -500,9 +513,10 @@ impl crate::society::Society {
             let mut books = Books { ledger: &mut ledger, book: &mut book, rng: dice.of(town, &seed) };
             let (met, mut purse) = (people.comfort_met.clone(), people.purse);
             let far = far_marbles(self.content(), &crate::services::recipes(self.content()), &roster, &far_demands);
+            let herd = herd.clone();
             let mut place = Place { town, money: &mut money.0, purse: &mut purse, deposits: &mut deposits,
                 budget: &mut budget, stock: &stock, trades: &trades, farm: &farm, met: &met,
-                roster: &mut roster, lockers: &mut lockers, roads, far };
+                roster: &mut roster, lockers: &mut lockers, roads, far, herd: &herd };
             let hired = employ(self.content(), &mut books, &bills, &signals, now, &mut place);
             people.purse = purse;
             hired

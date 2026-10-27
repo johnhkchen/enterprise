@@ -79,6 +79,21 @@ pub fn mod_animals(content: &Content) -> Vec<Animal> {
         .collect()
 }
 
+/// The trade that keeps a kind of animal: a Shepherd its sheep, a Leatherworker its cows, a Butcher its pigs and chickens.
+pub fn keeper_of(animal: &str) -> &'static str {
+    match animal {
+        "sheep" => "shepherd",
+        "cow" => "leatherworker",
+        _ => "butcher",
+    }
+}
+
+/// What one animal of a kind is worth to its keeper, slaughtered: its meat and its hide.
+pub fn worth_each(content: &Content, a: &Animal) -> f64 {
+    a.meat.map_or(0.0, |m| a.meat_each * content.goods[m].value)
+        + a.hide.map_or(0.0, |h| LEATHER_PER_COW * content.goods[h].value)
+}
+
 /// Which herding trades a town's roster has.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Keepers {
