@@ -1,10 +1,12 @@
 {
   "set": "lordaeron/earthworks",
-  "rev": 2,
+  "rev": 4,
   "about": "Retaining walls for the cuts levelling leaves in a slope. Authored with the low ground to the south: z = depth-1 is the low edge and every tile aligns on it; the wall face looks south; the high ground runs north. Layers 0-1 ground, 2 the low surface, 2 + rise the high surface. Rotate and mirror freely (the corners are drawn for high ground to the north-west).",
   "rise": "Each tile is made for one rise, 1 to 4 (retain_h<rise>_*). Use the tile whose rise is the cut's height at that column; at a change of height, let the higher tile's wall run on one column past the step.",
   "tiling": "Straights are 1 wide (variants a, b, c: pick by hash so the coursing never repeats), with a lamp tile at most 5 apart and, from rise 3, a buttress about every 4. Corners are 3 x 3. Steps are 4 wide (two cheek walls and a 2-wide flight) or 3 wide (a 1-wide flight for a door path) and 2 x rise + 1 deep, so they reach back into the bank; cut the bank behind them to the steps' landing.",
   "cut_face": "cutface_h<rise>_1a/b/c leave a levelled face natural instead of walled: stone, tuff, mossy cobble, rooted dirt and moss, roots hanging from the lip, a little scree at the foot. Same alignment as the straights; mix them with the walls (walls near buildings and streets, cut faces in yards and the open).",
+  "steps_side": "steps_side_h<rise> (rise 2-4) fit a 3-deep front yard: 2 x rise + 1 long, 3 deep. The landing is at x 0, z 1, beside the door's column (z 0 touches the house). The flight runs along the yard to +x, down to the street at the far end, where the street-edge wall is open. Mirror it for a flight to -x. The rest of the street edge carries on as retain_h<rise> tiles.",
+  "plinth": "plinth_h<rise>_1 (rise 1-3) is a stepped stone plinth at a house's foot where the house stands on a fill above its yard: rise + 1 deep, run along each wall, row 0 against the wall coped flush with the house's ground, each row out a course lower under a stair. plinth_h<rise>_corner is the outer corner (house to the north-west; rotate). Over 3, use the retaining courses.",
   "walk": "Steps go up by half steps only (bottom slab, full block, ...), as the shared validator's walk requires; the landing is level with the high ground.",
   "detail": "A cobble footing course, mixed coursed stone (stone, mossy and cracked bricks, a little andesite), a battered stair footing from rise 2, a stone coping and a low cobble parapet from rise 2, ivy down faces from rise 3, a coarse drain strip at the foot.",
   "tiles": [
@@ -119,6 +121,28 @@
         "steps",
         "path",
         "lamp"
+      ]
+    },
+    {
+      "id": "plinth_h1_1",
+      "part": "enterprise:lordaeron/earthworks/plinth_h1_1",
+      "depth": 2,
+      "width": 1,
+      "rise": 1,
+      "kind_of": "plinth",
+      "tags": [
+        "plinth"
+      ]
+    },
+    {
+      "id": "plinth_h1_corner",
+      "part": "enterprise:lordaeron/earthworks/plinth_h1_corner",
+      "depth": 2,
+      "width": 2,
+      "rise": 1,
+      "kind_of": "plinth_corner",
+      "tags": [
+        "plinth"
       ]
     },
     {
@@ -244,6 +268,46 @@
         "steps",
         "path",
         "lamp"
+      ]
+    },
+    {
+      "id": "steps_side_h2",
+      "part": "enterprise:lordaeron/earthworks/steps_side_h2",
+      "depth": 3,
+      "width": 5,
+      "rise": 2,
+      "kind_of": "steps_side",
+      "tags": [
+        "steps",
+        "path",
+        "lamp"
+      ],
+      "landing": [
+        0,
+        1
+      ],
+      "door_column": 0
+    },
+    {
+      "id": "plinth_h2_1",
+      "part": "enterprise:lordaeron/earthworks/plinth_h2_1",
+      "depth": 3,
+      "width": 1,
+      "rise": 2,
+      "kind_of": "plinth",
+      "tags": [
+        "plinth"
+      ]
+    },
+    {
+      "id": "plinth_h2_corner",
+      "part": "enterprise:lordaeron/earthworks/plinth_h2_corner",
+      "depth": 3,
+      "width": 3,
+      "rise": 2,
+      "kind_of": "plinth_corner",
+      "tags": [
+        "plinth"
       ]
     },
     {
@@ -384,6 +448,46 @@
       ]
     },
     {
+      "id": "steps_side_h3",
+      "part": "enterprise:lordaeron/earthworks/steps_side_h3",
+      "depth": 3,
+      "width": 7,
+      "rise": 3,
+      "kind_of": "steps_side",
+      "tags": [
+        "steps",
+        "path",
+        "lamp"
+      ],
+      "landing": [
+        0,
+        1
+      ],
+      "door_column": 0
+    },
+    {
+      "id": "plinth_h3_1",
+      "part": "enterprise:lordaeron/earthworks/plinth_h3_1",
+      "depth": 4,
+      "width": 1,
+      "rise": 3,
+      "kind_of": "plinth",
+      "tags": [
+        "plinth"
+      ]
+    },
+    {
+      "id": "plinth_h3_corner",
+      "part": "enterprise:lordaeron/earthworks/plinth_h3_corner",
+      "depth": 4,
+      "width": 4,
+      "rise": 3,
+      "kind_of": "plinth_corner",
+      "tags": [
+        "plinth"
+      ]
+    },
+    {
       "id": "steps_h3_4",
       "part": "enterprise:lordaeron/earthworks/steps_h3_4",
       "depth": 7,
@@ -519,6 +623,24 @@
         "path",
         "lamp"
       ]
+    },
+    {
+      "id": "steps_side_h4",
+      "part": "enterprise:lordaeron/earthworks/steps_side_h4",
+      "depth": 3,
+      "width": 9,
+      "rise": 4,
+      "kind_of": "steps_side",
+      "tags": [
+        "steps",
+        "path",
+        "lamp"
+      ],
+      "landing": [
+        0,
+        1
+      ],
+      "door_column": 0
     },
     {
       "id": "steps_h4_4",

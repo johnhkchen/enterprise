@@ -1,0 +1,22 @@
+{
+  "id": "enterprise:lordaeron/earthworks/plinth_h1_corner",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "prop:earthworks",
+  "palette": "fixed",
+  "size": [
+    2,
+    4,
+    2
+  ],
+  "depth": 2,
+  "mirror": true,
+  "ground": 2,
+  "width": 2,
+  "rise": 1,
+  "kind_of": "plinth_corner",
+  "tags": [
+    "plinth"
+  ]
+}
