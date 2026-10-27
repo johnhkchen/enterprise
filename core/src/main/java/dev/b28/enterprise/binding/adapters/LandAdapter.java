@@ -898,8 +898,9 @@ public final class LandAdapter {
                             }
                         }
                         Enterprise.LOGGER.info("Town {} builds {} facing {} at {} (front yard {}, back yard {}, {} retaining "
-                                + "tiles{})", town, kit.get().id(), p.door().getName(), corner.toShortString(),
-                                onPlot.get().front().orElse("none"), onPlot.get().back().orElse("none"), onPlot.get().banked(),
+                                + "tiles, deepest drop {}{})", town, kit.get().id(), p.door().getName(), corner.toShortString(),
+                                onPlot.get().front().orElse("none"), onPlot.get().back().orElse("none"),
+                                onPlot.get().banked().tiles(), onPlot.get().banked().deepest(),
                                 onPlot.get().steps() ? ", steps to the door" : "");
                     }
                 } else {

@@ -211,7 +211,8 @@ public final class Plots {
     }
 
     /** What was laid on a plot: the house, and the yards' kits (empty where the kingdom has none for it). */
-    public record Laid(Kits.Placed house, Optional<String> front, Optional<String> back, int path, int banked, boolean steps) {}
+    public record Laid(Kits.Placed house, Optional<String> front, Optional<String> back, int path, Earthworks.Banked banked,
+            boolean steps) {}
 
     /**
      * Lays a plot: {@code house} (a home kit) in it, a front and a back yard of the kingdom's for its width, and the
@@ -305,15 +306,18 @@ public final class Plots {
         BlockPos out = world(corner, width, depth, door, doorX, depth);
         int street = Earthworks.height(level, out.getX(), out.getZ());
         boolean steps = false;
+        int[] open = null;
         if (street != Integer.MIN_VALUE && Math.abs(street - corner.getY()) == 1 && doorX >= 1 && doorX + 1 < width) {
             boolean plotHigh = street < corner.getY();
+            // The street's columns at the flight's foot, left open by the kerb.
+            open = world(corner.getX(), corner.getZ(), width, depth, door, doorX - 1, depth, 3, 1);
             steps = Earthworks.steps(level, kingdom, world(corner.getX(), corner.getZ(), width, depth, door, doorX - 1,
                     depth - TownPlans.FRONT_YARD, 3, TownPlans.FRONT_YARD), plotHigh ? door.getOpposite() : door,
                     Math.min(street, corner.getY()));
         }
         // Its edges retained where levelling cut the slope or built up a fill (the kingdom's earthworks).
-        int banked = Earthworks.retain(level, kingdom, plot[0], plot[1], plot[0] + plot[2] - 1, plot[1] + plot[3] - 1,
-                corner.getY(), door);
+        var banked = Earthworks.retain(level, kingdom, plot[0], plot[1], plot[0] + plot[2] - 1, plot[1] + plot[3] - 1,
+                corner.getY(), door, steps ? open : null);
         return Optional.of(new Laid(placed.get(), front, back, path, banked, steps));
     }
 

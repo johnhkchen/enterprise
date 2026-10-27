@@ -44,8 +44,11 @@ public final class Earthworks {
         return out;
     }
 
-    /** The least difference worth a wall: a 1-block step is a bank villagers and the eye take in their stride. */
-    static final int LEAST = 2;
+    /**
+     * The least difference worth dressing: a step of one too (the studio, thread 0001: "a 1-high dirt edge is the
+     * commonest cut in a town, so it's the one a visitor sees most"), a kerb on the street and a cut face elsewhere.
+     */
+    static final int LEAST = 1;
 
     /** The most a plot's edge may stand above or below the land round it: two courses of the highest wall. */
     static final int MOST = 8;
@@ -92,21 +95,24 @@ public final class Earthworks {
      * the tiles laid.
      */
     public static int retain(ServerLevel level, String kingdom, int x0, int z0, int x1, int z1, int ground) {
-        return retain(level, kingdom, x0, z0, x1, z1, ground, null);
+        return retain(level, kingdom, x0, z0, x1, z1, ground, null, null).tiles();
     }
+
+    /** What retaining a plot laid: its tiles, and the deepest drop at its edge (the courses it took). */
+    public record Banked(int tiles, int deepest) {}
 
     /**
      * As {@link #retain(ServerLevel, String, int, int, int, int, int)}, the plot's street to {@code street}: a built wall
      * where a cut or fill faces the street, the land's own cut face (stone, moss, roots) on the plot's other sides (the
      * studio's rule, batch 014).
      */
-    public static int retain(ServerLevel level, String kingdom, int x0, int z0, int x1, int z1, int ground,
-            net.minecraft.core.Direction street) {
+    public static Banked retain(ServerLevel level, String kingdom, int x0, int z0, int x1, int z1, int ground,
+            net.minecraft.core.Direction street, int[] open) {
         List<Tile> tiles = tiles(level, kingdom);
         if (tiles.isEmpty()) {
-            return 0;
+            return new Banked(0, 0);
         }
-        int laid = 0;
+        int laid = 0, deepest = 0;
         // Each edge: its columns along it, the way out (to look at the land beyond), and the turn for a wall whose high
         // ground lies that way (authored with the high ground to the north: q 0).
         int[][] edges = {
@@ -124,7 +130,12 @@ public final class Earthworks {
                 if (outside == Integer.MIN_VALUE) {
                     continue;
                 }
+                // Left open where the door's steps meet the street ({@code open}: {x, z, sx, sz}).
+                if (open != null && ox >= open[0] && ox < open[0] + open[2] && oz >= open[1] && oz < open[1] + open[3]) {
+                    continue;
+                }
                 int diff = Math.abs(outside - ground);
+                deepest = Math.max(deepest, diff);
                 boolean cut = outside > ground;
                 // Which way the high ground lies: outward for a cut, inward (the plot) for a fill.
                 int hx = cut ? e[4] : -e[4], hz = cut ? e[5] : -e[5];
@@ -146,7 +157,7 @@ public final class Earthworks {
                 }
             }
         }
-        return laid;
+        return new Banked(laid, deepest);
     }
 
     private static Optional<Tile> pick(List<Tile> tiles, int rise, String kind, long seed) {
