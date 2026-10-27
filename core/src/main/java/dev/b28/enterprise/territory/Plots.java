@@ -164,6 +164,15 @@ public final class Plots {
      */
     public static Optional<Laid> lay(ServerLevel level, String kingdom, Kits.Meta house, Houses.Built built, BlockPos corner,
             int width, int depth, Direction door, long seed) {
+        return lay(level, kingdom, house, built, corner, width, depth, door, seed, "village", null);
+    }
+
+    /**
+     * As above, its yards chosen for the town's {@code tier} and the occupant's {@code trade} (a workshop's: the town
+     * rules' `yards.front.by_trade` names the trade's yard, the smith's for the smiths, the baker's for the farmer).
+     */
+    public static Optional<Laid> lay(ServerLevel level, String kingdom, Kits.Meta house, Houses.Built built, BlockPos corner,
+            int width, int depth, Direction door, long seed, String tier, String trade) {
         ResourceManager resources = level.getServer().getResourceManager();
         int[] h = house(depth, house.width(), house.depth());
         int[] at = world(corner.getX(), corner.getZ(), width, depth, door, h[0], h[1], h[2], h[3]);
@@ -182,7 +191,15 @@ public final class Plots {
         Optional<String> front, back;
         int pathFrom = h[1] + house.depth();
         if (!tiles.isEmpty()) {
-            var likes = Yards.likes("village", null);
+            String yardTrade = null;
+            if (trade != null) {
+                var rules = WallKit.json(resources, "town_rules/" + kingdom + ".json");
+                yardTrade = rules.map(r -> r.getAsJsonObject("yards")).filter(y -> y.has("front"))
+                        .map(y -> y.getAsJsonObject("front")).filter(f -> f.has("by_trade"))
+                        .map(f -> f.getAsJsonObject("by_trade")).filter(b -> b.has(trade))
+                        .map(b -> b.get(trade).getAsString().replace("trade:", "")).orElse(trade);
+            }
+            var likes = Yards.likes(tier, yardTrade);
             var f = Yards.fill(tiles, "yard:front", width, doorX, likes, seed);
             f.ifPresent(strip -> Yards.lay(level, strip, corner, width, depth, door, depth - TownPlans.FRONT_YARD));
             front = f.map(strip -> strip.stream().map(l -> l.tile().id()).toList().toString());

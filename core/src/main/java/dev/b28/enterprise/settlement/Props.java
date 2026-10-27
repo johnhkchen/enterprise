@@ -60,6 +60,27 @@ public final class Props {
 
     private Props() {}
 
+    /**
+     * The block at {@code at} made its decorative twin if it's a job site with one, facing as it faced: a building's
+     * declared workstation shown, not worked. True if it was.
+     */
+    public static boolean twinOf(net.minecraft.world.level.Level level, BlockPos at) {
+        BlockState state = level.getBlockState(at);
+        String id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath();
+        DeferredBlock<? extends Block> twin = TWINS.get(id.equals("water_cauldron") ? "cauldron" : id);
+        if (twin == null) {
+            return false;
+        }
+        BlockState t = twin.get().defaultBlockState();
+        if (state.hasProperty(BlockStateProperties.HORIZONTAL_FACING) && t.hasProperty(Facing.FACING)) {
+            t = t.setValue(Facing.FACING, state.getValue(BlockStateProperties.HORIZONTAL_FACING));
+        } else if (state.hasProperty(BlockStateProperties.FACING) && t.hasProperty(Cask.FACING)) {
+            t = t.setValue(Cask.FACING, state.getValue(BlockStateProperties.FACING));
+        }
+        level.setBlock(at, t, 3);
+        return true;
+    }
+
     public static void register(IEventBus modBus) {
         BLOCKS.register(modBus);
         ITEMS.register(modBus);

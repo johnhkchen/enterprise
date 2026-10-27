@@ -641,6 +641,8 @@ public final class LandAdapter {
     private final Map<Long, dev.b28.enterprise.territory.Plots.Site> homePlots = new HashMap<>();
     /** The house the generator made for a town's next home, laid with it. */
     private final Map<Long, dev.b28.enterprise.territory.Houses.Built> homeBuilt = new HashMap<>();
+    /** The trade a town's next home is the workshop of, if it's one. */
+    private final Map<Long, String> workshops = new HashMap<>();
     /** A hall's kit and plot, found with its site and laid with it. */
     private record HallPlot(dev.b28.enterprise.territory.Kits.Meta kit, dev.b28.enterprise.territory.Plots.Site site) {}
     private final Map<List<Long>, HallPlot> hallPlots = new HashMap<>();
@@ -660,9 +662,31 @@ public final class LandAdapter {
         if (townPlan != null && townPlan.yards()) {
             long beds = level.getPoiManager().getInRange(t -> t.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.HOME),
                     townPlan.bell(), 64, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY).count();
-            var built = dev.b28.enterprise.territory.Houses.next(level,
-                    dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town),
-                    dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).tierOf(town, beds), townPlan.cell() - 2,
+            String kingdom = dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town);
+            String tier = dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).tierOf(town, beds);
+            // Every third home from village tier a trade's workshop (town_rules: "a home's occupant with a trade gets the
+            // trade's workshop"), the trade one the town has a job site for; its workstation a decorative twin, so the
+            // house hires nobody the sim didn't (its look is the trade's: the smith's yard, the baker's oven).
+            int laidSoFar = homesLaid.getOrDefault(town, 0);
+            if (!tier.equals("hamlet") && laidSoFar % 3 == 2) {
+                var trades = level.getPoiManager().getInRange(t -> true, townPlan.bell(), 48,
+                        net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY)
+                        .map(r -> level.getPoiManager().getType(r.getPos()).flatMap(h -> h.unwrapKey())
+                                .map(k -> k.location().getPath()).orElse(""))
+                        .filter(n -> !n.isEmpty() && !n.equals("home") && !n.equals("meeting")).distinct().sorted().toList();
+                for (int k = 0; k < trades.size(); k++) {
+                    String trade = trades.get((laidSoFar / 3 + k) % trades.size());
+                    var shop = dev.b28.enterprise.territory.Kits.choose(level.getServer().getResourceManager(), kingdom,
+                            "workshop:" + trade, townPlan.cell() - 2, townPlan.deepest() - dev.b28.enterprise.territory.TownPlans.FRONT_YARD,
+                            town, townPlan.bell()).flatMap(id -> dev.b28.enterprise.territory.Kits.meta(level.getServer().getResourceManager(), id));
+                    if (shop.isPresent()) {
+                        homeKits.put(town, shop.get());
+                        workshops.put(town, trade);
+                        return shop;
+                    }
+                }
+            }
+            var built = dev.b28.enterprise.territory.Houses.next(level, kingdom, tier, townPlan.cell() - 2,
                     townPlan.deepest() - dev.b28.enterprise.territory.TownPlans.FRONT_YARD, town * 7919 + homesLaid.getOrDefault(town, 0));
             if (built.isPresent()) {
                 homeKits.put(town, built.get().meta());
@@ -860,11 +884,19 @@ public final class LandAdapter {
                 if (plot.isPresent() && kit.isPresent()) {
                     var p = plot.get();
                     var built = homeBuilt.remove(town);
+                    String trade = workshops.get(town);
                     var onPlot = dev.b28.enterprise.territory.Plots.lay(level, dev.b28.enterprise.territory.Kingdoms.get(level.getServer())
-                            .of(town), kit.get(), built, p.corner(), p.width(), p.depth(), p.door(), town * 31 + corner.asLong());
+                            .of(town), kit.get(), built, p.corner(), p.width(), p.depth(), p.door(), town * 31 + corner.asLong(),
+                            "village", trade);
                     if (onPlot.isEmpty()) {
                         Growth.buildHome(level, corner, p.door());
                     } else {
+                        // A workshop's workstation made its decorative twin: the trade shows, nobody is hired by it.
+                        if (workshops.remove(town) != null) {
+                            for (BlockPos station : onPlot.get().house().workstations()) {
+                                dev.b28.enterprise.settlement.Props.twinOf(level, station);
+                            }
+                        }
                         Enterprise.LOGGER.info("Town {} builds {} facing {} at {} (front yard {}, back yard {})", town,
                                 kit.get().id(), p.door().getName(), corner.toShortString(), onPlot.get().front().orElse("none"),
                                 onPlot.get().back().orElse("none"));
@@ -882,6 +914,7 @@ public final class LandAdapter {
                 }
                 homeKits.remove(town);
                 homeBuilt.remove(town);
+                workshops.remove(town);
                 homesLaid.merge(town, 1, Integer::sum);
                 yield true;
             }
