@@ -33,3 +33,6 @@ __pycache__/
 # A worktree's own notes (task brief, slot, env): see scripts/trees.py
 /.tree/
 /.trees/
+
+# The world region files a GIS export carries for the asset studio (tens of MB; sent on the desk, not in git)
+assets-src/gis/*/*/region/

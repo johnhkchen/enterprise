@@ -110,6 +110,10 @@ rcon +commands:
 render trace log out="world_survey.html":
     python3 dev/experiments/world_render.py core/run/world {{trace}} {{log}} {{out}}
 
+# A town's plan as GIS data for the asset studio (docs/assets/README.md, "GIS export"); --region adds its region files
+gis trace log town out *flags:
+    python3 dev/experiments/gis_export.py core/run/world {{trace}} {{log}} {{town}} {{out}} {{flags}}
+
 # A film of a survey page's caravans, each trip on its own days, from the first (an MP4 Discord plays inline);
 # needs Pillow (run with a venv's python)
 film survey out="world_survey.mp4" python="python3":

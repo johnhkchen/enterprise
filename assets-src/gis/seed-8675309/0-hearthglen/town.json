@@ -1,0 +1,265 @@
+{
+ "id": 0,
+ "name": "Hearthglen",
+ "kingdom": null,
+ "tier": null,
+ "day": 90,
+ "bell": {
+  "x": -309,
+  "y": 78,
+  "z": -321
+ },
+ "villagers": 17.0,
+ "beds": 17.0,
+ "mood": 3.026,
+ "mood_target": 2.579,
+ "treasury_emeralds": 72.4,
+ "comforts_met": 3.0,
+ "hands": [
+  {
+   "trade": "leatherworker",
+   "level": 1,
+   "away": false
+  },
+  {
+   "trade": "leatherworker",
+   "level": 4,
+   "away": true
+  },
+  {
+   "trade": "mason",
+   "level": 2,
+   "away": false
+  },
+  {
+   "trade": "farmer",
+   "level": 5,
+   "away": false
+  },
+  {
+   "trade": "farmer",
+   "level": 2,
+   "away": false
+  },
+  {
+   "trade": "farmer",
+   "level": 1,
+   "away": false
+  },
+  {
+   "trade": "merchant",
+   "level": 3,
+   "away": false
+  },
+  {
+   "trade": "butcher",
+   "level": 5,
+   "away": false
+  },
+  {
+   "trade": "librarian",
+   "level": 4,
+   "away": false
+  },
+  {
+   "trade": "farmer",
+   "level": 1,
+   "away": false
+  },
+  {
+   "trade": "shepherd",
+   "level": 1,
+   "away": false
+  },
+  {
+   "trade": "farmer",
+   "level": 1,
+   "away": false
+  },
+  {
+   "trade": "fletcher",
+   "level": 1,
+   "away": false
+  },
+  {
+   "trade": "butcher",
+   "level": 1,
+   "away": false
+  },
+  {
+   "trade": "farmer",
+   "level": 1,
+   "away": false
+  },
+  {
+   "trade": "none",
+   "level": 1,
+   "away": false
+  },
+  {
+   "trade": "none",
+   "level": 1,
+   "away": false
+  }
+ ],
+ "comforts": {
+  "clothing": 1.0,
+  "furnishings": 1.0,
+  "leisure": 0.0,
+  "reading": 0.0,
+  "treats": 1.0
+ },
+ "herds": [
+  {
+   "animal": "sheep",
+   "count": 26.5,
+   "pastures": 3
+  },
+  {
+   "animal": "cow",
+   "count": 29.6,
+   "pastures": 3
+  },
+  {
+   "animal": "pig",
+   "count": 30.6,
+   "pastures": 3
+  },
+  {
+   "animal": "chicken",
+   "count": 31.0,
+   "pastures": 3
+  },
+  {
+   "animal": "llama",
+   "count": 4.0,
+   "pastures": 3
+  }
+ ],
+ "farms": [
+  {
+   "crop": "beetroot",
+   "plots": 77
+  },
+  {
+   "crop": "carrot",
+   "plots": 90
+  },
+  {
+   "crop": "potato",
+   "plots": 83
+  },
+  {
+   "crop": "sugar_cane",
+   "plots": 73
+  },
+  {
+   "crop": "sweet_berries",
+   "plots": 81
+  },
+  {
+   "crop": "wheat",
+   "plots": 99
+  }
+ ],
+ "works": [
+  {
+   "what": "Bridge { hex: Hex { q: 2, r: -5 }, from: Hex { q: 2, r: -6 }, to: Hex { q: 1, r: -4 } }",
+   "progress": 1.0,
+   "done": true
+  },
+  {
+   "what": "Hall(Square)",
+   "progress": 1.0,
+   "done": true
+  }
+ ],
+ "stock": {
+  "apple": 34.0,
+  "beef": 1.0,
+  "beetroot": 2.0,
+  "bow": 1.0,
+  "bread": 16.0,
+  "carrot": 18.0,
+  "chicken": 3.0,
+  "clay_ball": 10.0,
+  "cooked_beef": 69.0,
+  "cooked_mutton": 7.0,
+  "cookie": 134.0,
+  "dandelion": 16.0,
+  "feather": 17.0,
+  "flint": 2.0,
+  "leather": 3.0,
+  "leather_boots": 3.0,
+  "mutton": 1.0,
+  "oak_log": 20.0,
+  "poppy": 16.0,
+  "porkchop": 3.0,
+  "potato": 10.0,
+  "stick": 6.0,
+  "string": 1.0,
+  "sweet_berries": 12.0,
+  "wheat": 17.0,
+  "wheat_seeds": 16.0,
+  "white_banner": 3.0,
+  "white_carpet": 15.0,
+  "white_wool": 33.0
+ },
+ "routes": [
+  {
+   "to": "Andorhal",
+   "outbound": true,
+   "carrier": "wagon",
+   "trips": 24,
+   "blocks": 400,
+   "sold": 3.0,
+   "bought": 76.0
+  },
+  {
+   "to": "Pyrewood",
+   "outbound": true,
+   "carrier": "llama",
+   "trips": 5,
+   "blocks": 657,
+   "sold": 351.0,
+   "bought": 95.0
+  },
+  {
+   "to": "Andorhal",
+   "outbound": false,
+   "carrier": "wagon",
+   "trips": 4,
+   "blocks": 400,
+   "sold": 147.0,
+   "bought": 218.0
+  },
+  {
+   "to": "Pyrewood",
+   "outbound": false,
+   "carrier": "llama",
+   "trips": 13,
+   "blocks": 657,
+   "sold": 883.0,
+   "bought": 420.0
+  },
+  {
+   "to": "Felstone",
+   "outbound": false,
+   "carrier": "llama",
+   "trips": 6,
+   "blocks": 913,
+   "sold": 1299.0,
+   "bought": 248.0
+  },
+  {
+   "to": "Felstone",
+   "outbound": true,
+   "carrier": "llama",
+   "trips": 1,
+   "blocks": 913,
+   "sold": 81.0,
+   "bought": 29.0
+  }
+ ],
+ "notes": "kingdom and tier aren't in the sim yet (README C2); the studio proposes them for the pilot"
+}
