@@ -857,6 +857,13 @@ help breed more as needed."
   town keeps the game's way. Live, 90 days: the first cut left eight trades taken with no stall (three grown
   children, three hands that had lost one); with the refusal, none of eleven. Moods' sum +14.0 and +10.2 on the two
   runs (each its own world), 87 trips (78).
+- **Tried and reverted: equal shares of pasture room** (eb369e0). Meadowfell's 32 sheep, culled by no one without a
+  Butcher, filled its three pastures (48) and its cows, under their cull (18), bred no more from day 20: no hides, no
+  boots, four Librarians with paper and no leather. Each kind breeding into its share of the room, a kind crowding
+  another culled to its own by its keeper: on that run's journal Meadowfell +0.6 to +1.75, the sum +10.2 to +11.5.
+  Live on another world: +6.9 against +7.8 for the rule before on its journal, 9 comforts met to 12 (Meadowfell +1.1
+  to +2.1): where a Butcher keeps pigs and chickens, four equal shares left sheep and cows twelve a town. Shares
+  should follow what each kind is for (hides, wool, meat wanted), not be equal. Not kept.
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 
