@@ -1,6 +1,6 @@
 {
   "id": "enterprise:lordaeron/dock/dock_pier_3x4_a",
-  "rev": 1,
+  "rev": 3,
   "kingdom": "lordaeron",
   "kind": "dock",
   "slot": "dock:pier",
@@ -52,5 +52,6 @@
     }
   ],
   "entities": [],
-  "notes": "the pier runs along z (out over the water to the south): repeat the segment, the head at the end; stone_docks = segments + head"
+  "notes": "the pier runs along z (out over the water to the south): repeat the segment, the head at the end; stone_docks = segments + head",
+  "relief_faces": []
 }

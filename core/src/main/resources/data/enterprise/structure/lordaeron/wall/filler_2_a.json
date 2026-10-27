@@ -1,6 +1,6 @@
 {
   "id": "enterprise:lordaeron/wall/filler_2_a",
-  "rev": 1,
+  "rev": 3,
   "kingdom": "lordaeron",
   "kind": "wall",
   "slot": "wall:filler",
@@ -25,5 +25,10 @@
   "markers": [],
   "pilings": [],
   "entities": [],
-  "notes": ""
+  "notes": "",
+  "height": 15,
+  "relief_faces": [
+    "north",
+    "south"
+  ]
 }

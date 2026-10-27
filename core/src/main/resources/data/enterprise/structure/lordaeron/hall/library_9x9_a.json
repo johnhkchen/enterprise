@@ -1,6 +1,6 @@
 {
   "id": "enterprise:lordaeron/hall/library_9x9_a",
-  "rev": 1,
+  "rev": 3,
   "kingdom": "lordaeron",
   "kind": "hall",
   "slot": "hall:library",
@@ -90,7 +90,7 @@
         {
           "face": "back",
           "i": 1,
-          "module": "bay_window_ground",
+          "module": "bay_window_box_ground",
           "storey": 0,
           "mirror": false
         },
@@ -116,7 +116,7 @@
         {
           "face": "west",
           "i": 1,
-          "module": "bay_landing_ground",
+          "module": "bay_window_ground",
           "storey": 0,
           "mirror": false
         },
@@ -129,14 +129,14 @@
         {
           "face": "west",
           "i": 4,
-          "module": "bay_landing_ground",
+          "module": "bay_window_ground",
           "storey": 0,
           "mirror": false
         },
         {
           "face": "east",
           "i": 1,
-          "module": "bay_landing_ground",
+          "module": "bay_window_ground",
           "storey": 0,
           "mirror": false
         },
@@ -149,7 +149,7 @@
         {
           "face": "east",
           "i": 4,
-          "module": "bay_landing_ground",
+          "module": "bay_window_ground",
           "storey": 0,
           "mirror": false
         }

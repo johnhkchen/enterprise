@@ -1,6 +1,6 @@
 {
   "id": "enterprise:lordaeron/wall/tower_7x7_a",
-  "rev": 1,
+  "rev": 3,
   "kingdom": "lordaeron",
   "kind": "wall",
   "slot": "wall:tower",
@@ -35,5 +35,12 @@
   "markers": [],
   "pilings": [],
   "entities": [],
-  "notes": ""
+  "notes": "",
+  "height": 19,
+  "relief_faces": [
+    "north",
+    "south",
+    "east",
+    "west"
+  ]
 }

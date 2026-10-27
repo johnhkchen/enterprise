@@ -64,6 +64,8 @@ const LIGHT = { torch: 14, wall_torch: 14, lantern: 15, sea_lantern: 15, glowsto
   cave_vines: 14, cave_vines_plant: 14, furnace: 13, smoker: 13, blast_furnace: 13, copper_bulb: 15, enchanting_table: 7 };
 // blocks light passes through and villagers can stand inside (no collision), by name pattern
 const OPEN = /(^air$|^cave_air$|^structure_void$|_sapling$|^(short_|tall_)?grass$|^fern$|^large_fern$|flower|tulip|^dandelion$|^poppy$|orchid|allium|bluet|daisy|^cornflower$|lily_of|rose|^peony$|^lilac$|^sunflower$|torch$|_sign$|_button$|_pressure_plate$|^redstone_wire$|^rail$|_rail$|^ladder$|^vine$|^tripwire|_carpet$|^moss_carpet$|^snow$|^light$|_banner$|^lever$|^cobweb$|^sugar_cane$|^wheat$|^carrots$|^potatoes$|^beetroots$|_stem$|^sweet_berry_bush$|^dead_bush$|^seagrass$|^water$|^lava$|^fire$|_mushroom$|^glow_lichen$|^hanging_roots$|^spore_blossom$|^nether_sprouts$)/;
+// potted plants are flower pots (a block), whatever grows in them
+const isOpen = (n) => !/^potted_|flower_pot$/.test(n || "") && OPEN.test(n || "");
 // blocks light passes through but villagers can't walk into
 const SEE_THROUGH = /(glass|_pane$|_bars$|^chain$|_fence$|_fence_gate$|_wall$|_door$|_trapdoor$|_leaves$|_slab$|_stairs$|lantern$|^bell$|_bed$|^flower_pot$|^potted_|^decorated_pot$|^candle|_candle$|^end_rod$|^lightning_rod$|^campfire$|^soul_campfire$|^anvil$|^chipped_anvil$|^damaged_anvil$|^brewing_stand$|^cauldron$|_cauldron$|^hopper$|^scaffolding$|^cake$|_head$|_skull$|^grindstone$|^lectern$|^stonecutter$|^enchanting_table$|^composter$|^chest$|^trapped_chest$|^ender_chest$|^daylight_detector$|^bamboo$|^big_dripleaf|^small_dripleaf|^pointed_dripstone$|^amethyst_cluster$|_amethyst_bud$|^conduit$|^beacon$|^turtle_egg$|^sea_pickle$|^kelp|^cave_vines|^twisting_vines|^weeping_vines|^azalea$|^flowering_azalea$|^honey_block$|^slime_block$|^ice$|^frosted_ice$|^cactus$|^iron_bars$)/;
 
@@ -143,7 +145,7 @@ export function check(nbtFile, meta, mass) {
   if (ents.length !== (meta?.entities || []).length) (ents.length ? errs : warns).push(`${ents.length} entities in the file, ${(meta?.entities || []).length} listed`);
 
   // light: block light flood fill from emitters through open and see-through cells (falls by 1 a step)
-  const passLight = (n) => n === undefined || OPEN.test(shape(n)) || SEE_THROUGH.test(shape(n));
+  const passLight = (n) => n === undefined || isOpen(shape(n)) || SEE_THROUGH.test(shape(n));
   const light = new Map(), queue = [];
   for (const [k, b] of s.cells) {
     let lv = LIGHT[b.name] ?? (b.name.endsWith("candle") ? 3 * (+b.props.candles || 1) : 0);
@@ -164,13 +166,13 @@ export function check(nbtFile, meta, mass) {
   }
 
   // walkable: a cell a mob or villager can stand in: open itself and above, on something solid (stored, not open)
-  const open = (x, y, z) => { const n = shape(name(x, y, z)); return n !== undefined && (OPEN.test(n) || /_door$|_fence_gate$/.test(n) && at(x, y, z).props.open === "true" || /_door$/.test(n)); };
-  const standable = (x, y, z) => { const n = shape(name(x, y - 1, z)); return y > 0 && n !== undefined && !OPEN.test(n) && !/_fence$|_wall$|_fence_gate$|_door$/.test(n); };
+  const open = (x, y, z) => { const n = shape(name(x, y, z)); return n !== undefined && (isOpen(n) || /_door$|_fence_gate$/.test(n) && at(x, y, z).props.open === "true" || /_door$/.test(n)); };
+  const standable = (x, y, z) => { const n = shape(name(x, y - 1, z)); return y > 0 && n !== undefined && !isOpen(n) && !/_fence$|_wall$|_fence_gate$|_door$/.test(n); };
   // a mob spawns only on a full, solid top: not on bottom slabs or stairs, glass, leaves and the like (top slabs and
   // upside-down stairs do count)
   const spawnable = (x, y, z) => {
     const b = at(x, y - 1, z), n = shape(b?.name);
-    if (!n || OPEN.test(n)) return false;
+    if (!n || isOpen(n)) return false;
     if (/_slab$/.test(n)) return b.props.type === "top" || b.props.type === "double";
     if (/_stairs$/.test(n)) return b.props.half === "top";
     return !SEE_THROUGH.test(n);
@@ -178,7 +180,7 @@ export function check(nbtFile, meta, mass) {
   const walk = (x, y, z) => open(x, y, z) && (y + 1 >= H || open(x, y + 1, z) || name(x, y + 1, z) === undefined) && standable(x, y, z);
   // the contract's rule: interior cells (something above them) and the outdoor ground (the layer over `ground`).
   // Open-sky cells higher up (roofs, wall-walks) can spawn mobs at night too: those are a warning.
-  const covered = (x, y, z) => { for (let yy = y + 2; yy < H; yy++) { const n = shape(name(x, yy, z)); if (n !== undefined && !OPEN.test(n)) return true; } return false; };
+  const covered = (x, y, z) => { for (let yy = y + 2; yy < H; yy++) { const n = shape(name(x, yy, z)); if (n !== undefined && !isOpen(n)) return true; } return false; };
   const groundY = (meta?.ground ?? 0) + 1;
   const dark = [], roofs = [];
   for (let x = 0; x < W; x++) for (let y = 1; y < H; y++) for (let z = 0; z < D; z++) {
@@ -193,6 +195,11 @@ export function check(nbtFile, meta, mass) {
 
   // reach: from each entrance, a villager's walk between floors: up only by half steps (onto a stair, or onto a bottom
   // slab, or off a bottom slab), down any drop of 3 or less; ladders, trapdoors and full-block steps break the route
+  // a door cell is passable only as a doorway: the lower half here, the upper half over it, something to stand on
+  const doorway = (x, y, z) => {
+    const lo = at(x, y, z), hi = at(x, y + 1, z), below = shape(name(x, y - 1, z));
+    return !!lo && /_door$/.test(lo.name) && lo.props.half === "lower" && !!hi && /_door$/.test(hi.name) && hi.props.half === "upper" && !!below && !isOpen(below);
+  };
   const halfStep = (x, y, z, p) => {
     const to = at(p[0], p[1] - 1, p[2]), from = at(x, y - 1, z);
     const tn = shape(to?.name) || "", fn = shape(from?.name) || "";
@@ -212,7 +219,7 @@ export function check(nbtFile, meta, mass) {
         if (p[0] < 0 || p[2] < 0 || p[0] >= W || p[2] >= D || p[1] < 0 || p[1] >= H) continue;
         if (dy === 1 && !open(x, y + 2, z) && name(x, y + 2, z) !== undefined) continue;   // headroom to step up
         if (dy === 1 && !halfStep(x, y, z, p)) continue;                                    // a full block is a jump: no
-        if (!walk(...p) && !/_door$/.test(name(...p) || "")) continue;
+        if (!walk(...p) && !doorway(...p)) continue;
         const k = key(...p);
         if (!seen.has(k)) { seen.add(k); q.push(p); }
         break;

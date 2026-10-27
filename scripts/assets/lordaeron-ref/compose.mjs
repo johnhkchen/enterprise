@@ -43,17 +43,20 @@ export function compose(L) {
     paste(s.module, x, gy, z, q, !!s.mirror);
   }
   // plan: cores and fit-outs (cores are placed after the floors, so their holes win)
-  for (const p of L.plan) paste(p.module, p.at[0], 2 + H * p.storey + (p.dy || 0), p.at[1], p.q || 0);
+  for (const p of L.plan) {
+    if (p.block) g.set(X(p.at[0]), 2 + H * p.storey + (p.dy || 0), Z(p.at[1]), p.block);              // an exact block (a declared vanilla workstation)
+    else paste(p.module, p.at[0], 2 + H * p.storey + (p.dy || 0), p.at[1], p.q || 0);
+  }
   // roof slices over the relief
   if (L.roof === "gable_x") {
     for (let x = -rw; x < W + re; x++) {
       const kind = x < 0 || x >= W ? "verge" : (x === 0 && !party[0]) || (x === W - 1 && !party[1]) ? "gable" : "bay";
-      paste(`roof_${kind}_${span}`, x, roofBase, -1);
+      paste(`roof_${kind}_${span}`, x, roofBase, -1, 0, x >= W);
     }
   } else {
     for (let z = -1; z <= D; z++) {
       const kind = z < 0 || z >= D ? "verge" : z === 0 || z === D - 1 ? "gable" : "bay";
-      g.paste(mod(`roof_${kind}_${span}`).grid, 0, roofBase, Z(z), { q: 1 });
+      g.paste(mod(`roof_${kind}_${span}`).grid, 0, roofBase, Z(z), { q: 1, mirror: z >= D });            // the far verge mirrored: its boards face the gable
     }
   }
   // the chimney stack over its breast, one above the ridge
@@ -122,7 +125,11 @@ export function layoutOf(p) {
   const put = (storey, module, at, dy = 1, q = 0) => plan.push({ storey, module, at, dy, q });
   const bed = (storey, head, q = 0) => { put(storey, "bed", head, 1, q); beds.push({ storey, head, foot: q === 0 ? [head[0], head[1] + 1] : [head[0] - 1, head[1]] }); };
   const top = H - 1;
-  const work = (at) => { if (p.trade) { put(0, "workstation", at); workstations.push({ storey: 0, at }); } else put(0, "shelf", at); };
+  const work = (at) => {
+    if (!p.trade) return put(0, "shelf", at);
+    plan.push({ storey: 0, module: "workstation", at, dy: 1, ...(p.trade !== "any" ? { block: p.trade } : {}) });   // "any": an air marker the placer fills
+    workstations.push({ storey: 0, at });
+  };
   // The furnishing rule (tuned with the shared floor-plan tool): a short spine from the street door to the stair is
   // kept clear; everything a villager walks to (hearth, chest, cask, shelf, workstation) stands beside the spine or
   // against a wall near it, so routes stay short; corners away from the spine take what nobody walks to (a table and

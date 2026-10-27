@@ -1,0 +1,16 @@
+{
+  "id": "goods_meat",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "part",
+  "set": "lordaeron/timber_relief",
+  "palette": "stone",
+  "size": [
+    1,
+    1,
+    1
+  ],
+  "layer": "fitout",
+  "module": "goods_meat"
+}

@@ -1,6 +1,6 @@
 {
   "set": "lordaeron/timber_relief",
-  "rev": 3,
+  "rev": 4,
   "about": "The Lordaeron timber-frame module set with relief, for a WFC assembler. Two layers solved in order: the plan (rooms, cores, fit-out) then the shell (posts, bays, corners) chosen by the room behind; then the roof and the stack. The golden houses beside it are composed from exactly these modules by the layouts in their JSON (golden.layouts); scripts/assets/lordaeron-ref/compose.mjs is the reference composer.",
   "grid": {
     "post": 1,
@@ -1025,6 +1025,166 @@
     {
       "id": "stall_rail",
       "part": "enterprise:lordaeron/part/timber_relief/stall_rail",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_hay",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_hay",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_pumpkin",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_pumpkin",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_wool",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_wool",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_blue",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_blue",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_books",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_books",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_kelp",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_kelp",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_pickle",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_pickle",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_stone",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_stone",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_iron",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_iron",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_bars",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_bars",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_candle",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_candle",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_leather",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_leather",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_target",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_target",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_pot",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_pot",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_chain",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_chain",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "goods_meat",
+      "part": "enterprise:lordaeron/part/timber_relief/goods_meat",
       "size": [
         1,
         1,
