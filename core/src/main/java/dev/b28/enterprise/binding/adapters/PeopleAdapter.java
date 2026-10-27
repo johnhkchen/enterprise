@@ -379,12 +379,35 @@ public final class PeopleAdapter {
                         level.setBlock(old.pos(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
                     });
             BlockPos workstation = Jobs.buildStall(level, site.get(), trade.get());
-            level.getPoiManager().take(type -> true, (type, at) -> at.equals(workstation), workstation, 1);
-            v.getBrain().setMemory(MemoryModuleType.JOB_SITE, GlobalPos.of(level.dimension(), workstation));
+            takeStall(level, v, workstation, profession);
             Enterprise.LOGGER.info("Town {} puts up a {} stall at {}", o.town(), o.trade(), workstation.toShortString());
             return true;
         }
         return true;
+    }
+
+    /**
+     * The hand's villager takes its stall: the workstation claimed, its job site, and the trade itself at level 1 with
+     * no offers of its old one, its brain rebuilt for it. With only the job site, the game wiped it from a villager with
+     * no profession, which then took the nearest free workstation: seed 8675309's Wheatfell's Mason stall made a fourth
+     * Leatherworker of a village cauldron.
+     */
+    public static void takeStall(ServerLevel level, Villager v, BlockPos workstation, VillagerProfession profession) {
+        // The game registers a new block's point of interest a task later: claimed now, there's none yet to claim, the
+        // job site looks void and the game wipes it, and a level 1 villager with none and no XP loses its trade.
+        level.getPoiManager().take(type -> true, (type, at) -> at.equals(workstation), workstation, 1);
+        level.getServer().execute(() ->
+                level.getPoiManager().take(type -> true, (type, at) -> at.equals(workstation), workstation, 1));
+        v.getBrain().eraseMemory(MemoryModuleType.POTENTIAL_JOB_SITE);
+        v.getBrain().setMemory(MemoryModuleType.JOB_SITE, GlobalPos.of(level.dimension(), workstation));
+        if (v.getVillagerData().getProfession() != profession) {
+            v.setVillagerXp(0);
+            v.setOffers(new net.minecraft.world.item.trading.MerchantOffers());
+        }
+        v.setVillagerData(v.getVillagerData().setProfession(profession).setLevel(1));
+        // Its brain checks the job site against the trade it was built for, as the game's own hiring
+        // (`AssignProfessionFromJobSite`) rebuilds it: one built with no trade wipes the site at once.
+        v.refreshBrain(level);
     }
 
     /** A hand came to the town: a villager for it (and any other with none) by its bell, if the town is loaded. */

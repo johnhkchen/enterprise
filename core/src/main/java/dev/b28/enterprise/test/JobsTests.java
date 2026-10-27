@@ -185,9 +185,37 @@ public final class JobsTests {
         var desk = GlobalPos.of(helper.getLevel().dimension(), helper.absolutePos(new BlockPos(5, 2, 5)));
         Jobs.hire(helper.getLevel(), idle, workstation, trade, desk);
         helper.assertTrue(idle.getVillagerData().getProfession() == VillagerProfession.LIBRARIAN, "the idle villager is a Librarian");
-        helper.assertTrue(idle.getBrain().getMemory(MemoryModuleType.JOB_SITE).map(GlobalPos::pos).filter(workstation::equals)
-                .isPresent(), "working the stall");
-        idle.discard();
-        helper.succeed();
+        helper.runAfterDelay(40, () -> {
+            helper.assertTrue(idle.getVillagerData().getProfession() == VillagerProfession.LIBRARIAN, "and stays one");
+            helper.assertTrue(idle.getBrain().getMemory(MemoryModuleType.JOB_SITE).map(GlobalPos::pos).filter(workstation::equals)
+                    .isPresent(), "working the stall");
+            idle.discard();
+            helper.succeed();
+        });
+    }
+
+    /**
+     * The core's stall (`Stall`, core mode): its villager is given the trade outright, not only the job site, which the
+     * game wipes from a villager with no profession before it gets there (it then takes the nearest free workstation:
+     * Wheatfell's Mason stall made a Leatherworker of a village cauldron).
+     */
+    @GameTest(template = "floor", skyAccess = true)
+    public static void theCoresStallGivesItsVillagerTheTrade(GameTestHelper helper) {
+        Villager idle = helper.spawn(EntityType.VILLAGER, new BlockPos(5, 2, 1));
+        var trade = Jobs.TRADES.stream().filter(t -> t.profession() == VillagerProfession.MASON).findFirst().orElseThrow();
+        BlockPos workstation = Jobs.buildStall(helper.getLevel(), helper.absolutePos(new BlockPos(0, 1, 0)), trade);
+        dev.b28.enterprise.binding.adapters.PeopleAdapter.takeStall(helper.getLevel(), idle, workstation, VillagerProfession.MASON);
+        helper.assertTrue(idle.getVillagerData().getProfession() == VillagerProfession.MASON
+                && idle.getVillagerData().getLevel() == 1, "the idle villager is a Mason");
+        helper.runAfterDelay(40, () -> {
+            helper.assertTrue(idle.getVillagerData().getProfession() == VillagerProfession.MASON, "and stays one: "
+                    + idle.getVillagerData().getProfession() + ", site " + idle.getBrain().getMemory(MemoryModuleType.JOB_SITE)
+                    + ", poi " + helper.getLevel().getPoiManager().getType(workstation) + ", free "
+                    + helper.getLevel().getPoiManager().getFreeTickets(workstation) + ", block " + helper.getLevel().getBlockState(workstation));
+            helper.assertTrue(idle.getBrain().getMemory(MemoryModuleType.JOB_SITE).map(GlobalPos::pos).filter(workstation::equals)
+                    .isPresent(), "working the stall");
+            idle.discard();
+            helper.succeed();
+        });
     }
 }

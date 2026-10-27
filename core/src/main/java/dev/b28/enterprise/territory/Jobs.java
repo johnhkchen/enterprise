@@ -395,6 +395,8 @@ public final class Jobs {
         MerchantBook.get(level.getServer()).startSlack(desk, workstation, 2 * dev.b28.enterprise.Dials.SLACK_DAYS.getInt());
         villager.getBrain().setMemory(MemoryModuleType.JOB_SITE, GlobalPos.of(level.dimension(), workstation));
         villager.setVillagerData(villager.getVillagerData().setProfession(trade.profession()).setLevel(1));
+        // Its brain rebuilt for the trade, as the game's own hiring does: one built with none wipes the job site.
+        villager.refreshBrain(level);
         MerchantBook book = MerchantBook.get(level.getServer());
         villager.getOffers().forEach(offer -> {
             String key = TradeKeys.of(offer);
