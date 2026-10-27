@@ -826,6 +826,15 @@ help breed more as needed."
   +3.1, money 81, tending 61 plots of carrots and 40 of potatoes. On that run's journal, the core before: Ryegate +1.0;
   Meadowfell +2.4 there against +1.2 here; the five moods' sum +7.6 to +9.0. Dustfell sank in both (9 villagers, no
   comfort met): the world, not the rule.
+- **A herd's keeper isn't slack while its town keeps the herd, and a herd with no keeper is a glut** (`jobs::slack`,
+  `for_glut`). Dustfell's Leatherworker brought two cows; with none beyond the breeding stock to cull, its locker did
+  nothing, it was slack by day 7 and turned Mason, and the cows bred to 48 with no one to take their hides: no
+  clothing for 90 days, mood +0.2, 9 villagers. Breeding the herd is a keeper's work (a Shepherd's sheep, a
+  Leatherworker's cows, a Butcher's pigs and chickens); and the animals beyond the breeding stock, at their meat and
+  hides, count toward `glut_emeralds` for the trade that keeps them. On that run's journal: Dustfell +1.0, 13
+  villagers. Live, 90 days: Dustfell +2.4, 19 villagers; moods' sum +10.2 (+9.0), 12 comforts met (9.9). Redfell sank
+  in this world (9 villagers, none met) as on the core before: it began with no keeper and drew only Farmers. Its
+  leather, where it has some, goes to books before boots (the workshop's ranking).
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 
