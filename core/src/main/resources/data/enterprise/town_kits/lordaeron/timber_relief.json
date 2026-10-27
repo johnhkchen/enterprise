@@ -1,6 +1,6 @@
 {
   "set": "lordaeron/timber_relief",
-  "rev": 1,
+  "rev": 2,
   "about": "The Lordaeron timber-frame module set with relief, for a WFC assembler. Two layers solved in order: the plan (rooms, cores, fit-out) then the shell (posts, bays, corners) chosen by the room behind; then the roof and the stack. The golden houses beside it are composed from exactly these modules by the layouts in their JSON (golden.layouts); scripts/assets/lordaeron-ref/compose.mjs is the reference composer.",
   "grid": {
     "post": 1,
@@ -837,7 +837,7 @@
       "part": "enterprise:lordaeron/part/timber_relief/table",
       "size": [
         1,
-        1,
+        2,
         1
       ],
       "layer": "fitout"
@@ -855,6 +855,156 @@
     {
       "id": "workstation",
       "part": "enterprise:lordaeron/part/timber_relief/workstation",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "bench",
+      "part": "enterprise:lordaeron/part/timber_relief/bench",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "cask",
+      "part": "enterprise:lordaeron/part/timber_relief/cask",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "pot",
+      "part": "enterprise:lordaeron/part/timber_relief/pot",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "wall_inner",
+      "part": "enterprise:lordaeron/part/timber_relief/wall_inner",
+      "size": [
+        1,
+        4,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "door_inner",
+      "part": "enterprise:lordaeron/part/timber_relief/door_inner",
+      "size": [
+        1,
+        4,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "hay",
+      "part": "enterprise:lordaeron/part/timber_relief/hay",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "desk",
+      "part": "enterprise:lordaeron/part/timber_relief/desk",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "altar",
+      "part": "enterprise:lordaeron/part/timber_relief/altar",
+      "size": [
+        1,
+        2,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "candles",
+      "part": "enterprise:lordaeron/part/timber_relief/candles",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "anvil",
+      "part": "enterprise:lordaeron/part/timber_relief/anvil",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "smith_table",
+      "part": "enterprise:lordaeron/part/timber_relief/smith_table",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "forge",
+      "part": "enterprise:lordaeron/part/timber_relief/forge",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "quench",
+      "part": "enterprise:lordaeron/part/timber_relief/quench",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "rack",
+      "part": "enterprise:lordaeron/part/timber_relief/rack",
+      "size": [
+        1,
+        1,
+        1
+      ],
+      "layer": "fitout"
+    },
+    {
+      "id": "stall_rail",
+      "part": "enterprise:lordaeron/part/timber_relief/stall_rail",
       "size": [
         1,
         1,
