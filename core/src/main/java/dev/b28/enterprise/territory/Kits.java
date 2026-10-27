@@ -142,7 +142,9 @@ public final class Kits {
      */
     public static List<String> kits(ResourceManager resources, String kingdom, String slot, int width, int depth) {
         List<String> out = new ArrayList<>();
-        resources.listResources("structure/" + kingdom, rl -> rl.getPath().endsWith(".json")).keySet().stream()
+        // (Not its parts: pieces of buildings, chosen by the assembler, not by slot.)
+        resources.listResources("structure/" + kingdom, rl -> rl.getPath().endsWith(".json") && !rl.getPath().contains("/part/"))
+                .keySet().stream()
                 .sorted(Comparator.comparing(ResourceLocation::toString))
                 .forEach(rl -> {
                     String path = rl.getPath().substring("structure/".length(), rl.getPath().length() - ".json".length());

@@ -301,6 +301,43 @@ public final class GrowthTests {
         helper.succeed();
     }
 
+    /**
+     * The composer (`Compose`, the studio's module set, thread 0004): each golden house composed from its layout comes out
+     * as the studio's own file of it, block for block (its stone palette, the set's own).
+     */
+    @GameTest(template = "floor")
+    public static void theComposerRebuildsTheGoldenHouses(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var resources = level.getServer().getResourceManager();
+        var blocks = dev.b28.enterprise.territory.Compose.blocks(level);
+        for (String house : new String[] {"burgage_9x9_a", "townhouse_12x9_a", "terrace_21x9_a"}) {
+            var json = resources.getResource(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("enterprise",
+                    "structure/lordaeron/home/" + house + ".json")).orElseThrow();
+            com.google.gson.JsonObject meta;
+            try (var r = json.openAsReader()) {
+                meta = com.google.gson.JsonParser.parseReader(r).getAsJsonObject();
+            } catch (java.io.IOException e) {
+                throw new IllegalStateException(e);
+            }
+            var cells = dev.b28.enterprise.territory.Compose.composeAll(resources, blocks, "enterprise:lordaeron/part/timber_relief",
+                    meta.getAsJsonObject("golden").getAsJsonArray("layouts"));
+            var golden = dev.b28.enterprise.territory.Compose.golden(resources, blocks, "enterprise:lordaeron/home/" + house + "__stone");
+            int differ = 0;
+            String first = "";
+            var keys = new java.util.HashSet<>(golden.keySet());
+            keys.addAll(cells.keySet());
+            for (var k : keys) {
+                if (!java.util.Objects.equals(golden.get(k), cells.get(k))) {
+                    if (differ++ == 0) {
+                        first = k.toShortString() + ": " + cells.get(k) + " for " + golden.get(k);
+                    }
+                }
+            }
+            helper.assertTrue(differ == 0, house + ": " + differ + " of " + golden.size() + " blocks differ, the first " + first);
+        }
+        helper.succeed();
+    }
+
     @GameTest(template = "floor", skyAccess = true)
     public static void fieldsAndWaterAreNoPlaceForAHome(GameTestHelper helper) {
         BlockPos corner = helper.absolutePos(new BlockPos(1, 1, 1));

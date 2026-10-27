@@ -80,6 +80,9 @@ def support(n):
         u in n for u in OBSTACLE)
 
 
+LAST = {}  # the last analysis's walk (for looking into a route)
+
+
 def analyse(file):
     (sx, sy, sz), blocks = load(file)
     inside = lambda p: 0 <= p[0] < sx and 0 <= p[1] < sy and 0 <= p[2] < sz
@@ -144,6 +147,7 @@ def analyse(file):
                 dist[n] = dist[p] + 1
                 prev[n] = p
                 q.append(n)
+    LAST["dist"], LAST["interior"] = dist, interior
     # Destinations: a cell beside each bed, workstation, chest, hearth: the nearest reached.
     used = {p: name(blocks, p) for p in blocks if any(w in name(blocks, p) for w in USED)}
     beds = {p for p, n in used.items() if n.endswith("_bed") and blocks[p][1].get("part") == "head"}

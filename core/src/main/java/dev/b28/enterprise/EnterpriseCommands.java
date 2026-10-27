@@ -364,6 +364,48 @@ final class EnterpriseCommands {
                                                             laid.get().back().orElse("none"), laid.get().path())), false);
                                             return 1;
                                         })))))
+                .then(Commands.literal("houses")
+                        // A sheet of houses the generator makes (`Houses`, the studio's module set): {count} seeds of each
+                        // body it has rules for, written as structure files with their metadata to run/houses/, for the
+                        // validator and the floor-plan check (scripts/assets) to judge.
+                        .then(Commands.argument("count", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 50))
+                                .executes(context -> {
+                                    var level = context.getSource().getLevel();
+                                    int count = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "count");
+                                    var dir = level.getServer().getServerDirectory().resolve("houses");
+                                    int made = 0, failed = 0;
+                                    try {
+                                        java.nio.file.Files.createDirectories(dir);
+                                        int[][] bodies = {{7, 7, 1}, {10, 7, 2}, {10, 7, 3}, {13, 7, 2}, {13, 7, 3}, {10, 10, 2}, {13, 10, 3}};
+                                        for (int[] b : bodies) {
+                                            for (int seed = 1; seed <= count; seed++) {
+                                                var params = new dev.b28.enterprise.territory.Houses.Params(b[0], b[1], b[2], false,
+                                                        false, b[0] >= 10 && seed % 3 == 0, seed % 2 == 0, seed % 4 == 1, seed);
+                                                var layout = dev.b28.enterprise.territory.Houses.layout(params);
+                                                if (layout.isEmpty()) {
+                                                    failed++;
+                                                    continue;
+                                                }
+                                                var grid = dev.b28.enterprise.territory.Compose.compose(level.getServer().getResourceManager(),
+                                                        dev.b28.enterprise.territory.Compose.blocks(level), "enterprise:lordaeron/part/timber_relief",
+                                                        dev.b28.enterprise.territory.Compose.Layout.of(layout.get()));
+                                                String name = "house_%dx%d_s%d_%02d".formatted(b[0], b[1], b[2], seed);
+                                                net.minecraft.nbt.NbtIo.writeCompressed(dev.b28.enterprise.territory.Compose.toNbt(grid.cells,
+                                                        grid.sx, grid.sy, grid.sz), dir.resolve(name + ".nbt"));
+                                                java.nio.file.Files.writeString(dir.resolve(name + ".json"),
+                                                        dev.b28.enterprise.territory.Houses.meta("enterprise:generated/" + name, layout.get(),
+                                                                grid.sx, grid.sy, grid.sz).toString());
+                                                made++;
+                                            }
+                                        }
+                                    } catch (java.io.IOException e) {
+                                        return refuse(context, "couldn't write " + dir + ": " + e);
+                                    }
+                                    int m = made, f = failed;
+                                    context.getSource().sendSuccess(() -> Component.literal(m + " houses written to " + dir
+                                            + (f > 0 ? " (" + f + " bodies without rules)" : "")), false);
+                                    return made;
+                                })))
                 .then(Commands.literal("kingdom")
                         // A town's kingdom: the language its buildings are chosen in (`Kingdoms`).
                         .then(Commands.argument("town", com.mojang.brigadier.arguments.LongArgumentType.longArg(0))
