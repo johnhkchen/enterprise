@@ -1,0 +1,51 @@
+{
+  "kingdom": "stormwind",
+  "rev": 1,
+  "base_of": "lordaeron/stone (the module set's authoring palette); roles as there",
+  "note": "Stormwind on the relief module set: white Caen-like stone, timber and plaster in the villages, blue-grey slate. A palette lists the roles it changes from the base. Roofs: deepslate tile, the nearest vanilla slate. No vanilla blue block has stairs and slabs (dark prismarine reads teal, blue terracotta purple); a true blue slate needs a mod block (like the decorative twins).",
+  "aliases": {
+    "daub": "goldshire",
+    "brick": "stone",
+    "stone": "stone"
+  },
+  "palettes": {
+    "goldshire": {
+      "note": "the villages (Goldshire): spruce frame over white plaster, a white stone ground storey, blue-grey slate",
+      "post": "minecraft:spruce_log",
+      "beam": "minecraft:stripped_spruce_log",
+      "brace": "minecraft:spruce_stairs",
+      "band": "minecraft:spruce_slab",
+      "board": "minecraft:spruce_trapdoor",
+      "infill": "minecraft:calcite",
+      "infill_ground": "minecraft:polished_diorite",
+      "plinth": "minecraft:stone_bricks",
+      "floor": "minecraft:spruce_planks",
+      "roof": "minecraft:deepslate_tiles",
+      "roof_stair": "minecraft:deepslate_tile_stairs",
+      "roof_slab": "minecraft:deepslate_tile_slab",
+      "chimney": "minecraft:stone_bricks",
+      "window": "minecraft:glass_pane",
+      "door": "minecraft:spruce_door",
+      "step": "minecraft:stone_brick_slab"
+    },
+    "stone": {
+      "note": "the town and the forum: white stone throughout, quartz pilasters, plaster panels, blue-grey slate",
+      "post": "minecraft:quartz_pillar",
+      "beam": "minecraft:smooth_quartz",
+      "brace": "minecraft:quartz_stairs",
+      "band": "minecraft:smooth_quartz_slab",
+      "board": "minecraft:birch_trapdoor",
+      "infill": "minecraft:calcite",
+      "infill_ground": "minecraft:polished_diorite",
+      "plinth": "minecraft:polished_andesite",
+      "floor": "minecraft:oak_planks",
+      "roof": "minecraft:deepslate_tiles",
+      "roof_stair": "minecraft:deepslate_tile_stairs",
+      "roof_slab": "minecraft:deepslate_tile_slab",
+      "chimney": "minecraft:stone_bricks",
+      "window": "minecraft:glass_pane",
+      "door": "minecraft:oak_door",
+      "step": "minecraft:polished_andesite_slab"
+    }
+  }
+}

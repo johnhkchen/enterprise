@@ -647,6 +647,8 @@ public final class LandAdapter {
     private final Map<Long, String> workshops = new HashMap<>();
     /** Towns whose next home is a farmhouse on a holding's lot (`FieldMaps.farmstead`). */
     private final Set<Long> farmsteadNext = new HashSet<>();
+    /** The plot the town's zoning chose with its next home (`Zoning`), till it's sited. */
+    private final Map<Long, dev.b28.enterprise.territory.Plots.Site> zonedSites = new HashMap<>();
     /** A hall's kit and plot, found with its site and laid with it. */
     private record HallPlot(dev.b28.enterprise.territory.Kits.Meta kit, dev.b28.enterprise.territory.Plots.Site site) {}
     private final Map<List<Long>, HallPlot> hallPlots = new HashMap<>();
@@ -676,8 +678,10 @@ public final class LandAdapter {
             // farmers' job sites, its next home a farmhouse on its next grain holding's lot, facing the track.
             long farmers = level.getPoiManager().getInRange(t -> t.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.FARMER),
                     townPlan.bell(), 48, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY).count();
-            if (farmers > dev.b28.enterprise.territory.FieldMaps.get(level.getServer()).farmsteads(town)) {
-                int lot = 2 * Fields.SIZE + 1;
+            int lot = 2 * Fields.SIZE + 1;
+            // Only while a holding's lot is free: else the town would ask for a farmstead at every look and lay none.
+            if (farmers > dev.b28.enterprise.territory.FieldMaps.get(level.getServer()).farmsteads(town)
+                    && dev.b28.enterprise.territory.FieldMaps.get(level.getServer()).farmstead(level, town, lot, 2 * Fields.SIZE).isPresent()) {
                 // The kingdom's farmstead for the lot whole if it has one (house, barn, yard, garden); else a farmhouse.
                 var farmsteadKit = dev.b28.enterprise.territory.Kits.choose(level.getServer().getResourceManager(), kingdom,
                         "farmstead", lot, 2 * Fields.SIZE, town, new BlockPos(laidSoFar, 0, 0))
@@ -715,6 +719,15 @@ public final class LandAdapter {
                         return shop;
                     }
                 }
+            }
+            // A planned town's next house by its kingdom's zoning: the plot first, in the fill order, then the house it
+            // asks for (body, kind, storeys, palette, shop by street and distance from the forum).
+            var zoned = dev.b28.enterprise.territory.Zoning.next(level, town, townPlan, kingdom, town * 7919 + laidSoFar);
+            if (zoned.isPresent()) {
+                homeKits.put(town, zoned.get().house().meta());
+                homeBuilt.put(town, zoned.get().house());
+                zonedSites.put(town, zoned.get().site());
+                return Optional.of(zoned.get().house().meta());
             }
             var built = dev.b28.enterprise.territory.Houses.next(level, kingdom, tier, townPlan.cell() - 2 * dev.b28.enterprise.territory.Plots.SIDE,
                     townPlan.deepest() - dev.b28.enterprise.territory.TownPlans.FRONT_YARD, town * 7919 + homesLaid.getOrDefault(town, 0));
@@ -777,6 +790,12 @@ public final class LandAdapter {
                 // The kingdom's home kit the town builds next (`Kits`, the asset studio's), its footprint fronting a
                 // street; the cottage where the kingdom has none.
                 Optional<dev.b28.enterprise.territory.Kits.Meta> kit = nextHome(level, town);
+                // The plot its zoning chose with it, if it did.
+                var zonedSite = zonedSites.remove(town);
+                if (kit.isPresent() && zonedSite != null) {
+                    homePlots.put(town, zonedSite);
+                    yield Optional.of(zonedSite.corner());
+                }
                 // A farmhouse on its holding's lot, if one's free; else on a ward's plot as any home.
                 if (kit.isPresent() && farmsteadNext.contains(town)) {
                     var lot = dev.b28.enterprise.territory.FieldMaps.get(level.getServer()).farmstead(level, town,
@@ -785,7 +804,11 @@ public final class LandAdapter {
                         homePlots.put(town, lot.get());
                         yield Optional.of(lot.get().corner());
                     }
+                    // Its lot gone since: an ordinary home next look, not the farmstead's kit on a ward's plot.
                     farmsteadNext.remove(town);
+                    homeKits.remove(town);
+                    homeBuilt.remove(town);
+                    yield Optional.empty();
                 }
                 // On a plan with yards, its plot: the house set back behind its front yard (`Plots`).
                 if (kit.isPresent()) {

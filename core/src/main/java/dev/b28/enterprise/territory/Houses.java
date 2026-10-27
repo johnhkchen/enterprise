@@ -309,17 +309,34 @@ public final class Houses {
             }
         }
         JsonObject solve = chosen.getAsJsonObject("solve");
-        var layout = layout(new Params(solve.get("W").getAsInt(), solve.get("D").getAsInt(), solve.get("storeys").getAsInt(),
-                false, false, false, false, false, seed), plan.get());
+        return build(level, kingdom, new Params(solve.get("W").getAsInt(), solve.get("D").getAsInt(),
+                solve.get("storeys").getAsInt(), false, false, false, false, false, seed), null);
+    }
+
+    /**
+     * A house of the kingdom's module set and plan data for {@code p} (its body, storeys, party walls, shop, seed),
+     * recoloured to {@code palette} (`Palettes`; null for the set's own). A kingdom built on another's module set (no
+     * plan data of its own) takes that set's, in its own palettes.
+     */
+    public static Optional<Built> build(net.minecraft.server.level.ServerLevel level, String kingdom, Params p, String palette) {
+        var resources = level.getServer().getResourceManager();
+        String set = WallKit.json(resources, "town_kits/" + kingdom + "/plan.json").isPresent() ? kingdom : Palettes.SET;
+        var plan = WallKit.json(resources, "town_kits/" + set + "/plan.json");
+        if (plan.isEmpty()) {
+            return Optional.empty();
+        }
+        var layout = layout(p, plan.get());
         if (layout.isEmpty()) {
             return Optional.empty();
         }
-        var grid = Compose.compose(resources, Compose.blocks(level), "enterprise:" + kingdom + "/part/timber_relief",
+        var grid = Compose.compose(resources, Compose.blocks(level), "enterprise:" + set + "/part/timber_relief",
                 Compose.Layout.of(layout.get()));
-        String id = "enterprise:generated/" + kingdom + "_" + solve.get("W") + "x" + solve.get("D") + "_s"
-                + solve.get("storeys") + "_" + Long.toHexString(seed);
+        var cells = Palettes.apply(resources, kingdom, palette, grid.cells);
+        String id = "enterprise:generated/" + kingdom + "_" + p.w() + "x" + p.d() + "_s" + p.storeys()
+                + (p.partyWest() || p.partyEast() ? "_t" + (p.partyWest() ? "w" : "") + (p.partyEast() ? "e" : "") : "")
+                + (palette == null ? "" : "_" + palette) + "_" + Long.toHexString(p.seed());
         var meta = Kits.parse(id, meta(id, layout.get(), grid.sx, grid.sy, grid.sz));
-        return Optional.of(new Built(meta, grid.cells, grid.sx, grid.sy, grid.sz));
+        return Optional.of(new Built(meta, cells, grid.sx, grid.sy, grid.sz));
     }
 
     /**

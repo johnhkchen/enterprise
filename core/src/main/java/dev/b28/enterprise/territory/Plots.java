@@ -89,30 +89,12 @@ public final class Plots {
         int[] why = new int[4];
         var frontages = TownPlans.plots(plan.get(), house.width(), width(house.width()));
         for (TownPlans.Frontage f : frontages) {
-            // Its width along its street: the house's alone on an avenue's terrace, with side yards elsewhere.
-            int width = f.door().getAxis() == Direction.Axis.Z ? f.sx() : f.sz();
-            int[] h = house(depth, house.width(), house.depth(), width);
-            if (!TownPlans.clear(level, f.x(), f.z(), f.sx(), f.sz(), false)) {
-                why[0]++;
-                continue;
+            int entrance = house.entrances().stream().findFirst().map(BlockPos::getX).orElse(house.width() / 2);
+            Optional<Site> site = fits(level, f, bell, depth, house.width(), house.depth(), entrance);
+            if (site.isPresent()) {
+                return site;
             }
-            int[] at = world(f.x(), f.z(), width, depth, f.door(), h[0], h[1], h[2], h[3]);
-            int y = ground(level, at[0], at[1], at[2], at[3]);
-            if (y == Integer.MIN_VALUE) {
-                why[1 + Math.max(0, LAST_WHY)]++;
-                continue;
-            }
-            int doorX = h[0] + house.entrances().stream().findFirst().map(BlockPos::getX).orElse(house.width() / 2);
-            if (!bankable(level, world(f.x(), f.z(), width, depth, f.door(), 0, 0, width, depth), y,
-                    world(new BlockPos(f.x(), y, f.z()), width, depth, f.door(), doorX, depth))) {
-                why[2]++;
-                continue;
-            }
-            if (Math.abs(y - bell.getY()) > RISE) {
-                why[3]++;
-                continue;
-            }
-            return Optional.of(new Site(new BlockPos(f.x(), y, f.z()), f.door(), width, depth));
+            why[LAST_FIT]++;
         }
         // Said when the reasons change, not at every look the town asks again (r35: 445 lines of one full town).
         String said = String.format("No plot for a house %d wide by %s's bell: %d frontages, %d on a wall or street, %d "
@@ -126,6 +108,46 @@ public final class Plots {
 
     /** The last refusal said for each bell and width. */
     private static final java.util.Map<Long, String> SAID = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Why the last {@link #fits} failed: 0 on a wall or street, 1 built on or a town's, 2 too steep, 3 too high or low. */
+    static int LAST_FIT;
+
+    /**
+     * Does a house {@code houseW} x {@code houseD} (its door {@code entrance} along its front) fit the frontage, its plot
+     * as wide as the frontage along its street and {@code depth} deep: off the plan's walls and streets, its ground level
+     * enough and nothing built on it, its surroundings bankable, within reach of the bell's height? Its site if so.
+     */
+    public static Optional<Site> fits(ServerLevel level, TownPlans.Frontage f, BlockPos bell, int depth, int houseW,
+            int houseD, int entrance) {
+        // Its width along its street: the house's alone on an avenue's terrace, with side yards elsewhere.
+        int width = f.door().getAxis() == Direction.Axis.Z ? f.sx() : f.sz();
+        int[] h = house(depth, houseW, houseD, width);
+        if (h[1] < 0) {
+            LAST_FIT = 0;
+            return Optional.empty();
+        }
+        if (!TownPlans.clear(level, f.x(), f.z(), f.sx(), f.sz(), false)) {
+            LAST_FIT = 0;
+            return Optional.empty();
+        }
+        int[] at = world(f.x(), f.z(), width, depth, f.door(), h[0], h[1], h[2], h[3]);
+        int y = ground(level, at[0], at[1], at[2], at[3]);
+        if (y == Integer.MIN_VALUE) {
+            LAST_FIT = 1 + Math.max(0, LAST_WHY);
+            return Optional.empty();
+        }
+        int doorX = h[0] + entrance;
+        if (!bankable(level, world(f.x(), f.z(), width, depth, f.door(), 0, 0, width, depth), y,
+                world(new BlockPos(f.x(), y, f.z()), width, depth, f.door(), doorX, depth))) {
+            LAST_FIT = 2;
+            return Optional.empty();
+        }
+        if (Math.abs(y - bell.getY()) > RISE) {
+            LAST_FIT = 3;
+            return Optional.empty();
+        }
+        return Optional.of(new Site(new BlockPos(f.x(), y, f.z()), f.door(), width, depth));
+    }
 
     /** How far above or below the bell a plot's house may stand: a suburb runs down the hill a little. */
     static final int RISE = 12;
@@ -142,6 +164,11 @@ public final class Plots {
     private static int LAST_WHY;
 
     static int ground(ServerLevel level, int x0, int z0, int sx, int sz) {
+        return ground(level, x0, z0, sx, sz, ROLL);
+    }
+
+    /** As {@link #ground(ServerLevel, int, int, int, int)}, its ground within {@code roll} of level. */
+    static int ground(ServerLevel level, int x0, int z0, int sx, int sz, int roll) {
         int top = Integer.MIN_VALUE, bottom = Integer.MAX_VALUE;
         LAST_WHY = 0;
         for (int dx = 0; dx < sx; dx++) {
@@ -168,7 +195,7 @@ public final class Plots {
             }
         }
         LAST_WHY = 1;
-        return top - bottom <= ROLL ? top : Integer.MIN_VALUE;
+        return top - bottom <= roll ? top : Integer.MIN_VALUE;
     }
 
     /**

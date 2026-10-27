@@ -715,7 +715,8 @@ public final class FieldMaps extends SavedData {
                 default -> { px = x1 - d + 1; pz = z0 + (lotZ - w) / 2; }
             }
             int[] rect = Plots.world(px, pz, w, d, door, 0, 0, w, d);
-            int y = Plots.ground(level, rect[0], rect[1], rect[2], rect[3]);
+            // A lot is levelled whole when it's laid (and its edges retained): a little more roll than a house's plot.
+            int y = Plots.ground(level, rect[0], rect[1], rect[2], rect[3], LOT_ROLL);
             if (y == Integer.MIN_VALUE || Math.abs(y - plan.bell().getY()) > Plots.RISE) {
                 continue;
             }
@@ -724,6 +725,9 @@ public final class FieldMaps extends SavedData {
         }
         return Optional.empty();
     }
+
+    /** How far a farmstead lot's ground may rise and fall across it. */
+    static final int LOT_ROLL = 6;
 
     /** The lot last offered each town, till its farmhouse is laid: {holding, x0, z0, x1, z1}. */
     private final Map<Long, int[]> pending = new HashMap<>();
