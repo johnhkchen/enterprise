@@ -71,7 +71,13 @@ function roofSlice(span, kind) {
   for (let k = 0; k < m; k++) for (let t = 0; t < PITCH; t++) {
     const y = k * PITCH + t, last = t === PITCH - 1;
     g.set(0, y, k, last ? B.rstair("south") : B.roof); g.set(0, y, span - 1 - k, last ? B.rstair("north") : B.roof);
-    if (kind === "verge") continue;
+    if (kind === "verge") {                                    // boards on the gable behind: a king post and a collar, proud of the daub
+      for (let i = k + 1; i < span - 1 - k; i++) {
+        const centre = Math.abs(i - (span - 1) / 2) < 1, collar = y === PITCH && i > k + 1 && i < span - 2 - k;
+        if (y > 0 && (centre || collar)) g.set(0, y, i, "dark_oak_trapdoor[facing=west,half=bottom,open=true,powered=false,waterlogged=false]");
+      }
+      continue;
+    }
     for (let i = k + 1; i < span - 1 - k; i++) {
       const centre = Math.abs(i - (span - 1) / 2) < 1;
       g.set(0, y, i, y === 0 ? (kind === "gable" ? B.beamZ : B.floor) : kind === "gable" ? (centre ? B.post : B.infill) : B.floor);
@@ -123,6 +129,12 @@ const FITOUT = {
   quench: () => one("enterprise:decor_cauldron[contents=water]"),
   rack: () => one("iron_bars[east=false,north=false,south=false,waterlogged=false,west=false]"),
   stall_rail: () => one("spruce_fence[east=false,north=true,south=true,waterlogged=false,west=false]"),
+  goods_hay: () => one("hay_block[axis=y]"), goods_pumpkin: () => one("carved_pumpkin[facing=south]"), goods_wool: () => one("white_wool"),
+  goods_blue: () => one("light_blue_wool"), goods_books: () => one("chiseled_bookshelf[facing=south,slot_0_occupied=true,slot_1_occupied=true,slot_2_occupied=false,slot_3_occupied=true,slot_4_occupied=false,slot_5_occupied=true]"),
+  goods_kelp: () => one("dried_kelp_block"), goods_pickle: () => one("sea_pickle[pickles=3,waterlogged=false]"), goods_stone: () => one("chiseled_stone_bricks"),
+  goods_iron: () => one("iron_block"), goods_bars: () => one("iron_bars[east=false,north=false,south=false,waterlogged=false,west=false]"), goods_candle: () => one("candle[candles=3,lit=true,waterlogged=false]"),
+  goods_leather: () => one("brown_wool"), goods_target: () => one("target[power=0]"), goods_pot: () => one("decorated_pot[cracked=false,facing=south,waterlogged=false]"),
+  goods_chain: () => one("chain[axis=y,waterlogged=false]"), goods_meat: () => one("red_terracotta"),
   chimney_stack: () => { const g = new Grid([1, 1, 2]); g.set(0, 0, 0, B.chimney); g.set(0, 0, 1, B.chimney); return g; },
   chimney_stack_party: () => one(B.chimney),
 };

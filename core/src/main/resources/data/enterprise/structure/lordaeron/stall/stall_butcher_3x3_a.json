@@ -1,6 +1,6 @@
 {
   "id": "enterprise:lordaeron/stall/stall_butcher_3x3_a",
-  "rev": 1,
+  "rev": 3,
   "kingdom": "lordaeron",
   "kind": "stall",
   "slot": "stall:butcher",
@@ -54,5 +54,6 @@
   "markers": [],
   "pilings": [],
   "entities": [],
-  "mirror": true
+  "mirror": true,
+  "relief_faces": []
 }

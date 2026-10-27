@@ -1,6 +1,6 @@
 {
   "id": "enterprise:lordaeron/wall/curtain_4_a",
-  "rev": 1,
+  "rev": 3,
   "kingdom": "lordaeron",
   "kind": "wall",
   "slot": "wall:curtain",
@@ -25,5 +25,10 @@
   "markers": [],
   "pilings": [],
   "entities": [],
-  "notes": ""
+  "notes": "",
+  "height": 15,
+  "relief_faces": [
+    "north",
+    "south"
+  ]
 }

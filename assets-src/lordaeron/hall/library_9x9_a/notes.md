@@ -1,3 +1,1 @@
-# library_9x9_a.nbt: floor plan notes
-
-1. storey 1, at [4, 3, 5], narrow: hall only 2 wide across most of it
+2026-10-27  rev 1  shelves round the walls, a reading desk and table

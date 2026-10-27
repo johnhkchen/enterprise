@@ -1,6 +1,6 @@
 {
   "id": "enterprise:lordaeron/hall/square_9x9_a",
-  "rev": 1,
+  "rev": 3,
   "kingdom": "lordaeron",
   "kind": "hall",
   "slot": "hall:square",
@@ -34,5 +34,6 @@
     }
   ],
   "pilings": [],
-  "entities": []
+  "entities": [],
+  "relief_faces": []
 }

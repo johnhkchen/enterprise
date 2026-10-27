@@ -1,6 +1,6 @@
 {
   "id": "enterprise:lordaeron/wall/corner_7x7_a",
-  "rev": 1,
+  "rev": 3,
   "kingdom": "lordaeron",
   "kind": "wall",
   "slot": "wall:corner",
@@ -35,5 +35,12 @@
   "markers": [],
   "pilings": [],
   "entities": [],
-  "notes": "authored as the town's north-west corner: walls leave it east and south; the walk opens east and south"
+  "notes": "authored as the town's north-west corner: walls leave it east and south; the walk opens east and south",
+  "height": 19,
+  "relief_faces": [
+    "north",
+    "south",
+    "east",
+    "west"
+  ]
 }

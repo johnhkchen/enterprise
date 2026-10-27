@@ -1,6 +1,6 @@
 {
   "id": "enterprise:lordaeron/wall/gatehouse_11x7_a",
-  "rev": 1,
+  "rev": 3,
   "kingdom": "lordaeron",
   "kind": "wall",
   "slot": "wall:gatehouse",
@@ -43,5 +43,10 @@
     "width": 3,
     "height": 4
   },
-  "notes": ""
+  "notes": "",
+  "height": 19,
+  "relief_faces": [
+    "north",
+    "south"
+  ]
 }
