@@ -148,6 +148,8 @@ HOUSE = (172, 106, 66)
 LEAVES = (40, 88, 42)
 LOG = (92, 70, 44)
 FENCE = (236, 232, 216)
+RAIL = (196, 54, 60)
+WALL = (70, 62, 84)
 PASTURE = (150, 192, 98)
 OTHER = (146, 140, 136)
 HOUSE_WORDS = ("planks", "stairs", "slab", "cobblestone", "glass", "door", "wool", "_bed", "bookshelf", "hay_block",
@@ -168,6 +170,8 @@ def colour(name, above):
         return FORUM, "forum"
     if n in ("birch_fence", "birch_fence_gate"):
         return FENCE, "fence"
+    if n.endswith("_fence") or n.endswith("_fence_gate"):
+        return RAIL, "rail"
     if n == "farmland":
         a = above.split(":")[-1]
         return CROPS.get(a, NATURAL["farmland"]), "field"
@@ -255,6 +259,11 @@ def main():
                     col, k = colour(name, c.block(lx, y + 1, lz))
                     if k == "land" and name.endswith("_log"):
                         col, k = LOG, "tree"
+                    # The town wall: its ring of columns round a bell (`Works.WALL_RADIUS`).
+                    if k in ("house", "tree", "land") and any(
+                            38 <= math.hypot(X - bx, Z - bz) <= 42 for bx, _, bz in bells.values()) and (
+                            name.endswith("_log") or name.endswith("cobblestone") or name.endswith("sandstone")):
+                        col, k = WALL, "wall"
                     rgb[Z - z0][X - x0] = col
                     kind[Z - z0][X - x0] = k
                     height[Z - z0][X - x0] = c.ground[i] - 1 + MIN_Y
