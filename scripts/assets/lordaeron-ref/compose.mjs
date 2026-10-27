@@ -120,7 +120,7 @@ export function layoutOf(p) {
           const cells = { front: [[i, D - 2], [i + 1, D - 2]], back: [[W - 1 - i, 1], [W - 2 - i, 1]], west: [[1, i], [1, i + 1]], east: [[W - 2, D - 1 - i], [W - 2, D - 2 - i]] }[face];
           const stair = cells.some(([x, z]) => coreCells.has(`${x},${z}`));
           if (isParty) module = `bay_party_${st}`;
-          else if (p.arcade && s === 0) module = "bay_arcade_ground";
+          else if (p.arcade && s === 0 && (p.arcade !== "front" || face === "front")) module = "bay_arcade_ground";   // arcade "front": the street face only
           else if (face === "front" && s === 0 && bay === doorBay) module = "bay_door_ground";
           else if (stair) module = `bay_landing_${st}`;
           else if (street(face) && s === 0 && p.shop) module = "bay_shop_ground";

@@ -1,0 +1,21 @@
+{
+  "id": "enterprise:lordaeron/gate_quarter/wagon_yard_13x9_a",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "hall",
+  "palette": "stone",
+  "footprint": [
+    13,
+    9
+  ],
+  "height": 8,
+  "ground": 2,
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "slot": "wagon_yard",
+  "note": "a paved yard with a loading dock along the back; the gate (3 wide) at the front's middle",
+  "relief_faces": []
+}
