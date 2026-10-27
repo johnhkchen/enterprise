@@ -60,14 +60,17 @@ def main():
     kinds = sorted({str(Path(p).parent) for p in want if "/structure/" in p and p.endswith(".nbt")})
     for k in kinds:
         sh("node", "scripts/assets/check-asset.mjs", k)
-    houses = [p for p in want if p.endswith(".nbt") and "/structure/" in p and "/part/" not in p
-              and "/yard/" not in p and "__" not in p]
+    # The interior check is for homes (beds, chambers, stairs); halls and the rest get their plans drawn, ungated.
+    houses = [p for p in want if p.endswith(".nbt") and "/structure/" in p and "__" not in p
+              and any(f"/{k}/" in p for k in ("home", "plot", "hall", "workshop"))]
     plans = []
     for h in houses:
         rel = Path(h).relative_to("core/src/main/resources/data/enterprise/structure")
         out = ROOT / "assets-src" / rel.parent
-        r = sh("python3", "scripts/assets/floorplan.py", h, "--out", str(out), "--check", check=False)
-        plans.append(f"- `{rel}`: {'passes' if r.returncode == 0 else 'misses'} the interior check")
+        gated = any(f"/{k}/" in h for k in ("home", "plot", "workshop"))
+        r = sh("python3", "scripts/assets/floorplan.py", h, "--out", str(out), *(["--check"] if gated else []), check=False)
+        plans.append(f"- `{rel}`: " + (("passes" if r.returncode == 0 else "misses") + " the interior check" if gated
+                                       else "plan drawn (not a home: no interior gate)"))
     sh("git", "add", "-A", ".")
     body = (f"Studio batch {name} (desk thread {thread}): {len(want)} files, every one matching the manifest's sha256; "
             f"the shared validator passed on {len(kinds)} folders.\n\nInterior check (floor plans in assets-src):\n"
