@@ -239,6 +239,15 @@ public final class JobsTests {
         helper.assertBlockPresent(Blocks.GRASS_BLOCK, new BlockPos(3, 1, 3));
         helper.assertBlockPresent(Blocks.OAK_FENCE, new BlockPos(0, 2, 0));
         helper.assertBlockPresent(Blocks.OAK_FENCE_GATE, new BlockPos(3, 2, 6));
+        // Its inside is fenced in: no second pasture there.
+        boolean[] fenced = new boolean[9 * 9];
+        for (int a = 0; a < 9; a++) {
+            for (int b = 0; b < 9; b++) {
+                fenced[a * 9 + b] = (a == 1 || a == 7 || b == 1 || b == 7) && a >= 1 && a <= 7 && b >= 1 && b <= 7;
+            }
+        }
+        helper.assertTrue(dev.b28.enterprise.territory.Pastures.enclosed(fenced, 9, 4, 4), "the inside isn't fenced in");
+        helper.assertFalse(dev.b28.enterprise.territory.Pastures.enclosed(fenced, 9, 0, 4), "the outside is fenced in");
         helper.succeed();
     }
 }

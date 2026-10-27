@@ -67,6 +67,21 @@ public final class Pastures {
                         && Math.abs(y - bell.getY()) <= Growth.FIELD_RISE;
             }
         }
+        // Ground already fenced in (a pasture's, a field's, a garden's): a fence within reach every way round it.
+        boolean[] fenced = new boolean[span * span];
+        for (int k = 0; k < span * span; k++) {
+            if (height[k] != Integer.MIN_VALUE) {
+                BlockState top = level.getBlockState(new BlockPos(x0 + k / span, height[k], z0 + k % span));
+                fenced[k] = top.is(BlockTags.FENCES) || top.is(BlockTags.FENCE_GATES);
+            }
+        }
+        for (int i = 0; i < span; i++) {
+            for (int j = 0; j < span; j++) {
+                if (open[i * span + j] && enclosed(fenced, span, i, j)) {
+                    open[i * span + j] = false;
+                }
+            }
+        }
         List<BlockPos> town = level.getPoiManager()
                 .getInRange(type -> true, bell, reach + 24, PoiManager.Occupancy.ANY).map(PoiRecord::getPos).toList();
         for (int[] size : SIZES) {
@@ -79,6 +94,29 @@ public final class Pastures {
             }
         }
         return Optional.empty();
+    }
+
+    /** How far a fence is looked for each way round a column, to see it's fenced in. */
+    static final int ENCLOSED = 24;
+
+    /** Is the column at ({@code i}, {@code j}) fenced in: a fence within {@link #ENCLOSED} north, south, east and west? */
+    public static boolean enclosed(boolean[] fenced, int span, int i, int j) {
+        int[][] ways = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        for (int[] w : ways) {
+            boolean hit = false;
+            for (int n = 1; n <= ENCLOSED && !hit; n++) {
+                int a = i + w[0] * n;
+                int b = j + w[1] * n;
+                if (a < 0 || b < 0 || a >= span || b >= span) {
+                    break;
+                }
+                hit = fenced[a * span + b];
+            }
+            if (!hit) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** The nearest corner for a {@code sx} x {@code sz} pasture on the surveyed ground, if any. */
