@@ -154,10 +154,27 @@ public final class Earthworks {
                             cut ? ground + done : ground - done - rise, q, e[4], e[5], cut);
                     done += rise;
                     offset += tile.get().depth();
+                    // The terrace before the next course lit every 5th column (the studio, r35: walkable, and dark).
+                    if (diff - done >= LEAST && i % 5 == 2) {
+                        light(level, ox + e[4] * (offset - 1), oz + e[5] * (offset - 1));
+                    }
                 }
             }
         }
         return new Banked(laid, deepest);
+    }
+
+    /** A lantern on a post of mossy cobble on the ground at a column. */
+    private static void light(ServerLevel level, int x, int z) {
+        int y = height(level, x, z);
+        if (y == Integer.MIN_VALUE) {
+            return;
+        }
+        BlockPos post = new BlockPos(x, y + 1, z);
+        if (level.getBlockState(post).isAir() && level.getBlockState(post.above()).isAir()) {
+            level.setBlock(post, net.minecraft.world.level.block.Blocks.MOSSY_COBBLESTONE_WALL.defaultBlockState(), 3);
+            level.setBlock(post.above(), net.minecraft.world.level.block.Blocks.LANTERN.defaultBlockState(), 3);
+        }
     }
 
     private static Optional<Tile> pick(List<Tile> tiles, int rise, String kind, long seed) {

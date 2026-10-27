@@ -1,6 +1,6 @@
 {
   "set": "lordaeron/earthworks",
-  "rev": 4,
+  "rev": 5,
   "about": "Retaining walls for the cuts levelling leaves in a slope. Authored with the low ground to the south: z = depth-1 is the low edge and every tile aligns on it; the wall face looks south; the high ground runs north. Layers 0-1 ground, 2 the low surface, 2 + rise the high surface. Rotate and mirror freely (the corners are drawn for high ground to the north-west).",
   "rise": "Each tile is made for one rise, 1 to 4 (retain_h<rise>_*). Use the tile whose rise is the cut's height at that column; at a change of height, let the higher tile's wall run on one column past the step.",
   "tiling": "Straights are 1 wide (variants a, b, c: pick by hash so the coursing never repeats), with a lamp tile at most 5 apart and, from rise 3, a buttress about every 4. Corners are 3 x 3. Steps are 4 wide (two cheek walls and a 2-wide flight) or 3 wide (a 1-wide flight for a door path) and 2 x rise + 1 deep, so they reach back into the bank; cut the bank behind them to the steps' landing.",
