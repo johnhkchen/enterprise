@@ -334,7 +334,16 @@ public final class Furlongs {
     }
 
     private static BlockState hedge() {
-        return Blocks.OAK_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT, true);
+        return hedge(0);
+    }
+
+    /**
+     * A hedge's leaves: azalea, which no biome tints (oak leaves take the savanna's olive and read as scrub: the studio,
+     * r60), now and then in flower.
+     */
+    static BlockState hedge(long h) {
+        return (Math.floorMod(h >>> 5, 10L) == 0 ? Blocks.FLOWERING_AZALEA_LEAVES : Blocks.AZALEA_LEAVES).defaultBlockState()
+                .setValue(LeavesBlock.PERSISTENT, true);
     }
 
     /** A small tree standing at {@code at}: oak or birch by the hash. */
@@ -342,7 +351,8 @@ public final class Furlongs {
         // Lordaeron's trees: oak mostly, birch now and then (the studio's layout: 85 to 15).
         boolean oak = Math.floorMod(h >>> 8, 100L) < 85;
         BlockState log = oak ? Blocks.OAK_LOG.defaultBlockState() : Blocks.BIRCH_LOG.defaultBlockState();
-        BlockState leaf = (oak ? Blocks.OAK_LEAVES : Blocks.BIRCH_LEAVES).defaultBlockState().setValue(LeavesBlock.PERSISTENT, true);
+        // An oak's crown in azalea leaves (untinted green: the biome's olive would read as savanna); a birch's its own.
+        BlockState leaf = oak ? hedge(h ^ 0x5bd1e995L) : Blocks.BIRCH_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT, true);
         int trunk = 3 + (int) Math.floorMod(h >>> 12, 2L);
         for (int up = 0; up < trunk; up++) {
             level.setBlock(at.above(up), log, 2);

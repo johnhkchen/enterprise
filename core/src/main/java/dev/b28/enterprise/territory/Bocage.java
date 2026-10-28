@@ -134,7 +134,10 @@ public final class Bocage {
                 long hh = Zoning.mix(town, a * 7919L + b);
                 int i = Math.min(sx - 1, a * SPACING + (int) Math.floorMod(hh, (long) SPACING));
                 int j = Math.min(sz - 1, b * SPACING + (int) Math.floorMod(hh >>> 20, (long) SPACING));
-                seeds.add(new float[] {i, j, hs[j * sx + i]});
+                // Past 60% of the reach, every other seed dropped: bigger, quieter fields toward the farmland's edge (the
+                // studio, r60: "lots of small parcels at the ends read busy").
+                boolean drop = cost[j * sx + i] > 0.6f * BUDGET && (a + b) % 2 == 1;
+                seeds.add(new float[] {i, j, hs[j * sx + i], drop ? 1 : 0});
             }
         }
         // Each block to the seed nearest by d² = dx² + dz² + 9·dh² (the seeds of the grid cells round it).
@@ -151,6 +154,9 @@ public final class Bocage {
                 for (int b = Math.max(0, cb - 2); b <= Math.min(gz - 1, cb + 2); b++) {
                     for (int a = Math.max(0, ca - 2); a <= Math.min(gx - 1, ca + 2); a++) {
                         float[] s = seeds.get(b * gx + a);
+                        if (s[3] == 1) {
+                            continue;
+                        }
                         double d = (i - s[0]) * (i - s[0]) + (j - s[1]) * (j - s[1]) + 9 * (h - s[2]) * (h - s[2]);
                         if (d < best) {
                             best = d;
@@ -206,7 +212,11 @@ public final class Bocage {
             long hh = Zoning.mix(town, f * 31L + 9);
             String use;
             double far = s[11] / s[0] / BUDGET;
-            if (far > WILD) {
+            if (far <= WILD && (use0(q) == 1 && q >= 0.04 || use0(q) == 2 && q >= 0.10)) {
+                // Within the worked reach the land's ploughed: what rank would leave to wood or grazing is arable, but the
+                // steepest (the studio, r60: planted share 0.24 against their 0.53).
+                use = "arable:" + crops(hh, s[10] - s[9]);
+            } else if (far > WILD) {
                 // The edge of the farmland gone wild: rough pasture, meadow and wood, the bocage fading into the land.
                 use = Math.floorMod(hh, 10L) < 4 ? "woodland" : Math.floorMod(hh, 10L) < 7 ? "pasture" : "meadow";
             } else if (dw < 10 && q > 0.5) {
@@ -235,6 +245,11 @@ public final class Bocage {
             field[i] = field[i] < 0 ? -1 : index.getOrDefault(field[i], -1);
         }
         return new Land(x0, z0, sx, sz, field, hs);
+    }
+
+    /** The use the rank alone gives: 1 woodland, 2 pasture, 0 else. */
+    private static int use0(double q) {
+        return q < 0.08 ? 1 : q < 0.22 ? 2 : 0;
     }
 
     /**
@@ -313,7 +328,7 @@ public final class Bocage {
             } else if (Math.floorMod(h, 70L) == 0) {
                 Furlongs.tree(level, over, h);
             } else {
-                BlockState leaf = Blocks.OAK_LEAVES.defaultBlockState().setValue(net.minecraft.world.level.block.LeavesBlock.PERSISTENT, true);
+                BlockState leaf = Furlongs.hedge(h);
                 level.setBlock(over, leaf, 2);
                 if (Math.floorMod(h >>> 7, 4L) == 0) {
                     level.setBlock(over.above(), leaf, 2);
