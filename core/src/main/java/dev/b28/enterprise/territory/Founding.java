@@ -33,7 +33,7 @@ public final class Founding {
         // The well at the forum's edge beside the charter stone, off the main street's plots (r78: by the main street it
         // took a plot the first builds wanted).
         laid += part(level, set, "well_3", bell.relative(back, r + 2).relative(side.getOpposite(), 3), 3, 3, main);
-        // The gate posts astride the main street at the inner wall's line, the camp just inside them beside it.
+        // The gate posts astride the main street at the inner wall's line.
         int out = switch (main) {
             case NORTH -> bell.getZ() - plan.inner().z0();
             case SOUTH -> plan.inner().z1() - bell.getZ();
@@ -41,7 +41,9 @@ public final class Founding {
             default -> plan.inner().x1() - bell.getX();
         };
         laid += part(level, set, "gate_posts_5", bell.relative(main, out), 5, 1, back);
-        laid += part(level, set, "camp_9x7", bell.relative(main, out - 6).relative(side, TownPlans.GATE / 2 + 6), 9, 7,
+        // The camp at the main street's end, just outside the gate posts (r80: inside them it took the plots nearest the
+        // square, and the first builds went past the wall).
+        laid += part(level, set, "camp_9x7", bell.relative(main, out + 7).relative(side, TownPlans.GATE / 2 + 6), 9, 7,
                 side.getOpposite());
         // A stake every 8 along the rest of the inner wall's line, clear of the avenues.
         TownPlans.Rect in = plan.inner();
