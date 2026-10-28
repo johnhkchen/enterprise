@@ -1,0 +1,59 @@
+{
+  "id": "enterprise:dalaran/stall/stall_mason_3x3_a",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "stall",
+  "slot": "stall:mason",
+  "tiers": [
+    "hamlet",
+    "village",
+    "town"
+  ],
+  "footprint": [
+    3,
+    3
+  ],
+  "height": 7,
+  "ground": 0,
+  "entrances": [
+    {
+      "at": [
+        1,
+        1,
+        2
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [
+    {
+      "at": [
+        1,
+        1,
+        1
+      ],
+      "block": "minecraft:stonecutter"
+    }
+  ],
+  "lockers": [
+    {
+      "at": [
+        1,
+        1,
+        0
+      ],
+      "for": [
+        1,
+        1,
+        1
+      ]
+    }
+  ],
+  "markers": [],
+  "pilings": [],
+  "entities": [],
+  "mirror": true,
+  "relief_faces": []
+}
