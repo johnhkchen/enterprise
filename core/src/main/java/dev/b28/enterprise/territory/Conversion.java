@@ -63,8 +63,19 @@ public final class Conversion {
                         }
                         BlockPos top = level.getHeightmapPos(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE,
                                 new BlockPos(x, 0, z)).below();
-                        if (PATHS.contains(level.getBlockState(top).getBlock())) {
+                        BlockState paved = level.getBlockState(top);
+                        if (PATHS.contains(paved.getBlock())) {
                             level.setBlock(top, Blocks.GRASS_BLOCK.defaultBlockState(), 2 | 16);
+                        } else if (paved.is(BlockTags.PLANKS) || paved.is(BlockTags.WOODEN_SLABS)) {
+                            // A street's plank bridge over the shallows (the studio's r72: a town's bridge never laid
+                            // over it): water where water was, the bank's grass where it stood on land.
+                            BlockState under = level.getBlockState(top.below());
+                            boolean wet = false;
+                            for (var d : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+                                wet |= !level.getFluidState(top.relative(d)).isEmpty();
+                            }
+                            level.setBlock(top, wet || !under.getFluidState().isEmpty() ? Blocks.WATER.defaultBlockState()
+                                    : Blocks.GRASS_BLOCK.defaultBlockState(), 2 | 16);
                         }
                     }
                 }
