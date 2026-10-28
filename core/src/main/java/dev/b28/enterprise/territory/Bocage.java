@@ -30,6 +30,11 @@ public final class Bocage {
 
     /** The seeds' grid; a crop band's height; the fields laid a look. */
     static final int SPACING = 26, BAND = 3, EACH = 12;
+    /** How far past the inner wall the farmland is looked for; how dear a reach it may take (a flat field's walk). */
+    static final int SPREAD = 160;
+    static final float BUDGET = 140;
+    /** The share of the reach past which the land goes wild: pasture, meadow and wood, not crops. */
+    static final float WILD = 0.8f;
 
     /** A town's bocage: the ground it covers, each block's field (-1 none), the smoothed land, the fields. */
     static final class Land {
@@ -62,19 +67,19 @@ public final class Bocage {
      * fields go into {@code m.fields} (a field's {@code holding} its index there).
      */
     static Land layOut(ServerLevel level, TownPlans.Plan plan, FieldMaps.TownMap m, Map<Integer, int[]> lots, long town) {
-        TownPlans.Rect o = plan.outer();
-        int margin = TownPlans.STRIP + 2 + FieldMaps.GRAIN_DEPTH;
-        int x0 = o.x0() - margin, z0 = o.z0() - margin, sx = o.x1() - o.x0() + 2 * margin + 1, sz = o.z1() - o.z0() + 2 * margin + 1;
-        for (int[] c : new int[][] {{x0, z0}, {x0 + sx - 1, z0}, {x0, z0 + sz - 1}, {x0 + sx - 1, z0 + sz - 1}}) {
+        // The ground the farmland may reach: round the inner wall, as far as it could spread along a road.
+        TownPlans.Rect in = plan.inner(), out = plan.outer();
+        int x0 = in.x0() - SPREAD, z0 = in.z0() - SPREAD, sx = in.x1() - in.x0() + 2 * SPREAD + 1, sz = in.z1() - in.z0() + 2 * SPREAD + 1;
+        for (int[] c : new int[][] {{in.x0(), in.z0()}, {in.x1(), in.z1()}}) {
             if (!level.isLoaded(new BlockPos(c[0], 0, c[1]))) {
                 return null;
             }
         }
         int n = sx * sz;
         float[] top = new float[n];
-        boolean[] wet = new boolean[n], ok = new boolean[n], road = new boolean[n];
+        boolean[] wet = new boolean[n], ok = new boolean[n], road = new boolean[n], wood = new boolean[n], gone = new boolean[n];
         // The tracks and roads drawn on the grid once (a block's distance to every line, block by block, held a tick for
-        // a minute).
+        // a minute): the farm tracks and the trade routes out of the gates.
         List<double[][]>[] paths = Furlongs.paths(plan);
         for (FieldMaps.Track t : m.tracks) {
             stamp(road, sx, sz, x0, z0, t.line(), FieldMaps.TRACK_WIDTH / 2.0 + 1);
@@ -87,25 +92,40 @@ public final class Bocage {
         int band = TownPlans.GATE / 2 + 2 + plan.deepest() + 1;
         for (int j = 0; j < sz; j++) {
             for (int i = 0; i < sx; i++) {
-                int x = x0 + i, z = z0 + j, y = Earthworks.height(level, x, z);
-                if (y == Integer.MIN_VALUE) {
-                    return null;
+                int x = x0 + i, z = z0 + j, k = j * sx + i;
+                if (!level.isLoaded(new BlockPos(x, 0, z))) {
+                    gone[k] = true; // not loaded: the farmland doesn't reach it (this time)
+                    continue;
                 }
-                int k = j * sx + i;
+                int y = Earthworks.height(level, x, z);
+                if (y == Integer.MIN_VALUE) {
+                    gone[k] = true;
+                    continue;
+                }
                 top[k] = y;
-                wet[k] = !level.getBlockState(new BlockPos(x, y, z)).getFluidState().isEmpty();
-                boolean garden = FieldMaps.in(plan, FieldMaps.Ring.GARDEN, x + 0.5, z + 0.5);
-                boolean in = garden || FieldMaps.in(plan, FieldMaps.Ring.GRAIN, x + 0.5, z + 0.5);
-                // The garden ring's suburbs along the avenues are the town's plots, not fields.
-                boolean suburb = garden && (Math.abs(x - plan.bell().getX()) <= band || Math.abs(z - plan.bell().getZ()) <= band);
+                BlockPos at = new BlockPos(x, y, z);
+                wet[k] = !level.getBlockState(at).getFluidState().isEmpty();
+                wood[k] = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) - 1 > y;
+                boolean inside = in.contains(x, z) || in.fromEdge(x, z) <= TownPlans.STRIP + 1;
+                boolean wall = !out.contains(x, z) && out.fromEdge(x, z) <= TownPlans.STRIP + 1
+                        || out.contains(x, z) && out.fromEdge(x, z) <= TownPlans.STRIP + 1;
+                // The suburbs along the avenues between the walls are the town's plots, not fields.
+                boolean suburb = out.contains(x, z) && (Math.abs(x - plan.bell().getX()) <= band || Math.abs(z - plan.bell().getZ()) <= band);
                 boolean lot = false;
                 for (int[] l : lots.values()) {
                     lot |= x >= l[0] - 1 && x <= l[2] + 1 && z >= l[1] - 1 && z <= l[3] + 1;
                 }
-                ok[k] = in && !wet[k] && !road[k] && !suburb && !lot;
+                ok[k] = !inside && !wall && !wet[k] && !road[k] && !suburb && !lot;
             }
         }
+        // How dear each block is to reach from the town's gates: a step's climb dear (1 + 40·climb², the studio's lanes),
+        // woods dearer, water out of reach, the roads and tracks cheap. The farmland is what's within reach: it runs out
+        // along the trade routes and stops where the land does, not at a line.
         float[] hs = blur(blur(top, sx, sz, 2), sx, sz, 2);
+        float[] cost = reach(plan, in, hs, wet, gone, road, wood, x0, z0, sx, sz);
+        for (int k = 0; k < n; k++) {
+            ok[k] &= cost[k] <= BUDGET;
+        }
         // Seeds jittered on the grid, at their land's height.
         List<float[]> seeds = new ArrayList<>();
         int gx = (sx + SPACING - 1) / SPACING, gz = (sz + SPACING - 1) / SPACING;
@@ -150,7 +170,7 @@ public final class Bocage {
                 if (f < 0) {
                     continue;
                 }
-                double[] s = stats.computeIfAbsent(f, q -> new double[] {0, 0, 0, 0, 0, 1e9, 1e9, -1e9, -1e9, 1e9, -1e9});
+                double[] s = stats.computeIfAbsent(f, q -> new double[] {0, 0, 0, 0, 0, 1e9, 1e9, -1e9, -1e9, 1e9, -1e9, 0});
                 float east = hs[j * sx + Math.min(sx - 1, i + 1)] - hs[j * sx + Math.max(0, i - 1)];
                 float south = hs[Math.min(sz - 1, j + 1) * sx + i] - hs[Math.max(0, j - 1) * sx + i];
                 s[0]++;
@@ -164,6 +184,7 @@ public final class Bocage {
                 s[8] = Math.max(s[8], z0 + j);
                 s[9] = Math.min(s[9], top[j * sx + i]);
                 s[10] = Math.max(s[10], top[j * sx + i]);
+                s[11] += cost[j * sx + i];
             }
         }
         double hMin = Double.MAX_VALUE, hMax = -Double.MAX_VALUE;
@@ -184,7 +205,11 @@ public final class Bocage {
             double rel = (s[3] / s[0] - hMin) / Math.max(1, hMax - hMin);
             long hh = Zoning.mix(town, f * 31L + 9);
             String use;
-            if (dw < 10 && q > 0.5) {
+            double far = s[11] / s[0] / BUDGET;
+            if (far > WILD) {
+                // The edge of the farmland gone wild: rough pasture, meadow and wood, the bocage fading into the land.
+                use = Math.floorMod(hh, 10L) < 4 ? "woodland" : Math.floorMod(hh, 10L) < 7 ? "pasture" : "meadow";
+            } else if (dw < 10 && q > 0.5) {
                 use = "meadow";
             } else if (q < 0.08) {
                 use = "woodland";
@@ -198,6 +223,10 @@ public final class Bocage {
             Furlongs.Field fl = new Furlongs.Field(m.fields.size(), 0, 0, (int) s[5], (int) s[6], (int) s[7], (int) s[8], use,
                     (int) (s[10] - s[9]));
             fl.area = (int) s[0];
+            // Walls on the high ground only (the top quarter of the land's height); bands at least 7 blocks across on
+            // the ground, whatever the slope (the studio, r58: 3 blocks of height was 4 or 5 across on a steep bank).
+            fl.high = rel > 0.75;
+            fl.band = Math.max(BAND, (int) Math.ceil(7 * s[1] / s[0]));
             index.put(f, m.fields.size());
             m.fields.add(fl);
         }
@@ -277,13 +306,18 @@ public final class Bocage {
             return;
         }
         if (edge == 1) {
-            boolean high = fl.relief > Furlongs.HILL || use.equals("terraces");
-            if (high) {
+            // Dry-stone walls on the high ground and round terraces; elsewhere a hedgerow, a tree in it about every 70
+            // blocks, a second layer of leaves on a quarter of it (the studio's layout).
+            if (fl.high || use.equals("terraces")) {
                 level.setBlock(over, Blocks.MOSSY_COBBLESTONE_WALL.defaultBlockState(), 3);
-            } else if (Math.floorMod(h, 17L) == 0) {
+            } else if (Math.floorMod(h, 70L) == 0) {
                 Furlongs.tree(level, over, h);
             } else {
-                Furlongs.hedgerow(level, x, z, h | 1, false);
+                BlockState leaf = Blocks.OAK_LEAVES.defaultBlockState().setValue(net.minecraft.world.level.block.LeavesBlock.PERSISTENT, true);
+                level.setBlock(over, leaf, 2);
+                if (Math.floorMod(h >>> 7, 4L) == 0) {
+                    level.setBlock(over.above(), leaf, 2);
+                }
             }
             return;
         }
@@ -296,7 +330,12 @@ public final class Bocage {
                 }
             }
             case "pasture" -> {
-                if (Math.floorMod(h, 3L) == 0) {
+                // Grazing: grass, a hay bale now and then, and a shelter with hay and a trough in its middle.
+                if (x == (fl.x0 + fl.x1) / 2 && z == (fl.z0 + fl.z1) / 2) {
+                    shelter(level, over);
+                } else if (Math.floorMod(h, 97L) == 0) {
+                    level.setBlock(over, Blocks.HAY_BLOCK.defaultBlockState(), 2);
+                } else if (Math.floorMod(h, 3L) == 0) {
                     level.setBlock(over, Blocks.SHORT_GRASS.defaultBlockState(), 2);
                 }
             }
@@ -335,10 +374,10 @@ public final class Bocage {
             default -> {
                 // Arable: its crops by band of height, a grass balk where one band meets the next.
                 String[] crops = use.substring(use.indexOf(':') + 1).split(",");
-                int band = (int) Math.floor(land.height(x, z) / BAND);
+                int band = (int) Math.floor(land.height(x, z) / fl.band);
                 boolean balk = false;
                 for (int[] d : new int[][] {{1, 0}, {0, 1}}) {
-                    if (land.at(x + d[0], z + d[1]) == f && (int) Math.floor(land.height(x + d[0], z + d[1]) / BAND) > band) {
+                    if (land.at(x + d[0], z + d[1]) == f && (int) Math.floor(land.height(x + d[0], z + d[1]) / fl.band) > band) {
                         balk = true;
                     }
                 }
@@ -380,6 +419,57 @@ public final class Bocage {
         level.setBlock(ground.above(), block.getStateForAge(Math.max(0, ripe - behind - (Math.floorMod(h, 7L) == 0 ? 2 : 0))), 2);
     }
 
+    /**
+     * Each block's cost to reach from the inner wall's gates (where the avenues leave it), stepping eight ways: a step's
+     * length times 1 + 40·climb² (climbs dear, so the reach runs round hills), half again in woods, a road or track a
+     * quarter; water and ground not loaded out of reach.
+     */
+    static float[] reach(TownPlans.Plan plan, TownPlans.Rect in, float[] top, boolean[] wet, boolean[] gone, boolean[] road,
+            boolean[] wood, int x0, int z0, int sx, int sz) {
+        float[] cost = new float[sx * sz];
+        java.util.Arrays.fill(cost, Float.MAX_VALUE);
+        java.util.PriorityQueue<long[]> heap = new java.util.PriorityQueue<>(Comparator.comparingLong(e -> e[0]));
+        int bx = plan.bell().getX(), bz = plan.bell().getZ(), out = TownPlans.STRIP + 2;
+        for (int[] g : new int[][] {{bx, in.z0() - out}, {bx, in.z1() + out}, {in.x0() - out, bz}, {in.x1() + out, bz}}) {
+            int i = g[0] - x0, j = g[1] - z0;
+            if (i >= 0 && j >= 0 && i < sx && j < sz && !gone[j * sx + i]) {
+                cost[j * sx + i] = 0;
+                heap.add(new long[] {0, j * sx + i});
+            }
+        }
+        int[][] steps = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+        while (!heap.isEmpty()) {
+            long[] e = heap.poll();
+            int k = (int) e[1];
+            float c = cost[k];
+            if (e[0] != Float.floatToIntBits(c)) {
+                continue; // a dearer way found before the cheaper one
+            }
+            if (c > BUDGET * 1.5f) {
+                break;
+            }
+            int i = k % sx, j = k / sx;
+            for (int[] d : steps) {
+                int ii = i + d[0], jj = j + d[1];
+                if (ii < 0 || jj < 0 || ii >= sx || jj >= sz) {
+                    continue;
+                }
+                int q = jj * sx + ii;
+                if (gone[q] || wet[q] || in.contains(x0 + ii, z0 + jj)) {
+                    continue;
+                }
+                float climb = Math.abs(top[q] - top[k]); // over the land smoothed: a gentle slope climbs a fraction a step
+                float step = (d[0] != 0 && d[1] != 0 ? 1.41f : 1f) * (1 + 40 * climb * climb)
+                        * (road[q] ? 0.25f : wood[q] ? 1.5f : 1f);
+                if (c + step < cost[q]) {
+                    cost[q] = c + step;
+                    heap.add(new long[] {Float.floatToIntBits(cost[q]), q});
+                }
+            }
+        }
+        return cost;
+    }
+
     /** A line drawn on the grid {@code r} wide either side. */
     static void stamp(boolean[] grid, int sx, int sz, int x0, int z0, double[][] line, double r) {
         int ri = (int) Math.ceil(r);
@@ -394,6 +484,24 @@ public final class Bocage {
                 }
             }
         }
+    }
+
+    /** A field shelter standing at {@code at}: four posts, a slab roof, hay and a trough under it. */
+    static void shelter(ServerLevel level, BlockPos at) {
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                for (int up = 0; up <= 2; up++) {
+                    level.setBlock(at.offset(dx, up, dz), Blocks.AIR.defaultBlockState(), 2);
+                }
+                level.setBlock(at.offset(dx, 2, dz), Blocks.SPRUCE_SLAB.defaultBlockState(), 2);
+            }
+        }
+        for (int[] c : new int[][] {{-1, -1}, {-1, 1}, {1, -1}, {1, 1}}) {
+            level.setBlock(at.offset(c[0], 0, c[1]), Blocks.SPRUCE_FENCE.defaultBlockState(), 3);
+            level.setBlock(at.offset(c[0], 1, c[1]), Blocks.SPRUCE_FENCE.defaultBlockState(), 3);
+        }
+        level.setBlock(at, Blocks.HAY_BLOCK.defaultBlockState(), 2);
+        level.setBlock(at.offset(1, 0, 0), dev.b28.enterprise.settlement.Props.CAULDRON.get().defaultBlockState(), 2);
     }
 
     /** A grid blurred over a square of radius {@code r}. */

@@ -53,6 +53,9 @@ public final class Furlongs {
         String state;
         int relief;
         int area;
+        /** On the high ground (walls, not hedges); its crop bands' height. */
+        boolean high;
+        int band = 3;
 
         Field(int holding, int k, int n, int x0, int z0, int x1, int z1, String state, int relief) {
             this.holding = holding;
@@ -334,13 +337,12 @@ public final class Furlongs {
         return Blocks.OAK_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT, true);
     }
 
-    /** A small tree standing at {@code at}: oak, birch or a blossoming cherry by the hash. */
+    /** A small tree standing at {@code at}: oak or birch by the hash. */
     static void tree(ServerLevel level, BlockPos at, long h) {
-        int kind = (int) Math.floorMod(h >>> 8, 3L);
-        BlockState log = kind == 0 ? Blocks.OAK_LOG.defaultBlockState() : kind == 1 ? Blocks.BIRCH_LOG.defaultBlockState()
-                : Blocks.CHERRY_LOG.defaultBlockState();
-        BlockState leaf = (kind == 0 ? Blocks.OAK_LEAVES : kind == 1 ? Blocks.BIRCH_LEAVES : Blocks.CHERRY_LEAVES)
-                .defaultBlockState().setValue(LeavesBlock.PERSISTENT, true);
+        // Lordaeron's trees: oak mostly, birch now and then (the studio's layout: 85 to 15).
+        boolean oak = Math.floorMod(h >>> 8, 100L) < 85;
+        BlockState log = oak ? Blocks.OAK_LOG.defaultBlockState() : Blocks.BIRCH_LOG.defaultBlockState();
+        BlockState leaf = (oak ? Blocks.OAK_LEAVES : Blocks.BIRCH_LEAVES).defaultBlockState().setValue(LeavesBlock.PERSISTENT, true);
         int trunk = 3 + (int) Math.floorMod(h >>> 12, 2L);
         for (int up = 0; up < trunk; up++) {
             level.setBlock(at.above(up), log, 2);
