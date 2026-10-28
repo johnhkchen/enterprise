@@ -1,0 +1,24 @@
+{
+  "id": "enterprise:lordaeron/founding/market_cross_5",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "prop:founding",
+  "palette": "fixed",
+  "size": [
+    5,
+    11,
+    5
+  ],
+  "mirror": true,
+  "ground": 2,
+  "width": 5,
+  "depth": 5,
+  "tags": [
+    "founding",
+    "square",
+    "centrepiece",
+    "lamp"
+  ],
+  "place": "the forum's middle until the forum's buildings come; stays as the market cross"
+}

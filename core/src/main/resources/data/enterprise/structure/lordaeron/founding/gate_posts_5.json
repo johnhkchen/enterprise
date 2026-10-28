@@ -1,0 +1,24 @@
+{
+  "id": "enterprise:lordaeron/founding/gate_posts_5",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "prop:founding",
+  "palette": "fixed",
+  "size": [
+    5,
+    9,
+    1
+  ],
+  "mirror": true,
+  "ground": 2,
+  "width": 5,
+  "depth": 1,
+  "tags": [
+    "founding",
+    "gate",
+    "temporary",
+    "lamp"
+  ],
+  "place": "astride the main street where it crosses the inner wall's line: x 1-3 the street"
+}

@@ -1,0 +1,23 @@
+{
+  "id": "enterprise:lordaeron/founding/founding_stone_3",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "prop:founding",
+  "palette": "fixed",
+  "size": [
+    3,
+    9,
+    3
+  ],
+  "mirror": true,
+  "ground": 2,
+  "width": 3,
+  "depth": 3,
+  "tags": [
+    "founding",
+    "square",
+    "lamp"
+  ],
+  "place": "the forum's edge, beside the bell, facing the square"
+}
