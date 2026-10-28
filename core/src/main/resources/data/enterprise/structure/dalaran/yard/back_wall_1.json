@@ -1,0 +1,28 @@
+{
+  "id": "enterprise:dalaran/yard/back_wall_1",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "palette": "fixed",
+  "size": [
+    1,
+    9,
+    4
+  ],
+  "mirror": true,
+  "ground": 2,
+  "slot": "yard:back",
+  "width": 1,
+  "depth": 4,
+  "tags": [
+    "plain"
+  ],
+  "sockets": {
+    "left": "wall",
+    "right": "wall",
+    "rear": "wall"
+  },
+  "path_ok": [],
+  "lamp": false,
+  "max_run": null
+}

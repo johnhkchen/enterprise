@@ -1,0 +1,547 @@
+{
+  "set": "dalaran/yards",
+  "rev": 1,
+  "about": "Dalaran's yard tiles on Lordaeron's yard contract: front yards 3 deep (z 0 against the house, z 2 the street edge), back yards 4 deep (z 0 the rear boundary, z 3 against the house), tiles 1, 2 or 3 wide laid left to right (as seen from the street) to fill the plot's width. Layers 0-1 ground, 2 the surface (the plot's ground row), 3+ features.",
+  "sockets": "left/right name the edge treatment along the street edge (front) or rear boundary (back): wall (the white compound wall: polished andesite plinth, calcite, a purpur tile coping; a course taller at the back), rail (a dark oak balustrade on a polished andesite kerb); '*' fits any. Neighbours should match so the boundary runs on.",
+  "path": "The client cuts the door path: lay front_path_1 (paved) at the door's column, or cut through any cell listed in a tile's path_ok.",
+  "light": "Every walkable full-block cell must be lit 8+. Tiles tagged lamp carry a light (a stone lantern or a lantern on a post); keep lamp tiles at most 5 columns apart in a strip (front and back), counting the house's own door lantern for the front.",
+  "max_run": "Each tile's max_run is how many of it may stand side by side in one strip (null: no limit). Features stand alone.",
+  "once": "A tile with once: true (the trade yards) appears at most once in a strip; fill round it with the plain tiles of the plot's tier.",
+  "rules": [
+    "no point-of-interest blocks (decorative twins only)",
+    "no beds",
+    "front yards: nothing over 3 high",
+    "back yards: trees allowed"
+  ],
+  "choice": "Pick by tags (plain, cottage, town, hens, kitchen, wash, woodpile, well, tree, trade:<trade>) for the plot's tier and occupant's trade, by the seed: the same vocabulary as Lordaeron's, so one chooser serves both. Town tiles are walled and paved; cottage tiles are railed and planted.",
+  "tiles": [
+    {
+      "id": "front_path_1",
+      "part": "enterprise:dalaran/yard/front_path_1",
+      "slot": "yard:front",
+      "width": 1,
+      "depth": 3,
+      "tags": [
+        "path",
+        "gate"
+      ],
+      "sockets": {
+        "left": "*",
+        "right": "*",
+        "street": "gate"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ]
+      ],
+      "lamp": false,
+      "max_run": null
+    },
+    {
+      "id": "front_wall_1",
+      "part": "enterprise:dalaran/yard/front_wall_1",
+      "slot": "yard:front",
+      "width": 1,
+      "depth": 3,
+      "tags": [
+        "plain",
+        "town"
+      ],
+      "sockets": {
+        "left": "wall",
+        "right": "wall",
+        "street": "wall"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "lamp": false,
+      "max_run": null
+    },
+    {
+      "id": "front_lamp_1",
+      "part": "enterprise:dalaran/yard/front_lamp_1",
+      "slot": "yard:front",
+      "width": 1,
+      "depth": 3,
+      "tags": [
+        "plain",
+        "town",
+        "cottage",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "*",
+        "right": "*",
+        "street": "*"
+      },
+      "path_ok": [],
+      "lamp": true,
+      "max_run": null
+    },
+    {
+      "id": "front_rail_1",
+      "part": "enterprise:dalaran/yard/front_rail_1",
+      "slot": "yard:front",
+      "width": 1,
+      "depth": 3,
+      "tags": [
+        "cottage"
+      ],
+      "sockets": {
+        "left": "rail",
+        "right": "rail",
+        "street": "rail"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "lamp": false,
+      "max_run": null
+    },
+    {
+      "id": "front_court_2",
+      "part": "enterprise:dalaran/yard/front_court_2",
+      "slot": "yard:front",
+      "width": 2,
+      "depth": 3,
+      "tags": [
+        "plain",
+        "town"
+      ],
+      "sockets": {
+        "left": "wall",
+        "right": "wall",
+        "street": "wall"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "lamp": false,
+      "max_run": 2
+    },
+    {
+      "id": "front_azalea_2",
+      "part": "enterprise:dalaran/yard/front_azalea_2",
+      "slot": "yard:front",
+      "width": 2,
+      "depth": 3,
+      "tags": [
+        "cottage",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "rail",
+        "right": "rail",
+        "street": "rail"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "lamp": true,
+      "max_run": 2
+    },
+    {
+      "id": "front_pond_3",
+      "part": "enterprise:dalaran/yard/front_pond_3",
+      "slot": "yard:front",
+      "width": 3,
+      "depth": 3,
+      "tags": [
+        "plain",
+        "town",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "wall",
+        "right": "wall",
+        "street": "wall"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "lamp": true,
+      "max_run": 1
+    },
+    {
+      "id": "front_garden_3",
+      "part": "enterprise:dalaran/yard/front_garden_3",
+      "slot": "yard:front",
+      "width": 3,
+      "depth": 3,
+      "tags": [
+        "cottage",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "rail",
+        "right": "rail",
+        "street": "rail"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "lamp": true,
+      "max_run": 1
+    },
+    {
+      "id": "front_smith_3",
+      "part": "enterprise:dalaran/yard/front_smith_3",
+      "slot": "yard:front",
+      "width": 3,
+      "depth": 3,
+      "tags": [
+        "trade:smith",
+        "trade:armorer",
+        "trade:toolsmith",
+        "trade:weaponsmith",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "wall",
+        "right": "wall",
+        "street": "wall"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "lamp": true,
+      "max_run": 1,
+      "once": true
+    },
+    {
+      "id": "front_baker_3",
+      "part": "enterprise:dalaran/yard/front_baker_3",
+      "slot": "yard:front",
+      "width": 3,
+      "depth": 3,
+      "tags": [
+        "trade:baker",
+        "trade:farmer",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "wall",
+        "right": "wall",
+        "street": "wall"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "lamp": true,
+      "max_run": 1,
+      "once": true
+    },
+    {
+      "id": "front_dyer_3",
+      "part": "enterprise:dalaran/yard/front_dyer_3",
+      "slot": "yard:front",
+      "width": 3,
+      "depth": 3,
+      "tags": [
+        "trade:dyer",
+        "trade:shepherd",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "rail",
+        "right": "rail",
+        "street": "rail"
+      },
+      "path_ok": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "lamp": true,
+      "max_run": 1,
+      "once": true
+    },
+    {
+      "id": "back_wall_1",
+      "part": "enterprise:dalaran/yard/back_wall_1",
+      "slot": "yard:back",
+      "width": 1,
+      "depth": 4,
+      "tags": [
+        "plain"
+      ],
+      "sockets": {
+        "left": "wall",
+        "right": "wall",
+        "rear": "wall"
+      },
+      "path_ok": [],
+      "lamp": false,
+      "max_run": null
+    },
+    {
+      "id": "back_lamp_1",
+      "part": "enterprise:dalaran/yard/back_lamp_1",
+      "slot": "yard:back",
+      "width": 1,
+      "depth": 4,
+      "tags": [
+        "plain",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "*",
+        "right": "*",
+        "rear": "*"
+      },
+      "path_ok": [],
+      "lamp": true,
+      "max_run": null
+    },
+    {
+      "id": "back_bamboo_2",
+      "part": "enterprise:dalaran/yard/back_bamboo_2",
+      "slot": "yard:back",
+      "width": 2,
+      "depth": 4,
+      "tags": [
+        "plain",
+        "tree"
+      ],
+      "sockets": {
+        "left": "wall",
+        "right": "wall",
+        "rear": "wall"
+      },
+      "path_ok": [],
+      "lamp": false,
+      "max_run": 2
+    },
+    {
+      "id": "back_woodpile_2",
+      "part": "enterprise:dalaran/yard/back_woodpile_2",
+      "slot": "yard:back",
+      "width": 2,
+      "depth": 4,
+      "tags": [
+        "woodpile"
+      ],
+      "sockets": {
+        "left": "wall",
+        "right": "wall",
+        "rear": "wall"
+      },
+      "path_ok": [],
+      "lamp": false,
+      "max_run": 2
+    },
+    {
+      "id": "back_well_2",
+      "part": "enterprise:dalaran/yard/back_well_2",
+      "slot": "yard:back",
+      "width": 2,
+      "depth": 4,
+      "tags": [
+        "well",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "wall",
+        "right": "wall",
+        "rear": "wall"
+      },
+      "path_ok": [],
+      "lamp": true,
+      "max_run": 1
+    },
+    {
+      "id": "back_wash_3",
+      "part": "enterprise:dalaran/yard/back_wash_3",
+      "slot": "yard:back",
+      "width": 3,
+      "depth": 4,
+      "tags": [
+        "wash",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "wall",
+        "right": "wall",
+        "rear": "wall"
+      },
+      "path_ok": [],
+      "lamp": true,
+      "max_run": 1
+    },
+    {
+      "id": "back_kitchen_3",
+      "part": "enterprise:dalaran/yard/back_kitchen_3",
+      "slot": "yard:back",
+      "width": 3,
+      "depth": 4,
+      "tags": [
+        "kitchen"
+      ],
+      "sockets": {
+        "left": "wall",
+        "right": "wall",
+        "rear": "wall"
+      },
+      "path_ok": [],
+      "lamp": false,
+      "max_run": 1
+    },
+    {
+      "id": "back_hens_3",
+      "part": "enterprise:dalaran/yard/back_hens_3",
+      "slot": "yard:back",
+      "width": 3,
+      "depth": 4,
+      "tags": [
+        "hens",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "rail",
+        "right": "rail",
+        "rear": "rail"
+      },
+      "path_ok": [],
+      "lamp": true,
+      "max_run": 1
+    },
+    {
+      "id": "back_tree_3",
+      "part": "enterprise:dalaran/yard/back_tree_3",
+      "slot": "yard:back",
+      "width": 3,
+      "depth": 4,
+      "tags": [
+        "tree"
+      ],
+      "sockets": {
+        "left": "wall",
+        "right": "wall",
+        "rear": "wall"
+      },
+      "path_ok": [],
+      "lamp": false,
+      "max_run": 1
+    },
+    {
+      "id": "back_pond_3",
+      "part": "enterprise:dalaran/yard/back_pond_3",
+      "slot": "yard:back",
+      "width": 3,
+      "depth": 4,
+      "tags": [
+        "tree",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "wall",
+        "right": "wall",
+        "rear": "wall"
+      },
+      "path_ok": [],
+      "lamp": true,
+      "max_run": 1
+    },
+    {
+      "id": "back_dyer_2",
+      "part": "enterprise:dalaran/yard/back_dyer_2",
+      "slot": "yard:back",
+      "width": 2,
+      "depth": 4,
+      "tags": [
+        "trade:dyer",
+        "trade:shepherd",
+        "lamp"
+      ],
+      "sockets": {
+        "left": "wall",
+        "right": "wall",
+        "rear": "wall"
+      },
+      "path_ok": [],
+      "lamp": true,
+      "max_run": 1,
+      "once": true
+    }
+  ]
+}

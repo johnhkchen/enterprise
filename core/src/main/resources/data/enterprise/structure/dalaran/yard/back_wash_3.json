@@ -1,0 +1,29 @@
+{
+  "id": "enterprise:dalaran/yard/back_wash_3",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "palette": "fixed",
+  "size": [
+    3,
+    9,
+    4
+  ],
+  "mirror": true,
+  "ground": 2,
+  "slot": "yard:back",
+  "width": 3,
+  "depth": 4,
+  "tags": [
+    "wash",
+    "lamp"
+  ],
+  "sockets": {
+    "left": "wall",
+    "right": "wall",
+    "rear": "wall"
+  },
+  "path_ok": [],
+  "lamp": true,
+  "max_run": 1
+}

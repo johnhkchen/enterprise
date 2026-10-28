@@ -1,0 +1,31 @@
+{
+  "id": "enterprise:dalaran/yard/back_dyer_2",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "palette": "fixed",
+  "size": [
+    2,
+    9,
+    4
+  ],
+  "mirror": true,
+  "ground": 2,
+  "slot": "yard:back",
+  "width": 2,
+  "depth": 4,
+  "tags": [
+    "trade:dyer",
+    "trade:shepherd",
+    "lamp"
+  ],
+  "sockets": {
+    "left": "wall",
+    "right": "wall",
+    "rear": "wall"
+  },
+  "path_ok": [],
+  "lamp": true,
+  "max_run": 1,
+  "once": true
+}
