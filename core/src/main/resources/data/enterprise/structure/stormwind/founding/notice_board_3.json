@@ -1,0 +1,23 @@
+{
+  "id": "enterprise:stormwind/founding/notice_board_3",
+  "rev": 1,
+  "kingdom": "stormwind",
+  "kind": "part",
+  "slot": "prop:founding",
+  "palette": "fixed",
+  "size": [
+    3,
+    8,
+    1
+  ],
+  "mirror": true,
+  "ground": 2,
+  "width": 3,
+  "depth": 1,
+  "tags": [
+    "founding",
+    "square",
+    "lamp"
+  ],
+  "place": "by the bell, facing the square"
+}

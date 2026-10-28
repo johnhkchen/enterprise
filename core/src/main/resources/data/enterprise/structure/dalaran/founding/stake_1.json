@@ -1,0 +1,23 @@
+{
+  "id": "enterprise:dalaran/founding/stake_1",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "slot": "prop:founding",
+  "palette": "fixed",
+  "size": [
+    1,
+    7,
+    1
+  ],
+  "mirror": true,
+  "ground": 2,
+  "width": 1,
+  "depth": 1,
+  "tags": [
+    "founding",
+    "wall_line",
+    "temporary"
+  ],
+  "place": "every 8 along the inner wall's line, until the stockade"
+}

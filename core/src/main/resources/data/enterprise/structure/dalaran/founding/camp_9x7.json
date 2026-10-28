@@ -1,0 +1,24 @@
+{
+  "id": "enterprise:dalaran/founding/camp_9x7",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "slot": "prop:founding",
+  "palette": "fixed",
+  "size": [
+    9,
+    8,
+    7
+  ],
+  "mirror": true,
+  "ground": 2,
+  "width": 9,
+  "depth": 7,
+  "tags": [
+    "founding",
+    "camp",
+    "temporary",
+    "lamp"
+  ],
+  "place": "a plot at the main street's end; cleared when the first house has its beds (never counted as beds)"
+}
