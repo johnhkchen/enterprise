@@ -157,8 +157,23 @@ public final class WallKit {
         return wall(plan, "enterprise:" + kingdom + "/wall/").size();
     }
 
-    /** Reads a JSON resource (for the kit's rules), if there. */
+    /**
+     * Reads a JSON resource (for the kit's rules), if there. A kingdom's kit file it hasn't one of its own
+     * ({@code town_kits/<kingdom>/<file>}: Stormwind's and Dalaran's yards, earthworks, fields) is Lordaeron's, the set
+     * every kingdom's is drawn from, till the studio gives it its own.
+     */
     public static Optional<JsonObject> json(ResourceManager resources, String path) {
+        Optional<JsonObject> own = read(resources, path);
+        if (own.isEmpty() && path.startsWith("town_kits/") && !path.startsWith("town_kits/" + Palettes.SET + "/")
+                && !path.startsWith("town_kits/none/") // the game tests' kingdom: no kit at all
+                && !path.endsWith("/plan.json") && !path.endsWith("/palettes.json") && !path.endsWith("/platform_hall.json")
+                && !path.endsWith("/wall_stone.json")) {
+            return read(resources, "town_kits/" + Palettes.SET + path.substring(path.indexOf('/', "town_kits/".length())));
+        }
+        return own;
+    }
+
+    private static Optional<JsonObject> read(ResourceManager resources, String path) {
         return resources.getResource(ResourceLocation.fromNamespaceAndPath("enterprise", path)).flatMap(r -> {
             try (Reader reader = r.openAsReader()) {
                 return Optional.of(JsonParser.parseReader(reader).getAsJsonObject());
