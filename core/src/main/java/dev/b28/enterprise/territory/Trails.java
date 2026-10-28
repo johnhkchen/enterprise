@@ -603,33 +603,34 @@ public final class Trails extends SavedData {
             }
             top[i] = y;
         }
-        // Each column's run of water along the line: a road decks a ford, not a lake (the studio's r76: a 111-cell plank
-        // deck across town 1's lake; the wagons go off the map on the road, and a town bridges its own streets).
+        // Which columns are water (a road's crossings, below).
         boolean[] wet = new boolean[cols.size()];
         for (int i = 0; i < cols.size(); i++) {
             wet[i] = !level.getBlockState(cols.get(i).atY(top[i])).getFluidState().isEmpty();
         }
-        int[] run = new int[cols.size()];
-        for (int i = 0; i < cols.size(); ) {
-            int j = i;
-            while (j < cols.size() && wet[j] == wet[i]) {
-                j++;
-            }
-            for (int k = i; k < j; k++) {
-                run[k] = wet[i] ? j - i : 0;
-            }
-            i = j;
-        }
         int laid = 0;
+        // Each run of water the road crosses, by its length (the studio's crossings for roads, thread 0014): a causeway
+        // for a ford, a timber trestle to 40, a ferry's stage on each bank past that; never planks across a lake.
+        if (bridges) {
+            for (int i = 0; i < cols.size(); ) {
+                if (!wet[i]) {
+                    i++;
+                    continue;
+                }
+                int j = i;
+                while (j < cols.size() && wet[j]) {
+                    j++;
+                }
+                laid += cross(level, cols, top, i, j, width);
+                i = j;
+            }
+        }
         for (int i = 0; i < cols.size(); i++) {
             int y = top[i];
             BlockPos c = cols.get(i);
             BlockState ground = level.getBlockState(c.atY(y));
-            if (bridges && !ground.getFluidState().isEmpty() && level.getBlockState(c.atY(y + 1)).isAir()
-                    && run[i] <= FORD * Math.max(1, width) * 2) {
-                level.setBlock(c.atY(y), Blocks.SPRUCE_PLANKS.defaultBlockState(), 3); // a deck at the water's surface
-                laid++;
-                continue;
+            if (wet[i]) {
+                continue; // crossed above, or left as water
             }
             if (!soil(ground)) {
                 continue;
@@ -663,8 +664,91 @@ public final class Trails extends SavedData {
         return laid;
     }
 
-    /** The longest water a road decks over, in blocks along it: a ford's. */
-    static final int FORD = 8;
+    /** The longest water a road fords on a causeway, and the longest it bridges, in blocks along it. */
+    static final int FORD = 3, TRESTLE = 40;
+
+    /**
+     * A road's crossing of the run of water {@code cols[from..to)}: its length along the road the run's columns over its
+     * width. A causeway of fieldstone flush with the water for a ford; a timber trestle two over the water to 40 (spruce
+     * posts down to the bed every 4 along, a rail on its edge columns, a lantern on every 8th post); past that, a ferry's
+     * stage (planks on posts, a lantern) at each bank. The columns laid.
+     */
+    static int cross(ServerLevel level, List<BlockPos> cols, int[] top, int from, int to, int width) {
+        int span = Math.max(1, (to - from + width - 1) / Math.max(1, width)), water = Integer.MIN_VALUE, laid = 0;
+        for (int k = from; k < to; k++) {
+            water = Math.max(water, top[k]);
+        }
+        java.util.Set<Long> deck = new java.util.HashSet<>();
+        if (span <= FORD) {
+            for (int k = from; k < to; k++) {
+                BlockPos c = cols.get(k);
+                for (int y = water; y > level.getMinBuildHeight(); y--) {
+                    BlockState b = level.getBlockState(c.atY(y));
+                    if (b.getFluidState().isEmpty() && !b.isAir() && !b.canBeReplaced()) {
+                        break;
+                    }
+                    level.setBlock(c.atY(y), y == water ? Blocks.DIRT_PATH.defaultBlockState()
+                            : (y + c.getX() + c.getZ()) % 3 == 0 ? Blocks.MOSSY_COBBLESTONE.defaultBlockState()
+                            : Blocks.COBBLESTONE.defaultBlockState(), 3);
+                }
+                laid++;
+            }
+            return laid;
+        }
+        if (span > TRESTLE) {
+            // A ferry's stage at each bank: the first and last few columns over the water decked on posts.
+            for (int k : new int[] {from, to - 1}) {
+                for (int d = 0; d < Math.min(3 * Math.max(1, width), to - from); d++) {
+                    int at = k == from ? from + d : to - 1 - d;
+                    BlockPos c = cols.get(at);
+                    level.setBlock(c.atY(water + 1), Blocks.SPRUCE_PLANKS.defaultBlockState(), 3);
+                    if (d % 3 == 0) {
+                        level.setBlock(c.atY(water), Blocks.SPRUCE_LOG.defaultBlockState(), 3);
+                    }
+                    laid++;
+                }
+                BlockPos post = cols.get(k).atY(water + 2);
+                level.setBlock(post, Blocks.SPRUCE_FENCE.defaultBlockState(), 3);
+                level.setBlock(post.above(), Blocks.LANTERN.defaultBlockState(), 3);
+            }
+            return laid;
+        }
+        // A trestle: the deck two over the water, posts to the bed every 4 along, a rail on the deck's edges.
+        int d = water + 2;
+        for (int k = from; k < to; k++) {
+            deck.add(cols.get(k).asLong());
+        }
+        for (int k = from; k < to; k++) {
+            BlockPos c = cols.get(k);
+            for (int y = d + 1; y <= d + 3; y++) {
+                level.setBlock(c.atY(y), Blocks.AIR.defaultBlockState(), 3);
+            }
+            level.setBlock(c.atY(d), Blocks.SPRUCE_PLANKS.defaultBlockState(), 3);
+            int along = (k - from) / Math.max(1, width);
+            boolean edge = false;
+            for (var dir : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+                BlockPos n = c.relative(dir);
+                edge |= !deck.contains(n.asLong()) && !level.getFluidState(n.atY(water)).isEmpty();
+            }
+            if (along % 4 == 0 && edge) {
+                for (int y = d - 1; y > level.getMinBuildHeight(); y--) {
+                    BlockState b = level.getBlockState(c.atY(y));
+                    if (b.getFluidState().isEmpty() && !b.isAir() && !b.canBeReplaced()) {
+                        break;
+                    }
+                    level.setBlock(c.atY(y), Blocks.SPRUCE_LOG.defaultBlockState(), 3);
+                }
+            }
+            if (edge) {
+                level.setBlock(c.atY(d + 1), Blocks.SPRUCE_FENCE.defaultBlockState(), 3);
+                if (along % 8 == 0) {
+                    level.setBlock(c.atY(d + 2), Blocks.LANTERN.defaultBlockState(), 3);
+                }
+            }
+            laid++;
+        }
+        return laid;
+    }
 
     /** Ground a wagon's wheels tread to path: the soil a world grows grass on. */
     static boolean soil(BlockState state) {
