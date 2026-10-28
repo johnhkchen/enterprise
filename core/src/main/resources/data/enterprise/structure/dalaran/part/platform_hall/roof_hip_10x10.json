@@ -1,0 +1,20 @@
+{
+  "id": "roof_hip_10x10",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "hip",
+  "slot": "part",
+  "set": "dalaran/platform_hall",
+  "size": [
+    16,
+    8,
+    16
+  ],
+  "layer": "roof",
+  "body": [
+    10,
+    10
+  ],
+  "eave": 2,
+  "module": "roof_hip_10x10"
+}

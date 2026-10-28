@@ -99,8 +99,6 @@ export function layoutOf(p) {
   else for (let x = W - 4; x <= W - 2; x++) for (let z = 1; z <= 3; z++) coreCells.add(`${x},${z}`);
   const behindStair = (xs, zs) => xs.some((x) => zs.some((z) => coreCells.has(`${x},${z}`)));
   const chimneyZ = D >= 10 ? 6 : 3, westChimney = !party[0] && D >= 7;
-  // a corner house (p.corner = "east" | "west"): that side faces a street too, and is treated as a second front
-  const street = (f) => f === "front" || f === p.corner;
   for (let s = 0; s < S; s++) {
     const st = s === 0 ? "ground" : "upper";
     for (const face of ["front", "back", "west", "east"]) {
@@ -120,12 +118,12 @@ export function layoutOf(p) {
           const cells = { front: [[i, D - 2], [i + 1, D - 2]], back: [[W - 1 - i, 1], [W - 2 - i, 1]], west: [[1, i], [1, i + 1]], east: [[W - 2, D - 1 - i], [W - 2, D - 2 - i]] }[face];
           const stair = cells.some(([x, z]) => coreCells.has(`${x},${z}`));
           if (isParty) module = `bay_party_${st}`;
-          else if (p.arcade && s === 0 && (p.arcade !== "front" || face === "front")) module = "bay_arcade_ground";   // arcade "front": the street face only
+          else if (p.arcade && s === 0) module = "bay_arcade_ground";
           else if (face === "front" && s === 0 && bay === doorBay) module = "bay_door_ground";
           else if (stair) module = `bay_landing_${st}`;
-          else if (street(face) && s === 0 && p.shop) module = "bay_shop_ground";
-          else if (s === 0 && (face === "west" || face === "east") && face !== p.corner && !p.noCore) module = `bay_landing_${st}`;   // a single window on a ground side (a hall's sides get pairs)
-          else if ((street(face) || (face === "back" && S === 1)) && (bay + s) % 2 === 0) module = `bay_window_box_${st}`;
+          else if (face === "front" && s === 0 && p.shop) module = "bay_shop_ground";
+          else if (s === 0 && (face === "west" || face === "east") && !p.noCore) module = `bay_landing_${st}`;   // a single window on a ground side (a hall's sides get pairs)
+          else if ((face === "front" || (face === "back" && S === 1)) && (bay + s) % 2 === 0) module = `bay_window_box_${st}`;
           else module = `bay_window_${st}`;
           shell.push({ face, i, module, storey: s, mirror: module === "bay_door_ground" && mirrorDoor });
           continue;

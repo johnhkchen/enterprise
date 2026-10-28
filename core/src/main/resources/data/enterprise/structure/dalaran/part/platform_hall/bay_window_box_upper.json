@@ -1,0 +1,27 @@
+{
+  "id": "bay_window_box_upper",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "slot": "bay",
+  "set": "dalaran/platform_hall",
+  "size": [
+    2,
+    5,
+    2
+  ],
+  "layer": "shell",
+  "where": {
+    "storey": "upper",
+    "face": [
+      "front"
+    ]
+  },
+  "mirror": true,
+  "behind": [
+    "chamber",
+    "hall"
+  ],
+  "weight": 2,
+  "module": "bay_window_box_upper"
+}

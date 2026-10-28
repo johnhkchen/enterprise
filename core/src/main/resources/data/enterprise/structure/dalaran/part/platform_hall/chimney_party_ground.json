@@ -1,0 +1,24 @@
+{
+  "id": "chimney_party_ground",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "slot": "post",
+  "set": "dalaran/platform_hall",
+  "size": [
+    1,
+    5,
+    1
+  ],
+  "layer": "shell",
+  "where": {
+    "storey": "ground"
+  },
+  "mirror": true,
+  "relief": "party",
+  "behind": [
+    "hearth"
+  ],
+  "weight": 1,
+  "module": "chimney_party_ground"
+}
