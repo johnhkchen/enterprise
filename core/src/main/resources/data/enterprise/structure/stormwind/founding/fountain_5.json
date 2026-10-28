@@ -1,0 +1,24 @@
+{
+  "id": "enterprise:stormwind/founding/fountain_5",
+  "rev": 1,
+  "kingdom": "stormwind",
+  "kind": "part",
+  "slot": "prop:founding",
+  "palette": "fixed",
+  "size": [
+    5,
+    11,
+    5
+  ],
+  "mirror": true,
+  "ground": 2,
+  "width": 5,
+  "depth": 5,
+  "tags": [
+    "founding",
+    "square",
+    "centrepiece",
+    "lamp"
+  ],
+  "place": "the forum's middle (the kingdom's centrepiece, in place of Lordaeron's market cross): a quartz fountain basin of still water, a column in the middle with a lantern, lanterns at its corners"
+}

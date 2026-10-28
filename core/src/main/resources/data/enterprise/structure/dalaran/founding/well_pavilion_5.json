@@ -1,0 +1,24 @@
+{
+  "id": "enterprise:dalaran/founding/well_pavilion_5",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "slot": "prop:founding",
+  "palette": "fixed",
+  "size": [
+    5,
+    12,
+    5
+  ],
+  "mirror": true,
+  "ground": 2,
+  "width": 5,
+  "depth": 5,
+  "tags": [
+    "founding",
+    "square",
+    "centrepiece",
+    "lamp"
+  ],
+  "place": "the forum's middle (the kingdom's centrepiece, in place of Lordaeron's market cross): a well under a little pavilion: red posts, a hipped violet roof, lanterns hung under it"
+}
