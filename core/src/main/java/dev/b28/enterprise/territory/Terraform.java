@@ -196,10 +196,20 @@ public final class Terraform {
                     built[i] = role[i] == Grading.FORUM || role[i] == Grading.STREET && nearMainStreet(main.get(), bx, bz, x, z);
                 }
             }
-            for (int[] p : mainPlots) {
-                for (int z = Math.max(0, p[1]); z < Math.min(Z, p[1] + p[3]); z++) {
-                    for (int x = Math.max(0, p[0]); x < Math.min(X, p[0] + p[2]); x++) {
-                        built[z * X + x] = true;
+            // The main street's plots: the whole band a plot's depth either side of it, whichever way its plots are cut
+            // (r79: the grade's 14-wide pads and a workshop's 12-wide plot straddled two levels, too steep to build).
+            int reach = TownPlans.GATE / 2 + 2 + plan.deepest();
+            for (int z = 0; z < Z; z++) {
+                for (int x = 0; x < X; x++) {
+                    boolean band = switch (main.get()) {
+                        case NORTH -> Math.abs(x - bx) <= reach && z < bz;
+                        case SOUTH -> Math.abs(x - bx) <= reach && z > bz;
+                        case WEST -> Math.abs(z - bz) <= reach && x < bx;
+                        default -> Math.abs(z - bz) <= reach && x > bx;
+                    };
+                    int i = z * X + x;
+                    if (band && (role[i] == Grading.PLOT || role[i] == Grading.FREE)) {
+                        built[i] = true;
                     }
                 }
             }
