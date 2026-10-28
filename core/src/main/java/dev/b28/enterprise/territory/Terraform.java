@@ -160,27 +160,6 @@ public final class Terraform {
                 }
             }
         }
-        // A street climbs by half steps: a slab on the lower cell wherever its neighbour along the street is a block higher.
-        BlockState slab = halfStep(kingdom);
-        for (int z = 0; z < Z; z++) {
-            for (int x = 0; x < X; x++) {
-                int i = z * X + x;
-                if (role[i] != Grading.STREET || g.bridge()[i] != 0) {
-                    continue;
-                }
-                for (int[] d : Grading.DIRS) {
-                    int xx = x + d[0], zz = z + d[1];
-                    if (xx < 0 || zz < 0 || xx >= X || zz >= Z) {
-                        continue;
-                    }
-                    int j = zz * X + xx;
-                    if ((role[j] == Grading.STREET || role[j] == Grading.FORUM) && target[j] == target[i] + 1) {
-                        level.setBlock(new BlockPos(x0 + x, target[i] + 1, z0 + z), slab, 2 | 16);
-                        break;
-                    }
-                }
-            }
-        }
         // Bridges where a street crosses water (the studio's bridge.mjs): a paved deck on a stone course at the street's
         // level, piers every 6 down to the bed, the kingdom's parapet along both sides, a lantern over each pier.
         bridges(level, kingdom, x0, z0, X, Z, target, role, g.bridge(), pave);
@@ -209,6 +188,41 @@ public final class Terraform {
                 // A wall's foot on a street keeps the street's surface (no stair across the way).
                 level.setBlock(new BlockPos(x0 + e.x() + d[0], target[j], z0 + e.z() + d[1]), pave, 2 | 16);
                 level.setBlock(new BlockPos(x0 + e.x() + d[0], target[j] + 1, z0 + e.z() + d[1]), Blocks.AIR.defaultBlockState(), 2 | 16);
+            }
+        }
+        // Every street cell paved again and clear to head height, after the walls: a step up a steep street is a wall,
+        // and its tile's top would leave grass on the street (the studio's r68 render: 107 grass cells up the avenue).
+        for (int z = 0; z < Z; z++) {
+            for (int x = 0; x < X; x++) {
+                int i = z * X + x;
+                if (role[i] != Grading.STREET || g.bridge()[i] != 0) {
+                    continue;
+                }
+                level.setBlock(new BlockPos(x0 + x, target[i], z0 + z), pave, 2 | 16);
+                for (int y = target[i] + 1; y <= target[i] + 3; y++) {
+                    level.setBlock(new BlockPos(x0 + x, y, z0 + z), Blocks.AIR.defaultBlockState(), 2 | 16);
+                }
+            }
+        }
+        // A street climbs by half steps: a slab on the lower cell wherever its neighbour along the street is a block higher.
+        BlockState slab = halfStep(kingdom);
+        for (int z = 0; z < Z; z++) {
+            for (int x = 0; x < X; x++) {
+                int i = z * X + x;
+                if (role[i] != Grading.STREET || g.bridge()[i] != 0) {
+                    continue;
+                }
+                for (int[] d : Grading.DIRS) {
+                    int xx = x + d[0], zz = z + d[1];
+                    if (xx < 0 || zz < 0 || xx >= X || zz >= Z) {
+                        continue;
+                    }
+                    int j = zz * X + xx;
+                    if ((role[j] == Grading.STREET || role[j] == Grading.FORUM) && target[j] == target[i] + 1) {
+                        level.setBlock(new BlockPos(x0 + x, target[i] + 1, z0 + z), slab, 2 | 16);
+                        break;
+                    }
+                }
             }
         }
         return Optional.of(new Shaped(columns, g.cut(), g.fill(), felled, steps, bridges, g.conflicts(), g.plotsOver(),
