@@ -119,7 +119,11 @@ public final class Terraform {
                 {(int) Math.floor(lane[1][0]) - x0, (int) Math.floor(lane[1][1]) - z0}}));
         }
         List<Grading.Plot> plots = new ArrayList<>();
+        List<int[]> mainPlots = new ArrayList<>();
         for (TownPlans.Frontage p : TownPlans.plots(plan, Plots.width(10))) {
+            if (main.isPresent() && TownPlans.onMain(plan, p, main.get())) {
+                mainPlots.add(new int[] {p.x() - x0, p.z() - z0, p.sx(), p.sz()});
+            }
             int door = switch (p.door()) {
                 case NORTH -> 0;
                 case SOUTH -> 1;
@@ -180,6 +184,47 @@ public final class Terraform {
             }
         }
 
+        // A founded town's grade applied only where it's built (the studio's r77 render of town 5: every plot levelled
+        // at founding read as a survey drawn in stone): its forum, its main street and the plots on it. Its other plots
+        // keep their land as it lies, its other streets are dirt paths on the land's own lie, till they open.
+        boolean[] built = null;
+        if (main.isPresent()) {
+            built = new boolean[N];
+            for (int z = 0; z < Z; z++) {
+                for (int x = 0; x < X; x++) {
+                    int i = z * X + x;
+                    built[i] = role[i] == Grading.FORUM || role[i] == Grading.STREET && nearMainStreet(main.get(), bx, bz, x, z);
+                }
+            }
+            for (int[] p : mainPlots) {
+                for (int z = Math.max(0, p[1]); z < Math.min(Z, p[1] + p[3]); z++) {
+                    for (int x = Math.max(0, p[0]); x < Math.min(X, p[0] + p[2]); x++) {
+                        built[z * X + x] = true;
+                    }
+                }
+            }
+            for (int i = 0; i < N; i++) {
+                if (built[i] || role[i] == Grading.WATER) {
+                    continue;
+                }
+                if (role[i] == Grading.STREET && g.bridge()[i] == 0) {
+                    // The street's line as a worn track on the land as it lies.
+                    BlockPos at = new BlockPos(x0 + i % X, top[i], z0 + i / X);
+                    BlockState was = level.getBlockState(at);
+                    if (was.is(Blocks.GRASS_BLOCK) || was.is(Blocks.DIRT) || was.is(Blocks.COARSE_DIRT) || was.is(Blocks.PODZOL)) {
+                        level.setBlock(at, Blocks.DIRT_PATH.defaultBlockState(), 2 | 16);
+                        BlockState over = level.getBlockState(at.above());
+                        if (!over.isAir() && over.canBeReplaced() && over.getFluidState().isEmpty()) {
+                            level.setBlock(at.above(), Blocks.AIR.defaultBlockState(), 2 | 16);
+                        }
+                    }
+                }
+                role[i] = Grading.WILD;
+                g.bridge()[i] = 0;
+                target[i] = top[i];
+            }
+        }
+        final boolean[] applied = built;
         // The trees where the ground moves: on a street, a plot or the forum, or land cut or filled by 2 or more.
         int felled = 0;
         for (int z = 0; z < Z; z++) {
@@ -253,7 +298,8 @@ public final class Terraform {
         // Each crossing built, assembled from the kingdom's bridge parts (`Bridges`, the studio's bridges.mjs): abutments,
         // arches on piers, the channel arch high enough for a boat; a causeway with a culvert for 3 or less.
         for (Grading.Crossing c : g.crossings()) {
-            if (build.test(c) && c.nearBank() != null && c.facing() >= 0) {
+            if (build.test(c) && c.nearBank() != null && c.facing() >= 0
+                    && (applied == null || applied[c.nearBank()[1] * X + c.nearBank()[0]])) {
                 Bridges.lay(level, kingdom, c, x0 + c.nearBank()[0], z0 + c.nearBank()[1], graded.get(c.street()).width(), pave);
             }
         }
@@ -262,7 +308,7 @@ public final class Terraform {
         int landings = 0;
         for (Grading.Crossing c : dropped) {
             // A dropped crossing of 3 or less gets no jetty: the street just ends at the water (the studio's rule).
-            if (c.facing() >= 0 && c.span() > 3) {
+            if (c.facing() >= 0 && c.span() > 3 && (applied == null || applied[c.nearBank()[1] * X + c.nearBank()[0]])) {
                 int i = c.nearBank()[1] * X + c.nearBank()[0];
                 int width = streets.get(c.street()).width();
                 landing(level, kingdom, x0 + c.nearBank()[0], z0 + c.nearBank()[1], c.facing(), target[i], c.water(), width, pave);
@@ -278,6 +324,13 @@ public final class Terraform {
         for (Grading.Edge e : g.edges()) {
             if (e.kind().startsWith("street_") || e.kind().equals("slope")) {
                 continue;
+            }
+            if (applied != null) {
+                int[] dd = e.dir() < 4 ? Grading.DIRS[e.dir()] : new int[] {0, 0};
+                int hi = e.z() * X + e.x(), xx = e.x() + dd[0], zz = e.z() + dd[1];
+                if (!applied[hi] || xx < 0 || zz < 0 || xx >= X || zz >= Z || !applied[zz * X + xx]) {
+                    continue; // a step to land not yet built on: its tile when its plot opens
+                }
             }
             if (e.dir() >= 4) {
                 // An inner corner: the high column where two walls meet dressed in coursed stone, no dirt gap between them.
@@ -347,6 +400,16 @@ public final class Terraform {
         }
         return Optional.of(new Shaped(columns, g.cut(), g.fill(), felled, steps, bridges, g.conflicts(), g.plotsOver(),
                 g.natural(), first.crossings().size(), (int) g.crossings().stream().filter(build).count(), landings));
+    }
+
+    /** Is the column (in the box's frame, the bell at bx, bz) on the main street {@code main}, or within 4 of it? */
+    static boolean nearMainStreet(net.minecraft.core.Direction main, int bx, int bz, int x, int z) {
+        return switch (main) {
+            case NORTH -> Math.abs(x - bx) <= TownPlans.GATE / 2 + 4 && z < bz;
+            case SOUTH -> Math.abs(x - bx) <= TownPlans.GATE / 2 + 4 && z > bz;
+            case WEST -> Math.abs(z - bz) <= TownPlans.GATE / 2 + 4 && x < bx;
+            default -> Math.abs(z - bz) <= TownPlans.GATE / 2 + 4 && x > bx;
+        };
     }
 
     /** How far a landing's jetty runs out over the water. */

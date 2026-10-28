@@ -8,8 +8,8 @@ import net.minecraft.world.level.levelgen.Heightmap;
 /**
  * What a town founded on open ground stands with before its houses come (the studio's founding kit, batch 034, thread
  * 0012), laid once its land is shaped, in its kingdom's set ({@code structure/<kingdom>/founding/}, Lordaeron's for a
- * kingdom with none): the charter stone at the forum's edge facing the square, the notice board by the bell, the well by
- * the main street, the settlers' camp at the main street's end, gate posts astride it at the inner wall's line, and a
+ * kingdom with none): the charter stone at the forum's edge facing the square, the notice board by the bell, the well at
+ * the forum's edge, the settlers' camp at the main street's end, gate posts astride it at the inner wall's line, and a
  * stake every 8 along the rest of that line. The forum's centrepiece (the market cross) is the forum's own.
  */
 public final class Founding {
@@ -30,8 +30,9 @@ public final class Founding {
         // edge to one side of the bell, the well to the other side by the main street.
         laid += part(level, set, "founding_stone_3", bell.relative(back, r + 2).relative(side, 3), 3, 3, main);
         laid += part(level, set, "notice_board_3", bell.relative(side, r + 1), 3, 1, side.getOpposite());
-        laid += part(level, set, "well_3", bell.relative(main, r + 2).relative(side.getOpposite(), TownPlans.GATE / 2 + 3), 3, 3,
-                side);
+        // The well at the forum's edge beside the charter stone, off the main street's plots (r78: by the main street it
+        // took a plot the first builds wanted).
+        laid += part(level, set, "well_3", bell.relative(back, r + 2).relative(side.getOpposite(), 3), 3, 3, main);
         // The gate posts astride the main street at the inner wall's line, the camp just inside them beside it.
         int out = switch (main) {
             case NORTH -> bell.getZ() - plan.inner().z0();

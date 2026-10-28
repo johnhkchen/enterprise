@@ -603,12 +603,30 @@ public final class Trails extends SavedData {
             }
             top[i] = y;
         }
+        // Each column's run of water along the line: a road decks a ford, not a lake (the studio's r76: a 111-cell plank
+        // deck across town 1's lake; the wagons go off the map on the road, and a town bridges its own streets).
+        boolean[] wet = new boolean[cols.size()];
+        for (int i = 0; i < cols.size(); i++) {
+            wet[i] = !level.getBlockState(cols.get(i).atY(top[i])).getFluidState().isEmpty();
+        }
+        int[] run = new int[cols.size()];
+        for (int i = 0; i < cols.size(); ) {
+            int j = i;
+            while (j < cols.size() && wet[j] == wet[i]) {
+                j++;
+            }
+            for (int k = i; k < j; k++) {
+                run[k] = wet[i] ? j - i : 0;
+            }
+            i = j;
+        }
         int laid = 0;
         for (int i = 0; i < cols.size(); i++) {
             int y = top[i];
             BlockPos c = cols.get(i);
             BlockState ground = level.getBlockState(c.atY(y));
-            if (bridges && !ground.getFluidState().isEmpty() && level.getBlockState(c.atY(y + 1)).isAir()) {
+            if (bridges && !ground.getFluidState().isEmpty() && level.getBlockState(c.atY(y + 1)).isAir()
+                    && run[i] <= FORD * Math.max(1, width) * 2) {
                 level.setBlock(c.atY(y), Blocks.SPRUCE_PLANKS.defaultBlockState(), 3); // a deck at the water's surface
                 laid++;
                 continue;
@@ -644,6 +662,9 @@ public final class Trails extends SavedData {
         }
         return laid;
     }
+
+    /** The longest water a road decks over, in blocks along it: a ford's. */
+    static final int FORD = 8;
 
     /** Ground a wagon's wheels tread to path: the soil a world grows grass on. */
     static boolean soil(BlockState state) {

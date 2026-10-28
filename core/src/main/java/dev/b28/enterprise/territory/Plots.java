@@ -175,8 +175,11 @@ public final class Plots {
         return Optional.of(new Site(new BlockPos(f.x(), y, f.z()), f.door(), width, depth));
     }
 
-    /** How far above or below the bell a plot's house may stand: a suburb runs down the hill a little. */
-    static final int RISE = 12;
+    /**
+     * How far above or below the bell a plot's house may stand: a suburb runs down the hill a little. Graded land stands
+     * each plot at its street's level, so it's wide (r78: a founded town's main street fell 13 below its bell).
+     */
+    static final int RISE = 24;
 
     /** How far a house's ground may rise and fall across it, to be filled and cut level by its placing (its cuts retained: `Earthworks`). */
     static final int ROLL = 4;
