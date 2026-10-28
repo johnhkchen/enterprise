@@ -166,7 +166,7 @@ public final class Terraform {
         // The kingdom's earthworks tile at every step.
         int steps = 0;
         for (Grading.Edge e : g.edges()) {
-            if (e.kind().equals("street_step") || e.kind().equals("slope")) {
+            if (e.kind().startsWith("street_") || e.kind().equals("slope")) {
                 continue;
             }
             if (e.dir() >= 4) {
@@ -199,6 +199,15 @@ public final class Terraform {
                     continue;
                 }
                 level.setBlock(new BlockPos(x0 + x, target[i], z0 + z), pave, 2 | 16);
+                // A pit a tile dug under it (the studio's r69: dirt 3 below the paving either side) filled.
+                for (int y = target[i] - 1; y > target[i] - 8; y--) {
+                    BlockPos under = new BlockPos(x0 + x, y, z0 + z);
+                    BlockState b = level.getBlockState(under);
+                    if (!b.isAir() && !b.canBeReplaced()) {
+                        break;
+                    }
+                    level.setBlock(under, Blocks.DIRT.defaultBlockState(), 2 | 16);
+                }
                 for (int y = target[i] + 1; y <= target[i] + 3; y++) {
                     level.setBlock(new BlockPos(x0 + x, y, z0 + z), Blocks.AIR.defaultBlockState(), 2 | 16);
                 }
@@ -249,6 +258,21 @@ public final class Terraform {
                 }
                 level.setBlock(new BlockPos(wx, t, wz), pave, 2 | 16);
                 level.setBlock(new BlockPos(wx, t - 1, wz), Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
+                // Under the deck, what was built over the water (an old dock's planks: the studio's r69 render) goes,
+                // water again where water lies under it.
+                for (int y = t - 2; y > level.getMinBuildHeight(); y--) {
+                    BlockPos at = new BlockPos(wx, y, wz);
+                    BlockState b = level.getBlockState(at);
+                    if (b.isAir()) {
+                        continue;
+                    }
+                    if (!b.getFluidState().isEmpty() || dev.b28.enterprise.settlement.Grounds.natural(b)) {
+                        break;
+                    }
+                    BlockState under = level.getBlockState(at.below());
+                    level.setBlock(at, under.getFluidState().isEmpty() ? Blocks.AIR.defaultBlockState()
+                            : under.getFluidState().createLegacyBlock(), 2 | 16);
+                }
                 if (pier) {
                     for (int y = t - 2; y > level.getMinBuildHeight(); y--) {
                         BlockPos at = new BlockPos(wx, y, wz);

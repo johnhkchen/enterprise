@@ -187,6 +187,40 @@ public final class Grading {
             }
         }
 
+        // Streets meet streets within a half step: where a later street (a lane) stands 2 or more off an earlier one (an
+        // avenue) at a junction, the later street's cells give way, a block at a time back along it, until every step
+        // between street cells is 1 (a slab); an avenue never moves for a lane.
+        int[] rank = new int[streets.size()];
+        for (int k = 0; k < order.size(); k++) {
+            rank[order.get(k)] = k;
+        }
+        for (int it = 0; it < 64; it++) {
+            int moved = 0;
+            for (int z = 0; z < Z; z++) {
+                for (int x = 0; x < X; x++) {
+                    int i = z * X + x;
+                    if (role[i] != STREET || bridge[i] != 0) {
+                        continue;
+                    }
+                    for (int[] d : DIRS) {
+                        int j = at(X, Z, x + d[0], z + d[1]);
+                        if (j < 0 || role[j] != STREET && role[j] != FORUM) {
+                            continue;
+                        }
+                        boolean senior = role[j] == FORUM || owner[j] == owner[i]
+                                || owner[j] >= 0 && owner[i] >= 0 && rank[owner[j]] < rank[owner[i]];
+                        if (senior && Math.abs(target[i] - target[j]) > 1) {
+                            target[i] += (short) Integer.signum(target[j] - target[i]);
+                            moved++;
+                        }
+                    }
+                }
+            }
+            if (moved == 0) {
+                break;
+            }
+        }
+
         // 2. Frontages: plots holding a standing building first (they keep its ground), then the rest.
         int[][] out = {{0, -1}, {0, 1}, {1, 0}, {-1, 0}};
         List<Integer> plotOrder = new ArrayList<>();
@@ -483,7 +517,8 @@ public final class Grading {
                     }
                     String kind = role[j] == WATER ? "quay" : role[i] == BLEND || role[j] == BLEND
                             || role[i] == NATURAL && role[j] == NATURAL ? "slope"
-                            : role[i] == STREET && role[j] == STREET && rise == 1 ? "street_step"
+                            : (role[i] == STREET || role[i] == FORUM) && (role[j] == STREET || role[j] == FORUM)
+                                    ? rise == 1 ? "street_step" : "street_stair"
                             : nearPlanned[i] || nearPlanned[j] || role[i] == PLOT || role[j] == PLOT ? "wall" : "cut_face";
                     if (kind.equals("slope") && rise <= 1) {
                         continue;
