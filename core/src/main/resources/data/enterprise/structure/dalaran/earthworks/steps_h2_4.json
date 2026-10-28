@@ -1,0 +1,23 @@
+{
+  "id": "enterprise:dalaran/earthworks/steps_h2_4",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "slot": "prop:earthworks",
+  "palette": "fixed",
+  "size": [
+    4,
+    7,
+    5
+  ],
+  "depth": 5,
+  "mirror": true,
+  "ground": 2,
+  "width": 4,
+  "rise": 2,
+  "kind_of": "steps",
+  "tags": [
+    "steps",
+    "lamp"
+  ]
+}

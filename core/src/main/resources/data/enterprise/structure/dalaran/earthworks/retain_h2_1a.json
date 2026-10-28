@@ -1,0 +1,22 @@
+{
+  "id": "enterprise:dalaran/earthworks/retain_h2_1a",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "slot": "prop:earthworks",
+  "palette": "fixed",
+  "size": [
+    1,
+    7,
+    3
+  ],
+  "depth": 3,
+  "mirror": true,
+  "ground": 2,
+  "width": 1,
+  "rise": 2,
+  "kind_of": "straight",
+  "tags": [
+    "straight"
+  ]
+}

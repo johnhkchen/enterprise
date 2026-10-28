@@ -1,0 +1,22 @@
+{
+  "id": "enterprise:dalaran/earthworks/cutface_h1_1a",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "slot": "prop:earthworks",
+  "palette": "fixed",
+  "size": [
+    1,
+    4,
+    3
+  ],
+  "depth": 3,
+  "mirror": true,
+  "ground": 2,
+  "width": 1,
+  "rise": 1,
+  "kind_of": "cut_face",
+  "tags": [
+    "cut_face"
+  ]
+}

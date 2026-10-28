@@ -1,0 +1,22 @@
+{
+  "id": "enterprise:dalaran/earthworks/retain_h1_inner_3",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "slot": "prop:earthworks",
+  "palette": "fixed",
+  "size": [
+    3,
+    6,
+    3
+  ],
+  "depth": 3,
+  "mirror": true,
+  "ground": 2,
+  "width": 3,
+  "rise": 1,
+  "kind_of": "corner_inner",
+  "tags": [
+    "corner"
+  ]
+}

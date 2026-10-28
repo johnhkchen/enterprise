@@ -1,0 +1,22 @@
+{
+  "id": "enterprise:dalaran/earthworks/plinth_h2_corner",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "slot": "prop:earthworks",
+  "palette": "fixed",
+  "size": [
+    3,
+    5,
+    3
+  ],
+  "depth": 3,
+  "mirror": true,
+  "ground": 2,
+  "width": 3,
+  "rise": 2,
+  "kind_of": "plinth_corner",
+  "tags": [
+    "plinth"
+  ]
+}
