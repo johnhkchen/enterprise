@@ -1,0 +1,22 @@
+{
+  "id": "enterprise:dalaran/earthworks/retain_h2_outer_3",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "slot": "prop:earthworks",
+  "palette": "fixed",
+  "size": [
+    3,
+    7,
+    3
+  ],
+  "depth": 3,
+  "mirror": true,
+  "ground": 2,
+  "width": 3,
+  "rise": 2,
+  "kind_of": "corner_outer",
+  "tags": [
+    "corner"
+  ]
+}

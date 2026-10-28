@@ -1,0 +1,29 @@
+{
+  "id": "enterprise:dalaran/earthworks/steps_side_h4",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "slot": "prop:earthworks",
+  "palette": "fixed",
+  "size": [
+    9,
+    9,
+    3
+  ],
+  "depth": 3,
+  "mirror": true,
+  "ground": 2,
+  "width": 9,
+  "rise": 4,
+  "kind_of": "steps_side",
+  "tags": [
+    "steps",
+    "path",
+    "lamp"
+  ],
+  "landing": [
+    0,
+    1
+  ],
+  "door_column": 0
+}
