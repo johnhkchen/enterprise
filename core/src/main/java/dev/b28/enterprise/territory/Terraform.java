@@ -184,6 +184,15 @@ public final class Terraform {
                         level.setBlock(new BlockPos(wx, t - 1, wz), dirt, 2 | 16);
                     }
                 }
+                // No hollow under the new ground: an air gap below it (an old floor over the shallows cleared to air,
+                // the land laid over it: the studio's r74, a 2-thick crust over water) filled to what's under it.
+                for (int y = t - 1; y > t - 12; y--) {
+                    BlockPos at = new BlockPos(wx, y, wz);
+                    BlockState b = level.getBlockState(at);
+                    if (b.isAir() || b.canBeReplaced() && b.getFluidState().isEmpty()) {
+                        level.setBlock(at, dirt, 2 | 16);
+                    }
+                }
             }
         }
         // Bridges where a street crosses water (the studio's bridge.mjs): a paved deck on a stone course at the street's
