@@ -355,6 +355,13 @@ public final class Terraform {
             int low = target[e.z() * X + e.x()] - e.rise();
             // Walled where the town is built (in a founded town, its main street), a cut face elsewhere till it is.
             boolean walled = !e.kind().equals("cut_face") && nearMain.test(e.x(), e.z());
+            // On a founded town's main street, only a step facing across the street is walled; one along it (the graded
+            // band's ends, fields beyond) is a cut face (the studio's r80 render: a fortress wall along the band's ends).
+            if (walled && main.isPresent() && e.dir() < 4) {
+                boolean streetAlongZ = main.get().getAxis() == net.minecraft.core.Direction.Axis.Z;
+                boolean faceAcross = streetAlongZ ? e.dir() >= 2 : e.dir() < 2;
+                walled = faceAcross;
+            }
             if (Earthworks.step(level, kingdom, x0 + e.x(), z0 + e.z(), d[0], d[1], low, e.rise(), walled ? "wall" : "cut_face")) {
                 steps++;
             }

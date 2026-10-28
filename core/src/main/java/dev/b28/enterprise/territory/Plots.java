@@ -92,7 +92,11 @@ public final class Plots {
         // A founded town's main street first (its first builds face each other across it).
         var main = level.getServer() == null ? java.util.Optional.<net.minecraft.core.Direction>empty()
                 : TownPlans.get(level.getServer()).mainAt(bell);
-        var frontages = TownPlans.mainFirst(plan.get(), TownPlans.plots(plan.get(), house.width(), plotWidth), main);
+        // A founded town's plots are the grade's own (its main street's pads, 14 wide: r81, a 12-wide plot packed on the
+        // avenue straddled two pads where the street climbs, too steep to build by the square).
+        int graded = Math.max(width(10), plotWidth);
+        var frontages = TownPlans.mainFirst(plan.get(), main.isPresent() ? TownPlans.plots(plan.get(), graded)
+                : TownPlans.plots(plan.get(), house.width(), plotWidth), main);
         int[] mainWhy = new int[4];
         for (TownPlans.Frontage f : frontages) {
             int entrance = house.entrances().stream().findFirst().map(BlockPos::getX).orElse(house.width() / 2);
