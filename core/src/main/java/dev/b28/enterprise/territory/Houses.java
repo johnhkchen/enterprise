@@ -27,6 +27,9 @@ public final class Houses {
     public record Params(int w, int d, int storeys, boolean partyWest, boolean partyEast, boolean shop, boolean trade,
             boolean doorLeft, long seed) {}
 
+    /** A hipped roof's eave past the relief all round (Dalaran's set: `placement.roof`). */
+    static final int EAVE = 2;
+
     /** The bays a face's free slots choose among, and how often (the set's weights). */
     static final String[] KINDS = {"window", "window_box", "plain"};
     static final double[] WEIGHTS = {4, 2, 1};
@@ -329,8 +332,16 @@ public final class Houses {
         if (layout.isEmpty()) {
             return Optional.empty();
         }
-        var grid = Compose.compose(resources, Compose.blocks(level), "enterprise:" + set + "/part/timber_relief",
-                Compose.Layout.of(layout.get()));
+        // A kingdom with a shell family of its own (Dalaran's platform_hall, batch 024): the same slots, sizes and plan as
+        // Lordaeron's module set, its parts its own, and one hipped roof over the body with its eave all round.
+        String parts = "enterprise:" + set + "/part/timber_relief";
+        if (WallKit.json(resources, "town_kits/" + kingdom + "/platform_hall.json").isPresent()) {
+            parts = "enterprise:" + kingdom + "/part/platform_hall";
+            layout.get().addProperty("roof", "hip");
+            layout.get().addProperty("margin", EAVE);
+            layout.get().remove("chimney");
+        }
+        var grid = Compose.compose(resources, Compose.blocks(level), parts, Compose.Layout.of(layout.get()));
         var cells = Palettes.apply(resources, kingdom, palette, grid.cells);
         String id = "enterprise:generated/" + kingdom + "_" + p.w() + "x" + p.d() + "_s" + p.storeys()
                 + (p.partyWest() || p.partyEast() ? "_t" + (p.partyWest() ? "w" : "") + (p.partyEast() ? "e" : "") : "")
@@ -396,7 +407,9 @@ public final class Houses {
      */
     public static JsonObject meta(String id, JsonObject layout, int sx, int sy, int sz) {
         boolean partyWest = layout.getAsJsonArray("party").get(0).getAsBoolean();
-        int rw = partyWest ? 0 : 1, D = layout.getAsJsonArray("body").get(1).getAsInt();
+        // Everything shifted by a hipped roof's eave (the template that much wider every side).
+        int e = layout.has("margin") ? layout.get("margin").getAsInt() : 0;
+        int rw = (partyWest ? 0 : 1) + e, D = layout.getAsJsonArray("body").get(1).getAsInt() + e;
         JsonObject m = new JsonObject();
         m.addProperty("id", id);
         m.addProperty("rev", 1);
@@ -421,8 +434,8 @@ public final class Houses {
             JsonArray a = b.getAsJsonArray();
             int s = a.get(0).getAsInt(), x = a.get(1).getAsInt(), z = a.get(2).getAsInt();
             JsonObject o = new JsonObject();
-            o.add("head", arr(x + rw, 3 + H * s, z + 1));
-            o.add("foot", arr(x + rw, 3 + H * s, z + 2));
+            o.add("head", arr(x + rw, 3 + H * s, z + 1 + e));
+            o.add("foot", arr(x + rw, 3 + H * s, z + 2 + e));
             beds.add(o);
         }
         m.add("beds", beds);
@@ -430,7 +443,7 @@ public final class Houses {
         for (var w : layout.getAsJsonArray("workstations")) {
             JsonArray a = w.getAsJsonArray();
             JsonObject o = new JsonObject();
-            o.add("at", arr(a.get(1).getAsInt() + rw, 3, a.get(2).getAsInt() + 1));
+            o.add("at", arr(a.get(1).getAsInt() + rw, 3, a.get(2).getAsInt() + 1 + e));
             o.addProperty("block", "any");
             work.add(o);
         }

@@ -147,7 +147,7 @@ public final class Compose {
 
     /** A layout, as the set's `golden.layouts[].layout` or the generator's (see compose.mjs). */
     public record Layout(int w, int d, int storeys, boolean partyWest, boolean partyEast, String roof, JsonArray shell,
-            JsonArray plan, int[] chimney) {
+            JsonArray plan, int[] chimney, int margin) {
         public static Layout of(JsonObject o) {
             JsonArray body = o.getAsJsonArray("body");
             JsonArray party = o.has("party") ? o.getAsJsonArray("party") : new JsonArray();
@@ -159,7 +159,8 @@ public final class Compose {
             return new Layout(body.get(0).getAsInt(), body.get(1).getAsInt(), o.get("storeys").getAsInt(),
                     party.size() > 0 && party.get(0).getAsBoolean(), party.size() > 1 && party.get(1).getAsBoolean(),
                     o.get("roof").getAsString(), o.getAsJsonArray("shell"),
-                    o.has("plan") ? o.getAsJsonArray("plan") : new JsonArray(), chimney);
+                    o.has("plan") ? o.getAsJsonArray("plan") : new JsonArray(), chimney,
+                    o.has("margin") ? o.get("margin").getAsInt() : 0);
         }
     }
 
@@ -167,19 +168,30 @@ public final class Compose {
         return (span - 1) / 2 * PITCH + 1;
     }
 
+    /** The module set every shell family borrows its cores, floors and fit-out from. */
+    static final String BASE = "enterprise:lordaeron/part/timber_relief";
+
     /** Composes a layout from the set's parts ({@code set}: {@code enterprise:lordaeron/part/timber_relief}). */
     public static Grid compose(ResourceManager resources, HolderGetter<Block> blocks, String set, Layout l) {
         int W = l.w(), D = l.d(), S = l.storeys();
         int rw = l.partyWest() ? 0 : 1, re = l.partyEast() ? 0 : 1, roofBase = 2 + H * S;
-        int span = l.roof().equals("gable_x") ? D + 2 : W + rw + re, layers = roofLayers(span);
-        Grid g = new Grid(W + rw + re, roofBase + layers + 1, D + 2);
+        // A set of its own shell borrows the rest (cores, floors, fit-out) from Lordaeron's module set (Dalaran's
+        // platform_hall: "Cores and fit-out are Lordaeron's parts").
         java.util.function.Function<String, Part> mod = id -> part(resources, blocks, set + "/" + id)
+                .or(() -> part(resources, blocks, BASE + "/" + id))
                 .orElseThrow(() -> new IllegalStateException("no part " + set + "/" + id));
+        // A hipped roof (Dalaran's) is one part over the whole relief outline, its eaves overhanging by the margin all
+        // round: the template that much wider every side, everything else shifted by it (the studio's compose.mjs).
+        boolean hip = l.roof().equals("hip");
+        int E = hip ? l.margin() : 0;
+        int span = l.roof().equals("gable_x") ? D + 2 : W + rw + re;
+        int layers = hip ? mod.apply("roof_hip_" + W + "x" + D).h() : roofLayers(span);
+        Grid g = new Grid(W + rw + re + 2 * E, roofBase + layers + 1, D + 2 + 2 * E);
         // (x, z) in the body's frame: the template's is shifted by the relief.
         interface Paste {
             void at(String id, int x, int y, int z, int q, boolean mirror);
         }
-        Paste paste = (id, x, y, z, q, mirror) -> g.paste(mod.apply(id), x + rw, y, z + 1, q, mirror);
+        Paste paste = (id, x, y, z, q, mirror) -> g.paste(mod.apply(id), x + rw + E, y, z + 1 + E, q, mirror);
         // Foundation, floors, room air.
         for (int x = -rw; x < W + re; x++) {
             for (int z = -1; z <= D; z++) {
@@ -244,13 +256,15 @@ public final class Compose {
                 String state = p.get("block").getAsString();
                 BlockState block = state.equals("any") ? net.minecraft.world.level.block.Blocks.AIR.defaultBlockState()
                         : parse(blocks, state);
-                g.cells.put(new BlockPos(at.get(0).getAsInt() + rw, y, at.get(1).getAsInt() + 1), block);
+                g.cells.put(new BlockPos(at.get(0).getAsInt() + rw + E, y, at.get(1).getAsInt() + 1 + E), block);
                 continue;
             }
             paste.at(p.get("module").getAsString(), at.get(0).getAsInt(), y, at.get(1).getAsInt(), q, false);
         }
-        // The roof's slices over the relief.
-        if (l.roof().equals("gable_x")) {
+        // The roof's slices over the relief, or the one hipped roof, eaves and all.
+        if (hip) {
+            g.paste(mod.apply("roof_hip_" + W + "x" + D), 0, roofBase, 0, 0, false);
+        } else if (l.roof().equals("gable_x")) {
             for (int x = -rw; x < W + re; x++) {
                 String kind = x < 0 || x >= W ? "verge" : x == 0 && !l.partyWest() || x == W - 1 && !l.partyEast() ? "gable" : "bay";
                 paste.at("roof_" + kind + "_" + span, x, roofBase, -1, 0, x >= W); // the far verge mirrored: its boards face the gable
@@ -261,8 +275,8 @@ public final class Compose {
                 g.paste(mod.apply("roof_" + kind + "_" + span), 0, roofBase, z + 1, 1, z >= D);
             }
         }
-        // The chimney's stack over its breast, one above the ridge.
-        if (l.chimney() != null) {
+        // The chimney's stack over its breast, one above the ridge (none through a hipped roof: it's unbroken).
+        if (l.chimney() != null && !hip) {
             int cx = l.chimney()[0], cz = l.chimney()[1], top = roofBase + layers;
             for (int y = roofBase; y <= top; y++) {
                 if (l.partyWest() && cx == 0) {

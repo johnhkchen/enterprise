@@ -92,7 +92,18 @@ public final class Kits {
     }
 
     static Meta parse(String id, JsonObject o) {
-        JsonArray fp = o.getAsJsonArray("footprint");
+        // [w, d]; or {at, size}: what stands on the ground, inside a template its overhang wider every side (Dalaran's
+        // eaves, thread 0010): the template whole is what's laid.
+        JsonArray fp;
+        if (o.get("footprint").isJsonObject()) {
+            JsonObject f = o.getAsJsonObject("footprint");
+            JsonArray at = f.getAsJsonArray("at"), size = f.getAsJsonArray("size");
+            fp = new JsonArray();
+            fp.add(size.get(0).getAsInt() + 2 * at.get(0).getAsInt());
+            fp.add(size.get(1).getAsInt() + 2 * at.get(1).getAsInt());
+        } else {
+            fp = o.getAsJsonArray("footprint");
+        }
         List<BlockPos> beds = new ArrayList<>();
         for (JsonElement b : array(o, "beds")) {
             beds.add(pos(b.getAsJsonObject().getAsJsonArray("head")));

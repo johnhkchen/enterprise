@@ -394,6 +394,37 @@ public final class GrowthTests {
     }
 
     /**
+     * Dalaran's houses (the studio's platform_hall, batch 024): every body of the plan data composed from Dalaran's own
+     * parts under one hipped roof, its eave 2 past the relief all round (the template that much wider every side), no
+     * chimney through it, and its door where its metadata says.
+     */
+    @GameTest(template = "floor")
+    public static void aDalaranHouseStandsUnderOneHippedRoof(GameTestHelper helper) {
+        for (int[] body : new int[][] {{7, 7, 1}, {10, 7, 2}, {13, 7, 3}, {10, 10, 2}}) {
+            String what = body[0] + "x" + body[1] + " of " + body[2];
+            var built = dev.b28.enterprise.territory.Houses.build(helper.getLevel(), "dalaran",
+                    new dev.b28.enterprise.territory.Houses.Params(body[0], body[1], body[2], false, false, false, false, false, 7), null);
+            helper.assertTrue(built.isPresent(), what + ": built");
+            var b = built.get();
+            helper.assertTrue(b.sx() == body[0] + 2 + 4 && b.sz() == body[1] + 2 + 4, what + ": the eave all round, " + b.sx() + " x " + b.sz());
+            // The roof: purpur at the template's corner (the eave's tip), nothing of a chimney.
+            boolean purpur = false, chimney = false;
+            for (var e : b.cells().entrySet()) {
+                String id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(e.getValue().getBlock()).getPath();
+                purpur |= id.startsWith("purpur") && (e.getKey().getX() <= 1 || e.getKey().getZ() <= 1);
+                chimney |= id.equals("bricks") && e.getKey().getY() > 2 + 5 * body[2];
+            }
+            helper.assertTrue(purpur, what + ": its hipped roof's eave reaches the template's edge");
+            helper.assertFalse(chimney, what + ": no stack through the roof");
+            var door = b.meta().entrances().get(0);
+            var at = b.cells().get(door);
+            helper.assertTrue(at != null && at.getBlock() instanceof net.minecraft.world.level.block.DoorBlock,
+                    what + ": the door at " + door.toShortString() + " is " + at);
+        }
+        helper.succeed();
+    }
+
+    /**
      * Yards from tiles (`Yards`, the studio's batch 003): a front yard of every plot width a ward gives is filled exactly,
      * its path tile at the door's column and nowhere else, neighbours' edges meeting, a lamp at most every 5 columns.
      */
