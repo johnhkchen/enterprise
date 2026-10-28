@@ -31,12 +31,20 @@ public final class Terraform {
 
     /** What shaping did. */
     public record Shaped(int columns, int cut, int fill, int felled, int steps, int bridges, int conflicts, int plotsOver,
-            int natural) {}
+            int natural, int crossings, int built, int landings) {}
 
     /**
      * Shapes the town's ground round its plan, if all of it is loaded (empty if not: ask again).
      */
     public static Optional<Shaped> shape(ServerLevel level, TownPlans.Plan plan, String kingdom) {
+        return shape(level, plan, kingdom, List.of());
+    }
+
+    /**
+     * As the other; {@code others}: the other towns' bells, so an avenue heading toward one (its bearing within 30°)
+     * serves the road there, and keeps its crossing.
+     */
+    public static Optional<Shaped> shape(ServerLevel level, TownPlans.Plan plan, String kingdom, List<BlockPos> others) {
         if (!loaded(level, plan)) {
             return Optional.empty();
         }
@@ -110,7 +118,32 @@ public final class Terraform {
             };
             plots.add(new Grading.Plot(p.x() - x0, p.z() - z0, p.sx(), p.sz(), door));
         }
-        var g = Grading.grade(X, Z, top, water, fixed, streets, plots, bx, bz, Forums.REACH, plan.bell().getY() - 1, o, BLEND);
+        // The roads out: an avenue's end heading toward another town (the studio's `serves`, thread 0014).
+        List<int[]> serves = new ArrayList<>();
+        for (Grading.Street st : streets) {
+            if (!st.kind().equals("avenue")) {
+                continue;
+            }
+            int[] end = st.line()[1];
+            double heading = Math.atan2(end[1] - bz, end[0] - bx);
+            for (BlockPos other : others) {
+                double toward = Math.atan2(other.getZ() - plan.bell().getZ(), other.getX() - plan.bell().getX());
+                double off = Math.abs(Math.atan2(Math.sin(heading - toward), Math.cos(heading - toward)));
+                if (off <= Math.toRadians(30)) {
+                    serves.add(end);
+                    break;
+                }
+            }
+        }
+        int forumLevel = plan.bell().getY() - 1;
+        var first = Grading.grade(X, Z, top, water, fixed, streets, plots, bx, bz, Forums.REACH, forumLevel, o, BLEND, serves);
+        // No bridge to nowhere (John): a crossing is built only where the street serves something past it, and no wider
+        // than 40 (a ferry's, not yet); the street is cut back to its near bank, and graded again.
+        java.util.function.Predicate<Grading.Crossing> build = c -> c.keep() && !c.kind().equals("ferry");
+        List<Grading.Crossing> dropped = first.crossings().stream().filter(c -> !build.test(c) && c.nearBank() != null).toList();
+        var g = dropped.isEmpty() ? first
+                : Grading.grade(X, Z, top, water, fixed, Grading.trim(streets, first.crossings(), build), plots, bx, bz,
+                        Forums.REACH, forumLevel, o, BLEND, serves);
         short[] target = g.target();
         byte[] role = g.role();
         if (System.getenv("ENTERPRISE_GRADE_PROBE") != null) {
@@ -195,9 +228,47 @@ public final class Terraform {
                 }
             }
         }
+        // A crossing of 3 or less is a causeway, not a deck: its water filled from the bed, paved at the street's level.
+        java.util.Set<Integer> causeway = new java.util.HashSet<>();
+        for (Grading.Crossing c : g.crossings()) {
+            if (!c.kind().equals("causeway")) {
+                continue;
+            }
+            for (int z = Math.min(c.from()[1], c.to()[1]) - 2; z <= Math.max(c.from()[1], c.to()[1]) + 2; z++) {
+                for (int x = Math.min(c.from()[0], c.to()[0]) - 2; x <= Math.max(c.from()[0], c.to()[0]) + 2; x++) {
+                    if (x >= 0 && z >= 0 && x < X && z < Z && g.bridge()[z * X + x] != 0) {
+                        causeway.add(z * X + x);
+                    }
+                }
+            }
+        }
+        for (int i : causeway) {
+            int x = i % X, z = i / X, t = target[i];
+            g.bridge()[i] = 0;
+            for (int y = t - 1; y > level.getMinBuildHeight(); y--) {
+                BlockPos at = new BlockPos(x0 + x, y, z0 + z);
+                BlockState b = level.getBlockState(at);
+                if (!b.isAir() && b.getFluidState().isEmpty() && !b.canBeReplaced()) {
+                    break; // the bed
+                }
+                level.setBlock(at, Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
+            }
+            level.setBlock(new BlockPos(x0 + x, t, z0 + z), pave, 2 | 16);
+        }
         // Bridges where a street crosses water (the studio's bridge.mjs): a paved deck on a stone course at the street's
         // level, piers every 6 down to the bed, the kingdom's parapet along both sides, a lantern over each pier.
         bridges(level, kingdom, x0, z0, X, Z, target, role, g.bridge(), pave);
+        // Where a street now ends at the shore, a landing: steps down to the water, a jetty, lanterns (the studio's
+        // landingBlocks).
+        int landings = 0;
+        for (Grading.Crossing c : dropped) {
+            if (c.facing() >= 0) {
+                int i = c.nearBank()[1] * X + c.nearBank()[0];
+                landing(level, kingdom, x0 + c.nearBank()[0], z0 + c.nearBank()[1], c.facing(), target[i], c.water(),
+                        streets.get(c.street()).width(), pave);
+                landings++;
+            }
+        }
         // The kingdom's earthworks tile at every step.
         int steps = 0;
         for (Grading.Edge e : g.edges()) {
@@ -270,7 +341,54 @@ public final class Terraform {
             }
         }
         return Optional.of(new Shaped(columns, g.cut(), g.fill(), felled, steps, bridges, g.conflicts(), g.plotsOver(),
-                g.natural()));
+                g.natural(), first.crossings().size(), (int) g.crossings().stream().filter(build).count(), landings));
+    }
+
+    /** How far a landing's jetty runs out over the water. */
+    static final int JETTY = 4;
+
+    /**
+     * A street's end at the shore (the studio's landingBlocks): from its last cell, the way out over the water, half
+     * steps down from the street's level to a block over the water on coursed stone, the street's width, then a timber
+     * jetty on posts; a lantern on a post either side at the head of the steps.
+     */
+    static void landing(ServerLevel level, String kingdom, int x0, int z0, int facing, int streetLevel, int water, int width,
+            BlockState pave) {
+        int[] f = Grading.DIRS[facing];
+        int fx = f[0], fz = f[1], sx = fz, sz = fx, half = (width - 1) / 2;
+        int deck = water + 1, k = 1;
+        BlockState slab = halfStep(kingdom), course = Blocks.STONE_BRICKS.defaultBlockState();
+        for (double walk = streetLevel + 0.5; walk > deck + 1; walk -= 0.5, k++) {
+            boolean whole = walk == Math.floor(walk);
+            int y = whole ? (int) walk - 1 : (int) Math.floor(walk);
+            for (int o = -half; o <= width - 1 - half; o++) {
+                int x = x0 + fx * k + sx * o, z = z0 + fz * k + sz * o;
+                for (int yy = y + 1; yy <= streetLevel + 3; yy++) {
+                    level.setBlock(new BlockPos(x, yy, z), Blocks.AIR.defaultBlockState(), 2 | 16);
+                }
+                for (int yy = y - 1; yy >= water - 2; yy--) {
+                    level.setBlock(new BlockPos(x, yy, z), course, 2 | 16);
+                }
+                level.setBlock(new BlockPos(x, y, z), whole ? pave : slab, 2 | 16);
+            }
+        }
+        for (int j = 0; j < JETTY; j++) {
+            for (int o = -half; o <= width - 1 - half; o++) {
+                int x = x0 + fx * (k + j) + sx * o, z = z0 + fz * (k + j) + sz * o;
+                level.setBlock(new BlockPos(x, deck, z), Blocks.SPRUCE_PLANKS.defaultBlockState(), 2 | 16);
+                if ((j == JETTY - 1 || j % 3 == 0) && (o == -half || o == width - 1 - half)) {
+                    for (int y = deck - 1; y >= water - 3; y--) {
+                        level.setBlock(new BlockPos(x, y, z), Blocks.SPRUCE_LOG.defaultBlockState(), 2 | 16);
+                    }
+                }
+            }
+        }
+        for (int o : new int[] {-half - 1, width - half}) {
+            int x = x0 + sx * o, z = z0 + sz * o;
+            level.setBlock(new BlockPos(x, streetLevel + 1, z), parapet(kingdom, true), 2 | 16);
+            level.setBlock(new BlockPos(x, streetLevel + 2, z), parapet(kingdom, true), 2 | 16);
+            level.setBlock(new BlockPos(x, streetLevel + 3, z), Blocks.LANTERN.defaultBlockState(), 2 | 16);
+        }
     }
 
     /** How often a bridge stands on a pier. */

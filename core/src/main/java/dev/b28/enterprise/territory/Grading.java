@@ -47,21 +47,43 @@ public final class Grading {
     }
 
     /**
-     * What the grade planned: each column's height and role, where a street crosses water, the steps, a report (with the
-     * plots still more than 4 off a neighbour, and the columns left natural).
+     * What the grade planned: each column's height and role, where a street crosses water, the steps, its crossings, a
+     * report (with the plots still more than 4 off a neighbour, and the columns left natural).
      */
-    public record Grade(short[] target, byte[] role, byte[] bridge, List<Edge> edges, int cut, int fill, int conflicts,
-            int plotsOver, int natural) {}
+    public record Grade(short[] target, byte[] role, byte[] bridge, List<Edge> edges, List<Crossing> crossings, int cut,
+            int fill, int conflicts, int plotsOver, int natural) {}
+
+    /**
+     * A run of a street over water (the studio's rev 4, thread 0014): its street, span, the street's last dry cell on
+     * each bank ({x, z}, null at the line's end), its first and last wet cells, its deck and water levels, what the
+     * street serves past it (plots, other streets, `serves` points), a kind by span (causeway 3 or less, single to 8,
+     * piers to 40, ferry), and the way out over the water from its near bank (0 north, 1 south, 2 east, 3 west).
+     */
+    public record Crossing(int street, int span, int[] nearBank, int[] farBank, int[] from, int[] to, int deck, int water,
+            int plotsBeyond, int streetsBeyond, int servesBeyond, String kind, int facing) {
+        /** Is it built: does the street serve anything past it? */
+        public boolean keep() {
+            return plotsBeyond + streetsBeyond + servesBeyond > 0;
+        }
+    }
 
     public static Grade grade(int X, int Z, short[] top, boolean[] water, short[] fixed, List<Street> streets,
             List<Plot> plots, int forumX, int forumZ, int forumReach, int forumLevel, int[] outer, int blend) {
+        return grade(X, Z, top, water, fixed, streets, plots, forumX, forumZ, forumReach, forumLevel, outer, blend,
+                List.of());
+    }
+
+    /** As the other; {@code serves}: points {x, z} the town's streets lead to that the plan doesn't hold (roads out). */
+    public static Grade grade(int X, int Z, short[] top, boolean[] water, short[] fixed, List<Street> streets,
+            List<Plot> plots, int forumX, int forumZ, int forumReach, int forumLevel, int[] outer, int blend,
+            List<int[]> serves) {
         return grade(X, Z, top, water, fixed, streets, plots, forumX, forumZ, forumReach, forumLevel, outer, blend, 3, 4,
-                1 / 3.0, 3, 4, 0.4);
+                1 / 3.0, 3, 4, 0.4, serves);
     }
 
     public static Grade grade(int X, int Z, short[] top, boolean[] water, short[] fixed, List<Street> streets,
             List<Plot> plots, int forumX, int forumZ, int forumReach, int forumLevel, int[] outer, int blend, int step,
-            int maxRise, double gradeLimit, int near, int keepAway, double keepFall) {
+            int maxRise, double gradeLimit, int near, int keepAway, double keepFall, List<int[]> serves) {
         int N = X * Z;
         byte[] role = new byte[N], bridge = new byte[N];
         short[] target = new short[N];
@@ -99,6 +121,8 @@ public final class Grading {
             order.add(s);
         }
         order.sort((a, b) -> Integer.compare(streets.get(a).kind().equals("avenue") ? 0 : 1, streets.get(b).kind().equals("avenue") ? 0 : 1));
+        // Each street's samples, cells and levels, for the crossings.
+        List<Object[]> runs = new ArrayList<>();
         for (int si : order) {
             Street s = streets.get(si);
             double half = (s.width() - 1) / 2.0;
@@ -170,6 +194,9 @@ public final class Grading {
                     }
                 }
             }
+            short[] levels = new short[n];
+            boolean[] wet = new boolean[n];
+            runs.add(new Object[] {si, samples, cells, levels, wet});
             for (int k = 0; k < n; k++) {
                 // Over water the street is a bridge: its deck at least 2 over the water.
                 int wetTop = Integer.MIN_VALUE;
@@ -179,6 +206,8 @@ public final class Grading {
                     }
                 }
                 short level = (short) Math.round(wetTop != Integer.MIN_VALUE ? Math.max(h[k], wetTop + 2) : h[k]);
+                levels[k] = level;
+                wet[k] = wetTop != Integer.MIN_VALUE;
                 for (int i : cells.get(k)) {
                     if (role[i] == WATER) {
                         role[i] = STREET;
@@ -591,7 +620,149 @@ public final class Grading {
                 }
             }
         }
-        return new Grade(target, role, bridge, edges, cut, fill, conflicts, plotsOver, natural);
+        return new Grade(target, role, bridge, edges, crossings(X, Z, top, water, role, owner, plotOf, runs, forumX, forumZ,
+                serves), cut, fill, conflicts, plotsOver, natural);
+    }
+
+    /** Every run of a street over water, and what the street serves past it (the studio's rev 4). */
+    @SuppressWarnings("unchecked")
+    private static List<Crossing> crossings(int X, int Z, short[] top, boolean[] water, byte[] role, int[] owner, int[] plotOf,
+            List<Object[]> runs, int fcx, int fcz, List<int[]> serves) {
+        List<Crossing> out = new ArrayList<>();
+        for (Object[] run : runs) {
+            int si = (int) run[0];
+            List<int[]> samples = (List<int[]>) run[1];
+            List<int[]> cells = (List<int[]>) run[2];
+            short[] level = (short[]) run[3];
+            boolean[] wet = (boolean[]) run[4];
+            int n = samples.size();
+            for (int a = 0; a < n; a++) {
+                if (!wet[a] || a > 0 && wet[a - 1]) {
+                    continue;
+                }
+                int b = a;
+                while (b + 1 < n && wet[b + 1]) {
+                    b++;
+                }
+                final int fa = a, fb = b;
+                java.util.function.IntToLongFunction d2 = k -> (long) (samples.get(k)[0] - fcx) * (samples.get(k)[0] - fcx)
+                        + (long) (samples.get(k)[1] - fcz) * (samples.get(k)[1] - fcz);
+                boolean nearIsStart = a == 0 ? false : b == n - 1 ? true : d2.applyAsLong(a - 1) <= d2.applyAsLong(b + 1);
+                int nearK = nearIsStart ? a - 1 : b + 1, farK = nearIsStart ? b + 1 : a - 1;
+                // What lies past the far bank, along the rest of the street's line.
+                java.util.Set<Integer> farCells = new java.util.HashSet<>(), plotsBeyond = new java.util.HashSet<>(),
+                        streetsBeyond = new java.util.HashSet<>();
+                for (int k = nearIsStart ? b + 1 : 0; k < (nearIsStart ? n : a); k++) {
+                    for (int i : cells.get(k)) {
+                        farCells.add(i);
+                    }
+                }
+                for (int i : farCells) {
+                    int x = i % X, z = i / X;
+                    for (int ddz = -2; ddz <= 2; ddz++) {
+                        for (int ddx = -2; ddx <= 2; ddx++) {
+                            int j = at(X, Z, x + ddx, z + ddz);
+                            if (j < 0) {
+                                continue;
+                            }
+                            if (plotOf[j] >= 0) {
+                                plotsBeyond.add(plotOf[j]);
+                            }
+                            if (role[j] == STREET && owner[j] != si && owner[j] >= 0) {
+                                streetsBeyond.add(owner[j]);
+                            }
+                        }
+                    }
+                }
+                int servesBeyond = 0;
+                for (int[] p : serves) {
+                    for (int i : farCells) {
+                        if (Math.abs(i % X - p[0]) <= 3 && Math.abs(i / X - p[1]) <= 3) {
+                            servesBeyond++;
+                            break;
+                        }
+                    }
+                }
+                int span = b - a + 1, waterLevel = Integer.MIN_VALUE, deck = Integer.MIN_VALUE;
+                for (int k = a; k <= b; k++) {
+                    deck = Math.max(deck, level[k]);
+                    for (int i : cells.get(k)) {
+                        if (water[i]) {
+                            waterLevel = Math.max(waterLevel, top[i]);
+                        }
+                    }
+                }
+                String kind = span <= 3 ? "causeway" : span <= 8 ? "single" : span <= 40 ? "piers" : "ferry";
+                boolean alongZ = samples.get(a)[2] == 1;
+                int[] near = nearK >= 0 && nearK < n ? new int[] {samples.get(nearK)[0], samples.get(nearK)[1]} : null;
+                int[] far = farK >= 0 && farK < n ? new int[] {samples.get(farK)[0], samples.get(farK)[1]} : null;
+                int[] wetEnd = nearIsStart ? samples.get(fa) : samples.get(fb);
+                int facing = near == null ? -1 : alongZ ? (wetEnd[1] > near[1] ? 1 : 0) : (wetEnd[0] > near[0] ? 2 : 3);
+                out.add(new Crossing(si, span, near, far, new int[] {samples.get(fa)[0], samples.get(fa)[1]},
+                        new int[] {samples.get(fb)[0], samples.get(fb)[1]}, deck, waterLevel, plotsBeyond.size(),
+                        streetsBeyond.size(), servesBeyond, kind, facing));
+                a = b;
+            }
+        }
+        return out;
+    }
+
+    /**
+     * The streets cut back at the near bank of every crossing {@code build} rejects, so the next grade lays no bridge to
+     * nowhere (the studio's trimStreets): each keeps its line from the end nearer the forum to the first crossing dropped.
+     * A street left a single point is dropped.
+     */
+    public static List<Street> trim(List<Street> streets, List<Crossing> crossings, java.util.function.Predicate<Crossing> build) {
+        List<Street> out = new ArrayList<>();
+        for (int si = 0; si < streets.size(); si++) {
+            Street s = streets.get(si);
+            final int fsi = si;
+            List<Crossing> drop = crossings.stream().filter(c -> c.street() == fsi && !build.test(c) && c.nearBank() != null).toList();
+            if (drop.isEmpty()) {
+                out.add(s);
+                continue;
+            }
+            // The line's points a block apart (straight segments, as the samples are).
+            List<int[]> pts = new ArrayList<>();
+            for (int k = 0; k + 1 < s.line().length; k++) {
+                int ax = s.line()[k][0], az = s.line()[k][1], bx = s.line()[k + 1][0], bz = s.line()[k + 1][1];
+                int L = Math.max(1, Math.max(Math.abs(bx - ax), Math.abs(bz - az)));
+                for (int t = k > 0 ? 1 : 0; t <= L; t++) {
+                    pts.add(new int[] {ax + (int) Math.round((bx - ax) * (double) t / L), az + (int) Math.round((bz - az) * (double) t / L)});
+                }
+            }
+            java.util.function.ToIntFunction<int[]> idx = p -> {
+                for (int k = 0; k < pts.size(); k++) {
+                    if (pts.get(k)[0] == p[0] && pts.get(k)[1] == p[1]) {
+                        return k;
+                    }
+                }
+                return -1;
+            };
+            // Of the dropped crossings, the one nearest the forum's end of the line is where it's cut.
+            Crossing first = null;
+            int firstAt = -1;
+            for (Crossing c : drop) {
+                int k = idx.applyAsInt(c.nearBank());
+                boolean fromStart = idx.applyAsInt(c.from()) > k;
+                int rank = fromStart ? k : pts.size() - 1 - k;
+                if (k >= 0 && (first == null || rank < firstAt)) {
+                    first = c;
+                    firstAt = rank;
+                }
+            }
+            if (first == null) {
+                out.add(s);
+                continue;
+            }
+            int cut = idx.applyAsInt(first.nearBank());
+            boolean fromStart = idx.applyAsInt(first.from()) > cut;
+            List<int[]> kept = fromStart ? pts.subList(0, cut + 1) : pts.subList(cut, pts.size());
+            if (kept.size() > 1) {
+                out.add(new Street(s.kind(), s.width(), new int[][] {kept.get(0), kept.get(kept.size() - 1)}));
+            }
+        }
+        return out;
     }
 
     /** How far a plot at {@code lv} stands more than maxRise off its neighbours (streets, the forum, buildings, plots), summed. */

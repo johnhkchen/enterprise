@@ -796,11 +796,14 @@ public final class LandAdapter {
         String kingdom = dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town);
         // Its land shaped to its plan before a plot is laid (John: "the houses are sitting on weird hills").
         long began = System.nanoTime();
-        dev.b28.enterprise.territory.Terraform.shape(level, townPlan, kingdom).ifPresent(s -> Enterprise.LOGGER.info(
+        var others = dev.b28.enterprise.territory.TownPlans.get(level.getServer()).plans().entrySet().stream()
+                .filter(e -> e.getKey() != town).map(e -> e.getValue().bell()).toList();
+        dev.b28.enterprise.territory.Terraform.shape(level, townPlan, kingdom, others).ifPresent(s -> Enterprise.LOGGER.info(
                 "Town {}'s land shaped to its plan in {} ms: {} columns ({} cut, {} filled), {} tree blocks felled, {} steps "
-                        + "tiled, {} bridge columns, {} steps over 4, {} plots over, {} columns left natural", town,
-                (System.nanoTime() - began) / 1_000_000, s.columns(), s.cut(), s.fill(), s.felled(), s.steps(), s.bridges(),
-                s.conflicts(), s.plotsOver(), s.natural()));
+                        + "tiled, {} bridge columns, {} steps over 4, {} plots over, {} columns left natural; {} crossings, {} "
+                        + "built, {} ended at a landing", town, (System.nanoTime() - began) / 1_000_000, s.columns(), s.cut(),
+                s.fill(), s.felled(), s.steps(), s.bridges(), s.conflicts(), s.plotsOver(), s.natural(), s.crossings(),
+                s.built(), s.landings()));
         int beds = 0, homes = 0, shops = 0, stalls = 0;
         converting = true;
         try {
