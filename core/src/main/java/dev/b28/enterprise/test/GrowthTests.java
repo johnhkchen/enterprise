@@ -400,6 +400,41 @@ public final class GrowthTests {
      * chimney through it, and its door where its metadata says.
      */
     @GameTest(template = "floor")
+    public static void aGradedHillsideStepsItsPlotsWithTheirStreet(GameTestHelper helper) {
+        // A hillside climbing 1 in 2 eastward, a little rough: the studio's grader (thread 0013, `Grading`).
+        int X = 80, Z = 60;
+        short[] top = new short[X * Z], fixed = new short[X * Z];
+        boolean[] water = new boolean[X * Z];
+        for (int z = 0; z < Z; z++) {
+            for (int x = 0; x < X; x++) {
+                top[z * X + x] = (short) (64 + x / 2 + ((x * 7 + z * 13) % 5 == 0 ? 2 : 0));
+                fixed[z * X + x] = dev.b28.enterprise.territory.Grading.NONE;
+            }
+        }
+        var avenue = new dev.b28.enterprise.territory.Grading.Street("avenue", 3, new int[][] {{18, 30}, {70, 30}});
+        var plot = new dev.b28.enterprise.territory.Grading.Plot(40, 20, 14, 8, 1); // north of the avenue, door south
+        var g = dev.b28.enterprise.territory.Grading.grade(X, Z, top, water, fixed, List.of(avenue), List.of(plot), 10, 30, 6,
+                69, new int[] {4, 4, 75, 55}, 4);
+        short[] t = g.target();
+        // The avenue held under 1 in 3 (over 6 blocks, as the studio's report), level across its width.
+        for (int x = 24; x <= 70; x++) {
+            helper.assertTrue(Math.abs(t[30 * X + x] - t[30 * X + x - 6]) <= 2, "the avenue's grade at x " + x);
+            helper.assertTrue(t[29 * X + x] == t[31 * X + x], "the avenue level across at x " + x);
+        }
+        // The plot flat, at its street's level where its door meets it.
+        int level = t[20 * X + 40];
+        for (int z = 20; z < 28; z++) {
+            for (int x = 40; x < 54; x++) {
+                helper.assertTrue(t[z * X + x] == level, "the plot flat at " + x + "," + z + ": " + t[z * X + x] + " not " + level);
+            }
+        }
+        helper.assertTrue(Math.abs(level - t[30 * X + 47]) <= 1, "the plot at its street's level: " + level + " by " + t[30 * X + 47]);
+        // Every step one tile: none over 4.
+        helper.assertTrue(g.conflicts() == 0, g.conflicts() + " steps over 4");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void housesAndWorkshopsShareOnePlotGrid(GameTestHelper helper) {
         // r66: a house's plot (14 wide) and a workshop's (16) cut a ward's stretch two ways and crowded each other.
         var plan = new TownPlans.Plan(new BlockPos(0, 64, 0), new TownPlans.Rect(-90, -90, 90, 90),

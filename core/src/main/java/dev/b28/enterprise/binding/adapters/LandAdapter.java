@@ -782,6 +782,10 @@ public final class LandAdapter {
      * Once a town, when all its village is loaded.
      */
     private void convert(ServerLevel level, long town, BlockPos bell) {
+        var townPlan = dev.b28.enterprise.territory.TownPlans.get(level.getServer()).of(town);
+        if (!dev.b28.enterprise.territory.Terraform.loaded(level, townPlan)) {
+            return; // its site not all loaded yet
+        }
         var cleared = dev.b28.enterprise.territory.Conversion.clear(level, bell);
         if (cleared.isEmpty()) {
             return; // not all loaded yet
@@ -789,7 +793,12 @@ public final class LandAdapter {
         dev.b28.enterprise.territory.TownPlans.get(level.getServer()).convert(town);
         var resources = level.getServer().getResourceManager();
         String kingdom = dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town);
-        var townPlan = dev.b28.enterprise.territory.TownPlans.get(level.getServer()).of(town);
+        // Its land shaped to its plan before a plot is laid (John: "the houses are sitting on weird hills").
+        long began = System.nanoTime();
+        dev.b28.enterprise.territory.Terraform.shape(level, townPlan, kingdom).ifPresent(s -> Enterprise.LOGGER.info(
+                "Town {}'s land shaped to its plan in {} ms: {} columns ({} cut, {} filled), {} tree blocks felled, {} steps "
+                        + "tiled, {} bridge columns not laid, {} steps over 4", town, (System.nanoTime() - began) / 1_000_000,
+                s.columns(), s.cut(), s.fill(), s.felled(), s.steps(), s.bridges(), s.conflicts()));
         int beds = 0, homes = 0, shops = 0, stalls = 0;
         converting = true;
         try {

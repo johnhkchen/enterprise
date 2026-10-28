@@ -1,0 +1,292 @@
+package dev.b28.enterprise.territory;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.SlabType;
+import net.minecraft.world.level.levelgen.Heightmap;
+
+/**
+ * A town's land shaped once at its founding, before any plot is laid (John: "the houses are sitting on weird hills";
+ * the studio's grader and painter, thread 0013): its streets graded, its plots at their streets' levels, the land
+ * between terraced, its edge blended into the wild land (`Grading`); then the ground cut and filled to plan, the trees
+ * felled where it moves, the streets paved with half steps where they climb, and the kingdom's earthworks tile laid at
+ * every step (walls near streets and buildings, cut faces in the open, quays at the water). Its fields, the forum and
+ * anything built stay as they are. Streets over water (bridges) aren't laid yet.
+ */
+public final class Terraform {
+    private Terraform() {}
+
+    /** How far past the outer wall the town's ground blends into the wild land. */
+    static final int BLEND = 16;
+
+    /** What shaping did. */
+    public record Shaped(int columns, int cut, int fill, int felled, int steps, int bridges, int conflicts) {}
+
+    /**
+     * Shapes the town's ground round its plan, if all of it is loaded (empty if not: ask again).
+     */
+    public static Optional<Shaped> shape(ServerLevel level, TownPlans.Plan plan, String kingdom) {
+        if (!loaded(level, plan)) {
+            return Optional.empty();
+        }
+        int x0 = plan.outer().x0() - BLEND - 1, z0 = plan.outer().z0() - BLEND - 1;
+        int X = plan.outer().x1() - plan.outer().x0() + 2 * BLEND + 3, Z = plan.outer().z1() - plan.outer().z0() + 2 * BLEND + 3;
+        int N = X * Z;
+        short[] top = new short[N], fixed = new short[N];
+        boolean[] water = new boolean[N];
+        for (int z = 0; z < Z; z++) {
+            for (int x = 0; x < X; x++) {
+                int i = z * X + x, wx = x0 + x, wz = z0 + z;
+                fixed[i] = Grading.NONE;
+                int y = ground(level, wx, wz);
+                BlockState s = level.getBlockState(new BlockPos(wx, y, wz));
+                if (!s.getFluidState().isEmpty()) {
+                    water[i] = true;
+                    top[i] = (short) y;
+                } else if (s.is(Blocks.FARMLAND)) {
+                    top[i] = (short) y; // a field: kept as it lies
+                    fixed[i] = (short) y;
+                } else if (dev.b28.enterprise.settlement.Grounds.natural(s)) {
+                    top[i] = (short) y;
+                } else {
+                    // Something built: its ground the first natural block under it, plus one; over water a dock or a bridge.
+                    int g = y, wet = Integer.MIN_VALUE;
+                    for (; g > level.getMinBuildHeight(); g--) {
+                        BlockState b = level.getBlockState(new BlockPos(wx, g, wz));
+                        if (wet == Integer.MIN_VALUE && !b.getFluidState().isEmpty()) {
+                            wet = g;
+                        }
+                        if (dev.b28.enterprise.settlement.Grounds.natural(b)) {
+                            break;
+                        }
+                    }
+                    if (wet != Integer.MIN_VALUE) {
+                        water[i] = true;
+                        top[i] = (short) wet;
+                    } else {
+                        top[i] = (short) (g + 1);
+                        fixed[i] = (short) (g + 1);
+                    }
+                }
+            }
+        }
+        // The plan in the box's frame: the avenues from the forum's edge to the outer wall, the lanes, the plots.
+        int bx = plan.bell().getX() - x0, bz = plan.bell().getZ() - z0, f = Forums.REACH + 1;
+        int[] o = {plan.outer().x0() - x0, plan.outer().z0() - z0, plan.outer().x1() - x0, plan.outer().z1() - z0};
+        List<Grading.Street> streets = new ArrayList<>();
+        for (int[][] line : new int[][][] {{{bx, bz - f}, {bx, o[1]}}, {{bx, bz + f}, {bx, o[3]}}, {{bx - f, bz}, {o[0], bz}},
+                {{bx + f, bz}, {o[2], bz}}}) {
+            streets.add(new Grading.Street("avenue", TownPlans.GATE, line));
+        }
+        for (double[][] lane : TownPlans.lanes(plan)) {
+            streets.add(new Grading.Street("lane", TownPlans.LANE, new int[][] {
+                {(int) Math.floor(lane[0][0]) - x0, (int) Math.floor(lane[0][1]) - z0},
+                {(int) Math.floor(lane[1][0]) - x0, (int) Math.floor(lane[1][1]) - z0}}));
+        }
+        List<Grading.Plot> plots = new ArrayList<>();
+        for (TownPlans.Frontage p : TownPlans.plots(plan, Plots.width(10))) {
+            int door = switch (p.door()) {
+                case NORTH -> 0;
+                case SOUTH -> 1;
+                case EAST -> 2;
+                default -> 3;
+            };
+            plots.add(new Grading.Plot(p.x() - x0, p.z() - z0, p.sx(), p.sz(), door));
+        }
+        var g = Grading.grade(X, Z, top, water, fixed, streets, plots, bx, bz, Forums.REACH, plan.bell().getY() - 1, o, BLEND);
+        short[] target = g.target();
+        byte[] role = g.role();
+
+        // The trees where the ground moves: on a street, a plot or the forum, or land cut or filled by 2 or more.
+        int felled = 0;
+        for (int z = 0; z < Z; z++) {
+            for (int x = 0; x < X; x++) {
+                int i = z * X + x;
+                byte r = role[i];
+                if (r == Grading.WILD || r == Grading.WATER || r == Grading.FIXED) {
+                    continue;
+                }
+                if (r == Grading.STREET || r == Grading.PLOT || r == Grading.FORUM || Math.abs(target[i] - top[i]) >= 2) {
+                    felled += fell(level, x0 + x, top[i], z0 + z);
+                }
+            }
+        }
+        // Cut and fill to plan; streets paved, everything else grassed.
+        BlockState pave = paving(kingdom), dirt = Blocks.DIRT.defaultBlockState(), grass = Blocks.GRASS_BLOCK.defaultBlockState();
+        int columns = 0, bridges = 0;
+        for (int z = 0; z < Z; z++) {
+            for (int x = 0; x < X; x++) {
+                int i = z * X + x;
+                byte r = role[i];
+                if (g.bridge()[i] != 0) {
+                    bridges++;
+                    continue;
+                }
+                if (r == Grading.WILD || r == Grading.WATER || r == Grading.FIXED) {
+                    continue;
+                }
+                int t = target[i], n = top[i], wx = x0 + x, wz = z0 + z;
+                if (t == n && r != Grading.STREET) {
+                    continue;
+                }
+                columns++;
+                for (int y = Math.min(t, n) + 1; y <= Math.max(t, n) + 3; y++) {
+                    BlockPos at = new BlockPos(wx, y, wz);
+                    BlockState b = level.getBlockState(at);
+                    if (y > t && (y <= n || b.isAir() || b.canBeReplaced() || dev.b28.enterprise.settlement.Grounds.natural(b))) {
+                        level.setBlock(at, Blocks.AIR.defaultBlockState(), 2 | 16);
+                    }
+                }
+                for (int y = n + 1; y < t; y++) {
+                    level.setBlock(new BlockPos(wx, y, wz), dirt, 2 | 16);
+                }
+                level.setBlock(new BlockPos(wx, t, wz), r == Grading.STREET || r == Grading.FORUM ? pave : grass, 2 | 16);
+                if (t < n) {
+                    BlockState under = level.getBlockState(new BlockPos(wx, t - 1, wz));
+                    if (under.isAir() || !under.getFluidState().isEmpty()) {
+                        level.setBlock(new BlockPos(wx, t - 1, wz), dirt, 2 | 16);
+                    }
+                }
+            }
+        }
+        // A street climbs by half steps: a slab on the lower cell wherever its neighbour along the street is a block higher.
+        BlockState slab = halfStep(kingdom);
+        for (int z = 0; z < Z; z++) {
+            for (int x = 0; x < X; x++) {
+                int i = z * X + x;
+                if (role[i] != Grading.STREET || g.bridge()[i] != 0) {
+                    continue;
+                }
+                for (int[] d : Grading.DIRS) {
+                    int xx = x + d[0], zz = z + d[1];
+                    if (xx < 0 || zz < 0 || xx >= X || zz >= Z) {
+                        continue;
+                    }
+                    int j = zz * X + xx;
+                    if ((role[j] == Grading.STREET || role[j] == Grading.FORUM) && target[j] == target[i] + 1) {
+                        level.setBlock(new BlockPos(x0 + x, target[i] + 1, z0 + z), slab, 2 | 16);
+                        break;
+                    }
+                }
+            }
+        }
+        // The kingdom's earthworks tile at every step.
+        int steps = 0;
+        for (Grading.Edge e : g.edges()) {
+            if (e.kind().equals("street_step") || e.kind().equals("slope")) {
+                continue;
+            }
+            int[] d = Grading.DIRS[e.dir()];
+            int j = (e.z() + d[1]) * X + e.x() + d[0];
+            int low = target[e.z() * X + e.x()] - e.rise();
+            if (Earthworks.step(level, kingdom, x0 + e.x(), z0 + e.z(), d[0], d[1], low, e.rise(),
+                    e.kind().equals("cut_face") ? "cut_face" : "wall")) {
+                steps++;
+            }
+            if (role[j] == Grading.STREET && e.kind().equals("wall")) {
+                // A wall's foot on a street keeps the street's surface (no stair across the way).
+                level.setBlock(new BlockPos(x0 + e.x() + d[0], target[j], z0 + e.z() + d[1]), pave, 2 | 16);
+                level.setBlock(new BlockPos(x0 + e.x() + d[0], target[j] + 1, z0 + e.z() + d[1]), Blocks.AIR.defaultBlockState(), 2 | 16);
+            }
+        }
+        return Optional.of(new Shaped(columns, g.cut(), g.fill(), felled, steps, bridges, g.conflicts()));
+    }
+
+    /** Is all the ground shaping would touch (the outer wall and its blend band) loaded? */
+    public static boolean loaded(ServerLevel level, TownPlans.Plan plan) {
+        int x0 = plan.outer().x0() - BLEND - 1, z0 = plan.outer().z0() - BLEND - 1;
+        int x1 = plan.outer().x1() + BLEND + 1, z1 = plan.outer().z1() + BLEND + 1;
+        for (int x = x0; x <= x1 + 15; x += 16) {
+            for (int z = z0; z <= z1 + 15; z += 16) {
+                if (!level.isLoaded(new BlockPos(Math.min(x, x1), 0, Math.min(z, z1)))) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /** The land's own ground at a column: under any plant, leaves or tree. */
+    static int ground(ServerLevel level, int x, int z) {
+        int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) - 1;
+        while (y > level.getMinBuildHeight()) {
+            BlockState s = level.getBlockState(new BlockPos(x, y, z));
+            if (isTree(s) || s.isAir() || s.canBeReplaced() && s.getFluidState().isEmpty()) {
+                y--;
+                continue;
+            }
+            break;
+        }
+        return y;
+    }
+
+    private static boolean isTree(BlockState s) {
+        String id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(s.getBlock()).getPath();
+        return s.is(BlockTags.LEAVES) || (id.endsWith("_log") || id.endsWith("_wood")) && !id.startsWith("stripped_");
+    }
+
+    /** Fells the tree over a column: its trunk above the ground and its crown within 3 of the trunk. Blocks taken. */
+    private static int fell(ServerLevel level, int x, int ground, int z) {
+        int taken = 0;
+        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+        Set<BlockPos> seen = new HashSet<>();
+        for (int y = ground + 1; y < ground + 32; y++) {
+            BlockPos at = new BlockPos(x, y, z);
+            BlockState s = level.getBlockState(at);
+            if (isTree(s)) {
+                queue.add(at);
+            }
+        }
+        while (!queue.isEmpty()) {
+            BlockPos at = queue.pop();
+            if (!seen.add(at) || Math.max(Math.abs(at.getX() - x), Math.abs(at.getZ() - z)) > 3) {
+                continue;
+            }
+            BlockState s = level.getBlockState(at);
+            if (!isTree(s) && !s.is(Blocks.VINE)) {
+                continue;
+            }
+            level.setBlock(at, Blocks.AIR.defaultBlockState(), 2 | 16);
+            taken++;
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dz = -1; dz <= 1; dz++) {
+                        if (dx != 0 || dy != 0 || dz != 0) {
+                            queue.add(at.offset(dx, dy, dz));
+                        }
+                    }
+                }
+            }
+        }
+        return taken;
+    }
+
+    /** A kingdom's street paving: Lordaeron's a beaten path, the cities' dressed stone. */
+    static BlockState paving(String kingdom) {
+        return switch (kingdom) {
+            case "dalaran" -> Blocks.POLISHED_ANDESITE.defaultBlockState();
+            case "stormwind" -> Blocks.STONE_BRICKS.defaultBlockState();
+            default -> Blocks.DIRT_PATH.defaultBlockState();
+        };
+    }
+
+    /** The half step a kingdom's street climbs by. */
+    static BlockState halfStep(String kingdom) {
+        BlockState s = switch (kingdom) {
+            case "dalaran" -> Blocks.POLISHED_ANDESITE_SLAB.defaultBlockState();
+            case "stormwind" -> Blocks.STONE_BRICK_SLAB.defaultBlockState();
+            default -> Blocks.COBBLESTONE_SLAB.defaultBlockState();
+        };
+        return s.setValue(SlabBlock.TYPE, SlabType.BOTTOM);
+    }
+}

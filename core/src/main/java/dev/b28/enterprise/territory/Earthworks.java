@@ -173,6 +173,32 @@ public final class Earthworks {
         return new Banked(laid, deepest);
     }
 
+    /**
+     * One step of a graded town (`Terraform`, the studio's grader): the kingdom's tile at the high column ({@code hx},
+     * {@code hz}), its foot on the low column the way down ({@code dx}, {@code dz}), at {@code low}; a rise over 4 stands
+     * on coursed stone. {@code kind}: "wall" (near streets and buildings: a lamp every 5th, a buttress now and then),
+     * "quay" (a wall at the water) or "cut_face". False if the set has no tile for it.
+     */
+    public static boolean step(ServerLevel level, String kingdom, int hx, int hz, int dx, int dz, int low, int rise,
+            String kind) {
+        List<Tile> tiles = tiles(level, kingdom);
+        int h = Math.min(4, rise);
+        long seed = hx * 7349L + hz * 31L + 17;
+        String pick = kind.equals("cut_face") ? "cut_face" : Math.floorMod(seed, 5) == 2 ? "lamp"
+                : h >= 3 && Math.floorMod(seed, 4) == 0 ? "buttress" : "straight";
+        Optional<Tile> tile = pick(tiles, h, pick, seed);
+        if (tile.isEmpty()) {
+            return false;
+        }
+        int base = low + rise - h;
+        for (int y = low + 1; y <= base; y++) {
+            level.setBlock(new BlockPos(hx, y, hz), net.minecraft.world.level.block.Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
+        }
+        // The high ground lies back from the foot: the turn that brings its authored north there.
+        int bx = -dx, bz = -dz, q = bz < 0 ? 0 : bx > 0 ? 1 : bz > 0 ? 2 : 3;
+        return lay(level, tile.get(), hx + dx, hz + dz, base, q, bx, bz, true) > 0;
+    }
+
     /** A terrace tile of the set: its lamp, or a planted one by the seed; empty if the set has none. */
     private static Optional<Tile> terrace(List<Tile> tiles, boolean lamp, long seed) {
         List<Tile> fit = tiles.stream().filter(t -> t.tags().contains("terrace") && t.tags().contains("lamp") == lamp).toList();
