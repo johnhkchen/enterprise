@@ -429,6 +429,34 @@ public final class Terraform {
         };
     }
 
+    /**
+     * A founded town's street opened (its first plot built: the studio's, thread 0012): its worn track inside the inner
+     * wall paved in the kingdom's way, where it's still a track. The paved blocks.
+     */
+    public static int openStreet(ServerLevel level, TownPlans.Plan plan, String kingdom, String street) {
+        boolean northSouth = street.startsWith("x=");
+        int line = Integer.parseInt(street.substring(2));
+        boolean avenue = line == (northSouth ? plan.bell().getX() : plan.bell().getZ());
+        int width = avenue ? TownPlans.GATE : TownPlans.LANE, from = line - width / 2;
+        TownPlans.Rect in = plan.inner();
+        BlockState pave = paving(kingdom);
+        int paved = 0;
+        for (int along = northSouth ? in.z0() : in.x0(); along <= (northSouth ? in.z1() : in.x1()); along++) {
+            for (int o = 0; o < width; o++) {
+                int x = northSouth ? from + o : along, z = northSouth ? along : from + o;
+                if (!level.isLoaded(new BlockPos(x, 0, z))) {
+                    continue;
+                }
+                BlockPos at = new BlockPos(x, ground(level, x, z), z);
+                if (level.getBlockState(at).is(Blocks.DIRT_PATH) && !pave.is(Blocks.DIRT_PATH)) {
+                    level.setBlock(at, pave, 2 | 16);
+                    paved++;
+                }
+            }
+        }
+        return paved;
+    }
+
     /** How far a landing's jetty runs out over the water. */
     static final int JETTY = 4;
 

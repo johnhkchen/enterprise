@@ -789,6 +789,32 @@ public final class LandAdapter {
         return kit;
     }
 
+    /**
+     * A founded town grows by its plot just built (the studio's rules, thread 0012): the street it fronts opened (paved,
+     * its plots taken before a new street's), and with its first house's beds, the settlers' camp cleared.
+     */
+    private void grown(ServerLevel level, long town, String kingdom, dev.b28.enterprise.territory.Plots.Site p,
+            dev.b28.enterprise.territory.Kits.Meta kit, boolean workshop) {
+        var plans = dev.b28.enterprise.territory.TownPlans.get(level.getServer());
+        var plan = plans.of(town);
+        if (plan == null || plans.main(town).isEmpty()) {
+            return;
+        }
+        boolean alongX = p.door().getAxis() == net.minecraft.core.Direction.Axis.Z;
+        var f = new dev.b28.enterprise.territory.TownPlans.Frontage(p.corner().getX(), p.corner().getZ(), p.door(),
+                alongX ? p.width() : p.depth(), alongX ? p.depth() : p.width());
+        String street = dev.b28.enterprise.territory.TownPlans.streetOf(plan, f);
+        if (plans.open(town, street)) {
+            int paved = dev.b28.enterprise.territory.Terraform.openStreet(level, plan, kingdom, street);
+            Enterprise.LOGGER.info("Town {} opens its street {} ({} paved)", town, street, paved);
+        }
+        if (!workshop && !kit.bedHeads().isEmpty() && plans.camp(town).isPresent()) {
+            dev.b28.enterprise.territory.Founding.clearCamp(level, plans.camp(town).get());
+            plans.setCamp(town, null);
+            Enterprise.LOGGER.info("Town {}'s settlers leave their camp for its first house", town);
+        }
+    }
+
     /** The beds a founded town's first homes hold: its settlers' and the children they'll have. */
     static final int FOUNDING_BEDS = 4;
 
@@ -835,6 +861,9 @@ public final class LandAdapter {
         if (dev.b28.enterprise.territory.Conversion.village(level, bell) == null && plans.main(town).isEmpty()) {
             others.stream().min(java.util.Comparator.comparingDouble(b -> b.distSqr(townPlan.bell())))
                     .ifPresent(b -> plans.setMain(town, dev.b28.enterprise.territory.TownPlans.toward(townPlan.bell(), b)));
+            // Its main street open from the start: paved at shaping, its plots the first taken.
+            plans.main(town).ifPresent(m -> plans.open(town, m.getAxis() == net.minecraft.core.Direction.Axis.Z
+                    ? "x=" + townPlan.bell().getX() : "z=" + townPlan.bell().getZ()));
         }
         // Its land shaped to its plan before a plot is laid (John: "the houses are sitting on weird hills").
         long began = System.nanoTime();
@@ -846,7 +875,7 @@ public final class LandAdapter {
                 s.built(), s.landings()));
         // A town on open ground stands with its founding kit before its houses come (the studio's, batch 034).
         if (dev.b28.enterprise.territory.Conversion.village(level, bell) == null && plans.main(town).isPresent()) {
-            int kit = dev.b28.enterprise.territory.Founding.lay(level, townPlan, kingdom, plans.main(town).get());
+            int kit = dev.b28.enterprise.territory.Founding.lay(level, townPlan, kingdom, plans.main(town).get(), town);
             Enterprise.LOGGER.info("Town {} stands with its founding kit ({} parts), its main street {}", town, kit,
                     plans.main(town).get().getName());
         }
@@ -1194,6 +1223,7 @@ public final class LandAdapter {
                                 dev.b28.enterprise.settlement.Props.twinOf(level, station);
                             }
                         }
+                        grown(level, town, kingdomOf, p, kit.get(), trade != null && !farmstead);
                         Enterprise.LOGGER.info("Town {} builds {} facing {} at {} (front yard {}, back yard {}, {} retaining "
                                 + "tiles, deepest drop {}{})", town, kit.get().id(), p.door().getName(), corner.toShortString(),
                                 onPlot.get().front().orElse("none"), onPlot.get().back().orElse("none"),

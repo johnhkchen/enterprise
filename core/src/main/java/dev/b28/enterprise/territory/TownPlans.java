@@ -176,6 +176,90 @@ public final class TownPlans extends SavedData {
         return out;
     }
 
+    /** A founded town's streets opened (each by {@link #streetOf}): paved, its plots taken before a new street's. */
+    private final Map<Long, java.util.Set<String>> opened = new LinkedHashMap<>();
+
+    /** A founded town's camp ({x0, z0, x1, z1}), till its first house has its beds. */
+    private final Map<Long, int[]> camps = new LinkedHashMap<>();
+
+    public java.util.Set<String> opened(long town) {
+        return opened.getOrDefault(town, java.util.Set.of());
+    }
+
+    /** The streets opened in the town planned round {@code bell}, if it's a founded town. */
+    public java.util.Set<String> openedAt(BlockPos bell) {
+        for (var e : plans.entrySet()) {
+            if (e.getValue().bell().equals(bell)) {
+                return opened(e.getKey());
+            }
+        }
+        return java.util.Set.of();
+    }
+
+    /** Opens a street: true if it wasn't. */
+    public boolean open(long town, String street) {
+        boolean added = opened.computeIfAbsent(town, t -> new java.util.TreeSet<>()).add(street);
+        if (added) {
+            setDirty();
+        }
+        return added;
+    }
+
+    public java.util.Optional<int[]> camp(long town) {
+        return java.util.Optional.ofNullable(camps.get(town));
+    }
+
+    public void setCamp(long town, int[] box) {
+        if (box == null) {
+            camps.remove(town);
+        } else {
+            camps.put(town, box);
+        }
+        setDirty();
+    }
+
+    /**
+     * The street a frontage fronts, as an id: "x=<line>" for one running north-south, "z=<line>" for one running east-west
+     * (the avenues through the bell, the lanes on their lines).
+     */
+    public static String streetOf(Plan plan, Frontage f) {
+        int bx = plan.bell().getX(), bz = plan.bell().getZ();
+        if (f.door().getAxis() == net.minecraft.core.Direction.Axis.X) {
+            // Its street runs north-south, the door's side: its line the nearest of the avenue's and the lanes'.
+            int edge = f.door() == net.minecraft.core.Direction.EAST ? f.x() + f.sx() : f.x() - 1;
+            int best = bx;
+            for (int x : laneLines(plan, true)) {
+                if (Math.abs(x - edge) < Math.abs(best - edge)) {
+                    best = x;
+                }
+            }
+            return "x=" + best;
+        }
+        int edge = f.door() == net.minecraft.core.Direction.SOUTH ? f.z() + f.sz() : f.z() - 1;
+        int best = bz;
+        for (int z : laneLines(plan, false)) {
+            if (Math.abs(z - edge) < Math.abs(best - edge)) {
+                best = z;
+            }
+        }
+        return "z=" + best;
+    }
+
+    /**
+     * A founded town's plots in the order it grows (the studio's, thread 0012: outward from the square in one connected
+     * patch, a street opened in full before the next): its main street's, then its opened streets', then the rest as
+     * they were (nearest the square first).
+     */
+    public static List<Frontage> growthOrder(Plan plan, List<Frontage> plots, java.util.Optional<net.minecraft.core.Direction> main,
+            java.util.Set<String> opened) {
+        if (main.isEmpty()) {
+            return plots;
+        }
+        List<Frontage> out = new ArrayList<>(plots);
+        out.sort(Comparator.comparingInt((Frontage f) -> onMain(plan, f, main.get()) ? 0 : opened.contains(streetOf(plan, f)) ? 1 : 2));
+        return out;
+    }
+
     /** How far round its bell a founded town's plan reaches at the least: a grown village's (the studio's planned towns,
      *  thread 0012: "the plan is laid at founding for the town's eventual tier"). */
     static final int FOUNDED = 40;
@@ -682,6 +766,12 @@ public final class TownPlans extends SavedData {
         CompoundTag main = new CompoundTag();
         mains.forEach((town, way) -> main.putInt(Long.toString(town), way.get3DDataValue()));
         tag.put("mains", main);
+        CompoundTag open = new CompoundTag();
+        opened.forEach((town, streets) -> open.putString(Long.toString(town), String.join(";", streets)));
+        tag.put("opened", open);
+        CompoundTag camp = new CompoundTag();
+        camps.forEach((town, box) -> camp.putIntArray(Long.toString(town), box));
+        tag.put("camps", camp);
         return tag;
     }
 
@@ -706,6 +796,20 @@ public final class TownPlans extends SavedData {
         CompoundTag main = tag.getCompound("mains");
         for (String key : main.getAllKeys()) {
             out.mains.put(Long.parseLong(key), net.minecraft.core.Direction.from3DDataValue(main.getInt(key)));
+        }
+        CompoundTag open = tag.getCompound("opened");
+        for (String key : open.getAllKeys()) {
+            java.util.Set<String> streets = new java.util.TreeSet<>();
+            for (String st : open.getString(key).split(";")) {
+                if (!st.isEmpty()) {
+                    streets.add(st);
+                }
+            }
+            out.opened.put(Long.parseLong(key), streets);
+        }
+        CompoundTag camp = tag.getCompound("camps");
+        for (String key : camp.getAllKeys()) {
+            out.camps.put(Long.parseLong(key), camp.getIntArray(key));
         }
         return out;
     }

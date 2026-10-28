@@ -20,6 +20,11 @@ public final class Founding {
 
     /** Lays the kit round the town's square. The parts laid. */
     public static int lay(ServerLevel level, TownPlans.Plan plan, String kingdom, Direction main) {
+        return lay(level, plan, kingdom, main, -1);
+    }
+
+    /** As the other; the camp's place kept for the town ({@code town}), to clear when its first house has its beds. */
+    public static int lay(ServerLevel level, TownPlans.Plan plan, String kingdom, Direction main, long town) {
         String set = level.getServer().getResourceManager()
                 .getResource(Kits.template("enterprise:" + kingdom + "/founding/well_3").withPrefix("structure/").withSuffix(".json"))
                 .isPresent() ? kingdom : "lordaeron";
@@ -43,8 +48,15 @@ public final class Founding {
         laid += part(level, set, "gate_posts_5", bell.relative(main, out), 5, 1, back);
         // The camp at the main street's end, just outside the gate posts (r80: inside them it took the plots nearest the
         // square, and the first builds went past the wall).
-        laid += part(level, set, "camp_9x7", bell.relative(main, out + 7).relative(side, TownPlans.GATE / 2 + 6), 9, 7,
-                side.getOpposite());
+        BlockPos camp = bell.relative(main, out + 7).relative(side, TownPlans.GATE / 2 + 6);
+        int c = part(level, set, "camp_9x7", camp, 9, 7, side.getOpposite());
+        laid += c;
+        if (c > 0 && town >= 0) {
+            boolean across = side.getOpposite().getAxis() == Direction.Axis.Z;
+            int sx = across ? 9 : 7, sz = across ? 7 : 9;
+            TownPlans.get(level.getServer()).setCamp(town, new int[] {camp.getX() - sx / 2, camp.getZ() - sz / 2,
+                    camp.getX() - sx / 2 + sx - 1, camp.getZ() - sz / 2 + sz - 1});
+        }
         // A stake every 8 along the rest of the inner wall's line, clear of the avenues.
         TownPlans.Rect in = plan.inner();
         for (int x = in.x0(); x <= in.x1(); x += STAKES) {
@@ -54,6 +66,21 @@ public final class Founding {
             laid += stake(level, set, plan, in.x0(), z) + stake(level, set, plan, in.x1(), z);
         }
         return laid;
+    }
+
+    /** The camp cleared (its first house has its beds): its ground grass again, nothing standing on it. */
+    public static void clearCamp(ServerLevel level, int[] box) {
+        for (int x = box[0]; x <= box[2]; x++) {
+            for (int z = box[1]; z <= box[3]; z++) {
+                int y = Terraform.ground(level, x, z);
+                for (int up = 1; up <= 6; up++) {
+                    level.setBlock(new BlockPos(x, y + up, z), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2 | 16);
+                }
+                if (!dev.b28.enterprise.settlement.Grounds.natural(level.getBlockState(new BlockPos(x, y, z)))) {
+                    level.setBlock(new BlockPos(x, y, z), net.minecraft.world.level.block.Blocks.GRASS_BLOCK.defaultBlockState(), 2 | 16);
+                }
+            }
+        }
     }
 
     private static int stake(ServerLevel level, String set, TownPlans.Plan plan, int x, int z) {
