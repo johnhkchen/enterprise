@@ -95,6 +95,9 @@ public final class FieldMaps extends SavedData {
         /** Its fields, polygons of its holdings (`Furlongs`), and the holdings laid out. */
         final List<Furlongs.Field> fields = new ArrayList<>();
         final Set<Integer> laidOut = new HashSet<>();
+        /** Its farmland laid out (`Bocage`), and the next of its fields to sow. */
+        Bocage.Land land;
+        int nextLay;
         /** Its farmsteads' lots ({x0, z0, x1, z1}), by holding. */
         final Map<Integer, int[]> farmsteads = new java.util.TreeMap<>();
         /** The grain ring's roads on out through the outer gates laid (avenue indices). */
@@ -661,8 +664,13 @@ public final class FieldMaps extends SavedData {
     public void till(ServerLevel level, long town, BlockPos corner, Item crop) {
         Furlongs.Field field = sitedFields.remove(BlockPos.asLong(corner.getX(), 0, corner.getZ()));
         TownPlans.Plan townPlan = TownPlans.get(level.getServer()).of(town);
-        if (field != null && townPlan != null && maps.containsKey(town)) {
-            Furlongs.sow(level, townPlan, maps.get(town), lots(maps.get(town)), town, field, crop);
+        if (field != null && townPlan != null && maps.containsKey(town) && maps.get(town).land != null) {
+            // An arable field re-sown with the crop first in its bands.
+            TownMap tm = maps.get(town);
+            String[] was = field.state.substring(field.state.indexOf(':') + 1).split(",");
+            String name = FieldTiles.name(crop);
+            field.state = "arable:" + name + "," + (was[0].equals(name) && was.length > 1 ? was[1] : was[0]);
+            Bocage.lay(level, tm.land, tm, town, tm.fields.indexOf(field), 1);
             setDirty();
             return;
         }
@@ -817,8 +825,9 @@ public final class FieldMaps extends SavedData {
     }
 
     /**
-     * Lays out the town's next holding's fields and dresses them (`Furlongs`: the rings' land in polygons, John: "polygons
-     * rather than squares to get good coverage"), a holding a look; how many fields it laid out.
+     * The town's farmland as bocage (`Bocage`, the studio's layout ported: fields stretched along the contours, their uses
+     * by steepness, crops in bands of height, hedgerows round them): laid out once over its rings, then sown and dressed a
+     * dozen fields a look. How many fields it laid.
      */
     public int dress(ServerLevel level, long town) {
         TownPlans.Plan plan = TownPlans.get(level.getServer()).of(town);
@@ -826,22 +835,24 @@ public final class FieldMaps extends SavedData {
         if (plan == null || m == null || !m.founded) {
             return 0;
         }
-        for (int i = 0; i < m.parcels.size(); i++) {
-            if (m.laidOut.contains(i)) {
-                continue;
+        if (m.land == null) {
+            long began = System.nanoTime();
+            m.land = Bocage.layOut(level, plan, m, lots(m), town);
+            if (m.land == null) {
+                return 0; // its ground loading
             }
-            int before = m.fields.size();
-            if (Furlongs.dress(level, plan, m, lots(m), town, i)) {
-                m.laidOut.add(i);
-                setDirty();
-                int laid = m.fields.size() - before;
-                dev.b28.enterprise.Enterprise.LOGGER.info("Town {} lays out holding {}'s fields: {} ({} in all)", town, i, laid,
-                        m.fields.size());
-                return laid;
-            }
-            // Its ground not loaded: the next holding's tried, this one again when it is.
+            m.nextLay = 0;
+            setDirty();
+            dev.b28.enterprise.Enterprise.LOGGER.info("Town {} lays out its farmland: {} fields, {} blocks ({} ms)", town,
+                    m.fields.size(), m.fields.stream().mapToInt(f -> f.area).sum(), (System.nanoTime() - began) / 1_000_000);
         }
-        return 0;
+        if (m.nextLay >= m.fields.size()) {
+            return 0;
+        }
+        int laid = Bocage.lay(level, m.land, m, town, m.nextLay);
+        m.nextLay += laid;
+        setDirty();
+        return laid;
     }
 
     /** The farmstead lots, built or kept ({x0, z0, x1, z1} by holding), the fields go round. */
@@ -919,6 +930,15 @@ public final class FieldMaps extends SavedData {
             }
             e.put("fields", fields);
             e.putIntArray("laidOut", m.laidOut.stream().mapToInt(Integer::intValue).sorted().toArray());
+            if (m.land != null) {
+                e.putIntArray("land", new int[] {m.land.x0, m.land.z0, m.land.sx, m.land.sz, m.nextLay});
+                e.putIntArray("landField", m.land.field);
+                int[] heights = new int[m.land.h.length];
+                for (int k = 0; k < heights.length; k++) {
+                    heights[k] = Math.round(m.land.h[k] * 8);
+                }
+                e.putIntArray("landHeight", heights);
+            }
             towns.put(Long.toString(town), e);
         });
         tag.put("towns", towns);
@@ -969,6 +989,16 @@ public final class FieldMaps extends SavedData {
             }
             for (int h : e.getIntArray("laidOut")) {
                 m.laidOut.add(h);
+            }
+            int[] land = e.getIntArray("land");
+            if (land.length == 5) {
+                int[] heights = e.getIntArray("landHeight");
+                float[] h = new float[heights.length];
+                for (int k = 0; k < h.length; k++) {
+                    h[k] = heights[k] / 8f;
+                }
+                m.land = new Bocage.Land(land[0], land[1], land[2], land[3], e.getIntArray("landField"), h);
+                m.nextLay = land[4];
             }
             int[] lots = e.getIntArray("farmsteads");
             for (int i = 0; i + 4 < lots.length; i += 5) {
