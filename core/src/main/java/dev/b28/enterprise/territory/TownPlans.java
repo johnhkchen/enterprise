@@ -277,7 +277,7 @@ public final class TownPlans extends SavedData {
      */
     public static List<Frontage> plots(Plan plan, int terrace, int detached) {
         int bx = plan.bell().getX(), bz = plan.bell().getZ();
-        List<Frontage> avenue = frontages(plan, terrace, plan.deepest(), 0).stream().filter(f -> onAvenue(plan, f)).toList();
+        List<Frontage> avenue = frontages(plan, terrace, plan.deepest(), 0, true).stream().filter(f -> onAvenue(plan, f)).toList();
         List<Frontage> lane = frontages(plan, detached, plan.deepest(), 0).stream().filter(f -> !onAvenue(plan, f)).toList();
         Comparator<Frontage> near = Comparator.comparingDouble((Frontage f) -> Math.hypot(f.x() + f.sx() / 2.0 - bx,
                 f.z() + f.sz() / 2.0 - bz)).thenComparingInt(Frontage::x).thenComparingInt(Frontage::z);
@@ -310,16 +310,16 @@ public final class TownPlans extends SavedData {
         List<Frontage> out = new ArrayList<>();
         // North and south stretches of the north-south avenue: homes west (door east) and east (door west) of it.
         for (int[] run : new int[][] {{o.z0() + m, in.z0() - m}, {in.z1() + m, o.z1() - m}}) {
-            for (int z = run[0]; z + width - 1 <= run[1]; z += width) {
-                out.add(new Frontage(bx - a - 2 - depth + 1, z, net.minecraft.core.Direction.EAST, depth, width));
-                out.add(new Frontage(bx + a + 2, z, net.minecraft.core.Direction.WEST, depth, width));
+            for (int[] slot : slots(run[0], run[1], width, 0, false)) {
+                out.add(new Frontage(bx - a - 2 - depth + 1, slot[0], net.minecraft.core.Direction.EAST, depth, slot[1]));
+                out.add(new Frontage(bx + a + 2, slot[0], net.minecraft.core.Direction.WEST, depth, slot[1]));
             }
         }
         // West and east stretches of the east-west avenue: homes north (door south) and south (door north) of it.
         for (int[] run : new int[][] {{o.x0() + m, in.x0() - m}, {in.x1() + m, o.x1() - m}}) {
-            for (int x = run[0]; x + width - 1 <= run[1]; x += width) {
-                out.add(new Frontage(x, bz - a - 2 - depth + 1, net.minecraft.core.Direction.SOUTH, width, depth));
-                out.add(new Frontage(x, bz + a + 2, net.minecraft.core.Direction.NORTH, width, depth));
+            for (int[] slot : slots(run[0], run[1], width, 0, false)) {
+                out.add(new Frontage(slot[0], bz - a - 2 - depth + 1, net.minecraft.core.Direction.SOUTH, slot[1], depth));
+                out.add(new Frontage(slot[0], bz + a + 2, net.minecraft.core.Direction.NORTH, slot[1], depth));
             }
         }
         return out;
@@ -327,6 +327,31 @@ public final class TownPlans extends SavedData {
 
     /** As {@link #frontages(Plan, int, int)}, {@code gap} blocks between neighbours along the street. */
     public static List<Frontage> frontages(Plan plan, int width, int depth, int gap) {
+        return frontages(plan, width, depth, gap, false);
+    }
+
+    /**
+     * Where {@code width}-wide plots go along a stretch from {@code lo} to {@code hi}, {@code gap} between them: each
+     * {start, width}. Not packed: the stretch shared out evenly among as many as fit, so builds of any width that fit
+     * as many share one grid (r66: houses 14 wide and workshops 16 wide cut the same street two ways, and crowded each
+     * other's plots); packed, side by side from its start (a terrace's party walls).
+     */
+    static List<int[]> slots(int lo, int hi, int width, int gap, boolean packed) {
+        List<int[]> out = new ArrayList<>();
+        int length = hi - lo + 1, n = (length + gap) / (width + gap);
+        for (int i = 0; i < n; i++) {
+            if (packed) {
+                out.add(new int[] {lo + i * (width + gap), width});
+            } else {
+                int from = lo + i * (length + gap) / n, to = lo + (i + 1) * (length + gap) / n - gap;
+                out.add(new int[] {from, to - from});
+            }
+        }
+        return out;
+    }
+
+    /** As {@link #frontages(Plan, int, int, int)}; {@code packed}: side by side from each stretch's start (`slots`). */
+    public static List<Frontage> frontages(Plan plan, int width, int depth, int gap, boolean packed) {
         Rect w = within(plan);
         int bx = plan.bell().getX(), bz = plan.bell().getZ();
         List<Frontage> out = new ArrayList<>();
@@ -340,17 +365,17 @@ public final class TownPlans extends SavedData {
         // straddles a cross street.
         for (int[] s : ns) {
             for (int[] run : runs(w.z0(), w.z1(), ew)) {
-                for (int z = run[0]; z + width - 1 <= run[1]; z += width + gap) {
-                    out.add(new Frontage(s[0] - s[1] - 2 - depth + 1, z, net.minecraft.core.Direction.EAST, depth, width));
-                    out.add(new Frontage(s[0] + s[2] + 2, z, net.minecraft.core.Direction.WEST, depth, width));
+                for (int[] slot : slots(run[0], run[1], width, gap, packed)) {
+                    out.add(new Frontage(s[0] - s[1] - 2 - depth + 1, slot[0], net.minecraft.core.Direction.EAST, depth, slot[1]));
+                    out.add(new Frontage(s[0] + s[2] + 2, slot[0], net.minecraft.core.Direction.WEST, depth, slot[1]));
                 }
             }
         }
         for (int[] s : ew) {
             for (int[] run : runs(w.x0(), w.x1(), ns)) {
-                for (int x = run[0]; x + width - 1 <= run[1]; x += width + gap) {
-                    out.add(new Frontage(x, s[0] - s[1] - 2 - depth + 1, net.minecraft.core.Direction.SOUTH, width, depth));
-                    out.add(new Frontage(x, s[0] + s[2] + 2, net.minecraft.core.Direction.NORTH, width, depth));
+                for (int[] slot : slots(run[0], run[1], width, gap, packed)) {
+                    out.add(new Frontage(slot[0], s[0] - s[1] - 2 - depth + 1, net.minecraft.core.Direction.SOUTH, slot[1], depth));
+                    out.add(new Frontage(slot[0], s[0] + s[2] + 2, net.minecraft.core.Direction.NORTH, slot[1], depth));
                 }
             }
         }

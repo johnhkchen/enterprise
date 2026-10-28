@@ -48,7 +48,7 @@ public final class Zoning {
             int W = Integer.parseInt(body[0]), D = Integer.parseInt(body[1]);
             boolean terrace = rule.has("kind") && rule.get("kind").getAsString().startsWith("terrace");
             int width = terrace ? W : Plots.width(W);
-            List<TownPlans.Frontage> all = new ArrayList<>(TownPlans.frontages(plan, width, depth, 0));
+            List<TownPlans.Frontage> all = new ArrayList<>(TownPlans.frontages(plan, width, depth, 0, terrace));
             if (!street.equals("lane")) {
                 all.addAll(TownPlans.suburbs(plan, width, depth));
             }

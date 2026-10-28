@@ -89,7 +89,8 @@ public final class GrowthTests {
             helper.assertTrue(homes.size() >= 4, size[0] + " x " + size[1] + ": rows of homes: " + homes.size());
             for (var f : homes) {
                 boolean alongZ = f.door().getAxis() == net.minecraft.core.Direction.Axis.X;
-                helper.assertTrue(f.sx() == (alongZ ? size[1] : size[0]) && f.sz() == (alongZ ? size[0] : size[1]),
+                // As deep as asked, at least as wide along its street (the stretch shared out: `TownPlans.slots`).
+                helper.assertTrue(alongZ ? f.sx() == size[1] && f.sz() >= size[0] : f.sx() >= size[0] && f.sz() == size[1],
                         "turned to its street: " + f);
                 for (int dx = 0; dx < f.sx(); dx++) {
                     for (int dz = 0; dz < f.sz(); dz++) {
@@ -398,6 +399,22 @@ public final class GrowthTests {
      * parts under one hipped roof, its eave 2 past the relief all round (the template that much wider every side), no
      * chimney through it, and its door where its metadata says.
      */
+    @GameTest(template = "floor")
+    public static void housesAndWorkshopsShareOnePlotGrid(GameTestHelper helper) {
+        // r66: a house's plot (14 wide) and a workshop's (16) cut a ward's stretch two ways and crowded each other.
+        var plan = new TownPlans.Plan(new BlockPos(0, 64, 0), new TownPlans.Rect(-90, -90, 90, 90),
+                new TownPlans.Rect(-150, -150, 150, 150), true, true);
+        var houses = new java.util.HashSet<>(TownPlans.frontages(plan, 14, plan.deepest(), 0));
+        var shops = new java.util.HashSet<>(TownPlans.frontages(plan, 16, plan.deepest(), 0));
+        helper.assertTrue(!houses.isEmpty() && houses.equals(shops), houses.size() + " house plots, " + shops.size()
+                + " workshop plots, " + houses.stream().filter(shops::contains).count() + " the same");
+        // A terrace's packed side by side: its houses' party walls meet.
+        var terrace = TownPlans.frontages(plan, 10, plan.deepest(), 0, true);
+        helper.assertTrue(terrace.stream().allMatch(f -> Math.min(f.sx(), f.sz()) == 10 || Math.max(f.sx(), f.sz()) == 10),
+                "a terrace's plots 10 wide");
+        helper.succeed();
+    }
+
     @GameTest(template = "floor")
     public static void aDalaranCourtyardHouseIsALotWhole(GameTestHelper helper) {
         // The studio's batch 029: two plots wide, its forecourt its front yard, in a ward's half deep as it is.
