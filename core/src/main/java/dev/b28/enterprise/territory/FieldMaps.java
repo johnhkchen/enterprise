@@ -507,6 +507,12 @@ public final class FieldMaps extends SavedData {
         }
         TownMap m = maps.computeIfAbsent(town, k -> new TownMap());
         Ring first = ringOf(crop);
+        // A town with a field map sows in its bocage once it's laid out: till then the crop waits (asked again next look),
+        // rather than a square field filled up on its own above the land (the studio's r58 west-gate render: a raised
+        // plot with bare dirt sides).
+        if (m.founded && m.land == null) {
+            return Optional.empty();
+        }
         // One of its laid-out fields, unsown, if it has one (its own ring's first).
         for (Ring ring : first == Ring.GARDEN ? List.of(Ring.GARDEN, Ring.GRAIN) : List.of(Ring.GRAIN, Ring.GARDEN)) {
             Optional<Furlongs.Field> field = Furlongs.site(plan, m, ring, held, crop);
@@ -515,6 +521,9 @@ public final class FieldMaps extends SavedData {
                 sitedFields.put(BlockPos.asLong(f.x0, 0, f.z0), f);
                 return Optional.of(new BlockPos(f.x0, bell.getY(), f.z0));
             }
+        }
+        if (m.land != null) {
+            return Optional.empty(); // no field of its bocage suits the crop: it waits, rather than a square field apart
         }
         List<BlockPos> people = level.getPoiManager()
                 .getInRange(type -> true, bell, Growth.FIELD_FARTHEST + 8, PoiManager.Occupancy.ANY).map(PoiRecord::getPos)
