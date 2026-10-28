@@ -113,6 +113,9 @@ public final class Plots {
             why[LAST_FIT]++;
             if (main.isPresent() && TownPlans.onMain(plan.get(), f, main.get())) {
                 mainWhy[LAST_FIT]++;
+                if (System.getenv("ENTERPRISE_GRADE_PROBE") != null) {
+                    dev.b28.enterprise.Enterprise.LOGGER.info("Main street plot {} refused: {} (built on: {})", f, LAST_FIT, BLOCKED);
+                }
             }
         }
         // Said when the reasons change, not at every look the town asks again (r35: 445 lines of one full town).

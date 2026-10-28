@@ -169,7 +169,11 @@ public final class StockAdapter {
         if (r instanceof Response.Refused refused) {
             throw new IllegalStateException("the core wouldn't count the desk at " + desk.toShortString() + ": " + refused.why());
         }
-        dev.b28.enterprise.settlement.Grounds.founded(level, desk, name);
+        // Its pits filled and drops fenced in a village; a town on open ground is shaped and walled before anyone lives
+        // there, and fences put up first stood on its main street's plots (r82).
+        if (dev.b28.enterprise.territory.Conversion.village(level, desk) != null) {
+            dev.b28.enterprise.settlement.Grounds.founded(level, desk, name);
+        }
         return town;
     }
 

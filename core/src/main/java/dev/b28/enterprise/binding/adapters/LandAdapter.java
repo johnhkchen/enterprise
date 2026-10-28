@@ -609,7 +609,8 @@ public final class LandAdapter {
                                 dev.b28.enterprise.territory.Kingdoms.get(server).of(e.getKey())));
                 Enterprise.LOGGER.info("{} founded at {} ({})", f.name(), town.get().desk().toShortString(),
                         dev.b28.enterprise.territory.Kingdoms.get(server).of(f.town()));
-                dev.b28.enterprise.settlement.Grounds.founded(level, town.get().desk(), f.name());
+                // (No safety fences at founding: its land is shaped and walled before anyone lives there, and fences
+                // put up first stood on its main street's plots: r82.)
             }
         }
     }
