@@ -93,8 +93,13 @@ public final class Conversion {
                         }
                     }
                     BlockPos floor = new BlockPos(x, box.minY(), z);
-                    BlockState was = level.getBlockState(floor);
-                    if (!was.is(BlockTags.DIRT) || was.is(Blocks.DIRT_PATH) || was.is(Blocks.FARMLAND)) {
+                    BlockState was = level.getBlockState(floor), under = level.getBlockState(floor.below());
+                    // A floor on piles over the river or a drop (a dock, a fishing hut) goes as what's under it: no
+                    // grass squares left floating on the water (the studio's r66 render).
+                    if (!under.getFluidState().isEmpty() || under.isAir()) {
+                        level.setBlock(floor, under.getFluidState().isEmpty() ? Blocks.AIR.defaultBlockState()
+                                : under.getFluidState().createLegacyBlock(), 2 | 16);
+                    } else if (!was.is(BlockTags.DIRT) || was.is(Blocks.DIRT_PATH) || was.is(Blocks.FARMLAND)) {
                         level.setBlock(floor, Blocks.GRASS_BLOCK.defaultBlockState(), 2 | 16);
                     }
                 }
