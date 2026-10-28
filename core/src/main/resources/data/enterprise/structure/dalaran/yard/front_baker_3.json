@@ -1,0 +1,40 @@
+{
+  "id": "enterprise:dalaran/yard/front_baker_3",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "palette": "fixed",
+  "size": [
+    3,
+    7,
+    3
+  ],
+  "mirror": true,
+  "ground": 2,
+  "slot": "yard:front",
+  "width": 3,
+  "depth": 3,
+  "tags": [
+    "trade:baker",
+    "trade:farmer",
+    "lamp"
+  ],
+  "sockets": {
+    "left": "wall",
+    "right": "wall",
+    "street": "wall"
+  },
+  "path_ok": [
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      1
+    ]
+  ],
+  "lamp": true,
+  "max_run": 1,
+  "once": true
+}

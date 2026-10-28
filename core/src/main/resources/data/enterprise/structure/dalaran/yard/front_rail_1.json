@@ -1,0 +1,37 @@
+{
+  "id": "enterprise:dalaran/yard/front_rail_1",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "palette": "fixed",
+  "size": [
+    1,
+    7,
+    3
+  ],
+  "mirror": true,
+  "ground": 2,
+  "slot": "yard:front",
+  "width": 1,
+  "depth": 3,
+  "tags": [
+    "cottage"
+  ],
+  "sockets": {
+    "left": "rail",
+    "right": "rail",
+    "street": "rail"
+  },
+  "path_ok": [
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      1
+    ]
+  ],
+  "lamp": false,
+  "max_run": null
+}
