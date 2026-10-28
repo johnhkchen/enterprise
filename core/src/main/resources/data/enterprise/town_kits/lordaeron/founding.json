@@ -1,0 +1,132 @@
+{
+  "set": "lordaeron/founding",
+  "rev": 1,
+  "about": "What a town founded on open ground stands with before its houses come (thread 0012). Parts on the yard contract: layers 0-1 ground, 2 the surface (the site's graded ground), 3 up the features; authored with the street or the square to the south (z = depth - 1). No point-of-interest blocks (decorative twins only), no beds; every walkable full-block cell lit.",
+  "order": "At founding: the bell and desk (the settlers'), then founding_stone_3 at the forum's edge facing the square, notice_board_3 by the bell, market_cross_5 in the forum's middle, well_3 beside it or on the main street, camp_9x7 on a plot at the main street's end, gate_posts_5 astride the main street at the inner wall's line, stake_1 every 8 along the rest of that line.",
+  "temporary": "camp_9x7 is cleared when the first house has its beds; stake_1 and gate_posts_5 give way to the stockade at the first walled tier (the stockade, then the kingdom's wall, are later sets). The founding stone, notice board, market cross and well stay.",
+  "parts": [
+    {
+      "id": "founding_stone_3",
+      "part": "enterprise:lordaeron/founding/founding_stone_3",
+      "size": [
+        3,
+        9,
+        3
+      ],
+      "width": 3,
+      "depth": 3,
+      "tags": [
+        "founding",
+        "square",
+        "lamp"
+      ],
+      "place": "the forum's edge, beside the bell, facing the square"
+    },
+    {
+      "id": "market_cross_5",
+      "part": "enterprise:lordaeron/founding/market_cross_5",
+      "size": [
+        5,
+        11,
+        5
+      ],
+      "width": 5,
+      "depth": 5,
+      "tags": [
+        "founding",
+        "square",
+        "centrepiece",
+        "lamp"
+      ],
+      "place": "the forum's middle until the forum's buildings come; stays as the market cross"
+    },
+    {
+      "id": "well_3",
+      "part": "enterprise:lordaeron/founding/well_3",
+      "size": [
+        3,
+        9,
+        3
+      ],
+      "width": 3,
+      "depth": 3,
+      "tags": [
+        "founding",
+        "square",
+        "well",
+        "lamp"
+      ],
+      "place": "beside the cross, or on the main street"
+    },
+    {
+      "id": "camp_9x7",
+      "part": "enterprise:lordaeron/founding/camp_9x7",
+      "size": [
+        9,
+        8,
+        7
+      ],
+      "width": 9,
+      "depth": 7,
+      "tags": [
+        "founding",
+        "camp",
+        "temporary",
+        "lamp"
+      ],
+      "place": "a plot at the main street's end; cleared when the first house has its beds (never counted as beds)"
+    },
+    {
+      "id": "stake_1",
+      "part": "enterprise:lordaeron/founding/stake_1",
+      "size": [
+        1,
+        7,
+        1
+      ],
+      "width": 1,
+      "depth": 1,
+      "tags": [
+        "founding",
+        "wall_line",
+        "temporary"
+      ],
+      "place": "every 8 along the inner wall's line, until the stockade"
+    },
+    {
+      "id": "gate_posts_5",
+      "part": "enterprise:lordaeron/founding/gate_posts_5",
+      "size": [
+        5,
+        9,
+        1
+      ],
+      "width": 5,
+      "depth": 1,
+      "tags": [
+        "founding",
+        "gate",
+        "temporary",
+        "lamp"
+      ],
+      "place": "astride the main street where it crosses the inner wall's line: x 1-3 the street"
+    },
+    {
+      "id": "notice_board_3",
+      "part": "enterprise:lordaeron/founding/notice_board_3",
+      "size": [
+        3,
+        8,
+        1
+      ],
+      "width": 3,
+      "depth": 1,
+      "tags": [
+        "founding",
+        "square",
+        "lamp"
+      ],
+      "place": "by the bell, facing the square"
+    }
+  ]
+}

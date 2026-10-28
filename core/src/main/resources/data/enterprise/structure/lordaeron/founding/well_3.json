@@ -1,0 +1,24 @@
+{
+  "id": "enterprise:lordaeron/founding/well_3",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "prop:founding",
+  "palette": "fixed",
+  "size": [
+    3,
+    9,
+    3
+  ],
+  "mirror": true,
+  "ground": 2,
+  "width": 3,
+  "depth": 3,
+  "tags": [
+    "founding",
+    "square",
+    "well",
+    "lamp"
+  ],
+  "place": "beside the cross, or on the main street"
+}
