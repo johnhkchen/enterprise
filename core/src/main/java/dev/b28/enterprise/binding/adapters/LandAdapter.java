@@ -874,7 +874,11 @@ public final class LandAdapter {
             }
             return true;
         }
-        return false;
+        // No level spot on the ring: the job site alone on the ground nearest the forum's edge (no job is lost).
+        BlockPos at = level.getHeightmapPos(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                bell.offset(dev.b28.enterprise.territory.Forums.REACH + 2, 0, n * 2 - dev.b28.enterprise.territory.Forums.REACH));
+        level.setBlock(at, job, 3);
+        return true;
     }
 
     /** Is the 3 x 3 from {@code corner} level ground (each column's top at its height) with air over it? */
@@ -883,7 +887,7 @@ public final class LandAdapter {
             for (int dz = 0; dz < 3; dz++) {
                 BlockPos at = corner.offset(dx, 0, dz);
                 if (!level.getBlockState(at).isFaceSturdy(level, at, net.minecraft.core.Direction.UP)
-                        || !level.getBlockState(at.above()).isAir() || !level.getBlockState(at.above(2)).isAir()) {
+                        || !level.getBlockState(at.above()).canBeReplaced() || !level.getBlockState(at.above(2)).canBeReplaced()) {
                     return false;
                 }
             }
