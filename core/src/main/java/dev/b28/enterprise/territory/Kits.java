@@ -42,7 +42,13 @@ public final class Kits {
 
     /** A structure's metadata: what the placer needs of it (positions in its own frame, facing south). */
     public record Meta(String id, String kingdom, String kind, String slot, int width, int depth, int height, int ground,
-            List<BlockPos> bedHeads, List<BlockPos> workstations, List<String> tiers, List<BlockPos> entrances) {}
+            List<BlockPos> bedHeads, List<BlockPos> workstations, List<String> tiers, List<BlockPos> entrances, int plots) {
+
+        /** Is it a lot whole (`plots` of 2 or more: Dalaran's courtyard house, thread 0010), its yards its own? */
+        public boolean whole() {
+            return plots > 1;
+        }
+    }
 
     /** What was laid: its world box, and its beds' heads and workstations where they stand now. */
     public record Placed(String id, BoundingBox box, List<BlockPos> bedHeads, List<BlockPos> workstations) {}
@@ -76,7 +82,7 @@ public final class Kits {
                 if (o.has("base") && !o.has("footprint")) {
                     return meta(resources, o.get("base").getAsString()).map(b -> new Meta(id, b.kingdom(), b.kind(),
                             b.slot(), b.width(), b.depth(), b.height(), b.ground(), b.bedHeads(), b.workstations(),
-                            b.tiers(), b.entrances()));
+                            b.tiers(), b.entrances(), b.plots()));
                 }
                 return Optional.of(parse(id, o));
             } catch (Exception e) {
@@ -122,7 +128,8 @@ public final class Kits {
         }
         return new Meta(id, string(o, "kingdom"), string(o, "kind"), string(o, "slot"), fp.get(0).getAsInt(),
                 fp.get(1).getAsInt(), o.has("height") ? o.get("height").getAsInt() : 8,
-                o.has("ground") ? o.get("ground").getAsInt() : 0, beds, work, tiers, doors);
+                o.has("ground") ? o.get("ground").getAsInt() : 0, beds, work, tiers, doors,
+                o.has("plots") ? o.get("plots").getAsInt() : 1);
     }
 
     private static JsonArray array(JsonObject o, String key) {
@@ -166,6 +173,16 @@ public final class Kits {
                             .ifPresent(m -> out.add(id));
                 });
         return out;
+    }
+
+    /**
+     * A kingdom's homes that are a lot whole ({@link Meta#whole}) within {@code width} x {@code depth}, by id: the one
+     * {@code n} picks (the town's how-manieth), empty if it has none.
+     */
+    public static Optional<Meta> wholeHome(ResourceManager resources, String kingdom, int width, int depth, long town, int n) {
+        List<Meta> fit = kits(resources, kingdom, "", width, depth).stream().flatMap(id -> meta(resources, id).stream())
+                .filter(m -> m.kind().equals("home") && m.whole()).toList();
+        return fit.isEmpty() ? Optional.empty() : Optional.of(fit.get((int) Math.floorMod(town * 31 + n, (long) fit.size())));
     }
 
     /** The kit a town's slot takes, fixed by the town and the slot's place: the same one every time. */

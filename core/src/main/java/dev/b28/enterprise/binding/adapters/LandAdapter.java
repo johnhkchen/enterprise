@@ -720,6 +720,16 @@ public final class LandAdapter {
                     }
                 }
             }
+            // Every fourth home from village tier a lot whole if the kingdom has one (Dalaran's courtyard house, the
+            // studio's batch 029: a compound wall round its court, two plots wide, its forecourt its front yard).
+            if (!tier.equals("hamlet") && laidSoFar % 4 == 3) {
+                var lot2 = dev.b28.enterprise.territory.Kits.wholeHome(level.getServer().getResourceManager(), kingdom,
+                        townPlan.cell(), townPlan.deepest(), town, laidSoFar / 4);
+                if (lot2.isPresent()) {
+                    homeKits.put(town, lot2.get());
+                    return lot2;
+                }
+            }
             // A planned town's next house by its kingdom's zoning: the plot first, in the fill order, then the house it
             // asks for (body, kind, storeys, palette, shop by street and distance from the forum).
             var zoned = dev.b28.enterprise.territory.Zoning.next(level, town, townPlan, kingdom, town * 7919 + laidSoFar);
@@ -950,7 +960,7 @@ public final class LandAdapter {
                     boolean farmstead = farmsteadNext.remove(town);
                     String trade = farmstead ? "farmer" : workshops.get(town);
                     String kingdomOf = dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town);
-                    var onPlot = farmstead && built == null && kit.get().width() == p.width()
+                    var onPlot = built == null && (farmstead && kit.get().width() == p.width() || kit.get().whole())
                             ? dev.b28.enterprise.territory.Plots.layWhole(level, kingdomOf, kit.get(), p.corner(), p.width(), p.depth(),
                                     p.door())
                             : dev.b28.enterprise.territory.Plots.lay(level, kingdomOf, kit.get(), built, p.corner(), p.width(),

@@ -399,6 +399,23 @@ public final class GrowthTests {
      * chimney through it, and its door where its metadata says.
      */
     @GameTest(template = "floor")
+    public static void aDalaranCourtyardHouseIsALotWhole(GameTestHelper helper) {
+        // The studio's batch 029: two plots wide, its forecourt its front yard, in a ward's half deep as it is.
+        var resources = helper.getLevel().getServer().getResourceManager();
+        var plan = new dev.b28.enterprise.territory.TownPlans.Plan(BlockPos.ZERO, null, null, true, true);
+        var kit = dev.b28.enterprise.territory.Kits.wholeHome(resources, "dalaran", plan.cell(), plan.deepest(), 1, 0);
+        helper.assertTrue(kit.isPresent(), "a Dalaran lot whole within " + plan.cell() + " x " + plan.deepest());
+        var m = kit.get();
+        helper.assertTrue(m.whole() && m.plots() == 2, m.id() + ": two plots");
+        helper.assertTrue(m.width() == 22 && m.depth() == 16 && m.bedHeads().size() == 4, m.id() + ": 22 x 16 with 4 beds, "
+                + m.width() + " x " + m.depth() + " with " + m.bedHeads().size());
+        // Lordaeron has none: its homes are houses on plots.
+        helper.assertTrue(dev.b28.enterprise.territory.Kits.wholeHome(resources, "lordaeron", 99, 99, 1, 0).isEmpty(),
+                "no Lordaeron lot whole");
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aDalaranHouseStandsUnderOneHippedRoof(GameTestHelper helper) {
         for (int[] body : new int[][] {{7, 7, 1}, {10, 7, 2}, {13, 7, 3}, {10, 10, 2}}) {
             String what = body[0] + "x" + body[1] + " of " + body[2];

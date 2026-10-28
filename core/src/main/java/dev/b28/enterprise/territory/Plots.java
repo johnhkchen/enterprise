@@ -82,15 +82,17 @@ public final class Plots {
             return Optional.empty();
         }
         int depth = plan.get().deepest();
-        if (house(depth, house.width(), house.depth())[1] < 0) {
+        if ((house.whole() ? depth - house.depth() : house(depth, house.width(), house.depth())[1]) < 0) {
             return Optional.empty(); // deeper than a plot
         }
         // Why each frontage failed, for the log when none fits.
         int[] why = new int[4];
-        var frontages = TownPlans.plots(plan.get(), house.width(), width(house.width()));
+        // A lot whole as wide as it is (its compound wall its edge); a house with its side yards.
+        int plotWidth = house.whole() ? house.width() : width(house.width());
+        var frontages = TownPlans.plots(plan.get(), house.width(), plotWidth);
         for (TownPlans.Frontage f : frontages) {
             int entrance = house.entrances().stream().findFirst().map(BlockPos::getX).orElse(house.width() / 2);
-            Optional<Site> site = fits(level, f, bell, depth, house.width(), house.depth(), entrance);
+            Optional<Site> site = fits(level, f, bell, depth, house.width(), house.depth(), entrance, house.whole());
             if (site.isPresent()) {
                 return site;
             }
@@ -119,9 +121,16 @@ public final class Plots {
      */
     public static Optional<Site> fits(ServerLevel level, TownPlans.Frontage f, BlockPos bell, int depth, int houseW,
             int houseD, int entrance) {
+        return fits(level, f, bell, depth, houseW, houseD, entrance, false);
+    }
+
+    /** As {@link #fits(ServerLevel, TownPlans.Frontage, BlockPos, int, int, int, int)}; {@code whole}: a lot whole, to the plot's back from its street, no front yard but its own. */
+    public static Optional<Site> fits(ServerLevel level, TownPlans.Frontage f, BlockPos bell, int depth, int houseW,
+            int houseD, int entrance, boolean whole) {
         // Its width along its street: the house's alone on an avenue's terrace, with side yards elsewhere.
         int width = f.door().getAxis() == Direction.Axis.Z ? f.sx() : f.sz();
-        int[] h = house(depth, houseW, houseD, width);
+        int[] h = whole ? new int[] {Math.max(0, (width - houseW) / 2), depth - houseD, houseW, houseD}
+                : house(depth, houseW, houseD, width);
         if (h[1] < 0) {
             LAST_FIT = 0;
             return Optional.empty();
@@ -245,7 +254,10 @@ public final class Plots {
             int depth, Direction door) {
         int[] plot = world(corner.getX(), corner.getZ(), width, depth, door, 0, 0, width, depth);
         level(level, plot[0], plot[1], plot[0] + plot[2] - 1, plot[1] + plot[3] - 1, corner.getY());
-        Optional<Kits.Placed> placed = Kits.place(level, kit.id(), corner, door);
+        // Its front on the plot's street, in the middle of its width.
+        int[] at = world(corner.getX(), corner.getZ(), width, depth, door, Math.max(0, (width - kit.width()) / 2),
+                Math.max(0, depth - kit.depth()), kit.width(), kit.depth());
+        Optional<Kits.Placed> placed = Kits.place(level, kit.id(), new BlockPos(at[0], corner.getY(), at[1]), door);
         if (placed.isEmpty()) {
             return Optional.empty();
         }
