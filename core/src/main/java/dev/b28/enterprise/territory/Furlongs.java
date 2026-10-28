@@ -43,6 +43,8 @@ public final class Furlongs {
         String state;
         /** How far its ground rises and falls across it: a hill's field or a flat one. */
         int relief;
+        /** Its blocks: what can be farmed in it. */
+        int area;
 
         Field(int holding, int k, int n, int x0, int z0, int x1, int z1, String state, int relief) {
             this(holding, k, n, x0, z0, x1, z1, state);
@@ -225,6 +227,7 @@ public final class Furlongs {
             }
             Field f = new Field(holding, k, n, bx0, bz0, bx1, bz1, dressing(Zoning.mix(town * 31 + holding, e.getKey())),
                     hi >= lo ? hi - lo : 0);
+            f.area = cells.size();
             m.fields.add(f);
             lay(level, p, off, f, cells);
         }

@@ -839,7 +839,7 @@ public final class FieldMaps extends SavedData {
                         m.fields.size());
                 return laid;
             }
-            return 0; // its ground loading: this holding again next look
+            // Its ground not loaded: the next holding's tried, this one again when it is.
         }
         return 0;
     }
@@ -913,7 +913,7 @@ public final class FieldMaps extends SavedData {
             ListTag fields = new ListTag();
             for (Furlongs.Field f : m.fields) {
                 CompoundTag ft = new CompoundTag();
-                ft.putIntArray("at", new int[] {f.holding, f.k, f.n, f.x0, f.z0, f.x1, f.z1, f.relief});
+                ft.putIntArray("at", new int[] {f.holding, f.k, f.n, f.x0, f.z0, f.x1, f.z1, f.relief, f.area});
                 ft.putString("state", f.state);
                 fields.add(ft);
             }
@@ -962,8 +962,10 @@ public final class FieldMaps extends SavedData {
             for (Tag t : e.getList("fields", Tag.TAG_COMPOUND)) {
                 CompoundTag ft = (CompoundTag) t;
                 int[] at = ft.getIntArray("at");
-                m.fields.add(new Furlongs.Field(at[0], at[1], at[2], at[3], at[4], at[5], at[6], ft.getString("state"),
-                        at.length > 7 ? at[7] : 0));
+                Furlongs.Field f = new Furlongs.Field(at[0], at[1], at[2], at[3], at[4], at[5], at[6], ft.getString("state"),
+                        at.length > 7 ? at[7] : 0);
+                f.area = at.length > 8 ? at[8] : 0;
+                m.fields.add(f);
             }
             for (int h : e.getIntArray("laidOut")) {
                 m.laidOut.add(h);
