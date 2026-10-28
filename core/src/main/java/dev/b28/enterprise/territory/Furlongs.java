@@ -41,6 +41,13 @@ public final class Furlongs {
     static final class Field {
         final int holding, k, n, x0, z0, x1, z1;
         String state;
+        /** How far its ground rises and falls across it: a hill's field or a flat one. */
+        int relief;
+
+        Field(int holding, int k, int n, int x0, int z0, int x1, int z1, String state, int relief) {
+            this(holding, k, n, x0, z0, x1, z1, state);
+            this.relief = relief;
+        }
 
         Field(int holding, int k, int n, int x0, int z0, int x1, int z1, String state) {
             this.holding = holding;
@@ -208,7 +215,16 @@ public final class Furlongs {
                 bx1 = Math.max(bx1, c[0]);
                 bz1 = Math.max(bz1, c[1]);
             }
-            Field f = new Field(holding, k, n, bx0, bz0, bx1, bz1, dressing(Zoning.mix(town * 31 + holding, e.getKey())));
+            int lo = Integer.MAX_VALUE, hi = Integer.MIN_VALUE;
+            for (int[] c : cells) {
+                int y = Earthworks.height(level, c[0], c[1]);
+                if (y != Integer.MIN_VALUE) {
+                    lo = Math.min(lo, y);
+                    hi = Math.max(hi, y);
+                }
+            }
+            Field f = new Field(holding, k, n, bx0, bz0, bx1, bz1, dressing(Zoning.mix(town * 31 + holding, e.getKey())),
+                    hi >= lo ? hi - lo : 0);
             m.fields.add(f);
             lay(level, p, off, f, cells);
         }
@@ -289,12 +305,29 @@ public final class Furlongs {
      * The unsown field a crop goes in: in the crop's ring first, nearest the bell, in the town's land ({@code held}, any
      * if empty). Its corner (its bounds' north-west, at the bell's height) names it.
      */
-    static Optional<Field> site(TownPlans.Plan plan, FieldMaps.TownMap m, FieldMaps.Ring ring, java.util.Set<dev.b28.enterprise.hex.Hex> held) {
+    static Optional<Field> site(TownPlans.Plan plan, FieldMaps.TownMap m, FieldMaps.Ring ring, java.util.Set<dev.b28.enterprise.hex.Hex> held,
+            Item crop) {
         BlockPos bell = plan.bell();
+        boolean hill = onHills(crop);
+        // A flat crop on flat ground only; a hill crop takes a hill's field first, leaving the flat for those that need it.
         return m.fields.stream().filter(f -> !f.sown())
                 .filter(f -> m.tracks.get(m.parcels.get(f.holding).track()).ring() == ring)
+                .filter(f -> hill ? f.relief <= HILL : f.relief <= FLAT)
                 .filter(f -> held.isEmpty() || held.contains(dev.b28.enterprise.hex.Hex.at((f.x0 + f.x1) / 2.0, (f.z0 + f.z1) / 2.0)))
-                .min(Comparator.comparingDouble(f -> Math.hypot((f.x0 + f.x1) / 2.0 - bell.getX(), (f.z0 + f.z1) / 2.0 - bell.getZ())));
+                .min(Comparator.comparingInt((Field f) -> hill && f.relief <= FLAT ? 1 : 0)
+                        .thenComparingDouble(f -> Math.hypot((f.x0 + f.x1) / 2.0 - bell.getX(), (f.z0 + f.z1) / 2.0 - bell.getZ())));
+    }
+
+    /** The most a flat crop's field may rise and fall; a hill crop's. */
+    static final int FLAT = 2, HILL = 8;
+
+    /**
+     * Does the crop grow on a hillside, as it does in the world? Wheat (and the cereals) were grown up hillsides in strips
+     * and on terraces; potatoes are an upland crop, grown on ridges; berry bushes take a slope as vines and orchards do.
+     * Carrots and beetroot want deep, loose, level soil, and cane stands in water: the flat.
+     */
+    static boolean onHills(Item crop) {
+        return crop == Items.WHEAT || crop == Items.POTATO || crop == Items.SWEET_BERRIES;
     }
 
     /** The plots a field is sown with: what the town paid for, a field's worth. */
@@ -324,14 +357,32 @@ public final class Furlongs {
             return;
         }
         heights.sort(Integer::compare);
-        int y = heights.get(heights.size() / 2);
+        int median = heights.get(heights.size() / 2);
+        boolean terraced = onHills(crop) && f.relief > FLAT;
+        // A hill crop on contour terraces: each block at the land's own height (no step over one, so it's walked),
+        // water only where nothing lower stands beside it to spill onto (a farmland a step below still drinks from it).
+        Map<Long, Integer> at = new HashMap<>();
+        for (int[] c : cells) {
+            int y0 = Earthworks.height(level, c[0], c[1]);
+            at.put(BlockPos.asLong(c[0], 0, c[1]), terraced && y0 != Integer.MIN_VALUE ? y0 : median);
+        }
         int planted = 0;
         for (int[] c : cells) {
             if (planted >= PLOTS) {
                 break;
             }
             int x = c[0], z = c[1];
+            int y = at.get(BlockPos.asLong(x, 0, z));
             int across = Math.floorMod((p.northSouth() ? x : z) - off[0], PITCH);
+            boolean channel = across == STRIP / 2;
+            if (terraced && channel) {
+                for (int[] d : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                    int ny = Earthworks.height(level, x + d[0], z + d[1]);
+                    if (ny != Integer.MIN_VALUE && ny < y) {
+                        channel = false; // it would run down the hill
+                    }
+                }
+            }
             Plots.level(level, x, z, x, z, y);
             fell(level, x, y, z);
             BlockPos ground = new BlockPos(x, y, z), over = ground.above();
@@ -350,7 +401,7 @@ public final class Furlongs {
                     level.setBlock(over, Blocks.SUGAR_CANE.defaultBlockState(), 3);
                     planted++;
                 }
-            } else if (across == STRIP / 2) {
+            } else if (channel) {
                 level.setBlock(ground, Blocks.WATER.defaultBlockState(), 3);
             } else {
                 level.setBlock(ground, Blocks.FARMLAND.defaultBlockState(), 3);

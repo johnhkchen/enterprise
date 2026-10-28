@@ -506,7 +506,7 @@ public final class FieldMaps extends SavedData {
         Ring first = ringOf(crop);
         // One of its laid-out fields, unsown, if it has one (its own ring's first).
         for (Ring ring : first == Ring.GARDEN ? List.of(Ring.GARDEN, Ring.GRAIN) : List.of(Ring.GRAIN, Ring.GARDEN)) {
-            Optional<Furlongs.Field> field = Furlongs.site(plan, m, ring, held);
+            Optional<Furlongs.Field> field = Furlongs.site(plan, m, ring, held, crop);
             if (field.isPresent()) {
                 Furlongs.Field f = field.get();
                 sitedFields.put(BlockPos.asLong(f.x0, 0, f.z0), f);
@@ -913,7 +913,7 @@ public final class FieldMaps extends SavedData {
             ListTag fields = new ListTag();
             for (Furlongs.Field f : m.fields) {
                 CompoundTag ft = new CompoundTag();
-                ft.putIntArray("at", new int[] {f.holding, f.k, f.n, f.x0, f.z0, f.x1, f.z1});
+                ft.putIntArray("at", new int[] {f.holding, f.k, f.n, f.x0, f.z0, f.x1, f.z1, f.relief});
                 ft.putString("state", f.state);
                 fields.add(ft);
             }
@@ -962,7 +962,8 @@ public final class FieldMaps extends SavedData {
             for (Tag t : e.getList("fields", Tag.TAG_COMPOUND)) {
                 CompoundTag ft = (CompoundTag) t;
                 int[] at = ft.getIntArray("at");
-                m.fields.add(new Furlongs.Field(at[0], at[1], at[2], at[3], at[4], at[5], at[6], ft.getString("state")));
+                m.fields.add(new Furlongs.Field(at[0], at[1], at[2], at[3], at[4], at[5], at[6], ft.getString("state"),
+                        at.length > 7 ? at[7] : 0));
             }
             for (int h : e.getIntArray("laidOut")) {
                 m.laidOut.add(h);
