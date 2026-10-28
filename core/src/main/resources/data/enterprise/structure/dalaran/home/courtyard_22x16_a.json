@@ -1,0 +1,83 @@
+{
+  "id": "enterprise:dalaran/home/courtyard_22x16_a",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "home",
+  "plots": 2,
+  "footprint": [
+    22,
+    16
+  ],
+  "height": 18,
+  "ground": 2,
+  "front": "south (z 15) to the street; z 14-15 the forecourt",
+  "court": "open to the sky, walkable (an outside room)",
+  "entrances": [
+    {
+      "at": [
+        10,
+        3,
+        15
+      ],
+      "facing": "south",
+      "width": 2
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        2,
+        3,
+        9
+      ],
+      "foot": [
+        2,
+        3,
+        10
+      ]
+    },
+    {
+      "head": [
+        4,
+        3,
+        9
+      ],
+      "foot": [
+        4,
+        3,
+        10
+      ]
+    },
+    {
+      "head": [
+        17,
+        3,
+        9
+      ],
+      "foot": [
+        17,
+        3,
+        10
+      ]
+    },
+    {
+      "head": [
+        19,
+        3,
+        9
+      ],
+      "foot": [
+        19,
+        3,
+        10
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south"
+  ]
+}
