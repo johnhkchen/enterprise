@@ -1,0 +1,21 @@
+{
+  "id": "bay_party_ground",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "slot": "bay",
+  "set": "dalaran/platform_hall",
+  "size": [
+    2,
+    5,
+    1
+  ],
+  "layer": "shell",
+  "where": {
+    "storey": "ground"
+  },
+  "mirror": true,
+  "relief": "party",
+  "weight": 1,
+  "module": "bay_party_ground"
+}

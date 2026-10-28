@@ -1,0 +1,20 @@
+{
+  "id": "corner_upper",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "slot": "corner",
+  "set": "dalaran/platform_hall",
+  "size": [
+    2,
+    5,
+    2
+  ],
+  "layer": "shell",
+  "where": {
+    "storey": "upper"
+  },
+  "mirror": true,
+  "weight": 1,
+  "module": "corner_upper"
+}
