@@ -225,6 +225,12 @@ public final class LandAdapter {
                 }
                 // Its plan: its walls' rectangles and its avenues to their gates (John: "town plan").
                 var plan = dev.b28.enterprise.territory.TownPlans.get(server).ensure(level, town, bell);
+                // Its vanilla village, once its plots are drawn, made over in the new style at once (John: "a onetime
+                // conversion of the town into the new style at establishment").
+                // (The look after its lanes are laid: its kingdom told by then.)
+                if (plan.lanes() && !dev.b28.enterprise.territory.TownPlans.get(server).converted(town) && !lanesSeen.add(town)) {
+                    convert(level, town, bell);
+                }
                 // Its first farm tracks, with its avenues (John: "some at founding").
                 if (plan.avenues()) {
                     dev.b28.enterprise.territory.FieldMaps.get(server).found(level, town);
@@ -702,7 +708,7 @@ public final class LandAdapter {
                     return Optional.of(farmhouse.get().meta());
                 }
             }
-            if (!tier.equals("hamlet") && laidSoFar % 3 == 2) {
+            if (!converting && !tier.equals("hamlet") && laidSoFar % 3 == 2) {
                 var trades = level.getPoiManager().getInRange(t -> true, townPlan.bell(), 48,
                         net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY)
                         .map(r -> level.getPoiManager().getType(r.getPos()).flatMap(h -> h.unwrapKey())
@@ -761,6 +767,128 @@ public final class LandAdapter {
                 new BlockPos(homesLaid.getOrDefault(town, 0), 0, 0)).flatMap(id -> dev.b28.enterprise.territory.Kits.meta(resources, id));
         kit.ifPresent(m -> homeKits.put(town, m));
         return kit;
+    }
+
+    /** The towns seen with their lanes laid, this server run. */
+    private final Set<Long> lanesSeen = new HashSet<>();
+
+    /** Laying a converted village's homes again: its workshops' job sites kept real, not twinned. */
+    private boolean converting;
+
+    /**
+     * The town's vanilla village cleared (`Conversion`) and laid again in its kingdom's style at once, nobody without a
+     * bed or a job: each job site in its trade's workshop (its workstation real: its villager keeps the job), or at the
+     * forum's edge where the kingdom has none; then homes on the plan's plots till they hold as many beds as it had.
+     * Once a town, when all its village is loaded.
+     */
+    private void convert(ServerLevel level, long town, BlockPos bell) {
+        var cleared = dev.b28.enterprise.territory.Conversion.clear(level, bell);
+        if (cleared.isEmpty()) {
+            return; // not all loaded yet
+        }
+        dev.b28.enterprise.territory.TownPlans.get(level.getServer()).convert(town);
+        var resources = level.getServer().getResourceManager();
+        String kingdom = dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town);
+        var townPlan = dev.b28.enterprise.territory.TownPlans.get(level.getServer()).of(town);
+        int beds = 0, homes = 0, shops = 0, stalls = 0;
+        converting = true;
+        try {
+            for (var job : cleared.get().jobSites()) {
+                String trade = net.minecraft.world.entity.ai.village.poi.PoiTypes.forState(job).flatMap(h -> h.unwrapKey())
+                        .map(k -> k.location().getPath()).orElse("");
+                var shop = trade.isEmpty() ? Optional.<dev.b28.enterprise.territory.Kits.Meta>empty()
+                        : dev.b28.enterprise.territory.Kits.choose(resources, kingdom, "workshop:" + trade,
+                                townPlan.cell() - 2 * dev.b28.enterprise.territory.Plots.SIDE,
+                                townPlan.deepest() - dev.b28.enterprise.territory.TownPlans.FRONT_YARD, town,
+                                new BlockPos(shops, 0, 0)).flatMap(id -> dev.b28.enterprise.territory.Kits.meta(resources, id));
+                if (shop.isPresent()) {
+                    homeKits.put(town, shop.get());
+                    workshops.put(town, trade);
+                    int b = layHome(level, town, bell);
+                    if (b >= 0) {
+                        beds += b;
+                        shops++;
+                        continue;
+                    }
+                }
+                if (stall(level, bell, job, trade, kingdom, town, stalls)) {
+                    stalls++;
+                }
+            }
+            while (beds < cleared.get().beds() && homes < 2 * cleared.get().beds() + 4) {
+                int b = layHome(level, town, bell);
+                if (b < 0) {
+                    break;
+                }
+                beds += b;
+                homes++;
+            }
+        } finally {
+            converting = false;
+        }
+        Enterprise.LOGGER.info("Town {} converted to the new style: {} homes and {} workshops ({} of {} beds), {} job sites at "
+                + "its forum's edge", town, homes, shops, beds, cleared.get().beds(), stalls);
+    }
+
+    /** The town's next home laid on its plot now, untold to the core: its beds, or -1 if none could be. */
+    private int layHome(ServerLevel level, long town, BlockPos bell) {
+        var home = new Work.Home();
+        Optional<BlockPos> corner = site(level, town, bell, home);
+        var kit = Optional.ofNullable(homeKits.get(town));
+        if (corner.isEmpty() || kit.isEmpty() || !homePlots.containsKey(town)) {
+            homeKits.remove(town);
+            homeBuilt.remove(town);
+            homePlots.remove(town);
+            workshops.remove(town);
+            farmsteadNext.remove(town);
+            return -1;
+        }
+        int beds = kit.get().bedHeads().size();
+        return place(level, town, bell, home, 1, corner, new Work[] {home}) ? beds : -1;
+    }
+
+    /**
+     * A job site set at the forum's edge (the {@code n}th stall round it, 3 x 3 spots 4 apart on a ring past the forum):
+     * its trade's stall from the kingdom's kits where it has one (`Jobs.buildStall`: awning, goods, its locker), its
+     * front to the bell; the job site alone where it hasn't a stall for the trade. False if no spot on the ring is level.
+     */
+    private static boolean stall(ServerLevel level, BlockPos bell, net.minecraft.world.level.block.state.BlockState job,
+            String trade, String kingdom, long town, int n) {
+        int r = dev.b28.enterprise.territory.Forums.REACH + 3, around = 8 * r / 4;
+        for (int k = n; k < n + around; k++) {
+            int step = (k % around) * 4, side = step / (2 * r), along = step % (2 * r) - r;
+            int dx = switch (side) { case 0 -> along; case 1 -> r; case 2 -> -along; default -> -r; };
+            int dz = switch (side) { case 0 -> -r; case 1 -> along; case 2 -> r; default -> -along; };
+            BlockPos corner = level.getHeightmapPos(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                    bell.offset(dx - 1, 0, dz - 1)).below();
+            if (Math.abs(corner.getY() - bell.getY()) > 2 || !level3(level, corner)) {
+                continue;
+            }
+            var t = dev.b28.enterprise.territory.Jobs.TRADES.stream()
+                    .filter(x -> net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION.getKey(x.profession()).getPath()
+                            .equals(trade)).findFirst();
+            if (t.isPresent()) {
+                dev.b28.enterprise.territory.Jobs.buildStall(level, corner, t.get(), kingdom, town, bell);
+            } else {
+                level.setBlock(corner.offset(1, 1, 1), job, 3);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /** Is the 3 x 3 from {@code corner} level ground (each column's top at its height) with air over it? */
+    private static boolean level3(ServerLevel level, BlockPos corner) {
+        for (int dx = 0; dx < 3; dx++) {
+            for (int dz = 0; dz < 3; dz++) {
+                BlockPos at = corner.offset(dx, 0, dz);
+                if (!level.getBlockState(at).isFaceSturdy(level, at, net.minecraft.core.Direction.UP)
+                        || !level.getBlockState(at.above()).isAir() || !level.getBlockState(at.above(2)).isAir()) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /** The widest home along its street, and the deepest back from it, of a town with no plan: a 14 x 14 ward's. */
@@ -855,7 +983,19 @@ public final class LandAdapter {
     public boolean lay(ServerLevel level, long town, BlockPos bell, Work work, double share, Optional<BlockPos> site) {
         // What the host says it laid: the work, or a pasture with the grass inside its fence.
         Work[] reported = {work};
-        boolean laid = switch (work) {
+        boolean laid = place(level, town, bell, work, share, site, reported);
+        if (laid) {
+            pending.add(new Input.Built(town, reported[0], Math.min(1, share)));
+        } else {
+            Enterprise.LOGGER.debug("Town {}'s {} can't be laid yet", town, work);
+        }
+        return laid;
+    }
+
+    /** Lays the work as {@link #lay} does, told to nobody: {@code reported} what it laid (a pasture its fence). */
+    private boolean place(ServerLevel level, long town, BlockPos bell, Work work, double share, Optional<BlockPos> site,
+            Work[] reported) {
+        return switch (work) {
             case Work.Pasture p -> {
                 // The largest rectangle of open grassland on the town's zoned ground (`Pastures.site`), fenced.
                 var found = dev.b28.enterprise.territory.Pastures.site(level, bell);
@@ -985,7 +1125,7 @@ public final class LandAdapter {
                             dev.b28.enterprise.territory.Vanilla.replace(level, bell, (int) beds);
                         }
                         // A workshop's workstation made its decorative twin: the trade shows, nobody is hired by it.
-                        if (workshops.remove(town) != null) {
+                        if (workshops.remove(town) != null && !converting) {
                             for (BlockPos station : onPlot.get().house().workstations()) {
                                 dev.b28.enterprise.settlement.Props.twinOf(level, station);
                             }
@@ -1031,12 +1171,6 @@ public final class LandAdapter {
                 yield true;
             }
         };
-        if (laid) {
-            pending.add(new Input.Built(town, reported[0], Math.min(1, share)));
-        } else {
-            Enterprise.LOGGER.debug("Town {}'s {} can't be laid yet", town, work);
-        }
-        return laid;
     }
 
     /**

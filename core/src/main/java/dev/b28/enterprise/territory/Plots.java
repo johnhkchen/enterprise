@@ -102,8 +102,12 @@ public final class Plots {
         String said = String.format("No plot for a house %d wide by %s's bell: %d frontages, %d on a wall or street, %d "
                 + "built on or a town's, %d too steep, %d too high or low", house.width(), bell.toShortString(), frontages.size(),
                 why[0], why[1], why[2], why[3]);
+        String on = BLOCKED.isEmpty() ? "" : " (built on: " + BLOCKED.entrySet().stream()
+                .sorted(java.util.Map.Entry.<String, Integer>comparingByValue().reversed()).limit(4)
+                .map(e -> e.getValue() + " " + e.getKey()).collect(java.util.stream.Collectors.joining(", ")) + ")";
+        BLOCKED.clear();
         if (!said.equals(SAID.put(bell.asLong() * 31 + house.width(), said))) {
-            dev.b28.enterprise.Enterprise.LOGGER.info(said);
+            dev.b28.enterprise.Enterprise.LOGGER.info(said + on);
         }
         return Optional.empty();
     }
@@ -172,6 +176,9 @@ public final class Plots {
     /** Why the last {@link #ground} failed: 0 built on or a town's, 1 too steep. */
     private static int LAST_WHY;
 
+    /** What stood on the plots refused as built on, by block, since the last refusal said (for the log). */
+    private static final java.util.Map<String, Integer> BLOCKED = new java.util.TreeMap<>();
+
     static int ground(ServerLevel level, int x0, int z0, int sx, int sz) {
         return ground(level, x0, z0, sx, sz, ROLL);
     }
@@ -185,17 +192,22 @@ public final class Plots {
                 int x = x0 + dx, z = z0 + dz;
                 int y = FieldMaps.under(level, x, z);
                 if (y == Integer.MIN_VALUE) {
+                    BLOCKED.merge("unloaded", 1, Integer::sum);
                     return Integer.MIN_VALUE;
                 }
                 BlockPos at = new BlockPos(x, y, z);
                 BlockState state = level.getBlockState(at);
                 if (!dev.b28.enterprise.settlement.Grounds.natural(state) || state.is(Blocks.FARMLAND)
                         || !state.getFluidState().isEmpty()) {
+                    BLOCKED.merge(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath(), 1,
+                            Integer::sum);
                     return Integer.MIN_VALUE; // something built, a field, or water
                 }
                 for (int up = 1; up <= 3; up++) {
                     BlockPos over = at.above(up);
                     if (level.getBlockEntity(over) != null || level.getPoiManager().getType(over).isPresent()) {
+                        BLOCKED.merge("a town's " + net.minecraft.core.registries.BuiltInRegistries.BLOCK
+                                .getKey(level.getBlockState(over).getBlock()).getPath(), 1, Integer::sum);
                         return Integer.MIN_VALUE;
                     }
                 }

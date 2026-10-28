@@ -108,6 +108,19 @@ public final class TownPlans extends SavedData {
         return plans.get(town);
     }
 
+    /** The towns whose vanilla village has been converted to the new style (`Conversion`): once each. */
+    private final java.util.Set<Long> converted = new java.util.TreeSet<>();
+
+    public boolean converted(long town) {
+        return converted.contains(town);
+    }
+
+    public void convert(long town) {
+        if (converted.add(town)) {
+            setDirty();
+        }
+    }
+
     /**
      * The town's plan fixed round {@code bell} if it has none (its village measured now), and its avenues laid once their
      * ground is loaded. Returns the plan.
@@ -560,6 +573,7 @@ public final class TownPlans extends SavedData {
             towns.put(Long.toString(town), e);
         });
         tag.put("towns", towns);
+        tag.putLongArray("converted", converted.stream().mapToLong(Long::longValue).toArray());
         return tag;
     }
 
@@ -574,6 +588,9 @@ public final class TownPlans extends SavedData {
                         new Rect(o[0], o[1], o[2], o[3]), e.getBoolean("avenues"), e.getBoolean("lanes"),
                         e.contains("ward") ? e.getInt("ward") : FIRST_WARD));
             }
+        }
+        for (long town : tag.getLongArray("converted")) {
+            out.converted.add(town);
         }
         return out;
     }

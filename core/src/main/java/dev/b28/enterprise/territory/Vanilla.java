@@ -33,8 +33,8 @@ public final class Vanilla {
         if (beds <= 0) {
             return 0;
         }
-        StructureStart village = level.structureManager().getStructureWithPieceAt(bell, StructureTags.VILLAGE);
-        if (village == null || !village.isValid()) {
+        StructureStart village = Conversion.village(level, bell);
+        if (village == null) {
             return 0;
         }
         PoiManager pois = level.getPoiManager();
