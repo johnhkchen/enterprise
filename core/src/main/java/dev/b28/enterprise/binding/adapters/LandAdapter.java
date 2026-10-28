@@ -843,6 +843,12 @@ public final class LandAdapter {
                         + "built, {} ended at a landing", town, (System.nanoTime() - began) / 1_000_000, s.columns(), s.cut(),
                 s.fill(), s.felled(), s.steps(), s.bridges(), s.conflicts(), s.plotsOver(), s.natural(), s.crossings(),
                 s.built(), s.landings()));
+        // A town on open ground stands with its founding kit before its houses come (the studio's, batch 034).
+        if (dev.b28.enterprise.territory.Conversion.village(level, bell) == null && plans.main(town).isPresent()) {
+            int kit = dev.b28.enterprise.territory.Founding.lay(level, townPlan, kingdom, plans.main(town).get());
+            Enterprise.LOGGER.info("Town {} stands with its founding kit ({} parts), its main street {}", town, kit,
+                    plans.main(town).get().getName());
+        }
         int beds = 0, homes = 0, shops = 0, stalls = 0;
         converting = true;
         try {

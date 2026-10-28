@@ -90,15 +90,26 @@ public final class Plots {
         // A lot whole as wide as it is (its compound wall its edge); a house with its side yards.
         int plotWidth = house.whole() ? house.width() : width(house.width());
         // A founded town's main street first (its first builds face each other across it).
-        var frontages = TownPlans.mainFirst(plan.get(), TownPlans.plots(plan.get(), house.width(), plotWidth),
-                level.getServer() == null ? java.util.Optional.empty() : TownPlans.get(level.getServer()).mainAt(bell));
+        var main = level.getServer() == null ? java.util.Optional.<net.minecraft.core.Direction>empty()
+                : TownPlans.get(level.getServer()).mainAt(bell);
+        var frontages = TownPlans.mainFirst(plan.get(), TownPlans.plots(plan.get(), house.width(), plotWidth), main);
+        int[] mainWhy = new int[4];
         for (TownPlans.Frontage f : frontages) {
             int entrance = house.entrances().stream().findFirst().map(BlockPos::getX).orElse(house.width() / 2);
             Optional<Site> site = fits(level, f, bell, depth, house.width(), house.depth(), entrance, house.whole());
             if (site.isPresent()) {
+                if (main.isPresent() && !TownPlans.onMain(plan.get(), f, main.get())) {
+                    // Off the main street: why its plots wouldn't take it (a founded town's first builds face across it).
+                    dev.b28.enterprise.Enterprise.LOGGER.info("A house {} wide by {}'s bell off its main street: {} on a wall or "
+                            + "street, {} built on or a town's, {} too steep, {} too high or low", house.width(),
+                            bell.toShortString(), mainWhy[0], mainWhy[1], mainWhy[2], mainWhy[3]);
+                }
                 return site;
             }
             why[LAST_FIT]++;
+            if (main.isPresent() && TownPlans.onMain(plan.get(), f, main.get())) {
+                mainWhy[LAST_FIT]++;
+            }
         }
         // Said when the reasons change, not at every look the town asks again (r35: 445 lines of one full town).
         String said = String.format("No plot for a house %d wide by %s's bell: %d frontages, %d on a wall or street, %d "

@@ -101,7 +101,12 @@ public final class Kits {
         // [w, d]; or {at, size}: what stands on the ground, inside a template its overhang wider every side (Dalaran's
         // eaves, thread 0010): the template whole is what's laid.
         JsonArray fp;
-        if (o.get("footprint").isJsonObject()) {
+        if (!o.has("footprint")) {
+            // A part on the yard contract (the founding kit's): its width and depth.
+            fp = new JsonArray();
+            fp.add(o.get("width").getAsInt());
+            fp.add(o.get("depth").getAsInt());
+        } else if (o.get("footprint").isJsonObject()) {
             JsonObject f = o.getAsJsonObject("footprint");
             JsonArray at = f.getAsJsonArray("at"), size = f.getAsJsonArray("size");
             fp = new JsonArray();

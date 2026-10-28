@@ -261,10 +261,15 @@ public final class Terraform {
         // landingBlocks).
         int landings = 0;
         for (Grading.Crossing c : dropped) {
-            if (c.facing() >= 0) {
+            // A dropped crossing of 3 or less gets no jetty: the street just ends at the water (the studio's rule).
+            if (c.facing() >= 0 && c.span() > 3) {
                 int i = c.nearBank()[1] * X + c.nearBank()[0];
-                landing(level, kingdom, x0 + c.nearBank()[0], z0 + c.nearBank()[1], c.facing(), target[i], c.water(),
-                        streets.get(c.street()).width(), pave);
+                int width = streets.get(c.street()).width();
+                landing(level, kingdom, x0 + c.nearBank()[0], z0 + c.nearBank()[1], c.facing(), target[i], c.water(), width, pave);
+                // A crossing the street would have served but too long to bridge yet: a ferry's stage beyond the steps.
+                if (c.keep() && c.kind().equals("ferry")) {
+                    ferryStage(level, x0 + c.nearBank()[0], z0 + c.nearBank()[1], c.facing(), target[i], c.water(), width);
+                }
                 landings++;
             }
         }
@@ -388,6 +393,41 @@ public final class Terraform {
             level.setBlock(new BlockPos(x, streetLevel + 1, z), parapet(kingdom, true), 2 | 16);
             level.setBlock(new BlockPos(x, streetLevel + 2, z), parapet(kingdom, true), 2 | 16);
             level.setBlock(new BlockPos(x, streetLevel + 3, z), Blocks.LANTERN.defaultBlockState(), 2 | 16);
+        }
+    }
+
+    /**
+     * A ferry's landing stage beyond a landing's steps (the studio's ferryStageBlocks): a broad timber stage on posts out
+     * from the jetty's end, a post and lantern at its corners, a moored skiff alongside.
+     */
+    static void ferryStage(ServerLevel level, int x0, int z0, int facing, int streetLevel, int water, int width) {
+        int[] f = Grading.DIRS[facing];
+        int fx = f[0], fz = f[1], sx = fz, sz = fx, half = (width - 1) / 2, deck = water + 1;
+        // Past the steps (2 a block of fall) and the jetty.
+        int start = 2 * Math.max(0, streetLevel - deck - 1) + 1 + JETTY;
+        for (int i = 0; i < 5; i++) {
+            for (int o = -half - 1; o <= width - half; o++) {
+                int x = x0 + fx * (start + i) + sx * o, z = z0 + fz * (start + i) + sz * o;
+                level.setBlock(new BlockPos(x, deck, z), Blocks.SPRUCE_PLANKS.defaultBlockState(), 2 | 16);
+                boolean corner = (i == 0 || i == 4) && (o == -half - 1 || o == width - half);
+                if (corner) {
+                    for (int y = deck - 1; y >= water - 3; y--) {
+                        level.setBlock(new BlockPos(x, y, z), Blocks.SPRUCE_LOG.defaultBlockState(), 2 | 16);
+                    }
+                    if (i == 4) {
+                        level.setBlock(new BlockPos(x, deck + 1, z), Blocks.SPRUCE_FENCE.defaultBlockState(), 2 | 16);
+                        level.setBlock(new BlockPos(x, deck + 2, z), Blocks.LANTERN.defaultBlockState(), 2 | 16);
+                    }
+                }
+            }
+        }
+        // The skiff, moored along the stage's side: a hull of slabs and open trapdoors.
+        for (int i = 1; i <= 3; i++) {
+            int o = width - half + 1;
+            int x = x0 + fx * (start + i) + sx * o, z = z0 + fz * (start + i) + sz * o;
+            level.setBlock(new BlockPos(x, water, z), Blocks.SPRUCE_SLAB.defaultBlockState()
+                    .setValue(net.minecraft.world.level.block.SlabBlock.TYPE, SlabType.TOP)
+                    .setValue(net.minecraft.world.level.block.SlabBlock.WATERLOGGED, true), 2 | 16);
         }
     }
 
