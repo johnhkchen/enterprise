@@ -89,7 +89,9 @@ public final class Plots {
         int[] why = new int[4];
         // A lot whole as wide as it is (its compound wall its edge); a house with its side yards.
         int plotWidth = house.whole() ? house.width() : width(house.width());
-        var frontages = TownPlans.plots(plan.get(), house.width(), plotWidth);
+        // A founded town's main street first (its first builds face each other across it).
+        var frontages = TownPlans.mainFirst(plan.get(), TownPlans.plots(plan.get(), house.width(), plotWidth),
+                level.getServer() == null ? java.util.Optional.empty() : TownPlans.get(level.getServer()).mainAt(bell));
         for (TownPlans.Frontage f : frontages) {
             int entrance = house.entrances().stream().findFirst().map(BlockPos::getX).orElse(house.width() / 2);
             Optional<Site> site = fits(level, f, bell, depth, house.width(), house.depth(), entrance, house.whole());

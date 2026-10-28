@@ -108,6 +108,78 @@ public final class TownPlans extends SavedData {
         return plans.get(town);
     }
 
+    /** The towns settlers founded on open ground: planned for the town they'll grow to, built in the new style. */
+    private final java.util.Set<Long> founded = new java.util.TreeSet<>();
+
+    public boolean founded(long town) {
+        return founded.contains(town);
+    }
+
+    public void found(long town) {
+        if (founded.add(town)) {
+            setDirty();
+        }
+    }
+
+    /** A founded town's main street: the avenue its first builds face across (the studio's, thread 0012: the road the
+     *  settlers came by, toward their home town). */
+    private final Map<Long, net.minecraft.core.Direction> mains = new LinkedHashMap<>();
+
+    public java.util.Optional<net.minecraft.core.Direction> main(long town) {
+        return java.util.Optional.ofNullable(mains.get(town));
+    }
+
+    /** The main street of the town planned round {@code bell}, if it has one. */
+    public java.util.Optional<net.minecraft.core.Direction> mainAt(BlockPos bell) {
+        for (var e : plans.entrySet()) {
+            if (e.getValue().bell().equals(bell)) {
+                return main(e.getKey());
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
+    public void setMain(long town, net.minecraft.core.Direction way) {
+        mains.put(town, way);
+        setDirty();
+    }
+
+    /** The way from {@code bell} toward {@code toward}, along the nearer avenue. */
+    public static net.minecraft.core.Direction toward(BlockPos bell, BlockPos toward) {
+        int dx = toward.getX() - bell.getX(), dz = toward.getZ() - bell.getZ();
+        return Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? net.minecraft.core.Direction.EAST : net.minecraft.core.Direction.WEST)
+                : (dz > 0 ? net.minecraft.core.Direction.SOUTH : net.minecraft.core.Direction.NORTH);
+    }
+
+    /** Is the frontage on the main street (the avenue {@code main} of the bell), either side? */
+    public static boolean onMain(Plan plan, Frontage f, net.minecraft.core.Direction main) {
+        if (!onAvenue(plan, f)) {
+            return false;
+        }
+        int bx = plan.bell().getX(), bz = plan.bell().getZ();
+        double cx = f.x() + f.sx() / 2.0 - bx, cz = f.z() + f.sz() / 2.0 - bz;
+        return switch (main) {
+            case NORTH -> f.door().getAxis() == net.minecraft.core.Direction.Axis.X && cz < 0;
+            case SOUTH -> f.door().getAxis() == net.minecraft.core.Direction.Axis.X && cz > 0;
+            case WEST -> f.door().getAxis() == net.minecraft.core.Direction.Axis.Z && cx < 0;
+            default -> f.door().getAxis() == net.minecraft.core.Direction.Axis.Z && cx > 0;
+        };
+    }
+
+    /** A town's plots main street first (nearest the square first), then as they were. */
+    public static List<Frontage> mainFirst(Plan plan, List<Frontage> plots, java.util.Optional<net.minecraft.core.Direction> main) {
+        if (main.isEmpty()) {
+            return plots;
+        }
+        List<Frontage> out = new ArrayList<>(plots);
+        out.sort(Comparator.comparingInt((Frontage f) -> onMain(plan, f, main.get()) ? 0 : 1));
+        return out;
+    }
+
+    /** How far round its bell a founded town's plan reaches at the least: a grown village's (the studio's planned towns,
+     *  thread 0012: "the plan is laid at founding for the town's eventual tier"). */
+    static final int FOUNDED = 40;
+
     /** The towns whose vanilla village has been converted to the new style (`Conversion`): once each. */
     private final java.util.Set<Long> converted = new java.util.TreeSet<>();
 
@@ -128,7 +200,9 @@ public final class TownPlans extends SavedData {
     public Plan ensure(ServerLevel level, long town, BlockPos bell) {
         Plan plan = plans.get(town);
         if (plan == null) {
-            plan = measure(level, bell);
+            // A town on open ground (settlers', or a player's desk with no village round it) planned for the town it'll be.
+            boolean fresh = founded.contains(town) || Conversion.village(level, bell) == null;
+            plan = measure(level, bell, fresh ? FOUNDED : LEAST);
             plans.put(town, plan);
             setDirty();
             dev.b28.enterprise.Enterprise.LOGGER.info("Town {} plans its walls: inner {} to {}, outer {} to {}", town,
@@ -158,7 +232,12 @@ public final class TownPlans extends SavedData {
 
     /** The village round the bell (its beds, workstations, bell) and the walls it calls for. */
     static Plan measure(ServerLevel level, BlockPos bell) {
-        int x0 = bell.getX() - LEAST, x1 = bell.getX() + LEAST, z0 = bell.getZ() - LEAST, z1 = bell.getZ() + LEAST;
+        return measure(level, bell, LEAST);
+    }
+
+    /** As the other, the inner wall at least {@code least} round the bell. */
+    static Plan measure(ServerLevel level, BlockPos bell, int least) {
+        int x0 = bell.getX() - least, x1 = bell.getX() + least, z0 = bell.getZ() - least, z1 = bell.getZ() + least;
         for (PoiRecord p : level.getPoiManager().getInRange(type -> true, bell, VILLAGE, PoiManager.Occupancy.ANY).toList()) {
             BlockPos at = p.getPos();
             x0 = Math.min(x0, at.getX() - MARGIN);
@@ -599,6 +678,10 @@ public final class TownPlans extends SavedData {
         });
         tag.put("towns", towns);
         tag.putLongArray("converted", converted.stream().mapToLong(Long::longValue).toArray());
+        tag.putLongArray("founded", founded.stream().mapToLong(Long::longValue).toArray());
+        CompoundTag main = new CompoundTag();
+        mains.forEach((town, way) -> main.putInt(Long.toString(town), way.get3DDataValue()));
+        tag.put("mains", main);
         return tag;
     }
 
@@ -616,6 +699,13 @@ public final class TownPlans extends SavedData {
         }
         for (long town : tag.getLongArray("converted")) {
             out.converted.add(town);
+        }
+        for (long town : tag.getLongArray("founded")) {
+            out.founded.add(town);
+        }
+        CompoundTag main = tag.getCompound("mains");
+        for (String key : main.getAllKeys()) {
+            out.mains.put(Long.parseLong(key), net.minecraft.core.Direction.from3DDataValue(main.getInt(key)));
         }
         return out;
     }

@@ -327,6 +327,28 @@ public final class Expeditions extends SavedData {
      * open ground, the Merchant's desk with a chest by it, a Farmer's stall, a lectern and a cartography table, and two
      * cottages. Empty, with nothing built, where there's no open ground for the bell or no room for the desk by it.
      */
+    /**
+     * A settlers' town's square only, in core mode (John: "new town settlement"): its bell, and the Merchant's desk and
+     * chest beside it, on open ground round the spot. The rest (its plan, its land shaped, its first homes and workshops
+     * in its kingdom's style) follows as for any town (`LandAdapter`'s conversion). Empty with no open ground there.
+     */
+    public static Optional<Founding> buildSquare(ServerLevel level, BlockPos target) {
+        Optional<BlockPos> square = Growth.site(level, target, 3, 0);
+        if (square.isEmpty()) {
+            return Optional.empty();
+        }
+        BlockPos bell = square.get().offset(1, 1, 1);
+        Optional<BlockPos> stall = Growth.site(level, bell, 2, 3);
+        if (stall.isEmpty()) {
+            return Optional.empty();
+        }
+        level.setBlock(bell, Blocks.BELL.defaultBlockState().setValue(BellBlock.ATTACHMENT, BellAttachType.FLOOR), 3);
+        BlockPos desk = stall.get().above();
+        level.setBlock(desk, Merchant.DESK.get().defaultBlockState(), 3);
+        level.setBlock(desk.east(), Blocks.CHEST.defaultBlockState(), 3);
+        return Optional.of(new Founding(bell, desk, null));
+    }
+
     public static Optional<Founding> buildTown(ServerLevel level, BlockPos target) {
         Optional<BlockPos> square = Growth.site(level, target, 3, 0);
         if (square.isEmpty()) {

@@ -24,6 +24,8 @@ public final class Grading {
     private Grading() {}
 
     public static final short NONE = Short.MIN_VALUE;
+    /** A boat's clearance under a channel arch's crown, less one (the studio's archClear). */
+    static final int ARCH_CLEAR = 5;
     public static final byte WILD = 0, BLEND = 1, FREE = 2, STREET = 3, PLOT = 4, FIXED = 5, WATER = 6, FORUM = 7, NATURAL = 8;
     static final int[][] DIRS = {{0, -1}, {0, 1}, {1, 0}, {-1, 0}};
     /** The ways down, as {@link #DIRS}. */
@@ -77,13 +79,21 @@ public final class Grading {
     public static Grade grade(int X, int Z, short[] top, boolean[] water, short[] fixed, List<Street> streets,
             List<Plot> plots, int forumX, int forumZ, int forumReach, int forumLevel, int[] outer, int blend,
             List<int[]> serves) {
+        return grade(X, Z, top, water, fixed, streets, plots, forumX, forumZ, forumReach, forumLevel, outer, blend, serves, null);
+    }
+
+    /** As the other; {@code deckOver}: how far over the water the town's deck stands for a span (its kingdom's bridges). */
+    public static Grade grade(int X, int Z, short[] top, boolean[] water, short[] fixed, List<Street> streets,
+            List<Plot> plots, int forumX, int forumZ, int forumReach, int forumLevel, int[] outer, int blend,
+            List<int[]> serves, java.util.function.IntUnaryOperator deckOver) {
         return grade(X, Z, top, water, fixed, streets, plots, forumX, forumZ, forumReach, forumLevel, outer, blend, 3, 4,
-                1 / 3.0, 3, 4, 0.4, serves);
+                1 / 3.0, 3, 4, 0.4, serves, deckOver);
     }
 
     public static Grade grade(int X, int Z, short[] top, boolean[] water, short[] fixed, List<Street> streets,
             List<Plot> plots, int forumX, int forumZ, int forumReach, int forumLevel, int[] outer, int blend, int step,
-            int maxRise, double gradeLimit, int near, int keepAway, double keepFall, List<int[]> serves) {
+            int maxRise, double gradeLimit, int near, int keepAway, double keepFall, List<int[]> serves,
+            java.util.function.IntUnaryOperator deckOver) {
         int N = X * Z;
         byte[] role = new byte[N], bridge = new byte[N];
         short[] target = new short[N];
@@ -178,19 +188,52 @@ public final class Grading {
                     p[k] = k > 0 ? p[k - 1] : firstPin;
                 }
             }
+            // Over water the street is a bridge, its deck high enough for its arches (the studio's rev 5, bridges.mjs): a
+            // run of water of 3 or less a causeway (a block over the water); to 8, a channel arch of 5 wants the deck
+            // archClear + 1 over; to 20, an arch of 7, + 2; longer, an arch of 9, + 3. A floor, held inside the grade
+            // passes, so the banks ramp up to it by half steps.
+            double[] need = new double[n];
+            Arrays.fill(need, Double.NEGATIVE_INFINITY);
+            boolean[] wetK = new boolean[n];
+            for (int k = 0; k < n; k++) {
+                for (int i : cells.get(k)) {
+                    wetK[k] |= water[i];
+                }
+            }
+            for (int a = 0; a < n; a++) {
+                if (!wetK[a] || a > 0 && wetK[a - 1]) {
+                    continue;
+                }
+                int b = a;
+                while (b + 1 < n && wetK[b + 1]) {
+                    b++;
+                }
+                int sp = b - a + 1, over = deckOver != null ? deckOver.applyAsInt(sp)
+                        : sp <= 3 ? 1 : sp <= 8 ? ARCH_CLEAR + 1 : sp <= 20 ? ARCH_CLEAR + 2 : ARCH_CLEAR + 3;
+                for (int k = a; k <= b; k++) {
+                    int w = Integer.MIN_VALUE;
+                    for (int i : cells.get(k)) {
+                        if (water[i]) {
+                            w = Math.max(w, top[i]);
+                        }
+                    }
+                    need[k] = w + over;
+                }
+                a = b;
+            }
             double[] h = new double[n];
             for (int k = 0; k < n; k++) {
-                h[k] = pinned[k] != null ? pinned[k] : p[k];
+                h[k] = Math.max(need[k], pinned[k] != null ? pinned[k] : p[k]);
             }
-            for (int pass = 0; pass < 4; pass++) {
+            for (int pass = 0; pass < 6; pass++) {
                 for (int k = 1; k < n; k++) {
                     if (pinned[k] == null) {
-                        h[k] = Math.min(h[k - 1] + gradeLimit, Math.max(h[k - 1] - gradeLimit, h[k]));
+                        h[k] = Math.max(need[k], Math.min(h[k - 1] + gradeLimit, Math.max(h[k - 1] - gradeLimit, h[k])));
                     }
                 }
                 for (int k = n - 2; k >= 0; k--) {
                     if (pinned[k] == null) {
-                        h[k] = Math.min(h[k + 1] + gradeLimit, Math.max(h[k + 1] - gradeLimit, h[k]));
+                        h[k] = Math.max(need[k], Math.min(h[k + 1] + gradeLimit, Math.max(h[k + 1] - gradeLimit, h[k])));
                     }
                 }
             }
@@ -205,7 +248,7 @@ public final class Grading {
                         wetTop = Math.max(wetTop, top[i]);
                     }
                 }
-                short level = (short) Math.round(wetTop != Integer.MIN_VALUE ? Math.max(h[k], wetTop + 2) : h[k]);
+                short level = (short) Math.round(h[k]);
                 levels[k] = level;
                 wet[k] = wetTop != Integer.MIN_VALUE;
                 for (int i : cells.get(k)) {

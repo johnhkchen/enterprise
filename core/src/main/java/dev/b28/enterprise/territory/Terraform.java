@@ -45,6 +45,16 @@ public final class Terraform {
      * serves the road there, and keeps its crossing.
      */
     public static Optional<Shaped> shape(ServerLevel level, TownPlans.Plan plan, String kingdom, List<BlockPos> others) {
+        return shape(level, plan, kingdom, others, Optional.empty());
+    }
+
+    /**
+     * As the other; {@code main}: a founded town's main street (the studio's, thread 0012): it and the forum paved and
+     * its steps walled; every other street a dirt path on its graded line, every other step a cut face, till its plots
+     * are built.
+     */
+    public static Optional<Shaped> shape(ServerLevel level, TownPlans.Plan plan, String kingdom, List<BlockPos> others,
+            Optional<net.minecraft.core.Direction> main) {
         if (!loaded(level, plan)) {
             return Optional.empty();
         }
@@ -136,14 +146,17 @@ public final class Terraform {
             }
         }
         int forumLevel = plan.bell().getY() - 1;
-        var first = Grading.grade(X, Z, top, water, fixed, streets, plots, bx, bz, Forums.REACH, forumLevel, o, BLEND, serves);
+        java.util.function.IntUnaryOperator deckOver = span -> Bridges.over(kingdom, span);
+        var first = Grading.grade(X, Z, top, water, fixed, streets, plots, bx, bz, Forums.REACH, forumLevel, o, BLEND, serves,
+                deckOver);
         // No bridge to nowhere (John): a crossing is built only where the street serves something past it, and no wider
         // than 40 (a ferry's, not yet); the street is cut back to its near bank, and graded again.
         java.util.function.Predicate<Grading.Crossing> build = c -> c.keep() && !c.kind().equals("ferry");
         List<Grading.Crossing> dropped = first.crossings().stream().filter(c -> !build.test(c) && c.nearBank() != null).toList();
+        List<Grading.Street> graded = dropped.isEmpty() ? streets : Grading.trim(streets, first.crossings(), build);
         var g = dropped.isEmpty() ? first
-                : Grading.grade(X, Z, top, water, fixed, Grading.trim(streets, first.crossings(), build), plots, bx, bz,
-                        Forums.REACH, forumLevel, o, BLEND, serves);
+                : Grading.grade(X, Z, top, water, fixed, graded, plots, bx, bz, Forums.REACH, forumLevel, o, BLEND, serves,
+                        deckOver);
         short[] target = g.target();
         byte[] role = g.role();
         if (System.getenv("ENTERPRISE_GRADE_PROBE") != null) {
@@ -183,6 +196,14 @@ public final class Terraform {
         }
         // Cut and fill to plan; streets paved, everything else grassed.
         BlockState pave = paving(kingdom), dirt = Blocks.DIRT.defaultBlockState(), grass = Blocks.GRASS_BLOCK.defaultBlockState();
+        // A founded town's main street, by column: on it ({@code near} 0) or within 4 of it.
+        java.util.function.BiPredicate<Integer, Integer> nearMain = (x, z) -> main.isEmpty() || switch (main.get()) {
+            case NORTH -> Math.abs(x - bx) <= TownPlans.GATE / 2 + 4 && z < bz;
+            case SOUTH -> Math.abs(x - bx) <= TownPlans.GATE / 2 + 4 && z > bz;
+            case WEST -> Math.abs(z - bz) <= TownPlans.GATE / 2 + 4 && x < bx;
+            default -> Math.abs(z - bz) <= TownPlans.GATE / 2 + 4 && x > bx;
+        };
+        BlockState track = Blocks.DIRT_PATH.defaultBlockState();
         int columns = 0, bridges = 0;
         for (int z = 0; z < Z; z++) {
             for (int x = 0; x < X; x++) {
@@ -210,7 +231,8 @@ public final class Terraform {
                 for (int y = n + 1; y < t; y++) {
                     level.setBlock(new BlockPos(wx, y, wz), dirt, 2 | 16);
                 }
-                level.setBlock(new BlockPos(wx, t, wz), r == Grading.STREET || r == Grading.FORUM ? pave : grass, 2 | 16);
+                level.setBlock(new BlockPos(wx, t, wz), r == Grading.FORUM || r == Grading.STREET && nearMain.test(x, z) ? pave
+                        : r == Grading.STREET ? track : grass, 2 | 16);
                 if (t < n) {
                     BlockState under = level.getBlockState(new BlockPos(wx, t - 1, wz));
                     if (under.isAir() || !under.getFluidState().isEmpty()) {
@@ -228,36 +250,13 @@ public final class Terraform {
                 }
             }
         }
-        // A crossing of 3 or less is a causeway, not a deck: its water filled from the bed, paved at the street's level.
-        java.util.Set<Integer> causeway = new java.util.HashSet<>();
+        // Each crossing built, assembled from the kingdom's bridge parts (`Bridges`, the studio's bridges.mjs): abutments,
+        // arches on piers, the channel arch high enough for a boat; a causeway with a culvert for 3 or less.
         for (Grading.Crossing c : g.crossings()) {
-            if (!c.kind().equals("causeway")) {
-                continue;
-            }
-            for (int z = Math.min(c.from()[1], c.to()[1]) - 2; z <= Math.max(c.from()[1], c.to()[1]) + 2; z++) {
-                for (int x = Math.min(c.from()[0], c.to()[0]) - 2; x <= Math.max(c.from()[0], c.to()[0]) + 2; x++) {
-                    if (x >= 0 && z >= 0 && x < X && z < Z && g.bridge()[z * X + x] != 0) {
-                        causeway.add(z * X + x);
-                    }
-                }
+            if (build.test(c) && c.nearBank() != null && c.facing() >= 0) {
+                Bridges.lay(level, kingdom, c, x0 + c.nearBank()[0], z0 + c.nearBank()[1], graded.get(c.street()).width(), pave);
             }
         }
-        for (int i : causeway) {
-            int x = i % X, z = i / X, t = target[i];
-            g.bridge()[i] = 0;
-            for (int y = t - 1; y > level.getMinBuildHeight(); y--) {
-                BlockPos at = new BlockPos(x0 + x, y, z0 + z);
-                BlockState b = level.getBlockState(at);
-                if (!b.isAir() && b.getFluidState().isEmpty() && !b.canBeReplaced()) {
-                    break; // the bed
-                }
-                level.setBlock(at, Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
-            }
-            level.setBlock(new BlockPos(x0 + x, t, z0 + z), pave, 2 | 16);
-        }
-        // Bridges where a street crosses water (the studio's bridge.mjs): a paved deck on a stone course at the street's
-        // level, piers every 6 down to the bed, the kingdom's parapet along both sides, a lantern over each pier.
-        bridges(level, kingdom, x0, z0, X, Z, target, role, g.bridge(), pave);
         // Where a street now ends at the shore, a landing: steps down to the water, a jetty, lanterns (the studio's
         // landingBlocks).
         int landings = 0;
@@ -286,8 +285,9 @@ public final class Terraform {
             int[] d = Grading.DIRS[e.dir()];
             int j = (e.z() + d[1]) * X + e.x() + d[0];
             int low = target[e.z() * X + e.x()] - e.rise();
-            if (Earthworks.step(level, kingdom, x0 + e.x(), z0 + e.z(), d[0], d[1], low, e.rise(),
-                    e.kind().equals("cut_face") ? "cut_face" : "wall")) {
+            // Walled where the town is built (in a founded town, its main street), a cut face elsewhere till it is.
+            boolean walled = !e.kind().equals("cut_face") && nearMain.test(e.x(), e.z());
+            if (Earthworks.step(level, kingdom, x0 + e.x(), z0 + e.z(), d[0], d[1], low, e.rise(), walled ? "wall" : "cut_face")) {
                 steps++;
             }
             if (role[j] == Grading.STREET && e.kind().equals("wall")) {
@@ -304,7 +304,7 @@ public final class Terraform {
                 if (role[i] != Grading.STREET || g.bridge()[i] != 0) {
                     continue;
                 }
-                level.setBlock(new BlockPos(x0 + x, target[i], z0 + z), pave, 2 | 16);
+                level.setBlock(new BlockPos(x0 + x, target[i], z0 + z), nearMain.test(x, z) ? pave : track, 2 | 16);
                 // A pit a tile dug under it (the studio's r69: dirt 3 below the paving either side) filled.
                 for (int y = target[i] - 1; y > target[i] - 8; y--) {
                     BlockPos under = new BlockPos(x0 + x, y, z0 + z);
@@ -391,77 +391,6 @@ public final class Terraform {
         }
     }
 
-    /** How often a bridge stands on a pier. */
-    static final int PIER_EVERY = 6;
-
-    private static void bridges(ServerLevel level, String kingdom, int x0, int z0, int X, int Z, short[] target, byte[] role,
-            byte[] bridge, BlockState pave) {
-        List<int[]> rails = new ArrayList<>();
-        Set<Long> railAt = new HashSet<>();
-        for (int z = 0; z < Z; z++) {
-            for (int x = 0; x < X; x++) {
-                int i = z * X + x;
-                if (bridge[i] == 0) {
-                    continue;
-                }
-                int t = target[i], wx = x0 + x, wz = z0 + z;
-                boolean alongZ = bridge[i] == 1, pier = Math.floorMod(alongZ ? wz : wx, PIER_EVERY) == 0;
-                for (int y = t + 1; y <= t + 3; y++) {
-                    level.setBlock(new BlockPos(wx, y, wz), Blocks.AIR.defaultBlockState(), 2 | 16);
-                }
-                level.setBlock(new BlockPos(wx, t, wz), pave, 2 | 16);
-                level.setBlock(new BlockPos(wx, t - 1, wz), Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
-                // Under the deck, what was built over the water (an old dock's planks: the studio's r69 render) goes,
-                // water again where water lies under it.
-                for (int y = t - 2; y > level.getMinBuildHeight(); y--) {
-                    BlockPos at = new BlockPos(wx, y, wz);
-                    BlockState b = level.getBlockState(at);
-                    if (b.isAir()) {
-                        continue;
-                    }
-                    if (!b.getFluidState().isEmpty() || dev.b28.enterprise.settlement.Grounds.natural(b)) {
-                        break;
-                    }
-                    BlockState under = level.getBlockState(at.below());
-                    level.setBlock(at, under.getFluidState().isEmpty() ? Blocks.AIR.defaultBlockState()
-                            : under.getFluidState().createLegacyBlock(), 2 | 16);
-                }
-                if (pier) {
-                    for (int y = t - 2; y > level.getMinBuildHeight(); y--) {
-                        BlockPos at = new BlockPos(wx, y, wz);
-                        BlockState b = level.getBlockState(at);
-                        if (b.getFluidState().isEmpty() && !b.isAir() && !b.canBeReplaced()) {
-                            break; // the bed
-                        }
-                        level.setBlock(at, Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
-                    }
-                }
-                int[][] across = alongZ ? new int[][] {{1, 0}, {-1, 0}} : new int[][] {{0, 1}, {0, -1}};
-                for (int[] a : across) {
-                    int xx = x + a[0], zz = z + a[1];
-                    int j = xx < 0 || zz < 0 || xx >= X || zz >= Z ? -1 : zz * X + xx;
-                    if (j < 0 || bridge[j] == 0 && role[j] != Grading.STREET && role[j] != Grading.FORUM) {
-                        rails.add(new int[] {wx, t + 1, wz, pier ? 1 : 0});
-                        railAt.add(BlockPos.asLong(wx, t + 1, wz));
-                        break;
-                    }
-                }
-            }
-        }
-        // The parapet: joined by the game's own shapes once all of it stands; a post over each pier carries a lantern.
-        BlockState rail = parapet(kingdom, false), post = parapet(kingdom, true);
-        for (int[] r : rails) {
-            level.setBlock(new BlockPos(r[0], r[1], r[2]), r[3] == 1 ? post : rail, 2 | 16);
-        }
-        for (int[] r : rails) {
-            BlockPos at = new BlockPos(r[0], r[1], r[2]);
-            level.setBlock(at, net.minecraft.world.level.block.Block.updateFromNeighbourShapes(level.getBlockState(at), level, at), 2 | 16);
-            if (r[3] == 1) {
-                level.setBlock(at.above(), Blocks.LANTERN.defaultBlockState(), 2 | 16);
-            }
-        }
-    }
-
     /** A kingdom's bridge parapet: Lordaeron's cobble wall, Dalaran's dark oak rail on mangrove posts, Stormwind's stone. */
     static BlockState parapet(String kingdom, boolean post) {
         return switch (kingdom) {
@@ -483,6 +412,19 @@ public final class Terraform {
             }
         }
         return true;
+    }
+
+    /** The chunks shaping would touch: the outer wall and its blend band. */
+    public static List<net.minecraft.world.level.ChunkPos> chunks(TownPlans.Plan plan) {
+        List<net.minecraft.world.level.ChunkPos> out = new ArrayList<>();
+        int x0 = plan.outer().x0() - BLEND - 1, z0 = plan.outer().z0() - BLEND - 1;
+        int x1 = plan.outer().x1() + BLEND + 1, z1 = plan.outer().z1() + BLEND + 1;
+        for (int cx = x0 >> 4; cx <= x1 >> 4; cx++) {
+            for (int cz = z0 >> 4; cz <= z1 >> 4; cz++) {
+                out.add(new net.minecraft.world.level.ChunkPos(cx, cz));
+            }
+        }
+        return out;
     }
 
     /** The land's own ground at a column: under any plant, leaves or tree. */

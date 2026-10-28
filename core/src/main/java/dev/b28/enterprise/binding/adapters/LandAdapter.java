@@ -227,6 +227,13 @@ public final class LandAdapter {
                 var plan = dev.b28.enterprise.territory.TownPlans.get(server).ensure(level, town, bell);
                 // Its vanilla village, once its plots are drawn, made over in the new style at once (John: "a onetime
                 // conversion of the town into the new style at establishment").
+                // A town on open ground (settlers' far from anyone, or a player's) held loaded till it's built (its
+                // plan's lanes and its conversion wait on its whole site).
+                if (!dev.b28.enterprise.territory.TownPlans.get(server).converted(town)
+                        && (dev.b28.enterprise.territory.TownPlans.get(server).founded(town)
+                                || dev.b28.enterprise.territory.Conversion.village(level, bell) == null)) {
+                    loadedFor(level, dev.b28.enterprise.territory.Terraform.chunks(plan));
+                }
                 // (The look after its lanes are laid: its kingdom told by then.)
                 if (plan.lanes() && !dev.b28.enterprise.territory.TownPlans.get(server).converted(town) && !lanesSeen.add(town)) {
                     convert(level, town, bell);
@@ -581,7 +588,8 @@ public final class LandAdapter {
                 continue;
             }
             int y = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, f.x(), f.z());
-            var town = Expeditions.buildTown(level, new BlockPos(f.x(), y, f.z()));
+            // Its square only: the rest is built as any town's, in its kingdom's style, once its plan is laid.
+            var town = Expeditions.buildSquare(level, new BlockPos(f.x(), y, f.z()));
             if (town.isEmpty()) {
                 Enterprise.LOGGER.info("No open ground to build {} at {} {}: asked again", f.name(), f.x(), f.z());
                 continue;
@@ -590,7 +598,17 @@ public final class LandAdapter {
             if (why != null) {
                 Enterprise.LOGGER.warn("The core wouldn't take {}'s desk at {}: {}", f.name(), town.get().desk().toShortString(), why);
             } else {
-                Enterprise.LOGGER.info("{} founded at {}", f.name(), town.get().desk().toShortString());
+                // Founded on open ground, planned for the town it'll grow to; its founders' kingdom (the nearest
+                // town's: the core doesn't say whose settlers they were).
+                dev.b28.enterprise.territory.TownPlans.get(server).found(f.town());
+                BlockPos at = town.get().bell();
+                dev.b28.enterprise.territory.TownPlans.get(server).plans().entrySet().stream()
+                        .filter(e -> e.getKey() != f.town())
+                        .min(java.util.Comparator.comparingDouble(e -> e.getValue().bell().distSqr(at)))
+                        .ifPresent(e -> dev.b28.enterprise.territory.Kingdoms.get(server).set(f.town(),
+                                dev.b28.enterprise.territory.Kingdoms.get(server).of(e.getKey())));
+                Enterprise.LOGGER.info("{} founded at {} ({})", f.name(), town.get().desk().toShortString(),
+                        dev.b28.enterprise.territory.Kingdoms.get(server).of(f.town()));
                 dev.b28.enterprise.settlement.Grounds.founded(level, town.get().desk(), f.name());
             }
         }
@@ -770,6 +788,9 @@ public final class LandAdapter {
         return kit;
     }
 
+    /** The beds a founded town's first homes hold: its settlers' and the children they'll have. */
+    static final int FOUNDING_BEDS = 4;
+
     /** The towns seen with their lanes laid, this server run. */
     private final Set<Long> lanesSeen = new HashSet<>();
 
@@ -785,20 +806,38 @@ public final class LandAdapter {
     private void convert(ServerLevel level, long town, BlockPos bell) {
         var townPlan = dev.b28.enterprise.territory.TownPlans.get(level.getServer()).of(town);
         if (!dev.b28.enterprise.territory.Terraform.loaded(level, townPlan)) {
-            return; // its site not all loaded yet
+            // Its site loaded for the look after (a settlers' town far from anyone: its whole site, briefly).
+            loadedFor(level, dev.b28.enterprise.territory.Terraform.chunks(townPlan));
+            return;
         }
         var cleared = dev.b28.enterprise.territory.Conversion.clear(level, bell);
         if (cleared.isEmpty()) {
             return; // not all loaded yet
         }
+        // A town on open ground (settlers', or a player's desk): no village to clear, its first homes and workshops laid as a converted
+        // village's would be: beds for its settlers and its children to come, and its founding trades' workshops (the
+        // Farmer's, the Librarian's, the Cartographer's: the Java rules' stall, lectern and table, in its kingdom's style).
+        if (dev.b28.enterprise.territory.Conversion.village(level, bell) == null) {
+            cleared = Optional.of(new dev.b28.enterprise.territory.Conversion.Cleared(FOUNDING_BEDS, List.of(
+                    net.minecraft.world.level.block.Blocks.COMPOSTER.defaultBlockState(),
+                    net.minecraft.world.level.block.Blocks.LECTERN.defaultBlockState(),
+                    net.minecraft.world.level.block.Blocks.CARTOGRAPHY_TABLE.defaultBlockState()), 0));
+        }
         dev.b28.enterprise.territory.TownPlans.get(level.getServer()).convert(town);
         var resources = level.getServer().getResourceManager();
         String kingdom = dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town);
-        // Its land shaped to its plan before a plot is laid (John: "the houses are sitting on weird hills").
-        long began = System.nanoTime();
         var others = dev.b28.enterprise.territory.TownPlans.get(level.getServer()).plans().entrySet().stream()
                 .filter(e -> e.getKey() != town).map(e -> e.getValue().bell()).toList();
-        dev.b28.enterprise.territory.Terraform.shape(level, townPlan, kingdom, others).ifPresent(s -> Enterprise.LOGGER.info(
+        // A town on open ground grows from one main street (the studio's, thread 0012): the avenue toward its founders'
+        // town (the nearest: the core doesn't say whose settlers they were).
+        var plans = dev.b28.enterprise.territory.TownPlans.get(level.getServer());
+        if (dev.b28.enterprise.territory.Conversion.village(level, bell) == null && plans.main(town).isEmpty()) {
+            others.stream().min(java.util.Comparator.comparingDouble(b -> b.distSqr(townPlan.bell())))
+                    .ifPresent(b -> plans.setMain(town, dev.b28.enterprise.territory.TownPlans.toward(townPlan.bell(), b)));
+        }
+        // Its land shaped to its plan before a plot is laid (John: "the houses are sitting on weird hills").
+        long began = System.nanoTime();
+        dev.b28.enterprise.territory.Terraform.shape(level, townPlan, kingdom, others, plans.main(town)).ifPresent(s -> Enterprise.LOGGER.info(
                 "Town {}'s land shaped to its plan in {} ms: {} columns ({} cut, {} filled), {} tree blocks felled, {} steps "
                         + "tiled, {} bridge columns, {} steps over 4, {} plots over, {} columns left natural; {} crossings, {} "
                         + "built, {} ended at a landing", town, (System.nanoTime() - began) / 1_000_000, s.columns(), s.cut(),

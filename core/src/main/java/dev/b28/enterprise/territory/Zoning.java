@@ -52,10 +52,12 @@ public final class Zoning {
             if (!street.equals("lane")) {
                 all.addAll(TownPlans.suburbs(plan, width, depth));
             }
+            var main = TownPlans.get(level.getServer()).mainAt(bell);
             List<TownPlans.Frontage> fit = all.stream()
                     .filter(f -> street.equals("lane") != TownPlans.onAvenue(plan, f))
                     .filter(f -> street.equals("forum_front") ? distance(f, bell) < FORUM : band == null || band(zoning, distance(f, bell)).equals(band))
-                    .sorted(Comparator.comparingDouble((TownPlans.Frontage f) -> distance(f, bell)).thenComparingInt(TownPlans.Frontage::x)
+                    .sorted(Comparator.comparingInt((TownPlans.Frontage f) -> main.isPresent() && TownPlans.onMain(plan, f, main.get()) ? 0 : 1)
+                            .thenComparingDouble((TownPlans.Frontage f) -> distance(f, bell)).thenComparingInt(TownPlans.Frontage::x)
                             .thenComparingInt(TownPlans.Frontage::z))
                     .toList();
             for (TownPlans.Frontage f : fit) {
