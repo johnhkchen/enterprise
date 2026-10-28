@@ -797,8 +797,9 @@ public final class LandAdapter {
         long began = System.nanoTime();
         dev.b28.enterprise.territory.Terraform.shape(level, townPlan, kingdom).ifPresent(s -> Enterprise.LOGGER.info(
                 "Town {}'s land shaped to its plan in {} ms: {} columns ({} cut, {} filled), {} tree blocks felled, {} steps "
-                        + "tiled, {} bridge columns not laid, {} steps over 4", town, (System.nanoTime() - began) / 1_000_000,
-                s.columns(), s.cut(), s.fill(), s.felled(), s.steps(), s.bridges(), s.conflicts()));
+                        + "tiled, {} bridge columns, {} steps over 4, {} plots over, {} columns left natural", town,
+                (System.nanoTime() - began) / 1_000_000, s.columns(), s.cut(), s.fill(), s.felled(), s.steps(), s.bridges(),
+                s.conflicts(), s.plotsOver(), s.natural()));
         int beds = 0, homes = 0, shops = 0, stalls = 0;
         converting = true;
         try {

@@ -24,7 +24,7 @@ public final class Grading {
     private Grading() {}
 
     public static final short NONE = Short.MIN_VALUE;
-    public static final byte WILD = 0, BLEND = 1, FREE = 2, STREET = 3, PLOT = 4, FIXED = 5, WATER = 6, FORUM = 7;
+    public static final byte WILD = 0, BLEND = 1, FREE = 2, STREET = 3, PLOT = 4, FIXED = 5, WATER = 6, FORUM = 7, NATURAL = 8;
     static final int[][] DIRS = {{0, -1}, {0, 1}, {1, 0}, {-1, 0}};
     /** The ways down, as {@link #DIRS}. */
     public static final String[] DIR_NAMES = {"north", "south", "east", "west"};
@@ -35,27 +35,35 @@ public final class Grading {
     /** A plot: its corner, size, and the way its door faces (onto its street: 0 north, 1 south, 2 east, 3 west). */
     public record Plot(int x, int z, int sx, int sz, int door) {}
 
-    /** A step: its high column, the way down ({@link #DIRS}), the rise, and its kind. */
-    public record Edge(int x, int z, int dir, int rise, String kind) {}
+    /**
+     * A step: its high column, the way down ({@link #DIRS}; for an inner corner a diagonal, 4 south-east, 5 south-west,
+     * 6 north-west, 7 north-east), the rise, its kind, and its corner ("outer", "inner" or null).
+     */
+    public record Edge(int x, int z, int dir, int rise, String kind, String corner) {}
 
-    /** What the grade planned: each column's height and role, where a street crosses water, the steps, a report. */
-    public record Grade(short[] target, byte[] role, byte[] bridge, List<Edge> edges, int cut, int fill, int conflicts) {}
+    /**
+     * What the grade planned: each column's height and role, where a street crosses water, the steps, a report (with the
+     * plots still more than 4 off a neighbour, and the columns left natural).
+     */
+    public record Grade(short[] target, byte[] role, byte[] bridge, List<Edge> edges, int cut, int fill, int conflicts,
+            int plotsOver, int natural) {}
 
     public static Grade grade(int X, int Z, short[] top, boolean[] water, short[] fixed, List<Street> streets,
             List<Plot> plots, int forumX, int forumZ, int forumReach, int forumLevel, int[] outer, int blend) {
         return grade(X, Z, top, water, fixed, streets, plots, forumX, forumZ, forumReach, forumLevel, outer, blend, 3, 4,
-                1 / 3.0, 3);
+                1 / 3.0, 3, 4, 0.4);
     }
 
     public static Grade grade(int X, int Z, short[] top, boolean[] water, short[] fixed, List<Street> streets,
             List<Plot> plots, int forumX, int forumZ, int forumReach, int forumLevel, int[] outer, int blend, int step,
-            int maxRise, double gradeLimit, int near) {
+            int maxRise, double gradeLimit, int near, int keepAway, double keepFall) {
         int N = X * Z;
         byte[] role = new byte[N], bridge = new byte[N];
         short[] target = new short[N];
         Arrays.fill(target, NONE);
-        int[] owner = new int[N];
+        int[] owner = new int[N], plotOf = new int[N];
         Arrays.fill(owner, -1);
+        Arrays.fill(plotOf, -1);
         int ox0 = outer[0], oz0 = outer[1], ox1 = outer[2], oz1 = outer[3];
         // Roles: water and standing buildings first, then the forum, streets, plots; the rest inside is free land.
         for (int z = 0; z < Z; z++) {
@@ -186,6 +194,8 @@ public final class Grading {
             plotOrder.add(k);
         }
         plotOrder.sort((a, b) -> Integer.compare(holds(X, Z, role, plots.get(b)), holds(X, Z, role, plots.get(a))));
+        // Each plot laid: {plot, level, frontage, built}.
+        List<int[]> plotLevels = new ArrayList<>();
         for (int pi : plotOrder) {
             Plot pl = plots.get(pi);
             int dx = out[pl.door()][0], dz = out[pl.door()][1];
@@ -227,13 +237,53 @@ public final class Grading {
                     lv = (int) Math.round(median(v.stream().mapToInt(Integer::intValue).toArray()));
                 }
             }
+            plotLevels.add(new int[] {pi, lv, lv, built.isEmpty() ? 0 : 1});
             for (int z = pl.z(); z < pl.z() + pl.sz(); z++) {
                 for (int x = pl.x(); x < pl.x() + pl.sx(); x++) {
                     int i = at(X, Z, x, z);
                     if (claim(role, i, PLOT)) {
                         target[i] = (short) (int) lv;
+                        plotOf[i] = pi;
                     }
                 }
+            }
+        }
+        // A plot may sit 1 off its frontage (its door's approach takes the half step) where that closes a step over
+        // maxRise against a street, the forum, a building or another plot; what stays over is counted.
+        java.util.Map<Integer, List<Integer>> cellsOf = new java.util.HashMap<>();
+        for (int[] e : plotLevels) {
+            cellsOf.put(e[0], new ArrayList<>());
+        }
+        for (int i = 0; i < N; i++) {
+            if (plotOf[i] >= 0) {
+                cellsOf.get(plotOf[i]).add(i);
+            }
+        }
+        for (int round = 0; round < 3; round++) {
+            for (int[] e : plotLevels) {
+                if (e[3] == 1) {
+                    continue;
+                }
+                int best = e[2], bestOver = Integer.MAX_VALUE;
+                for (int lv : new int[] {e[2], e[2] - 1, e[2] + 1}) {
+                    int over = overOf(X, Z, role, target, plotOf, cellsOf.get(e[0]), e[0], lv, maxRise);
+                    if (over < bestOver) {
+                        best = lv;
+                        bestOver = over;
+                    }
+                }
+                if (best != e[1]) {
+                    e[1] = best;
+                    for (int i : cellsOf.get(e[0])) {
+                        target[i] = (short) best;
+                    }
+                }
+            }
+        }
+        int plotsOver = 0;
+        for (int[] e : plotLevels) {
+            if (overOf(X, Z, role, target, plotOf, cellsOf.get(e[0]), e[0], e[1], maxRise) > 0) {
+                plotsOver++;
             }
         }
 
@@ -294,8 +344,43 @@ public final class Grading {
             }
             lie = nx;
         }
+        // Land the town doesn't use keeps its slope: free land more than keepAway from any street, plot, the forum or a
+        // building, on ground that falls keepFall or more a column, is left natural (the correction fading out over 8),
+        // like the edge band, rather than terraced.
+        int[] dUsed = new int[N];
+        Arrays.fill(dUsed, 1 << 20);
+        int[] queue = new int[N];
+        int qn = 0;
         for (int i = 0; i < N; i++) {
-            if (role[i] == FREE) {
+            if (role[i] == STREET || role[i] == PLOT || role[i] == FORUM || role[i] == FIXED) {
+                dUsed[i] = 0;
+                queue[qn++] = i;
+            }
+        }
+        for (int h = 0; h < qn; h++) {
+            int i = queue[h], x = i % X, z = i / X;
+            for (int[] d : DIRS) {
+                int j = at(X, Z, x + d[0], z + d[1]);
+                if (j >= 0 && dUsed[j] > dUsed[i] + 1) {
+                    dUsed[j] = dUsed[i] + 1;
+                    queue[qn++] = j;
+                }
+            }
+        }
+        int natural = 0;
+        for (int z = 0; z < Z; z++) {
+            for (int x = 0; x < X; x++) {
+                int i = z * X + x;
+                if (role[i] == FREE && dUsed[i] > keepAway && fall(X, Z, lie, x, z) >= keepFall) {
+                    role[i] = NATURAL;
+                    natural++;
+                }
+            }
+        }
+        for (int i = 0; i < N; i++) {
+            if (role[i] == NATURAL) {
+                target[i] = (short) Math.round(top[i] + corr[i] * Math.min(1, Math.max(0, 1 - (dUsed[i] - keepAway) / 8.0)));
+            } else if (role[i] == FREE) {
                 target[i] = (short) (forumLevel + step * Math.round((lie[i] + corr[i] - forumLevel) / step));
             } else if (role[i] == BLEND) {
                 target[i] = (short) Math.round(top[i] + corr[i]);
@@ -335,12 +420,13 @@ public final class Grading {
                 break;
             }
         }
-        // The blend band rises and falls a block a column at most toward the wild land (natural slopes, no tiles).
+        // The blend band and land left natural rise and fall a block a column at most among themselves (natural slopes,
+        // no tiles), and meet the town within maxRise.
         for (int it = 0; it < 40; it++) {
             for (int z = 0; z < Z; z++) {
                 for (int x = 0; x < X; x++) {
                     int i = z * X + x;
-                    if (role[i] != BLEND) {
+                    if (role[i] != BLEND && role[i] != NATURAL) {
                         continue;
                     }
                     double lo = Double.NEGATIVE_INFINITY, hi = Double.POSITIVE_INFINITY;
@@ -349,7 +435,7 @@ public final class Grading {
                         if (j < 0 || role[j] == WATER) {
                             continue;
                         }
-                        int tol = role[j] == BLEND || role[j] == WILD ? 1 : maxRise;
+                        int tol = role[j] == BLEND || role[j] == NATURAL || role[j] == WILD ? 1 : maxRise;
                         lo = Math.max(lo, target[j] - tol);
                         hi = Math.min(hi, target[j] + tol);
                     }
@@ -395,16 +481,62 @@ public final class Grading {
                     if (rise <= 0) {
                         continue;
                     }
-                    String kind = role[j] == WATER ? "quay" : role[i] == BLEND || role[j] == BLEND ? "slope"
+                    String kind = role[j] == WATER ? "quay" : role[i] == BLEND || role[j] == BLEND
+                            || role[i] == NATURAL && role[j] == NATURAL ? "slope"
                             : role[i] == STREET && role[j] == STREET && rise == 1 ? "street_step"
                             : nearPlanned[i] || nearPlanned[j] || role[i] == PLOT || role[j] == PLOT ? "wall" : "cut_face";
                     if (kind.equals("slope") && rise <= 1) {
                         continue;
                     }
-                    edges.add(new Edge(x, z, d, rise, kind));
+                    edges.add(new Edge(x, z, d, rise, kind, null));
                     if (rise > maxRise && !kind.equals("slope")) {
                         conflicts++;
                     }
+                }
+            }
+        }
+        // Corners: where two steps meet at a column (an outer corner) the corner tile may be laid for both; where a
+        // column stands high with only its diagonal low (an inner corner, between two walls meeting), it gets a corner
+        // edge of its own, or the wall shows a gap there.
+        java.util.Map<Integer, List<Integer>> stepsAt = new java.util.HashMap<>();
+        for (int k = 0; k < edges.size(); k++) {
+            Edge e = edges.get(k);
+            stepsAt.computeIfAbsent(e.z() * X + e.x(), q -> new ArrayList<>()).add(k);
+        }
+        for (List<Integer> list : stepsAt.values()) {
+            boolean ns = list.stream().anyMatch(k -> edges.get(k).dir() < 2), ew = list.stream().anyMatch(k -> edges.get(k).dir() >= 2);
+            if (list.size() > 1 && ns && ew) {
+                for (int k : list) {
+                    Edge e = edges.get(k);
+                    edges.set(k, new Edge(e.x(), e.z(), e.dir(), e.rise(), e.kind(), "outer"));
+                }
+            }
+        }
+        int[][] diagonals = {{1, 1, 4}, {-1, 1, 5}, {-1, -1, 6}, {1, -1, 7}};
+        for (int z = 0; z < Z; z++) {
+            for (int x = 0; x < X; x++) {
+                int i = z * X + x;
+                if (stepsAt.containsKey(i) || role[i] == WILD || role[i] == BLEND || role[i] == WATER || role[i] == FIXED
+                        || role[i] == NATURAL || bridge[i] != 0) {
+                    continue;
+                }
+                for (int[] dg : diagonals) {
+                    int j = at(X, Z, x + dg[0], z + dg[1]), a = at(X, Z, x + dg[0], z), b = at(X, Z, x, z + dg[1]);
+                    if (j < 0 || a < 0 || b < 0) {
+                        continue;
+                    }
+                    int wantA = dg[1] > 0 ? 1 : 0, wantB = dg[0] > 0 ? 2 : 3;
+                    Edge ea = stepsAt.getOrDefault(a, List.of()).stream().map(edges::get).filter(e -> e.dir() == wantA).findFirst().orElse(null);
+                    Edge eb = stepsAt.getOrDefault(b, List.of()).stream().map(edges::get).filter(e -> e.dir() == wantB).findFirst().orElse(null);
+                    if (ea == null || eb == null || target[a] != target[i] || target[b] != target[i] || target[j] >= target[i]) {
+                        continue;
+                    }
+                    String kind = ea.kind().equals("wall") || eb.kind().equals("wall") ? "wall" : ea.kind();
+                    if (kind.equals("slope") || kind.equals("street_step")) {
+                        continue;
+                    }
+                    edges.add(new Edge(x, z, dg[2], target[i] - target[j], kind, "inner"));
+                    break;
                 }
             }
         }
@@ -419,7 +551,33 @@ public final class Grading {
                 }
             }
         }
-        return new Grade(target, role, bridge, edges, cut, fill, conflicts);
+        return new Grade(target, role, bridge, edges, cut, fill, conflicts, plotsOver, natural);
+    }
+
+    /** How far a plot at {@code lv} stands more than maxRise off its neighbours (streets, the forum, buildings, plots), summed. */
+    private static int overOf(int X, int Z, byte[] role, short[] target, int[] plotOf, List<Integer> cells, int plot, int lv,
+            int maxRise) {
+        int over = 0;
+        for (int i : cells) {
+            int x = i % X, z = i / X;
+            for (int[] d : DIRS) {
+                int j = at(X, Z, x + d[0], z + d[1]);
+                if (j < 0 || plotOf[j] == plot) {
+                    continue;
+                }
+                if (role[j] == STREET || role[j] == FORUM || role[j] == FIXED || role[j] == PLOT) {
+                    over += Math.max(0, Math.abs(lv - target[j]) - maxRise);
+                }
+            }
+        }
+        return over;
+    }
+
+    /** How steeply the land's lie falls at a column, over 4 either way. */
+    private static double fall(int X, int Z, float[] lie, int x, int z) {
+        int a = at(X, Z, x - 2, z), b = at(X, Z, x + 2, z), c = at(X, Z, x, z - 2), d = at(X, Z, x, z + 2);
+        double gx = a >= 0 && b >= 0 ? Math.abs(lie[a] - lie[b]) / 4 : 0, gz = c >= 0 && d >= 0 ? Math.abs(lie[c] - lie[d]) / 4 : 0;
+        return Math.max(gx, gz);
     }
 
     private static int at(int X, int Z, int x, int z) {

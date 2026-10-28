@@ -21,7 +21,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
  * between terraced, its edge blended into the wild land (`Grading`); then the ground cut and filled to plan, the trees
  * felled where it moves, the streets paved with half steps where they climb, and the kingdom's earthworks tile laid at
  * every step (walls near streets and buildings, cut faces in the open, quays at the water). Its fields, the forum and
- * anything built stay as they are. Streets over water (bridges) aren't laid yet.
+ * anything built stay as they are. A street over water is a bridge: a paved deck on piers, the kingdom's parapet.
  */
 public final class Terraform {
     private Terraform() {}
@@ -30,7 +30,8 @@ public final class Terraform {
     static final int BLEND = 16;
 
     /** What shaping did. */
-    public record Shaped(int columns, int cut, int fill, int felled, int steps, int bridges, int conflicts) {}
+    public record Shaped(int columns, int cut, int fill, int felled, int steps, int bridges, int conflicts, int plotsOver,
+            int natural) {}
 
     /**
      * Shapes the town's ground round its plan, if all of it is loaded (empty if not: ask again).
@@ -129,7 +130,7 @@ public final class Terraform {
                 int i = z * X + x;
                 byte r = role[i];
                 if (g.bridge()[i] != 0) {
-                    bridges++;
+                    bridges++; // laid below, as a bridge
                     continue;
                 }
                 if (r == Grading.WILD || r == Grading.WATER || r == Grading.FIXED) {
@@ -180,10 +181,21 @@ public final class Terraform {
                 }
             }
         }
+        // Bridges where a street crosses water (the studio's bridge.mjs): a paved deck on a stone course at the street's
+        // level, piers every 6 down to the bed, the kingdom's parapet along both sides, a lantern over each pier.
+        bridges(level, kingdom, x0, z0, X, Z, target, role, g.bridge(), pave);
         // The kingdom's earthworks tile at every step.
         int steps = 0;
         for (Grading.Edge e : g.edges()) {
             if (e.kind().equals("street_step") || e.kind().equals("slope")) {
+                continue;
+            }
+            if (e.dir() >= 4) {
+                // An inner corner: the high column where two walls meet dressed in coursed stone, no dirt gap between them.
+                for (int y = target[e.z() * X + e.x()] - e.rise() + 1; y <= target[e.z() * X + e.x()]; y++) {
+                    level.setBlock(new BlockPos(x0 + e.x(), y, z0 + e.z()), Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
+                }
+                steps++;
                 continue;
             }
             int[] d = Grading.DIRS[e.dir()];
@@ -199,7 +211,73 @@ public final class Terraform {
                 level.setBlock(new BlockPos(x0 + e.x() + d[0], target[j] + 1, z0 + e.z() + d[1]), Blocks.AIR.defaultBlockState(), 2 | 16);
             }
         }
-        return Optional.of(new Shaped(columns, g.cut(), g.fill(), felled, steps, bridges, g.conflicts()));
+        return Optional.of(new Shaped(columns, g.cut(), g.fill(), felled, steps, bridges, g.conflicts(), g.plotsOver(),
+                g.natural()));
+    }
+
+    /** How often a bridge stands on a pier. */
+    static final int PIER_EVERY = 6;
+
+    private static void bridges(ServerLevel level, String kingdom, int x0, int z0, int X, int Z, short[] target, byte[] role,
+            byte[] bridge, BlockState pave) {
+        List<int[]> rails = new ArrayList<>();
+        Set<Long> railAt = new HashSet<>();
+        for (int z = 0; z < Z; z++) {
+            for (int x = 0; x < X; x++) {
+                int i = z * X + x;
+                if (bridge[i] == 0) {
+                    continue;
+                }
+                int t = target[i], wx = x0 + x, wz = z0 + z;
+                boolean alongZ = bridge[i] == 1, pier = Math.floorMod(alongZ ? wz : wx, PIER_EVERY) == 0;
+                for (int y = t + 1; y <= t + 3; y++) {
+                    level.setBlock(new BlockPos(wx, y, wz), Blocks.AIR.defaultBlockState(), 2 | 16);
+                }
+                level.setBlock(new BlockPos(wx, t, wz), pave, 2 | 16);
+                level.setBlock(new BlockPos(wx, t - 1, wz), Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
+                if (pier) {
+                    for (int y = t - 2; y > level.getMinBuildHeight(); y--) {
+                        BlockPos at = new BlockPos(wx, y, wz);
+                        BlockState b = level.getBlockState(at);
+                        if (b.getFluidState().isEmpty() && !b.isAir() && !b.canBeReplaced()) {
+                            break; // the bed
+                        }
+                        level.setBlock(at, Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
+                    }
+                }
+                int[][] across = alongZ ? new int[][] {{1, 0}, {-1, 0}} : new int[][] {{0, 1}, {0, -1}};
+                for (int[] a : across) {
+                    int xx = x + a[0], zz = z + a[1];
+                    int j = xx < 0 || zz < 0 || xx >= X || zz >= Z ? -1 : zz * X + xx;
+                    if (j < 0 || bridge[j] == 0 && role[j] != Grading.STREET && role[j] != Grading.FORUM) {
+                        rails.add(new int[] {wx, t + 1, wz, pier ? 1 : 0});
+                        railAt.add(BlockPos.asLong(wx, t + 1, wz));
+                        break;
+                    }
+                }
+            }
+        }
+        // The parapet: joined by the game's own shapes once all of it stands; a post over each pier carries a lantern.
+        BlockState rail = parapet(kingdom, false), post = parapet(kingdom, true);
+        for (int[] r : rails) {
+            level.setBlock(new BlockPos(r[0], r[1], r[2]), r[3] == 1 ? post : rail, 2 | 16);
+        }
+        for (int[] r : rails) {
+            BlockPos at = new BlockPos(r[0], r[1], r[2]);
+            level.setBlock(at, net.minecraft.world.level.block.Block.updateFromNeighbourShapes(level.getBlockState(at), level, at), 2 | 16);
+            if (r[3] == 1) {
+                level.setBlock(at.above(), Blocks.LANTERN.defaultBlockState(), 2 | 16);
+            }
+        }
+    }
+
+    /** A kingdom's bridge parapet: Lordaeron's cobble wall, Dalaran's dark oak rail on mangrove posts, Stormwind's stone. */
+    static BlockState parapet(String kingdom, boolean post) {
+        return switch (kingdom) {
+            case "dalaran" -> post ? Blocks.MANGROVE_FENCE.defaultBlockState() : Blocks.DARK_OAK_FENCE.defaultBlockState();
+            case "stormwind" -> Blocks.STONE_BRICK_WALL.defaultBlockState();
+            default -> Blocks.COBBLESTONE_WALL.defaultBlockState();
+        };
     }
 
     /** Is all the ground shaping would touch (the outer wall and its blend band) loaded? */
