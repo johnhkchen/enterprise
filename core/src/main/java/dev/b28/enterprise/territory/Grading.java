@@ -39,7 +39,12 @@ public final class Grading {
      * A step: its high column, the way down ({@link #DIRS}; for an inner corner a diagonal, 4 south-east, 5 south-west,
      * 6 north-west, 7 north-east), the rise, its kind, and its corner ("outer", "inner" or null).
      */
-    public record Edge(int x, int z, int dir, int rise, String kind, String corner) {}
+    public record Edge(int x, int z, int dir, int rise, String kind, String corner) {
+        /** The same step at its place in the world (for the log). */
+        public Edge withWorld(int x0, int z0) {
+            return new Edge(x + x0, z + z0, dir, rise, kind, corner);
+        }
+    }
 
     /**
      * What the grade planned: each column's height and role, where a street crosses water, the steps, a report (with the

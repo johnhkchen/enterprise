@@ -127,6 +127,11 @@ public final class Terraform {
                 }
                 dev.b28.enterprise.Enterprise.LOGGER.info("Grade probe z {}:{}", pz + z0, b);
             }
+            for (Grading.Edge e : g.edges()) {
+                if (Math.abs(e.x() - px) <= 2 && e.z() >= pz0 && e.z() < pz0 + 7) {
+                    dev.b28.enterprise.Enterprise.LOGGER.info("Grade probe edge {}", e.withWorld(x0, z0));
+                }
+            }
         }
 
         // The trees where the ground moves: on a street, a plot or the forum, or land cut or filled by 2 or more.

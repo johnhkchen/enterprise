@@ -203,9 +203,12 @@ public final class Earthworks {
         for (int y = low + 1; y <= base; y++) {
             level.setBlock(new BlockPos(hx, y, hz), net.minecraft.world.level.block.Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
         }
-        // The high ground lies back from the foot: the turn that brings its authored north there.
+        // The high ground lies back from the foot: the turn that brings its authored north there. Its foot (the apron on
+        // the low side) only where it meets the low ground: not over water, nor hung in the air above a rise over 4 (the
+        // studio's r73: aprons over a stream, its quay's coursed stone under the wall).
         int bx = -dx, bz = -dz, q = bz < 0 ? 0 : bx > 0 ? 1 : bz > 0 ? 2 : 3;
-        return lay(level, tile.get(), hx + dx, hz + dz, base, q, bx, bz, true) > 0;
+        boolean foot = rise <= h && level.getFluidState(new BlockPos(hx + dx, low, hz + dz)).isEmpty();
+        return lay(level, tile.get(), hx + dx, hz + dz, base, q, bx, bz, true, foot, true) > 0;
     }
 
     /** A terrace tile of the set: its lamp, or a planted one by the seed; empty if the set has none. */
@@ -241,6 +244,12 @@ public final class Earthworks {
      * or reaching outward from it for a fill (its high side against the plot), its low surface at {@code low}.
      */
     private static int lay(ServerLevel level, Tile t, int ox, int oz, int low, int q, int outX, int outZ, boolean cut) {
+        return lay(level, t, ox, oz, low, q, outX, outZ, cut, true, false);
+    }
+
+    /** As {@link #lay(ServerLevel, Tile, int, int, int, int, int, int, boolean)}; without {@code foot}, nothing on the column {@code (ox, oz)}. */
+    private static int lay(ServerLevel level, Tile t, int ox, int oz, int low, int q, int outX, int outZ, boolean cut,
+            boolean foot, boolean graded) {
         var resources = level.getServer().getResourceManager();
         Optional<Compose.Part> part = Compose.part(resources, Compose.blocks(level), t.part());
         if (part.isEmpty()) {
@@ -266,6 +275,15 @@ public final class Earthworks {
         int oy = low - 2;
         for (var e : g.cells.entrySet()) {
             BlockPos at = new BlockPos(cx + e.getKey().getX(), oy + e.getKey().getY(), cz + e.getKey().getZ());
+            if (!foot && at.getX() == ox && at.getZ() == oz) {
+                continue;
+            }
+            // A graded town's step (foot false or true from `step`): the wall's column and its foot only, as the studio's
+            // painter lays it, not the bank behind, which would cover a wall meeting it at a corner (r73: a gap in the
+            // avenue's wall where the bank of the wall turning the corner lay over its coping).
+            if (graded && (at.getX() - ox) * outX + (at.getZ() - oz) * outZ >= 2) {
+                continue;
+            }
             level.setBlock(at, e.getValue(), 2 | 16);
         }
         return 1;
