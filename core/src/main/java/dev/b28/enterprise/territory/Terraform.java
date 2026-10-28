@@ -51,6 +51,12 @@ public final class Terraform {
                 fixed[i] = Grading.NONE;
                 int y = ground(level, wx, wz);
                 BlockState s = level.getBlockState(new BlockPos(wx, y, wz));
+                // A fence or wall on the land (the founding's safety fences at its drops) isn't a building: the ground
+                // under it is the column's, and shaping takes it down (the studio's r70: the west avenue left unlevelled
+                // round fences at the forum's edge).
+                while (loose(s) && y > level.getMinBuildHeight()) {
+                    s = level.getBlockState(new BlockPos(wx, --y, wz));
+                }
                 if (!s.getFluidState().isEmpty()) {
                     water[i] = true;
                     top[i] = (short) y;
@@ -107,6 +113,21 @@ public final class Terraform {
         var g = Grading.grade(X, Z, top, water, fixed, streets, plots, bx, bz, Forums.REACH, plan.bell().getY() - 1, o, BLEND);
         short[] target = g.target();
         byte[] role = g.role();
+        if (System.getenv("ENTERPRISE_GRADE_PROBE") != null) {
+            String[] at = System.getenv("ENTERPRISE_GRADE_PROBE").split(",");
+            int px = Integer.parseInt(at[0]) - x0, pz0 = Integer.parseInt(at[1]) - z0;
+            for (int pz = pz0; pz < pz0 + 7; pz++) {
+                StringBuilder b = new StringBuilder();
+                for (int dx = -2; dx <= 2; dx++) {
+                    if (pz < 0 || pz >= Z || px + dx < 0 || px + dx >= X) {
+                        continue;
+                    }
+                    int i = pz * X + px + dx;
+                    b.append(String.format(" [r%d t%d n%d f%d]", role[i], target[i], top[i], fixed[i]));
+                }
+                dev.b28.enterprise.Enterprise.LOGGER.info("Grade probe z {}:{}", pz + z0, b);
+            }
+        }
 
         // The trees where the ground moves: on a street, a plot or the forum, or land cut or filled by 2 or more.
         int felled = 0;
@@ -144,7 +165,7 @@ public final class Terraform {
                 for (int y = Math.min(t, n) + 1; y <= Math.max(t, n) + 3; y++) {
                     BlockPos at = new BlockPos(wx, y, wz);
                     BlockState b = level.getBlockState(at);
-                    if (y > t && (y <= n || b.isAir() || b.canBeReplaced() || dev.b28.enterprise.settlement.Grounds.natural(b))) {
+                    if (y > t && (y <= n || b.isAir() || b.canBeReplaced() || loose(b) || dev.b28.enterprise.settlement.Grounds.natural(b))) {
                         level.setBlock(at, Blocks.AIR.defaultBlockState(), 2 | 16);
                     }
                 }
@@ -344,6 +365,11 @@ public final class Terraform {
             break;
         }
         return y;
+    }
+
+    /** A fence or a wall standing on the land: taken down where the ground is shaped. */
+    private static boolean loose(BlockState s) {
+        return s.is(BlockTags.FENCES) || s.is(BlockTags.WALLS) || s.is(BlockTags.FENCE_GATES);
     }
 
     private static boolean isTree(BlockState s) {

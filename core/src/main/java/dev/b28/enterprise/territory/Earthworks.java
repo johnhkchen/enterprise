@@ -144,10 +144,19 @@ public final class Earthworks {
                 // Courses outward from the plot, each up to 4 high, the next standing a tile's depth beyond the last
                 // (a terrace between): a drop of 6 is a wall of 4 and one of 2, not a dirt cliff.
                 for (int done = 0, offset = 0; diff - done >= LEAST; ) {
+                    // Never a course across a street or the wall's strip: a graded town's streets are its own (the
+                    // studio's r70 render: a plot 1 above its avenue walled grass across it).
                     int rise = Math.min(4, diff - done);
                     String kind = !onStreet ? "cut_face" : i % 5 == 2 ? "lamp" : rise >= 3 && i % 4 == 0 ? "buttress" : "straight";
                     Optional<Tile> tile = pick(tiles, rise, kind, ox * 31 + oz + offset);
                     if (tile.isEmpty()) {
+                        break;
+                    }
+                    boolean onAWay = false;
+                    for (int c = 0; c < tile.get().depth(); c++) {
+                        onAWay |= !TownPlans.clear(level, ox + e[4] * (offset + c), oz + e[5] * (offset + c), 1, 1, false);
+                    }
+                    if (onAWay) {
                         break;
                     }
                     laid += lay(level, tile.get(), ox + e[4] * offset, oz + e[5] * offset,

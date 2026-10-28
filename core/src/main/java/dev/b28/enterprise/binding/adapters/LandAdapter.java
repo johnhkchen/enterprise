@@ -232,7 +232,8 @@ public final class LandAdapter {
                     convert(level, town, bell);
                 }
                 // Its first farm tracks, with its avenues (John: "some at founding").
-                if (plan.avenues()) {
+                // (Once its land is shaped: the fields lie on the graded ground, not cut through by it.)
+                if (plan.avenues() && dev.b28.enterprise.territory.TownPlans.get(server).converted(town)) {
                     dev.b28.enterprise.territory.FieldMaps.get(server).found(level, town);
                     // Its holdings' unsown land dressed a little each look (fallow, meadow, orchard).
                     dev.b28.enterprise.territory.FieldMaps.get(server).dress(level, town);
