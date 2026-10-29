@@ -286,7 +286,8 @@ public final class Terraform {
                 for (int y = n + 1; y < t; y++) {
                     level.setBlock(new BlockPos(wx, y, wz), dirt, 2 | 16);
                 }
-                level.setBlock(new BlockPos(wx, t, wz), r == Grading.FORUM || r == Grading.STREET && nearMain.test(x, z) ? pave
+                level.setBlock(new BlockPos(wx, t, wz), r == Grading.FORUM ? surface(kingdom, wx, wz, false, true)
+                        : r == Grading.STREET && nearMain.test(x, z) ? surface(kingdom, wx, wz, kerb(role, X, Z, x, z), true)
                         : r == Grading.STREET ? track : grass, 2 | 16);
                 if (t < n) {
                     BlockState under = level.getBlockState(new BlockPos(wx, t - 1, wz));
@@ -379,7 +380,8 @@ public final class Terraform {
                 if (role[i] != Grading.STREET || g.bridge()[i] != 0) {
                     continue;
                 }
-                level.setBlock(new BlockPos(x0 + x, target[i], z0 + z), nearMain.test(x, z) ? pave : track, 2 | 16);
+                level.setBlock(new BlockPos(x0 + x, target[i], z0 + z), nearMain.test(x, z)
+                        ? surface(kingdom, x0 + x, z0 + z, kerb(role, X, Z, x, z), true) : track, 2 | 16);
                 // A pit a tile dug under it (the studio's r69: dirt 3 below the paving either side) filled.
                 for (int y = target[i] - 1; y > target[i] - 8; y--) {
                     BlockPos under = new BlockPos(x0 + x, y, z0 + z);
@@ -395,7 +397,6 @@ public final class Terraform {
             }
         }
         // A street climbs by half steps: a slab on the lower cell wherever its neighbour along the street is a block higher.
-        BlockState slab = halfStep(kingdom);
         for (int z = 0; z < Z; z++) {
             for (int x = 0; x < X; x++) {
                 int i = z * X + x;
@@ -409,7 +410,7 @@ public final class Terraform {
                     }
                     int j = zz * X + xx;
                     if ((role[j] == Grading.STREET || role[j] == Grading.FORUM) && target[j] == target[i] + 1) {
-                        level.setBlock(new BlockPos(x0 + x, target[i] + 1, z0 + z), slab, 2 | 16);
+                        level.setBlock(new BlockPos(x0 + x, target[i] + 1, z0 + z), halfStep(kingdom, x0 + x, z0 + z), 2 | 16);
                         break;
                     }
                 }
@@ -439,7 +440,6 @@ public final class Terraform {
         boolean avenue = line == (northSouth ? plan.bell().getX() : plan.bell().getZ());
         int width = avenue ? TownPlans.GATE : TownPlans.LANE, from = line - width / 2;
         TownPlans.Rect in = plan.inner();
-        BlockState pave = paving(kingdom);
         int paved = 0;
         for (int along = northSouth ? in.z0() : in.x0(); along <= (northSouth ? in.z1() : in.x1()); along++) {
             for (int o = 0; o < width; o++) {
@@ -448,8 +448,10 @@ public final class Terraform {
                     continue;
                 }
                 BlockPos at = new BlockPos(x, ground(level, x, z), z);
-                if (level.getBlockState(at).is(Blocks.DIRT_PATH) && !pave.is(Blocks.DIRT_PATH)) {
-                    level.setBlock(at, pave, 2 | 16);
+                BlockState surface = surface(kingdom, x, z, o == 0 || o == width - 1,
+                        !level.getBlockState(at.below()).isAir() && level.getBlockState(at.below()).getFluidState().isEmpty());
+                if (level.getBlockState(at).is(Blocks.DIRT_PATH) && !surface.is(Blocks.DIRT_PATH)) {
+                    level.setBlock(at, surface, 2 | 16);
                     paved++;
                 }
             }
@@ -635,6 +637,40 @@ public final class Terraform {
         return taken;
     }
 
+    /**
+     * A street's surface at a cell (the studio's, thread 0012): Lordaeron's opened street cobbles with a dressed kerb (its
+     * two outer cells stone bricks, a cracked one in 6; between them cobblestone 55%, mossy cobble 15%, gravel 20% (only on
+     * solid ground: it falls), andesite 10%, by the cell); the cities' their dressed paving.
+     */
+    static BlockState surface(String kingdom, int x, int z, boolean kerb, boolean solidBelow) {
+        if (!kingdom.equals("lordaeron") && !kingdom.isEmpty() && !kingdom.equals("none")) {
+            return paving(kingdom);
+        }
+        long h = (x * 73856093L) ^ (z * 19349663L);
+        int r = (int) Math.floorMod(h * 0x9E3779B97F4A7C15L >>> 40, 100L);
+        if (kerb) {
+            return r < 17 ? Blocks.CRACKED_STONE_BRICKS.defaultBlockState() : Blocks.STONE_BRICKS.defaultBlockState();
+        }
+        return r < 55 ? Blocks.COBBLESTONE.defaultBlockState() : r < 70 ? Blocks.MOSSY_COBBLESTONE.defaultBlockState()
+                : r < 90 ? (solidBelow ? Blocks.GRAVEL.defaultBlockState() : Blocks.COBBLESTONE.defaultBlockState())
+                : Blocks.ANDESITE.defaultBlockState();
+    }
+
+    /** Is the street cell a kerb: an edge of its street (a neighbour neither street nor forum)? */
+    static boolean kerb(byte[] role, int X, int Z, int x, int z) {
+        for (int[] d : Grading.DIRS) {
+            int xx = x + d[0], zz = z + d[1];
+            if (xx < 0 || zz < 0 || xx >= X || zz >= Z) {
+                continue;
+            }
+            byte r = role[zz * X + xx];
+            if (r != Grading.STREET && r != Grading.FORUM) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** A kingdom's street paving: Lordaeron's a beaten path, the cities' dressed stone. */
     static BlockState paving(String kingdom) {
         return switch (kingdom) {
@@ -645,6 +681,14 @@ public final class Terraform {
     }
 
     /** The half step a kingdom's street climbs by. */
+    /** The half step a kingdom's street climbs by, at a cell: Lordaeron's cobble slab, a mossy one in 4. */
+    static BlockState halfStep(String kingdom, int x, int z) {
+        if (kingdom.equals("lordaeron") && Math.floorMod((x * 31L + z * 17L) * 0x9E3779B97F4A7C15L >>> 40, 4L) == 0) {
+            return Blocks.MOSSY_COBBLESTONE_SLAB.defaultBlockState().setValue(SlabBlock.TYPE, SlabType.BOTTOM);
+        }
+        return halfStep(kingdom);
+    }
+
     static BlockState halfStep(String kingdom) {
         BlockState s = switch (kingdom) {
             case "dalaran" -> Blocks.POLISHED_ANDESITE_SLAB.defaultBlockState();

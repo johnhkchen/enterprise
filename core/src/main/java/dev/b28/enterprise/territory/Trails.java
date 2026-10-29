@@ -739,7 +739,35 @@ public final class Trails extends SavedData {
                     level.setBlock(c.atY(y), Blocks.SPRUCE_LOG.defaultBlockState(), 3);
                 }
             }
-            if (edge) {
+            // A passing place every 16 on a long trestle (the studio's, thread 0014: wagons meet on long crossings): a bay
+            // 2 wide off the deck's edge, its outer rail lit, the rail open to it.
+            boolean bay = false;
+            if (edge && span > 20 && along % 16 == 8) {
+                for (var dir : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+                    BlockPos n = c.relative(dir);
+                    if (deck.contains(n.asLong()) || level.getFluidState(n.atY(water)).isEmpty()) {
+                        continue;
+                    }
+                    for (int w = 1; w <= 2; w++) {
+                        BlockPos b = c.relative(dir, w);
+                        level.setBlock(b.atY(d), Blocks.SPRUCE_PLANKS.defaultBlockState(), 3);
+                        level.setBlock(b.atY(d + 1), Blocks.AIR.defaultBlockState(), 3);
+                    }
+                    BlockPos rail = c.relative(dir, 3);
+                    level.setBlock(rail.atY(d), Blocks.SPRUCE_PLANKS.defaultBlockState(), 3);
+                    level.setBlock(rail.atY(d + 1), Blocks.SPRUCE_FENCE.defaultBlockState(), 3);
+                    level.setBlock(rail.atY(d + 2), Blocks.LANTERN.defaultBlockState(), 3);
+                    for (int y = d - 1; y > level.getMinBuildHeight(); y--) {
+                        BlockState under = level.getBlockState(rail.atY(y));
+                        if (under.getFluidState().isEmpty() && !under.isAir() && !under.canBeReplaced()) {
+                            break;
+                        }
+                        level.setBlock(rail.atY(y), Blocks.SPRUCE_LOG.defaultBlockState(), 3);
+                    }
+                    bay = true;
+                }
+            }
+            if (edge && !bay) {
                 level.setBlock(c.atY(d + 1), Blocks.SPRUCE_FENCE.defaultBlockState(), 3);
                 if (along % 8 == 0) {
                     level.setBlock(c.atY(d + 2), Blocks.LANTERN.defaultBlockState(), 3);
