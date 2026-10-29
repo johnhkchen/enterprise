@@ -667,3 +667,16 @@ fn a_ship_sails_only_water() {
     assert!(Ground { water_share: 0.1, ..Default::default() }.factor(Carrier::Ship).is_infinite(), "dry land");
     assert!(Ground { water_share: 0.1, bridged: true, ..Default::default() }.factor(Carrier::Ship).is_infinite());
 }
+
+#[test]
+fn a_bare_road_takes_ship_once_both_towns_have_ports() {
+    // No way over land when the road opened (no bridge): a bare road at the towns' distance, no path.
+    let (mut s, _) = farm_and_mill_by_sea(false, false);
+    let road = s.open_route(0, 1).expect("a bare road");
+    assert!(s.route_path(road).is_none());
+    s.set_port(0, Hex::new(0, 1).center_x(), Hex::new(0, 1).center_z());
+    s.set_port(1, Hex::new(12, 1).center_x(), Hex::new(12, 1).center_z());
+    s.advance(DAY);
+    assert_eq!(s.route_carrier(road), Carrier::Ship, "by sea now");
+    assert_eq!(s.route_path(road).and_then(|p| p.first().copied()), Some(Hex::new(0, 1)));
+}

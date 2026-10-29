@@ -304,7 +304,8 @@ impl Society {
     /// path by a round trip's two crossings (a ship's none), and a hex worn to a trail is said (`Output::Trail`); once a day, each road
     /// whose wagon is home takes the best way now (`best_road`): a wagon's where there's one now (a bridge built over
     /// the river its llamas forded), a llama train's where a wagon's is gone, or the same carrier's if it's cheaper than
-    /// its own (trails worn, ground surveyed, a wall built since), its days and road food with it.
+    /// its own (trails worn, ground surveyed, a wall built since), its days and road food with it; a bare road (no way
+    /// over the map when it opened), a ship's way once both its towns have ports.
     fn wear_roads(&mut self) {
         let now = self.now();
         let day_ticks = self.content().day_ticks;
@@ -341,12 +342,14 @@ impl Society {
         let per_hex = self.per_hex();
         for id in 0..self.routes.len() {
             let e = self.routes[id];
-            let Some(path) = self.world.get::<RoutePath>(e).map(|p| p.0.clone()) else { continue };
+            let path = self.world.get::<RoutePath>(e).map(|p| p.0.clone());
             if self.world.get::<RouteState>(e).is_some_and(|s| s.wagon.is_some()) {
                 continue;
             }
             let route = *self.world.get::<Route>(e).expect("a route");
             let Some((carrier, better, blocks)) = self.best_road(route.from_id, route.to_id) else { continue };
+            // A bare road (no way over the map when it opened) takes only a ship's way: both its towns have ports now.
+            let Some(path) = path.or_else(|| (carrier == crate::map::Carrier::Ship).then(Vec::new)) else { continue };
             if carrier == route.carrier && (better.hexes == path
                     || better.cost >= self.map().path_cost(&path, per_hex, carrier) - 1e-9) {
                 continue;
