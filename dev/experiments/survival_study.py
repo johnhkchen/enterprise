@@ -4,7 +4,7 @@
     just server-setup-survival 8675309   # a normal world of that seed, no testbench (its villages 496 blocks apart;
                                          # 12345's nearest pair are 1,488 apart, a road no load pays for)
     just server                          # in the background
-    python3 dev/experiments/survival_study.py DAYS OUT.log [--loaded] [--chests] [--starting N] [--villages N]
+    python3 dev/experiments/survival_study.py DAYS OUT.log [--loaded] [--chests] [--starting N] [--villages N] [--near X,Z] [--roads N]
 
 The nearest village to spawn and the nearest one to it beyond SPREAD blocks (looking round it 300 to 700 blocks out, twelve ways) are found (`locate structure`), each
 loaded a minute while its villagers settle, and given what a player gives a village to trade: a Merchant's Desk at
@@ -19,7 +19,7 @@ is (`enterprise-sim --trace` it into SQLite).
 
 With --villages N (more than two), a network: the villages round spawn (looked for 1,600 blocks every way), N of them
 each at least NEIGHBOUR blocks from the others, the nearest to the first; each a town, with roads to its two nearest
-within REACH blocks. The first is kept loaded, the rest left to the core.
+within ROAD_REACH blocks. The first is kept loaded, the rest left to the core.
 """
 
 import math
@@ -34,7 +34,8 @@ import rcon as rcon_client  # noqa: E402
 
 SPREAD = 400  # the second village at least this far from the first
 NEIGHBOUR = 250  # a network's villages at least this far apart (--villages)
-REACH = 800  # a network's roads: to a town's two nearest within this
+# A network's roads: to a town's two nearest within this (`--roads N`; not --reach, the ground kept loaded).
+ROAD_REACH = int(sys.argv[sys.argv.index("--roads") + 1]) if "--roads" in sys.argv else 800
 STARTING = 0  # emeralds a player puts in each desk's chest, beyond the founding purse the core gives a town (64)
 _sock = None
 
@@ -165,7 +166,7 @@ def dist(a, b):
 
 
 def network(first, many, days, say):
-    """N villages, each a town, roads to each one's two nearest within REACH: the days run as main's."""
+    """N villages, each a town, roads to each one's two nearest within ROAD_REACH: the days run as main's."""
     found = {first}
     for gx in range(-1600, 1601, 400):
         for gz in range(-1600, 1601, 400):
@@ -182,7 +183,7 @@ def network(first, many, days, say):
         say(f"{d}: " + rcon(f"enterprise core stock {d}").strip().splitlines()[0])
     roads = set()
     for i, v in enumerate(chosen):
-        near = sorted((j for j in range(len(chosen)) if j != i and dist(v, chosen[j]) <= REACH),
+        near = sorted((j for j in range(len(chosen)) if j != i and dist(v, chosen[j]) <= ROAD_REACH),
                       key=lambda j: dist(v, chosen[j]))[:2]
         for j in near:
             roads.add((i, j))
@@ -247,7 +248,9 @@ def main():
     if "The core's mint" not in rcon("enterprise mint"):
         sys.exit("the server isn't running the core (ENTERPRISE_SOCIETY=java?)")
     rcon("gamerule doDaylightCycle true", "time set 1000")
-    first = locate(0, 0)
+    # `--near X,Z`: the first village the nearest to there, not to spawn (a seed's coast away from spawn).
+    near = sys.argv[sys.argv.index("--near") + 1].split(",") if "--near" in sys.argv else (0, 0)
+    first = locate(int(near[0]), int(near[1]))
     if first is None:
         sys.exit("no village near spawn: try another seed")
     many = int(sys.argv[sys.argv.index("--villages") + 1]) if "--villages" in sys.argv else 2
