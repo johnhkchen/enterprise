@@ -210,6 +210,11 @@ def network(first, many, days, say):
     if "--loaded" not in sys.argv:
         for v in chosen[1:]:
             unload(*v)
+        # The first, as a player standing in it: the village itself, not the wide ground its harbour and the sea to
+        # the next port were surveyed in (a day took 25s at --reach 160, the core reckoning the rest from its ledgers).
+        if REACH > 64:
+            unload(*first)
+            load(*first, r=64)
     for day in range(1, days + 1):
         started = time.time()
         if day % 4 == 1 and day > 1:
