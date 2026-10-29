@@ -635,6 +635,26 @@ fn a_ship_sails_from_port_to_port_where_no_wagon_can_go() {
 }
 
 #[test]
+fn a_ship_sails_at_twice_a_wagons_pace_with_three_wagons_hold_and_no_team() {
+    let (mut s, road) = farm_and_mill_by_sea(false, true);
+    let road = road.unwrap();
+    let path = map::Path { hexes: s.route_path(road).unwrap(), cost: 0.0 };
+    let way = s.road_blocks(0, 1, &path);
+    let (r, _) = s.route_state(road);
+    assert_eq!(r.blocks, (way / map::SHIP_PACE).round() as u32, "its blocks at its pace: {} of {way}", r.blocks);
+    let wagon_slots = s.content().dials.wagon_slots;
+    let start = s.totals();
+    for day in 1..=60 {
+        s.advance(day * DAY);
+        s.conserved(&start).and_then(|_| s.solvent()).unwrap_or_else(|e| panic!("day {day}: {e}"));
+    }
+    let (_, state) = s.route_state(road);
+    assert!(state.trips >= 1, "it sailed");
+    assert!(state.last_capacity >= map::SHIP_HOLD * wagon_slots, "a hold of three wagons: {}", state.last_capacity);
+    assert!(state.last_crew >= 1 && state.last_crew <= 3, "its crew, no team: {}", state.last_crew);
+}
+
+#[test]
 fn a_ship_goes_only_where_it_is_cheaper_than_the_road() {
     // Without ports, or with the sea lane broken by land, the wagon goes over the bridge.
     let (s, road) = farm_and_mill_by_sea(true, false);

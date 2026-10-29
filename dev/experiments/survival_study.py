@@ -4,7 +4,7 @@
     just server-setup-survival 8675309   # a normal world of that seed, no testbench (its villages 496 blocks apart;
                                          # 12345's nearest pair are 1,488 apart, a road no load pays for)
     just server                          # in the background
-    python3 dev/experiments/survival_study.py DAYS OUT.log [--loaded] [--chests] [--starting N] [--villages N] [--near X,Z] [--roads N]
+    python3 dev/experiments/survival_study.py DAYS OUT.log [--loaded] [--chests] [--starting N] [--villages N] [--near X,Z] [--roads N] [--road I-J]
 
 The nearest village to spawn and the nearest one to it beyond SPREAD blocks (looking round it 300 to 700 blocks out, twelve ways) are found (`locate structure`), each
 loaded a minute while its villagers settle, and given what a player gives a village to trade: a Merchant's Desk at
@@ -187,6 +187,12 @@ def network(first, many, days, say):
                       key=lambda j: dist(v, chosen[j]))[:2]
         for j in near:
             roads.add((i, j))
+    # `--road I-J` (any number): a road between the network's I-th and J-th towns both ways, past the nearest two
+    # (two ports on one sea, too far apart to be each other's nearest).
+    for k, a in enumerate(sys.argv):
+        if a == "--road":
+            i, j = map(int, sys.argv[k + 1].split("-"))
+            roads |= {(i, j), (j, i)}
     for i, j in sorted(roads):
         said = rcon(f"enterprise route add {desks[i]} {desks[j]}").strip().splitlines()[-1]
         say(f"road {i} -> {j} ({dist(chosen[i], chosen[j]):.0f} blocks): {said}")

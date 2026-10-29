@@ -172,7 +172,7 @@ pub(crate) fn plan_owed(clock: Res<Clock>, content: Res<Content>, book: Res<Book
             let crated: f64 = pallets.at_place(At::Town(route.from_id))
                 .filter(|p| p.claimed.is_some() && p.consigned_to(route.to_id) && p.lading.contract == Some(c.id)).map(|p| p.count()).sum();
             let owed = (c.owed(arrival) - c.shipped - crated).max(0.0);
-            let caps = super::plan::plan_caps(&content, plan, rosters.get(route.from).ok(), false);
+            let caps = super::plan::plan_caps(&content, plan, rosters.get(route.from).ok(), false, route.carrier);
             let room = caps.less(&super::plan::plan_load(&content, &book, &pallets, plan)).palleted(&content, c.good);
             let going = owed.min(home.0[c.good] - plan.cargo[c.good]).min(room).floor();
             if going <= 0.0 {

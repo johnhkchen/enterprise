@@ -102,7 +102,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
         let whys = &mut state.whys;
         // The squad's caps (`squad.rs`: packs and porters; slots, weight and pallets since `pallet-caps`), a wagon's
         // without one.
-        let caps = plan_caps(&content, plan, rosters.get(route.from).ok(), false);
+        let caps = plan_caps(&content, plan, rosters.get(route.from).ok(), false, route.carrier);
         let slots = caps.slots;
         let Ok([(home_stock, home_trades, home_people), (far_stock, far_trades, far_people)]) =
             towns.get_many([route.from, route.to]) else { continue };
@@ -397,7 +397,9 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             // A small load goes on a porter's back: one hand, one pack, no team to feed.
             let owed_stacks: u32 = owed.iter().enumerate()
                 .map(|(g, n)| (n / content.goods[g].stack as f64).ceil() as u32).sum();
-            porter = crate::rules::squad::porter_run(&content, &state, &plan, owed_stacks, on_its_day, Some(roster), &load);
+            // (A ship's crew sail it: no porter walks a sea road.)
+            porter = route.carrier != crate::map::Carrier::Ship
+                && crate::rules::squad::porter_run(&content, &state, &plan, owed_stacks, on_its_day, Some(roster), &load);
             if porter {
                 plan.llamas = 0; // a porter on foot: the llamas stay home
                 crate::rules::squad::to_porter(&content, &mut plan, roster);
@@ -413,7 +415,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             let home_food = food_mode.then(|| crate::road::held(&content, &stock.0));
             crate::rules::squad::trim(&content, roster, &mut plan, home_food, route.blocks, porter);
         }
-        let caps = plan_caps(&content, &plan, roster.as_deref().filter(|_| rostered), porter);
+        let caps = plan_caps(&content, &plan, roster.as_deref().filter(|_| rostered), porter, route.carrier);
         let slots = caps.slots;
         if !caps.holds(&load) {
             // Less room than the plan was made for (slots, weight or pallets): the last of the sale load stays home; then,
@@ -440,7 +442,7 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             let home_free = if foreign { f64::INFINITY } else { free(&content, trades, &money, &bills, route.from_id, now).to_f64() };
             let mut p = provision(&content, route.blocks, mouths, crate::road::held(&content, &after), far_food,
                 home_free, |feed| crate::road::fodder(&content, &after, feed, keep_wheat).2);
-            if porter || foreign {
+            if porter || foreign || route.carrier == crate::map::Carrier::Ship {
                 crate::rules::squad::no_team(&content, &mut p);
             }
             p
@@ -525,7 +527,8 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
         // What its last wagon could carry and the mouths that ate on the road, team included (`Desires.haulEach`); and
         // the shopping money it took, counted spent off its town's day's budget (the Accountant allowed it at the plan).
         state.last_capacity = slots;
-        state.last_crew = (mouths + if porter || foreign { 0.0 } else { d.wagon_team as f64 }) as u32;
+        state.last_crew = (mouths + if porter || foreign || route.carrier == crate::map::Carrier::Ship { 0.0 }
+            else { d.wagon_team as f64 }) as u32;
         super::desires::spend(&content, now, free_before, &mut budget, plan.shopping_money);
         state.carried += plan.cargo.iter().sum::<f64>();
         let papers = bills.take_to_present(route.from_id, route.to_id, arrival);
@@ -558,9 +561,9 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
 
 /// The caps a plan is sized to (`pallet-caps`): its squad's (`squad.rs`: a wagon and its packs, a porter run's one pack),
 /// as `roster` has the crew it mustered, its slots those the squad sized up (`Plan.slots`, when set); a plain wagon's
-/// without a crew.
-pub(crate) fn plan_caps(content: &Content, plan: &Plan, roster: Option<&crate::roster::Roster>, porter: bool)
-        -> crate::pallet::Caps {
+/// without a crew; a ship's hold [`crate::map::SHIP_HOLD`] times them.
+pub(crate) fn plan_caps(content: &Content, plan: &Plan, roster: Option<&crate::roster::Roster>, porter: bool,
+        carrier: crate::map::Carrier) -> crate::pallet::Caps {
     let mut caps = match roster.filter(|_| !plan.crew.is_empty()) {
         Some(r) => crate::pallet::Caps::of(content, plan.crew.iter().filter_map(|&i| r.hands.get(i).map(|h| h.trade)), porter,
             plan.llamas),
@@ -568,6 +571,10 @@ pub(crate) fn plan_caps(content: &Content, plan: &Plan, roster: Option<&crate::r
     };
     if plan.slots > 0 {
         caps.slots = plan.slots;
+    }
+    if carrier == crate::map::Carrier::Ship {
+        let hold = crate::map::SHIP_HOLD;
+        caps = crate::pallet::Caps { slots: caps.slots * hold, weight: caps.weight * hold as f64, pallets: caps.pallets * hold };
     }
     caps
 }

@@ -979,8 +979,18 @@ mod's), but no road ever chose it. Then: build them first.
   ends have ports. `/enterprise route` lists such a road as "by ship: ...".
 - **A Fisherman captains it** when one is home (the squad's `Needs.water`): the first Fisherman leads and the others
   to spare go as its crew; with none, the town's usual lead takes it.
-- **Not yet:** ships carry what a wagon does (27 stacks; the studio's trader boat would hold more), sail at a wagon's
-  pace, and are seen in the world only as the harbour's moored boats.
+- **Ships win on the long haul** (John, after seed 1001's 30 days with no wagon ever leaving: "boat transit can win,
+  because it could require less food or can carry more"). A ship sails twice a wagon's pace (`SHIP_PACE`: its road's
+  blocks, days and crew's food are its way's over two), feeds no team, and holds three wagons' loads (`SHIP_HOLD`:
+  slots, weight and pallets). No porter walks a sea road.
+- **Towns save for a haul** (John: "the towns should save up for a larger haul to amortize the food costs, and grow
+  locally"). A wagon with a load not yet worth its road, its town short of the road's money, now holds that money back
+  from fields, stalls and homes too (`road_reserve`), as one worth the road always did.
+- **Seed 1001, what it showed.** Five towns 300 to 950 blocks apart, four with harbours, none rich: each spent its
+  64-emerald founding purse on stalls and fields by day 5, and the best load any road saw in 30 days was worth 8.6
+  against an 820-block road's 16. The study's roads went to each town's two nearest, so the two ports on one sea
+  (Corin's Crossing and Theramore, ~950 apart) never had one: `survival_study.py --road I-J` adds such a road.
+- **Not yet:** ships are seen in the world only as the harbour's moored boats.
 
 
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)

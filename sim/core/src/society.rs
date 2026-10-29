@@ -264,13 +264,14 @@ impl Society {
     }
 
     /// The road between two placed towns and what goes on it: a wagon's way if there's one, else a llama train's
-    /// (`map.rs`: a river with no bridge, too steep a flank), its path and its length in blocks; where content has road
+    /// (`map.rs`: a river with no bridge, too steep a flank), its path and its length in blocks (a ship's at its pace); where content has road
     /// food, only a way short enough for one leg's food (`road.rs`). Between two ports, a ship's where it's cheaper than
     /// that, or there's none over land. `None`: no way for any.
     pub fn best_road(&self, from: TownId, to: TownId) -> Option<(crate::map::Carrier, crate::map::Path, f64)> {
         let way = |carrier: crate::map::Carrier| {
             let path = self.plan_road(from, to, carrier)?;
-            let blocks = self.road_blocks(from, to, &path);
+            // A ship's way counts its blocks at its pace: its days and its crew's food (`map::SHIP_PACE`).
+            let blocks = self.road_blocks(from, to, &path) / carrier.pace();
             let short = !crate::road::road_food(self.content()) || crate::road::in_range(self.content(), blocks.round() as u32);
             short.then_some((carrier, path, blocks))
         };

@@ -412,7 +412,7 @@ pub fn depart(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
         let state = &mut *state;
         let wagon = state.wagon.as_mut().unwrap();
         let slots = if wagon.slots > 0 { wagon.slots } else { d.wagon_slots };
-        let team = if wagon.porter { 0 } else { d.wagon_team };
+        let team = if wagon.porter || route.carrier == crate::map::Carrier::Ship { 0 } else { d.wagon_team };
         state.freight.crew = Some(crate::road::mouths(Some(wagon)) + team as f64);
         state.freight.capacity = Some(slots);
         // Its calls (`itinerary-drops`): the far end, and the hub on its way if its path crosses one's land (`setStop`),

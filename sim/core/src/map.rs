@@ -72,6 +72,11 @@ pub const SHIP_FACTOR: f64 = 0.5;
 /// A hex this share under water or more, or cut by a river, is water a ship sails: a coast's hexes, a lake's, a
 /// river's (a quarter of 80 blocks across is a wide river's run through it).
 pub const SAIL_WATER: f64 = 0.25;
+/// A ship sails this many blocks to a wagon's one: its road's blocks, and so its days and its crew's food, are the
+/// way's over this (John: "boat transit can win, because it could require less food or can carry more").
+pub const SHIP_PACE: f64 = 2.0;
+/// A ship's hold carries this many wagons' loads (slots, weight and pallets), and it has no team to feed.
+pub const SHIP_HOLD: u32 = 3;
 /// A llama climbs from one hex to the next at most this steeply: 32 blocks over a hex, twice a wagon's.
 pub const LLAMA_MAX_GRADE: f64 = 0.4;
 /// A hex with this much relief or more stops even a llama: a mountain's face.
@@ -109,6 +114,11 @@ impl Carrier {
             Carrier::Wagon | Carrier::Boat | Carrier::Ship => Gait { max_grade: MAX_GRADE, cliff: CLIFF, ford: f64::INFINITY },
             Carrier::Llama => Gait { max_grade: LLAMA_MAX_GRADE, cliff: LLAMA_CLIFF, ford: FORD_FACTOR },
         }
+    }
+
+    /// Blocks it covers to a wagon's one ([`SHIP_PACE`] for a ship).
+    pub fn pace(self) -> f64 {
+        if self == Carrier::Ship { SHIP_PACE } else { 1.0 }
     }
 
     /// Its name, as the host and the trace print it.

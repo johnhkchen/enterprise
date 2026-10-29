@@ -164,7 +164,9 @@ pub fn road_money(content: &Content, route: &Route, home_stock: &[f64], keep_whe
     }
     let ppfp = content.dials.purse_per_food_point;
     let food = food_needed(content, route.blocks) * mouths;
-    let team = 2.0 * food_needed(content, route.blocks) * content.dials.wagon_team as f64;
+    // A ship has no team (`map::SHIP_HOLD`).
+    let team = if route.carrier == crate::map::Carrier::Ship { 0.0 }
+        else { 2.0 * food_needed(content, route.blocks) * content.dials.wagon_team as f64 };
     let fed = fodder(content, home_stock, team, keep_wheat).2;
     // Rounded up to the thousandth: a cost (`fixed.rs`).
     crate::fixed::Fixed::ceil((food + (food - held(content, home_stock)).max(0.0) + team - fed) * ppfp)

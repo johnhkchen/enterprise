@@ -73,7 +73,9 @@ pub fn reserve(content: &Content, trades: &Trades, farm: Option<&Farm>) -> Fixed
 /// but can't pay for it (`Stay::CantFund`: its food for a crew of one and the purse for the road home's, as `plan.rs`
 /// asks, or the road's cost where content has no food), so what it spends on fields, stalls, lessons, homes and
 /// children saves up for the trip; a wagon with nothing worth taking holds nothing back (homes for the homeless before
-/// a wagon with no load).
+/// a wagon with no load). A wagon with a load not yet worth its road saves too: its haul grows while it waits, and its
+/// town has the road's money when it's worth going (John: "the towns should save up for a larger haul to amortize the
+/// food costs").
 pub fn road_reserve(content: Res<Content>, routes: Query<(&Route, &crate::state::RouteState)>,
         mut towns: Query<(&Town, &mut Trades, &Stock, Option<&crate::state::People>)>) {
     let mut by_town: BTreeMap<usize, Fixed> = BTreeMap::new();
@@ -89,8 +91,8 @@ pub fn road_reserve(content: Res<Content>, routes: Query<(&Route, &crate::state:
                     + crate::road::purse_keep(&content, route, 1.0) + state.plan.as_ref().map_or(Fixed::ZERO, |p| p.purse);
             }
         }
-        // Only a wagon with a load worth the road, waiting on its money: one with nothing to take holds none back.
-        if state.stayed != Some(crate::road::Stay::CantFund) || !state.would_go {
+        // Only a wagon with a load, waiting on its money: one with nothing to take holds none back.
+        if state.stayed != Some(crate::road::Stay::CantFund) || !(state.would_go || worth > 0.0) {
             continue;
         }
         let Ok((_, _, stock, _)) = towns.get(route.from) else { continue };
