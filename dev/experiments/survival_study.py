@@ -207,16 +207,18 @@ def network(first, many, days, say):
         sprint(200)
     for d in desks:
         say(f"{d}: " + rcon(f"enterprise autoswitch {d} selling").strip().splitlines()[-1])
-    if "--loaded" not in sys.argv:
-        for v in chosen[1:]:
-            unload(*v)
-        # The first, as a player standing in it: the village itself, not the wide ground its harbour and the sea to
-        # the next port were surveyed in (a day took 25s at --reach 160, the core reckoning the rest from its ledgers).
-        if REACH > 64:
-            unload(*first)
-            load(*first, r=64)
     for day in range(1, days + 1):
         started = time.time()
+        if day == 2 and "--loaded" not in sys.argv:
+            # After the first day, the rest left to the core's ledgers: each town's conversion and harbour are laid in
+            # its first day loaded (unloaded at once, three of seed 1001's four harbours waited for day 27, and the
+            # ports' road went by llama). The first, as a player standing in it: the village itself, not the wide
+            # ground its harbour and the sea to the next port were surveyed in (a day took 25s at --reach 160, 6s so).
+            for v in chosen[1:]:
+                unload(*v)
+            if REACH > 64:
+                unload(*first)
+                load(*first, r=64)
         if day % 4 == 1 and day > 1:
             for v, d in zip(chosen, desks):
                 load(*v, r=8)
