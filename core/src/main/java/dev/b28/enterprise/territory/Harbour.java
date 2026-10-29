@@ -24,7 +24,7 @@ public final class Harbour {
     private Harbour() {}
 
     /** What was laid. */
-    public record Laid(boolean sea, int quay, int jetty, int boats) {}
+    public record Laid(boolean sea, int quay, int jetty, int boats, int buildings) {}
 
     /** A shore cell: the land's last column, its way out over the water. */
     record Shore(BlockPos at, Direction out) {}
@@ -109,7 +109,89 @@ public final class Harbour {
         if (rank >= 2 && sea && boat(level, set, "boat_trader_9x25", start, head.out(), -12, -4, 2, 26, w)) {
             boats++;
         }
-        return java.util.Optional.of(new Laid(sea, quay, jetty, boats));
+        // The district's first buildings behind the quay, fronts to the water (from village): at sea the customs house
+        // at the head, a warehouse beside it and the fish market the other side; on a river the river warehouse behind
+        // the wharf and the customs booth beside it.
+        int buildings = 0;
+        if (rank >= 1) {
+            List<String> row = sea ? List.of("harbour:customs_house", "harbour:warehouse", "harbour:fish_market")
+                    : List.of("harbour:warehouse", "harbour:river_customs");
+            int right = 0, left = 0;
+            for (int k = 0; k < row.size(); k++) {
+                var kit = building(level, kingdom, row.get(k), !sea && row.get(k).equals("harbour:warehouse"));
+                if (kit.isEmpty()) {
+                    continue;
+                }
+                int wd = kit.get().width();
+                // The first at the head; the next to its right, then its left.
+                int centre;
+                if (k == 0) {
+                    centre = 0;
+                    right = (wd + 1) / 2 + 1;
+                    left = -(wd / 2) - 2;
+                } else if (k % 2 == 1) {
+                    centre = right + wd / 2;
+                    right += wd + 2;
+                } else {
+                    centre = left - (wd - 1) / 2;
+                    left -= wd + 2;
+                }
+                if (hall(level, kit.get(), head, centre, w + 2)) {
+                    buildings++;
+                }
+            }
+        }
+        return java.util.Optional.of(new Laid(sea, quay, jetty, boats, buildings));
+    }
+
+    /** The kingdom's harbour building for a slot (its own set's, else Lordaeron's); the smaller warehouse on a river. */
+    static java.util.Optional<Kits.Meta> building(ServerLevel level, String kingdom, String slot, boolean small) {
+        var resources = level.getServer().getResourceManager();
+        for (String k : List.of(kingdom, "lordaeron")) {
+            List<Kits.Meta> fit = Kits.kits(resources, k, slot, 99, 99).stream().flatMap(id -> Kits.meta(resources, id).stream())
+                    .sorted(java.util.Comparator.comparingInt(Kits.Meta::width)).toList();
+            if (!fit.isEmpty()) {
+                return java.util.Optional.of(small ? fit.get(0) : fit.get(fit.size() - 1));
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
+    /**
+     * A harbour building behind the quay: its front 2 in from the shore (the quay walk between), centred {@code centre}
+     * along the shore from the head, its plot levelled to the quay's deck, its front to the water.
+     */
+    static boolean hall(ServerLevel level, Kits.Meta kit, Shore head, int centre, int deck) {
+        Direction out = head.out(), in = out.getOpposite(), across = out.getClockWise();
+        int wd = kit.width(), dp = kit.depth(), o0 = centre - wd / 2;
+        int x0 = Integer.MAX_VALUE, z0 = Integer.MAX_VALUE, x1 = Integer.MIN_VALUE, z1 = Integer.MIN_VALUE;
+        for (int a : new int[] {2, 2 + dp - 1}) {
+            for (int o : new int[] {o0, o0 + wd - 1}) {
+                BlockPos c = head.at().relative(in, a).relative(across, o);
+                x0 = Math.min(x0, c.getX());
+                z0 = Math.min(z0, c.getZ());
+                x1 = Math.max(x1, c.getX());
+                z1 = Math.max(z1, c.getZ());
+            }
+        }
+        for (int x = x0 - 1; x <= x1 + 1; x++) {
+            for (int z = z0 - 1; z <= z1 + 1; z++) {
+                if (!level.isLoaded(new BlockPos(x, 0, z)) || water(level, new BlockPos(x, 0, z)) != Integer.MIN_VALUE) {
+                    return false; // over water, or not loaded: no room here
+                }
+            }
+        }
+        // The quay walk between it and the water, and its plot, at the deck's height.
+        for (int a = 0; a <= 1; a++) {
+            for (int o = o0; o < o0 + wd; o++) {
+                BlockPos c = head.at().relative(in, a).relative(across, o);
+                if (water(level, c) == Integer.MIN_VALUE) {
+                    Terraform.settle(level, c.getX(), c.getZ(), deck);
+                }
+            }
+        }
+        Plots.level(level, x0 - 1, z0 - 1, x1 + 1, z1 + 1, deck);
+        return Kits.place(level, kit.id(), new BlockPos(x0, deck, z0), out).isPresent();
     }
 
     /** The water's surface height at a column, or {@link Integer#MIN_VALUE} if its top isn't water. */

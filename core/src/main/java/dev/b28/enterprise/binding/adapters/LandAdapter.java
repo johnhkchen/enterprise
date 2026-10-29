@@ -886,8 +886,8 @@ public final class LandAdapter {
             String tierNow = dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).tierOf(town, Math.max(bedsNow,
                     cleared.get().beds()));
             dev.b28.enterprise.territory.Harbour.lay(level, townPlan, kingdom, tierNow).ifPresent(h -> Enterprise.LOGGER.info(
-                    "Town {}'s harbour ({}, {}): {} quay tiles, {} jetty parts, {} boats", town, h.sea() ? "sea" : "river",
-                    tierNow, h.quay(), h.jetty(), h.boats()));
+                    "Town {}'s harbour ({}, {}): {} quay tiles, {} jetty parts, {} boats, {} buildings", town,
+                    h.sea() ? "sea" : "river", tierNow, h.quay(), h.jetty(), h.boats(), h.buildings()));
         }
         int beds = 0, homes = 0, shops = 0, stalls = 0;
         converting = true;
