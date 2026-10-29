@@ -440,13 +440,21 @@ public final class Terraform {
         boolean avenue = line == (northSouth ? plan.bell().getX() : plan.bell().getZ());
         int width = avenue ? TownPlans.GATE : TownPlans.LANE, from = line - width / 2;
         TownPlans.Rect in = plan.inner();
+        int a0 = northSouth ? in.z0() : in.x0(), a1 = northSouth ? in.z1() : in.x1();
+        // Its ground levelled first (John: "level"): each cross-section at one height, its long profile the land's own
+        // smoothed and held under 1 in 3, meeting the forum (and the streets it crosses) at their height.
+        int[] levels = profile(level, plan, northSouth, from, width, a0, a1);
         int paved = 0;
-        for (int along = northSouth ? in.z0() : in.x0(); along <= (northSouth ? in.z1() : in.x1()); along++) {
+        for (int along = a0; along <= a1; along++) {
+            if (levels[along - a0] == Integer.MIN_VALUE) {
+                continue;
+            }
             for (int o = 0; o < width; o++) {
                 int x = northSouth ? from + o : along, z = northSouth ? along : from + o;
                 if (!level.isLoaded(new BlockPos(x, 0, z))) {
                     continue;
                 }
+                settle(level, x, z, levels[along - a0]);
                 BlockPos at = new BlockPos(x, ground(level, x, z), z);
                 BlockState surface = surface(kingdom, x, z, o == 0 || o == width - 1,
                         !level.getBlockState(at.below()).isAir() && level.getBlockState(at.below()).getFluidState().isEmpty());
@@ -456,7 +464,107 @@ public final class Terraform {
                 }
             }
         }
+        // Half steps where it climbs a block from one cross-section to the next.
+        for (int along = a0; along < a1; along++) {
+            int here = levels[along - a0], next = levels[along - a0 + 1];
+            if (here == Integer.MIN_VALUE || next == Integer.MIN_VALUE || Math.abs(here - next) != 1) {
+                continue;
+            }
+            int lower = here < next ? along : along + 1, y = Math.min(here, next);
+            for (int o = 0; o < width; o++) {
+                int x = northSouth ? from + o : lower, z = northSouth ? lower : from + o;
+                BlockPos up = new BlockPos(x, y + 1, z);
+                if (level.getBlockState(up).isAir()) {
+                    level.setBlock(up, halfStep(kingdom, x, z), 2 | 16);
+                }
+            }
+        }
         return paved;
+    }
+
+    /**
+     * A street's long profile from its land: each cross-section's ground (the median of its columns, a track's or a
+     * built thing's left out), smoothed over 9, held under 1 in 3 both ways from the pinned ones (the forum's paving,
+     * a paved street it crosses: already built ground). {@link Integer#MIN_VALUE} where the ground isn't there to level
+     * (unloaded, water, a building).
+     */
+    static int[] profile(ServerLevel level, TownPlans.Plan plan, boolean northSouth, int from, int width, int a0, int a1) {
+        int n = a1 - a0 + 1;
+        double[] nat = new double[n];
+        Double[] pinned = new Double[n];
+        boolean[] skip = new boolean[n];
+        for (int k = 0; k < n; k++) {
+            int along = a0 + k;
+            List<Integer> ys = new ArrayList<>();
+            boolean paved = false, wet = false;
+            for (int o = 0; o < width; o++) {
+                int x = northSouth ? from + o : along, z = northSouth ? along : from + o;
+                if (!level.isLoaded(new BlockPos(x, 0, z))) {
+                    skip[k] = true;
+                    break;
+                }
+                int y = ground(level, x, z);
+                BlockState b = level.getBlockState(new BlockPos(x, y, z));
+                wet |= !b.getFluidState().isEmpty();
+                paved |= !b.is(Blocks.DIRT_PATH) && !dev.b28.enterprise.settlement.Grounds.natural(b) && !b.canBeReplaced();
+                ys.add(y);
+            }
+            if (skip[k] || wet || ys.isEmpty()) {
+                skip[k] = true;
+                continue;
+            }
+            java.util.Collections.sort(ys);
+            nat[k] = ys.get(ys.size() / 2);
+            if (paved) {
+                pinned[k] = nat[k]; // the forum's paving, or a paved street across: it holds
+            }
+        }
+        double[] h = new double[n];
+        for (int k = 0; k < n; k++) {
+            double a = 0;
+            int w = 0;
+            for (int j = Math.max(0, k - 4); j <= Math.min(n - 1, k + 4); j++) {
+                if (!skip[j]) {
+                    a += nat[j];
+                    w++;
+                }
+            }
+            h[k] = pinned[k] != null ? pinned[k] : w > 0 ? a / w : nat[k];
+        }
+        for (int pass = 0; pass < 6; pass++) {
+            for (int k = 1; k < n; k++) {
+                if (pinned[k] == null && !skip[k] && !skip[k - 1]) {
+                    h[k] = Math.min(h[k - 1] + 1 / 3.0, Math.max(h[k - 1] - 1 / 3.0, h[k]));
+                }
+            }
+            for (int k = n - 2; k >= 0; k--) {
+                if (pinned[k] == null && !skip[k] && !skip[k + 1]) {
+                    h[k] = Math.min(h[k + 1] + 1 / 3.0, Math.max(h[k + 1] - 1 / 3.0, h[k]));
+                }
+            }
+        }
+        int[] out = new int[n];
+        for (int k = 0; k < n; k++) {
+            out[k] = skip[k] || pinned[k] != null ? Integer.MIN_VALUE : (int) Math.round(h[k]);
+        }
+        return out;
+    }
+
+    /** A column's ground cut or filled to {@code y}: dirt under it, air over it (what's natural or growing). */
+    static void settle(ServerLevel level, int x, int z, int y) {
+        int now = ground(level, x, z);
+        for (int up = Math.min(now, y) + 1; up <= Math.max(now, y) + 3; up++) {
+            BlockPos at = new BlockPos(x, up, z);
+            BlockState b = level.getBlockState(at);
+            if (up > y && (b.isAir() || b.canBeReplaced() || isTree(b) || dev.b28.enterprise.settlement.Grounds.natural(b))) {
+                level.setBlock(at, Blocks.AIR.defaultBlockState(), 2 | 16);
+            } else if (up <= y) {
+                level.setBlock(at, up == y ? Blocks.DIRT_PATH.defaultBlockState() : Blocks.DIRT.defaultBlockState(), 2 | 16);
+            }
+        }
+        if (now >= y) {
+            level.setBlock(new BlockPos(x, y, z), Blocks.DIRT_PATH.defaultBlockState(), 2 | 16);
+        }
     }
 
     /** How far a landing's jetty runs out over the water. */
