@@ -105,6 +105,20 @@ public final class Harbour {
                         : "1" + (char) ('a' + Math.floorMod(s.at().getX() * 31 + s.at().getZ(), sea ? 3 : 2)));
                 if (quayTile(level, set, tile, s, w)) {
                     quay++;
+                } else {
+                    // A cell of the line that takes no tile (a corner, its water on the slant): paved at the deck, not a
+                    // stub of the old bank in the quay wall.
+                    Terraform.settle(level, s.at().getX(), s.at().getZ(), w + 2);
+                    level.setBlock(new BlockPos(s.at().getX(), w + 2, s.at().getZ()),
+                            net.minecraft.world.level.block.Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
+                    for (int y = w + 1; y > level.getMinBuildHeight(); y--) {
+                        BlockPos b = new BlockPos(s.at().getX(), y, s.at().getZ());
+                        BlockState under = level.getBlockState(b);
+                        if (under.getFluidState().isEmpty() && !under.isAir() && !under.canBeReplaced()) {
+                            break;
+                        }
+                        level.setBlock(b, net.minecraft.world.level.block.Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
+                    }
                 }
             }
             // Behind the quay line, the quay walk and the district's ground levelled to the deck (6 in), walled where the
@@ -278,10 +292,25 @@ public final class Harbour {
             }
             int g = Terraform.ground(level, c.getX(), c.getZ());
             BlockState top = level.getBlockState(new BlockPos(c.getX(), g, c.getZ()));
-            if (!dev.b28.enterprise.settlement.Grounds.natural(top) || top.is(net.minecraft.world.level.block.Blocks.DIRT_PATH)) {
+            boolean land = dev.b28.enterprise.settlement.Grounds.natural(top) && !top.is(net.minecraft.world.level.block.Blocks.DIRT_PATH)
+                    || earthwork(top);
+            if (!land) {
                 return; // a street or something built: the band stops at it
             }
-            Terraform.settle(level, c.getX(), c.getZ(), deck);
+            // The land rising 4 or more over the deck within the band: the band stops there, walled (no dam of a face:
+            // the studio's r91 render, a 14-high earth face at the band's back).
+            if (g - deck >= 4) {
+                Earthworks.step(level, kingdom, c.getX(), c.getZ(), s.out().getStepX(), s.out().getStepZ(), deck, g - deck, "wall");
+                return;
+            }
+            // Everything over the deck cleared, the grade's own earthworks in it too (they belong to the land the band
+            // reshapes: r91 left 326 terrace stones hanging in the air), the ground filled under it, grass on top.
+            for (int y = deck + 1; y <= Math.max(g, deck) + 6; y++) {
+                level.setBlock(new BlockPos(c.getX(), y, c.getZ()), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2 | 16);
+            }
+            for (int y = Math.min(g, deck) + 1; y < deck; y++) {
+                level.setBlock(new BlockPos(c.getX(), y, c.getZ()), net.minecraft.world.level.block.Blocks.DIRT.defaultBlockState(), 2 | 16);
+            }
             level.setBlock(new BlockPos(c.getX(), deck, c.getZ()), net.minecraft.world.level.block.Blocks.GRASS_BLOCK.defaultBlockState(), 2 | 16);
         }
         BlockPos back = s.at().relative(in, BAND + 1);
@@ -292,6 +321,14 @@ public final class Harbour {
         if (g - deck >= 1) {
             Earthworks.step(level, kingdom, back.getX(), back.getZ(), s.out().getStepX(), s.out().getStepZ(), deck, g - deck, "wall");
         }
+    }
+
+    /** A block of the grade's earthworks (its walls' courses, copings, rails, lamps): land, to a band that reshapes it. */
+    static boolean earthwork(BlockState b) {
+        String id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(b.getBlock()).getPath();
+        return id.contains("stone_brick") || id.contains("andesite") || id.contains("cobblestone") || id.equals("moss_block")
+                || id.equals("moss_carpet") || id.equals("vine") || id.equals("lantern") || id.endsWith("_fence")
+                || id.equals("tuff") || id.equals("rooted_dirt");
     }
 
     /** A shallow water column filled to the deck: coursed stone from the bed, earth under its top, grass on it. */
