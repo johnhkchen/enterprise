@@ -49,7 +49,8 @@ public sealed interface Input
                 Input.Mobilise,
                 Input.Declare,
                 Input.Peace,
-                Input.CrownShop {
+                Input.CrownShop,
+                Input.Port {
     void encode(PostcardOut out);
 
     static Input decode(PostcardIn in) {
@@ -96,6 +97,7 @@ public sealed interface Input
             case 38 -> new Declare(in.string());
             case 39 -> new Peace();
             case 40 -> new CrownShop(Point.decode(in));
+            case 41 -> new Port(in.u32(), in.i32(), in.i32());
             default -> throw in.unknownVariant("Input", at);
         };
     }
@@ -840,6 +842,22 @@ public sealed interface Input
         public void encode(PostcardOut out) {
             out.variant(40);
             this.point.encode(out);
+        }
+    }
+
+    /**
+     * The host has laid a harbour for a town ({@code territory/Harbour.java}): its jetty's root at block {@code x}, {@code z}. From then
+     * on its roads to another town with a port may go by ship, sailing water from port to port ({@code map.rs}
+     * {@code Carrier::Ship}), where that's cheaper than the road over land or there's no road over land. Sent again, the
+     * port moves. Refused for a town that isn't there.
+     */
+    record Port(long town, int x, int z) implements Input {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(41);
+            out.u32(this.town);
+            out.i32(this.x);
+            out.i32(this.z);
         }
     }
 }

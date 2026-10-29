@@ -213,12 +213,19 @@ def network(first, many, days, say):
                     unload(*v, r=8)
         sprint(24000)
         say(f"day {day} ({time.time() - started:.0f}s)")
+        if day == 2:
+            # A road refused at the start (no way over land) may go by ship now that the towns' harbours are laid.
+            for i, j in sorted(roads):
+                said = rcon(f"enterprise route add {desks[i]} {desks[j]}").strip().splitlines()[-1]
+                say(f"day {day}: road {i} -> {j} again: {said}")
         if day % 5 == 0 or day == days:
             for v, d in zip(chosen, desks):
                 load(*v, r=8)
                 say(f"-- day {day}, {d}\n" + rcon(f"enterprise ledger {d}").strip())
                 if v != first and "--loaded" not in sys.argv:
                     unload(*v, r=8)
+            # Every road, its carrier ("by ship: ..."), trips and sales; towns founded since show here too.
+            say(f"-- day {day}, roads\n" + rcon("enterprise routes").strip())
     said = rcon("enterprise core journal").strip()
     say(said)
     say(replay_check(said))

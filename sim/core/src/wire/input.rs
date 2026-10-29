@@ -196,6 +196,11 @@ pub enum Input {
     /// placed. The crown's treasury funds its card and the core takes what is sold into it. Refused for a point that isn't
     /// a shop.
     CrownShop { point: Point },
+    /// The host has laid a harbour for a town (`territory/Harbour.java`): its jetty's root at block `x`, `z`. From then
+    /// on its roads to another town with a port may go by ship, sailing water from port to port (`map.rs`
+    /// `Carrier::Ship`), where that's cheaper than the road over land or there's no road over land. Sent again, the
+    /// port moves. Refused for a town that isn't there.
+    Port { town: TownNo, x: i32, z: i32 },
 }
 
 /// A villager a census saw: the host's tag for it (its UUID), its trade by the host's name (with or without the host's

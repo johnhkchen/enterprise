@@ -318,7 +318,8 @@ impl Project {
 }
 
 /// A town's public works: its projects in the order they were started, whether a master Farmer has planted the
-/// square's flower beds, and whether the host says the town has a pier for stone docks. A component on every town.
+/// square's flower beds, whether the host says the town has a pier for stone docks, and the hex of its harbour's jetty
+/// if it has one (its ships' port). A component on every town.
 #[derive(Component, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Works {
     pub projects: Vec<Project>,
@@ -329,6 +330,8 @@ pub struct Works {
     /// When it last reviewed what to build, and when it last looked for a bridge (at its toll reviews, in the mod).
     pub reviewed: Option<u64>,
     pub bridges_looked: Option<u64>,
+    /// The hex its harbour's jetty stands in (`Input::Port`): where its ships sail from (`map.rs` `Carrier::Ship`).
+    pub port: Option<crate::hex::Hex>,
 }
 
 impl Works {
@@ -603,6 +606,16 @@ impl crate::society::Society {
         let (blocks, fee) = (d.blocks_per_mason_day * skill as f64, d.mason_pay * skill as f64);
         self.help_project(town, blocks);
         fee
+    }
+
+    /// The town's harbour, its jetty at block `x`, `z` (`Input::Port`): its port.
+    pub fn set_port(&mut self, town: crate::messages::TownId, x: f64, z: f64) {
+        self.world.get_mut::<Works>(self.towns[town]).expect("a town").port = Some(crate::hex::Hex::at(x, z));
+    }
+
+    /// The hex of a town's port, if the host has laid it a harbour.
+    pub fn port(&self, town: crate::messages::TownId) -> Option<crate::hex::Hex> {
+        self.world.get::<Works>(self.towns[town]).and_then(|w| w.port)
     }
 
     /// Whether the town has a pier stone docks could be laid on (the host's: the mod's `Territory.dock`).

@@ -66,6 +66,12 @@ pub const TRAIL_WIDEST: u32 = 4;
 pub const TRAIL_EASE: f64 = 0.5;
 /// Sailing a water hex costs this much a hex of open ground: boats are quick.
 pub const BOAT_FACTOR: f64 = 0.8;
+/// A ship sails a hex of water at this much a hex of open ground: the wind and the current do a team's work, so its
+/// crew's food is the road's whole cost (John: "Are water trade routes ready yet?").
+pub const SHIP_FACTOR: f64 = 0.5;
+/// A hex this share under water or more, or cut by a river, is water a ship sails: a coast's hexes, a lake's, a
+/// river's (a quarter of 80 blocks across is a wide river's run through it).
+pub const SAIL_WATER: f64 = 0.25;
 /// A llama climbs from one hex to the next at most this steeply: 32 blocks over a hex, twice a wagon's.
 pub const LLAMA_MAX_GRADE: f64 = 0.4;
 /// A hex with this much relief or more stops even a llama: a mountain's face.
@@ -84,6 +90,8 @@ pub enum Carrier {
     Llama,
     /// A wagon's way on land, and water sailed at [`BOAT_FACTOR`].
     Boat,
+    /// A ship between two towns' ports (`Society::set_port`): water only ([`Ground::sailable`]), at [`SHIP_FACTOR`].
+    Ship,
 }
 
 /// How a carrier goes: the steepest step it takes between hexes, the relief that stops it, and how much harder a
@@ -98,7 +106,7 @@ pub struct Gait {
 impl Carrier {
     pub fn gait(self) -> Gait {
         match self {
-            Carrier::Wagon | Carrier::Boat => Gait { max_grade: MAX_GRADE, cliff: CLIFF, ford: f64::INFINITY },
+            Carrier::Wagon | Carrier::Boat | Carrier::Ship => Gait { max_grade: MAX_GRADE, cliff: CLIFF, ford: f64::INFINITY },
             Carrier::Llama => Gait { max_grade: LLAMA_MAX_GRADE, cliff: LLAMA_CLIFF, ford: FORD_FACTOR },
         }
     }
@@ -109,6 +117,7 @@ impl Carrier {
             Carrier::Wagon => "wagon",
             Carrier::Llama => "llama",
             Carrier::Boat => "boat",
+            Carrier::Ship => "ship",
         }
     }
 }
@@ -192,6 +201,9 @@ impl Ground {
     /// a river cutting it is a wagon's end and a llama's ford ([`Gait::ford`]); a bridged hex that's mostly water, or
     /// cut by a river, is open ground. By boat, a hex that can't be walked is sailed at [`BOAT_FACTOR`].
     pub fn factor(&self, carrier: Carrier) -> f64 {
+        if carrier == Carrier::Ship {
+            return if self.sailable() { SHIP_FACTOR } else { f64::INFINITY };
+        }
         if self.bridged && (self.water_share > IMPASSABLE || self.river) {
             return 1.0;
         }
@@ -207,6 +219,13 @@ impl Ground {
         } else {
             hard
         }
+    }
+}
+
+impl Ground {
+    /// Water a ship sails: [`SAIL_WATER`] of it or more under water, or a river cutting it.
+    pub fn sailable(&self) -> bool {
+        self.water_share >= SAIL_WATER || self.river
     }
 }
 
@@ -385,7 +404,8 @@ impl Map {
         // the route's own ends, only harder going: a town on a hill's edge is reached and left by its steep flank; one
         // in the middle of a plateau isn't.
         let gait = carrier.gait();
-        let sailed = carrier == Carrier::Boat && self.ground(next).factor(Carrier::Wagon).is_infinite();
+        let sailed = carrier == Carrier::Ship
+            || carrier == Carrier::Boat && self.ground(next).factor(Carrier::Wagon).is_infinite();
         let climb = if sailed { 1.0 } else { self.climb_factor(hex, next, carrier) };
         let climb = if (end || hex == start) && climb.is_infinite() { 1.0 + gait.max_grade / GRADE_PER_FACTOR } else { climb };
         let hard = if end { climb } else { self.ground(next).factor(carrier) * climb };
@@ -448,7 +468,11 @@ impl Map {
             carrier: Carrier, avoid: &BTreeSet<Hex>) -> Option<Path> {
         let direct = start.distance(goal);
         // The cheapest a hex can cost, a share of open ground: the heuristic's scale (see the module's note).
-        let cheapest = if carrier == Carrier::Boat { BOAT_FACTOR.min(1.0) } else { 1.0 };
+        let cheapest = match carrier {
+            Carrier::Boat => BOAT_FACTOR.min(1.0),
+            Carrier::Ship => SHIP_FACTOR.min(1.0),
+            _ => 1.0,
+        };
         let guess = |hex: Hex| hex.distance(goal) as f64 * per_hex * cheapest;
         let mut open = OpenSet::default();
         let mut best: BTreeMap<Hex, f64> = BTreeMap::new();

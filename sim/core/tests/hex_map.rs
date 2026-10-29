@@ -596,3 +596,74 @@ fn a_road_takes_a_better_way_once_its_wagon_is_home() {
     s.advance(2 * DAY);
     assert_eq!(s.route_path(road).unwrap(), after);
 }
+
+/// The farm and the mill with a sea lane south of the road (r = 1, q 1 to 11) and each a port beside it.
+fn farm_and_mill_by_sea(bridged: bool, ports: bool) -> (Society, Option<usize>) {
+    let (mut s, _) = farm_and_mill_by_road(bridged);
+    for q in 1..=11 {
+        s.set_ground(Hex::new(q, 1), 1.0, 0.0);
+    }
+    if ports {
+        for (town, port) in [(0, Hex::new(0, 1)), (1, Hex::new(12, 1))] {
+            s.set_port(town, port.center_x(), port.center_z());
+        }
+    }
+    let road = s.add_road(0, 1, 2.0);
+    (s, road)
+}
+
+#[test]
+fn a_ship_sails_from_port_to_port_where_no_wagon_can_go() {
+    let (mut s, road) = farm_and_mill_by_sea(false, true);
+    let road = road.expect("a way by sea");
+    assert_eq!(s.route_carrier(road), Carrier::Ship);
+    let path = s.route_path(road).unwrap();
+    assert_eq!(path.first(), Some(&Hex::new(0, 1)), "from the farm's port: {path:?}");
+    assert_eq!(path.last(), Some(&Hex::new(12, 1)), "to the mill's: {path:?}");
+    assert!(path[1..path.len() - 1].iter().all(|h| s.map().ground(*h).sailable()), "water all the way: {path:?}");
+    // Eleven hexes of sea at half a hex of open ground, and into the far port as open ground.
+    let (_, cost) = s.route_road(road);
+    assert!((cost.to_f64() - (11.0 * map::SHIP_FACTOR + 1.0) * s.per_hex()).abs() < 1e-3, "{cost}");
+    let start = s.totals();
+    for day in 1..=60 {
+        s.advance(day * DAY);
+        s.conserved(&start).and_then(|_| s.solvent()).unwrap_or_else(|e| panic!("day {day}: {e}"));
+    }
+    let r = s.route(road);
+    assert!(r.sold > 0.0 && r.trips >= 2, "ships ran and sold: {r:?}");
+    assert!(s.map().trails.is_empty(), "a ship's wake wears no trail");
+}
+
+#[test]
+fn a_ship_goes_only_where_it_is_cheaper_than_the_road() {
+    // Without ports, or with the sea lane broken by land, the wagon goes over the bridge.
+    let (s, road) = farm_and_mill_by_sea(true, false);
+    assert_eq!(s.route_carrier(road.unwrap()), Carrier::Wagon, "no ports, no ship");
+    let (mut s, _) = farm_and_mill_by_road(true);
+    for q in 1..=11 {
+        s.set_ground(Hex::new(q, 1), if q == 4 { 0.0 } else { 1.0 }, 0.0);
+    }
+    s.set_port(0, Hex::new(0, 1).center_x(), Hex::new(0, 1).center_z());
+    s.set_port(1, Hex::new(12, 1).center_x(), Hex::new(12, 1).center_z());
+    assert!(s.plan_road(0, 1, Carrier::Ship).is_none(), "land across the lane: no way by sea");
+    assert_eq!(s.best_road(0, 1).map(|b| b.0), Some(Carrier::Wagon));
+    // A sea lane the whole way is cheaper than 12 hexes over land: the road the towns had takes ship at its next
+    // replanning, once both have ports.
+    let (mut s, road) = farm_and_mill_by_sea(true, false);
+    let road = road.unwrap();
+    assert_eq!(s.route_carrier(road), Carrier::Wagon);
+    s.set_port(0, Hex::new(0, 1).center_x(), Hex::new(0, 1).center_z());
+    s.set_port(1, Hex::new(12, 1).center_x(), Hex::new(12, 1).center_z());
+    s.advance(DAY);
+    assert_eq!(s.route_carrier(road), Carrier::Ship, "the cheaper way is by sea");
+}
+
+#[test]
+fn a_ship_sails_only_water() {
+    assert_eq!(Ground { water_share: 1.0, ..Default::default() }.factor(Carrier::Ship), map::SHIP_FACTOR);
+    assert_eq!(Ground { water_share: map::SAIL_WATER, ..Default::default() }.factor(Carrier::Ship), map::SHIP_FACTOR,
+        "a coast's hex");
+    assert_eq!(Ground { river: true, ..Default::default() }.factor(Carrier::Ship), map::SHIP_FACTOR, "a river's");
+    assert!(Ground { water_share: 0.1, ..Default::default() }.factor(Carrier::Ship).is_infinite(), "dry land");
+    assert!(Ground { water_share: 0.1, bridged: true, ..Default::default() }.factor(Carrier::Ship).is_infinite());
+}

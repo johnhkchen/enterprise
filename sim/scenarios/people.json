@@ -6,7 +6,7 @@
       "note": "a society from a pack of four goods",
       "request": {
         "abi": 1,
-        "schema": 7127484221566409395,
+        "schema": 6034167911668710121,
         "command": {
           "Create": {
             "pack": {
@@ -91,7 +91,7 @@
           }
         }
       },
-      "request_postcard": "01b3b5ab85afa4faf46200c0bb01040f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e69747769740000000007",
+      "request_postcard": "01e9f5cbd0ecf7eade5300c0bb01040f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e69747769740000000007",
       "response": {
         "Done": {
           "outputs": [],
@@ -104,7 +104,7 @@
       "note": "a town at its desk, with bread, where children come easily (the dials)",
       "request": {
         "abi": 1,
-        "schema": 7127484221566409395,
+        "schema": 6034167911668710121,
         "command": {
           "Apply": {
             "inputs": [
@@ -143,7 +143,7 @@
           }
         }
       },
-      "request_postcard": "01b3b5ab85afa4faf46203040707417368666f726400136d696e6563726166743a6f766572776f726c6436773601000100000000000050400e0a62697274685f6d6f6f640100000000000059c00e0a62697274685f636f7374010000000000000000",
+      "request_postcard": "01e9f5cbd0ecf7eade5303040707417368666f726400136d696e6563726166743a6f766572776f726c6436773601000100000000000050400e0a62697274685f6d6f6f640100000000000059c00e0a62697274685f636f7374010000000000000000",
       "response": {
         "Done": {
           "outputs": [],
@@ -156,7 +156,7 @@
       "note": "its first census: four beds, its Merchant, a farmer, a child, and a baker the core has no trade for",
       "request": {
         "abi": 1,
-        "schema": 7127484221566409395,
+        "schema": 6034167911668710121,
         "command": {
           "Apply": {
             "inputs": [
@@ -196,7 +196,7 @@
           }
         }
       },
-      "request_postcard": "01b3b5ab85afa4faf4620301110004040a76696c6c616765722d6d13656e74657270726973653a6d65726368616e7401000a76696c6c616765722d66106d696e6563726166743a6661726d657202000a76696c6c616765722d630e6d696e6563726166743a6e6f6e6501010a76696c6c616765722d620f6d696e6563726166743a62616b65720100",
+      "request_postcard": "01e9f5cbd0ecf7eade530301110004040a76696c6c616765722d6d13656e74657270726973653a6d65726368616e7401000a76696c6c616765722d66106d696e6563726166743a6661726d657202000a76696c6c616765722d630e6d696e6563726166743a6e6f6e6501010a76696c6c616765722d620f6d696e6563726166743a62616b65720100",
       "response": {
         "Done": {
           "outputs": [],
@@ -209,7 +209,7 @@
       "note": "its hands, by the host's tags",
       "request": {
         "abi": 1,
-        "schema": 7127484221566409395,
+        "schema": 6034167911668710121,
         "command": {
           "Ask": {
             "queries": [
@@ -222,7 +222,7 @@
           }
         }
       },
-      "request_postcard": "01b3b5ab85afa4faf46204010400",
+      "request_postcard": "01e9f5cbd0ecf7eade5304010400",
       "response": {
         "Done": {
           "outputs": [],
@@ -274,7 +274,7 @@
       "note": "five days on: a child born, with no villager yet",
       "request": {
         "abi": 1,
-        "schema": 7127484221566409395,
+        "schema": 6034167911668710121,
         "command": {
           "Apply": {
             "inputs": [
@@ -287,7 +287,7 @@
           }
         }
       },
-      "request_postcard": "01b3b5ab85afa4faf462030100c0a907",
+      "request_postcard": "01e9f5cbd0ecf7eade53030100c0a907",
       "response": {
         "Done": {
           "outputs": [
@@ -324,7 +324,7 @@
       "note": "the child is a hand with no tag",
       "request": {
         "abi": 1,
-        "schema": 7127484221566409395,
+        "schema": 6034167911668710121,
         "command": {
           "Ask": {
             "queries": [
@@ -337,7 +337,7 @@
           }
         }
       },
-      "request_postcard": "01b3b5ab85afa4faf46204010400",
+      "request_postcard": "01e9f5cbd0ecf7eade5304010400",
       "response": {
         "Done": {
           "outputs": [],
@@ -399,7 +399,7 @@
       "note": "the host spawns a villager for it and names it; its next census sees it as that hand",
       "request": {
         "abi": 1,
-        "schema": 7127484221566409395,
+        "schema": 6034167911668710121,
         "command": {
           "Apply": {
             "inputs": [
@@ -445,7 +445,7 @@
           }
         }
       },
-      "request_postcard": "01b3b5ab85afa4faf462030212040a76696c6c616765722d6e110004040a76696c6c616765722d6d13656e74657270726973653a6d65726368616e7401000a76696c6c616765722d66106d696e6563726166743a6661726d657202000a76696c6c616765722d630e6d696e6563726166743a6e6f6e6501010a76696c6c616765722d6e0e6d696e6563726166743a6e6f6e650101",
+      "request_postcard": "01e9f5cbd0ecf7eade53030212040a76696c6c616765722d6e110004040a76696c6c616765722d6d13656e74657270726973653a6d65726368616e7401000a76696c6c616765722d66106d696e6563726166743a6661726d657202000a76696c6c616765722d630e6d696e6563726166743a6e6f6e6501010a76696c6c616765722d6e0e6d696e6563726166743a6e6f6e650101",
       "response": {
         "Done": {
           "outputs": [],
@@ -458,7 +458,7 @@
       "note": "four hands, the child named",
       "request": {
         "abi": 1,
-        "schema": 7127484221566409395,
+        "schema": 6034167911668710121,
         "command": {
           "Ask": {
             "queries": [
@@ -471,7 +471,7 @@
           }
         }
       },
-      "request_postcard": "01b3b5ab85afa4faf46204010400",
+      "request_postcard": "01e9f5cbd0ecf7eade5304010400",
       "response": {
         "Done": {
           "outputs": [],
@@ -533,7 +533,7 @@
       "note": "eleven days on, a census that doesn't see the farmer: it has left",
       "request": {
         "abi": 1,
-        "schema": 7127484221566409395,
+        "schema": 6034167911668710121,
         "command": {
           "Apply": {
             "inputs": [
@@ -572,7 +572,7 @@
           }
         }
       },
-      "request_postcard": "01b3b5ab85afa4faf46203020081b817110004030a76696c6c616765722d6d13656e74657270726973653a6d65726368616e7401000a76696c6c616765722d630e6d696e6563726166743a6e6f6e6501000a76696c6c616765722d6e0e6d696e6563726166743a6e6f6e650101",
+      "request_postcard": "01e9f5cbd0ecf7eade5303020081b817110004030a76696c6c616765722d6d13656e74657270726973653a6d65726368616e7401000a76696c6c616765722d630e6d696e6563726166743a6e6f6e6501000a76696c6c616765722d6e0e6d696e6563726166743a6e6f6e650101",
       "response": {
         "Done": {
           "outputs": [],
@@ -585,7 +585,7 @@
       "note": "three hands",
       "request": {
         "abi": 1,
-        "schema": 7127484221566409395,
+        "schema": 6034167911668710121,
         "command": {
           "Ask": {
             "queries": [
@@ -598,7 +598,7 @@
           }
         }
       },
-      "request_postcard": "01b3b5ab85afa4faf46204010400",
+      "request_postcard": "01e9f5cbd0ecf7eade5304010400",
       "response": {
         "Done": {
           "outputs": [],
@@ -650,7 +650,7 @@
       "note": "a census of a town that isn't there",
       "request": {
         "abi": 1,
-        "schema": 7127484221566409395,
+        "schema": 6034167911668710121,
         "command": {
           "Apply": {
             "inputs": [
@@ -665,7 +665,7 @@
           }
         }
       },
-      "request_postcard": "01b3b5ab85afa4faf462030111040100",
+      "request_postcard": "01e9f5cbd0ecf7eade53030111040100",
       "response": {
         "Refused": {
           "why": {
@@ -682,7 +682,7 @@
       "note": "a hand named with no tag",
       "request": {
         "abi": 1,
-        "schema": 7127484221566409395,
+        "schema": 6034167911668710121,
         "command": {
           "Apply": {
             "inputs": [
@@ -696,7 +696,7 @@
           }
         }
       },
-      "request_postcard": "01b3b5ab85afa4faf4620301120400",
+      "request_postcard": "01e9f5cbd0ecf7eade530301120400",
       "response": {
         "Refused": {
           "why": {
@@ -713,7 +713,7 @@
       "note": "a hand that isn't there named, and a name another hand has: ignored, not refused",
       "request": {
         "abi": 1,
-        "schema": 7127484221566409395,
+        "schema": 6034167911668710121,
         "command": {
           "Apply": {
             "inputs": [
@@ -733,7 +733,7 @@
           }
         }
       },
-      "request_postcard": "01b3b5ab85afa4faf462030212630a76696c6c616765722d7a12040a76696c6c616765722d6d",
+      "request_postcard": "01e9f5cbd0ecf7eade53030212630a76696c6c616765722d7a12040a76696c6c616765722d6d",
       "response": {
         "Done": {
           "outputs": [],
@@ -746,7 +746,7 @@
       "note": "the hands as they were",
       "request": {
         "abi": 1,
-        "schema": 7127484221566409395,
+        "schema": 6034167911668710121,
         "command": {
           "Ask": {
             "queries": [
@@ -759,7 +759,7 @@
           }
         }
       },
-      "request_postcard": "01b3b5ab85afa4faf46204010400",
+      "request_postcard": "01e9f5cbd0ecf7eade5304010400",
       "response": {
         "Done": {
           "outputs": [],

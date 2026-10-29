@@ -87,11 +87,11 @@ fn training() -> Reason {
 
 /// What a trip calls for of a town's hands at home (`dispatch` 249–270): the trades wanted there that a hand at home
 /// has (`Services.wantedAbroad`, a hook); a Leatherworker, and porters, for more stacks of what the far end wants than
-/// a wagon (or the train of `llamas`) holds; and how many may go beyond a lead for every route `waiting` here (this one
-/// too).
+/// a wagon (or the train of `llamas`) holds; by `water` (a ship's road), a Fisherman to captain it; and how many may go
+/// beyond a lead for every route `waiting` here (this one too).
 #[allow(clippy::too_many_arguments)]
 pub fn call(content: &Content, roster: &Roster, home: &[usize], stacks: u32, weight: f64, wanted_trades: &[TradeId],
-        waiting: usize, llamas: u32) -> (Needs, usize) {
+        waiting: usize, llamas: u32, water: bool) -> (Needs, usize) {
     let mut wanted: Vec<TradeId> = Vec::new();
     for &t in wanted_trades {
         if !wanted.contains(&t) && home.iter().any(|&i| roster.hands[i].trade == t) {
@@ -111,7 +111,7 @@ pub fn call(content: &Content, roster: &Roster, home: &[usize], stacks: u32, wei
         let packs = home.iter().any(|&i| Some(roster.hands[i].trade) == leatherworker);
         porters = porters_needed(content, stacks, weight, packs, llamas);
     }
-    (Needs { wanted, water: false, porters }, home.len().saturating_sub(waiting))
+    (Needs { wanted, water, porters }, home.len().saturating_sub(waiting))
 }
 
 /// Plan: each idle route of a town with a roster sizes up the squad it would muster (in the routes' order, on the
@@ -149,7 +149,8 @@ pub fn size_up(content: Res<Content>, mut routes: Query<(Entity, &Route, &mut Ro
             plan.llamas = crate::llamas::train(&content, stacks, weight, llamas);
             wanted.push((route.from, route.seq, crate::llamas::wanted(&content, stacks, weight)));
         }
-        let (needs, extras) = call(&content, roster, &home, stacks, weight, &wants, waiting, plan.llamas);
+        let water = route.carrier == crate::map::Carrier::Ship;
+        let (needs, extras) = call(&content, roster, &home, stacks, weight, &wants, waiting, plan.llamas, water);
         plan.crew = crate::squad::muster(&content, roster, &home, &needs, extras);
         plan.wanted = needs.wanted;
         plan.porters = needs.porters;
@@ -178,11 +179,11 @@ pub fn size_up(content: Res<Content>, mut routes: Query<(Entity, &Route, &mut Ro
 #[allow(clippy::too_many_arguments)]
 pub fn crew(content: &Content, ledger: &mut Ledger, cash: &mut CashBook, now: u64, town: usize, plan: &mut Plan,
         roster: &mut Roster, mut lockers: Option<&mut Lockers>, (stacks, weight): (u32, f64), wanted_trades: &[TradeId],
-        waiting: usize, routes: usize, may_hire: bool, money: &mut Money, free: impl Fn(&Money) -> crate::fixed::Fixed)
-        -> Result<(), Stay> {
+        waiting: usize, routes: usize, may_hire: bool, water: bool, money: &mut Money,
+        free: impl Fn(&Money) -> crate::fixed::Fixed) -> Result<(), Stay> {
     let d = &content.dials;
     let mut home = available(content, roster, lockers.as_deref());
-    let (needs, extras) = call(content, roster, &home, stacks, weight, wanted_trades, waiting, plan.llamas);
+    let (needs, extras) = call(content, roster, &home, stacks, weight, wanted_trades, waiting, plan.llamas, water);
     let mut squad = crate::squad::muster(content, roster, &home, &needs, extras);
     if squad.is_empty() && may_hire {
         let out = routes.saturating_sub(waiting);

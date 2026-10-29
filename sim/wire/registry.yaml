@@ -758,6 +758,12 @@ Input:
         STRUCT:
           - point:
               TYPENAME: Point
+    41:
+      Port:
+        STRUCT:
+          - town: U32
+          - x: I32
+          - z: I32
 LandKind:
   ENUM:
     0:

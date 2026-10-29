@@ -23,8 +23,13 @@ import net.minecraft.world.level.block.state.BlockState;
 public final class Harbour {
     private Harbour() {}
 
-    /** What was laid. */
-    public record Laid(boolean sea, int quay, int jetty, int boats, int buildings) {}
+    /** What was laid, and its head: the shore cell its jetty and quay start from (the town's port, to the core). */
+    public record Laid(boolean sea, int quay, int jetty, int boats, int buildings, BlockPos head) {
+        /** Has it somewhere a ship can tie up: a jetty or a run of quay. */
+        public boolean port() {
+            return jetty > 0 || quay > 0;
+        }
+    }
 
     /** A shore cell: the land's last column, its way out over the water. */
     record Shore(BlockPos at, Direction out) {}
@@ -187,7 +192,7 @@ public final class Harbour {
         if (!line.isEmpty()) {
             edges(level, line, w);
         }
-        return java.util.Optional.of(new Laid(sea, quay, jetty, boats, buildings));
+        return java.util.Optional.of(new Laid(sea, quay, jetty, boats, buildings, head.at()));
     }
 
     /** How far round the quay line's bounds its stretch reaches, for the edges. */

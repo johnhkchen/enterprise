@@ -142,7 +142,8 @@ pub fn tolls(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, mut te
     for entity in order {
         let (_, route, mut state, path) = routes.get_mut(entity).unwrap();
         let Some(path) = path else { continue };
-        if state.arrived != Some(Leg::Home) {
+        // A ship slips past toll posts on land (`map.rs` `Carrier::Ship`), as a Fisherman's boat does.
+        if state.arrived != Some(Leg::Home) || route.carrier == crate::map::Carrier::Ship {
             continue;
         }
         let Some(wagon) = state.wagon.as_mut() else { continue };

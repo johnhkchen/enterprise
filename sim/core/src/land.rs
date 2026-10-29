@@ -287,7 +287,7 @@ impl Society {
             height: g.height, river: g.river }
     }
 
-    /// Applies a land happening (`Input::Ground`, `Crops`, `Survey`, `Built`); false for any other. The wire checks
+    /// Applies a land happening (`Input::Ground`, `Crops`, `Survey`, `Built`, `Port`); false for any other. The wire checks
     /// them first (`wire::handle`).
     pub(crate) fn apply_land(&mut self, input: &Input) -> bool {
         match input {
@@ -323,6 +323,7 @@ impl Society {
                 self.set_fields(t);
             }
             Input::Built { town, work, share } => self.laid(*town as TownId, work, *share),
+            Input::Port { town, x, z } => self.set_port(*town as TownId, *x as f64 + 0.5, *z as f64 + 0.5),
             _ => return false,
         }
         true

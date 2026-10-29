@@ -48,7 +48,8 @@ pub fn observe_crossings(clock: Res<Clock>, content: Res<Content>, towns: Res<To
     for entity in in_order(routes.iter().map(|(e, r, _, _)| (e, r))) {
         let (_, route, state, path) = routes.get(entity).unwrap();
         let Some(path) = path else { continue };
-        if state.arrived != Some(Leg::Home) {
+        // A ship passes no land a post could guard.
+        if state.arrived != Some(Leg::Home) || route.carrier == crate::map::Carrier::Ship {
             continue;
         }
         let Some(wagon) = state.wagon.as_ref() else { continue };

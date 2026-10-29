@@ -963,6 +963,26 @@ help breed more as needed."
   paired with real cultures, a Lordaeron pilot on Hearthglen. The code it needs (a structure placer first) is listed
   there as C1 to C16; none is written yet.
 
+## Ships between harbours (built 2026-10-29)
+
+John: "I'm wanting to see settles grow, send out new settlers to found new towns, and see more trade routes form. Are
+water trade routes ready yet?" They weren't: the map had a Fisherman's boat (a wagon that sails what it can't walk, the
+mod's), but no road ever chose it. Then: build them first.
+
+- **A port.** When the host lays a town's harbour with a jetty or a run of quay (`Harbour.java`), it tells the core
+  where its head is (`Input::Port`); the core keeps the hex as the town's port (`Works.port`).
+- **A ship** (`map.rs` `Carrier::Ship`) sails from one port's hex to the other's over water only: a hex a quarter under
+  water or more, or cut by a river (`SAIL_WATER`, `Ground::sailable`), at half a hex of open ground (`SHIP_FACTOR`: the
+  wind does a team's work). Land between is no way at all, and a ship passes no toll post and wears no trail.
+- **By ship where it's cheaper** (`Society::best_road`): between two ports, the ship's way when it costs less than the
+  wagon's (or the llamas'), or there's none over land. Roads already open take ship at their daily replanning once both
+  ends have ports. `/enterprise route` lists such a road as "by ship: ...".
+- **A Fisherman captains it** when one is home (the squad's `Needs.water`): the first Fisherman leads and the others
+  to spare go as its crew; with none, the town's usual lead takes it.
+- **Not yet:** ships carry what a wagon does (27 stacks; the studio's trader boat would hold more), sail at a wagon's
+  pace, and are seen in the world only as the harbour's moored boats.
+
+
 ## The ridge study made honest, and a hub that emerges at the pass (built 2026-10-15)
 
 - **Terrain known when it's made.** Chunks were surveyed only as they loaded or unloaded, so routes were planned through

@@ -320,6 +320,8 @@ fn inputs() -> Vec<Input> {
         Input::Peace,
         Input::CrownShop { point: point(PointKind::Shop, 27, -60, 17) },
         Input::CrownShop { point: point(PointKind::Shop, i32::MIN, i32::MAX, i32::MIN) },
+        Input::Port { town: 2, x: -620, z: -351 },
+        Input::Port { town: BIGGEST_ID, x: i32::MIN, z: i32::MAX },
     ]);
     all.extend(works().into_iter().enumerate().map(|(i, work)| Input::Built { town: i as TownNo, work, share: 0.25 * i as f64 }));
     all.push(Input::Built { town: BIGGEST_ID, work: Work::Wall, share: 1.0 });
@@ -1022,6 +1024,7 @@ fn input_place(i: &Input) -> usize {
         Input::Declare { .. } => 38,
         Input::Peace => 39,
         Input::CrownShop { .. } => 40,
+        Input::Port { .. } => 41,
     }
 }
 
@@ -1170,7 +1173,7 @@ fn covers<T>(what: &str, samples: &[T], variants: usize, place: fn(&T) -> usize)
 
 #[test]
 fn every_variant_of_every_wire_enum_has_a_sample() {
-    covers("Input", &inputs(), 41, input_place);
+    covers("Input", &inputs(), 42, input_place);
     covers("Output", &outputs(), 31, output_place);
     covers("Query", &queries(), 28, query_place);
     covers("Answer", &answers(), 28, answer_place);

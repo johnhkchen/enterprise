@@ -386,7 +386,8 @@ pub(crate) fn decide(clock: Res<Clock>, content: Res<Content>, mut book: ResMut<
             let routes_here = routes_at.get(&route.from_id).copied().unwrap_or(0);
             let mustered = crate::rules::squad::crew(&content, &mut ledger, &mut cash, now, route.from_id, &mut plan,
                 roster, lockers.get_mut(route.from).ok().map(|l| l.into_inner()), stacks_wanted, &wanted_trades,
-                waiting_here, routes_here, hiring.left_idle.get(&route.from_id) == Some(&today), &mut money,
+                waiting_here, routes_here, hiring.left_idle.get(&route.from_id) == Some(&today),
+                route.carrier == crate::map::Carrier::Ship, &mut money,
                 |m| free(&content, trades, m, &bills, route.from_id, now));
             if let Err(stay) = mustered {
                 state.stayed = Some(stay);

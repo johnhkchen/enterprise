@@ -885,9 +885,15 @@ public final class LandAdapter {
                     bell, 64, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY).count();
             String tierNow = dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).tierOf(town, Math.max(bedsNow,
                     cleared.get().beds()));
-            dev.b28.enterprise.territory.Harbour.lay(level, townPlan, kingdom, tierNow).ifPresent(h -> Enterprise.LOGGER.info(
-                    "Town {}'s harbour ({}, {}): {} quay tiles, {} jetty parts, {} boats, {} buildings", town,
-                    h.sea() ? "sea" : "river", tierNow, h.quay(), h.jetty(), h.boats(), h.buildings()));
+            dev.b28.enterprise.territory.Harbour.lay(level, townPlan, kingdom, tierNow).ifPresent(h -> {
+                Enterprise.LOGGER.info("Town {}'s harbour ({}, {}): {} quay tiles, {} jetty parts, {} boats, {} buildings{}",
+                        town, h.sea() ? "sea" : "river", tierNow, h.quay(), h.jetty(), h.boats(), h.buildings(),
+                        h.port() ? ", a port at " + h.head().getX() + " " + h.head().getZ() : "");
+                // Its port, for its roads by ship (the core's `Carrier::Ship`; John: "Are water trade routes ready yet?").
+                if (h.port()) {
+                    pending.add(new Input.Port(town, h.head().getX(), h.head().getZ()));
+                }
+            });
         }
         int beds = 0, homes = 0, shops = 0, stalls = 0;
         converting = true;

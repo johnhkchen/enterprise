@@ -436,7 +436,7 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
                     amount("a count of", c.count)?;
                 }
             }
-            Input::Survey { town: t, .. } => town(*t)?,
+            Input::Survey { town: t, .. } | Input::Port { town: t, .. } => town(*t)?,
             // A work the town hasn't is a stale view (ignored), but of a town that's there, a good that is, and a share.
             Input::Built { town: t, work, share } => {
                 town(*t)?;

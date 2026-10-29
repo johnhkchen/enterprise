@@ -252,22 +252,33 @@ impl Society {
 
     /// The cheapest way for `carrier` between two placed towns over the map (no tolls yet), or `None` if either isn't
     /// placed or there is no way through.
+    /// A ship goes from one town's port to the other's (`Society::port`): `None` if either has none.
     pub fn plan_road(&self, from: TownId, to: TownId, carrier: crate::map::Carrier) -> Option<crate::map::Path> {
-        let (a, b) = (self.town_hex(from)?, self.town_hex(to)?);
+        let (a, b) = if carrier == crate::map::Carrier::Ship {
+            (self.port(from)?, self.port(to)?)
+        } else {
+            (self.town_hex(from)?, self.town_hex(to)?)
+        };
         let free = [from, to].into_iter().collect();
         self.map().plan(a, b, self.per_hex(), 0.0, &Default::default(), &free, carrier, &Default::default())
     }
 
     /// The road between two placed towns and what goes on it: a wagon's way if there's one, else a llama train's
     /// (`map.rs`: a river with no bridge, too steep a flank), its path and its length in blocks; where content has road
-    /// food, only a way short enough for one leg's food (`road.rs`). `None`: no way for either.
+    /// food, only a way short enough for one leg's food (`road.rs`). Between two ports, a ship's where it's cheaper than
+    /// that, or there's none over land. `None`: no way for any.
     pub fn best_road(&self, from: TownId, to: TownId) -> Option<(crate::map::Carrier, crate::map::Path, f64)> {
-        [crate::map::Carrier::Wagon, crate::map::Carrier::Llama].into_iter().find_map(|carrier| {
+        let way = |carrier: crate::map::Carrier| {
             let path = self.plan_road(from, to, carrier)?;
             let blocks = self.road_blocks(from, to, &path);
             let short = !crate::road::road_food(self.content()) || crate::road::in_range(self.content(), blocks.round() as u32);
             short.then_some((carrier, path, blocks))
-        })
+        };
+        let land = [crate::map::Carrier::Wagon, crate::map::Carrier::Llama].into_iter().find_map(way);
+        match (land, way(crate::map::Carrier::Ship)) {
+            (Some(land), Some(sea)) => Some(if sea.1.cost < land.1.cost { sea } else { land }),
+            (land, sea) => land.or(sea),
+        }
     }
 
     /// A road from one placed town to another over the map, a wagon (or a llama train) every `every_days` on its
@@ -284,13 +295,13 @@ impl Society {
         Some(id)
     }
 
-    /// What carries a route's goods (`map.rs`): a wagon, or a llama train.
+    /// What carries a route's goods (`map.rs`): a wagon, a llama train, or a ship.
     pub fn route_carrier(&self, route: RouteId) -> crate::map::Carrier {
         self.world.get::<Route>(self.routes[route]).expect("a route").carrier
     }
 
     /// Roads' wear and their paths (`map.rs`): each road whose wagon left since the last look wears every hex of its
-    /// path by a round trip's two crossings, and a hex worn to a trail is said (`Output::Trail`); once a day, each road
+    /// path by a round trip's two crossings (a ship's none), and a hex worn to a trail is said (`Output::Trail`); once a day, each road
     /// whose wagon is home takes the best way now (`best_road`): a wagon's where there's one now (a bridge built over
     /// the river its llamas forded), a llama train's where a wagon's is gone, or the same carrier's if it's cheaper than
     /// its own (trails worn, ground surveyed, a wall built since), its days and road food with it.
@@ -301,7 +312,11 @@ impl Society {
             let e = self.routes[id];
             let (Some(path), Some(left)) = (self.world.get::<RoutePath>(e).map(|p| p.0.clone()),
                 self.world.get::<RouteState>(e).and_then(|s| s.last_departure)) else { continue };
-            let llama_road = self.world.get::<Route>(e).is_some_and(|r| r.carrier == crate::map::Carrier::Llama);
+            let carrier = self.world.get::<Route>(e).map(|r| r.carrier);
+            if carrier == Some(crate::map::Carrier::Ship) {
+                continue; // a ship's wake wears no trail
+            }
+            let llama_road = carrier == Some(crate::map::Carrier::Llama);
             let mut map = self.world.resource_mut::<crate::map::Map>();
             if map.worn.get(&id).is_some_and(|&t| t >= left) {
                 continue;
@@ -603,7 +618,7 @@ impl Society {
                 Vec::new()
             }
             Input::Census { .. } | Input::TagHand { .. } => self.apply_census(input).unwrap_or_default(),
-            Input::Ground { .. } | Input::Crops { .. } | Input::Survey { .. } | Input::Built { .. } => {
+            Input::Ground { .. } | Input::Crops { .. } | Input::Survey { .. } | Input::Built { .. } | Input::Port { .. } => {
                 self.apply_land(input);
                 Vec::new()
             }

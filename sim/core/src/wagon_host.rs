@@ -151,6 +151,8 @@ impl Society {
                     }
                 }
             };
+            // A ship's road says so (`map.rs` `Carrier::Ship`).
+            let status = if r.carrier == crate::map::Carrier::Ship { format!("by ship: {status}") } else { status };
             routes.push(RouteLine {
                 route: no(id),
                 from: no(r.from_id),
