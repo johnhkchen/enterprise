@@ -1,0 +1,68 @@
+{
+  "id": "enterprise:stormwind/harbour/jetty_head_timber_5x5",
+  "rev": 1,
+  "kingdom": "stormwind",
+  "kind": "part",
+  "slot": "prop:harbour",
+  "palette": "fixed",
+  "size": [
+    5,
+    5,
+    5
+  ],
+  "mirror": true,
+  "ground": 0,
+  "relief_faces": [],
+  "contract": "dock",
+  "water_line": 0,
+  "pilings": [
+    {
+      "at": [
+        0,
+        0
+      ],
+      "block": "minecraft:oak_log"
+    },
+    {
+      "at": [
+        4,
+        0
+      ],
+      "block": "minecraft:oak_log"
+    },
+    {
+      "at": [
+        0,
+        4
+      ],
+      "block": "minecraft:oak_log"
+    },
+    {
+      "at": [
+        4,
+        4
+      ],
+      "block": "minecraft:oak_log"
+    },
+    {
+      "at": [
+        2,
+        4
+      ],
+      "block": "minecraft:oak_log"
+    }
+  ],
+  "deck": 1,
+  "width": 5,
+  "depth": 5,
+  "use": [
+    "river",
+    "sea"
+  ],
+  "tags": [
+    "pier",
+    "head",
+    "timber",
+    "lamp"
+  ]
+}

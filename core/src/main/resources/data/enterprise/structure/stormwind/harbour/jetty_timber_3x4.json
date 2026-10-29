@@ -1,0 +1,61 @@
+{
+  "id": "enterprise:stormwind/harbour/jetty_timber_3x4",
+  "rev": 1,
+  "kingdom": "stormwind",
+  "kind": "part",
+  "slot": "prop:harbour",
+  "palette": "fixed",
+  "size": [
+    3,
+    5,
+    4
+  ],
+  "mirror": true,
+  "ground": 0,
+  "relief_faces": [],
+  "contract": "dock",
+  "water_line": 0,
+  "pilings": [
+    {
+      "at": [
+        0,
+        0
+      ],
+      "block": "minecraft:oak_log"
+    },
+    {
+      "at": [
+        2,
+        0
+      ],
+      "block": "minecraft:oak_log"
+    },
+    {
+      "at": [
+        0,
+        3
+      ],
+      "block": "minecraft:oak_log"
+    },
+    {
+      "at": [
+        2,
+        3
+      ],
+      "block": "minecraft:oak_log"
+    }
+  ],
+  "deck": 1,
+  "width": 3,
+  "depth": 4,
+  "use": [
+    "river",
+    "sea"
+  ],
+  "tags": [
+    "pier",
+    "timber",
+    "lamp"
+  ],
+  "repeat": "along +z from the quay's edge"
+}

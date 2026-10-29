@@ -1,0 +1,44 @@
+{
+  "id": "enterprise:lordaeron/harbour/quay_timber_1a",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "prop:harbour",
+  "palette": "fixed",
+  "size": [
+    1,
+    6,
+    3
+  ],
+  "mirror": true,
+  "ground": 0,
+  "relief_faces": [],
+  "contract": "dock",
+  "water_line": 0,
+  "pilings": [
+    {
+      "at": [
+        0,
+        1
+      ],
+      "block": "minecraft:spruce_log"
+    },
+    {
+      "at": [
+        0,
+        0
+      ],
+      "block": "minecraft:spruce_log"
+    }
+  ],
+  "deck": 2,
+  "width": 1,
+  "depth": 3,
+  "use": [
+    "river"
+  ],
+  "tags": [
+    "quay",
+    "timber"
+  ]
+}

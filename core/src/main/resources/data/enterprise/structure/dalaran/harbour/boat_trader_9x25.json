@@ -1,0 +1,28 @@
+{
+  "id": "enterprise:dalaran/harbour/boat_trader_9x25",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "slot": "prop:boat",
+  "palette": "fixed",
+  "size": [
+    9,
+    24,
+    25
+  ],
+  "mirror": true,
+  "ground": 1,
+  "relief_faces": [],
+  "contract": "boat",
+  "water_line": 1,
+  "width": 9,
+  "depth": 25,
+  "use": [
+    "sea"
+  ],
+  "tags": [
+    "boat",
+    "trader"
+  ],
+  "moor": "alongside a quay or pier, its side 1 off the edge, bow toward the open water"
+}

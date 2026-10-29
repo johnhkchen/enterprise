@@ -1,0 +1,335 @@
+{
+  "id": "enterprise:dalaran/harbour/warehouse_10x7",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "hall",
+  "slot": "harbour:warehouse",
+  "use": [
+    "river"
+  ],
+  "storeys": 1,
+  "faces": "the wharf (front, south)",
+  "note": "the river's store: loading bays to the wharf, a hoist from the east gable",
+  "palette": "fixed",
+  "footprint": {
+    "at": [
+      2,
+      2
+    ],
+    "size": [
+      12,
+      9
+    ]
+  },
+  "overhang": 2,
+  "size": [
+    18,
+    14,
+    13
+  ],
+  "height": 14,
+  "ground": 2,
+  "mirror": true,
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "assembly": {
+    "set": "dalaran/platform_hall",
+    "layout": {
+      "body": [
+        10,
+        7
+      ],
+      "storeys": 1,
+      "party": [
+        false,
+        false
+      ],
+      "roof": "hip",
+      "core": "turned",
+      "shell": [
+        {
+          "face": "front",
+          "i": 0,
+          "module": "corner_ground",
+          "storey": 0
+        },
+        {
+          "face": "front",
+          "i": 1,
+          "module": "bay_arcade_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "front",
+          "i": 3,
+          "module": "post_ground",
+          "storey": 0
+        },
+        {
+          "face": "front",
+          "i": 4,
+          "module": "bay_arcade_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "front",
+          "i": 6,
+          "module": "post_ground",
+          "storey": 0
+        },
+        {
+          "face": "front",
+          "i": 7,
+          "module": "bay_arcade_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "front",
+          "i": 9,
+          "module": "corner_ground",
+          "storey": 0
+        },
+        {
+          "face": "back",
+          "i": 0,
+          "module": "corner_ground",
+          "storey": 0
+        },
+        {
+          "face": "back",
+          "i": 1,
+          "module": "bay_window_box_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "back",
+          "i": 3,
+          "module": "post_ground",
+          "storey": 0
+        },
+        {
+          "face": "back",
+          "i": 4,
+          "module": "bay_window_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "back",
+          "i": 6,
+          "module": "post_ground",
+          "storey": 0
+        },
+        {
+          "face": "back",
+          "i": 7,
+          "module": "bay_window_box_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "back",
+          "i": 9,
+          "module": "corner_ground",
+          "storey": 0
+        },
+        {
+          "face": "west",
+          "i": 1,
+          "module": "bay_window_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "west",
+          "i": 3,
+          "module": "chimney_ground",
+          "storey": 0
+        },
+        {
+          "face": "west",
+          "i": 4,
+          "module": "bay_window_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "east",
+          "i": 1,
+          "module": "bay_window_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "east",
+          "i": 3,
+          "module": "post_ground",
+          "storey": 0
+        },
+        {
+          "face": "east",
+          "i": 4,
+          "module": "bay_window_ground",
+          "storey": 0,
+          "mirror": false
+        }
+      ],
+      "plan": [
+        {
+          "storey": 0,
+          "module": "cask",
+          "at": [
+            1,
+            1
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "goods_wool",
+          "at": [
+            1,
+            2
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "cask",
+          "at": [
+            2,
+            1
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "hay",
+          "at": [
+            3,
+            1
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "cask",
+          "at": [
+            3,
+            2
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "cask",
+          "at": [
+            4,
+            1
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "cask",
+          "at": [
+            5,
+            1
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "goods_wool",
+          "at": [
+            5,
+            2
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "hay",
+          "at": [
+            6,
+            1
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "cask",
+          "at": [
+            7,
+            1
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "cask",
+          "at": [
+            7,
+            2
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "cask",
+          "at": [
+            8,
+            1
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "lantern",
+          "at": [
+            2,
+            4
+          ],
+          "dy": 4,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "lantern",
+          "at": [
+            5,
+            4
+          ],
+          "dy": 4,
+          "q": 0
+        }
+      ],
+      "chimney": null,
+      "beds": [],
+      "workstations": [],
+      "doorBay": 1,
+      "door": "right",
+      "set": "dalaran",
+      "margin": 2
+    }
+  }
+}

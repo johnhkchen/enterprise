@@ -1,0 +1,128 @@
+{
+  "id": "enterprise:lordaeron/harbour/mole_7x4b",
+  "rev": 1,
+  "kingdom": "lordaeron",
+  "kind": "part",
+  "slot": "prop:harbour",
+  "palette": "fixed",
+  "size": [
+    7,
+    6,
+    4
+  ],
+  "mirror": true,
+  "ground": 0,
+  "relief_faces": [],
+  "contract": "dock",
+  "water_line": 0,
+  "pilings": [
+    {
+      "at": [
+        0,
+        0
+      ],
+      "block": "minecraft:cobblestone"
+    },
+    {
+      "at": [
+        0,
+        3
+      ],
+      "block": "minecraft:cobblestone"
+    },
+    {
+      "at": [
+        1,
+        0
+      ],
+      "block": "minecraft:cobblestone"
+    },
+    {
+      "at": [
+        1,
+        3
+      ],
+      "block": "minecraft:cobblestone"
+    },
+    {
+      "at": [
+        2,
+        0
+      ],
+      "block": "minecraft:cobblestone"
+    },
+    {
+      "at": [
+        2,
+        3
+      ],
+      "block": "minecraft:cobblestone"
+    },
+    {
+      "at": [
+        3,
+        0
+      ],
+      "block": "minecraft:cobblestone"
+    },
+    {
+      "at": [
+        3,
+        3
+      ],
+      "block": "minecraft:cobblestone"
+    },
+    {
+      "at": [
+        4,
+        0
+      ],
+      "block": "minecraft:cobblestone"
+    },
+    {
+      "at": [
+        4,
+        3
+      ],
+      "block": "minecraft:cobblestone"
+    },
+    {
+      "at": [
+        5,
+        0
+      ],
+      "block": "minecraft:cobblestone"
+    },
+    {
+      "at": [
+        5,
+        3
+      ],
+      "block": "minecraft:cobblestone"
+    },
+    {
+      "at": [
+        6,
+        0
+      ],
+      "block": "minecraft:cobblestone"
+    },
+    {
+      "at": [
+        6,
+        3
+      ],
+      "block": "minecraft:cobblestone"
+    }
+  ],
+  "deck": 3,
+  "width": 7,
+  "depth": 4,
+  "use": [
+    "sea"
+  ],
+  "tags": [
+    "mole"
+  ],
+  "repeat": "along +z out from the shore; the sea on its east side"
+}

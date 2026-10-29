@@ -1,0 +1,693 @@
+{
+  "id": "enterprise:dalaran/harbour/customs_house_13x7",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "hall",
+  "slot": "harbour:customs_house",
+  "use": [
+    "sea"
+  ],
+  "storeys": 2,
+  "faces": "the quay (front, south)",
+  "note": "the arcade on the quay where cargo is inspected and weighed, the collector's office above, the harbour flag",
+  "palette": "fixed",
+  "footprint": {
+    "at": [
+      2,
+      2
+    ],
+    "size": [
+      15,
+      9
+    ]
+  },
+  "overhang": 2,
+  "size": [
+    19,
+    23,
+    13
+  ],
+  "height": 23,
+  "ground": 2,
+  "mirror": true,
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "assembly": {
+    "set": "dalaran/platform_hall",
+    "layout": {
+      "body": [
+        13,
+        7
+      ],
+      "storeys": 2,
+      "party": [
+        false,
+        false
+      ],
+      "roof": "hip",
+      "core": "straight",
+      "shell": [
+        {
+          "face": "front",
+          "i": 0,
+          "module": "corner_ground",
+          "storey": 0
+        },
+        {
+          "face": "front",
+          "i": 1,
+          "module": "bay_arcade_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "front",
+          "i": 3,
+          "module": "post_ground",
+          "storey": 0
+        },
+        {
+          "face": "front",
+          "i": 4,
+          "module": "bay_arcade_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "front",
+          "i": 6,
+          "module": "post_ground",
+          "storey": 0
+        },
+        {
+          "face": "front",
+          "i": 7,
+          "module": "bay_arcade_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "front",
+          "i": 9,
+          "module": "post_ground",
+          "storey": 0
+        },
+        {
+          "face": "front",
+          "i": 10,
+          "module": "bay_arcade_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "front",
+          "i": 12,
+          "module": "corner_ground",
+          "storey": 0
+        },
+        {
+          "face": "back",
+          "i": 0,
+          "module": "corner_ground",
+          "storey": 0
+        },
+        {
+          "face": "back",
+          "i": 1,
+          "module": "bay_arcade_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "back",
+          "i": 3,
+          "module": "post_ground",
+          "storey": 0
+        },
+        {
+          "face": "back",
+          "i": 4,
+          "module": "bay_arcade_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "back",
+          "i": 6,
+          "module": "post_ground",
+          "storey": 0
+        },
+        {
+          "face": "back",
+          "i": 7,
+          "module": "bay_arcade_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "back",
+          "i": 9,
+          "module": "post_ground",
+          "storey": 0
+        },
+        {
+          "face": "back",
+          "i": 10,
+          "module": "bay_arcade_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "back",
+          "i": 12,
+          "module": "corner_ground",
+          "storey": 0
+        },
+        {
+          "face": "west",
+          "i": 1,
+          "module": "bay_arcade_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "west",
+          "i": 3,
+          "module": "chimney_ground",
+          "storey": 0
+        },
+        {
+          "face": "west",
+          "i": 4,
+          "module": "bay_arcade_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "east",
+          "i": 1,
+          "module": "bay_arcade_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "east",
+          "i": 3,
+          "module": "post_ground",
+          "storey": 0
+        },
+        {
+          "face": "east",
+          "i": 4,
+          "module": "bay_arcade_ground",
+          "storey": 0,
+          "mirror": false
+        },
+        {
+          "face": "front",
+          "i": 0,
+          "module": "corner_upper",
+          "storey": 1
+        },
+        {
+          "face": "front",
+          "i": 1,
+          "module": "bay_window_upper",
+          "storey": 1,
+          "mirror": false
+        },
+        {
+          "face": "front",
+          "i": 3,
+          "module": "post_upper",
+          "storey": 1
+        },
+        {
+          "face": "front",
+          "i": 4,
+          "module": "bay_window_box_upper",
+          "storey": 1,
+          "mirror": false
+        },
+        {
+          "face": "front",
+          "i": 6,
+          "module": "post_upper",
+          "storey": 1
+        },
+        {
+          "face": "front",
+          "i": 7,
+          "module": "bay_window_upper",
+          "storey": 1,
+          "mirror": false
+        },
+        {
+          "face": "front",
+          "i": 9,
+          "module": "post_upper",
+          "storey": 1
+        },
+        {
+          "face": "front",
+          "i": 10,
+          "module": "bay_landing_upper",
+          "storey": 1,
+          "mirror": false
+        },
+        {
+          "face": "front",
+          "i": 12,
+          "module": "corner_upper",
+          "storey": 1
+        },
+        {
+          "face": "back",
+          "i": 0,
+          "module": "corner_upper",
+          "storey": 1
+        },
+        {
+          "face": "back",
+          "i": 1,
+          "module": "bay_landing_upper",
+          "storey": 1,
+          "mirror": false
+        },
+        {
+          "face": "back",
+          "i": 3,
+          "module": "post_upper",
+          "storey": 1
+        },
+        {
+          "face": "back",
+          "i": 4,
+          "module": "bay_window_upper",
+          "storey": 1,
+          "mirror": false
+        },
+        {
+          "face": "back",
+          "i": 6,
+          "module": "post_upper",
+          "storey": 1
+        },
+        {
+          "face": "back",
+          "i": 7,
+          "module": "bay_window_upper",
+          "storey": 1,
+          "mirror": false
+        },
+        {
+          "face": "back",
+          "i": 9,
+          "module": "post_upper",
+          "storey": 1
+        },
+        {
+          "face": "back",
+          "i": 10,
+          "module": "bay_window_upper",
+          "storey": 1,
+          "mirror": false
+        },
+        {
+          "face": "back",
+          "i": 12,
+          "module": "corner_upper",
+          "storey": 1
+        },
+        {
+          "face": "west",
+          "i": 1,
+          "module": "bay_window_upper",
+          "storey": 1,
+          "mirror": false
+        },
+        {
+          "face": "west",
+          "i": 3,
+          "module": "chimney_upper",
+          "storey": 1
+        },
+        {
+          "face": "west",
+          "i": 4,
+          "module": "bay_window_upper",
+          "storey": 1,
+          "mirror": false
+        },
+        {
+          "face": "east",
+          "i": 1,
+          "module": "bay_landing_upper",
+          "storey": 1,
+          "mirror": false
+        },
+        {
+          "face": "east",
+          "i": 3,
+          "module": "post_upper",
+          "storey": 1
+        },
+        {
+          "face": "east",
+          "i": 4,
+          "module": "bay_landing_upper",
+          "storey": 1,
+          "mirror": false
+        }
+      ],
+      "plan": [
+        {
+          "storey": 0,
+          "module": "core_straight_bottom",
+          "at": [
+            10,
+            1
+          ]
+        },
+        {
+          "storey": 1,
+          "module": "core_straight_top",
+          "at": [
+            10,
+            1
+          ]
+        },
+        {
+          "storey": 0,
+          "module": "cask",
+          "at": [
+            2,
+            2
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "cask",
+          "at": [
+            3,
+            2
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "cask",
+          "at": [
+            6,
+            2
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "cask",
+          "at": [
+            7,
+            2
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "hay",
+          "at": [
+            2,
+            3
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "goods_kelp",
+          "at": [
+            3,
+            3
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "goods_wool",
+          "at": [
+            6,
+            3
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "goods_pot",
+          "at": [
+            7,
+            3
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "desk",
+          "at": [
+            4,
+            3
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "goods_chain",
+          "at": [
+            5,
+            3
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "lantern",
+          "at": [
+            3,
+            4
+          ],
+          "dy": 4,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "lantern",
+          "at": [
+            7,
+            4
+          ],
+          "dy": 4,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "lantern",
+          "at": [
+            3,
+            4
+          ],
+          "dy": 4,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "lantern",
+          "at": [
+            7,
+            4
+          ],
+          "dy": 4,
+          "q": 0
+        },
+        {
+          "storey": 0,
+          "module": "lantern",
+          "at": [
+            9,
+            4
+          ],
+          "dy": 4,
+          "q": 0
+        },
+        {
+          "storey": 1,
+          "module": "desk",
+          "at": [
+            2,
+            3
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 1,
+          "module": "desk",
+          "at": [
+            2,
+            3
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 1,
+          "module": "shelf",
+          "at": [
+            1,
+            1
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 1,
+          "module": "shelf",
+          "at": [
+            2,
+            1
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 1,
+          "module": "shelf",
+          "at": [
+            3,
+            1
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 1,
+          "module": "chest",
+          "at": [
+            6,
+            5
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 1,
+          "module": "chest",
+          "at": [
+            7,
+            5
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 1,
+          "module": "chest",
+          "at": [
+            8,
+            5
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 1,
+          "module": "table",
+          "at": [
+            5,
+            3
+          ],
+          "dy": 1,
+          "q": 0
+        },
+        {
+          "storey": 1,
+          "module": "candles",
+          "at": [
+            5,
+            3
+          ],
+          "dy": 2,
+          "q": 0
+        },
+        {
+          "storey": 1,
+          "module": "lantern",
+          "at": [
+            3,
+            3
+          ],
+          "dy": 4,
+          "q": 0
+        },
+        {
+          "storey": 1,
+          "module": "lantern",
+          "at": [
+            6,
+            2
+          ],
+          "dy": 4,
+          "q": 0
+        },
+        {
+          "storey": 1,
+          "module": "lantern",
+          "at": [
+            3,
+            4
+          ],
+          "dy": 4,
+          "q": 0
+        },
+        {
+          "storey": 1,
+          "module": "lantern",
+          "at": [
+            6,
+            4
+          ],
+          "dy": 4,
+          "q": 0
+        },
+        {
+          "storey": 1,
+          "module": "lantern",
+          "at": [
+            9,
+            4
+          ],
+          "dy": 4,
+          "q": 0
+        }
+      ],
+      "chimney": null,
+      "beds": [],
+      "workstations": [],
+      "doorBay": 1,
+      "door": "right",
+      "set": "dalaran",
+      "margin": 2
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "enterprise:stormwind/harbour/river_customs_7x5",
+  "rev": 1,
+  "kingdom": "stormwind",
+  "kind": "hall",
+  "slot": "harbour:river_customs",
+  "use": [
+    "river"
+  ],
+  "storeys": 1,
+  "faces": "the water (east)",
+  "note": "a booth at a river landing or a bridge's head: a counter window to the water, a chain boom along the edge",
+  "palette": "fixed",
+  "footprint": [
+    7,
+    5
+  ],
+  "height": 10,
+  "ground": 2,
+  "mirror": true,
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": []
+}
