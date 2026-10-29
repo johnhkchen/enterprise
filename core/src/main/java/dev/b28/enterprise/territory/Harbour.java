@@ -91,6 +91,7 @@ public final class Harbour {
             default -> 2;
         };
         int quay = 0, jetty = 0, boats = 0;
+        List<Shore> line = List.of();
         // The quay along the shore from the head, both ways.
         if (rank >= 1) {
             // One quay line along the shore through the head, under and between the buildings' fronts to the jetty's
@@ -127,6 +128,7 @@ public final class Harbour {
             for (Shore s : run) {
                 terrace(level, kingdom, s, w + 2);
             }
+            line = run;
         }
         // The jetty out from the head: segments while the water's deep enough ahead, then its head.
         BlockPos start = head.at().relative(head.out(), 2);
@@ -179,7 +181,62 @@ public final class Harbour {
                 }
             }
         }
+        // No bare earth at the water (the studio's r95 render: 11 earth cells on the waterline where the shore turns):
+        // within the quay's stretch, a land cell beside the water that's neither quay nor built gets a plain stone edge at
+        // the deck.
+        if (!line.isEmpty()) {
+            edges(level, line, w);
+        }
         return java.util.Optional.of(new Laid(sea, quay, jetty, boats, buildings));
+    }
+
+    /** How far round the quay line's bounds its stretch reaches, for the edges. */
+    static final int EDGE = 4;
+
+    /** Within the quay line's stretch (its bounds, {@link #EDGE} round), each land cell 4-touching the water whose top is earth: paved stone at the deck. */
+    static void edges(ServerLevel level, List<Shore> run, int w) {
+        int x0 = Integer.MAX_VALUE, z0 = Integer.MAX_VALUE, x1 = Integer.MIN_VALUE, z1 = Integer.MIN_VALUE;
+        for (Shore s : run) {
+            x0 = Math.min(x0, s.at().getX());
+            z0 = Math.min(z0, s.at().getZ());
+            x1 = Math.max(x1, s.at().getX());
+            z1 = Math.max(z1, s.at().getZ());
+        }
+        int paved = 0;
+        for (int x = x0 - EDGE; x <= x1 + EDGE; x++) {
+            for (int z = z0 - EDGE; z <= z1 + EDGE; z++) {
+                {
+                    BlockPos c = new BlockPos(x, 0, z);
+                    if (!level.isLoaded(c) || water(level, c) != Integer.MIN_VALUE) {
+                        continue;
+                    }
+                    boolean wet = false;
+                    for (Direction d : Direction.Plane.HORIZONTAL) {
+                        wet |= water(level, c.relative(d)) == w;
+                    }
+                    int g = Terraform.ground(level, c.getX(), c.getZ());
+                    BlockState top = level.getBlockState(new BlockPos(c.getX(), g, c.getZ()));
+                    if (!wet || !dev.b28.enterprise.settlement.Grounds.natural(top) || top.is(net.minecraft.world.level.block.Blocks.DIRT_PATH)) {
+                        continue;
+                    }
+                    paved++;
+                    clearOver(level, c.getX(), c.getZ(), w + 2);
+                    for (int y = w + 2; y > level.getMinBuildHeight(); y--) {
+                        BlockPos b = new BlockPos(c.getX(), y, c.getZ());
+                        BlockState under = level.getBlockState(b);
+                        if (y < w + 2 && under.getFluidState().isEmpty() && !under.isAir() && !under.canBeReplaced()
+                                && !dev.b28.enterprise.settlement.Grounds.natural(under)) {
+                            break;
+                        }
+                        if (y < g - 1 && dev.b28.enterprise.settlement.Grounds.natural(under)) {
+                            break; // the bank's own ground under it
+                        }
+                        level.setBlock(b, net.minecraft.world.level.block.Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
+                    }
+                }
+            }
+        }
+        dev.b28.enterprise.Enterprise.LOGGER.debug("Harbour edges: {} paved at the water", paved);
     }
 
     /** The kingdom's harbour building for a slot (its own set's, else Lordaeron's); the smaller warehouse on a river. */
