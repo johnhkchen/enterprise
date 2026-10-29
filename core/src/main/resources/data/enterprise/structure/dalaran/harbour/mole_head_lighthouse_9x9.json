@@ -1,0 +1,67 @@
+{
+  "id": "enterprise:dalaran/harbour/mole_head_lighthouse_9x9",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "slot": "prop:harbour",
+  "palette": "fixed",
+  "size": [
+    9,
+    26,
+    9
+  ],
+  "mirror": true,
+  "ground": 0,
+  "relief_faces": [],
+  "contract": "dock",
+  "water_line": 0,
+  "pilings": [
+    {
+      "at": [
+        0,
+        0
+      ],
+      "block": "minecraft:cobblestone"
+    },
+    {
+      "at": [
+        8,
+        0
+      ],
+      "block": "minecraft:cobblestone"
+    },
+    {
+      "at": [
+        0,
+        8
+      ],
+      "block": "minecraft:cobblestone"
+    },
+    {
+      "at": [
+        8,
+        8
+      ],
+      "block": "minecraft:cobblestone"
+    },
+    {
+      "at": [
+        4,
+        4
+      ],
+      "block": "minecraft:cobblestone"
+    }
+  ],
+  "deck": 3,
+  "width": 9,
+  "depth": 9,
+  "use": [
+    "sea"
+  ],
+  "tags": [
+    "mole",
+    "head",
+    "lighthouse",
+    "lamp"
+  ]
+}

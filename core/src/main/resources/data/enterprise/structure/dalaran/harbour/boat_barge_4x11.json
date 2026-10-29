@@ -1,0 +1,28 @@
+{
+  "id": "enterprise:dalaran/harbour/boat_barge_4x11",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "slot": "prop:boat",
+  "palette": "fixed",
+  "size": [
+    4,
+    6,
+    11
+  ],
+  "mirror": true,
+  "ground": 1,
+  "relief_faces": [],
+  "contract": "boat",
+  "water_line": 1,
+  "width": 4,
+  "depth": 11,
+  "use": [
+    "river"
+  ],
+  "tags": [
+    "boat",
+    "barge"
+  ],
+  "moor": "alongside a timber quay or wharf, under its crane"
+}

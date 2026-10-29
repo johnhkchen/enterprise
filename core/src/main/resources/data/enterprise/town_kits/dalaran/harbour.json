@@ -1,0 +1,550 @@
+{
+  "set": "dalaran/harbour",
+  "rev": 1,
+  "about": "The harbour district: what a town on the sea or on a river builds at its water. Waterside parts on the dock contract (layer water_line at the water's surface; the deck at layer `deck`; each declared piling run down from the water line to the bed); boats on the boat contract (water_line at the surface, solid hull below it, nothing floods); buildings on the relief module set (ground 2, front south, facing the quay). No point-of-interest blocks (decorative twins only), no beds; every walkable cell lit. `use` says whether a part is for the sea, a river, or both.",
+  "district": {
+    "when": "A town whose plan meets water: `sea` where the water body is open (it reaches the plan's outer edge, or holds 2,000 columns or more); `river` where it's narrower (a river, a lake's inlet). Some towns have both.",
+    "quay_street": "Along the shore, inside the outer wall, the plan lays a quay street: a street on the water's edge, its water side a run of quay tiles (stone at sea; stone or timber on a river), its land side the district's plots facing the water. The quay street joins the avenue nearest the water at the quay's head.",
+    "sea": [
+      "the customs house at the quay's head, facing the water, beside the avenue that meets it: the first build of the district (the town's port opens with it)",
+      "warehouses along the quay's land side, one every other plot, loading bays to the quay; a crane tile on the quay in front of each",
+      "the fish market at the quay's far end, near the fishing boats",
+      "a jetty (timber segments ending in a head) every 24 along the quay, out to the deep water; at sea, the mole: segments out from the shore to shelter the harbour's mouth, its head the lighthouse",
+      "boats moored: a cog alongside the quay by the customs house or a warehouse, fishing boats at the jetties",
+      "quay tiles: a bollard every 3rd, a lamp every 5th, a ladder every 8th, steps down to the water by each jetty"
+    ],
+    "river": [
+      "a wharf: a run of timber quay (with a crane tile) on the river's edge where the avenue or the main street meets it, 8 to 16 long",
+      "the river warehouse behind it, loading bays to the wharf",
+      "the river customs booth at the wharf's upstream end, or at the head of the town's bridge (the toll on the river), its counter to the water",
+      "a jetty with a head for the fishing boats, a barge moored alongside the wharf",
+      "the fish market where the town has no sea, by the wharf"
+    ],
+    "growth": "hamlet: a jetty and a fishing boat (river or sea). village: the wharf (river) or the quay's first run and the customs house (sea), a warehouse, the fish market. town: the full quay, warehouses, the mole and lighthouse (sea), cogs and barges.",
+    "plots": "Sizes are in each part's metadata (Dalaran's halls are 2 wider each side for their eaves, the customs house 13 x 7 under one hipped roof). All fit a 16-wide plot except the customs house, which takes a forum-front plot at the quay's head; a warehouse's hoist reaches 2 past its east wall."
+  },
+  "parts": [
+    {
+      "id": "quay_stone_1a",
+      "part": "enterprise:dalaran/harbour/quay_stone_1a",
+      "size": [
+        1,
+        6,
+        3
+      ],
+      "contract": "dock",
+      "water_line": 0,
+      "deck": 2,
+      "width": 1,
+      "depth": 3,
+      "use": [
+        "sea",
+        "river"
+      ],
+      "tags": [
+        "quay"
+      ]
+    },
+    {
+      "id": "quay_stone_1b",
+      "part": "enterprise:dalaran/harbour/quay_stone_1b",
+      "size": [
+        1,
+        6,
+        3
+      ],
+      "contract": "dock",
+      "water_line": 0,
+      "deck": 2,
+      "width": 1,
+      "depth": 3,
+      "use": [
+        "sea",
+        "river"
+      ],
+      "tags": [
+        "quay"
+      ]
+    },
+    {
+      "id": "quay_stone_1c",
+      "part": "enterprise:dalaran/harbour/quay_stone_1c",
+      "size": [
+        1,
+        6,
+        3
+      ],
+      "contract": "dock",
+      "water_line": 0,
+      "deck": 2,
+      "width": 1,
+      "depth": 3,
+      "use": [
+        "sea",
+        "river"
+      ],
+      "tags": [
+        "quay"
+      ]
+    },
+    {
+      "id": "quay_stone_bollard_1",
+      "part": "enterprise:dalaran/harbour/quay_stone_bollard_1",
+      "size": [
+        1,
+        6,
+        3
+      ],
+      "contract": "dock",
+      "water_line": 0,
+      "deck": 2,
+      "width": 1,
+      "depth": 3,
+      "use": [
+        "sea",
+        "river"
+      ],
+      "tags": [
+        "quay",
+        "bollard"
+      ]
+    },
+    {
+      "id": "quay_stone_lamp_1",
+      "part": "enterprise:dalaran/harbour/quay_stone_lamp_1",
+      "size": [
+        1,
+        6,
+        3
+      ],
+      "contract": "dock",
+      "water_line": 0,
+      "deck": 2,
+      "width": 1,
+      "depth": 3,
+      "use": [
+        "sea",
+        "river"
+      ],
+      "tags": [
+        "quay",
+        "lamp"
+      ]
+    },
+    {
+      "id": "quay_stone_ladder_1",
+      "part": "enterprise:dalaran/harbour/quay_stone_ladder_1",
+      "size": [
+        1,
+        6,
+        3
+      ],
+      "contract": "dock",
+      "water_line": 0,
+      "deck": 2,
+      "width": 1,
+      "depth": 3,
+      "use": [
+        "sea",
+        "river"
+      ],
+      "tags": [
+        "quay",
+        "ladder"
+      ]
+    },
+    {
+      "id": "quay_stone_steps_1",
+      "part": "enterprise:dalaran/harbour/quay_stone_steps_1",
+      "size": [
+        1,
+        6,
+        3
+      ],
+      "contract": "dock",
+      "water_line": 0,
+      "deck": 2,
+      "width": 1,
+      "depth": 3,
+      "use": [
+        "sea",
+        "river"
+      ],
+      "tags": [
+        "quay",
+        "steps"
+      ]
+    },
+    {
+      "id": "quay_stone_crane_1",
+      "part": "enterprise:dalaran/harbour/quay_stone_crane_1",
+      "size": [
+        1,
+        9,
+        3
+      ],
+      "contract": "dock",
+      "water_line": 0,
+      "deck": 2,
+      "width": 1,
+      "depth": 3,
+      "use": [
+        "sea"
+      ],
+      "tags": [
+        "quay",
+        "crane",
+        "lamp"
+      ]
+    },
+    {
+      "id": "quay_timber_1a",
+      "part": "enterprise:dalaran/harbour/quay_timber_1a",
+      "size": [
+        1,
+        6,
+        3
+      ],
+      "contract": "dock",
+      "water_line": 0,
+      "deck": 2,
+      "width": 1,
+      "depth": 3,
+      "use": [
+        "river"
+      ],
+      "tags": [
+        "quay",
+        "timber"
+      ]
+    },
+    {
+      "id": "quay_timber_1b",
+      "part": "enterprise:dalaran/harbour/quay_timber_1b",
+      "size": [
+        1,
+        6,
+        3
+      ],
+      "contract": "dock",
+      "water_line": 0,
+      "deck": 2,
+      "width": 1,
+      "depth": 3,
+      "use": [
+        "river"
+      ],
+      "tags": [
+        "quay",
+        "timber"
+      ]
+    },
+    {
+      "id": "quay_timber_lamp_1",
+      "part": "enterprise:dalaran/harbour/quay_timber_lamp_1",
+      "size": [
+        1,
+        6,
+        3
+      ],
+      "contract": "dock",
+      "water_line": 0,
+      "deck": 2,
+      "width": 1,
+      "depth": 3,
+      "use": [
+        "river"
+      ],
+      "tags": [
+        "quay",
+        "timber",
+        "lamp"
+      ]
+    },
+    {
+      "id": "quay_timber_ladder_1",
+      "part": "enterprise:dalaran/harbour/quay_timber_ladder_1",
+      "size": [
+        1,
+        6,
+        3
+      ],
+      "contract": "dock",
+      "water_line": 0,
+      "deck": 2,
+      "width": 1,
+      "depth": 3,
+      "use": [
+        "river"
+      ],
+      "tags": [
+        "quay",
+        "timber",
+        "ladder"
+      ]
+    },
+    {
+      "id": "quay_timber_crane_1",
+      "part": "enterprise:dalaran/harbour/quay_timber_crane_1",
+      "size": [
+        1,
+        9,
+        3
+      ],
+      "contract": "dock",
+      "water_line": 0,
+      "deck": 2,
+      "width": 1,
+      "depth": 3,
+      "use": [
+        "river"
+      ],
+      "tags": [
+        "quay",
+        "timber",
+        "crane",
+        "lamp"
+      ]
+    },
+    {
+      "id": "jetty_timber_3x4",
+      "part": "enterprise:dalaran/harbour/jetty_timber_3x4",
+      "size": [
+        3,
+        5,
+        4
+      ],
+      "contract": "dock",
+      "water_line": 0,
+      "deck": 1,
+      "width": 3,
+      "depth": 4,
+      "use": [
+        "river",
+        "sea"
+      ],
+      "tags": [
+        "pier",
+        "timber",
+        "lamp"
+      ],
+      "repeat": "along +z from the quay's edge"
+    },
+    {
+      "id": "jetty_head_timber_5x5",
+      "part": "enterprise:dalaran/harbour/jetty_head_timber_5x5",
+      "size": [
+        5,
+        5,
+        5
+      ],
+      "contract": "dock",
+      "water_line": 0,
+      "deck": 1,
+      "width": 5,
+      "depth": 5,
+      "use": [
+        "river",
+        "sea"
+      ],
+      "tags": [
+        "pier",
+        "head",
+        "timber",
+        "lamp"
+      ]
+    },
+    {
+      "id": "mole_7x4a",
+      "part": "enterprise:dalaran/harbour/mole_7x4a",
+      "size": [
+        7,
+        6,
+        4
+      ],
+      "contract": "dock",
+      "water_line": 0,
+      "deck": 3,
+      "width": 7,
+      "depth": 4,
+      "use": [
+        "sea"
+      ],
+      "tags": [
+        "mole"
+      ],
+      "repeat": "along +z out from the shore; the sea on its east side"
+    },
+    {
+      "id": "mole_7x4b",
+      "part": "enterprise:dalaran/harbour/mole_7x4b",
+      "size": [
+        7,
+        6,
+        4
+      ],
+      "contract": "dock",
+      "water_line": 0,
+      "deck": 3,
+      "width": 7,
+      "depth": 4,
+      "use": [
+        "sea"
+      ],
+      "tags": [
+        "mole"
+      ],
+      "repeat": "along +z out from the shore; the sea on its east side"
+    },
+    {
+      "id": "mole_head_lighthouse_9x9",
+      "part": "enterprise:dalaran/harbour/mole_head_lighthouse_9x9",
+      "size": [
+        9,
+        26,
+        9
+      ],
+      "contract": "dock",
+      "water_line": 0,
+      "deck": 3,
+      "width": 9,
+      "depth": 9,
+      "use": [
+        "sea"
+      ],
+      "tags": [
+        "mole",
+        "head",
+        "lighthouse",
+        "lamp"
+      ]
+    },
+    {
+      "id": "boat_trader_9x25",
+      "part": "enterprise:dalaran/harbour/boat_trader_9x25",
+      "size": [
+        9,
+        24,
+        25
+      ],
+      "contract": "boat",
+      "water_line": 1,
+      "width": 9,
+      "depth": 25,
+      "use": [
+        "sea"
+      ],
+      "tags": [
+        "boat",
+        "trader"
+      ],
+      "moor": "alongside a quay or pier, its side 1 off the edge, bow toward the open water"
+    },
+    {
+      "id": "boat_fishing_3x8",
+      "part": "enterprise:dalaran/harbour/boat_fishing_3x8",
+      "size": [
+        3,
+        8,
+        8
+      ],
+      "contract": "boat",
+      "water_line": 1,
+      "width": 3,
+      "depth": 8,
+      "use": [
+        "sea",
+        "river"
+      ],
+      "tags": [
+        "boat",
+        "fishing"
+      ],
+      "moor": "beside a jetty or quay ladder"
+    },
+    {
+      "id": "boat_barge_4x11",
+      "part": "enterprise:dalaran/harbour/boat_barge_4x11",
+      "size": [
+        4,
+        6,
+        11
+      ],
+      "contract": "boat",
+      "water_line": 1,
+      "width": 4,
+      "depth": 11,
+      "use": [
+        "river"
+      ],
+      "tags": [
+        "boat",
+        "barge"
+      ],
+      "moor": "alongside a timber quay or wharf, under its crane"
+    }
+  ],
+  "buildings": [
+    {
+      "id": "customs_house_13x7",
+      "part": "enterprise:dalaran/harbour/customs_house_13x7",
+      "palette": "fixed",
+      "slot": "harbour:customs_house",
+      "use": [
+        "sea"
+      ],
+      "storeys": 2,
+      "faces": "the quay (front, south)",
+      "note": "the arcade on the quay where cargo is inspected and weighed, the collector's office above, the harbour flag"
+    },
+    {
+      "id": "warehouse_13x7",
+      "part": "enterprise:dalaran/harbour/warehouse_13x7",
+      "palette": "fixed",
+      "slot": "harbour:warehouse",
+      "use": [
+        "sea"
+      ],
+      "storeys": 2,
+      "faces": "the quay (front, south)",
+      "note": "open loading bays to the quay, stock inside, a hoist from the east gable"
+    },
+    {
+      "id": "warehouse_10x7",
+      "part": "enterprise:dalaran/harbour/warehouse_10x7",
+      "palette": "fixed",
+      "slot": "harbour:warehouse",
+      "use": [
+        "river"
+      ],
+      "storeys": 1,
+      "faces": "the wharf (front, south)",
+      "note": "the river's store: loading bays to the wharf, a hoist from the east gable"
+    },
+    {
+      "id": "fish_market_10x7",
+      "part": "enterprise:dalaran/harbour/fish_market_10x7",
+      "palette": "fixed",
+      "slot": "harbour:fish_market",
+      "use": [
+        "sea",
+        "river"
+      ],
+      "storeys": 1,
+      "faces": "the quay (front, south)",
+      "note": "open arcades to the quay, tables of fish on ice, barrels, drying kelp"
+    },
+    {
+      "id": "river_customs_7x5",
+      "part": "enterprise:dalaran/harbour/river_customs_7x5",
+      "palette": "fixed",
+      "slot": "harbour:river_customs",
+      "use": [
+        "river"
+      ],
+      "storeys": 1,
+      "faces": "the water (east)",
+      "note": "a booth at a river landing or a bridge's head: a counter window to the water, a chain boom along the edge"
+    }
+  ]
+}

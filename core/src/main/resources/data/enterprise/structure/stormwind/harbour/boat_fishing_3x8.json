@@ -1,0 +1,29 @@
+{
+  "id": "enterprise:stormwind/harbour/boat_fishing_3x8",
+  "rev": 1,
+  "kingdom": "stormwind",
+  "kind": "part",
+  "slot": "prop:boat",
+  "palette": "fixed",
+  "size": [
+    3,
+    8,
+    8
+  ],
+  "mirror": true,
+  "ground": 1,
+  "relief_faces": [],
+  "contract": "boat",
+  "water_line": 1,
+  "width": 3,
+  "depth": 8,
+  "use": [
+    "sea",
+    "river"
+  ],
+  "tags": [
+    "boat",
+    "fishing"
+  ],
+  "moor": "beside a jetty or quay ladder"
+}

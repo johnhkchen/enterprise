@@ -1,0 +1,45 @@
+{
+  "id": "enterprise:stormwind/harbour/quay_timber_ladder_1",
+  "rev": 1,
+  "kingdom": "stormwind",
+  "kind": "part",
+  "slot": "prop:harbour",
+  "palette": "fixed",
+  "size": [
+    1,
+    6,
+    3
+  ],
+  "mirror": true,
+  "ground": 0,
+  "relief_faces": [],
+  "contract": "dock",
+  "water_line": 0,
+  "pilings": [
+    {
+      "at": [
+        0,
+        1
+      ],
+      "block": "minecraft:oak_log"
+    },
+    {
+      "at": [
+        0,
+        0
+      ],
+      "block": "minecraft:oak_log"
+    }
+  ],
+  "deck": 2,
+  "width": 1,
+  "depth": 3,
+  "use": [
+    "river"
+  ],
+  "tags": [
+    "quay",
+    "timber",
+    "ladder"
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "id": "enterprise:dalaran/harbour/quay_stone_lamp_1",
+  "rev": 1,
+  "kingdom": "dalaran",
+  "kind": "part",
+  "slot": "prop:harbour",
+  "palette": "fixed",
+  "size": [
+    1,
+    6,
+    3
+  ],
+  "mirror": true,
+  "ground": 0,
+  "relief_faces": [],
+  "contract": "dock",
+  "water_line": 0,
+  "pilings": [
+    {
+      "at": [
+        0,
+        1
+      ],
+      "block": "minecraft:stone_bricks"
+    },
+    {
+      "at": [
+        0,
+        0
+      ],
+      "block": "minecraft:stone_bricks"
+    }
+  ],
+  "deck": 2,
+  "width": 1,
+  "depth": 3,
+  "use": [
+    "sea",
+    "river"
+  ],
+  "tags": [
+    "quay",
+    "lamp"
+  ]
+}
