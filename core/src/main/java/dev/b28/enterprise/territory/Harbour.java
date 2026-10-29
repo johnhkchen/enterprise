@@ -252,6 +252,19 @@ public final class Harbour {
                 }
             }
         }
+        // Its plot cleared over the deck of the land and the grade's earthworks in it (r92: they hung in the air over a
+        // levelled plot), then levelled.
+        for (int x = x0 - 1; x <= x1 + 1; x++) {
+            for (int z = z0 - 1; z <= z1 + 1; z++) {
+                clearOver(level, x, z, deck);
+            }
+        }
+        for (int a = back - 2; a < back; a++) {
+            for (int o = o0; o < o0 + wd; o++) {
+                BlockPos c = head.at().relative(in, a).relative(across, o);
+                clearOver(level, c.getX(), c.getZ(), deck);
+            }
+        }
         Plots.level(level, x0 - 1, z0 - 1, x1 + 1, z1 + 1, deck);
         boolean laid = Kits.place(level, kit.id(), new BlockPos(x0, deck, z0), out).isPresent();
         if (!laid) {
@@ -320,6 +333,19 @@ public final class Harbour {
         int g = Terraform.ground(level, back.getX(), back.getZ());
         if (g - deck >= 1) {
             Earthworks.step(level, kingdom, back.getX(), back.getZ(), s.out().getStepX(), s.out().getStepZ(), deck, g - deck, "wall");
+        }
+    }
+
+    /** A column cleared over {@code deck} of land, growth and the grade's earthworks (up to 24 over); anything else stays. */
+    static void clearOver(ServerLevel level, int x, int z, int deck) {
+        for (int y = deck + 1; y <= deck + 24; y++) {
+            BlockPos at = new BlockPos(x, y, z);
+            BlockState b = level.getBlockState(at);
+            if (!b.isAir() && (b.canBeReplaced() || earthwork(b) || dev.b28.enterprise.settlement.Grounds.natural(b)
+                    || b.is(net.minecraft.tags.BlockTags.LOGS) || b.is(net.minecraft.tags.BlockTags.LEAVES))
+                    && b.getFluidState().isEmpty()) {
+                level.setBlock(at, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2 | 16);
+            }
         }
     }
 
