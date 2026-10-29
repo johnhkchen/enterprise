@@ -116,28 +116,22 @@ public final class Harbour {
         if (rank >= 1) {
             List<String> row = sea ? List.of("harbour:customs_house", "harbour:warehouse", "harbour:fish_market")
                     : List.of("harbour:warehouse", "harbour:river_customs");
-            int right = 0, left = 0;
-            for (int k = 0; k < row.size(); k++) {
-                var kit = building(level, kingdom, row.get(k), !sea && row.get(k).equals("harbour:warehouse"));
+            // Along the shore from the head, the first spot each fits on dry land clear of the others (a river bank or a
+            // slant shore leaves room only here and there: r88), nearest the head first.
+            List<int[]> taken = new ArrayList<>();
+            for (String slot : row) {
+                var kit = building(level, kingdom, slot, !sea && slot.equals("harbour:warehouse"));
                 if (kit.isEmpty()) {
                     continue;
                 }
-                int wd = kit.get().width();
-                // The first at the head; the next to its right, then its left.
-                int centre;
-                if (k == 0) {
-                    centre = 0;
-                    right = (wd + 1) / 2 + 1;
-                    left = -(wd / 2) - 2;
-                } else if (k % 2 == 1) {
-                    centre = right + wd / 2;
-                    right += wd + 2;
-                } else {
-                    centre = left - (wd - 1) / 2;
-                    left -= wd + 2;
-                }
-                if (hall(level, kit.get(), head, centre, w + 2)) {
-                    buildings++;
+                for (int step = 0; step <= 12; step++) {
+                    int centre = (step % 2 == 0 ? 1 : -1) * ((step + 1) / 2) * 4;
+                    int[] rect = hall(level, kit.get(), head, centre, w + 2, taken);
+                    if (rect != null) {
+                        taken.add(rect);
+                        buildings++;
+                        break;
+                    }
                 }
             }
         }
@@ -161,28 +155,45 @@ public final class Harbour {
      * A harbour building behind the quay: its front 2 in from the shore (the quay walk between), centred {@code centre}
      * along the shore from the head, its plot levelled to the quay's deck, its front to the water.
      */
-    static boolean hall(ServerLevel level, Kits.Meta kit, Shore head, int centre, int deck) {
+    static int[] hall(ServerLevel level, Kits.Meta kit, Shore head, int centre, int deck, List<int[]> taken) {
         Direction out = head.out(), in = out.getOpposite(), across = out.getClockWise();
         int wd = kit.width(), dp = kit.depth(), o0 = centre - wd / 2;
-        int x0 = Integer.MAX_VALUE, z0 = Integer.MAX_VALUE, x1 = Integer.MIN_VALUE, z1 = Integer.MIN_VALUE;
-        for (int a : new int[] {2, 2 + dp - 1}) {
-            for (int o : new int[] {o0, o0 + wd - 1}) {
-                BlockPos c = head.at().relative(in, a).relative(across, o);
-                x0 = Math.min(x0, c.getX());
-                z0 = Math.min(z0, c.getZ());
-                x1 = Math.max(x1, c.getX());
-                z1 = Math.max(z1, c.getZ());
-            }
-        }
-        for (int x = x0 - 1; x <= x1 + 1; x++) {
-            for (int z = z0 - 1; z <= z1 + 1; z++) {
-                if (!level.isLoaded(new BlockPos(x, 0, z)) || water(level, new BlockPos(x, 0, z)) != Integer.MIN_VALUE) {
-                    return false; // over water, or not loaded: no room here
+        // Its front 2 in from the head's shore, or further in where the shore runs slant and water reaches in (r88: the
+        // water came a block in 10 along Darkshire's shore): the first setback whose plot is all dry land.
+        int back = -1;
+        int x0 = 0, z0 = 0, x1 = 0, z1 = 0;
+        search:
+        for (int a0 = 2; a0 <= 10; a0++) {
+            x0 = Integer.MAX_VALUE; z0 = Integer.MAX_VALUE; x1 = Integer.MIN_VALUE; z1 = Integer.MIN_VALUE;
+            for (int a : new int[] {a0, a0 + dp - 1}) {
+                for (int o : new int[] {o0, o0 + wd - 1}) {
+                    BlockPos c = head.at().relative(in, a).relative(across, o);
+                    x0 = Math.min(x0, c.getX());
+                    z0 = Math.min(z0, c.getZ());
+                    x1 = Math.max(x1, c.getX());
+                    z1 = Math.max(z1, c.getZ());
                 }
             }
+            for (int[] t : taken) {
+                if (x0 <= t[2] + 1 && x1 >= t[0] - 1 && z0 <= t[3] + 1 && z1 >= t[1] - 1) {
+                    continue search; // on another's plot
+                }
+            }
+            for (int x = x0; x <= x1; x++) {
+                for (int z = z0; z <= z1; z++) {
+                    if (!level.isLoaded(new BlockPos(x, 0, z)) || water(level, new BlockPos(x, 0, z)) != Integer.MIN_VALUE) {
+                        continue search;
+                    }
+                }
+            }
+            back = a0;
+            break;
+        }
+        if (back < 0) {
+            return null;
         }
         // The quay walk between it and the water, and its plot, at the deck's height.
-        for (int a = 0; a <= 1; a++) {
+        for (int a = 0; a < back; a++) {
             for (int o = o0; o < o0 + wd; o++) {
                 BlockPos c = head.at().relative(in, a).relative(across, o);
                 if (water(level, c) == Integer.MIN_VALUE) {
@@ -191,7 +202,11 @@ public final class Harbour {
             }
         }
         Plots.level(level, x0 - 1, z0 - 1, x1 + 1, z1 + 1, deck);
-        return Kits.place(level, kit.id(), new BlockPos(x0, deck, z0), out).isPresent();
+        boolean laid = Kits.place(level, kit.id(), new BlockPos(x0, deck, z0), out).isPresent();
+        if (!laid) {
+            dev.b28.enterprise.Enterprise.LOGGER.info("{} couldn't be laid behind the quay at {}", kit.id(), head.at().toShortString());
+        }
+        return laid ? new int[] {x0, z0, x1, z1} : null;
     }
 
     /** The water's surface height at a column, or {@link Integer#MIN_VALUE} if its top isn't water. */
