@@ -614,4 +614,8 @@ dials! {
     /// what sells"; seed 8675309's Redfell paid its Farmers 98 in 90 days for melons nobody bought). What sells counts
     /// its crops sold at its lockers, to shops, and off its own wagons (`rules/arrive.rs` `turn`).
     min_labor_share: f64 = 0.0,
+    /// An unhappy buyer with money to spare pays up to this many times its usual ceiling (`bargain::eagerness`; 1:
+    /// never more). John: "You'd expect the towns to start paying more for goods if they have low happiness and extra
+    /// income."
+    eager_most: f64 = 2.0,
 }

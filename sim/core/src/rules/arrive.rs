@@ -127,6 +127,8 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
             };
             let par = stock.0[g] + room;
             let free_money = free(&content, trades, &money, &bills, route.to_id, now);
+            // An unhappy buyer with money to spare pays over its usual ceiling (`bargain::eagerness`); a realm never.
+            let eager = if realm_buys { 1.0 } else { crate::bargain::eagerness(&content, people.mood, free_money.to_f64()) };
             let can = if realm_buys {
                 money.0.at_least_zero()
             } else if comfort.is_some() {
@@ -142,7 +144,7 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
                 if n <= 0.0 {
                     break;
                 }
-                let each = crate::bargain::unit_price(&content, g, stock.0[g], n, par, seller, buyer);
+                let each = crate::bargain::unit_price(&content, g, stock.0[g], n, par, seller, buyer, eager);
                 price = each.unwrap_or(0.0);
                 n = n.min(each.map_or(0.0, |each| (can.to_f64() / each).floor()));
             }

@@ -36,6 +36,18 @@ pub const PAR_DAYS: f64 = 2.0;
 /// A travelling Merchant buying surplus to sell on pays at most this share of its local value
 /// (`Caravans.RESALE_CEILING`).
 pub const RESALE_CEILING: f64 = 0.75;
+/// A buyer is as eager as its mood lets it be with this much money to spare (a founding purse).
+pub const EAGER_PURSE: f64 = 64.0;
+
+/// How far over its usual ceiling a buyer goes: 1 for a content town or one with nothing to spare, up to the dial
+/// `eager_most` for one as unhappy as a mood of -1 or worse with [`EAGER_PURSE`] to spare. Scarce trade lets a poor,
+/// unhappy town's emeralds pile up until a wagon's road pays (John: "You'd expect the towns to start paying more for
+/// goods if they have low happiness and extra income").
+pub fn eagerness(content: &Content, mood: f64, spare: f64) -> f64 {
+    let unhappy = (-mood).clamp(0.0, 1.0);
+    let afford = (spare / EAGER_PURSE).clamp(0.0, 1.0);
+    1.0 + (content.dials.eager_most - 1.0).max(0.0) * unhappy * afford
+}
 
 /// The least a seller takes for a good worth `value`.
 pub fn seller_floor(value: f64) -> f64 {
@@ -80,13 +92,17 @@ pub fn merchant_level(roster: Option<&Roster>) -> u8 {
 }
 
 /// What a good sells for at the far end, a batch of `n` onto `on_hand` toward `par`: the price at the middle of the
-/// batch, or its full value with the dial off. None: no deal.
-pub fn unit_price(content: &Content, good: GoodId, on_hand: f64, n: f64, par: f64, seller: u8, buyer: u8) -> Option<f64> {
+/// batch, the buyer's ceiling raised by its `eager`ness ([`eagerness`]: 1, none), or its full value (times `eager`)
+/// with the dial off. None: no deal.
+#[allow(clippy::too_many_arguments)]
+pub fn unit_price(content: &Content, good: GoodId, on_hand: f64, n: f64, par: f64, seller: u8, buyer: u8, eager: f64)
+        -> Option<f64> {
     let value = content.goods[good].value;
     if !content.dials.bargain {
-        return Some(value);
+        return Some(value * eager);
     }
-    price(value, shortage(on_hand + (n / 2.0).floor(), par), seller, buyer)
+    let ceiling = buyer_ceiling(value, shortage(on_hand + (n / 2.0).floor(), par)) * eager;
+    between(seller_floor(value), ceiling, seller, buyer)
 }
 
 /// What each of a town's lockers can take of each good a day, as its last session recorded it, by locker

@@ -2,7 +2,8 @@
 //! bargain at the far end: wagons sell at the settled price, at the middle of the batch, and plan their load's worth by
 //! it; and the price table.
 
-use enterprise_core::bargain::{self, between, buyer_ceiling, price, seller_floor, shortage, MIN_PAR, SELLER_FLOOR};
+use enterprise_core::bargain::{self, between, buyer_ceiling, eagerness, price, seller_floor, shortage, EAGER_PURSE, MIN_PAR,
+    SELLER_FLOOR};
 use enterprise_core::prices::{emeralds_each, is_listed, items_per_emerald};
 use enterprise_core::{Content, Good, Output, Society};
 
@@ -68,6 +69,8 @@ fn farm_and_mill(farm_level: Option<u8>, mill_level: Option<u8>, bargain: bool) 
     let mut s = Society::new(Content::new(vec![Good::new("wheat", 0.05, 64)], DAY));
     s.content_mut().dials.standing_orders = false;
     s.content_mut().dials.bargain = bargain;
+    // A sober buyer: these tests price the split, not its eagerness (`eager_market_pays_more`).
+    s.content_mut().dials.eager_most = 1.0;
     let farm = s.add_town("Wheatfield", 20.0);
     let mill = s.add_town("Hayford", 500.0);
     s.set_trade(farm, 0, 128.0, 0.0);
@@ -142,6 +145,22 @@ fn a_load_is_worth_its_goods_worth_whatever_it_will_fetch() {
     let each = price(0.05, shortage((going / 2.0).floor(), 320.0), 1, 1).unwrap();
     assert!(each < 0.05, "the bargain would fetch {each} each");
     assert!((bargained - going * 0.05).abs() < 1e-9, "{going} wheat worth {bargained}, its worth");
+}
+
+#[test]
+fn an_unhappy_buyer_with_money_to_spare_pays_more() {
+    let content = Content::new(vec![Good::new("wheat", 0.05, 64)], DAY);
+    assert_eq!(eagerness(&content, 0.5, 500.0), 1.0, "a content town pays its usual");
+    assert_eq!(eagerness(&content, -2.0, 0.0), 1.0, "nothing to spare: its usual");
+    assert_eq!(eagerness(&content, -1.0, EAGER_PURSE), 2.0, "as unhappy as can be, a purse to spare: twice");
+    assert_eq!(eagerness(&content, -0.5, EAGER_PURSE / 2.0), 1.25);
+    // At the far end: the mill (its Merchant its people, unhappy), with money to spare, pays more for the same wheat than a sober one.
+    let mut eager = farm_and_mill(Some(3), Some(3), true);
+    eager.content_mut().dials.eager_most = 2.0;
+    let (sold, takings, _) = first_sale(eager);
+    let (sober_sold, sober, _) = first_sale(farm_and_mill(Some(3), Some(3), true));
+    assert_eq!(sold, sober_sold, "the same wheat");
+    assert!(takings > sober, "{takings} eager, {sober} sober");
 }
 
 #[test]

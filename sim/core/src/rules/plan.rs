@@ -68,7 +68,7 @@ pub fn start(clock: Res<Clock>, content: Res<Content>, mut pallets: ResMut<crate
 /// with the route, for the reasons' tally (`Caravans.pickCargo`).
 #[allow(clippy::too_many_arguments)]
 fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktakes: Res<crate::atlas::Stocktakes>,
-        mut routes: Query<(&Route, &mut RouteState)>, towns: Query<(&Stock, &Trades, &People)>,
+        mut routes: Query<(&Route, &mut RouteState)>, towns: Query<(&Stock, &Trades, &People, &Money)>,
         rosters: Query<&crate::roster::Roster>, pallets: Res<crate::pallet::Pallets>, realms: Query<&Realm>,
         orders: Res<crate::orders::Orders>, lockers: Query<&crate::lockers::Lockers>) {
     use crate::atlas::{Want, Why};
@@ -104,7 +104,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
         // without one.
         let caps = plan_caps(&content, plan, rosters.get(route.from).ok(), false, route.carrier);
         let slots = caps.slots;
-        let Ok([(home_stock, home_trades, home_people), (far_stock, far_trades, far_people)]) =
+        let Ok([(home_stock, home_trades, home_people, _), (far_stock, far_trades, far_people, far_money)]) =
             towns.get_many([route.from, route.to]) else { continue };
         // A realm's Merchants haggle at their own level (`realms.rs`), and its people want comforts as goods, by par.
         let far_realm = realms.get(route.to).ok();
@@ -113,6 +113,11 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
         let far_taken = far_lockers.map(|(l, r)| l.taken(&content, r, n));
         let seller = crate::realms::level(&content, realms.get(route.from).ok(), rosters.get(route.from).ok());
         let buyer = crate::realms::level(&content, far_realm, rosters.get(route.to).ok());
+        // How eager the far end is (`bargain::eagerness`): its mood, and its money beyond its trading capital; a
+        // realm's never. A load is worth what it sells for to an eager buyer.
+        let eager = if far_realm.is_some() { 1.0 } else {
+            crate::bargain::eagerness(&content, far_people.mood, (far_money.0 - super::trading_capital(&content, far_trades)).to_f64())
+        };
         // What the far end holds of a good, as home knows it (`atlas.rs`): a home with a roster reads its fresh
         // stocktake, and counts what's on its way there; else its stock as it is.
         // (A realm's wagons are never crewed from a roster: `realms.rs`.)
@@ -174,10 +179,10 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
                 let gap = (needs[kind] / content.goods[g].value.max(1e-9)).ceil();
                 let held = far_stock.0[g];
                 let sells = going.min(gap);
-                if crate::bargain::unit_price(&content, g, held, sells, held + gap, seller, buyer).is_none() {
+                if crate::bargain::unit_price(&content, g, held, sells, held + gap, seller, buyer, eager).is_none() {
                     continue;
                 }
-                let each = content.goods[g].value;
+                let each = content.goods[g].value * eager;
                 plan.cargo[g] += going;
                 stacks += (going / stack).ceil() as u32;
                 load.slots = stacks;
@@ -260,13 +265,13 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
                 continue;
             }
             let far_held = if want.is_some() { held(g) } else { far_stock.0[g] };
-            if crate::bargain::unit_price(&content, g, far_held, going, par, seller, buyer).is_none() {
+            if crate::bargain::unit_price(&content, g, far_held, going, par, seller, buyer, eager).is_none() {
                 if let Some(want) = want {
                     whys.push((Some(g), Why::NoDeal(want), going));
                 }
                 continue;
             }
-            let each = content.goods[g].value;
+            let each = content.goods[g].value * eager;
             plan.cargo[g] += going;
             stacks += (going / stack).ceil() as u32;
             load.slots = stacks;
@@ -627,12 +632,11 @@ fn full_load(content: &Content, pallets: &crate::pallet::Pallets, plan: &Plan, o
     load.slots += plan.booked;
     load.weight += plan.booked_weight;
     let mut paid = 0.0;
-    for &(g, n, _) in &plan.sale {
+    for &(g, n, each) in &plan.sale {
         if content.goods[g].comfort.is_some() && !realm {
             continue;
         }
         let n = n.min((plan.cargo[g] - owed[g]).max(0.0));
-        let each = content.goods[g].value;
         let sells = match purse {
             Some(p) if each > 0.0 => n.min(((p.to_f64() - paid).max(0.0) / each).floor()),
             _ => n,
