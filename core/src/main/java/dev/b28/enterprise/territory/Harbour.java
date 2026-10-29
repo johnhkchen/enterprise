@@ -93,7 +93,10 @@ public final class Harbour {
         int quay = 0, jetty = 0, boats = 0;
         // The quay along the shore from the head, both ways.
         if (rank >= 1) {
-            int length = rank >= 2 ? 32 : sea ? 16 : 8;
+            // One quay line along the shore through the head, under and between the buildings' fronts to the jetty's
+            // root (the studio's r90 render: each hall had its own skirt of quay, earth between): 24 either way at sea,
+            // 8 on a river, and the whole shore of a town.
+            int length = rank >= 2 ? 64 : sea ? 48 : 16;
             List<Shore> run = shore(level, head, length, w);
             for (int k = 0; k < run.size(); k++) {
                 Shore s = run.get(k);
@@ -103,6 +106,11 @@ public final class Harbour {
                 if (quayTile(level, set, tile, s, w)) {
                     quay++;
                 }
+            }
+            // Behind the quay line, the quay walk and the district's ground levelled to the deck (6 in), walled where the
+            // land rises behind it (the studio's: the hillside came down to the water in raw earth beside the halls).
+            for (Shore s : run) {
+                terrace(level, kingdom, s, w + 2);
             }
         }
         // The jetty out from the head: segments while the water's deep enough ahead, then its head.
@@ -252,6 +260,38 @@ public final class Harbour {
             }
         }
         return new int[] {x0, z0, x1, z1};
+    }
+
+    /** How deep behind the quay line its ground is levelled to the deck. */
+    static final int BAND = 6;
+
+    /**
+     * Behind a quay cell, its ground levelled to the deck {@link #BAND} in (natural ground only: a street or anything built
+     * is left), and where the land beyond stands higher, the kingdom's retaining wall at the band's back.
+     */
+    static void terrace(ServerLevel level, String kingdom, Shore s, int deck) {
+        Direction in = s.out().getOpposite();
+        for (int a = 1; a <= BAND; a++) {
+            BlockPos c = s.at().relative(in, a);
+            if (!level.isLoaded(c) || water(level, c) != Integer.MIN_VALUE) {
+                return;
+            }
+            int g = Terraform.ground(level, c.getX(), c.getZ());
+            BlockState top = level.getBlockState(new BlockPos(c.getX(), g, c.getZ()));
+            if (!dev.b28.enterprise.settlement.Grounds.natural(top) || top.is(net.minecraft.world.level.block.Blocks.DIRT_PATH)) {
+                return; // a street or something built: the band stops at it
+            }
+            Terraform.settle(level, c.getX(), c.getZ(), deck);
+            level.setBlock(new BlockPos(c.getX(), deck, c.getZ()), net.minecraft.world.level.block.Blocks.GRASS_BLOCK.defaultBlockState(), 2 | 16);
+        }
+        BlockPos back = s.at().relative(in, BAND + 1);
+        if (!level.isLoaded(back) || water(level, back) != Integer.MIN_VALUE) {
+            return;
+        }
+        int g = Terraform.ground(level, back.getX(), back.getZ());
+        if (g - deck >= 1) {
+            Earthworks.step(level, kingdom, back.getX(), back.getZ(), s.out().getStepX(), s.out().getStepZ(), deck, g - deck, "wall");
+        }
     }
 
     /** A shallow water column filled to the deck: coursed stone from the bed, earth under its top, grass on it. */
