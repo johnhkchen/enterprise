@@ -879,6 +879,16 @@ public final class LandAdapter {
             Enterprise.LOGGER.info("Town {} stands with its founding kit ({} parts), its main street {}", town, kit,
                     plans.main(town).get().getName());
         }
+        // Its harbour where its plan meets water (the studio's harbour district, batch 037), at its tier by its beds.
+        {
+            long bedsNow = level.getPoiManager().getInRange(t -> t.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.HOME),
+                    bell, 64, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY).count();
+            String tierNow = dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).tierOf(town, Math.max(bedsNow,
+                    cleared.get().beds()));
+            dev.b28.enterprise.territory.Harbour.lay(level, townPlan, kingdom, tierNow).ifPresent(h -> Enterprise.LOGGER.info(
+                    "Town {}'s harbour ({}, {}): {} quay tiles, {} jetty parts, {} boats", town, h.sea() ? "sea" : "river",
+                    tierNow, h.quay(), h.jetty(), h.boats()));
+        }
         int beds = 0, homes = 0, shops = 0, stalls = 0;
         converting = true;
         try {
