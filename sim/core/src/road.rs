@@ -97,10 +97,11 @@ pub fn road_food(content: &Content) -> bool {
     (0..content.goods.len()).any(|g| points(content, g) > 0.0)
 }
 
-/// Food points a mouth eats on a leg of `blocks` (`Caravans.foodNeeded`): one per `blocks_per_food`, at least one.
+/// Food points a mouth eats on a leg of `blocks` (`Caravans.foodNeeded`): one per `blocks_per_food`, at the dial
+/// `road_cost_share` of it (rounded up), at least one.
 pub fn food_needed(content: &Content, blocks: u32) -> f64 {
     let per = content.dials.blocks_per_food.max(1);
-    blocks.div_ceil(per).max(1) as f64
+    (blocks.div_ceil(per) as f64 * content.dials.road_cost_share.max(0.0)).ceil().max(1.0)
 }
 
 /// Can a wagon carry a leg's food (`Caravans.inRange`)? 3,200 blocks it can, 3,210 it can't.

@@ -148,6 +148,7 @@ fn a_call_drops_only_what_it_takes_and_the_trips_end_takes_everything() {
 /// (`tests/freight.rs` `network`).
 fn network() -> Society {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     s.content_mut().dials.standing_orders = false;
     let town = s.add_town("Town", 5.0);
     let hub = s.add_town("Hub", 30.0);
@@ -193,6 +194,7 @@ fn goods_for_a_market_beyond_drop_at_the_hub_that_forwards_them_and_ride_its_run
 fn a_crate_fetched_at_the_far_end_for_home_drops_at_home() {
     // (`tests/cargo.rs`' goods: no road food, so the wagon goes for what it's owed.)
     let mut s = Society::new(Content::new(["paper", "flint", "iron_axe"].iter().map(|n| Good::new(n, 0.05, 64)).collect(), DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     s.add_town("Haygate", 5.0);
     s.add_town("Cloverby", 5.0);
     s.add_route(0, 1, 1.0, 0.0, 30.0);

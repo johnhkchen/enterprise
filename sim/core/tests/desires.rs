@@ -39,6 +39,8 @@ fn content() -> Content {
 fn network(bread: f64, emeralds: f64, dest_spurs: f64) -> Society {
     let mut s = Society::new(content());
     s.content_mut().dials.standing_orders = false;
+    // No earnings from outside (`hand_wage`): households with no savings buy nothing off the cart, as the mod's.
+    s.content_mut().dials.hand_wage = 0.0;
     let hub = s.add_town("Hub", emeralds);
     let dest = s.add_town("Dest", dest_spurs / 16.0);
     s.record_capacity(dest, 1, &[(PAPER, 64.0 / 5.0)]);
@@ -560,4 +562,22 @@ fn a_shopping_trip_is_worth_what_the_far_end_would_sell_not_the_money() {
     // No treats, but a glut of wheat home uses: worth the glut's discount on what the money buys.
     let glut = plan(1.0, 1000.0);
     assert!(glut.worth > one.worth + 1.0 && glut.went, "{glut:?}");
+}
+
+#[test]
+fn households_with_savings_buy_the_comforts_they_lack_off_the_cart() {
+    // Dest's five, earning: what their people lack of treats they buy off the wagon with their own savings, banked
+    // toward their rations, before the treasury buys for the warehouse.
+    let mut s = network(2.0, 5.0, 192.0);
+    s.content_mut().dials.hand_wage = 0.25;
+    town_of_five(&mut s, DEST);
+    s.deliver(HUB, COOKIE, 128.0);
+    let start = s.totals();
+    s.advance(3 * LOOK);
+    s.conserved(&start).unwrap();
+    let purse = s.town(DEST).people.purse;
+    let stock = s.town(DEST).stock[COOKIE];
+    assert!(stock < 54.0, "the households took some for themselves: {stock} in the warehouse");
+    assert!(s.town(DEST).people.comfort_owed.iter().any(|o| *o < 0.0), "banked as credit: {:?}", s.town(DEST).people.comfort_owed);
+    assert!(purse.to_f64() >= 0.0, "never past their savings: {purse}");
 }

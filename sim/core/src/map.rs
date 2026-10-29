@@ -160,7 +160,7 @@ pub fn per_hex_at_bread(content: &crate::content::Content) -> f64 {
         .map(|b| &content.goods[b])
         .filter(|b| b.food > 0.0)
         .map_or(FOOD_POINT_VALUE, |b| b.value / b.food);
-    per_hex(point)
+    per_hex(point) * content.dials.road_cost_share.max(0.0)
 }
 
 /// What a hex's ground gives a town's hands: the mod's biome tags (`Labour.hauls`, `Hunting.game`) as one kind a hex

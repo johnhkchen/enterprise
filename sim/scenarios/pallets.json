@@ -1445,7 +1445,7 @@
             {
               "WagonHome": {
                 "route": 0,
-                "takings": 1225
+                "takings": 1175
               }
             },
             {
@@ -1472,7 +1472,7 @@
           "answers": []
         }
       },
-      "response_postcard": "0003020092131100020d76696c6c616765722d6c656164086d65726368616e7401010701020000"
+      "response_postcard": "00030200ae121100020d76696c6c616765722d6c656164086d65726368616e7401010701020000"
     },
     {
       "note": "Hub's wagon's manifest",
@@ -1580,8 +1580,8 @@
       "saved": {
         "format": 1,
         "schema": 6034167911668710121,
-        "blob_len": 8004,
-        "blob_fnv": "b055e983be6479ef"
+        "blob_len": 8020,
+        "blob_fnv": "71de8124154f6a36"
       }
     },
     {

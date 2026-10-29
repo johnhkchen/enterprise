@@ -24,6 +24,7 @@ fn across_the_river() -> (Society, usize) {
 fn across_the_river_with(money: f64) -> (Society, usize) {
     let goods = vec![Good::new("wheat", 0.05, 64), Good::new("bread", 0.2, 64).food(5.0)];
     let mut s = Society::new(Content::new(goods, DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     s.content_mut().dials.standing_orders = false;
     let farm = s.add_town("Wheatfield", money);
     let mill = s.add_town("Hayford", 40.0);

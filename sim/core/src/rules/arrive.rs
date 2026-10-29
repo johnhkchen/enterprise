@@ -84,7 +84,7 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
         let far_lockers = lockers.get(route.to).ok().zip(rosters.get(route.to).ok());
         let far_taken = far_lockers.map(|(l, r)| l.taken(&content, r, content.goods.len()));
         let far_roster = rosters.get(route.to).ok();
-        let (mut stock, mut money, trades, mut budget, people) = towns.get_mut(route.to).expect("the far end");
+        let (mut stock, mut money, trades, mut budget, mut people) = towns.get_mut(route.to).expect("the far end");
         if !realm_buys {
             // What it can spend on goods, as the travelling Merchant sees it: the next load is sized to it (`sell`
             // 2445–2449, `farPurse`; `saleLoad`).
@@ -105,7 +105,7 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
             let outlet = outlets[g];
             let (own, room) = match comfort {
                 Some(kind) => {
-                    let own = ((comfort_par(&content, people) - comfort_held(&content, &stock, kind)) / value).ceil().max(0.0);
+                    let own = ((comfort_par(&content, &people) - comfort_held(&content, &stock, kind)) / value).ceil().max(0.0);
                     (own, own + outlet.filter(|o| crate::desires::worth_buying(&content, value, o)).map_or(0.0, |o| o.units))
                 }
                 None => {
@@ -125,10 +125,26 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
                     (0.0, (aim - stock.0[g]).max(0.0))
                 }
             };
+            // The households first: what their people lack of a comfort, off the cart with their own savings, for
+            // their rations to come (in credit: `people.rs` eats it before the warehouse's), so the wages they earn
+            // reach the trade that brings it (John: "Do so": seed 1001's households earned 340 and spent 80, nothing
+            // in their warehouses to buy).
+            let (own, room) = match comfort {
+                Some(kind) if people.comfort_owed.len() > kind => {
+                    let bought = households_buy(&content, &mut ledger, &mut book, &mut people, wagon, &route, g, kind,
+                        own, stock.0[g], (seller, buyer), (now, day));
+                    sold_all += bought;
+                    ((own - bought).max(0.0), (room - bought).max(0.0))
+                }
+                _ => (own, room),
+            };
             let par = stock.0[g] + room;
             let free_money = free(&content, trades, &money, &bills, route.to_id, now);
-            // An unhappy buyer with money to spare pays over its usual ceiling (`bargain::eagerness`); a realm never.
-            let eager = if realm_buys { 1.0 } else { crate::bargain::eagerness(&content, people.mood, free_money.to_f64()) };
+            // An unhappy buyer with money to spare, its own or its households' savings, pays over its usual ceiling
+            // (`bargain::eagerness`); a realm never.
+            let eager = if realm_buys { 1.0 } else {
+                crate::bargain::eagerness(&content, people.mood, (free_money + people.purse.at_least_zero()).to_f64())
+            };
             let can = if realm_buys {
                 money.0.at_least_zero()
             } else if comfort.is_some() {
@@ -170,6 +186,38 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
         }
         state.sold += sold_all;
     }
+}
+
+/// The far end's households buy up to `own` of comfort good `g` (of `kind`) off `wagon` with their savings, at the price
+/// an eager buyer of their mood and savings pays (`bargain`), as far as their purse goes: banked as credit toward their
+/// rations (`People::comfort_owed`), the goods used. How many they bought.
+#[allow(clippy::too_many_arguments)]
+fn households_buy(content: &Content, ledger: &mut Ledger, book: &mut CashBook, people: &mut People, wagon: &mut Wagon,
+        route: &Route, g: usize, kind: usize, own: f64, on_hand: f64, (seller, buyer): (u8, u8), (now, day): (u64, u64))
+        -> f64 {
+    let savings = people.purse.at_least_zero();
+    let value = content.goods[g].value.max(1e-9);
+    let credit = (-people.comfort_owed[kind]).max(0.0) / value;
+    let mut n = wagon.cargo[g].min((own - credit).floor());
+    if n <= 0.0 || !savings.is_positive() {
+        return 0.0;
+    }
+    let eager = crate::bargain::eagerness(content, people.mood, savings.to_f64());
+    let Some(each) = crate::bargain::unit_price(content, g, on_hand, n, on_hand + own, seller, buyer, eager) else { return 0.0 };
+    n = n.min((savings.to_f64() / each.max(1e-9)).floor());
+    if n <= 0.0 {
+        return 0.0;
+    }
+    wagon.cargo[g] -= n;
+    ledger.used[g] += n;
+    people.comfort_owed[kind] -= n * value;
+    let paid = Fixed::ceil(n * each).min(savings);
+    post(ledger, book, Side::households(route.to_id, &mut people.purse), Side::wagon(route.seq, &mut wagon.purse), paid,
+        Reason::Sale, now, day);
+    wagon.sold_here[g] += n;
+    wagon.takings_here += paid;
+    crate::atlas::paid(wagon, g, paid);
+    n
 }
 
 /// A good that sold well here, the buyer's people using it steadily: a standing order, if they trust each other (in

@@ -47,6 +47,7 @@ fn content() -> Content {
 /// away holding `dest_spurs` (16 an emerald) and two bread, whose lockers take paper up to a stack (its par).
 fn network(bread: f64, emeralds: f64, dest_spurs: f64) -> Society {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     s.content_mut().dials.standing_orders = false;
     let hub = s.add_town("Hub", emeralds);
     let dest = s.add_town("Dest", dest_spurs / 16.0);
@@ -111,6 +112,7 @@ fn an_off_map_market_that_sells_food_feeds_the_wagon_home() {
 /// capital if one is named. Returns the world, the town, the March and its route to the town.
 fn march(capital: bool, bread: f64) -> (Society, usize, usize, usize, Option<usize>) {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     s.content_mut().dials.standing_orders = false;
     let dest = s.add_town("Dest", 640.0 / 16.0);
     s.record_capacity(dest, 1, &[(LEATHER, 64.0 / 5.0)]);
@@ -222,6 +224,7 @@ fn with_no_capital_named_no_customs_are_paid() {
 #[test]
 fn the_coast_opens_with_three_days_goods_and_tops_up_what_it_makes() {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let coast = s.add_coast(0.0, 0.0, 100.0);
     let view = s.realm(coast).unwrap();
     assert_eq!(view.wants, [WHEAT, PAPER, IRON, BOOK], "wheat, paper, iron, books");
@@ -244,6 +247,7 @@ fn the_coast_opens_with_three_days_goods_and_tops_up_what_it_makes() {
 #[test]
 fn a_realms_people_use_sixty_four_a_day_of_what_they_want_beyond_the_road_food() {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let coast = s.add_coast(0.0, 0.0, 100.0);
     s.deliver(coast, PAPER, 200.0);
     s.deliver(coast, WHEAT, 600.0);
@@ -261,6 +265,7 @@ fn a_realms_people_use_sixty_four_a_day_of_what_they_want_beyond_the_road_food()
 #[test]
 fn a_realm_buys_what_it_wants_by_par_from_the_money_it_holds_comforts_included() {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     s.content_mut().dials.standing_orders = false;
     let hub = s.add_town("Hub", 20.0);
     s.deliver(hub, BOOK, 48.0);
@@ -283,6 +288,7 @@ fn a_realm_buys_what_it_wants_by_par_from_the_money_it_holds_comforts_included()
 #[test]
 fn goods_and_money_are_conserved_through_a_realms_trade() {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let hub = s.add_town("Hub", 50.0);
     let dest = s.add_town("Dest", 40.0);
     s.record_capacity(dest, 1, &[(LEATHER, 12.8), (PAPER, 12.8)]);

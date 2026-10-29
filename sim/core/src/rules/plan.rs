@@ -116,7 +116,8 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
         // How eager the far end is (`bargain::eagerness`): its mood, and its money beyond its trading capital; a
         // realm's never. A load is worth what it sells for to an eager buyer.
         let eager = if far_realm.is_some() { 1.0 } else {
-            crate::bargain::eagerness(&content, far_people.mood, (far_money.0 - super::trading_capital(&content, far_trades)).to_f64())
+            crate::bargain::eagerness(&content, far_people.mood,
+                (far_money.0 - super::trading_capital(&content, far_trades) + far_people.purse.at_least_zero()).to_f64())
         };
         // What the far end holds of a good, as home knows it (`atlas.rs`): a home with a roster reads its fresh
         // stocktake, and counts what's on its way there; else its stock as it is.

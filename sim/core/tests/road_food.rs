@@ -22,6 +22,7 @@ fn content() -> Content {
 /// away holding `dest_spurs` (16 an emerald) and two bread, whose lockers take paper up to a stack (its par).
 fn network_with(paper: f64, bread: f64, emeralds: f64, dest_spurs: f64) -> Society {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     s.content_mut().dials.standing_orders = false;
     let hub = s.add_town("Hub", emeralds);
     let dest = s.add_town("Dest", dest_spurs / 16.0);
@@ -184,6 +185,7 @@ fn food_caps_a_leg_at_3200_blocks() {
 #[test]
 fn a_route_beyond_the_range_never_sends_its_wagon() {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let hub = s.add_town("Hub", 500.0);
     let dest = s.add_town("Dest", 100.0);
     s.record_capacity(dest, 1, &[(PAPER, 12.8)]);
@@ -197,6 +199,7 @@ fn a_route_beyond_the_range_never_sends_its_wagon() {
     assert_eq!(s.road_food(far).stayed, Some(Stay::OutOfRange));
     // Without food in the content, its road is money, and it goes.
     let mut s = Society::new(Content::new(vec![Good::new("paper", 1.0 / 24.0, 64)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let hub = s.add_town("Hub", 500.0);
     let dest = s.add_town("Dest", 100.0);
     s.set_trade(dest, PAPER, 0.0, 12.8);
@@ -209,6 +212,7 @@ fn a_route_beyond_the_range_never_sends_its_wagon() {
 #[test]
 fn a_road_too_long_for_a_legs_food_isnt_built() {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (a, b, c) = (s.add_town("A", 0.0), s.add_town("B", 0.0), s.add_town("C", 0.0));
     s.place_town(a, 0.0, 0.0);
     s.place_town(b, 2000.0, 0.0);
@@ -217,6 +221,7 @@ fn a_road_too_long_for_a_legs_food_isnt_built() {
     assert!(s.road_food(near).blocks <= 3200);
     assert!(s.add_road(a, c, 1.0).is_none(), "4,000 blocks: out of range");
     let mut s = Society::new(Content::new(vec![Good::new("paper", 1.0 / 24.0, 64)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (a, c) = (s.add_town("A", 0.0), s.add_town("C", 0.0));
     s.place_town(a, 0.0, 0.0);
     s.place_town(c, 4000.0, 0.0);
@@ -257,6 +262,7 @@ fn a_wagon_goes_home_on_short_rations_rather_than_wait_for_days() {
 fn a_far_end_short_of_food_gets_wagons_that_pack_their_own() {
     // The far end has no bread: the wagon packs the road home's point, eats it there, and pays the far end nothing.
     let mut bare = Society::new(content());
+    bare.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     bare.content_mut().dials.standing_orders = false;
     let hub = bare.add_town("Hub", 5.0);
     let dest = bare.add_town("Dest", 12.0);
@@ -281,6 +287,7 @@ fn wagons_bound_for_a_town_count_what_the_others_will_eat_there() {
     // Two towns send wagons 40 blocks (4 points a leg) to a far end holding one bread (5 points): the first is fed
     // there; the second, counting what the first will eat, packs its own.
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     s.content_mut().dials.standing_orders = false;
     let a = s.add_town("A", 5.0);
     let b = s.add_town("B", 5.0);
@@ -374,6 +381,7 @@ fn road_food_keeps_the_books_every_day() {
 #[test]
 fn without_food_in_the_content_the_road_costs_its_money() {
     let mut s = Society::new(Content::new(vec![Good::new("paper", 1.0 / 24.0, 64)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     s.content_mut().dials.standing_orders = false;
     let hub = s.add_town("Hub", 5.0);
     let dest = s.add_town("Dest", 12.0);
@@ -394,6 +402,7 @@ fn an_advance_leaves_room_for_the_road_food() {
     // takes what's left after the road's food, the team's fodder and the purse for the road home (`spare` less
     // `roadPurse`), so the wagon goes; at the far end it pays the advance keeping its road food, the rest by a bill.
     let mut s = Society::new(Content::new(vec![Good::new("paper", 1.0, 64), Good::new("bread", 1.0 / 6.0, 64).food(5.0)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (mill, scribes) = (s.add_town("Wheatfield", 5.0), s.add_town("Hayford", 3.0));
     s.set_trade(mill, 0, 128.0, 0.0);
     s.set_trade(scribes, 0, 0.0, 0.0);
@@ -420,6 +429,7 @@ fn the_team_eats_home_s_hay_or_spare_wheat_else_its_fodder_is_bought() {
         let mut c = content();
         goods(&mut c);
         let mut s = Society::new(c);
+        s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
         s.content_mut().dials.standing_orders = false;
         let hub = s.add_town("Hub", 5.0);
         let dest = s.add_town("Dest", 12.0);
@@ -456,6 +466,7 @@ fn the_team_eats_home_s_hay_or_spare_wheat_else_its_fodder_is_bought() {
 fn a_town_saves_up_for_a_loaded_wagon_it_cant_send_but_not_for_an_empty_one() {
     let homeless = |paper: f64| {
         let mut s = Society::new(content());
+        s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
         s.content_mut().dials.standing_orders = false;
         let hub = s.add_town("Hub", 20.0);
         let dest = s.add_town("Dest", 1e5);

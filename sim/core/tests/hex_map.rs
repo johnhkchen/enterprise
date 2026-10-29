@@ -298,6 +298,7 @@ fn the_plan_is_the_cheapest_way_by_land_and_by_boat() {
 fn farm_and_mill_by_road(bridged: bool) -> (Society, Option<usize>) {
     let goods = vec![Good::new("wheat", 0.05, 64), Good::new("bread", 0.2, 64).food(5.0)];
     let mut s = Society::new(Content::new(goods, DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     s.content_mut().dials.standing_orders = false;
     let farm = s.add_town("Wheatfield", 20.0);
     let mill = s.add_town("Hayford", 40.0);
@@ -352,6 +353,7 @@ fn a_road_goes_around_and_costs_more_or_there_is_none() {
     // Hills on the straight way: the road skirts them, and the detour costs time and food.
     let goods = vec![Good::new("wheat", 0.05, 64)];
     let mut s = Society::new(Content::new(goods, DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (a, b) = (s.add_town("A", 0.0), s.add_town("B", 0.0));
     s.place_town(a, 0.0, 0.0);
     s.place_town(b, GOAL.center_x(), 0.0);
@@ -581,6 +583,7 @@ fn a_road_takes_a_better_way_once_its_wagon_is_home() {
     // A straight road; then a cliff surveyed across its middle: the next day it goes round, longer.
     let goods = vec![Good::new("wheat", 0.05, 64)];
     let mut s = Society::new(Content::new(goods, DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (a, b) = (s.add_town("A", 0.0), s.add_town("B", 0.0));
     s.place_town(a, 0.0, 0.0);
     s.place_town(b, GOAL.center_x(), 0.0);

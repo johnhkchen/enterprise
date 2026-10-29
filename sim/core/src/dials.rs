@@ -622,4 +622,7 @@ dials! {
     /// "Villagers earn wages"): with no player trading, a region's only money was its towns' founding purses, and no
     /// road paid (seed 1001: five towns, about 200 emeralds among them, 30 days, two trips).
     hand_wage: f64 = 0.25,
+    /// Every road's food, and so its cost, at this share of the mod's (`road::food_needed`, `map::per_hex_at_bread`):
+    /// John, "let's cut all transport costs by 40%", after seed 1001's wagons ran three times in 30 days, each at a loss.
+    road_cost_share: f64 = 0.6,
 }

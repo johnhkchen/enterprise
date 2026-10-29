@@ -56,6 +56,7 @@ fn a_letter_arrives_on_the_next_post_day_at_a_riders_speed() {
 #[test]
 fn a_letter_leaves_on_the_post_day_and_waits_at_the_desk() {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let from = s.add_town("From", 5.0);
     let to = s.add_town("To", 0.0);
     s.add_route(to, from, 4000.0 / 1200.0, 0.0, 4.0); // 4,000 blocks between them
@@ -75,6 +76,7 @@ fn a_letter_leaves_on_the_post_day_and_waits_at_the_desk() {
 /// A hub with `emeralds` at the origin and towns 400 blocks east, south and west.
 fn hub_and_callers(emeralds: f64) -> Society {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let hub = s.add_town("Hub", emeralds);
     for (i, (x, z)) in [(400.0, 0.0), (0.0, 400.0), (-400.0, 0.0)].into_iter().enumerate() {
         let t = s.add_town(["Near", "Other", "Poor"][i], 5.0);
@@ -160,6 +162,7 @@ fn the_crown_pays_half_a_first_visits_trip() {
 #[test]
 fn a_bill_goes_by_post_and_the_coin_comes_back() {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let holder = s.add_town("Holder", 2.0);
     let drawee = s.add_town("Drawee", 20.0);
     let id = s.draw_bill(drawee, holder, 5.0); // 5.1, due in four days: no wagon of either goes to the other
@@ -185,6 +188,7 @@ fn a_bill_goes_by_post_and_the_coin_comes_back() {
 #[test]
 fn a_drawee_short_of_coin_borrows_its_households_savings_or_sends_the_bill_back() {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let holder = s.add_town("Holder", 2.0);
     let drawee = s.add_town("Drawee", 3.0);
     s.post(enterprise_core::cash_book::Account::Outside, enterprise_core::cash_book::Account::Households(drawee), 10.0,
@@ -208,6 +212,7 @@ fn a_drawee_short_of_coin_borrows_its_households_savings_or_sends_the_bill_back(
 #[test]
 fn bills_and_copies_go_by_wagon_where_one_runs() {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let a = s.add_town("A", 10.0);
     let b = s.add_town("B", 10.0);
     s.add_route(b, a, 1.0, 0.0, 30.0);
@@ -224,6 +229,7 @@ fn a_contracts_copy_goes_by_post() {
     // The mod's network: the hub and the town 192 blocks apart (here with no road between them: the core posts a copy
     // only where no wagon runs, where the mod posts one a day on whatever runs).
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let hub = s.add_town("Hub", 5.0);
     let dest = s.add_town("Dest", 5.0);
     s.place_town(hub, 0.0, 0.0);
@@ -244,6 +250,7 @@ fn a_contracts_copy_goes_by_post() {
 #[test]
 fn a_towns_bookings_filling_a_wagon_bring_the_forwarder_to_collect() {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let hub = s.add_town("Hub", 5.0);
     let small = s.add_town("Small", 0.0);
     let big = s.add_town("Big", 0.0);
@@ -272,6 +279,7 @@ fn a_towns_bookings_filling_a_wagon_bring_the_forwarder_to_collect() {
 /// A hub whose leather sells at a buyer 300 blocks on, and a town 300 blocks off with leather to spare and no wagon.
 fn forwarding() -> Society {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     s.content_mut().dials.standing_orders = false;
     let hub = s.add_town("Hub", 60.0);
     let town = s.add_town("Town", 5.0);
@@ -378,6 +386,7 @@ fn a_town_that_cant_pay_for_crates_still_consigns_loose() {
 #[test]
 fn goods_on_consignment_sell_and_the_money_comes_back_by_post() {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let hub = s.add_town("Hub", 100.0);
     let town = s.add_town("Town", 0.0);
     s.consign_lot(hub, town, LEATHER, 20.0, 5.0);
@@ -396,6 +405,7 @@ fn goods_on_consignment_sell_and_the_money_comes_back_by_post() {
 #[test]
 fn a_lot_waits_for_an_emeralds_worth_and_one_unsold_the_forwarder_buys() {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let hub = s.add_town("Hub", 100.0);
     let town = s.add_town("Town", 0.0);
     s.consign_lot(hub, town, LEATHER, 20.0, 0.0);
@@ -417,6 +427,7 @@ fn a_lot_waits_for_an_emeralds_worth_and_one_unsold_the_forwarder_buys() {
 #[test]
 fn what_a_towns_wagon_cant_sell_at_the_hub_is_left_on_consignment() {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let hub = s.add_town("Hub", 1000.0);
     let town = s.add_town("Town", 0.0);
     // The hub's lockers take leather, 32 a day (its par 160); nobody there wants dirt.
@@ -436,6 +447,7 @@ fn what_a_towns_wagon_cant_sell_at_the_hub_is_left_on_consignment() {
 #[test]
 fn the_hubs_par_bounds_what_it_takes_on_consignment() {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let hub = s.add_town("Hub", 10.0);
     let town = s.add_town("Town", 0.0);
     s.set_trade(hub, LEATHER, 0.0, 32.0); // a par of 160
@@ -450,6 +462,7 @@ fn the_hubs_par_bounds_what_it_takes_on_consignment() {
 #[test]
 fn a_towns_wagon_leaves_what_the_hub_cant_buy_on_consignment_and_is_paid_by_post() {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     s.content_mut().dials.standing_orders = false;
     let hub = s.add_town("Hub", 0.0);
     let town = s.add_town("Town", 5.0);

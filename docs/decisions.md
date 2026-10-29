@@ -998,6 +998,14 @@ mod's), but no road ever chose it. Then: build them first.
   `Reason::Earned`), which the households spend on the town's comforts: money enters with labour, so a bigger town has
   more. Before, a region's only money was its towns' founding purses (seed 1001's rerun: the ship to Theramore planned
   13.5 and 23.9, took 4.8 and 1.4, Theramore holding 6.6). Tests that pin a town's own money as the mod's set it to 0.
+- **Households buy off the cart** (seed 1001's third run: households earned 340 and spent 80, furnishings, leisure
+  and reading unmet in every town, nothing in their warehouses to buy). An arriving wagon sells a comfort first to the
+  far end's households, what their people lack, with their own savings, at an eager buyer's price of their mood and
+  savings; banked as credit toward their rations (`People::comfort_owed`), so they never pay twice. Then the treasury
+  buys for its warehouse as before. Their savings count toward the town's eagerness too, at the sale and in a plan.
+- **Transport costs cut by 40%** (John: "let's cut all transport costs by 40%"): every road's food at the dial
+  `road_cost_share` (0.6) of the mod's (`road::food_needed`, `map::per_hex_at_bread`), and so its cost, its range a
+  leg at 1/0.6 of the mod's. Tests that pin the mod's road food set it to 1.
 - **Seed 1001, what it showed.** Five towns 300 to 950 blocks apart, four with harbours, none rich: each spent its
   64-emerald founding purse on stalls and fields by day 5, and the best load any road saw in 30 days was worth 8.6
   against an 820-block road's 16. The study's roads went to each town's two nearest, so the two ports on one sea

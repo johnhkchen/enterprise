@@ -101,7 +101,7 @@ pub fn look_schedule() -> Schedule {
 }
 
 /// A town's components, as the arriving and planning steps read and change them.
-pub type TownData<'a> = (&'a mut Stock, &'a mut Money, &'a Trades, &'a mut Budget, &'a People);
+pub type TownData<'a> = (&'a mut Stock, &'a mut Money, &'a Trades, &'a mut Budget, &'a mut People);
 
 /// The routes' entities in their order, so every step takes them the same way.
 pub fn in_order<'a>(routes: impl Iterator<Item = (Entity, &'a Route)>) -> Vec<Entity> {

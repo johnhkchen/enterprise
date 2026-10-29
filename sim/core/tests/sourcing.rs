@@ -16,6 +16,7 @@ const DAY: u64 = 24_000;
 /// the desk knowing the supplier; the supplier counted `held` of the good (good 0) at tick 0.
 fn pair(goods: Vec<Good>, held: f64) -> Society {
     let mut s = Society::new(Content::new(goods, DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (desk, supplier) = (s.add_town("Desk", 50.0), s.add_town("Supplier", 50.0));
     s.place_town(desk, 0.0, 0.0);
     s.place_town(supplier, 300.0, 0.0);
@@ -80,6 +81,7 @@ fn below_trust_they_still_deal_on_trial_terms() {
 #[test]
 fn a_merchant_buys_for_whats_due_soon_not_the_whole_contract() {
     let mut s = Society::new(Content::new(vec![Good::new("diamond_sword", 4.0, 1)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (desk, front) = (s.add_town("Desk", 50.0), s.add_town("Front", 50.0));
     s.advance(10 * DAY);
     let t = s.now();
@@ -98,6 +100,7 @@ fn a_merchant_buys_for_whats_due_soon_not_the_whole_contract() {
 /// with 64 emeralds, under a contract to deliver swords to a second town: `installments` of one, a day apart from now.
 fn smithy(uses: u8, installments: u32) -> Society {
     let mut s = Society::new(Content::new(vec![Good::new("diamond_sword", 4.0, 1)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (town, front) = (s.add_town("Smithy", 0.0), s.add_town("Front", 50.0));
     s.set_roster(town, &[("weaponsmith", 5), ("merchant", 1)]);
     s.set_offers(town, 0, vec![Offer::sells(0, 20, 1, uses, 30, 0.2).at(5)]); // a master's sword
@@ -149,6 +152,7 @@ fn the_offer_goes_off_again_when_it_is_no_longer_wanted() {
 fn a_supplier_that_can_make_it_is_asked_for_a_lot_in_installments_a_third_up_front() {
     // The supplier holds no swords but has a Weaponsmith and iron; the desk's wagons go there.
     let mut s = Society::new(Content::new(vec![Good::new("iron_ingot", 0.25, 64), Good::new("iron_sword", 1.5, 1)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (desk, supplier) = (s.add_town("Desk", 50.0), s.add_town("Supplier", 50.0));
     s.set_roster(supplier, &[("weaponsmith", 1)]);
     s.record_stocktake(supplier, &[(0, 5.0)], Some(0));
@@ -164,6 +168,7 @@ fn a_supplier_that_can_make_it_is_asked_for_a_lot_in_installments_a_third_up_fro
     assert_eq!(c.incoterm, Incoterm::Exw);
     // With no iron anywhere it can't make them.
     let mut s = Society::new(Content::new(vec![Good::new("iron_ingot", 0.25, 64), Good::new("iron_sword", 1.5, 1)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (desk, supplier) = (s.add_town("Desk", 50.0), s.add_town("Supplier", 50.0));
     s.set_roster(supplier, &[("weaponsmith", 1)]);
     s.learn(desk, supplier);
@@ -175,6 +180,7 @@ fn a_supplier_that_can_make_it_is_asked_for_a_lot_in_installments_a_third_up_fro
 #[test]
 fn a_trial_lot_to_make_has_nothing_up_front() {
     let mut s = Society::new(Content::new(vec![Good::new("iron_ingot", 0.25, 64), Good::new("iron_sword", 1.5, 1)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (desk, supplier) = (s.add_town("Desk", 50.0), s.add_town("Supplier", 50.0));
     s.set_roster(supplier, &[("weaponsmith", 1)]);
     s.record_stocktake(supplier, &[(0, 5.0)], Some(0));
@@ -191,6 +197,7 @@ fn a_trial_lot_to_make_has_nothing_up_front() {
 #[test]
 fn delivered_at_place_when_only_the_suppliers_wagons_go_there_and_the_road_is_in_the_price() {
     let mut s = Society::new(Content::new(vec![Good::new("paper", 1.0 / 24.0, 64)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (desk, supplier) = (s.add_town("Desk", 50.0), s.add_town("Supplier", 50.0));
     s.record_stocktake(supplier, &[(0, 64.0)], Some(0));
     s.learn(desk, supplier);
@@ -212,6 +219,7 @@ fn with_no_road_the_want_stays_a_signal_not_a_contract() {
     // A master Merchant's town is contracted to deliver swords, has no way to make them, and the one market that holds
     // some has no road to it: no contract, but the idle hands of the towns that know of it hear.
     let mut s = Society::new(Content::new(vec![Good::new("iron_sword", 1.5, 1), Good::new("iron_ingot", 0.25, 64)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (town, front, market, idle) = (s.add_town("Town", 50.0), s.add_town("Front", 50.0), s.add_town("Market", 50.0),
         s.add_town("Idle", 50.0));
     s.set_roster(town, &[("merchant", MASTER)]);
@@ -236,6 +244,7 @@ fn with_no_road_the_want_stays_a_signal_not_a_contract() {
 #[test]
 fn a_town_with_no_master_merchant_sources_nothing_of_its_own_accord() {
     let mut s = Society::new(Content::new(vec![Good::new("iron_sword", 1.5, 1)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (town, front, market) = (s.add_town("Town", 50.0), s.add_town("Front", 50.0), s.add_town("Market", 50.0));
     s.set_roster(town, &[("merchant", MASTER - 1)]);
     s.record_stocktake(market, &[(0, 20.0)], Some(0));
@@ -259,6 +268,7 @@ fn the_copy_rides_with_the_wagon_and_the_contract_comes_into_force() {
 #[test]
 fn the_suppliers_wagon_brings_the_goods_and_takes_the_copy_home() {
     let mut s = Society::new(Content::new(vec![Good::new("paper", 1.0 / 24.0, 64)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (desk, supplier) = (s.add_town("Desk", 50.0), s.add_town("Supplier", 50.0));
     s.deliver(supplier, 0, 128.0);
     s.set_trade(desk, 0, 0.0, 20.0); // its people use paper: the supplier's wagon has a load
@@ -278,6 +288,7 @@ fn the_suppliers_wagon_brings_the_goods_and_takes_the_copy_home() {
 #[test]
 fn the_exchange_buys_metal_from_the_nearest_holder_first() {
     let mut s = Society::new(Content::new(vec![Good::new("iron_ingot", 0.25, 64)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (capital, mine, overseas) = (s.add_town("Capital", 50.0), s.add_town("Mine", 50.0), s.add_town("Overseas", 50.0));
     s.place_town(capital, 0.0, 0.0);
     s.place_town(mine, 300.0, 0.0); // a town with a mine, near
@@ -306,6 +317,7 @@ fn the_exchange_buys_metal_from_the_nearest_holder_first() {
 fn the_premium_rises_as_the_exchange_runs_short_and_its_target_with_the_phase() {
     let mut s = Society::new(Content::new(vec![Good::new("iron_ingot", 0.25, 64), Good::new("diamond", 4.0, 64),
         Good::new("paper", 0.04, 64)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     s.set_exchange_held(0, 96.0);
     assert!((s.exchange_premium(0) - 1.25).abs() < 1e-9, "half short: a quarter over");
     s.set_exchange_held(0, 384.0);
@@ -323,6 +335,7 @@ fn the_premium_rises_as_the_exchange_runs_short_and_its_target_with_the_phase() 
 #[test]
 fn each_day_the_exchange_counts_its_metal_and_contracts_the_shortfall() {
     let mut s = Society::new(Content::new(vec![Good::new("iron_ingot", 0.25, 64), Good::new("bread", 0.17, 64).food(5.0)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let capital = s.add_town("Capital", 100.0);
     s.place_town(capital, 0.0, 0.0);
     let mine = s.add_town("Mine", 50.0);
@@ -364,6 +377,7 @@ fn each_day_the_exchange_counts_its_metal_and_contracts_the_shortfall() {
 fn a_seller_contracted_to_make_something_needs_the_inputs_for_it() {
     // Eight swords owed, two a day: sixteen iron for them (a sword is two ingots).
     let mut s = Society::new(Content::new(vec![Good::new("iron_ingot", 0.25, 64), Good::new("iron_sword", 1.5, 1)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (smith, buyer) = (s.add_town("Smith", 50.0), s.add_town("Buyer", 50.0));
     assert!(s.inputs(smith).iter().all(|n| *n == 0.0), "nothing contracted, nothing needed");
     s.draft(smith, buyer, 1, 2.0, 1.5, 3 * DAY, DAY, 4, Incoterm::Exw, true);
@@ -377,6 +391,7 @@ fn a_seller_contracted_to_make_something_needs_the_inputs_for_it() {
 #[test]
 fn a_contracts_inputs_raise_the_par_and_the_next_wagon_brings_them() {
     let mut s = Society::new(Content::new(vec![Good::new("iron_ingot", 0.1, 64), Good::new("iron_sword", 1.5, 1)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (hub, town) = (s.add_town("Hub", 50.0), s.add_town("Town", 8.0));
     s.deliver(hub, 0, 64.0);
     s.add_route(hub, town, 1.0, 0.5, 1.0);
@@ -399,6 +414,7 @@ fn a_trip_with_the_inputs_a_contract_needs_cant_wait_for_its_day() {
     // town, which needs iron the hub holds: the wagon goes at once with it, once an installment.
     let mut s = Society::new(Content::new(vec![Good::new("iron_ingot", 0.1, 64), Good::new("iron_sword", 1.5, 1),
         Good::new("paper", 0.04, 64)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     let (hub, town) = (s.add_town("Hub", 50.0), s.add_town("Town", 50.0));
     s.deliver(hub, 0, 64.0);
     s.deliver(hub, 2, 128.0);
@@ -419,6 +435,7 @@ fn inputs_are_carried_before_other_goods_when_slots_are_short() {
     // Two goods the far end wants, one slot's worth of room aboard: the input goes, the other stays.
     let mut s = Society::new(Content::new(vec![Good::new("iron_ingot", 0.1, 64), Good::new("iron_sword", 1.5, 1),
         Good::new("paper", 0.04, 64)], DAY));
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     s.set_dial("wagon_slots", 1.0).unwrap();
     let (hub, town) = (s.add_town("Hub", 50.0), s.add_town("Town", 50.0));
     s.deliver(hub, 0, 64.0);
@@ -487,5 +504,6 @@ fn the_random_worlds_source_and_the_exchange_buys() {
     // (98 once a town's people took a share of its lockers' takings as wages: a little less free money for contracts;
     // 88 once a caravan signed only a hand the job draw left idle: fewer wagons crewed to carry the contracts' news.)
     // (77 once a hired hand's stall stood in the books before its host put it up.)
-    assert!(sourced > 70 && in_force > 20 && exchange > 20 && signals > 5, "{sourced} {in_force} {exchange} {signals}");
+    // (Exchange buys 18 once roads ate 0.6 of the mod's food: wagons cheap enough to go without the exchange.)
+    assert!(sourced > 70 && in_force > 20 && exchange > 15 && signals > 5, "{sourced} {in_force} {exchange} {signals}");
 }

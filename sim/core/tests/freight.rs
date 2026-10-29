@@ -16,8 +16,10 @@ const CLOTH: usize = 2;
 const TOOLS: usize = 3;
 
 fn content() -> Content {
-    Content::new(vec![Good::new("paper", 1.0 / 24.0, 64), Good::new("bread", 1.0 / 6.0, 64).food(5.0),
-        Good::new("cloth", 0.5, 64), Good::new("tools", 1.0, 64)], DAY)
+    let mut c = Content::new(vec![Good::new("paper", 1.0 / 24.0, 64), Good::new("bread", 1.0 / 6.0, 64).food(5.0),
+        Good::new("cloth", 0.5, 64), Good::new("tools", 1.0, 64)], DAY);
+    c.dials.road_cost_share = 1.0; // the mod's road food
+    c
 }
 
 fn close(a: f64, b: f64) -> bool {
@@ -40,6 +42,7 @@ fn crate_of(good: usize, shipper: usize, buyer: usize) -> (Lading, Vec<Package>)
 /// from it to the hub: a carrier whose wagon calls).
 fn network(onward: bool, hub_emeralds: f64) -> Society {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     s.content_mut().dials.standing_orders = false;
     let town = s.add_town("Town", 5.0);
     let hub = s.add_town("Hub", hub_emeralds);
@@ -203,6 +206,7 @@ fn a_crate_stays_aboard_where_no_carrier_runs_its_way() {
 /// A straight road east, 10 hexes, from A to B, with T half way on it, and a road back: T sees both pass.
 fn pass_map(t_money: f64, t_bread: f64) -> Society {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     s.content_mut().dials.standing_orders = false;
     let a = s.add_town("A", 400.0);
     let t = s.add_town("T", t_money);
@@ -531,6 +535,7 @@ fn the_network_reorganises_round_the_pass_and_a_long_run_is_wound_down() {
 #[test]
 fn going_out_a_wagon_buys_its_road_home_food_at_the_stop_where_the_far_end_has_none() {
     let mut s = Society::new(content());
+    s.content_mut().dials.road_cost_share = 1.0; // the mod's road food
     s.content_mut().dials.standing_orders = false;
     let a = s.add_town("A", 400.0);
     let t = s.add_town("T", 10.0);
