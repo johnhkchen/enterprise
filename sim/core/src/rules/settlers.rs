@@ -2,7 +2,8 @@
 //! `settlers.rs`). Once a day, towns in their order: one that is raising, with idle hands, money to spare and
 //! somewhere to go, sends one hand as a travelling Merchant to the nearest village nobody trades with (4 to 8 hexes
 //! out), or two (a Merchant and a settler) to found a town on the best open ground there. The set-up and the capital
-//! leave the treasury (the Accountant must approve them), the bread leaves the warehouse, the hands leave the roster.
+//! leave the treasury, the households lending what they would on call first (the Accountant approves the rest), the
+//! bread leaves the warehouse, the hands leave the roster.
 
 use bevy_ecs::prelude::*;
 
@@ -10,6 +11,7 @@ use super::Step;
 use crate::bills::Bills;
 use crate::cash_book::{post, Accountant, CashBook, Side};
 use crate::content::Content;
+use crate::fixed::Fixed;
 use crate::hex::Hex;
 use crate::map::Map;
 
@@ -83,7 +85,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: 
         order: Res<Towns>,
         mut settlers: ResMut<Settlers>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, routes: Query<&Route>,
         mut towns: Query<(&Town, &mut Money, &mut Stock, &mut People, &Trades, &mut Budget, Option<&mut Roster>,
-            Option<&mut crate::lockers::Lockers>)>) {
+            Option<&mut crate::lockers::Lockers>, Option<&mut crate::farms::Deposits>)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let today = now / day;
     let forced = settlers.force;
@@ -97,7 +99,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: 
     let (min, max) = (d.min_hexes as i32, d.max_hexes as i32);
     let roads: std::collections::BTreeSet<usize> = routes.iter().flat_map(|r| [r.from_id, r.to_id]).collect();
     let sites: Vec<Site> = towns.iter()
-        .filter_map(|(town, _, _, _, _, _, roster, _)| {
+        .filter_map(|(town, _, _, _, _, _, roster, _, _)| {
             let village = roster.is_some_and(|r| r.merchant.is_none()) && !roads.contains(&town.id);
             town.hex.map(|hex| Site { id: town.id, hex, village,
                 structure: village || settlers.villages.contains(&town.id) })
@@ -106,7 +108,8 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: 
     let merchant = content.trade(MERCHANT);
     let farmer = content.trade("farmer");
     for &e in order.0.iter() {
-        let Ok((town, mut money, mut stock, mut people, trades, mut budget, roster, mut lockers)) = towns.get_mut(e) else { continue };
+        let Ok((town, mut money, mut stock, mut people, trades, mut budget, roster, mut lockers, deposits)) = towns.get_mut(e)
+            else { continue };
         let t = town.id;
         if forced.is_some_and(|f| f != t) {
             continue;
@@ -119,7 +122,10 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: 
         if !raising(&content, &settlers, t, &people, &stock, now) {
             continue;
         }
-        let spare = crate::rules::free(&content, trades, &money, &bills, t, now);
+        let free = crate::rules::free(&content, trades, &money, &bills, t, now);
+        // The households' savings stand behind a party as behind a stall: what they'd lend on call (`jobs.rs`).
+        let savings = deposits.as_ref().map_or(Fixed::ZERO, |d| crate::farms::on_call(&content, people.purse, d.owed));
+        let spare = free + savings;
         // The hands waiting for work: no trade at all (`Labour.NONE`); Nitwits never go.
         let hands: Vec<usize> =
             roster.idle(&content).into_iter().filter(|&i| !content.trades[roster.hands[i].trade].nitwit).collect();
@@ -144,9 +150,15 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: 
         let jumpstart = if kind == Kind::Village { d.settling_capital } else { d.founding_capital };
         let set_up = set_up(kind);
         let carried = capital(kind, jumpstart, spare - set_up);
+        // The households put in first; the treasury's share is the Accountant's to approve.
+        let lent = savings.min(set_up + carried);
         let what = crate::cash_book::Reason::Other("settlers".into());
-        if !Accountant::approve(&content, &mut book, t, now, spare, &mut budget, what, set_up + carried) {
+        if !Accountant::approve(&content, &mut book, t, now, free, &mut budget, what, set_up + carried - lent) {
             continue;
+        }
+        if let Some(mut deposits) = deposits {
+            crate::farms::borrow(&content, &mut ledger, &mut book, t, &mut money.0, &mut people.purse, &mut deposits, lent,
+                now);
         }
         // The hands: one signs on as a travelling Merchant (trained: it keeps the trade on the road); for a new
         // town the settler goes as its Farmer.

@@ -1011,6 +1011,11 @@ mod's), but no road ever chose it. Then: build them first.
   pastures, stalls, mines, halls and walls, homes, lessons: `farms::build_reserve`) the worth of the loose goods on
   the wagons coming to sell to it (`Trades::arrival_reserve`); its trade (a wagon's sale, a hub's forwarder) may spend
   it.
+- **Savings send settlers** (seed 1001's 90 days: Theramore grew 9 to 18, fed and with idle hands from day 30, and
+  sent nobody: a party to found a town takes 34 at least, the Accountant half the free money a day, and its treasury
+  never passed 38). A party draws on the households' savings as a stall does: what they'd lend on call
+  (`deposit_share` of them) counts toward the spare, they put in first, and the treasury repays them with interest
+  (`rules/settlers.rs`); the Accountant approves only the treasury's share.
 - **Seed 1001, what it showed.** Five towns 300 to 950 blocks apart, four with harbours, none rich: each spent its
   64-emerald founding purse on stalls and fields by day 5, and the best load any road saw in 30 days was worth 8.6
   against an 820-block road's 16. The study's roads went to each town's two nearest, so the two ports on one sea

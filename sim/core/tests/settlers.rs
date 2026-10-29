@@ -219,6 +219,20 @@ fn a_town_not_grown_or_not_fed_or_without_hands_or_money_sends_nobody() {
 }
 
 #[test]
+fn the_households_savings_stand_behind_a_party() {
+    // 5 in the treasury, 60 saved at home: half of it on call (`deposit_share`), 35 to spare; a village takes the set-up
+    // of 4 and half the rest, 15.5, and the households lend all 19.5 of it.
+    let (mut s, t) = world(5.0);
+    s.post(Account::Outside, Account::Households(t), 60.0, enterprise_core::cash_book::Reason::PaidIn);
+    village(&mut s, Hex::new(5, 0));
+    s.advance(DAY / 4);
+    assert_eq!(s.parties().len(), 1, "the savings sent it");
+    assert_eq!(s.parties()[0].capital, 15.5);
+    assert!((s.deposits(t) - 19.5).abs() < 0.05, "lent to the treasury, with its interest since: {}", s.deposits(t));
+    assert!(s.town(t).money == 5.0 && s.town(t).people.purse == 40.5);
+}
+
+#[test]
 fn the_accountant_may_hold_the_party_back() {
     // Half the free money a day: 40 free, 20 to spend today; a village takes at least 14 and here 4 + 18 = 22.
     let (mut s, _) = world(40.0);
