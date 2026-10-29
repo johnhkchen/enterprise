@@ -363,7 +363,7 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
     let retraining = idle.is_none();
     let hand = idle.or_else(|| slack(content, place))?;
     let stall = crate::fixed::Fixed::ceil(content.dials.stall_emeralds);
-    let reserve = crate::rules::farms::reserve(content, place.trades, Some(place.farm));
+    let reserve = crate::rules::farms::build_reserve(content, place.trades, Some(place.farm));
     let cash = *place.money - reserve;
     // Short of coin for the stall, the treasury may borrow its households' savings.
     if cash + on_call(content, *place.purse, place.deposits.owed) < stall {

@@ -172,6 +172,11 @@ pub struct Trades {
     /// wagons, `wall_road_trips` times over (`rules/works.rs`).
     #[serde(default)]
     pub road_keep: crate::fixed::Fixed,
+    /// What the wagons on their way here carry to sell, at its worth (`rules/farms.rs` `road_reserve`, set at each
+    /// look's touch): kept back with its trading capital from its building, so it can buy what's coming (seed 1001's
+    /// Corin's Crossing spent 23 of its 24 the day before Refuge Pointe's wagon came, and bought none of it).
+    #[serde(default)]
+    pub arrival_reserve: crate::fixed::Fixed,
 }
 
 /// When a town was last brought up to date.

@@ -148,7 +148,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, bills
         }
         works.reviewed = Some(now);
         let t = town.id;
-        let spare = money.0 - super::farms::reserve(&content, trades, farm);
+        let spare = money.0 - super::farms::build_reserve(&content, trades, farm);
         // What its halls would cost, for the Mason's marbles in the job draw (`BuildServices.work`).
         let mut work_wanted = 0.0;
         for kind in KINDS {

@@ -360,7 +360,7 @@ pub fn finish(content: &Content, book: &Book, bills: &mut Bills, ledger: &mut Le
         if n <= 0.0 {
             continue;
         }
-        let spare = money.0 - crate::rules::farms::reserve(content, trades, farm);
+        let spare = money.0 - crate::rules::farms::build_reserve(content, trades, farm);
         let mut shipper = Shipper { town, money: &mut money.0, spare, store: &mut *store, paperwork: &mut *paperwork };
         // Paid for as it's crated (the buyer's bill for it drawn at once, naming them), stored, not stock, until the buyer's
         // wagon fetches it: a pallet each pallet's worth, a bill of lading each (`pallet-caps`).

@@ -218,7 +218,7 @@ pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>
         // mood sunk by them, never builds); content with every bed full, the town grows.
         // (What the treasury holds beyond its reserve: its trading capital, wage float and wagons' road money; not the
         // part kept back for this home.)
-        let spare = money.0 - crate::rules::farms::reserve(&content, trades, farm) + trades.home_reserve;
+        let spare = money.0 - crate::rules::farms::build_reserve(&content, trades, farm) + trades.home_reserve;
         let homeless = people.villagers > people.beds;
         if (homeless || people.mood >= d.home_mood && people.villagers >= people.beds) && people.beds + 2.0 <= people.land {
             people.home_progress = (people.home_progress + days / d.home_days).min(1.0);

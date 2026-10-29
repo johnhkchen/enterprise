@@ -69,21 +69,34 @@ pub fn reserve(content: &Content, trades: &Trades, farm: Option<&Farm>) -> Fixed
         + trades.home_reserve
 }
 
+/// What a town keeps back before it builds (a field, a pasture, a stall, a mine, a hall or wall, a home, a lesson): its
+/// [`reserve`] and what the wagons coming to sell to it carry ([`Trades::arrival_reserve`]), which its trade may spend.
+pub fn build_reserve(content: &Content, trades: &Trades, farm: Option<&Farm>) -> Fixed {
+    reserve(content, trades, farm) + trades.arrival_reserve
+}
+
 /// Each town's road reserve ([`Trades::road_reserve`]): what home must hold to send each of its wagons that would go
 /// but can't pay for it (`Stay::CantFund`: its food for a crew of one and the purse for the road home's, as `plan.rs`
 /// asks, or the road's cost where content has no food), so what it spends on fields, stalls, lessons, homes and
 /// children saves up for the trip; a wagon with nothing worth taking holds nothing back (homes for the homeless before
 /// a wagon with no load). A wagon with a load not yet worth its road saves too: its haul grows while it waits, and its
 /// town has the road's money when it's worth going (John: "the towns should save up for a larger haul to amortize the
-/// food costs").
+/// food costs"). And each town's arrival reserve ([`Trades::arrival_reserve`]): the worth of what wagons on their way
+/// there carry to sell, so it doesn't build away the money that buys it.
 pub fn road_reserve(content: Res<Content>, routes: Query<(&Route, &crate::state::RouteState)>,
         mut towns: Query<(&Town, &mut Trades, &Stock, Option<&crate::state::People>)>) {
     let mut by_town: BTreeMap<usize, Fixed> = BTreeMap::new();
     let mut keep: BTreeMap<usize, Fixed> = BTreeMap::new();
+    // What's coming to each town to sell: the loose cargo of the wagons on their way there, at its worth.
+    let mut coming: BTreeMap<usize, Fixed> = BTreeMap::new();
     // (In the routes' order: a sum's last bit mustn't hang on archetypes, which a load reorders.)
     let mut ordered: Vec<(&Route, &crate::state::RouteState)> = routes.iter().collect();
     ordered.sort_by_key(|(r, _)| r.seq);
     for (route, state) in ordered {
+        if let Some(w) = state.wagon.as_ref().filter(|w| w.leg == crate::state::Leg::Out) {
+            let worth: f64 = w.cargo.iter().zip(&content.goods).map(|(n, g)| n.max(0.0) * g.value).sum();
+            *coming.entry(route.to_id).or_default() += Fixed::floor(worth);
+        }
         let worth = state.plan.as_ref().map_or(0.0, |p| p.worth);
         if state.trips > 0 || worth > 0.0 {
             if let Ok((_, _, stock, _)) = towns.get(route.from) {
@@ -103,6 +116,10 @@ pub fn road_reserve(content: Res<Content>, routes: Query<(&Route, &crate::state:
         let want = by_town.get(&town.id).copied().unwrap_or_default();
         if trades.road_reserve != want {
             trades.road_reserve = want;
+        }
+        let arriving = coming.get(&town.id).copied().unwrap_or_default();
+        if trades.arrival_reserve != arriving {
+            trades.arrival_reserve = arriving;
         }
         let kept = keep.get(&town.id).copied().unwrap_or_default();
         if trades.road_keep != kept {
@@ -309,7 +326,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
         if let Some(crop) = field_wanted(&content, farm, &farmers, &wants, food) {
             let free = super::free(&content, trades, &money, &bills, t, now);
             let field = Fixed::ceil(FIELD_EMERALDS);
-            if money.0 - reserve(&content, trades, Some(farm)) >= field
+            if money.0 - build_reserve(&content, trades, Some(farm)) >= field
                 && Accountant::approve(&content, &mut book, t, now, free, &mut budget, Reason::Other("a field".into()),
                     field) {
                 *farm.plots.entry(crop).or_insert(0) += field_plots(&content, crop);
@@ -326,7 +343,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
                 && animals >= 0.9 * herds.capacity(&content);
             let fence = Fixed::ceil(FIELD_EMERALDS);
             if animals > 0.0 && (herds.pastures == 0 || full)
-                && money.0 - reserve(&content, trades, Some(farm)) >= fence
+                && money.0 - build_reserve(&content, trades, Some(farm)) >= fence
                 && Accountant::approve(&content, &mut book, t, now, super::free(&content, trades, &money, &bills, t, now),
                     &mut budget, Reason::Other("a pasture".into()), fence) {
                 herds.pastures += 1;

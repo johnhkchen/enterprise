@@ -1006,6 +1006,11 @@ mod's), but no road ever chose it. Then: build them first.
 - **Transport costs cut by 40%** (John: "let's cut all transport costs by 40%"): every road's food at the dial
   `road_cost_share` (0.6) of the mod's (`road::food_needed`, `map::per_hex_at_bread`), and so its cost, its range a
   leg at 1/0.6 of the mod's. Tests that pin the mod's road food set it to 1.
+- **Money held for arrivals** (seed 1001's fourth run: Corin's Crossing spent 23 of its 24 on day 23, the day before
+  Refuge Pointe's wagon came, and bought none of its load, twice). A town keeps back from its building (fields,
+  pastures, stalls, mines, halls and walls, homes, lessons: `farms::build_reserve`) the worth of the loose goods on
+  the wagons coming to sell to it (`Trades::arrival_reserve`); its trade (a wagon's sale, a hub's forwarder) may spend
+  it.
 - **Seed 1001, what it showed.** Five towns 300 to 950 blocks apart, four with harbours, none rich: each spent its
   64-emerald founding purse on stalls and fields by day 5, and the best load any road saw in 30 days was worth 8.6
   against an 820-block road's 16. The study's roads went to each town's two nearest, so the two ports on one sea

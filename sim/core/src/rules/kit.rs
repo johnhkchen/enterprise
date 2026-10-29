@@ -61,7 +61,7 @@ pub fn dig(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mut terr
         }
         let Some(holding) = territory.holdings.get_mut(&town.id).filter(|h| h.mine.is_none()) else { continue };
         let cost = crate::fixed::Fixed::ceil(content.dials.mine_emeralds);
-        if money.0 - super::farms::reserve(&content, trades, farm) < cost {
+        if money.0 - super::farms::build_reserve(&content, trades, farm) < cost {
             continue;
         }
         post(&mut ledger, &mut book, Side::treasury(town.id, &mut money.0), Side::outside(), cost,
@@ -218,7 +218,7 @@ pub fn deep_mine(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mu
             continue;
         }
         let cost = crate::fixed::Fixed::ceil(content.dials.deep_mine_emeralds);
-        if money.0 - super::farms::reserve(&content, trades, farm) < cost {
+        if money.0 - super::farms::build_reserve(&content, trades, farm) < cost {
             continue;
         }
         post(&mut ledger, &mut book, Side::treasury(town.id, &mut money.0), Side::outside(), cost,

@@ -581,3 +581,21 @@ fn households_with_savings_buy_the_comforts_they_lack_off_the_cart() {
     assert!(s.town(DEST).people.comfort_owed.iter().any(|o| *o < 0.0), "banked as credit: {:?}", s.town(DEST).people.comfort_owed);
     assert!(purse.to_f64() >= 0.0, "never past their savings: {purse}");
 }
+
+#[test]
+fn a_town_keeps_back_from_its_building_what_wagons_coming_to_sell_to_it_carry() {
+    let mut s = network(2.0, 5.0, 192.0);
+    s.add_route(HUB, DEST, 2.0, 0.0, 4.0); // a road of two days: the wagon a while on it
+    town_of_five(&mut s, DEST);
+    s.deliver(HUB, COOKIE, 128.0);
+    let reserve = |s: &Society| s.world.get::<enterprise_core::state::Trades>(
+        s.world.resource::<enterprise_core::state::Towns>().0[DEST]).unwrap().arrival_reserve.to_f64();
+    let mut held = 0.0f64;
+    for look in 1..=(5 * DAY / LOOK) {
+        s.advance(look * LOOK);
+        held = held.max(reserve(&s));
+    }
+    assert!(held > 0.0, "Dest held back what was coming: {held}");
+    assert!(s.town(DEST).stock[COOKIE] > 0.0, "and bought it when it came");
+    assert_eq!(reserve(&s), 0.0, "then held nothing back");
+}
