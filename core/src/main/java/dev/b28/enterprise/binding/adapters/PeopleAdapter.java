@@ -372,11 +372,15 @@ public final class PeopleAdapter {
                 Enterprise.LOGGER.info("No room by {}'s bell for its {}'s stall", o.town(), o.trade());
                 return true;
             }
-            // A hand that left a trade for this one: its old workstation comes down (`Jobs.leaveTrade`).
+            // A hand that left a trade for this one: its old workstation comes down (`Jobs.leaveTrade`). Released only
+            // where it's still a point of interest: one the town's rebuilding already cleared threw (seed 1001, day 25:
+            // "POI never registered", the server down).
             v.getBrain().getMemory(MemoryModuleType.JOB_SITE).filter(s -> s.dimension().equals(level.dimension()))
                     .ifPresent(old -> {
-                        level.getPoiManager().release(old.pos());
-                        level.setBlock(old.pos(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
+                        if (level.getPoiManager().getType(old.pos()).isPresent()) {
+                            level.getPoiManager().release(old.pos());
+                            level.setBlock(old.pos(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
+                        }
                     });
             BlockPos workstation = Jobs.buildStall(level, site.get(), trade.get(),
                     dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(o.town()), o.town(), bell);
@@ -427,7 +431,9 @@ public final class PeopleAdapter {
         for (var memory : List.of(MemoryModuleType.POTENTIAL_JOB_SITE, MemoryModuleType.JOB_SITE)) {
             var site = v.getBrain().getMemory(memory);
             if (site.isPresent()) {
-                if (site.get().dimension().equals(level.dimension())) {
+                // (Only where it's still a point of interest: releasing one gone throws.)
+                if (site.get().dimension().equals(level.dimension())
+                        && level.getPoiManager().getType(site.get().pos()).isPresent()) {
                     level.getPoiManager().release(site.get().pos());
                 }
                 v.getBrain().eraseMemory(memory);

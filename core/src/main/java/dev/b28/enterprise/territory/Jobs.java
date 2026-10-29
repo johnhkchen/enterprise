@@ -403,8 +403,11 @@ public final class Jobs {
                 book.setEnabled(desk, site.pos(), key, false);
             }
             book.noteSlack(desk, site.pos(), false);
-            level.getPoiManager().release(site.pos());
-            level.setBlock(site.pos(), Blocks.AIR.defaultBlockState(), 3);
+            // (Only where it's still a point of interest: releasing one gone throws.)
+            if (level.getPoiManager().getType(site.pos()).isPresent()) {
+                level.getPoiManager().release(site.pos());
+                level.setBlock(site.pos(), Blocks.AIR.defaultBlockState(), 3);
+            }
         });
         villager.getBrain().eraseMemory(MemoryModuleType.JOB_SITE);
         villager.getBrain().eraseMemory(MemoryModuleType.POTENTIAL_JOB_SITE);
