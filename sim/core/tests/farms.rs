@@ -40,6 +40,8 @@ const BREAD: usize = 7;
 fn farm(money: f64) -> Society {
     let mut s = Society::new(content());
     s.content_mut().dials.villagers_per_want = f64::INFINITY;
+    // No earnings from outside (`hand_wage`): these pin the town's own money as the mod's.
+    s.content_mut().dials.hand_wage = 0.0;
     // The mod's floor on the Farmers' share, as its tests read it (the core's is none: `wages_follow_what_sells`).
     s.content_mut().dials.min_labor_share = farms::MIN_LABOR_SHARE;
     let t = s.add_town("Meadowworth", money);
@@ -444,6 +446,8 @@ fn with_nothing_spare_the_workshop_draw_takes_only_untended_plots() {
 #[test]
 fn a_household_buys_a_field_of_its_own_and_owners_take_more() {
     let mut s = Society::new(content());
+    // No earnings from outside (`hand_wage`): these pin the town's own money as the mod's.
+    s.content_mut().dials.hand_wage = 0.0;
     let t = s.add_town("Meadowworth", 0.0);
     s.set_roster(t, &[("farmer", 3)]);
     s.set_people(t, 1.0, 1.0, 1.0);

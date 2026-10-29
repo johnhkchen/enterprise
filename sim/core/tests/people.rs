@@ -177,3 +177,23 @@ fn villagers_eat_the_tastiest_most_and_a_varied_meal_lifts_the_mood() {
     s.advance(DAY);
     assert_eq!(s.town(t).people.variety, 0.0);
 }
+
+#[test]
+fn grown_villagers_earn_new_money_and_spend_it_on_their_towns_comforts() {
+    // Eight villagers, a quarter of an emerald each a day: two a day into their purses from outside, which they spend
+    // at the town's warehouse on its comforts, so its treasury grows though it pays nobody.
+    let mut s = town(8.0, 8.0, 8.0, 30.0, 0.0);
+    s.set_trade(0, WHEAT, 0.0, 0.0); // makes nothing: no wages of its own
+    let start = s.totals();
+    s.advance(10 * DAY);
+    s.conserved(&start).unwrap();
+    let t = s.town(0);
+    let came = (t.money + t.people.purse).to_f64();
+    assert!((came - 8.0 * s.content().dials.hand_wage * 10.0).abs() < 0.01, "twenty emeralds came in: {came}");
+    assert!(t.money > 0.0, "spent on the town's comforts: {}", t.money);
+    let mut none = town(8.0, 8.0, 8.0, 30.0, 0.0);
+    none.set_trade(0, WHEAT, 0.0, 0.0);
+    none.content_mut().dials.hand_wage = 0.0;
+    none.advance(10 * DAY);
+    assert_eq!(none.town(0).money, 0.0, "the dial off: nothing comes in");
+}

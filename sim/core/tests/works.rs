@@ -304,6 +304,8 @@ fn content_town(money: f64, hexes: usize, roster: &[(&str, u8)]) -> Society {
     let mut s = Society::new(Content::new(goods, DAY));
     s.content_mut().dials.budget_share = 1.0;
     s.content_mut().dials.standing_orders = false;
+    // No earnings from outside (`hand_wage`): these pin the town's own money as the mod's.
+    s.content_mut().dials.hand_wage = 0.0;
     let t = s.add_town("Contentville", money);
     s.set_people(t, 8.0, 8.0, 8.0);
     for k in 0..5 {

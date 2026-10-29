@@ -618,4 +618,8 @@ dials! {
     /// never more). John: "You'd expect the towns to start paying more for goods if they have low happiness and extra
     /// income."
     eager_most: f64 = 2.0,
+    /// Each grown villager earns its household this much a day by its work, new money from outside the society (John:
+    /// "Villagers earn wages"): with no player trading, a region's only money was its towns' founding purses, and no
+    /// road paid (seed 1001: five towns, about 200 emeralds among them, 30 days, two trips).
+    hand_wage: f64 = 0.25,
 }

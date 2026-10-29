@@ -993,6 +993,11 @@ mod's), but no road ever chose it. Then: build them first.
   purse (`EAGER_PURSE`, 64) beyond its reserve. The far end pays it at a wagon's sale (`rules/arrive.rs`), and a plan
   counts its load at it (`rules/plan.rs`), so a road to a poor town that's saved up and is unhappy pays where it didn't.
   A realm is never eager.
+- **Villagers earn wages** (John: "Villagers earn wages", when asked where a region with no player gets new money).
+  Each grown villager earns its household `hand_wage` (0.25) emeralds a day from outside the society (`people.rs`,
+  `Reason::Earned`), which the households spend on the town's comforts: money enters with labour, so a bigger town has
+  more. Before, a region's only money was its towns' founding purses (seed 1001's rerun: the ship to Theramore planned
+  13.5 and 23.9, took 4.8 and 1.4, Theramore holding 6.6). Tests that pin a town's own money as the mod's set it to 0.
 - **Seed 1001, what it showed.** Five towns 300 to 950 blocks apart, four with harbours, none rich: each spent its
   64-emerald founding purse on stalls and fields by day 5, and the best load any road saw in 30 days was worth 8.6
   against an 820-block road's 16. The study's roads went to each town's two nearest, so the two ports on one sea

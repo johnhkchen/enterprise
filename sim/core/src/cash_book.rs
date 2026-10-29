@@ -78,6 +78,8 @@ pub enum Reason {
     Withdrawn,
     /// A host's new town's founding purse (`Input::AddTown`, the dial `founding_purse`).
     Founded,
+    /// What the households earn by their work beyond what the town pays them (the dial `hand_wage`): new money.
+    Earned,
 }
 
 impl Reason {
@@ -97,6 +99,7 @@ impl Reason {
             Reason::Child => "child".into(),
             Reason::PaidIn => "paid in".into(),
             Reason::Founded => "founding purse".into(),
+            Reason::Earned => "earned".into(),
             Reason::Unlabelled => "?".into(),
             Reason::Other(s) => s.clone(),
             Reason::Withdrawn => "taken out".into(),
@@ -110,7 +113,7 @@ impl Reason {
         }
         let known = [Reason::Wages, Reason::Comforts, Reason::RoadFood, Reason::WagonPurse, Reason::Sale, Reason::Contract,
             Reason::Bill, Reason::Takings, Reason::Home, Reason::Child, Reason::PaidIn, Reason::Withdrawn,
-            Reason::Founded];
+            Reason::Founded, Reason::Earned];
         known.into_iter().find(|r| r.label(content) == label).unwrap_or_else(|| Reason::Other(label.to_string()))
     }
 }
