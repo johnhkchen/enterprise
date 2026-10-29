@@ -208,7 +208,16 @@ public final class Earthworks {
         // studio's r73: aprons over a stream, its quay's coursed stone under the wall).
         int bx = -dx, bz = -dz, q = bz < 0 ? 0 : bx > 0 ? 1 : bz > 0 ? 2 : 3;
         boolean foot = rise <= h && level.getFluidState(new BlockPos(hx + dx, low, hz + dz)).isEmpty();
-        return lay(level, tile.get(), hx + dx, hz + dz, base, q, bx, bz, true, foot, true) > 0;
+        boolean laid = lay(level, tile.get(), hx + dx, hz + dz, base, q, bx, bz, true, foot, true) > 0;
+        // The courses under a tile over a rise of 4 kept whole: the tile's own ground layers would leave them hollow
+        // (r93: a 2-high gap of air under the harbour's walls, their stones hanging).
+        for (int y = low + 1; y <= base; y++) {
+            BlockPos at = new BlockPos(hx, y, hz);
+            if (level.getBlockState(at).isAir()) {
+                level.setBlock(at, net.minecraft.world.level.block.Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
+            }
+        }
+        return laid;
     }
 
     /** A terrace tile of the set: its lamp, or a planted one by the seed; empty if the set has none. */

@@ -108,6 +108,7 @@ public final class Harbour {
                 } else {
                     // A cell of the line that takes no tile (a corner, its water on the slant): paved at the deck, not a
                     // stub of the old bank in the quay wall.
+                    clearOver(level, s.at().getX(), s.at().getZ(), w + 2);
                     Terraform.settle(level, s.at().getX(), s.at().getZ(), w + 2);
                     level.setBlock(new BlockPos(s.at().getX(), w + 2, s.at().getZ()),
                             net.minecraft.world.level.block.Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
@@ -452,6 +453,7 @@ public final class Harbour {
         }
         // The shore's ground at the deck's height, clear over it.
         int deck = w + 2;
+        clearOver(level, s.at().getX(), s.at().getZ(), deck); // the grade's walls on the bank too (r94: left hanging)
         Terraform.settle(level, s.at().getX(), s.at().getZ(), deck);
         for (int up = deck + 1; up <= deck + 3; up++) {
             BlockPos a = new BlockPos(s.at().getX(), up, s.at().getZ());
