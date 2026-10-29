@@ -319,8 +319,11 @@ public final class Terraform {
         int landings = 0;
         for (Grading.Crossing c : dropped) {
             // A dropped crossing of 3 or less gets no jetty: the street just ends at the water (the studio's rule).
-            if (c.facing() >= 0 && c.span() > 3 && (applied == null || applied[c.nearBank()[1] * X + c.nearBank()[0]])) {
-                int i = c.nearBank()[1] * X + c.nearBank()[0];
+            int ni = c.nearBank() == null ? -1 : c.nearBank()[1] * X + c.nearBank()[0];
+            // A landing takes a short drop to the water (4 at most); a street standing higher over it ends at its bank
+            // (the studio's r87 render: Darkshire's west avenue, 17 over the bay, stepped 34 out into it, a causeway).
+            if (c.facing() >= 0 && c.span() > 3 && (applied == null || applied[ni]) && target[ni] - c.water() <= LANDING_DROP) {
+                int i = ni;
                 int width = streets.get(c.street()).width();
                 landing(level, kingdom, x0 + c.nearBank()[0], z0 + c.nearBank()[1], c.facing(), target[i], c.water(), width, pave);
                 // A crossing the street would have served but too long to bridge yet: a ferry's stage beyond the steps.
@@ -566,6 +569,9 @@ public final class Terraform {
             level.setBlock(new BlockPos(x, y, z), Blocks.DIRT_PATH.defaultBlockState(), 2 | 16);
         }
     }
+
+    /** The most a landing's half steps come down to the water. */
+    static final int LANDING_DROP = 4;
 
     /** How far a landing's jetty runs out over the water. */
     static final int JETTY = 4;

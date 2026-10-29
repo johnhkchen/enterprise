@@ -32,9 +32,13 @@ public final class Harbour {
     /** Lays the town's harbour at its tier ("hamlet", "village", "town", ...), if its plan meets water. */
     public static java.util.Optional<Laid> lay(ServerLevel level, TownPlans.Plan plan, String kingdom, String tier) {
         BlockPos bell = plan.bell();
-        // The head: the first water along an avenue from the forum's edge, the nearest to the bell.
+        // The head: of the places an avenue meets the water, the best for a harbour (the studio's, thread 0012): the most
+        // dry land at the deck's height behind 24 of its shore, water 3 deep alongside it, at sea the wider water; the
+        // nearer the forum on a tie.
         Shore head = null;
-        int nearest = Integer.MAX_VALUE;
+        int w = Integer.MIN_VALUE;
+        boolean sea = false;
+        double best = Double.NEGATIVE_INFINITY;
         for (Direction way : Direction.Plane.HORIZONTAL) {
             int reach = switch (way) {
                 case NORTH -> bell.getZ() - plan.outer().z0();
@@ -47,20 +51,37 @@ public final class Harbour {
                 if (!level.isLoaded(c)) {
                     break;
                 }
-                if (water(level, c) != Integer.MIN_VALUE) {
-                    if (k < nearest) {
-                        nearest = k;
-                        head = new Shore(bell.relative(way, k - 1), way);
-                    }
-                    break;
+                int wk = water(level, c);
+                if (wk == Integer.MIN_VALUE) {
+                    continue;
                 }
+                Shore at = new Shore(bell.relative(way, k - 1), way);
+                // Sea or river by the water's width here (the studio's): 24 or more along the avenue's line, or reaching
+                // past the plan's edge within it.
+                int span = 0;
+                boolean past = false;
+                for (int a = 0; a < 64; a++) {
+                    BlockPos o = c.relative(way, a);
+                    if (!level.isLoaded(o) || water(level, o) == Integer.MIN_VALUE) {
+                        break;
+                    }
+                    span++;
+                    past |= !plan.outer().contains(o.getX(), o.getZ());
+                }
+                boolean isSea = span >= 24 || past;
+                double score = room(level, at, wk + 2) + 8 * deep(level, at, wk) + (isSea ? span : 0) - 0.1 * k;
+                if (score > best) {
+                    best = score;
+                    head = at;
+                    w = wk;
+                    sea = isSea;
+                }
+                break;
             }
         }
         if (head == null) {
             return java.util.Optional.empty();
         }
-        int w = water(level, head.at().relative(head.out()));
-        boolean sea = openWater(level, head.at().relative(head.out()), plan);
         String set = level.getServer().getResourceManager()
                 .getResource(net.minecraft.resources.ResourceLocation.parse("enterprise:structure/" + kingdom + "/harbour/jetty_timber_3x4.json"))
                 .isPresent() ? kingdom : "lordaeron";
@@ -126,7 +147,7 @@ public final class Harbour {
                 }
                 for (int step = 0; step <= 12; step++) {
                     int centre = (step % 2 == 0 ? 1 : -1) * ((step + 1) / 2) * 4;
-                    int[] rect = hall(level, kit.get(), head, centre, w + 2, taken);
+                    int[] rect = hall(level, kit.get(), head, centre, w + 2, taken, set, sea, w);
                     if (rect != null) {
                         taken.add(rect);
                         buildings++;
@@ -152,18 +173,20 @@ public final class Harbour {
     }
 
     /**
-     * A harbour building behind the quay: its front 2 in from the shore (the quay walk between), centred {@code centre}
-     * along the shore from the head, its plot levelled to the quay's deck, its front to the water.
+     * A harbour building on the shore: its front 2 in from the head's shore (the quay walk between), further in where
+     * the shore runs slant (to 10), or, where no dry plot is there, out over the shallows (to 6 out, water 3 deep or
+     * less: reclaimed, filled to the deck, as real harbours are built out; the studio's, thread 0012); centred
+     * {@code centre} along the shore from the head, clear of the others, its plot levelled to the quay's deck, its front
+     * to the water, and quay tiles along its water front (no bare bank under its arcade). Its rect, or null.
      */
-    static int[] hall(ServerLevel level, Kits.Meta kit, Shore head, int centre, int deck, List<int[]> taken) {
+    static int[] hall(ServerLevel level, Kits.Meta kit, Shore head, int centre, int deck, List<int[]> taken, String set,
+            boolean sea, int w) {
         Direction out = head.out(), in = out.getOpposite(), across = out.getClockWise();
         int wd = kit.width(), dp = kit.depth(), o0 = centre - wd / 2;
-        // Its front 2 in from the head's shore, or further in where the shore runs slant and water reaches in (r88: the
-        // water came a block in 10 along Darkshire's shore): the first setback whose plot is all dry land.
-        int back = -1;
-        int x0 = 0, z0 = 0, x1 = 0, z1 = 0;
+        int back = Integer.MIN_VALUE, x0 = 0, z0 = 0, x1 = 0, z1 = 0;
+        int[] tries = {2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 0, -1, -2, -3, -4, -5, -6};
         search:
-        for (int a0 = 2; a0 <= 10; a0++) {
+        for (int a0 : tries) {
             x0 = Integer.MAX_VALUE; z0 = Integer.MAX_VALUE; x1 = Integer.MIN_VALUE; z1 = Integer.MIN_VALUE;
             for (int a : new int[] {a0, a0 + dp - 1}) {
                 for (int o : new int[] {o0, o0 + wd - 1}) {
@@ -176,27 +199,33 @@ public final class Harbour {
             }
             for (int[] t : taken) {
                 if (x0 <= t[2] + 1 && x1 >= t[0] - 1 && z0 <= t[3] + 1 && z1 >= t[1] - 1) {
-                    continue search; // on another's plot
+                    continue search;
                 }
             }
             for (int x = x0; x <= x1; x++) {
                 for (int z = z0; z <= z1; z++) {
-                    if (!level.isLoaded(new BlockPos(x, 0, z)) || water(level, new BlockPos(x, 0, z)) != Integer.MIN_VALUE) {
+                    BlockPos c = new BlockPos(x, 0, z);
+                    if (!level.isLoaded(c)) {
                         continue search;
+                    }
+                    if (water(level, c) != Integer.MIN_VALUE && (a0 > 1 || water(level, c) != w || depth(level, c, w) > 3)) {
+                        continue search; // water behind the shore, or too deep to fill
                     }
                 }
             }
             back = a0;
             break;
         }
-        if (back < 0) {
+        if (back == Integer.MIN_VALUE) {
             return null;
         }
-        // The quay walk between it and the water, and its plot, at the deck's height.
-        for (int a = 0; a < back; a++) {
+        // Its plot and the quay walk before it filled where they're water (reclaimed), then levelled to the deck.
+        for (int a = back - 2; a < back + dp; a++) {
             for (int o = o0; o < o0 + wd; o++) {
                 BlockPos c = head.at().relative(in, a).relative(across, o);
-                if (water(level, c) == Integer.MIN_VALUE) {
+                if (water(level, c) == w && depth(level, c, w) <= 3 && (a >= back || back <= 1)) {
+                    fill(level, c, w, deck);
+                } else if (water(level, c) == Integer.MIN_VALUE && a < back) {
                     Terraform.settle(level, c.getX(), c.getZ(), deck);
                 }
             }
@@ -205,8 +234,73 @@ public final class Harbour {
         boolean laid = Kits.place(level, kit.id(), new BlockPos(x0, deck, z0), out).isPresent();
         if (!laid) {
             dev.b28.enterprise.Enterprise.LOGGER.info("{} couldn't be laid behind the quay at {}", kit.id(), head.at().toShortString());
+            return null;
         }
-        return laid ? new int[] {x0, z0, x1, z1} : null;
+        // Quay tiles along its water front: from before its front, out to the water's edge.
+        for (int o = o0; o < o0 + wd; o++) {
+            BlockPos last = null;
+            for (int a = back - 1; a >= back - 8; a--) {
+                BlockPos c = head.at().relative(in, a).relative(across, o);
+                if (water(level, c) == w) {
+                    break;
+                }
+                last = c;
+            }
+            if (last != null && water(level, last.relative(out)) == w) {
+                quayTile(level, set, (sea ? "quay_stone_" : "quay_timber_") + (Math.floorMod(o, 5) == 2 ? "lamp_1" : "1a"),
+                        new Shore(last, out), w);
+            }
+        }
+        return new int[] {x0, z0, x1, z1};
+    }
+
+    /** A shallow water column filled to the deck: coursed stone from the bed, earth under its top, grass on it. */
+    static void fill(ServerLevel level, BlockPos c, int w, int deck) {
+        for (int y = w - depth(level, c, w) + 1; y <= deck; y++) {
+            BlockState b = y == deck ? net.minecraft.world.level.block.Blocks.GRASS_BLOCK.defaultBlockState()
+                    : y >= w ? net.minecraft.world.level.block.Blocks.DIRT.defaultBlockState()
+                    : net.minecraft.world.level.block.Blocks.STONE_BRICKS.defaultBlockState();
+            level.setBlock(new BlockPos(c.getX(), y, c.getZ()), b, 2 | 16);
+        }
+    }
+
+    /** The dry columns at the deck's height (within 1) in 14 behind 24 of the shore round the head: room for the district. */
+    static int room(ServerLevel level, Shore head, int deck) {
+        Direction in = head.out().getOpposite(), across = head.out().getClockWise();
+        int n = 0;
+        for (int a = 1; a <= 14; a++) {
+            for (int o = -12; o <= 12; o++) {
+                BlockPos c = head.at().relative(in, a).relative(across, o);
+                if (level.isLoaded(c) && water(level, c) == Integer.MIN_VALUE && Math.abs(Terraform.ground(level, c.getX(), c.getZ()) - deck) <= 1) {
+                    n++;
+                }
+            }
+        }
+        return n;
+    }
+
+    /** The columns of open water 3 deep within 4 of the shore along 24 of it round the head: room for boats alongside. */
+    static int deep(ServerLevel level, Shore head, int w) {
+        Direction across = head.out().getClockWise();
+        int n = 0;
+        for (int a = 1; a <= 4; a++) {
+            for (int o = -12; o <= 12; o++) {
+                BlockPos c = head.at().relative(head.out(), a).relative(across, o);
+                if (level.isLoaded(c) && water(level, c) == w && depth(level, c, w) >= 3) {
+                    n++;
+                }
+            }
+        }
+        return n;
+    }
+
+    /** How deep the water stands at a column: its surface down to the bed. */
+    static int depth(ServerLevel level, BlockPos c, int w) {
+        int y = w;
+        while (y > level.getMinBuildHeight() && !level.getFluidState(new BlockPos(c.getX(), y, c.getZ())).isEmpty()) {
+            y--;
+        }
+        return w - y;
     }
 
     /** The water's surface height at a column, or {@link Integer#MIN_VALUE} if its top isn't water. */
@@ -215,28 +309,6 @@ public final class Harbour {
         return level.getFluidState(new BlockPos(c.getX(), y, c.getZ())).isSource() ? y : Integer.MIN_VALUE;
     }
 
-    /** Is the water open sea: 2,000 columns or more round it, or reaching past the plan's outer edge? */
-    static boolean openWater(ServerLevel level, BlockPos from, TownPlans.Plan plan) {
-        Set<Long> seen = new HashSet<>();
-        ArrayDeque<BlockPos> q = new ArrayDeque<>();
-        q.add(from);
-        seen.add(from.asLong());
-        TownPlans.Rect o = plan.outer();
-        while (!q.isEmpty() && seen.size() < 2000) {
-            BlockPos c = q.pop();
-            if (!o.contains(c.getX(), c.getZ())) {
-                return true;
-            }
-            for (Direction d : Direction.Plane.HORIZONTAL) {
-                BlockPos n = c.relative(d);
-                if (level.isLoaded(n) && !seen.contains(n.asLong()) && water(level, n) != Integer.MIN_VALUE) {
-                    seen.add(n.asLong());
-                    q.add(n);
-                }
-            }
-        }
-        return seen.size() >= 2000;
-    }
 
     /** The shore from the head, both ways along it: land columns beside the water, nearest the head first. */
     static List<Shore> shore(ServerLevel level, Shore head, int length, int w) {

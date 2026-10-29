@@ -312,6 +312,9 @@ public final class Bocage {
         long h = Zoning.mix(x * 31L, z);
         Furlongs.fell(level, x, y, z);
         BlockPos ground = new BlockPos(x, y, z), over = ground.above();
+        if (!level.getBlockState(ground).getFluidState().isEmpty()) {
+            return; // water: no field on it (the studio's r87 render: 244 cells of farmland on town 1's lake)
+        }
         if (dev.b28.enterprise.settlement.Grounds.natural(level.getBlockState(ground))) {
             level.setBlock(ground, Blocks.GRASS_BLOCK.defaultBlockState(), 2);
         }
