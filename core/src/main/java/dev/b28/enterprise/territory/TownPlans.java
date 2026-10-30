@@ -42,16 +42,22 @@ public final class TownPlans extends SavedData {
     public static final int GATE = 3;
     /**
      * How far apart a new town's lanes are inside its inner wall (John: "mid density ... villagers live in multiple
-     * floors"; the studio's houses, thread 0004): wards of 27 x 27 between streets, plots 13 deep back to back (a house
-     * 9 deep with its relief and a garden behind, or 13 deep), plots 9, 12 or 15 wide along the street. A lane's width:
-     * four, a street a cart and its neighbours' doorsteps share. Each plan keeps its own ({@link Plan#ward}): a town
-     * planned with 14-block wards keeps them.
+     * floors"; the studio's houses, thread 0004): a lane, a block kept either side, and a ward of 32 x 32 between streets
+     * (8 {@link #TILE}s), two plots 16 deep back to back. A lane's width: four, a street a cart and its neighbours'
+     * doorsteps share. Each plan keeps its own ({@link Plan#ward}): a town planned with 14-block or 33-block wards keeps them.
      */
-    static final int WARD = 39;
+    static final int WARD = 38;
+    /**
+     * The tile plots are cut on (thread 0016, Warcraft 3's build grid; John: "I'm finding the current plot system a bit
+     * too inflexible"): every plot starts on a tile line measured from its ward's corner, and is a whole number of tiles
+     * wide (12, 16 or 20), so plots side by side, across the street and back to back line up.
+     */
+    public static final int TILE = 4;
     /** A plot's yards on a ward with room for them (John: "front yard, back yard leeway ... interchangeable doodad
-     * regions"): its front yard's depth between the street and the house, its back yard's behind. */
-    public static final int FRONT_YARD = 3;
-    public static final int BACK_YARD = 4;
+     * regions"): its front yard's depth between the street and the house (a tile), its back yard's behind (a tile; a house
+     * three tiles deep takes it). */
+    public static final int FRONT_YARD = TILE;
+    public static final int BACK_YARD = TILE;
     /** The ward of a plan saved before plans kept their own: lanes every 20, wards of 14 x 14. */
     static final int FIRST_WARD = 20;
     public static final int LANE = 4;
@@ -87,9 +93,9 @@ public final class TownPlans extends SavedData {
             return cell() / 2;
         }
 
-        /** Does the ward have room for plots with yards (a front yard, the house, a back yard: 16 deep)? */
+        /** Does the ward have room for plots with yards (a front yard, the house two tiles deep, a back yard: 16 deep)? */
         public boolean yards() {
-            return deepest() >= FRONT_YARD + 9 + BACK_YARD;
+            return deepest() >= FRONT_YARD + 2 * TILE + BACK_YARD;
         }
     }
 
@@ -472,15 +478,15 @@ public final class TownPlans extends SavedData {
         int bx = plan.bell().getX(), bz = plan.bell().getZ(), m = STRIP + 1, a = GATE / 2;
         List<Frontage> out = new ArrayList<>();
         // North and south stretches of the north-south avenue: homes west (door east) and east (door west) of it.
-        for (int[] run : new int[][] {{o.z0() + m, in.z0() - m}, {in.z1() + m, o.z1() - m}}) {
-            for (int[] slot : slots(run[0], run[1], width, 0, false)) {
+        for (int[] run : new int[][] {{o.z0() + m, in.z0() - m, 1}, {in.z1() + m, o.z1() - m, 0}}) {
+            for (int[] slot : slots(run[0], run[1], width, 0, false, run[2] == 1)) {
                 out.add(new Frontage(bx - a - 2 - depth + 1, slot[0], net.minecraft.core.Direction.EAST, depth, slot[1]));
                 out.add(new Frontage(bx + a + 2, slot[0], net.minecraft.core.Direction.WEST, depth, slot[1]));
             }
         }
         // West and east stretches of the east-west avenue: homes north (door south) and south (door north) of it.
-        for (int[] run : new int[][] {{o.x0() + m, in.x0() - m}, {in.x1() + m, o.x1() - m}}) {
-            for (int[] slot : slots(run[0], run[1], width, 0, false)) {
+        for (int[] run : new int[][] {{o.x0() + m, in.x0() - m, 1}, {in.x1() + m, o.x1() - m, 0}}) {
+            for (int[] slot : slots(run[0], run[1], width, 0, false, run[2] == 1)) {
                 out.add(new Frontage(slot[0], bz - a - 2 - depth + 1, net.minecraft.core.Direction.SOUTH, slot[1], depth));
                 out.add(new Frontage(slot[0], bz + a + 2, net.minecraft.core.Direction.NORTH, slot[1], depth));
             }
@@ -500,7 +506,32 @@ public final class TownPlans extends SavedData {
      * other's plots); packed, side by side from its start (a terrace's party walls).
      */
     static List<int[]> slots(int lo, int hi, int width, int gap, boolean packed) {
+        return slots(lo, hi, width, gap, packed, false);
+    }
+
+    /**
+     * As {@link #slots(int, int, int, int, boolean)}; plots with no gap between them (a ward's, with yards) on
+     * {@link #TILE}s from the stretch's street end ({@code fromHi}: its high end, where its low end is a wall): the
+     * stretch's whole tiles shared out evenly, each plot whole tiles, so plots of any width as many to a stretch share
+     * one grid; a terrace packed from its street end's tile line.
+     */
+    static List<int[]> slots(int lo, int hi, int width, int gap, boolean packed, boolean fromHi) {
         List<int[]> out = new ArrayList<>();
+        if (gap == 0) {
+            int tiles = (hi - lo + 1) / TILE, base = fromHi ? hi + 1 - tiles * TILE : lo;
+            if (packed) {
+                for (int i = 0; i < tiles * TILE / width; i++) {
+                    out.add(new int[] {fromHi ? hi + 1 - (i + 1) * width : lo + i * width, width});
+                }
+                return out;
+            }
+            int n = tiles / Math.ceilDiv(width, TILE);
+            for (int i = 0; i < n; i++) {
+                int from = base + TILE * (i * tiles / n), to = base + TILE * ((i + 1) * tiles / n);
+                out.add(new int[] {from, to - from});
+            }
+            return out;
+        }
         int length = hi - lo + 1, n = (length + gap) / (width + gap);
         for (int i = 0; i < n; i++) {
             if (packed) {
@@ -526,9 +557,10 @@ public final class TownPlans extends SavedData {
         laneLines(plan, false).forEach(z -> ew.add(new int[] {z, LANE / 2, LANE - LANE / 2 - 1}));
         // Along each street, each ward's stretch of it (between the cross streets) filled from its start: a home never
         // straddles a cross street.
+        // Each stretch's tiles from its ward's corner: the street at its start, or at its end where it starts at the wall.
         for (int[] s : ns) {
             for (int[] run : runs(w.z0(), w.z1(), ew)) {
-                for (int[] slot : slots(run[0], run[1], width, gap, packed)) {
+                for (int[] slot : slots(run[0], run[1], width, gap, packed, run[0] == w.z0() && run[1] != w.z1())) {
                     out.add(new Frontage(s[0] - s[1] - 2 - depth + 1, slot[0], net.minecraft.core.Direction.EAST, depth, slot[1]));
                     out.add(new Frontage(s[0] + s[2] + 2, slot[0], net.minecraft.core.Direction.WEST, depth, slot[1]));
                 }
@@ -536,7 +568,7 @@ public final class TownPlans extends SavedData {
         }
         for (int[] s : ew) {
             for (int[] run : runs(w.x0(), w.x1(), ns)) {
-                for (int[] slot : slots(run[0], run[1], width, gap, packed)) {
+                for (int[] slot : slots(run[0], run[1], width, gap, packed, run[0] == w.x0() && run[1] != w.x1())) {
                     out.add(new Frontage(slot[0], s[0] - s[1] - 2 - depth + 1, net.minecraft.core.Direction.SOUTH, slot[1], depth));
                     out.add(new Frontage(slot[0], s[0] + s[2] + 2, net.minecraft.core.Direction.NORTH, slot[1], depth));
                 }

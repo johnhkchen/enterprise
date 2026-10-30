@@ -42,7 +42,8 @@ public final class Kits {
 
     /** A structure's metadata: what the placer needs of it (positions in its own frame, facing south). */
     public record Meta(String id, String kingdom, String kind, String slot, int width, int depth, int height, int ground,
-            List<BlockPos> bedHeads, List<BlockPos> workstations, List<String> tiers, List<BlockPos> entrances, int plots) {
+            List<BlockPos> bedHeads, List<BlockPos> workstations, List<String> tiers, List<BlockPos> entrances, int plots,
+            int tilesWide, int tilesDeep) {
 
         /** Is it a lot whole (`plots` of 2 or more: Dalaran's courtyard house, thread 0010), its yards its own? */
         public boolean whole() {
@@ -82,7 +83,7 @@ public final class Kits {
                 if (o.has("base") && !o.has("footprint")) {
                     return meta(resources, o.get("base").getAsString()).map(b -> new Meta(id, b.kingdom(), b.kind(),
                             b.slot(), b.width(), b.depth(), b.height(), b.ground(), b.bedHeads(), b.workstations(),
-                            b.tiers(), b.entrances(), b.plots()));
+                            b.tiers(), b.entrances(), b.plots(), b.tilesWide(), b.tilesDeep()));
                 }
                 return Optional.of(parse(id, o));
             } catch (Exception e) {
@@ -131,10 +132,27 @@ public final class Kits {
         for (JsonElement t : array(o, "tiers")) {
             tiers.add(t.getAsString());
         }
+        // Its tiles where the studio gives them (thread 0016: {@code tiles: [W, D]}, the footprint inside them with a
+        // block's yard all round); one that doesn't fit is named and laid as if it gave none.
+        int tw = 0, td = 0;
+        if (o.has("tiles") && o.get("tiles").isJsonArray()) {
+            tw = o.getAsJsonArray("tiles").get(0).getAsInt();
+            td = o.getAsJsonArray("tiles").get(1).getAsInt();
+            if (!fits(fp.get(0).getAsInt(), fp.get(1).getAsInt(), tw, td)) {
+                dev.b28.enterprise.Enterprise.LOGGER.warn("Kit {}: its footprint {} x {} doesn't fit its tiles {} x {} (at most {} x {})",
+                        id, fp.get(0).getAsInt(), fp.get(1).getAsInt(), tw, td, TownPlans.TILE * tw - 2, TownPlans.TILE * td - 2);
+                tw = td = 0;
+            }
+        }
         return new Meta(id, string(o, "kingdom"), string(o, "kind"), string(o, "slot"), fp.get(0).getAsInt(),
                 fp.get(1).getAsInt(), o.has("height") ? o.get("height").getAsInt() : 8,
                 o.has("ground") ? o.get("ground").getAsInt() : 0, beds, work, tiers, doors,
-                o.has("plots") ? o.get("plots").getAsInt() : 1);
+                o.has("plots") ? o.get("plots").getAsInt() : 1, tw, td);
+    }
+
+    /** Does a footprint {@code w} x {@code d} fit {@code tw} x {@code td} tiles with a block's yard all round? */
+    public static boolean fits(int w, int d, int tw, int td) {
+        return tw > 0 && td > 0 && w <= TownPlans.TILE * tw - 2 && d <= TownPlans.TILE * td - 2;
     }
 
     private static JsonArray array(JsonObject o, String key) {

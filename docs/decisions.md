@@ -1108,6 +1108,18 @@ mod's), but no road ever chose it. Then: build them first.
   64-emerald founding purse on stalls and fields by day 5, and the best load any road saw in 30 days was worth 8.6
   against an 820-block road's 16. The study's roads went to each town's two nearest, so the two ports on one sea
   (Corin's Crossing and Theramore, ~950 apart) never had one: `survival_study.py --road I-J` adds such a road.
+- **Plots on 4-block tiles (John, 2026-10-30: "I'm finding the current plot system a bit too inflexible"; studio
+  thread 0016).** A new town's ward is 38 (a lane, a block kept either side, a 32-block cell: 8 tiles); a plot is 16
+  deep (front yard a tile, the house two, back yard a tile; a house three tiles deep takes the back yard, and one
+  deeper, Dalaran's 13-deep workshops and homes, keeps 3 of the front yard, the yard tiles' depth) and whole tiles
+  wide from a tile line of its ward's corner (`TownPlans.slots`: a stretch's tiles shared evenly, so 12, 16 and 20-wide
+  plots, as many to a stretch, cut one grid; the corner at the street end where a stretch starts at the wall). A
+  house's plot is its width and a 2-block side yard each side to whole tiles (7, 10 and 13-wide bodies on 12, 16 and
+  20); a kit's is the studio's `tiles: [W, D]` where it gives them, else the fewest tiles holding it with a block's yard
+  either side (a 9-wide cottage on 12, where a stretch is short; a full ward's shares its 8 tiles 4 and 4), a footprint over 4W − 2 by 4D − 2 named in the log
+  and laid as if it gave none. The front yard's 3-deep tiles stand against the street, the row by the house the path's.
+  Generated houses keep their timber bodies (3n + 1 bays: 7, 10, 13) and snap by their plots, not their walls. A
+  terrace packs from its street end's tile line. Plans saved before keep their wards.
 - **Not yet:** ships are seen in the world only as the harbour's moored boats.
 
 

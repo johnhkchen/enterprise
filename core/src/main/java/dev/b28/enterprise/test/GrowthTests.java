@@ -111,22 +111,40 @@ public final class GrowthTests {
     }
 
     /**
-     * A new town's grid (John: "mid density ... multiple floors", "front yard, back yard leeway"): lanes every 39,
-     * wards of 33 x 33, plots 16 deep back to back with their yards, as wide as the studio's houses and a side yard
-     * each side (11, 14, 17; a terrace of three 23; a whole ward's 33), none on a street.
+     * A new town's grid (John: "mid density ... multiple floors", "front yard, back yard leeway"; on tiles, thread 0016):
+     * lanes every 38, wards of 32 x 32 (8 tiles), plots 16 deep back to back with their yards, whole tiles wide (12, 16,
+     * 20; a whole ward's 32), each from a tile line, the same lines across the street, none on a street.
      */
     @GameTest(template = "floor")
     public static void aNewTownsWardsFrontTheStudiosHouses(GameTestHelper helper) {
         var plan = new TownPlans.Plan(new BlockPos(0, 64, 0), new TownPlans.Rect(-60, -60, 60, 60),
                 new TownPlans.Rect(-120, -120, 120, 120), true, true);
-        helper.assertTrue(plan.ward() == 39 && plan.cell() == 33 && plan.deepest() == 16 && plan.yards(),
-                "wards of 33, plots 16 deep with yards");
+        helper.assertTrue(plan.ward() == 38 && plan.cell() == 32 && plan.deepest() == 16 && plan.yards(),
+                "wards of 32, plots 16 deep with yards");
+        // The studio's bodies 7, 10 and 13 wide on plots of 3, 4 and 5 tiles; a kit's tiles hold it with a block's yard round.
+        helper.assertTrue(dev.b28.enterprise.territory.Plots.width(7) == 12 && dev.b28.enterprise.territory.Plots.width(10) == 16
+                && dev.b28.enterprise.territory.Plots.width(13) == 20, "plots 12, 16 and 20 wide");
+        helper.assertTrue(dev.b28.enterprise.territory.Kits.fits(10, 6, 3, 2) && !dev.b28.enterprise.territory.Kits.fits(11, 6, 3, 2)
+                && !dev.b28.enterprise.territory.Kits.fits(10, 7, 3, 2), "a footprint at most 4W - 2 by 4D - 2");
+        // A house two tiles deep behind a tile's front yard; one 13 deep keeps 3 of it, to the plot's back.
+        int[] house = dev.b28.enterprise.territory.Plots.house(16, 12, 7, 16), deep = dev.b28.enterprise.territory.Plots.house(16, 16, 13, 16);
+        helper.assertTrue(java.util.Arrays.equals(house, new int[] {2, 5, 12, 7}) && deep[1] == 0,
+                "a house in its plot: " + java.util.Arrays.toString(house) + ", a deep one " + java.util.Arrays.toString(deep));
         java.util.function.BiPredicate<Integer, Integer> street = (x, z) -> Math.abs(x) <= 2 || Math.abs(z) <= 2
-                || x >= 36 && x <= 41 || x >= -42 && x <= -37 || z >= 36 && z <= 41 || z >= -42 && z <= -37;
-        for (int width : new int[] {11, 14, 17, 23, 33}) {
+                || x >= 35 && x <= 40 || x >= -41 && x <= -36 || z >= 35 && z <= 40 || z >= -41 && z <= -36;
+        for (int width : new int[] {12, 16, 20, 32}) {
             var plots = TownPlans.plots(plan, width);
             helper.assertTrue(plots.size() >= 4, width + " wide: " + plots.size());
+            // The east ward's stretch along the avenue's east side (x 3 to 34): plots from its tile lines, whole tiles wide.
             for (var f : plots) {
+                int along = f.door().getAxis() == net.minecraft.core.Direction.Axis.Z ? f.sx() : f.sz();
+                helper.assertTrue(along % TownPlans.TILE == 0 && along >= width, width + " wide, whole tiles: " + f);
+                if (f.door().getAxis() == net.minecraft.core.Direction.Axis.Z && f.x() >= 3 && f.x() <= 34) {
+                    helper.assertTrue((f.x() - 3) % TownPlans.TILE == 0, "from a tile line of its ward: " + f);
+                    int x = f.x(), sx = f.sx();
+                    helper.assertTrue(plots.stream().anyMatch(o -> o.door() == f.door().getOpposite() && o.x() == x && o.sx() == sx),
+                            "the same plot across its street: " + f);
+                }
                 helper.assertTrue(Math.max(f.sx(), f.sz()) >= 16 || width >= 16, "16 deep: " + f);
                 for (int dx = 0; dx < f.sx(); dx++) {
                     for (int dz = 0; dz < f.sz(); dz++) {
@@ -436,7 +454,8 @@ public final class GrowthTests {
 
     @GameTest(template = "floor")
     public static void housesAndWorkshopsShareOnePlotGrid(GameTestHelper helper) {
-        // r66: a house's plot (14 wide) and a workshop's (16) cut a ward's stretch two ways and crowded each other.
+        // r66: a house's plot (14 wide) and a workshop's (16) cut a ward's stretch two ways and crowded each other; on
+        // tiles both are four.
         var plan = new TownPlans.Plan(new BlockPos(0, 64, 0), new TownPlans.Rect(-90, -90, 90, 90),
                 new TownPlans.Rect(-150, -150, 150, 150), true, true);
         var houses = new java.util.HashSet<>(TownPlans.frontages(plan, 14, plan.deepest(), 0));

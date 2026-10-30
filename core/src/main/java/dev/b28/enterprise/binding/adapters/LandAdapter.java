@@ -910,7 +910,7 @@ public final class LandAdapter {
                 for (int k = 0; k < trades.size(); k++) {
                     String trade = trades.get((laidSoFar / 3 + k) % trades.size());
                     var shop = dev.b28.enterprise.territory.Kits.choose(level.getServer().getResourceManager(), kingdom,
-                            "workshop:" + trade, townPlan.cell() - 2 * dev.b28.enterprise.territory.Plots.SIDE, townPlan.deepest() - dev.b28.enterprise.territory.TownPlans.FRONT_YARD,
+                            "workshop:" + trade, townPlan.cell() - 2 * dev.b28.enterprise.territory.Plots.SIDE, dev.b28.enterprise.territory.Plots.deepestHouse(townPlan.deepest()),
                             town, townPlan.bell()).flatMap(id -> dev.b28.enterprise.territory.Kits.meta(level.getServer().getResourceManager(), id));
                     if (shop.isPresent()) {
                         homeKits.put(town, shop.get());
@@ -939,7 +939,7 @@ public final class LandAdapter {
                 return Optional.of(zoned.get().house().meta());
             }
             var built = dev.b28.enterprise.territory.Houses.next(level, kingdom, tier, townPlan.cell() - 2 * dev.b28.enterprise.territory.Plots.SIDE,
-                    townPlan.deepest() - dev.b28.enterprise.territory.TownPlans.FRONT_YARD, town * 7919 + homesLaid.getOrDefault(town, 0));
+                    dev.b28.enterprise.territory.Plots.deepestHouse(townPlan.deepest()), town * 7919 + homesLaid.getOrDefault(town, 0));
             if (built.isPresent()) {
                 homeKits.put(town, built.get().meta());
                 homeBuilt.put(town, built.get());
@@ -953,7 +953,7 @@ public final class LandAdapter {
         if (plan != null && plan.yards()) {
             // A house on a plot: its side yards in the plot's width, its front yard in its depth.
             widest -= 2 * dev.b28.enterprise.territory.Plots.SIDE;
-            deepest -= dev.b28.enterprise.territory.TownPlans.FRONT_YARD;
+            deepest = dev.b28.enterprise.territory.Plots.deepestHouse(deepest);
         }
         Optional<dev.b28.enterprise.territory.Kits.Meta> kit = dev.b28.enterprise.territory.Kits.choose(resources,
                 dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town), "home", widest, deepest, town,
@@ -1081,7 +1081,7 @@ public final class LandAdapter {
                 var shop = trade.isEmpty() ? Optional.<dev.b28.enterprise.territory.Kits.Meta>empty()
                         : dev.b28.enterprise.territory.Kits.choose(resources, kingdom, "workshop:" + trade,
                                 townPlan.cell() - 2 * dev.b28.enterprise.territory.Plots.SIDE,
-                                townPlan.deepest() - dev.b28.enterprise.territory.TownPlans.FRONT_YARD, town,
+                                dev.b28.enterprise.territory.Plots.deepestHouse(townPlan.deepest()), town,
                                 new BlockPos(shops, 0, 0)).flatMap(id -> dev.b28.enterprise.territory.Kits.meta(resources, id));
                 if (shop.isPresent()) {
                     homeKits.put(town, shop.get());

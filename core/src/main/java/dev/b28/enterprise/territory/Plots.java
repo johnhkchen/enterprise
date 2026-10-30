@@ -29,9 +29,18 @@ public final class Plots {
      */
     public static final int SIDE = 2;
 
-    /** A plot's width for a house {@code width} wide: its side yard either side. */
+    /** A plot's width for a house {@code width} wide: its side yard either side, to whole tiles (12, 16, 20: thread 0016). */
     public static int width(int house) {
-        return house + 2 * SIDE;
+        return TownPlans.TILE * Math.ceilDiv(house + 2 * SIDE, TownPlans.TILE);
+    }
+
+    /**
+     * A plot's width for a kit: its tiles where the studio gives them ({@code tiles: [W, D]}), else the fewest that hold
+     * it with a block's yard either side (thread 0016: a 9-wide cottage on 12; a full ward's stretch shares its tiles
+     * evenly, so it stands on 16 there).
+     */
+    public static int width(Kits.Meta kit) {
+        return TownPlans.TILE * (kit.tilesWide() > 0 ? kit.tilesWide() : Math.ceilDiv(kit.width() + 2, TownPlans.TILE));
     }
 
     /** Where the house stands in its plot: its corner (x, z) as authored, its width and depth. */
@@ -40,8 +49,24 @@ public final class Plots {
     }
 
     /** As {@link #house(int, int, int)}, in a plot {@code plotWidth} wide: the house in its middle (none either side on a terrace). */
-    static int[] house(int plotDepth, int width, int depth, int plotWidth) {
-        return new int[] {Math.max(0, (plotWidth - width) / 2), plotDepth - TownPlans.FRONT_YARD - depth, width, depth};
+    public static int[] house(int plotDepth, int width, int depth, int plotWidth) {
+        return new int[] {Math.max(0, (plotWidth - width) / 2), plotDepth - front(plotDepth, depth) - depth, width, depth};
+    }
+
+    /**
+     * The least front yard: a house deeper than three tiles (Dalaran's 13-deep workshops and homes) takes the front
+     * yard's tile but this, the yard tiles' depth.
+     */
+    public static final int LEAST_FRONT = 3;
+
+    /** A house {@code depth} deep's front yard in a plot {@code plotDepth} deep: a tile, or what a deep house leaves of it. */
+    static int front(int plotDepth, int depth) {
+        return Math.max(LEAST_FRONT, Math.min(TownPlans.FRONT_YARD, plotDepth - depth));
+    }
+
+    /** The deepest house a plot {@code plotDepth} deep holds: its least front yard before it. */
+    public static int deepestHouse(int plotDepth) {
+        return plotDepth - LEAST_FRONT;
     }
 
     /**
@@ -88,7 +113,7 @@ public final class Plots {
         // Why each frontage failed, for the log when none fits.
         int[] why = new int[4];
         // A lot whole as wide as it is (its compound wall its edge); a house with its side yards.
-        int plotWidth = house.whole() ? house.width() : width(house.width());
+        int plotWidth = house.whole() ? house.width() : width(house);
         // A founded town's main street first (its first builds face each other across it).
         var main = level.getServer() == null ? java.util.Optional.<net.minecraft.core.Direction>empty()
                 : TownPlans.get(level.getServer()).mainAt(bell);
@@ -225,6 +250,10 @@ public final class Plots {
                         || !state.getFluidState().isEmpty()) {
                     BLOCKED.merge(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath(), 1,
                             Integer::sum);
+                    if (System.getenv("ENTERPRISE_PLOT_PROBE") != null) {
+                        dev.b28.enterprise.Enterprise.LOGGER.info("Plot probe: {} at {} (house {} {} {}x{})", state, at.toShortString(),
+                                x0, z0, sx, sz);
+                    }
                     return Integer.MIN_VALUE; // something built, a field, or water
                 }
                 for (int up = 1; up <= 3; up++) {
@@ -370,7 +399,7 @@ public final class Plots {
         // at the door, lamps in reach, edges matching), else the widest whole yard of its that fits.
         List<Yards.Tile> tiles = Yards.tiles(resources, kingdom);
         Optional<String> front, back;
-        int pathFrom = h[1] + house.depth();
+        int pathFrom = h[1] + house.depth(), pathTo = depth;
         if (!tiles.isEmpty()) {
             String yardTrade = null;
             if (trade != null) {
@@ -382,10 +411,12 @@ public final class Plots {
             }
             var likes = Yards.likes(tier, yardTrade);
             var f = Yards.fill(tiles, "yard:front", width, doorX, likes, seed);
-            f.ifPresent(strip -> Yards.lay(level, strip, corner, width, depth, door, depth - TownPlans.FRONT_YARD));
+            // Against the street: a front yard a tile deep, the yard's tiles 3, the row by the house the doorstep's.
+            f.ifPresent(strip -> Yards.lay(level, strip, corner, width, depth, door, depth - deepest(strip)));
             front = f.map(strip -> strip.stream().map(l -> l.tile().id()).toList().toString());
             if (f.isPresent()) {
-                pathFrom = depth; // the path tile is the way to the door; only the doorstep beyond is cut
+                // The path tile is the way to the door; only the rows between it and the house, and the doorstep beyond, are cut.
+                pathTo = depth - deepest(f.get());
             }
             var b = h[1] >= 4 ? Yards.fill(tiles, "yard:back", width, -1, likes, seed + 1) : Optional.<List<Yards.Laid>>empty();
             b.ifPresent(strip -> Yards.lay(level, strip, corner, width, depth, door, h[1] - 4));
@@ -399,6 +430,9 @@ public final class Plots {
         // The path to the door: from its doorstep across the front yard to the street.
         int path = 0;
         for (int lz = pathFrom; lz <= depth; lz++) {
+            if (lz >= pathTo && lz < depth) {
+                continue;
+            }
             BlockPos p = world(corner, width, depth, door, doorX, lz);
             int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, p.getX(), p.getZ()) - 1;
             BlockPos ground = p.atY(Math.min(y, corner.getY()));
@@ -441,14 +475,20 @@ public final class Plots {
             boolean plotHigh = street < corner.getY();
             // The street's columns at the flight's foot, left open by the kerb.
             open = world(corner.getX(), corner.getZ(), width, depth, door, doorX - 1, depth, 3, 1);
+            int yard = depth - h[1] - house.depth();
             steps = Earthworks.steps(level, kingdom, world(corner.getX(), corner.getZ(), width, depth, door, doorX - 1,
-                    depth - TownPlans.FRONT_YARD, 3, TownPlans.FRONT_YARD), plotHigh ? door.getOpposite() : door,
+                    depth - yard, 3, yard), plotHigh ? door.getOpposite() : door,
                     Math.min(street, corner.getY()));
         }
         // Its edges retained where levelling cut the slope or built up a fill (the kingdom's earthworks).
         var banked = Earthworks.retain(level, kingdom, plot[0], plot[1], plot[0] + plot[2] - 1, plot[1] + plot[3] - 1,
                 corner.getY(), door, steps ? open : null);
         return Optional.of(new Laid(placed.get(), front, back, path, banked, steps));
+    }
+
+    /** A strip of yard tiles' depth: its deepest tile's. */
+    private static int deepest(List<Yards.Laid> strip) {
+        return strip.stream().mapToInt(l -> l.tile().depth()).max().orElse(TownPlans.FRONT_YARD);
     }
 
     private static Optional<String> yard(ServerLevel level, ResourceManager resources, String kingdom, String slot,

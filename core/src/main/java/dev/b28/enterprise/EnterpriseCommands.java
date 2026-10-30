@@ -343,8 +343,8 @@ final class EnterpriseCommands {
                                             if (facing == null || facing.getAxis().isVertical() || meta.isEmpty()) {
                                                 return refuse(context, "No kit " + id + ", or facing isn't north, south, east or west");
                                             }
-                                            int width = dev.b28.enterprise.territory.Plots.width(meta.get().width());
-                                            int depth = dev.b28.enterprise.territory.TownPlans.FRONT_YARD + Math.max(9, meta.get().depth())
+                                            int width = dev.b28.enterprise.territory.Plots.width(meta.get());
+                                            int depth = dev.b28.enterprise.territory.TownPlans.FRONT_YARD + Math.max(2 * dev.b28.enterprise.territory.TownPlans.TILE, meta.get().depth())
                                                     + dev.b28.enterprise.territory.TownPlans.BACK_YARD;
                                             String kingdom = meta.get().kingdom().isEmpty() ? "lordaeron" : meta.get().kingdom();
                                             long start = System.nanoTime();
