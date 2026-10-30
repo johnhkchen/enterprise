@@ -83,6 +83,9 @@ pub enum Work {
     /// A pasture the town fenced: the host lays it where the land allows and says how much grass is inside its fence
     /// (`Built`'s `grass`; asked for with none).
     Pasture { grass: u32 },
+    /// A berth on the town's waterfront (`works.rs` `call_at_port`): its ships outgrew the berths it has, and it paid for
+    /// the next stretch of quay along its shore, a jetty and a building behind it, for the host to lay.
+    Berth,
 }
 
 /// One of a town's works as the core has it: how much of it is laid by its masons (0 to 1), whether it's finished, and

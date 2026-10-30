@@ -24,7 +24,8 @@ public final class Harbour {
     private Harbour() {}
 
     /** What was laid, and its head: the shore cell its jetty and quay start from (the town's port, to the core). */
-    public record Laid(boolean sea, int quay, int jetty, int boats, int buildings, BlockPos head) {
+    public record Laid(boolean sea, int quay, int jetty, int boats, int buildings, BlockPos head, Direction out, int w,
+            int shore) {
         /** Has it somewhere a ship can tie up: a jetty or a run of quay. */
         public boolean port() {
             return jetty > 0 || quay > 0;
@@ -37,64 +38,27 @@ public final class Harbour {
     /** Lays the town's harbour at its tier ("hamlet", "village", "town", ...), if its plan meets water. */
     public static java.util.Optional<Laid> lay(ServerLevel level, TownPlans.Plan plan, String kingdom, String tier) {
         BlockPos bell = plan.bell();
-        // The head: of the places an avenue meets the water, the best for a harbour (the studio's, thread 0012): the most
-        // dry land at the deck's height behind 24 of its shore, water 3 deep alongside it, at sea the wider water; the
-        // nearer the forum on a tie.
-        Shore head = null;
-        int w = Integer.MIN_VALUE;
-        boolean sea = false;
-        double best = Double.NEGATIVE_INFINITY;
-        for (Direction way : Direction.Plane.HORIZONTAL) {
-            int reach = switch (way) {
-                case NORTH -> bell.getZ() - plan.outer().z0();
-                case SOUTH -> plan.outer().z1() - bell.getZ();
-                case WEST -> bell.getX() - plan.outer().x0();
-                default -> plan.outer().x1() - bell.getX();
-            };
-            for (int k = Forums.REACH + 2; k <= reach; k++) {
-                BlockPos c = bell.relative(way, k);
-                if (!level.isLoaded(c)) {
-                    break;
-                }
-                int wk = water(level, c);
-                if (wk == Integer.MIN_VALUE) {
-                    continue;
-                }
-                Shore at = new Shore(bell.relative(way, k - 1), way);
-                // Sea or river by the water's width here (the studio's): 24 or more along the avenue's line, or reaching
-                // past the plan's edge within it.
-                int span = 0;
-                boolean past = false;
-                for (int a = 0; a < 64; a++) {
-                    BlockPos o = c.relative(way, a);
-                    if (!level.isLoaded(o) || water(level, o) == Integer.MIN_VALUE) {
-                        break;
-                    }
-                    span++;
-                    past |= !plan.outer().contains(o.getX(), o.getZ());
-                }
-                boolean isSea = span >= 24 || past;
-                double score = room(level, at, wk + 2) + 8 * deep(level, at, wk) + (isSea ? span : 0) - 0.1 * k;
-                if (score > best) {
-                    best = score;
-                    head = at;
-                    w = wk;
-                    sea = isSea;
-                }
-                break;
-            }
+        // The head: of the places an avenue meets the water within the plan, the best for a harbour; where none does,
+        // past the plan's edge and beside the avenues (`head`).
+        Head found = head(level, plan, false);
+        if (found == null) {
+            found = head(level, plan, true);
         }
-        if (head == null) {
+        if (found == null) {
             return java.util.Optional.empty();
+        }
+        Shore head = found.at();
+        int w = found.w();
+        boolean sea = found.sea();
+        // A harbour past the plan's edge: a road out to it from the bell.
+        if (!plan.outer().contains(head.at().getX(), head.at().getZ())) {
+            double[] a = {bell.getX() + 0.5, bell.getZ() + 0.5}, b = {head.at().getX() + 0.5, head.at().getZ() + 0.5};
+            Trails.layLine(level, Trails.between(level, a, b, false, Trails.STRAY, Trails.STRAY_BLOCKS), 3, true);
         }
         String set = level.getServer().getResourceManager()
                 .getResource(net.minecraft.resources.ResourceLocation.parse("enterprise:structure/" + kingdom + "/harbour/jetty_timber_3x4.json"))
                 .isPresent() ? kingdom : "lordaeron";
-        int rank = switch (tier) {
-            case "hamlet" -> 0;
-            case "village" -> 1;
-            default -> 2;
-        };
+        int rank = Waterfronts.rank(tier);
         int quay = 0, jetty = 0, boats = 0;
         List<Shore> line = List.of();
         // The quay along the shore from the head, both ways.
@@ -104,52 +68,12 @@ public final class Harbour {
             // 8 on a river, and the whole shore of a town.
             int length = rank >= 2 ? 64 : sea ? 48 : 16;
             List<Shore> run = shore(level, head, length, w);
-            for (int k = 0; k < run.size(); k++) {
-                Shore s = run.get(k);
-                String tile = (sea ? "quay_stone_" : "quay_timber_") + (k == 0 ? "1a"
-                        : k % 8 == 4 ? "ladder_1" : k % 5 == 2 ? "lamp_1" : sea && k % 3 == 1 ? "bollard_1"
-                        : "1" + (char) ('a' + Math.floorMod(s.at().getX() * 31 + s.at().getZ(), sea ? 3 : 2)));
-                if (quayTile(level, set, tile, s, w)) {
-                    quay++;
-                } else {
-                    // A cell of the line that takes no tile (a corner, its water on the slant): paved at the deck, not a
-                    // stub of the old bank in the quay wall.
-                    clearOver(level, s.at().getX(), s.at().getZ(), w + 2);
-                    Terraform.settle(level, s.at().getX(), s.at().getZ(), w + 2);
-                    level.setBlock(new BlockPos(s.at().getX(), w + 2, s.at().getZ()),
-                            net.minecraft.world.level.block.Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
-                    for (int y = w + 1; y > level.getMinBuildHeight(); y--) {
-                        BlockPos b = new BlockPos(s.at().getX(), y, s.at().getZ());
-                        BlockState under = level.getBlockState(b);
-                        if (under.getFluidState().isEmpty() && !under.isAir() && !under.canBeReplaced()) {
-                            break;
-                        }
-                        level.setBlock(b, net.minecraft.world.level.block.Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
-                    }
-                }
-            }
-            // Behind the quay line, the quay walk and the district's ground levelled to the deck (6 in), walled where the
-            // land rises behind it (the studio's: the hillside came down to the water in raw earth beside the halls).
-            for (Shore s : run) {
-                terrace(level, kingdom, s, w + 2);
-            }
+            quay = quayLine(level, set, kingdom, run, 0, sea, w);
             line = run;
         }
-        // The jetty out from the head: segments while the water's deep enough ahead, then its head.
+        // The jetty out from the head.
         BlockPos start = head.at().relative(head.out(), 2);
-        int along = 0;
-        for (int seg = 0; seg < 3 && open(level, start, head.out(), along, 4, 1, w); seg++) {
-            if (place(level, set, "jetty_timber_3x4", start, head.out(), -1, 1, along, along + 3, w)) {
-                piles(level, start, head.out(), new int[][] {{-1, along}, {1, along}, {-1, along + 3}, {1, along + 3}}, w);
-                jetty++;
-            }
-            along += 4;
-        }
-        if (jetty > 0 && open(level, start, head.out(), along, 5, 2, w)
-                && place(level, set, "jetty_head_timber_5x5", start, head.out(), -2, 2, along, along + 4, w)) {
-            piles(level, start, head.out(), new int[][] {{-2, along}, {2, along}, {-2, along + 4}, {2, along + 4}, {0, along + 4}}, w);
-            jetty++;
-        }
+        jetty = jetty(level, set, head, w);
         // Boats: a fishing boat beside the jetty; a barge on a river from village; a trader at sea from town.
         if (jetty > 0 && boat(level, set, "boat_fishing_3x8", start, head.out(), 3, 5, 1, 8, w)) {
             boats++;
@@ -192,11 +116,187 @@ public final class Harbour {
         if (!line.isEmpty()) {
             edges(level, line, w);
         }
-        return java.util.Optional.of(new Laid(sea, quay, jetty, boats, buildings, head.at()));
+        return java.util.Optional.of(new Laid(sea, quay, jetty, boats, buildings, head.at(), head.out(), w, line.size()));
+    }
+
+    /**
+     * The quay line along {@code run} from its {@code from}th cell (nearest the head first): a tile on each cell, a
+     * plain paved cell where none fits, and behind it the quay walk and the district's ground levelled to the deck.
+     * Returns the tiles laid.
+     */
+    static int quayLine(ServerLevel level, String set, String kingdom, List<Shore> run, int from, boolean sea, int w) {
+        int quay = 0;
+        for (int k = from; k < run.size(); k++) {
+            Shore s = run.get(k);
+            String tile = (sea ? "quay_stone_" : "quay_timber_") + (k == 0 ? "1a"
+                    : k % 8 == 4 ? "ladder_1" : k % 5 == 2 ? "lamp_1" : sea && k % 3 == 1 ? "bollard_1"
+                    : "1" + (char) ('a' + Math.floorMod(s.at().getX() * 31 + s.at().getZ(), sea ? 3 : 2)));
+            if (quayTile(level, set, tile, s, w)) {
+                quay++;
+            } else {
+                // A cell of the line that takes no tile (a corner, its water on the slant): paved at the deck, not a
+                // stub of the old bank in the quay wall.
+                clearOver(level, s.at().getX(), s.at().getZ(), w + 2);
+                Terraform.settle(level, s.at().getX(), s.at().getZ(), w + 2);
+                level.setBlock(new BlockPos(s.at().getX(), w + 2, s.at().getZ()),
+                        net.minecraft.world.level.block.Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
+                for (int y = w + 1; y > level.getMinBuildHeight(); y--) {
+                    BlockPos b = new BlockPos(s.at().getX(), y, s.at().getZ());
+                    BlockState under = level.getBlockState(b);
+                    if (under.getFluidState().isEmpty() && !under.isAir() && !under.canBeReplaced()) {
+                        break;
+                    }
+                    level.setBlock(b, net.minecraft.world.level.block.Blocks.STONE_BRICKS.defaultBlockState(), 2 | 16);
+                }
+            }
+        }
+        // Behind the quay line, the quay walk and the district's ground levelled to the deck (6 in), walled where the
+        // land rises behind it (the studio's: the hillside came down to the water in raw earth beside the halls).
+        for (Shore s : run.subList(Math.min(from, run.size()), run.size())) {
+            terrace(level, kingdom, s, w + 2);
+        }
+        return quay;
+    }
+
+    /** A jetty out from a shore cell: segments while the water's deep enough ahead, then its head. Returns its parts. */
+    static int jetty(ServerLevel level, String set, Shore head, int w) {
+        BlockPos start = head.at().relative(head.out(), 2);
+        int jetty = 0, along = 0;
+        for (int seg = 0; seg < 3 && open(level, start, head.out(), along, 4, 1, w); seg++) {
+            if (place(level, set, "jetty_timber_3x4", start, head.out(), -1, 1, along, along + 3, w)) {
+                piles(level, start, head.out(), new int[][] {{-1, along}, {1, along}, {-1, along + 3}, {1, along + 3}}, w);
+                jetty++;
+            }
+            along += 4;
+        }
+        if (jetty > 0 && open(level, start, head.out(), along, 5, 2, w)
+                && place(level, set, "jetty_head_timber_5x5", start, head.out(), -2, 2, along, along + 4, w)) {
+            piles(level, start, head.out(), new int[][] {{-2, along}, {2, along}, {-2, along + 4}, {2, along + 4}, {0, along + 4}}, w);
+            jetty++;
+        }
+        return jetty;
+    }
+
+    /** A stretch of shore the waterfront grows by: quay cells along it. */
+    public static final int STRETCH = 24;
+
+    /**
+     * The waterfront's next stretch (as a town's fields grow by holdings along a farm track, nearest the bell first:
+     * {@link FieldMaps}): the quay line on along the shore from where it ends, both ways, nearest the head first; a
+     * jetty from the stretch's middle with a fishing boat beside it; and a building behind it, warehouse, fish market
+     * and customs house in turn (on a river, the river warehouse and the customs booth). For a berth the town paid
+     * for (its ships or Fishermen outgrew its berths) or a tier it rose to. Returns the quay cells laid (0: the shore
+     * runs out).
+     */
+    public static int grow(ServerLevel level, String kingdom, Waterfronts.Front f) {
+        String set = level.getServer().getResourceManager()
+                .getResource(net.minecraft.resources.ResourceLocation.parse("enterprise:structure/" + kingdom + "/harbour/jetty_timber_3x4.json"))
+                .isPresent() ? kingdom : "lordaeron";
+        Shore head = new Shore(f.head(), f.out());
+        List<Shore> run = shore(level, head, f.shore() + STRETCH, f.w());
+        if (run.size() <= f.shore()) {
+            return 0;
+        }
+        List<Shore> stretch = run.subList(f.shore(), run.size());
+        quayLine(level, set, kingdom, run, f.shore(), f.sea(), f.w());
+        // Its jetty and boat from the cell of the stretch with the deepest water ahead, the middle on a tie.
+        Shore mid = stretch.get(stretch.size() / 2);
+        for (Shore s : stretch) {
+            if (deep(level, s, f.w()) > deep(level, mid, f.w())) {
+                mid = s;
+            }
+        }
+        if (jetty(level, set, mid, f.w()) > 0) {
+            boat(level, set, "boat_fishing_3x8", mid.at().relative(mid.out(), 2), mid.out(), 3, 5, 1, 8, f.w());
+        }
+        List<String> row = f.sea() ? List.of("harbour:warehouse", "harbour:fish_market", "harbour:customs_house")
+                : List.of("harbour:warehouse", "harbour:river_customs");
+        String slot = row.get(f.stretches() % row.size());
+        building(level, kingdom, slot, !f.sea() && slot.equals("harbour:warehouse")).ifPresent(kit -> {
+            for (int step = 0; step <= 6; step++) {
+                int centre = (step % 2 == 0 ? 1 : -1) * ((step + 1) / 2) * 4;
+                if (hall(level, kit, new Shore(stretch.get(stretch.size() / 2).at(), stretch.get(stretch.size() / 2).out()),
+                        centre, f.w() + 2, new ArrayList<>(), set, f.sea(), f.w()) != null) {
+                    break;
+                }
+            }
+        });
+        edges(level, stretch, f.w());
+        return stretch.size();
+    }
+
+    /** A harbour's head: its shore cell, the water's level there, and whether it's the sea. */
+    record Head(Shore at, int w, boolean sea) {}
+
+    /**
+     * Of the places an avenue meets the water, the best for a harbour (the studio's, thread 0012): the most dry land at
+     * the deck's height behind 24 of its shore, water 3 deep alongside it, at sea the wider water; the nearer the forum
+     * on a tie. With {@code wide}, past the plan's edge to {@link #FAR} and along lines beside the avenues ({@link
+     * #LANES}) too: a shore just past a town's edge or off its avenues' lines is still its shore (seed 1717's Hillsbrad:
+     * the sea 81 east of its bell, its plan ending at 72, and 28 off to the south-east). Looked for wide only where the
+     * avenues meet no water: an avenue's own shore lays a better harbour than a side lane's that scores higher (seed
+     * 1717's Corin's Crossing: 39 quay tiles from its avenue, 1 from a lane).
+     */
+    static Head head(ServerLevel level, TownPlans.Plan plan, boolean wide) {
+        BlockPos bell = plan.bell();
+        Head best = null;
+        double bestScore = Double.NEGATIVE_INFINITY;
+        for (Direction way : Direction.Plane.HORIZONTAL) {
+            int reach = switch (way) {
+                case NORTH -> bell.getZ() - plan.outer().z0();
+                case SOUTH -> plan.outer().z1() - bell.getZ();
+                case WEST -> bell.getX() - plan.outer().x0();
+                default -> plan.outer().x1() - bell.getX();
+            };
+            for (int lane : wide ? LANES : new int[] {0}) {
+                BlockPos from = bell.relative(way.getClockWise(), lane);
+                for (int k = Forums.REACH + 2; k <= (wide ? Math.max(reach, FAR) : reach); k++) {
+                    BlockPos c = from.relative(way, k);
+                    if (!level.isLoaded(c)) {
+                        break;
+                    }
+                    int wk = water(level, c);
+                    if (wk == Integer.MIN_VALUE) {
+                        continue;
+                    }
+                    Shore at = new Shore(from.relative(way, k - 1), way);
+                    // Sea or river by the water's width here (the studio's): 24 or more along the avenue's line, or
+                    // reaching past the plan's edge within it.
+                    int span = 0;
+                    boolean past = false;
+                    for (int a = 0; a < 64; a++) {
+                        BlockPos o = c.relative(way, a);
+                        if (!level.isLoaded(o) || water(level, o) == Integer.MIN_VALUE) {
+                            break;
+                        }
+                        span++;
+                        past |= !plan.outer().contains(o.getX(), o.getZ());
+                    }
+                    boolean isSea = span >= 24 || past;
+                    boolean inside = plan.outer().contains(at.at().getX(), at.at().getZ());
+                    double score = room(level, at, wk + 2) + 8 * deep(level, at, wk) + (isSea ? span : 0) - 0.1 * k
+                            - 0.1 * Math.abs(lane) - (inside ? 0 : OUTSIDE);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        best = new Head(at, wk, isSea);
+                    }
+                    break;
+                }
+            }
+        }
+        return best;
     }
 
     /** How far round the quay line's bounds its stretch reaches, for the edges. */
     static final int EDGE = 4;
+
+    /**
+     * How far from the bell a harbour may lie, past the plan's edge; the lines beside each avenue looked along (blocks
+     * to its side); and what lying outside the plan costs a head's score (a dock in town beats one a road away).
+     */
+    static final int FAR = 128;
+    static final int[] LANES = {0, -32, 32, -64, 64};
+    static final double OUTSIDE = 12;
 
     /** Within the quay line's stretch (its bounds, {@link #EDGE} round), each land cell 4-touching the water whose top is earth: paved stone at the deck. */
     static void edges(ServerLevel level, List<Shore> run, int w) {

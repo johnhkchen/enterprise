@@ -332,7 +332,27 @@ pub struct Works {
     pub bridges_looked: Option<u64>,
     /// The hex its harbour's jetty stands in (`Input::Port`): where its ships sail from (`map.rs` `Carrier::Ship`).
     pub port: Option<crate::hex::Hex>,
+    /// Its ships' calls at its port a season (each sailing from it or to it, fading over `SEASON_DAYS`), when last
+    /// counted, and the berths it has paid for beyond its harbour's first (`call_at_port`).
+    #[serde(default)]
+    pub calls: f64,
+    #[serde(default)]
+    pub calls_at: Option<u64>,
+    #[serde(default)]
+    pub berths: u32,
 }
+
+/// Ship calls a berth serves a season; a season, in days; what a berth costs (its stretch of quay, jetty and building).
+pub const BERTH_CALLS: f64 = 8.0;
+pub const SEASON_DAYS: f64 = 30.0;
+pub const BERTH_EMERALDS: f64 = 6.0;
+/// Fishing boats a berth moors; cod a Fisherman lands a day a level (the mod's docks: 4); cod a day a water hex of the
+/// town's yields at most (its fishing grounds: the harbour's own water counts as one).
+pub const BOATS_PER_BERTH: usize = 2;
+/// Berths beyond its first that make a port a freight hub's site with no road of others through it (`rules/freight.rs`).
+pub const PORT_HUB_BERTHS: usize = 2;
+pub const COD_PER_LEVEL: f64 = 4.0;
+pub const COD_PER_WATER_HEX: f64 = 12.0;
 
 impl Works {
     /// The project being built now, if any: bridges first, then the wall, then halls (`Works.underway`).
@@ -611,6 +631,47 @@ impl crate::society::Society {
     /// The town's harbour, its jetty at block `x`, `z` (`Input::Port`): its port.
     pub fn set_port(&mut self, town: crate::messages::TownId, x: f64, z: f64) {
         self.world.get_mut::<Works>(self.towns[town]).expect("a town").port = Some(crate::hex::Hex::at(x, z));
+    }
+
+    /// A ship called at the town's port (sailed from it or to it): its calls a season counted, and its berths reviewed.
+    pub fn call_at_port(&mut self, town: crate::messages::TownId) {
+        let (now, day) = (self.now(), self.content().day_ticks.max(1) as f64);
+        {
+            let mut works = self.world.get_mut::<Works>(self.towns[town]).expect("a town");
+            if works.port.is_none() {
+                return;
+            }
+            let days = works.calls_at.map_or(0.0, |t| now.saturating_sub(t) as f64 / day);
+            works.calls = works.calls * (-days / SEASON_DAYS).exp() + 1.0;
+            works.calls_at = Some(now);
+        }
+        self.review_berths(town);
+    }
+
+    /// Does the town want another berth, and can it pay for one: its ships' calls a season (a berth for every
+    /// `BERTH_CALLS`, its harbour's first among them) or its Fishermen (`BOATS_PER_BERTH` a berth) have outgrown the
+    /// berths it has (`Work::Berth`): its waterfront grows along its shore as its sea trade and its fishing do, as its
+    /// fields do with its farmers. Once a day, and at each ship's call.
+    pub fn review_berths(&mut self, town: crate::messages::TownId) {
+        let e = self.towns[town];
+        let works = self.works(town);
+        if works.port.is_none() {
+            return;
+        }
+        let (now, day) = (self.now(), self.content().day_ticks.max(1) as f64);
+        let days = works.calls_at.map_or(0.0, |t| now.saturating_sub(t) as f64 / day);
+        let calls = works.calls * (-days / SEASON_DAYS).exp();
+        let fisherman = self.content().trade(crate::squad::FISHERMAN);
+        let fishers = self.world.get::<crate::roster::Roster>(e)
+            .map_or(0, |r| r.hands.iter().filter(|h| Some(h.trade) == fisherman && !h.away).count());
+        let wanted = ((calls / BERTH_CALLS).floor() as u32).max(fishers.div_ceil(BOATS_PER_BERTH).saturating_sub(1) as u32);
+        if wanted <= works.berths || self.free(town) < crate::fixed::Fixed::ceil(BERTH_EMERALDS) {
+            return;
+        }
+        self.post(crate::cash_book::Account::Treasury(town), crate::cash_book::Account::Outside, BERTH_EMERALDS,
+            crate::cash_book::Reason::Other("a berth".into()));
+        self.world.get_mut::<Works>(e).expect("a town").berths += 1;
+        *self.world.resource_mut::<crate::land::LandBook>().berths.entry(town).or_default() += 1;
     }
 
     /// The hex of a town's port, if the host has laid it a harbour.

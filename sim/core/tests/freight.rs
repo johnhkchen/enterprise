@@ -290,6 +290,25 @@ fn a_town_needs_the_routes_the_food_the_money_and_its_merchant_to_become_a_hub()
 }
 
 #[test]
+fn a_port_with_berths_is_a_hubs_site_though_no_road_passes() {
+    let (a, t) = (0, 1);
+    // One road calling at T, none passing: not a hub.
+    let mut s = pass_map(20.0, 100.0);
+    s.add_road(t, a, 1.0).unwrap();
+    s.set_port(t, Hex::new(5, 1).center_x(), Hex::new(5, 1).center_z());
+    s.advance(LOOK);
+    assert!(!s.is_hub(t), "one road calling");
+    // Its harbour grown two berths beyond its first: its berths count as routes calling.
+    let mut s = pass_map(20.0, 100.0);
+    s.add_road(t, a, 1.0).unwrap();
+    s.set_port(t, Hex::new(5, 1).center_x(), Hex::new(5, 1).center_z());
+    let e = s.world.resource::<enterprise_core::state::Towns>().0[t];
+    s.world.get_mut::<enterprise_core::works::Works>(e).unwrap().berths = enterprise_core::works::PORT_HUB_BERTHS as u32;
+    s.advance(LOOK);
+    assert!(s.is_hub(t), "a port of three berths and a road: a hub");
+}
+
+#[test]
 fn a_route_calls_at_the_hub_on_its_way_out_and_home() {
     let mut s = pass_map(20.0, 100.0);
     let (a, t, b) = (0, 1, 2);

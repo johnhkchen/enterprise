@@ -144,7 +144,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
         takings: Res<Takings>, mut freight: ResMut<Freight>, mut whys: ResMut<Whys>, mut ledger: ResMut<Ledger>,
         mut cash: ResMut<CashBook>, pallets: Res<Pallets>,
         mut towns: Query<(Entity, &Town, &mut Hub, &mut Money, &Stock, &Trades, Option<&Farm>, Option<&Roster>,
-            Option<&OffMap>)>,
+            Option<&OffMap>, Option<&crate::works::Works>)>,
         mut routes: Query<(Entity, &Route, &mut RouteState, Option<&RoutePath>)>) {
     let (now, day) = (clock.now, content.day_ticks);
     let today = today(&content, now);
@@ -169,16 +169,19 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
     let net = build!();
     let mut more = false;
     for &(_, e) in &order {
-        let (_, town, mut hub, mut money, stock, trades, farm, roster, off) = towns.get_mut(e).unwrap();
+        let (_, town, mut hub, mut money, stock, trades, farm, roster, off, works) = towns.get_mut(e).unwrap();
         if hub.storehouse || off.is_some() {
             continue;
         }
+        // A port's berths count as routes calling (John: "a highly port-endowed town becomes an excellent freight
+        // forwarding point"): one with `PORT_HUB_BERTHS` is a hub's site though no road of others passes it.
+        let berths = works.filter(|w| w.port.is_some()).map_or(0, |w| w.berths as usize);
         let passing = net.through(town.id).len();
-        if passing == 0 {
+        if passing == 0 && berths < crate::works::PORT_HUB_BERTHS {
             continue;
         }
         let calls = net.calls(town.id);
-        if passing < 2 && passing + calls < d.hub_routes as usize {
+        if passing < 2 && passing + calls + berths < d.hub_routes as usize {
             continue;
         }
         // (a market with a Merchant: one without a roster has its own)
@@ -201,7 +204,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, territo
     // Each hub's day: its shops and draymen, its forwarder's bookings and blocks, and the routes round it.
     let mut wind: Vec<RouteId> = Vec::new();
     for &(id, e) in &order {
-        let (_, _, mut hub, money, _, trades, farm, roster, _) = towns.get_mut(e).unwrap();
+        let (_, _, mut hub, money, _, trades, farm, roster, _, _) = towns.get_mut(e).unwrap();
         if !hub.storehouse {
             continue;
         }

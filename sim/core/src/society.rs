@@ -333,7 +333,15 @@ impl Society {
                 self.world.get::<RouteState>(e).and_then(|s| s.last_departure)) else { continue };
             let carrier = self.world.get::<Route>(e).map(|r| r.carrier);
             if carrier == Some(crate::map::Carrier::Ship) {
-                continue; // a ship's wake wears no trail
+                // A ship's wake wears no trail; it calls at both its ports (`call_at_port`), once a sailing.
+                let mut map = self.world.resource_mut::<crate::map::Map>();
+                if map.worn.get(&id).is_none_or(|&t| t < left) {
+                    map.worn.insert(id, left);
+                    let route = *self.world.get::<Route>(e).expect("a route");
+                    self.call_at_port(route.from_id);
+                    self.call_at_port(route.to_id);
+                }
+                continue;
             }
             let llama_road = carrier == Some(crate::map::Carrier::Llama);
             let mut map = self.world.resource_mut::<crate::map::Map>();
@@ -357,6 +365,9 @@ impl Society {
             return;
         }
         self.world.resource_mut::<crate::map::Map>().replanned = today;
+        for t in 0..self.town_count() {
+            self.review_berths(t);
+        }
         let per_hex = self.per_hex();
         for id in 0..self.routes.len() {
             let e = self.routes[id];

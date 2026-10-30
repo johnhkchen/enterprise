@@ -1033,6 +1033,26 @@ mod's), but no road ever chose it. Then: build them first.
   as a road's carrier is, both setting out and on arrival (`settlers::way`: the next run's Theramore sent two parties by
   llama, and both came home the day they arrived, the arrival's check still by wagon); a boat sails only water (it had
   counted a cliff as water to sail).
+- **A harbour past the town's edge** (seed 1717: Hillsbrad, the sea 81 blocks east of its bell and its plan ending at
+  72, laid none and its only road, by llama, never ran). Where no avenue meets water inside the plan, the harbour is
+  looked for past its edge (to 128 blocks) and along lines 32 and 64 blocks beside the avenues, with a road out to it
+  (`Harbour.head`); an avenue's own shore is taken first wherever there is one (a side lane's scored higher at Corin's
+  Crossing and laid 1 quay tile for its 39).
+- **The waterfront grows like the fields (John, 2026-10-30: "the same type of logic as farmland spread to coastline
+  buildouts"; growth by "Both").** A harbour is a town's first berth; each berth after it is the next stretch of
+  shore (`Harbour.grow`: 24 more quay cells along the shore from where it ends, nearest the head first, a jetty and
+  fishing boat from its deepest water, a warehouse, fish market or customs house behind it). A town grows one for each
+  tier it rises to (`LandAdapter.growWaterfront`), and pays 6 for one (`Work::Berth`, `works.rs` `review_berths`) when
+  its ships' calls a season (sailings from or to its port, fading over 30 days) pass 8 a berth, or its Fishermen at
+  home pass 2 boats a berth.
+- **The water is a coastal town's fishing ground (John: "the use of the water as a fishing plot can act as a
+  substitute for farm spread").** A town with a harbour has its Fishermen at home fish: 4 cod a day a level (the mod's
+  docks), as many as its berths moor boats for, up to 12 a day a water hex it holds (the harbour's own counts as one),
+  twice with stone docks (`rules/kit.rs`).
+- **A port grows into a forwarding point (John: "sea trade becomes the upgrade path as a highly port-endowed town
+  becomes an excellent freight forwarding point").** A port's berths beyond its first count as routes calling toward
+  a freight hub; with two it's a hub's site though no road of others passes it (`rules/freight.rs`,
+  `PORT_HUB_BERTHS`).
 - **Seed 1001, what it showed.** Five towns 300 to 950 blocks apart, four with harbours, none rich: each spent its
   64-emerald founding purse on stalls and fields by day 5, and the best load any road saw in 30 days was worth 8.6
   against an 820-block road's 16. The study's roads went to each town's two nearest, so the two ports on one sea

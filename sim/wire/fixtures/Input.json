@@ -2840,6 +2840,13 @@
   },
   {
     "Built": {
+      "town": 7,
+      "work": "Berth",
+      "share": 1.75
+    }
+  },
+  {
+    "Built": {
       "town": 4294967295,
       "work": "Wall",
       "share": 1.0

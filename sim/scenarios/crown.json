@@ -6,7 +6,7 @@
       "note": "a society from a pack with gold",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Create": {
             "pack": {
@@ -166,7 +166,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f00c0bb01080f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f146d696e6563726166743a69726f6e5f696e676f74000000000000d03f400000000000000000000000000000000000000000000000001040146d696e6563726166743a73756761725f63616e657b14ae47e17aa43f40000000000000000000000000000000000000000000000000e03f0f6d696e6563726166743a70617065727b14ae47e17aa43f40000000000000000000000000000000000000000000000000f03f146d696e6563726166743a676f6c645f696e676f74000000000000084040000000000000000000000000000000000000000000000000f03f0208636c6f7468696e670772656164696e6706086d65726368616e74066661726d6572096c696272617269616e087368657068657264046e6f6e65066e69747769740201066661726d6572010f6d696e6563726166743a776865617400000000000008400f6d696e6563726166743a6272656164000000000000f03f01096c696272617269616e01146d696e6563726166743a73756761725f63616e65000000000000f03f0f6d696e6563726166743a7061706572000000000000f03f0103636f77010f6d696e6563726166743a7768656174000000000000d03f01156d696e6563726166743a636f6f6b65645f6265656600000000000000400000020a62697274685f6d6f6f64000000000000e03f0b7761676f6e5f736c6f74730000000000003e400007",
+      "request_postcard": "01908ad6f8cf9a88a2b60100c0bb01080f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f146d696e6563726166743a69726f6e5f696e676f74000000000000d03f400000000000000000000000000000000000000000000000001040146d696e6563726166743a73756761725f63616e657b14ae47e17aa43f40000000000000000000000000000000000000000000000000e03f0f6d696e6563726166743a70617065727b14ae47e17aa43f40000000000000000000000000000000000000000000000000f03f146d696e6563726166743a676f6c645f696e676f74000000000000084040000000000000000000000000000000000000000000000000f03f0208636c6f7468696e670772656164696e6706086d65726368616e74066661726d6572096c696272617269616e087368657068657264046e6f6e65066e69747769740201066661726d6572010f6d696e6563726166743a776865617400000000000008400f6d696e6563726166743a6272656164000000000000f03f01096c696272617269616e01146d696e6563726166743a73756761725f63616e65000000000000f03f0f6d696e6563726166743a7061706572000000000000f03f0103636f77010f6d696e6563726166743a7768656174000000000000d03f01156d696e6563726166743a636f6f6b65645f6265656600000000000000400000020a62697274685f6d6f6f64000000000000e03f0b7761676f6e5f736c6f74730000000000003e400007",
       "response": {
         "Done": {
           "outputs": [],
@@ -179,7 +179,7 @@
       "note": "two towns forty blocks apart, the capital with its Merchant and a vendor by it, Vale with its Merchant and four idle hands; bread and money in both",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Apply": {
             "inputs": [
@@ -304,7 +304,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f030e070943726f776e6d65726500136d696e6563726166743a6f766572776f726c64367736070456616c6500136d696e6563726166743a6f766572776f726c64860177360802136d696e6563726166743a6f766572776f726c64367722000f00086d65726368616e74031076696c6c616765722d6361706974616c0f01086d65726368616e74030d76696c6c616765722d76616c650f01046e6f6e65010a76696c6c616765722d610f01046e6f6e65010a76696c6c616765722d620f01046e6f6e65010a76696c6c616765722d630f01046e6f6e65010a76696c6c616765722d64010001000000000000604001010100000000000060400200c0843d0201a08d061c000101",
+      "request_postcard": "01908ad6f8cf9a88a2b601030e070943726f776e6d65726500136d696e6563726166743a6f766572776f726c64367736070456616c6500136d696e6563726166743a6f766572776f726c64860177360802136d696e6563726166743a6f766572776f726c64367722000f00086d65726368616e74031076696c6c616765722d6361706974616c0f01086d65726368616e74030d76696c6c616765722d76616c650f01046e6f6e65010a76696c6c616765722d610f01046e6f6e65010a76696c6c616765722d620f01046e6f6e65010a76696c6c616765722d630f01046e6f6e65010a76696c6c616765722d64010001000000000000604001010100000000000060400200c0843d0201a08d061c000101",
       "response": {
         "Done": {
           "outputs": [],
@@ -317,7 +317,7 @@
       "note": "no realms, no exchange yet",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Ask": {
             "queries": [
@@ -328,7 +328,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f04031a1b16",
+      "request_postcard": "01908ad6f8cf9a88a2b60104031a1b16",
       "response": {
         "Done": {
           "outputs": [],
@@ -400,7 +400,7 @@
       "note": "the Coast opened by its host at a Market point, 20,000 spurs in its account, trading with the capital",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Apply": {
             "inputs": [
@@ -426,7 +426,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f0301230974686520436f61737405136d696e6563726166743a6f766572776f726c64bf2577360105636f617374a09c010100",
+      "request_postcard": "01908ad6f8cf9a88a2b6010301230974686520436f61737405136d696e6563726166743a6f766572776f726c64bf2577360105636f617374a09c010100",
       "response": {
         "Done": {
           "outputs": [],
@@ -439,7 +439,7 @@
       "note": "the Coast is a town of its own at a Market point; Realms tells of it",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Ask": {
             "queries": [
@@ -449,7 +449,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f0402011a",
+      "request_postcard": "01908ad6f8cf9a88a2b6010402011a",
       "response": {
         "Done": {
           "outputs": [],
@@ -526,7 +526,7 @@
       "note": "the capital named in peacetime, 16 spurs a day; its exchange opens the market across the sea",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Apply": {
             "inputs": [
@@ -540,7 +540,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f0301240010",
+      "request_postcard": "01908ad6f8cf9a88a2b6010301240010",
       "response": {
         "Done": {
           "outputs": [],
@@ -553,7 +553,7 @@
       "note": "the market across the sea is a point too; the exchange at the capital, in peace",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Ask": {
             "queries": [
@@ -563,7 +563,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f0402011b",
+      "request_postcard": "01908ad6f8cf9a88a2b6010402011b",
       "response": {
         "Done": {
           "outputs": [],
@@ -657,7 +657,7 @@
       "note": "mobilising at 480 spurs a day: the capital mints, and asks for a gold shop",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Apply": {
             "inputs": [
@@ -676,7 +676,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f030200b0092500e003",
+      "request_postcard": "01908ad6f8cf9a88a2b601030200b0092500e003",
       "response": {
         "Done": {
           "outputs": [
@@ -835,7 +835,7 @@
       "note": "the host put a vendor up by the capital for the crown",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Apply": {
             "inputs": [
@@ -854,7 +854,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f03012802136d696e6563726166743a6f766572776f726c64367722",
+      "request_postcard": "01908ad6f8cf9a88a2b60103012802136d696e6563726166743a6f766572776f726c64367722",
       "response": {
         "Done": {
           "outputs": [],
@@ -867,7 +867,7 @@
       "note": "a look: the vendor, new, set to nothing: the core says what it shows, its card funded",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Apply": {
             "inputs": [
@@ -903,7 +903,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f03021f02136d696e6563726166743a6f766572776f726c643677220000000000000000000000940a",
+      "request_postcard": "01908ad6f8cf9a88a2b60103021f02136d696e6563726166743a6f766572776f726c643677220000000000000000000000940a",
       "response": {
         "Done": {
           "outputs": [
@@ -938,7 +938,7 @@
       "note": "a look: a player sold 16 gold into the vendor, its card paid out",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Apply": {
             "inputs": [
@@ -974,7 +974,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f03021f02136d696e6563726166743a6f766572776f726c6436772201010700089509103600000000f80a",
+      "request_postcard": "01908ad6f8cf9a88a2b60103021f02136d696e6563726166743a6f766572776f726c6436772201010700089509103600000000f80a",
       "response": {
         "Done": {
           "outputs": [
@@ -1009,7 +1009,7 @@
       "note": "the war, mobilising",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Ask": {
             "queries": [
@@ -1019,7 +1019,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f0402161b",
+      "request_postcard": "01908ad6f8cf9a88a2b6010402161b",
       "response": {
         "Done": {
           "outputs": [],
@@ -1091,7 +1091,7 @@
       "note": "war against a faction: Vale is levied",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Apply": {
             "inputs": [
@@ -1104,7 +1104,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f0301260766616374696f6e",
+      "request_postcard": "01908ad6f8cf9a88a2b6010301260766616374696f6e",
       "response": {
         "Done": {
           "outputs": [
@@ -1123,7 +1123,7 @@
       "note": "the front is a Market point north of the capital",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Ask": {
             "queries": [
@@ -1133,7 +1133,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f04020116",
+      "request_postcard": "01908ad6f8cf9a88a2b60104020116",
       "response": {
         "Done": {
           "outputs": [],
@@ -1247,7 +1247,7 @@
       "note": "ten days of war",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Apply": {
             "inputs": [
@@ -1260,7 +1260,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f030100f8dd0e",
+      "request_postcard": "01908ad6f8cf9a88a2b601030100f8dd0e",
       "response": {
         "Done": {
           "outputs": [],
@@ -1273,7 +1273,7 @@
       "note": "the war ten days on",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Ask": {
             "queries": [
@@ -1283,7 +1283,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f0402161a",
+      "request_postcard": "01908ad6f8cf9a88a2b6010402161a",
       "response": {
         "Done": {
           "outputs": [],
@@ -1351,15 +1351,15 @@
       "note": "saved at war",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": "Save"
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f02",
+      "request_postcard": "01908ad6f8cf9a88a2b60102",
       "saved": {
         "format": 1,
-        "schema": 6877547819590943845,
-        "blob_len": 12251,
-        "blob_fnv": "0150ed758390a387"
+        "schema": 13133658512503964944,
+        "blob_len": 12302,
+        "blob_fnv": "fa857227bb1f4c13"
       }
     },
     {
@@ -1377,7 +1377,7 @@
       "note": "the same after the load",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Ask": {
             "queries": [
@@ -1388,7 +1388,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f0403161a1b",
+      "request_postcard": "01908ad6f8cf9a88a2b6010403161a1b",
       "response": {
         "Done": {
           "outputs": [],
@@ -1480,7 +1480,7 @@
       "note": "peace",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Apply": {
             "inputs": [
@@ -1489,7 +1489,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f030127",
+      "request_postcard": "01908ad6f8cf9a88a2b601030127",
       "response": {
         "Done": {
           "outputs": [
@@ -1519,7 +1519,7 @@
       "note": "the war over",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Ask": {
             "queries": [
@@ -1528,7 +1528,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f040116",
+      "request_postcard": "01908ad6f8cf9a88a2b601040116",
       "response": {
         "Done": {
           "outputs": [],
@@ -1576,7 +1576,7 @@
       "note": "a market on a place taken: refused",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Apply": {
             "inputs": [
@@ -1600,7 +1600,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f03012305416761696e05136d696e6563726166743a6f766572776f726c64bf25773601000000",
+      "request_postcard": "01908ad6f8cf9a88a2b60103012305416761696e05136d696e6563726166743a6f766572776f726c64bf25773601000000",
       "response": {
         "Refused": {
           "why": {
@@ -1617,7 +1617,7 @@
       "note": "a market that is a desk: refused",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Apply": {
             "inputs": [
@@ -1641,7 +1641,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f030123074e6f776865726500136d696e6563726166743a6f766572776f726c64b40177b40101000000",
+      "request_postcard": "01908ad6f8cf9a88a2b601030123074e6f776865726500136d696e6563726166743a6f766572776f726c64b40177b40101000000",
       "response": {
         "Refused": {
           "why": {
@@ -1658,7 +1658,7 @@
       "note": "a realm the core hasn't: refused",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Apply": {
             "inputs": [
@@ -1682,7 +1682,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f0301230841746c616e74697305136d696e6563726166743a6f766572776f726c64b40177b401010861746c616e7469730000",
+      "request_postcard": "01908ad6f8cf9a88a2b6010301230841746c616e74697305136d696e6563726166743a6f766572776f726c64b40177b401010861746c616e7469730000",
       "response": {
         "Refused": {
           "why": {
@@ -1699,7 +1699,7 @@
       "note": "a market trading with a town that isn't there: refused",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Apply": {
             "inputs": [
@@ -1725,7 +1725,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f030123064c6f6e656c7905136d696e6563726166743a6f766572776f726c64b40177b4010100000109",
+      "request_postcard": "01908ad6f8cf9a88a2b601030123064c6f6e656c7905136d696e6563726166743a6f766572776f726c64b40177b4010100000109",
       "response": {
         "Refused": {
           "why": {
@@ -1742,7 +1742,7 @@
       "note": "a theatre the core hasn't: refused",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Apply": {
             "inputs": [
@@ -1755,7 +1755,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f03012603736561",
+      "request_postcard": "01908ad6f8cf9a88a2b60103012603736561",
       "response": {
         "Refused": {
           "why": {
@@ -1772,7 +1772,7 @@
       "note": "a capital that isn't a town: refused",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Apply": {
             "inputs": [
@@ -1786,7 +1786,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f0301240901",
+      "request_postcard": "01908ad6f8cf9a88a2b6010301240901",
       "response": {
         "Refused": {
           "why": {
@@ -1803,7 +1803,7 @@
       "note": "the crown's shop at a desk: refused",
       "request": {
         "abi": 1,
-        "schema": 6877547819590943845,
+        "schema": 13133658512503964944,
         "command": {
           "Apply": {
             "inputs": [
@@ -1822,7 +1822,7 @@
           }
         }
       },
-      "request_postcard": "01e588ecc3d9a9fdb85f03012800136d696e6563726166743a6f766572776f726c64367736",
+      "request_postcard": "01908ad6f8cf9a88a2b60103012800136d696e6563726166743a6f766572776f726c64367736",
       "response": {
         "Refused": {
           "why": {

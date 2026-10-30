@@ -375,6 +375,7 @@ fn works() -> Vec<Work> {
         Work::Hall { kind: String::new() },
         Work::Field { crop: 0 },
         Work::Field { crop: BIGGEST_ID },
+        Work::Berth,
     ]
 }
 

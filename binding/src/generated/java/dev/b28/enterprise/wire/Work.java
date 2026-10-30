@@ -9,7 +9,14 @@ import java.util.Objects;
  * {@code library}, {@code smithy}, {@code watchtower}, {@code stone_docks}, {@code caravanserai}); a field of a crop; a family's home (two beds,
  * {@code people.rs}), where the host finds room by the bell.
  */
-public sealed interface Work permits Work.Bridge, Work.Wall, Work.Hall, Work.Field, Work.Home, Work.Pasture {
+public sealed interface Work
+        permits Work.Bridge,
+                Work.Wall,
+                Work.Hall,
+                Work.Field,
+                Work.Home,
+                Work.Pasture,
+                Work.Berth {
     void encode(PostcardOut out);
 
     static Work decode(PostcardIn in) {
@@ -21,6 +28,7 @@ public sealed interface Work permits Work.Bridge, Work.Wall, Work.Hall, Work.Fie
             case 3 -> new Field(in.u32());
             case 4 -> new Home();
             case 5 -> new Pasture(in.u32());
+            case 6 -> new Berth();
             default -> throw in.unknownVariant("Work", at);
         };
     }
@@ -93,6 +101,17 @@ public sealed interface Work permits Work.Bridge, Work.Wall, Work.Hall, Work.Fie
         public void encode(PostcardOut out) {
             out.variant(5);
             out.u32(this.grass);
+        }
+    }
+
+    /**
+     * A berth on the town's waterfront ({@code works.rs} {@code call_at_port}): its ships outgrew the berths it has, and it paid for
+     * the next stretch of quay along its shore, a jetty and a building behind it, for the host to lay.
+     */
+    record Berth() implements Work {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(6);
         }
     }
 }

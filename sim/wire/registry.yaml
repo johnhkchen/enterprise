@@ -1593,6 +1593,8 @@ Work:
       Pasture:
         STRUCT:
           - grass: U32
+    6:
+      Berth: UNIT
 WorkView:
   STRUCT:
     - work:

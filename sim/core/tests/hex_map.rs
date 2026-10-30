@@ -718,3 +718,35 @@ fn a_bare_road_takes_ship_once_both_towns_have_ports() {
     assert_eq!(s.route_carrier(road), Carrier::Ship, "by sea now");
     assert_eq!(s.route_path(road).and_then(|p| p.first().copied()), Some(Hex::new(0, 1)));
 }
+
+#[test]
+fn a_busy_port_pays_for_berths_and_says_them_to_the_host() {
+    let (mut s, road) = farm_and_mill_by_sea(false, true);
+    road.expect("a way by sea");
+    for t in 0..2 {
+        s.pay(t, 200.0);
+    }
+    for day in 1..=90 {
+        s.advance(day * DAY);
+    }
+    let berths = s.works(0).berths + s.works(1).berths;
+    assert!(berths >= 1, "its ships' calls outgrew a berth: {} calls", s.works(0).calls);
+    let said = s.show_land(&[0, 1]).iter()
+        .filter(|o| matches!(o, enterprise_core::Output::Build { work: enterprise_core::wire::Work::Berth, .. })).count();
+    assert_eq!(said as u32, berths, "each said to the host to lay, with its town's survey");
+}
+
+#[test]
+fn fishermen_beyond_the_boats_want_a_berth() {
+    let (mut s, _) = farm_and_mill_by_sea(false, true);
+    // Five Fishermen, one of them away captaining the ship: four at home, two boats a berth.
+    s.set_roster(0, &[("merchant", 1), ("fisherman", 1), ("fisherman", 1), ("fisherman", 1), ("fisherman", 1),
+        ("fisherman", 1)]);
+    s.pay(0, 100.0);
+    s.advance(DAY);
+    let home = s.roster(0).hands.iter().filter(|h| s.content().trades[h.trade].name == "fisherman" && !h.away).count();
+    assert_eq!(home, 4);
+    assert_eq!(s.works(0).berths, 1, "four Fishermen at home, two boats a berth: a second berth");
+    s.advance(3 * DAY);
+    assert_eq!(s.works(0).berths, 1, "and no more");
+}

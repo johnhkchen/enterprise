@@ -249,6 +249,7 @@ public final class LandAdapter {
                 int since = sinceCounted.getOrDefault(town, CROPS_EVERY);
                 if (since >= CROPS_EVERY) {
                     inputs.addAll(crops(level, town, desk.getKey().pos(), bell));
+                    growWaterfront(level, town, bell);
                     since = 0;
                 }
                 sinceCounted.put(town, since + 1);
@@ -256,6 +257,44 @@ public final class LandAdapter {
             }
         }
         return inputs;
+    }
+
+    /**
+     * A town that rose a tier since its waterfront last grew grows it a stretch (`Harbour.grow`; John: "the same type
+     * of logic as farmland spread to coastline buildouts"): a hamlet's jetty gains its quay as a village, more as a town.
+     */
+    private void growWaterfront(ServerLevel level, long town, BlockPos bell) {
+        var fronts = dev.b28.enterprise.territory.Waterfronts.get(level.getServer());
+        var front = fronts.of(town);
+        if (front == null) {
+            return;
+        }
+        long beds = level.getPoiManager().getInRange(t -> t.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.HOME),
+                bell, 64, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY).count();
+        int rank = dev.b28.enterprise.territory.Waterfronts.rank(
+                dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).tierOf(town, beds));
+        if (rank <= front.rank() || !loadedFor(level, waterfrontChunks(front))) {
+            return;
+        }
+        int cells = dev.b28.enterprise.territory.Harbour.grow(level,
+                dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town), front);
+        fronts.put(town, new dev.b28.enterprise.territory.Waterfronts.Front(front.head(), front.out(), front.w(),
+                front.sea(), front.shore() + cells, front.stretches() + 1, rank));
+        Enterprise.LOGGER.info("Town {}'s waterfront grows with its tier: {} more of quay ({} in all)", town, cells,
+                front.shore() + cells);
+    }
+
+    /** The chunks round a waterfront's head as far as its next stretch could reach along the shore. */
+    private static List<ChunkPos> waterfrontChunks(dev.b28.enterprise.territory.Waterfronts.Front front) {
+        int r = front.shore() + dev.b28.enterprise.territory.Harbour.STRETCH + 16;
+        List<ChunkPos> chunks = new ArrayList<>();
+        ChunkPos a = new ChunkPos(front.head().offset(-r, 0, -r)), b = new ChunkPos(front.head().offset(r, 0, r));
+        for (int x = a.x; x <= b.x; x++) {
+            for (int z = a.z; z <= b.z; z++) {
+                chunks.add(new ChunkPos(x, z));
+            }
+        }
+        return chunks;
     }
 
     /** The hexes within {@value #REACH} of {@code centre} queued for their ground (those the core has otherwise). */
@@ -930,6 +969,10 @@ public final class LandAdapter {
                 if (h.port()) {
                     pending.add(new Input.Port(town, h.head().getX(), h.head().getZ()));
                 }
+                // Its waterfront, to grow along the shore from (`Harbour.grow`).
+                dev.b28.enterprise.territory.Waterfronts.get(level.getServer()).put(town,
+                        new dev.b28.enterprise.territory.Waterfronts.Front(h.head(), h.out(), h.w(), h.sea(), h.shore(), 0,
+                                dev.b28.enterprise.territory.Waterfronts.rank(tierNow)));
             });
         }
         int beds = 0, homes = 0, shops = 0, stalls = 0;
@@ -1142,6 +1185,24 @@ public final class LandAdapter {
     private boolean place(ServerLevel level, long town, BlockPos bell, Work work, double share, Optional<BlockPos> site,
             Work[] reported) {
         return switch (work) {
+            case Work.Berth b -> {
+                // The waterfront's next stretch along its shore (`Harbour.grow`), its ground loaded first.
+                var fronts = dev.b28.enterprise.territory.Waterfronts.get(level.getServer());
+                var front = fronts.of(town);
+                if (front == null) {
+                    yield false;
+                }
+                if (!loadedFor(level, waterfrontChunks(front))) {
+                    yield false;
+                }
+                int cells = dev.b28.enterprise.territory.Harbour.grow(level,
+                        dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town), front);
+                fronts.put(town, new dev.b28.enterprise.territory.Waterfronts.Front(front.head(), front.out(), front.w(),
+                        front.sea(), front.shore() + cells, front.stretches() + 1, front.rank()));
+                Enterprise.LOGGER.info("Town {}'s waterfront grows a berth: {} more of quay ({} in all)", town, cells,
+                        front.shore() + cells);
+                yield true;
+            }
             case Work.Pasture p -> {
                 // The largest rectangle of open grassland on the town's zoned ground (`Pastures.site`), fenced.
                 var found = dev.b28.enterprise.territory.Pastures.site(level, bell);

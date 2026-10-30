@@ -57,6 +57,9 @@ pub struct LandBook {
     pub shown: BTreeMap<TownId, Vec<(What, f64)>>,
     /// The homes each town built that the host hasn't laid yet.
     pub homes: BTreeMap<TownId, u32>,
+    /// The berths each town paid for that the host hasn't laid yet.
+    #[serde(default)]
+    pub berths: BTreeMap<TownId, u32>,
 }
 
 impl LandBook {
@@ -194,6 +197,9 @@ impl Society {
             for _ in 0..self.unlaid_pastures(t) {
                 out.push(Output::Build { town: crate::wire::no(t), work: Work::Pasture { grass: 0 }, share: 1.0 });
             }
+            for _ in 0..book.berths.get(&t).copied().unwrap_or(0) {
+                out.push(Output::Build { town: crate::wire::no(t), work: Work::Berth, share: 1.0 });
+            }
         }
         out
     }
@@ -202,12 +208,13 @@ impl Society {
     /// of its crop). A work the town hasn't is a stale view: ignored.
     pub fn laid(&mut self, town: TownId, work: &Work, share: f64) {
         let share = share.clamp(0.0, 1.0);
-        if *work == Work::Home {
+        if *work == Work::Home || *work == Work::Berth {
             let mut book = self.world.resource_mut::<LandBook>();
-            if let Some(n) = book.homes.get_mut(&town) {
+            let unlaid = if *work == Work::Home { &mut book.homes } else { &mut book.berths };
+            if let Some(n) = unlaid.get_mut(&town) {
                 *n = n.saturating_sub(1);
                 if *n == 0 {
-                    book.homes.remove(&town);
+                    unlaid.remove(&town);
                 }
             }
             return;
@@ -266,6 +273,9 @@ impl Society {
         }
         for _ in 0..self.unlaid_pastures(town) {
             works.push(WorkView { work: Work::Pasture { grass: 0 }, laid: 1.0, done: true, shown: 0.0 });
+        }
+        for _ in 0..book.berths.get(&town).copied().unwrap_or(0) {
+            works.push(WorkView { work: Work::Berth, laid: 1.0, done: true, shown: 0.0 });
         }
         let plots = self.farm(town).map(|f| f.farm.plots).unwrap_or_default().into_iter()
             .filter(|&(_, n)| n > 0)

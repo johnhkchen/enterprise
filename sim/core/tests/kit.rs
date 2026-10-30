@@ -9,10 +9,10 @@ use enterprise_core::{Content, Good, Hex, Society};
 const DAY: u64 = 24_000;
 const LOOK: u64 = 1_200;
 
-const NAMES: [&str; 34] = ["raw_iron", "coal", "raw_gold", "lapis_lazuli", "iron_ingot", "iron_hoe", "iron_pickaxe",
+const NAMES: [&str; 35] = ["raw_iron", "coal", "raw_gold", "lapis_lazuli", "iron_ingot", "iron_hoe", "iron_pickaxe",
     "iron_sword", "iron_chestplate", "bow", "stick", "string", "feather", "oak_log", "wheat_seeds", "dandelion", "poppy",
     "flint", "sand", "clay_ball", "cobblestone", "beef", "porkchop", "chicken", "iron_axe", "leather", "rabbit",
-    "rabbit_hide", "sugar_cane", "apple", "sweet_berries", "spruce_log", "cactus", "ink_sac"];
+    "rabbit_hide", "sugar_cane", "apple", "sweet_berries", "spruce_log", "cactus", "ink_sac", "cod"];
 
 fn content() -> Content {
     Content::new(NAMES.iter().map(|n| Good::new(n, 0.1, 64)).collect(), DAY)
@@ -420,4 +420,27 @@ fn the_kit_is_saved_with_the_society() {
     loaded.advance(6 * DAY);
     assert_eq!(loaded.kit(t), s.kit(t), "and goes on as if it had never been");
     assert_eq!(loaded.town(t).stock, s.town(t).stock);
+}
+
+#[test]
+fn fishermen_fish_their_towns_waters_from_its_harbour() {
+    use enterprise_core::works::{BOATS_PER_BERTH, COD_PER_LEVEL, COD_PER_WATER_HEX};
+    // No harbour, no catch.
+    let mut s = Society::new(content());
+    let t = town(&mut s, &[("fisherman", 2)]);
+    s.advance(DAY);
+    assert_eq!(stock(&s, t, "cod"), 0.0, "no harbour to fish from");
+    // A harbour: a level-2 Fisherman lands its cod a day a level.
+    let mut s = Society::new(content());
+    let t = town(&mut s, &[("fisherman", 2)]);
+    s.set_port(t, Hex::new(3, 4).center_x(), Hex::new(3, 4).center_z());
+    s.advance(DAY);
+    assert_eq!(stock(&s, t, "cod"), 2.0 * COD_PER_LEVEL);
+    // More Fishermen than the harbour's boats: only its boats' fish; and no more than its one hex of water yields.
+    let mut s = Society::new(content());
+    let t = town(&mut s, &[("fisherman", 3), ("fisherman", 3), ("fisherman", 3)]);
+    s.set_port(t, Hex::new(3, 4).center_x(), Hex::new(3, 4).center_z());
+    s.advance(DAY);
+    assert_eq!(BOATS_PER_BERTH, 2);
+    assert_eq!(stock(&s, t, "cod"), (2.0 * 3.0 * COD_PER_LEVEL).min(COD_PER_WATER_HEX), "two boats, one hex of grounds");
 }
