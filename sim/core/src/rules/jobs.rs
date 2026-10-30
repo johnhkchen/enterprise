@@ -32,13 +32,13 @@ const PARTY_MOST: usize = 2;
 pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signals: Res<Signals>, order: Res<Towns>,
         settlers: Res<Settlers>, hands: Res<crate::roster::Hands>, mut outbox: ResMut<Outbox>, mut hiring: ResMut<Hiring>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, seed: Res<Rng>,
         mut dice: ResMut<Dice>, mut recipes: Local<Option<Vec<crate::services::Recipe>>>,
-        routes: Query<(&Route, &RouteState)>,
+        (routes, map, territory): (Query<(&Route, &RouteState)>, Res<crate::map::Map>, Res<crate::territory::Territory>),
         mut towns: Query<(&Town, &mut Money, &mut People, &Stock, &Trades, &Farm, &mut Deposits, &mut Budget,
-            Option<&mut Roster>, &mut Lockers, Option<&crate::herds::Herds>)>) {
+            Option<&mut Roster>, &mut Lockers, Option<&crate::herds::Herds>, Option<&crate::works::Works>)>) {
     let (now, today) = (clock.now, clock.now / content.day_ticks.max(1));
     // What each town's villagers buy a day at its managed lockers: its neighbours make it for them.
     let demand: std::collections::BTreeMap<usize, std::collections::BTreeMap<crate::content::GoodId, f64>> = towns.iter()
-        .filter_map(|(town, .., roster, lockers, _)| Some((town.id, crate::lockers::census_demand(roster?, lockers))))
+        .filter_map(|(town, .., roster, lockers, _, _)| Some((town.id, crate::lockers::census_demand(roster?, lockers))))
         .collect();
     if content.is_changed() {
         *recipes = None;
@@ -57,7 +57,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
             far.8.map(|r| (&*far.9, &*r)));
     }
     for &e in order.0.iter() {
-        let Ok((town, mut money, mut people, stock, trades, farm, mut deposits, mut budget, roster, mut lockers, herds)) =
+        let Ok((town, mut money, mut people, stock, trades, farm, mut deposits, mut budget, roster, mut lockers, herds, works)) =
             towns.get_mut(e) else { continue };
         let Some(mut roster) = roster else { continue };
         if hiring.reviewed.get(&town.id) == Some(&today) {
@@ -85,6 +85,10 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
         let mut far = crate::jobs::far_marbles(&content, recipes, &roster, far.iter().filter_map(|t| demand.get(t)));
         if let (Some(&worth), Some(merchant)) = (unmanned.get(&town.id), content.trade(crate::roster::MERCHANT)) {
             far.push((merchant, worth));
+        }
+        // Its fishing grounds unfished, a Fisherman's, as untended plots are a Farmer's.
+        if let Some(marbles) = crate::jobs::fishing_marbles(&content, works, territory.holding(town.id), &map, &roster) {
+            far.push(marbles);
         }
         let people = &mut *people;
         let mut place = Place { town: town.id, money: &mut money.0, purse: &mut people.purse,

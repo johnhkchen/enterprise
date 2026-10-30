@@ -444,3 +444,22 @@ fn fishermen_fish_their_towns_waters_from_its_harbour() {
     assert_eq!(BOATS_PER_BERTH, 2);
     assert_eq!(stock(&s, t, "cod"), (2.0 * 3.0 * COD_PER_LEVEL).min(COD_PER_WATER_HEX), "two boats, one hex of grounds");
 }
+
+#[test]
+fn a_ports_unfished_waters_are_a_fishermans_marbles() {
+    use enterprise_core::works::{COD_PER_LEVEL, COD_PER_WATER_HEX};
+    let fishing = |s: &Society, t: usize| s.job_bag(t).into_iter().find(|(n, _)| n == "fisherman").map(|(_, m)| m);
+    let mut s = Society::new(content());
+    let t = town(&mut s, &[("merchant", 1), ("none", 1)]);
+    assert_eq!(fishing(&s, t), None, "no harbour, no fishing");
+    s.set_port(t, Hex::new(3, 4).center_x(), Hex::new(3, 4).center_z());
+    let cod = s.content().goods[good(s.content(), "cod")].value;
+    let m = fishing(&s, t).expect("a harbour's waters unfished");
+    assert!((m - COD_PER_WATER_HEX * cod * 4.0).abs() < 1e-9, "four days of a water hex's cod: {m}");
+    // A Fisherman of 2 lands some of it: the rest is still marbles.
+    let mut s = Society::new(content());
+    let t = town(&mut s, &[("merchant", 1), ("fisherman", 2), ("none", 1)]);
+    s.set_port(t, Hex::new(3, 4).center_x(), Hex::new(3, 4).center_z());
+    let m = fishing(&s, t).expect("still unfished");
+    assert!((m - (COD_PER_WATER_HEX - 2.0 * COD_PER_LEVEL) * cod * 4.0).abs() < 1e-9, "{m}");
+}

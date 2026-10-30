@@ -299,7 +299,7 @@ public final class Earthworks {
     }
 
     /** The land's own ground at a column, under any tree; {@link Integer#MIN_VALUE} if it isn't loaded. */
-    static int height(ServerLevel level, int x, int z) {
+    public static int height(ServerLevel level, int x, int z) {
         if (!level.isLoaded(new BlockPos(x, 0, z))) {
             return Integer.MIN_VALUE;
         }

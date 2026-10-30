@@ -179,6 +179,8 @@ public final class Harbour {
 
     /** A stretch of shore the waterfront grows by: quay cells along it. */
     public static final int STRETCH = 24;
+    /** How far from the water a grown waterfront's way along its shore passes (over its own quay, and its walk). */
+    static final int WADE = 3;
 
     /**
      * The waterfront's next stretch (as a town's fields grow by holdings along a farm track, nearest the bell first:
@@ -193,7 +195,7 @@ public final class Harbour {
                 .getResource(net.minecraft.resources.ResourceLocation.parse("enterprise:structure/" + kingdom + "/harbour/jetty_timber_3x4.json"))
                 .isPresent() ? kingdom : "lordaeron";
         Shore head = new Shore(f.head(), f.out());
-        List<Shore> run = shore(level, head, f.shore() + STRETCH, f.w());
+        List<Shore> run = shore(level, head, f.shore() + STRETCH, f.w(), WADE);
         if (run.size() <= f.shore()) {
             return 0;
         }
@@ -578,6 +580,14 @@ public final class Harbour {
 
     /** The shore from the head, both ways along it: land columns beside the water, nearest the head first. */
     static List<Shore> shore(ServerLevel level, Shore head, int length, int w) {
+        return shore(level, head, length, w, 0);
+    }
+
+    /**
+     * As {@link #shore(ServerLevel, Shore, int, int)}, its way along the shore passing over land up to {@code wade}
+     * blocks from the water too: a grown waterfront's way out past its own quay, whose edge filled the first water.
+     */
+    static List<Shore> shore(ServerLevel level, Shore head, int length, int w, int wade) {
         List<Shore> out = new ArrayList<>();
         Set<Long> seen = new HashSet<>();
         ArrayDeque<BlockPos> q = new ArrayDeque<>();
@@ -592,10 +602,12 @@ public final class Harbour {
                     break;
                 }
             }
-            if (out1 == null) {
+            if (out1 == null && !nearWater(level, c, w, wade)) {
                 continue;
             }
-            out.add(new Shore(c, out1));
+            if (out1 != null) {
+                out.add(new Shore(c, out1));
+            }
             for (int dx = -1; dx <= 1; dx++) {
                 for (int dz = -1; dz <= 1; dz++) {
                     BlockPos n = c.offset(dx, 0, dz);
@@ -606,6 +618,18 @@ public final class Harbour {
             }
         }
         return out;
+    }
+
+    /** Is there water at level {@code w} within {@code wade} blocks of the column (0: never)? */
+    static boolean nearWater(ServerLevel level, BlockPos c, int w, int wade) {
+        for (int dx = -wade; dx <= wade; dx++) {
+            for (int dz = -wade; dz <= wade; dz++) {
+                if ((dx != 0 || dz != 0) && level.isLoaded(c.offset(dx, 0, dz)) && water(level, c.offset(dx, 0, dz)) == w) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /** A quay tile on a shore cell: its paving on the shore, its edge on the first water (filled to the bed), its face over the water. */

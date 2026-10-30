@@ -196,6 +196,7 @@ public final class LandAdapter {
         buildFounded(server);
         layTrails(server);
         explore(server);
+        growWaterfronts(server);
         List<Input> inputs = takePending();
         ServerLevel overworld = server.overworld();
         for (var desk : host.points().of(PointsAdapter.Kind.DESK).entrySet()) {
@@ -276,15 +277,37 @@ public final class LandAdapter {
                 bell, 64, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY).count();
         int rank = dev.b28.enterprise.territory.Waterfronts.rank(
                 dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).tierOf(town, beds));
-        if (rank <= front.rank() || !loadedFor(level, waterfrontChunks(front))) {
+        if (rank > front.rank()) {
+            fronts.put(town, front.owe(rank));
+        }
+    }
+
+    /** Waterfronts' stretches owed at most laid a look. */
+    static final int STRETCHES_PER_LOOK = 1;
+
+    /**
+     * The stretches owed (a berth the core asked for, a tier risen to) laid, a few a look: each waterfront's ground held
+     * loaded ({@link #LAYING}) until it is, then its next stretch along its shore (`Harbour.grow`).
+     */
+    private void growWaterfronts(MinecraftServer server) {
+        if (server == null) {
             return;
         }
-        int cells = dev.b28.enterprise.territory.Harbour.grow(level,
-                dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town), front);
-        fronts.put(town, new dev.b28.enterprise.territory.Waterfronts.Front(front.head(), front.out(), front.w(),
-                front.sea(), front.shore() + cells, front.stretches() + 1, rank));
-        Enterprise.LOGGER.info("Town {}'s waterfront grows with its tier: {} more of quay ({} in all)", town, cells,
-                front.shore() + cells);
+        ServerLevel level = server.overworld();
+        var fronts = dev.b28.enterprise.territory.Waterfronts.get(server);
+        int laid = 0;
+        for (long town : fronts.owed()) {
+            var front = fronts.of(town);
+            if (laid >= STRETCHES_PER_LOOK || !loadedFor(level, waterfrontChunks(front))) {
+                continue;
+            }
+            int cells = dev.b28.enterprise.territory.Harbour.grow(level,
+                    dev.b28.enterprise.territory.Kingdoms.get(server).of(town), front);
+            fronts.put(town, front.grown(cells));
+            Enterprise.LOGGER.info("Town {}'s waterfront grows a stretch: {} more of quay ({} in all, {} owed)", town, cells,
+                    front.shore() + cells, front.owed() - 1);
+            laid++;
+        }
     }
 
     /** Towns whose country has been looked over for villages this run (once each: the world's villages don't move). */
@@ -723,8 +746,18 @@ public final class LandAdapter {
                         dev.b28.enterprise.territory.Kingdoms.get(server).of(f.town()));
                 continue;
             }
-            // Its square only: the rest is built as any town's, in its kingdom's style, once its plan is laid.
-            var town = Expeditions.buildSquare(level, new BlockPos(f.x(), y, f.z()));
+            // Its square only: the rest is built as any town's, in its kingdom's style, once its plan is laid. On the
+            // land's own ground (not a tree's top), at the spot or, failing it, round it (seed 1717's Lakeshire was asked
+            // 1,084 times of one spot with no open ground).
+            Optional<Expeditions.Founding> town = Optional.empty();
+            for (int k = -1; k < 8 && town.isEmpty(); k++) {
+                int x = f.x() + (k < 0 ? 0 : (int) Math.round(FOUND_ROUND * Math.cos(Math.PI / 4 * k)));
+                int z = f.z() + (k < 0 ? 0 : (int) Math.round(FOUND_ROUND * Math.sin(Math.PI / 4 * k)));
+                int ground = dev.b28.enterprise.territory.Earthworks.height(level, x, z);
+                if (ground != Integer.MIN_VALUE && level.getFluidState(new BlockPos(x, ground, z)).isEmpty()) {
+                    town = Expeditions.buildSquare(level, new BlockPos(x, ground + 1, z));
+                }
+            }
             if (town.isEmpty()) {
                 Enterprise.LOGGER.info("No open ground to build {} at {} {}: asked again", f.name(), f.x(), f.z());
                 continue;
@@ -752,6 +785,8 @@ public final class LandAdapter {
 
     /** Chunks either side of a founded town's spot held loaded to build it: its square, desk and cottages within reach. */
     static final int FOUND_CHUNKS = 2;
+    /** How far round a founded town's spot its square is looked for where the spot has no open ground. */
+    static final int FOUND_ROUND = 16;
 
     /**
      * The builds the core asked for laid, once every look sent is shown: each but those laid and not yet said (asked for
@@ -1031,7 +1066,7 @@ public final class LandAdapter {
                 // Its waterfront, to grow along the shore from (`Harbour.grow`).
                 dev.b28.enterprise.territory.Waterfronts.get(level.getServer()).put(town,
                         new dev.b28.enterprise.territory.Waterfronts.Front(h.head(), h.out(), h.w(), h.sea(), h.shore(), 0,
-                                dev.b28.enterprise.territory.Waterfronts.rank(tierNow)));
+                                dev.b28.enterprise.territory.Waterfronts.rank(tierNow), 0));
             });
         }
         int beds = 0, homes = 0, shops = 0, stalls = 0;
@@ -1245,21 +1280,14 @@ public final class LandAdapter {
             Work[] reported) {
         return switch (work) {
             case Work.Berth b -> {
-                // The waterfront's next stretch along its shore (`Harbour.grow`), its ground loaded first.
+                // The waterfront owes its next stretch along its shore, laid as its ground loads (`growWaterfronts`):
+                // a town the core asks only while its desk is loaded can't hold its shore loaded till it is.
                 var fronts = dev.b28.enterprise.territory.Waterfronts.get(level.getServer());
                 var front = fronts.of(town);
                 if (front == null) {
                     yield false;
                 }
-                if (!loadedFor(level, waterfrontChunks(front))) {
-                    yield false;
-                }
-                int cells = dev.b28.enterprise.territory.Harbour.grow(level,
-                        dev.b28.enterprise.territory.Kingdoms.get(level.getServer()).of(town), front);
-                fronts.put(town, new dev.b28.enterprise.territory.Waterfronts.Front(front.head(), front.out(), front.w(),
-                        front.sea(), front.shore() + cells, front.stretches() + 1, front.rank()));
-                Enterprise.LOGGER.info("Town {}'s waterfront grows a berth: {} more of quay ({} in all)", town, cells,
-                        front.shore() + cells);
+                fronts.put(town, front.owe(front.rank()));
                 yield true;
             }
             case Work.Pasture p -> {

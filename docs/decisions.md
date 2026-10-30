@@ -1048,11 +1048,21 @@ mod's), but no road ever chose it. Then: build them first.
 - **The water is a coastal town's fishing ground (John: "the use of the water as a fishing plot can act as a
   substitute for farm spread").** A town with a harbour has its Fishermen at home fish: 4 cod a day a level (the mod's
   docks), as many as its berths moor boats for, up to 12 a day a water hex it holds (the harbour's own counts as one),
-  twice with stone docks (`rules/kit.rs`).
+  twice with stone docks (`rules/kit.rs`). Its waters unfished are a Fisherman's marbles in the job draw, as untended
+  plots are a Farmer's: four days of the cod they'd yield beyond what its Fishermen land (`jobs::fishing_marbles`; seed
+  1717's first run with fishing: one Fisherman in ten towns, its job draw blind to the water).
+- **Waterfront stretches are owed, then laid** (seed 1717: Refuge Pointe paid for two berths and laid none, the core
+  asking only while its desk was loaded and the shore's chunks loading after it went). A berth paid for or a tier
+  risen to is owed to the town's waterfront and laid as its ground loads, one a look (`LandAdapter.growWaterfronts`);
+  a grown waterfront's way along its shore passes over its own quay (`Harbour.shore`'s wade: the quay's edge filled
+  the first water, and Corin's Crossing's next stretch found no shore past it).
 - **A port grows into a forwarding point (John: "sea trade becomes the upgrade path as a highly port-endowed town
   becomes an excellent freight forwarding point").** A port's berths beyond its first count as routes calling toward
   a freight hub; with two it's a hub's site though no road of others passes it (`rules/freight.rs`,
   `PORT_HUB_BERTHS`).
+- **A founded town's square on the land's own ground** (seed 1717: Lakeshire asked of the host 1,084 times, its spot
+  read off a tree's top): at its spot's ground under any tree, or failing that at one of eight spots 16 blocks round it
+  (`LandAdapter.buildFounded`).
 - **Settlers make markets of the world's own villages (John, 2026-10-30: "several villages naturally generated in that
   would've made excellent settlement candidates, maybe even adding their population").** The host looks over each
   town's country once a run for the nearest village to six points 480 blocks out (the world's structure placement,

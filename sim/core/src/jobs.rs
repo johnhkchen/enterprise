@@ -207,6 +207,22 @@ pub fn draw(bag: &[(TradeId, f64)], rng: &mut Rng) -> Option<TradeId> {
     last
 }
 
+/// A port's fishing grounds unfished, a Fisherman's marbles (as untended plots are a Farmer's): four days of the cod
+/// its waters would yield (`COD_PER_WATER_HEX` a water hex it holds, the harbour's own counting as one) beyond what its
+/// Fishermen at home land (John: "the use of the water as a fishing plot can act as a substitute for farm spread").
+/// None without a harbour.
+pub fn fishing_marbles(content: &Content, works: Option<&crate::works::Works>, holding: Option<&crate::territory::Holding>,
+        map: &crate::map::Map, roster: &Roster) -> Option<(TradeId, f64)> {
+    works.filter(|w| w.port.is_some())?;
+    let (fisherman, cod) = (content.trade(crate::squad::FISHERMAN)?, content.good("cod")?);
+    let grounds = holding.map_or(0, |h| h.hexes.iter().filter(|&&x| map.land(x) == crate::map::Land::Water).count())
+        .max(1) as f64;
+    let landed: f64 = roster.hands.iter().filter(|h| h.trade == fisherman && !h.away)
+        .map(|h| h.level as f64 * crate::works::COD_PER_LEVEL).sum();
+    let unfished = (grounds * crate::works::COD_PER_WATER_HEX - landed).max(0.0);
+    (unfished > 0.0).then(|| (fisherman, unfished * content.goods[cod].value * 4.0))
+}
+
 /// A town's whole bag for its idle hand now: the markets' signals and the comforts it lacks, then [`bag`].
 pub fn town_bag(content: &Content, signals: &Signals, town: usize, stock: &Stock, farm: &Farm, met: &[f64],
         savings: f64, roster: &Roster) -> Marbles {
@@ -477,6 +493,10 @@ impl crate::society::Society {
             .sum();
         if let (true, Some(merchant)) = (unmanned > 0.0, content.trade(crate::roster::MERCHANT)) {
             put(&mut bag, merchant, unmanned);
+        }
+        if let Some((t, m)) = fishing_marbles(content, e.get::<crate::works::Works>(),
+                self.world.resource::<crate::territory::Territory>().holding(town), self.map(), &roster) {
+            put(&mut bag, t, m);
         }
         bag.into_iter().map(|(t, m)| (content.trades[t].name.clone(), m)).collect()
     }
