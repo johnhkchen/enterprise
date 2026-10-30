@@ -936,10 +936,12 @@ public final class LandAdapter {
             // asks for (body, kind, storeys, palette, shop by street and distance from the forum).
             var zoned = dev.b28.enterprise.territory.Zoning.next(level, town, townPlan, kingdom, town * 7919 + laidSoFar);
             if (zoned.isPresent()) {
-                homeKits.put(town, zoned.get().house().meta());
-                homeBuilt.put(town, zoned.get().house());
+                homeKits.put(town, zoned.get().kit());
+                if (zoned.get().house() != null) {
+                    homeBuilt.put(town, zoned.get().house());
+                }
                 zonedSites.put(town, zoned.get().site());
-                return Optional.of(zoned.get().house().meta());
+                return Optional.of(zoned.get().kit());
             }
             var built = dev.b28.enterprise.territory.Houses.next(level, kingdom, tier, townPlan.cell() - 2 * dev.b28.enterprise.territory.Plots.SIDE,
                     dev.b28.enterprise.territory.Plots.deepestHouse(townPlan.deepest()), town * 7919 + homesLaid.getOrDefault(town, 0));

@@ -21,8 +21,11 @@ import net.minecraft.server.level.ServerLevel;
 public final class Zoning {
     private Zoning() {}
 
-    /** A plot and the house its zoning gives it. */
-    public record Pick(Houses.Built house, Plots.Site site, String street, String band, String palette) {}
+    /**
+     * A plot and the house its zoning gives it: a body solved from the kingdom's module set ({@code house}), or a part
+     * the studio made whole ({@code house} null: the kit races and Dalaran's spires, whose rules name parts, thread 0015).
+     */
+    public record Pick(Houses.Built house, Kits.Meta kit, Plots.Site site, String street, String band, String palette) {}
 
     public static Optional<Pick> next(ServerLevel level, long town, TownPlans.Plan plan, String kingdom, long seed) {
         var resources = level.getServer().getResourceManager();
@@ -40,10 +43,17 @@ public final class Zoning {
                 continue; // ward backs and the fringe: none in this grid, or not houses
             }
             JsonObject rule = rule(zoning, street, band);
+            long h = mix(seed, e.getAsString().hashCode());
+            if (rule != null && rule.has("part")) {
+                var part = part(level, plan, zoning, rule, street, band, bell, depth, h);
+                if (part.isPresent()) {
+                    return part;
+                }
+                continue;
+            }
             if (rule == null || !rule.has("body")) {
                 continue;
             }
-            long h = mix(seed, e.getAsString().hashCode());
             String[] body = weighted(rule.get("body"), h).split("x");
             int W = Integer.parseInt(body[0]), D = Integer.parseInt(body[1]);
             boolean terrace = rule.has("kind") && rule.get("kind").getAsString().startsWith("terrace");
@@ -89,7 +99,41 @@ public final class Zoning {
                 if (built.isEmpty()) {
                     continue;
                 }
-                return Optional.of(new Pick(built.get(), site.get(), street, band, palette));
+                return Optional.of(new Pick(built.get(), built.get().meta(), site.get(), street, band, palette));
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * The rule's part (one id, or a weighted choice of ids) on the first free plot of its street and band, the plot its
+     * tiles wide. Only homes: a hall or workshop a rule names is laid by its own slot, not as the town's next house.
+     */
+    private static Optional<Pick> part(ServerLevel level, TownPlans.Plan plan, JsonObject zoning, JsonObject rule,
+            String street, String band, BlockPos bell, int depth, long h) {
+        var meta = Kits.meta(level.getServer().getResourceManager(), weighted(rule.get("part"), h));
+        if (meta.isEmpty() || !meta.get().kind().equals("home") || meta.get().bedHeads().isEmpty()) {
+            return Optional.empty();
+        }
+        Kits.Meta m = meta.get();
+        int width = Plots.width(m);
+        List<TownPlans.Frontage> all = new ArrayList<>(TownPlans.frontages(plan, width, depth, 0, false));
+        if (!street.equals("lane")) {
+            all.addAll(TownPlans.suburbs(plan, width, depth));
+        }
+        var main = TownPlans.get(level.getServer()).mainAt(bell);
+        List<TownPlans.Frontage> fit = all.stream()
+                .filter(f -> street.equals("lane") != TownPlans.onAvenue(plan, f))
+                .filter(f -> street.equals("forum_front") ? distance(f, bell) < FORUM : band == null || band(zoning, distance(f, bell)).equals(band))
+                .sorted(Comparator.comparingInt((TownPlans.Frontage f) -> main.isPresent() && TownPlans.onMain(plan, f, main.get()) ? 0 : 1)
+                        .thenComparingDouble((TownPlans.Frontage f) -> distance(f, bell)).thenComparingInt(TownPlans.Frontage::x)
+                        .thenComparingInt(TownPlans.Frontage::z))
+                .toList();
+        int entrance = m.entrances().isEmpty() ? m.width() / 2 : m.entrances().get(0).getX();
+        for (TownPlans.Frontage f : fit) {
+            Optional<Plots.Site> site = Plots.fits(level, f, bell, depth, m.width(), m.depth(), entrance);
+            if (site.isPresent()) {
+                return Optional.of(new Pick(null, m, site.get(), street, band, null));
             }
         }
         return Optional.empty();

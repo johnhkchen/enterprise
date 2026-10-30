@@ -13,10 +13,13 @@ share of the inputs one has and the other hasn't. That is too fine to judge by: 
 inputs, and two restarts of seed 1717's day 30 differed by up to half of a day's (9% of ten days').
 
 What a run comes to is steadier: its towns at a day (`--at`), each one's villagers and land and its hands' trades and
-levels. Three restarts of a point against the run that kept it (seed 1717, no change): the same towns, villagers and
-land every time; 0 to 2 hands of 100 in another trade or level (which villager took which workstation); the towns'
-money together 34 against 25 at most. Two runs are alike at a day when their towns, villagers and land are the same,
-at most HANDS of their hands differ and their money together is within MONEY of each other.
+levels, the towns' money and the crops the core holds as the game counted them. Restarts of a point against the run that
+kept it (seed 1717, no change): from day 20, 30 or 40, the same towns, villagers and land every time, 0 to 2 hands of 100
+in another trade or level, money together 34 against 25 at most; from day 0, whose day 1 converts every village, a
+town's villagers 2 either way and 7 hands of 77, and the crops counted on day 0 341 against 287. Two runs are alike at a
+day when their towns and land are the same, each town's villagers within VILLAGERS, at most HANDS of their hands differ,
+and their money and crops held are within MONEY and CROPS of each other. Twice the crops counted (a test of the audit)
+held 566 against 2,066 at day 1 and wasn't alike; the same restart with no change was.
 """
 
 import json
@@ -24,10 +27,13 @@ import sqlite3
 import sys
 from collections import Counter
 
-# What three restarts of a point with no change differed by, at most, with room: hands in another trade or level, and
-# the towns' money together.
-HANDS = 0.03
+# What restarts of a point with no change differed by, at most, with room: a town's villagers (a restart of day 1, which
+# converts every village: 2 either way; of a later point: none), hands in another trade or level (day 1: 7 of 77; later:
+# 2 of 100), the towns' money together, and the crops the core holds as counted (day 0: 341 against 287).
+VILLAGERS = 2
+HANDS = 0.10
 MONEY = 0.35
+CROPS = 0.40
 # What a run can't repeat, by input: its villagers' tags (each run's own entities).
 UNREPEATABLE = {"tag", "hand_tag"}
 
@@ -70,6 +76,16 @@ def towns(db, day):
     return {n: (v, land) for n, v, land, _ in rows}, hands, sum(m for *_, m in rows)
 
 
+def crops(db, day):
+    """The crop plots the core holds at `day`, as the game counted them: each chunk's last count by then, together."""
+    last = {}
+    for js in (j for (j,) in sqlite3.connect(db).execute(
+            "select json from inputs where kind = 'Crops' and day <= ? order by rowid", (day,))):
+        c = json.loads(js)["Crops"]
+        last[(c["hex"]["q"], c["hex"]["r"], c["chunk_x"], c["chunk_z"])] = sum(n["count"] for n in c["counts"])
+    return sum(last.values())
+
+
 def alike(a_db, b_db, day):
     """Whether two runs came to the same towns at `day` (see the module's doc): (alike, reasons they aren't)."""
     (ta, ha, ma), (tb, hb, mb) = towns(a_db, day), towns(b_db, day)
@@ -77,13 +93,17 @@ def alike(a_db, b_db, day):
     if not ta or not tb:
         return False, [f"no towns at day {day} in {'the first' if not ta else 'the second'}"]
     for n in sorted(set(ta) | set(tb)):
-        if ta.get(n) != tb.get(n):
-            why.append(f"{n}: {ta.get(n, 'none')} against {tb.get(n, 'none')} (villagers, land)")
+        a, b = ta.get(n), tb.get(n)
+        if a is None or b is None or a[1] != b[1] or abs(a[0] - b[0]) > VILLAGERS:
+            why.append(f"{n}: {a or 'none'} against {b or 'none'} (villagers, land)")
     differ = sum(((ha - hb) + (hb - ha)).values()) // 2
     if differ > HANDS * max(sum(ha.values()), 1):
         why.append(f"{differ} hands of {sum(ha.values())} differ in trade or level")
     if abs(ma - mb) > MONEY * max(ma, mb, 1):
         why.append(f"money together {ma:.0f} against {mb:.0f}")
+    ca, cb = crops(a_db, day), crops(b_db, day)
+    if abs(ca - cb) > CROPS * max(ca, cb, 1):
+        why.append(f"crops held {ca:.0f} against {cb:.0f}")
     return not why, why
 
 

@@ -39,8 +39,10 @@ def kits(faction):
             m = json.loads(meta.read_text())
         except ValueError:
             continue
-        if "slot" in m:
-            out.setdefault(m["slot"], []).append(m)
+        # A part with no slot fills its kind's (the kit races' homes, forums, halls: thread 0015).
+        slot = m.get("slot") or m.get("kind")
+        if slot:
+            out.setdefault(slot, []).append(m)
     return out
 
 
@@ -52,8 +54,11 @@ def factions():
 
 def covers(entry, have, tier):
     """Has the faction a structure for the entry's slot at this tier (any tier if the structure names none)?"""
-    for m in have.get(entry["slot"], []):
-        if not m.get("tiers") or tier in m["tiers"]:
+    # A stall for any trade (`stall:any`, the trade's job block at its marker) is every trade's stall.
+    any_stall = have.get("stall:any", []) if entry["slot"].startswith("stall:") else []
+    for m in have.get(entry["slot"], []) + any_stall:
+        # A building from its first tier on: a town's forge still stands when it's a city.
+        if not m.get("tiers") or TIERS.index(tier) >= min(TIERS.index(t) for t in m["tiers"] if t in TIERS):
             return True
     return False
 
@@ -98,7 +103,7 @@ def request(args):
     cat = catalogue()
     faction = args.faction
     meta = KINGDOMS / faction / "faction.json"
-    info = json.loads(meta.read_text()) if meta.exists() else {"name": faction, "like": args.like}
+    info = json.loads(meta.read_text()) if meta.exists() else {"name": faction, "like": getattr(args, "like", None) or "lordaeron"}
     like = getattr(args, "like", None) or info.get("like")
     have, ref = kits(faction), kits(like) if like else {}
     lines = [f"# Asset request: {info.get('name', faction)} ({faction}), to the {args.tier} tier", "",

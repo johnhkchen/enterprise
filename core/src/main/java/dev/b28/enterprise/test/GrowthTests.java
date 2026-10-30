@@ -453,8 +453,8 @@ public final class GrowthTests {
     }
 
     /**
-     * The land picks the people (thread 0015): plains draw Lordaeron or Stormwind, forest any of the three, Dalaran
-     * among them; the desert's orcs aren't shipped yet, so it falls to the fallback's Lordaeron.
+     * The land picks the people (thread 0015, settlement rev 5): plains draw Lordaeron, Stormwind or the tauren, forest
+     * the three kingdoms and the night elves, the desert orcs and goblins (the kit races, batch 044).
      */
     @GameTest(template = "floor")
     public static void theLandPicksThePeople(GameTestHelper helper) {
@@ -465,9 +465,9 @@ public final class GrowthTests {
             forest.add(dev.b28.enterprise.territory.Settle.settle(resources, java.util.Set.of("c:is_forest"), seed).style());
             desert.add(dev.b28.enterprise.territory.Settle.settle(resources, java.util.Set.of("c:is_desert"), seed).style());
         }
-        helper.assertTrue(plains.equals(java.util.Set.of("lordaeron", "stormwind")), "plains: " + plains);
-        helper.assertTrue(forest.equals(java.util.Set.of("lordaeron", "stormwind", "dalaran")), "forest: " + forest);
-        helper.assertTrue(desert.equals(java.util.Set.of("lordaeron")), "desert: " + desert);
+        helper.assertTrue(plains.equals(java.util.Set.of("lordaeron", "stormwind", "tauren")), "plains: " + plains);
+        helper.assertTrue(forest.equals(java.util.Set.of("lordaeron", "stormwind", "dalaran", "nightelf")), "forest: " + forest);
+        helper.assertTrue(desert.equals(java.util.Set.of("orc", "goblin")), "desert: " + desert);
         var once = dev.b28.enterprise.territory.Settle.settle(resources, java.util.Set.of("c:is_forest"), 7);
         helper.assertTrue(once.equals(dev.b28.enterprise.territory.Settle.settle(resources, java.util.Set.of("c:is_forest"), 7)),
                 "the same seed, the same people");

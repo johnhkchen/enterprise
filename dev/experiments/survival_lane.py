@@ -7,8 +7,8 @@ stopped. The ground comes from a fixture when one was kept for these flags (fixt
 `--from DAY`: carry on from the run's point of that day or the latest before it (not the latest that holds).
 
 A point is reused across any change staleness.toml doesn't name, and the reuse audited: the lane says which files
-changed, carries on from the point before it instead, and at the end compares its towns at the reused point's day with
-the kept run's (compare_runs.py). Alike: the catalog was right that those changes don't touch the world by then. Not
+changed, carries on from the point before it instead, and at the end compares its towns at the reused point's day, and
+at each later point of the kept run it reaches, with the kept run's (compare_runs.py). Alike: the catalog was right that those changes don't touch the world by then. Not
 alike: it was wrong, and the lane says so and writes it to core/run/fixtures/audits.log (the files belong in the
 catalog, with their reason). `--audit` audits a reuse with no such change (the noise of a restart), `--no-audit` skips it.
 
@@ -71,7 +71,11 @@ def main():
             print(f"audit: day {day}'s point is reused across {len(changed)} changes the catalog doesn't name"
                   + (f" ({', '.join(changed[:4])}{', ...' if len(changed) > 4 else ''})" if changed else "")
                   + "; carrying on from the point before it, to compare at its day")
-            audit = (reused, day, changed)
+            # The kept run's journal at each of its points from that day on, named now: the run below keeps its own
+            # points of those days in their places.
+            kept = {int(q.name[3:]): json.loads((q / "world" / "study.json").read_text())["chain"][-1][0]
+                    for q in run.glob("day*") if (q / "world" / "study.json").exists() and day <= int(q.name[3:]) <= int(days)}
+            audit = (reused, day, changed, kept)
             found = fixtures.resume_point(run, day, print, day - 1)
     if found:
         point, saves = found
@@ -105,24 +109,29 @@ def main():
 
 
 def judge(audit, run, out):
-    """The audit's verdict: the towns at the reused point's day, this run's against the kept run's."""
-    reused, day, changed = audit
+    """The audit's verdict: the towns at the reused point's day, and at each later point of the kept run this one
+    reached, this run's against the kept run's. A change can show only later: twice the crops are counted on day 1 and
+    sold over the days after."""
+    reused, day, changed, kept = audit
     found = re.findall(r"journal: (\S+\.ejl)", Path(f"{out}.log").read_text())
     if not found:
         print("audit: this run named no journal; not judged")
         return
-    kept_journal = run / "journals" / json.loads((reused / "world" / "study.json").read_text())["chain"][-1][0]
     mine = trace(Path(found[-1]), Path(f"{out}.audit-new.db"))
-    kept = trace(kept_journal, Path(f"{out}.audit-kept.db"))
-    ok, why = compare_runs.alike(str(kept), str(mine), day)
-    verdict = ("alike: the catalog holds" if ok
-               else "NOT alike: the catalog missed what made it stale (" + "; ".join(why[:6]) + ")")
-    print(f"audit: day {day}, {verdict}")
+    traced, why = {}, []
+    for d in sorted(kept):
+        if kept[d] not in traced:
+            traced[kept[d]] = trace(run / "journals" / kept[d], Path(f"{out}.audit-kept-{d}.db"))
+        ok, whys = compare_runs.alike(str(traced[kept[d]]), str(mine), d)
+        print(f"audit: day {d}, " + ("alike" if ok else "not alike (" + "; ".join(whys[:6]) + ")"))
+        why += [f"day {d}: {w}" for w in whys]
+    verdict = ("alike: the catalog holds" if not why
+               else "NOT alike: the catalog missed what made it stale")
+    print(f"audit: from day {day}, {verdict}")
     AUDITS.parent.mkdir(parents=True, exist_ok=True)
     with AUDITS.open("a") as log:
         log.write(json.dumps({"when": time.strftime("%Y-%m-%d %H:%M"), "point": str(reused.relative_to(REPO)),
-                              "changed": changed, "alike": ok, "why": why}) + "\n")
-
+                              "changed": changed, "alike": not why, "why": why}) + "\n")
 
 if __name__ == "__main__":
     main()

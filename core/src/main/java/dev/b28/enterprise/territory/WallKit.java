@@ -167,10 +167,19 @@ public final class WallKit {
         if (own.isEmpty() && path.startsWith("town_kits/") && !path.startsWith("town_kits/" + Palettes.SET + "/")
                 && !path.startsWith("town_kits/none/") // the game tests' kingdom: no kit at all
                 && !path.endsWith("/plan.json") && !path.endsWith("/palettes.json") && !path.endsWith("/platform_hall.json")
-                && !path.endsWith("/wall_stone.json")) {
+                && !path.endsWith("/wall_stone.json") && !(path.endsWith("/yards.json") && kitRace(resources, path))) {
             return read(resources, "town_kits/" + Palettes.SET + path.substring(path.indexOf('/', "town_kits/".length())));
         }
         return own;
+    }
+
+    /**
+     * Is the path's kingdom a kit race (`town_kits/<race>/core.json`, thread 0015)? Its parts are whole, the ring round
+     * each its yard: no Lordaeron yard tiles until it has its own.
+     */
+    private static boolean kitRace(ResourceManager resources, String path) {
+        String kingdom = path.substring("town_kits/".length(), path.indexOf('/', "town_kits/".length()));
+        return read(resources, "town_kits/" + kingdom + "/core.json").isPresent();
     }
 
     private static Optional<JsonObject> read(ResourceManager resources, String path) {
