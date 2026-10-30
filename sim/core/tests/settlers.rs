@@ -119,6 +119,25 @@ fn a_village_the_host_found_is_settled_and_its_desk_asked_of_the_host() {
     assert!(s.roster(v).merchant.is_some(), "its Merchant among its villagers");
 }
 
+#[test]
+fn a_party_finds_its_ground_as_explored_and_comes_home_from_water() {
+    // No village: a party sets out to found a town on open ground, its way and its spot said to explore.
+    let (mut s, _) = world(100.0);
+    let out = s.advance(DAY / 4);
+    let party = s.parties()[0].clone();
+    assert_eq!(party.kind, Kind::Found);
+    let explored: Vec<Hex> = out.iter().filter_map(|o| match o {
+        enterprise_core::Output::Explore { hexes } => Some(hexes.iter().map(|h| Hex::new(h.q, h.r)).collect::<Vec<_>>()),
+        _ => None,
+    }).flatten().collect();
+    assert!(explored.contains(&party.target), "its spot explored: {explored:?}");
+    // The host's survey finds the spot under water (it was guessed dry): they come home, no town founded.
+    s.set_ground(party.target, 0.9, 0.0);
+    s.advance(3 * DAY);
+    assert!(s.settled().is_empty(), "no town on the water: {:?}", s.settled());
+    assert!(s.parties().iter().all(|p| p.target != party.target), "home again");
+}
+
 // parity-partial: ExpeditionTests.aMerchantSettlesAVillageNobodyTradesWith (the bell, beds and desk placed in the world are Minecraft's: the capital, the route home and the roster are pinned)
 #[test]
 fn a_merchant_settles_a_village_nobody_trades_with() {

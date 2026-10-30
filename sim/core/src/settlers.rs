@@ -46,6 +46,10 @@ pub const FOUNDING_CAPITAL: f64 = 16.0;
 /// fit 8 to 32 blocks from the bell (`Growth.homeSite`), room for some sixty; with fields and works, the core counts
 /// twenty cottages of two beds (its own estimate: the mod has no cap).
 pub const OPEN_LAND: f64 = 40.0;
+/// Settlers settle no hex with this much relief or more: rough ground (the mod's `RELIEF_PER_FACTOR`).
+pub const ROUGH: f64 = 8.0;
+/// The most of a hex under water that's open ground for a new town (`openGround`).
+pub const OPEN_WET: f64 = 0.3;
 /// Bread a party carries (`BREAD`).
 pub const BREAD: f64 = 64.0;
 /// How often a wagon runs on the road home from the new market (the core's own choice: the mod opens a route and its
@@ -276,7 +280,11 @@ impl Society {
                 let near = (0..self.town_count())
                     .any(|t| self.town_hex(t).is_some_and(|h| h.distance(party.target) < content.dials.min_hexes as i32));
                 let way = self.town_hex(party.from).and_then(|h| way(self.map(), &content, h, party.target));
-                !near && way.is_some()
+                // Its ground as the host has surveyed it by now (explored while the party travelled): still dry and
+                // flat enough (`open_ground`'s test).
+                let ground = self.map().ground(party.target);
+                let open = ground.water_share <= OPEN_WET && ground.relief < ROUGH;
+                !near && way.is_some() && open
             }
         };
         if !ok {

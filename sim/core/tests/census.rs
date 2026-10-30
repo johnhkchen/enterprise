@@ -184,7 +184,9 @@ fn a_party_of_settlers_departs_its_villagers_and_settles_new_ones() {
     let home = grown(&mut s);
     let v = s.add_village(Hex::new(7, 0).center_x(), Hex::new(7, 0).center_z());
     let villagers: Vec<u32> = s.roster(v).hands.iter().map(|h| h.id).collect();
-    let out = s.apply(&Input::Advance { to: DAY / 4 });
+    // (Its way said to explore as it sets out: set aside.)
+    let out: Vec<Output> = s.apply(&Input::Advance { to: DAY / 4 }).into_iter()
+        .filter(|o| !matches!(o, Output::Explore { .. })).collect();
     assert_eq!(s.parties()[0].hands, 1);
     let gone = s.world.resource::<enterprise_core::settlers::Settlers>().parties[0].hands[0].id;
     let tag = "villager-5".to_string();

@@ -14,9 +14,6 @@ use crate::content::Content;
 use crate::fixed::Fixed;
 use crate::hex::Hex;
 use crate::map::Map;
-
-/// Settlers settle no hex with this much relief or more: rough ground (the mod's `RELIEF_PER_FACTOR`).
-const ROUGH: f64 = 8.0;
 use crate::roster::{Roster, MERCHANT};
 use crate::settlers::*;
 use crate::state::*;
@@ -68,7 +65,7 @@ fn open_ground(sites: &[Site], settlers: &Settlers, territory: &Territory, map: 
             }
             let ground = map.ground(hex);
             let (wet, relief) = (ground.water_share, ground.relief);
-            if wet > 0.3 || relief >= ROUGH {
+            if wet > OPEN_WET || relief >= ROUGH {
                 continue;
             }
             let score = -relief - 20.0 * wet + if wet > 0.02 { 4.0 } else { 0.0 } - 0.5 * d as f64;
@@ -81,7 +78,8 @@ fn open_ground(sites: &[Site], settlers: &Settlers, territory: &Territory, map: 
 }
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
-pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: Res<Map>, territory: Res<Territory>,
+pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut map: ResMut<Map>, territory: Res<Territory>,
+        mut outbox: ResMut<Outbox>,
         order: Res<Towns>,
         mut settlers: ResMut<Settlers>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>, routes: Query<&Route>,
         mut towns: Query<(&Town, &mut Money, &mut Stock, &mut People, &Trades, &mut Budget, Option<&mut Roster>,
@@ -146,6 +144,14 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: 
         };
         // The road (`way`): no way there, nobody goes.
         let Some(path) = way(&map, &content, home, target_hex) else { continue };
+        // Its way and where it's bound, explored while it travels (`Output::Explore`): ground the host never loaded is
+        // the core's guess, and a party sent to found a town on it finds it as it is (seed 1717's Lakeshire, founded on
+        // guessed ground the host found no open ground on, asked of the host 1,400 times).
+        let new: Vec<crate::wire::HexAt> = path.hexes.iter().filter(|&&h| map.explored.insert(h))
+            .map(|&h| crate::wire::HexAt::of(h)).collect();
+        if !new.is_empty() {
+            outbox.0.push(crate::wire::Output::Explore { hexes: new });
+        }
         let jumpstart = if kind == Kind::Village { d.settling_capital } else { d.founding_capital };
         let set_up = set_up(kind);
         let carried = capital(kind, jumpstart, spare - set_up);

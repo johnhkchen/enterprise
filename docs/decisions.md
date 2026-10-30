@@ -1066,6 +1066,10 @@ mod's), but no road ever chose it. Then: build them first.
   read off a tree's top): at its spot's ground under any tree, or failing that on rings 16, 32 and 48 blocks round it
   (`LandAdapter.buildFounded`; the next run's Southshore, its spot past the ground generated before day 1, likely
   water the core had guessed dry).
+- **A party explores where it's bound** (seed 1717's Lakeshire, founded past the ground generated before day 1 on a
+  spot the core had guessed dry, asked of the host 1,400 times over two runs). A party's way and its spot are said to
+  the host to explore as it sets out (`Output::Explore`), and on arrival it founds only on ground still open as the
+  host has surveyed it by then (`OPEN_WET`, `ROUGH`); else it comes home with its capital.
 - **Settlers make markets of the world's own villages (John, 2026-10-30: "several villages naturally generated in that
   would've made excellent settlement candidates, maybe even adding their population").** The host looks over each
   town's country once a run for the nearest village to six points 480 blocks out (the world's structure placement,
