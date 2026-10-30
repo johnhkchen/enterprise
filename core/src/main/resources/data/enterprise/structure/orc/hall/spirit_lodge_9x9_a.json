@@ -1,0 +1,50 @@
+{
+  "id": "enterprise:orc/hall/spirit_lodge_9x9_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "hall",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    11,
+    11
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        4,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [
+    {
+      "at": [
+        5,
+        5,
+        2
+      ],
+      "block": "minecraft:brewing_stand"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "hall:cleric"
+}

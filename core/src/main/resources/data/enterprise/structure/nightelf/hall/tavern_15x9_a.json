@@ -1,0 +1,77 @@
+{
+  "id": "enterprise:nightelf/hall/tavern_15x9_a",
+  "rev": 1,
+  "style": "nightelf",
+  "kind": "hall",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    17,
+    11
+  ],
+  "height": 26,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        8,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        14,
+        7,
+        2
+      ],
+      "foot": [
+        14,
+        7,
+        3
+      ]
+    },
+    {
+      "head": [
+        10,
+        7,
+        2
+      ],
+      "foot": [
+        10,
+        7,
+        3
+      ]
+    },
+    {
+      "head": [
+        6,
+        7,
+        2
+      ],
+      "foot": [
+        6,
+        7,
+        3
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

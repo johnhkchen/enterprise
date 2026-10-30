@@ -1,0 +1,84 @@
+{
+  "id": "enterprise:dwarf/workshop/workshop_smith_12x9_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    16,
+    11
+  ],
+  "height": 20,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        4,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        6,
+        7,
+        2
+      ],
+      "foot": [
+        6,
+        7,
+        3
+      ]
+    },
+    {
+      "head": [
+        4,
+        7,
+        2
+      ],
+      "foot": [
+        4,
+        7,
+        3
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        7,
+        3,
+        7
+      ],
+      "block": "minecraft:blast_furnace"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:armorer"
+}

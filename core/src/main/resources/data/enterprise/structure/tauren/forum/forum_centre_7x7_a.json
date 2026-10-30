@@ -1,0 +1,45 @@
+{
+  "id": "enterprise:tauren/forum/forum_centre_7x7_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "forum",
+  "palette": "base",
+  "footprint": [
+    7,
+    7
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        3,
+        6
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [
+    {
+      "what": "bell",
+      "at": [
+        3,
+        7,
+        3
+      ]
+    }
+  ],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

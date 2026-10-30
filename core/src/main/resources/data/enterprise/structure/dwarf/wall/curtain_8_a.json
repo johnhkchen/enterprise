@@ -1,0 +1,28 @@
+{
+  "id": "enterprise:dwarf/wall/curtain_8_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "part",
+  "slot": "wall:curtain",
+  "tiers": [
+    "town"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    8,
+    3
+  ],
+  "height": 12,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north"
+  ]
+}

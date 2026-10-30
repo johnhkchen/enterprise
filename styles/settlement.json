@@ -1,0 +1,336 @@
+{
+  "rev": 5,
+  "about": "Which race and clan founds a town, decided by the land. The town's biome is read at its centre (its tags, 1.21.1 conventional `c:` tags first); the first entry whose tags match gives the candidates, and one is drawn by weight from the town's seed. A candidate names a style (styles/<id>.json) and, for a style with clans, a clan whose canonical palette suits what that land has: the sandstone clan in the desert, the mud-brick clan in the marsh. Palettes never mix: the land picks the people, the people keep their materials. Only the yard follows the land: `ground` replaces the parts' authored yard surface (`yard`), and `plant` their authored dry bushes.",
+  "yard": {
+    "surface": "red_sand",
+    "plant": "dead_bush"
+  },
+  "biomes": [
+    {
+      "id": "badlands",
+      "tags": [
+        "c:is_badlands",
+        "minecraft:is_badlands"
+      ],
+      "ground": "red_sand",
+      "plant": "dead_bush",
+      "candidates": [
+        {
+          "style": "orc",
+          "clan": "ashfang",
+          "weight": 2
+        },
+        {
+          "style": "orc",
+          "clan": "sunscar",
+          "weight": 1
+        },
+        {
+          "style": "dwarf",
+          "clan": "redcrag",
+          "weight": 1
+        },
+        {
+          "style": "goblin",
+          "clan": "brassgut",
+          "weight": 1
+        },
+        {
+          "style": "tauren",
+          "clan": "mesarunner",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "desert",
+      "tags": [
+        "c:is_desert"
+      ],
+      "ground": "sand",
+      "plant": "dead_bush",
+      "candidates": [
+        {
+          "style": "orc",
+          "clan": "sunscar",
+          "weight": 2
+        },
+        {
+          "style": "goblin",
+          "clan": "brassgut",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "savanna",
+      "tags": [
+        "c:is_savanna"
+      ],
+      "ground": "coarse_dirt",
+      "plant": "short_grass",
+      "candidates": [
+        {
+          "style": "orc",
+          "clan": "mudhide",
+          "weight": 2
+        },
+        {
+          "style": "orc",
+          "clan": "sunscar",
+          "weight": 1
+        },
+        {
+          "style": "tauren",
+          "clan": "mesarunner",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "swamp",
+      "tags": [
+        "c:is_swamp"
+      ],
+      "ground": "packed_mud",
+      "plant": "fern",
+      "candidates": [
+        {
+          "style": "orc",
+          "clan": "mudhide",
+          "weight": 1
+        },
+        {
+          "style": "nightelf",
+          "clan": "mossbough",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "snowy",
+      "tags": [
+        "c:is_snowy",
+        "c:is_icy"
+      ],
+      "ground": "snow_block",
+      "plant": "dead_bush",
+      "candidates": [
+        {
+          "style": "dwarf",
+          "clan": "deepforge",
+          "weight": 2
+        },
+        {
+          "style": "orc",
+          "clan": "bleakbone",
+          "weight": 1
+        },
+        {
+          "style": "nightelf",
+          "clan": "frostsong",
+          "weight": 1
+        },
+        {
+          "style": "tauren",
+          "clan": "ravenhorn",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "beach",
+      "tags": [
+        "c:is_beach"
+      ],
+      "ground": "sand",
+      "plant": "dead_bush",
+      "candidates": [
+        {
+          "style": "goblin",
+          "clan": "rustbolt",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "stony_shore",
+      "tags": [
+        "c:is_stony_shores"
+      ],
+      "ground": "stone",
+      "plant": "dead_bush",
+      "candidates": [
+        {
+          "style": "goblin",
+          "clan": "sootvein",
+          "weight": 2
+        },
+        {
+          "style": "dwarf",
+          "clan": "brasshammer",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "jungle",
+      "tags": [
+        "c:is_jungle"
+      ],
+      "ground": "grass_block",
+      "plant": "fern",
+      "candidates": [
+        {
+          "style": "goblin",
+          "clan": "rustbolt",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "mountain",
+      "tags": [
+        "c:is_mountain",
+        "c:is_mountain_peak",
+        "c:is_mountain_slope"
+      ],
+      "ground": "gravel",
+      "plant": "fern",
+      "candidates": [
+        {
+          "style": "dwarf",
+          "clan": "deepforge",
+          "weight": 2
+        },
+        {
+          "style": "dwarf",
+          "clan": "brasshammer",
+          "weight": 1
+        },
+        {
+          "style": "orc",
+          "clan": "ashfang",
+          "weight": 1
+        },
+        {
+          "style": "goblin",
+          "clan": "sootvein",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "taiga",
+      "tags": [
+        "c:is_taiga"
+      ],
+      "ground": "podzol",
+      "plant": "fern",
+      "candidates": [
+        {
+          "style": "dwarf",
+          "clan": "brasshammer",
+          "weight": 1
+        },
+        {
+          "style": "lordaeron",
+          "weight": 1
+        },
+        {
+          "style": "nightelf",
+          "clan": "frostsong",
+          "weight": 1
+        },
+        {
+          "style": "tauren",
+          "clan": "ravenhorn",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "dark_forest",
+      "tags": [
+        "c:is_dark_forest"
+      ],
+      "ground": "moss_block",
+      "plant": "fern",
+      "candidates": [
+        {
+          "style": "nightelf",
+          "clan": "silverleaf",
+          "weight": 2
+        },
+        {
+          "style": "lordaeron",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "forest",
+      "tags": [
+        "c:is_forest",
+        "c:is_birch_forest",
+        "c:is_dark_forest"
+      ],
+      "ground": "grass_block",
+      "plant": "short_grass",
+      "candidates": [
+        {
+          "style": "stormwind",
+          "weight": 1
+        },
+        {
+          "style": "lordaeron",
+          "weight": 1
+        },
+        {
+          "style": "dalaran",
+          "weight": 1
+        },
+        {
+          "style": "nightelf",
+          "clan": "silverleaf",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "plains",
+      "tags": [
+        "c:is_plains",
+        "c:is_meadow"
+      ],
+      "ground": "grass_block",
+      "plant": "short_grass",
+      "candidates": [
+        {
+          "style": "lordaeron",
+          "weight": 2
+        },
+        {
+          "style": "stormwind",
+          "weight": 1
+        },
+        {
+          "style": "tauren",
+          "clan": "bloodhoof",
+          "weight": 2
+        }
+      ]
+    }
+  ],
+  "fallback": {
+    "ground": "grass_block",
+    "plant": "short_grass",
+    "candidates": [
+      {
+        "style": "lordaeron",
+        "weight": 1
+      }
+    ]
+  },
+  "note": "Only approved styles found towns (orc, dwarf, goblin, night elf and tauren are drafts: until approved the client skips them and redraws from the rest of the list, else the fallback)."
+}

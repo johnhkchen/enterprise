@@ -1,0 +1,46 @@
+{
+  "id": "enterprise:tauren/wall/gatehouse_11x7_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "wall",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    13,
+    9
+  ],
+  "height": 26,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        10,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        3,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north"
+  ]
+}

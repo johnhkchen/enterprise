@@ -1,0 +1,42 @@
+{
+  "id": "enterprise:tauren/stall/stall_3x3_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "stall",
+  "tiers": [
+    "hamlet",
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    5,
+    5
+  ],
+  "height": 11,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        2,
+        3,
+        4
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "stall:any"
+}

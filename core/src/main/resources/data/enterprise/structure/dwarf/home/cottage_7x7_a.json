@@ -1,0 +1,61 @@
+{
+  "id": "enterprise:dwarf/home/cottage_7x7_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "home",
+  "palette": "deepforge",
+  "footprint": [
+    9,
+    9
+  ],
+  "height": 16,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        4,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        6,
+        3,
+        2
+      ],
+      "foot": [
+        6,
+        3,
+        3
+      ]
+    },
+    {
+      "head": [
+        2,
+        3,
+        2
+      ],
+      "foot": [
+        2,
+        3,
+        3
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

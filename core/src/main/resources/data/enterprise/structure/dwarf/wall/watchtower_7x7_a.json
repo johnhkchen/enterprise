@@ -1,0 +1,48 @@
+{
+  "id": "enterprise:dwarf/wall/watchtower_7x7_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "wall",
+  "tiers": [
+    "town"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    9,
+    9
+  ],
+  "height": 32,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        4,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [
+    {
+      "what": "bell",
+      "at": [
+        4,
+        17,
+        4
+      ]
+    }
+  ],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

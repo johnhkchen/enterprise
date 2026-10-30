@@ -1,0 +1,96 @@
+{
+  "id": "enterprise:nightelf/workshop/workshop_smith_12x9_a",
+  "rev": 1,
+  "style": "nightelf",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    14,
+    11
+  ],
+  "height": 24,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        2,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        11,
+        7,
+        8
+      ],
+      "foot": [
+        11,
+        7,
+        7
+      ]
+    },
+    {
+      "head": [
+        9,
+        7,
+        8
+      ],
+      "foot": [
+        10,
+        7,
+        8
+      ]
+    },
+    {
+      "head": [
+        6,
+        7,
+        3
+      ],
+      "foot": [
+        7,
+        7,
+        3
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        11,
+        3,
+        7
+      ],
+      "block": "minecraft:grindstone"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:weaponsmith"
+}

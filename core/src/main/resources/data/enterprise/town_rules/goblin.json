@@ -1,0 +1,285 @@
+{
+  "kingdom": "goblin",
+  "rev": 1,
+  "about": "Goblin trade-port: town rules for a kit race. Every building is a whole delivered part from town_kits/goblin/core.json (named here by id), placed on its plot as it is; the house solver is not used. A town's clan (from styles/settlement.json, by the land) recolours every part at placement with that clan's swaps in styles/goblin.json. The tiers and the street bands are Lordaeron's. Choice is deterministic: hash(town id, slot) picks among weighted options.",
+  "set": "goblin/core",
+  "tiers": {
+    "hamlet": {
+      "villagers": [
+        0,
+        7
+      ]
+    },
+    "village": {
+      "villagers": [
+        8,
+        23
+      ]
+    },
+    "town": {
+      "villagers": [
+        24,
+        47
+      ]
+    },
+    "city": {
+      "villagers": [
+        48,
+        95
+      ]
+    },
+    "capital": {
+      "villagers": [
+        96,
+        null
+      ],
+      "or": "the kingdom's seat"
+    }
+  },
+  "homes": {
+    "hamlet": [
+      {
+        "asset": "enterprise:goblin/home/cottage_7x7_a",
+        "footprint": [
+          9,
+          9
+        ],
+        "beds": 2,
+        "weight": 1
+      }
+    ],
+    "village": [
+      {
+        "asset": "enterprise:goblin/home/cottage_7x7_a",
+        "footprint": [
+          9,
+          9
+        ],
+        "beds": 2,
+        "weight": 3
+      },
+      {
+        "asset": "enterprise:goblin/home/house_10x7_a",
+        "footprint": [
+          12,
+          9
+        ],
+        "beds": 2,
+        "weight": 1
+      }
+    ],
+    "town": [
+      {
+        "asset": "enterprise:goblin/home/cottage_7x7_a",
+        "footprint": [
+          9,
+          9
+        ],
+        "beds": 2,
+        "weight": 1
+      },
+      {
+        "asset": "enterprise:goblin/home/house_10x7_a",
+        "footprint": [
+          12,
+          9
+        ],
+        "beds": 2,
+        "weight": 2
+      }
+    ],
+    "city": [
+      {
+        "asset": "enterprise:goblin/home/cottage_7x7_a",
+        "footprint": [
+          9,
+          9
+        ],
+        "beds": 2,
+        "weight": 1
+      },
+      {
+        "asset": "enterprise:goblin/home/house_10x7_a",
+        "footprint": [
+          12,
+          9
+        ],
+        "beds": 2,
+        "weight": 3
+      }
+    ]
+  },
+  "workshops": {
+    "from": "village",
+    "slot": "workshop:toolsmith",
+    "asset": "enterprise:goblin/workshop/workshop_smith_12x9_a",
+    "footprint": [
+      18,
+      15
+    ],
+    "trades": "the smiths (armorer, toolsmith, weaponsmith) take this workshop; every other trade works from a stall (stall:any, the trade's job block set at its marker) until its own workshop is delivered",
+    "on": "plots fronting an avenue or the forum, nearest the forum first"
+  },
+  "halls": {
+    "tavern": {
+      "asset": "enterprise:goblin/hall/tavern_15x9_a",
+      "footprint": [
+        17,
+        11
+      ],
+      "from": "village"
+    },
+    "temple": {
+      "asset": "enterprise:goblin/hall/temple_9x9_a",
+      "footprint": [
+        9,
+        9
+      ],
+      "from": "village"
+    },
+    "watchtower": {
+      "asset": "enterprise:goblin/wall/watchtower_7x7_a",
+      "footprint": [
+        11,
+        11
+      ],
+      "from": "town"
+    }
+  },
+  "forum": {
+    "hamlet": {
+      "centre": null,
+      "ring": [
+        {
+          "asset": "enterprise:goblin/stall/stall_3x3_a",
+          "for": "each trade's stall: one part serves every trade (its marker takes the trade's job block)"
+        }
+      ]
+    },
+    "village": {
+      "centre": "enterprise:goblin/forum/forum_centre_7x7_a",
+      "ring": [
+        {
+          "stalls": "the trades' stalls, facing the bell"
+        }
+      ]
+    },
+    "town": {
+      "centre": "enterprise:goblin/forum/forum_centre_7x7_a",
+      "facing": "the tavern on the forum's north side",
+      "ring": [
+        {
+          "stalls": "facing the bell"
+        }
+      ]
+    }
+  },
+  "walls": {
+    "hamlet": "marked out only",
+    "village": "marked out only",
+    "town": {
+      "curtain": "enterprise:goblin/wall/curtain_8_a",
+      "gatehouse": "enterprise:goblin/wall/gatehouse_11x7_a",
+      "tower": "enterprise:goblin/wall/watchtower_7x7_a",
+      "tiling": "curtain pieces end to end (each 8 long, ends cut to join), a gatehouse where an avenue leaves, a watchtower at each corner"
+    },
+    "city": "as town"
+  },
+  "yards": "no yard tiles yet for this race: the ring round each part is its yard, authored as the yard marker (red_sand, dead_bush) that the placer swaps for the land's ground and plant",
+  "growth": {
+    "rule": "a plot keeps its slot as the town grows: a hamlet's 7-wide cottage gives way to a 10-wide house on the merged plot when the ward fills; a home's palette steps up (daub to brick) at town tier on the seed's hash; yards follow the house's tier",
+    "never": "lose a bed or a workstation the census counted"
+  },
+  "zoning": {
+    "about": "The planned town (thread 0012): the plan is laid at founding for the town's eventual tier; plots fill in `fill_order`; each plot takes its body, kind, storeys, palette and roof from its street class and its band (distance from the bell along the streets, in blocks). Bands and streets are read in this order: the first rule that matches wins. Unbuilt plots carry yard or field tiles (`placeholder`) until their house comes. For a kit race each rule names a part instead of a body; plots are whole tiles (thread 0016), as many as the part needs.",
+    "streets": {
+      "avenue": "a street from a gate to the forum",
+      "forum_front": "a plot whose front faces the forum",
+      "lane": "a street between wards",
+      "ward_back": "a plot reached only from inside a ward"
+    },
+    "bands": [
+      {
+        "name": "core",
+        "to": 40
+      },
+      {
+        "name": "inner",
+        "from": 40,
+        "to": 90
+      },
+      {
+        "name": "outer",
+        "from": 90,
+        "to": 160
+      },
+      {
+        "name": "fringe",
+        "from": 160
+      }
+    ],
+    "fill_order": [
+      "forum_front",
+      "avenue:core",
+      "avenue:inner",
+      "lane:core",
+      "avenue:outer",
+      "lane:inner",
+      "lane:outer",
+      "ward_back",
+      "fringe"
+    ],
+    "rules": [
+      {
+        "street": "forum_front",
+        "use": "the forum frontage: the tavern first, then the temple, then homes",
+        "part": "enterprise:goblin/hall/tavern_15x9_a"
+      },
+      {
+        "street": "avenue",
+        "band": [
+          "core",
+          "inner"
+        ],
+        "part": {
+          "enterprise:goblin/home/house_10x7_a": 2,
+          "enterprise:goblin/home/cottage_7x7_a": 1
+        },
+        "workshop": "the smith's workshop on the first avenue plot nearest the forum"
+      },
+      {
+        "street": "avenue",
+        "band": "outer",
+        "part": {
+          "enterprise:goblin/home/house_10x7_a": 1,
+          "enterprise:goblin/home/cottage_7x7_a": 2
+        }
+      },
+      {
+        "street": "lane",
+        "part": {
+          "enterprise:goblin/home/cottage_7x7_a": 2,
+          "enterprise:goblin/home/house_10x7_a": 1
+        }
+      },
+      {
+        "street": "ward_back",
+        "part": "enterprise:goblin/home/cottage_7x7_a"
+      },
+      {
+        "band": "fringe",
+        "use": "fields and pastures; no town houses"
+      }
+    ],
+    "rhythm": {
+      "mirror": "mirror a part (each is authored mirror: true) on alternate plots along a street, by the plot's hash"
+    },
+    "placeholder": {
+      "front": "front_garden_3 and front_cottage_2 tiles",
+      "plot": "field_fallow or garden_pumpkins (town_kits/lordaeron/fields.json) on the house's 9 rows",
+      "back": "back yard tiles as usual"
+    },
+    "replacement": "a vanilla house inside the plan stays until the kingdom house on its plot is built; then it's cleared and its villagers move to the new beds (John's decision, thread 0012)",
+    "kinds": "plan.json `kinds`: detached, terrace, terrace_end, corner"
+  }
+}

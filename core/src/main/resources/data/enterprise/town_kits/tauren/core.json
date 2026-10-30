@@ -1,0 +1,167 @@
+{
+  "set": "tauren/core",
+  "rev": 1,
+  "style": "tauren",
+  "about": "The tauren village's core set: ten whole buildings, each authored in the tauren base palette (Bloodhoof). A town's clan comes from styles/settlement.json; recolour every part at placement with that clan's `swaps` from styles/tauren.json (Bloodhoof has none). Every part is on the usual contract: layers 0-1 dirt, layer 2 the surface, the front to the south, every cell stored (air as air), points of interest declared or decorative twins, every walkable cell lit. The yard round each building is authored in red_sand with dead_bush: swap them for the land's ground and plant from the town's settlement entry (`ground`, `plant`).",
+  "parts": [
+    {
+      "id": "tent_10x10_a",
+      "part": "enterprise:tauren/home/tent_10x10_a",
+      "kind": "home",
+      "size": [
+        10,
+        18,
+        10
+      ],
+      "beds": 4,
+      "workstations": []
+    },
+    {
+      "id": "yurt_14x10_a",
+      "part": "enterprise:tauren/home/yurt_14x10_a",
+      "kind": "home",
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 4,
+      "workstations": []
+    },
+    {
+      "id": "forge_tent_14x10_a",
+      "part": "enterprise:tauren/workshop/forge_tent_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:weaponsmith",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:grindstone"
+      ]
+    },
+    {
+      "id": "stall_3x3_a",
+      "part": "enterprise:tauren/stall/stall_3x3_a",
+      "kind": "stall",
+      "slot": "stall:any",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "size": [
+        5,
+        11,
+        5
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "forum_centre_7x7_a",
+      "part": "enterprise:tauren/forum/forum_centre_7x7_a",
+      "kind": "forum",
+      "size": [
+        7,
+        18,
+        7
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "lodge_18x14_a",
+      "part": "enterprise:tauren/hall/lodge_18x14_a",
+      "kind": "hall",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        18,
+        20,
+        14
+      ],
+      "beds": 3,
+      "workstations": []
+    },
+    {
+      "id": "temple_9x9_a",
+      "part": "enterprise:tauren/hall/temple_9x9_a",
+      "kind": "hall",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        9,
+        22,
+        9
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "watchtower_7x7_a",
+      "part": "enterprise:tauren/wall/watchtower_7x7_a",
+      "kind": "wall",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        9,
+        30,
+        9
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "curtain_8_a",
+      "part": "enterprise:tauren/wall/curtain_8_a",
+      "kind": "part",
+      "slot": "wall:curtain",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        8,
+        13,
+        3
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "gatehouse_11x7_a",
+      "part": "enterprise:tauren/wall/gatehouse_11x7_a",
+      "kind": "wall",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        13,
+        26,
+        9
+      ],
+      "beds": 0,
+      "workstations": []
+    }
+  ],
+  "held": [],
+  "notes": [
+    "Footprints include a one-block yard round the building (the catalog's size plus 2 each way); the stall's 5 x 5 is its 3 x 3 on a yard.",
+    "stall_3x3_a has a workstation marker (block any, air) behind its counter: the placer sets the trade's job block there, so one stall serves every trade.",
+    "forum_centre_7x7_a carries the town bell as a marker.",
+    "curtain_8_a is a part: an 8-long wall piece, both ends cut to join the next.",
+    "gatehouse_11x7_a joins the curtain at its east and west ends (cut flat), so only its south and north faces carry relief."
+  ]
+}

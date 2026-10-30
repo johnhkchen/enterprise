@@ -1,0 +1,90 @@
+{
+  "id": "enterprise:orc/hall/feast_hall_18x14_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "hall",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    5,
+    4
+  ],
+  "footprint": [
+    18,
+    14
+  ],
+  "height": 20,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        9,
+        3,
+        12
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        8,
+        3,
+        12
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        14,
+        3,
+        2
+      ],
+      "foot": [
+        14,
+        3,
+        3
+      ]
+    },
+    {
+      "head": [
+        10,
+        3,
+        2
+      ],
+      "foot": [
+        10,
+        3,
+        3
+      ]
+    },
+    {
+      "head": [
+        4,
+        3,
+        2
+      ],
+      "foot": [
+        4,
+        3,
+        3
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

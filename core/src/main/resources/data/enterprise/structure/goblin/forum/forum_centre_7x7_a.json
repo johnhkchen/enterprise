@@ -1,0 +1,45 @@
+{
+  "id": "enterprise:goblin/forum/forum_centre_7x7_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "forum",
+  "palette": "base",
+  "footprint": [
+    7,
+    7
+  ],
+  "height": 14,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        3,
+        6
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [
+    {
+      "what": "bell",
+      "at": [
+        3,
+        6,
+        3
+      ]
+    }
+  ],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

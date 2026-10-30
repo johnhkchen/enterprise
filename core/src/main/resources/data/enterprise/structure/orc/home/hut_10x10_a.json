@@ -1,0 +1,98 @@
+{
+  "id": "enterprise:orc/home/hut_10x10_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "home",
+  "palette": "base",
+  "tiles": [
+    3,
+    3
+  ],
+  "footprint": [
+    10,
+    10
+  ],
+  "height": 20,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        4,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        8,
+        3,
+        4
+      ],
+      "foot": [
+        7,
+        3,
+        4
+      ]
+    },
+    {
+      "head": [
+        1,
+        3,
+        4
+      ],
+      "foot": [
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "head": [
+        3,
+        3,
+        2
+      ],
+      "foot": [
+        3,
+        3,
+        3
+      ]
+    },
+    {
+      "head": [
+        6,
+        3,
+        2
+      ],
+      "foot": [
+        6,
+        3,
+        3
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

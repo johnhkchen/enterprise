@@ -1,0 +1,39 @@
+{
+  "id": "enterprise:nightelf/wall/watchtower_7x7_a",
+  "rev": 1,
+  "style": "nightelf",
+  "kind": "wall",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    11,
+    11
+  ],
+  "height": 32,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}
