@@ -22,6 +22,7 @@ each at least NEIGHBOUR blocks from the others, the nearest to the first; each a
 within ROAD_REACH blocks. The first is kept loaded, the rest left to the core.
 """
 
+import json
 import math
 import re
 import sys
@@ -31,6 +32,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "scripts"))
 import rcon as rcon_client  # noqa: E402
+import fixtures  # noqa: E402
 
 SPREAD = 400  # the second village at least this far from the first
 NEIGHBOUR = 250  # a network's villages at least this far apart (--villages)
@@ -189,12 +191,79 @@ def replay_check(said):
     return f"replay: all {len(game)} responses as the game's"
 
 
+RUN = REPO / "core" / "run" / (f"lanes/{rcon_client.LANE}" if rcon_client.LANE else "")
+# `--fixtures`: the ground kept once made (fixtures.py), the lane's world restored from it by survival_lane.py.
+FIXTURES = "--fixtures" in sys.argv
+
+
+def seed():
+    for line in (RUN / "server.properties").read_text().splitlines():
+        if line.startswith("level-seed="):
+            return line.split("=", 1)[1]
+    raise RuntimeError(f"no level-seed in {RUN / 'server.properties'}")
+
+
+class Stages:
+    """How long each stage of the study took, said as it ends and summed at the end (where a fixture saves time)."""
+
+    def __init__(self, say):
+        self.say, self.took, self.since = say, [], time.time()
+
+    def done(self, name):
+        now = time.time()
+        self.took.append((name, now - self.since))
+        self.say(f"stage {name}: {now - self.since:.0f}s")
+        self.since = now
+
+    def summary(self):
+        return "stages: " + ", ".join(f"{n} {t:.0f}s" for n, t in self.took) + f"; total {sum(t for _, t in self.took):.0f}s"
+
+
 def dist(a, b):
     return math.hypot(a[0] - b[0], a[1] - b[1])
 
 
-def network(first, many, days, say):
+class Points:
+    """`--fixtures`: the world kept after setup (day 0) and every fixtures.POINT_EVERY days, with the journals that made
+    it, so a later build carries on from the last day it would have made the same (survival_lane.py finds it)."""
+
+    def __init__(self, state, say, before):
+        self.say, self.state, self.started = say, state, time.time()
+        self.run = fixtures.run_dir(seed(), sys.argv[3:])
+        resumed = json.loads((RUN / "world" / "study.json").read_text()) if (RUN / "world" / "study.json").exists() else None
+        # A resumed run's journal begins with the core's Load of the point's save: the chain's own requests follow it.
+        self.base, self.skip = (resumed["chain"], 1) if resumed else ([], 0)
+        # The time the run took to reach its point, carried on: what a later restore of this run's points saves.
+        self.seconds = resumed["seconds"] if resumed else before
+
+    def keep(self, day):
+        journal = Path(re.search(r"journal: (\S+\.ejl)", rcon("enterprise core journal")).group(1))
+        least = fixtures.requests(journal)
+        rcon("save-off", "save-all flush")
+        try:
+            name = fixtures.keep_journal(journal, self.run)
+            chain = self.base + [[name, self.skip, fixtures.requests(self.run / "journals" / name)]]
+            seconds = self.seconds + time.time() - self.started
+            aligned = fixtures.save_point(RUN / "world", self.run, day, chain, least,
+                                          dict(self.state, seconds=round(seconds)), seconds)
+        finally:
+            rcon("save-on")
+        self.say(f"point: day {day} kept in {(self.run / f'day{day}').relative_to(REPO)}"
+                 + ("" if aligned else " (its core's save not found in the journal: is sim/ the build the game runs?)"))
+
+
+def network(first, many, days, say, stages):
     """N villages, each a town, roads to each one's two nearest within ROAD_REACH: the days run as main's."""
+    resumed = json.loads((RUN / "world" / "study.json").read_text()) if FIXTURES and (RUN / "world" / "study.json").exists() else None
+    if resumed:
+        chosen, desks = [tuple(v) for v in resumed["chosen"]], resumed["desks"]
+        roads = {tuple(r) for r in resumed["roads"]}
+        first = chosen[0]
+        say(f"resumed from day {resumed['day']}: " + ", ".join(desks))
+        points = Points({k: resumed[k] for k in ("chosen", "desks", "roads")}, say, 0)
+        stages.done("resume")
+        run_days(chosen, desks, roads, first, resumed["day"] + 1, days, say, stages, points)
+        return
     found = {first}
     for gx in range(-1600, 1601, 400):
         for gz in range(-1600, 1601, 400):
@@ -206,8 +275,20 @@ def network(first, many, days, say):
         if len(chosen) < many and all(dist(v, c) >= NEIGHBOUR for c in chosen):
             chosen.append(v)
     say(f"{len(found)} villages found; the network's {len(chosen)}: " + ", ".join(f"{v}" for v in chosen))
-    if PREGEN is not None:
+    stages.done("villages")
+    terrain = fixtures.terrain_dir(seed(), sys.argv) if FIXTURES else None
+    if terrain and fixtures.ready(terrain):
+        say(f"pregen: none, the ground restored from {terrain.relative_to(REPO)}")
+    elif PREGEN is not None:
         pregen(chosen, PREGEN, say)
+        if terrain:
+            rcon("save-off", "save-all flush")
+            try:
+                fixtures.save(RUN / "world", terrain, time.time() - stages.since, "terrain")
+            finally:
+                rcon("save-on")
+            say(f"fixture: the ground kept in {terrain.relative_to(REPO)}")
+    stages.done("pregen")
     desks = [market(v) for v in chosen]
     for d in desks:
         say(f"{d}: " + rcon(f"enterprise core stock {d}").strip().splitlines()[0])
@@ -237,7 +318,16 @@ def network(first, many, days, say):
         sprint(200)
     for d in desks:
         say(f"{d}: " + rcon(f"enterprise autoswitch {d} selling").strip().splitlines()[-1])
-    for day in range(1, days + 1):
+    stages.done("setup")
+    points = Points({"chosen": chosen, "desks": desks, "roads": sorted(roads)}, say,
+                    sum(t for _, t in stages.took)) if FIXTURES else None
+    if points:
+        points.keep(0)
+    run_days(chosen, desks, roads, first, 1, days, say, stages, points)
+
+
+def run_days(chosen, desks, roads, first, start, days, say, stages, points):
+    for day in range(start, days + 1):
         started = time.time()
         if day == 2 and "--loaded" not in sys.argv:
             # After the first day, the rest left to the core's ledgers: each town's conversion and harbour are laid in
@@ -257,6 +347,8 @@ def network(first, many, days, say):
                     unload(*v, r=8)
         sprint(24000)
         say(f"day {day} ({time.time() - started:.0f}s)")
+        if day == 1 and start == 1:
+            stages.done("day 1")
         if day == 2:
             # A road refused at the start (no way over land) may go by ship now that the towns' harbours are laid.
             for i, j in sorted(roads):
@@ -270,9 +362,13 @@ def network(first, many, days, say):
                     unload(*v, r=8)
             # Every road, its carrier ("by ship: ..."), trips and sales; towns founded since show here too.
             say(f"-- day {day}, roads\n" + rcon("enterprise routes").strip())
+        if points and (day == 1 or day % fixtures.POINT_EVERY == 0):  # day 1 the dearest: every town laid out
+            points.keep(day)
+    stages.done(f"days {max(start, 2)}-{days}")
     said = rcon("enterprise core journal").strip()
     say(said)
     say(replay_check(said))
+    say(stages.summary())
 
 
 def main():
@@ -288,6 +384,7 @@ def main():
         log.write(line + "\n")
         log.flush()
 
+    stages = Stages(say)
     if "The core's mint" not in rcon("enterprise mint"):
         sys.exit("the server isn't running the core (ENTERPRISE_SOCIETY=java?)")
     rcon("gamerule doDaylightCycle true", "time set 1000")
@@ -298,7 +395,7 @@ def main():
         sys.exit("no village near spawn: try another seed")
     many = int(sys.argv[sys.argv.index("--villages") + 1]) if "--villages" in sys.argv else 2
     if many > 2:
-        network(first, many, days, say)
+        network(first, many, days, say, stages)
         return
     # The nearest village at least SPREAD out, looking each way (a player founds a town's neighbour near, not the first
     # one found: the first study's pair were 1,488 blocks apart, a road its wagon's goods never paid for).

@@ -149,6 +149,57 @@ fn main() {
         }
         return;
     }
+    if args.first().map(String::as_str) == Some("--chain") {
+        // A study's journals one after another, as one run (dev/experiments/fixtures.py): each `JOURNAL:FROM:TO` its
+        // requests FROM..TO (a resumed run's first, its Load, skipped: the society is the chain's so far), each
+        // response's FNV-1a a line, global; `--save N FILE`: the society saved after the chain's first N responses, as
+        // the game's enterprise_core.dat (a checkpoint's core, rebased onto this build).
+        let mut save_at: Option<(usize, String)> = None;
+        let mut segments = Vec::new();
+        let mut rest = args[1..].iter();
+        while let Some(a) = rest.next() {
+            if a == "--save" {
+                let (Some(n), Some(file)) = (rest.next().and_then(|n| n.parse().ok()), rest.next()) else {
+                    eprintln!("enterprise-sim --chain [--save N FILE] JOURNAL:FROM:TO ...");
+                    std::process::exit(2);
+                };
+                save_at = Some((n, file.clone()));
+            } else {
+                let mut parts = a.rsplitn(3, ':');
+                let (Some(to), Some(from), Some(path)) = (parts.next(), parts.next(), parts.next()) else {
+                    eprintln!("--chain: {a} isn't JOURNAL:FROM:TO");
+                    std::process::exit(2);
+                };
+                segments.push((path.to_string(), from.parse::<usize>().unwrap(), to.parse::<usize>().unwrap()));
+            }
+        }
+        let mut society: Option<enterprise_core::Society> = None;
+        let mut n = 0;
+        let write = |society: &mut Option<enterprise_core::Society>, file: &str| {
+            let s = society.as_mut().expect("a society to save");
+            let bytes = postcard::to_allocvec(&enterprise_core::wire::SaveFile::of(s)).expect("a save");
+            std::fs::write(file, bytes).unwrap_or_else(|e| panic!("{file}: {e}"));
+        };
+        for (path, from, to) in &segments {
+            let bytes = std::fs::read(path).unwrap_or_else(|e| panic!("{path}: {e}"));
+            for request in trace::read(&bytes).unwrap_or_else(|e| panic!("{path}: {e}")).into_iter().take(*to).skip(*from) {
+                if save_at.as_ref().is_some_and(|(at, _)| *at == n) {
+                    write(&mut society, &save_at.take().unwrap().1);
+                }
+                let out = enterprise_core::wire::handle_bytes(&mut society, request);
+                println!("{:x}", out.iter().fold(0xcbf29ce484222325u64, |h, &b| (h ^ b as u64).wrapping_mul(0x100000001b3)));
+                n += 1;
+            }
+        }
+        if let Some((at, file)) = save_at {
+            if at != n {
+                eprintln!("--chain: --save {at}, but the chain has {n} responses");
+                std::process::exit(2);
+            }
+            write(&mut society, &file);
+        }
+        return;
+    }
     if args.first().map(String::as_str) == Some("--world") {
         let n = |i: usize| args.get(i).and_then(|a| a.parse::<u64>().ok());
         let (Some(seed), Some(days), Some(path)) = (n(1), n(2), args.get(3)) else {
