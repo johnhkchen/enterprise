@@ -214,6 +214,11 @@ public final class LandAdapter {
                 }
                 long town = desk.getValue();
                 BlockPos bell = PeopleAdapter.centre(level, desk.getKey().pos());
+                // Its people drawn from the land at its first survey, before anything is laid in their style (thread 0015);
+                // a town surveyed before (its forum laid) keeps the style it was built in.
+                if (!dev.b28.enterprise.territory.Forums.get(server).bells().containsKey(town)) {
+                    dev.b28.enterprise.territory.Kingdoms.get(server).settle(level, town, bell);
+                }
                 // Its forum, laid free at its first survey: the heart its main roads leave from.
                 int paved = dev.b28.enterprise.territory.Forums.get(server).ensure(level, town, bell);
                 if (paved > 0) {

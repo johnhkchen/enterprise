@@ -1108,6 +1108,13 @@ mod's), but no road ever chose it. Then: build them first.
   64-emerald founding purse on stalls and fields by day 5, and the best load any road saw in 30 days was worth 8.6
   against an 820-block road's 16. The study's roads went to each town's two nearest, so the two ports on one sea
   (Corin's Crossing and Theramore, ~950 apart) never had one: `survival_study.py --road I-J` adds such a road.
+- **The land picks the people, in the mod (thread 0015).** At a town's first survey, before its forum is laid, the
+  biome at its centre (its tags, and its id) picks an entry of the studio's `styles/settlement.json`, and one style
+  and clan is drawn by weight from the world's seed mixed with the town's, as `settle.mjs` draws (`Settle`), and kept
+  (`Kingdoms`: its kingdom and clan). Only styles the mod ships found towns (`town_rules/<style>.json`: Lordaeron,
+  Stormwind, Dalaran today); the orc and dwarf drafts are passed over, to the rest of the list or the fallback's
+  Lordaeron. A town surveyed before keeps the style it was built in. So forest towns are now a third Dalaran, ready for
+  the studio's new set (thread 0016) to replace the hall-style kits.
 - **A grown town sends workers it can spare (seed 1717, run g).** A party took only hands waiting for work, and a
   grown town has none: towns sat on 50 to 270 emeralds of savings, able to pay, and sent nobody (one new town in 120
   days, on day 78). With nobody idle, a party now takes workers of a trade the town has others of, the least practised

@@ -9,8 +9,8 @@ import net.minecraft.world.level.saveddata.SavedData;
 
 /**
  * Each town's kingdom (`docs/assets/README.md`, C2): the architectural language its buildings are chosen in
- * ({@link Kits}). Lordaeron for every town until the sim assigns kingdoms (the first set: John's "hybrid of WoW human
- * kingdoms and real life cultures", piloted in Lordaeron); set by command for a world (`/enterprise kingdom`).
+ * ({@link Kits}), and its clan where its race has clans: drawn from the land at its first survey ({@link Settle}),
+ * set by command for a world (`/enterprise kingdom`); Lordaeron for a town none was drawn for.
  *
  * <p>And a town's tier, from its people: what size of building it builds.
  */
@@ -42,6 +42,37 @@ public final class Kingdoms extends SavedData {
         setDirty();
     }
 
+    private final Map<Long, String> clans = new LinkedHashMap<>();
+
+    /** Has the town a kingdom of its own (drawn or set), not the default? */
+    public boolean has(long town) {
+        return kingdoms.containsKey(town);
+    }
+
+    /** The town's clan, empty where its race has none. */
+    public String clanOf(long town) {
+        return clans.getOrDefault(town, "");
+    }
+
+    /**
+     * The town's people drawn from the land at its centre if none were yet (thread 0015): its kingdom and clan. Not on
+     * the game-test server, whose towns have none unless a test gives them one. True if drawn now.
+     */
+    public boolean settle(net.minecraft.server.level.ServerLevel level, long town, net.minecraft.core.BlockPos centre) {
+        if (gameTests || has(town)) {
+            return false;
+        }
+        Settle.Who who = Settle.settle(level, centre, Zoning.mix(level.getSeed(), town));
+        kingdoms.put(town, who.style());
+        if (!who.clan().isEmpty()) {
+            clans.put(town, who.clan());
+        }
+        setDirty();
+        dev.b28.enterprise.Enterprise.LOGGER.info("Town {}'s people drawn from the land ({}): {}{}", town, who.biome(),
+                who.style(), who.clan().isEmpty() ? "" : " of the " + who.clan());
+        return true;
+    }
+
     /** A town's tier: the one set for it by hand, else by its villagers ({@link #tier(double)}). */
     public String tierOf(long town, double villagers) {
         return tiers.getOrDefault(town, tier(villagers));
@@ -70,6 +101,9 @@ public final class Kingdoms extends SavedData {
         CompoundTag t = new CompoundTag();
         tiers.forEach((town, k) -> t.putString(Long.toString(town), k));
         tag.put("tiers", t);
+        CompoundTag c = new CompoundTag();
+        clans.forEach((town, k) -> c.putString(Long.toString(town), k));
+        tag.put("clans", c);
         return tag;
     }
 
@@ -82,6 +116,10 @@ public final class Kingdoms extends SavedData {
         CompoundTag t = tag.getCompound("tiers");
         for (String key : t.getAllKeys()) {
             out.tiers.put(Long.parseLong(key), t.getString(key));
+        }
+        CompoundTag c = tag.getCompound("clans");
+        for (String key : c.getAllKeys()) {
+            out.clans.put(Long.parseLong(key), c.getString(key));
         }
         return out;
     }

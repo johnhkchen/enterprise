@@ -452,6 +452,28 @@ public final class GrowthTests {
         helper.succeed();
     }
 
+    /**
+     * The land picks the people (thread 0015): plains draw Lordaeron or Stormwind, forest any of the three, Dalaran
+     * among them; the desert's orcs aren't shipped yet, so it falls to the fallback's Lordaeron.
+     */
+    @GameTest(template = "floor")
+    public static void theLandPicksThePeople(GameTestHelper helper) {
+        var resources = helper.getLevel().getServer().getResourceManager();
+        java.util.Set<String> plains = new java.util.TreeSet<>(), forest = new java.util.TreeSet<>(), desert = new java.util.TreeSet<>();
+        for (int seed = 0; seed < 200; seed++) {
+            plains.add(dev.b28.enterprise.territory.Settle.settle(resources, java.util.Set.of("c:is_plains"), seed).style());
+            forest.add(dev.b28.enterprise.territory.Settle.settle(resources, java.util.Set.of("c:is_forest"), seed).style());
+            desert.add(dev.b28.enterprise.territory.Settle.settle(resources, java.util.Set.of("c:is_desert"), seed).style());
+        }
+        helper.assertTrue(plains.equals(java.util.Set.of("lordaeron", "stormwind")), "plains: " + plains);
+        helper.assertTrue(forest.equals(java.util.Set.of("lordaeron", "stormwind", "dalaran")), "forest: " + forest);
+        helper.assertTrue(desert.equals(java.util.Set.of("lordaeron")), "desert: " + desert);
+        var once = dev.b28.enterprise.territory.Settle.settle(resources, java.util.Set.of("c:is_forest"), 7);
+        helper.assertTrue(once.equals(dev.b28.enterprise.territory.Settle.settle(resources, java.util.Set.of("c:is_forest"), 7)),
+                "the same seed, the same people");
+        helper.succeed();
+    }
+
     @GameTest(template = "floor")
     public static void housesAndWorkshopsShareOnePlotGrid(GameTestHelper helper) {
         // r66: a house's plot (14 wide) and a workshop's (16) cut a ward's stretch two ways and crowded each other; on
