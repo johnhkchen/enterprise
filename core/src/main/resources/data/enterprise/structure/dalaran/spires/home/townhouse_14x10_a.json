@@ -1,0 +1,98 @@
+{
+  "id": "enterprise:dalaran/spires/home/townhouse_14x10_a",
+  "rev": 1,
+  "style": "dalaran",
+  "kind": "home",
+  "palette": "base",
+  "tiles": [
+    4,
+    3
+  ],
+  "footprint": [
+    14,
+    10
+  ],
+  "height": 29,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        4,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        10,
+        7,
+        2
+      ],
+      "foot": [
+        10,
+        7,
+        3
+      ]
+    },
+    {
+      "head": [
+        10,
+        11,
+        2
+      ],
+      "foot": [
+        10,
+        11,
+        3
+      ]
+    },
+    {
+      "head": [
+        8,
+        7,
+        4
+      ],
+      "foot": [
+        8,
+        7,
+        5
+      ]
+    },
+    {
+      "head": [
+        8,
+        11,
+        4
+      ],
+      "foot": [
+        8,
+        11,
+        5
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "id": "enterprise:dalaran/spires/workshop/arcane_smithy_14x10_a",
+  "rev": 1,
+  "style": "dalaran",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    4,
+    3
+  ],
+  "footprint": [
+    14,
+    10
+  ],
+  "height": 32,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        4,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        6,
+        8,
+        5
+      ],
+      "foot": [
+        7,
+        8,
+        5
+      ]
+    },
+    {
+      "head": [
+        6,
+        8,
+        3
+      ],
+      "foot": [
+        7,
+        8,
+        3
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        11,
+        3,
+        3
+      ],
+      "block": "minecraft:blast_furnace"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:armorer"
+}

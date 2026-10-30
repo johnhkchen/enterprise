@@ -1,0 +1,102 @@
+{
+  "id": "enterprise:dalaran/spires/hall/inn_18x14_a",
+  "rev": 1,
+  "style": "dalaran",
+  "kind": "hall",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    5,
+    4
+  ],
+  "footprint": [
+    18,
+    14
+  ],
+  "height": 34,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        9,
+        3,
+        11
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        8,
+        3,
+        11
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        14,
+        8,
+        10
+      ],
+      "foot": [
+        14,
+        8,
+        9
+      ]
+    },
+    {
+      "head": [
+        12,
+        8,
+        5
+      ],
+      "foot": [
+        12,
+        8,
+        4
+      ]
+    },
+    {
+      "head": [
+        3,
+        8,
+        10
+      ],
+      "foot": [
+        3,
+        8,
+        9
+      ]
+    },
+    {
+      "head": [
+        3,
+        8,
+        5
+      ],
+      "foot": [
+        2,
+        8,
+        5
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

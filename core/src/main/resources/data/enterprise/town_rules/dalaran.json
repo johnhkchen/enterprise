@@ -1,9 +1,233 @@
 {
   "kingdom": "dalaran",
-  "rev": 1,
-  "about": "Dalaran's town rules: Lordaeron's zoning and fill order (the grid and the planned-town rules are shared), with Dalaran's sets and palettes.",
+  "rev": 3,
+  "about": "Dalaran, city of the Kirin Tor: town rules for a kit race. Every building is a whole delivered part from town_kits/dalaran/spires.json (named here by id), placed on its plot as it is; the house solver is not used. A town's clan (from styles/settlement.json, by the land) recolours every part at placement with that clan's swaps in styles/dalaran.json (this race has no clans: no swaps). The tiers and the street bands are Lordaeron's. Choice is deterministic: hash(town id, slot) picks among weighted options.",
+  "set": "dalaran/spires",
+  "tiers": {
+    "hamlet": {
+      "villagers": [
+        0,
+        7
+      ]
+    },
+    "village": {
+      "villagers": [
+        8,
+        23
+      ]
+    },
+    "town": {
+      "villagers": [
+        24,
+        47
+      ]
+    },
+    "city": {
+      "villagers": [
+        48,
+        95
+      ]
+    },
+    "capital": {
+      "villagers": [
+        96,
+        null
+      ],
+      "or": "the kingdom's seat"
+    }
+  },
+  "homes": {
+    "hamlet": [
+      {
+        "asset": "enterprise:dalaran/spires/home/tower_house_10x10_a",
+        "tiles": [
+          3,
+          3
+        ],
+        "footprint": [
+          10,
+          10
+        ],
+        "beds": 2,
+        "weight": 1
+      }
+    ],
+    "village": [
+      {
+        "asset": "enterprise:dalaran/spires/home/tower_house_10x10_a",
+        "tiles": [
+          3,
+          3
+        ],
+        "footprint": [
+          10,
+          10
+        ],
+        "beds": 2,
+        "weight": 3
+      },
+      {
+        "asset": "enterprise:dalaran/spires/home/townhouse_14x10_a",
+        "tiles": [
+          4,
+          3
+        ],
+        "footprint": [
+          14,
+          10
+        ],
+        "beds": 4,
+        "weight": 1
+      }
+    ],
+    "town": [
+      {
+        "asset": "enterprise:dalaran/spires/home/tower_house_10x10_a",
+        "tiles": [
+          3,
+          3
+        ],
+        "footprint": [
+          10,
+          10
+        ],
+        "beds": 2,
+        "weight": 1
+      },
+      {
+        "asset": "enterprise:dalaran/spires/home/townhouse_14x10_a",
+        "tiles": [
+          4,
+          3
+        ],
+        "footprint": [
+          14,
+          10
+        ],
+        "beds": 4,
+        "weight": 2
+      }
+    ],
+    "city": [
+      {
+        "asset": "enterprise:dalaran/spires/home/tower_house_10x10_a",
+        "tiles": [
+          3,
+          3
+        ],
+        "footprint": [
+          10,
+          10
+        ],
+        "beds": 2,
+        "weight": 1
+      },
+      {
+        "asset": "enterprise:dalaran/spires/home/townhouse_14x10_a",
+        "tiles": [
+          4,
+          3
+        ],
+        "footprint": [
+          14,
+          10
+        ],
+        "beds": 4,
+        "weight": 3
+      }
+    ]
+  },
+  "workshops": {
+    "from": "village",
+    "slot": "workshop:armorer",
+    "asset": "enterprise:dalaran/spires/workshop/arcane_smithy_14x10_a",
+    "tiles": [
+      4,
+      3
+    ],
+    "footprint": [
+      14,
+      10
+    ],
+    "trades": "the smiths (armorer, toolsmith, weaponsmith) take this workshop; every other trade works from a stall (stall:any, the trade's job block set at its marker) until its own workshop is delivered",
+    "on": "plots fronting an avenue or the forum, nearest the forum first"
+  },
+  "halls": {
+    "tavern": {
+      "asset": "enterprise:dalaran/spires/hall/inn_18x14_a",
+      "tiles": [
+        5,
+        4
+      ],
+      "footprint": [
+        18,
+        14
+      ],
+      "from": "village"
+    },
+    "temple": {
+      "asset": "enterprise:dalaran/spires/hall/sanctum_9x9_a",
+      "footprint": [
+        11,
+        11
+      ],
+      "from": "village"
+    },
+    "watchtower": {
+      "asset": "enterprise:dalaran/spires/wall/watchtower_7x7_a",
+      "footprint": [
+        9,
+        9
+      ],
+      "from": "town"
+    }
+  },
+  "forum": {
+    "hamlet": {
+      "centre": null,
+      "ring": [
+        {
+          "asset": "enterprise:dalaran/spires/stall/stall_3x3_a",
+          "for": "each trade's stall: one part serves every trade (its marker takes the trade's job block)"
+        }
+      ]
+    },
+    "village": {
+      "centre": "enterprise:dalaran/spires/forum/fountain_7x7_a",
+      "ring": [
+        {
+          "stalls": "the trades' stalls, facing the bell"
+        }
+      ]
+    },
+    "town": {
+      "centre": "enterprise:dalaran/spires/forum/fountain_7x7_a",
+      "facing": "the tavern on the forum's north side",
+      "ring": [
+        {
+          "stalls": "facing the bell"
+        }
+      ]
+    }
+  },
+  "walls": {
+    "hamlet": "marked out only",
+    "village": "marked out only",
+    "town": {
+      "curtain": "enterprise:dalaran/spires/wall/curtain_8_a",
+      "gatehouse": "enterprise:dalaran/spires/wall/gatehouse_11x7_a",
+      "tower": "enterprise:dalaran/spires/wall/watchtower_7x7_a",
+      "tiling": "curtain pieces end to end (each 8 long, ends cut to join), a gatehouse where an avenue leaves, a watchtower at each corner"
+    },
+    "city": "as town"
+  },
+  "yards": "no yard tiles yet for this race: the ring round each part is its yard, authored as the yard marker (red_sand, dead_bush) that the placer swaps for the land's ground and plant",
+  "growth": {
+    "rule": "a plot keeps its slot as the town grows: a hamlet's 7-wide cottage gives way to a 10-wide house on the merged plot when the ward fills; a home's palette steps up (daub to brick) at town tier on the seed's hash; yards follow the house's tier",
+    "never": "lose a bed or a workstation the census counted"
+  },
   "zoning": {
-    "about": "The planned town (thread 0012): the plan is laid at founding for the town's eventual tier; plots fill in `fill_order`; each plot takes its body, kind, storeys, palette and roof from its street class and its band (distance from the bell along the streets, in blocks). Bands and streets are read in this order: the first rule that matches wins. Unbuilt plots carry yard or field tiles (`placeholder`) until their house comes.",
+    "about": "The planned town (thread 0012): the plan is laid at founding for the town's eventual tier; plots fill in `fill_order`; each plot takes its body, kind, storeys, palette and roof from its street class and its band (distance from the bell along the streets, in blocks). Bands and streets are read in this order: the first rule that matches wins. Unbuilt plots carry yard or field tiles (`placeholder`) until their house comes. For a kit race each rule names a part instead of a body; plots are whole tiles (thread 0016), as many as the part needs.",
     "streets": {
       "avenue": "a street from a gate to the forum",
       "forum_front": "a plot whose front faces the forum",
@@ -44,100 +268,47 @@
     "rules": [
       {
         "street": "forum_front",
-        "use": "the forum frontage set first (hall, inn, guildhall); then houses",
-        "body": "13x7",
-        "kind": "detached",
-        "storeys": 3,
-        "palette": "stone",
-        "shop": true
+        "use": "the forum frontage: the tavern first, then the temple, then homes",
+        "part": "enterprise:dalaran/spires/hall/inn_18x14_a"
       },
       {
         "street": "avenue",
-        "band": "core",
-        "body": "10x7",
-        "kind": "detached",
-        "storeys": 3,
-        "palette": {
-          "stone": 2,
-          "brick": 1
-        },
-        "shop": true,
-        "corner_at_lanes": true
-      },
-      {
-        "street": "avenue",
-        "band": "inner",
-        "body": "10x7",
-        "kind": "detached",
-        "storeys": [
-          2,
-          3
-        ],
-        "palette": {
-          "brick": 2,
-          "daub": 1,
-          "stone": 1
-        },
-        "shop": "every other",
-        "corner_at_lanes": true
-      },
-      {
-        "street": "avenue",
-        "band": "outer",
-        "body": "10x7",
-        "kind": "detached",
-        "storeys": 2,
-        "palette": {
-          "daub": 2,
-          "brick": 1
-        },
-        "workshop": "every third, a trade the town has"
-      },
-      {
-        "street": "lane",
         "band": [
           "core",
           "inner"
         ],
-        "body": {
-          "10x7": 2,
-          "7x7": 1
+        "part": {
+          "enterprise:dalaran/spires/home/townhouse_14x10_a": 2,
+          "enterprise:dalaran/spires/home/tower_house_10x10_a": 1
         },
-        "kind": "detached",
-        "storeys": [
-          1,
-          2
-        ],
-        "palette": {
-          "brick": 1,
-          "daub": 2
+        "workshop": "the smith's workshop on the first avenue plot nearest the forum"
+      },
+      {
+        "street": "avenue",
+        "band": "outer",
+        "part": {
+          "enterprise:dalaran/spires/home/townhouse_14x10_a": 1,
+          "enterprise:dalaran/spires/home/tower_house_10x10_a": 2
         }
       },
       {
         "street": "lane",
-        "band": "outer",
-        "body": "7x7",
-        "kind": "detached",
-        "storeys": 1,
-        "palette": "daub"
+        "part": {
+          "enterprise:dalaran/spires/home/tower_house_10x10_a": 2,
+          "enterprise:dalaran/spires/home/townhouse_14x10_a": 1
+        }
       },
       {
         "street": "ward_back",
-        "body": "7x7",
-        "kind": "detached",
-        "storeys": 1,
-        "palette": "daub",
-        "yards": "big gardens: back yard tiles both sides"
+        "part": "enterprise:dalaran/spires/home/tower_house_10x10_a"
       },
       {
         "band": "fringe",
-        "use": "farmsteads on holdings (farmstead_19x18_*), fields, pastures; no town houses"
+        "use": "fields and pastures; no town houses"
       }
     ],
     "rhythm": {
-      "roof": "along a terrace, alternate gable_x and gable_z (a gable turned to the street) house by house, never two gable_z side by side; corner houses gable_x",
-      "palette": "never the same palette three houses running; corner houses stone in the core and inner bands",
-      "door": "vary the door bay (doorBay 0, 1, 2) along a terrace by the plot's hash"
+      "mirror": "mirror a part (each is authored mirror: true) on alternate plots along a street, by the plot's hash"
     },
     "placeholder": {
       "front": "front_garden_3 and front_cottage_2 tiles",
@@ -146,6 +317,5 @@
     },
     "replacement": "a vanilla house inside the plan stays until the kingdom house on its plot is built; then it's cleared and its villagers move to the new beds (John's decision, thread 0012)",
     "kinds": "plan.json `kinds`: detached, terrace, terrace_end, corner"
-  },
-  "set": "dalaran/platform_hall (houses detached for now: a terrace with hipped roofs needs its own roof pieces, coming next)"
+  }
 }
