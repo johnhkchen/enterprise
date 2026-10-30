@@ -1108,6 +1108,12 @@ mod's), but no road ever chose it. Then: build them first.
   64-emerald founding purse on stalls and fields by day 5, and the best load any road saw in 30 days was worth 8.6
   against an 820-block road's 16. The study's roads went to each town's two nearest, so the two ports on one sea
   (Corin's Crossing and Theramore, ~950 apart) never had one: `survival_study.py --road I-J` adds such a road.
+- **A grown town sends workers it can spare (seed 1717, run g).** A party took only hands waiting for work, and a
+  grown town has none: towns sat on 50 to 270 emeralds of savings, able to pay, and sent nobody (one new town in 120
+  days, on day 78). With nobody idle, a party now takes workers of a trade the town has others of, the least practised
+  first, each trade keeping one, so long as the town keeps 8 (`settlers::party_hands`); never the desk's Merchant or a
+  Nitwit. And open ground is looked for on every hex of the rings between the least and the most reach, not six spokes'
+  two hexes each (the spokes first, so ties go as before). Run g's journal replayed on these founds 15 towns from day 24.
 - **Plots on 4-block tiles (John, 2026-10-30: "I'm finding the current plot system a bit too inflexible"; studio
   thread 0016).** A new town's ward is 38 (a lane, a block kept either side, a 32-block cell: 8 tiles); a plot is 16
   deep (front yard a tile, the house two, back yard a tile; a house three tiles deep takes the back yard, and one

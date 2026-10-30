@@ -148,6 +148,37 @@ pub fn raising(content: &Content, settlers: &Settlers, town: TownId, people: &Pe
         })
 }
 
+/// The hands a party may take, the first first: those waiting for work (Nitwits never go); then, a grown town having
+/// none to spare (seed 1717: every town with savings to found but its hands all at work, 640 days of towns sending
+/// nobody in 120 days), its workers in a trade it has others of, the least practised first, each trade keeping one, not the desk's
+/// Merchant nor any away, so long as the town keeps [`GROWN`] residents.
+pub fn party_hands(content: &Content, roster: &Roster) -> Vec<usize> {
+    let mut out: Vec<usize> =
+        roster.idle(content).into_iter().filter(|&i| !content.trades[roster.hands[i].trade].nitwit).collect();
+    let mut working: Vec<usize> = (0..roster.hands.len()).filter(|&i| {
+        let h = &roster.hands[i];
+        let trade = &content.trades[h.trade];
+        roster.merchant != Some(i) && !h.away && !h.is_baby() && !trade.idle() && !trade.merchant
+            && roster.hands.iter().filter(|o| o.trade == h.trade && !o.is_baby()).count() >= 2
+    }).collect();
+    working.sort_by_key(|&i| (roster.hands[i].level, roster.hands[i].xp, i));
+    // Each trade keeps one.
+    let mut left: std::collections::BTreeMap<usize, usize> = std::collections::BTreeMap::new();
+    for h in roster.hands.iter().filter(|h| !h.is_baby()) {
+        *left.entry(h.trade).or_default() += 1;
+    }
+    for i in working {
+        let n = left.get_mut(&roster.hands[i].trade).expect("counted");
+        if *n >= 2 {
+            *n -= 1;
+            out.push(i);
+        }
+    }
+    let keep = GROWN as usize;
+    out.truncate(roster.residents().saturating_sub(keep));
+    out
+}
+
 /// Takes the hand at `i` off a roster (`Settlements.remove`), keeping the desk's Merchant straight.
 pub fn take_hand(roster: &mut Roster, i: usize) -> Hand {
     let hand = roster.hands.remove(i);

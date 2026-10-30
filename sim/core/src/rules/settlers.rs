@@ -86,21 +86,25 @@ fn unclaimed_village(sites: &[Site], settlers: &Settlers, home: Hex, min: i32, m
 fn open_ground(sites: &[Site], settlers: &Settlers, territory: &Territory, map: &Map, home: Hex, min: i32, max: i32,
         worth: impl Fn(Hex) -> f64) -> Option<(Hex, f64)> {
     let mut best: Option<((f64, f64), Hex)> = None;
-    for (dq, dr) in crate::hex::DIRECTIONS {
-        for d in (min + 1..=max - 1).step_by(2) {
-            let hex = Hex::new(home.q + d * dq, home.r + d * dr);
-            if !clear(sites, settlers, min, hex, None) || territory.owner(hex).is_some() {
-                continue;
-            }
-            let ground = map.ground(hex);
-            let (wet, relief) = (ground.water_share, ground.relief);
-            if wet > OPEN_WET || relief >= ROUGH {
-                continue;
-            }
-            let score = (worth(hex), -relief - 20.0 * wet + if wet > 0.02 { 4.0 } else { 0.0 } - 0.5 * d as f64);
-            if best.is_none_or(|(b, _)| score.0 > b.0 || score.0 == b.0 && score.1 > b.1) {
-                best = Some((score, hex));
-            }
+    // Every hex of the rings between (seed 1717: six spokes' two hexes each left a town with savings and hands no ground),
+    // the spokes first, each way in turn, so a tie goes as it did.
+    let spokes = crate::hex::DIRECTIONS.iter().flat_map(|&(dq, dr)| (min + 1..max).map(move |d| (d * dq, d * dr)));
+    let between = (-max..=max).flat_map(|dq| (-max..=max).map(move |dr| (dq, dr)))
+        .filter(|&(dq, dr)| dq != 0 && dr != 0 && dq != -dr);
+    for (dq, dr) in spokes.chain(between) {
+        let hex = Hex::new(home.q + dq, home.r + dr);
+        let d = home.distance(hex);
+        if d <= min || d >= max || !clear(sites, settlers, min, hex, None) || territory.owner(hex).is_some() {
+            continue;
+        }
+        let ground = map.ground(hex);
+        let (wet, relief) = (ground.water_share, ground.relief);
+        if wet > OPEN_WET || relief >= ROUGH {
+            continue;
+        }
+        let score = (worth(hex), -relief - 20.0 * wet + if wet > 0.02 { 4.0 } else { 0.0 } - 0.5 * d as f64);
+        if best.is_none_or(|(b, _)| score.0 > b.0 || score.0 == b.0 && score.1 > b.1) {
+            best = Some((score, hex));
         }
     }
     best.map(|((w, _), h)| (h, w))
@@ -153,9 +157,8 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut m
         // The households' savings stand behind a party as behind a stall: what they'd lend on call (`jobs.rs`).
         let savings = deposits.as_ref().map_or(Fixed::ZERO, |d| crate::farms::on_call(&content, people.purse, d.owed));
         let spare = free + savings;
-        // The hands waiting for work: no trade at all (`Labour.NONE`); Nitwits never go.
-        let hands: Vec<usize> =
-            roster.idle(&content).into_iter().filter(|&i| !content.trades[roster.hands[i].trade].nitwit).collect();
+        // The hands it can spare: those waiting for work, else workers it has others of (`party_hands`).
+        let hands = party_hands(&content, &roster);
         if hands.is_empty() || spare < SETTLING_EMERALDS {
             continue;
         }

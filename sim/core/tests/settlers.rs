@@ -357,6 +357,45 @@ fn open_ground_is_dry_and_flat_enough_and_a_party_needs_two_hands_and_34() {
 }
 
 #[test]
+fn a_grown_town_with_nobody_idle_sends_workers_it_has_others_of() {
+    // Seed 1717: towns with savings to found sent nobody, their hands all at work. The least practised go, each trade
+    // keeping one, the town keeping eight.
+    let (mut s, t) = world(100.0);
+    s.set_roster(t, &[("merchant", 2), ("farmer", 3), ("farmer", 1), ("farmer", 2), ("cleric", 1), ("cleric", 2),
+        ("mason", 1), ("mason", 2), ("librarian", 1), ("cartographer", 1)]);
+    s.advance(DAY / 4);
+    let parties = s.parties();
+    assert_eq!((parties.len(), parties[0].kind, parties[0].hands), (1, Kind::Found, 2), "{parties:?}");
+    let r = s.roster(t);
+    assert_eq!(r.residents(), 8);
+    let count = |name: &str| r.hands.iter().filter(|h| s.content().trades[h.trade].name == name).count();
+    assert_eq!((count("merchant"), count("farmer"), count("cleric"), count("mason")), (1, 2, 1, 2), "a Farmer and a Cleric");
+    assert!(r.hands.iter().filter(|h| s.content().trades[h.trade].name == "farmer").all(|h| h.level >= 2),
+        "the Novice Farmer went");
+    // Nine: one to spare, and a new town takes two.
+    let (mut s, t) = world(100.0);
+    s.set_roster(t, &[("merchant", 2), ("farmer", 3), ("farmer", 1), ("farmer", 2), ("cleric", 1), ("cleric", 2),
+        ("mason", 1), ("mason", 2), ("librarian", 1)]);
+    s.advance(3 * DAY);
+    assert!(s.parties().is_empty(), "{:?}", s.parties());
+}
+
+#[test]
+fn open_ground_off_the_spokes_is_found() {
+    // Every hex 5 to 7 out along the six ways is a lake: the ground between them is still open.
+    let (mut s, _) = world(100.0);
+    for (dq, dr) in enterprise_core::hex::DIRECTIONS {
+        for d in 5..=7 {
+            s.set_ground(Hex::new(d * dq, d * dr), 0.6, 0.0);
+        }
+    }
+    s.advance(DAY / 4);
+    let p = &s.parties()[0];
+    let d = Hex::new(0, 0).distance(p.target);
+    assert!((5..=7).contains(&d) && p.target.q != 0 && p.target.r != 0 && p.target.q != -p.target.r, "{:?}", p.target);
+}
+
+#[test]
 fn no_way_through_and_nobody_goes() {
     let (mut s, _) = world(100.0);
     let v = village(&mut s, Hex::new(5, 0));
