@@ -2,6 +2,11 @@
 """The surveyor's map of a study's world: its blocks from above, after a run (core mode).
 
     python3 dev/experiments/world_render.py WORLD TRACE.db SERVER.log OUT.html [--margin 96] [--video FILM.mp4] [--title "Seed 1717 Survey"]
+    python3 dev/experiments/world_render.py WORLD TRACE.db SERVER.log OUT.html --points core/run/fixtures/seed-1717/run-KEY
+
+`--points RUN`: the world as it stood at each point a survival lane kept (RUN/dayN/world, fixtures.py), one frame a
+point at the same bounds, the clock showing the latest frame by its day: the towns as they grew. A town's name is shown
+from its founding (its first day in the trace).
 
 Reads the world's own region files (stop the server first, so they're saved) and draws each column's top: trees,
 roads and the towns' forums, homes and other buildings, fields by crop, pastures (birch-fenced, their grass tinted),
@@ -248,57 +253,9 @@ def png(width, height, rows):
             + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
 
 
-def main():
-    args = [a for i, a in enumerate(sys.argv[1:], 1)
-            if not a.startswith("--") and sys.argv[i - 1] not in ("--margin", "--video", "--title")]
-    margin = 96
-    if "--margin" in sys.argv:
-        margin = int(sys.argv[sys.argv.index("--margin") + 1])
-    world, trace, log, out = Path(args[0]), args[1], Path(args[2]), Path(args[3])
-
-    # Towns: their bells (the forum lines of the server's log) and names (the trace's).
-    db = sqlite3.connect(trace)
-    names = dict(db.execute("select distinct town, name from towns"))
-    last = db.execute("select max(day) from towns").fetchone()[0]
-    folk = {t: (v, round(m, 2), c) for t, v, m, c in
-            db.execute("select town, villagers, mood, comforts from towns where day=?", (last,))}
-    bells = {}
-    for line in log.read_text(errors="replace").splitlines():
-        if "lays its forum round its bell at" in line:
-            head, _, tail = line.partition("Town ")
-            town = int(tail.split()[0])
-            x, y, z = (int(v.strip()) for v in tail.split(" at ")[1].split("(")[0].split(","))
-            bells[town] = (x, y, z)
-    routes = []
-    for route, frm, to, trips, carrier in db.execute(
-            "select route, from_town, to_town, trips, carrier from routes where day=?", (last,)):
-        hexes = [(q, r) for q, r in db.execute("select q, r from paths where route=? order by step", (route,))]
-        if len(hexes) >= 2:
-            # Each trip it made: when it left and when it was home again, in days.
-            runs = [[round(a / 24000, 3), round(b / 24000, 3)] for a, b in db.execute(
-                "select left_tick, home_tick from trips where route=? and home_tick is not null order by left_tick",
-                (route,))]
-            routes.append({"from": frm, "to": to, "trips": trips, "carrier": carrier, "hexes": hexes, "runs": runs})
-
-    # Each route along its road as the game planned it over the land (the world's enterprise-roads.json), else taut.
-    planned = {}
-    roads = world / "enterprise-roads.json"
-    if roads.exists():
-        for road in json.loads(roads.read_text()):
-            hexes = [tuple(h) for h in road["path"]]
-            planned[(hexes[0], hexes[-1])] = road["line"]
-            planned[(hexes[-1], hexes[0])] = list(reversed(road["line"]))
-    for r in routes:
-        hexes = r.pop("hexes")
-        line = planned.get((hexes[0], hexes[-1])) or taut(hexes, bells)
-        r["path"] = [[round(x, 1), round(z, 1)] for x, z in line]
-    xs = [b[0] for b in bells.values()] + [p[0] for r in routes for p in r["path"]]
-    zs = [b[2] for b in bells.values()] + [p[1] for r in routes for p in r["path"]]
-    x0, x1 = int(min(xs)) - margin, int(max(xs)) + margin
-    z0, z1 = int(min(zs)) - margin, int(max(zs)) + margin
+def picture(world, x0, z0, x1, z1, bells):
+    """The world's columns from above, hill-shaded, as a PNG (base64): (image, counts by kind, lowest, highest)."""
     w, h = x1 - x0 + 1, z1 - z0 + 1
-    print(f"drawing {w} x {h} blocks from x {x0}, z {z0}", file=sys.stderr)
-
     kind = [[None] * w for _ in range(h)]
     rgb = [[(24, 28, 34)] * w for _ in range(h)]
     height = [[None] * w for _ in range(h)]
@@ -380,14 +337,11 @@ def main():
             row += bytes((r, g, b))
         rows.append(row)
     image = base64.b64encode(png(w, h, rows)).decode()
+    return image, counts, lo, hi
 
-    towns = []
-    for t, (x, y, z) in sorted(bells.items()):
-        v, m, c = folk.get(t, (0, 0, 0))
-        towns.append({"id": t, "name": names.get(t, f"Town {t}"), "x": x - x0, "z": z - z0, "y": y,
-                      "villagers": v, "mood": m, "comforts": c})
-    for r in routes:
-        r["path"] = [[p[0] - x0, p[1] - z0] for p in r["path"]]
+
+def town_plans(world, x0, z0):
+    """The towns' plans and their holdings' edges in the world as saved, on the sheet."""
     # The towns' plans (`TownPlans`): their walls' rectangles, the inner to build, the outer kept clear.
     plans = []
     for key, p in saved(world / "data" / "enterprise_town_plans.dat").get("towns", {}).items():
@@ -443,13 +397,91 @@ def main():
                     holdings.append([x + g, z, x + g, z + g])
                 if j + 1 < nz and owner[i, j + 1] not in (o, -1):
                     holdings.append([x, z + g, x + g, z + g])
-    data = {"plans": plans, "holdings": holdings, "w": w, "h": h, "x0": x0, "z0": z0, "lo": lo, "hi": hi, "day": last, "towns": towns, "routes": routes,
-            "counts": counts}
+    return plans, holdings
+
+
+def main():
+    args = [a for i, a in enumerate(sys.argv[1:], 1)
+            if not a.startswith("--") and sys.argv[i - 1] not in ("--margin", "--video", "--title", "--points")]
+    margin = 96
+    if "--margin" in sys.argv:
+        margin = int(sys.argv[sys.argv.index("--margin") + 1])
+    world, trace, log, out = Path(args[0]), args[1], Path(args[2]), Path(args[3])
+
+    # Towns: their bells (the forum lines of the server's log) and names (the trace's).
+    db = sqlite3.connect(trace)
+    names = dict(db.execute("select distinct town, name from towns"))
+    # The day each town is first in the trace: its founding (a village the run began with, its first day).
+    founded = dict(db.execute("select town, min(day) from towns group by town"))
+    last = db.execute("select max(day) from towns").fetchone()[0]
+    folk = {t: (v, round(m, 2), c) for t, v, m, c in
+            db.execute("select town, villagers, mood, comforts from towns where day=?", (last,))}
+    bells = {}
+    for line in log.read_text(errors="replace").splitlines():
+        if "lays its forum round its bell at" in line:
+            head, _, tail = line.partition("Town ")
+            town = int(tail.split()[0])
+            x, y, z = (int(v.strip()) for v in tail.split(" at ")[1].split("(")[0].split(","))
+            bells[town] = (x, y, z)
+    routes = []
+    for route, frm, to, trips, carrier in db.execute(
+            "select route, from_town, to_town, trips, carrier from routes where day=?", (last,)):
+        hexes = [(q, r) for q, r in db.execute("select q, r from paths where route=? order by step", (route,))]
+        if len(hexes) >= 2:
+            # Each trip it made: when it left and when it was home again, in days.
+            runs = [[round(a / 24000, 3), round(b / 24000, 3)] for a, b in db.execute(
+                "select left_tick, home_tick from trips where route=? and home_tick is not null order by left_tick",
+                (route,))]
+            routes.append({"from": frm, "to": to, "trips": trips, "carrier": carrier, "hexes": hexes, "runs": runs})
+
+    # Each route along its road as the game planned it over the land (the world's enterprise-roads.json), else taut.
+    planned = {}
+    roads = world / "enterprise-roads.json"
+    if roads.exists():
+        for road in json.loads(roads.read_text()):
+            hexes = [tuple(h) for h in road["path"]]
+            planned[(hexes[0], hexes[-1])] = road["line"]
+            planned[(hexes[-1], hexes[0])] = list(reversed(road["line"]))
+    for r in routes:
+        hexes = r.pop("hexes")
+        line = planned.get((hexes[0], hexes[-1])) or taut(hexes, bells)
+        r["path"] = [[round(x, 1), round(z, 1)] for x, z in line]
+    xs = [b[0] for b in bells.values()] + [p[0] for r in routes for p in r["path"]]
+    zs = [b[2] for b in bells.values()] + [p[1] for r in routes for p in r["path"]]
+    x0, x1 = int(min(xs)) - margin, int(max(xs)) + margin
+    z0, z1 = int(min(zs)) - margin, int(max(zs)) + margin
+    w, h = x1 - x0 + 1, z1 - z0 + 1
+    print(f"drawing {w} x {h} blocks from x {x0}, z {z0}", file=sys.stderr)
+
+    # The world drawn as it stood at each of the run's kept points (`--points RUN`: its dayN/world), else as WORLD
+    # stands: the frames the clock steps through.
+    if "--points" in sys.argv:
+        run = Path(sys.argv[sys.argv.index("--points") + 1])
+        kept = sorted((int(q.name[3:]), q / "world") for q in run.glob("day*") if (q / "world" / "region").exists())
+    else:
+        kept = [(last, world)]
+    frames = []
+    for d, wd in kept:
+        print(f"day {d}: drawing {wd}", file=sys.stderr)
+        image, counts, lo, hi = picture(wd, x0, z0, x1, z1, bells)
+        ps, holds = town_plans(wd, x0, z0)
+        frames.append({"day": d, "image": image, "plans": ps, "holdings": holds})
+    print("columns:", counts, file=sys.stderr)
+
+    towns = []
+    for t, (x, y, z) in sorted(bells.items()):
+        v, m, c = folk.get(t, (0, 0, 0))
+        towns.append({"id": t, "name": names.get(t, f"Town {t}"), "x": x - x0, "z": z - z0, "y": y,
+                      "villagers": v, "mood": m, "comforts": c, "founded": founded.get(t, 0)})
+    for r in routes:
+        r["path"] = [[p[0] - x0, p[1] - z0] for p in r["path"]]
+    data = {"frames": frames, "w": w, "h": h, "x0": x0, "z0": z0, "lo": lo, "hi": hi, "day": last, "towns": towns,
+            "routes": routes, "counts": counts}
     film = ""
     if "--video" in sys.argv:
         film = base64.b64encode(Path(sys.argv[sys.argv.index("--video") + 1]).read_bytes()).decode()
     title = sys.argv[sys.argv.index("--title") + 1] if "--title" in sys.argv else "Survey"
-    page = TEMPLATE.replace("__TITLE__", html.escape(title)).replace("__IMAGE__", image).replace("__DATA__", json.dumps(data)).replace("__VIDEO__", film)
+    page = TEMPLATE.replace("__TITLE__", html.escape(title)).replace("__DATA__", json.dumps(data)).replace("__VIDEO__", film)
     out.write_text(page)
     print(f"wrote {out} ({len(page) // 1024} KB)", file=sys.stderr)
 

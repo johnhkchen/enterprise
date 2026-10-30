@@ -109,7 +109,9 @@ h2 { font: 500 .78rem var(--body); text-transform: uppercase; letter-spacing: .0
     <p class="note">A pixel is a block. Drag to pan, scroll or pinch to zoom. The roads are the paths the caravans wore
       into the land. Each caravan is on the map from the day it left to the day it was home, out to the far town and
       back (squares are wagons, rounds are llama trains). The clock starts the day before the first caravan left and runs
-      1.5 seconds a day while any is on the road, faster through quiet days.</p>
+      1.5 seconds a day while any is on the road, faster through quiet days. Where the run kept its world on several days,
+      the land is shown as it stood on the latest of them, so the towns grow as the clock runs; each town's name shows from
+      the day it was founded.</p>
     <p class="scale" id="scale"></p>
   </aside>
 </div>
@@ -140,8 +142,10 @@ if (FILM) {
     };
   })();
 }
-const img = new Image();
-img.src = "data:image/png;base64,__IMAGE__";
+// The world as it stood at each kept point: the frame shown is the latest by the clock's day.
+D.frames.forEach(f => { f.img = new Image(); f.img.src = "data:image/png;base64," + f.image; });
+const img = D.frames[D.frames.length - 1].img;
+const frameAt = d => D.frames.reduce((got, f) => f.day <= Math.floor(d) ? f : got, D.frames[0]);
 const cv = document.getElementById("c"), cx = cv.getContext("2d"), map = document.getElementById("map");
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const layers = { plans: true, wagons: true, labels: true };
@@ -173,7 +177,7 @@ D.towns.forEach(t => {
   const d = document.createElement("div"); d.className = "town";
   d.innerHTML = `<b></b><span></span>`;
   d.firstChild.textContent = t.name;
-  d.lastChild.textContent = `${t.villagers} folk · mood ${t.mood >= 0 ? "+" : ""}${t.mood.toFixed(1)} · ${t.comforts} met`;
+  d.lastChild.textContent = `founded day ${t.founded} · ${t.villagers} folk · mood ${t.mood >= 0 ? "+" : ""}${t.mood.toFixed(1)} · ${t.comforts} met`;
   tl.append(d);
 });
 const trips = D.routes.reduce((s, r) => s + (r.runs || []).length, 0);
@@ -213,12 +217,17 @@ const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
 // 0.3 while none is, round again.
 const last = D.day || 90;
 const runs = D.routes.flatMap(r => r.runs || []);
-const first = Math.max(0, Math.min(...runs.map(r => r[0]), last) - 1);
+// With frames from several points, from the first of them: the towns grow from it.
+const first = D.frames.length > 1 ? D.frames[0].day : Math.max(0, Math.min(...runs.map(r => r[0]), last) - 1);
 const onRoad = d => runs.some(([a, b]) => a <= d && d <= b);
 let day = first, playing = !still, before = null;
 const slider = document.getElementById("day"), dayText = document.getElementById("dayText"), play = document.getElementById("play");
 slider.max = last;
-function setDay(d) { day = d; slider.value = d.toFixed(2); dayText.textContent = "Day " + Math.floor(d); }
+function setDay(d) {
+  day = d; slider.value = d.toFixed(2);
+  const f = frameAt(d);
+  dayText.textContent = "Day " + Math.floor(d) + (D.frames.length > 1 ? ` · land as of day ${f.day}` : "");
+}
 slider.oninput = () => { setDay(+slider.value); };
 play.onclick = () => { playing = !playing; play.textContent = playing ? "Pause" : "Play"; play.setAttribute("aria-pressed", String(playing)); };
 play.textContent = playing ? "Pause" : "Play";
@@ -233,11 +242,12 @@ function draw(now) {
   const r = map.getBoundingClientRect();
   cx.clearRect(0, 0, r.width, r.height);
   cx.imageSmoothingEnabled = scale < 1;
-  cx.drawImage(img, ox, oz, D.w * scale, D.h * scale);
+  const frame = frameAt(day);
+  cx.drawImage(frame.img, ox, oz, D.w * scale, D.h * scale);
   const P = (x, z) => [ox + x * scale, oz + z * scale];
-  if (layers.plans && D.plans) {
+  if (layers.plans && frame.plans) {
     cx.strokeStyle = css("--ink"); cx.lineWidth = 1.5;
-    D.plans.forEach(p => {
+    frame.plans.forEach(p => {
       [[p.inner, []], [p.outer, [5, 4]]].forEach(([r, dash]) => {
         const [a, b] = P(r[0], r[1]), [c, d] = P(r[2] + 1, r[3] + 1);
         cx.setLineDash(dash); cx.strokeRect(a, b, c - a, d - b);
@@ -245,9 +255,9 @@ function draw(now) {
     });
     cx.setLineDash([]);
     // The holdings' edges (the field maps' Voronoi parcels).
-    if (D.holdings && D.holdings.length) {
+    if (frame.holdings && frame.holdings.length) {
       cx.strokeStyle = css("--ink"); cx.globalAlpha = 0.45; cx.lineWidth = 1; cx.beginPath();
-      D.holdings.forEach(([a, b, c, d]) => { const [p, q] = P(a, b), [r, s] = P(c, d); cx.moveTo(p, q); cx.lineTo(r, s); });
+      frame.holdings.forEach(([a, b, c, d]) => { const [p, q] = P(a, b), [r, s] = P(c, d); cx.moveTo(p, q); cx.lineTo(r, s); });
       cx.stroke(); cx.globalAlpha = 1;
     }
   }
@@ -269,6 +279,7 @@ function draw(now) {
     cx.font = `700 ${Math.max(13, Math.min(22, 11 + scale * 3))}px "Alegreya SC", Georgia, serif`;
     cx.textAlign = "center"; cx.lineJoin = "round";
     D.towns.forEach(tw => {
+      if (tw.founded > day) return; // a name only once the town is founded
       const [x, y] = P(tw.x, tw.z);
       cx.fillStyle = css("--ink"); cx.beginPath(); cx.arc(x, y, 4, 0, 7); cx.fill();
       cx.strokeStyle = css("--label-halo"); cx.lineWidth = 4; cx.strokeText(tw.name, x, y - 10);
