@@ -197,11 +197,18 @@ impl Society {
             for _ in 0..self.unlaid_pastures(t) {
                 out.push(Output::Build { town: crate::wire::no(t), work: Work::Pasture { grass: 0 }, share: 1.0 });
             }
-            for _ in 0..book.berths.get(&t).copied().unwrap_or(0) {
-                out.push(Output::Build { town: crate::wire::no(t), work: Work::Berth, share: 1.0 });
-            }
         }
         out
+    }
+
+    /// The berths each town paid for that the host hasn't laid, surveyed or not: the host lays a waterfront's stretch as
+    /// its shore loads, not its desk (seed 1717: four towns' berths, paid for while their desks weren't loaded, never
+    /// asked of the host).
+    pub fn show_berths(&self) -> Vec<Output> {
+        let book = self.world.resource::<LandBook>();
+        book.berths.iter()
+            .flat_map(|(&t, &n)| (0..n).map(move |_| Output::Build { town: crate::wire::no(t), work: Work::Berth, share: 1.0 }))
+            .collect()
     }
 
     /// The host laid `share` of a town's work: a project's shown share rises to it, a field planted is laid (the first

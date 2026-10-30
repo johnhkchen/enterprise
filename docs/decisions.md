@@ -1053,7 +1053,9 @@ mod's), but no road ever chose it. Then: build them first.
   1717's first run with fishing: one Fisherman in ten towns, its job draw blind to the water).
 - **Waterfront stretches are owed, then laid** (seed 1717: Refuge Pointe paid for two berths and laid none, the core
   asking only while its desk was loaded and the shore's chunks loading after it went). A berth paid for or a tier
-  risen to is owed to the town's waterfront and laid as its ground loads, one a look (`LandAdapter.growWaterfronts`);
+  risen to is owed to the town's waterfront and laid as its ground loads, one a look (`LandAdapter.growWaterfronts`),
+  asked of the host whether its desk is loaded or not (`show_berths`: the next run's four towns' berths, paid while
+  unloaded, were never asked);
   a grown waterfront's way along its shore passes over its own quay (`Harbour.shore`'s wade: the quay's edge filled
   the first water, and Corin's Crossing's next stretch found no shore past it).
 - **A port grows into a forwarding point (John: "sea trade becomes the upgrade path as a highly port-endowed town
@@ -1061,8 +1063,9 @@ mod's), but no road ever chose it. Then: build them first.
   a freight hub; with two it's a hub's site though no road of others passes it (`rules/freight.rs`,
   `PORT_HUB_BERTHS`).
 - **A founded town's square on the land's own ground** (seed 1717: Lakeshire asked of the host 1,084 times, its spot
-  read off a tree's top): at its spot's ground under any tree, or failing that at one of eight spots 16 blocks round it
-  (`LandAdapter.buildFounded`).
+  read off a tree's top): at its spot's ground under any tree, or failing that on rings 16, 32 and 48 blocks round it
+  (`LandAdapter.buildFounded`; the next run's Southshore, its spot past the ground generated before day 1, likely
+  water the core had guessed dry).
 - **Settlers make markets of the world's own villages (John, 2026-10-30: "several villages naturally generated in that
   would've made excellent settlement candidates, maybe even adding their population").** The host looks over each
   town's country once a run for the nearest village to six points 480 blocks out (the world's structure placement,

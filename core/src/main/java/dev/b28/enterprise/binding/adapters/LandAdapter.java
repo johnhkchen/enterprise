@@ -750,9 +750,10 @@ public final class LandAdapter {
             // land's own ground (not a tree's top), at the spot or, failing it, round it (seed 1717's Lakeshire was asked
             // 1,084 times of one spot with no open ground).
             Optional<Expeditions.Founding> town = Optional.empty();
-            for (int k = -1; k < 8 && town.isEmpty(); k++) {
-                int x = f.x() + (k < 0 ? 0 : (int) Math.round(FOUND_ROUND * Math.cos(Math.PI / 4 * k)));
-                int z = f.z() + (k < 0 ? 0 : (int) Math.round(FOUND_ROUND * Math.sin(Math.PI / 4 * k)));
+            for (int k = -1; k < 8 * FOUND_RINGS && town.isEmpty(); k++) {
+                int r = FOUND_ROUND * (1 + Math.max(0, k) / 8);
+                int x = f.x() + (k < 0 ? 0 : (int) Math.round(r * Math.cos(Math.PI / 4 * k)));
+                int z = f.z() + (k < 0 ? 0 : (int) Math.round(r * Math.sin(Math.PI / 4 * k)));
                 int ground = dev.b28.enterprise.territory.Earthworks.height(level, x, z);
                 if (ground != Integer.MIN_VALUE && level.getFluidState(new BlockPos(x, ground, z)).isEmpty()) {
                     town = Expeditions.buildSquare(level, new BlockPos(x, ground + 1, z));
@@ -784,9 +785,12 @@ public final class LandAdapter {
     }
 
     /** Chunks either side of a founded town's spot held loaded to build it: its square, desk and cottages within reach. */
-    static final int FOUND_CHUNKS = 2;
-    /** How far round a founded town's spot its square is looked for where the spot has no open ground. */
-    static final int FOUND_ROUND = 16;
+    static final int FOUND_CHUNKS = 4;
+    /**
+     * How far apart the rings round a founded town's spot its square is looked for in, where the spot has no open
+     * ground, and how many (a spot the core chose over ground it had only guessed may be water: seed 1717's Southshore).
+     */
+    static final int FOUND_ROUND = 16, FOUND_RINGS = 3;
 
     /**
      * The builds the core asked for laid, once every look sent is shown: each but those laid and not yet said (asked for
@@ -818,6 +822,16 @@ public final class LandAdapter {
      */
     private void layNow(MinecraftServer server, Output.Build build) {
         if (server == null) {
+            return;
+        }
+        // A berth is owed to the town's waterfront, laid as its shore loads (`growWaterfronts`): its desk needn't be.
+        if (build.work() instanceof Work.Berth) {
+            var fronts = dev.b28.enterprise.territory.Waterfronts.get(server);
+            var front = fronts.of(build.town());
+            if (front != null) {
+                fronts.put(build.town(), front.owe(front.rank()));
+                pending.add(new Input.Built(build.town(), build.work(), 1));
+            }
             return;
         }
         for (var desk : host.points().of(PointsAdapter.Kind.DESK).entrySet()) {

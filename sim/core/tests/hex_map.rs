@@ -731,9 +731,11 @@ fn a_busy_port_pays_for_berths_and_says_them_to_the_host() {
     }
     let berths = s.works(0).berths + s.works(1).berths;
     assert!(berths >= 1, "its ships' calls outgrew a berth: {} calls", s.works(0).calls);
-    let said = s.show_land(&[0, 1]).iter()
+    let said = s.show_berths().iter()
         .filter(|o| matches!(o, enterprise_core::Output::Build { work: enterprise_core::wire::Work::Berth, .. })).count();
-    assert_eq!(said as u32, berths, "each said to the host to lay, with its town's survey");
+    assert_eq!(said as u32, berths, "each said to the host to lay, its town surveyed or not");
+    assert!(s.show_land(&[0, 1]).iter().all(|o| !matches!(o, enterprise_core::Output::Build {
+        work: enterprise_core::wire::Work::Berth, .. })), "not twice with a survey");
 }
 
 #[test]
