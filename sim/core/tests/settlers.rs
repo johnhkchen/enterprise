@@ -317,12 +317,33 @@ fn open_ground_is_dry_and_flat_enough_and_a_party_needs_two_hands_and_34() {
 fn no_way_through_and_nobody_goes() {
     let (mut s, _) = world(100.0);
     let v = village(&mut s, Hex::new(5, 0));
-    // A wall of lake round the village: no road to it.
+    // A wall of cliffs round the village, too sheer for llamas and dry for a boat: no road to it.
     for n in Hex::new(5, 0).neighbors() {
-        s.set_ground(n, 1.0, 0.0);
+        s.set_ground(n, 0.0, 1000.0);
     }
     s.advance(3 * DAY);
     assert!(s.settled().is_empty() && !s.parties().iter().any(|p| p.kind == Kind::Village && p.target == s.town_hex(v).unwrap()), "{:?}", s.parties());
+}
+
+#[test]
+fn a_party_goes_by_llama_over_the_steeps_and_by_boat_over_the_water() {
+    // A wall of lake round the village: a wagon has no way, a boat sails it.
+    let (mut s, _) = world(100.0);
+    village(&mut s, Hex::new(5, 0));
+    for n in Hex::new(5, 0).neighbors() {
+        s.set_ground(n, 1.0, 0.0);
+    }
+    s.advance(DAY / 4);
+    assert_eq!(s.parties().len(), 1, "by boat");
+    // Rough ground round it, too rough for a wagon, not for llamas.
+    let (mut s, _) = world(100.0);
+    village(&mut s, Hex::new(5, 0));
+    let rough = (enterprise_core::map::Carrier::Wagon.gait().cliff + enterprise_core::map::Carrier::Llama.gait().cliff) / 2.0;
+    for n in Hex::new(5, 0).neighbors() {
+        s.set_ground(n, 0.0, rough);
+    }
+    s.advance(DAY / 4);
+    assert_eq!(s.parties().len(), 1, "by llama");
 }
 
 #[test]

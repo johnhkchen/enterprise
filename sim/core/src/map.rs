@@ -224,7 +224,8 @@ impl Ground {
             let ford = if self.river { gait.ford } else { 1.0 };
             (1.0 + 2.0 * self.water_share) * (1.0 + self.relief / RELIEF_PER_FACTOR) * ford
         };
-        if carrier == Carrier::Boat && hard.is_infinite() {
+        // A boat sails water, never a cliff.
+        if carrier == Carrier::Boat && hard.is_infinite() && (self.water_share > IMPASSABLE || self.river) {
             BOAT_FACTOR
         } else {
             hard
@@ -415,7 +416,8 @@ impl Map {
         // in the middle of a plateau isn't.
         let gait = carrier.gait();
         let sailed = carrier == Carrier::Ship
-            || carrier == Carrier::Boat && self.ground(next).factor(Carrier::Wagon).is_infinite();
+            || carrier == Carrier::Boat && self.ground(next).factor(Carrier::Wagon).is_infinite()
+                && self.ground(next).factor(Carrier::Boat).is_finite();
         let climb = if sailed { 1.0 } else { self.climb_factor(hex, next, carrier) };
         let climb = if (end || hex == start) && climb.is_infinite() { 1.0 + gait.max_grade / GRADE_PER_FACTOR } else { climb };
         let hard = if end { climb } else { self.ground(next).factor(carrier) * climb };
