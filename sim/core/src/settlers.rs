@@ -345,8 +345,12 @@ impl Society {
             self.world.get_mut::<Stock>(e).expect("a town").0[bread] += party.bread;
         }
         self.post(Account::Outside, Account::Treasury(town), party.capital, reason());
-        if self.add_road(party.from, town, ROAD_EVERY_DAYS).is_none() {
-            self.world.resource_mut::<Settlers>().roads_owed.push((party.from, town));
+        // Roads both ways: the mother town's to it, and its own home, so it sends its own wagons and ships (John: a
+        // settlers' town with only its mother's road home sent nothing). Either with no way yet is owed.
+        for (from, to) in [(party.from, town), (town, party.from)] {
+            if self.add_road(from, to, ROAD_EVERY_DAYS).is_none() {
+                self.world.resource_mut::<Settlers>().roads_owed.push((from, to));
+            }
         }
         let mut settlers = self.world.resource_mut::<Settlers>();
         settlers.settled.push(town);

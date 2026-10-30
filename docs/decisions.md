@@ -1074,6 +1074,9 @@ mod's), but no road ever chose it. Then: build them first.
   needs a wagon's, a llama's or a ship's way, and a ship's needs ports at both ends; Moonbrook's harbour was laid after
   it settled, and the road, refused once, was never tried again). The road is owed and tried again each day
   (`Settlers::roads_owed`), opening once there's a way: a ship's, its harbour laid.
+- **A settlers' town has roads both ways (John, 2026-10-30).** As it settles, the mother town's road to it and its own
+  road home open together (either owed if there's no way yet), so it sends its own wagons and ships from the start:
+  before, it had only its mother's road, and Lakeshire and Darkshire ended seed 1717's run with one route each.
 - **Settlers make markets of the world's own villages (John, 2026-10-30: "several villages naturally generated in that
   would've made excellent settlement candidates, maybe even adding their population").** The host looks over each
   town's country once a run for the nearest village to six points 480 blocks out (the world's structure placement,

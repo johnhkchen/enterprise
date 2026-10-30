@@ -166,14 +166,15 @@ fn a_merchant_settles_a_village_nobody_trades_with() {
     s.advance(DAY);
     assert!(s.parties().is_empty(), "arrived");
     assert_eq!(s.settled(), vec![v]);
-    assert!(s.town(v).money == 10.0, "the capital in its treasury: {}", s.town(v).money);
     assert!((s.town(v).stock[BREAD] - 64.0).abs() < 1e-9, "and the bread");
     let r = s.roster(v);
     assert!(r.merchant.is_some_and(|m| s.content().trades[r.hands[m].trade].merchant), "with its Merchant");
     assert_eq!(r.residents(), 4);
-    assert_eq!(s.route_count(), 1, "a route home");
+    assert_eq!(s.route_count(), 2, "a road there and its own road home");
     let route = s.route_path(0).expect("a road over the map");
     assert_eq!((route.first(), route.last()), (Some(&Hex::new(0, 0)), Some(&Hex::new(5, 0))));
+    let back = s.route_path(1).expect("its own road home");
+    assert_eq!((back.first(), back.last()), (Some(&Hex::new(5, 0)), Some(&Hex::new(0, 0))));
     conserved(&mut s, &before);
     let book = s.account_book(Account::Treasury(v), 2);
     assert!(book.iter().any(|(_, what, n)| what == "settling" && *n == 10.0), "{book:?}");
@@ -202,11 +203,8 @@ fn a_party_goes_once_in_eight_days_at_most() {
     assert_eq!(settled.len(), 2);
     assert_eq!(settled[0], v1);
     assert!(settled[1] != v2 && s.roster(v2).merchant.is_none(), "{settled:?}");
-    // The capital, less the stall of the Mason it took on for the square its works now want (`buildings-and-works`),
-    // and the homes its settlers, short of beds, built (`people.rs`).
-    let stall = s.content().dials.stall_emeralds;
-    let homes = s.town(v1).people.homes_built as f64 * s.content().dials.home_cost;
-    assert!(s.town(v1).money == (30.0 - stall - homes), "{:?}", s.cash_book(v1, 30));
+    // The jumpstart's 30 landed in its treasury (spent from there: a stall, homes, its own road's crew).
+    assert!(s.cash_book(v1, 30).iter().any(|(_, what, e)| what == "settling" && *e == 30.0), "{:?}", s.cash_book(v1, 30));
     conserved(&mut s, &before);
 }
 
@@ -333,7 +331,7 @@ fn with_no_village_a_town_is_founded_on_open_ground() {
     assert_eq!(r.merchant, Some(0));
     assert_eq!(s.town(new).people.beds, 4.0, "two cottages");
     assert!(s.town(new).people.land > 4.0, "and room for more: open ground");
-    assert_eq!(s.route_count(), 1);
+    assert_eq!(s.route_count(), 2, "roads both ways");
     conserved(&mut s, &before);
 }
 
@@ -485,6 +483,6 @@ fn a_road_home_with_no_way_is_owed_till_a_ship_can_sail_it() {
     s.set_port(home, Hex::new(4, 0).center_x(), Hex::new(4, 0).center_z());
     s.set_port(v, Hex::new(6, 0).center_x(), Hex::new(6, 0).center_z());
     s.advance(5 * DAY);
-    assert_eq!(roads(&s), 1, "the road home, owed, opened");
-    assert_eq!(s.route_carrier(0), enterprise_core::map::Carrier::Ship);
+    assert_eq!(roads(&s), 2, "the roads both ways, owed, opened");
+    assert_eq!((s.route_carrier(0), s.route_carrier(1)), (enterprise_core::map::Carrier::Ship, enterprise_core::map::Carrier::Ship));
 }
