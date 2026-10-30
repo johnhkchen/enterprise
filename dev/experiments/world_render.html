@@ -1,4 +1,4 @@
-<title>Seed 8675309 Survey</title>
+<title>__TITLE__</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400&display=swap">
@@ -75,7 +75,7 @@ h2 { font: 500 .78rem var(--body); text-transform: uppercase; letter-spacing: .0
 
 <div class="frame">
   <div class="map" id="map">
-    <canvas id="c" aria-label="Map of the five towns and the land between them, from above"></canvas>
+    <canvas id="c" aria-label="Map of the towns and the land between them, from above"></canvas>
     <div class="clock">
       <button id="play" aria-pressed="true">Pause</button>
       <input type="range" id="day" min="0" max="90" step="0.01" value="0" aria-label="Day of the study">
@@ -89,7 +89,7 @@ h2 { font: 500 .78rem var(--body); text-transform: uppercase; letter-spacing: .0
   </div>
   <aside>
     <div>
-      <h1>Seed 8675309</h1>
+      <h1>__TITLE__</h1>
       <p class="sub" id="sub"></p>
     </div>
     <div>
@@ -152,7 +152,7 @@ const KEY = [
   ["Hills (lit from the north-west)", "#68944a"],
 ];
 document.getElementById("sub").textContent =
-  `Day ${D.day} of a 90-day study. ${D.w.toLocaleString()} × ${D.h.toLocaleString()} blocks, heights ${D.lo} to ${D.hi}.`;
+  `Day ${D.day} of the study. ${D.w.toLocaleString()} × ${D.h.toLocaleString()} blocks, heights ${D.lo} to ${D.hi}.`;
 const key = document.getElementById("key");
 KEY.forEach(([t, c]) => {
   const b = document.createElement("button");

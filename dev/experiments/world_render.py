@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The surveyor's map of a study's world: its blocks from above, after a run (core mode).
 
-    python3 dev/experiments/world_render.py WORLD TRACE.db SERVER.log OUT.html [--margin 96] [--video FILM.mp4]
+    python3 dev/experiments/world_render.py WORLD TRACE.db SERVER.log OUT.html [--margin 96] [--video FILM.mp4] [--title "Seed 1717 Survey"]
 
 Reads the world's own region files (stop the server first, so they're saved) and draws each column's top: trees,
 roads and the towns' forums, homes and other buildings, fields by crop, pastures (birch-fenced, their grass tinted),
@@ -11,6 +11,7 @@ more; and each town by name at its bell (the forum lines of SERVER.log). Pure Py
 """
 import base64
 import gzip
+import html
 import json
 import math
 import sqlite3
@@ -249,7 +250,7 @@ def png(width, height, rows):
 
 def main():
     args = [a for i, a in enumerate(sys.argv[1:], 1)
-            if not a.startswith("--") and sys.argv[i - 1] not in ("--margin", "--video")]
+            if not a.startswith("--") and sys.argv[i - 1] not in ("--margin", "--video", "--title")]
     margin = 96
     if "--margin" in sys.argv:
         margin = int(sys.argv[sys.argv.index("--margin") + 1])
@@ -447,7 +448,8 @@ def main():
     film = ""
     if "--video" in sys.argv:
         film = base64.b64encode(Path(sys.argv[sys.argv.index("--video") + 1]).read_bytes()).decode()
-    page = TEMPLATE.replace("__IMAGE__", image).replace("__DATA__", json.dumps(data)).replace("__VIDEO__", film)
+    title = sys.argv[sys.argv.index("--title") + 1] if "--title" in sys.argv else "Survey"
+    page = TEMPLATE.replace("__TITLE__", html.escape(title)).replace("__IMAGE__", image).replace("__DATA__", json.dumps(data)).replace("__VIDEO__", film)
     out.write_text(page)
     print(f"wrote {out} ({len(page) // 1024} KB)", file=sys.stderr)
 
