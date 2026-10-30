@@ -19,12 +19,14 @@ is (`enterprise-sim --trace` it into SQLite).
 
 With --villages N (more than two), a network: the villages round spawn (looked for 1,600 blocks every way), N of them
 each at least NEIGHBOUR blocks from the others, the nearest to the first; each a town, with roads to its two nearest
-within ROAD_REACH blocks. The first is kept loaded, the rest left to the core.
+within ROAD_REACH blocks. After the first day every town is left to the core's ledgers (`--player`: the first kept
+loaded, as a player standing in it would).
 """
 
 import json
 import math
 import re
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -287,6 +289,11 @@ def network(first, many, days, say, stages):
                 fixtures.save(RUN / "world", terrain, time.time() - stages.since, "terrain")
             finally:
                 rcon("save-on")
+            # The seed's land as the mod gives it the core, every hex a town's settlers might reach.
+            said = rcon("enterprise core ground")
+            found = re.search(r": (\S+enterprise-ground\.json)", said)
+            if found:
+                shutil.copy2(found.group(1), terrain / "ground.json")
             say(f"fixture: the ground kept in {terrain.relative_to(REPO)}")
     stages.done("pregen")
     desks = [market(v) for v in chosen]
@@ -326,24 +333,37 @@ def network(first, many, days, say, stages):
     run_days(chosen, desks, roads, first, 1, days, say, stages, points)
 
 
+# `--player`: the first town kept loaded after the first day, as a player standing in it would (its villagers, crops
+# and workshops ticking). Without, every town is left to the core's ledgers from day 2, as the world is where no player
+# is: a day 24,000 ticks at 70,000 a second, not 2,200 with the first town's 81 chunks loaded (seed 1717: 1s, not 11s).
+PLAYER = "--player" in sys.argv
+
+
+def stays(v, first):
+    """Is the village kept loaded from day 2 (`--loaded`: all; `--player`: the first)?"""
+    return "--loaded" in sys.argv or (PLAYER and v == first)
+
+
 def run_days(chosen, desks, roads, first, start, days, say, stages, points):
     for day in range(start, days + 1):
         started = time.time()
         if day == 2 and "--loaded" not in sys.argv:
-            # After the first day, the rest left to the core's ledgers: each town's conversion and harbour are laid in
+            # After the first day, the towns left to the core's ledgers: each town's conversion and harbour are laid in
             # its first day loaded (unloaded at once, three of seed 1001's four harbours waited for day 27, and the
-            # ports' road went by llama). The first, as a player standing in it: the village itself, not the wide
-            # ground its harbour and the sea to the next port were surveyed in (a day took 25s at --reach 160, 6s so).
-            for v in chosen[1:]:
-                unload(*v)
-            if REACH > 64:
+            # ports' road went by llama). With --player the first stays, as a player standing in it: the village
+            # itself, not the wide ground its harbour and the sea to the next port were surveyed in (a day took 25s at
+            # --reach 160, 6s so).
+            for v in chosen:
+                if v != first or not PLAYER:
+                    unload(*v)
+            if PLAYER and REACH > 64:
                 unload(*first)
                 load(*first, r=64)
         if day % 4 == 1 and day > 1:
             for v, d in zip(chosen, desks):
                 load(*v, r=8)
                 rcon(f"enterprise autoswitch {d} unlocked")
-                if v != first and "--loaded" not in sys.argv:
+                if not stays(v, first):
                     unload(*v, r=8)
         sprint(24000)
         say(f"day {day} ({time.time() - started:.0f}s)")
@@ -358,7 +378,7 @@ def run_days(chosen, desks, roads, first, start, days, say, stages, points):
             for v, d in zip(chosen, desks):
                 load(*v, r=8)
                 say(f"-- day {day}, {d}\n" + rcon(f"enterprise ledger {d}").strip())
-                if v != first and "--loaded" not in sys.argv:
+                if not stays(v, first):
                     unload(*v, r=8)
             # Every road, its carrier ("by ship: ..."), trips and sales; towns founded since show here too.
             say(f"-- day {day}, roads\n" + rcon("enterprise routes").strip())

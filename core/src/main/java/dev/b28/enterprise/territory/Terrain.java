@@ -389,6 +389,16 @@ public final class Terrain extends SavedData {
         return chunksOf(hex).stream().allMatch(surveyed::containsKey);
     }
 
+    /** Every hex any of whose ground has been surveyed: the world's known land (`/enterprise core ground`). */
+    public java.util.SortedSet<Hex> surveyedHexes(ServerLevel level) {
+        java.util.SortedSet<Hex> out = new java.util.TreeSet<>(java.util.Comparator.comparingInt(Hex::q).thenComparingInt(Hex::r));
+        for (long c : heights.getOrDefault(level.dimension(), Map.of()).keySet()) {
+            ChunkPos pos = new ChunkPos(c);
+            out.add(Hex.at(pos.getMiddleBlockX() + 0.5, pos.getMiddleBlockZ() + 0.5));
+        }
+        return out;
+    }
+
     /** Has any of the hex's ground been surveyed (so its relief is known, not guessed flat)? */
     public boolean surveyed(ServerLevel level, Hex hex) {
         Map<Long, Integer> surveyed = heights.getOrDefault(level.dimension(), Map.of());

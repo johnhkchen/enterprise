@@ -8,8 +8,8 @@
 Each fixture is keyed by what made it, so it's made again only when that changes:
 - terrain (`core/run/fixtures/seed-S/terrain-KEY`): the world after the villages are found and the ground pregenerated
   and surveyed, before any town. Keyed by the seed, the study's flags that place and size the ground (--villages,
-  --near, --pregen, --reach), the game's versions and mods (gradle.properties, core/build.gradle) and the surveyor
-  (territory/Terrain.java). The core's own state and journal are left out: the next run's core starts fresh on it.
+  --near, --pregen, --reach) and the game's versions and mods (gradle.properties, core/build.gradle, pack/), not the
+  mod's own code (John: "why do we need to pregenerate unless we're on a fresh seed?"). The core's own state and journal are left out: the next run's core starts fresh on it.
 - points (`core/run/fixtures/seed-S/run-KEY/dayN`): the world after the towns are set up (day 0), after day 1 (two
   minutes and more: every town's layout is built) and every POINT_EVERY days. Keyed by the terrain, every study flag and the mod's own sources (core/, binding/: not sim/). The Rust core may
   change under them: a new build replays the run's journals (`enterprise-sim --chain`) and the first response it gives
@@ -33,8 +33,10 @@ REPO = Path(__file__).resolve().parents[2]
 STORE = REPO / "core" / "run" / "fixtures"
 # The study's flags that decide which ground is generated (the rest act once towns are set up).
 GROUND_FLAGS = ("--villages", "--near", "--pregen", "--reach")
-GROUND_SOURCES = ("gradle.properties", "core/build.gradle",
-                  "core/src/main/java/dev/b28/enterprise/territory/Terrain.java")
+# What makes the ground: the game's and the mods' versions. Not the mod's own code: the surveyor runs again on every
+# chunk as it loads, so a change to it reaches the ground a study uses (`--fresh-terrain` makes it anew all the same,
+# for a survey change that must reach chunks no town loads again).
+GROUND_SOURCES = ("gradle.properties", "core/build.gradle", "pack/index.toml")
 # What a fixture leaves behind: the core's state and journal (a new build's core starts fresh), the server's lock.
 LEFT_OUT = ("session.lock", "enterprise_core.dat", "enterprise_core_stowed.dat", "enterprise-journal")
 
@@ -61,7 +63,7 @@ def mod_digest():
 
 def run_dir(seed, argv):
     """Where a study's points are kept: its terrain, all its flags, the mod's sources."""
-    flags = [a for a in argv if a not in ("--fixtures",)]
+    flags = [a for a in argv if a not in ("--fixtures", "--fresh-terrain")]
     return terrain_dir(seed, argv).parent / f"run-{digest(terrain_dir(seed, argv).name, *flags, mod_digest())}"
 
 
@@ -94,7 +96,7 @@ def terrain_dir(seed, argv):
 
 
 def ready(fixture):
-    return (fixture / "fixture.json").exists()
+    return (fixture / "fixture.json").exists() and "--fresh-terrain" not in sys.argv
 
 
 def save(world, fixture, made_in, what):

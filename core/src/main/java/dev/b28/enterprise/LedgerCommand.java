@@ -32,7 +32,8 @@ final class LedgerCommand {
                 .then(Commands.literal("core")
                         .then(Commands.literal("version").executes(LedgerCommand::version))
                         .then(Commands.literal("report").executes(LedgerCommand::report))
-                        .then(Commands.literal("journal").executes(LedgerCommand::journal))));
+                        .then(Commands.literal("journal").executes(LedgerCommand::journal))
+                        .then(Commands.literal("ground").executes(LedgerCommand::ground))));
     }
 
     /**
@@ -117,6 +118,50 @@ final class LedgerCommand {
         source.sendSuccess(() -> Component.literal("The core's journal: " + journal.toAbsolutePath().normalize()
                 + ". Read it with: cd sim && cargo run --release -p enterprise-sim -- --trace <that file> run.db"), false);
         return 1;
+    }
+
+    /**
+     * {@code /enterprise core ground}: the ground of every hex the world has surveyed and 12 hexes past, as the mod gives it the core (a
+     * {@code Ground} input each, JSON as the core's serde reads it), written to the world's {@code enterprise-ground.json}:
+     * the seed's land, every hex a town's settlers might come to (kept with a study's terrain, dev/experiments/fixtures.py).
+     */
+    private static int ground(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        ServerLevel level = source.getServer().overworld();
+        java.nio.file.Path file = source.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                .resolve("enterprise-ground.json").toAbsolutePath().normalize();
+        var terrain = dev.b28.enterprise.territory.Terrain.get(source.getServer());
+        // The surveyed hexes and REACH past them: a town's settlers look up to that far, and the mod answers a hex never
+        // generated from its biome (the land at its centre, its water guessed), as it would when a town first looks.
+        var surveyed = terrain.surveyedHexes(level);
+        java.util.SortedSet<dev.b28.enterprise.hex.Hex> hexes = new java.util.TreeSet<>(surveyed.comparator());
+        int reach = 12;
+        for (var h : surveyed) {
+            for (int dq = -reach; dq <= reach; dq++) {
+                for (int dr = Math.max(-reach, -dq - reach); dr <= Math.min(reach, -dq + reach); dr++) {
+                    hexes.add(new dev.b28.enterprise.hex.Hex(h.q() + dq, h.r() + dr));
+                }
+            }
+        }
+        StringBuilder out = new StringBuilder("[");
+        int n = 0;
+        for (var hex : hexes) {
+            var g = dev.b28.enterprise.binding.adapters.LandAdapter.ground(terrain, level, hex);
+            out.append(n++ == 0 ? "\n" : ",\n").append(String.format(java.util.Locale.ROOT,
+                    "{\"Ground\":{\"hex\":{\"q\":%d,\"r\":%d},\"water\":%s,\"relief\":%s,\"land\":\"%s\",\"height\":%s,\"river\":%s}}",
+                    g.hex().q(), g.hex().r(), g.water(), g.relief(), g.land().name(),
+                    g.height().map(String::valueOf).orElse("null"), g.river()));
+        }
+        out.append("\n]\n");
+        try {
+            java.nio.file.Files.writeString(file, out);
+        } catch (java.io.IOException e) {
+            source.sendFailure(Component.literal("Couldn't write " + file + ": " + e));
+            return 0;
+        }
+        int written = n;
+        source.sendSuccess(() -> Component.literal("The ground of " + written + " hexes: " + file), false);
+        return written;
     }
 
     private static int ledger(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
