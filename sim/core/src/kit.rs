@@ -71,6 +71,24 @@ pub const MASON_LEVEL: u8 = 3;
 /// The tools a hand without one is given, in order (`ColdStore.equipHands`).
 pub const HAND_TOOLS: [&str; 4] = ["iron_axe", "stone_axe", "iron_shovel", "stone_shovel"];
 
+/// Hill hexes a town's ore comes from at most, and what each beyond the first adds to its mine's yield.
+pub const ORE_HILLS: usize = 3;
+pub const ORE_PER_HILL: f64 = 0.5;
+
+/// The town's hill hexes: those it holds of `Land::Hills`, its own hex among them (John: "tie goods to land": ore
+/// comes from the hills, so a port founds a colony inland for it).
+pub fn hills(map: &crate::map::Map, holding: Option<&crate::territory::Holding>, home: Option<crate::hex::Hex>) -> usize {
+    let mut hexes: std::collections::BTreeSet<crate::hex::Hex> = holding.map(|h| h.hexes.iter().copied().collect()).unwrap_or_default();
+    hexes.extend(home);
+    hexes.into_iter().filter(|&h| map.land(h) == Land::Hills).count()
+}
+
+/// What a mine yields for the town's hill hexes: nothing without any, the plain yield with one, half again for each
+/// beyond up to `ORE_HILLS`.
+pub fn ore_ground(hills: usize) -> f64 {
+    if hills == 0 { 0.0 } else { 1.0 + ORE_PER_HILL * (hills.min(ORE_HILLS) - 1) as f64 }
+}
+
 /// What a hand gathers a day on land of this kind (`Labour.hauls`), by good name: the mod's biome tags as the land
 /// kinds `map.rs` has (woods take the forest's, taiga the taiga's, desert the desert's, shore the beach's, hills the
 /// mountains' and hills', water the ocean's and rivers', plains the open ground's).

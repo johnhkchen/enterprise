@@ -35,11 +35,18 @@ fn town(s: &mut Society, hands: &[(&str, u8)]) -> usize {
     t
 }
 
+/// A town of these hands on a hill hex: its ore's ground (`kit::hills`).
+fn hill_town(s: &mut Society, hands: &[(&str, u8)]) -> usize {
+    let t = town(s, hands);
+    s.set_land(Hex::new(3, 3), Land::Hills);
+    t
+}
+
 // parity: MetalTests.aToolsmithsMineBringsUpOre
 #[test]
 fn a_toolsmiths_mine_brings_up_ore() {
     let mut s = Society::new(content());
-    let t = town(&mut s, &[("toolsmith", 2)]);
+    let t = hill_town(&mut s, &[("toolsmith", 2)]);
     s.set_mine(t, false);
     s.advance(DAY);
     assert_eq!(stock(&s, t, "raw_iron"), 4.0, "a level-2 Toolsmith brings up 4 raw iron a day");
@@ -62,11 +69,11 @@ fn a_town_without_a_mine_brings_up_no_ore() {
 #[test]
 fn a_toolsmith_digs_a_mine_for_six_emeralds_beyond_the_reserve() {
     let mut s = Society::new(content());
-    let poor = town(&mut s, &[("toolsmith", 2)]);
+    let poor = hill_town(&mut s, &[("toolsmith", 2)]);
     s.pay(poor, 5.0);
-    let rich = town(&mut s, &[("toolsmith", 2)]);
+    let rich = hill_town(&mut s, &[("toolsmith", 2)]);
     s.pay(rich, 10.0);
-    let none = town(&mut s, &[("farmer", 2)]);
+    let none = hill_town(&mut s, &[("farmer", 2)]);
     s.pay(none, 10.0);
     s.advance(DAY);
     assert!(s.mine(poor).is_none(), "5 emeralds aren't enough");
@@ -79,10 +86,10 @@ fn a_toolsmith_digs_a_mine_for_six_emeralds_beyond_the_reserve() {
 #[test]
 fn pickaxes_bring_up_half_again_as_much_ore() {
     let mut plain = Society::new(content());
-    let a = town(&mut plain, &[("toolsmith", 2)]);
+    let a = hill_town(&mut plain, &[("toolsmith", 2)]);
     plain.set_mine(a, false);
     let mut tooled = Society::new(content());
-    let b = town(&mut tooled, &[("toolsmith", 2)]);
+    let b = hill_town(&mut tooled, &[("toolsmith", 2)]);
     tooled.set_mine(b, false);
     tooled.add_kit(b, "iron_pickaxe", 1, 0.0, 0);
     plain.advance(DAY);
@@ -174,7 +181,7 @@ fn enchanted_kit_is_worth_more() {
 #[test]
 fn a_master_toolsmith_sinks_the_mine_deep() {
     let mut s = Society::new(content());
-    let t = town(&mut s, &[("toolsmith", 5), ("mason", 3)]);
+    let t = hill_town(&mut s, &[("toolsmith", 5), ("mason", 3)]);
     s.set_mine(t, false);
     s.pay(t, 30.0);
     s.advance(LOOK);
@@ -462,4 +469,27 @@ fn a_ports_unfished_waters_are_a_fishermans_marbles() {
     s.set_port(t, Hex::new(3, 4).center_x(), Hex::new(3, 4).center_z());
     let m = fishing(&s, t).expect("still unfished");
     assert!((m - (COD_PER_WATER_HEX - 2.0 * COD_PER_LEVEL) * cod * 4.0).abs() < 1e-9, "{m}");
+}
+
+#[test]
+fn ore_comes_from_the_hills() {
+    // On plains: no mine dug, and a mine given brings up nothing.
+    let mut s = Society::new(content());
+    let t = town(&mut s, &[("toolsmith", 2)]);
+    s.pay(t, 50.0);
+    s.advance(DAY);
+    assert!(s.mine(t).is_none(), "no hills, no mine");
+    s.set_mine(t, false);
+    s.advance(2 * DAY);
+    assert_eq!(stock(&s, t, "raw_iron"), 0.0, "no ore off the plains");
+    // On a hill: the plain yield; with its own hex and two more hills held, twice it.
+    let mut s = Society::new(content());
+    let t = hill_town(&mut s, &[("toolsmith", 2)]);
+    s.set_mine(t, false);
+    s.advance(DAY);
+    let one = stock(&s, t, "raw_iron");
+    assert_eq!(one, 4.0);
+    assert_eq!(kit::ore_ground(1), 1.0);
+    assert_eq!(kit::ore_ground(3), 2.0, "three hills: half again twice");
+    assert_eq!(kit::ore_ground(9), 2.0, "no more past three");
 }

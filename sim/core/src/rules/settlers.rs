@@ -39,24 +39,53 @@ fn clear(sites: &[Site], settlers: &Settlers, min_hexes: i32, hex: Hex, except: 
         && settlers.parties.iter().all(|p| p.target.distance(hex) >= min_hexes)
 }
 
-/// The nearest village, if it is in reach, still nobody's market, with no other town within `min_hexes` hexes and no
-/// party already bound there (`unclaimedVillage`): its town and hex. Only the nearest, as the mod's
-/// `findNearestMapStructure`: once a town's settlers have made a market of it, the town founds towns instead.
-fn unclaimed_village(sites: &[Site], settlers: &Settlers, home: Hex, min: i32, max: i32) -> Option<(usize, Hex)> {
+/// What a hex's land gives a day, in emeralds (its worth to a town that holds it): a hand's gathering there
+/// (`kit::hauls`), a Toolsmith's ore of a level on the hills, a Fisherman's cod on the water.
+fn land_worth(content: &Content, land: crate::map::Land) -> f64 {
+    let value = |name: &str| content.good(name).map_or(0.0, |g| content.goods[g].value);
+    let d = &content.dials;
+    let mut worth: f64 = crate::kit::hauls(land).iter().map(|&(name, n)| n * value(name)).sum();
+    match land {
+        crate::map::Land::Hills => worth += d.raw_iron_per_level_day * value("raw_iron") + d.coal_per_level_day * value("coal")
+            + d.raw_gold_per_level_day * value("raw_gold"),
+        crate::map::Land::Water => worth += crate::works::COD_PER_WATER_HEX * value("cod"),
+        _ => {}
+    }
+    worth
+}
+
+/// What settling round `site` would add to the town's portfolio (John: "seaside towns start founding inland colonies
+/// to gain a complementary portfolio of things to trade"): the worth of the land of the site's hex and those round it,
+/// a land the town already has (its holding, its own hex and those round it) a quarter as much.
+fn complement(content: &Content, map: &Map, has: &[crate::map::Land], site: Hex) -> f64 {
+    std::iter::once(site).chain(site.neighbors()).map(|h| {
+        let land = map.land(h);
+        land_worth(content, land) * if has.contains(&land) { COMPLEMENT_HAD } else { 1.0 }
+    }).sum()
+}
+
+/// What a land the town already has counts toward a site's complement.
+const COMPLEMENT_HAD: f64 = 0.25;
+
+/// The village in reach that would add most to the town's portfolio (`complement`; the nearest on a tie), still
+/// nobody's market, with no other town within `min_hexes` hexes and no party already bound there: its town, hex and
+/// complement.
+fn unclaimed_village(sites: &[Site], settlers: &Settlers, home: Hex, min: i32, max: i32,
+        worth: impl Fn(Hex) -> f64) -> Option<(usize, Hex, f64)> {
     sites.iter()
-        .filter(|s| s.structure)
-        .min_by_key(|s| (s.hex.distance(home), s.id))
         .filter(|s| s.village && s.hex.distance(home) <= max)
         .filter(|s| !settlers.parties.iter().any(|p| p.village == Some(s.id)))
         .filter(|s| clear(sites, settlers, min, s.hex, Some(s.id)))
-        .map(|s| (s.id, s.hex))
+        .map(|s| (s.id, s.hex, worth(s.hex)))
+        .max_by(|a, b| a.2.total_cmp(&b.2).then((b.1.distance(home), b.0).cmp(&(a.1.distance(home), a.0))))
 }
 
-/// The best open ground 4 to 8 hexes out (`openGround`): along the six directions at 5 and 7 hexes, clear, unclaimed,
-/// dry and flat enough, the flattest, driest and nearest.
-fn open_ground(sites: &[Site], settlers: &Settlers, territory: &Territory, map: &Map, home: Hex, min: i32, max: i32)
-        -> Option<Hex> {
-    let mut best: Option<(f64, Hex)> = None;
+/// The best open ground in reach (`openGround`): along the six directions between `min` and `max` hexes, clear,
+/// unclaimed, dry and flat enough; the one that would add most to the town's portfolio (`complement`), then the
+/// flattest, driest and nearest. Its hex and complement.
+fn open_ground(sites: &[Site], settlers: &Settlers, territory: &Territory, map: &Map, home: Hex, min: i32, max: i32,
+        worth: impl Fn(Hex) -> f64) -> Option<(Hex, f64)> {
+    let mut best: Option<((f64, f64), Hex)> = None;
     for (dq, dr) in crate::hex::DIRECTIONS {
         for d in (min + 1..=max - 1).step_by(2) {
             let hex = Hex::new(home.q + d * dq, home.r + d * dr);
@@ -68,13 +97,13 @@ fn open_ground(sites: &[Site], settlers: &Settlers, territory: &Territory, map: 
             if wet > OPEN_WET || relief >= ROUGH {
                 continue;
             }
-            let score = -relief - 20.0 * wet + if wet > 0.02 { 4.0 } else { 0.0 } - 0.5 * d as f64;
-            if best.is_none_or(|(b, _)| score > b) {
+            let score = (worth(hex), -relief - 20.0 * wet + if wet > 0.02 { 4.0 } else { 0.0 } - 0.5 * d as f64);
+            if best.is_none_or(|(b, _)| score.0 > b.0 || score.0 == b.0 && score.1 > b.1) {
                 best = Some((score, hex));
             }
         }
     }
-    best.map(|(_, h)| h)
+    best.map(|((w, _), h)| (h, w))
 }
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
@@ -130,17 +159,21 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut m
         if hands.is_empty() || spare < SETTLING_EMERALDS {
             continue;
         }
-        let village = unclaimed_village(&sites, &settlers, home, min, max);
-        let (kind, target, target_hex) = if let Some((v, hex)) = village {
-            (Kind::Village, Some(v), hex)
+        // The lands the town has: its holding's, its own hex's and those round it.
+        let has: Vec<crate::map::Land> = territory.holding(t).map(|h| h.hexes.clone()).unwrap_or_default()
+            .into_iter().chain(std::iter::once(home)).chain(home.neighbors()).map(|h| map.land(h)).collect();
+        let worth = |hex: Hex| complement(&content, &map, &has, hex);
+        // A village (its people come with it) where it adds as much as the best open ground; else that ground.
+        let village = unclaimed_village(&sites, &settlers, home, min, max, worth);
+        let ground = if hands.len() >= 2 && spare >= FOUNDING_EMERALDS {
+            open_ground(&sites, &settlers, &territory, &map, home, min, max, worth)
         } else {
-            let site = if hands.len() >= 2 && spare >= FOUNDING_EMERALDS {
-                open_ground(&sites, &settlers, &territory, &map, home, min, max)
-            } else {
-                None
-            };
-            let Some(hex) = site else { continue };
-            (Kind::Found, None, hex)
+            None
+        };
+        let (kind, target, target_hex) = match (village, ground) {
+            (Some((v, hex, w)), g) if g.is_none_or(|(_, gw)| w >= gw) => (Kind::Village, Some(v), hex),
+            (_, Some((hex, _))) => (Kind::Found, None, hex),
+            _ => continue,
         };
         // The road (`way`): no way there, nobody goes.
         let Some(path) = way(&map, &content, home, target_hex) else { continue };

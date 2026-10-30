@@ -736,12 +736,7 @@ public final class LandAdapter {
                 }
                 // Held loaded till it's converted, as a founded town is.
                 dev.b28.enterprise.territory.TownPlans.get(server).found(f.town());
-                BlockPos at = villageBell.get();
-                dev.b28.enterprise.territory.TownPlans.get(server).plans().entrySet().stream()
-                        .filter(e -> e.getKey() != f.town())
-                        .min(java.util.Comparator.comparingDouble(e -> e.getValue().bell().distSqr(at)))
-                        .ifPresent(e -> dev.b28.enterprise.territory.Kingdoms.get(server).set(f.town(),
-                                dev.b28.enterprise.territory.Kingdoms.get(server).of(e.getKey())));
+                // Its people the land's, as any town's (decisions: "A settlers' town takes the land's people").
                 Enterprise.LOGGER.info("{} settled: a desk by the village's bell at {} ({})", f.name(), desk.toShortString(),
                         dev.b28.enterprise.territory.Kingdoms.get(server).of(f.town()));
                 continue;
@@ -767,15 +762,9 @@ public final class LandAdapter {
             if (why != null) {
                 Enterprise.LOGGER.warn("The core wouldn't take {}'s desk at {}: {}", f.name(), town.get().desk().toShortString(), why);
             } else {
-                // Founded on open ground, planned for the town it'll grow to; its founders' kingdom (the nearest
-                // town's: the core doesn't say whose settlers they were).
+                // Founded on open ground, planned for the town it'll grow to; its people the land's, as any town's
+                // (decisions: "A settlers' town takes the land's people").
                 dev.b28.enterprise.territory.TownPlans.get(server).found(f.town());
-                BlockPos at = town.get().bell();
-                dev.b28.enterprise.territory.TownPlans.get(server).plans().entrySet().stream()
-                        .filter(e -> e.getKey() != f.town())
-                        .min(java.util.Comparator.comparingDouble(e -> e.getValue().bell().distSqr(at)))
-                        .ifPresent(e -> dev.b28.enterprise.territory.Kingdoms.get(server).set(f.town(),
-                                dev.b28.enterprise.territory.Kingdoms.get(server).of(e.getKey())));
                 Enterprise.LOGGER.info("{} founded at {} ({})", f.name(), town.get().desk().toShortString(),
                         dev.b28.enterprise.territory.Kingdoms.get(server).of(f.town()));
                 // (No safety fences at founding: its land is shaped and walled before anyone lives there, and fences

@@ -11,7 +11,8 @@ const DAY: u64 = 24_000;
 const BREAD: usize = 0;
 
 fn content() -> Content {
-    Content::new(vec![Good::new("bread", 0.2, 64).food(5.0)], DAY)
+    // Raw iron for the hills' worth to settlers (`complement`).
+    Content::new(vec![Good::new("bread", 0.2, 64).food(5.0), Good::new("raw_iron", 1.0, 64)], DAY)
 }
 
 fn at(s: &mut Society, t: usize, hex: Hex) {
@@ -195,14 +196,13 @@ fn a_party_goes_once_in_eight_days_at_most() {
     s.advance(8 * DAY);
     assert_eq!(s.parties().len(), 1, "the second left on day 8");
     assert_eq!(s.last_party(home), Some(8 * DAY));
-    // The nearest village is a market now (`findNearestMapStructure` finds it still): the second party founds a town,
-    // and the farther village stays nobody's.
-    assert_eq!(s.parties()[0].kind, Kind::Found);
+    // The nearest village is a market now: the second party makes one of the farther village (any village in reach,
+    // not only the nearest: John's "several villages naturally generated ... would've made excellent settlement
+    // candidates"), as it adds as much as open ground would.
+    assert_eq!(s.parties()[0].kind, Kind::Village);
     s.advance(10 * DAY);
     let settled = s.settled();
-    assert_eq!(settled.len(), 2);
-    assert_eq!(settled[0], v1);
-    assert!(settled[1] != v2 && s.roster(v2).merchant.is_none(), "{settled:?}");
+    assert_eq!(settled, vec![v1, v2]);
     // The jumpstart's 30 landed in its treasury (spent from there: a stall, homes, its own road's crew).
     assert!(s.cash_book(v1, 30).iter().any(|(_, what, e)| what == "settling" && *e == 30.0), "{:?}", s.cash_book(v1, 30));
     conserved(&mut s, &before);
@@ -485,4 +485,18 @@ fn a_road_home_with_no_way_is_owed_till_a_ship_can_sail_it() {
     s.advance(5 * DAY);
     assert_eq!(roads(&s), 2, "the roads both ways, owed, opened");
     assert_eq!((s.route_carrier(0), s.route_carrier(1)), (enterprise_core::map::Carrier::Ship, enterprise_core::map::Carrier::Ship));
+}
+
+#[test]
+fn settlers_found_where_the_land_adds_most_to_the_towns_portfolio() {
+    // Hills round (7, 0), plains everywhere else (the home's land): the party founds among the hills, for the ore its
+    // home's land can't give, though open plains lie nearer.
+    let (mut s, _) = world(100.0);
+    let hills = Hex::new(7, 0);
+    for h in std::iter::once(hills).chain(hills.neighbors()) {
+        s.set_land(h, enterprise_core::map::Land::Hills);
+    }
+    s.advance(DAY / 4);
+    let party = &s.parties()[0];
+    assert_eq!((party.kind, party.target), (Kind::Found, hills), "{:?}", s.parties());
 }

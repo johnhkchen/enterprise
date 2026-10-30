@@ -1077,6 +1077,25 @@ mod's), but no road ever chose it. Then: build them first.
 - **A settlers' town has roads both ways (John, 2026-10-30).** As it settles, the mother town's road to it and its own
   road home open together (either owed if there's no way yet), so it sends its own wagons and ships from the start:
   before, it had only its mother's road, and Lakeshire and Darkshire ended seed 1717's run with one route each.
+- **A settlers' town takes the land's people (John, 2026-10-30: "Let's do land it's on for now. Later on we might do
+  differently").** Its race and clan come from the land at its centre (the studio's `settlement.json`, thread 0015),
+  as a village's do; the founders' race doesn't carry over (this replaces message 3's "founders keep their race").
+  The stopgap that gave a settlers' town the nearest town's kingdom goes.
+- **Factions are races, each on the biomes it suits (John, 2026-10-30).** A race's clans' palettes show where a town's
+  materials come from; its build style shows its side. This should in time set factions competing for biomes and
+  strategic places, but town against town isn't a core part of the mod yet: for now the work is trade and founding.
+- **Ore comes from the hills (John, 2026-10-30: goods tied to land).** A mine is dug only by a town holding hill
+  land (`kit::hills`: its holding's `Land::Hills` hexes, its own among them), and yields half again for each hill hex
+  beyond the first, up to three (`ore_ground`); a mine dug before stands idle off the hills. A port wanting ore founds
+  a colony on them.
+- **Settlers found where the land adds most (John, 2026-10-30).** Each site in reach, a village or open ground, is
+  scored by what its hex and those round it would add to the town's portfolio (`complement`: a day's worth of each
+  land's goods, a hand's gathering, a Toolsmith's ore on hills, a Fisherman's cod on water; a land the town already
+  has, a quarter); the best wins, a village where it adds as much as the best ground (its people come with it), the
+  nearest on a tie. Any village in reach is a candidate, not only the nearest.
+- **Next milestone: seaside towns found inland colonies (John, 2026-10-30).** A port founds colonies inland to round
+  out what it has to trade; inland communities bring what the coast can't, worth the dearer haul by land; and the port
+  forwards their goods by sea as a freight hub. (Water trade, cheaper, won seed 1717's runs on its own.)
 - **Settlers make markets of the world's own villages (John, 2026-10-30: "several villages naturally generated in that
   would've made excellent settlement candidates, maybe even adding their population").** The host looks over each
   town's country once a run for the nearest village to six points 480 blocks out (the world's structure placement,
