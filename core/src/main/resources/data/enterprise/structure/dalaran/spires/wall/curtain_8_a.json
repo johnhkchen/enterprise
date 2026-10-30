@@ -1,0 +1,28 @@
+{
+  "id": "enterprise:dalaran/spires/wall/curtain_8_a",
+  "rev": 1,
+  "style": "dalaran",
+  "kind": "part",
+  "slot": "wall:curtain",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    8,
+    3
+  ],
+  "height": 14,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north"
+  ]
+}
