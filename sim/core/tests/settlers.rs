@@ -468,3 +468,23 @@ fn claimed_ground_is_not_open() {
     s.advance(DAY / 4);
     assert_eq!(s.parties()[0].target, Hex::new(5, -5), "{:?}", s.parties());
 }
+
+#[test]
+fn a_road_home_with_no_way_is_owed_till_a_ship_can_sail_it() {
+    // A lake round the village: settled by boat, but no road home a wagon, llama or ship can take yet.
+    let (mut s, home) = world(100.0);
+    let v = village(&mut s, Hex::new(5, 0));
+    for n in Hex::new(5, 0).neighbors() {
+        s.set_ground(n, 1.0, 0.0);
+    }
+    s.advance(3 * DAY);
+    assert_eq!(s.settled(), vec![v]);
+    let roads = |s: &Society| s.route_count();
+    assert_eq!(roads(&s), 0, "no way home");
+    // Harbours laid at both, on the lake: the road home opens by ship the next day.
+    s.set_port(home, Hex::new(4, 0).center_x(), Hex::new(4, 0).center_z());
+    s.set_port(v, Hex::new(6, 0).center_x(), Hex::new(6, 0).center_z());
+    s.advance(5 * DAY);
+    assert_eq!(roads(&s), 1, "the road home, owed, opened");
+    assert_eq!(s.route_carrier(0), enterprise_core::map::Carrier::Ship);
+}

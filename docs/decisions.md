@@ -1070,6 +1070,10 @@ mod's), but no road ever chose it. Then: build them first.
   spot the core had guessed dry, asked of the host 1,400 times over two runs). A party's way and its spot are said to
   the host to explore as it sets out (`Output::Explore`), and on arrival it founds only on ground still open as the
   host has surveyed it by then (`OPEN_WET`, `ROUGH`); else it comes home with its capital.
+- **A road home with no way is owed** (seed 1717's Moonbrook: Hillsbrad's settlers sailed there by boat, a road home
+  needs a wagon's, a llama's or a ship's way, and a ship's needs ports at both ends; Moonbrook's harbour was laid after
+  it settled, and the road, refused once, was never tried again). The road is owed and tried again each day
+  (`Settlers::roads_owed`), opening once there's a way: a ship's, its harbour laid.
 - **Settlers make markets of the world's own villages (John, 2026-10-30: "several villages naturally generated in that
   would've made excellent settlement candidates, maybe even adding their population").** The host looks over each
   town's country once a run for the nearest village to six points 480 blocks out (the world's structure placement,

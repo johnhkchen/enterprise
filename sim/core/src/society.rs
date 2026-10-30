@@ -368,6 +368,13 @@ impl Society {
         for t in 0..self.town_count() {
             self.review_berths(t);
         }
+        // Settlers' roads home that had no way when they settled, tried again.
+        let owed = std::mem::take(&mut self.world.resource_mut::<crate::settlers::Settlers>().roads_owed);
+        for (from, to) in owed {
+            if self.add_road(from, to, crate::settlers::ROAD_EVERY_DAYS).is_none() {
+                self.world.resource_mut::<crate::settlers::Settlers>().roads_owed.push((from, to));
+            }
+        }
         let per_hex = self.per_hex();
         for id in 0..self.routes.len() {
             let e = self.routes[id];

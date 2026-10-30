@@ -102,6 +102,10 @@ pub struct Settlers {
     pub came_home: u32,
     /// Towns a host's settlers founded that the host hasn't built yet (`Output::Found`): until a desk of theirs stands.
     pub unbuilt: Vec<TownId>,
+    /// Roads home a party's town had no way for when it settled (from, to): tried again each day (`Society::wear_roads`)
+    /// till one opens: a harbour laid since, a ship's way (seed 1717's Moonbrook, reached by boat, never had a road).
+    #[serde(default)]
+    pub roads_owed: Vec<(TownId, TownId)>,
 }
 
 /// What a party on the road looks like to a host.
@@ -341,7 +345,9 @@ impl Society {
             self.world.get_mut::<Stock>(e).expect("a town").0[bread] += party.bread;
         }
         self.post(Account::Outside, Account::Treasury(town), party.capital, reason());
-        self.add_road(party.from, town, ROAD_EVERY_DAYS);
+        if self.add_road(party.from, town, ROAD_EVERY_DAYS).is_none() {
+            self.world.resource_mut::<Settlers>().roads_owed.push((party.from, town));
+        }
         let mut settlers = self.world.resource_mut::<Settlers>();
         settlers.settled.push(town);
         if party.kind == Kind::Village {
