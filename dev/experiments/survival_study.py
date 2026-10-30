@@ -130,16 +130,19 @@ PREGEN = int(sys.argv[sys.argv.index("--pregen") + 1]) if "--pregen" in sys.argv
 
 def pregen(villages, margin, say):
     """The box round the villages, `margin` blocks past them, generated a few 256-chunk boxes at a time."""
-    x0 = min(v[0] for v in villages) - margin
+    # On chunk lines: a box of 256 blocks off them spans 17 chunks a side, past forceload's 256 (refused without a word).
+    x0 = (min(v[0] for v in villages) - margin) // 16 * 16
     x1 = max(v[0] for v in villages) + margin
-    z0 = min(v[1] for v in villages) - margin
+    z0 = (min(v[1] for v in villages) - margin) // 16 * 16
     z1 = max(v[1] for v in villages) + margin
     boxes = [(x, z, min(x + 255, x1), min(z + 255, z1)) for x in range(x0, x1 + 1, 256) for z in range(z0, z1 + 1, 256)]
     started = time.time()
     for k in range(0, len(boxes), 4):
         batch = boxes[k:k + 4]
         for a, b, c, d in batch:
-            rcon(f"forceload add {a} {b} {c} {d}")
+            said = rcon(f"forceload add {a} {b} {c} {d}")
+            if "Marked" not in said:
+                raise RuntimeError(f"pregen: forceload {a} {b} {c} {d}: {said}")
         while not all("passed" in rcon(f"execute if loaded {x} 0 {z}")
                       for a, b, c, d in batch for x, z in ((a, b), (c, b), (a, d), (c, d))):
             sprint(20)
