@@ -198,6 +198,16 @@ impl Society {
         t
     }
 
+    /// A village the host found at (x, z) (`Input::Village`): taken as a village nobody trades with (`add_village`) unless
+    /// a town or village stands within a hex of it. The town it is, if taken.
+    pub fn village_seen(&mut self, x: f64, z: f64) -> Option<TownId> {
+        let hex = crate::hex::Hex::at(x, z);
+        if (0..self.town_count()).any(|t| self.town_hex(t).is_some_and(|h| h.distance(hex) <= 1)) {
+            return None;
+        }
+        Some(self.add_village(x, z))
+    }
+
     /// Is the town raising a party of settlers now (so its Merchant keeps its idle hands for it)?
     pub fn raising(&self, town: TownId) -> bool {
         let e = self.towns[town];
@@ -273,7 +283,19 @@ impl Society {
             return self.home_again(party);
         }
         let town = match party.village {
-            Some(v) if party.kind == Kind::Village => v,
+            Some(v) if party.kind == Kind::Village => {
+                // A host's village is the host's to make a market of: a desk by its bell (`Output::Found`, until one
+                // stands), its lockers where the host places them, and a settlement's name.
+                if self.world.get::<crate::lockers::Lockers>(self.towns[party.from]).is_some_and(|l| l.placed.is_some()) {
+                    self.host_places_lockers(v);
+                    self.world.resource_mut::<Settlers>().unbuilt.push(v);
+                    let name = self.settlement_name(party.id);
+                    if let Some(mut t) = self.world.get_mut::<crate::state::Town>(self.towns[v]) {
+                        t.name = name;
+                    }
+                }
+                v
+            }
             _ => {
                 let t = self.add_town(&self.settlement_name(party.id), 0.0);
                 self.place_town(t, party.target.center_x(), party.target.center_z());

@@ -108,7 +108,7 @@ public final class TownPlans extends SavedData {
         return plans.get(town);
     }
 
-    /** The towns settlers founded on open ground: planned for the town they'll grow to, built in the new style. */
+    /** The towns settlers founded (on open ground, or a village they made a market of): held loaded till converted. */
     private final java.util.Set<Long> founded = new java.util.TreeSet<>();
 
     public boolean founded(long town) {

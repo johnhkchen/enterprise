@@ -93,6 +93,32 @@ fn a_hosts_settlers_town_is_asked_of_the_host_until_its_desk_stands() {
     assert_eq!(found(host.as_ref().unwrap()), 0, "not asked again");
 }
 
+#[test]
+fn a_village_the_host_found_is_settled_and_its_desk_asked_of_the_host() {
+    // A host's town, and a village the host found 5 hexes off (`Input::Village`): its Merchant makes a market of it,
+    // a settlement of the host's asked for (`Found`) where the village stands, named as a settlement.
+    use enterprise_core::wire::{self, Command, Input, Output, Request, Response};
+    let (s, home) = world(100.0);
+    let mut host = Some(s);
+    host.as_mut().unwrap().host_places_lockers(home);
+    let at = Hex::new(5, 0);
+    match wire::handle(&mut host, Request::new(Command::Apply {
+            inputs: vec![Input::Village { x: at.center_x() as i32, z: at.center_z() as i32 }] })) {
+        Response::Done { .. } => {}
+        other => panic!("{other:?}"),
+    }
+    let mut s = host.unwrap();
+    let v = s.town_count() - 1;
+    assert_eq!(s.town_hex(v), Some(at), "a village where the host found it");
+    assert!(s.village_seen(at.center_x() + 20.0, at.center_z()).is_none(), "found again: the same village");
+    s.advance(2 * DAY);
+    assert_eq!(s.settled(), vec![v], "settled by a Merchant: {:?}", s.parties());
+    let found: Vec<Output> = s.show_founded();
+    assert!(matches!(&found[..], [Output::Found { town, name, .. }] if *town as usize == v && !name.starts_with("Village")),
+        "its desk asked of the host, a settlement's name: {found:?}");
+    assert!(s.roster(v).merchant.is_some(), "its Merchant among its villagers");
+}
+
 // parity-partial: ExpeditionTests.aMerchantSettlesAVillageNobodyTradesWith (the bell, beds and desk placed in the world are Minecraft's: the capital, the route home and the roster are pinned)
 #[test]
 fn a_merchant_settles_a_village_nobody_trades_with() {

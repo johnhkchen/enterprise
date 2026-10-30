@@ -252,6 +252,9 @@ public final class LandAdapter {
                     growWaterfront(level, town, bell);
                     since = 0;
                 }
+                if (villagesLooked.add(town)) {
+                    inputs.addAll(villagesNear(level, bell));
+                }
                 sinceCounted.put(town, since + 1);
                 inputs.add(new Input.Survey(town, bell.getX(), bell.getZ()));
             }
@@ -282,6 +285,32 @@ public final class LandAdapter {
                 front.sea(), front.shore() + cells, front.stretches() + 1, rank));
         Enterprise.LOGGER.info("Town {}'s waterfront grows with its tier: {} more of quay ({} in all)", town, cells,
                 front.shore() + cells);
+    }
+
+    /** Towns whose country has been looked over for villages this run (once each: the world's villages don't move). */
+    private final Set<Long> villagesLooked = new HashSet<>();
+    private final Set<Long> villagesSaid = new HashSet<>();
+    /** How far out from a town its country is looked over for villages, and how wide each look is (chunks). */
+    static final int VILLAGE_SEEK = 480, VILLAGE_LOOK = 12;
+
+    /**
+     * The naturally generated villages round a town (`Input::Village`): the nearest to each of six points 480 blocks
+     * out, as the world's structures place them (generated or not: `findNearestMapStructure`, as the mod's own settlers
+     * looked), each said once. The core takes those no town stands by as villages its towns' settlers may make markets of
+     * (John: "several villages naturally generated in that would've made excellent settlement candidates").
+     */
+    private List<Input> villagesNear(ServerLevel level, BlockPos bell) {
+        List<Input> found = new ArrayList<>();
+        for (int k = 0; k < 6; k++) {
+            double a = Math.PI / 3 * k;
+            BlockPos from = bell.offset((int) Math.round(VILLAGE_SEEK * Math.cos(a)), 0, (int) Math.round(VILLAGE_SEEK * Math.sin(a)));
+            BlockPos v = level.findNearestMapStructure(net.minecraft.tags.StructureTags.VILLAGE, from, VILLAGE_LOOK, false);
+            if (v != null && v.distSqr(new BlockPos(bell.getX(), v.getY(), bell.getZ())) > 160 * 160
+                    && villagesSaid.add(ChunkPos.asLong(v.getX() >> 4, v.getZ() >> 4))) {
+                found.add(new Input.Village(v.getX(), v.getZ()));
+            }
+        }
+        return found;
     }
 
     /** The chunks round a waterfront's head as far as its next stretch could reach along the shore. */
@@ -664,6 +693,36 @@ public final class LandAdapter {
                 continue;
             }
             int y = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, f.x(), f.z());
+            // A village the settlers made a market of: the Merchant's desk by its own bell, the village converted as any
+            // town's is once its plan is laid (its people the town's at its first census).
+            if (dev.b28.enterprise.territory.Conversion.village(level, new BlockPos(f.x(), y, f.z())) != null) {
+                var villageBell = level.getPoiManager().findClosest(t -> t.is(net.minecraft.world.entity.ai.village.poi.PoiTypes.MEETING),
+                        new BlockPos(f.x(), y, f.z()), 64, net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy.ANY);
+                var stall = villageBell.flatMap(b -> dev.b28.enterprise.territory.Growth.site(level, b, 2, 3));
+                if (stall.isEmpty()) {
+                    Enterprise.LOGGER.info("No room for a desk by {}'s bell near {} {}: asked again", f.name(), f.x(), f.z());
+                    continue;
+                }
+                BlockPos desk = stall.get().above();
+                level.setBlock(desk, dev.b28.enterprise.merchant.Merchant.DESK.get().defaultBlockState(), 3);
+                level.setBlock(desk.east(), net.minecraft.world.level.block.Blocks.CHEST.defaultBlockState(), 3);
+                String why = host.points().add(GlobalPos.of(level.dimension(), desk), PointsAdapter.Kind.DESK, f.town());
+                if (why != null) {
+                    Enterprise.LOGGER.warn("The core wouldn't take {}'s desk at {}: {}", f.name(), desk.toShortString(), why);
+                    continue;
+                }
+                // Held loaded till it's converted, as a founded town is.
+                dev.b28.enterprise.territory.TownPlans.get(server).found(f.town());
+                BlockPos at = villageBell.get();
+                dev.b28.enterprise.territory.TownPlans.get(server).plans().entrySet().stream()
+                        .filter(e -> e.getKey() != f.town())
+                        .min(java.util.Comparator.comparingDouble(e -> e.getValue().bell().distSqr(at)))
+                        .ifPresent(e -> dev.b28.enterprise.territory.Kingdoms.get(server).set(f.town(),
+                                dev.b28.enterprise.territory.Kingdoms.get(server).of(e.getKey())));
+                Enterprise.LOGGER.info("{} settled: a desk by the village's bell at {} ({})", f.name(), desk.toShortString(),
+                        dev.b28.enterprise.territory.Kingdoms.get(server).of(f.town()));
+                continue;
+            }
             // Its square only: the rest is built as any town's, in its kingdom's style, once its plan is laid.
             var town = Expeditions.buildSquare(level, new BlockPos(f.x(), y, f.z()));
             if (town.isEmpty()) {

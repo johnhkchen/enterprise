@@ -201,6 +201,11 @@ pub enum Input {
     /// `Carrier::Ship`), where that's cheaper than the road over land or there's no road over land. Sent again, the
     /// port moves. Refused for a town that isn't there.
     Port { town: TownNo, x: i32, z: i32 },
+    /// A naturally generated village the host found at block `x`, `z` (its world's village structure): one nobody
+    /// trades with, for towns' settlers to make a market of (`settlers.rs`; John: "several villages naturally generated
+    /// in that would've made excellent settlement candidates, maybe even adding their population"). Taken as a village
+    /// of the core's (`Society::add_village`) unless a town or village stands within a hex of it already.
+    Village { x: i32, z: i32 },
 }
 
 /// A villager a census saw: the host's tag for it (its UUID), its trade by the host's name (with or without the host's

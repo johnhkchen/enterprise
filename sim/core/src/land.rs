@@ -334,6 +334,9 @@ impl Society {
             }
             Input::Built { town, work, share } => self.laid(*town as TownId, work, *share),
             Input::Port { town, x, z } => self.set_port(*town as TownId, *x as f64 + 0.5, *z as f64 + 0.5),
+            Input::Village { x, z } => {
+                self.village_seen(*x as f64 + 0.5, *z as f64 + 0.5);
+            }
             _ => return false,
         }
         true

@@ -422,7 +422,7 @@ fn check_inputs(s: &Society, inputs: &[Input]) -> Result<(), Refusal> {
                 }
                 same_kind(stands(&points, &point.spot()), point).map_err(wrong)?;
             }
-            Input::CashUnmoved { .. } => {}
+            Input::CashUnmoved { .. } | Input::Village { .. } => {}
             Input::Ground { water, relief, height, .. } => {
                 amount("a share under water of", *water)?;
                 amount("a relief of", *relief)?;

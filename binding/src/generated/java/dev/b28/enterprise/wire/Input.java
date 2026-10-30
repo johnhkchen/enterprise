@@ -50,7 +50,8 @@ public sealed interface Input
                 Input.Declare,
                 Input.Peace,
                 Input.CrownShop,
-                Input.Port {
+                Input.Port,
+                Input.Village {
     void encode(PostcardOut out);
 
     static Input decode(PostcardIn in) {
@@ -98,6 +99,7 @@ public sealed interface Input
             case 39 -> new Peace();
             case 40 -> new CrownShop(Point.decode(in));
             case 41 -> new Port(in.u32(), in.i32(), in.i32());
+            case 42 -> new Village(in.i32(), in.i32());
             default -> throw in.unknownVariant("Input", at);
         };
     }
@@ -856,6 +858,21 @@ public sealed interface Input
         public void encode(PostcardOut out) {
             out.variant(41);
             out.u32(this.town);
+            out.i32(this.x);
+            out.i32(this.z);
+        }
+    }
+
+    /**
+     * A naturally generated village the host found at block {@code x}, {@code z} (its world's village structure): one nobody
+     * trades with, for towns' settlers to make a market of ({@code settlers.rs}; John: "several villages naturally generated
+     * in that would've made excellent settlement candidates, maybe even adding their population"). Taken as a village
+     * of the core's ({@code Society::add_village}) unless a town or village stands within a hex of it already.
+     */
+    record Village(int x, int z) implements Input {
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(42);
             out.i32(this.x);
             out.i32(this.z);
         }

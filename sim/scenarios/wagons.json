@@ -6,7 +6,7 @@
       "note": "a society from a pack with books and Merchants",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Create": {
             "pack": {
@@ -156,7 +156,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60100c0bb01070f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f146d696e6563726166743a69726f6e5f696e676f74000000000000d03f400000000000000000000000000000000000000000000000001040146d696e6563726166743a73756761725f63616e657b14ae47e17aa43f40000000000000000000000000000000000000000000000000e03f0f6d696e6563726166743a70617065727b14ae47e17aa43f40000000000000000000000000000000000000000000000000f03f0208636c6f7468696e670772656164696e6706086d65726368616e74066661726d6572096c696272617269616e087368657068657264046e6f6e65066e69747769740201066661726d6572010f6d696e6563726166743a776865617400000000000008400f6d696e6563726166743a6272656164000000000000f03f01096c696272617269616e01146d696e6563726166743a73756761725f63616e65000000000000f03f0f6d696e6563726166743a7061706572000000000000f03f0103636f77010f6d696e6563726166743a7768656174000000000000d03f01156d696e6563726166743a636f6f6b65645f6265656600000000000000400000020a62697274685f6d6f6f64000000000000e03f0b7761676f6e5f736c6f74730000000000003e400007",
+      "request_postcard": "01ad89b2d08dbce3ebe70100c0bb01070f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f146d696e6563726166743a69726f6e5f696e676f74000000000000d03f400000000000000000000000000000000000000000000000001040146d696e6563726166743a73756761725f63616e657b14ae47e17aa43f40000000000000000000000000000000000000000000000000e03f0f6d696e6563726166743a70617065727b14ae47e17aa43f40000000000000000000000000000000000000000000000000f03f0208636c6f7468696e670772656164696e6706086d65726368616e74066661726d6572096c696272617269616e087368657068657264046e6f6e65066e69747769740201066661726d6572010f6d696e6563726166743a776865617400000000000008400f6d696e6563726166743a6272656164000000000000f03f01096c696272617269616e01146d696e6563726166743a73756761725f63616e65000000000000f03f0f6d696e6563726166743a7061706572000000000000f03f0103636f77010f6d696e6563726166743a7768656174000000000000d03f01156d696e6563726166743a636f6f6b65645f6265656600000000000000400000020a62697274685f6d6f6f64000000000000e03f0b7761676f6e5f736c6f74730000000000003e400007",
       "response": {
         "Done": {
           "outputs": [],
@@ -169,7 +169,7 @@
       "note": "two towns forty blocks apart, Hub with its Merchant and a villager of no trade, Far with its Merchant and books; bread and money in both",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Apply": {
             "inputs": [
@@ -270,7 +270,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b601030b070348756200136d696e6563726166743a6f766572776f726c64367736070346617200136d696e6563726166743a6f766572776f726c6486017736070744697374616e7400136d696e6563726166743a6f766572776f726c643677868d010f00086d65726368616e74010c76696c6c616765722d6875620f00046e6f6e65010d76696c6c616765722d6c6561640f01086d65726368616e74010c76696c6c616765722d6661720100010000000000006040010101000000000000604001010200000000000050400200a08d060201a08d06",
+      "request_postcard": "01ad89b2d08dbce3ebe701030b070348756200136d696e6563726166743a6f766572776f726c64367736070346617200136d696e6563726166743a6f766572776f726c6486017736070744697374616e7400136d696e6563726166743a6f766572776f726c643677868d010f00086d65726368616e74010c76696c6c616765722d6875620f00046e6f6e65010d76696c6c616765722d6c6561640f01086d65726368616e74010c76696c6c616765722d6661720100010000000000006040010101000000000000604001010200000000000050400200a08d060201a08d06",
       "response": {
         "Done": {
           "outputs": [],
@@ -283,7 +283,7 @@
       "note": "Hub's hands",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Ask": {
             "queries": [
@@ -296,7 +296,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60104010400",
+      "request_postcard": "01ad89b2d08dbce3ebe70104010400",
       "response": {
         "Done": {
           "outputs": [],
@@ -338,7 +338,7 @@
       "note": "Hub has no route yet, and knows Far (Distant is beyond word of mouth); its squad at home",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Ask": {
             "queries": [
@@ -351,7 +351,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60104010b00",
+      "request_postcard": "01ad89b2d08dbce3ebe70104010b00",
       "response": {
         "Done": {
           "outputs": [],
@@ -390,7 +390,7 @@
       "note": "Hub's host starts wagons to Far, and to Distant (nine thousand blocks: beyond a leg's food)",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Apply": {
             "inputs": [
@@ -412,7 +412,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60103021c0001011c000201",
+      "request_postcard": "01ad89b2d08dbce3ebe70103021c0001011c000201",
       "response": {
         "Done": {
           "outputs": [],
@@ -425,7 +425,7 @@
       "note": "a route to Far, home; none to Distant",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Ask": {
             "queries": [
@@ -438,7 +438,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60104010b00",
+      "request_postcard": "01ad89b2d08dbce3ebe70104010b00",
       "response": {
         "Done": {
           "outputs": [],
@@ -492,7 +492,7 @@
       "note": "a look: the wagon leaves to shop for books, led by the hand taken on as its Merchant",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Apply": {
             "inputs": [
@@ -505,7 +505,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b601030100b009",
+      "request_postcard": "01ad89b2d08dbce3ebe701030100b009",
       "response": {
         "Done": {
           "outputs": [
@@ -547,7 +547,7 @@
       "note": "its wagon on the way out, its crew the lead",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Ask": {
             "queries": [
@@ -560,7 +560,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60104010b00",
+      "request_postcard": "01ad89b2d08dbce3ebe70104010b00",
       "response": {
         "Done": {
           "outputs": [],
@@ -620,7 +620,7 @@
       "note": "a look: at the far end, and on its way home",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Apply": {
             "inputs": [
@@ -633,7 +633,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b601030100e012",
+      "request_postcard": "01ad89b2d08dbce3ebe701030100e012",
       "response": {
         "Done": {
           "outputs": [
@@ -654,7 +654,7 @@
       "note": "on its way home",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Ask": {
             "queries": [
@@ -667,7 +667,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60104010b00",
+      "request_postcard": "01ad89b2d08dbce3ebe70104010b00",
       "response": {
         "Done": {
           "outputs": [],
@@ -727,7 +727,7 @@
       "note": "a look: home, its crew back as Hub's Merchant on the road",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Apply": {
             "inputs": [
@@ -740,7 +740,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b601030100901c",
+      "request_postcard": "01ad89b2d08dbce3ebe701030100901c",
       "response": {
         "Done": {
           "outputs": [
@@ -770,7 +770,7 @@
       "note": "home, one trip made",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Ask": {
             "queries": [
@@ -783,7 +783,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60104010b00",
+      "request_postcard": "01ad89b2d08dbce3ebe70104010b00",
       "response": {
         "Done": {
           "outputs": [],
@@ -837,7 +837,7 @@
       "note": "the host stops Hub's wagons to Far",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Apply": {
             "inputs": [
@@ -852,7 +852,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60103011c000100",
+      "request_postcard": "01ad89b2d08dbce3ebe70103011c000100",
       "response": {
         "Done": {
           "outputs": [],
@@ -865,7 +865,7 @@
       "note": "the route wound down",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Ask": {
             "queries": [
@@ -878,7 +878,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60104010b00",
+      "request_postcard": "01ad89b2d08dbce3ebe70104010b00",
       "response": {
         "Done": {
           "outputs": [],
@@ -932,7 +932,7 @@
       "note": "five days: no wagon leaves",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Apply": {
             "inputs": [
@@ -945,7 +945,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b601030100c0a907",
+      "request_postcard": "01ad89b2d08dbce3ebe701030100c0a907",
       "response": {
         "Done": {
           "outputs": [],
@@ -958,7 +958,7 @@
       "note": "started again",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Apply": {
             "inputs": [
@@ -973,7 +973,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60103011c000101",
+      "request_postcard": "01ad89b2d08dbce3ebe70103011c000101",
       "response": {
         "Done": {
           "outputs": [],
@@ -986,7 +986,7 @@
       "note": "the same route, open",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Ask": {
             "queries": [
@@ -999,7 +999,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60104010b00",
+      "request_postcard": "01ad89b2d08dbce3ebe70104010b00",
       "response": {
         "Done": {
           "outputs": [],
@@ -1053,7 +1053,7 @@
       "note": "forty days of wagons to Far: the road's hexes worn by their round trips to trails, each said once with the way through it (Trail)",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Apply": {
             "inputs": [
@@ -1066,7 +1066,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b601030100c0f541",
+      "request_postcard": "01ad89b2d08dbce3ebe701030100c0f541",
       "response": {
         "Done": {
           "outputs": [
@@ -1462,13 +1462,13 @@
       "note": "saved",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": "Save"
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60102",
+      "request_postcard": "01ad89b2d08dbce3ebe70102",
       "saved": {
         "format": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "blob_len": 11950,
         "blob_fnv": "d5e9b30604ff235f"
       }
@@ -1488,7 +1488,7 @@
       "note": "the same after the load",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Ask": {
             "queries": [
@@ -1501,7 +1501,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60104010b00",
+      "request_postcard": "01ad89b2d08dbce3ebe70104010b00",
       "response": {
         "Done": {
           "outputs": [],
@@ -1558,7 +1558,7 @@
       "note": "a route from Hub to itself: refused",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Apply": {
             "inputs": [
@@ -1573,7 +1573,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60103011c000001",
+      "request_postcard": "01ad89b2d08dbce3ebe70103011c000001",
       "response": {
         "Refused": {
           "why": {
@@ -1590,7 +1590,7 @@
       "note": "a route to a town that isn't there: refused",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Apply": {
             "inputs": [
@@ -1612,7 +1612,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60103021c0001001c000901",
+      "request_postcard": "01ad89b2d08dbce3ebe70103021c0001001c000901",
       "response": {
         "Refused": {
           "why": {
@@ -1629,7 +1629,7 @@
       "note": "nothing of the refused look applied: the route still open",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Ask": {
             "queries": [
@@ -1642,7 +1642,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60104010b00",
+      "request_postcard": "01ad89b2d08dbce3ebe70104010b00",
       "response": {
         "Done": {
           "outputs": [],
@@ -1699,7 +1699,7 @@
       "note": "the routes of a town that isn't there",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Ask": {
             "queries": [
@@ -1712,7 +1712,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60104010b09",
+      "request_postcard": "01ad89b2d08dbce3ebe70104010b09",
       "response": {
         "Refused": {
           "why": {

@@ -6,7 +6,7 @@
       "note": "a society from a pack with carrots",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Create": {
             "pack": {
@@ -103,7 +103,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60100c0bb01050f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f106d696e6563726166743a636172726f7446175d74d145a73f4000000000000008400000000000000000000100000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e69747769740000000007",
+      "request_postcard": "01ad89b2d08dbce3ebe70100c0bb01050f6d696e6563726166743a77686561749a9999999999a93f4000000000000000000000000000000000000100000000000000f03f0f6d696e6563726166743a62726561649a9999999999c93f40000000000000144000000000000018400000000000000000f03f0e6d696e6563726166743a626f6f6b000000000000e03f4000000000000000000000000000000000010772656164696e6700000000000000f03f156d696e6563726166743a636f6f6b65645f62656566333333333333d33f4000000000000020409a99999999992940000101000000000000f03f106d696e6563726166743a636172726f7446175d74d145a73f4000000000000008400000000000000000000100000000000000f03f05067472656174730772656164696e6708636c6f7468696e670b6675726e697368696e6773076c65697375726510086d65726368616e740c636172746f67726170686572096c696272617269616e0873686570686572640d6c656174686572776f726b6572096669736865726d616e06636c65726963066661726d657209746f6f6c736d6974680761726d6f7265720b776561706f6e736d697468056d61736f6e08666c6574636865720762757463686572046e6f6e65066e69747769740000000007",
       "response": {
         "Done": {
           "outputs": [],
@@ -116,7 +116,7 @@
       "note": "a town at its desk (in hex 0, 0), money paid in, a level-3 Farmer, its ground surveyed: a lake to the east",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Apply": {
             "inputs": [
@@ -176,7 +176,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60103050707417368666f726400136d696e6563726166743a6f766572776f726c64107710020080b5180f00106d696e6563726166743a6661726d6572030a76696c6c616765722d6616000000000000000000000000000000000040000000160200000000000000ec3f000000000000f03f060000",
+      "request_postcard": "01ad89b2d08dbce3ebe70103050707417368666f726400136d696e6563726166743a6f766572776f726c64107710020080b5180f00106d696e6563726166743a6661726d6572030a76696c6c616765722d6616000000000000000000000000000000000040000000160200000000000000ec3f000000000000f03f060000",
       "response": {
         "Done": {
           "outputs": [],
@@ -189,7 +189,7 @@
       "note": "the ground of its hex, the lake's, and one never surveyed",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Ask": {
             "queries": [
@@ -215,7 +215,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60104010903000002000002",
+      "request_postcard": "01ad89b2d08dbce3ebe70104010903000002000002",
       "response": {
         "Done": {
           "outputs": [],
@@ -271,7 +271,7 @@
       "note": "its first survey: 20 wheat plots counted in one chunk of its hex, 500 in a hex nobody holds",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Apply": {
             "inputs": [
@@ -318,7 +318,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b6010303170000000001000000000000003440170404181801000000000000407f4018001008",
+      "request_postcard": "01ad89b2d08dbce3ebe7010303170000000001000000000000003440170404181801000000000000407f4018001008",
       "response": {
         "Done": {
           "outputs": [],
@@ -331,7 +331,7 @@
       "note": "its land: the 20 wheat plots its fields",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Ask": {
             "queries": [
@@ -344,7 +344,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60104010800",
+      "request_postcard": "01ad89b2d08dbce3ebe70104010800",
       "response": {
         "Done": {
           "outputs": [],
@@ -373,7 +373,7 @@
       "note": "day 1: a look that surveys the town",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Apply": {
             "inputs": [
@@ -393,7 +393,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b601030200c0bb0118001008",
+      "request_postcard": "01ad89b2d08dbce3ebe701030200c0bb0118001008",
       "response": {
         "Done": {
           "outputs": [
@@ -418,7 +418,7 @@
       "note": "the field of carrots is the farm's before the host lays it",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Ask": {
             "queries": [
@@ -431,7 +431,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60104010800",
+      "request_postcard": "01ad89b2d08dbce3ebe70104010800",
       "response": {
         "Done": {
           "outputs": [],
@@ -480,7 +480,7 @@
       "note": "a look whose host couldn't lay it: asked again",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Apply": {
             "inputs": [
@@ -495,7 +495,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b601030118001008",
+      "request_postcard": "01ad89b2d08dbce3ebe701030118001008",
       "response": {
         "Done": {
           "outputs": [
@@ -520,7 +520,7 @@
       "note": "the host lays it, counts its chunk and says so: not asked again",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Apply": {
             "inputs": [
@@ -562,7 +562,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b601030317000002000104000000000000544019000304000000000000f03f18001008",
+      "request_postcard": "01ad89b2d08dbce3ebe701030317000002000104000000000000544019000304000000000000f03f18001008",
       "response": {
         "Done": {
           "outputs": [],
@@ -575,7 +575,7 @@
       "note": "its land: 20 wheat and 80 carrot plots, counted once",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Ask": {
             "queries": [
@@ -588,7 +588,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60104010800",
+      "request_postcard": "01ad89b2d08dbce3ebe70104010800",
       "response": {
         "Done": {
           "outputs": [],
@@ -626,7 +626,7 @@
       "note": "ground that isn't a number",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Apply": {
             "inputs": [
@@ -647,7 +647,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b6010301160000000000000000e0bf0000000000000000000000",
+      "request_postcard": "01ad89b2d08dbce3ebe7010301160000000000000000e0bf0000000000000000000000",
       "response": {
         "Refused": {
           "why": {
@@ -664,7 +664,7 @@
       "note": "a hall the core has no name for",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Apply": {
             "inputs": [
@@ -683,7 +683,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60103011900020670616c616365000000000000f03f",
+      "request_postcard": "01ad89b2d08dbce3ebe70103011900020670616c616365000000000000f03f",
       "response": {
         "Refused": {
           "why": {
@@ -700,7 +700,7 @@
       "note": "the land of a town that isn't there",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Ask": {
             "queries": [
@@ -713,7 +713,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60104010803",
+      "request_postcard": "01ad89b2d08dbce3ebe70104010803",
       "response": {
         "Refused": {
           "why": {
@@ -730,13 +730,13 @@
       "note": "saved",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": "Save"
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60102",
+      "request_postcard": "01ad89b2d08dbce3ebe70102",
       "saved": {
         "format": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "blob_len": 5491,
         "blob_fnv": "868ae3ca14e83b3c"
       }
@@ -756,7 +756,7 @@
       "note": "its land as saved",
       "request": {
         "abi": 1,
-        "schema": 13133658512503964944,
+        "schema": 16705977339624588461,
         "command": {
           "Ask": {
             "queries": [
@@ -769,7 +769,7 @@
           }
         }
       },
-      "request_postcard": "01908ad6f8cf9a88a2b60104010800",
+      "request_postcard": "01ad89b2d08dbce3ebe70104010800",
       "response": {
         "Done": {
           "outputs": [],

@@ -764,6 +764,11 @@ Input:
           - town: U32
           - x: I32
           - z: I32
+    42:
+      Village:
+        STRUCT:
+          - x: I32
+          - z: I32
 LandKind:
   ENUM:
     0:

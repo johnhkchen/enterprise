@@ -1053,6 +1053,14 @@ mod's), but no road ever chose it. Then: build them first.
   becomes an excellent freight forwarding point").** A port's berths beyond its first count as routes calling toward
   a freight hub; with two it's a hub's site though no road of others passes it (`rules/freight.rs`,
   `PORT_HUB_BERTHS`).
+- **Settlers make markets of the world's own villages (John, 2026-10-30: "several villages naturally generated in that
+  would've made excellent settlement candidates, maybe even adding their population").** The host looks over each
+  town's country once a run for the nearest village to six points 480 blocks out (the world's structure placement,
+  generated or not, as the mod's own settlers looked) and says each (`Input::Village`); the core takes one no town
+  stands within a hex of as a village (`village_seen`), which settlers make a market of before founding on open ground.
+  The party's arrival asks the host for a desk (`Output::Found`, a settlement's name): it's set by the village's own
+  bell (`LandAdapter.buildFounded`), the village converted as any town is, and its villagers the town's at its first
+  census.
 - **Seed 1001, what it showed.** Five towns 300 to 950 blocks apart, four with harbours, none rich: each spent its
   64-emerald founding purse on stalls and fields by day 5, and the best load any road saw in 30 days was worth 8.6
   against an 820-block road's 16. The study's roads went to each town's two nearest, so the two ports on one sea
