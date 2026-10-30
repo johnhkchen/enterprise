@@ -258,7 +258,7 @@ public final class LandAdapter {
                     growWaterfront(level, town, bell);
                     since = 0;
                 }
-                if (villagesLooked.add(town)) {
+                if (dev.b28.enterprise.territory.VillageSearch.get(level.getServer()).look(town)) {
                     inputs.addAll(villagesNear(level, bell));
                 }
                 sinceCounted.put(town, since + 1);
@@ -315,16 +315,14 @@ public final class LandAdapter {
         }
     }
 
-    /** Towns whose country has been looked over for villages this run (once each: the world's villages don't move). */
-    private final Set<Long> villagesLooked = new HashSet<>();
-    private final Set<Long> villagesSaid = new HashSet<>();
+    // Which towns' country has been looked over, and which villages told: saved with the world (VillageSearch).
     /** How far out from a town its country is looked over for villages, and how wide each look is (chunks). */
     static final int VILLAGE_SEEK = 480, VILLAGE_LOOK = 12;
 
     /**
      * The naturally generated villages round a town (`Input::Village`): the nearest to each of six points 480 blocks
      * out, as the world's structures place them (generated or not: `findNearestMapStructure`, as the mod's own settlers
-     * looked), each said once. The core takes those no town stands by as villages its towns' settlers may make markets of
+     * looked), each said once, ever (VillageSearch). The core takes those no town stands by as villages its towns' settlers may make markets of
      * (John: "several villages naturally generated in that would've made excellent settlement candidates").
      */
     private List<Input> villagesNear(ServerLevel level, BlockPos bell) {
@@ -334,7 +332,7 @@ public final class LandAdapter {
             BlockPos from = bell.offset((int) Math.round(VILLAGE_SEEK * Math.cos(a)), 0, (int) Math.round(VILLAGE_SEEK * Math.sin(a)));
             BlockPos v = level.findNearestMapStructure(net.minecraft.tags.StructureTags.VILLAGE, from, VILLAGE_LOOK, false);
             if (v != null && v.distSqr(new BlockPos(bell.getX(), v.getY(), bell.getZ())) > 160 * 160
-                    && villagesSaid.add(ChunkPos.asLong(v.getX() >> 4, v.getZ() >> 4))) {
+                    && dev.b28.enterprise.territory.VillageSearch.get(level.getServer()).say(ChunkPos.asLong(v.getX() >> 4, v.getZ() >> 4))) {
                 found.add(new Input.Village(v.getX(), v.getZ()));
             }
         }

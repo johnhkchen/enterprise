@@ -1,0 +1,59 @@
+# What makes kept state stale (dev/experiments/fixtures.py; John, 2026-10-31: "catalog and justify when a bit of state
+# has gone stale, and when our model of staleness has gone wrong"). Kept state is reused unless something named here
+# changed. A lane that reuses a point across a change to anything else says which files, and audits the reuse: it
+# carries on from the point before and compares its towns at the reused point's day with the kept run's
+# (compare_runs.py, beyond what two restarts of one point differ by). A reuse the audit refutes is written to
+# core/run/fixtures/audits.log: the file it names belongs here, with its reason.
+#
+# Each entry: `paths` (globs from the repo's root, `!` to except), and `why`.
+
+# The ground: the world as generated and surveyed before any town. Generation is the seed's and the game's; the mod's
+# surveyor runs again on each chunk as it loads, so a change to it reaches the ground a study uses.
+[[terrain]]
+paths = ["gradle.properties", "core/build.gradle", "pack/index.toml"]
+why = "the game's, NeoForge's and the mods' versions generate the world"
+
+# A point's world: its blocks and entities and the mod's saved data, as days 0 to its day made them. Its core is never
+# trusted: it is rebuilt from the run's journals on the core being tested (fixtures.resume_point), and a change to sim/
+# keeps a point only to the day the journals' replay first answers otherwise.
+[[points]]
+paths = ["gradle.properties", "settings.gradle", "core/build.gradle", "binding/build.gradle", "pack/index.toml"]
+why = "the game's, NeoForge's and the mods' versions run every tick of it"
+
+[[points]]
+paths = ["dev/experiments/survival_study.py"]
+why = "the study is the player: what it places, loads and switches on each day"
+
+[[points]]
+paths = ["core/src/main/resources/data/enterprise/structure/**", "core/src/main/resources/data/enterprise/styles/**",
+         "core/src/main/resources/data/enterprise/town_kits/**", "core/src/main/resources/data/enterprise/town_rules/**"]
+why = "the buildings a town lays and which (its kits, its kingdom's style): the blocks its villagers live and work in"
+
+[[points]]
+paths = ["core/src/main/resources/data/enterprise/tags/**"]
+why = "what counts as a crop, a workstation, a bed: what a census and a crop count read from the world"
+
+[[points]]
+paths = ["core/src/main/java/dev/b28/enterprise/territory/**"]
+why = "where a town's buildings go (plans, plots, zoning, harbours) and what its land is told to the core as"
+
+[[points]]
+paths = ["core/src/main/java/dev/b28/enterprise/binding/**",
+         "!core/src/main/java/dev/b28/enterprise/binding/adapters/BooksAdapter.java",
+         "!core/src/main/java/dev/b28/enterprise/binding/adapters/LedgerAdapter.java"]
+why = """what the game tells the core each look and does with its answers (the books and ledger only read; the commands
+don't: `autoswitch`, which the study runs every 4 days, switches offers on)"""
+
+[[points]]
+paths = ["binding/src/main/**", "binding/src/generated/**"]
+why = "the wire and the core's host: the requests the core is sent"
+
+[[points]]
+paths = ["core/src/main/java/dev/b28/enterprise/settlement/**", "core/src/main/java/dev/b28/enterprise/merchant/**",
+         "core/src/main/java/dev/b28/enterprise/locker/**"]
+why = "villagers, the Merchant and lockers: who works where and what they hold, in the world itself"
+
+[[points]]
+paths = ["core/src/main/java/dev/b28/enterprise/Dials.java"]
+why = """the dials' defaults go into the content pack once, when the world is made (binding/ModPack), and stay in the
+core's save: a point, its journals' replay and an audit all carry the old values, so no audit can see a change here"""

@@ -6,12 +6,16 @@
     python3 dev/experiments/fixtures.py prune [GB]           # the least recently used past GB (default 5) deleted
 
 Each fixture is keyed by what made it, so it's made again only when that changes:
+Kept state is reused unless something staleness.toml names changed: each key is made of those files (and the seed and
+flags), nothing else. A point notes every mod file's hash (manifest.json), so a lane reusing it across a change to a
+file no entry names says which, and audits the reuse (survival_lane.py).
 - terrain (`core/run/fixtures/seed-S/terrain-KEY`): the world after the villages are found and the ground pregenerated
   and surveyed, before any town. Keyed by the seed, the study's flags that place and size the ground (--villages,
-  --near, --pregen, --reach) and the game's versions and mods (gradle.properties, core/build.gradle, pack/), not the
-  mod's own code (John: "why do we need to pregenerate unless we're on a fresh seed?"). The core's own state and journal are left out: the next run's core starts fresh on it.
+  --near, --pregen, --reach) and the catalog's terrain entries (John: "why do we need to pregenerate unless we're on a
+  fresh seed?"). The core's own state and journal are left out: the next run's core starts fresh on it.
 - points (`core/run/fixtures/seed-S/run-KEY/dayN`): the world after the towns are set up (day 0), after day 1 (two
-  minutes and more: every town's layout is built) and every POINT_EVERY days. Keyed by the terrain, every study flag and the mod's own sources (core/, binding/: not sim/). The Rust core may
+  minutes and more: every town's layout is built) and every POINT_EVERY days. Keyed by the terrain, every study flag
+  and the catalog's points entries. The Rust core may
   change under them: a new build replays the run's journals (`enterprise-sim --chain`) and the first response it gives
   otherwise is the first request the change touches; the last point before it is still the run as the new build would
   have made it. Its core is rebased (the new build's save after replaying the journals up to the point), and the study
@@ -33,12 +37,13 @@ REPO = Path(__file__).resolve().parents[2]
 STORE = REPO / "core" / "run" / "fixtures"
 # The study's flags that decide which ground is generated (the rest act once towns are set up).
 GROUND_FLAGS = ("--villages", "--near", "--pregen", "--reach")
-# What makes the ground: the game's and the mods' versions. Not the mod's own code: the surveyor runs again on every
-# chunk as it loads, so a change to it reaches the ground a study uses (`--fresh-terrain` makes it anew all the same,
-# for a survey change that must reach chunks no town loads again).
-GROUND_SOURCES = ("gradle.properties", "core/build.gradle", "pack/index.toml")
 # What a fixture leaves behind: the core's state and journal (a new build's core starts fresh), the server's lock.
 LEFT_OUT = ("session.lock", "enterprise_core.dat", "enterprise_core_stowed.dat", "enterprise-journal")
+# What makes kept state stale, and why (staleness.toml): nothing else does.
+CATALOG = Path(__file__).with_name("staleness.toml")
+# The files a point notes the state of (manifest.json), to say which changed since that no entry names.
+WATCHED = ("core", "binding", "pack", "gradle.properties", "settings.gradle", "dev/experiments/survival_study.py")
+POINT_EVERY = 10
 
 
 def digest(*parts):
@@ -49,22 +54,52 @@ def digest(*parts):
     return h.hexdigest()[:12]
 
 
-POINT_EVERY = 10
-# The mod's own sources: a change to any of them makes points anew (the game's side of the run is no longer the same).
-MOD_SOURCES = ("core", "binding", "gradle.properties", "settings.gradle", "pack/index.toml")
-
-
-def mod_digest():
-    listed = subprocess.run(["git", "ls-files", "--cached", "--others", "--exclude-standard", *MOD_SOURCES], cwd=REPO,
+def tracked(*paths):
+    """The repo's files under `paths` (tracked or new, not ignored), sorted."""
+    listed = subprocess.run(["git", "ls-files", "--cached", "--others", "--exclude-standard", *paths], cwd=REPO,
                             capture_output=True, text=True, check=True).stdout.split()
-    files = sorted(f for f in listed if "/test/" not in f and (REPO / f).is_file())
-    return digest(*(part for f in files for part in (f, (REPO / f).read_bytes())))
+    return sorted({f for f in listed if (REPO / f).is_file()})
+
+
+def catalogued(section):
+    """The files the catalog's `section` entries name: what makes that kind of state stale."""
+    import fnmatch
+    import tomllib
+    out = set()
+    for entry in tomllib.loads(CATALOG.read_text())[section]:
+        take = [g for g in entry["paths"] if not g.startswith("!")]
+        leave = [g[1:] for g in entry["paths"] if g.startswith("!")]
+        roots = {g.split("*")[0].rstrip("/") or "." for g in take}
+        for f in tracked(*roots):
+            if any(fnmatch.fnmatch(f, g) for g in take) and not any(fnmatch.fnmatch(f, g) for g in leave):
+                out.add(f)
+    return sorted(out)
+
+
+def contents(files):
+    return [part for f in files for part in (f, (REPO / f).read_bytes())]
+
+
+def manifest():
+    """Every watched file's hash now: what a point notes, to tell later which changed."""
+    return {f: digest((REPO / f).read_bytes()) for f in tracked(*WATCHED)}
+
+
+def unlisted_changes(point):
+    """The watched files changed since the point was kept that no catalog entry names (those named are in its key)."""
+    noted = point / "manifest.json"
+    if not noted.exists():
+        return ["(no manifest: kept before the catalog)"]
+    was, now = json.loads(noted.read_text()), manifest()
+    named = set(catalogued("points"))
+    return sorted(f for f in set(was) | set(now) if was.get(f) != now.get(f) and f not in named)
 
 
 def run_dir(seed, argv):
-    """Where a study's points are kept: its terrain, all its flags, the mod's sources."""
+    """Where a study's points are kept: its terrain, all its flags, and the files the catalog says make points stale."""
     flags = [a for a in argv if a not in ("--fixtures", "--fresh-terrain")]
-    return terrain_dir(seed, argv).parent / f"run-{digest(terrain_dir(seed, argv).name, *flags, mod_digest())}"
+    terrain = terrain_dir(seed, argv)
+    return terrain.parent / f"run-{digest(terrain.name, *flags, *contents(catalogued('points')))}"
 
 
 def clone(src, dest):
@@ -91,7 +126,7 @@ def ground_flags(argv):
 
 
 def terrain_dir(seed, argv):
-    key = digest(seed, *ground_flags(argv), *((REPO / s).read_bytes() for s in GROUND_SOURCES))
+    key = digest(seed, *ground_flags(argv), *contents(catalogued("terrain")))
     return STORE / f"seed-{seed}" / f"terrain-{key}"
 
 
@@ -153,6 +188,7 @@ def save_point(world, run, day, chain, least, state, made_in):
             chain, aligned = trial, True
             break
     (point / "world" / "study.json").write_text(json.dumps(dict(state, day=day, chain=chain, aligned=aligned), indent=1))
+    (point / "manifest.json").write_text(json.dumps(manifest(), indent=0, sort_keys=True))
     return aligned
 
 
@@ -176,13 +212,13 @@ def answers(run, chain):
     return out
 
 
-def resume_point(run, days, say):
+def resume_point(run, days, say, latest=None):
     """The latest point of the run before `days` this build would have made the same, its core rebased onto this build
     (`world/enterprise_core.dat` replaced by the build's own save at that point): (point, seconds it saves), or None."""
     points = sorted((p.parent for p in run.glob("day*/fixture.json")), key=lambda p: -int(p.name[3:]))
     for point in points:
         day = int(point.name[3:])
-        if day >= days:
+        if day >= days or (latest is not None and day > latest):
             continue
         chain = json.loads((point / "world" / "study.json").read_text())["chain"]
         n = sum(b - a for _, a, b in chain)
