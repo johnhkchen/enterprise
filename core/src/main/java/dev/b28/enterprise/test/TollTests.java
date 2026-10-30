@@ -522,6 +522,35 @@ public final class TollTests {
     }
 
     @GameTest(template = "floor")
+    public static void aTrailCutsThroughAFieldBetweenHedges(GameTestHelper helper) {
+        // A field of wheat on farmland; a trail a block wide down its middle row.
+        for (int x = 0; x <= 6; x++) {
+            for (int z = 1; z <= 5; z++) {
+                helper.setBlock(new BlockPos(x, 1, z), Blocks.FARMLAND);
+                helper.setBlock(new BlockPos(x, 2, z), Blocks.WHEAT);
+                for (int y = 3; y <= 6; y++) {
+                    helper.setBlock(new BlockPos(x, y, z), Blocks.AIR); // open sky over it, as a field has
+                }
+            }
+        }
+        BlockPos a = helper.absolutePos(new BlockPos(0, 1, 3)), b = helper.absolutePos(new BlockPos(6, 1, 3));
+        Trails.layLine(helper.getLevel(), new double[][] {{a.getX() + 0.5, a.getZ() + 0.5}, {b.getX() + 0.5, b.getZ() + 0.5}}, 1);
+        for (int x = 0; x <= 6; x++) {
+            helper.assertBlockPresent(Blocks.DIRT_PATH, new BlockPos(x, 1, 3));
+            helper.assertBlockPresent(Blocks.AIR, new BlockPos(x, 2, 3));
+            for (int z : new int[] {2, 4}) {
+                helper.assertBlockPresent(Blocks.GRASS_BLOCK, new BlockPos(x, 1, z));
+                helper.assertTrue(helper.getBlockState(new BlockPos(x, 2, z)).is(net.minecraft.tags.BlockTags.LEAVES),
+                        "a hedge beside the trail at " + x + ", " + z);
+            }
+            for (int z : new int[] {1, 5}) {
+                helper.assertBlockPresent(Blocks.WHEAT, new BlockPos(x, 2, z)); // the rest of the field stands
+            }
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aRouteFindsThePassThroughAMountainRange(GameTestHelper helper) {
         // A range of impassable hexes across the way, one gap off the straight line: the plan goes through the gap.
         Hex start = new Hex(0, 0);

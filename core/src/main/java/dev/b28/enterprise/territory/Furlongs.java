@@ -504,7 +504,7 @@ public final class Furlongs {
         for (int[] c : cells) {
             int x = c[0], z = c[1], across = c[2];
             int y0 = Earthworks.height(level, x, z);
-            if (y0 == Integer.MIN_VALUE) {
+            if (y0 == Integer.MIN_VALUE || Trails.kept(level, new BlockPos(x, y0, z))) {
                 continue;
             }
             int y = terraced ? y0 : median;

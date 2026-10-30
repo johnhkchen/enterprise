@@ -293,7 +293,8 @@ public final class Bocage {
     /** One block of a field: its edge, or its use. */
     static void cell(ServerLevel level, Land land, Furlongs.Field fl, int f, int x, int z) {
         int y = Earthworks.height(level, x, z);
-        if (y == Integer.MIN_VALUE || !level.getBlockState(new BlockPos(x, y, z)).getFluidState().isEmpty()) {
+        if (y == Integer.MIN_VALUE || !level.getBlockState(new BlockPos(x, y, z)).getFluidState().isEmpty()
+                || Trails.kept(level, new BlockPos(x, y, z))) {
             return;
         }
         // Its edge: where it meets another field (each line once, on the lower field's side), the end of the land, or a

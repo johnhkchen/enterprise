@@ -22,7 +22,8 @@ import net.minecraft.world.level.saveddata.SavedData;
  * with the hex it goes on to, as wide as the core says (two blocks, wider as it's worn more: laid again each time);
  * where the ground is soil (grass, dirt, podzol and the like) it's trodden to path, a tree in its way felled (its trunk
  * in the way cut down: its leaves, with no trunk, fall on their own), what grows on it and the leaves over it cleared,
- * and a lone block's bump or dip on the way levelled. Sand, stone, water and anything built are left as they are.
+ * and a lone block's bump or dip on the way levelled. A field in its way is cut through, its crops cleared and a hedge
+ * planted on each side. Sand, stone, water and anything built are left as they are.
  *
  * <p>Saved with the world: the trails not yet laid (their ground not loaded), laid as it is.
  */
@@ -625,12 +626,24 @@ public final class Trails extends SavedData {
                 i = j;
             }
         }
+        // A field in the way is cut through: its crops on the way cleared, and a hedge planted along each side (below).
+        java.util.Set<Long> road = new java.util.HashSet<>();
+        List<BlockPos> cut = new ArrayList<>();
+        for (int i = 0; i < cols.size(); i++) {
+            road.add(cols.get(i).asLong());
+        }
         for (int i = 0; i < cols.size(); i++) {
             int y = top[i];
             BlockPos c = cols.get(i);
             BlockState ground = level.getBlockState(c.atY(y));
             if (wet[i]) {
                 continue; // crossed above, or left as water
+            }
+            if (sown(level, c.atY(y))) {
+                reap(level, c.atY(y));
+                level.setBlock(c.atY(y), Blocks.DIRT.defaultBlockState(), 3);
+                ground = level.getBlockState(c.atY(y));
+                cut.add(c.atY(y));
             }
             if (!soil(ground)) {
                 continue;
@@ -661,7 +674,45 @@ public final class Trails extends SavedData {
             level.setBlock(c.atY(y), Blocks.DIRT_PATH.defaultBlockState(), 3);
             laid++;
         }
+        for (BlockPos c : cut) {
+            for (int[] d : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                BlockPos side = c.offset(d[0], 0, d[1]);
+                if (!road.contains(BlockPos.asLong(side.getX(), 0, side.getZ())) && sown(level, side)) {
+                    reap(level, side);
+                    level.setBlock(side, Blocks.GRASS_BLOCK.defaultBlockState(), 3);
+                    level.setBlock(side.above(), Furlongs.hedge(Zoning.mix(side.getX(), side.getZ())), 3);
+                    laid++;
+                }
+            }
+        }
         return laid;
+    }
+
+    /** A road's ground or a hedge planted beside it: never sown over (a field laid or dressed after the road). */
+    static boolean kept(ServerLevel level, BlockPos ground) {
+        BlockState over = level.getBlockState(ground.above());
+        return level.getBlockState(ground).is(Blocks.DIRT_PATH)
+                || over.is(net.minecraft.tags.BlockTags.LEAVES) && over.getValue(net.minecraft.world.level.block.LeavesBlock.PERSISTENT);
+    }
+
+    /** A field's ground: farmland, or grass under a sown bush or cane. */
+    static boolean sown(ServerLevel level, BlockPos ground) {
+        BlockState state = level.getBlockState(ground), over = level.getBlockState(ground.above());
+        return state.is(Blocks.FARMLAND) || state.is(Blocks.GRASS_BLOCK)
+                && (over.is(Blocks.SWEET_BERRY_BUSH) || over.is(Blocks.SUGAR_CANE));
+    }
+
+    /** What grows on a field's ground cleared: a crop, a bush, a stand of cane. */
+    static void reap(ServerLevel level, BlockPos ground) {
+        for (BlockPos up = ground.above(); ; up = up.above()) {
+            BlockState s = level.getBlockState(up);
+            if (!s.is(net.minecraft.tags.BlockTags.CROPS) && !s.is(Blocks.SWEET_BERRY_BUSH) && !s.is(Blocks.SUGAR_CANE)
+                    && !s.is(Blocks.MELON_STEM) && !s.is(Blocks.PUMPKIN_STEM) && !s.is(Blocks.ATTACHED_MELON_STEM)
+                    && !s.is(Blocks.ATTACHED_PUMPKIN_STEM)) {
+                return;
+            }
+            level.setBlock(up, Blocks.AIR.defaultBlockState(), 2);
+        }
     }
 
     /** The longest water a road fords on a causeway, and the longest it bridges, in blocks along it. */
