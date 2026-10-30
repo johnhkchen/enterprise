@@ -1,0 +1,50 @@
+{
+  "id": "enterprise:nightelf/hall/temple_9x9_a",
+  "rev": 1,
+  "style": "nightelf",
+  "kind": "hall",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    9,
+    9
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        4,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [
+    {
+      "at": [
+        2,
+        3,
+        2
+      ],
+      "block": "minecraft:brewing_stand"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "hall:cleric"
+}

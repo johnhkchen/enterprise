@@ -1,0 +1,40 @@
+{
+  "id": "enterprise:goblin/hall/temple_9x9_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "hall",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    9,
+    9
+  ],
+  "height": 16,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        4,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

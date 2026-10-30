@@ -1,0 +1,48 @@
+{
+  "id": "enterprise:goblin/wall/watchtower_7x7_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "wall",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    11,
+    11
+  ],
+  "height": 30,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [
+    {
+      "what": "bell",
+      "at": [
+        5,
+        17,
+        5
+      ]
+    }
+  ],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

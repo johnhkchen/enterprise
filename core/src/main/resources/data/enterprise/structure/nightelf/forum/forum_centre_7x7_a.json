@@ -1,0 +1,45 @@
+{
+  "id": "enterprise:nightelf/forum/forum_centre_7x7_a",
+  "rev": 1,
+  "style": "nightelf",
+  "kind": "forum",
+  "palette": "base",
+  "footprint": [
+    9,
+    9
+  ],
+  "height": 16,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        4,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [
+    {
+      "what": "bell",
+      "at": [
+        4,
+        8,
+        4
+      ]
+    }
+  ],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

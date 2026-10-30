@@ -1,0 +1,75 @@
+{
+  "id": "enterprise:goblin/workshop/workshop_smith_12x9_a",
+  "rev": 1,
+  "style": "goblin",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    18,
+    15
+  ],
+  "height": 26,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        6,
+        3,
+        12
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        13,
+        7,
+        7
+      ],
+      "foot": [
+        13,
+        7,
+        8
+      ]
+    },
+    {
+      "head": [
+        8,
+        7,
+        4
+      ],
+      "foot": [
+        8,
+        7,
+        5
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        13,
+        3,
+        10
+      ],
+      "block": "minecraft:smithing_table"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:toolsmith"
+}

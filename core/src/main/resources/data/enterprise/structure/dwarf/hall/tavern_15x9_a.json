@@ -1,0 +1,89 @@
+{
+  "id": "enterprise:dwarf/hall/tavern_15x9_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "hall",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    17,
+    11
+  ],
+  "height": 17,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        8,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        14,
+        7,
+        8
+      ],
+      "foot": [
+        14,
+        7,
+        7
+      ]
+    },
+    {
+      "head": [
+        11,
+        7,
+        8
+      ],
+      "foot": [
+        11,
+        7,
+        7
+      ]
+    },
+    {
+      "head": [
+        7,
+        7,
+        8
+      ],
+      "foot": [
+        7,
+        7,
+        7
+      ]
+    },
+    {
+      "head": [
+        5,
+        7,
+        8
+      ],
+      "foot": [
+        5,
+        7,
+        7
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

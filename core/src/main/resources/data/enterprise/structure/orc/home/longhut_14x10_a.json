@@ -1,0 +1,98 @@
+{
+  "id": "enterprise:orc/home/longhut_14x10_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "home",
+  "palette": "base",
+  "tiles": [
+    4,
+    3
+  ],
+  "footprint": [
+    14,
+    10
+  ],
+  "height": 19,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        7,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        6,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        9,
+        3,
+        7
+      ],
+      "foot": [
+        8,
+        3,
+        7
+      ]
+    },
+    {
+      "head": [
+        4,
+        3,
+        7
+      ],
+      "foot": [
+        5,
+        3,
+        7
+      ]
+    },
+    {
+      "head": [
+        9,
+        3,
+        1
+      ],
+      "foot": [
+        8,
+        3,
+        1
+      ]
+    },
+    {
+      "head": [
+        4,
+        3,
+        1
+      ],
+      "foot": [
+        5,
+        3,
+        1
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

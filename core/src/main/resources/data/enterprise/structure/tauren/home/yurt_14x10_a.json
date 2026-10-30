@@ -1,0 +1,98 @@
+{
+  "id": "enterprise:tauren/home/yurt_14x10_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "home",
+  "palette": "base",
+  "tiles": [
+    4,
+    3
+  ],
+  "footprint": [
+    14,
+    10
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        7,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        6,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        11,
+        3,
+        5
+      ],
+      "foot": [
+        10,
+        3,
+        5
+      ]
+    },
+    {
+      "head": [
+        11,
+        3,
+        2
+      ],
+      "foot": [
+        10,
+        3,
+        2
+      ]
+    },
+    {
+      "head": [
+        2,
+        3,
+        5
+      ],
+      "foot": [
+        3,
+        3,
+        5
+      ]
+    },
+    {
+      "head": [
+        2,
+        3,
+        2
+      ],
+      "foot": [
+        3,
+        3,
+        2
+      ]
+    }
+  ],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

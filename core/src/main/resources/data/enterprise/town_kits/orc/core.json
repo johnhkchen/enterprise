@@ -1,0 +1,187 @@
+{
+  "set": "orc/core",
+  "rev": 1,
+  "style": "orc",
+  "about": "The orc war-town's core set: ten whole buildings, each authored in the orc base palette (red sandstone hide, red terracotta walls, dark oak timber, blackstone footings). Every clan has swaps, the default Mudhide included: recolour every part at placement with the town's clan swaps from styles/orc.json. Every part is on the usual contract: layers 0-1 dirt, layer 2 the surface, the front to the south, every cell stored (air as air), points of interest declared or decorative twins, every walkable cell lit. The yard round each building is authored as ground; where it is red_sand with dead_bush (the yard markers), swap those for the land's ground and plant.",
+  "parts": [
+    {
+      "id": "hut_10x10_a",
+      "part": "enterprise:orc/home/hut_10x10_a",
+      "kind": "home",
+      "tiles": [
+        3,
+        3
+      ],
+      "size": [
+        10,
+        20,
+        10
+      ],
+      "beds": 4,
+      "workstations": []
+    },
+    {
+      "id": "longhut_14x10_a",
+      "part": "enterprise:orc/home/longhut_14x10_a",
+      "kind": "home",
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        19,
+        10
+      ],
+      "beds": 4,
+      "workstations": []
+    },
+    {
+      "id": "forge_14x10_a",
+      "part": "enterprise:orc/workshop/forge_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:armorer",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:blast_furnace"
+      ]
+    },
+    {
+      "id": "stall_3x3_a",
+      "part": "enterprise:orc/stall/stall_3x3_a",
+      "kind": "stall",
+      "slot": "stall:any",
+      "tiers": [
+        "hamlet",
+        "village",
+        "town"
+      ],
+      "size": [
+        5,
+        11,
+        5
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "war_square_7x7_a",
+      "part": "enterprise:orc/forum/war_square_7x7_a",
+      "kind": "forum",
+      "size": [
+        7,
+        9,
+        7
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "feast_hall_18x14_a",
+      "part": "enterprise:orc/hall/feast_hall_18x14_a",
+      "kind": "hall",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        5,
+        4
+      ],
+      "size": [
+        18,
+        20,
+        14
+      ],
+      "beds": 3,
+      "workstations": []
+    },
+    {
+      "id": "spirit_lodge_9x9_a",
+      "part": "enterprise:orc/hall/spirit_lodge_9x9_a",
+      "kind": "hall",
+      "slot": "hall:cleric",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        11,
+        18,
+        11
+      ],
+      "beds": 0,
+      "workstations": [
+        "minecraft:brewing_stand"
+      ]
+    },
+    {
+      "id": "watchtower_7x7_a",
+      "part": "enterprise:orc/wall/watchtower_7x7_a",
+      "kind": "wall",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        9,
+        26,
+        9
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "curtain_8_a",
+      "part": "enterprise:orc/wall/curtain_8_a",
+      "kind": "part",
+      "slot": "wall:curtain",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        8,
+        11,
+        3
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "gatehouse_11x7_a",
+      "part": "enterprise:orc/wall/gatehouse_11x7_a",
+      "kind": "wall",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        13,
+        24,
+        9
+      ],
+      "beds": 0,
+      "workstations": []
+    }
+  ],
+  "held": [],
+  "notes": [
+    "The homes, the forge and the feast hall are on building tiles (thread 0016): tiles [W, D], body at most 4W-2 x 4D-2.",
+    "The other parts keep the catalog's size plus a one-block yard each way.",
+    "stall_3x3_a has a workstation marker (block any, air) behind its counter: the placer sets the trade's job block there.",
+    "war_square_7x7_a carries the town bell as a marker.",
+    "curtain_8_a is a part: an 8-long palisade piece, both ends cut to join the next.",
+    "gatehouse_11x7_a joins the curtain at its east and west ends, so only its south and north faces carry relief."
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "id": "enterprise:tauren/workshop/forge_tent_14x10_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    4,
+    3
+  ],
+  "footprint": [
+    14,
+    10
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        11,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        10,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        9,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        2,
+        3,
+        6
+      ],
+      "foot": [
+        3,
+        3,
+        6
+      ]
+    },
+    {
+      "head": [
+        2,
+        3,
+        4
+      ],
+      "foot": [
+        3,
+        3,
+        4
+      ]
+    },
+    {
+      "head": [
+        2,
+        3,
+        2
+      ],
+      "foot": [
+        3,
+        3,
+        2
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        9,
+        3,
+        5
+      ],
+      "block": "minecraft:grindstone"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:weaponsmith"
+}

@@ -1,0 +1,91 @@
+{
+  "id": "enterprise:orc/workshop/forge_14x10_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    4,
+    3
+  ],
+  "footprint": [
+    14,
+    10
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        7,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        4,
+        3,
+        6
+      ],
+      "foot": [
+        5,
+        3,
+        6
+      ]
+    },
+    {
+      "head": [
+        2,
+        3,
+        1
+      ],
+      "foot": [
+        3,
+        3,
+        1
+      ]
+    },
+    {
+      "head": [
+        4,
+        3,
+        2
+      ],
+      "foot": [
+        5,
+        3,
+        2
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        11,
+        3,
+        1
+      ],
+      "block": "minecraft:blast_furnace"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:armorer"
+}
