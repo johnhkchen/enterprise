@@ -105,4 +105,9 @@ pub enum Output {
     /// its Merchant can manage (John: "shouldn't farmers be able to convert their own crop to emeralds?": seed
     /// 8675309's Redfell paid for three Farmers' stalls that never stood, so its crops never sold to them). Said once.
     Stall { town: TownNo, hand: HandNo, tag: String, trade: String },
+    /// A road's hexes the host hasn't been asked to explore before (`society.rs` `explore_roads`), in order along it:
+    /// for the host to generate and survey their ground (their chunks loaded a few at a time, its survey sent as
+    /// `Input::Ground`), so the core plans over the land itself, not the guess a hex never loaded is (John: "make sure
+    /// the map loads fully or that there's an exploration mechanic... as towns explore for routes to each other").
+    Explore { hexes: Vec<HexAt> },
 }

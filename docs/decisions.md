@@ -593,6 +593,13 @@ Not everyone hauls to the capital. A market with a storehouse (a warehouse it ow
   it: the crops on its way are cleared and the ground trodden to path, and the field's blocks beside it are planted
   with a hedge (the fields' azalea), so the cut reads as a lane between hedgerows (`Trails.layLine`). A field laid or
   dressed after the road leaves its path and hedges alone (`Trails.kept`).
+- **Towns explore their roads (John, 2026-10-30: "make sure the map loads fully or that there's an exploration
+  mechanic").** Ground the host never loaded is the core's guess from its biome, and ships sailed and roads ran over
+  guesses no one saw. Each road's hexes are said to the host once (`Output::Explore`, `society.rs` `explore_roads`),
+  and the host loads their chunks a few hexes a look (generating those never made) until its terrain has surveyed
+  them all (`Exploration`, `LandAdapter.explore`): the core plans the road again over the land once it's known, and
+  every road shows on the map. Studies may also generate the whole network's ground before day 1
+  (`survival_study.py --pregen N`, N blocks past the villages).
 - **Relief costs less, now that the climb counts (2026-10-26).** A hex is as hard again every 24 blocks of relief (the
   mod's 8) and a step every 0.2 of grade (16 blocks: the steepest step twice as hard); cliffs (32) and the steepest
   step (16) unchanged. At 8, the generator's relief made rolling country three times open ground and roads detoured

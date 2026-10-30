@@ -475,6 +475,8 @@ fn outputs() -> Vec<Output> {
         Output::Trail { hex: hex(i32::MIN, i32::MAX), from: hex(i32::MIN, i32::MAX), to: hex(i32::MAX, i32::MIN), width: u32::MAX, path: vec![], llama: true },
         Output::Stall { town: 1, hand: 7, tag: "1d0c5a3e-0000-4000-8000-000000000007".into(), trade: "farmer".into() },
         Output::Stall { town: u32::MAX, hand: u32::MAX, tag: String::new(), trade: "é".into() },
+        Output::Explore { hexes: vec![hex(2, -2), hex(3, -2), hex(4, -2)] },
+        Output::Explore { hexes: vec![] },
     ]
 }
 
@@ -1061,6 +1063,7 @@ fn output_place(o: &Output) -> usize {
         Output::Found { .. } => 28,
         Output::Trail { .. } => 29,
         Output::Stall { .. } => 30,
+        Output::Explore { .. } => 31,
     }
 }
 
@@ -1174,7 +1177,7 @@ fn covers<T>(what: &str, samples: &[T], variants: usize, place: fn(&T) -> usize)
 #[test]
 fn every_variant_of_every_wire_enum_has_a_sample() {
     covers("Input", &inputs(), 42, input_place);
-    covers("Output", &outputs(), 31, output_place);
+    covers("Output", &outputs(), 32, output_place);
     covers("Query", &queries(), 28, query_place);
     covers("Answer", &answers(), 28, answer_place);
     covers("Command", &commands(), 5, command_place);

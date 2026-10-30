@@ -39,7 +39,8 @@ public sealed interface Output
                 Output.CrownShopDown,
                 Output.Found,
                 Output.Trail,
-                Output.Stall {
+                Output.Stall,
+                Output.Explore {
     void encode(PostcardOut out);
 
     static Output decode(PostcardIn in) {
@@ -76,6 +77,7 @@ public sealed interface Output
             case 28 -> new Found(in.u32(), in.string(), in.i32(), in.i32());
             case 29 -> new Trail(HexAt.decode(in), HexAt.decode(in), HexAt.decode(in), in.u32(), in.list(2, HexAt::decode), in.bool());
             case 30 -> new Stall(in.u32(), in.u32(), in.string(), in.string());
+            case 31 -> new Explore(in.list(2, HexAt::decode));
             default -> throw in.unknownVariant("Output", at);
         };
     }
@@ -620,6 +622,25 @@ public sealed interface Output
             out.u32(this.hand);
             out.string(this.tag);
             out.string(this.trade);
+        }
+    }
+
+    /**
+     * A road's hexes the host hasn't been asked to explore before ({@code society.rs} {@code explore_roads}), in order along it:
+     * for the host to generate and survey their ground (their chunks loaded a few at a time, its survey sent as
+     * {@code Input::Ground}), so the core plans over the land itself, not the guess a hex never loaded is (John: "make sure
+     * the map loads fully or that there's an exploration mechanic... as towns explore for routes to each other").
+     */
+    record Explore(List<HexAt> hexes) implements Output {
+        public Explore {
+            Objects.requireNonNull(hexes, "hexes");
+            hexes = List.copyOf(hexes);
+        }
+
+        @Override
+        public void encode(PostcardOut out) {
+            out.variant(31);
+            out.list(this.hexes, (o1, e1) -> e1.encode(o1));
         }
     }
 }

@@ -195,6 +195,7 @@ public final class LandAdapter {
         layAsked(server);
         buildFounded(server);
         layTrails(server);
+        explore(server);
         List<Input> inputs = takePending();
         ServerLevel overworld = server.overworld();
         for (var desk : host.points().of(PointsAdapter.Kind.DESK).entrySet()) {
@@ -508,6 +509,42 @@ public final class LandAdapter {
                     new Hex(trail.from().q(), trail.from().r()), new Hex(trail.to().q(), trail.to().r()),
                     (int) Math.min(trail.width(), 8), trail.path().stream().map(h -> new Hex(h.q(), h.r())).toList(),
                     trail.llama()));
+        }
+    }
+
+    /** Hexes the core asked explored (core mode or not: the ground is the core's either way), to load a few a look. */
+    public void show(Output.Explore explore) {
+        explore.hexes().forEach(h -> exploring.add(new Hex(h.q(), h.r())));
+    }
+
+    private final List<Hex> exploring = new ArrayList<>();
+
+    /** Hexes at most whose chunks are loaded to explore a look (about 25 chunks a hex). */
+    static final int EXPLORED_PER_LOOK = 4;
+
+    /**
+     * The hexes waiting to be explored, the first few each look: their chunks held loaded ({@link #LAYING}, generated
+     * if they never were) until {@link Terrain} has surveyed every one, its survey sent to the core as it moved.
+     */
+    private void explore(MinecraftServer server) {
+        if (server == null) {
+            return;
+        }
+        var exploration = dev.b28.enterprise.territory.Exploration.get(server);
+        exploring.forEach(exploration::add);
+        exploring.clear();
+        ServerLevel level = server.overworld();
+        Terrain terrain = Terrain.get(server);
+        int asked = 0;
+        for (Hex hex : exploration.waiting()) {
+            if (terrain.explored(level, hex)) {
+                exploration.explored(hex);
+                continue;
+            }
+            if (asked++ >= EXPLORED_PER_LOOK) {
+                break;
+            }
+            loadedFor(level, Terrain.chunksOf(hex).stream().map(ChunkPos::new).toList());
         }
     }
 

@@ -552,6 +552,21 @@ fn wagons_wear_a_trail_that_fades_unless_used_and_eases_the_way() {
 }
 
 #[test]
+fn a_roads_hexes_are_asked_explored_once() {
+    let (mut s, road) = farm_and_mill_by_road(true);
+    let path = s.route_path(road.unwrap()).unwrap();
+    let mut asked = Vec::new();
+    for day in 1..=3 {
+        for o in s.advance(day * DAY) {
+            if let enterprise_core::Output::Explore { hexes } = o {
+                asked.extend(hexes.into_iter().map(|h| Hex::new(h.q, h.r)));
+            }
+        }
+    }
+    assert_eq!(asked, path, "the road's hexes, in order, once");
+}
+
+#[test]
 fn a_busy_road_wears_trails_that_the_host_is_told_of_once_a_width() {
     let (mut s, road) = farm_and_mill_by_road(true);
     let path = s.route_path(road.unwrap()).unwrap();

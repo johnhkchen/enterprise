@@ -296,6 +296,22 @@ impl Society {
         Some(id)
     }
 
+    /// Each road's hexes not yet explored, said to the host to generate and survey (`Output::Explore`): a road planned
+    /// over guessed ground is planned again over the land once the host has surveyed it (`wear_roads`).
+    fn explore_roads(&mut self) {
+        let paths: Vec<Vec<crate::hex::Hex>> = self.routes.iter()
+            .filter_map(|&e| self.world.get::<RoutePath>(e).map(|p| p.0.clone()))
+            .collect();
+        for path in paths {
+            let mut map = self.world.resource_mut::<crate::map::Map>();
+            let new: Vec<crate::wire::HexAt> = path.iter().filter(|&&h| map.explored.insert(h))
+                .map(|&h| crate::wire::HexAt::of(h)).collect();
+            if !new.is_empty() {
+                self.world.resource_mut::<Outbox>().0.push(Output::Explore { hexes: new });
+            }
+        }
+    }
+
     /// What carries a route's goods (`map.rs`): a wagon, a llama train, or a ship.
     pub fn route_carrier(&self, route: RouteId) -> crate::map::Carrier {
         self.world.get::<Route>(self.routes[route]).expect("a route").carrier
@@ -308,6 +324,7 @@ impl Society {
     /// its own (trails worn, ground surveyed, a wall built since), its days and road food with it; a bare road (no way
     /// over the map when it opened), a ship's way once both its towns have ports.
     fn wear_roads(&mut self) {
+        self.explore_roads();
         let now = self.now();
         let day_ticks = self.content().day_ticks;
         for id in 0..self.routes.len() {

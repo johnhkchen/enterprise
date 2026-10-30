@@ -195,7 +195,9 @@ fn a_party_of_settlers_departs_its_villagers_and_settles_new_ones() {
     let out = s.census(home, 12, &[seen(&tag, "none", 1)]);
     assert_eq!(out, vec![Output::HandGone { hand: gone, tag: tag.clone() }]);
     assert_eq!(s.roster(home).residents(), 9, "and it doesn't join again");
-    let out = s.apply(&Input::Advance { to: DAY });
+    // (The road home it opens is said to explore, too: set aside.)
+    let out: Vec<Output> = s.apply(&Input::Advance { to: DAY }).into_iter()
+        .filter(|o| !matches!(o, Output::Explore { .. })).collect();
     assert_eq!(out, vec![Output::Settled { town: v as u32, hand: gone }], "the party's Merchant comes to the village");
     assert!(s.roster(v).hands.iter().any(|h| h.id == gone));
     assert_eq!(s.roster(v).hands.iter().filter(|h| villagers.contains(&h.id)).count(), 3, "beside the village's own");

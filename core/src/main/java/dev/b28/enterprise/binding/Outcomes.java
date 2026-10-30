@@ -79,6 +79,7 @@ final class Outcomes {
             case Output.Build o -> land.show(o);
             case Output.Found o -> land.show(o);
             case Output.Trail o -> land.show(o);
+            case Output.Explore o -> land.show(o);
             case Output.HandAway o -> wagons.show(o);
             case Output.HandBack o -> wagons.show(o);
         }

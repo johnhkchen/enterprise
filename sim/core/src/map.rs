@@ -257,6 +257,9 @@ pub struct Map {
     pub worn: BTreeMap<usize, u64>,
     #[serde(default)]
     pub replanned: u64,
+    /// The hexes the host was asked to explore (`Output::Explore`): every road's, once.
+    #[serde(default)]
+    pub explored: BTreeSet<Hex>,
 }
 
 /// A hex's wear by wagons: so many crossings as of a tick, fading by half every [`WEAR_HALF_LIFE_DAYS`] (worked out on

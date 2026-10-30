@@ -1543,9 +1543,9 @@ fn every_message_appears_in_a_scenario() {
     assert_eq!(refusals, set(&["Abi", "Input", "NoSociety", "Pack", "Query", "Save", "SaveFormat", "Schema", "Unreadable"]));
     // A child born, the chests' moves, the till's, a field to lay, a locker's trades levelling its villager and the
     // Merchant, a wagon's trip with its crew away and back, pallets packed, moved and opened (`Pack`), a master
-    // Merchant filling a player's order (`commands`), a road's trails and the hands that settle while its wagons run
-    // (`wagons`): the others need a master Merchant with an order nothing holds (Signal) or the rules taking a hand
-    // (Departed, HandGone), and no wire input makes any. When one does, a scenario shows each and its name goes here.
+    // Merchant filling a player's order (`commands`), a road's hexes to explore, its trails and the hands that settle
+    // while its wagons run (`wagons`): the others need a master Merchant with an order nothing holds (Signal) or the
+    // rules taking a hand (Departed, HandGone), and no wire input makes any. When one does, a scenario shows each and its name goes here.
     assert_eq!(outputs, set(&["Born", "Cash", "Moved", "Build", "HandLevel", "WagonLeft", "WagonSold", "WagonHome",
-        "HandAway", "HandBack", "PalletPacked", "PalletMoved", "PalletOpened", "OrderFilled", "StallBought", "Shelf", "BuildShop", "WarDeclared", "PeaceMade", "BuildCrownShop", "CrownShop", "CrownShopDown", "Trail", "Settled", "Stall"]));
+        "HandAway", "HandBack", "PalletPacked", "PalletMoved", "PalletOpened", "OrderFilled", "StallBought", "Shelf", "BuildShop", "WarDeclared", "PeaceMade", "BuildCrownShop", "CrownShop", "CrownShopDown", "Trail", "Explore", "Settled", "Stall"]));
 }

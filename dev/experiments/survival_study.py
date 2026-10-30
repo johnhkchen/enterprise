@@ -4,7 +4,7 @@
     just server-setup-survival 8675309   # a normal world of that seed, no testbench (its villages 496 blocks apart;
                                          # 12345's nearest pair are 1,488 apart, a road no load pays for)
     just server                          # in the background
-    python3 dev/experiments/survival_study.py DAYS OUT.log [--loaded] [--chests] [--starting N] [--villages N] [--near X,Z] [--roads N] [--road I-J]
+    python3 dev/experiments/survival_study.py DAYS OUT.log [--loaded] [--chests] [--starting N] [--villages N] [--near X,Z] [--roads N] [--road I-J] [--pregen N]
 
 The nearest village to spawn and the nearest one to it beyond SPREAD blocks (looking round it 300 to 700 blocks out, twelve ways) are found (`locate structure`), each
 loaded a minute while its villagers settle, and given what a player gives a village to trade: a Merchant's Desk at
@@ -123,6 +123,31 @@ def unload(x, z, r=None):
         rcon(f"forceload remove {x0} {z0} {x1} {z1}")
 
 
+# `--pregen N`: before the towns are set up, the whole network's ground generated (and surveyed as it loads), N blocks
+# past the villages every way: a map with no holes, and roads planned over the land, not its guess (John, 2026-10-30).
+PREGEN = int(sys.argv[sys.argv.index("--pregen") + 1]) if "--pregen" in sys.argv else None
+
+
+def pregen(villages, margin, say):
+    """The box round the villages, `margin` blocks past them, generated a few 256-chunk boxes at a time."""
+    x0 = min(v[0] for v in villages) - margin
+    x1 = max(v[0] for v in villages) + margin
+    z0 = min(v[1] for v in villages) - margin
+    z1 = max(v[1] for v in villages) + margin
+    boxes = [(x, z, min(x + 255, x1), min(z + 255, z1)) for x in range(x0, x1 + 1, 256) for z in range(z0, z1 + 1, 256)]
+    started = time.time()
+    for k in range(0, len(boxes), 4):
+        batch = boxes[k:k + 4]
+        for a, b, c, d in batch:
+            rcon(f"forceload add {a} {b} {c} {d}")
+        while not all("passed" in rcon(f"execute if loaded {x} 0 {z}")
+                      for a, b, c, d in batch for x, z in ((a, b), (c, b), (a, d), (c, d))):
+            sprint(20)
+        for a, b, c, d in batch:
+            rcon(f"forceload remove {a} {b} {c} {d}")
+        say(f"pregen: {min(k + 4, len(boxes))}/{len(boxes)} boxes ({time.time() - started:.0f}s)")
+
+
 def market(village):
     """A desk, a chest of emeralds by it and a Merchant, at the surface by the village's centre: the desk's x y z."""
     x, z = village
@@ -178,6 +203,8 @@ def network(first, many, days, say):
         if len(chosen) < many and all(dist(v, c) >= NEIGHBOUR for c in chosen):
             chosen.append(v)
     say(f"{len(found)} villages found; the network's {len(chosen)}: " + ", ".join(f"{v}" for v in chosen))
+    if PREGEN is not None:
+        pregen(chosen, PREGEN, say)
     desks = [market(v) for v in chosen]
     for d in desks:
         say(f"{d}: " + rcon(f"enterprise core stock {d}").strip().splitlines()[0])
