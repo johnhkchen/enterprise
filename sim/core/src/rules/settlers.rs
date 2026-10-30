@@ -144,11 +144,8 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, map: 
             let Some(hex) = site else { continue };
             (Kind::Found, None, hex)
         };
-        // The road: planned over the hexes as a caravan's would be, by wagon, else by llama over the steeps, else by
-        // boat over the water (as a road's carrier is chosen); no way there, nobody goes.
-        let Some(path) = [crate::map::Carrier::Wagon, crate::map::Carrier::Llama, crate::map::Carrier::Boat].into_iter()
-            .find_map(|c| map.plan(home, target_hex, per_hex(&content), 0.0, &Default::default(), &Default::default(), c,
-                &Default::default())) else { continue };
+        // The road (`way`): no way there, nobody goes.
+        let Some(path) = way(&map, &content, home, target_hex) else { continue };
         let jumpstart = if kind == Kind::Village { d.settling_capital } else { d.founding_capital };
         let set_up = set_up(kind);
         let carried = capital(kind, jumpstart, spare - set_up);

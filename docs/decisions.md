@@ -1019,7 +1019,9 @@ mod's), but no road ever chose it. Then: build them first.
 - **Settlers go by llama or boat** (seed 1001's next 90 days: three towns founded, but Theramore, two idle hands and
   140 to spare from day 61, found its best open ground only over steeps a llama climbs, and Corin's Crossing its second
   only over water, and settlers went by wagon or not at all). A party's way is a wagon's, else a llama's, else a boat's,
-  as a road's carrier is; a boat sails only water (it had counted a cliff as water to sail).
+  as a road's carrier is, both setting out and on arrival (`settlers::way`: the next run's Theramore sent two parties by
+  llama, and both came home the day they arrived, the arrival's check still by wagon); a boat sails only water (it had
+  counted a cliff as water to sail).
 - **Seed 1001, what it showed.** Five towns 300 to 950 blocks apart, four with harbours, none rich: each spent its
   64-emerald founding purse on stalls and fields by day 5, and the best load any road saw in 30 days was worth 8.6
   against an 820-block road's 16. The study's roads went to each town's two nearest, so the two ports on one sea

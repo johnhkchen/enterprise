@@ -344,6 +344,16 @@ fn a_party_goes_by_llama_over_the_steeps_and_by_boat_over_the_water() {
     }
     s.advance(DAY / 4);
     assert_eq!(s.parties().len(), 1, "by llama");
+    // A new town past the same rough ring round home: founded, not turned back on arrival.
+    let (mut s, t) = world(100.0);
+    for n in s.town_hex(t).unwrap().neighbors() {
+        s.set_ground(n, 0.0, rough);
+    }
+    s.advance(DAY / 4);
+    assert_eq!(s.parties().len(), 1, "by llama");
+    assert_eq!(s.parties()[0].kind, Kind::Found);
+    s.advance(3 * DAY);
+    assert_eq!(s.settled().len(), 1, "founded where only llamas go");
 }
 
 #[test]

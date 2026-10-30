@@ -151,6 +151,15 @@ pub fn take_hand(roster: &mut Roster, i: usize) -> Hand {
     hand
 }
 
+/// A party's way from `home` to `target`, planned over the hexes as a caravan's would be: by wagon, else by llama over
+/// the steeps, else by boat over the water (as a road's carrier is chosen); none, no way there.
+pub fn way(map: &crate::map::Map, content: &Content, home: crate::hex::Hex, target: crate::hex::Hex)
+        -> Option<crate::map::Path> {
+    [crate::map::Carrier::Wagon, crate::map::Carrier::Llama, crate::map::Carrier::Boat].into_iter()
+        .find_map(|c| map.plan(home, target, per_hex(content), 0.0, &Default::default(), &Default::default(), c,
+            &Default::default()))
+}
+
 /// Road food both ways across a hex of open ground, as [`Society::per_hex`].
 pub fn per_hex(content: &Content) -> f64 {
     let point = content
@@ -256,8 +265,7 @@ impl Society {
             Kind::Found => {
                 let near = (0..self.town_count())
                     .any(|t| self.town_hex(t).is_some_and(|h| h.distance(party.target) < content.dials.min_hexes as i32));
-                let way = self.town_hex(party.from).and_then(|h| self.map().plan(h, party.target, per_hex(&content), 0.0,
-                    &Default::default(), &Default::default(), crate::map::Carrier::Wagon, &Default::default()));
+                let way = self.town_hex(party.from).and_then(|h| way(self.map(), &content, h, party.target));
                 !near && way.is_some()
             }
         };
