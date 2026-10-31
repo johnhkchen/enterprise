@@ -9,7 +9,7 @@
 //! - `requests`: each request replayed, its command, the tick after it, and its inputs and outputs counted.
 //! - `inputs`, `outputs`: each input the mod sent and each output the core gave back, by kind, with its town, route
 //!   and good when it names one, and the whole of it as JSON.
-//! - Each day as the first request to reach it left it (the last day as the run ended): `towns` (name, people, beds, mood, money, mood target, comforts met, paid share), `comforts` (each kind met), `book` (each good its shop bids for: the bid, how many, its ceiling, its mark and the day last filled), `herds` (each kind's count, llamas home and away too, and the pastures), `hands` (each town's roster), `farms` (each crop's plots, plan, idle yield, demand, census, workshop draws and needs) and `farm_towns` (focus, fields planted), `works` (each project's progress, done, the works' mood), `stock` (each good a town
+//! - Each day as the first request to reach it left it (the last day as the run ended): `towns` (name, people, beds, mood, money, mood target, comforts met, paid share), `comforts` (each kind met), `book` (each good its shop bids for: the bid, how many, its ceiling, its mark and the day last filled), `herds` (each kind's count, llamas home and away too, and the pastures), `hands` (each town's roster), `farms` (each crop's plots, plan, idle yield, demand, census, workshop draws and needs) and `farm_towns` (focus, fields planted, the land its fields lie on), `works` (each project's progress, done, the works' mood), `stock` (each good a town
 //!   holds), `routes` (trips, what's sold and carried, whether a wagon is out, why it stayed, the far end's last purse,
 //!   its carrier: wagon or llama),
 //!   `lockers` (each hand's offers: placed, managed, switched on), `whys` (each town's reasons, tallied so far: a
@@ -87,7 +87,7 @@ create table herds (day integer, town integer, animal text, count real, pastures
 create table hands (day integer, town integer, hand integer, trade text, level integer, away integer);
 create table farms (day integer, town integer, crop text, plots integer, per_day real, demand real, idle real, census real, draws real, needs real);
 create table works (day integer, town integer, what text, progress real, done integer, mood real);
-create table farm_towns (day integer, town integer, focus text, fields_planted integer, fallow integer, spare_plots integer, harvested real);
+create table farm_towns (day integer, town integer, focus text, fields_planted integer, fallow integer, spare_plots integer, harvested real, land text);
 create table stock (day integer, town integer, good text, count real);
 create table routes (day integer, route integer, from_town integer, to_town integer, blocks integer, trips integer,
     sold real, carried real, bought real, paid real, on_road integer, stayed text, far_purse real, carrier text);
@@ -235,8 +235,8 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
         }
         if let Some(f) = s.farm(t) {
             let f = f.farm;
-            tx.execute("insert into farm_towns values (?1, ?2, ?3, ?4, ?5, ?6, ?7)", params![day, t, format!("{:?}", f.focus),
-                f.fields_planted, f.fallow, f.spare_plots, f.harvested]).map_err(sql)?;
+            tx.execute("insert into farm_towns values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)", params![day, t, format!("{:?}", f.focus),
+                f.fields_planted, f.fallow, f.spare_plots, f.harvested, f.land.map(|l| format!("{l:?}"))]).map_err(sql)?;
             let crops: std::collections::BTreeSet<usize> = f.plots.keys().chain(f.per_day.keys()).chain(f.demand.keys())
                 .chain(f.idle.keys()).chain(f.census.keys()).chain(f.draws.keys()).chain(f.needs.keys()).copied().collect();
             for g in crops {

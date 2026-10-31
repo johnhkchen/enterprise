@@ -116,6 +116,43 @@ public final class GrowthTests {
      * 20; a whole ward's 32), each from a tile line, the same lines across the street, none on a street.
      */
     /**
+     * A sandy field's arable is cane, whatever its relief; earth's is wheat and a root. Cane is sown on the sand as it lies
+     * (John: "Cane is a suitable crop for sandy areas"), every third row a water channel beside it.
+     */
+    @GameTest(template = "floor")
+    public static void caneIsSownOnTheSandAsItLiesBesideItsChannel(GameTestHelper helper) {
+        helper.assertTrue(dev.b28.enterprise.territory.Bocage.crops(7, 5, true).equals("sugar_cane"), "sand: cane");
+        helper.assertTrue(dev.b28.enterprise.territory.Bocage.crops(7, 0, false).startsWith("wheat,"), "earth: wheat first");
+        var level = helper.getLevel();
+        // Three blocks of sand across, one row of the field: the middle one (x mod 3 = 1) the channel.
+        BlockPos start = helper.absolutePos(new BlockPos(1, 1, 3));
+        int x0 = start.getX() - Math.floorMod(start.getX(), 3);
+        for (int dx = 0; dx < 3; dx++) {
+            level.setBlock(new BlockPos(x0 + dx, start.getY(), start.getZ()), net.minecraft.world.level.block.Blocks.SAND.defaultBlockState(), 3);
+        }
+        for (int dx = 0; dx < 3; dx++) {
+            BlockPos ground = new BlockPos(x0 + dx, start.getY(), start.getZ());
+            dev.b28.enterprise.territory.Bocage.cane(level, ground, ground.getX(), ground.getZ(), dx);
+        }
+        BlockPos sand = new BlockPos(x0, start.getY(), start.getZ()), channel = sand.east(), other = sand.east(2);
+        helper.assertTrue(level.getBlockState(channel).is(net.minecraft.world.level.block.Blocks.WATER), "the channel");
+        for (BlockPos p : List.of(sand, other)) {
+            helper.assertTrue(level.getBlockState(p).is(net.minecraft.world.level.block.Blocks.SAND), "the sand left as it lies at " + p);
+            helper.assertTrue(level.getBlockState(p.above()).is(net.minecraft.world.level.block.Blocks.SUGAR_CANE), "cane on it at " + p);
+        }
+        helper.succeed();
+    }
+
+    /** Cane goes on a hill's field, terraced with its channels, as wheat and potatoes do; carrots and beetroot the flat. */
+    @GameTest(template = "floor")
+    public static void caneIsTerracedUpAHillsideWhereCarrotsWantTheFlat(GameTestHelper helper) {
+        helper.assertTrue(dev.b28.enterprise.territory.Furlongs.onHills(net.minecraft.world.item.Items.SUGAR_CANE), "cane");
+        helper.assertTrue(dev.b28.enterprise.territory.Furlongs.onHills(net.minecraft.world.item.Items.WHEAT), "wheat");
+        helper.assertFalse(dev.b28.enterprise.territory.Furlongs.onHills(net.minecraft.world.item.Items.CARROT), "carrots");
+        helper.succeed();
+    }
+
+    /**
      * A workshop's yard by its trade: Lordaeron's farmer gets the baker's, its mason its own; a kit race, whose rules
      * note "no yard tiles yet" as a string, its trade's own (an orc town laying a farmer's home crashed the server).
      */

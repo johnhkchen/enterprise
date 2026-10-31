@@ -1103,6 +1103,20 @@ mod's), but no road ever chose it. Then: build them first.
     bids more for than they pay; Farmers price crops by the town's own bids and by bids seen down its roads less the
     haul. Seed 1717's first 60 days against the run before: cane tended 19 a day to 174, books read 28 to 267, trips in
     days 30-60 67 to 118, mood 0.19 to 0.87, the towns' money 162 to 299 (12 towns, 13 before).
+  - **Built: farms by land and price (phase 2).** Cane is the sand's crop (John: "Cane is a suitable crop for sandy
+    areas in a way that few others, except maybe cactus, are"): a field at least half sand is laid out as cane, flat or
+    up a dune (cane a hill crop, terraced with its channels), sown on the sand as it lies, every third row a water
+    channel; a cane field goes on the sand first and other crops off it while there's earth; a field re-sown comes from
+    the crop the town has most fields of. A field in the ground grows as any other (tilled farmland is farmland: a
+    desert town's wheat cut to 0.3 starved seed 1717's three first towns); the land decides what a new field grows
+    (`farms::LAND_FIT`), and on land that suits cane over wheat a growing town may plant cane before it's fed. A busy
+    town plants a field, or turns untended plots over, to a crop that earns more a plot than the cheapest it tends
+    (cane for paper bid for, beyond the four rotation crops). The lockers leave what the town can sell down its roads
+    for more after the haul. The farms read the game's goods by their bare names (`farms::bare`): cane was never paper
+    to a farm in the game, nor wheat bread. Seed 1717's first 60 days against the run before the market: cane tended 19
+    a day to 210, books read 28 to 243, trips in days 30-60 67 to 117, mood 0.19 to 0.78; Hearthglen 16,141 plots of
+    cane. Not yet: cactus (no good bids for it), beetroot and carrots on a desert town's slopes (66 fields that couldn't
+    be laid), leather (bid at 2.2 times its worth: the next bottleneck for books).
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

@@ -39,16 +39,33 @@ pub fn follow(content: Res<Content>, mut towns: Query<(&Roster, &mut Lockers, &m
 /// Every town's missed restocks replayed, its managed lockers trading at each.
 #[allow(clippy::type_complexity)]
 pub fn restock(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
-        seed: Res<Rng>, mut dice: ResMut<Dice>, market: Res<crate::market::Market>,
+        seed: Res<Rng>, mut dice: ResMut<Dice>, market: Res<crate::market::Market>, routes: Query<&Route>,
         mut towns: Query<(&Town, &mut Roster, &mut Lockers, &mut Stock, &mut Money, &People)>) {
+    // What each town could sell a good for down its roads, as its wagons saw the far ends bid, less the haul there
+    // (in the routes' order: the best is the best whatever the order).
+    let mut abroad: std::collections::BTreeMap<usize, std::collections::BTreeMap<usize, f64>> = Default::default();
+    if content.dials.market {
+        for route in routes.iter() {
+            for (&g, &(each, _)) in market.seen.get(&route.to_id).map(|(_, b)| b).into_iter().flatten() {
+                let net = each - crate::desires::haul_each(&content, route.blocks, 1, 0, g);
+                let best = abroad.entry(route.from_id).or_default().entry(g).or_insert(net);
+                *best = best.max(net);
+            }
+        }
+    }
     let mut order: Vec<_> = towns.iter_mut().collect();
     order.sort_by_key(|(t, ..)| t.id);
     for (town, mut roster, mut lockers, mut stock, mut money, people) in order {
         lockers.workshop_keeps = crate::workshop::keeps(&content, &roster, people, &stock);
-        // And what the town bids more for than its lockers pay (`market.rs`): the paper its books would fetch more for.
+        // And what the town bids more for than its lockers pay (`market.rs`): the paper its books would fetch more for; or
+        // could sell down its roads for more, after the haul (seed 1717's desert towns pressed their cane into paper and
+        // sold it to their own Librarians' lockers at its worth, 3,700 of it in 60 days, while four towns bid half again).
         if content.dials.market {
+            let far = abroad.get(&town.id);
             for (g, keep) in lockers.workshop_keeps.iter_mut().enumerate() {
-                if market.bid(town.id, g).is_some_and(|(each, _)| each > content.goods[g].value) {
+                let value = content.goods[g].value;
+                if market.bid(town.id, g).is_some_and(|(each, _)| each > value)
+                    || far.and_then(|f| f.get(&g)).is_some_and(|&net| net > value) {
                     *keep = keep.max(stock.0[g]);
                 }
             }

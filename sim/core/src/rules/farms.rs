@@ -242,7 +242,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
         mut book: ResMut<CashBook>,
         mut farms: Query<(&Town, &mut Farm, &mut Money, &mut People, &Stock, &Trades, &mut Budget, Option<&Roster>,
             Option<&crate::lockers::Lockers>, Option<&mut crate::herds::Herds>)>, routes: Query<&Route>, roads: Query<(&Route, &crate::state::RouteState)>,
-        far: Query<(&Roster, &crate::lockers::Lockers)>, market: Res<crate::market::Market>) {
+        far: Query<(&Roster, &crate::lockers::Lockers)>, market: Res<crate::market::Market>, map: Res<crate::map::Map>) {
     let (now, day) = (clock.now, content.day_ticks);
     let today = now / day;
     // What the villagers at the managed lockers of each town's routes' far ends would buy a day (in the routes'
@@ -287,6 +287,8 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
         farm.reviewed = Some(today);
         let t = town.id;
         let farm = &mut *farm;
+        // The land its fields lie on: its home hex's.
+        farm.land = town.hex.map(|h| map.land(h));
         // What it has sold forward comes first: a contract to keep (`Territory.afterCensus`; the herds' feed is not
         // here yet).
         farm.needs = crate::harvest::sold(&content, &contracts, t).into_iter().map(|(g, (n, _))| (g, n)).collect();
@@ -401,9 +403,12 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
 }
 
 /// The crop of the field the town would plant now, if any (`Fields.consider`, before the money): its Farmers have
-/// room for [`SPARE_PLOTS`] more plots, or there's a crop it would buy and grows none of (or feed it's short of) and
-/// it has planted fewer than two fields a Farmer level; and there's room for it. A crop it grows counts its plots no
-/// Farmer works too (not as the mod's `consider`, whose busy town plants the same unworked crop up to its cap).
+/// room for [`SPARE_PLOTS`] more plots, or there's a crop it would buy and grows none of (or feed it's short of), or
+/// grows less of than it would sell where a plot of it earns more than one of the cheapest crop its Farmers tend
+/// (`market.rs`: cane for the paper bid for, on the sand, over wheat: seed 1717's desert towns, their Farmers busy with
+/// thousands of plots of wheat, planted no more than the 6 plots of cane they had), and it has planted fewer than two
+/// fields a Farmer level; and there's room for it. A crop it grows counts its plots no Farmer works too (not as the
+/// mod's `consider`, whose busy town plants the same unworked crop up to its cap).
 fn field_wanted(content: &Content, farm: &Farm, farmers: &[u8], wants: &Wants, food: f64) -> Option<usize> {
     if farmers.is_empty() || !room_for_a_field(farm) {
         return None;
@@ -417,9 +422,14 @@ fn field_wanted(content: &Content, farm: &Farm, farmers: &[u8], wants: &Wants, f
     let planted = planted(farm);
     let grown = |g: usize| planted.get(&g).copied().unwrap_or(0.0);
     let all = field_crops(content);
+    // What a plot of a crop earns here: its sale's price, as the crop suits the land.
+    let earns = |c: usize| wants.price(content, sold_as(content, c)) * crate::farms::land_fit(content, c, wants.land);
+    let cheapest = farm.per_day.iter().filter(|(_, n)| **n > 0.0).map(|(&g, _)| earns(g)).fold(f64::INFINITY, f64::min);
     let unmet: Vec<usize> = all.iter().copied().filter(|&c| allowed(content, c, wants, food, food_only)).filter(|&crop| {
-        wanted(content, crop, wants, food_only) > 0.0
-            && all.iter().filter(|&&c| sold_as(content, c) == sold_as(content, crop)).all(|&c| grown(c) <= 0.0)
+        let group = || all.iter().filter(|&&c| sold_as(content, c) == sold_as(content, crop));
+        let wanted = wanted(content, crop, wants, food_only);
+        wanted > 0.0 && (group().all(|&c| grown(c) <= 0.0)
+            || group().map(|&c| grown(c)).sum::<f64>() < wanted && earns(crop) > cheapest)
     }).collect();
     let short_of_feed = wants.needs.iter().any(|(g, n)| *n > grown(*g));
     let spare = capacity - worked >= SPARE_PLOTS as f64;
@@ -429,12 +439,14 @@ fn field_wanted(content: &Content, farm: &Farm, farmers: &[u8], wants: &Wants, f
     if (unmet.is_empty() && !short_of_feed) || farm.fields_planted >= 2 * levels {
         return None;
     }
-    // Busy, it plants for a crop it has no plots of (or the feed it's short of), not more of what it has.
+    // Busy, it plants for a crop it has no plots of (or the feed it's short of), or one dearer than it tends; not more of
+    // what it has at the price it fetches.
     if short_of_feed {
         return choose(content, wants, &planted, food, food_only);
     }
     unmet.into_iter().max_by(|&a, &b| {
-        let worth = |c: usize| wanted(content, c, wants, food_only) * wants.price(content, sold_as(content, c));
+        let worth = |c: usize| wanted(content, c, wants, food_only) * wants.price(content, sold_as(content, c))
+            * crate::farms::land_fit(content, c, wants.land);
         worth(a).total_cmp(&worth(b)).then(b.cmp(&a))
     })
 }

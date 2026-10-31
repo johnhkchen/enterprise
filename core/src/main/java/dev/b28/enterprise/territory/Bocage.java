@@ -77,7 +77,8 @@ public final class Bocage {
         }
         int n = sx * sz;
         float[] top = new float[n];
-        boolean[] wet = new boolean[n], ok = new boolean[n], road = new boolean[n], wood = new boolean[n], gone = new boolean[n];
+        boolean[] wet = new boolean[n], ok = new boolean[n], road = new boolean[n], wood = new boolean[n], gone = new boolean[n],
+                sand = new boolean[n];
         // The tracks and roads drawn on the grid once (a block's distance to every line, block by block, held a tick for
         // a minute): the farm tracks and the trade routes out of the gates.
         List<double[][]>[] paths = Furlongs.paths(plan);
@@ -105,6 +106,7 @@ public final class Bocage {
                 top[k] = y;
                 BlockPos at = new BlockPos(x, y, z);
                 wet[k] = !level.getBlockState(at).getFluidState().isEmpty();
+                sand[k] = level.getBlockState(at).is(net.minecraft.tags.BlockTags.SAND);
                 wood[k] = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) - 1 > y;
                 boolean inside = in.contains(x, z) || in.fromEdge(x, z) <= TownPlans.STRIP + 1;
                 boolean wall = !out.contains(x, z) && out.fromEdge(x, z) <= TownPlans.STRIP + 1
@@ -169,14 +171,14 @@ public final class Bocage {
         }
         // Each field's land: its blocks, slope, how it faces the sun, height, distance to water, bounds.
         int[] dWater = waterDistance(wet, sx, sz);
-        Map<Integer, double[]> stats = new HashMap<>(); // n, slope, south, h, dw, x0, z0, x1, z1, lo, hi
+        Map<Integer, double[]> stats = new HashMap<>(); // n, slope, south, h, dw, x0, z0, x1, z1, lo, hi, cost, sand
         for (int j = 0; j < sz; j++) {
             for (int i = 0; i < sx; i++) {
                 int f = field[j * sx + i];
                 if (f < 0) {
                     continue;
                 }
-                double[] s = stats.computeIfAbsent(f, q -> new double[] {0, 0, 0, 0, 0, 1e9, 1e9, -1e9, -1e9, 1e9, -1e9, 0});
+                double[] s = stats.computeIfAbsent(f, q -> new double[] {0, 0, 0, 0, 0, 1e9, 1e9, -1e9, -1e9, 1e9, -1e9, 0, 0});
                 float east = hs[j * sx + Math.min(sx - 1, i + 1)] - hs[j * sx + Math.max(0, i - 1)];
                 float south = hs[Math.min(sz - 1, j + 1) * sx + i] - hs[Math.max(0, j - 1) * sx + i];
                 s[0]++;
@@ -191,6 +193,7 @@ public final class Bocage {
                 s[9] = Math.min(s[9], top[j * sx + i]);
                 s[10] = Math.max(s[10], top[j * sx + i]);
                 s[11] += cost[j * sx + i];
+                s[12] += sand[j * sx + i] ? 1 : 0;
             }
         }
         double hMin = Double.MAX_VALUE, hMax = -Double.MAX_VALUE;
@@ -210,12 +213,15 @@ public final class Bocage {
             double q = r / (double) order.size(), so = s[2] / s[0], dw = s[4] / s[0];
             double rel = (s[3] / s[0] - hMin) / Math.max(1, hMax - hMin);
             long hh = Zoning.mix(town, f * 31L + 9);
+            // Mostly sand: cane is what it grows (John: "Cane is a suitable crop for sandy areas in a way that few others,
+            // except maybe cactus, are").
+            boolean sandy = s[12] / s[0] >= SANDY;
             String use;
             double far = s[11] / s[0] / BUDGET;
             if (far <= WILD && (use0(q) == 1 && q >= 0.04 || use0(q) == 2 && q >= 0.10)) {
                 // Within the worked reach the land's ploughed: what rank would leave to wood or grazing is arable, but the
                 // steepest (the studio, r60: planted share 0.24 against their 0.53).
-                use = "arable:" + crops(hh, s[10] - s[9]);
+                use = "arable:" + crops(hh, s[10] - s[9], sandy);
             } else if (far > WILD) {
                 // The edge of the farmland gone wild: rough pasture, meadow and wood, the bocage fading into the land.
                 use = Math.floorMod(hh, 10L) < 4 ? "woodland" : Math.floorMod(hh, 10L) < 7 ? "pasture" : "meadow";
@@ -228,11 +234,12 @@ public final class Bocage {
             } else if (q < 0.45) {
                 use = so > 0 ? "orchard" : Math.floorMod(hh, 2L) == 0 ? "terraces" : "pasture";
             } else {
-                use = rel > 0.75 && Math.floorMod(hh, 10L) < 3 ? "pasture" : "arable:" + crops(hh, s[10] - s[9]);
+                use = rel > 0.75 && Math.floorMod(hh, 10L) < 3 ? "pasture" : "arable:" + crops(hh, s[10] - s[9], sandy);
             }
             Furlongs.Field fl = new Furlongs.Field(m.fields.size(), 0, 0, (int) s[5], (int) s[6], (int) s[7], (int) s[8], use,
                     (int) (s[10] - s[9]));
             fl.area = (int) s[0];
+            fl.sandy = sandy;
             // Walls on the high ground only (the top quarter of the land's height); bands at least 7 blocks across on
             // the ground, whatever the slope (the studio, r58: 3 blocks of height was 4 or 5 across on a steep bank).
             fl.high = rel > 0.75;
@@ -252,11 +259,18 @@ public final class Bocage {
         return q < 0.08 ? 1 : q < 0.22 ? 2 : 0;
     }
 
+    /** The share of a field's blocks that are sand for it to be a sandy field, whose arable is cane. */
+    public static final double SANDY = 0.5;
+
     /**
      * An arable field's crops, two to four, alternating band by band so the contours show: wheat and a root crop; on a
-     * hill (relief over {@link Furlongs#FLAT}) only what grows on hills, wheat and potatoes.
+     * hill (relief over {@link Furlongs#FLAT}) only what grows on hills, wheat and potatoes; on sand, cane alone (wheat
+     * and roots want earth: a desert town's sand laid out as wheat and potatoes was counted as 8,000 plots of them).
      */
-    static String crops(long h, double relief) {
+    public static String crops(long h, double relief, boolean sandy) {
+        if (sandy) {
+            return "sugar_cane";
+        }
         String[] roots = relief > Furlongs.FLAT ? new String[] {"potato"} : new String[] {"carrot", "potato", "beetroot"};
         String second = roots[(int) Math.floorMod(h >>> 4, (long) roots.length)];
         if (Math.floorMod(h >>> 9, 100L) < 35) {
@@ -316,10 +330,12 @@ public final class Bocage {
         if (!level.getBlockState(ground).getFluidState().isEmpty()) {
             return; // water: no field on it (the studio's r87 render: 244 cells of farmland on town 1's lake)
         }
-        if (dev.b28.enterprise.settlement.Grounds.natural(level.getBlockState(ground))) {
+        String use = fl.state;
+        // (Sand under a field of cane stays sand: cane grows on it as it lies.)
+        boolean caneOnSand = use.startsWith("arable:") && use.contains("sugar_cane") && level.getBlockState(ground).is(net.minecraft.tags.BlockTags.SAND);
+        if (dev.b28.enterprise.settlement.Grounds.natural(level.getBlockState(ground)) && !caneOnSand) {
             level.setBlock(ground, Blocks.GRASS_BLOCK.defaultBlockState(), 2);
         }
-        String use = fl.state;
         if (edge == 2) {
             level.setBlock(over, Blocks.OAK_FENCE_GATE.defaultBlockState(), 2);
             return;
@@ -414,6 +430,18 @@ public final class Bocage {
      * lower stands beside it (it can't run off; each crop is within 4 of one, a step below drinking from it too).
      */
     static void sow(ServerLevel level, BlockPos ground, int x, int z, String crop, long h, Furlongs.Field fl) {
+        if (crop.equals("sugar_cane")) {
+            cane(level, ground, x, z, h);
+            return;
+        }
+        if (crop.equals("sweet_berries")) {
+            level.setBlock(ground, Blocks.GRASS_BLOCK.defaultBlockState(), 2);
+            if (Math.floorMod(x + z, 2) == 0) {
+                level.setBlock(ground.above(), Blocks.SWEET_BERRY_BUSH.defaultBlockState()
+                        .setValue(net.minecraft.world.level.block.SweetBerryBushBlock.AGE, 1 + (int) Math.floorMod(h, 3L)), 2);
+            }
+            return;
+        }
         if (Math.floorMod(x, Furlongs.CHANNEL) == Furlongs.CHANNEL / 2 && Math.floorMod(z, Furlongs.CHANNEL) == Furlongs.CHANNEL / 2) {
             boolean spills = false;
             for (int[] d : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
@@ -436,6 +464,33 @@ public final class Bocage {
         int ripe = block.getMaxAge();
         int behind = (int) Math.floorMod(Zoning.mix(fl.x0, fl.z0), 3L);
         level.setBlock(ground.above(), block.getStateForAge(Math.max(0, ripe - behind - (Math.floorMod(h, 7L) == 0 ? 2 : 0))), 2);
+    }
+
+    /**
+     * A block of a cane field: every third row along x a water channel where nothing lower stands beside it (it can't run
+     * off), the rows either side cane one to three tall, each beside its channel, on the ground as it lies where it's
+     * sand, grass where it isn't (re-sown cane fell to the wheat case: a field sown "sugar_cane" grew wheat).
+     */
+    public static void cane(ServerLevel level, BlockPos ground, int x, int z, long h) {
+        if (Math.floorMod(x, 3) == 1) {
+            boolean spills = false;
+            for (int[] d : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                int ny = Earthworks.height(level, x + d[0], z + d[1]);
+                spills |= ny != Integer.MIN_VALUE && ny < ground.getY();
+            }
+            if (!spills) {
+                level.setBlock(ground, Blocks.WATER.defaultBlockState(), 2);
+                level.setBlock(ground.above(), Blocks.AIR.defaultBlockState(), 2);
+                return;
+            }
+        }
+        if (!level.getBlockState(ground).is(net.minecraft.tags.BlockTags.SAND)) {
+            level.setBlock(ground, Blocks.GRASS_BLOCK.defaultBlockState(), 2);
+        }
+        int tall = 1 + (int) Math.floorMod(h, 3L);
+        for (int up = 1; up <= tall; up++) {
+            level.setBlock(ground.above(up), Blocks.SUGAR_CANE.defaultBlockState(), 2);
+        }
     }
 
     /**

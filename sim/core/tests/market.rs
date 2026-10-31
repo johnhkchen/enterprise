@@ -112,3 +112,53 @@ fn a_farm_tends_cane_for_paper_bid_for_down_the_road_before_wheat_at_its_worth()
     let (by_price, _) = plan(&c, &plots, &[1], &wants, 1.0, true, &mut idle);
     assert_eq!(by_price.get(&wheat).copied(), Some(16.0), "{by_price:?}");
 }
+
+#[test]
+fn on_the_sand_a_new_field_is_cane_where_on_loam_it_is_wheat_and_fields_in_the_ground_grow_alike() {
+    use enterprise_core::farms::choose;
+    use enterprise_core::map::Land;
+    let c = Content::new(vec![Good::new("wheat", 0.05, 64), Good::new("sugar_cane", 1.0 / 24.0, 64),
+        Good::new("paper", 1.0 / 24.0, 64)], DAY);
+    let (wheat, cane, paper) = (0, 1, 2);
+    // Wheat its people buy, 16 a day at its worth, and paper bid for down the road at a little over the cane's worth.
+    let mut wants = Wants { demand: [(wheat, 16.0)].into(), draws: [(paper, (16.0, 0.05))].into(), ..Default::default() };
+    // A new field for what isn't grown yet: wheat on the loam, cane on the sand.
+    let grown = BTreeMap::new();
+    wants.land = Some(Land::Plains);
+    assert_eq!(choose(&c, &wants.all(), &grown, 1000.0, false), Some(wheat));
+    wants.land = Some(Land::Desert);
+    assert_eq!(choose(&c, &wants.all(), &grown, 1000.0, false), Some(cane));
+    // The plots in the ground grow as they would anywhere: tilled farmland is farmland.
+    let plots: BTreeMap<usize, u32> = [(wheat, 64), (cane, 64)].into();
+    let mut idle = BTreeMap::new();
+    let (sand, _) = plan(&c, &plots, &[1], &wants, 1.0, true, &mut idle);
+    wants.land = Some(Land::Plains);
+    let (loam, _) = plan(&c, &plots, &[1], &wants, 1.0, true, &mut idle);
+    assert_eq!(sand, loam, "the same plan on either land");
+}
+
+#[test]
+fn the_game_s_namespaced_goods_suit_their_land_and_cane_sells_as_paper() {
+    // The game's goods come namespaced: the farms' tables (yields by land, cane as paper) name them bare.
+    use enterprise_core::farms::{land_fit, sold_as};
+    use enterprise_core::map::Land;
+    let c = Content::new(vec![Good::new("minecraft:wheat", 0.05, 64), Good::new("minecraft:sugar_cane", 1.0 / 24.0, 64),
+        Good::new("minecraft:paper", 1.0 / 24.0, 64)], DAY);
+    assert_eq!(land_fit(&c, 0, Some(Land::Desert)), 0.3, "wheat on the sand");
+    assert_eq!(land_fit(&c, 1, Some(Land::Desert)), 1.0, "cane on the sand");
+    assert_eq!(sold_as(&c, 1), 2, "cane sells as paper");
+}
+
+#[test]
+fn a_growing_town_on_the_sand_plants_cane_where_on_loam_it_waits_for_its_food() {
+    use enterprise_core::farms::allowed;
+    use enterprise_core::map::Land;
+    let c = Content::new(vec![Good::new("wheat", 0.05, 64), Good::new("sugar_cane", 1.0 / 24.0, 64),
+        Good::new("paper", 1.0 / 24.0, 64)], DAY);
+    let (cane, paper) = (1, 2);
+    let mut wants = Wants { draws: [(paper, (16.0, 0.1))].into(), ..Default::default() };
+    wants.land = Some(Land::Plains);
+    assert!(!allowed(&c, cane, &wants.all(), 0.0, true), "growing on the loam, short of food: food first");
+    wants.land = Some(Land::Desert);
+    assert!(allowed(&c, cane, &wants.all(), 0.0, true), "growing on the sand: cane for the paper bid for");
+}

@@ -112,7 +112,7 @@ Each phase lands on its own, gated, with a short study sized to what it checks.
 1. **Built 2026-10-31 (see the decisions).** **The book in the core.** Bids and asks from today's wants and surplus, creeping prices, marks from fills; wagons sell
    to bids and buy from asks; `Listings` becomes the book's news. Trace tables `book` and `fills`. Measure: a 30-day
    lane on seed 1717 (about 10 minutes); paper's mark rises where it's short. About 4 hours.
-2. **Farms follow prices.** Tending and fields by price x land yield; the core learns each field's land. Measure: seed
+2. **Built 2026-10-31 (see the decisions; the land decides new fields, not the yield of those in the ground).** **Farms follow prices.** Tending and fields by price x land yield; the core learns each field's land. Measure: seed
    1717's desert towns tend cane and plant it; paper and reading over 60 days. About 2 hours and a 20-minute run.
 3. **Crops as data.** The datapack files, the wire, the fixed lists gone; game tests for a crop added by file. About 3
    hours.

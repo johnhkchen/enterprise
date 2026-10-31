@@ -55,6 +55,8 @@ public final class Furlongs {
         int area;
         /** On the high ground (walls, not hedges); its crop bands' height. */
         boolean high;
+        /** Mostly sand ({@link Bocage#SANDY}): cane's first, other crops' last. */
+        boolean sandy;
         int band = 3;
 
         Field(int holding, int k, int n, int x0, int z0, int x1, int z1, String state, int relief) {
@@ -216,6 +218,7 @@ public final class Furlongs {
             int bx0 = Integer.MAX_VALUE, bz0 = Integer.MAX_VALUE, bx1 = Integer.MIN_VALUE, bz1 = Integer.MIN_VALUE;
             int lo = Integer.MAX_VALUE, hi = Integer.MIN_VALUE;
             boolean wet = false;
+            int sand = 0;
             for (int[] c : cells) {
                 bx0 = Math.min(bx0, c[0]);
                 bz0 = Math.min(bz0, c[1]);
@@ -226,13 +229,16 @@ public final class Furlongs {
                     lo = Math.min(lo, y);
                     hi = Math.max(hi, y);
                     wet |= !level.getBlockState(new BlockPos(c[0], y, c[1])).getFluidState().isEmpty();
+                    sand += level.getBlockState(new BlockPos(c[0], y, c[1])).is(BlockTags.SAND) ? 1 : 0;
                 }
             }
             int relief = hi >= lo ? hi - lo : 0;
             long h = Zoning.mix(town * 31 + holding, e.getKey());
+            boolean sandy = sand >= Bocage.SANDY * cells.size();
             Field f = new Field(holding, (int) (e.getKey() >> 32), e.getKey().intValue(), bx0, bz0, bx1, bz1,
-                    use(ring, relief, wet, h), relief);
+                    use(ring, relief, wet, sandy, h), relief);
             f.area = cells.size();
+            f.sandy = sandy;
             m.fields.add(f);
             // Its edge: where it meets another field, another holding, or the end of the land, a hedgerow (a pasture's a
             // fence); open where it meets a track or road, its way in.
@@ -272,12 +278,16 @@ public final class Furlongs {
 
     /**
      * What a field is used for, by its land: the steepest orchard or pasture; a hill's field wheat or potatoes (now and
-     * then an orchard); the flat any crop, the gardens between the walls most often vegetables, a wet field cane.
+     * then an orchard); the flat any crop, the gardens between the walls most often vegetables, a wet field cane; a sandy
+     * one cane, flat or a hill's.
      */
-    static String use(FieldMaps.Ring ring, int relief, boolean wet, long h) {
+    static String use(FieldMaps.Ring ring, int relief, boolean wet, boolean sandy, long h) {
         int r = (int) Math.floorMod(h, 12L);
         if (relief > HILL) {
             return r < 7 ? "orchard" : "pasture";
+        }
+        if (sandy) {
+            return "crop:sugar_cane"; // the sand's crop, terraced up a dune as on the flat
         }
         if (relief > FLAT) {
             return r < 6 ? "crop:wheat" : r < 10 ? "crop:potato" : "orchard";
@@ -430,11 +440,14 @@ public final class Furlongs {
 
     /**
      * Does the crop grow on a hillside, as it does in the world? Wheat (and the cereals) were grown up hillsides in strips
-     * and on terraces; potatoes are an upland crop, grown on ridges; berry bushes take a slope as vines and orchards do.
-     * Carrots and beetroot want deep, loose, level soil, and cane stands in water: the flat.
+     * and on terraces; potatoes are an upland crop, grown on ridges; berry bushes take a slope as vines and orchards do;
+     * cane stands in the water of terraced channels, each step its own level, as paddies climb a hill (seed 1717's three
+     * desert towns, every arable field of theirs 3 to 15 blocks of relief, could sow none of the cane their paper was bid
+     * for: John, "have villagers invest into sugarcane farms particularly where they have lots of sand plots"). Carrots
+     * and beetroot want deep, loose, level soil: the flat.
      */
-    static boolean onHills(Item crop) {
-        return crop == Items.WHEAT || crop == Items.POTATO || crop == Items.SWEET_BERRIES;
+    public static boolean onHills(Item crop) {
+        return crop == Items.WHEAT || crop == Items.POTATO || crop == Items.SWEET_BERRIES || crop == Items.SUGAR_CANE;
     }
 
     /**
@@ -449,12 +462,27 @@ public final class Furlongs {
         String state = "crop:" + FieldTiles.name(crop);
         String first = "arable:" + FieldTiles.name(crop) + ",";
         BlockPos at = bell;
+        // Cane on the sand first; anything else off it while there's earth (`Bocage.SANDY`). Then a field of the crop the
+        // town has most fields of: a re-sown field is taken from its plenty, not its one field of cane (seed 1717's
+        // desert towns re-sowed the field their cane had just been sown in with the next wheat they asked for).
+        boolean cane = crop == Items.SUGAR_CANE;
+        Map<String, Long> led = m.fields.stream().filter(f -> f.state.startsWith("arable:"))
+                .collect(java.util.stream.Collectors.groupingBy(Furlongs::lead, java.util.stream.Collectors.counting()));
         return m.fields.stream().filter(f -> f.state.startsWith("arable:") && !f.state.startsWith(first))
                 .filter(f -> ringOf(plan, f) == ring)
                 .filter(f -> hill ? f.relief <= HILL : f.relief <= FLAT)
                 .filter(f -> held.isEmpty() || held.contains(dev.b28.enterprise.hex.Hex.at((f.x0 + f.x1) / 2.0, (f.z0 + f.z1) / 2.0)))
-                .min(Comparator.comparingInt((Field f) -> hill && f.relief <= FLAT ? 1 : 0)
+                .min(Comparator.comparingInt((Field f) -> f.sandy == cane ? 0 : 1)
+                        .thenComparingLong((Field f) -> -led.getOrDefault(lead(f), 0L))
+                        .thenComparingInt((Field f) -> hill && f.relief <= FLAT ? 1 : 0)
                         .thenComparingDouble(f -> Math.hypot((f.x0 + f.x1) / 2.0 - bell.getX(), (f.z0 + f.z1) / 2.0 - bell.getZ())));
+    }
+
+    /** The crop an arable field is led by: the first of its bands. */
+    static String lead(Field f) {
+        String crops = f.state.substring(f.state.indexOf(':') + 1);
+        int comma = crops.indexOf(',');
+        return comma < 0 ? crops : crops.substring(0, comma);
     }
 
     /** The ring a field's middle lies in. */
@@ -533,7 +561,9 @@ public final class Furlongs {
                             .setValue(net.minecraft.world.level.block.SweetBerryBushBlock.AGE, 1 + (int) Math.floorMod(h, 3L)), 2);
                 }
             } else if (crop == Items.SUGAR_CANE) {
-                level.setBlock(ground, Blocks.GRASS_BLOCK.defaultBlockState(), 2);
+                if (!level.getBlockState(ground).is(BlockTags.SAND)) {
+                    level.setBlock(ground, Blocks.GRASS_BLOCK.defaultBlockState(), 2); // sand it grows on as it lies
+                }
                 int tall = 1 + (int) Math.floorMod(h, 3L);
                 for (int up = 0; up < tall; up++) {
                     level.setBlock(over.above(up), Blocks.SUGAR_CANE.defaultBlockState(), 2);

@@ -254,7 +254,10 @@ fn a_farm_grows_what_the_lockers_its_merchant_manages_would_buy() {
     let farm = s.farm(0).unwrap().farm;
     assert_eq!(farm.census.get(&F_CARROT), None, "the Farmer's locker isn't managed: {:?}", farm.census);
     assert_eq!(farm.per_day.get(&F_CARROT), None, "no carrots grown: {:?}", farm.per_day);
-    assert!(fallow(&s) > 0, "its carrot plots lie fallow (but those its workshop's wheat turned over)");
+    // Its carrot plots no one wants are turned over to the cane its Librarian and Cartographer press into the paper
+    // their lockers take (`farms::rotate`: a field crop beyond the rotation takes plots turned over where it earns
+    // most), or lie fallow.
+    assert!(farm.turned.get(&F_CANE).is_some_and(|n| *n > 0) || fallow(&s) > 0, "{:?}, {} fallow", farm.turned, fallow(&s));
 }
 
 #[test]

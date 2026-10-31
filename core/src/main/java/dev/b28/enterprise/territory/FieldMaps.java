@@ -933,7 +933,8 @@ public final class FieldMaps extends SavedData {
             ListTag fields = new ListTag();
             for (Furlongs.Field f : m.fields) {
                 CompoundTag ft = new CompoundTag();
-                ft.putIntArray("at", new int[] {f.holding, f.k, f.n, f.x0, f.z0, f.x1, f.z1, f.relief, f.area, f.high ? 1 : 0, f.band});
+                ft.putIntArray("at", new int[] {f.holding, f.k, f.n, f.x0, f.z0, f.x1, f.z1, f.relief, f.area, f.high ? 1 : 0, f.band,
+                        f.sandy ? 1 : 0});
                 ft.putString("state", f.state);
                 fields.add(ft);
             }
@@ -996,6 +997,7 @@ public final class FieldMaps extends SavedData {
                 f.area = at.length > 8 ? at[8] : 0;
                 f.high = at.length > 9 && at[9] == 1;
                 f.band = at.length > 10 ? at[10] : 3;
+                f.sandy = at.length > 11 && at[11] == 1;
                 m.fields.add(f);
             }
             for (int h : e.getIntArray("laidOut")) {
