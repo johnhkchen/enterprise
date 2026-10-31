@@ -132,27 +132,34 @@ fn a_pallet_for_the_drawee_no_bill_names_still_goes_with_its_paper() {
 }
 
 #[test]
-fn a_bill_is_stranded_where_its_drawees_wagons_dont_call_or_it_is_past_its_day() {
+fn a_bill_is_stranded_where_its_holder_cant_present_it() {
+    // A bill is paid when its holder's wagon puts it to the drawee (`rules/bills.rs` `present`): only one the holder's
+    // wagons can't carry there is stranded, due or not (the mod's rule, the drawee's wagons not calling or the bill past
+    // its day, sold bills the next wagon would have presented: seed 1717's paper went round its hubs three times).
     let (hub, town, capital) = (0, 1, 2);
     let mut s = arena(100.0);
-    // The capital's wagons call at the town: a bill not yet due is presented in the ordinary way.
-    s.add_route(capital, town, 0.1, 0.0, 4.0);
+    s.add_route(town, capital, 0.1, 0.0, 4.0);
     let id = s.draw_bill(capital, town, 10.0);
     let (mut crates, mut bills) = (Vec::new(), vec![id]);
-    assert!(s.buy_stranded(hub, town, &mut crates, &mut bills, 100.0).is_none(), "its drawee's wagons call: not stranded");
-    assert_eq!(bills, vec![id], "and the bill is left");
-    // Past its day it is, though the wagons still call.
+    assert!(s.buy_stranded(hub, town, &mut crates, &mut bills, 100.0).is_none(), "the town's wagons go there: not stranded");
     s.advance(6 * DAY);
     assert!(s.bills()[id].due < s.now());
-    let deal = s.buy_stranded(hub, town, &mut crates, &mut bills, 100.0);
-    assert!(deal.is_some() && bills.is_empty(), "past its day: stranded");
-    // The road closes: a fresh bill is stranded at once.
+    assert!(s.buy_stranded(hub, town, &mut crates, &mut bills, 100.0).is_none(), "past its day, still the town's to present");
+    assert_eq!(bills, vec![id], "and the bill is left");
+    // The capital's wagons call at the town, the town's don't go there: it can't present it.
     let mut s = arena(100.0);
     s.add_route(capital, town, 0.1, 0.0, 4.0);
     let id = s.draw_bill(capital, town, 10.0);
-    assert!(s.close_route(capital, town), "closed");
     let (mut crates, mut bills) = (Vec::new(), vec![id]);
-    assert!(s.buy_stranded(hub, town, &mut crates, &mut bills, 100.0).is_some(), "wagons that don't call: stranded");
+    assert!(s.buy_stranded(hub, town, &mut crates, &mut bills, 100.0).is_some() && bills.is_empty(),
+        "only the drawee's wagons call: stranded");
+    // The town's road closes: a fresh bill is stranded at once.
+    let mut s = arena(100.0);
+    s.add_route(town, capital, 0.1, 0.0, 4.0);
+    let id = s.draw_bill(capital, town, 10.0);
+    assert!(s.close_route(town, capital), "closed");
+    let (mut crates, mut bills) = (Vec::new(), vec![id]);
+    assert!(s.buy_stranded(hub, town, &mut crates, &mut bills, 100.0).is_some(), "no wagon of its own goes: stranded");
 }
 
 #[test]

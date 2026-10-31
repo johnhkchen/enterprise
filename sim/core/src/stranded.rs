@@ -110,7 +110,18 @@ pub struct Terms<'a> {
 /// day) (`Stranded.bill`). Not a bill on the hub itself: the town presents that there, for its face.
 pub fn bill_ok(t: &Terms, bill: &Bill) -> bool {
     bill.state == BillState::Outstanding && bill.payee == t.town && bill.drawee != t.town && bill.drawee != t.hub
-        && reaches(t.net, t.hub, bill.drawee) && (!calls(t.net, bill.drawee, t.town) || bill.due < t.now)
+        && reaches(t.net, t.hub, bill.drawee) && !presents(t.net, t.town, bill.drawee)
+}
+
+/// Can the holder present a bill on the drawee itself: its wagons call there, or, a hub, its runs reach it? A bill is
+/// paid only when its holder's wagon puts it to the drawee (`rules/bills.rs` `present`), so only one its holder can't
+/// carry there is stranded. The mod's rule (the drawee's wagons don't call at the holder, or the bill is past its day)
+/// sold bills the holder's next wagon would have presented, and a hub that bought one, the bill's payee then, sold it on
+/// past its day to the next: seed 1717's 240 days bought 54,000 emeralds' face of 18,800 ever drawn, the founding towns
+/// paying 14,900 in coin for it in days 180 to 240 and ending the poorest (John, 2026-10-31: "look into the lopsided
+/// trade dynamics").
+pub fn presents(net: &Network, holder: TownId, drawee: TownId) -> bool {
+    calls(net, holder, drawee) || net.is_hub(holder) && reaches(net, holder, drawee)
 }
 
 /// A pallet the town shipped, paid for, that its consignee doesn't come for (`Stranded.crate`).

@@ -1279,6 +1279,15 @@ Its wealth was real but illiquid and out of reach: correspondent risk, the way t
   treasury could pay; beyond that it doesn't buy. Bad credit and value in hand are worth more than nothing. Either
   way: the hub's caravan calling at the town, or the town's caravan bringing its paper to the hub. Never a bill on the
   hub itself: the town presents that there, for its face.
+- **Only paper its holder can't present (2026-10-31, the core; John: "look into the lopsided trade dynamics").** A bill
+  is paid when its holder's wagon puts it to the drawee, so it is stranded only where the holder's wagons don't go to
+  the drawee (a hub: where its runs don't reach), due or not. The rule above (the drawee's wagons not calling at the
+  holder, or the bill past its day) sold bills the holder's next wagon would have presented, and a hub that bought one,
+  its payee then, sold it on past its day to the next: seed 1717's 240 days bought 54,000 emeralds' face of the
+  18,800 ever drawn, mostly the hubs' own bills written for it, and the five founding towns paid 16,566 in coin for it
+  in days 139 to 240, ending the poorest (Corin's Crossing 51 emeralds with 35 people). Rerun: no stranded paper
+  bought, 283 emeralds of bills drawn in 240 days, the founding towns' money 51 to 723 and 49 to 1,595, the first 11
+  towns' Gini 0.58 to 0.51.
 - **Freight on credit.** The hub's own caravan carries a town's goods for markets the hub serves even when it can't pay
   the fare: what it can't pay is its bill to the hub, due in 30 days (dial), as far as the goods' stack worth covers
   the fare at the lien's share (half, dial).

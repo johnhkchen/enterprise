@@ -44,6 +44,9 @@ DEFAULT = ["--chests", "--villages", "5", "--reach", "160", "--near", "-736,208"
            "--explore", "800"]
 
 
+# The lane's server's heap at most.
+HEAP = "10g"
+
 # Tries at a study whose pregen stalls (a worldgen worker that died: its server hangs).
 TRIES = 3
 
@@ -113,8 +116,11 @@ def main():
     env = dict(os.environ, ENTERPRISE_LANE=str(n))
     attempt = int(os.environ.get("ENTERPRISE_LANE_TRY", "1"))
     started = time.time()
+    # A heap of HEAP: Java's own guess (a quarter of the machine's, 6 GB here) ran out at seed 1717's day 194 with 42
+    # towns founded far apart (`OutOfMemoryError` in the light engine), and the server hung.
     with open(f"{out}.server.log", "w") as log:
-        server = subprocess.Popen(["just", "lane", str(n)], cwd=REPO, stdout=log, stderr=subprocess.STDOUT)
+        server = subprocess.Popen(["just", "lane", str(n)], cwd=REPO, stdout=log, stderr=subprocess.STDOUT,
+                                  env=dict(os.environ, JAVA_TOOL_OPTIONS=f"-Xmx{HEAP}"))
     while "Done (" not in Path(f"{out}.server.log").read_text(errors="replace"):
         if server.poll() is not None:
             sys.exit(f"lane {n}'s server stopped before it was up: {out}.server.log")

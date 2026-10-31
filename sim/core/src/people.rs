@@ -137,13 +137,16 @@ pub fn register(schedule: &mut Schedule) {
 /// The town's people live the time since they were last counted: wages, comforts, mood, a home, a child.
 #[allow(clippy::type_complexity)]
 pub fn live(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
-        mut ids: ResMut<crate::roster::Hands>, mut land: ResMut<crate::land::LandBook>,
+        mut ids: ResMut<crate::roster::Hands>, mut land: ResMut<crate::land::LandBook>, order: Res<crate::state::Towns>,
         mut towns: Query<(&Town, &mut People, &mut Stock, &mut Money, &Trades, Option<&mut Roster>, Option<&crate::farms::Farm>,
             Option<&crate::works::Works>)>) {
     let d = &content.dials;
     let k = content.comforts.len();
     let (now, day) = (clock.now, content.day_ticks);
-    for (town, mut people, mut stock, mut money, trades, mut roster, farm, works) in &mut towns {
+    // In the towns' order: a child's hand takes the next id, and a query's order isn't a save's (seed 1717's 240 days:
+    // two children born on one look took each other's ids after a load, and the run parted from its replay).
+    for &e in order.0.iter() {
+        let Ok((town, mut people, mut stock, mut money, trades, mut roster, farm, works)) = towns.get_mut(e) else { continue };
         let t = town.id;
         let people = &mut *people;
         let days = clock.now.saturating_sub(people.last) as f64 / content.day_ticks as f64;
