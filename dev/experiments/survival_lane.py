@@ -44,6 +44,27 @@ DEFAULT = ["--chests", "--villages", "5", "--reach", "160", "--near", "-736,208"
            "--explore", "800"]
 
 
+# Tries at a study whose pregen stalls (a worldgen worker that died: its server hangs).
+TRIES = 3
+
+
+def kill_lane_server(n):
+    """This lane's server stopped by force: the java processes running the mod whose working folder is the lane's."""
+    lane = str(REPO / "core" / "run" / "lanes" / str(n))
+    pids = subprocess.run(["pgrep", "-f", "enterprise/core"], capture_output=True, text=True).stdout.split()
+    for pid in pids:
+        cwd = subprocess.run(["lsof", "-a", "-p", pid, "-d", "cwd", "-Fn"], capture_output=True, text=True).stdout
+        if f"n{lane}\n" in cwd + "\n" and "java" in subprocess.run(["ps", "-o", "command=", "-p", pid],
+                                                                    capture_output=True, text=True).stdout:
+            subprocess.run(["kill", pid])
+            for _ in range(15):
+                if subprocess.run(["kill", "-0", pid], capture_output=True).returncode:
+                    break
+                time.sleep(2)
+            else:
+                subprocess.run(["kill", "-9", pid])
+
+
 def main():
     if len(sys.argv) < 5:
         sys.exit(__doc__)
@@ -89,6 +110,8 @@ def main():
         print(f"terrain: restored {terrain.relative_to(REPO)} in {time.time() - started:.0f}s (made in {saves}s)")
     else:
         print(f"terrain: none kept for these flags; the study makes {terrain.relative_to(REPO)}")
+    env = dict(os.environ, ENTERPRISE_LANE=str(n))
+    attempt = int(os.environ.get("ENTERPRISE_LANE_TRY", "1"))
     started = time.time()
     with open(f"{out}.server.log", "w") as log:
         server = subprocess.Popen(["just", "lane", str(n)], cwd=REPO, stdout=log, stderr=subprocess.STDOUT)
@@ -96,11 +119,17 @@ def main():
         if server.poll() is not None:
             sys.exit(f"lane {n}'s server stopped before it was up: {out}.server.log")
         time.sleep(3)
-    print(f"server: up in {time.time() - started:.0f}s")
-    env = dict(os.environ, ENTERPRISE_LANE=str(n))
+    print(f"server: up in {time.time() - started:.0f}s" + (f" (try {attempt} of {TRIES})" if attempt > 1 else ""))
     with open(f"{out}.out", "w") as o:
         subprocess.run(["caffeinate", "-dimsu", sys.executable, "-u", "dev/experiments/survival_study.py", days,
                         f"{out}.log", *flags, "--fixtures"], cwd=REPO, env=env, stdout=o, stderr=subprocess.STDOUT)
+    if "pregen stalled" in Path(f"{out}.out").read_text(errors="replace") and attempt < TRIES:
+        # The server's world generation hung (a worldgen worker died): its own server stopped by force, found by its
+        # folder, never by name alone, and the lane run again: from the run's last point, or the ground from the start.
+        print(f"pregen stalled: lane {n} again (try {attempt + 1} of {TRIES})", flush=True)
+        kill_lane_server(n)
+        server.wait()
+        os.execve(sys.executable, [sys.executable] + sys.argv, dict(os.environ, ENTERPRISE_LANE_TRY=str(attempt + 1)))
     subprocess.run([sys.executable, "scripts/rcon.py", "stop"], cwd=REPO, env=env, capture_output=True)
     server.wait()
     for line in Path(f"{out}.log").read_text().splitlines():

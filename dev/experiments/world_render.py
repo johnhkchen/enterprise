@@ -465,8 +465,11 @@ def main():
         kept = sorted((int(q.name[3:]), q / "world") for q in run.glob("day*") if (q / "world" / "region").exists())
     else:
         kept = [(last, world)]
-    # About a megabyte of PNG for 3.5 million blocks: halve the frames' sides when they'd pass 12 MB together.
-    step = 2 if len(kept) * w * h > 12 * 3.5e6 else 1
+    # About a megabyte of PNG for 3.5 million blocks: a pixel for each step x step blocks, the least step that keeps the
+    # frames under 12 MB together.
+    step = 1
+    while len(kept) * w * h / step ** 2 > 12 * 3.5e6:
+        step += 1
     frames = []
     for d, wd in kept:
         print(f"day {d}: drawing {wd}", file=sys.stderr)

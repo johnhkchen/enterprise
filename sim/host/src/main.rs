@@ -97,6 +97,37 @@ fn main() {
         }
         return;
     }
+    if args.first().map(String::as_str) == Some("--settlers") {
+        // Why a saved society's towns send settlers or don't: each market's villagers, food, spare hands and money,
+        // whether it's raising a party, and whether one leaves if its review ran now (on a copy: nothing is saved).
+        let Some(file) = args.get(1) else {
+            eprintln!("enterprise-sim --settlers SAVE");
+            std::process::exit(2);
+        };
+        let bytes = std::fs::read(file).unwrap_or_else(|e| panic!("{file}: {e}"));
+        let save: enterprise_core::wire::SaveFile = postcard::from_bytes(&bytes).expect("a save");
+        let mut s = enterprise_core::Society::load(&save.blob).expect("a society");
+        // `NAME=VALUE ...`: dials set first (would a wider reach find a site?).
+        for a in &args[2..] {
+            if let Some((name, value)) = a.split_once('=') {
+                s.set_dial(name, value.parse().expect("a number")).unwrap_or_else(|e| panic!("{name}: {e}"));
+            }
+        }
+        println!("town\tname\tvillagers\tfood\tmoney\tparty hands\traising\tleaves now");
+        for t in 0..s.town_count() {
+            let roster = s.roster(t);
+            if roster.merchant.is_none() {
+                continue; // a village: only a market sends settlers
+            }
+            let view = s.town(t);
+            let food = enterprise_core::people::food_points(s.content(), &enterprise_core::state::Stock(view.stock.clone()));
+            let hands = enterprise_core::settlers::party_hands(s.content(), &roster).len();
+            let raising = s.raising(t);
+            let leaves = raising && s.settle(t);
+            println!("{t}\t{}\t{}\t{food:.0}\t{}\t{hands}\t{raising}\t{leaves}", view.name, view.people.villagers, view.money);
+        }
+        return;
+    }
     if args.first().map(String::as_str) == Some("--bag") {
         // The bag a town's idle hand would draw its trade from, each day of a journal's replay up to DAY.
         let (Some(journal), Some(last), Some(town)) = (args.get(1), args.get(2).and_then(|d| d.parse::<u64>().ok()),

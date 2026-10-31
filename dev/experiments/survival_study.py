@@ -174,18 +174,25 @@ def pregen_boxes(corners, say):
     boxes = [(x, z, x + 255, z + 255) for x, z in corners]
     EXPLORED.update(corners)
     started = time.time()
-    for k in range(0, len(boxes), 4):
-        batch = boxes[k:k + 4]
-        for a, b, c, d in batch:
-            said = rcon(f"forceload add {a} {b} {c} {d}")
-            if "Marked" not in said:
-                raise RuntimeError(f"pregen: forceload {a} {b} {c} {d}: {said}")
-        while not all("passed" in rcon(f"execute if loaded {x} 0 {z}")
-                      for a, b, c, d in batch for x, z in ((a, b), (c, b), (a, d), (c, d))):
+    # One box at a time, each given STALL seconds: a worldgen worker can die on a chunk (seed 1717 at 800 blocks, box
+    # 16 of 182: MissingPaletteEntryException in the light engine) and its chunks then never load; the lane restarts its
+    # server and the study carries on, the ground made so far loading at once.
+    for k, (a, b, c, d) in enumerate(boxes):
+        said = rcon(f"forceload add {a} {b} {c} {d}")
+        if "Marked" not in said:
+            raise RuntimeError(f"pregen: forceload {a} {b} {c} {d}: {said}")
+        since = time.time()
+        while not all("passed" in rcon(f"execute if loaded {x} 0 {z}") for x, z in ((a, b), (c, b), (a, d), (c, d))):
+            if time.time() - since > STALL:
+                raise RuntimeError(f"pregen stalled: box {a} {b} {c} {d} not loaded in {STALL}s")
             sprint(20)
-        for a, b, c, d in batch:
-            rcon(f"forceload remove {a} {b} {c} {d}")
-        say(f"pregen: {min(k + 4, len(boxes))}/{len(boxes)} boxes ({time.time() - started:.0f}s)")
+        rcon(f"forceload remove {a} {b} {c} {d}")
+        if (k + 1) % 8 == 0 or k + 1 == len(boxes):
+            say(f"pregen: {k + 1}/{len(boxes)} boxes ({time.time() - started:.0f}s)")
+
+
+# Seconds a box of ground may take to load before the study says it stalled.
+STALL = 180
 
 
 def market(village):
