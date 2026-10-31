@@ -424,6 +424,20 @@ fn a_party_resupplies_at_a_town_its_caravans_go_to_and_settles_past_it() {
 }
 
 #[test]
+fn settlers_stay_home_once_the_world_has_its_towns() {
+    // One market, a village in reach (John: "close to a town limit for a server that aims to keep resource footprint
+    // low"): at max_towns 1 nobody goes; at 2 a party does.
+    let (mut s, _) = world(100.0);
+    village(&mut s, Hex::new(5, 0));
+    s.set_dial("max_towns", 1.0).unwrap();
+    s.advance(DAY / 4);
+    assert!(s.parties().is_empty(), "{:?}", s.parties());
+    s.set_dial("max_towns", 2.0).unwrap();
+    s.advance(DAY);
+    assert_eq!(s.parties().len(), 1, "{:?}", s.parties());
+}
+
+#[test]
 fn no_way_through_and_nobody_goes() {
     let (mut s, _) = world(100.0);
     let v = village(&mut s, Hex::new(5, 0));

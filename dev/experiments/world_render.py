@@ -364,6 +364,14 @@ def picture(world, x0, z0, x1, z1, bells, step=1):
     return image, counts, lo, hi
 
 
+def unpack(v):
+    """A BlockPos from its long (`BlockPos.asLong`): x in the top 26 bits, z the next 26, y the low 12."""
+    v &= (1 << 64) - 1
+    x, z, y = v >> 38, (v >> 12) & 0x3FFFFFF, v & 0xFFF
+    return (x - (1 << 26) if x >= 1 << 25 else x, y - (1 << 12) if y >= 1 << 11 else y,
+            z - (1 << 26) if z >= 1 << 25 else z)
+
+
 def town_plans(world, x0, z0):
     """The towns' plans and their holdings' edges in the world as saved, on the sheet."""
     # The towns' plans (`TownPlans`): their walls' rectangles, the inner to build, the outer kept clear.
@@ -441,13 +449,17 @@ def main():
     last = db.execute("select max(day) from towns").fetchone()[0]
     folk = {t: (v, round(m, 2), c) for t, v, m, c in
             db.execute("select town, villagers, mood, comforts from towns where day=?", (last,))}
-    bells = {}
+    # The bells of the towns' plans as saved (`TownPlans`, a BlockPos packed in a long): every town the world has laid
+    # out, not only those the last server run laid out (a run kept over several server runs: seed 1717's 240 days had 8
+    # of 37 in its last log, the map drawn round those alone). The log's lines fill in a world saved before its plans.
+    bells = {int(k): unpack(p["bell"]) for k, p in saved(world / "data" / "enterprise_town_plans.dat")
+             .get("towns", {}).items() if "bell" in p}
     for line in log.read_text(errors="replace").splitlines():
         if "lays its forum round its bell at" in line:
             head, _, tail = line.partition("Town ")
             town = int(tail.split()[0])
             x, y, z = (int(v.strip()) for v in tail.split(" at ")[1].split("(")[0].split(","))
-            bells[town] = (x, y, z)
+            bells.setdefault(town, (x, y, z))
     routes = []
     for route, frm, to, trips, carrier in db.execute(
             "select route, from_town, to_town, trips, carrier from routes where day=?", (last,)):

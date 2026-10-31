@@ -1088,6 +1088,10 @@ mod's), but no road ever chose it. Then: build them first.
   land (`kit::hills`: its holding's `Land::Hills` hexes, its own among them), and yields half again for each hill hex
   beyond the first, up to three (`ore_ground`); a mine dug before stands idle off the hills. A port wanting ore founds
   a colony on them.
+- **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
+  footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
+  to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server
+  ran out of a 6 GB heap.
 - **Settlers resupply at the towns their caravans go to (John, 2026-10-31: "letting them use the colonies as resupply
   points to extend their settlement range").** A party may set out from home or from any town its home sends caravans
   to (its colonies among them: settlers' roads go both ways), the reach of 6 to 10 hexes counted from that stop; the

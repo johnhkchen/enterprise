@@ -497,3 +497,16 @@ fn the_post_is_saved_whole() {
     assert_eq!(loaded.forwarder().bookings, s.forwarder().bookings);
 }
 
+
+#[test]
+fn a_town_booked_with_a_second_hub_is_no_longer_collected_by_the_first() {
+    // Its letter to one hub on the road, its nearest hub another by the time it books again: the second booking
+    // replaces the first, and the first hub's collection goes with it (a random world's sweep, seed 208).
+    let c = content();
+    let mut f = post::Forwarder::default();
+    f.booked(0, 2, 64, 100.into(), 0);
+    assert_eq!(f.collections(&c, 0, 0).len(), 1);
+    assert!(f.is_collecting(0, 2));
+    f.booked(1, 2, 64, 100.into(), 0);
+    assert!(!f.is_collecting(0, 2) && f.bookings.iter().all(|b| b.hub == 1), "{f:?}");
+}

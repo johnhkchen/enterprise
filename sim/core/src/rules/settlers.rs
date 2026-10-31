@@ -139,7 +139,15 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut m
         .collect();
     let merchant = content.trade(MERCHANT);
     let farmer = content.trade("farmer");
+    // The markets the world has, and those its parties will make: at `max_towns`, no party sets out (John, 2026-10-31:
+    // "close to a town limit for a server that aims to keep resource footprint low"; seed 1717's 37 towns at day 240
+    // ran a server out of a 6 GB heap).
+    let markets = towns.iter().filter(|(_, _, _, _, _, _, roster, _, _)| roster.is_some_and(|r| r.merchant.is_some()))
+        .count();
     for &e in order.0.iter() {
+        if markets + settlers.parties.len() >= d.max_towns as usize {
+            break;
+        }
         let Ok((town, mut money, mut stock, mut people, trades, mut budget, roster, mut lockers, deposits)) = towns.get_mut(e)
             else { continue };
         let t = town.id;

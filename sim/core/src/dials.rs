@@ -205,6 +205,9 @@ dials! {
     days_between: f64 = 8.0,
     min_hexes: u32 = 6,
     max_hexes: u32 = 10,
+    /// Markets a world holds at most, those its parties on the road will make counted: settlers stay home past it (a
+    /// server kept small; seed 1717 had 24 by day 210, 37 by day 240).
+    max_towns: u32 = 24,
     // farms-and-wages (`farms.rs`)
     /// Share of its households' savings a town's treasury may borrow, to honour its bills or buy paper.
     deposit_share: f64 = 0.5,

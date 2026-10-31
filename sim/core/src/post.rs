@@ -338,8 +338,10 @@ pub struct Collection {
 }
 
 impl Forwarder {
-    /// The hub reads a booking (`booked`): the town's last one replaced.
+    /// The hub reads a booking (`booked`): the town's last one replaced, and a collection another hub had due on it
+    /// with it (a town booked with one hub by post and, its nearest hub another before the letter came, with that one).
     pub fn booked(&mut self, hub: TownId, town: TownId, stacks: u32, worth: crate::fixed::Fixed, now: u64) {
+        self.collecting.retain(|&(h, t)| t != town || h == hub);
         self.bookings.retain(|b| b.town != town);
         self.bookings.push(Booking { hub, town, stacks, worth, since: now });
     }
