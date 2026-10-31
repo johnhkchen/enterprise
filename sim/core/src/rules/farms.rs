@@ -242,12 +242,15 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
         mut book: ResMut<CashBook>,
         mut farms: Query<(&Town, &mut Farm, &mut Money, &mut People, &Stock, &Trades, &mut Budget, Option<&Roster>,
             Option<&crate::lockers::Lockers>, Option<&mut crate::herds::Herds>)>, routes: Query<&Route>, roads: Query<(&Route, &crate::state::RouteState)>,
-        far: Query<(&Roster, &crate::lockers::Lockers)>) {
+        far: Query<(&Roster, &crate::lockers::Lockers)>, market: Res<crate::market::Market>) {
     let (now, day) = (clock.now, content.day_ticks);
     let today = now / day;
     // What the villagers at the managed lockers of each town's routes' far ends would buy a day (in the routes'
     // order: a sum's last bit mustn't hang on archetypes): a market its caravans reach, for its farm to grow for.
     let mut reached: BTreeMap<usize, BTreeMap<crate::GoodId, f64>> = BTreeMap::new();
+    // And what the far ends' shops were seen to bid (`market.rs`), less the haul there: items a day (a shelf's worth
+    // over its days) and the best price an item, by good.
+    let mut bid: BTreeMap<usize, BTreeMap<crate::GoodId, (f64, f64)>> = BTreeMap::new();
     let mut ordered: Vec<(&Route, &crate::state::RouteState)> = roads.iter().collect();
     ordered.sort_by_key(|(r, _)| r.seq);
     for (route, state) in ordered {
@@ -263,6 +266,17 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
             let into = reached.entry(route.from_id).or_default();
             for (g, n) in crate::lockers::census_demand(r, l) {
                 *into.entry(g).or_insert(0.0) += n;
+            }
+        }
+        if content.dials.market {
+            for (&g, &(each, want)) in market.seen.get(&route.to_id).map(|(_, b)| b).into_iter().flatten() {
+                let net = each - crate::desires::haul_each(&content, route.blocks, 1, 0, g);
+                if net <= 0.0 || want <= 0.0 {
+                    continue;
+                }
+                let d = bid.entry(route.from_id).or_default().entry(g).or_insert((0.0, net));
+                d.0 += want / content.dials.shelf_days.max(1.0);
+                d.1 = d.1.max(net);
             }
         }
     }
@@ -301,6 +315,20 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, contr
             d.0 += n;
             d.1 = d.1.max(each);
         }
+        for (&g, &(n, each)) in bid.get(&t).into_iter().flatten() {
+            let d = farm.draws.entry(g).or_insert((0.0, each));
+            d.0 += n;
+            d.1 = d.1.max(each);
+        }
+        // What each good is worth to the town by its own book: its bid while it wants some, else its mark.
+        farm.prices = if content.dials.market {
+            market.books.get(&t).into_iter().flatten().filter_map(|(&g, q)| {
+                let p = if q.want > 0.0 && q.bid > 0.0 { q.bid.max(q.mark.unwrap_or(0.0)) } else { q.mark? };
+                (p != content.goods[g].value).then_some((g, p))
+            }).collect()
+        } else {
+            BTreeMap::new()
+        };
         let farmers = farmers(&content, roster);
         let food = food_points(&content, stock);
         let fed = food >= 2.0 * FOOD_PAR_POINTS;
@@ -406,7 +434,7 @@ fn field_wanted(content: &Content, farm: &Farm, farmers: &[u8], wants: &Wants, f
         return choose(content, wants, &planted, food, food_only);
     }
     unmet.into_iter().max_by(|&a, &b| {
-        let worth = |c: usize| wanted(content, c, wants, food_only) * content.goods[sold_as(content, c)].value;
+        let worth = |c: usize| wanted(content, c, wants, food_only) * wants.price(content, sold_as(content, c));
         worth(a).total_cmp(&worth(b)).then(b.cmp(&a))
     })
 }

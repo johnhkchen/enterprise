@@ -62,6 +62,7 @@ crate::saved! {
         stowage: crate::pallet_host::Stowage = crate::pallet_host::Stowage::default(),
         vendors: crate::shop_host::Vendors = crate::shop_host::Vendors::default(),
         crown_shop: crate::crown_host::CrownShop = crate::crown_host::CrownShop::default(),
+        market: crate::market::Market = crate::market::Market::default(),
     }
     town {
         town: Town,
@@ -131,4 +132,5 @@ pub fn register(schedule: &mut Schedule) {
     crate::rules::stranded::register(schedule);
     crate::rules::crown::register(schedule);
     crate::rules::pallet_messages::register(schedule);
+    crate::rules::market::register(schedule);
 }

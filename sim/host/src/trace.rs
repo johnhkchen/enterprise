@@ -9,7 +9,7 @@
 //! - `requests`: each request replayed, its command, the tick after it, and its inputs and outputs counted.
 //! - `inputs`, `outputs`: each input the mod sent and each output the core gave back, by kind, with its town, route
 //!   and good when it names one, and the whole of it as JSON.
-//! - Each day as the first request to reach it left it (the last day as the run ended): `towns` (name, people, beds, mood, money, mood target, comforts met, paid share), `comforts` (each kind met), `herds` (each kind's count, llamas home and away too, and the pastures), `hands` (each town's roster), `farms` (each crop's plots, plan, idle yield, demand, census, workshop draws and needs) and `farm_towns` (focus, fields planted), `works` (each project's progress, done, the works' mood), `stock` (each good a town
+//! - Each day as the first request to reach it left it (the last day as the run ended): `towns` (name, people, beds, mood, money, mood target, comforts met, paid share), `comforts` (each kind met), `book` (each good its shop bids for: the bid, how many, its ceiling, its mark and the day last filled), `herds` (each kind's count, llamas home and away too, and the pastures), `hands` (each town's roster), `farms` (each crop's plots, plan, idle yield, demand, census, workshop draws and needs) and `farm_towns` (focus, fields planted), `works` (each project's progress, done, the works' mood), `stock` (each good a town
 //!   holds), `routes` (trips, what's sold and carried, whether a wagon is out, why it stayed, the far end's last purse,
 //!   its carrier: wagon or llama),
 //!   `lockers` (each hand's offers: placed, managed, switched on), `whys` (each town's reasons, tallied so far: a
@@ -82,6 +82,7 @@ create table outputs (seq integer, i integer, tick integer, day integer, kind te
 create table goods (good integer, name text, crop integer, value real);
 create table towns (day integer, town integer, name text, villagers real, beds real, mood real, money real, target real, comforts real, paid_share real, land real);
 create table comforts (day integer, town integer, kind text, met real);
+create table book (day integer, town integer, good text, bid real, want real, ceiling real, mark real, filled integer);
 create table herds (day integer, town integer, animal text, count real, pastures integer);
 create table hands (day integer, town integer, hand integer, trade text, level integer, away integer);
 create table farms (day integer, town integer, crop text, plots integer, per_day real, demand real, idle real, census real, draws real, needs real);
@@ -172,7 +173,7 @@ pub fn trace(requests: &[&[u8]], conn: &mut Connection, no_rivers: bool) -> Resu
     let Some(s) = society.as_ref() else { return Err("the journal has no requests".into()) };
     let day = s.now() / s.content().day_ticks.max(1);
     // The last day as the run ended, in place of its first look's.
-    for table in ["towns", "comforts", "herds", "hands", "farms", "farm_towns", "works", "stock", "routes", "lockers", "whys"] {
+    for table in ["towns", "comforts", "book", "herds", "hands", "farms", "farm_towns", "works", "stock", "routes", "lockers", "whys"] {
         tx.execute(&format!("delete from {table} where day = ?1"), params![day]).map_err(|e| e.to_string())?;
     }
     snapshot(&tx, &mut society, day, asking.unwrap())?;
@@ -263,6 +264,10 @@ fn snapshot(tx: &rusqlite::Transaction, society: &mut Option<Society>, day: u64,
         for (k, met) in v.people.comfort_met.iter().enumerate() {
             let kind = s.content().comforts.get(k).cloned().unwrap_or_default();
             tx.execute("insert into comforts values (?1, ?2, ?3, ?4)", params![day, t, kind, met]).map_err(sql)?;
+        }
+        for (&g, q) in s.market().books.get(&t).into_iter().flatten() {
+            tx.execute("insert into book values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)", params![day, t, goods[g], q.bid, q.want,
+                q.ceiling, q.mark, q.filled.map(|d| d as i64)]).map_err(sql)?;
         }
         for (g, n) in v.stock.iter().enumerate() {
             if n.abs() >= 1e-9 {

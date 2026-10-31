@@ -1095,6 +1095,14 @@ mod's), but no road ever chose it. Then: build them first.
   Crops are datapack files (item, yield per land, water, what it's sold as or converts into), so a modded crop with a
   file and a bid is one villages grow for money. Comfort goods carry a quality that weights the comfort met (jeans over
   leather boots). Chosen over a price set from days of cover. The plan and its phases: `docs/markets-plan.md`.
+  - **Built: the book (phase 1).** A town bids for a good only where it's worth more to it than its worth (a comfort
+    its people are eager for, up to twice; an input at what its output fetches less the other inputs: paper for books,
+    cane for paper); a good worth just its worth is bargained for as before, the Merchants' split its margin. A bid
+    starts at half the worth and rises 10% a day unfilled (`bid_creep`); a wagon's sale, households' first, is at the
+    bid at least, and marks the price; a bid wagons saw is a want when a Merchant loads; lockers leave what the town
+    bids more for than they pay; Farmers price crops by the town's own bids and by bids seen down its roads less the
+    haul. Seed 1717's first 60 days against the run before: cane tended 19 a day to 174, books read 28 to 267, trips in
+    days 30-60 67 to 118, mood 0.19 to 0.87, the towns' money 162 to 299 (12 towns, 13 before).
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

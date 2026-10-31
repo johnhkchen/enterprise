@@ -52,9 +52,11 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
         mut towns: Query<TownData>, rosters: Query<&crate::roster::Roster>, realms: Query<&Realm>,
         stocktakes: Res<crate::atlas::Stocktakes>, books: Res<crate::atlas::Books>, listings: Res<crate::desires::Listings>,
         farms: Query<&crate::farms::Farm>, orders: Res<crate::orders::Orders>,
-        (lockers, territory): (Query<&crate::lockers::Lockers>, Res<crate::territory::Territory>)) {
+        (lockers, territory, mut market): (Query<&crate::lockers::Lockers>, Res<crate::territory::Territory>,
+            ResMut<crate::market::Market>)) {
     let now = clock.now;
     let day = content.day_ticks;
+    let today = now / day.max(1);
     let n_goods = content.goods.len();
     let all = super::desires::infos(&routes);
     for entity in in_order(routes.iter().map(|(e, r, _)| (e, r))) {
@@ -125,18 +127,30 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
                     (0.0, (aim - stock.0[g]).max(0.0))
                 }
             };
+            // What the town bids for the good (`market.rs`): its households and its treasury pay the bid at least.
+            let bid = if content.dials.market && !realm_buys { market.bid(route.to_id, g) } else { None };
             // The households first: what their people lack of a comfort, off the cart with their own savings, for
             // their rations to come (in credit: `people.rs` eats it before the warehouse's), so the wages they earn
             // reach the trade that brings it (John: "Do so": seed 1001's households earned 340 and spent 80, nothing
             // in their warehouses to buy).
             let (own, room) = match comfort {
                 Some(kind) if people.comfort_owed.len() > kind => {
-                    let bought = households_buy(&content, &mut ledger, &mut book, &mut people, wagon, &route, g, kind,
-                        own, stock.0[g], (seller, buyer), (now, day));
+                    let (bought, each) = households_buy(&content, &mut ledger, &mut book, &mut people, wagon, &route, g,
+                        kind, own, stock.0[g], (seller, buyer), bid.map(|(b, _)| b), (now, day));
+                    if bid.is_some() && bought > 0.0 {
+                        market.fill(route.to_id, g, bought, each, today);
+                    }
                     sold_all += bought;
                     ((own - bought).max(0.0), (room - bought).max(0.0))
                 }
                 _ => (own, room),
+            };
+            // At the bid at least, and as many as it bids for are room (a comfort's room is its par's already, its
+            // households served first).
+            let bid = if content.dials.market && !realm_buys { market.bid(route.to_id, g) } else { None };
+            let room = match (bid, comfort) {
+                (Some((_, want)), None) => room.max(want),
+                _ => room,
             };
             let par = stock.0[g] + room;
             let free_money = free(&content, trades, &money, &bills, route.to_id, now);
@@ -161,6 +175,11 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
                     break;
                 }
                 let each = crate::bargain::unit_price(&content, g, stock.0[g], n, par, seller, buyer, eager);
+                let each = match (each, bid) {
+                    (Some(e), Some((b, _))) => Some(e.max(b)),
+                    (None, Some((b, _))) => Some(b),
+                    (e, None) => e,
+                };
                 price = each.unwrap_or(0.0);
                 n = n.min(each.map_or(0.0, |each| (can.to_f64() / each).floor()));
             }
@@ -179,6 +198,9 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
             post(&mut ledger, &mut book, Side::treasury(route.to_id, &mut money.0), Side::wagon(route.seq, &mut wagon.purse),
                 paid, Reason::Sale, now, day);
             budget.spent += paid;
+            if bid.is_some() {
+                market.fill(route.to_id, g, n, price, today);
+            }
             wagon.sold_here[g] += n;
             wagon.takings_here += paid;
             crate::atlas::paid(wagon, g, paid);
@@ -189,24 +211,26 @@ pub(crate) fn sell(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, 
 }
 
 /// The far end's households buy up to `own` of comfort good `g` (of `kind`) off `wagon` with their savings, at the price
-/// an eager buyer of their mood and savings pays (`bargain`), as far as their purse goes: banked as credit toward their
-/// rations (`People::comfort_owed`), the goods used. How many they bought.
+/// an eager buyer of their mood and savings pays (`bargain`), or the town's `bid` where that's more (`market.rs`), as
+/// far as their purse goes: banked as credit toward their rations (`People::comfort_owed`), the goods used. How many
+/// they bought, and at what each.
 #[allow(clippy::too_many_arguments)]
 fn households_buy(content: &Content, ledger: &mut Ledger, book: &mut CashBook, people: &mut People, wagon: &mut Wagon,
-        route: &Route, g: usize, kind: usize, own: f64, on_hand: f64, (seller, buyer): (u8, u8), (now, day): (u64, u64))
-        -> f64 {
+        route: &Route, g: usize, kind: usize, own: f64, on_hand: f64, (seller, buyer): (u8, u8), bid: Option<f64>,
+        (now, day): (u64, u64)) -> (f64, f64) {
     let savings = people.purse.at_least_zero();
     let value = content.goods[g].value.max(1e-9);
     let credit = (-people.comfort_owed[kind]).max(0.0) / value;
     let mut n = wagon.cargo[g].min((own - credit).floor());
     if n <= 0.0 || !savings.is_positive() {
-        return 0.0;
+        return (0.0, 0.0);
     }
     let eager = crate::bargain::eagerness(content, people.mood, savings.to_f64());
-    let Some(each) = crate::bargain::unit_price(content, g, on_hand, n, on_hand + own, seller, buyer, eager) else { return 0.0 };
+    let bargained = crate::bargain::unit_price(content, g, on_hand, n, on_hand + own, seller, buyer, eager);
+    let Some(each) = bargained.map_or(bid, |e| Some(bid.map_or(e, |b| e.max(b)))) else { return (0.0, 0.0) };
     n = n.min((savings.to_f64() / each.max(1e-9)).floor());
     if n <= 0.0 {
-        return 0.0;
+        return (0.0, 0.0);
     }
     wagon.cargo[g] -= n;
     ledger.used[g] += n;
@@ -217,7 +241,7 @@ fn households_buy(content: &Content, ledger: &mut Ledger, book: &mut CashBook, p
     wagon.sold_here[g] += n;
     wagon.takings_here += paid;
     crate::atlas::paid(wagon, g, paid);
-    n
+    (n, each)
 }
 
 /// A good that sold well here, the buyer's people using it steadily: a standing order, if they trust each other (in

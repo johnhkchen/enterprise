@@ -34,6 +34,7 @@ pub mod jobs;
 pub mod kit;
 pub mod lockers;
 pub mod map;
+pub mod market;
 pub mod messages;
 pub mod orders;
 pub mod pallet;

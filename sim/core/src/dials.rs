@@ -191,6 +191,12 @@ dials! {
     // Advances and refunds (`contract/Advance.java`).
     /// The share of a contract's worth the buyer pays up front, for a draft that asks for an advance (a third).
     advance_share: f64 = 1.0 / 3.0,
+    // The market (`market.rs`, `docs/markets-plan.md`).
+    /// Towns keep a book of bids, a wagon sells to a bid at it, and Farmers price crops from the bids; off, goods sell
+    /// at their worth as bargained.
+    market: bool = true,
+    /// What an unfilled bid rises by a day, toward what the good's use is worth to the town.
+    bid_creep: f64 = 0.1,
     // bargain-and-par
     /// Merchants bargain by level at the far end (`Bargain.java`); off, every good sells at its full value.
     bargain: bool = true,

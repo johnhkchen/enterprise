@@ -39,12 +39,20 @@ pub fn follow(content: Res<Content>, mut towns: Query<(&Roster, &mut Lockers, &m
 /// Every town's missed restocks replayed, its managed lockers trading at each.
 #[allow(clippy::type_complexity)]
 pub fn restock(clock: Res<Clock>, content: Res<Content>, mut ledger: ResMut<Ledger>, mut book: ResMut<CashBook>,
-        seed: Res<Rng>, mut dice: ResMut<Dice>,
+        seed: Res<Rng>, mut dice: ResMut<Dice>, market: Res<crate::market::Market>,
         mut towns: Query<(&Town, &mut Roster, &mut Lockers, &mut Stock, &mut Money, &People)>) {
     let mut order: Vec<_> = towns.iter_mut().collect();
     order.sort_by_key(|(t, ..)| t.id);
     for (town, mut roster, mut lockers, mut stock, mut money, people) in order {
         lockers.workshop_keeps = crate::workshop::keeps(&content, &roster, people, &stock);
+        // And what the town bids more for than its lockers pay (`market.rs`): the paper its books would fetch more for.
+        if content.dials.market {
+            for (g, keep) in lockers.workshop_keeps.iter_mut().enumerate() {
+                if market.bid(town.id, g).is_some_and(|(each, _)| each > content.goods[g].value) {
+                    *keep = keep.max(stock.0[g]);
+                }
+            }
+        }
         let mut books = Books { ledger: &mut ledger, book: &mut book, rng: dice.of(town.id, &seed) };
         catch_up(&content, &mut books, clock.now, town.id, &mut roster, &mut lockers, &mut stock, &mut money);
         lockers.workshop_keeps.clear(); // worked out at each restock, never kept

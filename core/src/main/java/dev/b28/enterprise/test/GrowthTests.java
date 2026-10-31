@@ -115,6 +115,23 @@ public final class GrowthTests {
      * lanes every 38, wards of 32 x 32 (8 tiles), plots 16 deep back to back with their yards, whole tiles wide (12, 16,
      * 20; a whole ward's 32), each from a tile line, the same lines across the street, none on a street.
      */
+    /**
+     * A workshop's yard by its trade: Lordaeron's farmer gets the baker's, its mason its own; a kit race, whose rules
+     * note "no yard tiles yet" as a string, its trade's own (an orc town laying a farmer's home crashed the server).
+     */
+    @GameTest(template = "floor")
+    public static void aWorkshopsYardIsItsTradesOrTheRulesNamed(GameTestHelper helper) {
+        var resources = helper.getLevel().getServer().getResourceManager();
+        helper.assertTrue("baker".equals(dev.b28.enterprise.territory.Plots.yardTrade(resources, "lordaeron", "farmer")),
+                "Lordaeron's farmer: the baker's yard");
+        helper.assertTrue("mason".equals(dev.b28.enterprise.territory.Plots.yardTrade(resources, "lordaeron", "mason")),
+                "its mason: its own");
+        helper.assertTrue("farmer".equals(dev.b28.enterprise.territory.Plots.yardTrade(resources, "orc", "farmer")),
+                "an orc farmer: its own, the rules' yards a note");
+        helper.assertTrue(dev.b28.enterprise.territory.Plots.yardTrade(resources, "orc", null) == null, "a home: none");
+        helper.succeed();
+    }
+
     @GameTest(template = "floor")
     public static void aNewTownsWardsFrontTheStudiosHouses(GameTestHelper helper) {
         var plan = new TownPlans.Plan(new BlockPos(0, 64, 0), new TownPlans.Rect(-60, -60, 60, 60),

@@ -357,6 +357,23 @@ public final class Plots {
             boolean steps) {}
 
     /**
+     * The trade whose front yard a workshop's occupant gets (the town rules' `yards.front.by_trade`: the smith's for the
+     * smiths, the baker's for the farmer), else its own; none for a home with no trade. A kit race's `yards` is a note, a
+     * string, till it has yard tiles of its own: its trade's own.
+     */
+    public static String yardTrade(ResourceManager resources, String kingdom, String trade) {
+        if (trade == null) {
+            return null;
+        }
+        return WallKit.json(resources, "town_rules/" + kingdom + ".json")
+                .filter(r -> r.has("yards") && r.get("yards").isJsonObject())
+                .map(r -> r.getAsJsonObject("yards")).filter(y -> y.has("front") && y.get("front").isJsonObject())
+                .map(y -> y.getAsJsonObject("front")).filter(f -> f.has("by_trade") && f.get("by_trade").isJsonObject())
+                .map(f -> f.getAsJsonObject("by_trade")).filter(b -> b.has(trade))
+                .map(b -> b.get(trade).getAsString().replace("trade:", "")).orElse(trade);
+    }
+
+    /**
      * Lays a plot: {@code house} (a home kit) in it, a front and a back yard of the kingdom's for its width, and the
      * path from the street to the door. {@code corner} is the plot's in the world at the house's ground; {@code width}
      * and {@code depth} its size as authored. Empty if the house can't be laid.
@@ -401,14 +418,7 @@ public final class Plots {
         Optional<String> front, back;
         int pathFrom = h[1] + house.depth(), pathTo = depth;
         if (!tiles.isEmpty()) {
-            String yardTrade = null;
-            if (trade != null) {
-                var rules = WallKit.json(resources, "town_rules/" + kingdom + ".json");
-                yardTrade = rules.map(r -> r.getAsJsonObject("yards")).filter(y -> y.has("front"))
-                        .map(y -> y.getAsJsonObject("front")).filter(f -> f.has("by_trade"))
-                        .map(f -> f.getAsJsonObject("by_trade")).filter(b -> b.has(trade))
-                        .map(b -> b.get(trade).getAsString().replace("trade:", "")).orElse(trade);
-            }
+            String yardTrade = yardTrade(resources, kingdom, trade);
             var likes = Yards.likes(tier, yardTrade);
             var f = Yards.fill(tiles, "yard:front", width, doorX, likes, seed);
             // Against the street: a front yard a tile deep, the yard's tiles 3, the row by the house the doorstep's.

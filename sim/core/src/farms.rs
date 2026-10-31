@@ -265,6 +265,9 @@ pub struct Farm {
     pub sales_seen: f64,
     /// How many plots a Farmer tends as many as its level gives: half again with hoes for all (`kit.rs` sets it).
     pub hands: f64,
+    /// What each good is worth to the town, where its book says other than its worth (`market.rs`): its bid while it
+    /// wants some, else its mark. The plan, rotation and fields price crops by it.
+    pub prices: BTreeMap<GoodId, f64>,
 }
 
 impl Default for Farm {
@@ -306,6 +309,7 @@ impl Default for Farm {
             sales_day: 0,
             sales_seen: 0.0,
             hands: 1.0,
+            prices: BTreeMap::new(),
         }
     }
 }
@@ -327,6 +331,7 @@ pub struct Wants {
     pub demand: BTreeMap<GoodId, f64>,
     pub draws: BTreeMap<GoodId, (f64, f64)>,
     pub needs: BTreeMap<GoodId, f64>,
+    pub prices: BTreeMap<GoodId, f64>,
 }
 
 impl Wants {
@@ -347,7 +352,12 @@ impl Wants {
             *demand.entry(g).or_insert(0.0) += n;
             *needs.entry(g).or_insert(0.0) += n;
         }
-        Wants { demand, draws: farm.draws.clone(), needs }
+        Wants { demand, draws: farm.draws.clone(), needs, prices: farm.prices.clone() }
+    }
+
+    /// What an item of a good is worth to the town: its book's price, else its worth.
+    pub fn price(&self, content: &Content, g: GoodId) -> f64 {
+        self.prices.get(&g).copied().unwrap_or(content.goods[g].value)
     }
 
     /// What the town would buy of a good, items a day.
@@ -379,20 +389,25 @@ struct Use {
     each: f64,
 }
 
-/// A crop's uses (`Territory.usesOf`): as itself at its worth; as what a trade makes of it alone (paper of cane, bread
-/// of wheat) at that good's worth an item of the crop; and its other draws.
+/// A crop's uses (`Territory.usesOf`): as itself at its price to the town ([`Wants::price`]: its worth, where its book
+/// says no other); as what a trade makes of it alone (paper of cane, bread of wheat) at that good's price an item of
+/// the crop, and for that good's draws (paper bid for down the road); and its other draws.
 fn uses_of(content: &Content, crop: GoodId, wants: &Wants) -> Vec<Use> {
     let mut uses = Vec::new();
     if wants.demand(crop) > 0.0 {
-        uses.push(Use { crop, per_day: wants.demand(crop), each: content.goods[crop].value });
+        uses.push(Use { crop, per_day: wants.demand(crop), each: wants.price(content, crop) });
     }
     let name = content.goods[crop].name.as_str();
     for (input, n_in, output, n_out) in CONVERSIONS {
         if input != name {
             continue;
         }
-        if let Some(made) = content.good(output).filter(|&m| wants.demand(m) > 0.0) {
-            uses.push(Use { crop, per_day: wants.demand(made) * n_in / n_out, each: content.goods[made].value * n_out / n_in });
+        let Some(made) = content.good(output) else { continue };
+        if wants.demand(made) > 0.0 {
+            uses.push(Use { crop, per_day: wants.demand(made) * n_in / n_out, each: wants.price(content, made) * n_out / n_in });
+        }
+        if let Some(&(per_day, each)) = wants.draws.get(&made).filter(|d| d.0 > 0.0) {
+            uses.push(Use { crop, per_day: per_day * n_in / n_out, each: each * n_out / n_in });
         }
     }
     if let Some(&(per_day, each)) = wants.draws.get(&crop) {
@@ -665,7 +680,7 @@ pub fn choose(content: &Content, wants: &Wants, grown: &BTreeMap<GoodId, f64>, f
         let already: f64 = all.iter().filter(|&&c| sold_as(content, c) == sold_as(content, crop)).map(|&c| grown_of(c)).sum();
         // (Fed, a growing town counts what its lockers take for a crop too: cane for its Cartographers' paper.)
         let fed = food_points >= 2.0 * FOOD_PAR_POINTS;
-        let value = (wanted(content, crop, wants, food_only && !fed) - already) * content.goods[sold_as(content, crop)].value;
+        let value = (wanted(content, crop, wants, food_only && !fed) - already) * wants.price(content, sold_as(content, crop));
         if value > best_value {
             best = Some(crop);
             best_value = value;

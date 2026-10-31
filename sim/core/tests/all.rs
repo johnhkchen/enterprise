@@ -34,6 +34,7 @@ mod kit;
 mod land;
 mod locker_host;
 mod lockers;
+mod market;
 mod mint;
 mod orders;
 mod packing;

@@ -109,7 +109,7 @@ book's numbers. Nothing per tick.
 
 Each phase lands on its own, gated, with a short study sized to what it checks.
 
-1. **The book in the core.** Bids and asks from today's wants and surplus, creeping prices, marks from fills; wagons sell
+1. **Built 2026-10-31 (see the decisions).** **The book in the core.** Bids and asks from today's wants and surplus, creeping prices, marks from fills; wagons sell
    to bids and buy from asks; `Listings` becomes the book's news. Trace tables `book` and `fills`. Measure: a 30-day
    lane on seed 1717 (about 10 minutes); paper's mark rises where it's short. About 4 hours.
 2. **Farms follow prices.** Tending and fields by price x land yield; the core learns each field's land. Measure: seed

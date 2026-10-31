@@ -33,6 +33,7 @@ pub mod herds;
 pub mod jobs;
 pub mod kit;
 pub mod lockers;
+pub mod market;
 pub mod orders;
 pub mod pallet_messages;
 pub mod plan;

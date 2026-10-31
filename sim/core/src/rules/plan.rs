@@ -70,7 +70,7 @@ pub fn start(clock: Res<Clock>, content: Res<Content>, mut pallets: ResMut<crate
 fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktakes: Res<crate::atlas::Stocktakes>,
         mut routes: Query<(&Route, &mut RouteState)>, towns: Query<(&Stock, &Trades, &People, &Money)>,
         rosters: Query<&crate::roster::Roster>, pallets: Res<crate::pallet::Pallets>, realms: Query<&Realm>,
-        orders: Res<crate::orders::Orders>, lockers: Query<&crate::lockers::Lockers>) {
+        orders: Res<crate::orders::Orders>, lockers: Query<&crate::lockers::Lockers>, market: Res<crate::market::Market>) {
     use crate::atlas::{Want, Why};
     let d = &content.dials;
     let n = content.goods.len();
@@ -123,6 +123,9 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
         // stocktake, and counts what's on its way there; else its stock as it is.
         // (A realm's wagons are never crewed from a roster: `realms.rs`.)
         let rostered = realms.get(route.from).is_err() && crewed(rosters.get(route.from).ok());
+        // What wagons last saw its shop bid (`market.rs`): a good it bids for is wanted, as many as it bids for, at the
+        // bid at least.
+        let seen_bid = |g: usize| if content.dials.market && far_realm.is_none() { market.seen_bid(route.to_id, g) } else { None };
         let seen = if rostered { stocktakes.fresh(&content, route.to_id, clock.now) } else { None };
         let on_the_way = if rostered { aboard.get(&route.to_id) } else { None };
         let held = |g: usize| -> f64 {
@@ -183,7 +186,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
                 if crate::bargain::unit_price(&content, g, held, sells, held + gap, seller, buyer, eager).is_none() {
                     continue;
                 }
-                let each = content.goods[g].value * eager;
+                let each = (content.goods[g].value * eager).max(seen_bid(g).map_or(0.0, |(b, _)| b));
                 plan.cargo[g] += going;
                 stacks += (going / stack).ceil() as u32;
                 load.slots = stacks;
@@ -215,7 +218,7 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
             match content.goods[g].comfort.filter(|_| far_realm.is_none()) {
                 Some(_) => continue, // (the comforts went first)
                 None if far_trades.uses[g] > 0.0 || needs_input(g) || far_realm.is_some_and(|r| r.wants.contains(&g))
-                    || locker_par.is_some() || orders.wanted_of(route.to_id, g) > 0.0 => {
+                    || locker_par.is_some() || orders.wanted_of(route.to_id, g) > 0.0 || seen_bid(g).is_some() => {
                     // A good the far end wants for its own reasons has its usual shelf, whatever it has ordered. One
                     // wanted only because a player's shop there ordered it has the room `Warehouse.par(to, item, true)`
                     // gives it (a stack at least), less what's held: an order only adds the good to the wanted set
@@ -225,9 +228,13 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
                         (Want::of(far_trades, g), shelf(&content, far_trades, g))
                     } else if let Some(par) = locker_par {
                         (Want::Locker, par)
-                    } else {
+                    } else if orders.wanted_of(route.to_id, g) > 0.0 {
                         (Want::Ordered, crate::bargain::par(&content, 0.0, true))
+                    } else {
+                        (Want::Bid, 0.0)
                     };
+                    // As many as it bids for are room on its shelf.
+                    let par = seen_bid(g).map_or(par, |(_, want)| par.max(held(g) + want));
                     let room = par - held(g);
                     let have = home_stock.0[g] - planned;
                     let keep = shelf(&content, home_trades, g);
@@ -266,13 +273,14 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
                 continue;
             }
             let far_held = if want.is_some() { held(g) } else { far_stock.0[g] };
-            if crate::bargain::unit_price(&content, g, far_held, going, par, seller, buyer, eager).is_none() {
+            let bid = seen_bid(g).map(|(b, _)| b);
+            if bid.is_none() && crate::bargain::unit_price(&content, g, far_held, going, par, seller, buyer, eager).is_none() {
                 if let Some(want) = want {
                     whys.push((Some(g), Why::NoDeal(want), going));
                 }
                 continue;
             }
-            let each = content.goods[g].value * eager;
+            let each = (content.goods[g].value * eager).max(bid.unwrap_or(0.0));
             plan.cargo[g] += going;
             stacks += (going / stack).ceil() as u32;
             load.slots = stacks;
