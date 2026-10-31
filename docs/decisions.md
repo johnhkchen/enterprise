@@ -1088,6 +1088,13 @@ mod's), but no road ever chose it. Then: build them first.
   land (`kit::hills`: its holding's `Land::Hills` hexes, its own among them), and yields half again for each hill hex
   beyond the first, up to three (`ore_ground`); a mine dug before stands idle off the hills. A port wanting ore founds
   a colony on them.
+- **Supply and demand through an order book in every town's shop (John, 2026-10-31: "Let's use supply and demand as
+  the core mechanism ... letting the Create Numismatics shops mediate trade between settlements").** Each town's shop
+  keeps a bid and an ask per good, moved toward clearing on touch; a fill marks the town's price; news of a book travels
+  only with carriers; Merchants trade the spread; Farmers tend and plant by price times their land's yield for the crop.
+  Crops are datapack files (item, yield per land, water, what it's sold as or converts into), so a modded crop with a
+  file and a bid is one villages grow for money. Comfort goods carry a quality that weights the comfort met (jeans over
+  leather boots). Chosen over a price set from days of cover. The plan and its phases: `docs/markets-plan.md`.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server
