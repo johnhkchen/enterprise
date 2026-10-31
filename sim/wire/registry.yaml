@@ -407,6 +407,9 @@ ContentPack:
     - packages:
         SEQ:
           TYPENAME: PackPackage
+    - crops:
+        SEQ:
+          TYPENAME: PackCrop
 ContractLine:
   STRUCT:
     - id: U32
@@ -1094,10 +1097,28 @@ PackAnimal:
         OPTION: STR
     - hide:
         OPTION: STR
+PackCrop:
+  STRUCT:
+    - good: STR
+    - rotation: BOOL
+    - sold_as:
+        OPTION: STR
+    - water: U32
+    - cash: BOOL
+    - fit:
+        SEQ:
+          TYPENAME: PackFit
+    - made_into:
+        SEQ:
+          TYPENAME: PackMade
 PackDial:
   STRUCT:
     - name: STR
     - value: F64
+PackFit:
+  STRUCT:
+    - land: STR
+    - fit: F64
 PackGood:
   STRUCT:
     - name: STR
@@ -1111,6 +1132,11 @@ PackGood:
         SEQ:
           TYPENAME: GoodFlag
     - weight: F64
+PackMade:
+  STRUCT:
+    - good: STR
+    - from: F64
+    - makes: F64
 PackPackage:
   STRUCT:
     - name: STR

@@ -97,6 +97,48 @@ public final class JobsTests {
         helper.succeed();
     }
 
+    /**
+     * Crops are files (docs/markets-plan.md 5): the mod's six in their order, and one a datapack adds (torchflowers here,
+     * cotton once its mod is in) read like them, planted for what's bought of it and sent to the core with its land.
+     */
+    @GameTest(template = "floor")
+    public static void aCropAddedByFileIsPlantedAndGoesToTheCore(GameTestHelper helper) {
+        var crops = dev.b28.enterprise.territory.CropFiles.crops();
+        helper.assertTrue(crops.equals(java.util.List.of(net.minecraft.world.item.Items.WHEAT, net.minecraft.world.item.Items.CARROT,
+                net.minecraft.world.item.Items.POTATO, net.minecraft.world.item.Items.BEETROOT, net.minecraft.world.item.Items.SUGAR_CANE,
+                net.minecraft.world.item.Items.SWEET_BERRIES)), "the mod's six, in order: " + crops);
+        helper.assertTrue(dev.b28.enterprise.territory.CropFiles.soldAs(net.minecraft.world.item.Items.SUGAR_CANE)
+                == net.minecraft.world.item.Items.PAPER, "cane sells as paper");
+        var file = com.google.gson.JsonParser.parseString("""
+                {"item": "minecraft:torchflower", "block": "minecraft:torchflower_crop", "order": 6, "cash": true,
+                 "fit": {"plains": 1.0, "desert": 0.1},
+                 "made_into": [{"good": "minecraft:orange_dye", "from": 1, "makes": 1}]}""").getAsJsonObject();
+        var flower = dev.b28.enterprise.territory.CropFiles.read(
+                net.minecraft.resources.ResourceLocation.parse("enterprise:crops/torchflower.json"), file);
+        helper.assertTrue(flower.sown() == dev.b28.enterprise.territory.CropFiles.Sown.FARMLAND, "on farmland by default");
+        var all = new java.util.ArrayList<>(crops);
+        all.add(flower.item());
+        helper.setBlock(new BlockPos(3, 2, 3), dev.b28.enterprise.merchant.Merchant.DESK.get());
+        helper.setBlock(new BlockPos(4, 2, 3), Blocks.CHEST);
+        var stock = dev.b28.enterprise.merchant.MerchantStock.at(helper.getLevel(), helper.absolutePos(new BlockPos(3, 2, 3)));
+        stock.insert(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BREAD, 128)); // fed
+        helper.assertTrue(dev.b28.enterprise.territory.Fields.choose(all, Map.of("minecraft:torchflower", 48.0), Map.of(), stock,
+                Map.of(), false).filter(net.minecraft.world.item.Items.TORCHFLOWER::equals).isPresent(), "bought: a field of it");
+        var pack = dev.b28.enterprise.binding.ModPack.crop(flower);
+        helper.assertTrue(pack.good().equals("minecraft:torchflower") && pack.cash() && pack.water() == 1
+                && pack.soldAs().isEmpty() && pack.fit().size() == 2 && pack.fit().get(1).land().equals("desert")
+                && pack.madeInto().get(0).good().equals("minecraft:orange_dye"), "to the core as its file has it: " + pack);
+        var bad = com.google.gson.JsonParser.parseString("""
+                {"item": "minecraft:torchflower", "block": "minecraft:torchflower_crop", "fit": {"moon": 2.0}}""").getAsJsonObject();
+        try {
+            dev.b28.enterprise.territory.CropFiles.read(net.minecraft.resources.ResourceLocation.parse("enterprise:crops/bad.json"), bad);
+            helper.fail("a land that isn't one, read");
+        } catch (IllegalArgumentException e) {
+            helper.assertTrue(e.getMessage().contains("no land moon"), e.getMessage());
+        }
+        helper.succeed();
+    }
+
     @GameTest(template = "floor", skyAccess = true)
     public static void fieldsGrowWhatTheVillageWouldBuy(GameTestHelper helper) {
         helper.setBlock(new BlockPos(3, 2, 3), dev.b28.enterprise.merchant.Merchant.DESK.get());

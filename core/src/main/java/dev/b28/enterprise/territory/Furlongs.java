@@ -314,7 +314,8 @@ public final class Furlongs {
             case "beetroot" -> Items.BEETROOT;
             case "sugar_cane" -> Items.SUGAR_CANE;
             case "sweet_berries" -> Items.SWEET_BERRIES;
-            default -> Items.WHEAT;
+            case "wheat" -> Items.WHEAT;
+            default -> CropFiles.named(state.substring(state.indexOf(':') + 1)).map(CropFiles.Crop::item).orElse(Items.WHEAT);
         };
     }
 
@@ -571,7 +572,7 @@ public final class Furlongs {
             } else {
                 level.setBlock(ground, Blocks.FARMLAND.defaultBlockState()
                         .setValue(net.minecraft.world.level.block.FarmBlock.MOISTURE, 7), 2);
-                CropBlock block = (CropBlock) seedling(crop).getBlock();
+                CropBlock block = CropFiles.farmland(crop);
                 int ripe = block.getMaxAge();
                 int stage = Math.max(0, ripe - behind - (Math.floorMod(h, 7L) == 0 ? 2 : 0));
                 level.setBlock(over, block.getStateForAge(stage), 2);
@@ -580,14 +581,4 @@ public final class Furlongs {
         f.state = "crop:" + FieldTiles.name(crop);
     }
 
-    private static BlockState seedling(Item crop) {
-        if (crop == Items.CARROT) {
-            return Blocks.CARROTS.defaultBlockState();
-        } else if (crop == Items.POTATO) {
-            return Blocks.POTATOES.defaultBlockState();
-        } else if (crop == Items.BEETROOT) {
-            return Blocks.BEETROOTS.defaultBlockState();
-        }
-        return Blocks.WHEAT.defaultBlockState();
-    }
 }

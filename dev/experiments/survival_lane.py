@@ -2,9 +2,12 @@
 """One survival study on a lane of its own: a world of SEED in core/run/lanes/N, its server, the study, the server
 stopped. The ground comes from a fixture when one was kept for these flags (fixtures.py), else it's made and kept.
 
-    python3 dev/experiments/survival_lane.py N SEED DAYS OUTPREFIX [--from DAY] [--audit | --no-audit] [-- study flags]
+    python3 dev/experiments/survival_lane.py N SEED DAYS OUTPREFIX [--from DAY] [--audit | --no-audit] [--bid B ...]
+        [-- study flags]
 
-`--from DAY`: carry on from the run's point of that day or the latest before it (not the latest that holds).
+`--from DAY`: carry on from the run's point of that day or the latest before it (not the latest that holds). `--bid
+TOWN:GOOD:PRICE:COUNT[@DAY]`: a player's buying order at that network town's shop, added to the study's flags (which
+`--` replaces, the default's included).
 
 A point is reused across any change staleness.toml doesn't name, and the reuse audited: the lane says which files
 changed, carries on from the point before it instead, and at the end compares its towns at the reused point's day, and
@@ -75,6 +78,8 @@ def main():
     flags = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else DEFAULT
     mine = sys.argv[:sys.argv.index("--")] if "--" in sys.argv else sys.argv
     latest = int(mine[mine.index("--from") + 1]) if "--from" in mine else None
+    # A player's buying order on the study's network, its flags or the default's (survival_study.py's --bid).
+    flags = flags + [a for k, a in enumerate(mine) for a in (["--bid", mine[k + 1]] if a == "--bid" else [])]
     lane = REPO / "core" / "run" / "lanes" / str(n)
     lane.mkdir(parents=True, exist_ok=True)
     subprocess.run(["rm", "-rf", str(lane / "world"), str(lane / "config")], check=True)

@@ -1,0 +1,25 @@
+{
+  "item": "minecraft:sugar_cane",
+  "block": "minecraft:sugar_cane",
+  "sown": "by_water",
+  "order": 4,
+  "rotation": false,
+  "sold_as": "minecraft:paper",
+  "cash": true,
+  "fit": {
+    "plains": 0.5,
+    "woods": 0.5,
+    "taiga": 0.3,
+    "desert": 1.0,
+    "shore": 1.0,
+    "hills": 0.4,
+    "water": 1.0
+  },
+  "made_into": [
+    {
+      "good": "minecraft:paper",
+      "from": 1,
+      "makes": 1
+    }
+  ]
+}

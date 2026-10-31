@@ -106,8 +106,10 @@ fn places_of(content: &Content, sites: &Query<(&Town, Option<&Works>)>, routes: 
     places
 }
 
-/// A desk's master Merchant fills its shops' orders, before sourcing looks at what is open (`Broker.broker` to
-/// `fill`); a desk that has none has nothing open and posts nothing.
+/// A desk's Merchant fills its shops' orders, before sourcing looks at what is open (`Broker.broker` to `fill`); a desk
+/// with none has nothing open, and one with no master posts nothing. Any Merchant passes on what its town buys for a
+/// player's buying vendor (`docs/markets-plan.md` 7: the vendor is a bid in the town's book), not the master alone as
+/// the mod has it: the master brokers (signals, the stalls, the town's own shops).
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn review(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, order: Res<Towns>, mut orders: ResMut<Orders>,
         mut posted: ResMut<Signals>, mut book: ResMut<Book>, mut ledger: ResMut<Ledger>, mut cash: ResMut<CashBook>,
@@ -118,15 +120,17 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, mint: Res<Mint>, order: 
     for &e in &order.0 {
         let Ok((town, mut stock, mut money, trades, workshop, roster)) = towns.get_mut(e) else { continue };
         let t = town.id;
-        if roster.and_then(|r| r.merchant_level()).unwrap_or(0) < MASTER {
-            // Only a master Merchant brokers: a desk that has none has nothing open and posts nothing.
+        let level = roster.and_then(|r| r.merchant_level());
+        if level.unwrap_or(0) < MASTER && posted.desks.contains_key(&t) {
+            // Only a master Merchant brokers: a desk that has none posts nothing.
+            posted.desks.remove(&t);
+            posted.changed = true;
+        }
+        if level.is_none() {
+            // No Merchant: nothing passed on, nothing open.
             if orders.wanted.contains_key(&t) || orders.orders.iter().any(|o| o.town == t && o.open > 0.0) {
                 orders.wanted.remove(&t);
                 orders.orders.iter_mut().filter(|o| o.town == t).for_each(|o| o.open = 0.0);
-            }
-            if posted.desks.contains_key(&t) {
-                posted.desks.remove(&t);
-                posted.changed = true;
             }
             continue;
         }

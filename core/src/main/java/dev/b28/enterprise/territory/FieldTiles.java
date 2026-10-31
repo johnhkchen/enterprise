@@ -44,18 +44,7 @@ public final class FieldTiles {
 
     /** The set's name for a crop the town plants. */
     static String name(Item crop) {
-        if (crop == Items.CARROT) {
-            return "carrot";
-        } else if (crop == Items.POTATO) {
-            return "potato";
-        } else if (crop == Items.BEETROOT) {
-            return "beetroot";
-        } else if (crop == Items.SUGAR_CANE) {
-            return "sugar_cane";
-        } else if (crop == Items.SWEET_BERRIES) {
-            return "sweet_berries";
-        }
-        return "wheat";
+        return CropFiles.name(crop);
     }
 
     /** A field of the crop, by the seed; empty if the set has none for it. */

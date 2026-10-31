@@ -167,9 +167,19 @@ fn packs() -> Vec<ContentPack> {
         ContentPack::new(0, (0..130).map(|i| PackGood::new(&format!("test:good_{i}"), 1.0 + i as f64, 64)).collect()),
         ContentPack { day_ticks: 24_000, goods: goods(), comforts: vec!["reading".into(), "treats".into(), String::new()],
             trades: vec!["merchant".into(), "farmer".into(), "none".into(), "nitwit".into()], recipes: recipes(), animals: animals(),
-            dials: pack_dials(), packages: pack_packages() },
+            dials: pack_dials(), packages: pack_packages(), crops: pack_crops() },
         ContentPack { day_ticks: 1, goods: vec![], comforts: vec![], trades: vec![], recipes: vec![], animals: vec![], dials: vec![],
-            packages: vec![] },
+            packages: vec![], crops: vec![] },
+    ]
+}
+
+fn pack_crops() -> Vec<PackCrop> {
+    vec![
+        PackCrop { good: "test:cane".into(), rotation: false, sold_as: Some("test:paper".into()), water: 27, cash: true,
+            fit: vec![PackFit { land: "desert".into(), fit: 1.0 }, PackFit { land: "plains".into(), fit: 0.5 }],
+            made_into: vec![PackMade { good: "test:paper".into(), from: 1.0, makes: 1.0 }] },
+        PackCrop { good: "Br\u{f6}ly \u{1f33e}".into(), rotation: true, sold_as: None, water: u32::MAX, cash: false,
+            fit: vec![PackFit { land: String::new(), fit: f64::MAX }], made_into: vec![] },
     ]
 }
 
@@ -965,6 +975,10 @@ fixtures! {
     work_view_fixtures: WorkView = work_views();
     ground_view_fixtures: GroundView = ground_views();
     pack_package_fixtures: PackPackage = pack_packages();
+    pack_crop_fixtures: PackCrop = pack_crops();
+    pack_fit_fixtures: PackFit = vec![PackFit { land: "desert".into(), fit: 1.0 }, PackFit { land: String::new(), fit: f64::MAX }];
+    pack_made_fixtures: PackMade = vec![PackMade { good: "test:paper".into(), from: 1.0, makes: 1.0 },
+        PackMade { good: "x".repeat(300), from: f64::MIN_POSITIVE, makes: f64::MAX }];
     pallet_view_fixtures: PalletView = pallet_views();
     manifest_line_fixtures: ManifestLine = manifest_lines();
     vendor_read_fixtures: VendorRead = vendor_reads();

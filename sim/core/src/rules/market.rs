@@ -24,12 +24,14 @@ pub fn register(schedule: &mut Schedule) {
 /// while unfilled.
 #[allow(clippy::type_complexity)]
 pub fn review(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mut market: ResMut<Market>,
+        (orders, mint): (Res<crate::orders::Orders>, Res<crate::mint::Mint>),
         towns: Query<(&Town, &Stock, &People, &Trades, &Money, Option<&Roster>, Option<&crate::farms::Farm>)>) {
     if !content.dials.market {
         return;
     }
     let today = clock.now / content.day_ticks.max(1);
     let n = content.goods.len();
+    let rate = mint.rate(clock.now, content.day_ticks);
     for &e in &order.0 {
         let Ok((town, stock, people, trades, money, roster, farm)) = towns.get(e) else { continue };
         let t = town.id;
@@ -55,6 +57,17 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, order: Res<Towns>, mut m
                 None => Use { want: (shelf(&content, trades, g) - stock.0[g]).max(0.0).ceil(), ceiling: value },
             }
         }).collect();
+        // A player's buying vendor at its shop is a bid of the town's (`docs/markets-plan.md` 7): at its price, for what
+        // its purse pays (and its vendor has room for), once the town has a Merchant to pass the goods on.
+        let mut direct = direct;
+        if roster.is_some_and(|r| r.merchant_level().is_some()) {
+            for o in orders.orders.iter().filter(|o| o.town == t && o.lot >= 1.0 && o.price > 0.0) {
+                let lots = (o.purse / o.price).floor().min(o.room.unwrap_or(f64::INFINITY)).max(0.0);
+                let u = &mut direct[o.good];
+                u.want += lots * o.lot;
+                u.ceiling = u.ceiling.max(o.price / rate / o.lot);
+            }
+        }
         // And what its trades make of those (its roster's conversions).
         let conversions: Vec<_> = roster.map(|r| content.conversions.iter().filter(|c| crate::workshop::can_do(c, r))
             .map(|c| (c.inputs.clone(), c.output, c.out)).collect()).unwrap_or_default();

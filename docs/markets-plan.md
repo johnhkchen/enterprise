@@ -114,9 +114,9 @@ Each phase lands on its own, gated, with a short study sized to what it checks.
    lane on seed 1717 (about 10 minutes); paper's mark rises where it's short. About 4 hours.
 2. **Built 2026-10-31 (see the decisions; the land decides new fields, not the yield of those in the ground).** **Farms follow prices.** Tending and fields by price x land yield; the core learns each field's land. Measure: seed
    1717's desert towns tend cane and plant it; paper and reading over 60 days. About 2 hours and a 20-minute run.
-3. **Crops as data.** The datapack files, the wire, the fixed lists gone; game tests for a crop added by file. About 3
+3. **Built 2026-10-31 (see the decisions; seen bids price cash crops only).** **Crops as data.** The datapack files, the wire, the fixed lists gone; game tests for a crop added by file. About 3
    hours.
-4. **Players' shops as bids.** A player's buying vendor in its town's book (the binding); a study flag to inject one
+4. **Built 2026-10-31 (see the decisions; the near towns turn to cane, the far one plants it).** **Players' shops as bids.** A player's buying vendor in its town's book (the binding); a study flag to inject one
    (`--bid TOWN:GOOD:PRICE:COUNT`). Measure: a 3x paper bid at a hub turns far towns to cane. About 2 hours.
 5. **Quality.** The multiplier, in content and mood. About an hour.
 

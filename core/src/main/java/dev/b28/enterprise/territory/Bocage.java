@@ -454,12 +454,7 @@ public final class Bocage {
                 return;
             }
         }
-        CropBlock block = (CropBlock) switch (crop) {
-            case "carrot" -> Blocks.CARROTS;
-            case "potato" -> Blocks.POTATOES;
-            case "beetroot" -> Blocks.BEETROOTS;
-            default -> Blocks.WHEAT;
-        };
+        CropBlock block = CropFiles.named(crop).map(c -> CropFiles.farmland(c.item())).orElse((CropBlock) Blocks.WHEAT);
         level.setBlock(ground, Blocks.FARMLAND.defaultBlockState().setValue(net.minecraft.world.level.block.FarmBlock.MOISTURE, 7), 2);
         int ripe = block.getMaxAge();
         int behind = (int) Math.floorMod(Zoning.mix(fl.x0, fl.z0), 3L);

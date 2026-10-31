@@ -68,7 +68,7 @@ public final class ForwardSales {
         Map<String, Double> demand = territory.demand(market.get());
         Map<String, Double> grown = territory.farmPlan(market.get());
         long every = Math.max(Caravans.DEPARTURE_INTERVAL, 2 * Caravans.travelTicks(route.distance()));
-        for (Item crop : Territory.ROTATION) {
+        for (Item crop : Territory.rotation()) {
             String id = BuiltInRegistries.ITEM.getKey(crop).toString();
             // What it lacks of what its lockers use (at least a lot a round trip, to start a trade it has no crop for),
             // not all its villagers could buy.

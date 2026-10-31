@@ -389,9 +389,32 @@ def stays(v, first):
     return "--loaded" in sys.argv or (PLAYER and v == first)
 
 
+# `--bid TOWN:GOOD:PRICE:COUNT[@DAY]` (docs/markets-plan.md 7): a buying order at a network town's shop (TOWN its place
+# in the network, 0 the first), as a player's buying vendor would place it: COUNT of GOOD (minecraft:paper, or paper) at
+# PRICE emeralds each, in lots of 16 at most, paid at the mint's 16 spurs an emerald, placed on DAY (1 by default). The
+# town bids for it in its book and its wagons' news carries the bid down the roads; what's delivered leaves the world.
+BIDS = [sys.argv[k + 1] for k, a in enumerate(sys.argv) if a == "--bid"]
+
+
+def place_bids(desks, day, say):
+    for b in BIDS:
+        what, _, on = b.partition("@")
+        if int(on or 1) != day:
+            continue
+        town, good, price, count = what.split(":") if what.count(":") == 3 else (what.split(":", 1)[0], *what.split(":", 1)[1].rsplit(":", 2))
+        good = good if ":" in good else f"minecraft:{good}"
+        count = int(count)
+        lot = min(16, count)
+        spurs = max(1, round(float(price) * lot * 16))
+        purse = round(float(price) * count * 16)
+        said = rcon(f"enterprise core order {desks[int(town)]} {good} {lot} {spurs} {purse}").strip().splitlines()
+        say(f"day {day}: bid at town {town}: " + (said[-1] if said else "(no answer)"))
+
+
 def run_days(chosen, desks, roads, first, start, days, say, stages, points):
     for day in range(start, days + 1):
         started = time.time()
+        place_bids(desks, day, say)
         if day == 2 and "--loaded" not in sys.argv:
             # After the first day, the towns left to the core's ledgers: each town's conversion and harbour are laid in
             # its first day loaded (unloaded at once, three of seed 1001's four harbours waited for day 27, and the

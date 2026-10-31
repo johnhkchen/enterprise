@@ -203,7 +203,8 @@ fn the_desks_own_wagons_buy_up_the_open_order_at_the_far_end() {
 }
 
 #[test]
-fn a_merchant_below_level_five_does_none_of_it() {
+fn a_merchant_below_level_five_passes_on_what_the_buying_shops_want_and_brokers_nothing_else() {
+    // (`docs/markets-plan.md` 7: a player's buying vendor is a bid in its town's book, whoever its Merchant is.)
     let mut s = desk(4, 10.0);
     s.deliver(DESK, PAPER, 64.0);
     s.deliver(DESK, STICK, 64.0);
@@ -212,10 +213,11 @@ fn a_merchant_below_level_five_does_none_of_it() {
     s.stall(DESK, IRON, 4.0, 12.0, 8.0);
     s.own_shop(DESK);
     s.advance(3 * DAY);
-    assert!(s.contracts().is_empty(), "no contract with any shop");
-    assert!(s.orders(DESK).iter().all(|o| o.delivered == 0.0 && o.purse == o.purse.floor()));
-    assert_eq!(s.orders(DESK)[0].purse, 40.0);
-    assert!(s.order_wants(DESK).is_empty() && s.posted_signals(DESK).is_empty(), "nothing asked of the region");
+    assert!(!s.contracts().is_empty(), "the buying shops' contracts");
+    assert_eq!(s.orders(DESK)[0].delivered, 32.0, "two lots of paper, all its purse pays for");
+    assert_eq!(s.orders(DESK)[0].purse, 8.0);
+    assert!(s.order_wants(DESK).contains_key(&SHELL), "the shells it hasn't asked of the region");
+    assert!(s.posted_signals(DESK).is_empty(), "but no signal posted: only a master brokers");
     assert_eq!(s.stalls(DESK)[0].stock, 8.0, "nothing bought");
     assert_eq!(s.own_shops(DESK)[0].good, None, "and its shop stocked with nothing");
     assert_eq!(s.town(DESK).stock[STICK], 64.0);

@@ -5,6 +5,7 @@ import dev.b28.enterprise.army.Army;
 import dev.b28.enterprise.caravan.Squad;
 import dev.b28.enterprise.money.Prices;
 import dev.b28.enterprise.territory.Comforts;
+import dev.b28.enterprise.territory.CropFiles;
 import dev.b28.enterprise.territory.Husbandry;
 import dev.b28.enterprise.territory.Labour;
 import dev.b28.enterprise.territory.Territory;
@@ -13,6 +14,9 @@ import dev.b28.enterprise.wire.ContentPack;
 import dev.b28.enterprise.wire.GoodFlag;
 import dev.b28.enterprise.wire.PackAmount;
 import dev.b28.enterprise.wire.PackAnimal;
+import dev.b28.enterprise.wire.PackCrop;
+import dev.b28.enterprise.wire.PackFit;
+import dev.b28.enterprise.wire.PackMade;
 import dev.b28.enterprise.wire.PackDial;
 import dev.b28.enterprise.wire.PackGood;
 import dev.b28.enterprise.wire.PackPackage;
@@ -47,6 +51,8 @@ import net.minecraft.world.item.Items;
  * <li><b>Recipes and herds</b>: what the trades make ({@link Workshop#CONVERSIONS}) and the animals a town keeps
  * ({@link Husbandry#KINDS}), by the names of their goods. One list for the Java rules (Java mode) and the pack, until
  * the delete wave moves them here.</li>
+ * <li><b>Crops</b>: what a field can grow, one file each ({@link CropFiles}, {@code data/enterprise/crops/}): a
+ * datapack's crop is a crop the core's farms plant for a bid.</li>
  * <li><b>Packing</b>: the kinds of package a pallet's goods are shown in ({@link #PACKAGES}), each an item of the
  * mod's.</li>
  * <li><b>Dials</b>: the mod's settings ({@link Dials}) as the world starts with them. Where the mod's default differs
@@ -122,6 +128,7 @@ public final class ModPack {
     public static ContentPack of() {
         List<PackRecipe> recipes = recipes();
         List<PackAnimal> animals = animals();
+        List<PackCrop> crops = crops();
 
         // The items the pack's goods are: the mod's priced ones, and any a recipe or a herd uses that it doesn't price.
         TreeSet<String> ids = new TreeSet<>(Prices.listed());
@@ -134,6 +141,11 @@ public final class ModPack {
             a.meat().ifPresent(ids::add);
             a.wool().ifPresent(ids::add);
             a.hide().ifPresent(ids::add);
+        }
+        for (PackCrop c : crops) {
+            ids.add(c.good());
+            c.soldAs().ifPresent(ids::add);
+            c.madeInto().forEach(m -> ids.add(m.good()));
         }
         ids.add(id(Items.HAY_BLOCK)); // a wagon's team eats wheat or hay
 
@@ -150,7 +162,7 @@ public final class ModPack {
         if (kinds.isEmpty()) {
             throw new IllegalStateException("no item tags under enterprise:comforts/: the tags aren't loaded yet");
         }
-        return new ContentPack(DAY_TICKS, goods, kinds, trades(), recipes, animals, dials(), PACKAGES);
+        return new ContentPack(DAY_TICKS, goods, kinds, trades(), recipes, animals, dials(), PACKAGES, crops);
     }
 
     private static PackGood good(String id, Item item) {
@@ -194,6 +206,20 @@ public final class ModPack {
         recipes.addAll(VillagerCrafts.of(net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer(),
                 new java.util.HashSet<>(trades())));
         return recipes;
+    }
+
+    /** The crops a field can grow: the crop files, in their order. */
+    static List<PackCrop> crops() {
+        return CropFiles.all().stream().map(ModPack::crop).toList();
+    }
+
+    /** A crop file as the core takes it. */
+    public static PackCrop crop(CropFiles.Crop c) {
+        Item sold = c.soldAs();
+        return new PackCrop(id(c.item()), c.rotation(), sold == c.item() ? Optional.empty() : Optional.of(id(sold)),
+                c.sown().water, c.cash(),
+                CropFiles.LANDS.stream().filter(c.fit()::containsKey).map(l -> new PackFit(l, c.fit().get(l))).toList(),
+                c.madeInto().stream().map(m -> new PackMade(id(m.good()), m.from(), m.makes())).toList());
     }
 
     /** The animals a town keeps: the mod's herds, a sheep's wool and a cow's hide as the mod's Shepherd and Butcher have them. */

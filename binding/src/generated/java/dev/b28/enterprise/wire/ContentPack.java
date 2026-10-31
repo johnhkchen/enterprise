@@ -17,8 +17,9 @@ import java.util.Objects;
  * @param animals The animals a town keeps.
  * @param dials The dials the game sets for a new world, where it isn't the core's default (also what {@code reset} puts one back to).
  * @param packages The kinds of packing the game shows a pallet's packages in ({@code docs/pallets.md}: a crate, a barrel, a bundle), each an item kind of the host's: none, the core's own four (loose, crate, barrel, bundle). The core packs in crates by default, so a pack that lists any lists {@code loose} first (stacks lying on the pallet, no slots of its own) and {@code crate} second; the rest are the game's.
+ * @param crops The crops a field can grow (the game's crop files, {@code data/<namespace>/crops/<id>.json}): none, the mod's six for the goods the pack has (wheat, carrot, potato, beetroot, cane and berries).
  */
-public record ContentPack(long dayTicks, List<PackGood> goods, List<String> comforts, List<String> trades, List<PackRecipe> recipes, List<PackAnimal> animals, List<PackDial> dials, List<PackPackage> packages) {
+public record ContentPack(long dayTicks, List<PackGood> goods, List<String> comforts, List<String> trades, List<PackRecipe> recipes, List<PackAnimal> animals, List<PackDial> dials, List<PackPackage> packages, List<PackCrop> crops) {
     public ContentPack {
         Objects.requireNonNull(goods, "goods");
         goods = List.copyOf(goods);
@@ -34,6 +35,8 @@ public record ContentPack(long dayTicks, List<PackGood> goods, List<String> comf
         dials = List.copyOf(dials);
         Objects.requireNonNull(packages, "packages");
         packages = List.copyOf(packages);
+        Objects.requireNonNull(crops, "crops");
+        crops = List.copyOf(crops);
     }
 
     public void encode(PostcardOut out) {
@@ -45,10 +48,11 @@ public record ContentPack(long dayTicks, List<PackGood> goods, List<String> comf
         out.list(this.animals, (o1, e1) -> e1.encode(o1));
         out.list(this.dials, (o1, e1) -> e1.encode(o1));
         out.list(this.packages, (o1, e1) -> e1.encode(o1));
+        out.list(this.crops, (o1, e1) -> e1.encode(o1));
     }
 
     public static ContentPack decode(PostcardIn in) {
-        return new ContentPack(in.u64(), in.list(36, PackGood::decode), in.list(1, PostcardIn::string), in.list(1, PostcardIn::string), in.list(11, PackRecipe::decode), in.list(21, PackAnimal::decode), in.list(9, PackDial::decode), in.list(19, PackPackage::decode));
+        return new ContentPack(in.u64(), in.list(36, PackGood::decode), in.list(1, PostcardIn::string), in.list(1, PostcardIn::string), in.list(11, PackRecipe::decode), in.list(21, PackAnimal::decode), in.list(9, PackDial::decode), in.list(19, PackPackage::decode), in.list(7, PackCrop::decode));
     }
 
     public byte[] toBytes() {

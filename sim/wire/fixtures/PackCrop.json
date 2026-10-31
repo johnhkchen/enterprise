@@ -1,0 +1,40 @@
+[
+  {
+    "good": "test:cane",
+    "rotation": false,
+    "sold_as": "test:paper",
+    "water": 27,
+    "cash": true,
+    "fit": [
+      {
+        "land": "desert",
+        "fit": 1.0
+      },
+      {
+        "land": "plains",
+        "fit": 0.5
+      }
+    ],
+    "made_into": [
+      {
+        "good": "test:paper",
+        "from": 1.0,
+        "makes": 1.0
+      }
+    ]
+  },
+  {
+    "good": "Bröly 🌾",
+    "rotation": true,
+    "sold_as": null,
+    "water": 4294967295,
+    "cash": false,
+    "fit": [
+      {
+        "land": "",
+        "fit": 1.7976931348623157e+308
+      }
+    ],
+    "made_into": []
+  }
+]

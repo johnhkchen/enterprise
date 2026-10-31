@@ -32,6 +32,21 @@ public final class Crops {
             Map.entry(Blocks.SWEET_BERRY_BUSH, Items.SWEET_BERRIES),
             Map.entry(Blocks.NETHER_WART, Items.NETHER_WART));
 
+    private static volatile List<CropFiles.Crop> yieldsOf;
+    private static volatile Map<Block, Item> yields = YIELDS;
+
+    /** {@link #YIELDS}, and each crop file's block yielding its item (a crop a datapack adds). */
+    public static Map<Block, Item> yields() {
+        List<CropFiles.Crop> files = CropFiles.all();
+        if (files != yieldsOf) {
+            Map<Block, Item> all = new HashMap<>(YIELDS);
+            files.forEach(c -> all.putIfAbsent(c.block(), c.item()));
+            yields = Map.copyOf(all);
+            yieldsOf = files;
+        }
+        return yields;
+    }
+
     /** Blocks above and below the settlement's bell that count as its farmland. */
     private static final int HEIGHT = 16;
 
@@ -62,6 +77,7 @@ public final class Crops {
         if (!level.getChunkSource().hasChunk(cx, cz)) {
             return null;
         }
+        yields(); // the crop files' blocks too, read once a reload
         Map<Item, Integer> plots = new HashMap<>();
         LevelChunk loaded = level.getChunk(cx, cz);
         for (int sy = SectionPos.blockToSectionCoord(centerY - HEIGHT); sy <= SectionPos.blockToSectionCoord(centerY + HEIGHT); sy++) {
@@ -70,7 +86,7 @@ public final class Crops {
                 continue;
             }
             LevelChunkSection section = loaded.getSection(index);
-            if (section.hasOnlyAir() || !section.maybeHas(state -> YIELDS.containsKey(state.getBlock()))) {
+            if (section.hasOnlyAir() || !section.maybeHas(state -> yields.containsKey(state.getBlock()))) {
                 continue;
             }
             countSection(section, cx, sy, cz, hex, centerY, plots);
@@ -143,7 +159,7 @@ public final class Crops {
             }
             for (int z = 0; z < 16; z++) {
                 for (int x = 0; x < 16; x++) {
-                    Item yield = YIELDS.get(section.getBlockState(x, y, z).getBlock());
+                    Item yield = yields.get(section.getBlockState(x, y, z).getBlock());
                     if (yield != null && Hex.at((cx << 4) + x + 0.5, (cz << 4) + z + 0.5).equals(hex)) {
                         plots.merge(yield, 1, Integer::sum);
                     }

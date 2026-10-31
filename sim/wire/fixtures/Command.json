@@ -118,7 +118,8 @@
         "recipes": [],
         "animals": [],
         "dials": [],
-        "packages": []
+        "packages": [],
+        "crops": []
       },
       "seed": 7
     }
@@ -156,7 +157,8 @@
         "recipes": [],
         "animals": [],
         "dials": [],
-        "packages": []
+        "packages": [],
+        "crops": []
       },
       "seed": 18446744073709551615
     }

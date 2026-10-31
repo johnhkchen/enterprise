@@ -1,0 +1,18 @@
+{
+  "item": "minecraft:carrot",
+  "block": "minecraft:carrots",
+  "sown": "farmland",
+  "order": 1,
+  "rotation": true,
+  "cash": false,
+  "fit": {
+    "plains": 1.0,
+    "woods": 1.0,
+    "taiga": 0.8,
+    "desert": 0.3,
+    "shore": 0.7,
+    "hills": 0.9,
+    "water": 0.5
+  },
+  "made_into": []
+}

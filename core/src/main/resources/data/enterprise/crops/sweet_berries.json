@@ -1,0 +1,18 @@
+{
+  "item": "minecraft:sweet_berries",
+  "block": "minecraft:sweet_berry_bush",
+  "sown": "bush",
+  "order": 5,
+  "rotation": false,
+  "cash": false,
+  "fit": {
+    "plains": 0.5,
+    "woods": 1.0,
+    "taiga": 1.0,
+    "desert": 0.2,
+    "shore": 0.5,
+    "hills": 0.6,
+    "water": 0.3
+  },
+  "made_into": []
+}

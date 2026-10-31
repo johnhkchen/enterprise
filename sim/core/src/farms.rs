@@ -38,30 +38,66 @@ pub const PLOTS_PER_FARMER_LEVEL: u32 = 32;
 /// Items a worked plot yields a day (`Territory.YIELD_PER_PLOT_PER_DAY`).
 pub const YIELD_PER_PLOT_PER_DAY: f64 = 0.5;
 
-/// How well each crop suits each land for a new field, against the land that suits it best (`docs/markets-plan.md`,
-/// John: "villagers invest into sugarcane farms particularly where they have lots of sand plots that are unsuitable for
-/// wheat"), in the order of [`crate::map::Land`]: plains, woods, taiga, desert, shore, hills, water. Cane goes in the
-/// sand by water as it lies; wheat and roots want earth the sand hasn't. A field in the ground grows as any other (the
-/// game's tilled farmland grows the same on every biome: a desert town's wheat isn't less wheat, and seed 1717's three
-/// first towns, on the desert, starved at 0.3 of their yield). A crop not listed suits every land. The datapack's crop
-/// files are to hold these (the plan's third phase).
-pub const LAND_FIT: [(&str, [f64; 7]); 6] = [
-    ("wheat", [1.0, 1.0, 0.8, 0.3, 0.7, 0.9, 0.5]),
-    ("carrot", [1.0, 1.0, 0.8, 0.3, 0.7, 0.9, 0.5]),
-    ("potato", [1.0, 1.0, 0.8, 0.3, 0.7, 0.9, 0.5]),
-    ("beetroot", [1.0, 1.0, 0.8, 0.3, 0.7, 0.9, 0.5]),
-    ("sugar_cane", [0.5, 0.5, 0.3, 1.0, 1.0, 0.4, 1.0]),
-    ("sweet_berries", [0.5, 1.0, 1.0, 0.2, 0.5, 0.6, 0.3]),
+/// A crop a field can grow, as the host's crop files have it (`data/<ns>/crops/<id>.json`, `docs/markets-plan.md` 5:
+/// "adding cotton ... is adding files"): its good; whether it shares farmland with the rotation (a field of one turned
+/// over to another, forward sales and rents of it); what a locker takes for it (paper for cane: itself for most); the
+/// blocks of water a 9 x 9 field of it takes; whether it's grown to sell rather than eat (cane: a town held to its food
+/// plants it only where it's wanted and its land or larder allows; cotton, tobacco and indigo once their files come);
+/// how well it suits each land for a new field, against the land that suits
+/// it best, in the order of [`crate::map::Land`]; and what a trade makes of it alone (so many in, so many of what out),
+/// what its Farmers price it as beside itself.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Crop {
+    pub good: GoodId,
+    pub rotation: bool,
+    pub sold_as: GoodId,
+    pub water: u32,
+    pub cash: bool,
+    pub fit: [f64; 7],
+    pub made_into: Vec<(f64, GoodId, f64)>,
+}
+
+/// The lands, by the names a crop file gives them, in the order of [`crate::map::Land`].
+pub const LANDS: [&str; 7] = ["plains", "woods", "taiga", "desert", "shore", "hills", "water"];
+
+/// The mod's six crops (`data/enterprise/crops/`), for a host whose pack names none (the core's own worlds): name,
+/// rotation, sold as, water, cash, fit by land, made into. Cane goes in the sand by water as it lies; wheat and roots want
+/// earth the sand hasn't (John: "villagers invest into sugarcane farms particularly where they have lots of sand plots
+/// that are unsuitable for wheat"). The land decides what a new field grows, not what one in the ground yields (the
+/// game's tilled farmland grows the same on every biome: seed 1717's three first towns, on the desert, starved at 0.3
+/// of their wheat).
+#[allow(clippy::type_complexity)]
+pub const MOD_CROPS: [(&str, bool, &str, u32, bool, [f64; 7], &[(f64, &str, f64)]); 6] = [
+    ("wheat", true, "wheat", 1, false, [1.0, 1.0, 0.8, 0.3, 0.7, 0.9, 0.5], &[(3.0, "bread", 1.0)]),
+    ("carrot", true, "carrot", 1, false, [1.0, 1.0, 0.8, 0.3, 0.7, 0.9, 0.5], &[]),
+    ("potato", true, "potato", 1, false, [1.0, 1.0, 0.8, 0.3, 0.7, 0.9, 0.5], &[]),
+    ("beetroot", true, "beetroot", 1, false, [1.0, 1.0, 0.8, 0.3, 0.7, 0.9, 0.5], &[]),
+    ("sugar_cane", false, "paper", FIELD_SIZE * 3, true, [0.5, 0.5, 0.3, 1.0, 1.0, 0.4, 1.0], &[(1.0, "paper", 1.0)]),
+    ("sweet_berries", false, "sweet_berries", 0, false, [0.5, 1.0, 1.0, 0.2, 0.5, 0.6, 0.3], &[]),
 ];
 
-/// How well a crop suits a farm's land for a new field ([`LAND_FIT`]): 1 where the land isn't known or the crop isn't
-/// listed.
+/// The mod's crops for the goods the host has: one whose good it lacks is left out, a sold-as or made-into good it
+/// lacks is itself or nothing.
+pub fn mod_crops(content: &Content) -> Vec<Crop> {
+    MOD_CROPS.iter().filter_map(|&(name, rotation, sold, water, cash, fit, made)| {
+        let good = content.good(name)?;
+        Some(Crop { good, rotation, sold_as: content.good(sold).unwrap_or(good), water, cash, fit,
+            made_into: made.iter().filter_map(|&(n_in, out, n_out)| Some((n_in, content.good(out)?, n_out))).collect() })
+    }).collect()
+}
+
+/// The crop file of a good, if it's a field crop.
+pub fn crop(content: &Content, good: GoodId) -> Option<&Crop> {
+    content.crops.iter().find(|c| c.good == good)
+}
+
+/// How well a crop suits a farm's land for a new field ([`Crop::fit`]): 1 where the land isn't known or the good has
+/// no crop file.
 pub fn land_fit(content: &Content, crop: GoodId, land: Option<crate::map::Land>) -> f64 {
     use crate::map::Land::*;
     let Some(land) = land else { return 1.0 };
     let at = match land { Plains => 0, Woods => 1, Taiga => 2, Desert => 3, Shore => 4, Hills => 5, Water => 6 };
-    let name = bare(&content.goods[crop].name);
-    LAND_FIT.iter().find(|(c, _)| *c == name).map_or(1.0, |(_, y)| y[at])
+    self::crop(content, crop).map_or(1.0, |c| c.fit[at])
 }
 
 /// A good's name without its host's namespace (`minecraft:sugar_cane` is `sugar_cane`): the tables here name goods
@@ -120,16 +156,6 @@ pub fn room_for_a_field(farm: &Farm) -> bool {
 
 /// What the warehouse keeps loose of a crop beside its store, at the least: two stacks (`Territory.loose`).
 pub const LOOSE_AT_LEAST: f64 = 128.0;
-
-/// The crops a field can be planted with (`Fields.CROPS`), by the host's names.
-pub const CROPS: [&str; 6] = ["wheat", "carrot", "potato", "beetroot", "sugar_cane", "sweet_berries"];
-/// Field crops that share farmland, so a field can be turned over from one to another (`Territory.ROTATION`).
-pub const ROTATION: [&str; 4] = ["wheat", "carrot", "potato", "beetroot"];
-/// What a crop sells as at a locker, where not as itself (`Fields.SOLD_AS`): cane is pressed into paper first.
-pub const SOLD_AS: [(&str, &str); 1] = [("sugar_cane", "paper")];
-/// What a trade makes of a crop alone (`Workshop.CONVERSIONS` with one input): so many of the crop into so many of
-/// the good.
-pub const CONVERSIONS: [(&str, f64, &str, f64); 2] = [("sugar_cane", 1.0, "paper", 1.0), ("wheat", 3.0, "bread", 1.0)];
 
 /// Farm output for a mood: a tenth more a point, between half and one and a half (`Territory.yieldFactor`).
 pub fn yield_factor(mood: f64) -> f64 {
@@ -433,12 +459,7 @@ fn uses_of(content: &Content, crop: GoodId, wants: &Wants) -> Vec<Use> {
     if wants.demand(crop) > 0.0 {
         uses.push(Use { crop, per_day: wants.demand(crop), each: wants.price(content, crop) });
     }
-    let name = bare(&content.goods[crop].name);
-    for (input, n_in, output, n_out) in CONVERSIONS {
-        if input != name {
-            continue;
-        }
-        let Some(made) = content.good(output) else { continue };
+    for &(n_in, made, n_out) in self::crop(content, crop).map_or(&[][..], |c| &c.made_into[..]) {
         if wants.demand(made) > 0.0 {
             uses.push(Use { crop, per_day: wants.demand(made) * n_in / n_out, each: wants.price(content, made) * n_out / n_in });
         }
@@ -572,7 +593,7 @@ pub fn wage_float(content: &Content, farm: &Farm) -> Fixed {
 pub fn rotate(content: &Content, farm: &mut Farm, wants: &Wants, fed: bool) {
     let plots = plots(farm);
     let have = |g: GoodId| plots.get(&g).copied().unwrap_or(0) as i64;
-    let rotation: Vec<GoodId> = ROTATION.iter().filter_map(|n| content.good(n)).collect();
+    let rotation: Vec<GoodId> = rotation(content);
     // The field crops beyond the rotation (cane, berries) take plots turned over too, where a plot of one earns most as
     // it suits the land (`market.rs`: cane for paper bid for, on the sand: seed 1717's desert towns, every plot of
     // their ring planted and 1,800 of potatoes untended, grew the 6 plots of cane they had).
@@ -653,7 +674,7 @@ pub fn rotate(content: &Content, farm: &mut Farm, wants: &Wants, fed: bool) {
 pub fn rotate_for_workshop(content: &Content, farm: &mut Farm, own: &BTreeMap<GoodId, (f64, f64)>, wants: &Wants) {
     let plots = plots(farm);
     let have = |g: GoodId| plots.get(&g).copied().unwrap_or(0) as i64;
-    let rotation: Vec<GoodId> = ROTATION.iter().filter_map(|n| content.good(n)).collect();
+    let rotation: Vec<GoodId> = rotation(content);
     let best_each = |c: GoodId| uses_of(content, c, wants).iter().map(|u| u.each).fold(0.0, f64::max);
     let mut to: Option<(GoodId, i64, f64)> = None;
     for &c in &rotation {
@@ -679,20 +700,24 @@ pub fn rotate_for_workshop(content: &Content, farm: &mut Farm, own: &BTreeMap<Go
     }
 }
 
-/// What a crop sells as at a locker (`Fields.SOLD_AS`): paper for cane (where the host has paper), else itself.
+/// What a crop sells as at a locker (`Fields.SOLD_AS`, [`Crop::sold_as`]): paper for cane, else itself.
 pub fn sold_as(content: &Content, crop: GoodId) -> GoodId {
-    let name = bare(&content.goods[crop].name);
-    SOLD_AS.iter().find(|(c, _)| *c == name).and_then(|(_, s)| content.good(s)).unwrap_or(crop)
+    self::crop(content, crop).map_or(crop, |c| c.sold_as)
 }
 
-/// The field crops this host has (`Fields.CROPS`), in the mod's order.
+/// The field crops this host has (`Fields.CROPS`), in its crop files' order.
 pub fn field_crops(content: &Content) -> Vec<GoodId> {
-    CROPS.iter().filter_map(|n| content.good(n)).collect()
+    content.crops.iter().map(|c| c.good).collect()
 }
 
-/// The [`ROTATION`] crops content has (`Territory.ROTATION`): what forward sales and rents are of.
+/// The crops that share farmland ([`Crop::rotation`], `Territory.ROTATION`): what forward sales and rents are of.
 pub fn rotation(content: &Content) -> Vec<GoodId> {
-    ROTATION.iter().filter_map(|n| content.good(n)).collect()
+    content.crops.iter().filter(|c| c.rotation).map(|c| c.good).collect()
+}
+
+/// A crop grown to sell, not to eat ([`Crop::cash`]).
+pub fn cash_crop(content: &Content, crop: GoodId) -> bool {
+    self::crop(content, crop).is_some_and(|c| c.cash)
 }
 
 /// Can a town plant this crop now (`Fields.allowed`): anything while it trades; while it grows or builds, food crops,
@@ -703,21 +728,45 @@ pub fn rotation(content: &Content) -> Vec<GoodId> {
 /// opportunity to have villagers invest into sugarcane farms particularly where they have lots of sand plots"; seed
 /// 1717's three desert towns, held to food while they grew, planted 6 to 9 plots of cane in 60 days).
 pub fn allowed(content: &Content, crop: GoodId, wants: &Wants, food_points: f64, food_only: bool) -> bool {
-    let cane = bare(&content.goods[crop].name) == "sugar_cane";
-    let sandy = content.good("wheat").is_some_and(|w| land_fit(content, crop, wants.land) > land_fit(content, w, wants.land));
-    !food_only || !cane
-        || wanted(content, crop, wants, false) > 0.0 && (sandy || food_points >= 2.0 * FOOD_PAR_POINTS)
+    // (Land that suits it over the rotation's best: the sand, for cane.)
+    let fit = land_fit(content, crop, wants.land);
+    let rotation = rotation(content);
+    let suited = !rotation.is_empty() && rotation.iter().all(|&w| fit > land_fit(content, w, wants.land));
+    !food_only || !cash_crop(content, crop)
+        || wanted(content, crop, wants, false) > 0.0 && (suited || food_points >= 2.0 * FOOD_PAR_POINTS)
 }
 
 /// Items a day the town wants of a crop (`Fields.wanted`): as itself, and, while it trades, as what a locker takes
-/// for it.
+/// for it and, a cash crop's, as what a trade makes of it bid for down the road (cloth of cotton: so many cotton a
+/// cloth). Not a food crop's: the bread the towns down its roads buy is their own wheat's (counted, seed 1717's towns
+/// tended 678 wheat a day for 164 people).
 pub fn wanted(content: &Content, crop: GoodId, wants: &Wants, food_only: bool) -> f64 {
+    wanted_each(content, crop, wants, food_only).0
+}
+
+/// [`wanted`], and the most an item of the crop earns among those uses: its town's [`price`](Wants::price) for it or
+/// for what it's sold as; a cash crop's, the bids seen down the roads for it too (`docs/markets-plan.md` 4) and for
+/// what's made of it (an item of the crop, so many to it). Not a food crop's seen bids: with them seed 1717's towns
+/// planted wheat for their hungry neighbours, tended 346 to 662 a day by day 60 against 219 to 243, and read less.
+pub fn wanted_each(content: &Content, crop: GoodId, wants: &Wants, food_only: bool) -> (f64, f64) {
     let mut want = wants.demand(crop);
     let sold = sold_as(content, crop);
+    // (As itself or as what a locker takes for it: a Librarian's town bids for cane, a Cartographer's for paper.)
+    let mut each = wants.price(content, crop).max(wants.price(content, sold));
+    if !food_only && cash_crop(content, crop) {
+        each = each.max(wants.draws.get(&crop).filter(|d| d.0 > 0.0).map_or(0.0, |d| d.1));
+    }
     if sold != crop && !food_only {
         want += wants.demand(sold);
     }
-    want
+    if !food_only && cash_crop(content, crop) {
+        for &(n_in, made, n_out) in self::crop(content, crop).map_or(&[][..], |c| &c.made_into[..]) {
+            let Some(&(per_day, bid)) = wants.draws.get(&made).filter(|d| d.0 > 0.0 && made != sold) else { continue };
+            want += per_day * n_in / n_out;
+            each = each.max(bid * n_out / n_in);
+        }
+    }
+    (want, each)
 }
 
 /// What a new field should grow (`Fields.choose`): feed the herds need and the town doesn't grow enough of first;
@@ -737,8 +786,8 @@ pub fn choose(content: &Content, wants: &Wants, grown: &BTreeMap<GoodId, f64>, f
         // (Fed, a growing town counts what its lockers take for a crop too: cane for its Cartographers' paper.)
         let fed = food_points >= 2.0 * FOOD_PAR_POINTS;
         // (As it suits the land: cane in the sand, wheat in the loam.)
-        let value = (wanted(content, crop, wants, food_only && !fed) - already) * wants.price(content, sold_as(content, crop))
-            * land_fit(content, crop, wants.land);
+        let (wanted, each) = wanted_each(content, crop, wants, food_only && !fed);
+        let value = (wanted - already) * each * land_fit(content, crop, wants.land);
         if value > best_value {
             best = Some(crop);
             best_value = value;
@@ -753,11 +802,7 @@ pub fn choose(content: &Content, wants: &Wants, grown: &BTreeMap<GoodId, f64>, f
 /// The plots a 9 x 9 field of a crop gives (`Fields.plant`): farmland round a water block; cane along three water
 /// channels; berry bushes on every block.
 pub fn field_plots(content: &Content, crop: GoodId) -> u32 {
-    let water = match bare(&content.goods[crop].name) {
-        "sugar_cane" => FIELD_SIZE * 3,
-        "sweet_berries" => 0,
-        _ => 1,
-    };
+    let water = self::crop(content, crop).map_or(1, |c| c.water);
     FIELD_SIZE * FIELD_SIZE - water
 }
 

@@ -423,7 +423,7 @@ fn field_wanted(content: &Content, farm: &Farm, farmers: &[u8], wants: &Wants, f
     let grown = |g: usize| planted.get(&g).copied().unwrap_or(0.0);
     let all = field_crops(content);
     // What a plot of a crop earns here: its sale's price, as the crop suits the land.
-    let earns = |c: usize| wants.price(content, sold_as(content, c)) * crate::farms::land_fit(content, c, wants.land);
+    let earns = |c: usize| crate::farms::wanted_each(content, c, wants, false).1 * crate::farms::land_fit(content, c, wants.land);
     let cheapest = farm.per_day.iter().filter(|(_, n)| **n > 0.0).map(|(&g, _)| earns(g)).fold(f64::INFINITY, f64::min);
     let unmet: Vec<usize> = all.iter().copied().filter(|&c| allowed(content, c, wants, food, food_only)).filter(|&crop| {
         let group = || all.iter().filter(|&&c| sold_as(content, c) == sold_as(content, crop));
@@ -445,8 +445,10 @@ fn field_wanted(content: &Content, farm: &Farm, farmers: &[u8], wants: &Wants, f
         return choose(content, wants, &planted, food, food_only);
     }
     unmet.into_iter().max_by(|&a, &b| {
-        let worth = |c: usize| wanted(content, c, wants, food_only) * wants.price(content, sold_as(content, c))
-            * crate::farms::land_fit(content, c, wants.land);
+        let worth = |c: usize| {
+            let (wanted, each) = crate::farms::wanted_each(content, c, wants, food_only);
+            wanted * each * crate::farms::land_fit(content, c, wants.land)
+        };
         worth(a).total_cmp(&worth(b)).then(b.cmp(&a))
     })
 }

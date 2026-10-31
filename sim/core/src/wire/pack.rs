@@ -32,6 +32,9 @@ pub struct ContentPack {
     /// default, so a pack that lists any lists `loose` first (stacks lying on the pallet, no slots of its own) and
     /// `crate` second; the rest are the game's.
     pub packages: Vec<PackPackage>,
+    /// The crops a field can grow (the game's crop files, `data/<namespace>/crops/<id>.json`): none, the mod's six for
+    /// the goods the pack has (wheat, carrot, potato, beetroot, cane and berries).
+    pub crops: Vec<PackCrop>,
 }
 
 impl ContentPack {
@@ -47,8 +50,41 @@ impl ContentPack {
             animals: Vec::new(),
             dials: Vec::new(),
             packages: Vec::new(),
+            crops: Vec::new(),
         }
     }
+}
+
+/// A crop a field can grow, as its file has it (`docs/markets-plan.md` 5): its good; whether it shares farmland with
+/// the other rotation crops; what a locker takes for it, if not itself (paper for cane); the blocks of water a 9 x 9
+/// field of it takes (1 for farmland round a pond, 27 for cane's three channels, none for bushes); whether it's grown to
+/// sell rather than eat (a town still growing plants it only where it's wanted and its land suits it, or it's fed); how
+/// well it suits each land for a new field, 0 to 1 against the land that suits it best (a land not named: 1); and what
+/// a trade makes of it alone, so many of it into so many of a good, which its Farmers price it as beside itself.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PackCrop {
+    pub good: String,
+    pub rotation: bool,
+    pub sold_as: Option<String>,
+    pub water: u32,
+    pub cash: bool,
+    pub fit: Vec<PackFit>,
+    pub made_into: Vec<PackMade>,
+}
+
+/// How well a crop suits a land: `plains`, `woods`, `taiga`, `desert`, `shore`, `hills` or `water`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PackFit {
+    pub land: String,
+    pub fit: f64,
+}
+
+/// What a trade makes of a crop alone: `from` of the crop into `makes` of `good`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PackMade {
+    pub good: String,
+    pub from: f64,
+    pub makes: f64,
 }
 
 /// A kind of packing: its name (no namespace: `crate`, not `enterprise:crate`), the stacks one holds at most (0 for
@@ -140,7 +176,9 @@ impl Content {
     /// `nitwit` among the trades; a recipe or animal naming a good or trade the pack lacks, a recipe with nothing in
     /// or out; an amount that isn't a number above nothing; a dial the core doesn't have or won't take the value of; a
     /// kind of packing with no name or another's, a namespace, stacks it can't hold (loose none, the rest some), a tare
-    /// or price that isn't a number at or above nothing, or lists that don't start with loose and the crate.
+    /// or price that isn't a number at or above nothing, or lists that don't start with loose and the crate; a crop of a
+    /// good the pack lacks or another crop's, selling as or made into one it lacks, a land it doesn't know or named
+    /// twice, a fit that isn't a number from 0 to 1, or more water than a field.
     pub fn from_pack(pack: &ContentPack) -> Result<Content, String> {
         let mut wrong = Vec::new();
         if pack.day_ticks == 0 {
@@ -343,6 +381,54 @@ impl Content {
             kinds
         };
 
+        let mut crops = Vec::with_capacity(pack.crops.len());
+        for (i, c) in pack.crops.iter().enumerate() {
+            let mut bad = |what: String| wrong.push(format!("crop {i} ({:?}): {what}", c.good));
+            let good = good_at(&c.good);
+            if good.is_none() {
+                bad("no good called that".to_string());
+            } else if pack.crops[..i].iter().any(|d| d.good == c.good) {
+                bad("a crop another file is".to_string());
+            }
+            let sold_as = match &c.sold_as {
+                None => good,
+                Some(s) => {
+                    let g = good_at(s);
+                    if g.is_none() {
+                        bad(format!("no good called {s:?} to sell it as"));
+                    }
+                    g
+                }
+            };
+            if c.water > crate::farms::FIELD_SIZE * crate::farms::FIELD_SIZE {
+                bad(format!("{} blocks of water, more than a field", c.water));
+            }
+            let mut fit = [1.0; 7];
+            for (j, f) in c.fit.iter().enumerate() {
+                match crate::farms::LANDS.iter().position(|l| *l == f.land) {
+                    None => bad(format!("no land called {:?} (the lands: {:?})", f.land, crate::farms::LANDS)),
+                    Some(_) if c.fit[..j].iter().any(|e| e.land == f.land) => bad(format!("{:?} named twice", f.land)),
+                    Some(at) => fit[at] = f.fit,
+                }
+                if !(f.fit.is_finite() && (0.0..=1.0).contains(&f.fit)) {
+                    bad(format!("fits {:?} {}, not a number from 0 to 1", f.land, f.fit));
+                }
+            }
+            let mut made_into = Vec::with_capacity(c.made_into.len());
+            for m in &c.made_into {
+                match good_at(&m.good) {
+                    Some(g) => made_into.push((m.from, g, m.makes)),
+                    None => bad(format!("no good called {:?} to make of it", m.good)),
+                }
+                if !amount(m.from) || !amount(m.makes) {
+                    bad(format!("{} into {} of {:?}, not numbers above nothing", m.from, m.makes, m.good));
+                }
+            }
+            if let (Some(good), Some(sold_as)) = (good, sold_as) {
+                crops.push(crate::farms::Crop { good, rotation: c.rotation, sold_as, water: c.water, cash: c.cash, fit, made_into });
+            }
+        }
+
         let mut dials = crate::dials::Dials::default();
         for (i, d) in pack.dials.iter().enumerate() {
             if pack.dials[..i].iter().any(|e| e.name == d.name) {
@@ -361,6 +447,9 @@ impl Content {
         content.conversions = conversions;
         content.animals = animals;
         content.packages = packages;
+        if !pack.crops.is_empty() {
+            content.crops = crops;
+        }
         content.dial_defaults = dials.clone();
         content.dials = dials;
         // The villagers' trades, vanilla's, for the pack's goods and trades (`lockers.rs`).

@@ -257,6 +257,7 @@ A master Merchant (level 5) at a desk deals with the Numismatics vendors (shops)
 
 - **A player's buying shop is a standing order:** its filter is the lot, its price what it pays, its bank card the purse. The Merchant fills it from what the warehouse can spare beyond its par, at the shop's price (if that's at least 90% of the goods' worth), and banks the coins. What it can't fill stays an **open order**, and the region works on it: caravans bound for this desk bring it (their cargo now covers orders there as well as lockers), and this desk's own caravans buy it up as surplus on their way home.
 - **An order for enchanted goods is a commission,** worked by the town's master Librarian and a Cleric (3 or better), a few steps each minute: for each enchantment the order wants, a book at its level, made by copying a book (a book and a lapis), combining two at the same level into one a level up (an emerald of bottles o' enchanting), or, if no book has it, the Cleric enchanting books at the table (lapis and bottles, at 10 to 30 levels by its skill) to see what comes. Then the books are laid on the plain good (an emerald each) and it's handed over. A level beyond the enchantment's maximum can't be made, and the readout says so.
+  **Since 2026-10-31 any Merchant fills a buying shop's order** (the markets plan, phase 4): the order is a bid in its town's book at the shop's price, for what its purse pays for, and its news travels with the wagons like any bid. The master still brokers: signals, buying from players' selling shops, the town's own shops.
 - **A player's selling shop is supply:** the Merchant buys from it what its orders and its lockers want, at up to the goods' worth, and up to half again over worth for goods it has posted as wanted.
 - **Signals:** what the desk wants (open orders, its lockers' shortfalls, commissions waiting on a base good) that no market it knows has at its last stocktake, and no player's shop here sells, is posted with the premium it will pay: work for players to bring from another region or make.
 - **A shop touching the desk is the town's own:** the Merchant sells its biggest surplus there (no food, no money, nothing ordered) in lots of 16 at 10% over worth, keeps a stack on the shelf, and banks the takings.
@@ -1117,6 +1118,27 @@ mod's), but no road ever chose it. Then: build them first.
     a day to 210, books read 28 to 243, trips in days 30-60 67 to 117, mood 0.19 to 0.78; Hearthglen 16,141 plots of
     cane. Not yet: cactus (no good bids for it), beetroot and carrots on a desert town's slopes (66 fields that couldn't
     be laid), leather (bid at 2.2 times its worth: the next bottleneck for books).
+  - **Built: crops as data (phase 3).** Each crop is a file, `data/enterprise/crops/<id>.json` (`CropFiles`): the item,
+    the block planted, how it's sown (on farmland, by water, as a bush: the water a field takes), its order, whether it
+    shares farmland in the rotation, what a locker takes for it, whether it's a cash crop, its fit by land (plains,
+    woods, taiga, desert, shore, hills, water) and what a trade makes of it alone. The mod ships its six; a datapack
+    adds one with a file, and the content pack takes the files to the core (`farms::Crop`, `MOD_CROPS` when a pack
+    sends none; a file the core can't read is refused with why). The fixed lists are gone (`LAND_FIT`, `CROPS`,
+    `ROTATION`, `SOLD_AS`, the conversions; the mod's `Fields`, `Territory.ROTATION`, `Crops`). A field earns the best
+    of its town's price for the crop and for what it's sold as; a cash crop's, the bids seen down the roads for it and
+    for what's made of it too (cotton for cloth bid four towns off). Not a food crop's: with the seen bids seed 1717's
+    towns planted wheat for their hungry neighbours (bread bid for down the road counted as wheat, too), wheat tended
+    346 to 662 a day by day 60 against 219 to 243 in three runs and two, books read less. A game test plants a crop
+    added by file. Seed 1717's 60 days: cane tended 140 a day, books read 0.092 of the want (phase 2's run 210 and
+    0.106), mood 0.20, 27 towns (20).
+  - **Built: players' shops as bids (phase 4).** A player's buying order (`/enterprise core order <desk> <item> <lot>
+    <spurs> <purse>`, the core's `Order`) is a bid in its town's book: as many lots as its purse pays for, its price
+    the ceiling, wherever the town has a Merchant (any Merchant fills buying orders now; a master's still the one that
+    brokers). `survival_lane.py ... --bid TOWN:GOOD:PRICE:COUNT[@DAY]` puts one on a study's network. Seed 1717 with
+    2,000 paper bid at 0.125 (3 times its worth) at the first town from day 1, against the run without: its bid at
+    0.128 by day 30, 1,342 paper bought by day 60; cane plots 9,318 to 31,590, cane tended in days 30-60 2,226 to
+    3,057; the towns 369 and 435 blocks off tend 9 and 42 a day (0 and 6), the one 760 off planted 16,395 plots and
+    tends food on them. A fresh run apart: 17 towns to 27, mood -0.11.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

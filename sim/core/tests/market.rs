@@ -162,3 +162,26 @@ fn a_growing_town_on_the_sand_plants_cane_where_on_loam_it_waits_for_its_food() 
     wants.land = Some(Land::Desert);
     assert!(allowed(&c, cane, &wants.all(), 0.0, true), "growing on the sand: cane for the paper bid for");
 }
+
+#[test]
+fn a_players_buying_vendor_is_a_bid_in_its_town_s_book_and_its_cane_is_bid_for_too() {
+    // A shop paying three times paper's worth (16 paper a lot for 32 spurs, at 16 spurs an emerald), for ten lots.
+    let mut s = Society::new(Content::new(vec![Good::new("paper", 1.0 / 24.0, 64), Good::new("sugar_cane", 1.0 / 24.0, 64)], DAY));
+    s.content_mut().dials.standing_orders = false;
+    let (paper, cane) = (0, 1);
+    let hub = s.add_town("Hub", 500.0);
+    s.set_roster(hub, &[("merchant", 1)]);
+    s.advance(DAY / 2);
+    assert_eq!(s.bid(hub, paper), None, "no shop, no Librarian: no bid for paper");
+    s.order(hub, paper, 16.0, 32.0, 320.0);
+    s.advance(DAY + DAY / 2);
+    let (bid, want) = s.bid(hub, paper).expect("the vendor's bid");
+    assert!(want >= 160.0 && bid > 0.0, "what its purse pays for: {bid} for {want}");
+    s.advance(20 * DAY + DAY / 2);
+    let (bid, _) = s.bid(hub, paper).expect("unfilled, still bid");
+    assert!(bid > 1.0 / 24.0 && bid <= 3.0 / 24.0 + 1e-9, "up past its worth, to the shop's price at most: {bid}");
+    // A Librarian makes paper of cane: the town bids for cane at what the vendor's paper fetches.
+    s.set_roster(hub, &[("merchant", 1), ("librarian", 1)]);
+    s.advance(22 * DAY + DAY / 2);
+    assert!(s.bid(hub, cane).is_some(), "cane for the vendor's paper");
+}

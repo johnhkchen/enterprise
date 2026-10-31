@@ -34,13 +34,6 @@ public final class Fields {
     /** Farmers with room for this many more plots get a field. */
     public static final int SPARE_PLOTS = 54;
 
-    /** What can be planted, and what a locker would take for it (cane is pressed into paper first). */
-    private static final Map<Item, Item> SOLD_AS = Map.of(
-            Items.WHEAT, Items.WHEAT, Items.CARROT, Items.CARROT, Items.POTATO, Items.POTATO,
-            Items.BEETROOT, Items.BEETROOT, Items.SUGAR_CANE, Items.PAPER, Items.SWEET_BERRIES, Items.SWEET_BERRIES);
-    private static final List<Item> CROPS = List.of(
-            Items.WHEAT, Items.CARROT, Items.POTATO, Items.BEETROOT, Items.SUGAR_CANE, Items.SWEET_BERRIES);
-
     private Fields() {}
 
     /**
@@ -64,7 +57,13 @@ public final class Fields {
     /** As above; with {@code foodOnly} (a town growing or building, see {@link Focus}), food crops alone. */
     public static Optional<Item> choose(Map<String, Double> demand, Map<String, Double> grown, MerchantStock stock,
             Map<String, Double> needs, boolean foodOnly) {
-        List<Item> crops = CROPS.stream().filter(c -> allowed(c, demand, stock, foodOnly)).toList();
+        return choose(CropFiles.crops(), demand, grown, stock, needs, foodOnly);
+    }
+
+    /** As above, of {@code all} the crops there are (the crop files', {@link CropFiles}). */
+    public static Optional<Item> choose(List<Item> all, Map<String, Double> demand, Map<String, Double> grown,
+            MerchantStock stock, Map<String, Double> needs, boolean foodOnly) {
+        List<Item> crops = all.stream().filter(c -> allowed(c, demand, stock, foodOnly)).toList();
         for (Item crop : crops) {
             String id = BuiltInRegistries.ITEM.getKey(crop).toString();
             if (needs.getOrDefault(id, 0.0) > grown.getOrDefault(id, 0.0)) {
@@ -74,11 +73,11 @@ public final class Fields {
         Item best = null;
         double bestValue = 0;
         for (Item crop : crops) {
-            double already = CROPS.stream()
-                    .filter(c -> SOLD_AS.get(c) == SOLD_AS.get(crop))
+            double already = all.stream()
+                    .filter(c -> CropFiles.soldAs(c) == CropFiles.soldAs(crop))
                     .mapToDouble(c -> grown.getOrDefault(BuiltInRegistries.ITEM.getKey(c).toString(), 0.0))
                     .sum();
-            double value = (wanted(crop, demand, foodOnly) - already) * Prices.emeraldsEach(SOLD_AS.get(crop));
+            double value = (wanted(crop, demand, foodOnly) - already) * Prices.emeraldsEach(CropFiles.soldAs(crop));
             if (value > bestValue) {
                 best = crop;
                 bestValue = value;
@@ -92,10 +91,11 @@ public final class Fields {
 
     /**
      * Can a town plant this crop now: anything while it trades; while it grows or builds (food first), food crops, and
-     * cane where its own workshop wants it (its Farmers' biscuits for its own people) once its food is in hand.
+     * a cash crop (cane) where its own workshop wants it (its Farmers' biscuits for its own people) once its food is in
+     * hand.
      */
     static boolean allowed(Item crop, Map<String, Double> demand, MerchantStock stock, boolean foodOnly) {
-        return !foodOnly || crop != Items.SUGAR_CANE
+        return !foodOnly || !CropFiles.of(crop).map(CropFiles.Crop::cash).orElse(false)
                 || demand.getOrDefault(BuiltInRegistries.ITEM.getKey(crop).toString(), 0.0) > 0
                         && stock.foodNutrition() >= 2 * Warehouse.FOOD_PAR_POINTS;
     }
@@ -106,8 +106,9 @@ public final class Fields {
      */
     static double wanted(Item crop, Map<String, Double> demand, boolean foodOnly) {
         double want = demand.getOrDefault(BuiltInRegistries.ITEM.getKey(crop).toString(), 0.0);
-        if (SOLD_AS.get(crop) != crop && !foodOnly) {
-            want += demand.getOrDefault(BuiltInRegistries.ITEM.getKey(SOLD_AS.get(crop)).toString(), 0.0);
+        Item sold = CropFiles.soldAs(crop);
+        if (sold != crop && !foodOnly) {
+            want += demand.getOrDefault(BuiltInRegistries.ITEM.getKey(sold).toString(), 0.0);
         }
         return want;
     }
@@ -123,9 +124,10 @@ public final class Fields {
         // A crop the village would buy and the town doesn't grow at all gets a field even if the farmers are busy
         // (they split their time): a farmer always plants for its own trades. Up to two fields a farmer level.
         int levels = farmers.stream().mapToInt(l -> Math.max(1, l)).sum();
-        boolean unmetCrop = CROPS.stream().filter(crop -> allowed(crop, demand, stock, focus.foodOnly())).anyMatch(crop -> {
-            return wanted(crop, demand, focus.foodOnly()) > 0 && CROPS.stream()
-                    .filter(c -> SOLD_AS.get(c) == SOLD_AS.get(crop))
+        List<Item> crops = CropFiles.crops();
+        boolean unmetCrop = crops.stream().filter(crop -> allowed(crop, demand, stock, focus.foodOnly())).anyMatch(crop -> {
+            return wanted(crop, demand, focus.foodOnly()) > 0 && crops.stream()
+                    .filter(c -> CropFiles.soldAs(c) == CropFiles.soldAs(crop))
                     .noneMatch(c -> grown.getOrDefault(BuiltInRegistries.ITEM.getKey(c).toString(), 0.0) > 0);
         });
         boolean spareHands = capacity - plotsWorked >= SPARE_PLOTS;
@@ -175,7 +177,7 @@ public final class Fields {
         plant(level, site.get(), crop.get());
         Enterprise.LOGGER.debug("Settlement at {}: a freehold field of {} at {}", bell.toShortString(),
                 BuiltInRegistries.ITEM.getKey(crop.get()), site.get().toShortString());
-        int water = crop.get() == Items.SUGAR_CANE ? SIZE * 3 : crop.get() == Items.SWEET_BERRIES ? 0 : 1;
+        int water = CropFiles.of(crop.get()).map(c -> c.sown().water).orElse(1);
         return Optional.of(SIZE * SIZE - water);
     }
 
@@ -194,18 +196,19 @@ public final class Fields {
      */
     public static void plant(ServerLevel level, BlockPos corner, Item crop, Boolean northSouth) {
         Growth.level(level, corner, SIZE);
+        CropFiles.Sown sown = CropFiles.of(crop).map(CropFiles.Crop::sown).orElse(CropFiles.Sown.FARMLAND);
         for (int dx = 0; dx < SIZE; dx++) {
             for (int dz = 0; dz < SIZE; dz++) {
                 BlockPos ground = corner.offset(dx, 0, dz);
-                if (crop == Items.SWEET_BERRIES) {
+                if (sown == CropFiles.Sown.BUSH) {
                     level.setBlock(ground, Blocks.GRASS_BLOCK.defaultBlockState(), 3);
-                    level.setBlock(ground.above(), Blocks.SWEET_BERRY_BUSH.defaultBlockState(), 3);
-                } else if (crop == Items.SUGAR_CANE) {
+                    level.setBlock(ground.above(), seedling(crop), 3);
+                } else if (sown == CropFiles.Sown.BY_WATER) {
                     if ((Boolean.TRUE.equals(northSouth) ? dx : dz) % 3 == 1) {
                         level.setBlock(ground, Blocks.WATER.defaultBlockState(), 3);
                     } else {
                         level.setBlock(ground, Blocks.GRASS_BLOCK.defaultBlockState(), 3);
-                        level.setBlock(ground.above(), Blocks.SUGAR_CANE.defaultBlockState(), 3);
+                        level.setBlock(ground.above(), seedling(crop), 3);
                     }
                 } else if (northSouth == null ? dx == SIZE / 2 && dz == SIZE / 2
                         : northSouth ? dx == SIZE / 2 && dz > 0 && dz < SIZE - 1 : dz == SIZE / 2 && dx > 0 && dx < SIZE - 1) {
@@ -222,14 +225,8 @@ public final class Fields {
         return GlobalPos.of(level.dimension(), bell);
     }
 
+    /** What's planted of a crop: its file's block, wheat where it has none. */
     private static BlockState seedling(Item crop) {
-        if (crop == Items.CARROT) {
-            return Blocks.CARROTS.defaultBlockState();
-        } else if (crop == Items.POTATO) {
-            return Blocks.POTATOES.defaultBlockState();
-        } else if (crop == Items.BEETROOT) {
-            return Blocks.BEETROOTS.defaultBlockState();
-        }
-        return Blocks.WHEAT.defaultBlockState();
+        return CropFiles.of(crop).map(c -> c.block().defaultBlockState()).orElse(Blocks.WHEAT.defaultBlockState());
     }
 }

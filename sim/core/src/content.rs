@@ -95,6 +95,8 @@ pub struct Content {
     pub packages: Vec<crate::pallet::PackageKind>,
     /// The pallet kinds: the base content's one, the load.
     pub pallet_kinds: Vec<crate::pallet::PalletKind>,
+    /// The crops a field can grow (`farms.rs`): the host's crop files, or the mod's six for the goods it has.
+    pub crops: Vec<crate::farms::Crop>,
 }
 
 impl Content {
@@ -104,11 +106,12 @@ impl Content {
     pub fn new(goods: Vec<Good>, day_ticks: u64) -> Self {
         let mut content = Content { goods, comforts: Self::COMFORTS.iter().map(|k| k.to_string()).collect(), day_ticks,
             dials: Dials::default(), dial_defaults: Dials::default(), trades: crate::roster::trades(), conversions: Vec::new(), animals: Vec::new(),
-            packages: Vec::new(), pallet_kinds: Vec::new() };
+            packages: Vec::new(), pallet_kinds: Vec::new(), crops: Vec::new() };
         content.packages = crate::pallet::base_packages();
         content.pallet_kinds = crate::pallet::base_pallet_kinds();
         content.conversions = crate::workshop::mod_conversions(&content);
         content.animals = crate::herds::mod_animals(&content);
+        content.crops = crate::farms::mod_crops(&content);
         // The mod's villager trades for the goods the host has (`lockers.rs`).
         crate::lockers::default_offers(&mut content);
         content

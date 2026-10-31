@@ -95,6 +95,13 @@ final class EnterpriseCommands {
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                         .executes(EnterpriseCommands::coreCash)))
                         .then(Commands.literal("mint").executes(EnterpriseCommands::coreMint))
+                        .then(Commands.literal("order")
+                                .then(Commands.argument("desk", BlockPosArgument.blockPos())
+                                        .then(Commands.argument("item", net.minecraft.commands.arguments.ResourceLocationArgument.id())
+                                                .then(Commands.argument("lot", IntegerArgumentType.integer(1, 64))
+                                                        .then(Commands.argument("spurs", IntegerArgumentType.integer(1))
+                                                                .then(Commands.argument("purse", IntegerArgumentType.integer(1))
+                                                                        .executes(EnterpriseCommands::coreOrder)))))))
                         .then(Commands.literal("hands")
                                 .then(Commands.argument("desk", BlockPosArgument.blockPos())
                                         .executes(EnterpriseCommands::coreHands)))
@@ -797,6 +804,42 @@ final class EnterpriseCommands {
      * the binding, not the Java rules. A desk the core doesn't keep yet is registered first (a town at its desk) and its
      * chests counted: a world from before the core, or a desk placed by a command, has none.
      */
+    /**
+     * A buying order at a desk's shop, as a player's buying vendor would place it, with no vendor to show it
+     * ({@code /enterprise core order <desk> <item> <lot> <spurs> <purse>}: lots of {@code lot} at {@code spurs} a lot,
+     * {@code purse} spurs to pay with). A study's demand from outside (docs/markets-plan.md 7): the town bids for it
+     * in its book, its Merchant passes on what it buys, and what's delivered leaves the world.
+     */
+    private static int coreOrder(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        var host = dev.b28.enterprise.binding.CoreHost.of(source.getServer());
+        if (host == null || host.pausedWhy() != null) {
+            source.sendFailure(Component.literal(host == null ? "The core isn't running" : host.pausedWhy()));
+            return 0;
+        }
+        BlockPos desk = BlockPosArgument.getBlockPos(context, "desk");
+        Long town = host.stock().townAt(GlobalPos.of(source.getLevel().dimension(), desk));
+        var id = net.minecraft.commands.arguments.ResourceLocationArgument.getId(context, "item");
+        Long good = host.stock().number(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(id));
+        if (town == null || good == null) {
+            source.sendFailure(Component.literal(town == null ? "The core keeps no town at " + desk.toShortString()
+                    : id + " isn't one of the core's goods"));
+            return 0;
+        }
+        int lot = IntegerArgumentType.getInteger(context, "lot");
+        int spurs = IntegerArgumentType.getInteger(context, "spurs");
+        int purse = IntegerArgumentType.getInteger(context, "purse");
+        var r = host.apply(java.util.List.of(new dev.b28.enterprise.wire.Input.Advance(source.getServer().overworld().getGameTime()),
+                new dev.b28.enterprise.wire.Input.Order(town, good, lot, spurs, purse)));
+        if (r instanceof dev.b28.enterprise.wire.Response.Refused refused) {
+            source.sendFailure(Component.literal("The core refused: " + refused.why()));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Ordered at %s: %d %s a lot for %d spurs, %d in the purse".formatted(
+                desk.toShortString(), lot, id, spurs, purse)), true);
+        return 1;
+    }
+
     private static int coreStock(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         CommandSourceStack source = context.getSource();
         ServerLevel level = source.getLevel();

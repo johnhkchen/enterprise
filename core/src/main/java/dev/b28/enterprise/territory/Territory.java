@@ -241,7 +241,7 @@ public final class Territory extends SavedData {
     public double couldGrow(GlobalPos bell, Item crop) {
         return holding(bell).map(h -> {
             String id = BuiltInRegistries.ITEM.getKey(crop).toString();
-            double others = ROTATION.stream().filter(c -> c != crop).mapToDouble(c -> h.perDay.getOrDefault(
+            double others = CropFiles.rotation().stream().filter(c -> c != crop).mapToDouble(c -> h.perDay.getOrDefault(
                     BuiltInRegistries.ITEM.getKey(c).toString(), 0.0)).sum();
             return h.spareFarmPlots * YIELD_PER_PLOT_PER_DAY + dev.b28.enterprise.Dials.OWN_SHARE.get() * h.perDay.getOrDefault(id, 0.0)
                     + dev.b28.enterprise.Dials.OTHER_SHARE.get() * others;
@@ -291,7 +291,7 @@ public final class Territory extends SavedData {
 
     /** Is this item a crop farmers grow? (Locker trades selling one count as farm sales.) */
     public static boolean isCrop(String itemId) {
-        return Crops.YIELDS.values().stream()
+        return Crops.yields().values().stream()
                 .anyMatch(item -> BuiltInRegistries.ITEM.getKey(item).toString().equals(itemId));
     }
 
@@ -891,7 +891,7 @@ public final class Territory extends SavedData {
             var buys = dev.b28.enterprise.caravan.Caravans.wantsAt(server, far).keySet();
             var realm = dev.b28.enterprise.trade.Realms.get(server).of(far);
             Optional<Holding> there = bellOf(far).flatMap(this::holding);
-            for (Item crop : Crops.YIELDS.values().stream().distinct().toList()) {
+            for (Item crop : Crops.yields().values().stream().distinct().toList()) {
                 if (!buys.contains(crop)) {
                     continue;
                 }
@@ -907,8 +907,10 @@ public final class Territory extends SavedData {
         return wants;
     }
 
-    /** Field crops that share farmland, so a field can be turned over from one to another. */
-    public static final List<Item> ROTATION = List.of(Items.WHEAT, Items.CARROT, Items.POTATO, Items.BEETROOT);
+    /** Field crops that share farmland, so a field can be turned over from one to another (their crop files'). */
+    public static List<Item> rotation() {
+        return CropFiles.rotation();
+    }
 
     /**
      * Crop rotation: plots of a crop grown beyond all its uses are turned over, a field at most a census, to the crop
@@ -927,7 +929,7 @@ public final class Territory extends SavedData {
         int short_ = 0;
         Item owedTo = null;
         int owedShort = 0;
-        for (Item crop : ROTATION) {
+        for (Item crop : rotation()) {
             String id = BuiltInRegistries.ITEM.getKey(crop).toString();
             List<Use> uses = new ArrayList<>(usesOf(crop, demand, workshop));
             markets.getOrDefault(id, List.of()).forEach(m -> uses.add(new Use(crop, m[0], m[1])));
@@ -955,7 +957,7 @@ public final class Territory extends SavedData {
             to = owedTo;
             short_ = owedShort;
             Item target = owedTo;
-            Item idlest = ROTATION.stream().filter(c -> c != target).max(java.util.Comparator
+            Item idlest = rotation().stream().filter(c -> c != target).max(java.util.Comparator
                     .comparingDouble((Item c) -> idle.getOrDefault(BuiltInRegistries.ITEM.getKey(c).toString(), 0.0))
                     .thenComparingInt(c -> plots.getOrDefault(c, 0))).orElse(null);
             if (idlest != null && plots.getOrDefault(idlest, 0) > 0) {

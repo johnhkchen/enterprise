@@ -1,6 +1,7 @@
 //! How a player's shop reaches the society (`market/Broker.java`, `Exchange.java`, `Shops.java`; `docs/decisions.md`
 //! "The master Merchant and players' shops"). The shops are the player's, so they live outside the society: the host
-//! tells the core about them and the core's master Merchants (level 5, `rules/orders.rs`) deal with them each look.
+//! tells the core about them and the core's master Merchants (level 5, `rules/orders.rs`) deal with them each look; a
+//! buying shop's order is filled by any Merchant, and is a bid in its town's book (`docs/markets-plan.md` 7).
 //!
 //! - **A buying shop is a standing order** ([`Order`], `Broker.fill`, `contractFor`): a lot of a good at a price in
 //!   spurs, paid from the shop's purse. The Merchant drafts a contract with it (Ex Works: the shop is at the seller's
