@@ -33,7 +33,8 @@ final class LedgerCommand {
                         .then(Commands.literal("version").executes(LedgerCommand::version))
                         .then(Commands.literal("report").executes(LedgerCommand::report))
                         .then(Commands.literal("journal").executes(LedgerCommand::journal))
-                        .then(Commands.literal("ground").executes(LedgerCommand::ground))));
+                        .then(Commands.literal("ground").executes(LedgerCommand::ground))
+                        .then(Commands.literal("towns").executes(LedgerCommand::towns))));
     }
 
     /**
@@ -125,6 +126,20 @@ final class LedgerCommand {
      * {@code Ground} input each, JSON as the core's serde reads it), written to the world's {@code enterprise-ground.json}:
      * the seed's land, every hex a town's settlers might come to (kept with a study's terrain, dev/experiments/fixtures.py).
      */
+    /**
+     * {@code /enterprise core towns}: every town laid out in the world, by its number, at its bell ("town 12 at -251 1312"):
+     * where a study explores the country round a town founded since (`survival_study.py --explore`).
+     */
+    private static int towns(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        var plans = new java.util.TreeMap<>(dev.b28.enterprise.territory.TownPlans.get(source.getServer()).plans());
+        StringBuilder out = new StringBuilder(plans.size() + " towns laid out");
+        plans.forEach((town, plan) -> out.append("\ntown ").append(town).append(" at ").append(plan.bell().getX()).append(' ')
+                .append(plan.bell().getZ()));
+        source.sendSuccess(() -> Component.literal(out.toString()), false);
+        return plans.size();
+    }
+
     private static int ground(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
         ServerLevel level = source.getServer().overworld();

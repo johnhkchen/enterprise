@@ -249,9 +249,10 @@ pub fn consider(clock: Res<Clock>, content: Res<Content>, towns: Res<Towns>, sto
     }
     for e in due {
         let Ok((town, people, money, trades, farm, _)) = q.get(e) else { continue };
-        let has_route = routes.iter().any(|r| r.from_id == town.id) || atlas.pending.iter().any(|&(f, _)| f == town.id);
+        let sends_to: Vec<_> = routes.iter().filter(|r| r.from_id == town.id).map(|r| r.to_id)
+            .chain(atlas.pending.iter().filter(|&&(f, _)| f == town.id).map(|&(_, t)| t)).collect();
         let spare = money.0 - super::farms::reserve(&content, trades, farm);
-        let considering = Considering { town: town.id, has_route, comfort_met: &people.comfort_met, spare: spare.to_f64() };
+        let considering = Considering { town: town.id, sends_to: &sends_to, comfort_met: &people.comfort_met, spare: spare.to_f64() };
         if let Some(to) = choose(&content, &atlas, &stocktakes, &places, &considering) {
             atlas.pending.push((town.id, to));
         }

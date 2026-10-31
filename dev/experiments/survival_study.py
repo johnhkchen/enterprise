@@ -4,7 +4,7 @@
     just server-setup-survival 8675309   # a normal world of that seed, no testbench (its villages 496 blocks apart;
                                          # 12345's nearest pair are 1,488 apart, a road no load pays for)
     just server                          # in the background
-    python3 dev/experiments/survival_study.py DAYS OUT.log [--loaded] [--chests] [--starting N] [--villages N] [--near X,Z] [--roads N] [--road I-J] [--pregen N]
+    python3 dev/experiments/survival_study.py DAYS OUT.log [--loaded] [--chests] [--starting N] [--villages N] [--near X,Z] [--roads N] [--road I-J] [--pregen N] [--explore N]
 
 The nearest village to spawn and the nearest one to it beyond SPREAD blocks (looking round it 300 to 700 blocks out, twelve ways) are found (`locate structure`), each
 loaded a minute while its villagers settle, and given what a player gives a village to trade: a Merchant's Desk at
@@ -132,14 +132,47 @@ def unload(x, z, r=None):
 PREGEN = int(sys.argv[sys.argv.index("--pregen") + 1]) if "--pregen" in sys.argv else None
 
 
+# `--explore N`: each town laid out since (a settlers' town), the ground N blocks round it generated and surveyed the
+# day it's seen, as the first towns' was before setup (John, 2026-10-31: "make sure the towns fully explore the area
+# around them"): settlers go up to 10 hexes (800 blocks) from home, and a town's word of mouth 400.
+EXPLORE = int(sys.argv[sys.argv.index("--explore") + 1]) if "--explore" in sys.argv else None
+# The 256-block boxes generated so far (on a grid from 0, 0), and the towns explored round: kept with a point.
+EXPLORED, EXPLORED_TOWNS = set(), set()
+
+
+def boxes_round(places, margin):
+    """The grid's 256-block boxes covering `margin` blocks round the places (x, z)."""
+    x0, x1 = min(p[0] for p in places) - margin, max(p[0] for p in places) + margin
+    z0, z1 = min(p[1] for p in places) - margin, max(p[1] for p in places) + margin
+    return {(bx * 256, bz * 256) for bx in range(x0 // 256, x1 // 256 + 1) for bz in range(z0 // 256, z1 // 256 + 1)}
+
+
+def explore(say, day):
+    """The ground round each town laid out and not yet explored round, generated (`--explore`)."""
+    if EXPLORE is None:
+        return
+    for town, x, z in ((int(t), int(x), int(z)) for t, x, z in
+                       re.findall(r"town (\d+) at (-?\d+) (-?\d+)", rcon("enterprise core towns"))):
+        if town in EXPLORED_TOWNS:
+            continue
+        EXPLORED_TOWNS.add(town)
+        new = boxes_round([(x, z)], EXPLORE) - EXPLORED
+        if new:
+            started = time.time()
+            pregen_boxes(sorted(new), say)
+            say(f"day {day}: town {town} at {x} {z} explored round, {len(new)} boxes new ({time.time() - started:.0f}s)")
+
+
 def pregen(villages, margin, say):
-    """The box round the villages, `margin` blocks past them, generated a few 256-chunk boxes at a time."""
-    # On chunk lines: a box of 256 blocks off them spans 17 chunks a side, past forceload's 256 (refused without a word).
-    x0 = (min(v[0] for v in villages) - margin) // 16 * 16
-    x1 = max(v[0] for v in villages) + margin
-    z0 = (min(v[1] for v in villages) - margin) // 16 * 16
-    z1 = max(v[1] for v in villages) + margin
-    boxes = [(x, z, min(x + 255, x1), min(z + 255, z1)) for x in range(x0, x1 + 1, 256) for z in range(z0, z1 + 1, 256)]
+    """The box round the villages, `margin` blocks past them, generated a few 256-block boxes at a time."""
+    pregen_boxes(sorted(boxes_round(villages, margin)), say)
+
+
+def pregen_boxes(corners, say):
+    """The grid's boxes at these corners generated (and surveyed as they load), four at a time, and kept as explored."""
+    # A box of 256 blocks on the grid spans 16 chunks a side: forceload takes 256 chunks at once (more refused without a word).
+    boxes = [(x, z, x + 255, z + 255) for x, z in corners]
+    EXPLORED.update(corners)
     started = time.time()
     for k in range(0, len(boxes), 4):
         batch = boxes[k:k + 4]
@@ -247,7 +280,8 @@ class Points:
             chain = self.base + [[name, self.skip, fixtures.requests(self.run / "journals" / name)]]
             seconds = self.seconds + time.time() - self.started
             aligned = fixtures.save_point(RUN / "world", self.run, day, chain, least,
-                                          dict(self.state, seconds=round(seconds)), seconds)
+                                          dict(self.state, seconds=round(seconds), explored=sorted(EXPLORED),
+                                               explored_towns=sorted(EXPLORED_TOWNS)), seconds)
         finally:
             rcon("save-on")
         self.say(f"point: day {day} kept in {(self.run / f'day{day}').relative_to(REPO)}"
@@ -261,6 +295,8 @@ def network(first, many, days, say, stages):
         chosen, desks = [tuple(v) for v in resumed["chosen"]], resumed["desks"]
         roads = {tuple(r) for r in resumed["roads"]}
         first = chosen[0]
+        EXPLORED.update(tuple(b) for b in resumed.get("explored", []))
+        EXPLORED_TOWNS.update(resumed.get("explored_towns", []))
         say(f"resumed from day {resumed['day']}: " + ", ".join(desks))
         points = Points({k: resumed[k] for k in ("chosen", "desks", "roads")}, say, 0)
         stages.done("resume")
@@ -281,6 +317,8 @@ def network(first, many, days, say, stages):
     terrain = fixtures.terrain_dir(seed(), sys.argv) if FIXTURES else None
     if terrain and fixtures.ready(terrain):
         say(f"pregen: none, the ground restored from {terrain.relative_to(REPO)}")
+        if PREGEN is not None:
+            EXPLORED.update(boxes_round(chosen, PREGEN))
     elif PREGEN is not None:
         pregen(chosen, PREGEN, say)
         if terrain:
@@ -367,6 +405,7 @@ def run_days(chosen, desks, roads, first, start, days, say, stages, points):
                     unload(*v, r=8)
         sprint(24000)
         say(f"day {day} ({time.time() - started:.0f}s)")
+        explore(say, day)
         if day == 1 and start == 1:
             stages.done("day 1")
         if day == 2:
@@ -461,6 +500,7 @@ def main():
                     say(f"day {day}: {d} {said[-1]}")
         sprint(24000)
         say(f"day {day} ({time.time() - started:.0f}s)")
+        explore(say, day)
         if day % 5 == 0 or day == days:
             for v, d in zip([first, second], desks):
                 load(*v, r=8)

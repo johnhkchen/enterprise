@@ -433,25 +433,31 @@ pub fn reach(content: &Content, works: Option<&crate::works::Works>) -> f64 {
     if works.is_some_and(|w| w.built(crate::works::Kind::Caravanserai)) { CARAVANSERAI_REACH } else { content.dials.word_of_mouth }
 }
 
-/// What a town considering a commission is (`Commissions.consider`'s inputs): whether it has a route of its own,
-/// how well each kind of comfort was met, and its money beyond its reserve.
+/// The most routes of its own a town commissions (John, 2026-10-31: a settlers' town with only its mother town's road,
+/// 1,200 blocks, sent nothing in 50 days with a market 67 blocks off).
+pub const OWN_ROUTES: usize = 4;
+
+/// What a town considering a commission is (`Commissions.consider`'s inputs): the markets it already sends caravans
+/// to (or has commissioned), how well each kind of comfort was met, and its money beyond its reserve.
 pub struct Considering<'a> {
     pub town: TownId,
-    pub has_route: bool,
+    pub sends_to: &'a [TownId],
     pub comfort_met: &'a [f64],
     pub spare: f64,
 }
 
-/// The market a town commissions a route to (`Commissions.consider`): with no route of its own, short of some kind of
-/// comfort (met below 1), with `commission_spare` beyond its reserve, the nearest market it knows within a leg's food
-/// whose last stocktake holds a good of a kind it's short of.
+/// The market a town commissions a route to (`Commissions.consider`): with fewer than [`OWN_ROUTES`] of its own, short
+/// of some kind of comfort (met below 1), with `commission_spare` beyond its reserve, the nearest market it knows and
+/// doesn't send to yet, within a leg's food, whose last stocktake holds a good of a kind it's short of. The mod's
+/// commissions only a town with no route at all: a settlers' town, given its mother town's road, never looked further.
 pub fn choose(content: &Content, atlas: &Atlas, stocktakes: &Stocktakes, places: &Places, town: &Considering) -> Option<TownId> {
     let short: Vec<usize> = town.comfort_met.iter().enumerate().filter(|(_, m)| **m < 1.0).map(|(k, _)| k).collect();
-    if town.has_route || short.is_empty() || town.spare < content.dials.commission_spare {
+    if town.sends_to.len() >= OWN_ROUTES || short.is_empty() || town.spare < content.dials.commission_spare {
         return None;
     }
     places.known(content, atlas, town.town).into_iter().find(|&other| {
-        places.distance(town.town, other).is_some_and(|d| crate::road::in_range(content, d))
+        !town.sends_to.contains(&other)
+            && places.distance(town.town, other).is_some_and(|d| crate::road::in_range(content, d))
             && (0..content.goods.len()).any(|g| content.goods[g].comfort.is_some_and(|k| short.contains(&k))
                 && stocktakes.on_hand(other, g) > 0.0)
     })
@@ -576,7 +582,8 @@ impl Society {
     /// it commissioned one.
     pub fn consider_commission(&mut self, town: TownId) -> Option<RouteId> {
         let e = self.towns[town];
-        let has_route = self.has_route(town, None);
+        let sends_to: Vec<TownId> = self.routes.iter().filter_map(|&r| self.world.get::<Route>(r))
+            .filter(|r| r.from_id == town).map(|r| r.to_id).collect();
         let content = self.content().clone();
         let entity = self.world.entity(e);
         let met = entity.get::<People>()?.comfort_met.clone();
@@ -584,7 +591,7 @@ impl Society {
             - crate::rules::farms::reserve(&content, entity.get::<Trades>()?, entity.get::<crate::farms::Farm>());
         let places = self.places();
         let to = choose(&content, self.world.resource::<Atlas>(), self.world.resource::<Stocktakes>(), &places,
-            &Considering { town, has_route, comfort_met: &met, spare: spare.to_f64() })?;
+            &Considering { town, sends_to: &sends_to, comfort_met: &met, spare: spare.to_f64() })?;
         self.open_route(town, to)
     }
 
@@ -610,11 +617,11 @@ impl Society {
         Some(self.add_route(from, to, blocks.max(1) as f64 / crate::map::BLOCKS_PER_DAY, cost, every))
     }
 
-    /// The routes towns commissioned at this look's reviews, opened (a town that has a route by now opens none).
+    /// The routes towns commissioned at this look's reviews, opened (one a town sends on already by now opens none).
     pub(crate) fn open_commissions(&mut self) {
         let pending = std::mem::take(&mut self.world.resource_mut::<Atlas>().pending);
         for (from, to) in pending {
-            if !self.has_route(from, None) {
+            if !self.has_route(from, Some(to)) {
                 self.open_route(from, to);
             }
         }

@@ -112,7 +112,7 @@ fn a_town_short_of_comforts_commissions_its_own_caravan() {
     let routes = s.route_count();
     let route = s.consider_commission(DEST).expect("it sends to the market it knows has treats");
     assert_eq!((route, s.route_ends(route)), (routes, (DEST, HUB)));
-    assert_eq!(s.consider_commission(DEST), None, "a town with a route of its own commissions no more");
+    assert_eq!(s.consider_commission(DEST), None, "none to a market it sends to already, and it knows no other");
 }
 
 #[test]
@@ -153,6 +153,28 @@ fn towns_commission_at_their_reviews() {
     assert!(s.route_path(0).is_some(), "a road over the map, both being placed");
     s.advance(LOOK + 9 * DAY);
     assert_eq!(s.route_count(), 1, "and no more");
+}
+
+#[test]
+fn a_town_with_a_route_commissions_another_to_a_market_it_knows() {
+    // A settlers' town sending only to its mother town, far off, and a market near it with treats: it commissions a
+    // route there too, then no more to either.
+    let mut s = Society::new(content());
+    let mother = s.add_town("Mother", 5.0);
+    let colony = s.add_town("Colony", 30.0);
+    let near = s.add_town("Near", 5.0);
+    s.place_town(mother, 0.0, 0.0);
+    s.place_town(colony, 700.0, 0.0);
+    s.place_town(near, 770.0, 0.0);
+    s.set_people(colony, 5.0, 5.0, 5.0);
+    s.open_route(colony, mother).expect("its road home");
+    s.record_stocktake(near, &[(COOKIE, 64.0)], Some(0));
+    s.advance(LOOK);
+    s.advance(LOOK + 3 * DAY);
+    assert_eq!(s.route_count(), 2, "at its review it commissions a second route");
+    assert_eq!(s.route_ends(1), (colony, near), "to the market near it that has treats");
+    s.advance(LOOK + 9 * DAY);
+    assert_eq!(s.route_count(), 2, "and no more: it sends to both it knows");
 }
 
 // parity: CaravanTests.bothMerchantsKeepBooksOfATrip

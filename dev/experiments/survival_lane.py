@@ -13,7 +13,8 @@ alike: it was wrong, and the lane says so and writes it to core/run/fixtures/aud
 catalog, with their reason). `--audit` audits a reuse with no such change (the noise of a restart), `--no-audit` skips it.
 
 The study's flags default to the seed 1717 network (--chests --villages 5 --reach 160 --near -736,208 --roads 1000
---pregen 300). OUTPREFIX.log is the study's log, .out its output, .server.log the server's. The server's watchdog is
+--pregen 800 --explore 800: the ground a settlers' party reaches, round the first towns and each founded since).
+OUTPREFIX.log is the study's log, .out its output, .server.log the server's. The server's watchdog is
 off (max-tick-time=-1: a long sprint isn't a hung server).
 """
 
@@ -39,7 +40,8 @@ def trace(journal, db):
                    capture_output=True, check=True)
     return db
 
-DEFAULT = ["--chests", "--villages", "5", "--reach", "160", "--near", "-736,208", "--roads", "1000", "--pregen", "300"]
+DEFAULT = ["--chests", "--villages", "5", "--reach", "160", "--near", "-736,208", "--roads", "1000", "--pregen", "800",
+           "--explore", "800"]
 
 
 def main():
