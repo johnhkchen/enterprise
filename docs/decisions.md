@@ -1088,6 +1088,12 @@ mod's), but no road ever chose it. Then: build them first.
   land (`kit::hills`: its holding's `Land::Hills` hexes, its own among them), and yields half again for each hill hex
   beyond the first, up to three (`ore_ground`); a mine dug before stands idle off the hills. A port wanting ore founds
   a colony on them.
+- **Settlers resupply at the towns their caravans go to (John, 2026-10-31: "letting them use the colonies as resupply
+  points to extend their settlement range").** A party may set out from home or from any town its home sends caravans
+  to (its colonies among them: settlers' roads go both ways), the reach of 6 to 10 hexes counted from that stop; the
+  site that adds most to home's portfolio wins, then the shortest trip, and its road runs home, stop, site. Seed 1717's
+  240 days on explored ground: its country within 10 hexes settled by day 50, five towns raised parties with nowhere to
+  go (Corin's Crossing at day 100: 25 people, 275 emeralds, 14 hands to spare); with stops, two could go at once.
 - **Settlers found where the land adds most (John, 2026-10-30).** Each site in reach, a village or open ground, is
   scored by what its hex and those round it would add to the town's portfolio (`complement`: a day's worth of each
   land's goods, a hand's gathering, a Toolsmith's ore on hills, a Fisherman's cod on water; a land the town already

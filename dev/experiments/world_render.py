@@ -253,6 +253,26 @@ def png(width, height, rows):
             + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
 
 
+def halved(image):
+    """A frame (base64 PNG, as `png` writes it: no row filters) at half its sides, a pixel for each 2 x 2."""
+    data = base64.b64decode(image)
+    width, height = struct.unpack(">II", data[16:24])
+    at, idat = 8, b""
+    while at < len(data):
+        n, tag = struct.unpack(">I", data[at:at + 4])[0], data[at + 4:at + 8]
+        if tag == b"IDAT":
+            idat += data[at + 8:at + 8 + n]
+        at += 12 + n
+    raw, stride = zlib.decompress(idat), 1 + 3 * width
+    rows = [raw[z * stride + 1:(z + 1) * stride] for z in range(0, height, 2)]
+    rows = [bytes(b for x in range(0, width, 2) for b in row[3 * x:3 * x + 3]) for row in rows]
+    return base64.b64encode(png(len(range(0, width, 2)), len(rows), rows)).decode()
+
+
+# The page's frames together at most: a page is published under 16 MB.
+FRAMES_BUDGET = 12 * 2 ** 20
+
+
 def picture(world, x0, z0, x1, z1, bells, step=1):
     """The world's columns from above, hill-shaded, as a PNG (base64), a pixel for each `step` x `step` blocks: (image,
     counts by kind, lowest, highest)."""
@@ -477,6 +497,11 @@ def main():
         ps, holds = town_plans(wd, x0, z0)
         frames.append({"day": d, "image": image, "plans": ps, "holdings": holds})
     print("columns:", counts, file=sys.stderr)
+    # Too big still (a detailed world compresses worse than the guess): every frame halved till they fit.
+    while sum(len(f["image"]) for f in frames) > FRAMES_BUDGET:
+        print(f"frames {sum(len(f['image']) for f in frames) // 2 ** 20} MB: halved", file=sys.stderr)
+        for f in frames:
+            f["image"] = halved(f["image"])
 
     towns = []
     for t, (x, y, z) in sorted(bells.items()):

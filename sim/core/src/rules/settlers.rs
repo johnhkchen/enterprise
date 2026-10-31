@@ -1,7 +1,8 @@
 //! Review: a town grown past growing raises a party of settlers (`caravan/Expeditions.java` `consider`, 130; see
 //! `settlers.rs`). Once a day, towns in their order: one that is raising, with idle hands, money to spare and
 //! somewhere to go, sends one hand as a travelling Merchant to the nearest village nobody trades with (4 to 8 hexes
-//! out), or two (a Merchant and a settler) to found a town on the best open ground there. The set-up and the capital
+//! out), or two (a Merchant and a settler) to found a town on the best open ground there; out from home, or from a town
+//! its caravans go to, where the party resupplies. The set-up and the capital
 //! leave the treasury, the households lending what they would on call first (the Accountant approves the rest), the
 //! bread leaves the warehouse, the hands leave the roster.
 
@@ -166,20 +167,54 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, mut m
         let has: Vec<crate::map::Land> = territory.holding(t).map(|h| h.hexes.clone()).unwrap_or_default()
             .into_iter().chain(std::iter::once(home)).chain(home.neighbors()).map(|h| map.land(h)).collect();
         let worth = |hex: Hex| complement(&content, &map, &has, hex);
+        // Where a party may set out from: home, and each town its caravans go to, where it resupplies on the way (John,
+        // 2026-10-31: "letting them use the colonies as resupply points to extend their settlement range"; seed 1717's
+        // towns, their country within 10 hexes settled by day 50, raised parties with nowhere to go for 190 days). The
+        // reach is counted from the stop; the best site of all of them, then the shortest trip.
+        // By the far town's number: a query's order isn't a save's, and a tie goes to the first stop.
+        let mut far: Vec<usize> = routes.iter().filter(|r| r.from_id == t).map(|r| r.to_id).collect();
+        far.sort_unstable();
+        far.dedup();
+        let mut stops = vec![home];
+        for to in far {
+            if let Some(s) = sites.iter().find(|s| s.id == to).map(|s| s.hex).filter(|h| !stops.contains(h)) {
+                stops.push(s);
+            }
+        }
+        let trip = |stop: Hex, hex: Hex| home.distance(stop) + stop.distance(hex);
+        let better = |w: f64, n: i32, best: Option<(f64, i32)>| best.is_none_or(|(bw, bn)| w > bw || w == bw && n < bn);
         // A village (its people come with it) where it adds as much as the best open ground; else that ground.
-        let village = unclaimed_village(&sites, &settlers, home, min, max, worth);
-        let ground = if hands.len() >= 2 && spare >= FOUNDING_EMERALDS {
-            open_ground(&sites, &settlers, &territory, &map, home, min, max, worth)
-        } else {
-            None
-        };
-        let (kind, target, target_hex) = match (village, ground) {
-            (Some((v, hex, w)), g) if g.is_none_or(|(_, gw)| w >= gw) => (Kind::Village, Some(v), hex),
-            (_, Some((hex, _))) => (Kind::Found, None, hex),
+        let mut village: Option<(usize, Hex, f64, Hex)> = None;
+        let mut ground: Option<(Hex, f64, Hex)> = None;
+        for &stop in &stops {
+            if let Some((v, hex, w)) = unclaimed_village(&sites, &settlers, stop, min, max, worth) {
+                if better(w, trip(stop, hex), village.map(|(_, h, bw, bs)| (bw, trip(bs, h)))) {
+                    village = Some((v, hex, w, stop));
+                }
+            }
+            if hands.len() >= 2 && spare >= FOUNDING_EMERALDS {
+                if let Some((hex, w)) = open_ground(&sites, &settlers, &territory, &map, stop, min, max, worth) {
+                    if better(w, trip(stop, hex), ground.map(|(h, bw, bs)| (bw, trip(bs, h)))) {
+                        ground = Some((hex, w, stop));
+                    }
+                }
+            }
+        }
+        let (kind, target, target_hex, stop) = match (village, ground) {
+            (Some((v, hex, w, stop)), g) if g.is_none_or(|(_, gw, _)| w >= gw) => (Kind::Village, Some(v), hex, stop),
+            (_, Some((hex, _, stop))) => (Kind::Found, None, hex, stop),
             _ => continue,
         };
-        // The road (`way`): no way there, nobody goes.
-        let Some(path) = way(&map, &content, home, target_hex) else { continue };
+        // The road (`way`), by the stop: no way there, nobody goes.
+        let path = if stop == home {
+            way(&map, &content, home, target_hex)
+        } else {
+            way(&map, &content, home, stop).zip(way(&map, &content, stop, target_hex)).map(|(a, b)| crate::map::Path {
+                hexes: a.hexes.iter().chain(b.hexes.iter().skip(1)).copied().collect(),
+                cost: a.cost + b.cost,
+            })
+        };
+        let Some(path) = path else { continue };
         // Its way and where it's bound, explored while it travels (`Output::Explore`): ground the host never loaded is
         // the core's guess, and a party sent to found a town on it finds it as it is (seed 1717's Lakeshire, founded on
         // guessed ground the host found no open ground on, asked of the host 1,400 times).

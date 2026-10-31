@@ -128,6 +128,60 @@ fn main() {
         }
         return;
     }
+    if args.first().map(String::as_str) == Some("--paper") {
+        // A saved society's paper: each hub's stranded paper bought (deals, bills, face, coin, its own bills promised),
+        // and every bill by its state, then the open ones by holder and drawee, with how many are past their day.
+        let Some(file) = args.get(1) else {
+            eprintln!("enterprise-sim --paper SAVE");
+            std::process::exit(2);
+        };
+        let bytes = std::fs::read(file).unwrap_or_else(|e| panic!("{file}: {e}"));
+        let save: enterprise_core::wire::SaveFile = postcard::from_bytes(&bytes).expect("a save");
+        let s = enterprise_core::Society::load(&save.blob).expect("a society");
+        let name = |t: usize| if t < s.town_count() { s.town(t).name } else { format!("#{t}") };
+        let now = s.now();
+        println!("stranded paper bought, by hub:\nhub\tdeals\tbills\tface\tcoin\tpromised\tcrates\tcredit");
+        for t in 0..s.town_count() {
+            let b = s.stranded_book(t);
+            if b.deals > 0 || b.credit_stacks > 0 {
+                println!("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}", name(t), b.deals, b.bills, b.face, b.coin, b.promised, b.crates, b.credit);
+            }
+        }
+        let bills = s.bills();
+        let mut by_state: std::collections::BTreeMap<String, (usize, f64)> = Default::default();
+        for b in &bills {
+            let e = by_state.entry(format!("{:?}", b.state)).or_default();
+            e.0 += 1;
+            e.1 += b.amount.to_f64();
+        }
+        println!("\nbills by state:");
+        for (k, (n, sum)) in &by_state {
+            println!("{k}\t{n}\t{sum:.0}");
+        }
+        let mut open: std::collections::BTreeMap<(String, String), (usize, f64, usize)> = Default::default();
+        for b in bills.iter().filter(|b| b.state == enterprise_core::bills::BillState::Outstanding) {
+            let holder = match b.held { enterprise_core::bills::Held::Town(t) => name(t), enterprise_core::bills::Held::Wagon => "(on a wagon)".into() };
+            let e = open.entry((holder, name(b.drawee))).or_default();
+            e.0 += 1;
+            e.1 += b.amount.to_f64();
+            e.2 += usize::from(b.due < now);
+        }
+        println!("\noutstanding, by holder and drawee:\nholder\tdrawee\tbills\tsum\tpast due");
+        for ((h, d), (n, sum, late)) in &open {
+            println!("{h}\t{d}\t{n}\t{sum:.0}\t{late}");
+        }
+        let mut dishonoured: std::collections::BTreeMap<String, (usize, f64)> = Default::default();
+        for b in bills.iter().filter(|b| b.state == enterprise_core::bills::BillState::Dishonoured) {
+            let e = dishonoured.entry(name(b.drawee)).or_default();
+            e.0 += 1;
+            e.1 += b.amount.to_f64();
+        }
+        println!("\ndishonoured, by drawee:");
+        for (d, (n, sum)) in &dishonoured {
+            println!("{d}\t{n}\t{sum:.0}");
+        }
+        return;
+    }
     if args.first().map(String::as_str) == Some("--bag") {
         // The bag a town's idle hand would draw its trade from, each day of a journal's replay up to DAY.
         let (Some(journal), Some(last), Some(town)) = (args.get(1), args.get(2).and_then(|d| d.parse::<u64>().ok()),

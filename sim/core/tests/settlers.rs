@@ -396,6 +396,34 @@ fn open_ground_off_the_spokes_is_found() {
 }
 
 #[test]
+fn a_party_resupplies_at_a_town_its_caravans_go_to_and_settles_past_it() {
+    // Home's country settled or lake to 7 hexes every way (John: "letting them use the colonies as resupply points to
+    // extend their settlement range"): its colony 6 east, where its caravans go, is a stop, and the ground past it open.
+    let (mut s, home) = world(100.0);
+    for q in -7..=7i32 {
+        for r in -7..=7i32 {
+            let h = Hex::new(q, r);
+            if Hex::new(0, 0).distance(h) <= 7 && h != Hex::new(6, 0) && h != Hex::new(0, 0) {
+                s.set_ground(h, 0.6, 0.0);
+            }
+        }
+    }
+    let colony = s.add_town("Colony", 10.0);
+    s.set_roster(colony, &[("merchant", 1)]);
+    at(&mut s, colony, Hex::new(6, 0));
+    s.advance(DAY / 4);
+    assert!(s.parties().is_empty(), "no route to the colony yet: nowhere to go {:?}", s.parties());
+    s.open_route(home, colony).expect("its caravans' road");
+    s.advance(DAY + DAY / 4);
+    let parties = s.parties();
+    assert_eq!(parties.len(), 1, "{parties:?}");
+    let (target, colony_hex) = (parties[0].target, Hex::new(6, 0));
+    assert_eq!(parties[0].kind, Kind::Found);
+    assert!(Hex::new(0, 0).distance(target) >= 8 && (5..=7).contains(&colony_hex.distance(target)),
+        "past home's reach, in the colony's: {target:?}");
+}
+
+#[test]
 fn no_way_through_and_nobody_goes() {
     let (mut s, _) = world(100.0);
     let v = village(&mut s, Hex::new(5, 0));
