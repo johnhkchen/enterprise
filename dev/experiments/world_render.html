@@ -59,6 +59,7 @@ h2 { font: 500 .78rem var(--body); text-transform: uppercase; letter-spacing: .0
 .key button[aria-pressed="false"] { color: var(--muted); text-decoration: line-through; }
 .key button:hover { background: var(--rule); }
 .sw { width: 14px; height: 14px; border-radius: 2px; flex: none; border: 1px solid rgba(0,0,0,.18); }
+[hidden] { display: none !important; }
 .towns { display: grid; gap: 8px; }
 .town { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; font-size: .9rem; }
 .town b { font: 700 1rem var(--display); letter-spacing: .02em; }
@@ -97,7 +98,7 @@ h2 { font: 500 .78rem var(--body); text-transform: uppercase; letter-spacing: .0
       <div class="key" id="key"></div>
     </div>
     <div>
-      <h2>Towns at the last day</h2>
+      <h2>Towns founded by this day</h2>
       <div class="towns" id="towns"></div>
     </div>
     <div class="film" id="film" hidden>
@@ -177,8 +178,8 @@ D.towns.forEach(t => {
   const d = document.createElement("div"); d.className = "town";
   d.innerHTML = `<b></b><span></span>`;
   d.firstChild.textContent = t.name;
-  d.lastChild.textContent = `founded day ${t.founded} · ${t.villagers} folk · mood ${t.mood >= 0 ? "+" : ""}${t.mood.toFixed(1)} · ${t.comforts} met`;
-  tl.append(d);
+  d.lastChild.textContent = `founded day ${t.founded} · at the last day ${t.villagers} folk · mood ${t.mood >= 0 ? "+" : ""}${t.mood.toFixed(1)} · ${+(+t.comforts).toFixed(1)} met`;
+  t.row = d; tl.append(d);
 });
 const trips = D.routes.reduce((s, r) => s + (r.runs || []).length, 0);
 document.getElementById("scale").textContent = `${D.routes.length} routes, ${trips} trips made`;
@@ -225,6 +226,8 @@ const slider = document.getElementById("day"), dayText = document.getElementById
 slider.max = last;
 function setDay(d) {
   day = d; slider.value = d.toFixed(2);
+  // A town is on the map and in the list only once it's founded.
+  D.towns.forEach(t => { t.row.hidden = t.founded > d; });
   const f = frameAt(d);
   dayText.textContent = "Day " + Math.floor(d) + (D.frames.length > 1 ? ` · land as of day ${f.day}` : "");
 }

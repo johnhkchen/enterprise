@@ -149,6 +149,40 @@ fn main() {
         }
         return;
     }
+    if args.first().map(String::as_str) == Some("--trace-chain") {
+        // A study's journals as one run, traced (`--trace`'s tables): each `JOURNAL:FROM:TO` its requests FROM..TO, as
+        // `--chain` takes them (dev/experiments/world_render.py: a run kept as points, its map from day 0).
+        let Some(db) = args.get(1) else {
+            eprintln!("enterprise-sim --trace-chain OUT.db JOURNAL:FROM:TO ... [--no-rivers]");
+            std::process::exit(2);
+        };
+        let mut files = Vec::new();
+        for a in args[2..].iter().filter(|a| *a != "--no-rivers") {
+            let mut parts = a.rsplitn(3, ':');
+            let (Some(to), Some(from), Some(path)) = (parts.next(), parts.next(), parts.next()) else {
+                eprintln!("--trace-chain: {a} isn't JOURNAL:FROM:TO");
+                std::process::exit(2);
+            };
+            let bytes = std::fs::read(path).unwrap_or_else(|e| panic!("{path}: {e}"));
+            files.push((bytes, from.parse::<usize>().unwrap(), to.parse::<usize>().unwrap()));
+        }
+        let mut requests: Vec<&[u8]> = Vec::new();
+        for (bytes, from, to) in &files {
+            requests.extend(trace::read(bytes).unwrap_or_else(|e| panic!("{e}")).into_iter().take(*to).skip(*from));
+        }
+        let _ = std::fs::remove_file(db);
+        let mut conn = rusqlite::Connection::open(db).unwrap_or_else(|e| panic!("{db}: {e}"));
+        let started = Instant::now();
+        match trace::trace(&requests, &mut conn, args.iter().any(|a| a == "--no-rivers")) {
+            Ok(t) => println!("{db}: {} requests replayed ({} refused), {} days, {} towns, {} routes, in {:.1}s",
+                t.requests, t.refused, t.days, t.towns, t.routes, started.elapsed().as_secs_f64()),
+            Err(e) => {
+                eprintln!("--trace-chain: {e}");
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
     if args.first().map(String::as_str) == Some("--chain") {
         // A study's journals one after another, as one run (dev/experiments/fixtures.py): each `JOURNAL:FROM:TO` its
         // requests FROM..TO (a resumed run's first, its Load, skipped: the society is the chain's so far), each

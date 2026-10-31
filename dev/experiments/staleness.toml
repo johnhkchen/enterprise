@@ -57,3 +57,9 @@ why = "villagers, the Merchant and lockers: who works where and what they hold, 
 paths = ["core/src/main/java/dev/b28/enterprise/Dials.java"]
 why = """the dials' defaults go into the content pack once, when the world is made (binding/ModPack), and stay in the
 core's save: a point, its journals' replay and an audit all carry the old values, so no audit can see a change here"""
+
+# What can't make a point stale, though it's among the mod's files: a change here is neither keyed nor audited. Each
+# entry says why the lane never runs it.
+[[inert]]
+paths = ["core/src/main/java/dev/b28/enterprise/test/**", "core/src/main/resources/data/enterprise/structure/test/**"]
+why = "the game tests and their structures run only on the game-test server (`just gametest`), never on a lane's"

@@ -253,8 +253,9 @@ def png(width, height, rows):
             + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
 
 
-def picture(world, x0, z0, x1, z1, bells):
-    """The world's columns from above, hill-shaded, as a PNG (base64): (image, counts by kind, lowest, highest)."""
+def picture(world, x0, z0, x1, z1, bells, step=1):
+    """The world's columns from above, hill-shaded, as a PNG (base64), a pixel for each `step` x `step` blocks: (image,
+    counts by kind, lowest, highest)."""
     w, h = x1 - x0 + 1, z1 - z0 + 1
     kind = [[None] * w for _ in range(h)]
     rgb = [[(24, 28, 34)] * w for _ in range(h)]
@@ -336,7 +337,10 @@ def picture(world, x0, z0, x1, z1, bells):
                 r, g, b = (min(255, int(r * f)), min(255, int(g * f)), min(255, int(b * f)))
             row += bytes((r, g, b))
         rows.append(row)
-    image = base64.b64encode(png(w, h, rows)).decode()
+    if step > 1:
+        # A pixel for each step x step blocks (its north-west one): many frames of a wide map in a page under 16 MB.
+        rows = [bytes(b for x in range(0, w, step) for b in row[3 * x:3 * x + 3]) for row in rows[::step]]
+    image = base64.b64encode(png(len(range(0, w, step)), len(rows), rows)).decode()
     return image, counts, lo, hi
 
 
@@ -410,9 +414,10 @@ def main():
 
     # Towns: their bells (the forum lines of the server's log) and names (the trace's).
     db = sqlite3.connect(trace)
-    names = dict(db.execute("select distinct town, name from towns"))
-    # The day each town is first in the trace: its founding (a village the run began with, its first day).
-    founded = dict(db.execute("select town, min(day) from towns group by town"))
+    names = dict(db.execute("select town, name from towns order by day"))  # each town's latest name
+    # The day each town is first in the trace by its name: its founding (a village the run began with, its first day;
+    # a settlers' village, "Village 7" till it's a town, the day it took its name).
+    founded = dict(db.execute("select town, min(day) from towns where name not like 'Village %' group by town"))
     last = db.execute("select max(day) from towns").fetchone()[0]
     folk = {t: (v, round(m, 2), c) for t, v, m, c in
             db.execute("select town, villagers, mood, comforts from towns where day=?", (last,))}
@@ -460,10 +465,12 @@ def main():
         kept = sorted((int(q.name[3:]), q / "world") for q in run.glob("day*") if (q / "world" / "region").exists())
     else:
         kept = [(last, world)]
+    # About a megabyte of PNG for 3.5 million blocks: halve the frames' sides when they'd pass 12 MB together.
+    step = 2 if len(kept) * w * h > 12 * 3.5e6 else 1
     frames = []
     for d, wd in kept:
         print(f"day {d}: drawing {wd}", file=sys.stderr)
-        image, counts, lo, hi = picture(wd, x0, z0, x1, z1, bells)
+        image, counts, lo, hi = picture(wd, x0, z0, x1, z1, bells, step)
         ps, holds = town_plans(wd, x0, z0)
         frames.append({"day": d, "image": image, "plans": ps, "holdings": holds})
     print("columns:", counts, file=sys.stderr)

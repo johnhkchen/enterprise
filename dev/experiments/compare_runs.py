@@ -34,6 +34,8 @@ VILLAGERS = 2
 HANDS = 0.10
 MONEY = 0.35
 CROPS = 0.40
+# A town founded this many days before the day compared may be missing from the other run.
+FOUNDING = 3
 # What a run can't repeat, by input: its villagers' tags (each run's own entities).
 UNREPEATABLE = {"tag", "hand_tag"}
 
@@ -76,14 +78,21 @@ def towns(db, day):
     return {n: (v, land) for n, v, land, _ in rows}, hands, sum(m for *_, m in rows)
 
 
-def crops(db, day):
-    """The crop plots the core holds at `day`, as the game counted them: each chunk's last count by then, together."""
+def first_day(db):
+    """The first day a journal's trace has inputs for: 0, or the day of the point it carried on from."""
+    return sqlite3.connect(db).execute("select coalesce(min(day), 0) from inputs").fetchone()[0]
+
+
+def crops(db, day, since=0):
+    """The crop plots the game counted from `since` to `day`, by chunk: each one's last count. A journal carried on from
+    a point has only the counts made after it, and which chunks a run counts turns on which it loaded: two runs are
+    compared from the later of their first days, on the chunks both counted."""
     last = {}
     for js in (j for (j,) in sqlite3.connect(db).execute(
-            "select json from inputs where kind = 'Crops' and day <= ? order by rowid", (day,))):
+            "select json from inputs where kind = 'Crops' and day between ? and ? order by rowid", (since, day))):
         c = json.loads(js)["Crops"]
         last[(c["hex"]["q"], c["hex"]["r"], c["chunk_x"], c["chunk_z"])] = sum(n["count"] for n in c["counts"])
-    return sum(last.values())
+    return last
 
 
 def alike(a_db, b_db, day):
@@ -92,8 +101,14 @@ def alike(a_db, b_db, day):
     why = []
     if not ta or not tb:
         return False, [f"no towns at day {day} in {'the first' if not ta else 'the second'}"]
+    # A town founded in one run a day or two before `day` may be founded a day or two after it in the other: a party's
+    # leaving turns on its town's savings, which a restart moves a little (seed 1717: Lakeshire on day 29, and on 37).
+    recent = {n for db in (a_db, b_db) for (n,) in sqlite3.connect(db).execute(
+        "select name from towns group by town having min(day) > ?", (day - FOUNDING,))}
     for n in sorted(set(ta) | set(tb)):
         a, b = ta.get(n), tb.get(n)
+        if (a is None or b is None) and n in recent:
+            continue
         if a is None or b is None or a[1] != b[1] or abs(a[0] - b[0]) > VILLAGERS:
             why.append(f"{n}: {a or 'none'} against {b or 'none'} (villagers, land)")
     differ = sum(((ha - hb) + (hb - ha)).values()) // 2
@@ -101,9 +116,12 @@ def alike(a_db, b_db, day):
         why.append(f"{differ} hands of {sum(ha.values())} differ in trade or level")
     if abs(ma - mb) > MONEY * max(ma, mb, 1):
         why.append(f"money together {ma:.0f} against {mb:.0f}")
-    ca, cb = crops(a_db, day), crops(b_db, day)
+    since = max(first_day(a_db), first_day(b_db))
+    pa, pb = crops(a_db, day, since), crops(b_db, day, since)
+    both = set(pa) & set(pb)
+    ca, cb = sum(pa[k] for k in both), sum(pb[k] for k in both)
     if abs(ca - cb) > CROPS * max(ca, cb, 1):
-        why.append(f"crops held {ca:.0f} against {cb:.0f}")
+        why.append(f"crops counted {ca:.0f} against {cb:.0f} (the {len(both)} chunks both counted)")
     return not why, why
 
 

@@ -86,12 +86,13 @@ def manifest():
 
 
 def unlisted_changes(point):
-    """The watched files changed since the point was kept that no catalog entry names (those named are in its key)."""
+    """The watched files changed since the point was kept that no catalog entry names (those named are in its key, or
+    inert: never run on a lane)."""
     noted = point / "manifest.json"
     if not noted.exists():
         return ["(no manifest: kept before the catalog)"]
     was, now = json.loads(noted.read_text()), manifest()
-    named = set(catalogued("points"))
+    named = set(catalogued("points")) | set(catalogued("inert"))
     return sorted(f for f in set(was) | set(now) if was.get(f) != now.get(f) and f not in named)
 
 
