@@ -1,0 +1,40 @@
+{
+  "id": "enterprise:orc/landmark/abbey_30x48_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "landmark",
+  "slot": "landmark:abbey",
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "footprint": [
+    30,
+    48
+  ],
+  "height": 36,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        15,
+        3,
+        47
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

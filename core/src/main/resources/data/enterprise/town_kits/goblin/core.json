@@ -1021,6 +1021,54 @@
       "workstations": []
     },
     {
+      "id": "abbey_30x48_a",
+      "part": "enterprise:goblin/landmark/abbey_30x48_a",
+      "kind": "landmark",
+      "slot": "landmark:abbey",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        30,
+        46,
+        48
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "keep_30x30_a",
+      "part": "enterprise:goblin/landmark/keep_30x30_a",
+      "kind": "landmark",
+      "slot": "landmark:keep",
+      "tiers": [
+        "city"
+      ],
+      "size": [
+        30,
+        32,
+        30
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "palace_30x48_a",
+      "part": "enterprise:goblin/landmark/palace_30x48_a",
+      "kind": "landmark",
+      "slot": "landmark:palace",
+      "tiers": [
+        "capital"
+      ],
+      "size": [
+        30,
+        48,
+        48
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
       "id": "filler_1_a",
       "part": "enterprise:goblin/wall/filler_1_a",
       "kind": "part",
