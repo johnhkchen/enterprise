@@ -1347,6 +1347,12 @@ mod's), but no road ever chose it. Then: build them first.
   to 64 (logs are wanted), and every land but water holds a woodlot or more (a hex of hills, desert or shore, one).
   Seed 1717's 30 days, against the run before timber: Lumberjacks 1 by day 2, 3 by day 5, 7 by day 30 (none before);
   villagers 131 to 114, beds 138 to 121, mood 0.21 both, money 144 to 116.
+- **Nitwits take trades (John, 2026-11-02: "Why don't we just get rid of nitwits?").** A Nitwit is an idle adult like
+  any other: hired to a trade (after those with none), and sent with a settlers' party (after them too); the host writes
+  the trade to its villager as to any hand's, so the green robe goes with its first job. The game's villages still
+  spawn them. A town whose idle were all Nitwits staffed nothing: seed 1717's Refuge Pointe, no bed free for a child,
+  waited on timber with six. Seed 1717's 30 days: Nitwits 11 to 1 (the last in a village with no Merchant to hire it),
+  no deaths; the rest within what two fresh runs differ by (19 towns to 17, villagers 123 to 131, money 104 to 144).
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

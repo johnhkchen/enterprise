@@ -613,3 +613,16 @@ fn a_town_with_no_one_idle_retrains_a_hand_for_the_timber_its_home_waits_on() {
     assert_eq!((s.roster(t).count(lumberjack), s.roster(t).count(cartographer)), (1, 0), "its Cartographer a Lumberjack");
     assert_eq!(s.roster(t).count(s.content().trade("farmer").unwrap()), 1, "its Farmer kept");
 }
+
+#[test]
+fn a_nitwit_takes_up_the_axe_as_any_idle_hand_would() {
+    // Its idle hands Nitwits (John: "Why don't we just get rid of nitwits?"): hired as any idle hand is.
+    let mut s = Society::new(content());
+    let t = town(&mut s, &[("merchant", 1), ("cartographer", 1), ("nitwit", 1), ("nitwit", 1)]);
+    s.set_people(t, 4.0, 2.0, 20.0);
+    s.pay(t, 100.0);
+    s.advance(8 * DAY);
+    let trade = |name: &str| s.content().trade(name).unwrap();
+    assert_eq!((s.roster(t).count(trade("lumberjack")), s.roster(t).count(trade("nitwit"))), (1, 0),
+        "a Lumberjack, and its Nitwits all at work: {:?}", s.roster(t).hands.iter().map(|h| h.trade).collect::<Vec<_>>());
+}

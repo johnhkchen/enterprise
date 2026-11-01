@@ -233,13 +233,14 @@ fn a_town_not_grown_or_not_fed_or_without_hands_or_money_sends_nobody() {
         ("cleric", 1), ("farmer", 1)]);
     s.advance(3 * DAY);
     assert!(s.parties().is_empty(), "nobody waiting for work");
-    // Only Nitwits idle: they never go (`Labour.NONE` only).
+    // Only Nitwits idle: they go as any idle hand does (John: "Why don't we just get rid of nitwits?").
     let (mut s, t) = world(100.0);
     village(&mut s, Hex::new(5, 0));
     s.set_roster(t, &[("merchant", 1), ("farmer", 1), ("farmer", 1), ("cleric", 1), ("mason", 1), ("mason", 1),
         ("cleric", 1), ("nitwit", 1), ("nitwit", 1)]);
     s.advance(3 * DAY);
-    assert!(s.parties().is_empty(), "Nitwits don't settle");
+    let nitwits = s.roster(t).hands.iter().filter(|h| s.content().trades[h.trade].nitwit).count();
+    assert_eq!(nitwits, 1, "a Nitwit went with the party");
     // The lead is the first hand of no trade, never a Nitwit before it.
     let (mut s, t) = world(100.0);
     village(&mut s, Hex::new(5, 0));

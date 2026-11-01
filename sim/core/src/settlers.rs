@@ -148,13 +148,13 @@ pub fn raising(content: &Content, settlers: &Settlers, town: TownId, people: &Pe
         })
 }
 
-/// The hands a party may take, the first first: those waiting for work (Nitwits never go); then, a grown town having
+/// The hands a party may take, the first first: those waiting for work, Nitwits among them; then, a grown town having
 /// none to spare (seed 1717: every town with savings to found but its hands all at work, 640 days of towns sending
 /// nobody in 120 days), its workers in a trade it has others of, the least practised first, each trade keeping one, not the desk's
 /// Merchant nor any away, so long as the town keeps [`GROWN`] residents.
 pub fn party_hands(content: &Content, roster: &Roster) -> Vec<usize> {
-    let mut out: Vec<usize> =
-        roster.idle(content).into_iter().filter(|&i| !content.trades[roster.hands[i].trade].nitwit).collect();
+    let mut out: Vec<usize> = roster.idle(content);
+    out.sort_by_key(|&i| content.trades[roster.hands[i].trade].nitwit); // (the Nitwits after the rest, in order)
     let mut working: Vec<usize> = (0..roster.hands.len()).filter(|&i| {
         let h = &roster.hands[i];
         let trade = &content.trades[h.trade];

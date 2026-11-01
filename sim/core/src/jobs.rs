@@ -463,8 +463,11 @@ pub fn employ(content: &Content, books: &mut Books, bills: &Bills, signals: &Sig
     }
     place.roster.merchant?;
     place.lockers.sync(content, place.roster);
-    let idle = place.roster.hands.iter()
-        .position(|h| !h.is_baby() && !h.away && content.trades.get(h.trade).is_some_and(|t| t.none));
+    // An adult with no trade, else a Nitwit: a Nitwit takes a trade as any idle adult does (John: "Why don't we just get
+    // rid of nitwits?": seed 1717's Refuge Pointe, its idle all Nitwits, could staff nothing).
+    let free = |nitwit: bool| place.roster.hands.iter()
+        .position(|h| !h.is_baby() && !h.away && content.trades.get(h.trade).is_some_and(|t| if nitwit { t.nitwit } else { t.none }));
+    let idle = free(false).or_else(|| free(true));
     let retraining = idle.is_none();
     // A home or a hall waiting on timber in a town with no Lumberjack signs one on first (John: "make lumber demand
     // sufficiently high such that they show up early to settlements rather than as a later role"); with no hand idle

@@ -67,7 +67,7 @@ pub fn review(clock: Res<Clock>, content: Res<Content>, bills: Res<Bills>, signa
         let sent_today = settlers.last_sent.get(&town.id).is_some_and(|&t| t / content.day_ticks.max(1) == today);
         // A town raising settlers keeps the hands a party takes (a Merchant and a settler) and hires the rest: seed
         // 8675309's Meadowfell, with no clear ground in reach, held eight idle from day 48 for a party that never went.
-        let waiting = roster.idle(&content).into_iter().filter(|&i| !content.trades[roster.hands[i].trade].nitwit).count();
+        let waiting = roster.idle(&content).len();
         if sent_today || waiting <= PARTY_MOST && raising(&content, &settlers, town.id, &*people, stock, now) {
             continue;
         }
