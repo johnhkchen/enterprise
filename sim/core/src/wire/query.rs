@@ -108,9 +108,10 @@ pub enum Answer {
     /// what the next hex costs of it, its fields' plots by crop (what's counted in its hexes and the fields it planted
     /// that the host hasn't laid yet), and its works in the order started (bridges, its wall, halls, then the fields it
     /// planted that the host hasn't laid); and its woodlots in the order laid, each whether its trees stand grown (felled
-    /// and replanted, not: `kit::Kits::woodlots`), for the host to show.
+    /// and replanted, not: `kit::Kits::woodlots`), for the host to show, and the log they grow (the wood its Lumberjacks
+    /// like: `kit::Kits::wood`; none before their first felling).
     Land { town: TownNo, hexes: Vec<HexAt>, culture: f64, next_hex: f64, plots: Vec<Count>, works: Vec<WorkView>,
-        woodlots: Vec<bool> },
+        woodlots: Vec<bool>, wood: Option<GoodNo> },
     /// The hexes' ground, in the order asked.
     Ground { ground: Vec<GroundView> },
     /// A town's lockers: how many its desk's Merchant may manage (`limit`, none without one), whether its host places

@@ -354,7 +354,8 @@ public final class SettlementTests {
 
     /**
      * A woodlot shown as the core has it (docs/lumberjack-plan.md): felled, its trees gone and saplings at its four
-     * spots; grown, trees stand there again.
+     * spots; grown, trees stand there again, of the wood its Lumberjacks like (birch here: an acacia wants two blocks
+     * clear about its trunk, past the arena's walls).
      */
     @GameTest(template = "floor", skyAccess = true)
     public static void aWoodlotIsFelledToSaplingsAndGrowsBackToTrees(GameTestHelper helper) {
@@ -365,15 +366,18 @@ public final class SettlementTests {
         }
         var level = helper.getLevel();
         BlockPos corner = helper.absolutePos(new BlockPos(0, 1, 0));
-        dev.b28.enterprise.territory.Woodlots.grow(level, corner);
+        var wood = dev.b28.enterprise.territory.Woodlots.wood(level, corner, java.util.Optional.of("minecraft:birch_log"));
+        dev.b28.enterprise.territory.Woodlots.grow(level, corner, wood);
         helper.assertTrue(dev.b28.enterprise.territory.Woodlots.hasTrees(level, corner), "grown: trees stand");
-        dev.b28.enterprise.territory.Woodlots.fell(level, corner);
+        helper.assertTrue(level.getBlockState(corner.offset(1, 1, 1)).is(Blocks.BIRCH_LOG),
+                "a birch at its spot: " + level.getBlockState(corner.offset(1, 1, 1)));
+        dev.b28.enterprise.territory.Woodlots.fell(level, corner, wood);
         helper.assertFalse(dev.b28.enterprise.territory.Woodlots.hasTrees(level, corner), "felled: no logs");
-        helper.assertTrue(level.getBlockState(corner.offset(1, 1, 1)).is(net.minecraft.tags.BlockTags.SAPLINGS),
-                "a sapling at its spot: " + level.getBlockState(corner.offset(1, 1, 1)));
-        dev.b28.enterprise.territory.Woodlots.grow(level, corner);
+        helper.assertTrue(level.getBlockState(corner.offset(1, 1, 1)).is(Blocks.BIRCH_SAPLING),
+                "a birch sapling at its spot: " + level.getBlockState(corner.offset(1, 1, 1)));
+        dev.b28.enterprise.territory.Woodlots.grow(level, corner, wood);
         helper.assertTrue(dev.b28.enterprise.territory.Woodlots.hasTrees(level, corner), "grown again");
-        dev.b28.enterprise.territory.Woodlots.fell(level, corner); // (its neighbours' arenas left as they were)
+        dev.b28.enterprise.territory.Woodlots.fell(level, corner, wood); // (its neighbours' arenas left as they were)
         helper.succeed();
     }
 

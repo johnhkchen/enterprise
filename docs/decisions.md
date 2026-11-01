@@ -1352,6 +1352,13 @@ mod's), but no road ever chose it. Then: build them first.
   town's land; the host lays a lot on the nearest free ground of a ring past the pastures and shows it, four trees
   grown or four saplings felled, only when its ground is loaded: no chunk is loaded for a woodlot. Its game test fells a
   lot to saplings and grows it back. Seed 1717's headless 30 days laid none (nothing loads that ring).
+- **A Lumberjack sells crates and buys logs, and grows the wood it likes (John, 2026-11-02: "Crates can be made out
+  of emeralds, 6 per emerald at a lumberjack as a trade. You can also trade 10-20 lumber into 1 emerald with the
+  lumberjack, and they'll grow the type of lumber they like").** Crates are bought for emeralds, not made of logs:
+  the Lumberjack sells them six to the emerald (`enterprise:crate` is a good, worth a sixth). It buys logs, the wood
+  its town's Lumberjacks like ten to the emerald and any other twenty. That wood is rolled once, with the town's dice,
+  at its first felling, from the logs the host has; its woodlots grow it, in the core and in the world. A town's own
+  crates for its wagons are still bought abroad at `crate_emeralds`.
 - **Nitwits take trades (John, 2026-11-02: "Why don't we just get rid of nitwits?").** A Nitwit is an idle adult like
   any other: hired to a trade (after those with none), and sent with a settlers' party (after them too); the host writes
   the trade to its villager as to any hand's, so the green robe goes with its first job. The game's villages still

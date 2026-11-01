@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -25,6 +26,8 @@ import net.minecraft.world.level.saveddata.SavedData;
  * {@link #SIZE} in a ring past the town's pastures, its trees at {@link #SPOTS}: grown, they stand (the land's own where
  * it had them); felled, their logs and leaves are gone and saplings stand in their place. Each lot is laid as the core
  * first counts it, nearest the bell first, and shown again when the core's word of it changes and its ground is loaded.
+ * Its trees are the wood the town's Lumberjacks like ({@link #wood}; John: "they'll grow the type of lumber they like"),
+ * the land's own (spruce on taiga, else oak) before they've said.
  *
  * <p>Saved with the world: each town's lots, where they lie and whether they're shown grown.
  */
@@ -61,7 +64,7 @@ public final class Woodlots extends SavedData {
      * free ground of its ring, and each whose growth changed felled and replanted or grown. A lot whose ground isn't
      * loaded waits for a later look; so does a new one with no ground found. How many lots changed.
      */
-    public int show(ServerLevel level, long town, BlockPos bell, List<Boolean> grown) {
+    public int show(ServerLevel level, long town, BlockPos bell, List<Boolean> grown, Optional<String> log) {
         List<Lot> have = lots.computeIfAbsent(town, t -> new ArrayList<>());
         int changed = 0;
         for (int i = 0; i < grown.size(); i++) {
@@ -74,7 +77,7 @@ public final class Woodlots extends SavedData {
                 // The land's own trees count as grown; else it's planted, and grown at once if the core says so.
                 boolean standing = hasTrees(level, corner);
                 if (!standing || !want) {
-                    fell(level, corner);
+                    fell(level, corner, wood(level, corner, log));
                     standing = false;
                 }
                 have.add(new Lot(corner, standing));
@@ -85,10 +88,11 @@ public final class Woodlots extends SavedData {
             if (lot.grown() == want || !loaded(level, lot.corner())) {
                 continue;
             }
+            Wood wood = wood(level, lot.corner(), log);
             if (want) {
-                grow(level, lot.corner());
+                grow(level, lot.corner(), wood);
             } else {
-                fell(level, lot.corner());
+                fell(level, lot.corner(), wood);
             }
             have.set(i, new Lot(lot.corner(), want));
             setDirty();
@@ -98,8 +102,32 @@ public final class Woodlots extends SavedData {
         return changed;
     }
 
+    /** A wood a lot grows: the tree its sapling grows into. */
+    public record Wood(TreeGrower grower, BlockState sapling) {}
+
+    static final Wood OAK = new Wood(TreeGrower.OAK, Blocks.OAK_SAPLING.defaultBlockState());
+    static final Wood SPRUCE = new Wood(TreeGrower.SPRUCE, Blocks.SPRUCE_SAPLING.defaultBlockState());
+
+    /**
+     * The wood of a log by its item id ({@code minecraft:acacia_log}: the acacia's); oak for a log whose tree a single
+     * sapling doesn't grow (dark oak's takes four, mangrove's a propagule); the land's own with none said.
+     */
+    public static Wood wood(ServerLevel level, BlockPos corner, Optional<String> log) {
+        if (log.isEmpty()) {
+            return taiga(level, corner) ? SPRUCE : OAK;
+        }
+        return switch (log.get()) {
+            case "minecraft:spruce_log" -> SPRUCE;
+            case "minecraft:birch_log" -> new Wood(TreeGrower.BIRCH, Blocks.BIRCH_SAPLING.defaultBlockState());
+            case "minecraft:jungle_log" -> new Wood(TreeGrower.JUNGLE, Blocks.JUNGLE_SAPLING.defaultBlockState());
+            case "minecraft:acacia_log" -> new Wood(TreeGrower.ACACIA, Blocks.ACACIA_SAPLING.defaultBlockState());
+            case "minecraft:cherry_log" -> new Wood(TreeGrower.CHERRY, Blocks.CHERRY_SAPLING.defaultBlockState());
+            default -> OAK;
+        };
+    }
+
     /** Its trees felled (every log and leaf over the lot, its crowns' overhang too) and saplings planted at its spots. */
-    public static void fell(ServerLevel level, BlockPos corner) {
+    public static void fell(ServerLevel level, BlockPos corner, Wood wood) {
         for (int dx = -2; dx < SIZE + 2; dx++) {
             for (int dz = -2; dz < SIZE + 2; dz++) {
                 boolean inside = dx >= 0 && dz >= 0 && dx < SIZE && dz < SIZE;
@@ -112,20 +140,16 @@ public final class Woodlots extends SavedData {
                 }
             }
         }
-        BlockState sapling = taiga(level, corner) ? Blocks.SPRUCE_SAPLING.defaultBlockState() : Blocks.OAK_SAPLING.defaultBlockState();
         for (int[] spot : SPOTS) {
             BlockPos ground = surface(level, corner.getX() + spot[0], corner.getZ() + spot[1]);
             if (ground != null && level.getBlockState(ground).is(BlockTags.DIRT)) {
-                level.setBlock(ground.above(), sapling, 3);
+                level.setBlock(ground.above(), wood.sapling(), 3);
             }
         }
     }
 
     /** Its saplings grown into trees, as bone meal would (a spot with none planted first). */
-    public static void grow(ServerLevel level, BlockPos corner) {
-        boolean spruce = taiga(level, corner);
-        TreeGrower grower = spruce ? TreeGrower.SPRUCE : TreeGrower.OAK;
-        BlockState sapling = spruce ? Blocks.SPRUCE_SAPLING.defaultBlockState() : Blocks.OAK_SAPLING.defaultBlockState();
+    public static void grow(ServerLevel level, BlockPos corner, Wood wood) {
         for (int[] spot : SPOTS) {
             BlockPos ground = surface(level, corner.getX() + spot[0], corner.getZ() + spot[1]);
             if (ground == null || !level.getBlockState(ground).is(BlockTags.DIRT)) {
@@ -133,9 +157,9 @@ public final class Woodlots extends SavedData {
             }
             BlockPos at = ground.above();
             if (!level.getBlockState(at).is(BlockTags.SAPLINGS)) {
-                level.setBlock(at, sapling, 3);
+                level.setBlock(at, wood.sapling(), 3);
             }
-            grower.growTree(level, level.getChunkSource().getGenerator(), at, level.getBlockState(at), level.random);
+            wood.grower().growTree(level, level.getChunkSource().getGenerator(), at, level.getBlockState(at), level.random);
         }
     }
 

@@ -287,6 +287,7 @@ impl Society {
         let plots = self.farm(town).map(|f| f.farm.plots).unwrap_or_default().into_iter()
             .filter(|&(_, n)| n > 0)
             .map(|(g, n)| Count { good: crate::wire::no(g), count: n as f64 }).collect();
+        let kits = self.towns.get(town).and_then(|&e| self.world.get::<crate::kit::Kits>(e));
         crate::wire::Answer::Land {
             town: crate::wire::no(town),
             hexes: holding.hexes.iter().map(|&h| HexAt::of(h)).collect(),
@@ -294,8 +295,8 @@ impl Society {
             next_hex: self.territory().next_hex_cost(town, self.content().dials.culture_per_hex),
             plots,
             works,
-            woodlots: self.towns.get(town).and_then(|&e| self.world.get::<crate::kit::Kits>(e))
-                .map_or_else(Vec::new, |k| k.woodlots.iter().map(|&grown| grown <= self.now()).collect()),
+            woodlots: kits.map_or_else(Vec::new, |k| k.woodlots.iter().map(|&grown| grown <= self.now()).collect()),
+            wood: kits.and_then(|k| k.wood).map(crate::wire::no),
         }
     }
 

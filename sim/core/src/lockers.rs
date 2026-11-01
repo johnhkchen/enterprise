@@ -189,6 +189,20 @@ impl Locker {
     }
 }
 
+impl Lockers {
+    /// Its Lumberjacks buy the wood they like ([`crate::kit::Kits::wood`]) at [`LIKED_LOGS_PER_EMERALD`], any other log
+    /// at [`OTHER_LOGS_PER_EMERALD`].
+    pub fn like_wood(&mut self, content: &Content, wood: Option<GoodId>) {
+        let Some(lumberjack) = content.trade(crate::roster::LUMBERJACK) else { return };
+        let logs: Vec<GoodId> = crate::works::LOGS.iter().filter_map(|l| crate::jobs::good_named(content, l)).collect();
+        for l in self.hands.iter_mut().filter(|l| l.trade == lumberjack) {
+            for o in l.offers.iter_mut().filter(|o| !o.sells && logs.contains(&o.good)) {
+                o.count = if Some(o.good) == wood { LIKED_LOGS_PER_EMERALD } else { OTHER_LOGS_PER_EMERALD };
+            }
+        }
+    }
+}
+
 /// A rostered town's lockers, one a hand in the roster's order (each knows its hand's id, and follows it as the roster
 /// changes: [`Lockers::sync`]): which the Merchant manages (by their places, worked out again at each sync), its
 /// clients (by their hands' ids, in the order it took them on), the trades its contracts need (a hook the training and sourcing slices fill), its restock
@@ -814,10 +828,20 @@ const BUYS: &[(&str, u8, &str, u32, u8, u32)] = &[
     ("leatherworker", 3, "rabbit_hide", 9, 12, 20), ("leatherworker", 4, "turtle_scute", 4, 12, 30),
     ("mason", 1, "clay_ball", 10, 16, 2), ("mason", 2, "stone", 20, 16, 10), ("mason", 3, "granite", 16, 16, 20),
     ("mason", 3, "andesite", 16, 16, 20), ("mason", 3, "diorite", 16, 16, 20), ("mason", 4, "quartz", 12, 12, 30),
-    // The mod's Lumberjack (no vanilla trades): saplings for its woodlots, then an axe's iron.
-    ("lumberjack", 1, "oak_sapling", 12, 16, 2), ("lumberjack", 2, "spruce_sapling", 12, 16, 10),
+    // The mod's Lumberjack (no vanilla trades): logs, [`OTHER_LOGS_PER_EMERALD`] to the emerald, the wood it likes
+    // [`LIKED_LOGS_PER_EMERALD`] ([`Lockers::like_wood`]; John: "trade 10-20 lumber into 1 emerald with the
+    // lumberjack"); saplings for its woodlots, then an axe's iron.
+    ("lumberjack", 1, "oak_log", 20, 16, 2), ("lumberjack", 1, "spruce_log", 20, 16, 2),
+    ("lumberjack", 1, "birch_log", 20, 16, 2), ("lumberjack", 1, "jungle_log", 20, 16, 2),
+    ("lumberjack", 1, "acacia_log", 20, 16, 2), ("lumberjack", 1, "dark_oak_log", 20, 16, 2),
+    ("lumberjack", 1, "mangrove_log", 20, 16, 2), ("lumberjack", 1, "cherry_log", 20, 16, 2),
+    ("lumberjack", 2, "oak_sapling", 12, 16, 10), ("lumberjack", 2, "spruce_sapling", 12, 16, 10),
     ("lumberjack", 3, "iron_ingot", 4, 12, 20),
 ];
+
+/// Logs a Lumberjack buys for an emerald, of the wood its town's Lumberjacks like and of any other.
+pub const LIKED_LOGS_PER_EMERALD: u32 = 10;
+pub const OTHER_LOGS_PER_EMERALD: u32 = 20;
 
 /// A selling trade in the table: trade, level, good, emeralds, how many, uses, XP, multiplier.
 type Sells = (&'static str, u8, &'static str, u32, u32, u8, u32, f64);
@@ -846,6 +870,8 @@ const SELLS: &[Sells] = &[
     ("leatherworker", 2, "leather_helmet", 5, 1, 12, 5, 0.2), ("leatherworker", 2, "leather_boots", 4, 1, 12, 5, 0.2),
     ("leatherworker", 5, "saddle", 6, 1, 12, 30, 0.2),
     ("mason", 1, "brick", 1, 10, 16, 1, 0.05), ("mason", 4, "terracotta", 1, 1, 12, 15, 0.05),
+    // (Its crates, six to the emerald: John, "Crates can be made out of emeralds, 6 per emerald at a lumberjack".)
+    ("lumberjack", 1, "crate", 1, 6, 16, 1, 0.05),
     ("lumberjack", 1, "oak_log", 1, 6, 16, 1, 0.05), ("lumberjack", 2, "charcoal", 1, 4, 16, 5, 0.05),
     ("lumberjack", 3, "spruce_log", 1, 6, 16, 10, 0.05),
 ];

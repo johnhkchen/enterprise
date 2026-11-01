@@ -29,9 +29,12 @@ pub fn register(schedule: &mut Schedule) {
 
 /// Every town's lockers follow its roster, and the uses of goods its switched-on offers buy are set aside: its income
 /// from them is its lockers', its par for them their capacity, and its workshop makes them up to that par.
-pub fn follow(content: Res<Content>, mut towns: Query<(&Roster, &mut Lockers, &mut Trades, Option<&mut Workshop>)>) {
-    for (roster, mut lockers, mut trades, workshop) in &mut towns {
+#[allow(clippy::type_complexity)]
+pub fn follow(content: Res<Content>,
+        mut towns: Query<(&Roster, &mut Lockers, &mut Trades, Option<&mut Workshop>, Option<&crate::kit::Kits>)>) {
+    for (roster, mut lockers, mut trades, workshop, kits) in &mut towns {
         lockers.sync(&content, roster);
+        lockers.like_wood(&content, kits.and_then(|k| k.wood));
         lockers.set_aside(&content, &mut trades, workshop.map(|w| w.into_inner()));
     }
 }

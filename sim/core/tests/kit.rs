@@ -493,6 +493,11 @@ fn ore_comes_from_the_hills() {
     assert_eq!(kit::ore_ground(9), 2.0, "no more past three");
 }
 
+/// The logs a town holds, of every wood (its Lumberjacks fell the wood they like).
+fn logs(s: &Society, t: usize) -> f64 {
+    stock(s, t, "oak_log") + stock(s, t, "spruce_log")
+}
+
 /// The kit's goods and charcoal: a Lumberjack's workshop burns logs to it (`workshop::MOD_CONVERSIONS`).
 fn wood_content() -> Content {
     Content::new(NAMES.iter().chain(&["charcoal"]).map(|n| Good::new(n, 0.1, 64)).collect(), DAY)
@@ -507,16 +512,16 @@ fn a_lumberjack_fells_its_woods_and_replants_them_and_no_idle_hand_gathers_logs(
     s.content_mut().dials.woodlot_grow_days = 5.0;
     s.advance(DAY);
     // Half a lot a day at Novice: the first lot felled on its second day, 16 logs; the idle hand gathers sticks only.
-    assert_eq!(stock(&s, t, "oak_log"), 0.0, "half a lot felled, none brought in yet");
+    assert_eq!(logs(&s, t), 0.0, "half a lot felled, none brought in yet");
     assert!(stock(&s, t, "stick") > 0.0, "the idle hand gathers the woods' sticks");
     s.advance(2 * DAY);
-    assert_eq!(stock(&s, t, "oak_log"), 16.0, "a lot felled by its second day's work: 16 logs");
+    assert_eq!(logs(&s, t), 16.0, "a lot felled by its second day's work: 16 logs");
     let kits: &Kits = s.kits(t);
     assert_eq!(kits.woodlots.len(), 3, "as many lots as a Novice fells while they regrow: half a lot a day, 5 days");
     assert_eq!(kits.woodlots.iter().filter(|&&grown| grown > 3 * DAY).count(), 1, "the felled lot replanted");
     // Its homes and halls take timber: logs are wanted, and it fells on past the 16 it keeps of a good nothing takes.
     s.advance(4 * DAY);
-    assert!(stock(&s, t, "oak_log") > 16.0, "on past 16: {}", stock(&s, t, "oak_log"));
+    assert!(logs(&s, t) > 16.0, "on past 16: {}", logs(&s, t));
 }
 
 #[test]
@@ -526,9 +531,32 @@ fn a_lumberjacks_lots_on_open_ground_grow_from_saplings_first() {
     let t = town(&mut s, &[("lumberjack", 1)]);
     s.content_mut().dials.woodlot_grow_days = 2.0;
     s.advance(2 * DAY);
-    assert_eq!(stock(&s, t, "oak_log"), 0.0, "saplings on the plains: nothing grown to fell for 2 days");
+    assert_eq!(logs(&s, t), 0.0, "saplings on the plains: nothing grown to fell for 2 days");
     s.advance(3 * DAY);
-    assert_eq!(stock(&s, t, "oak_log"), 16.0, "grown 2 days after they were planted, and felled");
+    assert_eq!(logs(&s, t), 16.0, "grown 2 days after they were planted, and felled");
+}
+
+#[test]
+fn a_town_s_lumberjacks_grow_the_wood_they_like_and_buy_it_dearer_than_other_logs() {
+    let mut s = Society::new(Content::new(NAMES.iter().chain(&["crate"]).map(|n| Good::new(n, 0.1, 64)).collect(), DAY));
+    let t = town(&mut s, &[("lumberjack", 1)]);
+    s.set_land(Hex::new(3, 3), Land::Woods);
+    s.advance(4 * DAY);
+    let wood = s.kits(t).wood.expect("liked at its first felling");
+    let (oak, spruce) = (good(s.content(), "oak_log"), good(s.content(), "spruce_log"));
+    assert!(wood == oak || wood == spruce);
+    let other = if wood == oak { spruce } else { oak };
+    let name = |g: usize| s.content().goods[g].name.clone();
+    assert!(stock(&s, t, &name(wood)) > 0.0 && stock(&s, t, &name(other)) == 0.0, "its lots grow the wood it likes");
+    // It buys that wood ten to the emerald, any other twenty; and sells crates six to the emerald.
+    let lumberjack = s.content().trade("lumberjack").unwrap();
+    let lockers = s.lockers(t).expect("its lockers");
+    let locker = lockers.hands.iter().find(|l| l.trade == lumberjack).expect("its locker");
+    let buys = |g: usize| locker.offers.iter().find(|o| !o.sells && o.good == g).map(|o| (o.count, o.emeralds));
+    assert_eq!((buys(wood), buys(other)), (Some((10, 1)), Some((20, 1))));
+    let crate_ = good(s.content(), "crate");
+    let sells = locker.offers.iter().find(|o| o.sells && o.good == crate_).map(|o| (o.emeralds, o.count));
+    assert_eq!(sells, Some((1, 6)));
 }
 
 #[test]

@@ -6327,7 +6327,8 @@
             "next_hex": 0.0,
             "plots": [],
             "works": [],
-            "woodlots": []
+            "woodlots": [],
+            "wood": null
           }
         },
         {
@@ -6459,7 +6460,8 @@
               true,
               false,
               true
-            ]
+            ],
+            "wood": 3
           }
         },
         {
@@ -6625,7 +6627,8 @@
               false,
               false,
               false
-            ]
+            ],
+            "wood": 4294967295
           }
         },
         {
@@ -20773,7 +20776,8 @@
             "next_hex": 0.0,
             "plots": [],
             "works": [],
-            "woodlots": []
+            "woodlots": [],
+            "wood": null
           }
         },
         {
@@ -20905,7 +20909,8 @@
               true,
               false,
               true
-            ]
+            ],
+            "wood": 3
           }
         },
         {
@@ -21071,7 +21076,8 @@
               false,
               false,
               false
-            ]
+            ],
+            "wood": 4294967295
           }
         },
         {

@@ -83,6 +83,8 @@ Answer:
                 TYPENAME: WorkView
           - woodlots:
               SEQ: BOOL
+          - wood:
+              OPTION: U32
     9:
       Ground:
         STRUCT:

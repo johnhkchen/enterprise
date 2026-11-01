@@ -76,6 +76,7 @@ pub const ITEMS_PER_EMERALD: &[(&str, f64)] = &[
     ("minecraft:leather_boots", 0.25),
     ("minecraft:painting", 0.5),
     ("minecraft:chest", 2.0), // a Lumberjack's, of two logs' planks: a home's furniture
+    ("enterprise:crate", 6.0), // a Lumberjack sells six to the emerald
     ("minecraft:flower_pot", 4.0),
     ("minecraft:lantern", 1.0),
     ("minecraft:candle", 3.0),

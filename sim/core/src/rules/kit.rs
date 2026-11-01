@@ -83,8 +83,9 @@ fn owe(content: &Content, kits: &mut Kits, name: &str, amount: f64) {
 
 /// A day's work, for the days since the last (`Territory.touch`): see the module.
 #[allow(clippy::type_complexity, clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: Res<Territory>, order: Res<Towns>,
-        mut ledger: ResMut<Ledger>, pallets: Res<crate::pallet::Pallets>, routes: Query<&Route>,
+        seed: Res<Rng>, mut dice: ResMut<Dice>, mut ledger: ResMut<Ledger>, pallets: Res<crate::pallet::Pallets>, routes: Query<&Route>,
         far: Query<(&Roster, &crate::lockers::Lockers)>,
         mut towns: Query<(&Town, &mut Kits, &mut Stock, &Trades, Option<&Roster>, Option<&Works>, Option<&Shipments>)>) {
     let (now, day) = (clock.now, content.day_ticks);
@@ -212,10 +213,13 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
                 let grown = if kits.woodlots.len() < wooded { now } else { now + grow };
                 kits.woodlots.push(grown);
             }
-            let log = log_of(town.hex.map_or(Land::Plains, |hex| map.land(hex)));
+            // The wood they like, rolled at the first felling.
+            if kits.wood.is_none() {
+                kits.wood = liked_wood(&content, dice.of(town.id, &seed));
+            }
             // (Its homes and halls take timber: logs are wanted, kept to `KEEP_WANTED`.)
             let timber = crate::works::takes_timber(&content);
-            if let Some(g) = content.good(log) {
+            if let Some(g) = kits.wood {
                 kits.felling += fellers * d.lots_felled_per_level_day * days;
                 for lot in kits.woodlots.iter_mut() {
                     if kits.felling < 1.0 {

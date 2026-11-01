@@ -77,6 +77,7 @@ public final class Prices {
             Map.entry("minecraft:leather_boots", 0.25),
             Map.entry("minecraft:painting", 0.5),
             Map.entry("minecraft:chest", 2.0),
+            Map.entry("enterprise:crate", 6.0),
             Map.entry("minecraft:flower_pot", 4.0),
             Map.entry("minecraft:lantern", 1.0),
             Map.entry("minecraft:candle", 3.0),

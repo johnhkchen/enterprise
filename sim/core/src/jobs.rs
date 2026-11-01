@@ -78,7 +78,8 @@ pub fn woodland_marbles(content: &Content, holding: Option<&crate::territory::Ho
     let (lots, _) = crate::kit::woodland(map, holding, home);
     let could = lots as f64 / d.woodlot_grow_days.max(1e-9) * d.logs_per_lot;
     let felled = crate::kit::levels(roster, Some(lumberjack)) * d.lots_felled_per_level_day * d.logs_per_lot;
-    let log = content.good(crate::kit::log_of(home.map_or(crate::map::Land::Plains, |h| map.land(h))))?;
+    // (Whatever the wood they like: logs are all worth alike.)
+    let log = crate::works::LOGS.iter().find_map(|l| content.good(l))?;
     let unfelled = (could - felled).max(0.0).min(d.lots_felled_per_level_day * d.logs_per_lot);
     let wait = if roster.count(lumberjack) == 0 { waiting } else { 0.0 };
     (unfelled > 0.0).then(|| (lumberjack, unfelled * content.goods[log].value * 4.0 + wait))

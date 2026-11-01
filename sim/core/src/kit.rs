@@ -164,6 +164,10 @@ pub struct Kits {
     pub woodlots: Vec<u64>,
     #[serde(default)]
     pub felling: f64,
+    /// The wood its Lumberjacks like (John: "they'll grow the type of lumber they like"): the log its woodlots grow,
+    /// rolled once, at its first felling, from the logs the host has ([`liked_wood`]).
+    #[serde(default)]
+    pub wood: Option<GoodId>,
 }
 
 /// Woodlots a hex of woods or taiga holds, and a hex of open ground (planted as saplings: a forest's stand grown).
@@ -185,9 +189,10 @@ pub fn woodland(map: &crate::map::Map, holding: Option<&crate::territory::Holdin
         wooded)
 }
 
-/// The log a town's woodlots give: spruce on taiga, oak elsewhere.
-pub fn log_of(land: Land) -> &'static str {
-    if land == Land::Taiga { "spruce_log" } else { "oak_log" }
+/// The wood a town's Lumberjacks like, rolled from the logs the host has (`works::LOGS`), each alike; None if it has none.
+pub fn liked_wood(content: &Content, roll: &mut crate::state::Rng) -> Option<GoodId> {
+    let logs: Vec<GoodId> = crate::works::LOGS.iter().filter_map(|l| crate::jobs::good_named(content, l)).collect();
+    (!logs.is_empty()).then(|| logs[roll.below(logs.len() as u64) as usize])
 }
 
 /// Whole units in `x`, forgiving the dust floats leave.
