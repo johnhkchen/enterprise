@@ -98,15 +98,20 @@ public final class TerritoryTests {
     @GameTest(template = "floor")
     public static void farmersProduceWhatGrowsInTheirHex(GameTestHelper helper) {
         wheatField(helper);
-        Hex hex = Hex.at(helper.absolutePos(BELL));
+        // The field can straddle a hex's edge (it counted 6 and 8 of 20 with the bell's hex alone): the hexes it lies in.
+        List<Hex> hexes = java.util.stream.Stream.of(new BlockPos(0, 2, 0), new BlockPos(4, 2, 0), new BlockPos(0, 2, 3),
+                new BlockPos(4, 2, 3)).map(p -> Hex.at(helper.absolutePos(p))).distinct().toList();
         int plots = 0;
-        for (long chunk : dev.b28.enterprise.territory.Crops.chunksOf(hex)) {
-            var counted = dev.b28.enterprise.territory.Crops.countChunk(
-                    helper.getLevel(), chunk, hex, helper.absolutePos(BELL).getY());
-            plots += counted == null ? 0 : counted.getOrDefault(Items.WHEAT, 0);
+        for (Hex hex : hexes) {
+            for (long chunk : dev.b28.enterprise.territory.Crops.chunksOf(hex)) {
+                var counted = dev.b28.enterprise.territory.Crops.countChunk(
+                        helper.getLevel(), chunk, hex, helper.absolutePos(BELL).getY());
+                plots += counted == null ? 0 : counted.getOrDefault(Items.WHEAT, 0);
+            }
         }
         helper.assertTrue(plots >= 10, "the field counts its wheat plots (neighbouring tests may trample a few), counted " + plots);
-        var plan = new Territory().plan(helper.getLevel(), helper.absolutePos(BELL).getY(), List.of(hex), List.of(1));
+        Hex hex = hexes.get(0);
+        var plan = new Territory().plan(helper.getLevel(), helper.absolutePos(BELL).getY(), hexes, List.of(1));
         double wheat = plan.getOrDefault("minecraft:wheat", 0.0);
         // Other tests' fields can share this hex; one level-1 farmer works at most 32 plots of it.
         int worked = Math.min(plots, Territory.PLOTS_PER_FARMER_LEVEL);
