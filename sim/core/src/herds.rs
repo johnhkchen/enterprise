@@ -125,6 +125,12 @@ pub struct Herds {
     /// beyond them aren't laid yet.
     #[serde(default)]
     pub grass: Vec<u32>,
+    /// The plots of its farm no Farmer works (fallow or untended under its last plan), its herds' grazing once a pasture
+    /// is fenced for them to come home to (John: "Why don't we let unused farmland act as a pasture candidate?"): an
+    /// animal a `grass_per_animal` of them, as of a pasture's grass, a pasture's room at most for each fenced. Set at
+    /// each farm review.
+    #[serde(default)]
+    pub grazing: f64,
 }
 
 impl Herds {
@@ -146,7 +152,10 @@ impl Herds {
         let laid = self.laid();
         let grass: f64 = self.grass.iter().take(laid as usize).map(|&g| g as f64).sum();
         let unlaid = self.pastures.max(1) - laid.min(self.pastures.max(1));
-        grass / d.grass_per_animal.max(1.0) + d.pasture_animals as f64 * unlaid as f64
+        // (And the fields no one works, for a town with a pasture fenced: each pasture's flock ranges over them, as many
+        // again as a pasture holds at the most, for every animal eats its feed and the feed is grown first.)
+        let grazing = (self.grazing.max(0.0) / d.grass_per_animal.max(1.0)).min(self.pastures as f64 * d.pasture_animals as f64);
+        grass / d.grass_per_animal.max(1.0) + grazing + d.pasture_animals as f64 * unlaid as f64
     }
 
     /// The pastures the host has laid, of those fenced.

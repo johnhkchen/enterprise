@@ -1269,6 +1269,16 @@ mod's), but no road ever chose it. Then: build them first.
     point: sheep 167 to 325 in 9 towns (4), cows 211 to 260; the larger towns' furnishings 0.67 to 0.89, treats 0.84 to
     0.88, reading 0.70 to 0.52, mood (all towns, by villagers) 0.80 to 1.67; 28 towns, the towns' money 132 to 171.
     Pyrewood fenced a second and holds 12.
+  - **Built: a herd grazes the plots its farm's Farmers leave (John, 2026-11-01: "Why don't we let unused farmland act as
+    a pasture candidate?").** A town's fallow and untended plots are its herds' grazing (`Herds::grazing`, set at each
+    farm review), an animal a `grass_per_animal` of them as of a pasture's grass, once a pasture is fenced for it to
+    come home to; as much again as a pasture holds at most for each fenced, for every animal eats its feed and the
+    feed is grown first. The game shows none of it yet: its animals stay in their pastures. The random worlds' herd
+    check allows a herd its grazing, and one over its room while the fields it grazed are ploughed again (it dwindles
+    back). The bid study from its day-10 point, one run: cows 260 to 605, sheep 325 to 215, leather in stock 44 to 111;
+    the herd towns among the gladdest (the first 2.71, Hillsbrad 2.76), but the network grew otherwise from day 10 (209
+    villagers to 180, two of its larger towns at -1.37 and 0.51 with no herd to speak of): the larger towns'
+    furnishings 0.89 to 0.76, clothing 0.88 to 0.80, mood 1.67 to 1.29, the towns' money 171 to 120.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

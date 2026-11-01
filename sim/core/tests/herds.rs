@@ -358,3 +358,20 @@ fn a_town_fences_its_first_pasture_past_its_reserve() {
     assert!(fences(8.0, 1, true, 7.5, 16.0, money, reserve, fence),
         "a first laid on 30 blocks of grass, room for 8: a second past the reserve, as a first");
 }
+
+/// A herd grazes the plots its farm's Farmers leave, once a pasture is fenced for it, as much again as its pastures hold
+/// at most (John: "Why don't we let unused farmland act as a pasture candidate?"): Pyrewood's 30 blocks of grass, room
+/// for 8, with its fields' untended plots, room for 8 and 16 more.
+#[test]
+fn a_herd_grazes_the_fields_no_one_works() {
+    let c = content();
+    let mut h = herd_of(&c, "sheep", 8.0);
+    h.pastures = 1;
+    h.grass = vec![30];
+    assert_eq!(h.capacity(&c), 7.5, "30 blocks of grass, a quarter of an animal each");
+    h.grazing = 400.0;
+    assert_eq!(h.capacity(&c), 7.5 + 16.0, "400 plots untended: a pasture's sixteen more, no more");
+    h.pastures = 0;
+    h.grass.clear();
+    assert_eq!(h.capacity(&c), 16.0, "no pasture fenced: no grazing, an unfenced herd's room");
+}

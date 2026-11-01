@@ -47,7 +47,9 @@ pub fn check(s: &Society, _day: u64) -> Result<(), String> {
             return Err(format!("town {t}: feed owed outside 0 to 1"));
         }
         let total: f64 = h.count.iter().sum();
-        if total > room * h.pastures.max(1) as f64 + 9.0 + 1e-9 {
+        // (Its pastures' room, and the fields it grazes beyond them, a pasture's room at most each: `Herds::capacity`;
+        // a herd the fields it grazed were ploughed again under dwindles back to its room, not at once.)
+        if total > h.capacity(s.content()).max(2.0 * room * h.pastures.max(1) as f64) + 9.0 + 1e-9 {
             return Err(format!("town {t}: {total} animals in {} pastures", h.pastures));
         }
     }
