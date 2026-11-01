@@ -46,7 +46,7 @@ pub struct Conversion {
 /// mutton over a campfire, no coal, as the game's campfire does): trade names, inputs, output, how many it makes. The
 /// game's own recipes come with the mod's pack (`VillagerCrafts`), not here.
 #[allow(clippy::type_complexity)]
-pub const MOD_CONVERSIONS: [(&[&str], &[(&str, f64)], &str, f64); 12] = [
+pub const MOD_CONVERSIONS: [(&[&str], &[(&str, f64)], &str, f64); 14] = [
     (&["librarian", "cartographer"], &[("sugar_cane", 1.0)], "paper", 1.0),
     (&["farmer"], &[("wheat", 3.0)], "bread", 1.0),
     (&["shepherd"], &[("white_wool", 2.0)], "white_carpet", 3.0),
@@ -61,6 +61,9 @@ pub const MOD_CONVERSIONS: [(&[&str], &[(&str, f64)], &str, f64); 12] = [
     // charcoal and fuels one and a half), for the town's smiths and smokehouse where it has no coal.
     (&["lumberjack"], &[("oak_log", 3.0)], "charcoal", 2.0),
     (&["lumberjack"], &[("spruce_log", 3.0)], "charcoal", 2.0),
+    // And joins two logs' planks into a chest, a home's furniture (a furnishing: John, "Furnishings").
+    (&["lumberjack"], &[("oak_log", 2.0)], "chest", 1.0),
+    (&["lumberjack"], &[("spruce_log", 2.0)], "chest", 1.0),
 ];
 
 /// The fuel a town keeps for its smelting and smoking, coal and charcoal together, before its Lumberjacks burn more.

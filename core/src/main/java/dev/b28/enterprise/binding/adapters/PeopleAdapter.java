@@ -352,7 +352,7 @@ public final class PeopleAdapter {
      */
     private boolean stall(MinecraftServer server, Output.Stall o) {
         VillagerProfession profession = profession(o.trade());
-        var trade = Jobs.TRADES.stream().filter(t -> t.profession() == profession).findFirst();
+        var trade = Jobs.trades().stream().filter(t -> t.profession() == profession).findFirst();
         if (trade.isEmpty()) {
             return true;
         }

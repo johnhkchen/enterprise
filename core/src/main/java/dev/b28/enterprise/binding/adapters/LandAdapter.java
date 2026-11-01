@@ -1173,7 +1173,7 @@ public final class LandAdapter {
             if (Math.abs(corner.getY() - bell.getY()) > 2 || !level3(level, corner)) {
                 continue;
             }
-            var t = dev.b28.enterprise.territory.Jobs.TRADES.stream()
+            var t = dev.b28.enterprise.territory.Jobs.trades().stream()
                     .filter(x -> net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION.getKey(x.profession()).getPath()
                             .equals(trade)).findFirst();
             if (t.isPresent()) {

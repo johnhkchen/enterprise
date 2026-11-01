@@ -20,6 +20,7 @@ public final class Enterprise {
 
     public Enterprise(IEventBus modBus) {
         Merchant.register(modBus);
+        dev.b28.enterprise.territory.Lumberjack.register(modBus);
         dev.b28.enterprise.cargo.Cargo.register(modBus);
         dev.b28.enterprise.settlement.Props.register(modBus);
         dev.b28.enterprise.trade.Wares.register(modBus);

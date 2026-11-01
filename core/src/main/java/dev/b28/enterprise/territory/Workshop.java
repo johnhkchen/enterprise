@@ -39,7 +39,14 @@ public final class Workshop {
             new Conversion(Set.of("minecraft:leatherworker"), Items.LEATHER, 4, Items.LEATHER_BOOTS, 1),
             new Conversion(Set.of("minecraft:fisherman"), Items.COD, 1, Items.COOKED_COD, 1),
             new Conversion(Set.of("minecraft:farmer"), Items.WHEAT, 2, Items.SUGAR_CANE, 1, Items.COOKIE, 4),
-            new Conversion(Set.of("minecraft:librarian"), Items.PAPER, 3, Items.LEATHER, 1, Items.BOOK, 1));
+            new Conversion(Set.of("minecraft:librarian"), Items.PAPER, 3, Items.LEATHER, 1, Items.BOOK, 1),
+            // A Lumberjack burns its logs to charcoal, a third of them to fire the rest (the core's `FUEL_PAR` says how
+            // much a town keeps).
+            new Conversion(Set.of(Lumberjack.ID), Items.OAK_LOG, 3, Items.CHARCOAL, 2),
+            new Conversion(Set.of(Lumberjack.ID), Items.SPRUCE_LOG, 3, Items.CHARCOAL, 2),
+            // And joins two logs' planks into a chest, a home's furniture (a furnishing).
+            new Conversion(Set.of(Lumberjack.ID), Items.OAK_LOG, 2, Items.CHEST, 1),
+            new Conversion(Set.of(Lumberjack.ID), Items.SPRUCE_LOG, 2, Items.CHEST, 1));
 
     private Workshop() {}
 

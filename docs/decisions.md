@@ -1330,6 +1330,12 @@ mod's), but no road ever chose it. Then: build them first.
   charcoal from logs for the town's fuel with a charcoal twin of every coal recipe, and the job draw (a town whose trades
   use wood, short of logs, draws one for its woods unfelled). Idle hands gather no logs where the host has the trade:
   the mod's doesn't yet, so the game is as it was until landing 2.
+  **Built (landing 2, the mod's trade):** `enterprise:lumberjack` and its chopping block (placeholder art: a stump of
+  oak, the Merchant's cloak in red plaid), its plain stall, the trade in the content pack, charcoal and a chest of two
+  logs in its workshop: a chest is a furnishing, which gives a town short of furnishings a reason to draw one (logs
+  alone are worth too little: seed 1717's 30 days drew no Lumberjack for its woods at 4 emeralds a draw). Idle hands
+  in the game now gather no logs. Seed 1717's 30 days with the chest: furnishings 0.53, still no Lumberjack drawn (the
+  towns drew 39 trades in all, short of a stall's money most days).
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

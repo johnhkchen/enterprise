@@ -58,6 +58,23 @@ public final class Jobs {
             new Trade(VillagerProfession.TOOLSMITH, Blocks.SMITHING_TABLE, List.of(Items.COAL, Items.IRON_INGOT, Items.FLINT)),
             new Trade(VillagerProfession.WEAPONSMITH, Blocks.GRINDSTONE, List.of(Items.COAL, Items.IRON_INGOT, Items.FLINT)));
 
+    private static List<Trade> all;
+
+    /**
+     * The trades a town can set up in core mode: {@link #TRADES}, then the mod's Lumberjack (its profession and chopping
+     * block are the mod's registries', so this list is made at first use, once they're filled). The Java rules keep
+     * to {@link #TRADES}.
+     */
+    public static List<Trade> trades() {
+        if (all == null) {
+            List<Trade> list = new java.util.ArrayList<>(TRADES);
+            list.add(new Trade(Lumberjack.PROFESSION.get(), Lumberjack.CHOPPING_BLOCK.get(),
+                    List.of(Items.OAK_SAPLING, Items.SPRUCE_SAPLING)));
+            all = List.copyOf(list);
+        }
+        return all;
+    }
+
     /** Stalls are 3 x 3 (a block of clearance around), at least this far from the bell. */
     public static final int STALL_SIZE = 3;
     public static final int STALL_NEAREST = 6;

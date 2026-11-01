@@ -282,6 +282,33 @@ public final class JobsTests {
     }
 
     /**
+     * The mod's own trade (docs/lumberjack-plan.md): the core's Lumberjack stall is a chopping block with a chest against
+     * it (no kingdom kit has one yet), and its villager takes the trade and keeps it, as a vanilla trade's; the core
+     * knows the trade by its name in the pack.
+     */
+    @GameTest(template = "floor", skyAccess = true)
+    public static void aLumberjacksStallIsAChoppingBlockAndItsVillagerTakesTheTrade(GameTestHelper helper) {
+        Villager idle = helper.spawn(EntityType.VILLAGER, new BlockPos(5, 2, 1));
+        var profession = dev.b28.enterprise.territory.Lumberjack.PROFESSION.get();
+        var trade = Jobs.trades().stream().filter(t -> t.profession() == profession).findFirst().orElseThrow();
+        BlockPos workstation = Jobs.buildStall(helper.getLevel(), helper.absolutePos(new BlockPos(0, 1, 0)), trade, "lordaeron",
+                7, helper.absolutePos(new BlockPos(5, 2, 5)));
+        helper.assertTrue(helper.getLevel().getBlockState(workstation).is(dev.b28.enterprise.territory.Lumberjack.CHOPPING_BLOCK.get()),
+                "a chopping block: " + helper.getLevel().getBlockState(workstation));
+        helper.assertFalse(Lockers.touchingContainers(helper.getLevel(), workstation).isEmpty(), "a chest against it");
+        helper.assertTrue(dev.b28.enterprise.binding.ModPack.of().trades().contains("lumberjack"), "the pack names the trade");
+        dev.b28.enterprise.binding.adapters.PeopleAdapter.takeStall(helper.getLevel(), idle, workstation, profession);
+        helper.runAfterDelay(40, () -> {
+            helper.assertTrue(idle.getVillagerData().getProfession() == profession, "a Lumberjack, and stays one: "
+                    + idle.getVillagerData().getProfession() + ", poi " + helper.getLevel().getPoiManager().getType(workstation));
+            helper.assertTrue(idle.getBrain().getMemory(MemoryModuleType.JOB_SITE).map(GlobalPos::pos).filter(workstation::equals)
+                    .isPresent(), "working the chopping block");
+            idle.discard();
+            helper.succeed();
+        });
+    }
+
+    /**
      * A pasture laid to the land (core mode's `Work::Pasture`): fenced where its ground lies, the gate on the side facing
      * the bell, the earth inside grassed, and the grass inside counted for the core.
      */

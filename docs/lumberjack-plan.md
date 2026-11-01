@@ -15,13 +15,16 @@ with John the same day:
 ## Landings
 
 1. **Core** (built): the trade, woodlots and felling, charcoal, the job draw. Below.
-2. **The mod's trade:** the profession and its workstation block (`enterprise:chopping_block`, its point of interest),
-   the villager's look, its stall in the kingdoms' kits, the host's trade list, recipes (charcoal) and offers. Logs stop
-   coming from idle hands in the game here.
+2. **The mod's trade** (built): the profession and its workstation block (`enterprise:chopping_block`, its point of
+   interest, a stump of the game's oak textures), the villager's look (the Merchant's cloak in red plaid), its plain
+   stall (a chopping block and a chest; no kingdom kit has one yet), the host's trade list and its recipes: charcoal,
+   and a chest of two logs, a home's furniture (`comforts/furnishings`), which gives a town short of furnishings a
+   reason to draw one (logs alone are worth too little: seed 1717's 30 days drew none for its woods). Logs stop coming
+   from idle hands in the game here.
 3. **Woodlots in the world:** the host lays a town's lots (a ring past its fields, as `FieldMaps` lays farmland: the
    woods' own trees where it has them, saplings on open ground) and shows each lot as the core has it, felled and
    replanted or grown, when its chunk is touched.
-4. **Wood's goods:** wooden furnishings, and crates and halls built of planks and logs.
+4. **Wood's goods:** crates and halls built of planks and logs (the chest, a furnishing, came with landing 2).
 
 ## The core (landing 1)
 

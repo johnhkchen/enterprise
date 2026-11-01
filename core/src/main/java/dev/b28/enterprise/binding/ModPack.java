@@ -195,9 +195,10 @@ public final class ModPack {
                 WEIGHTS.getOrDefault(id, 1.0));
     }
 
-    /** The trades a villager can have: the squad's, in its order, then the two with no work. */
+    /** The trades a villager can have: the squad's, in its order, the mod's Lumberjack, then the two with no work. */
     static List<String> trades() {
         List<String> trades = new ArrayList<>(Squad.TRADES.stream().map(ModPack::bare).toList());
+        trades.add(bare(dev.b28.enterprise.territory.Lumberjack.ID));
         trades.add(bare(Labour.NONE));
         trades.add(bare(Labour.NITWIT));
         return trades;

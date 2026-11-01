@@ -562,3 +562,21 @@ fn a_town_whose_trades_want_wood_draws_a_lumberjack_for_its_woods() {
     s.deliver(t, good(s.content(), "oak_log"), 16.0);
     assert!(!s.job_bag(t).iter().any(|(trade, _)| trade == "lumberjack"), "16 logs held");
 }
+
+#[test]
+fn a_lumberjack_joins_logs_into_chests_for_a_town_short_of_furnishings_and_one_is_drawn_for_it() {
+    let mut goods: Vec<Good> = NAMES.iter().map(|n| Good::new(n, 0.1, 64)).collect();
+    goods.push(Good::new("chest", 0.5, 64).comfort(3));
+    let mut s = Society::new(Content::new(goods, DAY));
+    let t = town(&mut s, &[("lumberjack", 1), ("none", 1)]);
+    s.set_people(t, 2.0, 2.0, 2.0);
+    s.deliver(t, good(s.content(), "oak_log"), 10.0);
+    s.advance(DAY);
+    assert!(stock(&s, t, "chest") >= 1.0, "chests of its logs: {}", stock(&s, t, "chest"));
+    // A town short of furnishings with no Lumberjack puts its marbles in for one, as for a Shepherd.
+    let c = s.content();
+    let met = [1.0, 1.0, 1.0, 0.0, 1.0];
+    let marbles = enterprise_core::jobs::comfort_marbles(c, &met, 500.0, &enterprise_core::roster::Roster::default());
+    let lumberjack = c.trade("lumberjack").unwrap();
+    assert!(marbles.iter().any(|&(t, m)| t == lumberjack && m > 0.0), "furnishings lacking: {marbles:?}");
+}

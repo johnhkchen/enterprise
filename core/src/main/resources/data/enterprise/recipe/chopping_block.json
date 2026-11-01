@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "SS",
+    "LL"
+  ],
+  "key": {
+    "S": { "item": "minecraft:stick" },
+    "L": { "tag": "minecraft:logs" }
+  },
+  "result": { "id": "enterprise:chopping_block", "count": 1 }
+}
