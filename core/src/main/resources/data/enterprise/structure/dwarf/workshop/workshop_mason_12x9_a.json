@@ -1,0 +1,87 @@
+{
+  "id": "enterprise:dwarf/workshop/workshop_mason_12x9_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    14,
+    11
+  ],
+  "height": 20,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        7,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        7,
+        7,
+        4
+      ],
+      "foot": [
+        8,
+        7,
+        4
+      ]
+    },
+    {
+      "head": [
+        7,
+        7,
+        2
+      ],
+      "foot": [
+        8,
+        7,
+        2
+      ]
+    },
+    {
+      "head": [
+        5,
+        7,
+        2
+      ],
+      "foot": [
+        5,
+        7,
+        3
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        9,
+        3,
+        7
+      ],
+      "block": "minecraft:stonecutter"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:mason"
+}

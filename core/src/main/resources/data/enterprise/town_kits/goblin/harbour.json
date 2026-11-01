@@ -484,6 +484,32 @@
       "moor": "alongside a timber quay or wharf, under its crane"
     }
   ],
-  "buildings": [],
-  "buildings_note": "this race's harbour buildings (customs house, warehouses, fish market) are a later batch: lay none until then"
+  "buildings": [
+    {
+      "id": "customs_house_15x12_a",
+      "part": "enterprise:goblin/hall/customs_house_15x12_a",
+      "slot": "harbour:customs_house",
+      "use": [
+        "sea"
+      ],
+      "footprint": [
+        15,
+        12
+      ],
+      "faces": "the quay (front, south)"
+    },
+    {
+      "id": "warehouse_19x13_a",
+      "part": "enterprise:goblin/hall/warehouse_19x13_a",
+      "slot": "harbour:warehouse",
+      "use": [
+        "sea"
+      ],
+      "footprint": [
+        19,
+        13
+      ],
+      "faces": "the quay (front, south)"
+    }
+  ]
 }

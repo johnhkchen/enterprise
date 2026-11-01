@@ -1,6 +1,6 @@
 {
   "kingdom": "goblin",
-  "rev": 3,
+  "rev": 4,
   "about": "Goblin trade-port: town rules for a kit race. Every building is a whole delivered part from town_kits/goblin/core.json (named here by id), placed on its plot as it is; the house solver is not used. A town's clan (from styles/settlement.json, by the land) recolours every part at placement with that clan's swaps in styles/goblin.json. The tiers and the street bands are Lordaeron's. Choice is deterministic: hash(town id, slot) picks among weighted options.",
   "set": "goblin/core",
   "tiers": {
@@ -199,6 +199,42 @@
           15
         ],
         "beds": 4
+      },
+      {
+        "slot": "workshop:cartographer",
+        "asset": "enterprise:goblin/workshop/workshop_cartographer_12x9_a",
+        "footprint": [
+          18,
+          15
+        ],
+        "beds": 3
+      },
+      {
+        "slot": "workshop:leatherworker",
+        "asset": "enterprise:goblin/workshop/workshop_leatherworker_12x9_a",
+        "footprint": [
+          18,
+          15
+        ],
+        "beds": 3
+      },
+      {
+        "slot": "workshop:toolsmith",
+        "asset": "enterprise:goblin/workshop/workshop_toolsmith_12x9_a",
+        "footprint": [
+          14,
+          11
+        ],
+        "beds": 3
+      },
+      {
+        "slot": "workshop:weaponsmith",
+        "asset": "enterprise:goblin/workshop/workshop_weaponsmith_12x9_a",
+        "footprint": [
+          14,
+          11
+        ],
+        "beds": 3
       }
     ],
     "on": "plots fronting an avenue or the forum, nearest the forum first"
@@ -291,7 +327,7 @@
   },
   "harbour": {
     "set": "goblin/harbour",
-    "about": "quays, jetties, the mole and boats on Lordaeron's harbour contract, in this race's materials; no harbour buildings yet"
+    "about": "quays, jetties, the mole and boats on Lordaeron's harbour contract, in this race's materials; its customs house and warehouse in the set's buildings"
   },
   "founding": {
     "set": "goblin/founding",

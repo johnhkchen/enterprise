@@ -163,6 +163,82 @@
       ],
       "beds": 0,
       "workstations": []
+    },
+    {
+      "id": "workshop_farmer_12x9_a",
+      "part": "enterprise:nightelf/workshop/workshop_farmer_12x9_a",
+      "kind": "workshop",
+      "slot": "workshop:farmer",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        24,
+        11
+      ],
+      "beds": 5,
+      "workstations": [
+        "minecraft:composter"
+      ]
+    },
+    {
+      "id": "workshop_librarian_12x9_a",
+      "part": "enterprise:nightelf/workshop/workshop_librarian_12x9_a",
+      "kind": "workshop",
+      "slot": "workshop:librarian",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        24,
+        11
+      ],
+      "beds": 6,
+      "workstations": [
+        "minecraft:lectern"
+      ]
+    },
+    {
+      "id": "workshop_mason_12x9_a",
+      "part": "enterprise:nightelf/workshop/workshop_mason_12x9_a",
+      "kind": "workshop",
+      "slot": "workshop:mason",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        24,
+        11
+      ],
+      "beds": 4,
+      "workstations": [
+        "minecraft:stonecutter"
+      ]
+    },
+    {
+      "id": "workshop_fisherman_12x9_a",
+      "part": "enterprise:nightelf/workshop/workshop_fisherman_12x9_a",
+      "kind": "workshop",
+      "slot": "workshop:fisherman",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        24,
+        11
+      ],
+      "beds": 4,
+      "workstations": [
+        "minecraft:barrel"
+      ]
     }
   ],
   "held": [],

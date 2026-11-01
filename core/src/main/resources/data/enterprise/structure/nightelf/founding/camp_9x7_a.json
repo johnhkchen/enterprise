@@ -1,0 +1,32 @@
+{
+  "id": "enterprise:nightelf/founding/camp_9x7_a",
+  "rev": 1,
+  "style": "nightelf",
+  "kind": "part",
+  "slot": "prop:founding",
+  "tags": [
+    "founding",
+    "camp",
+    "temporary",
+    "lamp"
+  ],
+  "place": "a plot at the main street's end; cleared when the first house has its beds (never counted as beds)",
+  "palette": "base",
+  "footprint": [
+    9,
+    7
+  ],
+  "height": 16,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north"
+  ]
+}

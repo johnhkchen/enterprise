@@ -1,0 +1,100 @@
+{
+  "id": "enterprise:tauren/workshop/lore_tent_14x10_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    4,
+    3
+  ],
+  "footprint": [
+    14,
+    10
+  ],
+  "height": 18,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        10,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        9,
+        3,
+        8
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        4,
+        3,
+        6
+      ],
+      "foot": [
+        3,
+        3,
+        6
+      ]
+    },
+    {
+      "head": [
+        4,
+        3,
+        1
+      ],
+      "foot": [
+        3,
+        3,
+        1
+      ]
+    },
+    {
+      "head": [
+        2,
+        3,
+        3
+      ],
+      "foot": [
+        3,
+        3,
+        3
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        11,
+        3,
+        4
+      ],
+      "block": "minecraft:lectern"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:librarian"
+}

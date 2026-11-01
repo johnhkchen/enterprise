@@ -376,6 +376,140 @@
       ],
       "beds": 5,
       "workstations": []
+    },
+    {
+      "id": "mapmaker_hut_14x10_a",
+      "part": "enterprise:orc/workshop/mapmaker_hut_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:cartographer",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 3,
+      "workstations": [
+        "minecraft:cartography_table"
+      ]
+    },
+    {
+      "id": "tanner_hut_14x10_a",
+      "part": "enterprise:orc/workshop/tanner_hut_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:leatherworker",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 2,
+      "workstations": [
+        "minecraft:cauldron"
+      ]
+    },
+    {
+      "id": "toolmaker_hut_14x10_a",
+      "part": "enterprise:orc/workshop/toolmaker_hut_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:toolsmith",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 2,
+      "workstations": [
+        "minecraft:smithing_table"
+      ]
+    },
+    {
+      "id": "weaponsmith_hut_14x10_a",
+      "part": "enterprise:orc/workshop/weaponsmith_hut_14x10_a",
+      "kind": "workshop",
+      "slot": "workshop:weaponsmith",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 2,
+      "workstations": [
+        "minecraft:grindstone"
+      ]
+    },
+    {
+      "id": "tally_house_14x10_a",
+      "part": "enterprise:orc/hall/tally_house_14x10_a",
+      "kind": "hall",
+      "slot": "harbour:customs_house",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "storehouse_14x10_a",
+      "part": "enterprise:orc/hall/storehouse_14x10_a",
+      "kind": "hall",
+      "slot": "harbour:warehouse",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "tiles": [
+        4,
+        3
+      ],
+      "size": [
+        14,
+        18,
+        10
+      ],
+      "beds": 0,
+      "workstations": []
     }
   ],
   "held": [],

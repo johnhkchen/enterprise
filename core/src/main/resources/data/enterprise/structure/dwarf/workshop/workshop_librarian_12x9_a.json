@@ -1,0 +1,121 @@
+{
+  "id": "enterprise:dwarf/workshop/workshop_librarian_12x9_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    16,
+    11
+  ],
+  "height": 22,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        12,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        11,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        8,
+        7,
+        2
+      ],
+      "foot": [
+        8,
+        7,
+        3
+      ]
+    },
+    {
+      "head": [
+        6,
+        7,
+        2
+      ],
+      "foot": [
+        6,
+        7,
+        3
+      ]
+    },
+    {
+      "head": [
+        3,
+        7,
+        8
+      ],
+      "foot": [
+        3,
+        7,
+        7
+      ]
+    },
+    {
+      "head": [
+        3,
+        7,
+        2
+      ],
+      "foot": [
+        3,
+        7,
+        3
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        3,
+        3,
+        7
+      ],
+      "block": "minecraft:lectern"
+    }
+  ],
+  "lockers": [
+    {
+      "at": [
+        3,
+        3,
+        6
+      ],
+      "for": [
+        3,
+        3,
+        7
+      ]
+    }
+  ],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:librarian"
+}

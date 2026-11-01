@@ -1,0 +1,93 @@
+{
+  "id": "enterprise:dwarf/workshop/workshop_farmer_12x9_a",
+  "rev": 1,
+  "style": "dwarf",
+  "kind": "workshop",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "deepforge",
+  "footprint": [
+    16,
+    11
+  ],
+  "height": 24,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        11,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        10,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        4,
+        3,
+        10
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [
+    {
+      "head": [
+        12,
+        8,
+        8
+      ],
+      "foot": [
+        12,
+        8,
+        7
+      ]
+    },
+    {
+      "head": [
+        12,
+        8,
+        4
+      ],
+      "foot": [
+        12,
+        8,
+        5
+      ]
+    }
+  ],
+  "workstations": [
+    {
+      "at": [
+        3,
+        3,
+        8
+      ],
+      "block": "minecraft:composter"
+    }
+  ],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "slot": "workshop:farmer"
+}
