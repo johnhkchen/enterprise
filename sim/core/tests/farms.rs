@@ -649,3 +649,15 @@ fn a_town_with_a_field_untended_plants_no_more_of_what_it_grows() {
     assert_eq!(plant(50), Some(120), "its hands tend what it has: a field more of the wheat");
     assert_eq!(plant(2000), Some(40), "1,900 carrots lying untended: no more wheat");
 }
+
+/// A Farmer's plots a level are a dial (John: "a dial for villager productivity by class"): at 64, a Novice tends twice
+/// the plots, and the town's harvest with them.
+#[test]
+fn the_plots_a_farmer_tends_a_level_are_a_dial() {
+    let mut c = content();
+    let plots: BTreeMap<usize, u32> = [(WHEAT, 200)].into_iter().collect();
+    let plan = |c: &Content| farms::plan(c, &plots, &[1], &Wants::default(), 1.0, false, &mut BTreeMap::new()).0[&WHEAT];
+    assert_eq!(plan(&c), 16.0, "32 plots, half a wheat each");
+    c.dials.plots_per_farmer_level = 64;
+    assert_eq!(plan(&c), 32.0, "64 plots");
+}

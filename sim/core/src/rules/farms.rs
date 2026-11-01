@@ -418,7 +418,7 @@ fn field_wanted(content: &Content, farm: &Farm, farmers: &[u8], wants: &Wants, f
     // of them cane, for Farmers who tend 352); its untended plots are turned over to what it wants instead
     // (`rotate_for_workshop`). A crop it has none of it still plants.
     let idle = farm.idle.values().sum::<f64>() / YIELD_PER_PLOT_PER_DAY >= (FIELD_SIZE * FIELD_SIZE) as f64;
-    let capacity = capacity(farmers, 1.0);
+    let capacity = capacity(content, farmers, 1.0);
     let levels: u32 = farmers.iter().map(|l| (*l).max(1) as u32).sum();
     let worked = farm.per_day.values().sum::<f64>() / YIELD_PER_PLOT_PER_DAY;
     let food_only = farm.focus.food_only();

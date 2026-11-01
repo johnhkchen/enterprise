@@ -293,6 +293,13 @@ dials! {
     glut_emeralds: f64 = 16.0,
     /// Days a villager's trades do nothing for the town before it takes up a trade the town needs.
     slack_days: u32 = 5,
+    /// What a villager's level yields, by class, where its hands set it (John: "a dial for villager productivity by
+    /// class"; the herds' and the mines' are theirs above and below): plots a Farmer tends a level
+    /// (`farms::PLOTS_PER_FARMER_LEVEL`), cod a Fisherman lands a day a level (`works::COD_PER_LEVEL`). Left as they
+    /// are, villagers fall short of their comforts, for the players' industry to fill (John: "Doesn't make sense if
+    /// villagers by default produced such abundance that they never go without").
+    plots_per_farmer_level: u32 = 32,
+    cod_per_fisher_level: f64 = 4.0,
     /// Idle plots must yield at least this much a day, in emeralds, to put Farmers' marbles in the bag.
     farmer_idle_emeralds: f64 = 0.5,
     /// Chokepoints (`chokepoints`): towns review their tolls and posts themselves (off: they keep what the host sets),

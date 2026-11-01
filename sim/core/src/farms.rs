@@ -33,7 +33,8 @@ use serde::{Deserialize, Serialize};
 use crate::content::{Content, GoodId};
 use crate::fixed::Fixed;
 
-/// Plots a Farmer tends a profession level (`Territory.PLOTS_PER_FARMER_LEVEL`).
+/// Plots a Farmer tends a profession level (`Territory.PLOTS_PER_FARMER_LEVEL`): the `plots_per_farmer_level` dial's
+/// default.
 pub const PLOTS_PER_FARMER_LEVEL: u32 = 32;
 /// Items a worked plot yields a day (`Territory.YIELD_PER_PLOT_PER_DAY`).
 pub const YIELD_PER_PLOT_PER_DAY: f64 = 0.5;
@@ -507,9 +508,10 @@ pub fn meal_needs(content: &Content, farm: &Farm, villagers: f64) -> BTreeMap<Go
     out
 }
 
-/// Plots the Farmers can tend: [`PLOTS_PER_FARMER_LEVEL`] a level each (a Novice's at the least), by `hands` (tools).
-pub fn capacity(farmers: &[u8], hands: f64) -> f64 {
-    (hands * farmers.iter().map(|l| PLOTS_PER_FARMER_LEVEL * (*l).max(1) as u32).sum::<u32>() as f64).round()
+/// Plots the Farmers can tend: `plots_per_farmer_level` a level each (a Novice's at the least), by `hands` (tools).
+pub fn capacity(content: &Content, farmers: &[u8], hands: f64) -> f64 {
+    let each = content.dials.plots_per_farmer_level;
+    (hands * farmers.iter().map(|l| each * (*l).max(1) as u32).sum::<u32>() as f64).round()
 }
 
 /// The Farmers' plan (`Territory.plan`): the plots the feed and what's sold forward need first; then plot by plot
@@ -520,7 +522,7 @@ pub fn capacity(farmers: &[u8], hands: f64) -> f64 {
 pub fn plan(content: &Content, plots: &BTreeMap<GoodId, u32>, farmers: &[u8], wants: &Wants, hands: f64, fed: bool,
         idle: &mut BTreeMap<GoodId, f64>) -> (BTreeMap<GoodId, f64>, u32) {
     let mut per_day: BTreeMap<GoodId, f64> = BTreeMap::new();
-    let mut capacity = capacity(farmers, hands) as i64;
+    let mut capacity = capacity(content, farmers, hands) as i64;
     let mut left: BTreeMap<GoodId, i64> = plots.iter().map(|(g, n)| (*g, *n as i64)).collect();
     let work = |per_day: &mut BTreeMap<GoodId, f64>, left: &mut BTreeMap<GoodId, i64>, crop: GoodId, n: i64| {
         *per_day.entry(crop).or_insert(0.0) += n as f64 * YIELD_PER_PLOT_PER_DAY;
@@ -901,7 +903,7 @@ pub fn replan(content: &Content, farm: &mut Farm, farmers: &[u8], uses: &[f64], 
     let mut idle = BTreeMap::new();
     let (per_day, fallow) = plan(content, &plots(farm), farmers, &wants, farm.hands, fed, &mut idle);
     let tended = per_day.values().sum::<f64>() / YIELD_PER_PLOT_PER_DAY;
-    let capacity = capacity(farmers, farm.hands);
+    let capacity = capacity(content, farmers, farm.hands);
     let untended = idle.values().sum::<f64>() / YIELD_PER_PLOT_PER_DAY;
     farm.spare_plots = (capacity - tended.round()).max(0.0) as u32;
     farm.tightness = tightness(capacity, tended, untended);

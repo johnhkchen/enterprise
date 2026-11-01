@@ -351,6 +351,7 @@ pub const BERTH_EMERALDS: f64 = 6.0;
 pub const BOATS_PER_BERTH: usize = 2;
 /// Berths beyond its first that make a port a freight hub's site with no road of others through it (`rules/freight.rs`).
 pub const PORT_HUB_BERTHS: usize = 2;
+/// Cod a Fisherman lands a day a level: the `cod_per_fisher_level` dial's default.
 pub const COD_PER_LEVEL: f64 = 4.0;
 pub const COD_PER_WATER_HEX: f64 = 12.0;
 

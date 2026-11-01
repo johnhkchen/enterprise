@@ -1181,6 +1181,13 @@ mod's), but no road ever chose it. Then: build them first.
     two or three (19 towns to 15) meet nothing and dilute the towns' means; by villagers, reading 0.05 to 0.38,
     clothing 0.31 to 0.16 (the leather goes to books), treats 0.45 to 0.30 (wheat tended 368 a day to 270, cookies in
     stock 236 to 48: fewer fields).
+  - **Villagers fall short by default; their output a level is a dial by class (John, 2026-11-01: "leaving a bit of room
+    for industrialized production to fill in happiness that otherwise goes unfulfilled makes sense for the mod's
+    default steady state").** The wheat: not fewer fields but more mouths: the towns fed 150 villagers on 52 Farmer
+    levels against 114 on 55, and the meals took the plots that grew the spare wheat (beetroot and potatoes up, wheat
+    tended 368 a day to 270). Kept so. A Farmer's plots a level (`plots_per_farmer_level`, 32) and a Fisherman's cod a
+    level (`cod_per_fisher_level`, 4) are dials beside the herds' and the mines' that were already: a server that
+    wants villagers to keep themselves turns them up; the default leaves the gap for the players' Create works.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

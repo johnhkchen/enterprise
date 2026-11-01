@@ -187,7 +187,7 @@ pub fn work(clock: Res<Clock>, content: Res<Content>, map: Res<Map>, territory: 
             let fishers: f64 = at_home(roster, fisherman).take(boats).map(|f| f.level as f64).sum();
             let grounds = holding.map_or(0, |h| h.hexes.iter().filter(|&&x| map.land(x) == Land::Water).count()).max(1) as f64;
             let docks = if w.built(Kind::StoneDocks) { 2.0 } else { 1.0 };
-            let catch = (fishers * crate::works::COD_PER_LEVEL).min(grounds * crate::works::COD_PER_WATER_HEX) * docks;
+            let catch = (fishers * content.dials.cod_per_fisher_level).min(grounds * crate::works::COD_PER_WATER_HEX) * docks;
             let owed = content.good("cod").and_then(|g| kits.pending.get(&g)).copied().unwrap_or(0.0);
             if catch > 0.0 && content.good("cod").is_some_and(|g| room(&content, trades, stock, crates, g, owed, wanted_far(g))) {
                 owe(&content, kits, "cod", catch * days);

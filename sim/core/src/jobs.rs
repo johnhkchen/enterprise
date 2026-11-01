@@ -246,7 +246,7 @@ pub fn fishing_marbles(content: &Content, works: Option<&crate::works::Works>, h
     let grounds = holding.map_or(0, |h| h.hexes.iter().filter(|&&x| map.land(x) == crate::map::Land::Water).count())
         .max(1) as f64;
     let landed: f64 = roster.hands.iter().filter(|h| h.trade == fisherman && !h.away)
-        .map(|h| h.level as f64 * crate::works::COD_PER_LEVEL).sum();
+        .map(|h| h.level as f64 * content.dials.cod_per_fisher_level).sum();
     let unfished = (grounds * crate::works::COD_PER_WATER_HEX - landed).max(0.0);
     (unfished > 0.0).then(|| (fisherman, unfished * content.goods[cod].value * 4.0))
 }

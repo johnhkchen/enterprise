@@ -655,7 +655,7 @@ pub fn wanted(service: &Service, visit: &Visit) -> bool {
             if visit.planning {
                 // Only a Farmer its own fields can spare: home tends all it has with a Farmer's plots left over.
                 return visit.trip.and_then(|t| t.home_spare_plots)
-                    .is_none_or(|spare| spare >= crate::farms::PLOTS_PER_FARMER_LEVEL);
+                    .is_none_or(|spare| spare >= c.dials.plots_per_farmer_level);
             }
             visit.budget > 0.0
         }
@@ -709,7 +709,7 @@ pub fn perform(service: &Service, visit: &Visit) -> Done {
             if idle_plots <= 0.0 {
                 return done;
             }
-            let share = (crate::farms::PLOTS_PER_FARMER_LEVEL as f64 * visit.skill as f64 / idle_plots).min(1.0);
+            let share = (c.dials.plots_per_farmer_level as f64 * visit.skill as f64 / idle_plots).min(1.0);
             let mut produce: Vec<(GoodId, f64)> = farm.idle.iter().map(|(&g, &per_day)| (g, per_day * share * HELP_DAYS)).collect();
             let value: f64 = produce.iter().map(|&(g, n)| n * c.goods[g].value).sum();
             let mut fee = value * farm.labor_share;
