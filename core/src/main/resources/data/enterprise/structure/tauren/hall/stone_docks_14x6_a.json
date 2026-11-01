@@ -1,0 +1,48 @@
+{
+  "id": "enterprise:tauren/hall/stone_docks_14x6_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "hall",
+  "slot": "hall:stone_docks",
+  "use": [
+    "sea",
+    "river"
+  ],
+  "tiers": [
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    4,
+    2
+  ],
+  "footprint": [
+    14,
+    6
+  ],
+  "height": 15,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        7,
+        7,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

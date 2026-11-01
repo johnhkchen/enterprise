@@ -1,0 +1,45 @@
+{
+  "id": "enterprise:tauren/hall/lookout_6x6_a",
+  "rev": 1,
+  "style": "tauren",
+  "kind": "hall",
+  "slot": "hall:watchtower",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    2,
+    2
+  ],
+  "footprint": [
+    6,
+    6
+  ],
+  "height": 32,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        3,
+        3,
+        5
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}
