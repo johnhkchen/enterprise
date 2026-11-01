@@ -163,8 +163,9 @@ public final class CoreBindingTests {
                 "goods the recipes and herds use aren't in the pack although the mod doesn't price them");
         helper.assertTrue(pack.comforts().equals(List.of("clothing", "furnishings", "leisure", "reading", "treats")),
                 "kinds of comfort: " + pack.comforts());
-        helper.assertTrue(pack.trades().size() == 16 && pack.trades().get(0).equals("merchant") && pack.trades().contains("farmer")
-                && pack.trades().get(14).equals("none") && pack.trades().get(15).equals("nitwit"), "trades: " + pack.trades());
+        helper.assertTrue(pack.trades().size() == 17 && pack.trades().get(0).equals("merchant") && pack.trades().contains("farmer")
+                && pack.trades().get(14).equals("lumberjack") && pack.trades().get(15).equals("none")
+                && pack.trades().get(16).equals("nitwit"), "trades: " + pack.trades());
         int own = dev.b28.enterprise.territory.Workshop.CONVERSIONS.size();
         helper.assertTrue(pack.recipes().size() > own + VillagerCrafts.EXTRAS.size()
                 && pack.animals().size() == dev.b28.enterprise.territory.Husbandry.KINDS.size(), "recipes or animals missing");
