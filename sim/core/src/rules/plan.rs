@@ -237,7 +237,14 @@ fn plan_sale(clock: Res<Clock>, content: Res<Content>, book: Res<Book>, stocktak
                     let par = seen_bid(g).map_or(par, |(_, want)| par.max(held(g) + want));
                     let room = par - held(g);
                     let have = home_stock.0[g] - planned;
-                    let keep = shelf(&content, home_trades, g);
+                    // Not a shelf for its own lockers where this far end bids more than its worth after the haul: its
+                    // lockers leave it for the wagons then (`rules/lockers.rs`), and each holding it for the other
+                    // left seed 1717's first town 1,437 wool its Shepherds' lockers bought none of in 60 days, the
+                    // towns down its roads short of furnishings.
+                    let dearer = seen_bid(g).is_some_and(|(b, _)| {
+                        b - crate::desires::haul_each(&content, route.blocks, 1, 0, g) > content.goods[g].value
+                    });
+                    let keep = if dearer { 0.0 } else { shelf(&content, home_trades, g) };
                     standing.push((g, if room <= 0.0 {
                         Err((Why::HoldTheirFill(want), held(g)))
                     } else if have <= 0.0 {

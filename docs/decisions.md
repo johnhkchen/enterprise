@@ -1240,6 +1240,18 @@ mod's), but no road ever chose it. Then: build them first.
     every comfort met but one town's clothing; the network grew otherwise than the last (27 towns to 21, 13 of eight
     villagers or more to 8), its larger towns' furnishings 0.93 to 0.36 and mood 2.14 to 0.77, none of it the
     shelves' (those towns bought none): reading met (by villagers) 0.36 to 0.34, the towns' money 250 to 85.
+  - **Fixed: a wagon keeps no shelf for its own lockers from a town bidding more than its worth after the haul (John,
+    2026-11-01: "Furnishings").** The larger towns' furnishings had fallen to 0.36: the first town held 1,437 wool, its
+    Shepherds' lockers buying none of it in 60 days. Its lockers left it for the dearer bids down its roads (four towns
+    with Shepherds bid 0.2 to 0.5 for wool worth 0.03: `rules/lockers.rs`), and its wagons kept a shelf of it for those
+    same lockers (544 a day of their room, `rules::shelf`): each holding it for the other. Its carpets went, but often
+    unsold ("they can't pay"); and the flocks elsewhere stayed small (one of 4 to 9 sheep with no pasture in 54 days,
+    one starved out, two kept without a Shepherd). The wagon's plan keeps no shelf for its lockers where the far end
+    bids more than the good's worth after the haul (`rules/plan.rs`). The bid study from its day-10 point: the larger
+    towns' (eight villagers or more) furnishings 0.36 to 0.68, clothing 0.77 to 0.91, reading 0.42 to 0.55, treats 0.71
+    to 0.76, mood 0.77 to 1.30; 23 towns (27), the towns' money 85 to 106; the first town's wool 1,437 to 1,008 (what's
+    left kept for a neighbour's lockers that bid none). No test of its own: a two-town scene's wagon waited for a
+    fuller load; the replay of the run before showed the same.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server
