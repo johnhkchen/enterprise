@@ -317,6 +317,26 @@ public final class SettlementTests {
     }
 
     @GameTest(template = "floor")
+    public static void aVillagerAWorkWallsInOutOfSightBreathesInTheOpen(GameTestHelper helper) {
+        var plans = dev.b28.enterprise.territory.TownPlans.get(helper.getLevel().getServer());
+        long town = -BELL.hashCode() - helper.absolutePos(BELL).asLong();
+        BlockPos bell = helper.absolutePos(BELL);
+        var arena = new dev.b28.enterprise.territory.TownPlans.Rect(bell.getX() - 3, bell.getZ() - 3, bell.getX() + 3, bell.getZ() + 3);
+        plans.set(town, new dev.b28.enterprise.territory.TownPlans.Plan(bell, arena, arena, false, false));
+        Villager buried = helper.spawn(EntityType.VILLAGER, BELL.above());
+        buried.setNoAi(true);
+        helper.setBlock(BELL.above(), Blocks.STONE); // a wall laid where it stood, no look after
+        helper.setBlock(BELL.above(2), Blocks.STONE);
+        helper.runAfterDelay(30, () -> {
+            plans.set(town, null);
+            helper.assertTrue(buried.isAlive() && !buried.isInWall() && buried.getHealth() == buried.getMaxHealth(),
+                    "choked: health " + buried.getHealth() + ", in the wall " + buried.isInWall());
+            buried.discard();
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = "floor")
     public static void aHillsideSiteIsFilledLevelForAHome(GameTestHelper helper) {
         var level = helper.getLevel();
         ground(helper, 0, 2, 4); // a slope of natural ground: 4, 3, 2 high across the footprint

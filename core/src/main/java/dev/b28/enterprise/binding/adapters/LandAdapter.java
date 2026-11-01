@@ -248,10 +248,12 @@ public final class LandAdapter {
                 // Its first farm tracks, with its avenues (John: "some at founding").
                 // (Once its land is shaped: the fields lie on the graded ground, not cut through by it.)
                 if (plan.avenues() && dev.b28.enterprise.territory.TownPlans.get(server).converted(town)) {
+                    int tracks = dev.b28.enterprise.territory.FieldMaps.get(server).tracks().getOrDefault(town, List.of()).size();
                     dev.b28.enterprise.territory.FieldMaps.get(server).found(level, town);
                     // Its holdings' unsown land dressed a little each look (fallow, meadow, orchard).
                     // (Its tracks and hedgerows laid round whoever stands in its fields.)
-                    if (dev.b28.enterprise.territory.FieldMaps.get(server).dress(level, town) > 0) {
+                    if (dev.b28.enterprise.territory.FieldMaps.get(server).dress(level, town) > 0
+                            || dev.b28.enterprise.territory.FieldMaps.get(server).tracks().getOrDefault(town, List.of()).size() > tracks) {
                         unbury(level, town, bell);
                     }
                 }
@@ -1140,12 +1142,14 @@ public final class LandAdapter {
 
     /**
      * Whoever the town's building left standing in a block stood on open ground (`Grounds.unbury`): its whole plan's
-     * reach, or the bell's 64 blocks where it has no plan.
+     * reach or its farm tracks' and holdings', the farther (seed 1717's farthest fields lie past their town's
+     * plan), or the bell's 64 blocks where it has no plan.
      */
     private static void unbury(ServerLevel level, long town, BlockPos bell) {
         var plan = dev.b28.enterprise.territory.TownPlans.get(level.getServer()).of(town);
-        int reach = plan == null ? 64 : Math.max(Math.max(bell.getX() - plan.outer().x0(), plan.outer().x1() - bell.getX()),
-                Math.max(bell.getZ() - plan.outer().z0(), plan.outer().z1() - bell.getZ())) + 4;
+        int reach = plan == null ? 64 : Math.max(Math.max(Math.max(bell.getX() - plan.outer().x0(), plan.outer().x1() - bell.getX()),
+                Math.max(bell.getZ() - plan.outer().z0(), plan.outer().z1() - bell.getZ())) + 4,
+                dev.b28.enterprise.territory.FieldMaps.get(level.getServer()).reach(town, bell));
         int n = dev.b28.enterprise.settlement.Grounds.unbury(level, bell, reach);
         if (n > 0) {
             Enterprise.LOGGER.info("Town {}: {} stood out of the blocks laid round them", town, n);

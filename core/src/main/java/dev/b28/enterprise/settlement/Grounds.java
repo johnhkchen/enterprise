@@ -208,6 +208,42 @@ public final class Grounds {
         return n;
     }
 
+    /**
+     * A creature (not a player, nor a monster) a block chokes within a town's plan or farmland stands on the nearest
+     * open ground at the first breath it misses, unhurt: every work a town lays is laid round whoever stands there, and
+     * {@link #unbury} after each misses those laid out of its sight (seed 1717's town at -774, -533 smothered two hens
+     * in its paving and a villager in its fill a second after its last look). Said in the log, with the block, so the
+     * work that laid it can be found.
+     */
+    public static void onHurt(net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent event) {
+        LivingEntity e = event.getEntity();
+        if (!event.getSource().is(net.minecraft.world.damagesource.DamageTypes.IN_WALL)
+                || e instanceof net.minecraft.world.entity.player.Player || e instanceof net.minecraft.world.entity.monster.Enemy
+                || !(e.level() instanceof ServerLevel level)) {
+            return;
+        }
+        BlockPos was = e.blockPosition();
+        var fields = dev.b28.enterprise.territory.FieldMaps.get(level.getServer());
+        var town = dev.b28.enterprise.territory.TownPlans.get(level.getServer()).plans().entrySet().stream()
+                .filter(t -> within(t.getValue(), fields.reach(t.getKey(), t.getValue().bell()), was)).findFirst();
+        if (town.isEmpty()) {
+            return;
+        }
+        BlockState in = level.getBlockState(BlockPos.containing(e.getEyePosition()));
+        BlockPos at = standing(level, was);
+        e.teleportTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5);
+        event.setCanceled(true);
+        Enterprise.LOGGER.info("Town {}: a {} choking in {} at {} stood out at {}", town.get().getKey(),
+                e.getType().getDescription().getString(), in.getBlock().getDescriptionId(), was.toShortString(), at.toShortString());
+    }
+
+    /** Whether {@code at} lies within the plan's outer bounds, or {@code farms} blocks across of its bell. */
+    private static boolean within(dev.b28.enterprise.territory.TownPlans.Plan plan, int farms, BlockPos at) {
+        var o = plan.outer();
+        return at.getX() >= o.x0() && at.getX() <= o.x1() && at.getZ() >= o.z0() && at.getZ() <= o.z1()
+                || Math.max(Math.abs(at.getX() - plan.bell().getX()), Math.abs(at.getZ() - plan.bell().getZ())) <= farms;
+    }
+
     private static boolean open(ServerLevel level, BlockPos at) {
         return level.getBlockState(at).getCollisionShape(level, at).isEmpty() && level.getFluidState(at).isEmpty();
     }

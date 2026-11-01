@@ -124,6 +124,18 @@ public final class FieldMaps extends SavedData {
         return out;
     }
 
+    /** How far across from {@code bell} the town's tracks and the holdings along them reach, 0 with none opened. */
+    public int reach(long town, BlockPos bell) {
+        TownMap m = maps.get(town);
+        int far = 0;
+        for (Track t : m == null ? List.<Track>of() : m.tracks) {
+            for (double[] pt : t.line()) {
+                far = Math.max(far, (int) Math.ceil(Math.max(Math.abs(pt[0] - bell.getX()), Math.abs(pt[1] - bell.getZ()))));
+            }
+        }
+        return far == 0 ? 0 : far + OFFSET + LENGTHS * WIDE;
+    }
+
     /** The ring a crop is grown in first: roots, greens and berries in the gardens, grain and cane in the open fields. */
     public static Ring ringOf(Item crop) {
         return crop == Items.WHEAT || crop == Items.SUGAR_CANE || crop == Items.MELON_SLICE || crop == Items.PUMPKIN
