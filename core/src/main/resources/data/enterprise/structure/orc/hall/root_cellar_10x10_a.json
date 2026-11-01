@@ -1,0 +1,54 @@
+{
+  "id": "enterprise:orc/hall/root_cellar_10x10_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "hall",
+  "slot": "hall:root_cellar",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    3,
+    3
+  ],
+  "footprint": [
+    10,
+    10
+  ],
+  "height": 13,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        5,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    },
+    {
+      "at": [
+        4,
+        3,
+        9
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ]
+}

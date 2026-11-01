@@ -1,0 +1,96 @@
+{
+  "id": "enterprise:orc/hall/trade_hall_14x14_a",
+  "rev": 1,
+  "style": "orc",
+  "kind": "hall",
+  "slot": "desk",
+  "tiers": [
+    "village",
+    "town"
+  ],
+  "palette": "base",
+  "tiles": [
+    4,
+    4
+  ],
+  "footprint": [
+    14,
+    14
+  ],
+  "height": 19,
+  "ground": 2,
+  "mirror": true,
+  "entrances": [
+    {
+      "at": [
+        7,
+        3,
+        13
+      ],
+      "facing": "south",
+      "width": 1
+    }
+  ],
+  "beds": [],
+  "workstations": [],
+  "lockers": [],
+  "markers": [
+    {
+      "what": "desk",
+      "at": [
+        7,
+        4,
+        5
+      ]
+    },
+    {
+      "at": [
+        8,
+        4,
+        5
+      ],
+      "what": "blaze_banker"
+    },
+    {
+      "at": [
+        7,
+        4,
+        6
+      ],
+      "what": "vendor"
+    }
+  ],
+  "entities": [],
+  "relief_faces": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "stock": [
+    {
+      "at": [
+        6,
+        4,
+        5
+      ],
+      "for": [
+        7,
+        4,
+        5
+      ]
+    },
+    {
+      "at": [
+        7,
+        4,
+        4
+      ],
+      "for": [
+        7,
+        4,
+        5
+      ]
+    }
+  ]
+}

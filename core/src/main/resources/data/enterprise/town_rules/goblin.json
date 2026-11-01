@@ -1,6 +1,6 @@
 {
   "kingdom": "goblin",
-  "rev": 4,
+  "rev": 5,
   "about": "Goblin trade-port: town rules for a kit race. Every building is a whole delivered part from town_kits/goblin/core.json (named here by id), placed on its plot as it is; the house solver is not used. A town's clan (from styles/settlement.json, by the land) recolours every part at placement with that clan's swaps in styles/goblin.json. The tiers and the street bands are Lordaeron's. Choice is deterministic: hash(town id, slot) picks among weighted options.",
   "set": "goblin/core",
   "tiers": {
@@ -86,6 +86,15 @@
         ],
         "beds": 2,
         "weight": 2
+      },
+      {
+        "asset": "enterprise:goblin/home/terrace_21x7_a",
+        "footprint": [
+          23,
+          9
+        ],
+        "beds": 8,
+        "weight": 1
       }
     ],
     "city": [
@@ -106,6 +115,15 @@
         ],
         "beds": 2,
         "weight": 3
+      },
+      {
+        "asset": "enterprise:goblin/home/terrace_21x7_a",
+        "footprint": [
+          23,
+          9
+        ],
+        "beds": 8,
+        "weight": 2
       }
     ]
   },
@@ -256,13 +274,85 @@
       ],
       "from": "village"
     },
-    "watchtower": {
-      "asset": "enterprise:goblin/wall/watchtower_7x7_a",
+    "square": {
+      "asset": "enterprise:goblin/hall/square_9x9_a",
+      "footprint": [
+        9,
+        9
+      ],
+      "from": "village"
+    },
+    "granary": {
+      "asset": "enterprise:goblin/hall/granary_9x9_a",
       "footprint": [
         11,
         11
       ],
+      "from": "village"
+    },
+    "root_cellar": {
+      "asset": "enterprise:goblin/hall/root_cellar_9x9_a",
+      "footprint": [
+        11,
+        11
+      ],
+      "from": "village"
+    },
+    "counting_house": {
+      "asset": "enterprise:goblin/hall/counting_house_9x9_a",
+      "footprint": [
+        11,
+        11
+      ],
+      "from": "village"
+    },
+    "library": {
+      "asset": "enterprise:goblin/hall/library_9x9_a",
+      "footprint": [
+        11,
+        11
+      ],
+      "from": "village"
+    },
+    "smithy": {
+      "asset": "enterprise:goblin/hall/smithy_9x9_a",
+      "footprint": [
+        11,
+        11
+      ],
+      "from": "village"
+    },
+    "watchtower": {
+      "asset": "enterprise:goblin/hall/lookout_7x7_a",
+      "footprint": [
+        9,
+        9
+      ],
+      "from": "village"
+    },
+    "stone_docks": {
+      "asset": "enterprise:goblin/hall/stone_docks_12x7_a",
+      "footprint": [
+        14,
+        9
+      ],
       "from": "town"
+    },
+    "caravanserai": {
+      "asset": "enterprise:goblin/hall/caravanserai_12x9_a",
+      "footprint": [
+        14,
+        11
+      ],
+      "from": "town"
+    },
+    "desk": {
+      "asset": "enterprise:goblin/hall/market_hall_12x12_a",
+      "footprint": [
+        14,
+        14
+      ],
+      "from": "village"
     }
   },
   "forum": {

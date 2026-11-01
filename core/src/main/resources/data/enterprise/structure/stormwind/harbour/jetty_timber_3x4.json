@@ -3,7 +3,7 @@
   "rev": 1,
   "kingdom": "stormwind",
   "kind": "part",
-  "slot": "prop:harbour",
+  "slot": "dock:pier",
   "palette": "fixed",
   "size": [
     3,

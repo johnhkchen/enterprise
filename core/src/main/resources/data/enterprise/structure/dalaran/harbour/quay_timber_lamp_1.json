@@ -3,7 +3,7 @@
   "rev": 1,
   "kingdom": "dalaran",
   "kind": "part",
-  "slot": "prop:harbour",
+  "slot": "dock:quay",
   "palette": "fixed",
   "size": [
     1,

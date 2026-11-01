@@ -3,7 +3,7 @@
   "rev": 1,
   "kingdom": "lordaeron",
   "kind": "part",
-  "slot": "prop:harbour",
+  "slot": "dock:pier",
   "palette": "fixed",
   "size": [
     3,

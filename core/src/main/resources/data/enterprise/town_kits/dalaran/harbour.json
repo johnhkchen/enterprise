@@ -27,6 +27,7 @@
     {
       "id": "quay_stone_1a",
       "part": "enterprise:dalaran/harbour/quay_stone_1a",
+      "slot": "dock:quay",
       "size": [
         1,
         6,
@@ -48,6 +49,7 @@
     {
       "id": "quay_stone_1b",
       "part": "enterprise:dalaran/harbour/quay_stone_1b",
+      "slot": "dock:quay",
       "size": [
         1,
         6,
@@ -69,6 +71,7 @@
     {
       "id": "quay_stone_1c",
       "part": "enterprise:dalaran/harbour/quay_stone_1c",
+      "slot": "dock:quay",
       "size": [
         1,
         6,
@@ -90,6 +93,7 @@
     {
       "id": "quay_stone_bollard_1",
       "part": "enterprise:dalaran/harbour/quay_stone_bollard_1",
+      "slot": "dock:quay",
       "size": [
         1,
         6,
@@ -112,6 +116,7 @@
     {
       "id": "quay_stone_lamp_1",
       "part": "enterprise:dalaran/harbour/quay_stone_lamp_1",
+      "slot": "dock:quay",
       "size": [
         1,
         6,
@@ -134,6 +139,7 @@
     {
       "id": "quay_stone_ladder_1",
       "part": "enterprise:dalaran/harbour/quay_stone_ladder_1",
+      "slot": "dock:quay",
       "size": [
         1,
         6,
@@ -156,6 +162,7 @@
     {
       "id": "quay_stone_steps_1",
       "part": "enterprise:dalaran/harbour/quay_stone_steps_1",
+      "slot": "dock:quay",
       "size": [
         1,
         6,
@@ -178,6 +185,7 @@
     {
       "id": "quay_stone_crane_1",
       "part": "enterprise:dalaran/harbour/quay_stone_crane_1",
+      "slot": "dock:quay",
       "size": [
         1,
         9,
@@ -200,6 +208,7 @@
     {
       "id": "quay_timber_1a",
       "part": "enterprise:dalaran/harbour/quay_timber_1a",
+      "slot": "dock:quay",
       "size": [
         1,
         6,
@@ -221,6 +230,7 @@
     {
       "id": "quay_timber_1b",
       "part": "enterprise:dalaran/harbour/quay_timber_1b",
+      "slot": "dock:quay",
       "size": [
         1,
         6,
@@ -242,6 +252,7 @@
     {
       "id": "quay_timber_lamp_1",
       "part": "enterprise:dalaran/harbour/quay_timber_lamp_1",
+      "slot": "dock:quay",
       "size": [
         1,
         6,
@@ -264,6 +275,7 @@
     {
       "id": "quay_timber_ladder_1",
       "part": "enterprise:dalaran/harbour/quay_timber_ladder_1",
+      "slot": "dock:quay",
       "size": [
         1,
         6,
@@ -286,6 +298,7 @@
     {
       "id": "quay_timber_crane_1",
       "part": "enterprise:dalaran/harbour/quay_timber_crane_1",
+      "slot": "dock:quay",
       "size": [
         1,
         9,
@@ -309,6 +322,7 @@
     {
       "id": "jetty_timber_3x4",
       "part": "enterprise:dalaran/harbour/jetty_timber_3x4",
+      "slot": "dock:pier",
       "size": [
         3,
         5,
@@ -333,6 +347,7 @@
     {
       "id": "jetty_head_timber_5x5",
       "part": "enterprise:dalaran/harbour/jetty_head_timber_5x5",
+      "slot": "prop:harbour",
       "size": [
         5,
         5,
@@ -357,6 +372,7 @@
     {
       "id": "mole_7x4a",
       "part": "enterprise:dalaran/harbour/mole_7x4a",
+      "slot": "prop:harbour",
       "size": [
         7,
         6,
@@ -378,6 +394,7 @@
     {
       "id": "mole_7x4b",
       "part": "enterprise:dalaran/harbour/mole_7x4b",
+      "slot": "prop:harbour",
       "size": [
         7,
         6,
@@ -399,6 +416,7 @@
     {
       "id": "mole_head_lighthouse_9x9",
       "part": "enterprise:dalaran/harbour/mole_head_lighthouse_9x9",
+      "slot": "prop:harbour",
       "size": [
         9,
         26,
@@ -422,6 +440,7 @@
     {
       "id": "boat_trader_9x25",
       "part": "enterprise:dalaran/harbour/boat_trader_9x25",
+      "slot": "prop:boat",
       "size": [
         9,
         24,
@@ -443,6 +462,7 @@
     {
       "id": "boat_fishing_3x8",
       "part": "enterprise:dalaran/harbour/boat_fishing_3x8",
+      "slot": "prop:boat",
       "size": [
         3,
         8,
@@ -465,6 +485,7 @@
     {
       "id": "boat_barge_4x11",
       "part": "enterprise:dalaran/harbour/boat_barge_4x11",
+      "slot": "prop:boat",
       "size": [
         4,
         6,

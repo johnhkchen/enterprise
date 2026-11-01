@@ -436,9 +436,191 @@
       ],
       "beds": 0,
       "workstations": []
+    },
+    {
+      "id": "terrace_21x7_a",
+      "part": "enterprise:goblin/home/terrace_21x7_a",
+      "kind": "home",
+      "slot": "home:terrace",
+      "size": [
+        23,
+        24,
+        9
+      ],
+      "beds": 8,
+      "workstations": []
+    },
+    {
+      "id": "market_hall_12x12_a",
+      "part": "enterprise:goblin/hall/market_hall_12x12_a",
+      "kind": "hall",
+      "slot": "desk",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        14,
+        24,
+        14
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "square_9x9_a",
+      "part": "enterprise:goblin/hall/square_9x9_a",
+      "kind": "hall",
+      "slot": "hall:square",
+      "size": [
+        9,
+        8,
+        9
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "granary_9x9_a",
+      "part": "enterprise:goblin/hall/granary_9x9_a",
+      "kind": "hall",
+      "slot": "hall:granary",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        11,
+        24,
+        11
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "root_cellar_9x9_a",
+      "part": "enterprise:goblin/hall/root_cellar_9x9_a",
+      "kind": "hall",
+      "slot": "hall:root_cellar",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        11,
+        14,
+        11
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "counting_house_9x9_a",
+      "part": "enterprise:goblin/hall/counting_house_9x9_a",
+      "kind": "hall",
+      "slot": "hall:counting_house",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        11,
+        22,
+        11
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "library_9x9_a",
+      "part": "enterprise:goblin/hall/library_9x9_a",
+      "kind": "hall",
+      "slot": "hall:library",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        11,
+        24,
+        11
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "smithy_9x9_a",
+      "part": "enterprise:goblin/hall/smithy_9x9_a",
+      "kind": "hall",
+      "slot": "hall:smithy",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        11,
+        24,
+        11
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "lookout_7x7_a",
+      "part": "enterprise:goblin/hall/lookout_7x7_a",
+      "kind": "hall",
+      "slot": "hall:watchtower",
+      "tiers": [
+        "village",
+        "town"
+      ],
+      "size": [
+        9,
+        28,
+        9
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "stone_docks_12x7_a",
+      "part": "enterprise:goblin/hall/stone_docks_12x7_a",
+      "kind": "hall",
+      "slot": "hall:stone_docks",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        14,
+        16,
+        9
+      ],
+      "beds": 0,
+      "workstations": []
+    },
+    {
+      "id": "caravanserai_12x9_a",
+      "part": "enterprise:goblin/hall/caravanserai_12x9_a",
+      "kind": "hall",
+      "slot": "hall:caravanserai",
+      "tiers": [
+        "town"
+      ],
+      "size": [
+        14,
+        16,
+        11
+      ],
+      "beds": 0,
+      "workstations": []
     }
   ],
-  "held": [],
+  "held": [
+    {
+      "id": "burgage_9x13_a",
+      "why": "the catalogue asks 2-3 storeys on a 9 or 11 wide plot; quality.json makes a body under 10 wide one storey (thread 0008): which rule wins is with the client"
+    }
+  ],
   "notes": [
     "Footprints include a one-block yard round the building (the catalog's size plus 2 each way); the stall's 5 x 5 is its 3 x 3 on a yard.",
     "stall_3x3_a has a workstation marker (block any, air) behind its counter: the placer sets the trade's job block there, so one stall serves every trade.",
