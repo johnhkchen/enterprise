@@ -303,6 +303,20 @@ public final class SettlementTests {
     }
 
     @GameTest(template = "floor")
+    public static void aVillagerABuildingWallsInIsStoodInTheOpen(GameTestHelper helper) {
+        Villager buried = helper.spawn(EntityType.VILLAGER, BELL.above());
+        buried.setNoAi(true);
+        helper.setBlock(BELL.above(), Blocks.STONE); // a wall laid where it stood
+        helper.setBlock(BELL.above(2), Blocks.STONE);
+        helper.assertTrue(buried.isInWall(), "the villager isn't in the wall to begin with");
+        int moved = dev.b28.enterprise.settlement.Grounds.unbury(helper.getLevel(), helper.absolutePos(BELL), 3);
+        helper.assertTrue(moved == 1 && !buried.isInWall(), "still in the wall: " + moved + " moved, at "
+                + helper.relativePos(buried.blockPosition()));
+        buried.discard();
+        helper.succeed();
+    }
+
+    @GameTest(template = "floor")
     public static void aHillsideSiteIsFilledLevelForAHome(GameTestHelper helper) {
         var level = helper.getLevel();
         ground(helper, 0, 2, 4); // a slope of natural ground: 4, 3, 2 high across the footprint

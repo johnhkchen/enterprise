@@ -1296,6 +1296,14 @@ mod's), but no road ever chose it. Then: build them first.
     the herdless larger towns 1.69 off (one run had any), 0.53 and 0.71 on. Two runs alike differ as much as off and
     on: grazing's effect is under the runs' noise, and the grazing run's fall was Tarren Mill's stall, not its herds.
     Grazing stays on.
+  - **Fixed: a town's building stands whoever it walls in out on open ground (John, 2026-11-01: "Herdless").** The
+    herdless larger towns that did worst had lost their Merchants: Pyrewood (50 emeralds, 6 idle for 60 days) and
+    Refuge Pointe each lost theirs at setup, "suffocated in a wall", and a town with no desk hires no one. A town's
+    conversion, its land shaped, its homes and workshops and its farmland's tracks and hedgerows are laid round its
+    villagers, and 5 to 11 a run died at the first tick after. Now, after the conversion, each work laid and each
+    look's farmland, every creature in a block within the plan's reach is stood on the nearest open ground
+    (`Grounds.unbury`, its game test). Seed 1717, one run: 85 stood out at setup, 1 or 2 deaths left (two runs; not
+    traced), every town of more than 3 with its Merchant on day 60. A town whose Merchant dies still never has another.
 - **A world holds 24 towns at most (John, 2026-10-31: "close to a town limit for a server that aims to keep resource
   footprint low").** The dial `max_towns` (24): once the world's markets and the parties on the road to make more come
   to it, no party sets out; the towns it has grow on. Seed 1717 had 24 by day 210 and 37 by day 240, when its server

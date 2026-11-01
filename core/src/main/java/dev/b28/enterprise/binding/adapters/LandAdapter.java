@@ -250,7 +250,10 @@ public final class LandAdapter {
                 if (plan.avenues() && dev.b28.enterprise.territory.TownPlans.get(server).converted(town)) {
                     dev.b28.enterprise.territory.FieldMaps.get(server).found(level, town);
                     // Its holdings' unsown land dressed a little each look (fallow, meadow, orchard).
-                    dev.b28.enterprise.territory.FieldMaps.get(server).dress(level, town);
+                    // (Its tracks and hedgerows laid round whoever stands in its fields.)
+                    if (dev.b28.enterprise.territory.FieldMaps.get(server).dress(level, town) > 0) {
+                        unbury(level, town, bell);
+                    }
                 }
                 int since = sinceCounted.getOrDefault(town, CROPS_EVERY);
                 if (since >= CROPS_EVERY) {
@@ -1115,6 +1118,7 @@ public final class LandAdapter {
         }
         Enterprise.LOGGER.info("Town {} converted to the new style: {} homes and {} workshops ({} of {} beds), {} job sites at "
                 + "its forum's edge", town, homes, shops, beds, cleared.get().beds(), stalls);
+        unbury(level, town, bell);
     }
 
     /** The town's next home laid on its plot now, untold to the core: its beds, or -1 if none could be. */
@@ -1132,6 +1136,20 @@ public final class LandAdapter {
         }
         int beds = kit.get().bedHeads().size();
         return place(level, town, bell, home, 1, corner, new Work[] {home}) ? beds : -1;
+    }
+
+    /**
+     * Whoever the town's building left standing in a block stood on open ground (`Grounds.unbury`): its whole plan's
+     * reach, or the bell's 64 blocks where it has no plan.
+     */
+    private static void unbury(ServerLevel level, long town, BlockPos bell) {
+        var plan = dev.b28.enterprise.territory.TownPlans.get(level.getServer()).of(town);
+        int reach = plan == null ? 64 : Math.max(Math.max(bell.getX() - plan.outer().x0(), plan.outer().x1() - bell.getX()),
+                Math.max(bell.getZ() - plan.outer().z0(), plan.outer().z1() - bell.getZ())) + 4;
+        int n = dev.b28.enterprise.settlement.Grounds.unbury(level, bell, reach);
+        if (n > 0) {
+            Enterprise.LOGGER.info("Town {}: {} stood out of the blocks laid round them", town, n);
+        }
     }
 
     /**
@@ -1275,6 +1293,9 @@ public final class LandAdapter {
         // What the host says it laid: the work, or a pasture with the grass inside its fence.
         Work[] reported = {work};
         boolean laid = place(level, town, bell, work, share, site, reported);
+        if (laid) {
+            unbury(level, town, bell);
+        }
         if (laid) {
             pending.add(new Input.Built(town, reported[0], Math.min(1, share)));
         } else {
